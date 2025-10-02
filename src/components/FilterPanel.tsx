@@ -20,7 +20,7 @@ type Props = {
 };
 
 export const FilterPanel = ({ filters, onFilterChange }: Props) => {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
 
   // フォーム要素のID
   const keywordId = useId();
