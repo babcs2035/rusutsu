@@ -66,7 +66,7 @@ const MapControls = () => {
         <button
           type="button"
           onClick={() => map.zoomIn()}
-          className="p-2 text-white transition-colors hover:bg-slate-700/90 rounded-t-lg text-xl font-bold"
+          className="p-2 text-white transition-colors hover:bg-slate-700/90 rounded-t-lg text-xl font-bold cursor-pointer"
         >
           +
         </button>
@@ -74,7 +74,7 @@ const MapControls = () => {
         <button
           type="button"
           onClick={() => map.zoomOut()}
-          className="p-2 text-white transition-colors hover:bg-slate-700/90 rounded-b-lg text-xl font-bold"
+          className="p-2 text-white transition-colors hover:bg-slate-700/90 rounded-b-lg text-xl font-bold cursor-pointer"
         >
           -
         </button>
@@ -82,7 +82,7 @@ const MapControls = () => {
       <button
         type="button"
         onClick={() => map.setView(INITIAL_CENTER, INITIAL_ZOOM)}
-        className="rounded-lg bg-slate-800/80 p-2 text-white shadow-lg backdrop-blur-sm transition-colors hover:bg-slate-700/90"
+        className="rounded-lg bg-slate-800/80 p-2 text-white shadow-lg backdrop-blur-sm transition-colors hover:bg-slate-700/90 cursor-pointer"
       >
         <FontAwesomeIcon icon={faHouse} />
       </button>

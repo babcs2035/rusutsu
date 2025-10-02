@@ -42,14 +42,14 @@ export const SkiResortDetailView = ({ resort, onClose }: Props) => {
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-black/40 text-2xl text-white shadow-lg backdrop-blur-sm transition-all hover:bg-black/70 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-white/50"
+          className="absolute top-4 right-4 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-black/40 text-2xl text-white shadow-lg backdrop-blur-sm transition-all hover:bg-black/70 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-white/50 cursor-pointer"
           aria-label="詳細モーダルを閉じる"
         >
           ✕
         </button>
         <div className="flex-grow overflow-y-auto">
           <ImageCarousel
-            images={(resort.outline.images || []).concat(
+            images={(resort.outline?.images || []).concat(
               resort.courses.images || [],
             )}
             alt={resort.name.ja}
@@ -61,7 +61,7 @@ export const SkiResortDetailView = ({ resort, onClose }: Props) => {
                 key={tab}
                 type="button"
                 onClick={() => setActiveTab(tab)}
-                className={`flex-1 py-3 px-2 text-center text-sm font-semibold transition-colors md:text-base ${activeTab === tab ? "border-b-2 border-sky-500 text-sky-600" : "text-gray-500 hover:bg-gray-100/50"}`}
+                className={`flex-1 py-3 px-2 text-center text-sm font-semibold transition-colors md:text-base cursor-pointer ${activeTab === tab ? "border-b-2 border-sky-500 text-sky-600" : "text-gray-500 hover:bg-gray-100/50"}`}
               >
                 {tab}
               </button>
@@ -126,7 +126,7 @@ const ImageCarousel = ({ images, alt }: { images: string[]; alt: string }) => {
           <button
             type="button"
             onClick={prevSlide}
-            className="absolute left-3 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-2xl text-white shadow-lg backdrop-blur-sm transition-all hover:bg-black/70 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-white/50"
+            className="absolute left-3 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-2xl text-white shadow-lg backdrop-blur-sm transition-all hover:bg-black/70 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-white/50 cursor-pointer"
             aria-label="前の画像"
           >
             ‹
@@ -134,7 +134,7 @@ const ImageCarousel = ({ images, alt }: { images: string[]; alt: string }) => {
           <button
             type="button"
             onClick={nextSlide}
-            className="absolute right-3 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-2xl text-white shadow-lg backdrop-blur-sm transition-all hover:bg-black/70 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-white/50"
+            className="absolute right-3 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-2xl text-white shadow-lg backdrop-blur-sm transition-all hover:bg-black/70 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-white/50 cursor-pointer"
             aria-label="次の画像"
           >
             ›
@@ -155,10 +155,7 @@ const InfoSection = ({ resort }: { resort: SkiResortT }) => (
     <div className="mt-4 grid grid-cols-3 gap-2 text-center md:gap-4">
       <StatCard title="❄️ 雪の状態" value={resort.outline?.condition || "--"} />
       <StatCard title="🈺 営業状況" value={resort.outline?.status || "--"} />
-      <div className="flex h-full flex-col items-center justify-center rounded-lg bg-gray-100 p-2 md:p-3">
-        <p className="text-sm text-gray-500">⭐️ 評価</p>
-        <StarRating rating={resort.outline?.review} />
-      </div>
+      <StatCard title="⭐️ 評価" value={resort.outline?.review || "--"} />
     </div>
   </div>
 );
@@ -306,31 +303,25 @@ const CoursesTab = ({ resort }: { resort: SkiResortT }) => {
         <h3 className="text-xl font-semibold">レベル割合</h3>
         <div className="mt-2 flex h-8 w-full overflow-hidden rounded-full bg-gray-200 text-xs font-bold text-white">
           <div
-            style={{ width: `${c.beginnersCoursesPercent}%` }}
-            className="bg-green-500 flex items-center justify-center"
+            style={{ width: `${Math.max(c.beginnersCoursesPercent, 15)}%` }}
+            className="bg-green-500 flex items-center justify-center min-w-[60px]"
             title={`初級 ${c.beginnersCoursesPercent}%`}
           >
-            {c.beginnersCoursesPercent > 10
-              ? `${c.beginnersCoursesPercent}%`
-              : ""}
+            初級 {c.beginnersCoursesPercent}%
           </div>
           <div
-            style={{ width: `${c.intermediateCoursesPercent}%` }}
-            className="bg-sky-500 flex items-center justify-center"
+            style={{ width: `${Math.max(c.intermediateCoursesPercent, 15)}%` }}
+            className="bg-sky-500 flex items-center justify-center min-w-[60px]"
             title={`中級 ${c.intermediateCoursesPercent}%`}
           >
-            {c.intermediateCoursesPercent > 10
-              ? `${c.intermediateCoursesPercent}%`
-              : ""}
+            中級 {c.intermediateCoursesPercent}%
           </div>
           <div
-            style={{ width: `${c.advancedCoursesPercent}%` }}
-            className="bg-red-500 flex items-center justify-center"
+            style={{ width: `${Math.max(c.advancedCoursesPercent, 15)}%` }}
+            className="bg-red-500 flex items-center justify-center min-w-[60px]"
             title={`上級 ${c.advancedCoursesPercent}%`}
           >
-            {c.advancedCoursesPercent > 10
-              ? `${c.advancedCoursesPercent}%`
-              : ""}
+            上級 {c.advancedCoursesPercent}%
           </div>
         </div>
       </section>
@@ -361,7 +352,7 @@ const CoursesTab = ({ resort }: { resort: SkiResortT }) => {
                   <button
                     type="button"
                     onClick={() => handleSort("distance")}
-                    className="flex items-center gap-1"
+                    className="flex items-center gap-1 cursor-pointer whitespace-nowrap"
                   >
                     距離 (m){" "}
                     {sortConfig?.key === "distance" &&
@@ -472,7 +463,7 @@ const LiftsTab = ({ resort }: { resort: SkiResortT }) => {
                   <button
                     type="button"
                     onClick={() => handleSort("distance")}
-                    className="flex items-center gap-1 whitespace-nowrap"
+                    className="flex items-center gap-1 cursor-pointer whitespace-nowrap"
                   >
                     距離 (m){" "}
                     {sortConfig?.key === "distance" &&
@@ -511,7 +502,7 @@ const LiftsTab = ({ resort }: { resort: SkiResortT }) => {
 
 const TicketsTab = ({ resort }: { resort: SkiResortT }) => (
   <section>
-    <h3 className="text-xl font-semibold mb-4">🎟️ チケット料金</h3>
+    <h3 className="text-xl font-semibold mb-4">チケット料金</h3>
     <div className="w-full overflow-x-auto rounded-lg">
       <table className="min-w-full divide-y divide-gray-200">
         <thead className="bg-gray-100">
@@ -566,13 +557,5 @@ const StatCard = ({
   <div className="flex h-full flex-col items-center justify-center rounded-lg bg-gray-100 p-2 text-center md:p-3">
     <p className="text-xs text-gray-500 md:text-sm">{title}</p>
     <p className="mt-1 text-base font-bold text-gray-800 md:text-lg">{value}</p>
-  </div>
-);
-
-const StarRating = ({ rating }: { rating: number }) => (
-  <div className="flex flex-col items-center justify-center md:flex-row">
-    <p className="text-base font-bold text-gray-800 md:text-lg md:mr-2">
-      {rating?.toFixed(1) || "N/A"}
-    </p>
   </div>
 );
