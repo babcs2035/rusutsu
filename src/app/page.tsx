@@ -1,14 +1,18 @@
 "use client";
 
+import { AnimatePresence } from "framer-motion";
+import type L from "leaflet";
 import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 import { Drawer } from "vaul";
 import { FilterPanel, type Filters } from "@/components/FilterPanel";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { SkiResortDetailView } from "@/components/SkiResortDetailView";
 import { SkiResortList } from "@/components/SkiResortList";
 import type { SkiResortT } from "@/types/index";
 
 export default function Home() {
+  // マップコンポーネントを SSR 無効で動的インポート
   const DynamicMap = useMemo(
     () =>
       dynamic(
@@ -21,7 +25,7 @@ export default function Home() {
     [],
   );
 
-  // フィルターの状態
+  // --- State管理 ---
   const [filters, setFilters] = useState<Filters>({
     keyword: "",
     status: false,
@@ -30,11 +34,13 @@ export default function Home() {
     minVertical: 0,
     minCourses: 0,
   });
-
-  // 選択されたスキー場のID
   const [selectedResortId, setSelectedResortId] = useState<string | null>(null);
+  const [isListSheetOpen, setIsListSheetOpen] = useState(false);
+  const [mapBounds, setMapBounds] = useState<L.LatLngBounds | null>(null);
 
-  // フィルター条件に基づいて表示するスキー場を計算
+  // --- データ絞り込みロジック ---
+
+  // 1. フィルターパネルによる絞り込み
   const filteredResorts = useMemo(() => {
     const skiResorts = require("../lib/mock-data.json");
     return skiResorts.filter((resort: SkiResortT) => {
@@ -57,16 +63,31 @@ export default function Home() {
     });
   }, [filters]);
 
-  // フィルターが変更されたときの処理
+  // 2. 地図の表示領域による絞り込み
+  const visibleResorts = useMemo(() => {
+    if (!mapBounds) return []; // 地図の範囲が未設定の場合は空にする
+    return filteredResorts.filter((resort: SkiResortT) => {
+      const point = {
+        lat: resort.location.latitude,
+        lng: resort.location.longitude,
+      };
+      return mapBounds.contains(point);
+    });
+  }, [filteredResorts, mapBounds]);
+
+  // 3. 詳細表示用のスキー場データを選択
+  const selectedResort = useMemo(() => {
+    if (!selectedResortId) return null;
+    const skiResorts = require("../lib/mock-data.json");
+    return (
+      skiResorts.find((r: SkiResortT) => r.id === selectedResortId) || null
+    );
+  }, [selectedResortId]);
+
+  // --- イベントハンドラ ---
   const handleFilterChange = (newFilters: Filters) => setFilters(newFilters);
-
-  // ボトムシートの開閉状態
-  const [isListSheetOpen, setIsListSheetOpen] = useState(false);
-
-  // スキー場が選択されたときの処理
-  const handleSelectResort = (id: string) => {
-    setSelectedResortId(id);
-  };
+  const handleSelectResort = (id: string) => setSelectedResortId(id);
+  const handleCloseDetail = () => setSelectedResortId(null);
 
   return (
     <main className="relative h-screen w-screen overflow-hidden md:flex">
@@ -76,18 +97,19 @@ export default function Home() {
         <DynamicMap
           resorts={filteredResorts}
           onSelectResort={handleSelectResort}
+          onBoundsChange={setMapBounds}
         />
       </div>
 
-      {/* --- PC用の右カラム (md以上の画面幅で表示) --- */}
+      {/* --- PC用の右カラム --- */}
       <div className="hidden h-full w-[380px] flex-shrink-0 border-l md:block">
         <SkiResortList
-          resorts={filteredResorts}
+          resorts={visibleResorts}
           onSelectResort={handleSelectResort}
         />
       </div>
 
-      {/* --- スマートフォン用のボトムシート (md未満の画面幅で表示) --- */}
+      {/* --- スマートフォン用のボトムシート --- */}
       <div className="md:hidden">
         <Drawer.Root
           open={isListSheetOpen}
@@ -100,37 +122,39 @@ export default function Home() {
               className="fixed bottom-0 left-0 right-0 z-[9999] flex flex-col rounded-t-xl bg-gray-100"
               style={{ height: "min(80vh, 800px)" }}
             >
+              <Drawer.Title className="sr-only">スキー場リスト</Drawer.Title>
               <div className="mx-auto my-4 h-1.5 w-12 flex-shrink-0 rounded-full bg-gray-300" />
               <div className="flex-grow overflow-y-auto">
                 <SkiResortList
-                  resorts={filteredResorts}
+                  resorts={visibleResorts}
                   onSelectResort={handleSelectResort}
                 />
               </div>
             </Drawer.Content>
           </Drawer.Portal>
         </Drawer.Root>
-
-        {/* シートが閉じている時に表示される、常設のトリガーバー */}
         <button
           type="button"
-          className={`fixed bottom-0 left-0 right-0 z-[9997] flex h-16 cursor-pointer items-center justify-center rounded-t-xl border-t bg-gray-100 p-4 shadow-[0_-10px_25px_-5px_rgba(0,0,0,0.1)] transition-opacity duration-300 md:hidden ${
-            isListSheetOpen ? "pointer-events-none opacity-0" : "opacity-100"
-          }`}
+          className={`fixed bottom-0 left-0 right-0 z-[9999] flex h-16 cursor-pointer items-center justify-center rounded-t-xl border-t bg-gray-100 p-4 shadow-[0_-10px_25px_-5px_rgba(0,0,0,0.1)] transition-opacity duration-300 md:hidden ${isListSheetOpen ? "pointer-events-none opacity-0" : "opacity-100"}`}
           onClick={() => setIsListSheetOpen(true)}
-          onKeyDown={e => {
-            if (e.key === "Enter" || e.key === " ") {
-              setIsListSheetOpen(true);
-            }
-          }}
           aria-label="リストを開く"
         >
           <div className="absolute top-2 h-1.5 w-12 rounded-full bg-gray-300" />
           <h2 className="pt-2 text-lg font-bold text-gray-800">
-            {filteredResorts.length}件のスキー場
+            {visibleResorts.length}件のスキー場
           </h2>
         </button>
       </div>
+
+      {/* --- 詳細モーダルの表示 --- */}
+      <AnimatePresence>
+        {selectedResort && (
+          <SkiResortDetailView
+            resort={selectedResort}
+            onClose={handleCloseDetail}
+          />
+        )}
+      </AnimatePresence>
     </main>
   );
 }

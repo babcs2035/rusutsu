@@ -3,13 +3,44 @@
 import { faHouse } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import L from "leaflet";
-import { useMemo } from "react";
-import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
+import { useEffect, useMemo } from "react";
+import {
+  MapContainer,
+  Marker,
+  Popup,
+  TileLayer,
+  useMap,
+  useMapEvents,
+} from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-markercluster";
 import type { SkiResortT } from "@/types";
 
 const INITIAL_CENTER: L.LatLngTuple = [38.25, 139.0];
 const INITIAL_ZOOM = 6;
+
+/**
+ * 地図の表示領域変更を親コンポーネントに通知するための内部コンポーネント
+ */
+const MapEventsHandler = ({
+  onBoundsChange,
+}: {
+  onBoundsChange: (bounds: L.LatLngBounds) => void;
+}) => {
+  const map = useMap();
+
+  // マップの移動またはズームが完了した時にイベントを発火
+  useMapEvents({
+    zoomend: () => onBoundsChange(map.getBounds()),
+    moveend: () => onBoundsChange(map.getBounds()),
+  });
+
+  // 初期ロード時に一度だけ表示領域を通知
+  useEffect(() => {
+    onBoundsChange(map.getBounds());
+  }, [map, onBoundsChange]);
+
+  return null;
+};
 
 // カスタムマーカーアイコン
 const createCustomIcon = () => {
@@ -18,7 +49,6 @@ const createCustomIcon = () => {
       <path fill-rule="evenodd" d="M10.5 1.512a1.5 1.5 0 013 0L15 2.549a1.5 1.5 0 012.121.707l1.038 1.798a1.5 1.5 0 010 1.5l-1.037 1.798a1.5 1.5 0 01-2.121.707L13.5 10.151a1.5 1.5 0 010-3l-1.5-2.598a1.5 1.5 0 010-3L10.5 1.512zM10.5 13.849L9 11.251a1.5 1.5 0 010-1.5l1.038-1.798a1.5 1.5 0 012.12-.707L13.5 8.349a1.5 1.5 0 013 0L18.349 9a1.5 1.5 0 012.121.707l1.037 1.798a1.5 1.5 0 010 1.5l-1.037 1.798a1.5 1.5 0 01-2.121.707L16.5 13.849a1.5 1.5 0 01-3 0l-1.5-2.598a1.5 1.5 0 01-1.5-2.598zM9 12.75a1.5 1.5 0 01-1.5-2.598L6.463 8.35a1.5 1.5 0 010-1.5L7.5 5.052a1.5 1.5 0 012.121-.707L10.658 6a1.5 1.5 0 010 3l-1.5 2.598a1.5 1.5 0 010 3l.004-.007a1.5 1.5 0 01-2.121-.707L6 14.052a1.5 1.5 0 01-1.5-2.598L5.538 9.65a1.5 1.5 0 010-1.5l.23-.398a1.5 1.5 0 012.121-.707L9 8.349v4.401z" clip-rule="evenodd" />
     </svg>
   `;
-
   return L.divIcon({
     html: `<div style="background-color: #0ea5e9; border-radius: 9999px; padding: 4px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">${snowflakeSvg}</div>`,
     className: "bg-transparent border-none",
@@ -31,8 +61,7 @@ const createCustomIcon = () => {
 const MapControls = () => {
   const map = useMap();
   return (
-    <div className="absolute bottom-4 right-4 z-[1000] flex flex-col gap-2">
-      {/* ズームイン・アウトボタン */}
+    <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2">
       <div className="flex flex-col rounded-lg bg-slate-800/80 shadow-lg backdrop-blur-sm">
         <button
           type="button"
@@ -41,7 +70,7 @@ const MapControls = () => {
         >
           +
         </button>
-        <div className="h-px w-full bg-white/10"></div>
+        <div className="h-px w-full bg-white/10" />
         <button
           type="button"
           onClick={() => map.zoomOut()}
@@ -50,7 +79,6 @@ const MapControls = () => {
           -
         </button>
       </div>
-      {/* ホームボタン */}
       <button
         type="button"
         onClick={() => map.setView(INITIAL_CENTER, INITIAL_ZOOM)}
@@ -65,12 +93,16 @@ const MapControls = () => {
 type Props = {
   resorts: SkiResortT[];
   onSelectResort: (id: string) => void;
+  onBoundsChange: (bounds: L.LatLngBounds) => void;
 };
 
-// スキー場を地図上に表示するコンポーネント
-export const SkiResortMap = ({ resorts, onSelectResort }: Props) => {
-  // useMemoでアイコンの再生成を防ぐ
+export const SkiResortMap = ({
+  resorts,
+  onSelectResort,
+  onBoundsChange,
+}: Props) => {
   const customIcon = useMemo(() => createCustomIcon(), []);
+  const clusterKey = useMemo(() => resorts.map(r => r.id).join(","), [resorts]);
 
   return (
     <MapContainer
@@ -83,23 +115,20 @@ export const SkiResortMap = ({ resorts, onSelectResort }: Props) => {
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       />
-      <MarkerClusterGroup>
+      <MarkerClusterGroup key={clusterKey}>
         {resorts.map(resort => (
           <Marker
             key={resort.id}
             position={[resort.location.latitude, resort.location.longitude]}
             icon={customIcon}
-            eventHandlers={{
-              click: () => {
-                onSelectResort(resort.id);
-              },
-            }}
+            eventHandlers={{ click: () => onSelectResort(resort.id) }}
           >
             <Popup>{resort.name.ja}</Popup>
           </Marker>
         ))}
       </MarkerClusterGroup>
       <MapControls />
+      <MapEventsHandler onBoundsChange={onBoundsChange} />
     </MapContainer>
   );
 };
