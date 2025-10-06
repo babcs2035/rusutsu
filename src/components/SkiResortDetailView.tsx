@@ -3,20 +3,46 @@
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { SkiResortT } from "@/types";
+import type { ForecastsT, SkiResortT, SnowDepthsT, WeathersT } from "@/types";
+import {
+  ForecastTable,
+  SnowDepthLineChart,
+  WeeklyWeatherChart,
+} from "./WeatherChart";
 
 type Props = {
   resort: SkiResortT;
   onClose: () => void;
 };
 
-const TABS = ["概要", "コース", "リフト", "チケット"];
+const TABS = ["概要", "コース", "リフト", "チケット", "気候"];
 
 /**
  * スキー場の詳細情報を表示するレスポンシブ対応モーダル
  */
 export const SkiResortDetailView = ({ resort, onClose }: Props) => {
   const [activeTab, setActiveTab] = useState(TABS[0]);
+
+  // --- データの読み込みとIDに基づいた検索 ---
+  const weathersData: WeathersT | undefined = useMemo(
+    () =>
+      require("@/lib/weathers.json").find(
+        (w: WeathersT) => w.meta.id === resort.id,
+      ),
+    [resort.id],
+  );
+  const forecastsData: ForecastsT | undefined = useMemo(
+    () =>
+      require("@/lib/forecasts.json").find(
+        (f: ForecastsT) => f.meta.id === resort.id,
+      ),
+    [resort.id],
+  );
+  // snowdepths.json はIDをキーとするオブジェクトからデータを取得
+  const snowDepthsData: SnowDepthsT | undefined = useMemo(
+    () => require("@/lib/snowdepths.json")[resort.id],
+    [resort.id],
+  );
 
   return (
     <div className="fixed inset-0 z-[99999] flex items-center justify-center p-0 md:p-6">
@@ -72,6 +98,13 @@ export const SkiResortDetailView = ({ resort, onClose }: Props) => {
             {activeTab === "コース" && <CoursesTab resort={resort} />}
             {activeTab === "リフト" && <LiftsTab resort={resort} />}
             {activeTab === "チケット" && <TicketsTab resort={resort} />}
+            {activeTab === "気候" && (
+              <WeatherTab
+                weathers={weathersData}
+                forecasts={forecastsData}
+                snowDepths={snowDepthsData}
+              />
+            )}
           </div>
         </div>
       </motion.div>
@@ -546,6 +579,41 @@ const TicketsTab = ({ resort }: { resort: SkiResortT }) => (
     </div>
   </section>
 );
+
+const WeatherTab = ({
+  weathers,
+  forecasts,
+  snowDepths,
+}: {
+  weathers?: WeathersT;
+  forecasts?: ForecastsT;
+  snowDepths?: SnowDepthsT;
+}) => {
+  return (
+    <div className="space-y-8">
+      {weathers && (
+        <section>
+          <h3 className="text-xl font-semibold">📈 直近の天気</h3>
+          <ForecastTable weathers={weathers} />
+        </section>
+      )}
+      {forecasts && (
+        <section>
+          <h3 className="text-xl font-semibold">
+            📊 過去の気象データ（週単位）
+          </h3>
+          <WeeklyWeatherChart forecasts={forecasts} />
+        </section>
+      )}
+      {snowDepths && (
+        <section>
+          <h3 className="text-xl font-semibold">❄️ 積雪の分布</h3>
+          <SnowDepthLineChart snowDepths={snowDepths} />
+        </section>
+      )}
+    </div>
+  );
+};
 
 const StatCard = ({
   title,
