@@ -1,0 +1,208 @@
+{
+  "resortName": "lotte-arai-resort",
+  "time": "2025/5/11 22:09:23",
+  "comment": "25-26シーズン最終日！また、本日ジュニアサーキットがある為、アンコールの一部が貸切になります。 ご理解の程よろしくお願いいたします。",
+  "weather": {
+    "山頂": {
+      "time": " 2025-05-11 07:48  ※気温は2025-05-11 22:09",
+      "weather": "曇りの後晴れ",
+      "temperature": 14.7,
+      "snowDepth": 166,
+      "snowfall": 0,
+      "condition": "Spring Snow",
+      "windSpeed": null
+    }
+  },
+  "courses": [
+    {
+      "name": "ビーフリー",
+      "status": "○",
+      "time": "2025-05-11 07:56",
+      "note": null
+    },
+    {
+      "name": "アンコール",
+      "status": "○",
+      "time": "2025-05-11 07:56",
+      "note": null
+    },
+    {
+      "name": "レジェンダリー",
+      "status": "×",
+      "time": "2025-05-11 07:56",
+      "note": null
+    },
+    {
+      "name": "ベアバレー",
+      "status": "×",
+      "time": "2025-05-11 07:56",
+      "note": null
+    },
+    {
+      "name": "妙高ロングラン",
+      "status": "×",
+      "time": "2025-05-11 07:56",
+      "note": null
+    },
+    {
+      "name": "エキサイター",
+      "status": "×",
+      "time": "2025-05-11 07:56",
+      "note": null
+    },
+    {
+      "name": "マムシガエシ",
+      "status": "×",
+      "time": "2025-05-11 07:56",
+      "note": null
+    },
+    {
+      "name": "タテガミ",
+      "status": "×",
+      "time": "2025-05-11 07:56",
+      "note": null
+    },
+    {
+      "name": "六本木ロード",
+      "status": "×",
+      "time": "2025-05-11 07:56",
+      "note": null
+    },
+    {
+      "name": "ディスカバリー",
+      "status": "×",
+      "time": "2025-05-11 07:56",
+      "note": null
+    },
+    {
+      "name": "ウマノセ",
+      "status": "×",
+      "time": "2025-05-11 07:56",
+      "note": null
+    },
+    {
+      "name": "サンライズ",
+      "status": "×",
+      "time": "2025-05-11 07:56",
+      "note": null
+    },
+    {
+      "name": "ビレッジロード",
+      "status": "×",
+      "time": "2025-05-11 07:56",
+      "note": null
+    },
+    {
+      "name": "ポニー",
+      "status": "×",
+      "time": "2025-05-11 07:56",
+      "note": null
+    }
+  ],
+  "lifts": [
+    {
+      "name": "膳棚",
+      "status": "○",
+      "time": "2025-05-11 07:54",
+      "note": null
+    },
+    {
+      "name": "小毛無",
+      "status": "×",
+      "time": "2025-05-11 07:54",
+      "note": null
+    },
+    {
+      "name": "新井ゴンドラ",
+      "status": "○",
+      "time": "2025-05-11 07:54",
+      "note": null
+    },
+    {
+      "name": "山麓第1",
+      "status": "×",
+      "time": "2025-05-11 07:54",
+      "note": null
+    },
+    {
+      "name": "山麓第2",
+      "status": "×",
+      "time": "2025-05-11 07:54",
+      "note": null
+    }
+  ],
+  "treeruns": [
+    {
+      "name": "大斜面上部",
+      "status": "○",
+      "time": "2025-05-11 07:56",
+      "note": null
+    },
+    {
+      "name": "大斜面下部",
+      "status": "×",
+      "time": "2025-05-11 07:56",
+      "note": null
+    },
+    {
+      "name": "東斜面上部",
+      "status": "×",
+      "time": "2025-05-11 07:56",
+      "note": null
+    },
+    {
+      "name": "東斜面下部",
+      "status": "×",
+      "time": "2025-05-11 07:56",
+      "note": null
+    },
+    {
+      "name": "膳棚ボウル",
+      "status": "×",
+      "time": "2025-05-11 07:56",
+      "note": null
+    },
+    {
+      "name": "船石",
+      "status": "○",
+      "time": "2025-05-11 07:56",
+      "note": null
+    },
+    {
+      "name": "ハッピープレイス",
+      "status": "○",
+      "time": "2025-05-11 07:56",
+      "note": null
+    },
+    {
+      "name": "ベンザク",
+      "status": "○",
+      "time": "2025-05-11 07:56",
+      "note": null
+    },
+    {
+      "name": "ワセ",
+      "status": "×",
+      "time": "2025-05-11 07:56",
+      "note": null
+    },
+    {
+      "name": "マムシ",
+      "status": "×",
+      "time": "2025-05-11 07:56",
+      "note": null
+    },
+    {
+      "name": "大外",
+      "status": "×",
+      "time": "2025-05-11 07:56",
+      "note": null
+    },
+    {
+      "name": "KG",
+      "status": "×",
+      "time": "2025-05-11 07:56",
+      "note": null
+    }
+  ]
+}

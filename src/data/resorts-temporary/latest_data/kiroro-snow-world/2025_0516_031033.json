@@ -1,0 +1,253 @@
+{
+  "resortName": "kiroro-snow-world",
+  "time": "2025/5/16 3:10:33",
+  "comment": "5/5をもちまして、今シーズンの営業を終了いたします。たくさんのご来場、誠にありがとうございました。",
+  "weather": {
+    "山頂": {
+      "time": "気象関係は毎朝8：00現在の情報",
+      "weather": "晴れ",
+      "temperature": 0,
+      "snowDepth": 0,
+      "snowfall": 0,
+      "condition": "",
+      "windSpeed": null
+    },
+    "山麓": {
+      "time": "気象関係は毎朝8：00現在の情報",
+      "weather": "晴れ",
+      "temperature": 0,
+      "snowDepth": 0,
+      "snowfall": 0,
+      "condition": "",
+      "windSpeed": null
+    }
+  },
+  "courses": [
+    {
+      "name": "8",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "9",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "16",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "10",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "21",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "23",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "1",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "7",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "14",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "15",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "18",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "19",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "11",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "13",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "24",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "2",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "3",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "4",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "5",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "6",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "17",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "20",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "12",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "22",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "1",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "2",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "3",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "4",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "5",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    }
+  ],
+  "lifts": [
+    {
+      "name": "キロロゴンドラ",
+      "status": "×",
+      "note": "運休"
+    },
+    {
+      "name": "朝里第1",
+      "status": "×",
+      "note": "運休"
+    },
+    {
+      "name": "朝里第2エクスプレス",
+      "status": "×",
+      "note": "運休"
+    },
+    {
+      "name": "余市第1エクスプレス",
+      "status": "×",
+      "note": "運休 9:00-15:30"
+    },
+    {
+      "name": "余市第2",
+      "status": "×",
+      "note": "運休"
+    },
+    {
+      "name": "センターエクスプレス",
+      "status": "×",
+      "note": "運休"
+    },
+    {
+      "name": "長峰第1エクスプレス",
+      "status": "×",
+      "note": "運休"
+    },
+    {
+      "name": "長峰第2エクスプレス",
+      "status": "×",
+      "note": "運休"
+    },
+    {
+      "name": "ファミリー",
+      "status": "×",
+      "note": "運休"
+    },
+    {
+      "name": "ゲートウェイエクスプレス",
+      "status": "×",
+      "note": "運休"
+    }
+  ]
+}

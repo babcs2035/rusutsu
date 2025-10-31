@@ -1,0 +1,150 @@
+{
+  "resortName": "winghills-shirotori-resort",
+  "time": "2025/8/26 18:08:24",
+  "comment": "最新のニュースは<a href=\"https://winghills.net/news/\">こちら</a>から",
+  "commentUrl": ["https://winghills.net/news/"],
+  "weather": {
+    "中腹": {
+      "update": "2025.08.26 07:50更新",
+      "weather": "くもり時々雨",
+      "temperature": "20~29",
+      "snowDepth": 0,
+      "snowfall": 0,
+      "condition": "積雪無し",
+      "windSpeed": null
+    }
+  },
+  "weatherUrl": ["https://winghills.net/snow/coursemap/#lnk1"],
+  "courses": [
+    {
+      "name": "ダイビング",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "ロンド・サーキット",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "タワーリング・ダウンヒル上部",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "タワーリング・ダウンヒル中部",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "タワーリング・ダウンヒル下部",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "シャンデリアの丘",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "ビアンコ・ガーデン",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "クルージング",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "アトリウム・ゲレンデ",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "スカイフロント",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "グリーンシェードの小径",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "キッズゲレンデ",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "第2駐車場への帰路",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "アトリウムパーク",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "ツリーランエリア(自己責任)",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "モーグル",
+      "status": "×",
+      "update": null,
+      "note": ""
+    }
+  ],
+  "courseUrl": ["https://winghills.net/snow/coursemap/#lnk_gere"],
+  "lifts": [
+    {
+      "name": "第1クワッド",
+      "status": "×",
+      "update": null,
+      "note": "※今シーズンの営業は終了いたしました。"
+    },
+    {
+      "name": "ゴンドラ",
+      "status": "×",
+      "update": null,
+      "note": "※今シーズンの営業は終了いたしました。"
+    },
+    {
+      "name": "ムービングベルト",
+      "status": "×",
+      "update": null,
+      "note": "※今シーズンの営業は終了いたしました。"
+    },
+    {
+      "name": "第2クワッド",
+      "status": "×",
+      "update": null,
+      "note": "※今シーズンの営業は終了いたしました。"
+    },
+    {
+      "name": "ペア",
+      "status": "×",
+      "update": null,
+      "note": "今シーズンの営業予定はありません。"
+    }
+  ],
+  "liftUrl": ["https://winghills.net/snow/coursemap/#lnk_lift"]
+}

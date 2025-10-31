@@ -1,0 +1,222 @@
+{
+  "resortName": "dynaland",
+  "time": "2025/7/20 2:15:55",
+  "comment": "<strong>【ひとこと】</strong><br>\n<br>\nDynaland CAMP BASE 夏季営業中！<br>\n朝晩は20℃近くまで気温が下がります。日中との温度差がありますので準備をよろしくお願いします。<br>\n日除け対策も必要です！（タープや帽子等）<br>\n<br>\n<hr><br>\n<br>\n<strong>【お知らせ】</strong><br>\n<br>\n遊具エリアでは「ミニジップライン」「ロングブランコ」「そりコースター」の利用が可能です。<br>\n<br>\nキャンプ場の農園栽培の採れたて野菜が管理棟で販売中！<br>\n<br>\n毎週木曜日は定休日となりますので木曜日の宿泊（木曜日チェックイン、水曜日からの連泊等）はご利用いただけません。<br>\n※お盆期間の8/14は営業いたします。<br>\n<br>\n<strong><a href=\"https://www.nap-camp.com/gifu/14853\">キャンプ場 予約・申込 はこちら</a></strong>",
+  "commentUrl": [""],
+  "weather": {
+    "中腹": {
+      "update": "2025-07-19 AM8:00",
+      "weather": "晴れ",
+      "temperature": 22,
+      "snowDepth": 0,
+      "snowfall": null,
+      "condition": "-",
+      "windSpeed": null
+    }
+  },
+  "weatherUrl": [""],
+  "courses": [
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "パラダイスA",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "乙女(上部)",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "乙女(下部)",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "第1ゲレンデ",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "から松ゲレンデ",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "第6ゲレンデ",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "神中A",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "ラビット",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "β‐α連絡",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "ダウンヒル",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "パラダイスツリーラン",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "モーグル",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "スカイラインB(上部)",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "スカイラインB(下部)",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "パラダイスB",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "クマダナ",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "神中B",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "神中回転バーン",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "チャレンジB",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "チャレンジC",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "スカイラインA",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "チャレンジツリーランエリア",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "ウマノセツリーランエリア",
+      "status": "×",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "乙女ツリーランエリア",
+      "status": "×",
+      "update": null,
+      "note": ""
+    }
+  ],
+  "courseUrl": [""],
+  "lifts": [
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": " "
+    },
+    {
+      "name": "第1ペア",
+      "status": "×",
+      "update": null,
+      "note": "今シーズンの営業は終了いたしました。"
+    },
+    {
+      "name": "αライナー",
+      "status": "×",
+      "update": null,
+      "note": "今シーズンの営業は終了いたしました。"
+    },
+    {
+      "name": "βライナー",
+      "status": "×",
+      "update": null,
+      "note": "今シーズンの営業は終了いたしました。"
+    },
+    {
+      "name": "γライナー",
+      "status": "×",
+      "update": null,
+      "note": "今シーズンの営業は終了いたしました。"
+    },
+    {
+      "name": "から松ビギナー",
+      "status": "×",
+      "update": null,
+      "note": "今シーズンの営業は終了いたしました。"
+    }
+  ],
+  "liftUrl": [""]
+}

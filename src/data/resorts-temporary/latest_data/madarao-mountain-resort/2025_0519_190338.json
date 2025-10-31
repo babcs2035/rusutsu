@@ -1,0 +1,197 @@
+{
+  "resortName": "madarao-mountain-resort",
+  "time": "2025/5/19 19:03:38",
+  "comment": "2024-25シーズンの営業は終了いたしました。\nまたのご来場お待ちいたしております。",
+  "weather": {
+    "中腹": {
+      "time": "2025-03-30 4:30 pm",
+      "weather": "℃",
+      "temperature": "",
+      "snowDepth": "℃",
+      "snowfall": "℃",
+      "condition": "アイスバーン",
+      "windSpeed": null
+    }
+  },
+  "courses": [
+    {
+      "name": "パラダイス",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "初心者A",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "初心者B",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ユートピア",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "白樺",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "チャンピオン下部",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "チャンピオン上部",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ワールドカップ",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "カービング",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ジャイアント下部",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ジャイアント中部",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ジャイアント上部",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ポールバーンA",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "オーシャンビュー",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "トラバース",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "クリスタル下部",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "クリスタル中部",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "クリスタル上部",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "パウダーライン",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "スカイラブ上部",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "スカイラブ下部",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "スカイビュー",
+      "status": "×",
+      "time": null,
+      "note": null
+    }
+  ],
+  "lifts": [
+    {
+      "name": "第1",
+      "status": "×",
+      "note": "営業終了"
+    },
+    {
+      "name": "第2クワッド",
+      "status": "×",
+      "note": "営業終了"
+    },
+    {
+      "name": "第3",
+      "status": "×",
+      "note": "営業終了"
+    },
+    {
+      "name": "第5",
+      "status": "×",
+      "note": "営業終了"
+    },
+    {
+      "name": "スーパークワッド",
+      "status": "×",
+      "note": "営業終了"
+    },
+    {
+      "name": "第11",
+      "status": "×",
+      "note": "営業終了"
+    },
+    {
+      "name": "第12",
+      "status": "×",
+      "note": "営業終了"
+    },
+    {
+      "name": "第13",
+      "status": "×",
+      "note": "営業終了"
+    },
+    {
+      "name": "第15",
+      "status": "×",
+      "note": "営業終了"
+    }
+  ]
+}

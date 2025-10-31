@@ -1,0 +1,144 @@
+{
+  "resortName": "sapporo-bankei",
+  "time": "2025/5/27 18:46:25",
+  "comment": "\n\t\t\t\t\t<div class=\"flex start mb10\">\n\t\t\t\t\t\t<p class=\"category info mr15\">お知らせ</p>\n\t\t\t\t\t\t<p class=\"bold\">2025.04.12</p>\n\t\t\t\t\t</div>\n\t  \t\t  <h3 class=\"font30 bold mb20\">嬉しいプレゼントを頂きました♪</h3>\n\t  \t\t\t<div>\n\n\t  \t\t  \t<p>この度、2025年4月より、札幌ばんけい株式会社バス事業部が、駒岡線の路線バスの運行を担う事となりました。</p>\n<p>そこで、先日駒岡小学校の生徒様より、嬉しいプレゼントを頂きました(^^)/</p>\n<p>ありがとうございます♪♪</p>\n<p>皆さまの生活のお役に立てる事をとても嬉しく思っております。</p>\n<p>これからもばんけいバスを宜しくお願いいたします!!</p>\n<p>&nbsp;</p>\n<p>札幌ばんけい株式会社</p>\n<p>&nbsp;</p>\n<p>&nbsp;</p>\n<p><img decoding=\"async\" src=\"https://www.bankei.co.jp/wp1512/wp-content/uploads/2025/04/eaf0d545bc3195af5f52d40b85813385.jpg\" alt=\"\" width=\"768\" height=\"1024\" class=\"aligncenter size-full wp-image-13598\" srcset=\"https://www.bankei.co.jp/wp1512/wp-content/uploads/2025/04/eaf0d545bc3195af5f52d40b85813385.jpg 768w, https://www.bankei.co.jp/wp1512/wp-content/uploads/2025/04/eaf0d545bc3195af5f52d40b85813385-225x300.jpg 225w\" sizes=\"(max-width: 768px) 100vw, 768px\"></p>\t  \t\t\t</div>\n\t  \t\t",
+  "weather": {},
+  "courses": [
+    {
+      "name": "センターA",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "センターB",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "センターC",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "オレンジ",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "くるみ",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "どんぐり",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "きのこ",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "グリーンA",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "グリーンB",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "イーストA",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "イーストB",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "オレンジ連絡",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "スラロームバーン",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "モーグルバーン",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "モーグルパーク",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "ハーフパイプ",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "ウエストA",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "ウエスト林間",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "わくわくスノーランド",
+      "status": "×",
+      "time": null,
+      "note": ""
+    }
+  ],
+  "lifts": [
+    {
+      "name": "センタートリプル",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "オレンジペア",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "ウエストペア",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "イーストペア",
+      "status": "×",
+      "note": ""
+    }
+  ]
+}

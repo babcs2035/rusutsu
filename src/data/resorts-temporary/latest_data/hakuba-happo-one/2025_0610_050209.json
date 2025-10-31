@@ -1,0 +1,368 @@
+{
+  "resortName": "hakuba-happo-one",
+  "time": "2025/6/10 5:02:09",
+  "comment": "最新のゲレンデレポートは<a href=\"https://www.snownavi.com/archives/ski/category/hakuba/happo-one\">こちら</a>から。",
+  "commentUrl": [
+    "https://www.snownavi.com/archives/ski/category/hakuba/happo-one"
+  ],
+  "weather": {
+    "黒菱 (1680m)": {
+      "time": "Update at 2025.06.09 13:56",
+      "weather": "曇り",
+      "temperature": 18,
+      "snowDepth": 0,
+      "snowfall": 0,
+      "condition": null,
+      "windSpeed": null
+    },
+    "兎平 (1400m)": {
+      "time": "Update at 2025.06.08 07:43",
+      "weather": "曇り",
+      "temperature": 16,
+      "snowDepth": 0,
+      "snowfall": 0,
+      "condition": null,
+      "windSpeed": null
+    },
+    "名木山 (800m)": {
+      "time": "Update at 2025.05.11 13:44",
+      "weather": "曇り",
+      "temperature": "-",
+      "snowDepth": 0,
+      "snowfall": 0,
+      "condition": null,
+      "windSpeed": null
+    }
+  },
+  "weatherUrl": ["https://www.happo-one.jp/winter/"],
+  "courses": [
+    {
+      "name": "リーゼングラート",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    },
+    {
+      "name": "黒菱ゲレンデ",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    },
+    {
+      "name": "兎平ゲレンデ",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    },
+    {
+      "name": "スカイライン",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    },
+    {
+      "name": "展望",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    },
+    {
+      "name": "裏黒 上部",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    },
+    {
+      "name": "裏黒 下部",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    },
+    {
+      "name": "おむすび",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    },
+    {
+      "name": "リーゼンスラローム",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    },
+    {
+      "name": "ウスバ迂回路",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    },
+    {
+      "name": "パノラマ",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    },
+    {
+      "name": "セントラル",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    },
+    {
+      "name": "オリンピックII",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    },
+    {
+      "name": "パノラマ林道",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    },
+    {
+      "name": "グランピングエリア",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    },
+    {
+      "name": "HAPPO PARKS",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    },
+    {
+      "name": "北尾根林道",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    },
+    {
+      "name": "北尾根急斜面 上部",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    },
+    {
+      "name": "北尾根急斜面 下部",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    },
+    {
+      "name": "北尾根新",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    },
+    {
+      "name": "咲花ウェーブ",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    },
+    {
+      "name": "オリンピックI",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    },
+    {
+      "name": "名木山ゲレンデ南",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    },
+    {
+      "name": "ウスバ下部",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    },
+    {
+      "name": "名木山ゲレンデ壁",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    },
+    {
+      "name": "名木山ゲレンデ北",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    },
+    {
+      "name": "なきやまスノーランド",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    },
+    {
+      "name": "白樺ゲレンデ南 上部",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    },
+    {
+      "name": "白樺ゲレンデ南 下部",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    },
+    {
+      "name": "白樺ゲレンデ北",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    },
+    {
+      "name": "国際 下部",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    },
+    {
+      "name": "咲花ゲレンデ南",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    },
+    {
+      "name": "咲花ゲレンデ北",
+      "status": "×",
+      "update": "2025.05.06 16:31 更新",
+      "note": "今季営業終了"
+    }
+  ],
+  "courseUrl": ["https://www.happo-one.jp/gelande/condition/"],
+  "lifts": [
+    {
+      "name": "グラートクワッド",
+      "status": "×",
+      "update": null,
+      "note": "〜 営業期間外"
+    },
+    {
+      "name": "アルペンクワッド",
+      "status": "×",
+      "update": null,
+      "note": "〜 営業期間外"
+    },
+    {
+      "name": "兎平ペア",
+      "status": "×",
+      "update": null,
+      "note": "〜 営業期間外"
+    },
+    {
+      "name": "八方リーゼンクワッド",
+      "status": "×",
+      "update": null,
+      "note": "〜 営業期間外"
+    },
+    {
+      "name": "名木山第2ペア",
+      "status": "×",
+      "update": null,
+      "note": "〜 営業期間外"
+    },
+    {
+      "name": "名木山第3トリプルA",
+      "status": "×",
+      "update": null,
+      "note": "〜 営業期間外"
+    },
+    {
+      "name": "名木山第3トリプルB",
+      "status": "×",
+      "update": null,
+      "note": "〜 営業期間外"
+    },
+    {
+      "name": "八方尾根ゴンドラ「アダム」",
+      "status": "×",
+      "update": null,
+      "note": "〜 営業期間外"
+    },
+    {
+      "name": "白樺第1ペア",
+      "status": "×",
+      "update": null,
+      "note": "〜 営業期間外"
+    },
+    {
+      "name": "白樺第2ペア",
+      "status": "×",
+      "update": null,
+      "note": "〜 営業期間外"
+    },
+    {
+      "name": "パノラマペア",
+      "status": "×",
+      "update": null,
+      "note": "〜 営業期間外"
+    },
+    {
+      "name": "国際第1ペア",
+      "status": "×",
+      "update": null,
+      "note": "〜 営業期間外"
+    },
+    {
+      "name": "国際第3ペアA",
+      "status": "×",
+      "update": null,
+      "note": "〜 営業期間外"
+    },
+    {
+      "name": "国際第3ペアB",
+      "status": "×",
+      "update": null,
+      "note": "〜 営業期間外"
+    },
+    {
+      "name": "黒菱第2クワッド",
+      "status": "×",
+      "update": null,
+      "note": "〜 営業期間外"
+    },
+    {
+      "name": "黒菱第3ペア",
+      "status": "×",
+      "update": null,
+      "note": "〜 営業期間外"
+    },
+    {
+      "name": "スカイライン第2ペア",
+      "status": "×",
+      "update": null,
+      "note": "〜 営業期間外"
+    },
+    {
+      "name": "咲花第2ペア",
+      "status": "×",
+      "update": null,
+      "note": "〜 営業期間外"
+    },
+    {
+      "name": "咲花第3トリプル",
+      "status": "×",
+      "update": null,
+      "note": "〜 営業期間外"
+    },
+    {
+      "name": "咲花北尾根クワッド",
+      "status": "×",
+      "update": null,
+      "note": "〜 営業期間外"
+    },
+    {
+      "name": "北尾根第3ペア",
+      "status": "×",
+      "update": null,
+      "note": "〜 営業期間外"
+    }
+  ],
+  "liftUrl": ["https://www.happo-one.jp/gelande/lift/"]
+}

@@ -1,0 +1,126 @@
+{
+  "resortName": "shiga-kogen-okushiga-kogen",
+  "time": "2025/5/4 17:57:14",
+  "comment": "\n\t\t\t\t\t\n\t\t\t\t\t<h2><strong>5/5・6　営業予定　終了まで、あと2日です！！</strong></h2>\n<p></p>\n<p><strong><span style=\"color: #e03e2d;\">6:30～8:00早朝営業開催！！第2高速ペアリフト運行です。</span></strong></p>\n<p><strong><span style=\"color: #e03e2d;\">大人（中学生以上）：2,300円　こども：1,100円　早朝券、Mt.3シーズン券のみご乗車できます。</span></strong></p>\n<p><strong><span style=\"color: #e03e2d;\">※第4ゲレンデ　コブ道場は、形が崩れたためリセットいたします。明朝から作成いたしますのでご協力お願いいたします。</span></strong></p>\n<p>現在、ほぼ全面滑走可能ですが、ブッシュや下地の出ている箇所、雪の薄い所もございます。ご滑走には十分にご注意ください。熊落としコースは融雪による雪不足の為、閉鎖となっております。気温上昇に伴う雪質の変化にご注意し、日焼け対策、水分補給忘れずにお楽しみ下さい。</p>\n<p>奥志賀と焼額山との山頂通路は15:45閉鎖です。山麓連絡路は今シーズン終了しております。</p>\n<p>シーズンも残りわずかです。奥志賀で思いっきりお楽しみ下さい！！</p>\n<p>お待ちしております。</p>\n<p><strong>【リフト】</strong></p>\n<p>6:30~8:00・早朝営業開催・第2高速ペアリフト</p>\n<p>8:00~16:00・第2高速ペアリフト・ゴンドラ</p>\n<p>8:05~16:00・第3高速ペアリフト</p>\n<p>8:30~16:00・第4ペアリフト</p>\n<p>※第1ペアリフトは今シーズンの営業を終了致しました。たくさんのご利用ありがとうございました。</p>\n<p><strong>【チケット】</strong></p>\n<p>6:15~7:15・第2高速ペアリフト横チケット売場、早朝券販売</p>\n<p>7:45~15:45・センターハウス1階売場・ゴンドラ売場</p>\n<p>7:45~11:00・第2高速ペアリフト横チケット売場</p>\n<p style=\"text-align: left;\">❅春スキー奥志賀高原限定エリア券❅当日券のみとなります。</p>\n<p>1日券　大人：5,400　中高、シニア：5,100（要年齢証明書）こども：2,700</p>\n<p>4時間券等もございます。HPをご覧ください。</p>\n<p><a href=\"https://okushigakogenresort.com/ski\">https://okushigakogenresort.com/ski</a></p>\n<p><strong>【レストラン】</strong>　</p>\n<p>☆奥志賀高原ホテル：11:30～L/O、13:30　</p>\n<p>☆グランフェニックス：11:30～L/O、14:00</p>\n<p>☆スポーツバー（センターハウス2階）：5/3～5/6、8:00～14:30</p>\n<p>※手作りサンドイッチ、マフィン、ケーキなどの軽食とドリンクのご提供です。</p>\n<p>☆サンクリストフ：土日祝：9:00~16:00（ランチ11:00~14:00）</p>\n<p>平日：10:00~15:00（ランチ11:00~13:30）</p>\n<p>※キッズパークは今シーズン終了致しました。</p>\n<p>※レンタルは、センターハウス2階です。　TEL：0269-24-2007</p>\n<p></p>\n<p></p>\n                    \n                    \n\t\t\t\t",
+  "weather": {
+    "山頂": {
+      "time": "5月4日 16:39",
+      "weather": "晴れ",
+      "temperature": 3,
+      "snowDepth": 130,
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": null
+    },
+    "山麓": {
+      "time": "5月4日 16:39",
+      "weather": "晴れ",
+      "temperature": 6,
+      "snowDepth": 100,
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": null
+    }
+  },
+  "courses": [
+    {
+      "name": "第1ゲレンデ\n",
+      "status": "○",
+      "time": null,
+      "note": "◎全面滑走可\nFull gliding is possible"
+    },
+    {
+      "name": "第2エキスパート\n",
+      "status": "○",
+      "time": null,
+      "note": "◎全面滑走可\nFull gliding is possible"
+    },
+    {
+      "name": "第3ゲレンデ\n",
+      "status": "○",
+      "time": null,
+      "note": "◎全面滑走可\nFull gliding is possible"
+    },
+    {
+      "name": "第4ゲレンデ\n",
+      "status": "○",
+      "time": null,
+      "note": "◎全面滑走可\nFull gliding is possible"
+    },
+    {
+      "name": "第6ゲレンデ\n",
+      "status": "×",
+      "time": null,
+      "note": "×滑走不可Closed"
+    },
+    {
+      "name": "ダウンヒル\n",
+      "status": "○",
+      "time": null,
+      "note": "◎全面滑走可\nFull gliding is possible"
+    },
+    {
+      "name": "クマ落し\n",
+      "status": "×",
+      "time": null,
+      "note": "×滑走不可Closed"
+    },
+    {
+      "name": "林間\n",
+      "status": "○",
+      "time": null,
+      "note": "◎全面滑走可\nFull gliding is possible"
+    },
+    {
+      "name": "ヒルサイド\n",
+      "status": "○",
+      "time": null,
+      "note": "◎全面滑走可\nFull gliding is possible"
+    },
+    {
+      "name": "ダウンヒル山麓\n",
+      "status": "○",
+      "time": null,
+      "note": "◎全面滑走可\nFull gliding is possible"
+    },
+    {
+      "name": "ダウンヒル山麓\n",
+      "status": "○",
+      "time": null,
+      "note": "◎全面滑走可\nFull gliding is possible"
+    },
+    {
+      "name": "ダウンヒル山麓\n",
+      "status": "○",
+      "time": null,
+      "note": "◎全面滑走可\nFull gliding is possible"
+    }
+  ],
+  "lifts": [
+    {
+      "name": "奥志賀高原ゴンドラ",
+      "status": "△",
+      "note": "△準備中Standby"
+    },
+    {
+      "name": "第1ペア",
+      "status": "×",
+      "note": "×運休中Closed"
+    },
+    {
+      "name": "第2高速ペア",
+      "status": "△",
+      "note": "△準備中Standby"
+    },
+    {
+      "name": "第3高速ペア",
+      "status": "△",
+      "note": "△準備中Standby"
+    },
+    {
+      "name": "第4ペア",
+      "status": "△",
+      "note": "△準備中Standby"
+    }
+  ]
+}

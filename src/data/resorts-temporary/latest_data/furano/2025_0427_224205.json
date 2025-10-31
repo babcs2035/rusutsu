@@ -1,0 +1,224 @@
+{
+  "resortName": "furano",
+  "time": "2025/4/27 22:42:05",
+  "comment": null,
+  "weather": {
+    "山頂": {
+      "time": "2025年4月27日(日)",
+      "weather": "くもり",
+      "temperature": -1,
+      "snowDepth": 38,
+      "snowfall": 0,
+      "quality": "",
+      "windSpeed": 4
+    },
+    "山麓": {
+      "time": "2025年4月27日(日)",
+      "weather": "くもり",
+      "temperature": 1,
+      "snowDepth": 10,
+      "snowfall": 0,
+      "quality": "",
+      "windSpeed": 3
+    }
+  },
+  "courses": [
+    {
+      "name": "D1",
+      "open": "◯",
+      "time": null
+    },
+    {
+      "name": "D2",
+      "open": "△",
+      "time": null
+    },
+    {
+      "name": "B1",
+      "open": "△",
+      "time": null
+    },
+    {
+      "name": "B2",
+      "open": "×",
+      "time": null
+    },
+    {
+      "name": "C1",
+      "open": "×",
+      "time": null
+    },
+    {
+      "name": "E２",
+      "open": "×",
+      "time": null
+    },
+    {
+      "name": "D3",
+      "open": "×",
+      "time": null
+    },
+    {
+      "name": "A2",
+      "open": "×",
+      "time": null
+    },
+    {
+      "name": "A1",
+      "open": "△",
+      "time": null
+    },
+    {
+      "name": "C2",
+      "open": "×",
+      "time": null
+    },
+    {
+      "name": "H1",
+      "open": "×",
+      "time": null
+    },
+    {
+      "name": "E１",
+      "open": "×",
+      "time": null
+    },
+    {
+      "name": "A4",
+      "open": "×",
+      "time": null
+    },
+    {
+      "name": "A3",
+      "open": "×",
+      "time": null
+    },
+    {
+      "name": "G1",
+      "open": "×",
+      "time": null
+    },
+    {
+      "name": "F1",
+      "open": "×",
+      "time": null
+    },
+    {
+      "name": "F4",
+      "open": "×",
+      "time": null
+    },
+    {
+      "name": "F5",
+      "open": "×",
+      "time": null
+    },
+    {
+      "name": "F6",
+      "open": "×",
+      "time": null
+    },
+    {
+      "name": "Ｆ７",
+      "open": "×",
+      "time": null
+    },
+    {
+      "name": "Ｇ２",
+      "open": "×",
+      "time": null
+    },
+    {
+      "name": "Ｆ２",
+      "open": "×",
+      "time": null
+    },
+    {
+      "name": "Ｋ１",
+      "open": "×",
+      "time": null
+    },
+    {
+      "name": "Ｇ３",
+      "open": "×",
+      "time": null
+    },
+    {
+      "name": "Ｋ２",
+      "open": "×",
+      "time": null
+    },
+    {
+      "name": "K4",
+      "open": "×",
+      "time": null
+    },
+    {
+      "name": "K3",
+      "open": "×",
+      "time": null
+    },
+    {
+      "name": "プレミアムゾーン",
+      "open": "×",
+      "time": null
+    }
+  ],
+  "lifts": [
+    {
+      "name": "A富良野ロープウェー",
+      "open": "◯",
+      "note": "9:00a.m.〜4:00p.m."
+    },
+    {
+      "name": "K北の峰ゴンドラ",
+      "open": "×",
+      "note": "-〜-"
+    },
+    {
+      "name": "B富良野ダウンヒル第1高速",
+      "open": "×",
+      "note": "〜"
+    },
+    {
+      "name": "Cプリンスロマンス",
+      "open": "×",
+      "note": "〜"
+    },
+    {
+      "name": "D富良野ダウンヒル第2ロマンス",
+      "open": "◯",
+      "note": "9:10a.m.〜4:00p.m."
+    },
+    {
+      "name": "E富良野ダウンヒル第3ロマンス",
+      "open": "×",
+      "note": "〜"
+    },
+    {
+      "name": "F北の峰第1高速",
+      "open": "×",
+      "note": "-〜-"
+    },
+    {
+      "name": "G北の峰第2ロマンス",
+      "open": "×",
+      "note": "-〜-"
+    },
+    {
+      "name": "H連絡",
+      "open": "×",
+      "note": "-〜-"
+    },
+    {
+      "name": "1FURANOZONEスノーエスカレーター",
+      "open": "×",
+      "note": "-〜-"
+    },
+    {
+      "name": "2KITANOMINEZONEスノーエスカレーター",
+      "open": "×",
+      "note": "-〜-"
+    }
+  ]
+}

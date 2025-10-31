@@ -1,0 +1,116 @@
+{
+  "resortName": "tambara-ski-park",
+  "time": "2025/5/8 15:45:07",
+  "comment": "\n\t\t\t\t<p>24-25シーズンは終了しました。</p>\n\t\t\t\n\n■コース状況\n\n\t\t\t\t<br>\n\t\t\t",
+  "weather": {
+    "山頂": {
+      "time": "2025/05/08",
+      "weather": "",
+      "temperature": null,
+      "snowDepth": null,
+      "snowfall": "",
+      "quality": "",
+      "windSpeed": ""
+    }
+  },
+  "courses": [
+    {
+      "name": "センター 上部",
+      "open": "×",
+      "time": null,
+      "note": "滑走不可"
+    },
+    {
+      "name": "センター 下部",
+      "open": "×",
+      "time": null,
+      "note": "滑走不可"
+    },
+    {
+      "name": "トライアル",
+      "open": "×",
+      "time": null,
+      "note": "滑走不可"
+    },
+    {
+      "name": "レイクウッド",
+      "open": "×",
+      "time": null,
+      "note": "滑走不可"
+    },
+    {
+      "name": "フォレスター",
+      "open": "×",
+      "time": null,
+      "note": "滑走不可"
+    },
+    {
+      "name": "ウッディ 上部",
+      "open": "×",
+      "time": null,
+      "note": "滑走不可"
+    },
+    {
+      "name": "ウッディ 中部",
+      "open": "×",
+      "time": null,
+      "note": "滑走不可"
+    },
+    {
+      "name": "ウッディ 下部",
+      "open": "×",
+      "time": null,
+      "note": "滑走不可"
+    },
+    {
+      "name": "チャレンジ",
+      "open": "×",
+      "time": null,
+      "note": "滑走不可"
+    },
+    {
+      "name": "ファミリー",
+      "open": "×",
+      "time": null,
+      "note": "滑走不可"
+    },
+    {
+      "name": "マルチユース>",
+      "open": "×",
+      "time": null,
+      "note": "滑走不可"
+    }
+  ],
+  "lifts": [
+    {
+      "name": "第1・A",
+      "open": "×",
+      "note": "運休"
+    },
+    {
+      "name": "第1・B",
+      "open": "×",
+      "note": "運休"
+    },
+    {
+      "name": "第2高速",
+      "open": "×",
+      "note": "運休"
+    },
+    {
+      "name": "第3",
+      "open": "×",
+      "note": "運休"
+    },
+    {
+      "name": "第4",
+      "open": "×",
+      "note": "運休"
+    },
+    {
+      "name": "第5",
+      "open": "×",
+      "note": "運休"
+    }
+  ]
+}

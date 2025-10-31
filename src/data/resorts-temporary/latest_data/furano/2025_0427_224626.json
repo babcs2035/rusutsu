@@ -1,0 +1,252 @@
+{
+  "resortName": "furano",
+  "time": "2025/4/27 22:46:26",
+  "comment": null,
+  "weather": {
+    "山頂": {
+      "time": "2025年4月27日(日)",
+      "weather": "くもり",
+      "temperature": -1,
+      "snowDepth": 38,
+      "snowfall": 0,
+      "quality": "",
+      "windSpeed": 4
+    },
+    "山麓": {
+      "time": "2025年4月27日(日)",
+      "weather": "くもり",
+      "temperature": 1,
+      "snowDepth": 10,
+      "snowfall": 0,
+      "quality": "",
+      "windSpeed": 3
+    }
+  },
+  "courses": [
+    {
+      "name": "D1",
+      "open": "◯",
+      "time": null,
+      "note": "起点(Top):899ｍ　終点(Bottom):723ｍ　標高差(Vertical drop):176ｍ"
+    },
+    {
+      "name": "D2",
+      "open": "△",
+      "time": null,
+      "note": "起点(Top):855ｍ　終点(Bottom):760ｍ　標高差(Vertical drop):95ｍ"
+    },
+    {
+      "name": "B1",
+      "open": "△",
+      "time": null,
+      "note": "起点(Top):757ｍ　終点(Bottom):450ｍ　標高差(Vertical drop):307ｍ"
+    },
+    {
+      "name": "B2",
+      "open": "×",
+      "time": null,
+      "note": "起点(Top):450ｍ　終点(Bottom):330ｍ　標高差(Vertical drop):120ｍ"
+    },
+    {
+      "name": "C1",
+      "open": "×",
+      "time": null,
+      "note": "起点(Top):450ｍ　終点(Bottom):335ｍ　標高差(Vertical drop):115ｍ"
+    },
+    {
+      "name": "E２",
+      "open": "×",
+      "time": null,
+      "note": "起点(Top):1,064ｍ　終点(Bottom):883ｍ　標高差(Vertical drop):181ｍ"
+    },
+    {
+      "name": "D3",
+      "open": "×",
+      "time": null,
+      "note": "起点(Top):851ｍ　終点(Bottom):725ｍ　標高差(Vertical drop):126ｍ"
+    },
+    {
+      "name": "A2",
+      "open": "×",
+      "time": null,
+      "note": "起点(Top):705ｍ　終点(Bottom):323ｍ　標高差(Vertical drop):382ｍ"
+    },
+    {
+      "name": "A1",
+      "open": "△",
+      "time": null,
+      "note": "起点(Top):890ｍ　終点(Bottom):685ｍ　標高差(Vertical drop):205ｍ"
+    },
+    {
+      "name": "C2",
+      "open": "×",
+      "time": null,
+      "note": "起点(Top):890ｍ　終点(Bottom):685ｍ　標高差(Vertical drop):205ｍ"
+    },
+    {
+      "name": "H1",
+      "open": "×",
+      "time": null,
+      "note": "起点(Top):830ｍ　終点(Bottom):525ｍ　標高差(Vertical drop):305ｍ"
+    },
+    {
+      "name": "E１",
+      "open": "×",
+      "time": null,
+      "note": "起点(Top):1,064ｍ　終点(Bottom):925ｍ　標高差(Vertical drop):139ｍ一部非圧雪"
+    },
+    {
+      "name": "A4",
+      "open": "×",
+      "time": null,
+      "note": "起点(Top):812ｍ　終点(Bottom):665ｍ　標高差(Vertical drop):147ｍ"
+    },
+    {
+      "name": "A3",
+      "open": "×",
+      "time": null,
+      "note": "起点(Top):792ｍ　終点(Bottom):335ｍ　標高差(Vertical drop):457ｍコンディション不良のため閉鎖"
+    },
+    {
+      "name": "G1",
+      "open": "×",
+      "time": null,
+      "note": "起点(Top):665ｍ　終点(Bottom):435ｍ　標高差(Vertical drop):230ｍ"
+    },
+    {
+      "name": "F1",
+      "open": "×",
+      "time": null,
+      "note": "起点(Top):660ｍ　終点(Bottom):318ｍ　標高差(Vertical drop):342ｍ"
+    },
+    {
+      "name": "F4",
+      "open": "×",
+      "time": null,
+      "note": "起点(Top):370ｍ　終点(Bottom):252ｍ　標高差(Vertical drop):118ｍ"
+    },
+    {
+      "name": "F5",
+      "open": "×",
+      "time": null,
+      "note": "起点(Top):435ｍ　終点(Bottom):250ｍ　標高差(Vertical drop):185ｍ"
+    },
+    {
+      "name": "F6",
+      "open": "×",
+      "time": null,
+      "note": "起点(Top):434ｍ　終点(Bottom):250ｍ　標高差(Vertical drop):184ｍ"
+    },
+    {
+      "name": "Ｆ７",
+      "open": "×",
+      "time": null,
+      "note": "起点(Top):414ｍ　終点(Bottom):290ｍ　標高差(Vertical drop):124ｍ"
+    },
+    {
+      "name": "Ｇ２",
+      "open": "×",
+      "time": null,
+      "note": "起点(Top):569ｍ　終点(Bottom):435ｍ　標高差(Vertical drop):134ｍポール練習のため閉鎖"
+    },
+    {
+      "name": "Ｆ２",
+      "open": "×",
+      "time": null,
+      "note": "起点(Top):555ｍ　終点(Bottom):350ｍ　標高差(Vertical drop):205ｍ"
+    },
+    {
+      "name": "Ｋ１",
+      "open": "×",
+      "time": null,
+      "note": "起点(Top):942ｍ　終点(Bottom):662ｍ　標高差(Vertical drop):280ｍ"
+    },
+    {
+      "name": "Ｇ３",
+      "open": "×",
+      "time": null,
+      "note": "起点(Top):645ｍ　終点(Bottom):433ｍ　標高差(Vertical drop):212ｍ"
+    },
+    {
+      "name": "Ｋ２",
+      "open": "×",
+      "time": null,
+      "note": "起点(Top):745ｍ　終点(Bottom):612ｍ　標高差(Vertical drop):133ｍ"
+    },
+    {
+      "name": "K4",
+      "open": "×",
+      "time": null,
+      "note": "起点(Top):657ｍ　終点(Bottom):574ｍ　標高差(Vertical drop):83ｍコンディション不良のため閉鎖"
+    },
+    {
+      "name": "K3",
+      "open": "×",
+      "time": null,
+      "note": "起点(Top):845ｍ　終点(Bottom):712ｍ　標高差(Vertical drop):133ｍ"
+    },
+    {
+      "name": "プレミアムゾーン",
+      "open": "×",
+      "time": null,
+      "note": "起点(Top):930ｍ　終点(Bottom):605ｍ　標高差(Vertical drop):325亀裂が確認されたため閉鎖いたします。"
+    }
+  ],
+  "lifts": [
+    {
+      "name": "A富良野ロープウェー",
+      "open": "◯",
+      "note": "9:00a.m.〜4:00p.m."
+    },
+    {
+      "name": "K北の峰ゴンドラ",
+      "open": "×",
+      "note": "-〜-"
+    },
+    {
+      "name": "B富良野ダウンヒル第1高速",
+      "open": "×",
+      "note": "〜"
+    },
+    {
+      "name": "Cプリンスロマンス",
+      "open": "×",
+      "note": "〜"
+    },
+    {
+      "name": "D富良野ダウンヒル第2ロマンス",
+      "open": "◯",
+      "note": "9:10a.m.〜4:00p.m."
+    },
+    {
+      "name": "E富良野ダウンヒル第3ロマンス",
+      "open": "×",
+      "note": "〜"
+    },
+    {
+      "name": "F北の峰第1高速",
+      "open": "×",
+      "note": "-〜-"
+    },
+    {
+      "name": "G北の峰第2ロマンス",
+      "open": "×",
+      "note": "-〜-"
+    },
+    {
+      "name": "H連絡",
+      "open": "×",
+      "note": "-〜-"
+    },
+    {
+      "name": "1FURANOZONEスノーエスカレーター",
+      "open": "×",
+      "note": "-〜-"
+    },
+    {
+      "name": "2KITANOMINEZONEスノーエスカレーター",
+      "open": "×",
+      "note": "-〜-"
+    }
+  ]
+}

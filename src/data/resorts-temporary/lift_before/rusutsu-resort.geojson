@@ -1,0 +1,257 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/207179784",
+        "name": "イゾラ第1クワッド"
+      },
+      "geometry": {
+        "coordinates": [
+          [140.9388957029514, 42.72036425562673],
+          [140.92345016479098, 42.71065255708467]
+        ],
+        "type": "LineString"
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/207179785",
+        "name": "イーストゴンドラ2号線"
+      },
+      "geometry": {
+        "coordinates": [
+          [140.91058043173348, 42.73661905576076],
+          [140.91213872944172, 42.71863165429057]
+        ],
+        "type": "LineString"
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/207179786",
+        "name": "イゾラゴンドラ"
+      },
+      "geometry": {
+        "coordinates": [
+          [140.9285749, 42.7360725],
+          [140.9234894, 42.7112467]
+        ],
+        "type": "LineString"
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/207179787",
+        "name": "イーストクワッド"
+      },
+      "geometry": {
+        "coordinates": [
+          [140.91141419632987, 42.73702193067208],
+          [140.9152709, 42.7251405]
+        ],
+        "type": "LineString"
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/207179788",
+        "name": "イゾラ第4超高速クワッド"
+      },
+      "geometry": {
+        "coordinates": [
+          [140.94220011326294, 42.712833751169995],
+          [140.93273360327416, 42.70592775539812]
+        ],
+        "type": "LineString"
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/207179789",
+        "name": "イゾラ第2クワッド"
+      },
+      "geometry": {
+        "coordinates": [
+          [140.920459, 42.728097],
+          [140.92375194088623, 42.71612376872519]
+        ],
+        "type": "LineString"
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/207179790",
+        "name": "イゾラ第3クワッド"
+      },
+      "geometry": {
+        "coordinates": [
+          [140.9416905, 42.7130797],
+          [140.9233062546546, 42.71007842405504]
+        ],
+        "type": "LineString"
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/207464651",
+        "name": "ウエスト第2クワッド"
+      },
+      "geometry": {
+        "coordinates": [
+          [140.90055256834574, 42.751239759773135],
+          [140.88983600287673, 42.75214587001246]
+        ],
+        "type": "LineString"
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/207464652",
+        "name": "羊蹄ゴンドラ"
+      },
+      "geometry": {
+        "coordinates": [
+          [140.8995687, 42.7492291],
+          [140.8874152, 42.7516435]
+        ],
+        "type": "LineString"
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/207464653",
+        "name": "ウエスト第1クワッド"
+      },
+      "geometry": {
+        "coordinates": [
+          [140.9010269, 42.7520601],
+          [140.8958549, 42.7559414]
+        ],
+        "type": "LineString"
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/282842056",
+        "name": "ウエストタイガーペア"
+      },
+      "geometry": {
+        "coordinates": [
+          [140.8946743, 42.7552051],
+          [140.890183, 42.7579252]
+        ],
+        "type": "LineString"
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/282842135",
+        "name": "イーストゴンドラ1号線"
+      },
+      "geometry": {
+        "coordinates": [
+          [140.90005887666047, 42.74948217688937],
+          [140.9105637, 42.7368876]
+        ],
+        "type": "LineString"
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/282842138",
+        "name": "タワーペア"
+      },
+      "geometry": {
+        "coordinates": [
+          [140.903075, 42.7465281],
+          [140.9112352, 42.7377781]
+        ],
+        "type": "LineString"
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/282842265",
+        "name": "イースト第2ペア"
+      },
+      "geometry": {
+        "coordinates": [
+          [140.9175575, 42.7243121],
+          [140.912725, 42.7185488]
+        ],
+        "type": "LineString"
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/282842309",
+        "name": "アクロス第2ペア"
+      },
+      "geometry": {
+        "coordinates": [
+          [140.92090544577383, 42.72933339964514],
+          [140.9150161, 42.7288132]
+        ],
+        "type": "LineString"
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/282842342",
+        "name": "アクロス第1ペア"
+      },
+      "geometry": {
+        "coordinates": [
+          [140.92096729559387, 42.72942531881409],
+          [140.91948879577234, 42.72950987324379]
+        ],
+        "type": "LineString"
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/282842431",
+        "name": "イースト第1ペア"
+      },
+      "geometry": {
+        "coordinates": [
+          [140.9112324, 42.7368332],
+          [140.9119089, 42.730469]
+        ],
+        "type": "LineString"
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/282842880",
+        "name": "イゾラ第5ペア"
+      },
+      "geometry": {
+        "coordinates": [
+          [140.92939565575594, 42.71256435760324],
+          [140.9239542, 42.7108941]
+        ],
+        "type": "LineString"
+      }
+    }
+  ]
+}

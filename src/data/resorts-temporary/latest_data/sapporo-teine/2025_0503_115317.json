@@ -1,0 +1,169 @@
+{
+  "resortName": "sapporo-teine",
+  "time": "2025/5/3 11:53:17",
+  "comment": "\n            <p><span style=\"color: #0000ff;\"><strong>本日、5月3日（土）</strong><strong>&nbsp;はハイランド・ゾーンの営業日です！</strong></span></p>\n<p><strong><span style=\"color: #ff0000;\">【注意】</span></strong></p>\n<p><strong><span style=\"color: #ff0000;\">現在、山頂付近強風のため9時からリフト運行に影響する場合があります。</span></strong></p>\n<p><strong><span style=\"color: #ff0000;\">最新の運行状況にご注意ください！</span></strong></p>\n<p>&nbsp;</p>\n<p><strong><span style=\"color: #0000ff;\">リフト運行：9:00～16:00</span></strong></p>\n<p><strong><span style=\"color: #0000ff;\">ハイランドスキセンター閉館:17:00</span></strong></p>\n<p>&nbsp;</p>\n<p><strong><span style=\"color: #ff0000;\">【お知らせ】</span></strong></p>\n<p><span style=\"color: #ff0000;\"><strong>◆リフト運行は「サミットエクスプレス」および「パノラマ2号」を予定いたしております。</strong></span></p>\n<p><span style=\"color: #ff0000;\"><strong>◆「北かべ」および「男女回転」コースは、雪解けのため閉鎖いたします。ナチュラルコースを経由して</strong></span></p>\n<p><span style=\"color: #ff0000;\">スキーセンターまで滑走可能。</span></p>\n<p><span style=\"color: #ff0000;\"><strong>◆「シティビュークルーズ」コースは、競技トレーニングのため一部規制させていただきます。</strong></span></p>\n<p><span style=\"color: #ff0000;\"><strong>ご不便をお掛け致しますが予めご承知おきください。</strong></span></p>\n<p>&nbsp;</p>\n<p><span style=\"color: #0000ff;\"><strong>【特別春シーズン営業のご案内】</strong></span></p>\n<p><strong>　ハイランドゾーンは5月6日(火・祝)までの営業を予定しております。</strong></p>\n<p><strong>　但し、</strong><span style=\"color: #ff0000;\"><strong>積雪状況により営業を断念する場合がありますので、最新の情報にご注意ください。</strong></span></p>\n<p><strong><span style=\"color: #0000ff;\">春スキー営業予定詳細</span>＞＞<span style=\"color: #ff0000;\"><a style=\"color: #ff0000;\" title=\"こちら\" href=\"https://sapporo-teine.com/snow/wp-content/uploads/2025/03/c716b3d3b9915a4a0a0b52edcb7fdee9.pdf\">こちら</a></span></strong></p>\n<p>&nbsp;</p>\n<p><strong><span style=\"color: #0000ff;\">【無料シャトルバス運行について】</span></strong></p>\n<p><span style=\"color: #ff0000;\">JRバスは今季の運行を終了しました。<br>\n</span>営業日は、JR手稲駅南口より自社による<strong>無料シャトルバスを</strong><strong>運行中です。</strong></p>\n<p>ご予約は不要ですが満席の場合はご乗車いただけませんので、次の便またはタクシー等をご利用ください。</p>\n<p><strong><span style=\"color: #000000;\">詳細＞＞</span><span style=\"color: #ff0000;\"><a style=\"color: #ff0000;\" href=\"https://sapporo-teine.com/snow/wp-content/uploads/2025/03/b4258a2384a4ad7f4e9dcef83a9d27a9.pdf\">こちら</a></span></strong></p>\n<p>&nbsp;</p>\n<p><span style=\"color: #0000ff;\"><strong>【ご利用上のご注意とお願い】</strong></span></p>\n<p>■スノーボードご利用の際は、<span style=\"color: #0000ff;\"><span style=\"color: #ff0000;\"><strong>リーシュコード（流れ止め）を確実に装着</strong>し、</span></span>板流れの防止に努めてください。</p>\n<p>■コース内の<strong><span style=\"color: #0000ff;\"><span style=\"color: #ff0000;\">ハイクアップ（登山）は事故防止のため固くお断りいたします。特に早朝は圧雪車が走行しているためたいへん危険です。</span></span></strong></p>\n<p>&nbsp;</p>\n<p>&nbsp;</p>\n<p>&nbsp;</p>\n<p>&nbsp;</p>\n<p>&nbsp;</p>\n          ",
+  "weather": {
+    "山頂": {
+      "time": "2025/05/03 11:52",
+      "weather": "くもり",
+      "temperature": 9,
+      "snowDepth": 200,
+      "snowfall": 0,
+      "condition": "ザラメ雪（Granular-snow）",
+      "windSpeed": null
+    },
+    "山麓": {
+      "time": "2025/05/03 11:52",
+      "weather": "くもり",
+      "temperature": null,
+      "snowDepth": 50,
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": null
+    }
+  },
+  "courses": [
+    {
+      "name": "シティビュークルーズ",
+      "status": "△",
+      "time": null,
+      "note": "一部オープン"
+    },
+    {
+      "name": "シティビューパノラマ",
+      "status": "△",
+      "time": null,
+      "note": "一部オープン"
+    },
+    {
+      "name": "女子大回転",
+      "status": "×",
+      "time": null,
+      "note": "クローズ"
+    },
+    {
+      "name": "北かべ",
+      "status": "×",
+      "time": null,
+      "note": "クローズ"
+    },
+    {
+      "name": "ナチュラル",
+      "status": "△",
+      "time": null,
+      "note": "一部オープン"
+    },
+    {
+      "name": "男女回転",
+      "status": "×",
+      "time": null,
+      "note": "クローズ"
+    },
+    {
+      "name": "パラダイス",
+      "status": "△",
+      "time": null,
+      "note": "一部オープン"
+    },
+    {
+      "name": "レインボー",
+      "status": "×",
+      "time": null,
+      "note": "クローズ"
+    },
+    {
+      "name": "白樺サンシャイン",
+      "status": "×",
+      "time": null,
+      "note": "クローズ"
+    },
+    {
+      "name": "白樺サントラップ",
+      "status": "×",
+      "time": null,
+      "note": "クローズ"
+    },
+    {
+      "name": "白樺サンライズ",
+      "status": "×",
+      "time": null,
+      "note": "クローズ"
+    },
+    {
+      "name": "白樺サンダンス",
+      "status": "×",
+      "time": null,
+      "note": "クローズ"
+    },
+    {
+      "name": "聖火台オーシャンダイブ",
+      "status": "×",
+      "time": null,
+      "note": "クローズ"
+    },
+    {
+      "name": "聖火台オーシャンクルーズ",
+      "status": "×",
+      "time": null,
+      "note": "クローズ"
+    },
+    {
+      "name": "聖火台オーシャンストリーム",
+      "status": "×",
+      "time": null,
+      "note": "クローズ"
+    }
+  ],
+  "lifts": [
+    {
+      "name": "パノラマ1号",
+      "status": "×",
+      "note": "Closed〜"
+    },
+    {
+      "name": "パノラマ2号",
+      "status": "○",
+      "note": "9:15〜16:00"
+    },
+    {
+      "name": "サミットエクスプレス",
+      "status": "○",
+      "note": "9:00〜16:00"
+    },
+    {
+      "name": "パラダイス",
+      "status": "×",
+      "note": "Closed〜"
+    },
+    {
+      "name": "エイトゴンドラ",
+      "status": "×",
+      "note": "今季営業終了〜"
+    },
+    {
+      "name": "白樺第1",
+      "status": "×",
+      "note": "今季営業終了〜"
+    },
+    {
+      "name": "白樺第2",
+      "status": "×",
+      "note": "今季営業終了〜"
+    },
+    {
+      "name": "白樺第3",
+      "status": "×",
+      "note": "今季営業終了〜"
+    },
+    {
+      "name": "聖火台第1",
+      "status": "×",
+      "note": "今季営業終了〜"
+    },
+    {
+      "name": "スノーエスカレーター",
+      "status": "×",
+      "note": "今季営業終了〜"
+    }
+  ]
+}

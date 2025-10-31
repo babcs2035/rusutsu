@@ -1,0 +1,174 @@
+{
+  "resortName": "shiga-kogen-yakebitaiyama",
+  "time": "2025/5/15 0:13:05",
+  "comment": "",
+  "weather": {
+    "山頂": {
+      "time": "2025年5月6日(火・振休) － 現在",
+      "weather": "－",
+      "temperature": null,
+      "snowDepth": null,
+      "snowfall": null,
+      "condition": "－",
+      "windSpeed": null
+    },
+    "山麓": {
+      "time": "2025年5月6日(火・振休) － 現在",
+      "weather": null,
+      "temperature": null,
+      "snowDepth": null,
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": null
+    }
+  },
+  "courses": [
+    {
+      "name": "D1　ミドル連絡",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "D4　イースト連絡",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "E1　サウス",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "E2　サウス連絡",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "A1　ジャイアントスラローム",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "A2　ゴンドラ連絡",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "A3　ゴンドラ迂回",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "B1　パノラマ",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "B2　パノラマイン",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "C1　唐松",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "C2　白樺",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "C3　ブナ",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "D2　イースト",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "O1　奥志賀連絡",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "A4　オリンピック",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "A5　YAKEBI WALL",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "A6　スーパージャイアントスラローム",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "A7　YAKEBI VALLEY",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "D3　ミドル",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "YAKEBI COAST",
+      "open": "×",
+      "time": null,
+      "note": ""
+    }
+  ],
+  "lifts": [
+    {
+      "name": "焼額山第1ゴンドラ",
+      "open": "×",
+      "note": "〜\n"
+    },
+    {
+      "name": "焼額山第2ゴンドラ",
+      "open": "×",
+      "note": "〜\n"
+    },
+    {
+      "name": "焼額山第2高速",
+      "open": "×",
+      "note": "〜\n"
+    },
+    {
+      "name": "焼額山第3高速",
+      "open": "×",
+      "note": "〜\n"
+    },
+    {
+      "name": "焼額山第4ロマンス",
+      "open": "×",
+      "note": "〜\n"
+    }
+  ]
+}

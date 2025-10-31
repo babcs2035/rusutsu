@@ -1,0 +1,299 @@
+{
+  "resortName": "shiga-kogen-central",
+  "time": "2025/7/6 17:18:41",
+  "comment": "今シーズンも多くのお客様にご来場いただき、誠にありがとうございました。<br>\nおかげさまで、無事に今シーズンの営業を終了することができました。<br>\nこれもひとえに皆様のご愛顧とご支援の賜物と、スタッフ一同心より感謝申し上げます。<br>\n今後もより安全で快適なスキー場を目指し、サービス向上に努めてまいりますので、変わらぬご愛顧のほどよろしくお願い申し上げます。<br>\n次シーズンも皆様のお越しを心よりお待ち申し上げております。<br>\n<br>\n志賀高原中央エリア　スタッフ一同<br>\n<br>\n<a href=\"https://shigakogen.co.jp/winter/lift/\" target=\"_blank\">⇒本日の営業状況は</a>(テキストリンク)<br>\n<a href=\"https://shigakogen.co.jp/winter/lift-price/\" target=\"_blank\">⇒志賀高原中央エリアリフト券の料金は</a>(テキストリンク)<br>\n<br>\n志賀高原中央エリアホームページをリニューアルいたしました！<br>\n営業情報などはSNSでも配信をいたしますので、フォローもお願いいたします。",
+  "commentUrl": ["https://shigakogen.co.jp/winter/"],
+  "weather": {
+    "一の瀬ファミリー": {
+      "update": "最終更新：2025/07/06",
+      "weather": "準備中",
+      "temperature": "シーズン終了",
+      "snowDepth": "シーズン終了",
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": null
+    }
+  },
+  "weatherUrl": ["https://www.shigakogen-ski.or.jp/lift/ichinosefamily/"],
+  "courses": [
+    {
+      "name": "サンバレーA+白熊",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "サンバレーB＋メイン",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "サンバレー初級",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "丸池A",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "丸池B",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "丸池C",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "丸池第2ゲレンデ",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "蓮池A",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "蓮池B",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "蓮池ジュニア",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "ジャイアントゲレンデ",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "ジャイアント七曲り",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "ジャイアント中央下方",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "ジャイアント連絡",
+      "status": "○",
+      "update": null,
+      "note": "全面滑走可"
+    },
+    {
+      "name": "東館山オリンピック(上部)",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "東館山オリンピック(下部)",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "東館山林間",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "東館山・一の瀬ファミリー連絡",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "東館山・寺小屋連絡",
+      "status": "×",
+      "update": null,
+      "note": "滑走不可"
+    },
+    {
+      "name": "東館山オリンピック(中部)",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "ブナ平ゲレンデ",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "高天ヶ原マンモスゲレンデ(上部)",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "高天ヶ原マンモスゲレンデ(下部)",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "【上部】ワールドカップ(上部)",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "西館山中級上部",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "【上部】西館山初級\n\n(上部)\nNishidateyama Beginner Course",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "【上部】西館山高天ヶ原ゲレンデ",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "【下部】西館山初級\n\n(下部)\nNishidateyama Beginner Course",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "【下部】ワールドカップ(下部)",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "西館山中級下部",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "タンネの森オコジョゲレンデ",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "一の瀬ファミリー正面ゲレンデ(上部)",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "天狗",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "パノラマ",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "パーフェクター",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "一の瀬ファミリー正面ゲレンデ(下部)",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "一の瀬ファミリー・寺小屋連絡",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "一の瀬ファミリー・高天ヶ原連絡",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "Philosophy",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "LIPS",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "Eternal",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "連絡",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "ダイヤモンドゲレンデ",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "ラビット",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "モンキー",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "かもしか",
+      "status": "×",
+      "update": null,
+      "note": "閉鎖中"
+    }
+  ],
+  "courseUrl": [""],
+  "lifts": [],
+  "liftUrl": [""]
+}

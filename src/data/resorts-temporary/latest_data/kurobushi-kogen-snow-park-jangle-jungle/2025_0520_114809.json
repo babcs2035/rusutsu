@@ -1,0 +1,82 @@
+{
+  "resortName": "kurobushi-kogen-snow-park-jangle-jungle",
+  "time": "2025/5/20 11:48:09",
+  "comment": "3月30日17：00をもちまして2024－25シーズンの営業は全て終了致しました。今シーズンも沢山のお客様にご来場いただき本当にありがとうございました。来シーズンまたお客様にお会いできることをスタッフ一同こころより楽しみにしております。",
+  "weather": {
+    "中腹": {
+      "time": "UPDATE:2025/03/30 17:00",
+      "weather": "はれ",
+      "temperature": 0,
+      "snowDepth": 180,
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": 3
+    }
+  },
+  "courses": [
+    {
+      "name": "1) W1",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "2) W2",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "3) W3",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "4) E1",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "5) E2",
+      "status": "×",
+      "note": ""
+    }
+  ],
+  "lifts": [
+    {
+      "name": "JANGLE PAIR",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "WEST EXPRESS",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "EAST EXPRESS",
+      "status": "×",
+      "note": ""
+    }
+  ],
+  "park": [
+    {
+      "name": "1) Jパーク",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "2) ペア横パーク",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "3) ペア上パーク",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "4) クロスコース",
+      "status": "×",
+      "note": ""
+    }
+  ]
+}

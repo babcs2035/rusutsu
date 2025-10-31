@@ -1,0 +1,85 @@
+{
+  "resortName": "tambara-ski-park",
+  "time": "2025/4/27 3:10:59",
+  "comment": "\n\t\t\t\t<p><!-- wp:tadv/classic-paragraph --></p>\n<p><!-- wp:tadv/classic-paragraph --></p>\n<p>【4月26日～27日の営業内容】<br>\n※積雪状況により変更になる場合がございます。</p>\n<p>■オープンコース<br>\n全コース滑走可能<br>\n※一部ブッシュが出ている箇所がございます。ご注意ください。</p>\n<p>■運行リフト（8：00～16：00）<br>\n・第1リフトA線(3人乗り)<br>\n・第2高速リフト(4人乗り)</p>\n<p>■無料そりエリア（8：30～16：00）<br>\n場所：たんばランド下部<br>\n<span style=\"color: #ff0000;\">※遊具の貸出はありません。</span></p>\n<p>■チケット（7：40～16：00）<br>\nリフト券料金（春料金）<br>\n<span style=\"color: #0000ff;\"><a style=\"color: #0000ff;\" href=\"https://www.tambara.co.jp/winter/ticket/\">リフト券の詳細はコチラ</a></span></p>\n<p>■WEB購入なら通常よりお得に購入できて、無人発券機で楽々引き換え！スムーズにゲレンデへ！<br>\n<span style=\"color: #0000ff;\"><a style=\"color: #0000ff;\" href=\"https://smartclub.tokyu-rs.co.jp/ski/ticket/3\">【ご購入はコチラ】</a></span></p>\n<p>■駐車場（7：00～17：00）<br>\n料金:無料</p>\n<p>■その他営業店舗<br>\n・<span style=\"color: #0000ff;\"><a style=\"color: #0000ff;\" href=\"https://www.tambara.co.jp/winter/rental/\">レンタルコーナー</a></span><br>\n・<span style=\"color: #0000ff;\"><a style=\"color: #0000ff;\" href=\"https://www.tambara.co.jp/winter/shop/\">スーベニアショップ</a></span><br>\n・<span style=\"color: #0000ff;\"><a style=\"color: #0000ff;\" href=\"https://www.tambara.co.jp/winter/restaurant/\">レストランウッドランドカフェ</a></span><br>\n・<span style=\"color: #0000ff;\"><a style=\"color: #0000ff;\" href=\"https://www.tambara.co.jp/winter/restaurant/\">レストランオン＆オフ</a></span><br>\n・<span style=\"color: #0000ff;\"><a style=\"color: #0000ff;\" href=\"https://www.tambara.co.jp/winter/restaurant/\">スイーツショップ</a></span><br>\n・<span style=\"color: #0000ff;\"><a style=\"color: #0000ff;\" href=\"https://www.tambara.co.jp/winter/restaurant/\">サーティワンアイスクリーム</a></span><br>\n・<span style=\"color: #0000ff;\"><a style=\"color: #0000ff;\" href=\"https://www.tambara.co.jp/winter/facility/\">たんばらワックス</a></span><br>\n・<span style=\"color: #0000ff;\"><a style=\"color: #0000ff;\" href=\"https://www.tambara.co.jp/winter/school/\">スキースクール</a></span><span style=\"color: #0000ff;\"><br>\n</span>・<span style=\"color: #0000ff;\"><a href=\"https://www.tambara.co.jp/winter/dj/\">DJブース</a></span></p>\n<p><!-- /wp:tadv/classic-paragraph --></p>\n\t\t\t\n\n■コース状況\n\n\t\t\t\tフォレスターコース<br>\nロングウェーブ<br>\n<br>\nセンターコース：上部～中部　コブレーン有<br>\nトライアルコース：上部非圧雪　※コブレーン有<br>\n<br>\nゲレンデ内は一部ブッシュが出ている箇所がございます。ご注意ください。<br>\n\t\t\t",
+  "weather": {
+    "山頂": {
+      "time": "2025/04/27",
+      "weather": "晴れ",
+      "temperature": 3,
+      "snowDepth": 160,
+      "snowfall": "",
+      "quality": "ザラメ",
+      "windSpeed": ""
+    }
+  },
+  "course": [
+    {
+      "name": "センター 上部 コブレーン\n中級",
+      "open": "○",
+      "time": null,
+      "note": "滑走可"
+    },
+    {
+      "name": "センター 下部\n中級",
+      "open": "○",
+      "time": null,
+      "note": "滑走可"
+    },
+    {
+      "name": "トライアル │上部非圧雪\n上級",
+      "open": "○",
+      "time": null,
+      "note": "滑走可"
+    },
+    {
+      "name": "レイクウッド\n中級",
+      "open": "○",
+      "time": null,
+      "note": "滑走可"
+    },
+    {
+      "name": "フォレスター │ロングウェーブ\n中級",
+      "open": "○",
+      "time": null,
+      "note": "滑走可"
+    },
+    {
+      "name": "ウッディ 上部\n初中級",
+      "open": "○",
+      "time": null,
+      "note": "滑走可"
+    },
+    {
+      "name": "ウッディ 中部\n初中級",
+      "open": "○",
+      "time": null,
+      "note": "滑走可"
+    },
+    {
+      "name": "ウッディ 下部\n初中級",
+      "open": "○",
+      "time": null,
+      "note": "滑走可"
+    },
+    {
+      "name": "チャレンジ\n初中級",
+      "open": "○",
+      "time": null,
+      "note": "滑走可"
+    },
+    {
+      "name": "ファミリー\n初級",
+      "open": "○",
+      "time": null,
+      "note": "滑走可"
+    },
+    {
+      "name": "マルチユース>\n初級",
+      "open": "○",
+      "time": null,
+      "note": "滑走可"
+    }
+  ],
+  "lifts": []
+}

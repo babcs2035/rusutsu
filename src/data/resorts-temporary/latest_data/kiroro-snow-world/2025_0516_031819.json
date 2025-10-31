@@ -1,0 +1,250 @@
+{
+  "resortName": "kiroro-snow-world",
+  "time": "2025/5/16 3:18:19",
+  "comment": "5/5をもちまして、今シーズンの営業を終了いたします。たくさんのご来場、誠にありがとうございました。",
+  "weather": {
+    "山頂": {
+      "time": "気象関係は毎朝8：00現在の情報",
+      "weather": "晴れ",
+      "temperature": 0,
+      "snowDepth": 0,
+      "snowfall": 0,
+      "condition": "",
+      "windSpeed": null
+    },
+    "山麓": {
+      "time": "気象関係は毎朝8：00現在の情報",
+      "weather": "晴れ",
+      "temperature": 0,
+      "snowDepth": 0,
+      "snowfall": 0,
+      "condition": "",
+      "windSpeed": null
+    }
+  },
+  "courses": [
+    {
+      "name": "朝里第1A",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "朝里第1B",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "余市第2A",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "長峰第1",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "ファミリー",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "ゲートウェイ",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "朝里ダイナミック",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "朝里パノラマ",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "余市第1A",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "余市第1B",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "センターA",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "センターB",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "長峰第2A",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "長峰第2C",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "パウダーライド",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "朝里エキスパートA",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "朝里エキスパートB",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "朝里第2A",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "朝里第2B",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "朝里第2C",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "余市第2B",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "センターC",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "長峰第2B",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "センターリンク",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    }
+  ],
+  "lifts": [
+    {
+      "name": "キロロゴンドラ",
+      "status": "×",
+      "note": "運休"
+    },
+    {
+      "name": "朝里第1",
+      "status": "×",
+      "note": "運休"
+    },
+    {
+      "name": "朝里第2エクスプレス",
+      "status": "×",
+      "note": "運休"
+    },
+    {
+      "name": "余市第1エクスプレス",
+      "status": "×",
+      "note": "運休 9:00-15:30"
+    },
+    {
+      "name": "余市第2",
+      "status": "×",
+      "note": "運休"
+    },
+    {
+      "name": "センターエクスプレス",
+      "status": "×",
+      "note": "運休"
+    },
+    {
+      "name": "長峰第1エクスプレス",
+      "status": "×",
+      "note": "運休"
+    },
+    {
+      "name": "長峰第2エクスプレス",
+      "status": "×",
+      "note": "運休"
+    },
+    {
+      "name": "ファミリー",
+      "status": "×",
+      "note": "運休"
+    },
+    {
+      "name": "ゲートウェイエクスプレス",
+      "status": "×",
+      "note": "運休"
+    }
+  ],
+  "treeruns": [
+    {
+      "name": "パウダーリッジ",
+      "status": "×",
+      "note": "閉鎖中"
+    },
+    {
+      "name": "オレンジ　ライト",
+      "status": "×",
+      "note": "閉鎖中"
+    },
+    {
+      "name": "スノーソー",
+      "status": "×",
+      "note": "閉鎖中"
+    },
+    {
+      "name": "フラッシュマン",
+      "status": "×",
+      "note": "閉鎖中"
+    },
+    {
+      "name": "バーコード",
+      "status": "×",
+      "note": "閉鎖中"
+    }
+  ]
+}

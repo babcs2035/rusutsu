@@ -11,7 +11,7 @@
     "type-check": "pnpm tsc --noEmit",
     "prepare": "husky"
   },
-  "packageManager": "pnpm@10.18.0",
+  "packageManager": "pnpm@10.20.0",
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^7.0.1",
     "@fortawesome/free-solid-svg-icons": "^7.0.1",
@@ -20,11 +20,13 @@
     "leaflet": "^1.9.4",
     "leaflet.markercluster": "^1.5.3",
     "next": "15.5.4",
+    "playwright": "^1.56.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-leaflet": "^5.0.0",
     "react-leaflet-markercluster": "5.0.0-rc.0",
     "recharts": "^3.2.1",
+    "ts-tqdm": "^0.8.6",
     "vaul": "^1.1.2"
   },
   "devDependencies": {

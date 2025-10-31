@@ -1,0 +1,119 @@
+{
+  "resortName": "chateraise-ski-valley-koumi",
+  "time": "2025/5/18 21:05:49",
+  "comment": "今シーズンの営業は3月23日（日）を持ち終了とさせていただきます（延長なし）",
+  "weather": {
+    "山頂": {
+      "time": "更新日時: 2025年03月24日 07:48",
+      "weather": "―",
+      "temperature": "―",
+      "snowDepth": "―",
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": null
+    },
+    "山麓": {
+      "time": "更新日時: 2025年03月24日 07:48",
+      "weather": null,
+      "temperature": null,
+      "snowDepth": "―",
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": null
+    }
+  },
+  "courses": [
+    {
+      "name": "【A】ウェンゲン",
+      "status": "×",
+      "time": "更新日時: 2025年03月24日 07:48",
+      "note": null
+    },
+    {
+      "name": "【B】ラバーホーン",
+      "status": "×",
+      "time": "更新日時: 2025年03月24日 07:48",
+      "note": null
+    },
+    {
+      "name": "【C】ユングフラウ",
+      "status": "×",
+      "time": "更新日時: 2025年03月24日 07:48",
+      "note": null
+    },
+    {
+      "name": "【D】アイガー",
+      "status": "×",
+      "time": "更新日時: 2025年03月24日 07:48",
+      "note": null
+    },
+    {
+      "name": "【E】ブライトホーン",
+      "status": "×",
+      "time": "更新日時: 2025年03月24日 07:48",
+      "note": null
+    },
+    {
+      "name": "【F】メンヒ",
+      "status": "×",
+      "time": "更新日時: 2025年03月24日 07:48",
+      "note": null
+    },
+    {
+      "name": "【H】",
+      "status": "×",
+      "time": "更新日時: 2025年03月24日 07:48",
+      "note": null
+    },
+    {
+      "name": "【L】",
+      "status": "×",
+      "time": "更新日時: 2025年03月24日 07:48",
+      "note": null
+    },
+    {
+      "name": "迂回・ホテル前",
+      "status": "×",
+      "time": "更新日時: 2025年03月24日 07:48",
+      "note": null
+    }
+  ],
+  "lifts": [
+    {
+      "name": "第1クワッド",
+      "time": "更新日時: 2025年03月24日 07:48",
+      "status": "×",
+      "note": null
+    },
+    {
+      "name": "第2ペア",
+      "time": "更新日時: 2025年03月24日 07:48",
+      "status": "×",
+      "note": null
+    },
+    {
+      "name": "第3ペア",
+      "time": "更新日時: 2025年03月24日 07:48",
+      "status": "×",
+      "note": null
+    },
+    {
+      "name": "第4ペア",
+      "time": "更新日時: 2025年03月24日 07:48",
+      "status": "×",
+      "note": null
+    },
+    {
+      "name": "第5ペア",
+      "time": "更新日時: 2025年03月24日 07:48",
+      "status": "×",
+      "note": null
+    },
+    {
+      "name": "ケーブルカー",
+      "time": "更新日時: 2025年03月24日 07:48",
+      "status": "×",
+      "note": null
+    }
+  ]
+}

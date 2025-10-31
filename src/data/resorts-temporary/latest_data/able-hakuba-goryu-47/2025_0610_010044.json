@@ -1,0 +1,130 @@
+{
+  "resortName": "able-hakuba-goryu-47",
+  "time": "2025/6/10 1:00:44",
+  "comment": "最新のお知らせは<a href=\"https://www.hakubaescal.com/winter/information/\">こちら</a>から。",
+  "commentUrl": "https://www.hakubaescal.com/winter/information/",
+  "weather": {},
+  "weatherUrl": [
+    "https://www.hakubavalley.com/weather/detail_goryu/",
+    "https://www.hakubavalley.com/weather/detail_hakuba47/"
+  ],
+  "courses": [],
+  "courseUrl": "https://www.hakubaescal.com/winter/gelande/animationmap/",
+  "lifts": [
+    {
+      "name": "五竜テレキャビン",
+      "status": "×",
+      "time": "05/19 14:13",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "アルプス第1ペア",
+      "status": "×",
+      "time": "05/19 14:13",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "アルプス第3ペア",
+      "status": "×",
+      "time": "05/19 14:13",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "アルプス第2・第4ペア",
+      "status": "×",
+      "time": "05/19 14:13",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "とおみスカイフォー",
+      "status": "×",
+      "time": "05/19 14:13",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "とおみスカイフォー（早朝営業時）",
+      "status": "×",
+      "time": "05/19 14:13",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "とおみスカイフォー（ナイター営業時）",
+      "status": "×",
+      "time": "05/19 14:13",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "とおみ第1ペア",
+      "status": "×",
+      "time": "05/19 14:13",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "とおみ第2ペア",
+      "status": "×",
+      "time": "05/19 14:13",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "とおみ第2ペア（ナイター営業時）",
+      "status": "×",
+      "time": "05/19 14:13",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "ミルキーフォー",
+      "status": "×",
+      "time": "06/10 00:07",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "第1高速ペア",
+      "status": "×",
+      "time": "06/10 00:07",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "第6ペア",
+      "status": "×",
+      "time": "06/10 00:07",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "コスモフォー",
+      "status": "×",
+      "time": "06/10 00:07",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "ゴンドラLine-8",
+      "status": "×",
+      "time": "05/19 14:14",
+      "note": "今シーズンは終了しました。"
+    },
+    {
+      "name": "ペアLine-A.B",
+      "status": "×",
+      "time": "05/19 14:14",
+      "note": "今シーズンは終了しました。"
+    },
+    {
+      "name": "クワットLine-C",
+      "status": "×",
+      "time": "05/19 14:14",
+      "note": "今シーズンは終了しました。"
+    },
+    {
+      "name": "ペアLine-D",
+      "status": "×",
+      "time": "05/19 14:14",
+      "note": "今シーズンは終了しました。"
+    },
+    {
+      "name": "高速ペアLine-E",
+      "status": "×",
+      "time": "05/19 14:14",
+      "note": "今シーズンは終了しました。"
+    }
+  ],
+  "liftUrl": "https://www.hakubaescal.com/winter/gelande/animationmap/"
+}

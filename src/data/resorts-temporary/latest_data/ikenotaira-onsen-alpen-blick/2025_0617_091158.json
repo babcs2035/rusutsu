@@ -1,0 +1,156 @@
+{
+  "resortName": "ikenotaira-onsen-alpen-blick",
+  "time": "2025/6/17 9:11:58",
+  "comment": null,
+  "commentUrl": [""],
+  "weather": {
+    "中腹": {
+      "update": "最終更新：2025.06.14（土）19:38:39",
+      "weather": "雨",
+      "temperature": "-",
+      "snowDepth": "-",
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": null
+    }
+  },
+  "weatherUrl": ["https://alpenblick-resort.com/ski"],
+  "courses": [
+    {
+      "name": "やまばと林間",
+      "status": "×",
+      "update": null,
+      "note": "滑走不可"
+    },
+    {
+      "name": "カラマツ",
+      "status": "×",
+      "update": null,
+      "note": "滑走不可"
+    },
+    {
+      "name": "ワイドロングラン",
+      "status": "×",
+      "update": null,
+      "note": "滑走不可"
+    },
+    {
+      "name": "カヤバ",
+      "status": "×",
+      "update": null,
+      "note": "滑走不可"
+    },
+    {
+      "name": "レイクビュー",
+      "status": "×",
+      "update": null,
+      "note": "滑走不可"
+    },
+    {
+      "name": "やまばと",
+      "status": "×",
+      "update": null,
+      "note": "滑走不可"
+    },
+    {
+      "name": "クワッド",
+      "status": "×",
+      "update": null,
+      "note": "滑走不可"
+    },
+    {
+      "name": "頂（イタダキ）",
+      "status": "×",
+      "update": null,
+      "note": "滑走不可"
+    },
+    {
+      "name": "ヤッホー",
+      "status": "×",
+      "update": null,
+      "note": "滑走不可"
+    },
+    {
+      "name": "クワッドツリーラン",
+      "status": "×",
+      "update": null,
+      "note": "滑走不可"
+    },
+    {
+      "name": "ガッシュタイナー",
+      "status": "×",
+      "update": null,
+      "note": "滑走不可"
+    },
+    {
+      "name": "サイドツリー",
+      "status": "×",
+      "update": null,
+      "note": "滑走不可"
+    },
+    {
+      "name": "アルペンダイナミック",
+      "status": "×",
+      "update": null,
+      "note": "滑走不可"
+    },
+    {
+      "name": "ハッピーゲレンデ",
+      "status": "×",
+      "update": null,
+      "note": "滑走不可"
+    },
+    {
+      "name": "ドリーム",
+      "status": "×",
+      "update": null,
+      "note": "滑走不可"
+    },
+    {
+      "name": "カナメゲレンデ",
+      "status": "×",
+      "update": null,
+      "note": "滑走不可"
+    },
+    {
+      "name": "アルペンブリック スノーパーク",
+      "status": "×",
+      "update": null,
+      "note": "滑走不可"
+    }
+  ],
+  "courseUrl": ["https://alpenblick-resort.com/ski"],
+  "lifts": [
+    {
+      "name": "しらかばカプセルペア",
+      "status": "×",
+      "update": null,
+      "note": "運行停止\nスキー場営業時間: 8:30～16:00"
+    },
+    {
+      "name": "カラマツペア",
+      "status": "×",
+      "update": null,
+      "note": "運行停止\nスキー場営業時間: 8:30～16:00"
+    },
+    {
+      "name": "池の平クワッド",
+      "status": "×",
+      "update": null,
+      "note": "運行停止\nスキー場営業時間: 8:30～16:00"
+    },
+    {
+      "name": "アルペンブリック第1ペア",
+      "status": "×",
+      "update": null,
+      "note": "運行停止\nスキー場営業時間: 8:30～16:00"
+    },
+    {
+      "name": "アルペンブリック第2ペア",
+      "status": "×",
+      "update": null,
+      "note": "運行停止\nスキー場営業時間: 8:30～16:00"
+    }
+  ],
+  "liftUrl": ["https://alpenblick-resort.com/ski"]
+}

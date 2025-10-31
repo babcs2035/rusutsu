@@ -1,0 +1,19 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/438255238",
+        "name": "ロマンス"
+      },
+      "geometry": {
+        "coordinates": [
+          [140.8025352, 39.9787731],
+          [140.8139721, 39.9768203]
+        ],
+        "type": "LineString"
+      }
+    }
+  ]
+}

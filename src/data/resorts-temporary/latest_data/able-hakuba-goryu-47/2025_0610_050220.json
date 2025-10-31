@@ -1,0 +1,383 @@
+{
+  "resortName": "able-hakuba-goryu-47",
+  "time": "2025/6/10 5:02:20",
+  "comment": "最新のお知らせは<a href=\"https://www.hakubaescal.com/winter/information/\">こちら</a>から。",
+  "commentUrl": ["https://www.hakubaescal.com/winter/information/"],
+  "weather": {},
+  "weatherUrl": [
+    "https://www.hakubavalley.com/weather/detail_goryu/",
+    "https://www.hakubavalley.com/weather/detail_hakuba47/"
+  ],
+  "courses": [
+    {
+      "name": "パノラマ",
+      "status": "×",
+      "update": "05/19 14:13",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "グランプリ",
+      "status": "×",
+      "update": "05/19 14:13",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "スーパー",
+      "status": "×",
+      "update": "05/19 14:13",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "テクニカル",
+      "status": "×",
+      "update": "05/19 14:13",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "チャンピオンダイナミック",
+      "status": "×",
+      "update": "05/19 14:13",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "チャンピオンエキスパート",
+      "status": "×",
+      "update": "05/19 14:13",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "ウッディー",
+      "status": "×",
+      "update": "05/19 14:13",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "とおみゲレンデ下部",
+      "status": "×",
+      "update": "05/19 14:13",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "とおみゲレンデ上部",
+      "status": "×",
+      "update": "05/19 14:13",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "非圧雪ツリーエリア",
+      "status": "×",
+      "update": "05/19 14:13",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "ソフトクリーム",
+      "status": "×",
+      "update": "06/10 04:07",
+      "note": ""
+    },
+    {
+      "name": "メリーランド",
+      "status": "×",
+      "update": "06/10 04:07",
+      "note": ""
+    },
+    {
+      "name": "パウダースノー",
+      "status": "×",
+      "update": "06/10 04:07",
+      "note": ""
+    },
+    {
+      "name": "DISCOVERY SPORT",
+      "status": "×",
+      "update": "06/10 04:07",
+      "note": ""
+    },
+    {
+      "name": "サニーウェイ",
+      "status": "×",
+      "update": "06/10 04:07",
+      "note": ""
+    },
+    {
+      "name": "DEFENDER",
+      "status": "×",
+      "update": "06/10 04:07",
+      "note": ""
+    },
+    {
+      "name": "スノーダイビング",
+      "status": "×",
+      "update": "06/10 04:07",
+      "note": ""
+    },
+    {
+      "name": "アドベンチャー",
+      "status": "×",
+      "update": "06/10 04:07",
+      "note": ""
+    },
+    {
+      "name": "DISCOVERY",
+      "status": "×",
+      "update": "06/10 04:07",
+      "note": ""
+    },
+    {
+      "name": "デビューエリア",
+      "status": "×",
+      "update": "06/10 04:07",
+      "note": ""
+    },
+    {
+      "name": "フレンドリーパーク",
+      "status": "×",
+      "update": "06/10 04:07",
+      "note": ""
+    },
+    {
+      "name": "アドベンチャーツリーラン",
+      "status": "×",
+      "update": "06/10 04:07",
+      "note": ""
+    },
+    {
+      "name": "ステップアップテレイン",
+      "status": "×",
+      "update": "06/10 04:07",
+      "note": ""
+    },
+    {
+      "name": "アクティビティエリア",
+      "status": "×",
+      "update": "06/10 04:07",
+      "note": ""
+    },
+    {
+      "name": "Hakuba47 ルート1上部",
+      "status": "×",
+      "update": "05/19 14:14",
+      "note": "今シーズンは終了いたしました。"
+    },
+    {
+      "name": "Hakuba47 ルート1中部",
+      "status": "×",
+      "update": "05/19 14:14",
+      "note": "今シーズンは終了いたしました。"
+    },
+    {
+      "name": "Hakuba47 ルート1下部",
+      "status": "×",
+      "update": "05/19 14:14",
+      "note": "今シーズンは終了いたしました。"
+    },
+    {
+      "name": "Hakuba47 ルート2",
+      "status": "×",
+      "update": "05/19 14:14",
+      "note": "今シーズンは終了いたしました。"
+    },
+    {
+      "name": "Hakuba47 ルート3",
+      "status": "×",
+      "update": "05/19 14:14",
+      "note": "今シーズンは終了いたしました。"
+    },
+    {
+      "name": "Hakuba47 ルート4",
+      "status": "×",
+      "update": "05/19 14:14",
+      "note": "今シーズンは終了いたしました。"
+    },
+    {
+      "name": "Hakuba47 ルート5",
+      "status": "×",
+      "update": "05/19 14:14",
+      "note": "今シーズンは終了いたしました。"
+    },
+    {
+      "name": "Hakuba47 ルート6",
+      "status": "×",
+      "update": "05/19 14:14",
+      "note": "今シーズンは終了いたしました。"
+    },
+    {
+      "name": "Hakuba47 ルート7上部",
+      "status": "×",
+      "update": "05/19 14:14",
+      "note": "今シーズンは終了いたしました。"
+    },
+    {
+      "name": "Hakuba47 ルート7下部",
+      "status": "×",
+      "update": "05/19 14:14",
+      "note": "今シーズンは終了いたしました。"
+    },
+    {
+      "name": "Hakuba47 ルート8上部",
+      "status": "×",
+      "update": "05/19 14:14",
+      "note": "今シーズンは終了いたしました。"
+    },
+    {
+      "name": "Hakuba47 ルート8下部",
+      "status": "×",
+      "update": "05/19 14:14",
+      "note": "今シーズンは終了いたしました。"
+    },
+    {
+      "name": "フリーダム",
+      "status": "×",
+      "update": "05/19 14:14",
+      "note": "今シーズンは終了いたしました"
+    },
+    {
+      "name": "Tree Riding Zone　かもしかエリア（上部）",
+      "status": "×",
+      "update": "05/19 14:14",
+      "note": "今シーズンは終了しました"
+    },
+    {
+      "name": "Tree Riding Zone　おさるエリア（下部）",
+      "status": "×",
+      "update": "05/19 14:14",
+      "note": "今シーズンは終了しました"
+    }
+  ],
+  "courseUrl": ["https://www.hakubaescal.com/winter/gelande/animationmap/"],
+  "lifts": [
+    {
+      "name": "五竜テレキャビン",
+      "status": "×",
+      "update": "05/19 14:13",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "アルプス第1ペア",
+      "status": "×",
+      "update": "05/19 14:13",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "アルプス第3ペア",
+      "status": "×",
+      "update": "05/19 14:13",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "アルプス第2ペア",
+      "status": "×",
+      "update": "05/19 14:13",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "アルプス第4ペア",
+      "status": "×",
+      "update": "05/19 14:13",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "とおみスカイフォー",
+      "status": "×",
+      "update": "05/19 14:13",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "とおみスカイフォー（早朝営業時）",
+      "status": "×",
+      "update": "05/19 14:13",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "とおみスカイフォー（ナイター営業時）",
+      "status": "×",
+      "update": "05/19 14:13",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "とおみ第1ペア",
+      "status": "×",
+      "update": "05/19 14:13",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "とおみ第2ペア",
+      "status": "×",
+      "update": "05/19 14:13",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "とおみ第2ペア（ナイター営業時）",
+      "status": "×",
+      "update": "05/19 14:13",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "ミルキーフォー",
+      "status": "×",
+      "update": "06/10 04:07",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "いいもり第1高速ペア",
+      "status": "×",
+      "update": "06/10 04:07",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "いいもり第6ペアA",
+      "status": "×",
+      "update": "06/10 04:07",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "いいもり第6ペアB",
+      "status": "×",
+      "update": "06/10 04:07",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "コスモフォー",
+      "status": "×",
+      "update": "06/10 04:07",
+      "note": "2024-25シーズン終了"
+    },
+    {
+      "name": "Hakuba47 Line-8",
+      "status": "×",
+      "update": "05/19 14:14",
+      "note": "今シーズンは終了しました。"
+    },
+    {
+      "name": "Hakuba47 Line-A",
+      "status": "×",
+      "update": "05/19 14:14",
+      "note": "今シーズンは終了しました。"
+    },
+    {
+      "name": "Hakuba47 Line-B",
+      "status": "×",
+      "update": "05/19 14:14",
+      "note": "今シーズンは終了しました。"
+    },
+    {
+      "name": "Hakuba47 Line-C",
+      "status": "×",
+      "update": "05/19 14:14",
+      "note": "今シーズンは終了しました。"
+    },
+    {
+      "name": "ペアLine-D",
+      "status": "×",
+      "update": "05/19 14:14",
+      "note": "今シーズンは終了しました。"
+    },
+    {
+      "name": "Hakuba47 Line-E",
+      "status": "×",
+      "update": "05/19 14:14",
+      "note": "今シーズンは終了しました。"
+    }
+  ],
+  "liftUrl": ["https://www.hakubaescal.com/winter/gelande/animationmap/"]
+}

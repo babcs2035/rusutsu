@@ -1,0 +1,1392 @@
+{
+  "resortName": "okutadami-maruyama",
+  "time": "2025/5/3 10:49:35",
+  "comment": "<span class=\" d-large_font\"><span class=\" d-bold\">[ ゲレンデ情報 ]</span>　<span class=\" d-small_font\">5/3 7:30更新</span></span><br>山頂丸山ゲレンデのポールバーンはレッスンの為規制させていただきます。<br>4/29(火)～5/6(火)は特定日（休日扱い）のため「シニアデー」は除外日となります。<br>※5/5(月)は「スキーこどもの日」！小学生はリフト1日券が無料です。<br>※5/6(火)は「お客様感謝デー」！⇒<a href=\"http://www.okutadami.co.jp/ski/SKIRESORT_NEWS/2024-12-312.html\">詳しくはこちら</a><br>※カモシカEコースは雪崩の危険性がある為、当面の間クローズいたします。<br>【奥只見シルバーライン通行可能時間】<br>●5/4(日)まで⇒<span class=\" d-underline\">終日通行可能</span><br>●5/5(月)～当面の間⇒<span class=\" d-underline\">3:00～20:00まで</span>",
+  "weather": {
+    "中腹": {
+      "time": "5/3 7:30更新",
+      "weather": "曇り",
+      "temperature": 5,
+      "snowDepth": 260,
+      "snowfall": 0,
+      "condition": null,
+      "windSpeed": null
+    }
+  },
+  "courses": [
+    {
+      "name": "丸山ゲレンデ",
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "カモシカA",
+      "status": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "カモシカB",
+      "status": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "カモシカC",
+      "status": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "カモシカD",
+      "status": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "カモシカE",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "カモシカA",
+      "status": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "カモシカB",
+      "status": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "カモシカC",
+      "status": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "カモシカA",
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ブナ平A",
+      "status": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ブナ平B",
+      "status": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ブナ平A",
+      "status": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ブナ平B",
+      "status": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": null,
+      "status": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ブナ平A",
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "八崎ゲレンデ",
+      "status": "八崎ゲレンデ",
+      "time": null,
+      "note": null
+    }
+  ],
+  "lifts": [
+    {
+      "name": "山頂ペア",
+      "status": null,
+      "note": "【平日】8:30～16:00"
+    },
+    {
+      "name": "第1ペアA線",
+      "status": null,
+      "note": "【平日】8:30～16:30"
+    },
+    {
+      "name": "第1ペアB線",
+      "status": null,
+      "note": "【平日】8:30～16:30"
+    },
+    {
+      "name": "第2ペアA線",
+      "status": null,
+      "note": "【平日】8:30～16:30"
+    },
+    {
+      "name": "第2ペアB線",
+      "status": null,
+      "note": "【平日】8:30～16:30"
+    },
+    {
+      "name": "山頂ペア",
+      "status": null,
+      "note": "【平日】8:30～16:00　【土日祝日・特定日】8:00～16:00"
+    },
+    {
+      "name": "第1ペアA線",
+      "status": null,
+      "note": "【平日】8:30～16:30　【土日祝日・特定日】8:00～16:30"
+    },
+    {
+      "name": "第1ペアB線",
+      "status": null,
+      "note": "【平日】8:30～16:30　【土日祝日・特定日】8:00～16:30"
+    },
+    {
+      "name": "第2ペアA線",
+      "status": null,
+      "note": "【平日】8:30～16:30　【土日祝日・特定日】8:00～16:30"
+    },
+    {
+      "name": "第2ペアB線",
+      "status": null,
+      "note": "【平日】8:30～16:30　【土日祝日・特定日】8:00～16:30"
+    },
+    {
+      "name": "山頂ペア",
+      "status": null,
+      "note": "【平日】8:30～16:00"
+    },
+    {
+      "name": "第1ペアA線",
+      "status": null,
+      "note": "【平日】8:30～16:30"
+    },
+    {
+      "name": "第1ペアB線",
+      "status": null,
+      "note": "【平日】8:30～16:30"
+    },
+    {
+      "name": "第2ペアA線",
+      "status": null,
+      "note": "【平日】8:30～16:30"
+    },
+    {
+      "name": "第2ペアB線",
+      "status": null,
+      "note": "【平日】8:30～16:30"
+    },
+    {
+      "name": "山頂ペア",
+      "status": null,
+      "note": "【平日】8:30～16:00　【土日祝日・特定日】8:00～16:00"
+    },
+    {
+      "name": "第1ペアA線",
+      "status": null,
+      "note": "【平日】8:30～16:30　【土日祝日・特定日】8:00～16:30"
+    },
+    {
+      "name": "第1ペアB線",
+      "status": null,
+      "note": "【平日】8:30～16:30　【土日祝日・特定日】8:00～16:30"
+    },
+    {
+      "name": "第2ペアA線",
+      "status": null,
+      "note": "【平日】8:30～16:30　【土日祝日・特定日】8:00～16:30"
+    },
+    {
+      "name": "第2ペアB線",
+      "status": null,
+      "note": "【平日】8:30～16:30　【土日祝日・特定日】8:00～16:30"
+    }
+  ]
+}

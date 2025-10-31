@@ -1,0 +1,171 @@
+{
+  "resortName": "gunma-minakami-houdaigi",
+  "time": "2025/5/26 0:53:57",
+  "comment": [
+    "<p>今シーズンの営業は３月３０日（日）をもちまして終了いたしました。<br>雪にも恵まれオープン日から営業できたのは５シーズンぶりでした。<br>雪にも恵まれましたが、何より沢山のお客様に来場いただきましたこと<br>スタッフ一同、心より感謝申し上げます。<br>来シーズンも宜しくお願いいたします。<br><br>尚、グリーンシーズンの営業開始は４月２６日（土）からになります。<br>是非ご予約ください。<br>ご予約は<strong><a href=\"https://www.nap-camp.com/gunma/10786?ref_host=widget\">こちら</a></strong></p>"
+  ],
+  "weather": {
+    "山頂": {
+      "time": "2025年3月30日(日)16:45更新",
+      "weather": "曇り",
+      "temperature": -3,
+      "snowDepth": 180,
+      "snowfall": 0,
+      "condition": null,
+      "windSpeed": null
+    }
+  },
+  "courses": [
+    {
+      "name": "① 白樺ゲレンデ",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "② 第2連絡",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "③ 第1連絡",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "④ 第2東",
+      "status": "○",
+      "time": null,
+      "note": "全面滑走可"
+    },
+    {
+      "name": "⑤ 第2西連絡",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "メインパーク",
+      "status": "○",
+      "time": null,
+      "note": "全面滑走可"
+    },
+    {
+      "name": "⑦ ファミリーゲレンデ",
+      "status": "○",
+      "time": null,
+      "note": "全面滑走可"
+    },
+    {
+      "name": "ミニパーク",
+      "status": "○",
+      "time": null,
+      "note": "全面滑走可"
+    },
+    {
+      "name": "⑥ スラローム",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "⑫ イーグル",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "⑬ ダウンヒル",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "⑭ パラダイス",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "⑮ 第5西",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "⑯ パノラマ",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "連続ウェーブ",
+      "status": "○",
+      "time": null,
+      "note": "全面滑走可"
+    },
+    {
+      "name": "⑧ たんぽぽ",
+      "status": "○",
+      "time": null,
+      "note": "全面滑走可"
+    },
+    {
+      "name": "⑩ 成平",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "⑨ 第9",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "⑪ 第10",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    }
+  ],
+  "lifts": [
+    {
+      "name": "第1ペア",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "第2ペア",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "第6ペア",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "第7ペア",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "第8クワッド",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "第9クワッド",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "スノーエスカレーター",
+      "status": "×",
+      "note": ""
+    }
+  ]
+}

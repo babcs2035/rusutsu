@@ -1,0 +1,93 @@
+{
+  "resortName": "norn-minakami",
+  "time": "2025/8/29 0:30:09",
+  "comment": "2024-2025シーズン終了のご案内\n3月23日(日)を持ちまして、今シーズンのスキー場営業を終了とさせていただきます。\n30周年の節目年となりましたが、今シーズンは降雪も多く最後まで全コース滑走可能でのクローズとなりました\n数多くのお客様にご来場いただきまして誠にありがとうございました。 来シーズンも「ノルンみなかみスキー場」を宜しくお願い申し上げます。\n\n最新のニュースは<a href=\"https://www.norn.co.jp/winter/category/news/norn/\">こちら</a>から",
+  "commentUrl": [
+    "https://www.norn.co.jp/winter/gerande/#todays",
+    "https://www.norn.co.jp/winter/category/news/norn/"
+  ],
+  "weather": {
+    "中腹": {
+      "update": "2025/08/26 - 16:30 更新",
+      "weather": "晴れ",
+      "temperature": null,
+      "snowDepth": 0,
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": null
+    }
+  },
+  "weatherUrl": ["https://www.norn.co.jp/winter/gerande/#todays"],
+  "courses": [
+    {
+      "name": "A",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "B",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "C",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "D",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "E",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "スノーパーク",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "スノーランド",
+      "status": "×",
+      "update": null,
+      "note": null
+    }
+  ],
+  "courseUrl": ["https://www.norn.co.jp/winter/gerande/#todays"],
+  "lifts": [
+    {
+      "name": "第1クワッド",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "第2ペア",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "第3クワッド",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "第4ペア",
+      "status": "×",
+      "update": null,
+      "note": null
+    }
+  ],
+  "liftUrl": ["https://www.norn.co.jp/winter/gerande/#todays"]
+}

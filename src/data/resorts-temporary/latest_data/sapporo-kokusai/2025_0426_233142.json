@@ -1,0 +1,82 @@
+{
+  "resortName": "sapporo-kokusai",
+  "time": "2025/4/26 23:31:42",
+  "comment": null,
+  "weather": {
+    "山頂": {
+      "time": "2025年04月26日17時 現在",
+      "weather": "くもり",
+      "temperature": 5,
+      "snowDepth": 210,
+      "snowfall": 0,
+      "quality": "ザラメ",
+      "windSpeed": 6
+    }
+  },
+  "course": [
+    {
+      "name": "林間",
+      "open": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "メルヘン",
+      "open": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ウッディ",
+      "open": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "スイング",
+      "open": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ファミリー",
+      "open": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "エコー",
+      "open": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ダウンヒル",
+      "open": "○",
+      "time": null,
+      "note": null
+    }
+  ],
+  "lifts": [
+    {
+      "name": "スカイキャビン８",
+      "open": "○",
+      "note": "運行時間 9:00～15:30"
+    },
+    {
+      "name": "メルヘンクワッド",
+      "open": "○",
+      "note": "運行時間 9:00～16:00"
+    },
+    {
+      "name": "エコークワッド",
+      "open": "○",
+      "note": "運行時間 9:10～15:45"
+    },
+    {
+      "name": "ウッディーペア",
+      "open": "×",
+      "note": "運休"
+    }
+  ]
+}

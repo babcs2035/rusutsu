@@ -1,0 +1,156 @@
+{
+  "resortName": "ikenotaira-onsen-alpen-blick",
+  "time": "2025/6/17 9:04:03",
+  "comment": null,
+  "commentUrl": [""],
+  "weather": {
+    "中腹": {
+      "update": "最終更新：2025.06.14（土）19:38:39",
+      "weather": "雨",
+      "temperature": "\n-",
+      "snowDepth": "\n-",
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": null
+    }
+  },
+  "weatherUrl": [""],
+  "courses": [
+    {
+      "name": "",
+      "status": null,
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "status": null,
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "status": null,
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "status": null,
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "status": null,
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "status": null,
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "status": null,
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "status": null,
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "status": null,
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "status": null,
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "status": null,
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "status": null,
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "status": null,
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "status": null,
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "status": null,
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "status": null,
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "status": null,
+      "update": null,
+      "note": ""
+    }
+  ],
+  "courseUrl": [""],
+  "lifts": [
+    {
+      "name": "",
+      "status": null,
+      "update": null,
+      "note": "\nスキー場営業時間: 8:30～16:00"
+    },
+    {
+      "name": "",
+      "status": null,
+      "update": null,
+      "note": "\nスキー場営業時間: 8:30～16:00"
+    },
+    {
+      "name": "",
+      "status": null,
+      "update": null,
+      "note": "\nスキー場営業時間: 8:30～16:00"
+    },
+    {
+      "name": "",
+      "status": null,
+      "update": null,
+      "note": "\nスキー場営業時間: 8:30～16:00"
+    },
+    {
+      "name": "",
+      "status": null,
+      "update": null,
+      "note": "\nスキー場営業時間: 8:30～16:00"
+    }
+  ],
+  "liftUrl": [""]
+}

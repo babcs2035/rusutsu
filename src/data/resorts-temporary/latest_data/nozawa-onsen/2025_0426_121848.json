@@ -1,0 +1,421 @@
+{
+  "resortName": "nozawa-onsen",
+  "time": "2025/4/26 12:18:48",
+  "comment": "スキー場からのお知らせ\n　　　　　　　　　★　春　山　ス　キ　ー　期　間　★\n\n【滑走可能ゲレンデ】\n・やまびこA・B・C・D・Eコース　\n・小毛無ゲレンデ\n・上ノ平ゲレンデ\n・パラダイスゲレンデ\n※26日(土)～27日(日)イベント開催の為、やまびこBコース終日閉鎖となります。\n【運行リフト】(4/26～5/6)\n・長坂ゴンドラリフト　　8:10～15:00(下り15:30)\n・やまびこフォー　　　　8:25～15:10\n・やまびこ第2フォー　　 8:20～15:20\n・スカイライン連絡ペア　8:20～15:20\n・上ノ平フォー　　　　　8:25～15:20\n・パラダイスフォー　　　8:25～15:10\n☆やまびこスノーパークOPEN！！\n☆上ノ平クロスカントリーコース(5㎞)　OPEN！！ 8:30~15:00\n\n下山コースの滑走は4月11日(金)をもちまして閉鎖となりました。\n下山の際は長坂ゴンドラをご利用下さい。\nよくあるご質問",
+  "weather": {
+    "やまびこエリア\n標高：1,407m": {
+      "time": "",
+      "weather": "晴れ",
+      "temperature": "10",
+      "snowDepth": "150",
+      "snowfall": "",
+      "quality": "ざらめ",
+      "windSpeed": ""
+    },
+    "上ノ平エリア\n標高：1,230m": {
+      "time": "",
+      "weather": "晴れ",
+      "temperature": "12",
+      "snowDepth": "140",
+      "snowfall": "",
+      "quality": "ざらめ",
+      "windSpeed": ""
+    },
+    "日影エリア\n標高：660m": {
+      "time": "",
+      "weather": "",
+      "temperature": "",
+      "snowDepth": "",
+      "snowfall": "",
+      "quality": "-",
+      "windSpeed": ""
+    },
+    "長坂エリア\n標高：616m": {
+      "time": "",
+      "weather": "",
+      "temperature": "",
+      "snowDepth": "",
+      "snowfall": "",
+      "quality": "-",
+      "windSpeed": ""
+    },
+    "柄沢エリア\n標高：563m": {
+      "time": "",
+      "weather": "",
+      "temperature": "",
+      "snowDepth": "",
+      "snowfall": "",
+      "quality": "-",
+      "windSpeed": ""
+    }
+  },
+  "course": [
+    {
+      "name": "やまびこゲレンデA",
+      "open": "〇",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "やまびこゲレンデB",
+      "open": "△",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "やまびこゲレンデC",
+      "open": "〇",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "やまびこゲレンデD",
+      "open": "〇",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "やまびこゲレンデE",
+      "open": "〇",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "小毛無ゲレンデA",
+      "open": "〇",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "小毛無ゲレンデB",
+      "open": "〇",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "上ノ平ゲレンデ",
+      "open": "〇",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "上ノ平ゲレンデファミリーレーン",
+      "open": "〇",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "パラダイスゲレンデ",
+      "open": "〇",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "湯の峰ゲレンデ",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "水無ゲレンデA",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "水無ゲレンデB",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ブナ林",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "シュナイダー",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "チャレンジ",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "チャレンジ39度のカベ",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ユートピアA",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ユートピアB",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "林間",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "牛首",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "黒鞍",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "カンダハー西",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "カンダハー東",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "スカイライン",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "グランプリ",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ジャンピング",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "日影ゲレンデA",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "日影ゲレンデB",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "日影の壁",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "伊勢宮ゲレンデ",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "長坂ゲレンデ",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "向林",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "柄沢ゲレンデ",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "はちまん",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "林間ショートカット",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "長坂連絡",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "クマタカ",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "キツネ",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "柄沢連絡",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "カモシカ",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "タヌキ",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ウサギ",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "スノーパーク",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ハーフパイプ",
+      "open": "×",
+      "time": null,
+      "note": null
+    }
+  ],
+  "lifts": [
+    {
+      "name": "長坂ゴンドラ",
+      "open": "〇",
+      "note": "8:10～15:00(下り線15:30)"
+    },
+    {
+      "name": "日影ゴンドラ",
+      "open": "×",
+      "note": "今シーズン\n営業終了"
+    },
+    {
+      "name": "やまびこフォー",
+      "open": "〇",
+      "note": "8:25～15:10"
+    },
+    {
+      "name": "やまびこ第2フォー",
+      "open": "〇",
+      "note": "8:20～15:20"
+    },
+    {
+      "name": "スカイライン連絡ペア",
+      "open": "〇",
+      "note": "8:20～15:20"
+    },
+    {
+      "name": "上ノ平フォー",
+      "open": "〇",
+      "note": "8:25～15:20"
+    },
+    {
+      "name": "パラダイスフォー",
+      "open": "〇",
+      "note": "8:25～15:10"
+    },
+    {
+      "name": "湯の峰ペア",
+      "open": "×",
+      "note": "休止"
+    },
+    {
+      "name": "水無トリプル",
+      "open": "×",
+      "note": "休止"
+    },
+    {
+      "name": "チャレンジペア",
+      "open": "×",
+      "note": "今シーズン\n営業終了"
+    },
+    {
+      "name": "ユートピアペア",
+      "open": "×",
+      "note": "今シーズン\n営業終了"
+    },
+    {
+      "name": "カンダハーペア",
+      "open": "×",
+      "note": "今シーズン\n営業終了"
+    },
+    {
+      "name": "日影フォーリフト",
+      "open": "×",
+      "note": "今シーズン\n営業終了"
+    },
+    {
+      "name": "遊ロード",
+      "open": "×",
+      "note": "今シーズン\n営業終了"
+    },
+    {
+      "name": "日影トリプル",
+      "open": "×",
+      "note": "今シーズン\n営業終了"
+    },
+    {
+      "name": "長坂トリプル",
+      "open": "×",
+      "note": "今シーズン\n営業終了"
+    },
+    {
+      "name": "長坂フォー",
+      "open": "×",
+      "note": "今シーズン\n営業終了"
+    },
+    {
+      "name": "長坂ゴンドラ連絡ペア",
+      "open": "×",
+      "note": "今シーズン\n営業終了"
+    },
+    {
+      "name": "柄沢ペア",
+      "open": "×",
+      "note": "休止"
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "resortName": "snow-cruise-onze",
+  "time": "2025/7/10 2:08:46",
+  "comment": "2024-2025シーズン3月23日(日)をもってスキー場の営業を終了致しました。また来シーズンもスタッフ一同お待ちしております。\n\n<a href=\"https://onze.jp/category/contents/\">最新ニュースはこちらから</a>",
+  "commentUrl": [""],
+  "weather": {
+    "中腹": {
+      "update": "",
+      "weather": "",
+      "temperature": null,
+      "snowDepth": null,
+      "snowfall": null,
+      "condition": "**",
+      "windSpeed": null
+    }
+  },
+  "weatherUrl": [""],
+  "courses": [
+    {
+      "name": "サンシャイン",
+      "status": "×",
+      "update": "",
+      "note": null
+    },
+    {
+      "name": "パノラマ",
+      "status": "×",
+      "update": "",
+      "note": null
+    },
+    {
+      "name": "フォレスト",
+      "status": "×",
+      "update": "",
+      "note": null
+    },
+    {
+      "name": "ファミリー",
+      "status": "×",
+      "update": "",
+      "note": null
+    },
+    {
+      "name": "ディア",
+      "status": "×",
+      "update": "",
+      "note": null
+    },
+    {
+      "name": "ツインズ",
+      "status": "×",
+      "update": "",
+      "note": null
+    },
+    {
+      "name": "ダウンヒル",
+      "status": "×",
+      "update": "",
+      "note": null
+    },
+    {
+      "name": "ダイビング",
+      "status": "×",
+      "update": "",
+      "note": null
+    }
+  ],
+  "courseUrl": [""],
+  "lifts": [
+    {
+      "name": "パノラマクワッド",
+      "status": "×",
+      "update": "",
+      "note": "9時00分~22時45分"
+    },
+    {
+      "name": "サンシャインペア",
+      "status": "×",
+      "update": "",
+      "note": "10時00分~15時45分"
+    }
+  ],
+  "liftUrl": [""]
+}

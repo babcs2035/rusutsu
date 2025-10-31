@@ -1,0 +1,19 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/710616457",
+        "name": "ロマントピアペア"
+      },
+      "geometry": {
+        "coordinates": [
+          [140.3903157, 40.57527447478722],
+          [140.39190510249557, 40.5724924883505]
+        ],
+        "type": "LineString"
+      }
+    }
+  ]
+}

@@ -1,0 +1,189 @@
+{
+  "resortName": "pallcall-tsumagoi-resort",
+  "time": "2025/6/13 23:36:18",
+  "comment": "パルコール嬬恋リゾート営業案内\n\n4/6をもちまして今シーズンの冬季営業を終了いたしました。\n次回の営業は下記のようになります。\n7月12日からの土日祝日営業\n\nゴンドラのみ　8：00～15：30\n日帰り温泉　6：00～16：30退出（受付　16：00まで）",
+  "commentUrl": [""],
+  "weather": {
+    "山頂": {
+      "update": "2025.5.9 12:14 更新",
+      "weather": null,
+      "temperature": null,
+      "snowDepth": null,
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": null
+    },
+    "山麓": {
+      "update": "2025.5.9 12:14 更新",
+      "weather": null,
+      "temperature": null,
+      "snowDepth": null,
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": null
+    }
+  },
+  "weatherUrl": [""],
+  "courses": [
+    {
+      "name": "A-1",
+      "status": "×",
+      "update": "2025.5.9 12:14 更新",
+      "note": null
+    },
+    {
+      "name": "A-2",
+      "status": "×",
+      "update": "2025.5.9 12:14 更新",
+      "note": null
+    },
+    {
+      "name": "A-3",
+      "status": "×",
+      "update": "2025.5.9 12:14 更新",
+      "note": null
+    },
+    {
+      "name": "A-4",
+      "status": "×",
+      "update": "2025.5.9 12:14 更新",
+      "note": null
+    },
+    {
+      "name": "B-3",
+      "status": "×",
+      "update": "2025.5.9 12:14 更新",
+      "note": null
+    },
+    {
+      "name": "B-4",
+      "status": "×",
+      "update": "2025.5.9 12:14 更新",
+      "note": null
+    },
+    {
+      "name": "B-5",
+      "status": "×",
+      "update": "2025.5.9 12:14 更新",
+      "note": null
+    },
+    {
+      "name": "B-6",
+      "status": "×",
+      "update": "2025.5.9 12:14 更新",
+      "note": null
+    },
+    {
+      "name": "C-1",
+      "status": "×",
+      "update": "2025.5.9 12:14 更新",
+      "note": null
+    },
+    {
+      "name": "C-2",
+      "status": "×",
+      "update": "2025.5.9 12:14 更新",
+      "note": null
+    },
+    {
+      "name": "C-3",
+      "status": "×",
+      "update": "2025.5.9 12:14 更新",
+      "note": null
+    },
+    {
+      "name": "C-4",
+      "status": "×",
+      "update": "2025.5.9 12:14 更新",
+      "note": null
+    },
+    {
+      "name": "C-5",
+      "status": "×",
+      "update": "2025.5.9 12:14 更新",
+      "note": null
+    },
+    {
+      "name": "D-1",
+      "status": "×",
+      "update": "2025.5.9 12:14 更新",
+      "note": null
+    },
+    {
+      "name": "D-2",
+      "status": "×",
+      "update": "2025.5.9 12:14 更新",
+      "note": null
+    },
+    {
+      "name": "D-3",
+      "status": "×",
+      "update": "2025.5.9 12:14 更新",
+      "note": null
+    },
+    {
+      "name": "D-4",
+      "status": "×",
+      "update": "2025.5.9 12:14 更新",
+      "note": null
+    },
+    {
+      "name": "D-5",
+      "status": "×",
+      "update": "2025.5.9 12:14 更新",
+      "note": null
+    },
+    {
+      "name": "D-6",
+      "status": "×",
+      "update": "2025.5.9 12:14 更新",
+      "note": null
+    },
+    {
+      "name": "D-7",
+      "status": "×",
+      "update": "2025.5.9 12:14 更新",
+      "note": null
+    },
+    {
+      "name": "D-8",
+      "status": "×",
+      "update": "2025.5.9 12:14 更新",
+      "note": null
+    }
+  ],
+  "courseUrl": [""],
+  "lifts": [
+    {
+      "name": "運休",
+      "status": "×",
+      "update": "2025.5.9 12:14 更新",
+      "note": null
+    },
+    {
+      "name": "運休",
+      "status": "×",
+      "update": "2025.5.9 12:14 更新",
+      "note": null
+    },
+    {
+      "name": "運休",
+      "status": "×",
+      "update": "2025.5.9 12:14 更新",
+      "note": null
+    },
+    {
+      "name": "運休",
+      "status": "×",
+      "update": "2025.5.9 12:14 更新",
+      "note": null
+    },
+    {
+      "name": "運休",
+      "status": "×",
+      "update": "2025.5.9 12:14 更新",
+      "note": null
+    }
+  ],
+  "liftUrl": [""]
+}

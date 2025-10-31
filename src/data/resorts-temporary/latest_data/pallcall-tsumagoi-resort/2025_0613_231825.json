@@ -1,0 +1,189 @@
+{
+  "resortName": "pallcall-tsumagoi-resort",
+  "time": "2025/6/13 23:18:25",
+  "comment": "",
+  "commentUrl": [""],
+  "weather": {
+    "山頂": {
+      "update": "",
+      "weather": null,
+      "temperature": null,
+      "snowDepth": null,
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": null
+    },
+    "山麓": {
+      "update": "",
+      "weather": null,
+      "temperature": null,
+      "snowDepth": null,
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": null
+    }
+  },
+  "weatherUrl": [""],
+  "courses": [
+    {
+      "name": "A-1",
+      "status": "×",
+      "update": "",
+      "note": null
+    },
+    {
+      "name": "A-2",
+      "status": "×",
+      "update": "",
+      "note": null
+    },
+    {
+      "name": "A-3",
+      "status": "×",
+      "update": "",
+      "note": null
+    },
+    {
+      "name": "A-4",
+      "status": "×",
+      "update": "",
+      "note": null
+    },
+    {
+      "name": "B-3",
+      "status": "×",
+      "update": "",
+      "note": null
+    },
+    {
+      "name": "B-4",
+      "status": "×",
+      "update": "",
+      "note": null
+    },
+    {
+      "name": "B-5",
+      "status": "×",
+      "update": "",
+      "note": null
+    },
+    {
+      "name": "B-6",
+      "status": "×",
+      "update": "",
+      "note": null
+    },
+    {
+      "name": "C-1",
+      "status": "×",
+      "update": "",
+      "note": null
+    },
+    {
+      "name": "C-2",
+      "status": "×",
+      "update": "",
+      "note": null
+    },
+    {
+      "name": "C-3",
+      "status": "×",
+      "update": "",
+      "note": null
+    },
+    {
+      "name": "C-4",
+      "status": "×",
+      "update": "",
+      "note": null
+    },
+    {
+      "name": "C-5",
+      "status": "×",
+      "update": "",
+      "note": null
+    },
+    {
+      "name": "D-1",
+      "status": "×",
+      "update": "",
+      "note": null
+    },
+    {
+      "name": "D-2",
+      "status": "×",
+      "update": "",
+      "note": null
+    },
+    {
+      "name": "D-3",
+      "status": "×",
+      "update": "",
+      "note": null
+    },
+    {
+      "name": "D-4",
+      "status": "×",
+      "update": "",
+      "note": null
+    },
+    {
+      "name": "D-5",
+      "status": "×",
+      "update": "",
+      "note": null
+    },
+    {
+      "name": "D-6",
+      "status": "×",
+      "update": "",
+      "note": null
+    },
+    {
+      "name": "D-7",
+      "status": "×",
+      "update": "",
+      "note": null
+    },
+    {
+      "name": "D-8",
+      "status": "×",
+      "update": "",
+      "note": null
+    }
+  ],
+  "courseUrl": [""],
+  "lifts": [
+    {
+      "name": "",
+      "status": null,
+      "update": "",
+      "note": null
+    },
+    {
+      "name": "",
+      "status": null,
+      "update": "",
+      "note": null
+    },
+    {
+      "name": "",
+      "status": null,
+      "update": "",
+      "note": null
+    },
+    {
+      "name": "",
+      "status": null,
+      "update": "",
+      "note": null
+    },
+    {
+      "name": "",
+      "status": null,
+      "update": "",
+      "note": null
+    }
+  ],
+  "liftUrl": [""]
+}

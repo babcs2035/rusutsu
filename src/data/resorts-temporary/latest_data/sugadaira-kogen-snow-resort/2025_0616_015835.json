@@ -1,0 +1,480 @@
+{
+  "resortName": "sugadaira-kogen-snow-resort",
+  "time": "2025/6/16 1:58:35",
+  "comment": "<コース規制情報>\n: \n太郎エリア: 2024ｰ2025シーズンの営業は終了しました。\n\n最新のお知らせは<a href=\"https://sugadaira-snowresort.com/news/\">こちら</a>から",
+  "commentUrl": [""],
+  "weather": {
+    "中腹": {
+      "update": null,
+      "weather": "晴れ",
+      "temperature": 12,
+      "snowDepth": 0,
+      "snowfall": 0,
+      "condition": null,
+      "windSpeed": null
+    }
+  },
+  "weatherUrl": [""],
+  "courses": [
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "太郎山・山頂連絡路",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "裏太郎うさぎ",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "裏太郎かもしか",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "裏太郎ファミリーウェスト",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "裏太郎ファミリーイースト",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "裏太郎シーハイル",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "裏太郎チャレンジ",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "天狗林間",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "天狗A",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "日の出",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "日の出林間",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "太郎上部",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "太郎下部",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "太郎ロング",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "太郎・日の出連絡路",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "シュワルツ",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "白金初級",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    }
+  ],
+  "courseUrl": [""],
+  "lifts": [
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "ステージ3",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "ステージ1",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "天狗クワッド",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "日の出ペア",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "グラン",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "マック",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "",
+      "status": "",
+      "update": null,
+      "note": null
+    }
+  ],
+  "liftUrl": [""]
+}

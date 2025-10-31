@@ -1,0 +1,82 @@
+{
+  "resortName": "kurobushi-kogen-snow-park-jangle-jungle",
+  "time": "2025/5/20 11:53:09",
+  "comment": "こんにちは！時折、小雪がちらついて風も無く、コンディションは最高です。きっと素晴らしい1日になるでしょう☆ペア東側に「ポコジャン」！ユーティリティなアイテム新登場！小さいキッカーですのでコッソリ練習したい方、ナイターでも飛べますよ♡ナイターは22:00まで！【イベント情報】1月26日「タントくんをさがせ！」詳しくはニュースをクリック★絶対お得★仙台駅からバス送迎特別チケット、レンタルパック券、ランチパック券、絶賛発売中！ 本日のお天気はウェザーニュース←こちらをクリック！",
+  "weather": {
+    "中腹": {
+      "time": "UPDATE:2025/01/22 11:34",
+      "weather": "晴れ",
+      "temperature": -2,
+      "snowDepth": 220,
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": 0
+    }
+  },
+  "courses": [
+    {
+      "name": "W1",
+      "status": "○",
+      "note": ""
+    },
+    {
+      "name": "W2",
+      "status": "○",
+      "note": ""
+    },
+    {
+      "name": "W3",
+      "status": "○",
+      "note": ""
+    },
+    {
+      "name": "E1",
+      "status": "○",
+      "note": ""
+    },
+    {
+      "name": "E2",
+      "status": "○",
+      "note": ""
+    }
+  ],
+  "lifts": [
+    {
+      "name": "JANGLE PAIR",
+      "status": "○",
+      "note": "8:30-22:00"
+    },
+    {
+      "name": "WEST EXPRESS",
+      "status": "○",
+      "note": "9:00-16:00"
+    },
+    {
+      "name": "EAST EXPRESS",
+      "status": "○",
+      "note": "9:00-16:00"
+    }
+  ],
+  "park": [
+    {
+      "name": "Jパーク",
+      "status": "○",
+      "note": "塩ビレール、電柱レール、キッカー"
+    },
+    {
+      "name": "ペア横パーク",
+      "status": "×",
+      "note": "カクレール、電柱レール"
+    },
+    {
+      "name": "ペア上パーク",
+      "status": "○",
+      "note": "キッカー"
+    },
+    {
+      "name": "クロスコース",
+      "status": "×",
+      "note": ""
+    }
+  ]
+}

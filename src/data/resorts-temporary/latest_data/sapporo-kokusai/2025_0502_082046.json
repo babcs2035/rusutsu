@@ -1,0 +1,82 @@
+{
+  "resortName": "sapporo-kokusai",
+  "time": "2025/5/2 8:20:46",
+  "comment": null,
+  "weather": {
+    "山頂": {
+      "time": "2025年05月02日07時 現在",
+      "weather": "晴れ",
+      "temperature": 8,
+      "snowDepth": 200,
+      "snowfall": 0,
+      "quality": "ザラメ",
+      "windSpeed": 13
+    }
+  },
+  "courses": [
+    {
+      "name": "林間",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "メルヘン",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ウッディ",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "スイング",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ファミリー",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "エコー",
+      "open": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ダウンヒル",
+      "open": "×",
+      "time": null,
+      "note": null
+    }
+  ],
+  "lifts": [
+    {
+      "name": "スカイキャビン８",
+      "open": "×",
+      "note": "運休"
+    },
+    {
+      "name": "メルヘンクワッド",
+      "open": "×",
+      "note": "運休"
+    },
+    {
+      "name": "エコークワッド",
+      "open": "×",
+      "note": "運休"
+    },
+    {
+      "name": "ウッディーペア",
+      "open": "×",
+      "note": "運休"
+    }
+  ]
+}

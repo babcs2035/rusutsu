@@ -1,0 +1,65 @@
+{
+  "resortName": "snow-park-yeti",
+  "time": "2025/10/27 14:22:50",
+  "comment": "(お知らせ)\n3日間、降り続いた雨によるコンディション悪化の為、\n本日10/27(月)と明日10/28(火)のナイター営業を中止\nさせていただきます。\nご迷惑をお掛けいたしますが、\nご理解のほどよろしくお願い致します。\n\n\n　【ゲレンデ整備】\n営業時間中のゲレンデ整備は行わず\n17:00まで滑走可能です。\n\n\n※ゲレンデ内、雪が薄い部分が一部ございます。\n今後、地面やマットが露出してしまう場合がございます。\nあらかじめご了承ください。\n\n\n\n\n2025-2026シーズン開幕!!\n誰よりも一早く Yeti で\nウィンターシーズンをお楽しみください。\n\n\n\n\n【ゲレンデ状況】はこちらから\nAゲレンデ　積雪量10~70cm、幅5-10m\n※一部コース幅が狭くなっている箇所がございます。\n　\n\n\n※ホームページ内、一部昨年の情報も含まれております",
+  "commentUrl": [""],
+  "weather": {
+    "中腹": {
+      "update": "",
+      "weather": "くもり時々あめ",
+      "temperature": 3,
+      "snowDepth": 10,
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": null
+    }
+  },
+  "weatherUrl": [""],
+  "courses": [
+    {
+      "name": "Aゲレンデ",
+      "status": "○",
+      "update": null,
+      "note": "積雪量10-70cm、幅5-10m　※ムービングベルト:終日運休"
+    },
+    {
+      "name": "Bゲレンデ",
+      "status": "×",
+      "update": null,
+      "note": "11月下旬open予定"
+    },
+    {
+      "name": "Cゲレンデ",
+      "status": "×",
+      "update": null,
+      "note": "1月上旬open予定"
+    },
+    {
+      "name": "Dゲレンデ",
+      "status": "×",
+      "update": null,
+      "note": "1月中旬open予定"
+    },
+    {
+      "name": "パーク",
+      "status": "×",
+      "update": null,
+      "note": "11月下旬open予定"
+    },
+    {
+      "name": "そり専用ゲレンデ",
+      "status": "×",
+      "update": null,
+      "note": "12月下旬open予定"
+    },
+    {
+      "name": "雪遊び広場",
+      "status": "×",
+      "update": null,
+      "note": "1月上旬予定"
+    }
+  ],
+  "courseUrl": [""],
+  "lifts": [],
+  "liftUrl": [""]
+}

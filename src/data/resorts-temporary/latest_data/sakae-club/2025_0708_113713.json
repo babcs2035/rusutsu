@@ -1,0 +1,100 @@
+{
+  "resortName": "sakae-club",
+  "time": "2025/7/8 11:37:13",
+  "comment": "(3/23　16:00更新)　2024/25シーズンの営業は終了いたしました。たくさんの皆様のご利用ありがとうございました。\n<a href = https://sakaeclub.securesite.jp/2025/>2025年 新着情報</a>\n<a href = https://sakaeclub.securesite.jp/2024/>2024年 新着情報</a>",
+  "commentUrl": [
+    "https://sakaeclub.securesite.jp/",
+    "https://sakaeclub.securesite.jp/2025/",
+    "https://sakaeclub.securesite.jp/2024/"
+  ],
+  "weather": {
+    "山麓": {
+      "update": "3/23　16:00",
+      "weather": "",
+      "temperature": null,
+      "snowDepth": 280,
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": null
+    }
+  },
+  "weatherUrl": ["https://sakaeclub.securesite.jp/"],
+  "courses": [
+    {
+      "name": "オリオン",
+      "status": "×",
+      "update": null,
+      "note": "ー"
+    },
+    {
+      "name": "いがぐり",
+      "status": "×",
+      "update": null,
+      "note": "ー"
+    },
+    {
+      "name": "しらかば",
+      "status": "×",
+      "update": null,
+      "note": "ー"
+    },
+    {
+      "name": "まむし",
+      "status": "×",
+      "update": null,
+      "note": "ー"
+    },
+    {
+      "name": "くまのす",
+      "status": "×",
+      "update": null,
+      "note": "ー"
+    },
+    {
+      "name": "おおわし",
+      "status": "×",
+      "update": null,
+      "note": "ー"
+    },
+    {
+      "name": "ファミリー",
+      "status": "×",
+      "update": null,
+      "note": "ー"
+    },
+    {
+      "name": "すぎのき",
+      "status": "×",
+      "update": null,
+      "note": "ー"
+    },
+    {
+      "name": "かもしか",
+      "status": "×",
+      "update": null,
+      "note": "ー"
+    }
+  ],
+  "courseUrl": ["https://sakaeclub.securesite.jp/"],
+  "lifts": [
+    {
+      "name": "第1",
+      "status": "×",
+      "update": null,
+      "note": "\nー"
+    },
+    {
+      "name": "第2",
+      "status": "×",
+      "update": null,
+      "note": "\nー"
+    },
+    {
+      "name": "第3",
+      "status": "×",
+      "update": null,
+      "note": "\nー"
+    }
+  ],
+  "liftUrl": ["https://sakaeclub.securesite.jp/"]
+}

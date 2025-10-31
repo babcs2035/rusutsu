@@ -1,0 +1,174 @@
+{
+  "resortName": "geto-kogen",
+  "time": "2025/5/12 0:56:08",
+  "comment": null,
+  "weather": {
+    "山頂": {
+      "time": "2025年05月06日【Tue】07:00更新",
+      "weather": null,
+      "temperature": null,
+      "snowDepth": 125,
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": null
+    },
+    "山麓": {
+      "time": "2025年05月06日【Tue】07:00更新",
+      "weather": "くもり/Cloudy",
+      "temperature": 7,
+      "snowDepth": 15,
+      "snowfall": 0,
+      "condition": "ザラ雪",
+      "windSpeed": 5.6
+    }
+  },
+  "courses": [
+    {
+      "name": "B2",
+      "status": "クローズ",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "C3",
+      "status": "クローズ",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "A1",
+      "status": "圧雪",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "A5",
+      "status": "圧雪",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "A2",
+      "status": "クローズ",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "A3",
+      "status": "クローズ",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "A4",
+      "status": "クローズ",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "A6上部",
+      "status": "クローズ",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "A6中部",
+      "status": "クローズ",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "A6下部",
+      "status": "クローズ",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "B1",
+      "status": "クローズ",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "B3下部",
+      "status": "クローズ",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "C1",
+      "status": "クローズ",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "C2",
+      "status": "クローズ",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "C4下部",
+      "status": "クローズ",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "C5",
+      "status": "クローズ",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "C4",
+      "status": "クローズ",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "C2上部",
+      "status": "クローズ",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "C2迂回",
+      "status": "クローズ",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "B3上部",
+      "status": "クローズ",
+      "time": null,
+      "note": null
+    }
+  ],
+  "lifts": [
+    {
+      "name": "第1ペア",
+      "status": "運休・終了",
+      "note": null
+    },
+    {
+      "name": "第2ペア",
+      "status": "運休・終了",
+      "note": null
+    },
+    {
+      "name": "第1ゴンドラ",
+      "status": "運休・終了",
+      "note": null
+    },
+    {
+      "name": "第2ゴンドラ",
+      "status": "運休・終了",
+      "note": null
+    },
+    {
+      "name": "クワッド",
+      "status": "運休・終了",
+      "note": null
+    }
+  ]
+}

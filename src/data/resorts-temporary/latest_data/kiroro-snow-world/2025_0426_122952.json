@@ -1,0 +1,223 @@
+{
+  "resortName": "kiroro-snow-world",
+  "time": "2025/4/26 12:29:52",
+  "comment": null,
+  "weather": {
+    "山頂": {
+      "time": "気象関係は毎朝8：00現在の情報",
+      "weather": "曇",
+      "temperature": 2,
+      "snowDepth": 230,
+      "snowfall": 0,
+      "quality": "圧雪(固)",
+      "windSpeed": 18
+    },
+    "山麓": {
+      "time": "気象関係は毎朝8：00現在の情報",
+      "weather": "晴れ",
+      "temperature": 4,
+      "snowDepth": 40,
+      "snowfall": 0,
+      "quality": "圧雪(柔)",
+      "windSpeed": 13
+    }
+  },
+  "course": [
+    {
+      "name": "朝里第1A",
+      "open": "close",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "朝里第1B",
+      "open": "close",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "余市第2A",
+      "open": "close",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "長峰第1",
+      "open": "open",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ファミリー",
+      "open": "open",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ゲートウェイ",
+      "open": "close",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "朝里ダイナミック",
+      "open": "close",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "朝里パノラマ",
+      "open": "close",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "余市第1A",
+      "open": "open",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "余市第1B",
+      "open": "open",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "センターA",
+      "open": "close",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "センターB",
+      "open": "close",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "長峰第2A",
+      "open": "open",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "長峰第2C",
+      "open": "open",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "パウダーライド",
+      "open": "close",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "朝里エキスパートA",
+      "open": "close",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "朝里エキスパートB",
+      "open": "close",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "朝里第2A",
+      "open": "close",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "朝里第2B",
+      "open": "close",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "朝里第2C",
+      "open": "close",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "余市第2B",
+      "open": "close",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "センターC",
+      "open": "close",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "長峰第2B",
+      "open": "open",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "センターリンク",
+      "open": "close",
+      "time": null,
+      "note": null
+    }
+  ],
+  "lifts": [
+    {
+      "name": "キロロゴンドラ",
+      "open": "close",
+      "note": "運休"
+    },
+    {
+      "name": "朝里第1",
+      "open": "close",
+      "note": "運休"
+    },
+    {
+      "name": "朝里第2エクスプレス",
+      "open": "close",
+      "note": "運休"
+    },
+    {
+      "name": "余市第1エクスプレス",
+      "open": "close",
+      "note": "運行中 9:00-15:30"
+    },
+    {
+      "name": "余市第2",
+      "open": "close",
+      "note": "運休"
+    },
+    {
+      "name": "センターエクスプレス",
+      "open": "close",
+      "note": "運休"
+    },
+    {
+      "name": "長峰第1エクスプレス",
+      "open": "close",
+      "note": "運行中 9:00-15:30"
+    },
+    {
+      "name": "長峰第2エクスプレス",
+      "open": "close",
+      "note": "減速運転 9:15-15:30"
+    },
+    {
+      "name": "ファミリー",
+      "open": "close",
+      "note": "運行中 9:00-15:30"
+    },
+    {
+      "name": "ゲートウェイエクスプレス",
+      "open": "close",
+      "note": "運行中 8:30-15:45"
+    }
+  ]
+}

@@ -1,0 +1,144 @@
+{
+  "resortName": "sapporo-bankei",
+  "time": "2025/5/27 18:16:33",
+  "comment": null,
+  "weather": {},
+  "courses": [
+    {
+      "name": "センターA",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "センターB",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "センターC",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "オレンジ",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "くるみ",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "どんぐり",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "きのこ",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "グリーンA",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "グリーンB",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "イーストA",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "イーストB",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "オレンジ連絡",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "スラロームバーン",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "モーグルバーン",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "モーグルパーク",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "ハーフパイプ",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "ウエストA",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "ウエスト林間",
+      "status": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "わくわくスノーランド",
+      "status": "×",
+      "time": null,
+      "note": ""
+    }
+  ],
+  "lifts": [
+    {
+      "name": "センタートリプル",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "オレンジペア",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "ウエストペア",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "イーストペア",
+      "status": "×",
+      "note": ""
+    }
+  ]
+}

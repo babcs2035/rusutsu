@@ -1,0 +1,18 @@
+{
+  "resortName": "gala-yuzawa",
+  "time": "2025/5/1 1:16:36",
+  "comment": "明日5月1日（木）は強風が見込まれるため終日営業休止となります。",
+  "weather": {
+    "中腹": {
+      "time": "2025.04.30 更新",
+      "weather": "晴れ",
+      "temperature": 3.4,
+      "snowDepth": 60,
+      "snowfall": null,
+      "condition": "圧雪",
+      "windSpeed": null
+    }
+  },
+  "courses": [],
+  "lifts": []
+}

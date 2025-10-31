@@ -1,0 +1,168 @@
+{
+  "resortName": "marunuma-kogen",
+  "time": "2025/4/27 10:42:44",
+  "comment": null,
+  "weather": {
+    "山頂": {
+      "time": "2025/4/27 10:00の予報",
+      "weather": "晴れ",
+      "temperature": 9.1,
+      "snowDepth": 120,
+      "snowfall": "",
+      "quality": "",
+      "windSpeed": 4.1
+    }
+  },
+  "course": [
+    {
+      "name": "しらね",
+      "open": "×",
+      "time": null,
+      "note": "※営業終了"
+    },
+    {
+      "name": "しらね急斜面",
+      "open": "×",
+      "time": null,
+      "note": "※営業終了"
+    },
+    {
+      "name": "からくら",
+      "open": "◯",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "シルバー",
+      "open": "◯",
+      "time": null,
+      "note": "※安全確認出来次第解放"
+    },
+    {
+      "name": "ローズ上部",
+      "open": "◯",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "ローズ迂回",
+      "open": "◯",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "ローズ下部（大会バーン）",
+      "open": "×",
+      "time": null,
+      "note": "※営業終了"
+    },
+    {
+      "name": "コバルト",
+      "open": "◯",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "グリーン",
+      "open": "◯",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "バイオレット",
+      "open": "◯",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "イエロー",
+      "open": "×",
+      "time": null,
+      "note": "※営業終了"
+    },
+    {
+      "name": "イエロー（ゴンドラ連絡路）",
+      "open": "◯",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "レッド",
+      "open": "×",
+      "time": null,
+      "note": "※営業終了"
+    },
+    {
+      "name": "オレンジ上部",
+      "open": "×",
+      "time": null,
+      "note": "※営業終了"
+    },
+    {
+      "name": "オレンジ下部",
+      "open": "×",
+      "time": null,
+      "note": "※営業終了"
+    },
+    {
+      "name": "ブルー",
+      "open": "×",
+      "time": null,
+      "note": "※営業終了"
+    },
+    {
+      "name": "シルバー連絡路",
+      "open": "◯",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "バイオレット連絡路",
+      "open": "×",
+      "time": null,
+      "note": null
+    }
+  ],
+  "lifts": [
+    {
+      "name": "中央ペア",
+      "open": "◯",
+      "note": "8:30-16:30"
+    },
+    {
+      "name": "第1ペア",
+      "open": "×",
+      "note": "※営業終了"
+    },
+    {
+      "name": "第2ペア",
+      "open": "×",
+      "note": "※営業終了"
+    },
+    {
+      "name": "第3ペア",
+      "open": "×",
+      "note": "8:30-16:00"
+    },
+    {
+      "name": "第4スーパーツイン",
+      "open": "×",
+      "note": "※営業終了"
+    },
+    {
+      "name": "第5スーパーツイン",
+      "open": "◯",
+      "note": "8:30-16:00"
+    },
+    {
+      "name": "第8ペア",
+      "open": "◯",
+      "note": "8:30-16:00"
+    },
+    {
+      "name": "日光白根山ロープウェイ",
+      "open": "◯",
+      "note": "8:30運行開始　上り最終15:30　下り最終16:00"
+    }
+  ]
+}

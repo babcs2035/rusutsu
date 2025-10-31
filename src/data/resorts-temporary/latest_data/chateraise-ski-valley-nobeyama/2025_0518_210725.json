@@ -1,0 +1,77 @@
+{
+  "resortName": "chateraise-ski-valley-nobeyama",
+  "time": "2025/5/18 21:07:25",
+  "comment": "本日、上級者専用コースのアルペンコースがOPEN致します！全面滑走可能となります！",
+  "weather": {
+    "山頂": {
+      "time": "更新日時: 2025年01月20日 07:10",
+      "weather": "くもり",
+      "temperature": -2,
+      "snowDepth": 55,
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": null
+    },
+    "山麓": {
+      "time": "更新日時: 2025年01月20日 07:10",
+      "weather": null,
+      "temperature": null,
+      "snowDepth": 55,
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": null
+    }
+  },
+  "courses": [
+    {
+      "name": "ホーン",
+      "status": "×",
+      "time": "更新日時: 2025年03月24日 09:33",
+      "note": null
+    },
+    {
+      "name": "バレー1",
+      "status": "×",
+      "time": "更新日時: 2025年03月24日 09:33",
+      "note": null
+    },
+    {
+      "name": "バレー2",
+      "status": "×",
+      "time": "更新日時: 2025年03月24日 09:33",
+      "note": null
+    },
+    {
+      "name": "バレー3",
+      "status": "×",
+      "time": "更新日時: 2025年03月24日 09:33",
+      "note": null
+    },
+    {
+      "name": "アルペン",
+      "status": "×",
+      "time": "更新日時: 2025年03月24日 09:33",
+      "note": null
+    }
+  ],
+  "lifts": [
+    {
+      "name": "ホーン",
+      "time": "更新日時: 2025年03月24日 09:33",
+      "status": "×",
+      "note": null
+    },
+    {
+      "name": "バレー",
+      "time": "更新日時: 2025年03月24日 09:33",
+      "status": "×",
+      "note": null
+    },
+    {
+      "name": "アルペン",
+      "time": "更新日時: 2025年03月24日 09:33",
+      "status": "×",
+      "note": null
+    }
+  ]
+}

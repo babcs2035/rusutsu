@@ -1,0 +1,75 @@
+{
+  "resortName": "lotte-arai-resort",
+  "time": "2025/5/11 15:17:56",
+  "comment": null,
+  "weather": {
+    "山頂": {
+      "time": "",
+      "weather": "曇りの後晴れ",
+      "temperature": 18.9,
+      "snowDepth": 166,
+      "snowfall": 0,
+      "condition": "Spring Snow",
+      "windSpeed": null
+    }
+  },
+  "courses": [
+    {
+      "name": "膳棚リフト",
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "小毛無リフト",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "新井ゴンドラ",
+      "status": null,
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "山麓第1リフト",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "山麓第2リフト",
+      "status": "×",
+      "time": null,
+      "note": null
+    }
+  ],
+  "lifts": [
+    {
+      "name": "膳棚",
+      "status": "○",
+      "note": ""
+    },
+    {
+      "name": "小毛無",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "新井ゴンドラ",
+      "status": "○",
+      "note": ""
+    },
+    {
+      "name": "山麓第1",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "山麓第2",
+      "status": "×",
+      "note": ""
+    }
+  ]
+}

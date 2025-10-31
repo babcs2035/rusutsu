@@ -1,0 +1,31 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "第1ペア"
+      },
+      "geometry": {
+        "coordinates": [
+          [142.34334203025315, 44.2656536398882],
+          [142.33683075179306, 44.264952248358355]
+        ],
+        "type": "LineString"
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "第2"
+      },
+      "geometry": {
+        "coordinates": [
+          [142.3416679501409, 44.26717079043115],
+          [142.33279350755583, 44.265603595141584]
+        ],
+        "type": "LineString"
+      }
+    }
+  ]
+}

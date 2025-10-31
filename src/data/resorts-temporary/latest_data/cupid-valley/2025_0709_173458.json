@@ -1,0 +1,62 @@
+{
+  "resortName": "cupid-valley",
+  "time": "2025/7/9 17:34:58",
+  "comment": "<a href=\"https://www.yukidaruma-kogen.com/winter/news-event-winter/\">最新ニュースはこちらから</a>",
+  "commentUrl": [
+    "https://www.yukidaruma-kogen.com/winter.html",
+    "https://www.yukidaruma-kogen.com/winter/news-event-winter/"
+  ],
+  "weather": {
+    "山頂": {
+      "update": null,
+      "weather": "",
+      "temperature": null,
+      "snowDepth": null,
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": null
+    },
+    "中腹": {
+      "update": null,
+      "weather": "",
+      "temperature": null,
+      "snowDepth": null,
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": null
+    },
+    "山麓": {
+      "update": null,
+      "weather": "",
+      "temperature": null,
+      "snowDepth": null,
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": null
+    }
+  },
+  "weatherUrl": ["https://www.yukidaruma-kogen.com/winter.html"],
+  "courses": [],
+  "courseUrl": [""],
+  "lifts": [
+    {
+      "name": "第1クワッド",
+      "status": "×",
+      "update": null,
+      "note": "- ~"
+    },
+    {
+      "name": "第2クワッド",
+      "status": "×",
+      "update": null,
+      "note": "休止中 ~"
+    },
+    {
+      "name": "第3ペア",
+      "status": "×",
+      "update": null,
+      "note": "- ~"
+    }
+  ],
+  "liftUrl": ["https://www.yukidaruma-kogen.com/winter.html"]
+}

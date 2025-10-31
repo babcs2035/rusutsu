@@ -1,0 +1,129 @@
+{
+  "resortName": "lotte-arai-resort",
+  "time": "2025/5/11 21:23:57",
+  "comment": "",
+  "weather": {
+    "山頂": {
+      "time": "",
+      "weather": "晴れ",
+      "temperature": null,
+      "snowDepth": null,
+      "snowfall": null,
+      "condition": "",
+      "windSpeed": null
+    }
+  },
+  "courses": [
+    {
+      "name": "ビーフリー",
+      "status": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "アンコール",
+      "status": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "レジェンダリー",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ベアバレー",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "妙高ロングラン",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "エキサイター",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "マムシガエシ",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "タテガミ",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "六本木ロード",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ディスカバリー",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ウマノセ",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "サンライズ",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ビレッジロード",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ポニー",
+      "status": "×",
+      "time": null,
+      "note": null
+    }
+  ],
+  "lifts": [
+    {
+      "name": "膳棚",
+      "status": "○",
+      "note": ""
+    },
+    {
+      "name": "小毛無",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "新井ゴンドラ",
+      "status": "○",
+      "note": ""
+    },
+    {
+      "name": "山麓第1",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "山麓第2",
+      "status": "×",
+      "note": ""
+    }
+  ]
+}

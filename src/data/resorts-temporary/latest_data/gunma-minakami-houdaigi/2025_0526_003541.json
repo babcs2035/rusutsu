@@ -1,0 +1,169 @@
+{
+  "resortName": "gunma-minakami-houdaigi",
+  "time": "2025/5/26 0:35:41",
+  "comment": null,
+  "weather": {
+    "山頂": {
+      "time": "2025年3月30日(日)16:45更新",
+      "weather": "曇り",
+      "temperature": -3,
+      "snowDepth": 180,
+      "snowfall": 0,
+      "condition": null,
+      "windSpeed": null
+    }
+  },
+  "courses": [
+    {
+      "name": "① 白樺ゲレンデ",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "② 第2連絡",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "③ 第1連絡",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "④ 第2東",
+      "status": "○",
+      "time": null,
+      "note": "全面滑走可"
+    },
+    {
+      "name": "⑤ 第2西連絡",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "メインパーク",
+      "status": "○",
+      "time": null,
+      "note": "全面滑走可"
+    },
+    {
+      "name": "⑦ ファミリーゲレンデ",
+      "status": "○",
+      "time": null,
+      "note": "全面滑走可"
+    },
+    {
+      "name": "ミニパーク",
+      "status": "○",
+      "time": null,
+      "note": "全面滑走可"
+    },
+    {
+      "name": "⑥ スラローム",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "⑫ イーグル",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "⑬ ダウンヒル",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "⑭ パラダイス",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "⑮ 第5西",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "⑯ パノラマ",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "連続ウェーブ",
+      "status": "○",
+      "time": null,
+      "note": "全面滑走可"
+    },
+    {
+      "name": "⑧ たんぽぽ",
+      "status": "○",
+      "time": null,
+      "note": "全面滑走可"
+    },
+    {
+      "name": "⑩ 成平",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "⑨ 第9",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "⑪ 第10",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    }
+  ],
+  "lifts": [
+    {
+      "name": "第1ペア",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "第2ペア",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "第6ペア",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "第7ペア",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "第8クワッド",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "第9クワッド",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "スノーエスカレーター",
+      "status": "×",
+      "note": ""
+    }
+  ]
+}

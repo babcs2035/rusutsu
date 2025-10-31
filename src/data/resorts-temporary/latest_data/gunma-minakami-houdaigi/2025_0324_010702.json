@@ -1,0 +1,178 @@
+{
+  "resortName": "gunma-minakami-houdaigi",
+  "time": "2025/5/26 1:07:02",
+  "comment": [
+    "<p>3月２３日（日）の営業案内。<br><strong>※朝の内はバーンが硬いので十分気を付けて滑走してください。</strong><br>　<strong>第７ペアリフトの運転は終了しました。</strong><br><strong>グランドカップ大会の為、第２西連絡コースは閉鎖いたします。</strong><br><strong><mark style=\"background-color:rgba(0, 0, 0, 0)\" class=\"has-inline-color has-vivid-red-color\">３月３０日（日）まで営業！</mark></strong><br>●運転リフト<br><mark style=\"background-color:#f7fc00\" class=\"has-inline-color\">※気象状況により変更する場合あり</mark><br>　第1ペアリフト　8:45～16:00<strong>（本日で終了）</strong><br>　　白樺ゲレンデ　580ｍ<br>　　第１連絡コース　340ｍ<br>　　第２連絡コース　600ｍ<br>　第２ペアリフト　8:45～16:30<br>　　第２東コース　650ｍ<br>　　第2連絡コース600ｍ<strong>（閉鎖）</strong><br>　第６ペアリフト　8:30～16:30<br>　　初心者にぴったり<br>　　ファミリーゲレンデ　1,110ｍ<br>　第８クワッドリフト　9:00～16:00<br>　　初心者・ちびっ子にぴったり<br>　　たんぽぽコース　1,050ｍ<br>　第９クワッドリフト　9:30～15:30<strong>（本日で終了）</strong><br>　　成平コース　1,400ｍ<br>　　第９コース　980ｍ<br>　　第１０コース　1,060ｍ<br>　　連続ウェーブ<br>　キッズランド<br>　　※スノーエスカレーター機械故障のため：入場料1,000円⇒500円　<br>　　※そり乗りできます</p>",
+    "<p>●パークアイテム<br>　（ファミリーゲレンデ中央）<br>　4mキッカー<br>　4mワイドボックス<br>　7ｍ塩ビ・4ｍレール<br>　（第６リフト上部）<br>　ウェーブ<br>　2WAYダウンナロー<br>　ダウンレール<br>　6mキッカー<br>　正面ウォール</p>",
+    "<p>●リフト料金<br>　おとな：6,600円<br>　中高生：4,900円<br>　こども：3,900円　<br>　シニア：6,000円</p>",
+    "<p>●駐車場　：　有料</p>",
+    "<p>●レストラン　：　ほうだいぎ食堂　（ホールオープン8:15）<br>　丸子屋　9:00～16:00<br>　ジャッキーズ食堂　10:30～16:00<br>　FIRE CRACKER　9:00～16:00<br>　DDCカフェ　10:00～16:30<br>　カレーハウスほたか　9:00～16:00<br>　ペガサスジャッキーズキッチン　10:30～15:00<br>　あさひファイヤーワークス　10:30～15:00</p>",
+    "<p>●スクール<br>　SAJ宝台樹スキー学校<br>　三浦雄一郎スキー＆スノーボードスクール<br>　キッズラボ<br>　ホワイトベアースノーボードスクール</p>",
+    "<p>●レンタル　：　8:15～16:30</p>",
+    "<p>●スノーフェアリー保育室</p>"
+  ],
+  "weather": {
+    "山頂": {
+      "time": "2025年3月30日(日)16:45更新",
+      "weather": "曇り",
+      "temperature": -3,
+      "snowDepth": 180,
+      "snowfall": 0,
+      "condition": null,
+      "windSpeed": null
+    }
+  },
+  "courses": [
+    {
+      "name": "① 白樺ゲレンデ",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "② 第2連絡",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "③ 第1連絡",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "④ 第2東",
+      "status": "○",
+      "time": null,
+      "note": "全面滑走可"
+    },
+    {
+      "name": "⑤ 第2西連絡",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "メインパーク",
+      "status": "○",
+      "time": null,
+      "note": "全面滑走可"
+    },
+    {
+      "name": "⑦ ファミリーゲレンデ",
+      "status": "○",
+      "time": null,
+      "note": "全面滑走可"
+    },
+    {
+      "name": "ミニパーク",
+      "status": "○",
+      "time": null,
+      "note": "全面滑走可"
+    },
+    {
+      "name": "⑥ スラローム",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "⑫ イーグル",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "⑬ ダウンヒル",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "⑭ パラダイス",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "⑮ 第5西",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "⑯ パノラマ",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "連続ウェーブ",
+      "status": "○",
+      "time": null,
+      "note": "全面滑走可"
+    },
+    {
+      "name": "⑧ たんぽぽ",
+      "status": "○",
+      "time": null,
+      "note": "全面滑走可"
+    },
+    {
+      "name": "⑩ 成平",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "⑨ 第9",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "⑪ 第10",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    }
+  ],
+  "lifts": [
+    {
+      "name": "第1ペア",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "第2ペア",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "第6ペア",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "第7ペア",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "第8クワッド",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "第9クワッド",
+      "status": "×",
+      "note": ""
+    },
+    {
+      "name": "スノーエスカレーター",
+      "status": "×",
+      "note": ""
+    }
+  ]
+}

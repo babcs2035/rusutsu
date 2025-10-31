@@ -1,0 +1,202 @@
+{
+  "resortName": "dynaland",
+  "time": "2025/7/20 3:12:31",
+  "comment": "<a href=\"https://www.dynaland.co.jp/news/category/news/\">最新のニュースはこちら</a>\n<a href=\"https://www.dynaland.co.jp/news/category/event/\">イベント情報はこちら</a>\n\n<h2>【お知らせ】</h2><br>\n2/15(土) βライナークワッドリフトについて<br>\nリフト乗車中の安全確保のため、βライナークワッドリフトのみ、最大乗車定員を「2名」として運行しております。<br>\n<br>\n道路は良好です！！ただし、必ずスタッドレスタイヤ着用、タイヤチェーン携行はお願いします。<br>\nノーマルタイヤは絶対にダメです。お客様の安全のためにご協力お願いします。<br>\n<br>\n積雪たっぷりの３ｍオーバー！！西日本最大のゲレンデが新雪に覆われるハイテンションゲレンデ！<br>\n平日も土日祝もお得なクーポンも利用可能！ 詳しくは、スキー場会員サイト<a href=\"https://chubu-snow.com/member/login.php\"><strong>「アソビト」</strong></a>をチェック！<br>\n<br>\n<strong>毎日23時までナイター営業開催中！！夕方に圧雪車でゲレンデを整備します。夕刻のファーストトラック！雪質が最高です！！</strong><br>\n※ ナイター営業時　16:30～18:00は、ナイター前圧雪のため、リフトの運行を停止します。<br>\nまた、お客様におかれましては、17：00までにゲレンデから出ていただきますようお願いいたします。<br>\n<br>\n<strong>第1ゲレンデにて『ステップアップパーク』『ナイトパーク』オープン！！現在10アイテムHIT！<br>\n乙女コース上部にて『テレインパーク』復旧したものから再オープン中！！現在17アイテムHIT！<br>\n</strong>乙女コース下部にて『サーフライドパーク』開放！R地形を楽しもう！γライナーで回すとパークに地形に遊び放題！！<br>\n<br>\nファミリースノーエリア『Baboon』も営業中！隣接するフードコートや室内遊具施設もあるファミリーに優しいスノーエリアです☆<br>\nソリは現地にありますので、お持ちいただかなくても大丈夫！<br>\n土日祝はBaboonに隣接する駐車場予約も可能です！<br>\n<br>\n<strong>■ イベント</strong><br>\n◆ 2/19(水) ダイナランドデー　毎週水曜日はダイナ単独リフト券が半額に！通常5,400円→2,700円！<br>\n◆ 3/1(土) ダイナ大花火祭り　あの感動を再び！！<br>\n◆ 3/8(土) ダイナランドカップ　SKI GS エントリー募集中！<br>\n◆ 3/8(土) POW JAPAN「大雪郡上」 トークセッション＆じゃんけん大会　18：00～　予約不要、参加無料、場所「ルアール」<br>\n◆ feg-freeski park school 　NIGHT JIB LESSON 開校中！毎週(水)(金)(土)のナイター！詳しくはホームページのイベントページより<br>\n<br>\n<hr><br>\n<br>\n<h2>【営業情報】</h2><br>\n営業時間　8:00 ～ 22:30 (リフト運行時間）<br>\n滑走状況　◎：全面滑走可能<br>\n積　　雪　310cm<br>\n<br>\n<strong>■ 高鷲スノーパークとの往来</strong><br>\n山頂往来 ： 可能<br>\n往来可能時間　8：30～16：15<br>\n※ 15時半には入場されたスキー場エリアにお戻りください！<br>\n<br>\n<strong>■ パークレイアウト</strong><br>\n<br>\n<img class=\"wp-image-6634 size-large alignnone\" src=\"https://www.dynaland.co.jp/news/wp-content/uploads/2025/01/IMG_7203-670x474.jpg\" alt=\"\" width=\"670\" height=\"474\"><br>\n<br>\n<img class=\"size-large wp-image-6772 alignnone\" src=\"https://www.dynaland.co.jp/news/wp-content/uploads/2025/02/S__401530890-670x474.jpg\" alt=\"\" width=\"670\" height=\"474\">",
+  "commentUrl": [
+    "https://www.dynaland.co.jp/condition/#comment",
+    "https://www.dynaland.co.jp/news/category/news/",
+    "https://www.dynaland.co.jp/news/category/event/"
+  ],
+  "weather": {
+    "中腹": {
+      "update": "2025-02-15 AM5:00",
+      "weather": "晴れ",
+      "temperature": -5,
+      "snowDepth": 310,
+      "snowfall": null,
+      "condition": "爽快圧雪バーン",
+      "windSpeed": null
+    }
+  },
+  "weatherUrl": ["https://www.dynaland.co.jp/condition/#gelande"],
+  "courses": [
+    {
+      "name": "パラダイスA",
+      "status": "◯",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "乙女上部",
+      "status": "◯",
+      "update": null,
+      "note": "Re:テレインパーク 【開放時間】9:00~15:00"
+    },
+    {
+      "name": "乙女下部",
+      "status": "◯",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "第1ゲレンデ",
+      "status": "◯",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "から松ゲレンデ",
+      "status": "◯",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "第6ゲレンデ",
+      "status": "◯",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "神中A",
+      "status": "◯",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "ラビット",
+      "status": "◯",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "β‐α連絡",
+      "status": "◯",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "ダウンヒル",
+      "status": "◯",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "パラダイスツリーラン",
+      "status": "◯",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "モーグル",
+      "status": "◯",
+      "update": null,
+      "note": "1レーン開放"
+    },
+    {
+      "name": "スカイラインB上部",
+      "status": "◯",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "スカイラインB下部",
+      "status": "◯",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "パラダイスB",
+      "status": "◯",
+      "update": null,
+      "note": "レーシングスクールのポールバーン専用コースです"
+    },
+    {
+      "name": "クマダナ",
+      "status": "◯",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "神中B",
+      "status": "◯",
+      "update": null,
+      "note": "超上級者向けのコースです。初~中級者の方は進入しないようご注意下さい。"
+    },
+    {
+      "name": "神中回転バーン",
+      "status": "◯",
+      "update": null,
+      "note": "超上級者向けのコースです。初~中級者の方は進入しないようご注意下さい。"
+    },
+    {
+      "name": "チャレンジB",
+      "status": "×",
+      "update": null,
+      "note": "パトロール点検により亀裂が確認された為、閉鎖しております"
+    },
+    {
+      "name": "チャレンジC",
+      "status": "◯",
+      "update": null,
+      "note": "超上級者向けのコースです。初~中級者の方は進入しないようご注意下さい。"
+    },
+    {
+      "name": "スカイラインA",
+      "status": "◯",
+      "update": null,
+      "note": ""
+    },
+    {
+      "name": "チャレンジツリーラン",
+      "status": "×",
+      "update": null,
+      "note": "パトロール点検により亀裂が確認された為、閉鎖しております"
+    },
+    {
+      "name": "ウマノセツリーラン",
+      "status": "要確認",
+      "update": null,
+      "note": "超上級者向けのエリアです。初~中級者の方は進入しないようご注意下さい。"
+    },
+    {
+      "name": "オトメツリーラン",
+      "status": "要確認",
+      "update": null,
+      "note": "超上級者向けのエリアです。初~中級者の方は進入しないようご注意下さい。"
+    }
+  ],
+  "courseUrl": ["https://www.dynaland.co.jp/condition/#course"],
+  "lifts": [
+    {
+      "name": "第1ペア",
+      "status": "◯",
+      "update": null,
+      "note": "8:00~16:30"
+    },
+    {
+      "name": "αライナー",
+      "status": "◯",
+      "update": null,
+      "note": "6:00~22:30 ※16:30~18:00は、ナイター前圧雪のため、リフト運行を停止します。"
+    },
+    {
+      "name": "βライナー",
+      "status": "◯",
+      "update": null,
+      "note": "8:00~16:15 ※ リフト乗車中の安全確保のため、最大乗車定員を2名として運行しております。"
+    },
+    {
+      "name": "γライナー",
+      "status": "◯",
+      "update": null,
+      "note": "9:00~16:30"
+    },
+    {
+      "name": "から松ビギナー",
+      "status": "◯",
+      "update": null,
+      "note": "9:00~16:30"
+    }
+  ],
+  "liftUrl": ["https://www.dynaland.co.jp/condition/#lift_anch"]
+}

@@ -1,0 +1,495 @@
+{
+  "resortName": "sugadaira-kogen-snow-resort",
+  "time": "2025/6/16 3:35:28",
+  "comment": "<コース規制情報>\n○オオマツエリア: 2024ｰ2025シーズンの営業は終了しました。\n○スマイルパーク: 2024ｰ2025シーズンの営業は終了しました。\n○ツバクロエリア: 2024ｰ2025シーズンの営業は終了しました。\n○太郎エリア: 2024ｰ2025シーズンの営業は終了しました。\n○ダボスエリア: 2024ｰ2025シーズンの営業は終了しました。\n\n最新のお知らせは<a href=\"https://sugadaira-snowresort.com/news/\">こちら</a>から",
+  "commentUrl": [
+    "https://sugadaira-snowresort.com/condition/",
+    "https://sugadaira-snowresort.com/news/"
+  ],
+  "weather": {
+    "中腹": {
+      "update": null,
+      "weather": "晴れ",
+      "temperature": 12,
+      "snowDepth": 0,
+      "snowfall": 0,
+      "condition": null,
+      "windSpeed": null
+    }
+  },
+  "weatherUrl": ["https://sugadaira-snowresort.com/"],
+  "courses": [
+    {
+      "name": "大松山SAJ公認チャンピオン",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "大松山ドッグレッグ",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "大松山SAJ公認グランプリ",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "大松山富士見",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "大松山新富士見",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "大松山フレンド",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "大松山",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "大松山GOの原",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "大松山ホワイトピーク上部",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "大松山ホワイトピーク下部",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "大松山アルプス",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "大松山チャレンジ",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "大松山アルペン",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "大松山ポール専用バーン",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "大松山ラビット",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "大松山ファミリー",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "大松山 連絡路",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "つばくろ 連絡路",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "大松山ホリデー",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "大松山スマイルパーク",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "つばくろチャンピオン",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "つばくろセリーヌ",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "つばくろパノラマ",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "つばくろホワイトバレー",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "つばくろファミリー",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "つばくろ7番",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "太郎山・山頂連絡路",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "裏太郎うさぎ",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "裏太郎かもしか",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "裏太郎ファミリーウェスト",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "裏太郎ファミリーイースト",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "裏太郎シーハイル",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "裏太郎チャレンジ",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "天狗林間",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "天狗A",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "日の出",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "日の出林間",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "太郎上部",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "太郎下部",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "太郎ロング",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "太郎・日の出連絡路",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "白金シュワルツ",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "白金からまつ",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "奥ダボス上級",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "奥ダボス中級",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "奥ダボス初級①",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "奥ダボス初級②",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "奥ダボス初級③",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "ダボスイースト",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "ダボスウェスト",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "表ダボスパノラマ",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "シュナイダーパノラマ",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "シュナイダーパノラマ初級",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "シュナイダーハンネスA",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "シュナイダーハンネスB",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "シュナイダーハンネスC",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "シュナイダー・ウェーブ連絡路",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "裏ダボスウェーブ",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "裏ダボスハートの森",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "裏ダボススカイライン",
+      "status": "×",
+      "update": null,
+      "note": null
+    }
+  ],
+  "courseUrl": ["https://sugadaira-snowresort.com/condition/"],
+  "lifts": [
+    {
+      "name": "オオマツ第6ペア",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "オオマツ第1クワッド",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "オオマツ第3ペア",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "オオマツ第5ペア",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "つばくろ第2ペア",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "つばくろ第1ペア",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "ステージ3",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "ステージ1",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "天狗クワッド",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "日の出ペア",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "グラン",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "マック",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "第1トリプル",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "奥ダボス第3ペア",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "奥ダボス第2トリプル",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "ビート",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "シュナイダー",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "ウェーブ",
+      "status": "×",
+      "update": null,
+      "note": null
+    }
+  ],
+  "liftUrl": ["https://sugadaira-snowresort.com/condition/"]
+}

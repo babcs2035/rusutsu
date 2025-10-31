@@ -1,0 +1,149 @@
+{
+  "resortName": "hunter-mountain-shiobara",
+  "time": "2025/5/4 15:53:01",
+  "comment": "\n\t\t\t\t<p>2025.5.3.(Sat)-5.6(Tue)</p>\n<p>★山頂か山麓まで3,000ｍ滑走可能★</p>\n<p>◉GW5月6日(火)まで延長決定！！<br>\n◉WEB限定ファミリーパック開催♪</p>\n<p>★★★3,000m滑走可能！★★★</p>\n<p>★OPENコース</p>\n<p>・ウォール・ストリート　600m　</p>\n<p>（上級、平均斜度20°）</p>\n<p>・ウエスト・サイドストリート　960m</p>\n<p>（初級、平均斜度10°）</p>\n<p>・ブロードウェイ　1,010m</p>\n<p>（初中級、平均斜度10°）</p>\n<p>&nbsp;</p>\n\t\t\t",
+  "weather": {
+    "山頂": {
+      "time": "2025/05/04",
+      "weather": "晴れ",
+      "temperature": 5.7,
+      "snowDepth": 90,
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": null
+    },
+    "山麓": {
+      "time": "2025/05/04",
+      "weather": "晴れ",
+      "temperature": 8.6,
+      "snowDepth": null,
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": null
+    }
+  },
+  "courses": [
+    {
+      "name": "ブロードウェイ上部",
+      "status": "×",
+      "time": null,
+      "note": "※中級CLOSE"
+    },
+    {
+      "name": "ブロードウェイ下部",
+      "status": "○",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "セサミ・ストリート",
+      "status": "○",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "セブンス・アベニュー",
+      "status": "×",
+      "time": null,
+      "note": "24-25 SEASON営業終了"
+    },
+    {
+      "name": "ファッション・アベニュー",
+      "status": "×",
+      "time": null,
+      "note": "24-25 SEASON営業終了"
+    },
+    {
+      "name": "フォーティーセカンド・ストリート上部",
+      "status": "×",
+      "time": null,
+      "note": "24-25 SEASON営業終了"
+    },
+    {
+      "name": "フォーティーセカンド・ストリート下部",
+      "status": "×",
+      "time": null,
+      "note": "24-25 SEASON営業終了"
+    },
+    {
+      "name": "ウェストサイド・ストリート",
+      "status": "○",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "ウォール・ストリート",
+      "status": "○",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "マディソン・アベニュー",
+      "status": "×",
+      "time": null,
+      "note": "24-25 SEASON営業終了"
+    },
+    {
+      "name": "ニュー・マディソン",
+      "status": "×",
+      "time": null,
+      "note": "24-25 SEASON営業終了"
+    },
+    {
+      "name": "エフ・ディー・アール上部",
+      "status": "×",
+      "time": null,
+      "note": "24-25 SEASON営業終了"
+    },
+    {
+      "name": "エフ・ディー・アール下部",
+      "status": "×",
+      "time": null,
+      "note": "24-25 SEASON営業終了"
+    },
+    {
+      "name": "レキシントン・アベニュー",
+      "status": "×",
+      "time": null,
+      "note": "24-25SEASON営業終了"
+    },
+    {
+      "name": "パーク・アベニュー",
+      "status": "×",
+      "time": null,
+      "note": "24-25 SEASON営業終了"
+    }
+  ],
+  "lifts": [
+    {
+      "name": "ゴンドラ",
+      "status": "×",
+      "note": "2024-25シーズンの営業は終了いたしました"
+    },
+    {
+      "name": "ハンタークワッド",
+      "status": "○",
+      "note": "8：30～15：00"
+    },
+    {
+      "name": "第1クワッド",
+      "status": "×",
+      "note": "2024-25シーズンの営業は終了いたしました"
+    },
+    {
+      "name": "第3ペア",
+      "status": "○",
+      "note": "8：30～15：00"
+    },
+    {
+      "name": "第4ペア",
+      "status": "×",
+      "note": "2024-25シーズンの営業は終了いたしました"
+    },
+    {
+      "name": "第5ペア",
+      "status": "×",
+      "note": "2024-25シーズンの営業は終了いたしました"
+    }
+  ]
+}

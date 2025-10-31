@@ -1,0 +1,65 @@
+{
+  "resortName": "snow-park-yeti",
+  "time": "2025/10/24 16:49:26",
+  "comment": "おはようございまぁ~す。\nさぁ~さぁ~\n本日からウィンターシーズン開幕!!\n\n\n9:00より営業開始!\n(ゲレンデオープンは10:00~)\n\n\n\"仮装で滑走!無料キャンペーン\"や\n\"静岡おでん\"のおふるまい\nそして、今回のセレモニーMCを務める\n\"強くてニューゲーム\"さんのミニライブと\n今年も新シーズンの到来を\n一緒に盛り上がって行きましょう!!\n\n\n皆様のご来場、\n心よりお待ちしております!\n心も体もアップしておまちください!\n\n\n今シーズンもイエティを\n宜しくお願い致します。\n\n\n\n\n\n\n■今シーズンの営業カレンダーおよび\n営業情報をアップいたしました。\n今シーズンは平日も9:00オープン!\nナイター営業は17:00~22:00まで!\n但し、ナイター営業は、11月と3月に\n　一部除外日がございます。ご注意下さい。\n\n\n※ホームページ内、一部昨年の情報も含まれております",
+  "commentUrl": [""],
+  "weather": {
+    "中腹": {
+      "update": "",
+      "weather": "くもり",
+      "temperature": null,
+      "snowDepth": null,
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": null
+    }
+  },
+  "weatherUrl": [""],
+  "courses": [
+    {
+      "name": "Aゲレンデ",
+      "status": "○",
+      "update": null,
+      "note": "積雪量50cm、幅5-8m　※ゲレンデクローズ17:00　※ムービングベルト:終日運休"
+    },
+    {
+      "name": "Bゲレンデ",
+      "status": "×",
+      "update": null,
+      "note": "11月下旬open予定"
+    },
+    {
+      "name": "Cゲレンデ",
+      "status": "×",
+      "update": null,
+      "note": "1月上旬open予定"
+    },
+    {
+      "name": "Dゲレンデ",
+      "status": "×",
+      "update": null,
+      "note": "1月上旬open予定"
+    },
+    {
+      "name": "パーク",
+      "status": "×",
+      "update": null,
+      "note": "11月下旬open予定"
+    },
+    {
+      "name": "そり専用ゲレンデ",
+      "status": "×",
+      "update": null,
+      "note": "12月下旬open予定"
+    },
+    {
+      "name": "雪遊び広場",
+      "status": "×",
+      "update": null,
+      "note": "1月上旬予定"
+    }
+  ],
+  "courseUrl": [""],
+  "lifts": [],
+  "liftUrl": [""]
+}

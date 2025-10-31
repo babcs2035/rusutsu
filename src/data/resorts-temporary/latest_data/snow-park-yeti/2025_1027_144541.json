@@ -1,0 +1,65 @@
+{
+  "resortName": "snow-park-yeti",
+  "time": "2025/10/27 14:45:41",
+  "comment": "<div>（お知らせ）</div><div><div>3日間、降り続いた雨によるコンディション悪化の為、</div><div><b><font style=\"font-size: 1.25em;\">本日10/27（月）と明日10/28（火）のナイター営業を中止</font></b></div><div><b><font style=\"font-size: 1.25em;\">させていただきます。</font></b></div><div><b><font style=\"font-size: 1.25em;\">ご迷惑をお掛けいたしますが、</font></b></div><div><b><font style=\"font-size: 1.25em;\">ご理解のほどよろしくお願い致します。</font></b></div><div><b><font style=\"font-size: 1.25em;\"><br></font></b></div><div><div>　【ゲレンデ整備】</div><div>営業時間中のゲレンデ整備は行わず</div><div>17：00まで滑走可能です。</div></div><div><br></div></div><div>※ゲレンデ内、雪が薄い部分が一部ございます。</div><div>今後、地面やマットが露出してしまう場合がございます。</div><div>あらかじめご了承ください。</div><div><br></div><div><br></div><div>2025-2026シーズン開幕！！</div><div>誰よりも一早く Yeti で</div><div>ウィンターシーズンをお楽しみください。</div><div><br></div><div><br></div><div><a href=\"https://www.yeti-resort.com/guide/#\">【ゲレンデ状況】はこちらから</a></div><div>Aゲレンデ　積雪量10～70ｃｍ、幅5-10ｍ</div><div>※一部コース幅が狭くなっている箇所がございます。</div><div>　</div><div><br></div><div>※ホームページ内、一部昨年の情報も含まれております</div><div><br></div><div><br></div>",
+  "commentUrl": [""],
+  "weather": {
+    "中腹": {
+      "update": "2025.10.27.Mon",
+      "weather": "くもり時々あめ",
+      "temperature": 3,
+      "snowDepth": 10,
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": null
+    }
+  },
+  "weatherUrl": [""],
+  "courses": [
+    {
+      "name": "Aゲレンデ",
+      "status": "○",
+      "update": null,
+      "note": "積雪量10-70cm、幅5-10m　※ムービングベルト:終日運休"
+    },
+    {
+      "name": "Bゲレンデ",
+      "status": "×",
+      "update": null,
+      "note": "11月下旬open予定"
+    },
+    {
+      "name": "Cゲレンデ",
+      "status": "×",
+      "update": null,
+      "note": "1月上旬open予定"
+    },
+    {
+      "name": "Dゲレンデ",
+      "status": "×",
+      "update": null,
+      "note": "1月中旬open予定"
+    },
+    {
+      "name": "パーク",
+      "status": "×",
+      "update": null,
+      "note": "11月下旬open予定"
+    },
+    {
+      "name": "そり専用ゲレンデ",
+      "status": "×",
+      "update": null,
+      "note": "12月下旬open予定"
+    },
+    {
+      "name": "雪遊び広場",
+      "status": "×",
+      "update": null,
+      "note": "1月上旬予定"
+    }
+  ],
+  "courseUrl": [""],
+  "lifts": [],
+  "liftUrl": [""]
+}

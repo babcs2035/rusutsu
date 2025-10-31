@@ -1,0 +1,15 @@
+{
+  "resortName": "able-hakuba-goryu-47",
+  "time": "2025/6/10 1:01:30",
+  "comment": "最新のお知らせは<a href=\"https://www.hakubaescal.com/winter/information/\">こちら</a>から。",
+  "commentUrl": "https://www.hakubaescal.com/winter/information/",
+  "weather": {},
+  "weatherUrl": [
+    "https://www.hakubavalley.com/weather/detail_goryu/",
+    "https://www.hakubavalley.com/weather/detail_hakuba47/"
+  ],
+  "courses": [],
+  "courseUrl": "https://www.hakubaescal.com/winter/gelande/animationmap/",
+  "lifts": [],
+  "liftUrl": "https://www.hakubaescal.com/winter/gelande/animationmap/"
+}

@@ -1,0 +1,207 @@
+{
+  "resortName": "aizu-kogen-takatsue",
+  "time": "2025/6/11 17:17:16",
+  "comment": "マウンテンコースにクラックが入ったため第3ペアリフト・第6リフトは運休いたします\n天候によりリフトの運行状況が変更になる場合がございます\n\n最新のお知らせは<a href=\"http://takatsue.jp/info-all\">こちら</a>",
+  "commentUrl": ["http://takatsue.jp/gelande", "http://takatsue.jp/info-all"],
+  "weather": {
+    "山麓": {
+      "update": "2025.02.18（火） 8:07現在",
+      "weather": "雪",
+      "temperature": -7,
+      "snowDepth": 190,
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": null
+    },
+    "中腹(ハイランド前)": {
+      "update": "2025.02.18（火） 8:07現在",
+      "weather": null,
+      "temperature": null,
+      "snowDepth": 210,
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": null
+    }
+  },
+  "weatherUrl": ["http://takatsue.jp/gelande"],
+  "courses": [
+    {
+      "name": "トップヒル",
+      "status": "×",
+      "update": "2025.02.18（火） 8:07現在",
+      "note": null
+    },
+    {
+      "name": "マウンテン",
+      "status": "×",
+      "update": "2025.02.18（火） 8:07現在",
+      "note": null
+    },
+    {
+      "name": "スラローム",
+      "status": "○",
+      "update": "2025.02.18（火） 8:07現在",
+      "note": null
+    },
+    {
+      "name": "ジャイアント",
+      "status": "○",
+      "update": "2025.02.18（火） 8:07現在",
+      "note": null
+    },
+    {
+      "name": "山頂林間",
+      "status": "×",
+      "update": "2025.02.18（火） 8:07現在",
+      "note": null
+    },
+    {
+      "name": "ロマンス",
+      "status": "○",
+      "update": "2025.02.18（火） 8:07現在",
+      "note": null
+    },
+    {
+      "name": "ブランデート",
+      "status": "○",
+      "update": "2025.02.18（火） 8:07現在",
+      "note": null
+    },
+    {
+      "name": "カラマツ",
+      "status": "○",
+      "update": "2025.02.18（火） 8:07現在",
+      "note": null
+    },
+    {
+      "name": "パラダイス",
+      "status": "○",
+      "update": "2025.02.18（火） 8:07現在",
+      "note": null
+    },
+    {
+      "name": "チャレンジ",
+      "status": "○",
+      "update": "2025.02.18（火） 8:07現在",
+      "note": null
+    },
+    {
+      "name": "ジョイフル",
+      "status": "○",
+      "update": "2025.02.18（火） 8:07現在",
+      "note": null
+    },
+    {
+      "name": "エンジョイ",
+      "status": "○",
+      "update": "2025.02.18（火） 8:07現在",
+      "note": null
+    },
+    {
+      "name": "セントラル",
+      "status": "○",
+      "update": "2025.02.18（火） 8:07現在",
+      "note": null
+    },
+    {
+      "name": "パノラマ",
+      "status": "○",
+      "update": "2025.02.18（火） 8:07現在",
+      "note": null
+    },
+    {
+      "name": "スノーパーク",
+      "status": "×",
+      "update": "2025.02.18（火） 8:07現在",
+      "note": null
+    },
+    {
+      "name": "ハーフパイプ",
+      "status": "×",
+      "update": "2025.02.18（火） 8:07現在",
+      "note": null
+    },
+    {
+      "name": "チャレンジトラバース①",
+      "status": "○",
+      "update": "2025.02.18（火） 8:07現在",
+      "note": null
+    },
+    {
+      "name": "チャレンジトラバース②",
+      "status": "○",
+      "update": "2025.02.18（火） 8:07現在",
+      "note": null
+    },
+    {
+      "name": "ファミリー林間",
+      "status": "○",
+      "update": "2025.02.18（火） 8:07現在",
+      "note": null
+    },
+    {
+      "name": "ファミリー",
+      "status": "○",
+      "update": "2025.02.18（火） 8:07現在",
+      "note": null
+    },
+    {
+      "name": "わいわいパーク",
+      "status": "○",
+      "update": "2025.02.18（火） 8:07現在",
+      "note": null
+    }
+  ],
+  "courseUrl": ["http://takatsue.jp/gelande"],
+  "lifts": [
+    {
+      "name": "第1ペア",
+      "status": "○",
+      "update": "2025.02.18（火） 8:07現在",
+      "note": "スキー場営業時間　8:30〜16:20(予定)"
+    },
+    {
+      "name": "第2ペア",
+      "status": "○",
+      "update": "2025.02.18（火） 8:07現在",
+      "note": "スキー場営業時間　8:30〜16:20(予定)"
+    },
+    {
+      "name": "第3ペア",
+      "status": "×",
+      "update": "2025.02.18（火） 8:07現在",
+      "note": "スキー場営業時間　8:30〜16:20(予定)"
+    },
+    {
+      "name": "第4ペア",
+      "status": "○",
+      "update": "2025.02.18（火） 8:07現在",
+      "note": "スキー場営業時間　8:30〜16:20(予定)"
+    },
+    {
+      "name": "第6シングル",
+      "status": "×",
+      "update": "2025.02.18（火） 8:07現在",
+      "note": "スキー場営業時間　8:30〜16:20(予定)"
+    },
+    {
+      "name": "スカイロード1",
+      "status": "○",
+      "update": "2025.02.18（火） 8:07現在",
+      "note": "スキー場営業時間　8:30〜16:20(予定)"
+    },
+    {
+      "name": "スカイロード2",
+      "status": "○",
+      "update": "2025.02.18（火） 8:07現在",
+      "note": "スキー場営業時間　8:30〜16:20(予定)"
+    },
+    {
+      "name": "トリプル1",
+      "status": "○",
+      "update": "2025.02.18（火） 8:07現在",
+      "note": "スキー場営業時間　8:30〜16:20(予定)"
+    }
+  ],
+  "liftUrl": ["http://takatsue.jp/gelande"]
+}

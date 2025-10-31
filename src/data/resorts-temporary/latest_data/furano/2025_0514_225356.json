@@ -1,0 +1,242 @@
+{
+  "resortName": "furano",
+  "time": "2025/5/14 22:53:56",
+  "comment": null,
+  "weather": {
+    "山頂": {
+      "time": "2025年5月7日(水)",
+      "weather": "晴れ",
+      "temperature": 5,
+      "snowDepth": 15,
+      "snowfall": 0,
+      "condition": "",
+      "windSpeed": 3
+    },
+    "山麓": {
+      "time": "2025年5月7日(水)",
+      "weather": "晴れ",
+      "temperature": 7,
+      "snowDepth": 0,
+      "snowfall": 0,
+      "condition": "",
+      "windSpeed": 2
+    }
+  },
+  "courses": [
+    {
+      "name": "",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "open": "×",
+      "time": null,
+      "note": "一部非圧雪"
+    },
+    {
+      "name": "",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "open": "×",
+      "time": null,
+      "note": "コンディション不良のため閉鎖"
+    },
+    {
+      "name": "",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "open": "×",
+      "time": null,
+      "note": "ポール練習のため閉鎖"
+    },
+    {
+      "name": "",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "open": "×",
+      "time": null,
+      "note": "コンディション不良のため閉鎖"
+    },
+    {
+      "name": "",
+      "open": "×",
+      "time": null,
+      "note": ""
+    },
+    {
+      "name": "",
+      "open": "×",
+      "time": null,
+      "note": "亀裂が確認されたため閉鎖いたします。"
+    }
+  ],
+  "lifts": [
+    {
+      "name": "富良野ロープウェー",
+      "open": "×",
+      "note": ""
+    },
+    {
+      "name": "北の峰ゴンドラ",
+      "open": "×",
+      "note": ""
+    },
+    {
+      "name": "富良野ダウンヒル第1高速",
+      "open": "×",
+      "note": ""
+    },
+    {
+      "name": "プリンスロマンス",
+      "open": "×",
+      "note": ""
+    },
+    {
+      "name": "富良野ダウンヒル第2ロマンス",
+      "open": "×",
+      "note": ""
+    },
+    {
+      "name": "富良野ダウンヒル第3ロマンス",
+      "open": "×",
+      "note": ""
+    },
+    {
+      "name": "北の峰第1高速",
+      "open": "×",
+      "note": ""
+    },
+    {
+      "name": "北の峰第2ロマンス",
+      "open": "×",
+      "note": ""
+    },
+    {
+      "name": "連絡",
+      "open": "×",
+      "note": ""
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "resortName": "gala-yuzawa",
+  "time": "2025/5/11 22:49:12",
+  "comment": "本日は、通常営業いたします。大量降雪により南エリアは終日クローズとなります。",
+  "weather": {
+    "中腹": {
+      "time": "2025.02.22 更新",
+      "weather": "曇り",
+      "temperature": null,
+      "snowDepth": 480,
+      "snowfall": null,
+      "condition": "粉雪",
+      "windSpeed": null
+    }
+  },
+  "courses": [],
+  "lifts": []
+}

@@ -1,0 +1,268 @@
+{
+  "resortName": "kiroro-snow-world",
+  "time": "2025/5/16 23:20:25",
+  "comment": "",
+  "weather": {
+    "山頂": {
+      "time": "",
+      "weather": "",
+      "temperature": null,
+      "snowDepth": null,
+      "snowfall": null,
+      "condition": "",
+      "windSpeed": null
+    },
+    "山麓": {
+      "time": "",
+      "weather": "",
+      "temperature": null,
+      "snowDepth": null,
+      "snowfall": null,
+      "condition": "",
+      "windSpeed": null
+    }
+  },
+  "courses": [
+    {
+      "name": "朝里パノラマ",
+      "status": "◯",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "朝里第1A",
+      "status": "◯",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "朝里第1B",
+      "status": "◯",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "余市第1B",
+      "status": "◯",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "余市第2A",
+      "status": "◯",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "長峰第1",
+      "status": "◯",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "ファミリー",
+      "status": "◯",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "ゲートウェイ",
+      "status": "◯",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "朝里ダイナミック",
+      "status": "◯",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "余市第1A",
+      "status": "◯",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "センターA",
+      "status": "◯",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "センターB",
+      "status": "◯",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "長峰第2A",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "長峰第2C",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "パウダーライド",
+      "status": "◯",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "朝里エキスパートA",
+      "status": "◯",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "朝里エキスパートB",
+      "status": "◯",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "朝里第2A",
+      "status": "◯",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "朝里第2B",
+      "status": "◯",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "朝里第2C",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "余市第2B",
+      "status": "◯",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "センターC",
+      "status": "◯",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "長峰第2B",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "センターリンク",
+      "status": "◯",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "スノーフィーチャー",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "スノーフィーチャー",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    },
+    {
+      "name": "スノーフィーチャー",
+      "status": "×",
+      "time": null,
+      "note": "閉鎖中"
+    }
+  ],
+  "lifts": [
+    {
+      "name": "キロロゴンドラ",
+      "status": "◯",
+      "note": "運行中 9:00-15:00"
+    },
+    {
+      "name": "朝里第1",
+      "status": "×",
+      "note": "本日営業終了 9:30-15:00"
+    },
+    {
+      "name": "朝里第2エクスプレス",
+      "status": "◯",
+      "note": "運行中 9:15-15:15"
+    },
+    {
+      "name": "余市第1エクスプレス",
+      "status": "△",
+      "note": "待機調査中 9:00-15:30"
+    },
+    {
+      "name": "余市第2",
+      "status": "◯",
+      "note": "運行中 9:15-15:30"
+    },
+    {
+      "name": "センターエクスプレス",
+      "status": "◯",
+      "note": "運行中 9:00-16:00"
+    },
+    {
+      "name": "長峰第1エクスプレス",
+      "status": "◯",
+      "note": "運行中 9:00-15:30"
+    },
+    {
+      "name": "長峰第2エクスプレス",
+      "status": "×",
+      "note": "本日営業終了 9:15-15:00"
+    },
+    {
+      "name": "ファミリー",
+      "status": "◯",
+      "note": "運行中 9:00-16:00"
+    },
+    {
+      "name": "ゲートウェイエクスプレス",
+      "status": "◯",
+      "note": "運行中 8:30-16:00"
+    }
+  ],
+  "treeruns": [
+    {
+      "name": "パウダーリッジ",
+      "status": "×",
+      "note": "閉鎖中"
+    },
+    {
+      "name": "オレンジ　ライト",
+      "status": "×",
+      "note": "閉鎖中"
+    },
+    {
+      "name": "スノーソー",
+      "status": "×",
+      "note": "閉鎖中"
+    },
+    {
+      "name": "フラッシュマン",
+      "status": "×",
+      "note": "閉鎖中"
+    },
+    {
+      "name": "バーコード",
+      "status": "×",
+      "note": "閉鎖中"
+    }
+  ]
+}

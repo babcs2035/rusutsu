@@ -1,0 +1,77 @@
+{
+  "resortName": "chateraise-ski-valley-nobeyama",
+  "time": "2025/5/18 12:23:06",
+  "comment": "",
+  "weather": {
+    "山頂": {
+      "time": "更新日時: 2025年03月24日 09:33",
+      "weather": "―",
+      "temperature": null,
+      "snowDepth": "―",
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": null
+    },
+    "山麓": {
+      "time": "更新日時: 2025年03月24日 09:33",
+      "weather": null,
+      "temperature": null,
+      "snowDepth": "―",
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": null
+    }
+  },
+  "courses": [
+    {
+      "name": "ホーン",
+      "status": "×",
+      "time": "",
+      "note": null
+    },
+    {
+      "name": "バレー1",
+      "status": "×",
+      "time": "",
+      "note": null
+    },
+    {
+      "name": "バレー2",
+      "status": "×",
+      "time": "",
+      "note": null
+    },
+    {
+      "name": "バレー3",
+      "status": "×",
+      "time": "",
+      "note": null
+    },
+    {
+      "name": "アルペン",
+      "status": "×",
+      "time": "",
+      "note": null
+    }
+  ],
+  "lifts": [
+    {
+      "name": "ホーン",
+      "time": "",
+      "status": "×",
+      "note": null
+    },
+    {
+      "name": "バレー",
+      "time": "",
+      "status": "×",
+      "note": null
+    },
+    {
+      "name": "アルペン",
+      "time": "",
+      "status": "×",
+      "note": null
+    }
+  ]
+}

@@ -1,0 +1,90 @@
+{
+  "resortName": "adatara-kogen",
+  "time": "2025/6/16 8:06:07",
+  "comment": "3月9日をもちまして、今シーズンの営業を終了いたしました。\nみなさまのご来場誠にありがとうございました。\n来シーズンもご愛顧いただきますようお願い申し上げます。\n\n【♨日帰り温泉 あだたら山奥岳の湯】\n　　営業時間10：00～18：00（最終入館17：30）\n　　※休館日のご案内※\n　　　4/9(水)・4/10(木)はメンテナンスの為休館いたします。\n　　　ご了承願います。",
+  "commentUrl": ["https://www.adatara-resort.com/ski/"],
+  "weather": {
+    "中腹": {
+      "update": null,
+      "weather": "",
+      "temperature": "0",
+      "snowDepth": "0",
+      "snowfall": null,
+      "condition": null,
+      "windSpeed": null
+    }
+  },
+  "weatherUrl": ["https://www.adatara-resort.com/ski/"],
+  "courses": [
+    {
+      "name": "ペガサス",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "ジェミニ（右）",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "ジェミニ（左）",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "アンドロメダ",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "アルタイル上部",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "アルタイル下部",
+      "status": "×",
+      "update": null,
+      "note": null
+    },
+    {
+      "name": "ベガ",
+      "status": "×",
+      "update": null,
+      "note": null
+    }
+  ],
+  "courseUrl": ["https://www.adatara-resort.com/ski/"],
+  "lifts": [
+    {
+      "name": "ブルーライン",
+      "status": "×",
+      "update": null,
+      "note": "運休"
+    },
+    {
+      "name": "オレンジライン",
+      "status": "×",
+      "update": null,
+      "note": "運休"
+    },
+    {
+      "name": "バイオレットライン",
+      "status": "×",
+      "update": null,
+      "note": "運休"
+    },
+    {
+      "name": "わんぱく1号",
+      "status": "×",
+      "update": null,
+      "note": "運休"
+    }
+  ],
+  "liftUrl": ["https://www.adatara-resort.com/ski/"]
+}

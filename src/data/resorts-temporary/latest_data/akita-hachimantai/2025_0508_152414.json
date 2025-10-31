@@ -1,0 +1,37 @@
+{
+  "resortName": "akita-hachimantai",
+  "time": "2025/5/8 15:24:14",
+  "comment": "本日（5/6）をもって今シーズンの営業を終了いたします。半年間にわたるご愛顧に心から感謝申し上げます。次シーズンもよろしくお願い申し上げます。ありがとうございました。<br>\n          姉妹館「ゆらら」が4/1より営業を開始いたしております。しばらくは入浴のみの営業となります。食堂はGW明けより開始予定です。",
+  "weather": {
+    "中腹": {
+      "time": "2025/5/6　7:00",
+      "weather": "くもり",
+      "temperature": 8.8,
+      "snowDepth": 70,
+      "snowfall": 0,
+      "condition": "湿り雪",
+      "windSpeed": 0
+    }
+  },
+  "courses": [
+    {
+      "name": "ぶな森ゲレンデ",
+      "status": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "トド松ゲレンデ",
+      "status": "○",
+      "time": null,
+      "note": null
+    }
+  ],
+  "lifts": [
+    {
+      "name": "ロマンス",
+      "status": "○",
+      "note": null
+    }
+  ]
+}

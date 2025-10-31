@@ -1,0 +1,201 @@
+{
+  "resortName": "gala-yuzawa",
+  "time": "2025/5/11 22:47:02",
+  "comment": "本日は、通常営業いたします。大量降雪により南エリアは終日クローズとなります。",
+  "weather": {
+    "中腹": {
+      "time": "2025.02.22 更新",
+      "weather": "曇り",
+      "temperature": null,
+      "snowDepth": 480,
+      "snowfall": null,
+      "condition": "粉雪",
+      "windSpeed": null
+    }
+  },
+  "courses": [
+    {
+      "name": "メロディ",
+      "status": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "エンターテイメント",
+      "status": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "エーデルワイス",
+      "status": "△",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ジジ",
+      "status": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "グルノーブル",
+      "status": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ゆきあそびパーク",
+      "status": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ブロードウェイ",
+      "status": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "スーパーブロードウェイ",
+      "status": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "スワン",
+      "status": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "スーパースワン",
+      "status": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ローマンホリデーA",
+      "status": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ローマンホリデーB",
+      "status": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ジョアンナA",
+      "status": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ジョアンナB",
+      "status": "○",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "スノーパーク",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "バットマン",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "260万ダラー",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ブロンコA",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ブロンコB",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "イライザ",
+      "status": "×",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ファルコン",
+      "status": "○",
+      "time": null,
+      "note": null
+    }
+  ],
+  "lifts": [
+    {
+      "name": "ディリジャンス",
+      "status": "○",
+      "note": null
+    },
+    {
+      "name": "コーチ",
+      "status": "○",
+      "note": null
+    },
+    {
+      "name": "バルーシュ",
+      "status": "○",
+      "note": null
+    },
+    {
+      "name": "ソーシャブル",
+      "status": "○",
+      "note": null
+    },
+    {
+      "name": "フェートン",
+      "status": "○",
+      "note": null
+    },
+    {
+      "name": "ビクトリア",
+      "status": "○",
+      "note": null
+    },
+    {
+      "name": "シャリオ",
+      "status": "○",
+      "note": null
+    },
+    {
+      "name": "ティルバリー",
+      "status": "○",
+      "note": null
+    },
+    {
+      "name": "バギー",
+      "status": "○",
+      "note": null
+    },
+    {
+      "name": "ランドー",
+      "status": "×",
+      "note": null
+    },
+    {
+      "name": "ワゴネット",
+      "status": "×",
+      "note": null
+    }
+  ]
+}

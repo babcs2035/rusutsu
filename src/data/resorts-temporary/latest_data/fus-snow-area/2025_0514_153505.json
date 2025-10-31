@@ -1,0 +1,71 @@
+{
+  "resortName": "fus-snow-area",
+  "time": "2025/5/14 15:35:05",
+  "comment": null,
+  "weather": {
+    "山頂": {
+      "time": "2025 /02/16 10:00 現在　　 営業中09:00～21:00",
+      "weather": "曇り",
+      "temperature": -5,
+      "snowDepth": 70,
+      "snowfall": 0,
+      "condition": "かた雪",
+      "windSpeed": 0
+    }
+  },
+  "courses": [
+    {
+      "name": "ダイナミック",
+      "status": "◯",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "パノラマ",
+      "status": "◯",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "クリスタル",
+      "status": "◯",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ロマンス",
+      "status": "◯",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "マイルド",
+      "status": "◯",
+      "time": null,
+      "note": null
+    },
+    {
+      "name": "ファミリー",
+      "status": "◯",
+      "time": null,
+      "note": null
+    }
+  ],
+  "lifts": [
+    {
+      "name": "第１ペア",
+      "status": "◯",
+      "note": null
+    },
+    {
+      "name": "第1ロマンス",
+      "status": "◯",
+      "note": null
+    },
+    {
+      "name": "第2ロマンス",
+      "status": "◯",
+      "note": null
+    }
+  ]
+}

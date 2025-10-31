@@ -1,0 +1,18 @@
+{
+  "resortName": "gala-yuzawa",
+  "time": "2025/5/1 1:36:53",
+  "comment": "",
+  "weather": {
+    "中腹": {
+      "time": "",
+      "weather": "",
+      "temperature": null,
+      "snowDepth": null,
+      "snowfall": null,
+      "condition": "",
+      "windSpeed": null
+    }
+  },
+  "courses": [],
+  "lifts": []
+}

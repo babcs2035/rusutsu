@@ -1,0 +1,112 @@
+[
+  {
+    "id": "furano",
+    "datetime": "2025-01-05T11:50:13",
+    "snowfall": 6,
+    "temperature": { "base": -7, "top": -12 },
+    "overview": "Clouds on top",
+    "precipitation": "Zilch",
+    "wind": "13 km/h",
+    "visibility": "〜 1 km"
+  },
+  {
+    "id": "geto-kogen",
+    "datetime": "2025-01-05T07:50:26",
+    "snowfall": 7,
+    "temperature": { "base": -5, "top": -10 },
+    "overview": "Cloudy",
+    "precipitation": "None",
+    "wind": "Varied",
+    "visibility": "Fair"
+  },
+  {
+    "id": "able-hakuba-goryu",
+    "datetime": "2025-01-05T12:18:08",
+    "snowfall": 0,
+    "temperature": { "base": 0, "top": -5 },
+    "overview": "Cloudy skies",
+    "precipitation": "Light snow in places... particularly higher up",
+    "wind": "Light southerly",
+    "visibility": "Fair to good"
+  },
+  {
+    "id": "madarao-mountain-resort",
+    "datetime": "2025-01-05T07:17:00",
+    "snowfall": 2,
+    "temperature": { "base": -4, "top": -7 },
+    "overview": "Fine with cloud",
+    "precipitation": "None",
+    "wind": "SW",
+    "visibility": "Very good"
+  },
+  {
+    "id": "akakura-kanko-resort",
+    "datetime": "2025-01-05T08:57:47",
+    "snowfall": 5,
+    "temperature": { "base": -4, "top": -8 },
+    "overview": "Clear and sunny",
+    "precipitation": "No snow today",
+    "wind": "Light W wind",
+    "visibility": "Very very good"
+  },
+  {
+    "id": "naeba",
+    "datetime": "2025-01-05T09:50:31",
+    "snowfall": 0,
+    "temperature": { "base": -2, "top": -8 },
+    "overview": "Clear and sunny",
+    "precipitation": "None",
+    "wind": "Light",
+    "visibility": "Excellent"
+  },
+  {
+    "id": "niseko-mountain-resort-grand-hirafu",
+    "datetime": "2025-01-05T11:32:43",
+    "snowfall": 7,
+    "temperature": { "base": -5, "top": -10 },
+    "overview": "Blue sky, some sun, cloud too",
+    "precipitation": "Not really, but some very light snow places",
+    "wind": "Light westerly",
+    "visibility": "Generally good"
+  },
+  {
+    "id": "nozawa-onsen",
+    "datetime": "2025-01-05T10:30:36",
+    "snowfall": 1,
+    "temperature": { "base": -3, "top": -8 },
+    "overview": "Fine with clouds around",
+    "precipitation": "None",
+    "wind": "Light SW",
+    "visibility": "Good"
+  },
+  {
+    "id": "shiga-kogen-maruike",
+    "datetime": "2025-01-05T07:07:04",
+    "snowfall": 0,
+    "temperature": { "base": -4, "top": -9 },
+    "overview": "Fine (with some cloud)",
+    "precipitation": "None",
+    "wind": "SW",
+    "visibility": "Good"
+  },
+  {
+    "id": "iwappara",
+    "datetime": "2025-01-05T06:53:00",
+    "snowfall": 2,
+    "temperature": { "base": -3, "top": -8 },
+    "overview": "Cloud with some clearer sky (expected to be clear and sunny)",
+    "precipitation": "None",
+    "wind": "Southerly",
+    "visibility": "Very good"
+  },
+  {
+    "id": "zao-onsen",
+    "datetime": "2025-01-05T09:10:05",
+    "snowfall": 2,
+    "temperature": { "base": -3, "top": -8 },
+    "overview": "Fine with cloud",
+    "precipitation": "None",
+    "wind": "Light SW",
+    "visibility": "Very good"
+  }
+]

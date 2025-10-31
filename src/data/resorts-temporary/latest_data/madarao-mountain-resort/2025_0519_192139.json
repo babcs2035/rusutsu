@@ -1,0 +1,264 @@
+{
+  "resortName": "madarao-mountain-resort",
+  "time": "2025/5/19 19:21:39",
+  "comment": "ツリーランコースを含む31コース滑走可能で営業中。\nツリーランコースや非圧雪コースはコンディションによってはクローズする場合もございます。\nリフトは8:30より順次運行開始予定。\n気象状況によりリフト運行予定が変更になる場合がございますので予めご了承ください。",
+  "weather": {
+    "中腹": {
+      "time": "2025-03-16 7:20 am",
+      "weather": "曇り",
+      "temperature": 1,
+      "snowDepth": 250,
+      "snowfall": 0,
+      "condition": "ザラメ",
+      "windSpeed": null
+    }
+  },
+  "courses": [
+    {
+      "name": "パラダイス",
+      "status": "○",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "初心者A",
+      "status": "○",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "初心者B",
+      "status": "○",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "ユートピア",
+      "status": "○",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "白樺",
+      "status": "○",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "チャンピオン下部",
+      "status": "○",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "チャンピオン上部",
+      "status": "○",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "カービング",
+      "status": "○",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "ジャイアント下部",
+      "status": "○",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "ジャイアント中部",
+      "status": "○",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "ジャイアント上部",
+      "status": "○",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "ポールバーンA",
+      "status": "○",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "オーシャンビュー",
+      "status": "○",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "トラバース",
+      "status": "○",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "クリスタル下部",
+      "status": "○",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "クリスタル中部",
+      "status": "○",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "クリスタル上部",
+      "status": "○",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "パウダーライン",
+      "status": "×",
+      "time": null,
+      "note": "見合わせ中"
+    },
+    {
+      "name": "スカイラブ上部",
+      "status": "×",
+      "time": null,
+      "note": "見合わせ中"
+    },
+    {
+      "name": "スカイラブ下部",
+      "status": "○",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "スカイビュー",
+      "status": "○",
+      "time": null,
+      "note": "営業中"
+    },
+    {
+      "name": "ワールドカップ",
+      "status": "×",
+      "time": null,
+      "note": null
+    }
+  ],
+  "lifts": [
+    {
+      "name": "第1",
+      "status": "○",
+      "note": "8:30〜16:30"
+    },
+    {
+      "name": "第2クワッド",
+      "status": "○",
+      "note": "8:30〜16:15"
+    },
+    {
+      "name": "第3",
+      "status": "○",
+      "note": "9:30〜15:45"
+    },
+    {
+      "name": "第5",
+      "status": "×",
+      "note": "営業終了"
+    },
+    {
+      "name": "スーパークワッド",
+      "status": "○",
+      "note": "8:30〜15:45"
+    },
+    {
+      "name": "第11",
+      "status": "○",
+      "note": "8:45〜15:50"
+    },
+    {
+      "name": "第12",
+      "status": "○",
+      "note": "8:45〜15:50"
+    },
+    {
+      "name": "第13",
+      "status": "○",
+      "note": "9:15〜15:30"
+    },
+    {
+      "name": "第15",
+      "status": "○",
+      "note": "9:00〜16:00"
+    }
+  ],
+  "treeruns": [
+    {
+      "name": "スノーパーク",
+      "status": "○",
+      "note": null
+    },
+    {
+      "name": "キッズパーク",
+      "status": "○",
+      "note": null
+    },
+    {
+      "name": "パウダーシアター",
+      "status": "×",
+      "note": null
+    },
+    {
+      "name": "パウダーウェーブ2",
+      "status": "×",
+      "note": null
+    },
+    {
+      "name": "リバーライン",
+      "status": "×",
+      "note": null
+    },
+    {
+      "name": "クリスタルボウル",
+      "status": "×",
+      "note": null
+    },
+    {
+      "name": "NINJA",
+      "status": "○",
+      "note": null
+    },
+    {
+      "name": "SAWA I",
+      "status": "○",
+      "note": null
+    },
+    {
+      "name": "SAWA II",
+      "status": "○",
+      "note": null
+    },
+    {
+      "name": "SAWA III",
+      "status": "○",
+      "note": null
+    },
+    {
+      "name": "ラビット",
+      "status": "○",
+      "note": null
+    },
+    {
+      "name": "カモシカ",
+      "status": "○",
+      "note": null
+    },
+    {
+      "name": "ベアー",
+      "status": "○",
+      "note": null
+    }
+  ]
+}
