@@ -3,7 +3,9 @@
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { ForecastsT, SkiResortT, SnowDepthsT, WeathersT } from "@/types";
+import type { SkiResortT } from "@/types";
+import type { ForecastsT } from "@/types/forecasts";
+import type { SnowDepthsT, WeathersT } from "@/types/weathers";
 import {
   ForecastTable,
   SnowDepthLineChart,
