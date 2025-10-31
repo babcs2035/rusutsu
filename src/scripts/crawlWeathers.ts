@@ -1,8 +1,8 @@
 import fs from "node:fs";
-import { chromium, type Locator, type Page } from "playwright";
+import { chromium, type Locator } from "playwright";
 import { tqdm } from "ts-tqdm";
-import type { SkiAreaT } from "@/types/SkiArea";
-import type { WeathersT } from "@/types/Weather";
+import type { SkiAreaT } from "@/types";
+import type { WeathersT } from "@/types/weathers";
 import { fetchAsync } from "./fetch";
 
 async function trimElem(element: Locator): Promise<string> {
@@ -83,26 +83,32 @@ for (const id of tqdm(ids)) {
     source: `https://www.snow-forecast.com/resorts/${id}`,
   };
 
-  for (const pos of ["top", "mid", "bot"]) {
+  for (const pos of ["top", "mid", "bot"] as const) {
     await page.goto(`https://www.snow-forecast.com/resorts/${id}/6day/${pos}`);
     const button = await page.locator(
       "span.hindcast-prompt__title.hindcast-prompt__title--left",
     );
     await button.click();
     await page.waitForTimeout(1000);
-    const winds = [];
+    const winds: Array<{
+      speed: number;
+      direction: string;
+    }> = [];
     const snows = [];
     const temperatures = [];
     const windTable = await page.locator(
       "#forecast-table > div > table > tbody > tr:nth-child(3)",
     );
     for (const tdElem of await windTable.locator("td").all()) {
-      winds.push({
-        speed: Number(await trimElem(tdElem)),
-        direction: await tdElem
-          .locator(".wind-icon__arrow")
-          .getAttribute("transform"),
-      });
+      const direction = await tdElem
+        .locator(".wind-icon__arrow")
+        .getAttribute("transform");
+      if (direction) {
+        winds.push({
+          speed: Number(await trimElem(tdElem)),
+          direction,
+        });
+      }
     }
     const snowTable = await page.locator(
       "#forecast-table > div > table > tbody > tr:nth-child(6)",

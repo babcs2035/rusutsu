@@ -24,12 +24,10 @@ export type WeathersT = {
 };
 
 export type WeatherT = {
-  winds: [
-    {
-      speed: number;
-      direction: string;
-    },
-  ];
+  winds: {
+    speed: number;
+    direction: string;
+  }[];
   snows: number[];
   temperatures: number[];
 };

@@ -23,7 +23,17 @@ const formattedNow = `${year}_${month}${day}_${hour}${minute}${second}`;
 console.log(formattedNow);
 
 // 天気・積雪情報
-const weather: Record<string, any> = {};
+interface WeatherInfo {
+  time: string;
+  weather: string;
+  temperature: number;
+  snowDepth: number;
+  snowfall: string;
+  quality: string;
+  windSpeed: string;
+}
+
+const weather: Record<string, WeatherInfo> = {};
 weather.山頂 = {
   time: await trimElem(
     page.locator(

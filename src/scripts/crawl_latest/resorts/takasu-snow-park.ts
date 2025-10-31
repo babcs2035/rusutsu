@@ -49,7 +49,17 @@ const comment = await trimElem(
 ); // コメント（適宜変更）
 
 // 天気・積雪情報
-const weather: Record<string, any> = {};
+interface WeatherInfo {
+  time: string;
+  weather: string;
+  temperature: number;
+  snowDepth: number;
+  snowfall: string;
+  quality: string;
+  windSpeed: string;
+}
+
+const weather: Record<string, WeatherInfo> = {};
 const imgSrcTop = await page
   .locator(
     "body > main > section:nth-child(9) > div > div.content_inner > table.table_wes.mgb30 > tbody > tr:nth-child(1) > td.table_wesinfo > img",

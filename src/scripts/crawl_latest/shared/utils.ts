@@ -147,6 +147,7 @@ export function checkWeatherDataForPoint(
     ) {
       if (cfg.type === "number") {
         const parsed = parseFloat(raw?.toString() || "");
+        // biome-ignore lint/suspicious/noExplicitAny: for flexibility
         (data as any)[key] = parsed;
       }
       continue;
@@ -158,6 +159,7 @@ export function checkWeatherDataForPoint(
     } /* type === 'number' */ else {
       const parsed = parseFloat(raw?.toString() || "");
       // 型エラー回避のため any にキャストして代入
+      // biome-ignore lint/suspicious/noExplicitAny: for flexibility
       (data as any)[key] = parsed;
 
       if (Number.isNaN(parsed)) {

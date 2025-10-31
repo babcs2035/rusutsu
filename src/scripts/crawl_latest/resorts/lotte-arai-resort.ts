@@ -1,6 +1,4 @@
 import fs from "node:fs";
-import { time } from "console";
-import { forceCenter } from "d3";
 import { chromium, type Locator } from "playwright";
 
 function toHalfWidth(str: string): string {

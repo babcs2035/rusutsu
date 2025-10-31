@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { tqdm } from "ts-tqdm";
 import type { ReportDetails } from "@/interfaces/SnowFall";
-import type { SnowFallsT } from "@/types/SnowFall";
+import type { SnowFallsT } from "@/types/weathers";
 import { fetchAsync } from "./fetch";
 
 const reportList = await fetchAsync({

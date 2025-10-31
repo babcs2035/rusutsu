@@ -1,5 +1,4 @@
 import fs from "node:fs";
-import { tqdm } from "ts-tqdm";
 import { fetchAsync } from "./fetch";
 
 const targetTimes = await fetchAsync({
@@ -18,7 +17,9 @@ const ids = [
   "amds_snowf48h",
   "amds_snowf72h",
 ];
-const forecasts = {};
+const forecasts: {
+  [key: string]: { code: number; location: number[]; value: number }[];
+} = {};
 for (const id of ids) {
   const forecast = await fetchAsync({
     url: `https://www.jma.go.jp/bosai/jmatile/data/snow/${targetTimes[0]["basetime"]}/none/${targetTimes[0]["basetime"]}/surf/${id}/data.geojson?id=${id}`,

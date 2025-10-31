@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import { tqdm } from "ts-tqdm";
-import type { LatestReportT } from "@/types/LatestReport";
+import type { LatestReportT } from "@/types/latestReport";
 import { fetchAsync } from "./fetch";
 
 const reportList = await fetchAsync({

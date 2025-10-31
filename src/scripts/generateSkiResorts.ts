@@ -77,10 +77,12 @@ for (const skiArea of tqdm(skiAreas)) {
     };
   }
 
-  let gelende = gelendes.find(data => data.name === skiArea.name.ja);
+  let gelende = gelendes.find(
+    (data: { name: string }) => data.name === skiArea.name.ja,
+  );
   if (surfSnowDict[skiArea.name.ja]) {
     gelende = gelendes.find(
-      data => data.name === surfSnowDict[skiArea.name.ja],
+      (data: { name: string }) => data.name === surfSnowDict[skiArea.name.ja],
     );
   }
   if (gelende) {

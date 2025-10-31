@@ -1,8 +1,8 @@
 import fs from "node:fs";
-import { chromium, type Locator, type Page } from "playwright";
+import { chromium, type Locator } from "playwright";
 import { tqdm } from "ts-tqdm";
-import type { ForecastsT } from "@/types/Forecast";
-import type { SkiAreaT } from "@/types/SkiArea";
+import type { SkiAreaT } from "@/types";
+import type { ForecastsT } from "@/types/forecasts";
 import { fetchAsync } from "./fetch";
 
 async function trimElem(element: Locator): Promise<string> {

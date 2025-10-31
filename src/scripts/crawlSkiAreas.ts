@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { tqdm } from "ts-tqdm";
 import type { SkiAreaI, SkiAreaTicketI } from "@/interfaces/SkiArea";
-import type { SkiAreaT } from "@/types/SkiArea";
+import type { SkiAreaT } from "@/types";
 import { fetchAsync } from "./fetch";
 
 const outlines = await fetchAsync({

@@ -13,7 +13,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { ForecastsT, SnowDepthsT, WeathersT } from "@/types";
+import type { ForecastsT } from "@/types/forecasts";
+import type { SnowDepthsT, WeathersT } from "@/types/weathers";
 
 type Elevation = "top" | "mid" | "bot";
 type ForecastElevation = "top" | "middle" | "bottom";

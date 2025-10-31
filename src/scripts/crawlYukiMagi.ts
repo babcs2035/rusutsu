@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { chromium, type Locator, type Page } from "playwright";
+import { chromium, type Locator } from "playwright";
 import { tqdm } from "ts-tqdm";
 
 async function trimElem(element: Locator): Promise<string> {

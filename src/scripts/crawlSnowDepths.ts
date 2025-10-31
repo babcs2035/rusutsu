@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { tqdm } from "ts-tqdm";
 import type { SkiAreaI } from "@/interfaces/SkiArea";
 import type { SnowDepthsI } from "@/interfaces/SnowDepth";
-import type { SnowDepthsT } from "@/types/SnowDepth";
+import type { SnowDepthsT } from "@/types/weathers";
 import { fetchAsync } from "./fetch";
 
 const outlines = await fetchAsync({

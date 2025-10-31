@@ -33,6 +33,7 @@ export interface FieldConfig {
   disabled?:
     | boolean
     | ((
+        // biome-ignore lint/suspicious/noExplicitAny: for flexibility
         raw: any,
         data: WeatherData,
         point: string,
