@@ -44,7 +44,7 @@ const comment = null; // コメント（適宜変更）
 
 // 天気・積雪情報
 const weather: Record<string, WeatherData> = {};
-weather["山頂"] = {
+weather.山頂 = {
   time: await trimAndToHalfWidth(page.locator("#weather_01")),
   weather: null,
   temperature: null,
@@ -56,7 +56,7 @@ weather["山頂"] = {
   windSpeed: null,
 };
 
-weather["山麓"] = {
+weather.山麓 = {
   time: await trimAndToHalfWidth(page.locator("#weather_01")),
   weather: await trimAndToHalfWidth(page.locator("#weather_02")),
   temperature: parseFloat(

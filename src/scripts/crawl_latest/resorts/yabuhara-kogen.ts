@@ -84,7 +84,7 @@ if (success1) {
   }
 
   // 天気・積雪情報
-  weather["山頂"] = {
+  weather.山頂 = {
     time: time,
     weather: await trimAndToHalfWidth(page.locator("")),
     temperature: (await trimAndToHalfWidth(page.locator(""))).replace("℃", ""),
@@ -94,7 +94,7 @@ if (success1) {
     windSpeed: (await trimAndToHalfWidth(page.locator(""))).replace("m/s", ""),
   };
 
-  weather["山麓"] = {
+  weather.山麓 = {
     time: time,
     weather: await trimAndToHalfWidth(page.locator("")),
     temperature: (await trimAndToHalfWidth(page.locator(""))).replace("℃", ""),

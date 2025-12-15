@@ -62,7 +62,7 @@ const context = await browser.newContext({
 const page = await context.newPage();
 
 let comment = null;
-const snowDepth = null;
+const _snowDepth = null;
 const weather: Record<string, WeatherData> = {};
 const courses: Course[] = [];
 const lifts: Lift[] = [];
@@ -98,7 +98,7 @@ if (success1) {
   comment = await page.innerHTML(".left_box .text");
 
   // 天気・積雪情報
-  weather["中腹"] = {
+  weather.中腹 = {
     update: await trimAndToHalfWidth(page.locator(".temperature time")),
     weather: await trimAndToHalfWidth(page.locator(".weather .text")),
     temperature: (

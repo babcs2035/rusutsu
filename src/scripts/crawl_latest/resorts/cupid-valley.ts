@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { chromium, type Locator, type Page } from "playwright";
+import { chromium } from "playwright";
 import type {
   Course,
   Lift,
@@ -47,7 +47,7 @@ if (success1) {
   if (commentHp === "") {
     comment = commentLink;
   } else {
-    comment = (commentHp + "\n\n" + commentLink).trim();
+    comment = `${commentHp}\n\n${commentLink}`.trim();
   }
 
   const amWeatherImgUrl = await Utils.safeGetAttribute(
@@ -83,7 +83,7 @@ if (success1) {
   }
 
   // 天気・積雪情報
-  weather["山頂"] = {
+  weather.山頂 = {
     update: null,
     weather: weatherText,
     temperature: (
@@ -117,7 +117,7 @@ if (success1) {
     ).replace("m", ""),
   };
 
-  weather["中腹"] = {
+  weather.中腹 = {
     update: null,
     weather: weatherText,
     temperature: (
@@ -151,7 +151,7 @@ if (success1) {
     ).replace("m", ""),
   };
 
-  weather["山麓"] = {
+  weather.山麓 = {
     update: null,
     weather: weatherText,
     temperature: (

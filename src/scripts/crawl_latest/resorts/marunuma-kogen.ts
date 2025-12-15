@@ -26,7 +26,7 @@ const comment = null; // コメント（適宜変更）
 
 // 天気・積雪情報
 const weather: Record<string, any> = {};
-weather["山頂"] = {
+weather.山頂 = {
   time: await trimElem(
     page.locator(
       "body > div.body-container > main > div.main-container.top-container > section.section.section_top-05 > div > div > div > div > h3",

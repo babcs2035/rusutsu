@@ -248,7 +248,7 @@ const liftNameMap: Record<string, string> = {
 };
 
 const liftTwoLine: Record<string, string[]> = {
-  アルプス第2・第4ペア: ["アルプス第2ペア", "アルプス第4ペア"],
+  "アルプス第2・第4ペア": ["アルプス第2ペア", "アルプス第4ペア"],
   第6ペア: ["いいもり第6ペアA", "いいもり第6ペアB"],
   "ペアLine-A.B": ["Hakuba47 Line-A", "Hakuba47 Line-B"],
 };
@@ -310,7 +310,7 @@ if (success3) {
         );
       }
       const noteText = await trimAndToHalfWidth(row.locator("td").nth(3));
-      const note = (piste + statusNote + " " + noteText).trim();
+      const note = `${piste + statusNote} ${noteText}`.trim();
 
       if (name === "とおみゲレンデ（早朝営業）") {
         const target = courses.find(c => c.name === "とおみゲレンデ下部");
@@ -372,7 +372,7 @@ if (success3) {
       }
       let hours = "";
       if (statusText === "運行中" || statusText === "準備中") {
-        hours = (await trimAndToHalfWidth(row.locator("td").nth(2))) + " ";
+        hours = `${await trimAndToHalfWidth(row.locator("td").nth(2))} `;
       }
       const noteText = await trimAndToHalfWidth(row.locator("td").nth(3));
       const note = (hours + noteText).trim();

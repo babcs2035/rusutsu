@@ -77,7 +77,7 @@ if (success1) {
   await latestNews.click();
   try {
     await page.waitForSelector("article", { state: "visible", timeout: 15000 });
-  } catch (error) {
+  } catch (_error) {
     console.error(
       `❌ [${resortName}] Target element not found or not visible in cilicked news`,
     );

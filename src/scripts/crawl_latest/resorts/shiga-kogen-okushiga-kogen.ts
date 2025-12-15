@@ -81,7 +81,7 @@ const dataDay = await trimAndToHalfWidth(page.locator("#day"));
 const dataTime = await trimAndToHalfWidth(page.locator("#time"));
 const dataDate = `${dataMonth}月${dataDay}日 ${dataTime}`;
 
-weather["山頂"] = {
+weather.山頂 = {
   time: dataDate,
   weather: weatherTop,
   temperature: parseFloat(
@@ -95,7 +95,7 @@ weather["山頂"] = {
   windSpeed: null,
 };
 
-weather["山麓"] = {
+weather.山麓 = {
   time: dataDate,
   weather: weatherBottom,
   temperature: parseFloat(
@@ -239,7 +239,7 @@ for (let i = 0; i < (await liftElems.count()); i++) {
   const timeNote = await trimAndToHalfWidth(
     await row.locator("div.live-lift-r >> div.f-box span.live-lift-feel-la"),
   );
-  const note = statusText + " " + timeNote;
+  const note = `${statusText} ${timeNote}`;
   let status = null;
   if (statusText.includes("運行中")) {
     status = "○";

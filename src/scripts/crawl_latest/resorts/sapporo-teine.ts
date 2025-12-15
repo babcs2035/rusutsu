@@ -49,7 +49,7 @@ const comment = await page
 
 // 天気・積雪情報
 const weather: Record<string, WeatherData> = {};
-weather["山頂"] = {
+weather.山頂 = {
   time: await trimAndToHalfWidth(
     page.locator(
       "body > div.l-content > section.section-forecast.section-general > div > section:nth-child(4) > div > div:nth-child(2) > p:nth-child(2) > span.taken_at > div",
@@ -97,7 +97,7 @@ weather["山頂"] = {
   windSpeed: null,
 };
 
-weather["山麓"] = {
+weather.山麓 = {
   time: await trimAndToHalfWidth(
     page.locator(
       "body > div.l-content > section.section-forecast.section-general > div > section:nth-child(4) > div > div:nth-child(7) > p:nth-child(2) > span.taken_at > div",

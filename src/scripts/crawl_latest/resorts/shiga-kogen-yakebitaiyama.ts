@@ -67,7 +67,7 @@ if (success1) {
   comment = await trimAndToHalfWidth(page.locator(".alart"));
 
   // 天気・積雪情報
-  weather["山頂"] = {
+  weather.山頂 = {
     time: await trimAndToHalfWidth(page.locator(".ski-info-time")),
     weather: await trimAndToHalfWidth(
       page.locator(".ski-info-weather .top .weather"),
@@ -92,7 +92,7 @@ if (success1) {
     windSpeed: null,
   };
 
-  weather["山麓"] = {
+  weather.山麓 = {
     time: await trimAndToHalfWidth(page.locator(".ski-info-time")),
     weather: null,
     temperature: null,
@@ -271,7 +271,7 @@ if (success2) {
     const note2 = await trimAndToHalfWidth(row.locator(".note"));
     let note = note1;
     if (note2 !== "") {
-      note = note1 + "\n" + note2;
+      note = `${note1}\n${note2}`;
     }
 
     lifts.push({

@@ -75,7 +75,7 @@ if (success1) {
   const weatherElems = page.locator("li.row2.right ul.base_factor.flexbox");
 
   // 天気・積雪情報
-  weather["中腹"] = {
+  weather.中腹 = {
     time: await trimAndToHalfWidth(page.locator("div.titlearea .update")),
     weather: await trimAndToHalfWidth(weatherElems.locator("li.sub").nth(0)),
     temperature: (

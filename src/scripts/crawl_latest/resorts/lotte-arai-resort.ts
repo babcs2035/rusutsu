@@ -35,7 +35,7 @@ const resortName = "lotte-arai-resort"; // スキー場名
 await page.goto("https://www.lottehotel.com/arai-resort/ja/snow/slopes-map"); // 実際のURLに差し替えて
 try {
   await page.locator('button:has-text("完全な同意")').click({ timeout: 5000 });
-} catch (e) {
+} catch (_e) {
   console.log(
     `[${resortName}] Cookieボタンは表示されていないか、クリックできませんでした`,
   );
@@ -64,13 +64,12 @@ const comment = await trimAndToHalfWidth(page.locator(".box-notice-wrap")); // �
 const weather: Record<string, WeatherData> = {};
 await page.locator(".weather-item.current").waitFor({ state: "visible" });
 await page.locator(".temperature").waitFor({ state: "visible" });
-weather["山頂"] = {
-  time:
-    (
-      await trimAndToHalfWidth(
-        page.locator('.sub-txt04:has-text("最近のアップデート")'),
-      )
-    ).replace("最近のアップデート", "") + `  ※気温は${formattedNow2}`,
+weather.山頂 = {
+  time: `${(
+    await trimAndToHalfWidth(
+      page.locator('.sub-txt04:has-text("最近のアップデート")'),
+    )
+  ).replace("最近のアップデート", "")}  ※気温は${formattedNow2}`,
   weather: await page
     .locator(".weather-item.current")
     .locator(".ico")
@@ -145,7 +144,7 @@ try {
   await page
     .locator('button.chip-btn:has-text("コース")')
     .click({ timeout: 5000 });
-} catch (e) {
+} catch (_e) {
   console.log(
     `[${resortName}] Course button is not displayed or could not be clicked`,
   );
@@ -200,7 +199,7 @@ try {
   await page
     .locator('button.chip-btn:has-text("ゴンドラ＆リフト")')
     .click({ timeout: 5000 });
-} catch (e) {
+} catch (_e) {
   console.log(
     `[${resortName}] Lift button is not displayed or could not be clicked`,
   );
@@ -268,7 +267,7 @@ try {
   await page
     .locator('button.chip-btn:has-text("フリーライディングゾーン")')
     .click({ timeout: 5000 });
-} catch (e) {
+} catch (_e) {
   console.log(
     `[${resortName}] Lift button is not displayed or could not be clicked`,
   );

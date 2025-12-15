@@ -48,5 +48,10 @@
       "biome check",
       "biome format --write"
     ]
+  },
+  "pnpm": {
+    "overrides": {
+      "tar": ">=7.5.2"
+    }
   }
 }

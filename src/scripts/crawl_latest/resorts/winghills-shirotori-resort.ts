@@ -29,8 +29,8 @@ const courseNameMap: Record<string, string> = {
   "タワーリング・ダウンヒル(上部)": "タワーリング・ダウンヒル上部",
   "タワーリング・ダウンヒル(中間)": "タワーリング・ダウンヒル中部",
   "タワーリング・ダウンヒル(下部)": "タワーリング・ダウンヒル下部",
-  クルージング・: "クルージング",
-  スカイフロント・: "スカイフロント",
+  クルージング: "クルージング",
+  スカイフロント: "スカイフロント",
 };
 const liftNameMap: Record<string, string> = {};
 const liftTwoLine: Record<string, string[]> = {};
@@ -48,7 +48,7 @@ if (success1) {
 
   // 天気・積雪情報
   const weatherElem = page.locator('.box_center:has-text("気象・積雪情報")');
-  weather["中腹"] = {
+  weather.中腹 = {
     update: (
       await Utils.trimAndToHalfWidth(weatherElem.locator(".update"))
     ).replace(/[()]/g, ""),
@@ -64,7 +64,7 @@ if (success1) {
       if (numbers && numbers.length >= 2) {
         const temps = numbers
           .map(temp => temp.replace("℃", ""))
-          .map(temp => parseInt(temp)) // 文字列を数値に変換
+          .map(temp => parseInt(temp, 10)) // 文字列を数値に変換
           .sort((a, b) => a - b);
         return `${temps[0]}~${temps[1]}`; // "20~29" の形式で返す
       }

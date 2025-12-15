@@ -50,7 +50,7 @@ const weatherImgSrc = await page
     "#toprealtime > div.w.realtime__box > div:nth-child(3) > div.realtime__text_large > div > div > img",
   )
   .getAttribute("src");
-weather["山頂"] = {
+weather.山頂 = {
   time: await trimElem(
     page.locator("#toprealtime > div.w.p00.datetime-wrap > p"),
   ),

@@ -84,7 +84,7 @@ if (success0) {
   for (let i = 0; i < (await newsElems.count()); i++) {
     const row = newsElems.nth(i);
     const dateText = await trimAndToHalfWidth(row.locator(".date"));
-    const [newsYearStr, newsMonthStr, newsDayStr] = dateText
+    const [newsYearStr, _newsMonthStr, _newsDayStrr] = dateText
       .split(".")
       .map(s => s.trim());
     const newsYear = Number(newsYearStr);
@@ -118,7 +118,7 @@ if (success0) {
             state: "visible",
             timeout: 15000,
           });
-        } catch (error) {
+        } catch (_error) {
           console.error(
             `❌ [${resortName}] Target element not found or not visible in cilicked news`,
           );
@@ -172,7 +172,7 @@ if (success0) {
         state: "visible",
         timeout: 15000,
       });
-    } catch (error) {
+    } catch (_error) {
       console.error(
         `❌ [${resortName}] Target element not found or not visible in cilicked news`,
       );
@@ -226,7 +226,7 @@ if (success1) {
   }
 
   // 天気・積雪情報
-  weather["山頂"] = {
+  weather.山頂 = {
     time: await trimAndToHalfWidth(page.locator("div.txt span.date")),
     weather: weatherText,
     temperature: (

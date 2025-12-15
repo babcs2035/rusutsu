@@ -45,7 +45,7 @@ const comment = await page.locator("#hitokoto").innerHTML(); // コメント（�
 
 // 天気・積雪情報
 const weather: Record<string, WeatherData> = {};
-weather["中腹"] = {
+weather.中腹 = {
   time: await trimAndToHalfWidth(
     page.locator(
       "#contents > div.today_left1 > div > table > tbody > tr:nth-child(1) > td:nth-child(2)",
@@ -187,7 +187,7 @@ if (courseStatus === "全面可") {
 
 // リフト情報
 const lifts = [];
-const note = await trimAndToHalfWidth(
+const _note = await trimAndToHalfWidth(
   page.locator(
     "#contents > div.today_left1 > div > table > tbody > tr:nth-child(5) > td:nth-child(4)",
   ),

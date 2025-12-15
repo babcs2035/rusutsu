@@ -99,7 +99,7 @@ if (success1) {
     page.locator('.gelande-date-box:has-text("滑走状況") .naiyo'),
   );
   // 天気・積雪情報
-  weather["中腹"] = {
+  weather.中腹 = {
     update: null,
     weather: await trimAndToHalfWidth(
       page.locator('.gelande-date-box:has-text("天候") .naiyo'),

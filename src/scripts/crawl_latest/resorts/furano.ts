@@ -72,9 +72,9 @@ const match = dateText.match(/^(\d{4}年\d{1,2}月\d{1,2}日\(.\))/);
 if (!match) {
   console.warn(`⚠️ [${resortName}] Date format not matched`); // エラーハンドリング
 }
-const dateOnly = match ? match[1] : null;
+const _dateOnly = match ? match[1] : null;
 
-const weatherMap: { [key: string]: string } = {
+const _weatherMap: { [key: string]: string } = {
   sunny: "晴れ",
   clear: "晴れ",
   cloudy: "くもり",
@@ -129,7 +129,7 @@ if (success1) {
     }
   }
 
-  weather["山頂"] = {
+  weather.山頂 = {
     time: dateOnly,
     weather: topWeather,
     temperature: (
@@ -178,7 +178,7 @@ if (success1) {
     }
   }
 
-  weather["山麓"] = {
+  weather.山麓 = {
     time: dateOnly,
     weather: botWeather,
     temperature: (

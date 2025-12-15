@@ -54,7 +54,7 @@ if ((await iconLocator.count()) > 0) {
   weatherIcon = await iconLocator.getAttribute("src");
   console.log(weatherIcon);
 } else {
-  console.log("⚠️[${resortName}] Weather icon not found");
+  console.log(`⚠️[${resortName}] Weather icon not found`);
 }
 let weatherIconName = null;
 if (weatherIcon?.includes("wtr01")) {
@@ -71,7 +71,7 @@ if (weatherIcon?.includes("wtr01")) {
   weatherIconName = "晴れ";
 }
 
-weather["山頂"] = {
+weather.山頂 = {
   time: await trimAndToHalfWidth(page.locator(".crnt")),
   weather: weatherIconName,
   temperature: parseFloat(

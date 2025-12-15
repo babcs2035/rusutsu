@@ -95,7 +95,7 @@ if (success1) {
   }
 
   // 天気・積雪情報
-  weather["山頂"] = {
+  weather.山頂 = {
     time: await trimAndToHalfWidth(page.locator(".update")),
     weather: weatherText,
     temperature: temperature,
@@ -111,7 +111,7 @@ if (success1) {
     windSpeed: null,
   };
 
-  weather["山麓"] = {
+  weather.山麓 = {
     time: await trimAndToHalfWidth(page.locator(".update")),
     weather: null,
     temperature: null,

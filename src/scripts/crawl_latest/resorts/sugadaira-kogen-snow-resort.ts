@@ -105,7 +105,7 @@ if (success1) {
   }
 
   // 天気・積雪情報
-  weather["中腹"] = {
+  weather.中腹 = {
     update: null,
     weather: weatherText,
     temperature: (
@@ -187,8 +187,8 @@ const courseNameMap: Record<string, string> = {
   "初級①": "奥ダボス初級①",
   "初級②": "奥ダボス初級②",
   "初級③": "奥ダボス初級③",
-  太郎・上部: "太郎上部",
-  太郎・下部: "太郎下部",
+  "太郎・上部": "太郎上部",
+  "太郎・下部": "太郎下部",
   "大松山ホワイトピーク（上部）": "大松山ホワイトピーク上部",
   "大松山ホワイトピーク（下部）": "大松山ホワイトピーク下部",
   シュワルツ: "白金シュワルツ",
@@ -309,10 +309,10 @@ if (success2) {
       );
       if (regulationText.includes("コース規制情報はありません")) {
         if (regulationText.includes("ダボス")) {
-          commentDict["ダボスエリア"] = "コース規制なし";
+          commentDict.ダボスエリア = "コース規制なし";
         }
         if (regulationText.includes("太郎")) {
-          commentDict["太郎エリア"] = "コース規制なし";
+          commentDict.太郎エリア = "コース規制なし";
         }
         if (regulationText.includes("パインビーク")) {
           commentDict["オオマツ・ツバクロエリア"] = "コース規制なし";

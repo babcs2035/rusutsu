@@ -62,7 +62,7 @@ if (success1) {
   comment = comment.trim();
 
   // 天気・積雪情報
-  weather["中腹"] = {
+  weather.中腹 = {
     update: await Utils.trimAndToHalfWidth(page.locator(".date .inner .en")),
     weather: await Utils.trimAndToHalfWidth(page.locator(".weather")),
     temperature: (
@@ -124,7 +124,7 @@ if (success1) {
     if (openingTime === "-") {
       note = noteText;
     } else {
-      note = (openingTime + " " + noteText).trim();
+      note = `${openingTime} ${noteText}`.trim();
     }
 
     lifts.push({

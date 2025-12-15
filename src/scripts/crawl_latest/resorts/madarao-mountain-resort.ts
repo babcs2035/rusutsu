@@ -86,7 +86,7 @@ if (success1) {
   );
 
   // 天気・積雪情報
-  weather["中腹"] = {
+  weather.中腹 = {
     time: time,
     weather: await trimAndToHalfWidth(
       page
@@ -252,7 +252,7 @@ if (success1) {
     const idMatch = idAttr.match(/open_(\d+)/);
     if (!idMatch) continue;
 
-    const courseId = parseInt(idMatch[1]);
+    const courseId = parseInt(idMatch[1], 10);
     const name = courseMap[courseId];
     if (!name) continue;
 
@@ -284,7 +284,7 @@ if (success1) {
   }
 
   for (const courseId in courseMap) {
-    const id = parseInt(courseId);
+    const id = parseInt(courseId, 10);
     if (!foundIds.has(id)) {
       courses.push({
         name: courseMap[id],

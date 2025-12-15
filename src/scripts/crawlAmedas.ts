@@ -22,17 +22,17 @@ const forecasts: {
 } = {};
 for (const id of ids) {
   const forecast = await fetchAsync({
-    url: `https://www.jma.go.jp/bosai/jmatile/data/snow/${targetTimes[0]["basetime"]}/none/${targetTimes[0]["basetime"]}/surf/${id}/data.geojson?id=${id}`,
+    url: `https://www.jma.go.jp/bosai/jmatile/data/snow/${targetTimes[0].basetime}/none/${targetTimes[0]["b.etime"]}urf/${id}/data.geojson?id=${id}`,
     options: {
       method: "GET",
     },
   });
   const elems = [];
-  for (const elem of forecast["features"]) {
+  for (const elem of forecast.features) {
     elems.push({
-      code: Number(elem["properties"]["code"]),
-      location: elem["geometry"]["coordinates"],
-      value: Number(elem["properties"][id.substring(5)]),
+      code: Number(elem.properties.code),
+      location: elem.geometry.coordinates,
+      value: Number(elem.properties[id.substring(5)]),
     });
   }
   forecasts[id] = elems;

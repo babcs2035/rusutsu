@@ -54,7 +54,7 @@ const rawTemperature = (await trimAndToHalfWidth(page.locator("#item_temp1")))
 const rawSnowDepth = (
   await trimAndToHalfWidth(page.locator("#item_temp2"))
 ).replace("cm", "");
-weather["中腹"] = {
+weather.中腹 = {
   time: await trimAndToHalfWidth(page.locator("#item_update")),
   weather: await trimAndToHalfWidth(page.locator(".weather_txt:visible")),
   temperature: parseFloat(rawTemperature),

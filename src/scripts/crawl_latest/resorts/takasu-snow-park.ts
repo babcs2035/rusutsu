@@ -65,7 +65,7 @@ const imgSrcTop = await page
     "body > main > section:nth-child(9) > div > div.content_inner > table.table_wes.mgb30 > tbody > tr:nth-child(1) > td.table_wesinfo > img",
   )
   .getAttribute("src");
-weather["山頂"] = {
+weather.山頂 = {
   time: await trimElem(
     page.locator("body > main > section.date > div > div > time"),
   ),
@@ -102,7 +102,7 @@ const imgSrcMid = await page
     "body > main > section:nth-child(9) > div > div.content_inner > table:nth-child(2) > tbody > tr:nth-child(1) > td.table_wesinfo > img",
   )
   .getAttribute("src");
-weather["中腹"] = {
+weather.中腹 = {
   time: await trimElem(
     page.locator("body > main > section.date > div > div > time"),
   ),

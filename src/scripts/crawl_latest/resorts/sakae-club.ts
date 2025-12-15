@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { chromium, type Locator, type Page } from "playwright";
+import { chromium } from "playwright";
 import type {
   Course,
   Lift,
@@ -61,7 +61,7 @@ if (success1) {
   const updateText = match ? match[1].replace("更新", "") : "";
 
   // 天気・積雪情報
-  weather["山麓"] = {
+  weather.山麓 = {
     update: updateText,
     weather: (
       await Utils.trimAndToHalfWidth(

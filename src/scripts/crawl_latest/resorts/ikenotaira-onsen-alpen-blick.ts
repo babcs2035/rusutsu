@@ -104,7 +104,7 @@ if (success1) {
   }
 
   // 天気・積雪情報
-  weather["中腹"] = {
+  weather.中腹 = {
     update: await trimAndToHalfWidth(page.locator(".ski_weather .update")),
     weather: weatherText,
     temperature: (
@@ -263,7 +263,7 @@ if (success1) {
         `⚠️ [${resortName} ${name} Lift] Status (${status}) is incorrect format`,
       );
     }
-    const note = statusText + "\nスキー場営業時間: " + statusHour;
+    const note = `${statusText}\nスキー場営業時間: ${statusHour}`;
     lifts.push({
       name: name,
       status: status,

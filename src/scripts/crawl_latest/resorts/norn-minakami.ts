@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { chromium, type Locator, type Page } from "playwright";
+import { chromium } from "playwright";
 import type {
   Course,
   Lift,
@@ -59,7 +59,7 @@ if (success1) {
   }
 
   // 天気・積雪情報
-  weather["中腹"] = {
+  weather.中腹 = {
     update: await Utils.trimAndToHalfWidth(page.locator(".today .update")),
     weather: await Utils.trimAndToHalfWidth(page.locator(".today .weather")),
     temperature: (

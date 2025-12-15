@@ -92,7 +92,7 @@ if (success1) {
   let seasonOff = false;
 
   // 天気・積雪情報
-  weather["山頂"] = {
+  weather.山頂 = {
     update: update,
     weather: null,
     temperature: (
@@ -108,7 +108,7 @@ if (success1) {
     windSpeed: null,
   };
 
-  weather["山麓"] = {
+  weather.山麓 = {
     update: update,
     weather: null,
     temperature: (
@@ -267,7 +267,7 @@ if (success1) {
             continue;
           }
           foundLine = true;
-          const [, liftName, afterText] = m;
+          const [, _liftName, afterText] = m;
           note = afterText.trim();
         }
         if (!foundLine && !seasonOff) {

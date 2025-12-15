@@ -45,7 +45,7 @@ const comment = await page.locator("#bk88724377 > div > p").innerHTML(); // コ�
 
 // 天気・積雪情報
 const weather: Record<string, WeatherData> = {};
-weather["中腹"] = {
+weather.中腹 = {
   time: await trimAndToHalfWidth(
     page.locator("#bk88724802 > div > div.column.-column1 > ul > li"),
   ),

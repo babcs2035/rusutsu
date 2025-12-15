@@ -29,10 +29,10 @@ const liftUrl: string[] = [""];
 const courseNameMap: Record<string, string> = {
   "": "",
 };
-const liftNameMap: Record<string, string> = {
+const _liftNameMap: Record<string, string> = {
   "": "",
 };
-const liftTwoLine: Record<string, string[]> = {
+const _liftTwoLine: Record<string, string[]> = {
   "": ["", ""],
 };
 
@@ -48,7 +48,7 @@ if (success1) {
   comment = await Utils.safeInnerHTML(page, "#weather .text");
 
   // 天気・積雪情報
-  weather["中腹"] = {
+  weather.中腹 = {
     update: await Utils.trimAndToHalfWidth(page.locator("#weather .time")),
     weather: await Utils.trimAndToHalfWidth(
       page.locator(

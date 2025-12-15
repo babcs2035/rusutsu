@@ -43,7 +43,7 @@ console.log(formattedNow);
 
 // 天気・積雪情報
 const weather: Record<string, WeatherData> = {};
-weather["山頂"] = {
+weather.山頂 = {
   time: await trimAndToHalfWidth(
     page.locator(
       "#is-home > section.s25-conditions > div > a.s25-conditionsTitle > span:nth-child(2)",
@@ -77,7 +77,7 @@ weather["山頂"] = {
   windSpeed: null,
 };
 
-weather["山麓"] = {
+weather.山麓 = {
   time: await trimAndToHalfWidth(
     page.locator(
       "#is-home > section.s25-conditions > div > a.s25-conditionsTitle > span:nth-child(2)",

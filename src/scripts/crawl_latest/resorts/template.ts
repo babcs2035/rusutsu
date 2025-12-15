@@ -71,7 +71,7 @@ async function main() {
       ),
     };
 
-    weather["山麓"] = {
+    weather.山麓 = {
       update: await Utils.trimAndToHalfWidth(page.locator("")),
       weather: await Utils.trimAndToHalfWidth(page.locator("")),
       temperature: (await Utils.trimAndToHalfWidth(page.locator(""))).replace(

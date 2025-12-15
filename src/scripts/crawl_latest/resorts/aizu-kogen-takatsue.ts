@@ -93,7 +93,7 @@ if (success1) {
     `\n\n最新のお知らせは<a href="${commentUrl[1]}">こちら</a>`;
   const update = await trimAndToHalfWidth(page.locator(".slope_date"));
   // 天気・積雪情報
-  weather["山麓"] = {
+  weather.山麓 = {
     update: update,
     weather: await trimAndToHalfWidth(
       page.locator('.slope_weather_box:has-text("天気") .slope_weather_update'),

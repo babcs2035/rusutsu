@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { chromium, type Locator, type Page } from "playwright";
+import { chromium } from "playwright";
 import type {
   Course,
   Lift,
@@ -50,7 +50,7 @@ const selector2 = '.blue-back:has-text("天気")';
 const success2 = await Utils.navigateSafely(page, url2, selector2);
 if (success2) {
   // 天気・積雪情報
-  weather["一の瀬ファミリー"] = {
+  weather.一の瀬ファミリー = {
     update: await Utils.trimAndToHalfWidth(
       page.locator('.sub-data:has-text("最終更新")'),
     ),
@@ -230,7 +230,7 @@ if (success3) {
           '.live-lift-feel-la:has-text("運行時間") .live-lift-feel-la',
         ),
       );
-      const note = statusText + " " + timeNote;
+      const note = `${statusText} ${timeNote}`;
       let status = null;
       if (statusText.includes("運行中")) {
         status = "○";

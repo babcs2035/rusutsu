@@ -49,7 +49,7 @@ const comment = await trimAndToHalfWidth(page.locator(".alart")); // コメン�
 // 天気・積雪情報
 const weather: Record<string, WeatherData> = {};
 
-weather["かぐらエリア"] = {
+weather.かぐらエリア = {
   time: await trimAndToHalfWidth(page.locator(".ski-info-time")),
   weather: await trimAndToHalfWidth(
     page.locator(".ski-info-weather .top .weather"),
@@ -78,7 +78,7 @@ weather["かぐらエリア"] = {
   windSpeed: null,
 };
 
-weather["山麓"] = {
+weather.山麓 = {
   time: await trimAndToHalfWidth(page.locator(".ski-info-time")),
   weather: null,
   temperature: null,
@@ -231,7 +231,7 @@ for (let i = 0; i < (await liftElems.count()); i++) {
     const note2 = await trimAndToHalfWidth(row.locator(".note"));
     let note = note1;
     if (note2 != null) {
-      note = note1 + "\n" + note2;
+      note = `${note1}\n${note2}`;
     }
     lifts.push({
       name: name,
