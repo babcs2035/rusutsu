@@ -7,14 +7,19 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "surfsnow.jp"
+        hostname: "surfsnow.jp",
       },
       {
         protocol: "https",
-        hostname: "www.snowjapan.com"
-      }
-    ]
-  }
+        hostname: "www.snowjapan.com",
+      },
+    ],
+  },
+  experimental: {
+    serverActions: {
+      allowedOrigins: ["ktak.dev"],
+    },
+  },
 };
 
 export default nextConfig;

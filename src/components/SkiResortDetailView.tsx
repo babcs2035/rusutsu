@@ -1,5 +1,17 @@
 "use client";
 
+import {
+  Box,
+  Button,
+  Flex,
+  Grid,
+  Heading,
+  Link,
+  List,
+  NativeSelect,
+  Table,
+  Text,
+} from "@chakra-ui/react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -18,6 +30,8 @@ type Props = {
 };
 
 const TABS = ["概要", "コース", "リフト", "チケット", "気候"];
+
+const MotionBox = motion.create(Box);
 
 /**
  * スキー場の詳細情報を表示するレスポンシブ対応モーダル
@@ -47,16 +61,25 @@ export const SkiResortDetailView = ({ resort, onClose }: Props) => {
   );
 
   return (
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-0 md:p-6">
-      <motion.div
+    <Flex
+      position="fixed"
+      inset={0}
+      zIndex={99999}
+      alignItems="center"
+      justifyContent="center"
+      p={{ base: 0, md: 6 }}
+    >
+      <MotionBox
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
-        className="absolute inset-0 bg-black/60"
+        position="absolute"
+        inset={0}
+        bg="blackAlpha.600"
         aria-hidden="true"
       />
-      <motion.div
+      <MotionBox
         variants={{
           hidden: { opacity: 0, scale: 0.95 },
           visible: { opacity: 1, scale: 1 },
@@ -65,17 +88,44 @@ export const SkiResortDetailView = ({ resort, onClose }: Props) => {
         animate="visible"
         exit="hidden"
         transition={{ type: "spring", stiffness: 400, damping: 30 }}
-        className="relative z-10 flex h-full w-full flex-col overflow-hidden bg-gray-50 shadow-2xl md:h-[90vh] md:max-h-[800px] md:w-[90vw] md:max-w-4xl md:rounded-2xl"
+        position="relative"
+        zIndex={10}
+        display="flex"
+        h={{ base: "100%", md: "90vh" }}
+        maxH={{ md: "800px" }}
+        w={{ base: "100%", md: "90vw" }}
+        maxW={{ md: "4xl" }}
+        flexDirection="column"
+        overflow="hidden"
+        bg="#f9fafb"
+        boxShadow="2xl"
+        borderRadius={{ md: "2xl" }}
       >
-        <button
-          type="button"
+        <Button
           onClick={onClose}
-          className="absolute top-4 right-4 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-black/40 text-2xl text-white shadow-lg backdrop-blur-sm transition-all hover:bg-black/70 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-white/50 cursor-pointer"
-          aria-label="詳細モーダルを閉じる"
+          position="absolute"
+          top={4}
+          right={4}
+          zIndex={20}
+          display="flex"
+          h={8}
+          w={8}
+          alignItems="center"
+          justifyContent="center"
+          borderRadius="full"
+          bg="blackAlpha.400"
+          fontSize="2xl"
+          color="white"
+          boxShadow="lg"
+          backdropFilter="blur(4px)"
+          _hover={{ bg: "blackAlpha.700", transform: "scale(1.1)" }}
+          _focus={{ outline: "none", ring: "2px", ringColor: "whiteAlpha.500" }}
+          minW="auto"
+          p={0}
         >
           ✕
-        </button>
-        <div className="flex-grow overflow-y-auto">
+        </Button>
+        <Box flexGrow={1} overflowY="auto">
           <ImageCarousel
             images={(resort.outline?.images || []).concat(
               resort.courses.images || [],
@@ -83,19 +133,38 @@ export const SkiResortDetailView = ({ resort, onClose }: Props) => {
             alt={resort.name.ja}
           />
           <InfoSection resort={resort} />
-          <nav className="sticky top-0 z-10 flex border-y bg-white/80 backdrop-blur-sm">
+          <Flex
+            as="nav"
+            position="sticky"
+            top={0}
+            zIndex={10}
+            borderY="1px"
+            borderColor="gray.200"
+            bg="whiteAlpha.800"
+            backdropFilter="blur(4px)"
+          >
             {TABS.map(tab => (
-              <button
+              <Button
                 key={tab}
-                type="button"
                 onClick={() => setActiveTab(tab)}
-                className={`flex-1 py-3 px-2 text-center text-sm font-semibold transition-colors md:text-base cursor-pointer ${activeTab === tab ? "border-b-2 border-sky-500 text-sky-600" : "text-gray-500 hover:bg-gray-100/50"}`}
+                flex={1}
+                py={3}
+                px={2}
+                textAlign="center"
+                fontSize={{ base: "sm", md: "md" }}
+                fontWeight="semibold"
+                bg="transparent"
+                borderRadius={0}
+                borderBottom={activeTab === tab ? "2px solid" : "none"}
+                borderColor={activeTab === tab ? "sky.500" : "transparent"}
+                color={activeTab === tab ? "#0284c7" : "#6b7280"}
+                _hover={{ bg: activeTab === tab ? "transparent" : "gray.100" }}
               >
                 {tab}
-              </button>
+              </Button>
             ))}
-          </nav>
-          <div className="p-4 md:p-6">
+          </Flex>
+          <Box p={{ base: 4, md: 6 }}>
             {activeTab === "概要" && <OverviewTab resort={resort} />}
             {activeTab === "コース" && <CoursesTab resort={resort} />}
             {activeTab === "リフト" && <LiftsTab resort={resort} />}
@@ -107,10 +176,10 @@ export const SkiResortDetailView = ({ resort, onClose }: Props) => {
                 snowDepths={snowDepthsData}
               />
             )}
-          </div>
-        </div>
-      </motion.div>
-    </div>
+          </Box>
+        </Box>
+      </MotionBox>
+    </Flex>
   );
 };
 
@@ -135,147 +204,274 @@ const ImageCarousel = ({ images, alt }: { images: string[]; alt: string }) => {
   }, [images, nextSlide]);
 
   if (!images || images.length === 0)
-    return <div className="h-48 w-full flex-shrink-0 bg-gray-300 md:h-64" />;
+    return (
+      <Box
+        h={{ base: "192px", md: "256px" }}
+        w="100%"
+        flexShrink={0}
+        bg="#d1d5db"
+      />
+    );
 
   return (
-    <div className="relative h-48 w-full flex-shrink-0 overflow-hidden md:h-64">
-      <div
-        className="flex h-full w-full transition-transform duration-700 ease-in-out"
+    <Box
+      position="relative"
+      h={{ base: "192px", md: "256px" }}
+      w="100%"
+      flexShrink={0}
+      overflow="hidden"
+    >
+      <Flex
+        h="100%"
+        w="100%"
+        transition="transform 0.7s ease-in-out"
         style={{ transform: `translateX(-${currentSlide * 100}%)` }}
       >
         {images.map(src => (
-          <div key={src} className="relative h-full w-full flex-shrink-0">
+          <Box key={src} position="relative" h="100%" w="100%" flexShrink={0}>
             <Image
               src={src}
               alt={alt}
               fill
-              className="object-contain"
+              style={{ objectFit: "contain" }}
               unoptimized
               priority
             />
-          </div>
+          </Box>
         ))}
-      </div>
+      </Flex>
       {images.length > 1 && (
         <>
-          <button
-            type="button"
+          <Button
             onClick={prevSlide}
-            className="absolute left-3 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-2xl text-white shadow-lg backdrop-blur-sm transition-all hover:bg-black/70 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-white/50 cursor-pointer"
+            position="absolute"
+            left={3}
+            top="50%"
+            transform="translateY(-50%)"
+            display="flex"
+            h={7}
+            w={7}
+            alignItems="center"
+            justifyContent="center"
+            borderRadius="full"
+            bg="blackAlpha.500"
+            fontSize="2xl"
+            color="white"
+            boxShadow="lg"
+            backdropFilter="blur(4px)"
+            _hover={{
+              bg: "blackAlpha.700",
+              transform: "translateY(-50%) scale(1.1)",
+            }}
+            _focus={{
+              outline: "none",
+              ring: "2px",
+              ringColor: "whiteAlpha.500",
+            }}
+            minW="auto"
+            p={0}
             aria-label="前の画像"
           >
             ‹
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
             onClick={nextSlide}
-            className="absolute right-3 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-2xl text-white shadow-lg backdrop-blur-sm transition-all hover:bg-black/70 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-white/50 cursor-pointer"
+            position="absolute"
+            right={3}
+            top="50%"
+            transform="translateY(-50%)"
+            display="flex"
+            h={7}
+            w={7}
+            alignItems="center"
+            justifyContent="center"
+            borderRadius="full"
+            bg="blackAlpha.500"
+            fontSize="2xl"
+            color="white"
+            boxShadow="lg"
+            backdropFilter="blur(4px)"
+            _hover={{
+              bg: "blackAlpha.700",
+              transform: "translateY(-50%) scale(1.1)",
+            }}
+            _focus={{
+              outline: "none",
+              ring: "2px",
+              ringColor: "whiteAlpha.500",
+            }}
+            minW="auto"
+            p={0}
             aria-label="次の画像"
           >
             ›
-          </button>
+          </Button>
         </>
       )}
-    </div>
+    </Box>
   );
 };
 
 const InfoSection = ({ resort }: { resort: SkiResortT }) => (
-  <div className="bg-white p-4 md:p-6">
-    <h1 className="text-2xl font-bold md:text-3xl">{resort.name.ja}</h1>
-    <p className="mt-1 text-sm text-gray-500">
+  <Box bg="white" p={{ base: 4, md: 6 }}>
+    <Heading size="2xl">{resort.name.ja}</Heading>
+    <Text mt={1} fontSize="sm" color="#6b7280">
       {resort.location.prefecture} {resort.location.town}
-    </p>
-    <p className="mt-3 text-gray-700">{resort.outline?.description.short}</p>
-    <div className="mt-4 grid grid-cols-3 gap-2 text-center md:gap-4">
+    </Text>
+    <Text mt={3} color="#374151">
+      {resort.outline?.description.short}
+    </Text>
+    <Grid
+      mt={4}
+      templateColumns="repeat(3, 1fr)"
+      gap={{ base: 2, md: 4 }}
+      textAlign="center"
+    >
       <StatCard title="❄️ 雪の状態" value={resort.outline?.condition || "--"} />
       <StatCard title="🈺 営業状況" value={resort.outline?.status || "--"} />
       <StatCard title="⭐️ 評価" value={resort.outline?.review || "--"} />
-    </div>
-  </div>
+    </Grid>
+  </Box>
 );
 
 const OverviewTab = ({ resort }: { resort: SkiResortT }) => (
-  <div className="space-y-8">
-    <section>
-      <h3 className="text-xl font-semibold">📝 概要</h3>
-      <p className="mt-2 whitespace-pre-wrap text-gray-800">
+  <Flex flexDirection="column" gap={8}>
+    <Box as="section">
+      <Heading size="lg">📝 概要</Heading>
+      <Text mt={2} whiteSpace="pre-wrap" color="#1f2937">
         {resort.outline?.description.long}
-      </p>
-    </section>
-    <section>
-      <h3 className="text-xl font-semibold">🕒 営業時間</h3>
-      <div className="mt-2 w-full overflow-x-auto rounded-lg">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+      </Text>
+    </Box>
+    <Box as="section">
+      <Heading size="lg">🕒 営業時間</Heading>
+      <Box mt={2} w="100%" overflowX="auto" borderRadius="lg">
+        <Table.Root size="sm">
+          <Table.Header>
+            <Table.Row bg="#f3f4f6">
+              <Table.ColumnHeader
+                px={4}
+                py={3}
+                textAlign="left"
+                fontSize="xs"
+                fontWeight="medium"
+                textTransform="uppercase"
+                letterSpacing="wider"
+                color="#6b7280"
+              >
                 曜日
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+              </Table.ColumnHeader>
+              <Table.ColumnHeader
+                px={4}
+                py={3}
+                textAlign="left"
+                fontSize="xs"
+                fontWeight="medium"
+                textTransform="uppercase"
+                letterSpacing="wider"
+                color="#6b7280"
+              >
                 営業時間
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 bg-white">
-            <tr>
-              <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+              </Table.ColumnHeader>
+            </Table.Row>
+          </Table.Header>
+          <Table.Body>
+            <Table.Row>
+              <Table.Cell
+                px={4}
+                py={3}
+                whiteSpace="nowrap"
+                fontSize="sm"
+                fontWeight="medium"
+                color="#111827"
+              >
                 平日
-              </td>
-              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{`${resort.times.weekday.open} - ${resort.times.weekday.close}`}</td>
-            </tr>
-            <tr>
-              <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+              </Table.Cell>
+              <Table.Cell
+                px={4}
+                py={3}
+                whiteSpace="nowrap"
+                fontSize="sm"
+                color="#6b7280"
+              >{`${resort.times.weekday.open} - ${resort.times.weekday.close}`}</Table.Cell>
+            </Table.Row>
+            <Table.Row>
+              <Table.Cell
+                px={4}
+                py={3}
+                whiteSpace="nowrap"
+                fontSize="sm"
+                fontWeight="medium"
+                color="#111827"
+              >
                 週末・祝日
-              </td>
-              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{`${resort.times.weekend.open} - ${resort.times.weekend.close}`}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+              </Table.Cell>
+              <Table.Cell
+                px={4}
+                py={3}
+                whiteSpace="nowrap"
+                fontSize="sm"
+                color="#6b7280"
+              >{`${resort.times.weekend.open} - ${resort.times.weekend.close}`}</Table.Cell>
+            </Table.Row>
+          </Table.Body>
+        </Table.Root>
+      </Box>
       {resort.times.comment && (
-        <div className="mt-2 text-sm text-gray-600">{resort.times.comment}</div>
+        <Text mt={2} fontSize="sm" color="#4b5563">
+          {resort.times.comment}
+        </Text>
       )}
-    </section>
+    </Box>
     {resort.yukiMagi?.available && (
-      <section>
-        <h3 className="text-xl font-semibold">🎫 雪マジ！</h3>
-        <p className="mt-1 text-gray-700">{resort.yukiMagi.info}</p>
+      <Box as="section">
+        <Heading size="lg">🎫 雪マジ！</Heading>
+        <Text mt={1} color="#374151">
+          {resort.yukiMagi.info}
+        </Text>
         {resort.yukiMagi.notes && (
-          <p className="mt-1 text-sm text-gray-600">{resort.yukiMagi.notes}</p>
+          <Text mt={1} fontSize="sm" color="#4b5563">
+            {resort.yukiMagi.notes}
+          </Text>
         )}
-      </section>
+      </Box>
     )}
-    <section>
-      <h3 className="text-xl font-semibold">🔗 関連リンク</h3>
-      <ul className="mt-2 list-inside list-disc space-y-1 text-sky-600">
+    <Box as="section">
+      <Heading size="lg">🔗 関連リンク</Heading>
+      <List.Root
+        as="ul"
+        mt={2}
+        listStyleType="disc"
+        pl={4}
+        gap={1}
+        color="#0284c7"
+      >
         {resort.others.website && (
-          <li>
-            <a
+          <List.Item as="li">
+            <Link
               href={resort.others.website}
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:underline"
+              _hover={{ textDecoration: "underline" }}
             >
               公式サイト
-            </a>
-          </li>
+            </Link>
+          </List.Item>
         )}
         {resort.others.sources.map(src => (
-          <li key={src}>
-            <a
+          <List.Item key={src} as="li">
+            <Link
               href={src}
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:underline"
+              _hover={{ textDecoration: "underline" }}
             >
               {new URL(src).hostname}
-            </a>
-          </li>
+            </Link>
+          </List.Item>
         ))}
-      </ul>
-    </section>
-  </div>
+      </List.Root>
+    </Box>
+  </Flex>
 );
 
 const CoursesTab = ({ resort }: { resort: SkiResortT }) => {
@@ -319,9 +515,12 @@ const CoursesTab = ({ resort }: { resort: SkiResortT }) => {
   };
 
   return (
-    <div className="space-y-8">
-      <section>
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+    <Flex flexDirection="column" gap={8}>
+      <Box as="section">
+        <Grid
+          templateColumns={{ base: "repeat(2, 1fr)", md: "repeat(4, 1fr)" }}
+          gap={4}
+        >
           <StatCard title="🗺️ コース数" value={`${c.numberOfCourses}本`} />
           <StatCard
             title="📏 最長滑走"
@@ -332,95 +531,198 @@ const CoursesTab = ({ resort }: { resort: SkiResortT }) => {
             value={`${c.steepestSlope || c.angle?.max || "--"}°`}
           />
           <StatCard title="🏔️ 標高差" value={`${c.vertical}m`} />
-        </div>
-      </section>
-      <section>
-        <h3 className="text-xl font-semibold">レベル割合</h3>
-        <div className="mt-2 flex h-8 w-full overflow-hidden rounded-full bg-gray-200 text-xs font-bold text-white">
-          <div
-            style={{ width: `${Math.max(c.beginnersCoursesPercent, 15)}%` }}
-            className="bg-green-500 flex items-center justify-center min-w-[60px]"
+        </Grid>
+      </Box>
+      <Box as="section">
+        <Heading size="lg">レベル割合</Heading>
+        <Flex
+          mt={2}
+          h={8}
+          w="100%"
+          overflow="hidden"
+          borderRadius="full"
+          bg="gray.200"
+          fontSize="xs"
+          fontWeight="bold"
+          color="white"
+        >
+          <Flex
+            w={`${Math.max(c.beginnersCoursesPercent, 15)}%`}
+            minW="60px"
+            bg="green.500"
+            alignItems="center"
+            justifyContent="center"
             title={`初級 ${c.beginnersCoursesPercent}%`}
           >
             初級 {c.beginnersCoursesPercent}%
-          </div>
-          <div
-            style={{ width: `${Math.max(c.intermediateCoursesPercent, 15)}%` }}
-            className="bg-sky-500 flex items-center justify-center min-w-[60px]"
+          </Flex>
+          <Flex
+            w={`${Math.max(c.intermediateCoursesPercent, 15)}%`}
+            minW="60px"
+            bg="sky.500"
+            alignItems="center"
+            justifyContent="center"
             title={`中級 ${c.intermediateCoursesPercent}%`}
           >
             中級 {c.intermediateCoursesPercent}%
-          </div>
-          <div
-            style={{ width: `${Math.max(c.advancedCoursesPercent, 15)}%` }}
-            className="bg-red-500 flex items-center justify-center min-w-[60px]"
+          </Flex>
+          <Flex
+            w={`${Math.max(c.advancedCoursesPercent, 15)}%`}
+            minW="60px"
+            bg="red.500"
+            alignItems="center"
+            justifyContent="center"
             title={`上級 ${c.advancedCoursesPercent}%`}
           >
             上級 {c.advancedCoursesPercent}%
-          </div>
-        </div>
-      </section>
-      <section>
-        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <h3 className="text-xl font-semibold">コース一覧</h3>
-          <select
-            value={difficultyFilter}
-            onChange={e => setDifficultyFilter(e.target.value)}
-            className="w-full rounded-md border-gray-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 md:w-auto text-sm"
-          >
-            {difficultyOptions.map(opt => (
-              <option key={opt}>{opt}</option>
-            ))}
-          </select>
-        </div>
-        <div className="mt-4 w-full overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap">
+          </Flex>
+        </Flex>
+      </Box>
+      <Box as="section">
+        <Flex
+          flexDirection={{ base: "column", md: "row" }}
+          gap={2}
+          alignItems={{ md: "center" }}
+          justifyContent={{ md: "space-between" }}
+        >
+          <Heading size="lg">コース一覧</Heading>
+          <NativeSelect.Root w={{ base: "100%", md: "auto" }} size="sm">
+            <NativeSelect.Field
+              value={difficultyFilter}
+              onChange={e => setDifficultyFilter(e.target.value)}
+            >
+              {difficultyOptions.map(opt => (
+                <option key={opt}>{opt}</option>
+              ))}
+            </NativeSelect.Field>
+            <NativeSelect.Indicator />
+          </NativeSelect.Root>
+        </Flex>
+        <Box mt={4} w="100%" overflowX="auto">
+          <Table.Root size="sm">
+            <Table.Header>
+              <Table.Row bg="#f3f4f6">
+                <Table.ColumnHeader
+                  px={4}
+                  py={3}
+                  textAlign="left"
+                  fontSize="xs"
+                  fontWeight="medium"
+                  textTransform="uppercase"
+                  letterSpacing="wider"
+                  color="#6b7280"
+                  whiteSpace="nowrap"
+                >
                   コース名
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap">
+                </Table.ColumnHeader>
+                <Table.ColumnHeader
+                  px={4}
+                  py={3}
+                  textAlign="left"
+                  fontSize="xs"
+                  fontWeight="medium"
+                  textTransform="uppercase"
+                  letterSpacing="wider"
+                  color="#6b7280"
+                  whiteSpace="nowrap"
+                >
                   レベル
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap">
-                  <button
-                    type="button"
+                </Table.ColumnHeader>
+                <Table.ColumnHeader
+                  px={4}
+                  py={3}
+                  textAlign="left"
+                  fontSize="xs"
+                  fontWeight="medium"
+                  textTransform="uppercase"
+                  letterSpacing="wider"
+                  color="#6b7280"
+                  whiteSpace="nowrap"
+                >
+                  <Button
                     onClick={() => handleSort("distance")}
-                    className="flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                    variant="ghost"
+                    display="flex"
+                    alignItems="center"
+                    gap={1}
+                    cursor="pointer"
+                    whiteSpace="nowrap"
+                    p={0}
+                    h="auto"
+                    minW="auto"
+                    fontWeight="medium"
+                    fontSize="xs"
+                    textTransform="uppercase"
+                    letterSpacing="wider"
+                    color="#6b7280"
                   >
                     距離 (m){" "}
                     {sortConfig?.key === "distance" &&
                       (sortConfig.direction === "asc" ? "▲" : "▼")}
-                  </button>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap">
+                  </Button>
+                </Table.ColumnHeader>
+                <Table.ColumnHeader
+                  px={4}
+                  py={3}
+                  textAlign="left"
+                  fontSize="xs"
+                  fontWeight="medium"
+                  textTransform="uppercase"
+                  letterSpacing="wider"
+                  color="#6b7280"
+                  whiteSpace="nowrap"
+                >
                   スノボ
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
+                </Table.ColumnHeader>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
               {processedCourses?.map(d => (
-                <tr key={d.name}>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                <Table.Row key={d.name}>
+                  <Table.Cell
+                    px={4}
+                    py={3}
+                    whiteSpace="nowrap"
+                    fontSize="sm"
+                    fontWeight="medium"
+                    color="#111827"
+                  >
                     {d.name}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                  </Table.Cell>
+                  <Table.Cell
+                    px={4}
+                    py={3}
+                    whiteSpace="nowrap"
+                    fontSize="sm"
+                    color="#6b7280"
+                  >
                     {d.difficulty}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                  </Table.Cell>
+                  <Table.Cell
+                    px={4}
+                    py={3}
+                    whiteSpace="nowrap"
+                    fontSize="sm"
+                    color="#6b7280"
+                  >
                     {d.distance?.toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                  </Table.Cell>
+                  <Table.Cell
+                    px={4}
+                    py={3}
+                    whiteSpace="nowrap"
+                    fontSize="sm"
+                    color="#6b7280"
+                  >
                     {d.snowboard}
-                  </td>
-                </tr>
+                  </Table.Cell>
+                </Table.Row>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </div>
+            </Table.Body>
+          </Table.Root>
+        </Box>
+      </Box>
+    </Flex>
   );
 };
 
@@ -462,124 +764,280 @@ const LiftsTab = ({ resort }: { resort: SkiResortT }) => {
   };
 
   return (
-    <div className="space-y-8">
-      <section>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+    <Flex flexDirection="column" gap={8}>
+      <Box as="section">
+        <Grid
+          templateColumns={{ base: "repeat(2, 1fr)", sm: "repeat(4, 1fr)" }}
+          gap={4}
+        >
           <StatCard title="🚡 総数" value={`${l.numberOfLifts}基`} />
           <StatCard title="🚠 ゴンドラ" value={`${l.gondolas}基`} />
           <StatCard title="4⃣ クアッドリフト" value={`${l.quadLifts}基`} />
           <StatCard title="2⃣ ペアリフト" value={`${l.pairLifts}基`} />
-        </div>
-      </section>
-      <section>
-        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <h3 className="text-xl font-semibold">リフト一覧</h3>
-          <select
-            value={typeFilter}
-            onChange={e => setTypeFilter(e.target.value)}
-            className="w-full rounded-md border-gray-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 md:w-auto text-sm"
-          >
-            {typeOptions.map(opt => (
-              <option key={opt}>{opt}</option>
-            ))}
-          </select>
-        </div>
-        <div className="mt-4 w-full overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap">
+        </Grid>
+      </Box>
+      <Box as="section">
+        <Flex
+          flexDirection={{ base: "column", md: "row" }}
+          gap={2}
+          alignItems={{ md: "center" }}
+          justifyContent={{ md: "space-between" }}
+        >
+          <Heading size="lg">リフト一覧</Heading>
+          <NativeSelect.Root w={{ base: "100%", md: "auto" }} size="sm">
+            <NativeSelect.Field
+              value={typeFilter}
+              onChange={e => setTypeFilter(e.target.value)}
+            >
+              {typeOptions.map(opt => (
+                <option key={opt}>{opt}</option>
+              ))}
+            </NativeSelect.Field>
+            <NativeSelect.Indicator />
+          </NativeSelect.Root>
+        </Flex>
+        <Box mt={4} w="100%" overflowX="auto">
+          <Table.Root size="sm">
+            <Table.Header>
+              <Table.Row bg="#f3f4f6">
+                <Table.ColumnHeader
+                  px={4}
+                  py={3}
+                  textAlign="left"
+                  fontSize="xs"
+                  fontWeight="medium"
+                  textTransform="uppercase"
+                  letterSpacing="wider"
+                  color="#6b7280"
+                  whiteSpace="nowrap"
+                >
                   リフト名
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                </Table.ColumnHeader>
+                <Table.ColumnHeader
+                  px={4}
+                  py={3}
+                  textAlign="left"
+                  fontSize="xs"
+                  fontWeight="medium"
+                  textTransform="uppercase"
+                  letterSpacing="wider"
+                  color="#6b7280"
+                >
                   種別
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap">
-                  <button
-                    type="button"
+                </Table.ColumnHeader>
+                <Table.ColumnHeader
+                  px={4}
+                  py={3}
+                  textAlign="left"
+                  fontSize="xs"
+                  fontWeight="medium"
+                  textTransform="uppercase"
+                  letterSpacing="wider"
+                  color="#6b7280"
+                  whiteSpace="nowrap"
+                >
+                  <Button
                     onClick={() => handleSort("distance")}
-                    className="flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                    variant="ghost"
+                    display="flex"
+                    alignItems="center"
+                    gap={1}
+                    cursor="pointer"
+                    whiteSpace="nowrap"
+                    p={0}
+                    h="auto"
+                    minW="auto"
+                    fontWeight="medium"
+                    fontSize="xs"
+                    textTransform="uppercase"
+                    letterSpacing="wider"
+                    color="#6b7280"
                   >
                     距離 (m){" "}
                     {sortConfig?.key === "distance" &&
                       (sortConfig.direction === "asc" ? "▲" : "▼")}
-                  </button>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap">
+                  </Button>
+                </Table.ColumnHeader>
+                <Table.ColumnHeader
+                  px={4}
+                  py={3}
+                  textAlign="left"
+                  fontSize="xs"
+                  fontWeight="medium"
+                  textTransform="uppercase"
+                  letterSpacing="wider"
+                  color="#6b7280"
+                  whiteSpace="nowrap"
+                >
                   フード
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
+                </Table.ColumnHeader>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
               {processedLifts?.map(lift => (
-                <tr key={lift.name}>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                <Table.Row key={lift.name}>
+                  <Table.Cell
+                    px={4}
+                    py={3}
+                    whiteSpace="nowrap"
+                    fontSize="sm"
+                    fontWeight="medium"
+                    color="#111827"
+                  >
                     {lift.name}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                  </Table.Cell>
+                  <Table.Cell
+                    px={4}
+                    py={3}
+                    whiteSpace="nowrap"
+                    fontSize="sm"
+                    color="#6b7280"
+                  >
                     {lift.type}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                  </Table.Cell>
+                  <Table.Cell
+                    px={4}
+                    py={3}
+                    whiteSpace="nowrap"
+                    fontSize="sm"
+                    color="#6b7280"
+                  >
                     {lift.distance?.toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                  </Table.Cell>
+                  <Table.Cell
+                    px={4}
+                    py={3}
+                    whiteSpace="nowrap"
+                    fontSize="sm"
+                    color="#6b7280"
+                  >
                     {lift.hood}
-                  </td>
-                </tr>
+                  </Table.Cell>
+                </Table.Row>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </div>
+            </Table.Body>
+          </Table.Root>
+        </Box>
+      </Box>
+    </Flex>
   );
 };
 
 const TicketsTab = ({ resort }: { resort: SkiResortT }) => (
-  <section>
-    <h3 className="text-xl font-semibold mb-4">チケット料金</h3>
-    <div className="w-full overflow-x-auto rounded-lg">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-100">
-          <tr>
-            <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap">
+  <Box as="section">
+    <Heading size="lg" mb={4}>
+      チケット料金
+    </Heading>
+    <Box w="100%" overflowX="auto" borderRadius="lg">
+      <Table.Root size="sm">
+        <Table.Header>
+          <Table.Row bg="#f3f4f6">
+            <Table.ColumnHeader
+              px={4}
+              py={3}
+              textAlign="left"
+              fontSize="xs"
+              fontWeight="medium"
+              textTransform="uppercase"
+              letterSpacing="wider"
+              color="#6b7280"
+              whiteSpace="nowrap"
+            >
               券種
-            </th>
-            <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap">
+            </Table.ColumnHeader>
+            <Table.ColumnHeader
+              px={4}
+              py={3}
+              textAlign="right"
+              fontSize="xs"
+              fontWeight="medium"
+              textTransform="uppercase"
+              letterSpacing="wider"
+              color="#6b7280"
+              whiteSpace="nowrap"
+            >
               大人
-            </th>
-            <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap">
+            </Table.ColumnHeader>
+            <Table.ColumnHeader
+              px={4}
+              py={3}
+              textAlign="right"
+              fontSize="xs"
+              fontWeight="medium"
+              textTransform="uppercase"
+              letterSpacing="wider"
+              color="#6b7280"
+              whiteSpace="nowrap"
+            >
               子供
-            </th>
-            <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap">
+            </Table.ColumnHeader>
+            <Table.ColumnHeader
+              px={4}
+              py={3}
+              textAlign="right"
+              fontSize="xs"
+              fontWeight="medium"
+              textTransform="uppercase"
+              letterSpacing="wider"
+              color="#6b7280"
+              whiteSpace="nowrap"
+            >
               シニア
-            </th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-200 bg-white">
+            </Table.ColumnHeader>
+          </Table.Row>
+        </Table.Header>
+        <Table.Body>
           {resort.tickets.map(t => (
-            <tr key={t.name}>
-              <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+            <Table.Row key={t.name}>
+              <Table.Cell
+                px={4}
+                py={3}
+                whiteSpace="nowrap"
+                fontSize="sm"
+                fontWeight="medium"
+                color="#111827"
+              >
                 {t.name}
-              </td>
-              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-right">
+              </Table.Cell>
+              <Table.Cell
+                px={4}
+                py={3}
+                whiteSpace="nowrap"
+                fontSize="sm"
+                color="#6b7280"
+                textAlign="right"
+              >
                 {t.prices.adult?.toLocaleString() || "--"} 円
-              </td>
-              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-right">
+              </Table.Cell>
+              <Table.Cell
+                px={4}
+                py={3}
+                whiteSpace="nowrap"
+                fontSize="sm"
+                color="#6b7280"
+                textAlign="right"
+              >
                 {t.prices.child?.toLocaleString() ||
                   t.prices.olderChild?.toLocaleString() ||
                   "--"}{" "}
                 円
-              </td>
-              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-right">
+              </Table.Cell>
+              <Table.Cell
+                px={4}
+                py={3}
+                whiteSpace="nowrap"
+                fontSize="sm"
+                color="#6b7280"
+                textAlign="right"
+              >
                 {t.prices.senior?.toLocaleString() || "--"} 円
-              </td>
-            </tr>
+              </Table.Cell>
+            </Table.Row>
           ))}
-        </tbody>
-      </table>
-    </div>
-  </section>
+        </Table.Body>
+      </Table.Root>
+    </Box>
+  </Box>
 );
 
 const WeatherTab = ({
@@ -592,28 +1050,26 @@ const WeatherTab = ({
   snowDepths?: SnowDepthsT;
 }) => {
   return (
-    <div className="space-y-8">
+    <Flex flexDirection="column" gap={8}>
       {weathers && (
-        <section>
-          <h3 className="text-xl font-semibold">📈 直近の天気</h3>
+        <Box as="section">
+          <Heading size="lg">📈 直近の天気</Heading>
           <ForecastTable weathers={weathers} />
-        </section>
+        </Box>
       )}
       {forecasts && (
-        <section>
-          <h3 className="text-xl font-semibold">
-            📊 過去の気象データ（週単位）
-          </h3>
+        <Box as="section">
+          <Heading size="lg">📊 過去の気象データ（週単位）</Heading>
           <WeeklyWeatherChart forecasts={forecasts} />
-        </section>
+        </Box>
       )}
       {snowDepths && (
-        <section>
-          <h3 className="text-xl font-semibold">❄️ 積雪の分布</h3>
+        <Box as="section">
+          <Heading size="lg">❄️ 積雪の分布</Heading>
           <SnowDepthLineChart snowDepths={snowDepths} />
-        </section>
+        </Box>
       )}
-    </div>
+    </Flex>
   );
 };
 
@@ -624,8 +1080,26 @@ const StatCard = ({
   title: string;
   value: string | number;
 }) => (
-  <div className="flex h-full flex-col items-center justify-center rounded-lg bg-gray-100 p-2 text-center md:p-3">
-    <p className="text-xs text-gray-500 md:text-sm">{title}</p>
-    <p className="mt-1 text-base font-bold text-gray-800 md:text-lg">{value}</p>
-  </div>
+  <Flex
+    h="100%"
+    flexDirection="column"
+    alignItems="center"
+    justifyContent="center"
+    borderRadius="lg"
+    bg="#f3f4f6"
+    p={{ base: 2, md: 3 }}
+    textAlign="center"
+  >
+    <Text fontSize={{ base: "xs", md: "sm" }} color="#6b7280">
+      {title}
+    </Text>
+    <Text
+      mt={1}
+      fontSize={{ base: "md", md: "lg" }}
+      fontWeight="bold"
+      color="#1f2937"
+    >
+      {value}
+    </Text>
+  </Flex>
 );

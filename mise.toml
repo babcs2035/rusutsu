@@ -1,3 +1,23 @@
 [tools]
-node = "24.10.0"
-pnpm = "10.24.0"
+node = "25.4.0"
+pnpm = "10.28.2"
+
+[tasks]
+# --- Setup ---
+setup = { description = "依存関係のインストール", run = "pnpm install && pnpm exec playwright install chromium" }
+
+# --- Development ---
+dev = { description = "開発サーバー起動", run = "pnpm dev" }
+lint = { description = "Lint & Format (Biome)", run = "pnpm lint" }
+check = { description = "コード品質チェック (Lint, Format, TypeCheck)", run = "pnpm check" }
+
+# --- Build ---
+build = { description = "プロダクションビルド", run = "pnpm build" }
+
+# --- Docker ---
+docker = { description = "Docker起動", run = "docker compose up -d" }
+"docker:logs" = { description = "コンテナログ表示", run = "docker compose logs -f" }
+"docker:build" = { description = "Dockerイメージビルド", run = "docker compose build" }
+
+# --- Utility ---
+clean = { description = "一時ファイル削除", run = "rm -rf node_modules .next" }

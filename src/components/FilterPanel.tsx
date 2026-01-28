@@ -1,7 +1,15 @@
 "use client";
 
-import { faFilter } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  Box,
+  Button,
+  Checkbox,
+  Flex,
+  Grid,
+  Heading,
+  Input,
+} from "@chakra-ui/react";
+import { Filter, X } from "lucide-react";
 import { useId, useState } from "react";
 
 // フィルターの状態を管理するための型
@@ -44,6 +52,10 @@ export const FilterPanel = ({ filters, onFilterChange }: Props) => {
     onFilterChange({ ...filters, [name]: processedValue });
   };
 
+  const handleCheckboxChange = (name: string, checked: boolean) => {
+    onFilterChange({ ...filters, [name]: checked });
+  };
+
   const handleReset = () => {
     onFilterChange({
       keyword: "",
@@ -55,136 +67,205 @@ export const FilterPanel = ({ filters, onFilterChange }: Props) => {
     });
   };
 
+  const labelStyle: React.CSSProperties = {
+    marginBottom: "0.25rem",
+    display: "block",
+    fontSize: "0.875rem",
+    fontWeight: 500,
+    color: "#e2e8f0", // slate-200
+  };
+
   if (!isOpen) {
     return (
-      <button
-        type="button"
+      <Button
         onClick={() => setIsOpen(true)}
-        className="absolute top-4 left-4 z-[1000] flex items-center gap-2 rounded-lg bg-slate-800/80 px-4 py-2 text-white shadow-lg transition-colors hover:bg-slate-700/90 cursor-pointer"
+        position="absolute"
+        top={4}
+        left={4}
+        zIndex={1000}
+        bg="#1e293b"
+        color="white"
+        px={4}
+        py={2}
+        borderRadius="lg"
+        boxShadow="lg"
+        _hover={{ bg: "#334155" }}
+        display="flex"
+        alignItems="center"
+        gap={2}
       >
-        <FontAwesomeIcon icon={faFilter} />
-        <span>フィルター</span>
-      </button>
+        <Filter size={16} />
+        <Box as="span">フィルター</Box>
+      </Button>
     );
   }
 
   return (
-    <div className="absolute top-4 left-4 z-[1000] w-72 rounded-xl border border-white/10 bg-slate-800/80 p-4 text-slate-200 shadow-xl backdrop-blur-lg">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-white">フィルター</h2>
-        <button
-          type="button"
+    <Box
+      position="absolute"
+      top={4}
+      left={4}
+      zIndex={1000}
+      w="288px"
+      borderRadius="xl"
+      border="1px solid rgba(255, 255, 255, 0.2)"
+      bg="#1e293b"
+      p={4}
+      color="#e2e8f0"
+      boxShadow="xl"
+      backdropFilter="blur(16px)"
+    >
+      <Flex alignItems="center" justifyContent="space-between">
+        <Heading size="md" color="white">
+          フィルター
+        </Heading>
+        <Button
           onClick={() => setIsOpen(false)}
-          className="text-2xl text-slate-400 transition-colors hover:text-white  cursor-pointer"
+          variant="ghost"
+          fontSize="2xl"
+          color="#94a3b8"
+          _hover={{ color: "white", bg: "transparent" }}
+          p={0}
+          minW="auto"
+          h="auto"
         >
-          &times;
-        </button>
-      </div>
+          <X size={24} />
+        </Button>
+      </Flex>
 
-      <div className="mt-4 flex flex-col gap-5">
+      <Flex mt={4} flexDirection="column" gap={5}>
         {/* キーワード検索 */}
-        <div>
-          <label
-            htmlFor={keywordId}
-            className="mb-1 block text-sm font-medium text-slate-300"
-          >
+        <Box>
+          <label htmlFor={keywordId} style={labelStyle}>
             キーワード検索
           </label>
-          <input
+          <Input
             id={keywordId}
             type="text"
             name="keyword"
             value={filters.keyword}
             onChange={handleChange}
-            className="w-full rounded-md border-slate-600 bg-slate-700/50 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            bg="#334155"
+            borderColor="#475569"
+            color="white"
+            _placeholder={{ color: "#94a3b8" }}
+            _focus={{
+              borderColor: "#6366f1",
+              boxShadow: "0 0 0 1px #6366f1",
+            }}
           />
-        </div>
+        </Box>
 
         {/* チェックボックス (2x2グリッド) */}
-        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-          <label
-            htmlFor={statusId}
-            className="flex select-none items-center gap-2"
+        <Grid templateColumns="repeat(2, 1fr)" gap={3}>
+          <Checkbox.Root
+            id={statusId}
+            checked={filters.status}
+            onCheckedChange={e => handleCheckboxChange("status", !!e.checked)}
           >
-            <input
-              id={statusId}
-              type="checkbox"
-              name="status"
-              checked={filters.status}
-              onChange={handleChange}
-              className="h-4 w-4 rounded border-slate-500 bg-slate-700 text-indigo-500 focus:ring-indigo-500/50"
+            <Checkbox.HiddenInput />
+            <Checkbox.Control
+              bg="#334155"
+              borderColor="#64748b"
+              _checked={{ bg: "#6366f1", borderColor: "#6366f1" }}
             />
-            <span>営業中</span>
-          </label>
-          <label
-            htmlFor={yukiMagiId}
-            className="flex select-none items-center gap-2"
+            <Checkbox.Label color="#e2e8f0">営業中</Checkbox.Label>
+          </Checkbox.Root>
+
+          <Checkbox.Root
+            id={yukiMagiId}
+            checked={filters.yukiMagi}
+            onCheckedChange={e => handleCheckboxChange("yukiMagi", !!e.checked)}
           >
-            <input
-              id={yukiMagiId}
-              type="checkbox"
-              name="yukiMagi"
-              checked={filters.yukiMagi}
-              onChange={handleChange}
-              className="h-4 w-4 rounded border-slate-500 bg-slate-700 text-indigo-500 focus:ring-indigo-500/50"
+            <Checkbox.HiddenInput />
+            <Checkbox.Control
+              bg="#334155"
+              borderColor="#64748b"
+              _checked={{ bg: "#6366f1", borderColor: "#6366f1" }}
             />
-            <span>雪マジ対応</span>
-          </label>
-          <label
-            htmlFor={beginnerFriendlyId}
-            className="flex select-none items-center gap-2"
+            <Checkbox.Label color="#e2e8f0">雪マジ対応</Checkbox.Label>
+          </Checkbox.Root>
+
+          <Checkbox.Root
+            id={beginnerFriendlyId}
+            checked={filters.beginnerFriendly}
+            onCheckedChange={e =>
+              handleCheckboxChange("beginnerFriendly", !!e.checked)
+            }
           >
-            <input
-              id={beginnerFriendlyId}
-              type="checkbox"
-              name="beginnerFriendly"
-              checked={filters.beginnerFriendly}
-              onChange={handleChange}
-              className="h-4 w-4 rounded border-slate-500 bg-slate-700 text-indigo-500 focus:ring-indigo-500/50"
+            <Checkbox.HiddenInput />
+            <Checkbox.Control
+              bg="#334155"
+              borderColor="#64748b"
+              _checked={{ bg: "#6366f1", borderColor: "#6366f1" }}
             />
-            <span>初心者向け</span>
-          </label>
-        </div>
+            <Checkbox.Label color="#e2e8f0">初心者向け</Checkbox.Label>
+          </Checkbox.Root>
+        </Grid>
 
         {/* 数値入力 */}
-        <div className="flex flex-col gap-3">
-          <div className="grid grid-cols-3 items-center gap-2">
-            <label htmlFor={minVerticalId} className="col-span-1 text-sm">
+        <Flex flexDirection="column" gap={3}>
+          <Grid templateColumns="1fr 2fr" alignItems="center" gap={2}>
+            <label
+              htmlFor={minVerticalId}
+              style={{ fontSize: "0.875rem", color: "#e2e8f0" }}
+            >
               標高差
             </label>
-            <input
+            <Input
               id={minVerticalId}
               type="number"
               name="minVertical"
               value={filters.minVertical}
               onChange={handleChange}
-              className="col-span-2 w-full rounded-md border-slate-600 bg-slate-700/50 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              bg="#334155"
+              borderColor="#475569"
+              color="white"
+              _focus={{
+                borderColor: "#6366f1",
+                boxShadow: "0 0 0 1px #6366f1",
+              }}
             />
-          </div>
-          <div className="grid grid-cols-3 items-center gap-2">
-            <label htmlFor={minCoursesId} className="col-span-1 text-sm">
+          </Grid>
+          <Grid templateColumns="1fr 2fr" alignItems="center" gap={2}>
+            <label
+              htmlFor={minCoursesId}
+              style={{ fontSize: "0.875rem", color: "#e2e8f0" }}
+            >
               コース数
             </label>
-            <input
+            <Input
               id={minCoursesId}
               type="number"
               name="minCourses"
               value={filters.minCourses}
               onChange={handleChange}
-              className="col-span-2 w-full rounded-md border-slate-600 bg-slate-700/50 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              bg="#334155"
+              borderColor="#475569"
+              color="white"
+              _focus={{
+                borderColor: "#6366f1",
+                boxShadow: "0 0 0 1px #6366f1",
+              }}
             />
-          </div>
-        </div>
+          </Grid>
+        </Flex>
 
         {/* リセットボタン */}
-        <button
-          type="button"
+        <Button
           onClick={handleReset}
-          className="rounded-lg bg-slate-600 px-4 py-2 font-bold text-white shadow-md transition-colors hover:bg-slate-500  cursor-pointer"
+          bg="#475569"
+          color="white"
+          fontWeight="bold"
+          borderRadius="lg"
+          px={4}
+          py={2}
+          boxShadow="md"
+          _hover={{ bg: "#64748b" }}
         >
           リセット
-        </button>
-      </div>
-    </div>
+        </Button>
+      </Flex>
+    </Box>
   );
 };
