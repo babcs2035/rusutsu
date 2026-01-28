@@ -1,5 +1,6 @@
 "use client";
 
+import { Box, Button, Flex, Heading } from "@chakra-ui/react";
 import { AnimatePresence } from "framer-motion";
 import type L from "leaflet";
 import dynamic from "next/dynamic";
@@ -90,61 +91,139 @@ export default function Home() {
   const handleCloseDetail = () => setSelectedResortId(null);
 
   return (
-    <main className="relative h-screen w-screen overflow-hidden md:flex">
+    <Flex
+      as="main"
+      position="relative"
+      h="100vh"
+      w="100vw"
+      overflow="hidden"
+      flexDirection={{ md: "row" }}
+    >
       {/* --- 地図表示エリア --- */}
-      <div className="h-full w-full">
+      <Box h="100%" w="100%">
         <FilterPanel filters={filters} onFilterChange={handleFilterChange} />
         <DynamicMap
           resorts={filteredResorts}
           onSelectResort={handleSelectResort}
           onBoundsChange={setMapBounds}
         />
-      </div>
+      </Box>
 
       {/* --- PC用の右カラム --- */}
-      <div className="hidden h-full w-[380px] flex-shrink-0 border-l md:block">
+      <Box
+        display={{ base: "none", md: "block" }}
+        h="100%"
+        w="380px"
+        flexShrink={0}
+        borderLeft="1px solid"
+        borderColor="gray.200"
+      >
         <SkiResortList
           resorts={visibleResorts}
           onSelectResort={handleSelectResort}
         />
-      </div>
+      </Box>
 
       {/* --- スマートフォン用のボトムシート --- */}
-      <div className="md:hidden">
+      <Box display={{ base: "block", md: "none" }}>
         <Drawer.Root
           open={isListSheetOpen}
           onOpenChange={setIsListSheetOpen}
           shouldScaleBackground
         >
           <Drawer.Portal>
-            <Drawer.Overlay className="fixed inset-0 z-[9998] bg-black/40" />
+            <Drawer.Overlay
+              style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 9998,
+                backgroundColor: "rgba(0, 0, 0, 0.4)",
+              }}
+            />
             <Drawer.Content
-              className="fixed bottom-0 left-0 right-0 z-[9999] flex flex-col rounded-t-xl bg-gray-100"
-              style={{ height: "min(80vh, 800px)" }}
+              style={{
+                position: "fixed",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                zIndex: 9999,
+                display: "flex",
+                flexDirection: "column",
+                borderTopLeftRadius: "0.75rem",
+                borderTopRightRadius: "0.75rem",
+                backgroundColor: "#f3f4f6",
+                height: "min(80vh, 800px)",
+              }}
             >
-              <Drawer.Title className="sr-only">スキー場リスト</Drawer.Title>
-              <div className="mx-auto my-4 h-1.5 w-12 flex-shrink-0 rounded-full bg-gray-300" />
-              <div className="flex-grow overflow-y-auto">
+              <Drawer.Title
+                style={{
+                  position: "absolute",
+                  width: 1,
+                  height: 1,
+                  padding: 0,
+                  margin: -1,
+                  overflow: "hidden",
+                  clip: "rect(0, 0, 0, 0)",
+                  border: 0,
+                }}
+              >
+                スキー場リスト
+              </Drawer.Title>
+              <Box
+                mx="auto"
+                my={4}
+                h={1.5}
+                w={12}
+                flexShrink={0}
+                borderRadius="full"
+                bg="#d1d5db"
+              />
+              <Box flexGrow={1} overflowY="auto">
                 <SkiResortList
                   resorts={visibleResorts}
                   onSelectResort={handleSelectResort}
                 />
-              </div>
+              </Box>
             </Drawer.Content>
           </Drawer.Portal>
         </Drawer.Root>
-        <button
-          type="button"
-          className={`fixed bottom-0 left-0 right-0 z-[9999] flex h-16 cursor-pointer items-center justify-center rounded-t-xl border-t bg-gray-100 p-4 shadow-[0_-10px_25px_-5px_rgba(0,0,0,0.1)] transition-opacity duration-300 md:hidden ${isListSheetOpen ? "pointer-events-none opacity-0" : "opacity-100"}`}
+        <Button
+          position="fixed"
+          bottom={0}
+          left={0}
+          right={0}
+          zIndex={9999}
+          display={{ base: "flex", md: "none" }}
+          h={16}
+          cursor="pointer"
+          alignItems="center"
+          justifyContent="center"
+          borderTopRadius="xl"
+          borderTop="1px solid"
+          borderColor="gray.200"
+          bg="#f3f4f6"
+          p={4}
+          boxShadow="0 -10px 25px -5px rgba(0,0,0,0.1)"
+          transition="opacity 0.3s"
+          opacity={isListSheetOpen ? 0 : 1}
+          pointerEvents={isListSheetOpen ? "none" : "auto"}
           onClick={() => setIsListSheetOpen(true)}
           aria-label="リストを開く"
+          flexDirection="column"
         >
-          <div className="absolute top-2 h-1.5 w-12 rounded-full bg-gray-300" />
-          <h2 className="pt-2 text-lg font-bold text-gray-800">
+          <Box
+            position="absolute"
+            top={2}
+            h={1.5}
+            w={12}
+            borderRadius="full"
+            bg="#d1d5db"
+          />
+          <Heading pt={2} size="lg" color="#1f2937">
             {visibleResorts.length}件のスキー場
-          </h2>
-        </button>
-      </div>
+          </Heading>
+        </Button>
+      </Box>
 
       {/* --- 詳細モーダルの表示 --- */}
       <AnimatePresence>
@@ -155,6 +234,6 @@ export default function Home() {
           />
         )}
       </AnimatePresence>
-    </main>
+    </Flex>
   );
 }

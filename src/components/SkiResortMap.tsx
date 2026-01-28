@@ -1,8 +1,8 @@
 "use client";
 
-import { faHouse } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Box, Button, Flex } from "@chakra-ui/react";
 import L from "leaflet";
+import { Home } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import {
   MapContainer,
@@ -61,32 +61,69 @@ const createCustomIcon = () => {
 const MapControls = () => {
   const map = useMap();
   return (
-    <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2">
-      <div className="flex flex-col rounded-lg bg-slate-800/80 shadow-lg backdrop-blur-sm">
-        <button
-          type="button"
+    <Flex
+      position="absolute"
+      top={4}
+      right={4}
+      zIndex={1000}
+      flexDirection="column"
+      gap={2}
+    >
+      <Flex
+        flexDirection="column"
+        borderRadius="lg"
+        bg="rgba(30, 41, 59, 0.8)"
+        boxShadow="lg"
+        backdropFilter="blur(4px)"
+        overflow="hidden"
+      >
+        <Button
           onClick={() => map.zoomIn()}
-          className="p-2 text-white transition-colors hover:bg-slate-700/90 rounded-t-lg text-xl font-bold cursor-pointer"
+          p={2}
+          color="white"
+          bg="transparent"
+          _hover={{ bg: "rgba(51, 65, 85, 0.9)" }}
+          borderRadius="0"
+          borderTopRadius="lg"
+          fontSize="xl"
+          fontWeight="bold"
+          minW="auto"
+          h="auto"
         >
           +
-        </button>
-        <div className="h-px w-full bg-white/10" />
-        <button
-          type="button"
+        </Button>
+        <Box h="1px" w="100%" bg="rgba(255, 255, 255, 0.1)" />
+        <Button
           onClick={() => map.zoomOut()}
-          className="p-2 text-white transition-colors hover:bg-slate-700/90 rounded-b-lg text-xl font-bold cursor-pointer"
+          p={2}
+          color="white"
+          bg="transparent"
+          _hover={{ bg: "rgba(51, 65, 85, 0.9)" }}
+          borderRadius="0"
+          borderBottomRadius="lg"
+          fontSize="xl"
+          fontWeight="bold"
+          minW="auto"
+          h="auto"
         >
           -
-        </button>
-      </div>
-      <button
-        type="button"
+        </Button>
+      </Flex>
+      <Button
         onClick={() => map.setView(INITIAL_CENTER, INITIAL_ZOOM)}
-        className="rounded-lg bg-slate-800/80 p-2 text-white shadow-lg backdrop-blur-sm transition-colors hover:bg-slate-700/90 cursor-pointer"
+        borderRadius="lg"
+        bg="rgba(30, 41, 59, 0.8)"
+        p={2}
+        color="white"
+        boxShadow="lg"
+        backdropFilter="blur(4px)"
+        _hover={{ bg: "rgba(51, 65, 85, 0.9)" }}
+        minW="auto"
+        h="auto"
       >
-        <FontAwesomeIcon icon={faHouse} />
-      </button>
-    </div>
+        <Home size={16} />
+      </Button>
+    </Flex>
   );
 };
 
@@ -109,7 +146,7 @@ export const SkiResortMap = ({
       center={INITIAL_CENTER}
       zoom={INITIAL_ZOOM}
       zoomControl={false}
-      className="w-full h-full"
+      style={{ width: "100%", height: "100%" }}
     >
       <TileLayer
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

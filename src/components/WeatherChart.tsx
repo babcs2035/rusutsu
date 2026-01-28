@@ -1,5 +1,6 @@
 "use client";
 
+import { Box, Button, Flex, Table, Text } from "@chakra-ui/react";
 import { useMemo, useState } from "react";
 import {
   Area,
@@ -31,24 +32,38 @@ const ElevationSelector = ({
   onChange: (value: string) => void;
   options: { label: string; value: string }[];
 }) => (
-  <div className="flex w-full justify-center">
-    <div className="flex space-x-0.5 sm:space-x-1 rounded-lg bg-gray-100 p-0.5 sm:p-1">
+  <Flex w="100%" justifyContent="center">
+    <Flex
+      gap={{ base: 0.5, sm: 1 }}
+      borderRadius="lg"
+      bg="#f3f4f6"
+      p={{ base: 0.5, sm: 1 }}
+    >
       {options.map(option => (
-        <button
-          type="button"
+        <Button
           key={option.value}
           onClick={() => onChange(option.value)}
-          className={`w-16 sm:w-20 rounded-md py-1 px-1 text-xs sm:text-sm font-semibold transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-50 ${
-            value === option.value
-              ? "bg-white text-gray-800 shadow-sm"
-              : "text-gray-500 hover:bg-white/50"
-          }`}
+          w={{ base: 16, sm: 20 }}
+          borderRadius="md"
+          py={1}
+          px={1}
+          fontSize={{ base: "xs", sm: "sm" }}
+          fontWeight="semibold"
+          transition="all 0.2s ease-in-out"
+          _focus={{
+            outline: "none",
+            boxShadow: "0 0 0 2px rgba(14, 165, 233, 0.5)",
+          }}
+          bg={value === option.value ? "white" : "transparent"}
+          color={value === option.value ? "gray.800" : "gray.500"}
+          boxShadow={value === option.value ? "sm" : "none"}
+          _hover={{ bg: value === option.value ? "white" : "whiteAlpha.500" }}
         >
           {option.label}
-        </button>
+        </Button>
       ))}
-    </div>
-  </div>
+    </Flex>
+  </Flex>
 );
 
 /**
@@ -70,14 +85,24 @@ interface CustomTooltipProps {
 const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
     return (
-      <div className="rounded-lg border border-gray-200 bg-white/80 p-3 shadow-md backdrop-blur-sm">
-        <p className="font-bold text-gray-700">{label}</p>
+      <Box
+        borderRadius="lg"
+        border="1px solid"
+        borderColor="#e5e7eb"
+        bg="whiteAlpha.800"
+        p={3}
+        boxShadow="md"
+        backdropFilter="blur(4px)"
+      >
+        <Text fontWeight="bold" color="#374151">
+          {label}
+        </Text>
         {payload.map((pld: TooltipPayload) => (
-          <div key={`${pld.name}-${pld.value}`} style={{ color: pld.color }}>
+          <Box key={`${pld.name}-${pld.value}`} color={pld.color}>
             {`${pld.name}: ${pld.value}${pld.unit || ""}`}
-          </div>
+          </Box>
         ))}
-      </div>
+      </Box>
     );
   }
   return null;
@@ -102,7 +127,7 @@ export const ForecastTable = ({ weathers }: { weathers: WeathersT }) => {
   );
 
   return (
-    <div>
+    <Box>
       <ElevationSelector
         value={elevation}
         onChange={value => setElevation(value as Elevation)}
@@ -112,71 +137,149 @@ export const ForecastTable = ({ weathers }: { weathers: WeathersT }) => {
           { label: "山麓", value: "bot" },
         ]}
       />
-      <div className="mt-4 w-full overflow-x-auto rounded-lg border">
-        <table className="min-w-full border-collapse text-center">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="sticky left-0 z-10 w-12 sm:w-16 border-r bg-gray-100 p-0.5 sm:p-1 text-xs font-medium"></th>
+      <Box
+        mt={4}
+        w="100%"
+        overflowX="auto"
+        borderRadius="lg"
+        border="1px solid"
+        borderColor="#e5e7eb"
+      >
+        <Table.Root
+          size="sm"
+          style={{
+            minWidth: "100%",
+            borderCollapse: "collapse",
+            textAlign: "center",
+          }}
+        >
+          <Table.Header>
+            <Table.Row bg="#f3f4f6">
+              <Table.ColumnHeader
+                position="sticky"
+                left={0}
+                zIndex={10}
+                w={{ base: 12, sm: 16 }}
+                borderRight="1px solid"
+                borderColor="#e5e7eb"
+                bg="#f3f4f6"
+                p={{ base: 0.5, sm: 1 }}
+                fontSize="xs"
+                fontWeight="medium"
+              />
               {forecastDays.map(day => (
-                <th
+                <Table.ColumnHeader
                   key={day}
                   colSpan={4}
-                  className="border-b border-r p-0.5 sm:p-1 text-xs font-medium min-w-0"
+                  borderBottom="1px solid"
+                  borderRight="1px solid"
+                  borderColor="#e5e7eb"
+                  p={{ base: 0.5, sm: 1 }}
+                  fontSize="xs"
+                  fontWeight="medium"
+                  minW={0}
                 >
-                  <div className="whitespace-nowrap overflow-hidden text-ellipsis">
+                  <Box
+                    whiteSpace="nowrap"
+                    overflow="hidden"
+                    textOverflow="ellipsis"
+                  >
                     {day}
-                  </div>
-                </th>
+                  </Box>
+                </Table.ColumnHeader>
               ))}
-            </tr>
-            <tr className="bg-gray-50">
-              <th className="sticky left-0 z-10 border-r bg-gray-50 p-0.5 sm:p-1 text-xs font-medium"></th>
+            </Table.Row>
+            <Table.Row bg="#f9fafb">
+              <Table.ColumnHeader
+                position="sticky"
+                left={0}
+                zIndex={10}
+                borderRight="1px solid"
+                borderColor="#e5e7eb"
+                bg="#f9fafb"
+                p={{ base: 0.5, sm: 1 }}
+                fontSize="xs"
+                fontWeight="medium"
+              />
               {Array.from({ length: 40 }).map((_, i) => {
                 const timeOfDay = ["朝", "昼", "夜", "晩"][i % 4];
                 const dayIndex = Math.floor(i / 4);
                 return (
-                  <th
+                  <Table.ColumnHeader
                     key={`day-${dayIndex}-${timeOfDay}`}
-                    className="border-b border-r p-0.5 text-xs font-medium text-gray-500 w-8 sm:w-10"
+                    borderBottom="1px solid"
+                    borderRight="1px solid"
+                    borderColor="#e5e7eb"
+                    p={0.5}
+                    fontSize="xs"
+                    fontWeight="medium"
+                    color="#6b7280"
+                    w={{ base: 8, sm: 10 }}
                   >
                     {timeOfDay}
-                  </th>
+                  </Table.ColumnHeader>
                 );
               })}
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td className="sticky left-0 z-10 border-r bg-gray-50 p-0.5 sm:p-1 text-xs font-semibold">
-                <div className="text-center">
+            </Table.Row>
+          </Table.Header>
+          <Table.Body>
+            <Table.Row>
+              <Table.Cell
+                position="sticky"
+                left={0}
+                zIndex={10}
+                borderRight="1px solid"
+                borderColor="#e5e7eb"
+                bg="#f9fafb"
+                p={{ base: 0.5, sm: 1 }}
+                fontSize="xs"
+                fontWeight="semibold"
+              >
+                <Box textAlign="center">
                   風<br />
-                  <span className="text-gray-400 text-xs">km/h</span>
-                </div>
-              </td>
+                  <Text as="span" color="gray.400" fontSize="xs">
+                    km/h
+                  </Text>
+                </Box>
+              </Table.Cell>
               {weatherData.winds.map((wind, i) => {
                 const windSpeed = wind.speed;
                 const windColor =
                   windSpeed >= 30
-                    ? "text-red-500"
+                    ? "red.500"
                     : windSpeed >= 20
-                      ? "text-orange-500"
+                      ? "orange.500"
                       : windSpeed >= 10
-                        ? "text-yellow-500"
-                        : "text-gray-400";
+                        ? "yellow.500"
+                        : "gray.400";
                 // 風向きを度数に変換（風は吹いてくる方向なので180度回転）
                 const windAngle = wind.direction
                   ? `rotate(${parseFloat(wind.direction.replace("rotate(", "").replace("deg)", "")) + 180}deg)`
                   : "rotate(0deg)";
 
                 return (
-                  <td
+                  <Table.Cell
                     key={`wind-${i}-${wind.speed}-${wind.direction}`}
-                    className="border-r p-0.5 align-middle"
+                    borderRight="1px solid"
+                    borderColor="#e5e7eb"
+                    p={0.5}
+                    verticalAlign="middle"
                   >
-                    <div className="flex flex-col items-center space-y-0.5">
+                    <Flex flexDirection="column" alignItems="center" gap={0.5}>
                       <svg
-                        className={`h-3 w-3 sm:h-4 sm:w-4 ${windColor}`}
-                        style={{ transform: windAngle }}
+                        style={{
+                          width: "1rem",
+                          height: "1rem",
+                          transform: windAngle,
+                          color:
+                            windColor === "red.500"
+                              ? "#ef4444"
+                              : windColor === "orange.500"
+                                ? "#f97316"
+                                : windColor === "yellow.500"
+                                  ? "#eab308"
+                                  : "#9ca3af",
+                        }}
                         viewBox="0 0 24 24"
                         fill="currentColor"
                         aria-label={`風向き ${wind.direction}, 風速 ${windSpeed}km/h`}
@@ -184,52 +287,93 @@ export const ForecastTable = ({ weathers }: { weathers: WeathersT }) => {
                         <title>風向き・風速</title>
                         <path d="M12 2L22 12H17V22H7V12H2L12 2Z" />
                       </svg>
-                      <span className={`text-xs font-medium ${windColor}`}>
+                      <Text
+                        as="span"
+                        fontSize="xs"
+                        fontWeight="medium"
+                        color={windColor}
+                      >
                         {windSpeed}
-                      </span>
-                    </div>
-                  </td>
+                      </Text>
+                    </Flex>
+                  </Table.Cell>
                 );
               })}
-            </tr>
-            <tr>
-              <td className="sticky left-0 z-10 border-r bg-gray-50 p-0.5 sm:p-1 text-xs font-semibold">
-                <div className="text-center">
+            </Table.Row>
+            <Table.Row>
+              <Table.Cell
+                position="sticky"
+                left={0}
+                zIndex={10}
+                borderRight="1px solid"
+                borderColor="#e5e7eb"
+                bg="#f9fafb"
+                p={{ base: 0.5, sm: 1 }}
+                fontSize="xs"
+                fontWeight="semibold"
+              >
+                <Box textAlign="center">
                   降雪
                   <br />
-                  <span className="text-gray-400 text-xs">cm</span>
-                </div>
-              </td>
+                  <Text as="span" color="gray.400" fontSize="xs">
+                    cm
+                  </Text>
+                </Box>
+              </Table.Cell>
               {weatherData.snows.map((snow, i) => (
-                <td
+                <Table.Cell
                   key={`snow-${i}-${snow}`}
-                  className={`border-r p-0.5 text-xs ${snow > 0 ? "bg-sky-100 font-medium" : "text-gray-400"}`}
+                  borderRight="1px solid"
+                  borderColor="#e5e7eb"
+                  p={0.5}
+                  fontSize="xs"
+                  bg={snow > 0 ? "sky.100" : "transparent"}
+                  fontWeight={snow > 0 ? "medium" : "normal"}
+                  color={snow > 0 ? "gray.800" : "gray.400"}
                 >
                   {snow > 0 ? snow : "-"}
-                </td>
+                </Table.Cell>
               ))}
-            </tr>
-            <tr className="border-t">
-              <td className="sticky left-0 z-10 border-r bg-gray-50 p-0.5 sm:p-1 text-xs font-semibold">
-                <div className="text-center">
+            </Table.Row>
+            <Table.Row borderTop="1px solid" borderColor="#e5e7eb">
+              <Table.Cell
+                position="sticky"
+                left={0}
+                zIndex={10}
+                borderRight="1px solid"
+                borderColor="#e5e7eb"
+                bg="#f9fafb"
+                p={{ base: 0.5, sm: 1 }}
+                fontSize="xs"
+                fontWeight="semibold"
+              >
+                <Box textAlign="center">
                   気温
                   <br />
-                  <span className="text-gray-400 text-xs">°C</span>
-                </div>
-              </td>
+                  <Text as="span" color="gray.400" fontSize="xs">
+                    °C
+                  </Text>
+                </Box>
+              </Table.Cell>
               {weatherData.temperatures.map((temp, i) => (
-                <td
+                <Table.Cell
                   key={`temp-${i}-${temp}`}
-                  className={`border-r p-0.5 text-xs font-bold text-white ${temp > 0 ? "bg-orange-400" : "bg-blue-500"}`}
+                  borderRight="1px solid"
+                  borderColor="#e5e7eb"
+                  p={0.5}
+                  fontSize="xs"
+                  fontWeight="bold"
+                  color="white"
+                  bg={temp > 0 ? "orange.400" : "blue.500"}
                 >
                   {temp}
-                </td>
+                </Table.Cell>
               ))}
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+            </Table.Row>
+          </Table.Body>
+        </Table.Root>
+      </Box>
+    </Box>
   );
 };
 
@@ -264,7 +408,7 @@ export const WeeklyWeatherChart = ({
   }, [forecasts, elevation]);
 
   return (
-    <div>
+    <Box>
       <ElevationSelector
         value={elevation}
         onChange={value => setElevation(value as ForecastElevation)}
@@ -274,7 +418,11 @@ export const WeeklyWeatherChart = ({
           { label: "山麓", value: "bottom" },
         ]}
       />
-      <ResponsiveContainer width="100%" height={300} className="mt-4">
+      <ResponsiveContainer
+        width="100%"
+        height={300}
+        style={{ marginTop: "1rem" }}
+      >
         <ComposedChart
           data={chartData}
           margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
@@ -340,7 +488,7 @@ export const WeeklyWeatherChart = ({
           />
         </ComposedChart>
       </ResponsiveContainer>
-    </div>
+    </Box>
   );
 };
 
@@ -415,7 +563,7 @@ export const SnowDepthLineChart = ({
   }, [snowDepths]);
 
   return (
-    <div>
+    <Box>
       <ResponsiveContainer width="100%" height={400}>
         <ComposedChart
           data={lineData}
@@ -479,6 +627,6 @@ export const SnowDepthLineChart = ({
           />
         </ComposedChart>
       </ResponsiveContainer>
-    </div>
+    </Box>
   );
 };

@@ -1,5 +1,6 @@
 "use client";
 
+import { Box, Checkbox, Flex, Heading, List, Text } from "@chakra-ui/react";
 import type { SkiResortT } from "@/types";
 
 // 親コンポーネントから受け取る props の型をシンプルに戻す
@@ -14,42 +15,69 @@ type Props = {
 export const SkiResortList = ({ resorts, onSelectResort }: Props) => {
   return (
     // 親要素(vaulのコンテナ)の高さいっぱいに広がるコンテナ
-    <div className="flex h-full flex-col bg-gray-100">
+    <Flex h="100%" flexDirection="column" bg="#f3f4f6">
       {/* ヘッダーエリア */}
-      <div className="p-4 pt-2 md:pt-4">
-        <h2 className="text-lg font-bold text-gray-800">
+      <Box p={4} pt={{ base: 2, md: 4 }}>
+        <Heading size="lg" color="#1f2937">
           {resorts.length}件のスキー場
-        </h2>
-      </div>
+        </Heading>
+      </Box>
 
       {/* スクロール可能なリスト本体 */}
-      <ul className="flex-grow space-y-2 overflow-y-auto px-2 pb-2">
+      <List.Root
+        as="ul"
+        flexGrow={1}
+        gap={2}
+        overflowY="auto"
+        px={2}
+        pb={2}
+        listStyleType="none"
+      >
         {resorts.map(resort => (
-          <li key={resort.id}>
-            <button
-              type="button"
+          <List.Item key={resort.id} as="li">
+            <Box
+              as="button"
               onClick={() => onSelectResort(resort.id)}
-              className="w-full cursor-pointer rounded-md bg-white p-3 text-left shadow transition-shadow hover:shadow-lg"
+              w="100%"
+              cursor="pointer"
+              borderRadius="md"
+              bg="white"
+              p={3}
+              textAlign="left"
+              boxShadow="sm"
+              transition="box-shadow 0.2s"
+              _hover={{ boxShadow: "lg" }}
             >
-              <h3 className="font-bold">{resort.name.ja}</h3>
-              <p className="text-sm text-gray-600">
+              <Text fontWeight="bold" color="#1f2937">
+                {resort.name.ja}
+              </Text>
+              <Text fontSize="sm" color="#4b5563">
                 {resort.location.prefecture}
-              </p>
-              <div className="mt-2 flex justify-between text-sm">
-                <span>⭐️ {resort.outline?.review || "評価なし"}</span>
-                <span>コース: {resort.courses.numberOfCourses}</span>
-                <span>標高差: {resort.courses.vertical}m</span>
-                <input
-                  type="checkbox"
+              </Text>
+              <Flex
+                mt={2}
+                justifyContent="space-between"
+                fontSize="sm"
+                color="#374151"
+              >
+                <Text as="span">⭐️ {resort.outline?.review || "評価なし"}</Text>
+                <Text as="span">コース: {resort.courses.numberOfCourses}</Text>
+                <Text as="span">標高差: {resort.courses.vertical}m</Text>
+                <Checkbox.Root
                   onClick={e => e.stopPropagation()}
-                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                   aria-label={`${resort.name.ja}を比較対象に追加`}
-                />
-              </div>
-            </button>
-          </li>
+                >
+                  <Checkbox.HiddenInput />
+                  <Checkbox.Control
+                    borderColor="#d1d5db"
+                    _checked={{ bg: "#4f46e5", borderColor: "#4f46e5" }}
+                  />
+                </Checkbox.Root>
+              </Flex>
+            </Box>
+          </List.Item>
         ))}
-      </ul>
-    </div>
+      </List.Root>
+    </Flex>
   );
 };
