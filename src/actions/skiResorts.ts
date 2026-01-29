@@ -10,6 +10,7 @@ export async function getSkiResorts(): Promise<SkiResortWithRelations[]> {
       courses: true,
       lifts: true,
       tickets: true,
+      yukiMagi: true,
     },
     orderBy: { nameJa: "asc" },
   });
@@ -30,7 +31,7 @@ export async function getSkiResortsForMap() {
       numberOfCourses: true,
       beginnersCoursesPercent: true,
       status: true,
-      yukiMagiAvailable: true,
+      yukiMagiId: true,
     },
     orderBy: { nameJa: "asc" },
   });
@@ -50,6 +51,7 @@ export async function getSkiResortById(id: string) {
       },
       forecasts: true,
       latestReports: true,
+      yukiMagi: true,
     },
   });
 }

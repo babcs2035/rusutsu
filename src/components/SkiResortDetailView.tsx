@@ -352,19 +352,99 @@ const InfoSection = ({ resort }: { resort: Resort }) => (
     </Text>
     <Grid
       mt={4}
-      templateColumns="repeat(3, 1fr)"
+      templateColumns={{
+        base: "repeat(2, 1fr)",
+        md: resort.yukiMagi ? "repeat(4, 1fr)" : "repeat(3, 1fr)",
+      }}
       gap={{ base: 2, md: 4 }}
       textAlign="center"
     >
       <StatCard title="❄️ 雪の状態" value={resort.condition || "--"} />
       <StatCard title="🈺 営業状況" value={resort.status || "--"} />
       <StatCard title="⭐️ 評価" value={resort.review?.toFixed(1) || "--"} />
+      {resort.yukiMagi && (
+        <StatCard title="🎫 雪マジ" value="対応" valueColor="pink.600" />
+      )}
     </Grid>
   </Box>
 );
 
 const OverviewTab = ({ resort }: { resort: Resort }) => (
   <Flex flexDirection="column" gap={8}>
+    {resort.yukiMagi && (
+      <Box
+        as="section"
+        bg="pink.50"
+        p={4}
+        borderRadius="xl"
+        border="1px solid"
+        borderColor="pink.100"
+      >
+        <Flex alignItems="center" gap={2} mb={3}>
+          <Heading size="md" color="pink.700">
+            🎫 雪マジ情報
+          </Heading>
+          {resort.yukiMagi.tag && (
+            <Box
+              px={2}
+              py={0.5}
+              bg="pink.600"
+              color="white"
+              fontSize="xs"
+              fontWeight="bold"
+              borderRadius="md"
+            >
+              {resort.yukiMagi.tag}
+            </Box>
+          )}
+        </Flex>
+
+        <Flex flexDirection="column" gap={3}>
+          {resort.yukiMagi.benefit && (
+            <Box>
+              <Text fontWeight="bold" fontSize="sm" color="pink.800">
+                🎁 特典内容
+              </Text>
+              <Text fontSize="sm" color="pink.900" whiteSpace="pre-wrap">
+                {resort.yukiMagi.benefit}
+              </Text>
+            </Box>
+          )}
+          {resort.yukiMagi.period && (
+            <Box>
+              <Text fontWeight="bold" fontSize="sm" color="pink.800">
+                🕒 対象期間・時間
+              </Text>
+              <Text fontSize="sm" color="pink.900" whiteSpace="pre-wrap">
+                {resort.yukiMagi.period}
+              </Text>
+            </Box>
+          )}
+          {resort.yukiMagi.exclusionDate && (
+            <Box>
+              <Text fontWeight="bold" fontSize="sm" color="pink.800">
+                🚫 除外日
+              </Text>
+              <Text fontSize="sm" color="pink.900" whiteSpace="pre-wrap">
+                {resort.yukiMagi.exclusionDate}
+              </Text>
+            </Box>
+          )}
+          {resort.yukiMagi.url && (
+            <Link
+              href={resort.yukiMagi.url}
+              target="_blank"
+              fontSize="xs"
+              color="pink.600"
+              textDecoration="underline"
+              _hover={{ color: "pink.700" }}
+            >
+              詳細（雪マジ！公式サイト）で確認
+            </Link>
+          )}
+        </Flex>
+      </Box>
+    )}
     <Box as="section">
       <Heading size="lg">📝 概要</Heading>
       <Text mt={2} whiteSpace="pre-wrap" color="#1f2937">
@@ -411,19 +491,7 @@ const OverviewTab = ({ resort }: { resort: Resort }) => (
         </Text>
       )}
     </Box>
-    {resort.yukiMagiAvailable && (
-      <Box as="section">
-        <Heading size="lg">🎫 雪マジ！</Heading>
-        <Text mt={1} color="#374151">
-          {resort.yukiMagiInfo}
-        </Text>
-        {resort.yukiMagiNotes && (
-          <Text mt={1} fontSize="sm" color="#4b5563">
-            {resort.yukiMagiNotes}
-          </Text>
-        )}
-      </Box>
-    )}
+
     <Box as="section">
       <Heading size="lg">🔗 関連リンク</Heading>
       <List.Root
@@ -788,15 +856,21 @@ const TicketsTab = ({ resort }: { resort: Resort }) => {
 const StatCard = ({
   title,
   value,
+  valueColor = "#111827",
 }: {
   title: string;
   value: string | number;
+  valueColor?: string;
 }) => (
   <Box p={{ base: 2, md: 3 }} borderRadius="lg" bg="#f3f4f6">
     <Text fontSize="xs" color="#6b7280">
       {title}
     </Text>
-    <Text fontWeight="bold" fontSize={{ base: "md", md: "lg" }} color="#111827">
+    <Text
+      fontWeight="bold"
+      fontSize={{ base: "md", md: "lg" }}
+      color={valueColor}
+    >
       {value}
     </Text>
   </Box>

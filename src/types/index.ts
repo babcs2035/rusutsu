@@ -21,6 +21,7 @@ export type SkiResortWithRelations = Prisma.SkiResortGetPayload<{
     courses: true;
     lifts: true;
     tickets: true;
+    yukiMagi: true;
   };
 }>;
 
@@ -32,5 +33,6 @@ export type SkiResortWithWeather = Prisma.SkiResortGetPayload<{
     weathers: true;
     forecasts: true;
     latestReports: true;
+    yukiMagi: true;
   };
 }>;
