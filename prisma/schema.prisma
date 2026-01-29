@@ -75,10 +75,8 @@ model SkiResort {
   status           String?
   review           Float?
 
-  // YukiMagi
-  yukiMagiAvailable Boolean @default(false)
-  yukiMagiInfo      String?
-  yukiMagiNotes     String?
+  yukiMagiId String?
+  yukiMagi   YukiMagi? @relation(fields: [yukiMagiId], references: [id])
 
   // Relations
   courses       Course[]
@@ -230,10 +228,18 @@ model AmedasData {
 }
 
 model YukiMagi {
-  id    String  @id @default(cuid())
-  name  String  @unique
-  info  String?
-  notes String?
+  id            String   @id @default(cuid())
+  name          String   @unique
+  url           String?
+  tag           String?
+
+  benefit       String?
+  period        String?
+  exclusionDate String?
+
+  updatedAt DateTime @updatedAt
+
+  skiResorts   SkiResort[]
 
   @@map("yuki_magi")
 }

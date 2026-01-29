@@ -15,7 +15,7 @@ type MapResort = {
   numberOfCourses: number;
   beginnersCoursesPercent: number;
   status: string | null;
-  yukiMagiAvailable: boolean;
+  yukiMagiId: string | null;
 };
 
 type Props = {
@@ -64,9 +64,26 @@ export const SkiResortList = ({ resorts, onSelectResort }: Props) => {
               <Text fontWeight="bold" color="#1f2937">
                 {resort.nameJa}
               </Text>
-              <Text fontSize="sm" color="#4b5563">
-                {resort.prefecture}
-              </Text>
+              <Flex justifyContent="space-between" alignItems="center">
+                <Text fontSize="sm" color="#4b5563">
+                  {resort.prefecture}
+                </Text>
+                {resort.yukiMagiId && (
+                  <Box
+                    px={2}
+                    py={0.5}
+                    bg="pink.50"
+                    color="pink.600"
+                    fontSize="xs"
+                    fontWeight="bold"
+                    borderRadius="full"
+                    borderWidth="1px"
+                    borderColor="pink.200"
+                  >
+                    雪マジ
+                  </Box>
+                )}
+              </Flex>
               <Flex
                 mt={2}
                 justifyContent="space-between"

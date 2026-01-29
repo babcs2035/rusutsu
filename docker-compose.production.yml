@@ -6,9 +6,9 @@ services:
       - "127.0.0.1:${PORT:-3000}:3000"
     environment:
       - NODE_ENV=production
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-rusutsu}:${POSTGRES_PASSWORD:-rusutsu}@db:5432/${POSTGRES_DB:-rusutsu}
       - TZ=Asia/Tokyo
-    env_file:
-      - .env
+      - PORT=${PORT:-3000}
     restart: unless-stopped
     depends_on:
       db:

@@ -25,7 +25,7 @@ type MapResort = {
   numberOfCourses: number;
   beginnersCoursesPercent: number;
   status: string | null;
-  yukiMagiAvailable: boolean;
+  yukiMagiId: string | null;
 };
 
 type Props = {
@@ -69,7 +69,7 @@ export function HomeClient({ initialResorts }: Props) {
   const filteredResorts = useMemo(() => {
     return initialResorts.filter(resort => {
       if (filters.status && !resort.status?.includes("滑走可")) return false;
-      if (filters.yukiMagi && !resort.yukiMagiAvailable) return false;
+      if (filters.yukiMagi && !resort.yukiMagiId) return false;
       if (filters.beginnerFriendly && resort.beginnersCoursesPercent < 30)
         return false;
       if (
