@@ -1,0 +1,253 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-arm64-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// =====================================
+// スキーリゾート関連
+// =====================================
+
+model SkiResort {
+  id        String   @id // e.g., "able-hakuba-goryu"
+  nameJa    String
+  nameEn    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Location
+  prefecture String
+  town       String
+  latitude   Float
+  longitude  Float
+
+  // Course summary
+  topElevation               Int
+  baseElevation              Int
+  verticalDrop               Int
+  numberOfCourses            Int
+  longestCourse              Int
+  steepestSlope              Int?
+  beginnersCoursesPercent    Int
+  intermediateCoursesPercent Int
+  advancedCoursesPercent     Int
+  courseImages               String[]
+
+  // Course type (from Gelende)
+  typeNotPressed Int?
+  typePressed    Int?
+  typeBump       Int?
+  angleMax       Int?
+  angleAvg       Int?
+
+  // Lift summary
+  numberOfLifts Int
+  ropeways      Int
+  gondolas      Int
+  quadLifts     Int
+  tripleLifts   Int
+  pairLifts     Int
+  singleLifts   Int
+  otherLifts    Int
+  liftCapacity  Int?
+
+  // Times
+  weekdayOpen  String?
+  weekdayClose String?
+  weekendOpen  String?
+  weekendClose String?
+  timesComment String?
+
+  // Others
+  website             String?
+  skiersPercent       Int?
+  snowboardersPercent Int?
+  sources             String[]
+
+  // Outline (from Gelende)
+  descriptionShort String?
+  descriptionLong  String?
+  outlineImages    String[]
+  condition        String?
+  status           String?
+  review           Float?
+
+  // YukiMagi
+  yukiMagiAvailable Boolean @default(false)
+  yukiMagiInfo      String?
+  yukiMagiNotes     String?
+
+  // Relations
+  courses       Course[]
+  lifts         Lift[]
+  tickets       Ticket[]
+  weathers      Weather[]
+  forecasts     Forecast[]
+  snowDepths    SnowDepthRecord[]
+  snowFalls     SnowFallRecord[]
+  latestReports LatestReport[]
+
+  @@map("ski_resorts")
+}
+
+model Course {
+  id          String    @id @default(cuid())
+  skiResortId String
+  skiResort   SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade)
+  name        String
+  snowboard   String? // "○", "×", etc.
+  difficulty  String? // "初級", "中級", "上級", etc.
+  distance    Int? // meters
+  angle       Int? // degrees
+  note        String?
+
+  @@map("courses")
+}
+
+model Lift {
+  id          String    @id @default(cuid())
+  skiResortId String
+  skiResort   SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade)
+  name        String
+  type        String? // "クワッド", "ペア", "ゴンドラ", etc.
+  distance    Int? // meters
+  hood        String? // "○", "×"
+
+  @@map("lifts")
+}
+
+model Ticket {
+  id              String    @id @default(cuid())
+  skiResortId     String
+  skiResort       SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade)
+  name            String
+  priceAdult      Int?
+  priceChild      Int?
+  priceOlderChild Int?
+  priceSenior     Int?
+
+  @@map("tickets")
+}
+
+// =====================================
+// 気象データ関連
+// =====================================
+
+model Weather {
+  id          String    @id @default(cuid())
+  skiResortId String
+  skiResort   SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade)
+  date        DateTime
+  source      String?
+
+  // Top/Mid/Bot データは JSON として保存（複雑なネスト構造のため）
+  topData Json?
+  midData Json?
+  botData Json?
+
+  createdAt DateTime @default(now())
+
+  @@unique([skiResortId, date])
+  @@map("weathers")
+}
+
+model Forecast {
+  id          String    @id @default(cuid())
+  skiResortId String
+  skiResort   SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade)
+  dateStart   String?
+  dateEnd     String?
+
+  // Top/Middle/Bottom データは JSON として保存
+  topData    Json?
+  middleData Json?
+  bottomData Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([skiResortId])
+  @@map("forecasts")
+}
+
+model SnowDepthRecord {
+  id          String    @id @default(cuid())
+  skiResortId String
+  skiResort   SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade)
+  date        DateTime
+  depth       Int // cm
+
+  @@unique([skiResortId, date])
+  @@map("snow_depth_records")
+}
+
+model SnowFallRecord {
+  id          String    @id @default(cuid())
+  skiResortId String
+  skiResort   SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade)
+  date        DateTime
+  snowfall    Int // cm
+
+  @@unique([skiResortId, date])
+  @@map("snow_fall_records")
+}
+
+model LatestReport {
+  id            String    @id @default(cuid())
+  skiResortId   String    @unique
+  skiResort     SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade)
+  datetime      DateTime
+  snowfall      Int?
+  tempBase      Float?
+  tempTop       Float?
+  overview      String?
+  precipitation String?
+  wind          String?
+  visibility    String?
+
+  createdAt DateTime @default(now())
+
+  @@map("latest_reports")
+}
+
+// =====================================
+// アメダス・雪マジ（スキー場に紐付かないデータ）
+// =====================================
+
+model AmedasData {
+  id        String   @id @default(cuid())
+  code      Int
+  latitude  Float
+  longitude Float
+  type      String // "snowd", "snowf03h", etc.
+  value     Float
+  fetchedAt DateTime @default(now())
+
+  @@map("amedas_data")
+}
+
+model YukiMagi {
+  id    String  @id @default(cuid())
+  name  String  @unique
+  info  String?
+  notes String?
+
+  @@map("yuki_magi")
+}
+
+// =====================================
+// クローリングログ
+// =====================================
+
+model CrawlLog {
+  id          String   @id @default(cuid())
+  crawlerName String   @unique // "skiAreas", "snowDepths", etc.
+  lastRunAt   DateTime
+  status      String   @default("success") // "success", "failed"
+  message     String?
+
+  @@map("crawl_logs")
+}

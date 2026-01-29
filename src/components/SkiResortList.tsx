@@ -1,11 +1,25 @@
 "use client";
 
 import { Box, Checkbox, Flex, Heading, List, Text } from "@chakra-ui/react";
-import type { SkiResortT } from "@/types";
 
-// 親コンポーネントから受け取る props の型をシンプルに戻す
+// コンパクトな地図表示用リゾート型
+type MapResort = {
+  id: string;
+  nameJa: string;
+  nameEn: string;
+  prefecture: string;
+  town: string;
+  latitude: number;
+  longitude: number;
+  verticalDrop: number;
+  numberOfCourses: number;
+  beginnersCoursesPercent: number;
+  status: string | null;
+  yukiMagiAvailable: boolean;
+};
+
 type Props = {
-  resorts: SkiResortT[];
+  resorts: MapResort[];
   onSelectResort: (id: string) => void;
 };
 
@@ -14,7 +28,6 @@ type Props = {
  */
 export const SkiResortList = ({ resorts, onSelectResort }: Props) => {
   return (
-    // 親要素(vaulのコンテナ)の高さいっぱいに広がるコンテナ
     <Flex h="100%" flexDirection="column" bg="#f3f4f6">
       {/* ヘッダーエリア */}
       <Box p={4} pt={{ base: 2, md: 4 }}>
@@ -49,10 +62,10 @@ export const SkiResortList = ({ resorts, onSelectResort }: Props) => {
               _hover={{ boxShadow: "lg" }}
             >
               <Text fontWeight="bold" color="#1f2937">
-                {resort.name.ja}
+                {resort.nameJa}
               </Text>
               <Text fontSize="sm" color="#4b5563">
-                {resort.location.prefecture}
+                {resort.prefecture}
               </Text>
               <Flex
                 mt={2}
@@ -60,12 +73,11 @@ export const SkiResortList = ({ resorts, onSelectResort }: Props) => {
                 fontSize="sm"
                 color="#374151"
               >
-                <Text as="span">⭐️ {resort.outline?.review || "評価なし"}</Text>
-                <Text as="span">コース: {resort.courses.numberOfCourses}</Text>
-                <Text as="span">標高差: {resort.courses.vertical}m</Text>
+                <Text as="span">コース: {resort.numberOfCourses}</Text>
+                <Text as="span">標高差: {resort.verticalDrop}m</Text>
                 <Checkbox.Root
                   onClick={e => e.stopPropagation()}
-                  aria-label={`${resort.name.ja}を比較対象に追加`}
+                  aria-label={`${resort.nameJa}を比較対象に追加`}
                 >
                   <Checkbox.HiddenInput />
                   <Checkbox.Control

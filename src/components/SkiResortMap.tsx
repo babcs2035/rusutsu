@@ -13,10 +13,17 @@ import {
   useMapEvents,
 } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-markercluster";
-import type { SkiResortT } from "@/types";
 
 const INITIAL_CENTER: L.LatLngTuple = [38.25, 139.0];
 const INITIAL_ZOOM = 6;
+
+// コンパクトな地図表示用リゾート型
+type MapResort = {
+  id: string;
+  nameJa: string;
+  latitude: number;
+  longitude: number;
+};
 
 /**
  * 地図の表示領域変更を親コンポーネントに通知するための内部コンポーネント
@@ -28,13 +35,11 @@ const MapEventsHandler = ({
 }) => {
   const map = useMap();
 
-  // マップの移動またはズームが完了した時にイベントを発火
   useMapEvents({
     zoomend: () => onBoundsChange(map.getBounds()),
     moveend: () => onBoundsChange(map.getBounds()),
   });
 
-  // 初期ロード時に一度だけ表示領域を通知
   useEffect(() => {
     onBoundsChange(map.getBounds());
   }, [map, onBoundsChange]);
@@ -128,7 +133,7 @@ const MapControls = () => {
 };
 
 type Props = {
-  resorts: SkiResortT[];
+  resorts: MapResort[];
   onSelectResort: (id: string) => void;
   onBoundsChange: (bounds: L.LatLngBounds) => void;
 };
@@ -156,11 +161,11 @@ export const SkiResortMap = ({
         {resorts.map(resort => (
           <Marker
             key={resort.id}
-            position={[resort.location.latitude, resort.location.longitude]}
+            position={[resort.latitude, resort.longitude]}
             icon={customIcon}
             eventHandlers={{ click: () => onSelectResort(resort.id) }}
           >
-            <Popup>{resort.name.ja}</Popup>
+            <Popup>{resort.nameJa}</Popup>
           </Marker>
         ))}
       </MarkerClusterGroup>

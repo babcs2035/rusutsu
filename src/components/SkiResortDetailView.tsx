@@ -15,50 +15,83 @@ import {
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { SkiResortT } from "@/types";
-import type { ForecastsT } from "@/types/forecasts";
-import type { SnowDepthsT, WeathersT } from "@/types/weathers";
-import {
-  ForecastTable,
-  SnowDepthLineChart,
-  WeeklyWeatherChart,
-} from "./WeatherChart";
+import type { getSkiResortById } from "@/actions/skiResorts";
+import { LoadingSpinner } from "./LoadingSpinner";
+
+type ResortData = Awaited<ReturnType<typeof getSkiResortById>>;
 
 type Props = {
-  resort: SkiResortT;
+  resortId: string;
+  resortData: ResortData | null;
+  isLoading: boolean;
   onClose: () => void;
 };
 
-const TABS = ["概要", "コース", "リフト", "チケット", "気候"];
+const TABS = ["概要", "コース", "リフト", "チケット"];
 
 const MotionBox = motion.create(Box);
 
 /**
  * スキー場の詳細情報を表示するレスポンシブ対応モーダル
  */
-export const SkiResortDetailView = ({ resort, onClose }: Props) => {
+export const SkiResortDetailView = ({
+  resortId: _resortId,
+  resortData,
+  isLoading,
+  onClose,
+}: Props) => {
   const [activeTab, setActiveTab] = useState(TABS[0]);
 
-  // --- データの読み込みとIDに基づいた検索 ---
-  const weathersData: WeathersT | undefined = useMemo(
-    () =>
-      require("@/lib/weathers.json").find(
-        (w: WeathersT) => w.meta.id === resort.id,
-      ),
-    [resort.id],
-  );
-  const forecastsData: ForecastsT | undefined = useMemo(
-    () =>
-      require("@/lib/forecasts.json").find(
-        (f: ForecastsT) => f.meta.id === resort.id,
-      ),
-    [resort.id],
-  );
-  // snowdepths.json はIDをキーとするオブジェクトからデータを取得
-  const snowDepthsData: SnowDepthsT | undefined = useMemo(
-    () => require("@/lib/snowdepths.json")[resort.id],
-    [resort.id],
-  );
+  if (isLoading || !resortData) {
+    return (
+      <Flex
+        position="fixed"
+        inset={0}
+        zIndex={99999}
+        alignItems="center"
+        justifyContent="center"
+        p={{ base: 0, md: 6 }}
+      >
+        <MotionBox
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          position="absolute"
+          inset={0}
+          bg="blackAlpha.600"
+          aria-hidden="true"
+        />
+        <MotionBox
+          variants={{
+            hidden: { opacity: 0, scale: 0.95 },
+            visible: { opacity: 1, scale: 1 },
+          }}
+          initial="hidden"
+          animate="visible"
+          exit="hidden"
+          position="relative"
+          zIndex={10}
+          display="flex"
+          h={{ base: "100%", md: "90vh" }}
+          maxH={{ md: "800px" }}
+          w={{ base: "100%", md: "90vw" }}
+          maxW={{ md: "4xl" }}
+          flexDirection="column"
+          alignItems="center"
+          justifyContent="center"
+          overflow="hidden"
+          bg="#f9fafb"
+          boxShadow="2xl"
+          borderRadius={{ md: "2xl" }}
+        >
+          <LoadingSpinner text="詳細情報を読み込んでいます..." />
+        </MotionBox>
+      </Flex>
+    );
+  }
+
+  const resort = resortData;
 
   return (
     <Flex
@@ -127,10 +160,11 @@ export const SkiResortDetailView = ({ resort, onClose }: Props) => {
         </Button>
         <Box flexGrow={1} overflowY="auto">
           <ImageCarousel
-            images={(resort.outline?.images || []).concat(
-              resort.courses.images || [],
-            )}
-            alt={resort.name.ja}
+            images={[
+              ...(resort.outlineImages || []),
+              ...(resort.courseImages || []),
+            ]}
+            alt={resort.nameJa}
           />
           <InfoSection resort={resort} />
           <Flex
@@ -169,13 +203,6 @@ export const SkiResortDetailView = ({ resort, onClose }: Props) => {
             {activeTab === "コース" && <CoursesTab resort={resort} />}
             {activeTab === "リフト" && <LiftsTab resort={resort} />}
             {activeTab === "チケット" && <TicketsTab resort={resort} />}
-            {activeTab === "気候" && (
-              <WeatherTab
-                weathers={weathersData}
-                forecasts={forecastsData}
-                snowDepths={snowDepthsData}
-              />
-            )}
           </Box>
         </Box>
       </MotionBox>
@@ -227,7 +254,7 @@ const ImageCarousel = ({ images, alt }: { images: string[]; alt: string }) => {
         transition="transform 0.7s ease-in-out"
         style={{ transform: `translateX(-${currentSlide * 100}%)` }}
       >
-        {images.map(src => (
+        {images.map((src: string) => (
           <Box key={src} position="relative" h="100%" w="100%" flexShrink={0}>
             <Image
               src={src}
@@ -312,14 +339,16 @@ const ImageCarousel = ({ images, alt }: { images: string[]; alt: string }) => {
   );
 };
 
-const InfoSection = ({ resort }: { resort: SkiResortT }) => (
+type Resort = NonNullable<ResortData>;
+
+const InfoSection = ({ resort }: { resort: Resort }) => (
   <Box bg="white" p={{ base: 4, md: 6 }}>
-    <Heading size="2xl">{resort.name.ja}</Heading>
+    <Heading size="2xl">{resort.nameJa}</Heading>
     <Text mt={1} fontSize="sm" color="#6b7280">
-      {resort.location.prefecture} {resort.location.town}
+      {resort.prefecture} {resort.town}
     </Text>
     <Text mt={3} color="#374151">
-      {resort.outline?.description.short}
+      {resort.descriptionShort}
     </Text>
     <Grid
       mt={4}
@@ -327,19 +356,19 @@ const InfoSection = ({ resort }: { resort: SkiResortT }) => (
       gap={{ base: 2, md: 4 }}
       textAlign="center"
     >
-      <StatCard title="❄️ 雪の状態" value={resort.outline?.condition || "--"} />
-      <StatCard title="🈺 営業状況" value={resort.outline?.status || "--"} />
-      <StatCard title="⭐️ 評価" value={resort.outline?.review || "--"} />
+      <StatCard title="❄️ 雪の状態" value={resort.condition || "--"} />
+      <StatCard title="🈺 営業状況" value={resort.status || "--"} />
+      <StatCard title="⭐️ 評価" value={resort.review?.toFixed(1) || "--"} />
     </Grid>
   </Box>
 );
 
-const OverviewTab = ({ resort }: { resort: SkiResortT }) => (
+const OverviewTab = ({ resort }: { resort: Resort }) => (
   <Flex flexDirection="column" gap={8}>
     <Box as="section">
       <Heading size="lg">📝 概要</Heading>
       <Text mt={2} whiteSpace="pre-wrap" color="#1f2937">
-        {resort.outline?.description.long}
+        {resort.descriptionLong}
       </Text>
     </Box>
     <Box as="section">
@@ -348,89 +377,49 @@ const OverviewTab = ({ resort }: { resort: SkiResortT }) => (
         <Table.Root size="sm">
           <Table.Header>
             <Table.Row bg="#f3f4f6">
-              <Table.ColumnHeader
-                px={4}
-                py={3}
-                textAlign="left"
-                fontSize="xs"
-                fontWeight="medium"
-                textTransform="uppercase"
-                letterSpacing="wider"
-                color="#6b7280"
-              >
+              <Table.ColumnHeader px={4} py={3} color="#6b7280">
                 曜日
               </Table.ColumnHeader>
-              <Table.ColumnHeader
-                px={4}
-                py={3}
-                textAlign="left"
-                fontSize="xs"
-                fontWeight="medium"
-                textTransform="uppercase"
-                letterSpacing="wider"
-                color="#6b7280"
-              >
+              <Table.ColumnHeader px={4} py={3} color="#6b7280">
                 営業時間
               </Table.ColumnHeader>
             </Table.Row>
           </Table.Header>
           <Table.Body>
             <Table.Row>
-              <Table.Cell
-                px={4}
-                py={3}
-                whiteSpace="nowrap"
-                fontSize="sm"
-                fontWeight="medium"
-                color="#111827"
-              >
+              <Table.Cell px={4} py={3} fontWeight="medium" color="#111827">
                 平日
               </Table.Cell>
-              <Table.Cell
-                px={4}
-                py={3}
-                whiteSpace="nowrap"
-                fontSize="sm"
-                color="#6b7280"
-              >{`${resort.times.weekday.open} - ${resort.times.weekday.close}`}</Table.Cell>
+              <Table.Cell px={4} py={3} color="#6b7280">
+                {resort.weekdayOpen} - {resort.weekdayClose}
+              </Table.Cell>
             </Table.Row>
             <Table.Row>
-              <Table.Cell
-                px={4}
-                py={3}
-                whiteSpace="nowrap"
-                fontSize="sm"
-                fontWeight="medium"
-                color="#111827"
-              >
+              <Table.Cell px={4} py={3} fontWeight="medium" color="#111827">
                 週末・祝日
               </Table.Cell>
-              <Table.Cell
-                px={4}
-                py={3}
-                whiteSpace="nowrap"
-                fontSize="sm"
-                color="#6b7280"
-              >{`${resort.times.weekend.open} - ${resort.times.weekend.close}`}</Table.Cell>
+              <Table.Cell px={4} py={3} color="#6b7280">
+                {resort.weekendOpen} - {resort.weekendClose}
+              </Table.Cell>
             </Table.Row>
           </Table.Body>
         </Table.Root>
       </Box>
-      {resort.times.comment && (
+      {resort.timesComment && (
         <Text mt={2} fontSize="sm" color="#4b5563">
-          {resort.times.comment}
+          {resort.timesComment}
         </Text>
       )}
     </Box>
-    {resort.yukiMagi?.available && (
+    {resort.yukiMagiAvailable && (
       <Box as="section">
         <Heading size="lg">🎫 雪マジ！</Heading>
         <Text mt={1} color="#374151">
-          {resort.yukiMagi.info}
+          {resort.yukiMagiInfo}
         </Text>
-        {resort.yukiMagi.notes && (
+        {resort.yukiMagiNotes && (
           <Text mt={1} fontSize="sm" color="#4b5563">
-            {resort.yukiMagi.notes}
+            {resort.yukiMagiNotes}
           </Text>
         )}
       </Box>
@@ -445,10 +434,10 @@ const OverviewTab = ({ resort }: { resort: SkiResortT }) => (
         gap={1}
         color="#0284c7"
       >
-        {resort.others.website && (
+        {resort.website && (
           <List.Item as="li">
             <Link
-              href={resort.others.website}
+              href={resort.website}
               target="_blank"
               rel="noopener noreferrer"
               _hover={{ textDecoration: "underline" }}
@@ -457,7 +446,7 @@ const OverviewTab = ({ resort }: { resort: SkiResortT }) => (
             </Link>
           </List.Item>
         )}
-        {resort.others.sources.map(src => (
+        {resort.sources.map((src: string) => (
           <List.Item key={src} as="li">
             <Link
               href={src}
@@ -474,8 +463,8 @@ const OverviewTab = ({ resort }: { resort: SkiResortT }) => (
   </Flex>
 );
 
-const CoursesTab = ({ resort }: { resort: SkiResortT }) => {
-  const c = resort.courses;
+const CoursesTab = ({ resort }: { resort: Resort }) => {
+  const courses = resort.courses;
   const [difficultyFilter, setDifficultyFilter] = useState("全て");
   const [sortConfig, setSortConfig] = useState<{
     key: "distance";
@@ -485,18 +474,20 @@ const CoursesTab = ({ resort }: { resort: SkiResortT }) => {
   const difficultyOptions = useMemo(
     () => [
       "全て",
-      ...Array.from(new Set(c.details?.map(d => d.difficulty) || [])),
+      ...Array.from(
+        new Set(courses.map(c => c.difficulty).filter(Boolean) as string[]),
+      ),
     ],
-    [c.details],
+    [courses],
   );
 
   const processedCourses = useMemo(() => {
-    let courses = c.details ? [...c.details] : [];
+    let filtered = [...courses];
     if (difficultyFilter !== "全て") {
-      courses = courses.filter(d => d.difficulty === difficultyFilter);
+      filtered = filtered.filter(c => c.difficulty === difficultyFilter);
     }
     if (sortConfig !== null) {
-      courses.sort((a, b) => {
+      filtered.sort((a, b) => {
         const aVal = a[sortConfig.key] || 0;
         const bVal = b[sortConfig.key] || 0;
         if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1;
@@ -504,8 +495,8 @@ const CoursesTab = ({ resort }: { resort: SkiResortT }) => {
         return 0;
       });
     }
-    return courses;
-  }, [c.details, difficultyFilter, sortConfig]);
+    return filtered;
+  }, [courses, difficultyFilter, sortConfig]);
 
   const handleSort = (key: "distance") => {
     setSortConfig(prev => ({
@@ -521,16 +512,16 @@ const CoursesTab = ({ resort }: { resort: SkiResortT }) => {
           templateColumns={{ base: "repeat(2, 1fr)", md: "repeat(4, 1fr)" }}
           gap={4}
         >
-          <StatCard title="🗺️ コース数" value={`${c.numberOfCourses}本`} />
+          <StatCard title="🗺️ コース数" value={`${resort.numberOfCourses}本`} />
           <StatCard
             title="📏 最長滑走"
-            value={`${c.longestCourse.toLocaleString()}m`}
+            value={`${resort.longestCourse?.toLocaleString()}m`}
           />
           <StatCard
             title="📐 最大斜度"
-            value={`${c.steepestSlope || c.angle?.max || "--"}°`}
+            value={`${resort.steepestSlope || resort.angleMax || "--"}°`}
           />
-          <StatCard title="🏔️ 標高差" value={`${c.vertical}m`} />
+          <StatCard title="🏔️ 標高差" value={`${resort.verticalDrop}m`} />
         </Grid>
       </Box>
       <Box as="section">
@@ -547,34 +538,31 @@ const CoursesTab = ({ resort }: { resort: SkiResortT }) => {
           color="white"
         >
           <Flex
-            w={`${Math.max(c.beginnersCoursesPercent, 15)}%`}
+            w={`${Math.max(resort.beginnersCoursesPercent, 15)}%`}
             minW="60px"
             bg="green.500"
             alignItems="center"
             justifyContent="center"
-            title={`初級 ${c.beginnersCoursesPercent}%`}
           >
-            初級 {c.beginnersCoursesPercent}%
+            初級 {resort.beginnersCoursesPercent}%
           </Flex>
           <Flex
-            w={`${Math.max(c.intermediateCoursesPercent, 15)}%`}
+            w={`${Math.max(resort.intermediateCoursesPercent, 15)}%`}
             minW="60px"
             bg="sky.500"
             alignItems="center"
             justifyContent="center"
-            title={`中級 ${c.intermediateCoursesPercent}%`}
           >
-            中級 {c.intermediateCoursesPercent}%
+            中級 {resort.intermediateCoursesPercent}%
           </Flex>
           <Flex
-            w={`${Math.max(c.advancedCoursesPercent, 15)}%`}
+            w={`${Math.max(resort.advancedCoursesPercent, 15)}%`}
             minW="60px"
             bg="red.500"
             alignItems="center"
             justifyContent="center"
-            title={`上級 ${c.advancedCoursesPercent}%`}
           >
-            上級 {c.advancedCoursesPercent}%
+            上級 {resort.advancedCoursesPercent}%
           </Flex>
         </Flex>
       </Box>
@@ -602,58 +590,19 @@ const CoursesTab = ({ resort }: { resort: SkiResortT }) => {
           <Table.Root size="sm">
             <Table.Header>
               <Table.Row bg="#f3f4f6">
-                <Table.ColumnHeader
-                  px={4}
-                  py={3}
-                  textAlign="left"
-                  fontSize="xs"
-                  fontWeight="medium"
-                  textTransform="uppercase"
-                  letterSpacing="wider"
-                  color="#6b7280"
-                  whiteSpace="nowrap"
-                >
+                <Table.ColumnHeader px={4} py={3} color="#6b7280">
                   コース名
                 </Table.ColumnHeader>
-                <Table.ColumnHeader
-                  px={4}
-                  py={3}
-                  textAlign="left"
-                  fontSize="xs"
-                  fontWeight="medium"
-                  textTransform="uppercase"
-                  letterSpacing="wider"
-                  color="#6b7280"
-                  whiteSpace="nowrap"
-                >
+                <Table.ColumnHeader px={4} py={3} color="#6b7280">
                   レベル
                 </Table.ColumnHeader>
-                <Table.ColumnHeader
-                  px={4}
-                  py={3}
-                  textAlign="left"
-                  fontSize="xs"
-                  fontWeight="medium"
-                  textTransform="uppercase"
-                  letterSpacing="wider"
-                  color="#6b7280"
-                  whiteSpace="nowrap"
-                >
+                <Table.ColumnHeader px={4} py={3} color="#6b7280">
                   <Button
                     onClick={() => handleSort("distance")}
                     variant="ghost"
-                    display="flex"
-                    alignItems="center"
-                    gap={1}
-                    cursor="pointer"
-                    whiteSpace="nowrap"
                     p={0}
                     h="auto"
                     minW="auto"
-                    fontWeight="medium"
-                    fontSize="xs"
-                    textTransform="uppercase"
-                    letterSpacing="wider"
                     color="#6b7280"
                   >
                     距離 (m){" "}
@@ -661,60 +610,25 @@ const CoursesTab = ({ resort }: { resort: SkiResortT }) => {
                       (sortConfig.direction === "asc" ? "▲" : "▼")}
                   </Button>
                 </Table.ColumnHeader>
-                <Table.ColumnHeader
-                  px={4}
-                  py={3}
-                  textAlign="left"
-                  fontSize="xs"
-                  fontWeight="medium"
-                  textTransform="uppercase"
-                  letterSpacing="wider"
-                  color="#6b7280"
-                  whiteSpace="nowrap"
-                >
+                <Table.ColumnHeader px={4} py={3} color="#6b7280">
                   スノボ
                 </Table.ColumnHeader>
               </Table.Row>
             </Table.Header>
             <Table.Body>
-              {processedCourses?.map(d => (
-                <Table.Row key={d.name}>
-                  <Table.Cell
-                    px={4}
-                    py={3}
-                    whiteSpace="nowrap"
-                    fontSize="sm"
-                    fontWeight="medium"
-                    color="#111827"
-                  >
-                    {d.name}
+              {processedCourses.map(c => (
+                <Table.Row key={c.id}>
+                  <Table.Cell px={4} py={3} fontWeight="medium" color="#111827">
+                    {c.name}
                   </Table.Cell>
-                  <Table.Cell
-                    px={4}
-                    py={3}
-                    whiteSpace="nowrap"
-                    fontSize="sm"
-                    color="#6b7280"
-                  >
-                    {d.difficulty}
+                  <Table.Cell px={4} py={3} color="#6b7280">
+                    {c.difficulty}
                   </Table.Cell>
-                  <Table.Cell
-                    px={4}
-                    py={3}
-                    whiteSpace="nowrap"
-                    fontSize="sm"
-                    color="#6b7280"
-                  >
-                    {d.distance?.toLocaleString()}
+                  <Table.Cell px={4} py={3} color="#6b7280">
+                    {c.distance?.toLocaleString()}
                   </Table.Cell>
-                  <Table.Cell
-                    px={4}
-                    py={3}
-                    whiteSpace="nowrap"
-                    fontSize="sm"
-                    color="#6b7280"
-                  >
-                    {d.snowboard}
+                  <Table.Cell px={4} py={3} color="#6b7280">
+                    {c.snowboard}
                   </Table.Cell>
                 </Table.Row>
               ))}
@@ -726,42 +640,24 @@ const CoursesTab = ({ resort }: { resort: SkiResortT }) => {
   );
 };
 
-const LiftsTab = ({ resort }: { resort: SkiResortT }) => {
-  const l = resort.lifts;
+const LiftsTab = ({ resort }: { resort: Resort }) => {
+  const lifts = resort.lifts;
   const [typeFilter, setTypeFilter] = useState("全て");
-  const [sortConfig, setSortConfig] = useState<{
-    key: "distance";
-    direction: "asc" | "desc";
-  } | null>(null);
 
   const typeOptions = useMemo(
-    () => ["全て", ...Array.from(new Set(l.details?.map(d => d.type) || []))],
-    [l.details],
+    () => [
+      "全て",
+      ...Array.from(
+        new Set(lifts.map(l => l.type).filter(Boolean) as string[]),
+      ),
+    ],
+    [lifts],
   );
 
   const processedLifts = useMemo(() => {
-    let lifts = l.details ? [...l.details] : [];
-    if (typeFilter !== "全て") {
-      lifts = lifts.filter(d => d.type === typeFilter);
-    }
-    if (sortConfig !== null) {
-      lifts.sort((a, b) => {
-        const aVal = a[sortConfig.key] || 0;
-        const bVal = b[sortConfig.key] || 0;
-        if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1;
-        if (aVal > bVal) return sortConfig.direction === "asc" ? 1 : -1;
-        return 0;
-      });
-    }
-    return lifts;
-  }, [l.details, typeFilter, sortConfig]);
-
-  const handleSort = (key: "distance") => {
-    setSortConfig(prev => ({
-      key,
-      direction: prev?.direction === "asc" ? "desc" : "asc",
-    }));
-  };
+    if (typeFilter === "全て") return lifts;
+    return lifts.filter(l => l.type === typeFilter);
+  }, [lifts, typeFilter]);
 
   return (
     <Flex flexDirection="column" gap={8}>
@@ -770,10 +666,10 @@ const LiftsTab = ({ resort }: { resort: SkiResortT }) => {
           templateColumns={{ base: "repeat(2, 1fr)", sm: "repeat(4, 1fr)" }}
           gap={4}
         >
-          <StatCard title="🚡 総数" value={`${l.numberOfLifts}基`} />
-          <StatCard title="🚠 ゴンドラ" value={`${l.gondolas}基`} />
-          <StatCard title="4⃣ クアッドリフト" value={`${l.quadLifts}基`} />
-          <StatCard title="2⃣ ペアリフト" value={`${l.pairLifts}基`} />
+          <StatCard title="🚡 総数" value={`${resort.numberOfLifts}基`} />
+          <StatCard title="🚠 ゴンドラ" value={`${resort.gondolas}基`} />
+          <StatCard title="4⃣ クアッド" value={`${resort.quadLifts}基`} />
+          <StatCard title="2⃣ ペア" value={`${resort.pairLifts}基`} />
         </Grid>
       </Box>
       <Box as="section">
@@ -800,118 +696,34 @@ const LiftsTab = ({ resort }: { resort: SkiResortT }) => {
           <Table.Root size="sm">
             <Table.Header>
               <Table.Row bg="#f3f4f6">
-                <Table.ColumnHeader
-                  px={4}
-                  py={3}
-                  textAlign="left"
-                  fontSize="xs"
-                  fontWeight="medium"
-                  textTransform="uppercase"
-                  letterSpacing="wider"
-                  color="#6b7280"
-                  whiteSpace="nowrap"
-                >
+                <Table.ColumnHeader px={4} py={3} color="#6b7280">
                   リフト名
                 </Table.ColumnHeader>
-                <Table.ColumnHeader
-                  px={4}
-                  py={3}
-                  textAlign="left"
-                  fontSize="xs"
-                  fontWeight="medium"
-                  textTransform="uppercase"
-                  letterSpacing="wider"
-                  color="#6b7280"
-                >
-                  種別
+                <Table.ColumnHeader px={4} py={3} color="#6b7280">
+                  タイプ
                 </Table.ColumnHeader>
-                <Table.ColumnHeader
-                  px={4}
-                  py={3}
-                  textAlign="left"
-                  fontSize="xs"
-                  fontWeight="medium"
-                  textTransform="uppercase"
-                  letterSpacing="wider"
-                  color="#6b7280"
-                  whiteSpace="nowrap"
-                >
-                  <Button
-                    onClick={() => handleSort("distance")}
-                    variant="ghost"
-                    display="flex"
-                    alignItems="center"
-                    gap={1}
-                    cursor="pointer"
-                    whiteSpace="nowrap"
-                    p={0}
-                    h="auto"
-                    minW="auto"
-                    fontWeight="medium"
-                    fontSize="xs"
-                    textTransform="uppercase"
-                    letterSpacing="wider"
-                    color="#6b7280"
-                  >
-                    距離 (m){" "}
-                    {sortConfig?.key === "distance" &&
-                      (sortConfig.direction === "asc" ? "▲" : "▼")}
-                  </Button>
+                <Table.ColumnHeader px={4} py={3} color="#6b7280">
+                  距離 (m)
                 </Table.ColumnHeader>
-                <Table.ColumnHeader
-                  px={4}
-                  py={3}
-                  textAlign="left"
-                  fontSize="xs"
-                  fontWeight="medium"
-                  textTransform="uppercase"
-                  letterSpacing="wider"
-                  color="#6b7280"
-                  whiteSpace="nowrap"
-                >
+                <Table.ColumnHeader px={4} py={3} color="#6b7280">
                   フード
                 </Table.ColumnHeader>
               </Table.Row>
             </Table.Header>
             <Table.Body>
-              {processedLifts?.map(lift => (
-                <Table.Row key={lift.name}>
-                  <Table.Cell
-                    px={4}
-                    py={3}
-                    whiteSpace="nowrap"
-                    fontSize="sm"
-                    fontWeight="medium"
-                    color="#111827"
-                  >
-                    {lift.name}
+              {processedLifts.map(l => (
+                <Table.Row key={l.id}>
+                  <Table.Cell px={4} py={3} fontWeight="medium" color="#111827">
+                    {l.name}
                   </Table.Cell>
-                  <Table.Cell
-                    px={4}
-                    py={3}
-                    whiteSpace="nowrap"
-                    fontSize="sm"
-                    color="#6b7280"
-                  >
-                    {lift.type}
+                  <Table.Cell px={4} py={3} color="#6b7280">
+                    {l.type}
                   </Table.Cell>
-                  <Table.Cell
-                    px={4}
-                    py={3}
-                    whiteSpace="nowrap"
-                    fontSize="sm"
-                    color="#6b7280"
-                  >
-                    {lift.distance?.toLocaleString()}
+                  <Table.Cell px={4} py={3} color="#6b7280">
+                    {l.distance?.toLocaleString()}
                   </Table.Cell>
-                  <Table.Cell
-                    px={4}
-                    py={3}
-                    whiteSpace="nowrap"
-                    fontSize="sm"
-                    color="#6b7280"
-                  >
-                    {lift.hood}
+                  <Table.Cell px={4} py={3} color="#6b7280">
+                    {l.hood}
                   </Table.Cell>
                 </Table.Row>
               ))}
@@ -923,152 +735,52 @@ const LiftsTab = ({ resort }: { resort: SkiResortT }) => {
   );
 };
 
-const TicketsTab = ({ resort }: { resort: SkiResortT }) => (
-  <Box as="section">
-    <Heading size="lg" mb={4}>
-      チケット料金
-    </Heading>
-    <Box w="100%" overflowX="auto" borderRadius="lg">
-      <Table.Root size="sm">
-        <Table.Header>
-          <Table.Row bg="#f3f4f6">
-            <Table.ColumnHeader
-              px={4}
-              py={3}
-              textAlign="left"
-              fontSize="xs"
-              fontWeight="medium"
-              textTransform="uppercase"
-              letterSpacing="wider"
-              color="#6b7280"
-              whiteSpace="nowrap"
-            >
-              券種
-            </Table.ColumnHeader>
-            <Table.ColumnHeader
-              px={4}
-              py={3}
-              textAlign="right"
-              fontSize="xs"
-              fontWeight="medium"
-              textTransform="uppercase"
-              letterSpacing="wider"
-              color="#6b7280"
-              whiteSpace="nowrap"
-            >
-              大人
-            </Table.ColumnHeader>
-            <Table.ColumnHeader
-              px={4}
-              py={3}
-              textAlign="right"
-              fontSize="xs"
-              fontWeight="medium"
-              textTransform="uppercase"
-              letterSpacing="wider"
-              color="#6b7280"
-              whiteSpace="nowrap"
-            >
-              子供
-            </Table.ColumnHeader>
-            <Table.ColumnHeader
-              px={4}
-              py={3}
-              textAlign="right"
-              fontSize="xs"
-              fontWeight="medium"
-              textTransform="uppercase"
-              letterSpacing="wider"
-              color="#6b7280"
-              whiteSpace="nowrap"
-            >
-              シニア
-            </Table.ColumnHeader>
-          </Table.Row>
-        </Table.Header>
-        <Table.Body>
-          {resort.tickets.map(t => (
-            <Table.Row key={t.name}>
-              <Table.Cell
-                px={4}
-                py={3}
-                whiteSpace="nowrap"
-                fontSize="sm"
-                fontWeight="medium"
-                color="#111827"
-              >
-                {t.name}
-              </Table.Cell>
-              <Table.Cell
-                px={4}
-                py={3}
-                whiteSpace="nowrap"
-                fontSize="sm"
-                color="#6b7280"
-                textAlign="right"
-              >
-                {t.prices.adult?.toLocaleString() || "--"} 円
-              </Table.Cell>
-              <Table.Cell
-                px={4}
-                py={3}
-                whiteSpace="nowrap"
-                fontSize="sm"
-                color="#6b7280"
-                textAlign="right"
-              >
-                {t.prices.child?.toLocaleString() ||
-                  t.prices.olderChild?.toLocaleString() ||
-                  "--"}{" "}
-                円
-              </Table.Cell>
-              <Table.Cell
-                px={4}
-                py={3}
-                whiteSpace="nowrap"
-                fontSize="sm"
-                color="#6b7280"
-                textAlign="right"
-              >
-                {t.prices.senior?.toLocaleString() || "--"} 円
-              </Table.Cell>
-            </Table.Row>
-          ))}
-        </Table.Body>
-      </Table.Root>
-    </Box>
-  </Box>
-);
+const TicketsTab = ({ resort }: { resort: Resort }) => {
+  const tickets = resort.tickets;
 
-const WeatherTab = ({
-  weathers,
-  forecasts,
-  snowDepths,
-}: {
-  weathers?: WeathersT;
-  forecasts?: ForecastsT;
-  snowDepths?: SnowDepthsT;
-}) => {
   return (
     <Flex flexDirection="column" gap={8}>
-      {weathers && (
-        <Box as="section">
-          <Heading size="lg">📈 直近の天気</Heading>
-          <ForecastTable weathers={weathers} />
+      <Box as="section">
+        <Heading size="lg">🎟️ リフト券料金</Heading>
+        <Box mt={4} w="100%" overflowX="auto">
+          <Table.Root size="sm">
+            <Table.Header>
+              <Table.Row bg="#f3f4f6">
+                <Table.ColumnHeader px={4} py={3} color="#6b7280">
+                  チケット名
+                </Table.ColumnHeader>
+                <Table.ColumnHeader px={4} py={3} color="#6b7280">
+                  大人
+                </Table.ColumnHeader>
+                <Table.ColumnHeader px={4} py={3} color="#6b7280">
+                  子供
+                </Table.ColumnHeader>
+                <Table.ColumnHeader px={4} py={3} color="#6b7280">
+                  シニア
+                </Table.ColumnHeader>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
+              {tickets.map(t => (
+                <Table.Row key={t.id}>
+                  <Table.Cell px={4} py={3} fontWeight="medium" color="#111827">
+                    {t.name}
+                  </Table.Cell>
+                  <Table.Cell px={4} py={3} color="#6b7280">
+                    {t.priceAdult ? `¥${t.priceAdult.toLocaleString()}` : "-"}
+                  </Table.Cell>
+                  <Table.Cell px={4} py={3} color="#6b7280">
+                    {t.priceChild ? `¥${t.priceChild.toLocaleString()}` : "-"}
+                  </Table.Cell>
+                  <Table.Cell px={4} py={3} color="#6b7280">
+                    {t.priceSenior ? `¥${t.priceSenior.toLocaleString()}` : "-"}
+                  </Table.Cell>
+                </Table.Row>
+              ))}
+            </Table.Body>
+          </Table.Root>
         </Box>
-      )}
-      {forecasts && (
-        <Box as="section">
-          <Heading size="lg">📊 過去の気象データ（週単位）</Heading>
-          <WeeklyWeatherChart forecasts={forecasts} />
-        </Box>
-      )}
-      {snowDepths && (
-        <Box as="section">
-          <Heading size="lg">❄️ 積雪の分布</Heading>
-          <SnowDepthLineChart snowDepths={snowDepths} />
-        </Box>
-      )}
+      </Box>
     </Flex>
   );
 };
@@ -1080,26 +792,12 @@ const StatCard = ({
   title: string;
   value: string | number;
 }) => (
-  <Flex
-    h="100%"
-    flexDirection="column"
-    alignItems="center"
-    justifyContent="center"
-    borderRadius="lg"
-    bg="#f3f4f6"
-    p={{ base: 2, md: 3 }}
-    textAlign="center"
-  >
-    <Text fontSize={{ base: "xs", md: "sm" }} color="#6b7280">
+  <Box p={{ base: 2, md: 3 }} borderRadius="lg" bg="#f3f4f6">
+    <Text fontSize="xs" color="#6b7280">
       {title}
     </Text>
-    <Text
-      mt={1}
-      fontSize={{ base: "md", md: "lg" }}
-      fontWeight="bold"
-      color="#1f2937"
-    >
+    <Text fontWeight="bold" fontSize={{ base: "md", md: "lg" }} color="#111827">
       {value}
     </Text>
-  </Flex>
+  </Box>
 );
