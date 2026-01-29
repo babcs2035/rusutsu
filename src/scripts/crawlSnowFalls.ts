@@ -1,55 +1,84 @@
-import fs from "node:fs";
 import { tqdm } from "ts-tqdm";
-import type { ReportDetails } from "@/interfaces/SnowFall";
-import type { SnowFallsT } from "@/types/weathers";
+import { disconnectPrisma, prisma } from "@/lib/prisma";
 import { fetchAsync } from "./fetch";
 
-const reportList = await fetchAsync({
-  url: "https://www.snowjapan.com/rest-api/dailyreport/latest/all",
-  options: {
-    method: "POST",
-  },
-});
+interface ReportListItem {
+  UniqueName: string;
+  ResortAUniqueName: string;
+}
 
-const snowFalls: { [key: string]: SnowFallsT } = {};
-for (const report of tqdm(reportList)) {
-  const details = await fetchAsync({
-    url: `https://www.snowjapan.com/rest-api/dailyreport/reports/${report.UniqueName}/All`,
-    options: {
-      method: "POST",
-    },
+interface ReportDetails {
+  NowReportYear: number;
+  NowReportMonth: number;
+  NowReportDay: number;
+  NewSnowfallResortA: number | null;
+}
+
+async function main() {
+  console.log("❄️ Crawling snow falls...");
+
+  const reportList: ReportListItem[] = await fetchAsync({
+    url: "https://www.snowjapan.com/rest-api/dailyreport/latest/all",
+    options: { method: "POST" },
   });
 
-  const res: SnowFallsT = {} as SnowFallsT;
-  res.firstYear = 9999;
-  let lastYear = 0;
-  details.forEach((data: ReportDetails) => {
-    if (data.NowReportYear < res.firstYear) {
-      res.firstYear = data.NowReportYear;
-    }
-    if (data.NowReportYear > lastYear) {
-      lastYear = data.NowReportYear;
-    }
-  });
+  console.log(`📦 Found ${reportList.length} reports to crawl`);
 
-  res.data = [];
-  for (let i = res.firstYear; i <= lastYear; ++i) {
-    res.data.push([]);
-    for (let j = 0; j < 12; ++j) {
-      res.data[i - res.firstYear].push([]);
-      for (let k = 0; k < 31; ++k) {
-        res.data[i - res.firstYear][j].push(0);
+  for (const report of tqdm(reportList)) {
+    // スキー場が DB に存在するか確認
+    const resort = await prisma.skiResort.findUnique({
+      where: { id: report.ResortAUniqueName },
+    });
+    if (!resort) continue;
+
+    const details: ReportDetails[] = await fetchAsync({
+      url: `https://www.snowjapan.com/rest-api/dailyreport/reports/${report.UniqueName}/All`,
+      options: { method: "POST" },
+    });
+
+    // 既存のレコードを削除
+    await prisma.snowFallRecord.deleteMany({
+      where: { skiResortId: report.ResortAUniqueName },
+    });
+
+    // 新規レコードを作成
+    for (const data of details) {
+      if (!data.NewSnowfallResortA || data.NewSnowfallResortA === 0) continue;
+
+      const date = new Date(
+        data.NowReportYear,
+        data.NowReportMonth - 1,
+        data.NowReportDay,
+      );
+      if (Number.isNaN(date.getTime())) continue;
+
+      try {
+        await prisma.snowFallRecord.create({
+          data: {
+            skiResortId: report.ResortAUniqueName,
+            date,
+            snowfall: data.NewSnowfallResortA,
+          },
+        });
+      } catch {
+        // 重複はスキップ
       }
     }
   }
 
-  details.forEach((data: ReportDetails) => {
-    res.data[data.NowReportYear - res.firstYear][data.NowReportMonth - 1][
-      data.NowReportDay - 1
-    ] = data.NewSnowfallResortA || 0;
-  });
-
-  snowFalls[report.ResortAUniqueName] = res;
+  const count = await prisma.snowFallRecord.count();
+  console.log(`\n✅ Saved ${count} snow fall records to database`);
 }
-console.log(`\nFound ${Object.keys(snowFalls).length} snow falls`);
-fs.writeFileSync("../data/SnowFalls.json", JSON.stringify(snowFalls, null, 0));
+
+export { main as runCrawlSnowFalls };
+
+if (require.main === module) {
+  main()
+    .catch(e => {
+      console.error(e);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await disconnectPrisma();
+    });
+}

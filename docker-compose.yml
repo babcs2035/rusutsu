@@ -8,6 +8,33 @@ services:
       - "127.0.0.1:${PORT:-3000}:3000"
     environment:
       - NODE_ENV=production
+      - DATABASE_URL=postgresql://rusutsu:rusutsu@db:5432/rusutsu
+      - TZ=Asia/Tokyo
     env_file:
       - .env
     restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    container_name: rusutsu-db
+    environment:
+      POSTGRES_USER: rusutsu
+      POSTGRES_PASSWORD: rusutsu
+      POSTGRES_DB: rusutsu
+      TZ: Asia/Tokyo
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rusutsu -d rusutsu"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
