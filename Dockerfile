@@ -67,42 +67,33 @@ ENV HOSTNAME="0.0.0.0"
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 ENV TZ=Asia/Tokyo
+ENV PLAYWRIGHT_BROWSERS_PATH=/home/nextjs/.cache/ms-playwright
 
-# OS のタイムゾーン設定 (tzdata) と OpenSSL
-RUN apt-get update && apt-get install -y tzdata openssl && \
-    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+# OS 依存関係のインストール（Playwright用ライブラリ含む）
+RUN apt-get update && apt-get install -y tzdata openssl \
+    && npx playwright install-deps chromium \
+    && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # 非特権ユーザー作成
 RUN groupadd --system --gid 1001 nodejs && \
     useradd --system --uid 1001 --gid nodejs nextjs
 
-# pnpm のインストール (runner ステージでも必要)
-RUN npm install -g pnpm@10.28.2
-
-# Prisma CLI と tsx (TypeScript実行用) をインストール
-RUN pnpm install -g prisma@7.3.0 tsx@4.19.2
+# グローバルツールのインストール
+RUN npm install -g pnpm@10.28.2 prisma@7.3.0 tsx@4.19.2
 
 # standalone ビルド成果物をコピー
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-
-# prisma.config.ts をコピー (ルートに配置)
 COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./
-
-# Prisma 関連ファイル (schema, seed.ts) をコピー
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 
-# Playwright ブラウザをコピー（必要であれば）
-COPY --from=builder /root/.cache/ms-playwright /home/nextjs/.cache/ms-playwright
-RUN chown -R nextjs:nodejs /home/nextjs/.cache
+# Playwright ブラウザバイナリをコピー
+COPY --from=builder --chown=nextjs:nodejs /root/.cache/ms-playwright /home/nextjs/.cache/ms-playwright
 
-# キャッシュディレクトリの権限設定
-RUN mkdir -p .cache && chown -R nextjs:nodejs .cache
-
-# pnpm グローバルディレクトリの権限設定
-RUN chown -R nextjs:nodejs /pnpm
+# 権限周りの整理
+RUN mkdir -p .cache /pnpm && chown -R nextjs:nodejs /app /home/nextjs/.cache /pnpm
 
 # seed.ts実行に必要な依存関係を追加
 RUN pnpm add @prisma/adapter-pg pg
