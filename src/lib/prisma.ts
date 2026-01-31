@@ -13,9 +13,9 @@ if (!connectionString) {
 }
 
 // .env 内での変数展開が行われない場合の対応
-if (connectionString.includes("${DB_PORT}")) {
+if (connectionString.includes("$" + "{DB_PORT}")) {
   const port = process.env.DB_PORT || "5432";
-  connectionString = connectionString.replace("${DB_PORT}", port);
+  connectionString = connectionString.replace("$" + "{DB_PORT}", port);
 }
 
 // PostgreSQL への接続プールを作成する．

@@ -25,7 +25,7 @@ console.log(formattedNow);
 const comment = null; // コメント（適宜変更）
 
 // 天気・積雪情報
-const weather: Record<string, any> = {};
+const weather: Record<string, unknown> = {};
 weather.山頂 = {
   time: await trimElem(
     page.locator(

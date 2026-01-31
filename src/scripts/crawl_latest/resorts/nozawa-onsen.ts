@@ -26,7 +26,7 @@ const comment = await trimElem(page.locator(".news-board.block-group")); // コ�
 
 // 天気・積雪情報
 const snowfallTables = page.locator(".table-default.info-snowfall");
-const weather: Record<string, any> = {};
+const weather: Record<string, unknown> = {};
 for (let i = 0; i < (await snowfallTables.count()); i++) {
   const table = snowfallTables.nth(i);
   const title = await table

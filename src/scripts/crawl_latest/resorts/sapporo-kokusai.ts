@@ -44,7 +44,7 @@ const comment = null; // コメント（適宜変更）
 
 // 天気・積雪情報
 await page.goto("https://www.sapporo-kokusai.jp/");
-const weather: Record<string, any> = {};
+const weather: Record<string, unknown> = {};
 const weatherImgSrc = await page
   .locator(
     "#toprealtime > div.w.realtime__box > div:nth-child(3) > div.realtime__text_large > div > div > img",

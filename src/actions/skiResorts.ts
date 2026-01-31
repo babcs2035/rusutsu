@@ -52,6 +52,9 @@ export async function getSkiResortById(id: string) {
       forecasts: true,
       latestReports: true,
       yukiMagi: true,
+      snowDepths: {
+        orderBy: { date: "asc" },
+      },
     },
   });
 }
