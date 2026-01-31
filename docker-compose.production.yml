@@ -3,12 +3,12 @@ services:
     image: ghcr.io/babcs2035/rusutsu:latest
     container_name: rusutsu-app
     ports:
-      - "127.0.0.1:${PORT:-3000}:3000"
+      - "127.0.0.1:${APP_PORT:-3000}:3000"
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://${POSTGRES_USER:-rusutsu}:${POSTGRES_PASSWORD:-rusutsu}@db:5432/${POSTGRES_DB:-rusutsu}
       - TZ=Asia/Tokyo
-      - PORT=${PORT:-3000}
+      - APP_PORT=${APP_PORT:-3000}
     restart: unless-stopped
     depends_on:
       db:
@@ -22,6 +22,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rusutsu}
       POSTGRES_DB: ${POSTGRES_DB:-rusutsu}
       TZ: Asia/Tokyo
+      DB_PORT: ${DB_PORT:-5432}
     ports:
       - "127.0.0.1:${DB_PORT:-5432}:5432"
     volumes:

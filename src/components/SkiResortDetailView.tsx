@@ -15,8 +15,16 @@ import {
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
+
 import type { getSkiResortById } from "@/actions/skiResorts";
+import type { ForecastData, ForecastsT } from "@/types/forecasts";
+import type { SnowDepthsT, WeatherData, WeathersT } from "@/types/weathers";
 import { LoadingSpinner } from "./LoadingSpinner";
+import {
+  ForecastTable,
+  SnowDepthLineChart,
+  WeeklyWeatherChart,
+} from "./WeatherChart";
 
 type ResortData = Awaited<ReturnType<typeof getSkiResortById>>;
 
@@ -27,7 +35,7 @@ type Props = {
   onClose: () => void;
 };
 
-const TABS = ["概要", "コース", "リフト", "チケット"];
+const TABS = ["概要", "コース", "リフト", "チケット", "気候"];
 
 const MotionBox = motion.create(Box);
 
@@ -203,6 +211,7 @@ export const SkiResortDetailView = ({
             {activeTab === "コース" && <CoursesTab resort={resort} />}
             {activeTab === "リフト" && <LiftsTab resort={resort} />}
             {activeTab === "チケット" && <TicketsTab resort={resort} />}
+            {activeTab === "気候" && <WeatherTab resort={resort} />}
           </Box>
         </Box>
       </MotionBox>
@@ -850,6 +859,140 @@ const TicketsTab = ({ resort }: { resort: Resort }) => {
         </Box>
       </Box>
     </Flex>
+  );
+};
+
+const WeatherTab = ({ resort }: { resort: Resort }) => {
+  // --- Data Transformation Logic ---
+  const weathersFormatted: WeathersT | undefined = useMemo(() => {
+    const weather = resort.weathers?.[0];
+    if (!weather) return undefined;
+
+    return {
+      meta: { date: weather.date },
+      top: weather.topData as unknown as WeatherData,
+      mid: weather.midData as unknown as WeatherData,
+      bot: weather.botData as unknown as WeatherData,
+    };
+  }, [resort.weathers]);
+
+  const forecastsFormatted: ForecastsT | undefined = useMemo(() => {
+    const forecast = resort.forecasts?.[0];
+    if (!forecast) return undefined;
+
+    // biome-ignore lint/suspicious/noExplicitAny: DB JSON data structure
+    const mapData = (json: any): ForecastData => ({
+      temperatures: {
+        weeks: {
+          max: (json?.temperatures?.weeks?.max || []).map((week: unknown) => {
+            if (Array.isArray(week)) {
+              return (week as unknown[])
+                .map((v: unknown) => Number(v))
+                .filter((v: number) => !Number.isNaN(v));
+            }
+            const val = Number(week);
+            return Number.isNaN(val) ? [] : [val];
+          }),
+          min: (json?.temperatures?.weeks?.min || []).map((week: unknown) => {
+            if (Array.isArray(week)) {
+              return (week as unknown[])
+                .map((v: unknown) => Number(v))
+                .filter((v: number) => !Number.isNaN(v));
+            }
+            const val = Number(week);
+            return Number.isNaN(val) ? [] : [val];
+          }),
+        },
+      },
+      snowfalls: {
+        significantSnowfall: json?.snowfalls?.significantSnowfall || [],
+      },
+    });
+
+    return {
+      meta: { date_start: forecast.dateStart || new Date().toISOString() },
+      top: mapData(forecast.topData),
+      middle: mapData(forecast.middleData),
+      bottom: mapData(forecast.bottomData),
+    };
+  }, [resort.forecasts]);
+
+  const snowDepthsFormatted: SnowDepthsT | undefined = useMemo(() => {
+    const records = resort.snowDepths;
+    if (!records || records.length === 0) return undefined;
+
+    const seasons: Record<number, (number | null)[][]> = {};
+
+    records.forEach(r => {
+      const d = new Date(r.date);
+      const m = d.getMonth() + 1;
+      const day = d.getDate();
+      let seasonYear = d.getFullYear();
+      // December belongs to the next year's season grouping for visualization
+      if (m === 12) seasonYear += 1;
+
+      if (!seasons[seasonYear]) {
+        // 5 months (Dec, Jan, Feb, Mar, Apr), ~32 days max
+        seasons[seasonYear] = Array(5)
+          .fill(null)
+          .map(() => Array(32).fill(null));
+      }
+
+      // Map month to index: 1->0, 2->1, 3->2, 4->3, 12->4
+      let mIdx = -1;
+      if (m === 1) mIdx = 0;
+      else if (m === 2) mIdx = 1;
+      else if (m === 3) mIdx = 2;
+      else if (m === 4) mIdx = 3;
+      else if (m === 12) mIdx = 4;
+
+      if (mIdx !== -1) {
+        seasons[seasonYear][mIdx][day - 1] = r.depth;
+      }
+    });
+
+    const years = Object.keys(seasons).map(Number);
+    return {
+      firstYear: Math.min(...years) || new Date().getFullYear(),
+      data: Object.values(seasons),
+    };
+  }, [resort.snowDepths]);
+
+  return (
+    <div className="space-y-12">
+      {weathersFormatted && (
+        <Box as="section">
+          <Heading size="lg" mb={4}>
+            📈 直近の天気
+          </Heading>
+          <ForecastTable weathers={weathersFormatted} />
+        </Box>
+      )}
+
+      {forecastsFormatted && (
+        <Box as="section">
+          <Heading size="lg" mb={4}>
+            📊 過去の気象データ（週単位）
+          </Heading>
+          <WeeklyWeatherChart forecasts={forecastsFormatted} />
+        </Box>
+      )}
+
+      {snowDepthsFormatted && (
+        <Box as="section">
+          <Heading size="lg" mb={4}>
+            ❄️ 積雪の分布
+          </Heading>
+          <SnowDepthLineChart snowDepths={snowDepthsFormatted} />
+        </Box>
+      )}
+
+      {!weathersFormatted && !forecastsFormatted && !snowDepthsFormatted && (
+        <Box textAlign="center" py={10} color="gray.500">
+          <Text fontSize="lg">気象情報は利用できません。</Text>
+        </Box>
+      )}
+    </div>
   );
 };
 
