@@ -3,11 +3,7 @@
 // クローリングをトリガーする Server Actions
 // アプリケーション起動時や定期実行時に使用
 
-import {
-  type CrawlerName,
-  recordCrawlLog,
-  shouldCrawl,
-} from "@/lib/crawlerManager";
+import { type CrawlerName, recordCrawlLog } from "@/lib/crawlerManager";
 
 // 各クローラーの実行関数をインポート
 // 注意: これらは動的にインポートする（サーバーサイドでのみ実行）
@@ -18,15 +14,6 @@ import {
 export async function runCrawlerIfNeeded(
   crawlerName: CrawlerName,
 ): Promise<{ ran: boolean; message: string }> {
-  const needsCrawl = await shouldCrawl(crawlerName);
-
-  if (!needsCrawl) {
-    return {
-      ran: false,
-      message: `⏭️ ${crawlerName}: Skipped (last run < 24h ago)`,
-    };
-  }
-
   try {
     // クローラーを動的にインポートして実行
     await executeCrawler(crawlerName);

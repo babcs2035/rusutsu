@@ -7,9 +7,15 @@ import { Pool } from "pg";
 dotenv.config();
 
 // データベース接続 URL の存在を確認する．
-const connectionString = process.env.DATABASE_URL;
+let connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
   throw new Error("DATABASE_URL is not set");
+}
+
+// .env 内での変数展開が行われない場合の対応
+if (connectionString.includes("${DB_PORT}")) {
+  const port = process.env.DB_PORT || "5432";
+  connectionString = connectionString.replace("${DB_PORT}", port);
 }
 
 // PostgreSQL への接続プールを作成する．
