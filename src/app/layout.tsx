@@ -1,3 +1,4 @@
+import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { ChakraProvider } from "@/providers/ChakraProvider";
@@ -19,6 +20,7 @@ export default function RootLayout({
     <html lang="ja" suppressHydrationWarning>
       <body className={inter.className}>
         <ChakraProvider>{children}</ChakraProvider>
+        <GoogleAnalytics gaId="G-YMEM5C2F4C" />
       </body>
     </html>
   );

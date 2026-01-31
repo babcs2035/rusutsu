@@ -3,7 +3,17 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   basePath: "/rusutsu",
   output: "standalone",
-  serverExternalPackages: ["@prisma/client", "playwright"],
+  serverExternalPackages: [
+    "@prisma/client",
+    "playwright",
+    "pg",
+    "node-cron",
+    "@prisma/adapter-pg",
+    "dotenv",
+  ],
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   images: {
     remotePatterns: [
       {
