@@ -49,8 +49,17 @@ async function main() {
 
   // データベースから既存のスキー場一覧を取得する．
   const existingResorts = await prisma.skiResort.findMany({
-    select: { id: true, nameJa: true },
+    select: { id: true, nameJa: true, sources: true },
   });
+
+  // Snow Japan 名 -> Surf&Snow 名の辞書から，Surf&Snow 名 -> Snow Japan 名への逆引きマップを作成する．
+  const ssNameToSjNameMap = Object.entries(SurfSnowDict).reduce(
+    (acc, [sjName, ssName]) => {
+      if (ssName) acc[ssName] = sjName;
+      return acc;
+    },
+    {} as Record<string, string>,
+  );
 
   let resultElems = await page.locator(".list_result");
 
@@ -65,9 +74,9 @@ async function main() {
 
       if (name === "") continue;
 
-      // 辞書を用いてスキー場名を正規化する．
-      const normalizedName =
-        (SurfSnowDict as Record<string, string>)[name] || name;
+      // 辞書を用いてスキー場名を正規化（Surf&Snow 名 -> Snow Japan 名）する．
+      // 辞書にヒットすればその名前（Snow Japan 名）を使用し，ヒットしなければ元の名前を使用する．
+      const normalizedName = ssNameToSjNameMap[name] || name;
 
       // データベース上の名前とマッチングする．
       const matchingResort = existingResorts.find(
@@ -85,7 +94,8 @@ async function main() {
         context.waitForEvent("page"),
         nameElem.click(),
       ]);
-      await detailPage.goto(await detailPage.url());
+      const currentUrl = await detailPage.url();
+      await detailPage.goto(currentUrl);
 
       if ((await detailPage.title()) !== "404 Not Found - SURF&SNOW") {
         // 画像 URL を収集する．
@@ -126,6 +136,10 @@ async function main() {
           ),
         );
 
+        const newSources = Array.from(
+          new Set([...(matchingResort.sources || []), currentUrl]),
+        );
+
         // スキー場情報を更新する．
         await prisma.skiResort.update({
           where: { id: matchingResort.id },
@@ -136,6 +150,7 @@ async function main() {
             condition,
             status,
             review: Number.isNaN(review) ? null : review,
+            sources: newSources,
           },
         });
 

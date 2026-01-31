@@ -5,19 +5,12 @@ import { disconnectPrisma, prisma } from "@/lib/prisma";
 /**
  * 雪マジの施設名と既存データベースのスキー場名が異なる場合の変換辞書
  */
-const skiAreaNameDict: Record<string, string> = {
-  Able白馬五竜: "エイブル白馬五竜",
-  "Hakuba47 Winter Sports Park": "Hakuba47 ウインタースポーツパーク",
-  エイブル白馬五竜: "エイブル白馬五竜",
-  サンメドウズ清里スキー場: "サンメドウズ清里",
-  シャトレーゼスキーバレー小海: "シャトレーゼ スキーバレー小海",
-  シャトレーゼスキーバレー野辺山: "シャトレーゼ スキーバレー野辺山",
-  "星野リゾート ネコマ マウンテン": "星野リゾート ネコマ マウンテン",
-  マウントレースイスキー場: "マウントレースイ",
-  みやぎ蔵王七ヶ宿スキー場: "みやぎ蔵王七ヶ宿",
-  ホワイトピアたかす: "ホワイトピアたかすスキー場",
-  ダイナランド: "高鷲スノーパーク＆ダイナランド",
-};
+import skiAreaNameDictJson from "../data/SkiAreaNameDict.json";
+
+/**
+ * 雪マジの施設名と既存データベースのスキー場名が異なる場合の変換辞書
+ */
+const skiAreaNameDict: Record<string, string> = skiAreaNameDictJson;
 
 /**
  * 文字列を正規化してマッチングしやすくする

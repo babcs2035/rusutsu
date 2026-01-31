@@ -15,34 +15,6 @@ export type CrawlerName =
   | "yukiMagi"
   | "amedas";
 
-// 24時間（ミリ秒）
-const CRAWL_INTERVAL_MS = 24 * 60 * 60 * 1000;
-
-/**
- * クローラーの最終実行時刻を取得
- */
-export async function getLastCrawlTime(
-  crawlerName: CrawlerName,
-): Promise<Date | null> {
-  const log = await prisma.crawlLog.findUnique({
-    where: { crawlerName },
-  });
-  return log?.lastRunAt ?? null;
-}
-
-/**
- * クローリングが必要かどうかを判定
- * - 前回の実行から24時間以上経過している
- * - または、一度も実行されていない
- */
-export async function shouldCrawl(crawlerName: CrawlerName): Promise<boolean> {
-  const lastRun = await getLastCrawlTime(crawlerName);
-  if (!lastRun) return true;
-
-  const elapsed = Date.now() - lastRun.getTime();
-  return elapsed >= CRAWL_INTERVAL_MS;
-}
-
 /**
  * クローラーの実行ログを記録
  */

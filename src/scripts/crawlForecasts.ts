@@ -22,10 +22,10 @@ async function trimElem(element: Locator): Promise<string> {
 async function main() {
   console.log("📈 Starting forecast data crawler...");
 
-  // SnowForecast ID から SnowJapan ID (データベース上の ID) への逆引きマップを作成する．
-  const sfIdToSjIdMap = Object.entries(SnowJapanToSnowForecastDict).reduce(
-    (acc, [sjId, sfId]) => {
-      if (sfId) acc[sfId] = sjId;
+  // SnowForecast English Name から SnowJapan ID (データベース上の ID) への逆引きマップを作成する．
+  const sfNameToSjIdMap = Object.entries(SnowJapanToSnowForecastDict).reduce(
+    (acc, [sjId, sfName]) => {
+      if (sfName) acc[sfName] = sjId;
       return acc;
     },
     {} as Record<string, string>,
@@ -33,7 +33,7 @@ async function main() {
 
   // データベースから全てのスキー場を取得する．
   const skiResorts = await prisma.skiResort.findMany({
-    select: { id: true, nameJa: true, nameEn: true },
+    select: { id: true, nameJa: true, nameEn: true, sources: true },
   });
 
   console.log(`📦 Found ${skiResorts.length} ski resorts in the database.`);
@@ -71,8 +71,10 @@ async function main() {
         let skiResort = null;
 
         // 1. 逆引き辞書で検索
-        if (sfIdToSjIdMap[id]) {
-          skiResort = skiResorts.find(r => r.id === sfIdToSjIdMap[id]);
+        if (sfNameToSjIdMap[data.resort.englishname]) {
+          skiResort = skiResorts.find(
+            r => r.id === sfNameToSjIdMap[data.resort.englishname],
+          );
         }
 
         // 2. 名寄せ辞書で検索
@@ -104,6 +106,18 @@ async function main() {
 
         // マッチしないリゾートはスキップする．
         if (!skiResort) continue;
+
+        // URL を sources に追加する（未登録の場合のみ）
+        const sourceUrl = `https://www.snow-forecast.com/resorts/${id}`;
+        if (!skiResort.sources.includes(sourceUrl)) {
+          await prisma.skiResort.update({
+            where: { id: skiResort.id },
+            data: {
+              sources: { push: sourceUrl },
+            },
+          });
+          skiResort.sources.push(sourceUrl);
+        }
 
         const forecastData = {
           top: {

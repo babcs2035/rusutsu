@@ -1,5 +1,4 @@
 import { tqdm } from "ts-tqdm";
-import SkiAreaNameDict from "@/data/SkiAreaNameDict.json";
 import { disconnectPrisma, prisma } from "@/lib/prisma";
 
 // 簡易的な fetch ラッパー関数．
@@ -85,16 +84,24 @@ async function main() {
       options: { method: "POST" },
     });
 
-    // 表記揺れを防ぐため，辞書を用いてリゾート名を正規化する．
-    const normalizedNameJa =
-      (SkiAreaNameDict as Record<string, string>)[details.NameJapanese] ||
-      details.NameJapanese;
+    const normalizedNameJa = details.NameJapanese;
 
     // リフト券情報を取得する．
     const tickets: TicketApiResponse[] = await fetchAsync({
       url: `https://www.snowjapan.com/rest-api/skiarea/ticket/list/${uniqueName}`,
       options: { method: "POST" },
     });
+
+    // 既存のスキー場データを取得して sources をマージする
+    const existingResort = await prisma.skiResort.findUnique({
+      where: { id: uniqueName },
+      select: { sources: true },
+    });
+
+    const snowJapanUrl = `https://www.snowjapan.com/japan-ski-resorts/${details.PrefectureNameJapanese}/${details.TownNameJapanese}/${uniqueName}`;
+    const newSources = Array.from(
+      new Set([...(existingResort?.sources || []), snowJapanUrl]),
+    );
 
     // 取得したスキー場情報をデータベースに保存（存在する場合は更新）する．
     await prisma.skiResort.upsert({
@@ -136,9 +143,7 @@ async function main() {
         website: details.WebUrl,
         skiersPercent: details.SkiersPercent,
         snowboardersPercent: details.SnowboardersPercent,
-        sources: [
-          `https://www.snowjapan.com/japan-ski-resorts/${details.PrefectureNameJapanese}/${details.TownNameJapanese}/${uniqueName}`,
-        ],
+        sources: newSources,
       },
       create: {
         id: uniqueName,
@@ -178,9 +183,7 @@ async function main() {
         website: details.WebUrl,
         skiersPercent: details.SkiersPercent,
         snowboardersPercent: details.SnowboardersPercent,
-        sources: [
-          `https://www.snowjapan.com/japan-ski-resorts/${details.PrefectureNameJapanese}/${details.TownNameJapanese}/${uniqueName}`,
-        ],
+        sources: newSources,
       },
     });
 
