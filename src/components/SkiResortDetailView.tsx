@@ -884,28 +884,19 @@ const WeatherTab = ({ resort }: { resort: Resort }) => {
     const mapData = (json: any): ForecastData => ({
       temperatures: {
         weeks: {
-          max: (json?.temperatures?.weeks?.max || []).map((week: unknown) => {
-            if (Array.isArray(week)) {
-              return (week as unknown[])
-                .map((v: unknown) => Number(v))
-                .filter((v: number) => !Number.isNaN(v));
-            }
-            const val = Number(week);
-            return Number.isNaN(val) ? [] : [val];
-          }),
-          min: (json?.temperatures?.weeks?.min || []).map((week: unknown) => {
-            if (Array.isArray(week)) {
-              return (week as unknown[])
-                .map((v: unknown) => Number(v))
-                .filter((v: number) => !Number.isNaN(v));
-            }
-            const val = Number(week);
-            return Number.isNaN(val) ? [] : [val];
-          }),
+          max: json?.temperatures?.all?.max || [],
+          min: json?.temperatures?.all?.min || [],
         },
       },
       snowfalls: {
+        snowfall: json?.snowfalls?.snowfall || [],
         significantSnowfall: json?.snowfalls?.significantSnowfall || [],
+        significantRainfall: json?.snowfalls?.significantRainfall || [],
+      },
+      conditions: {
+        bluebirdPowder: json?.conditions?.bluebirdPowder || [],
+        powder: json?.conditions?.powder || [],
+        bluebird: json?.conditions?.bluebird || [],
       },
     });
 

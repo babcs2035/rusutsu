@@ -50,12 +50,9 @@ async function main() {
     for (const sd of snowDepths) {
       if (sd.SnowDepth === 999 || sd.SnowDepth === 0) continue;
 
-      // 月の変換: WeatherMonth 1-5 は 11, 12, 1, 2, 3 月
-      const month =
-        sd.WeatherMonth <= 2 ? sd.WeatherMonth + 10 : sd.WeatherMonth - 2;
-      const year = sd.WeatherMonth <= 2 ? sd.WeatherYear : sd.WeatherYear + 1;
-
-      const date = new Date(year, month - 1, sd.WeatherDay);
+      // WeatherMonth is 1-based (1=Jan, 12=Dec)
+      // WeatherYear is the calendar year.
+      const date = new Date(sd.WeatherYear, sd.WeatherMonth - 1, sd.WeatherDay);
       if (Number.isNaN(date.getTime())) continue;
 
       try {

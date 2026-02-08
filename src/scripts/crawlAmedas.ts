@@ -17,11 +17,16 @@ interface AmedasFeature {
     coordinates: [number, number];
   };
 }
+interface JmaTargetTime {
+  basetime: string;
+  validtime: string;
+  elements: string[];
+}
 
 async function main() {
   console.log("🌡️ Crawling Amedas data...");
 
-  const targetTimes = await fetchAsync({
+  const targetTimes = await fetchAsync<JmaTargetTime[]>({
     url: "https://www.jma.go.jp/bosai/jmatile/data/snow/targetTimes.json",
     options: { method: "GET" },
   });
@@ -42,8 +47,17 @@ async function main() {
   const now = new Date();
 
   for (const id of ids) {
-    const forecast = await fetchAsync({
-      url: `https://www.jma.go.jp/bosai/jmatile/data/snow/${targetTimes[0].basetime}/none/${targetTimes[0]["b.etime"]}urf/${id}/data.geojson?id=${id}`,
+    // Find the latest target time that supports this element ID
+    const target = targetTimes.find((t: JmaTargetTime) =>
+      t.elements?.includes(id),
+    );
+    if (!target) {
+      console.warn(`⚠️ Target time not found for ${id}`);
+      continue;
+    }
+
+    const forecast = await fetchAsync<{ features: AmedasFeature[] }>({
+      url: `https://www.jma.go.jp/bosai/jmatile/data/snow/${target.basetime}/none/${target.validtime}/surf/${id}/data.geojson`,
       options: { method: "GET" },
     });
 
