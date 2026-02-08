@@ -433,14 +433,6 @@ export const WeeklyWeatherChart = ({
     const data = forecasts[elevation];
     if (!data) return [];
 
-    // Helper to calculate average ignoring nulls
-    const calculateAverage = (arr: (number | null)[]) => {
-      const validNums = arr.filter((n): n is number => n !== null);
-      if (validNums.length === 0) return null;
-      const sum = validNums.reduce((a, b) => a + b, 0);
-      return Math.round((sum / validNums.length) * 10) / 10;
-    };
-
     const startDate = new Date(forecasts.meta.date_start);
     return Array.from({ length: 48 }, (_, i) => {
       const currentDate = new Date(startDate.getTime());
@@ -448,12 +440,8 @@ export const WeeklyWeatherChart = ({
       const label = `${currentDate.getMonth() + 1}/${currentDate.getDate()}`;
       return {
         name: label,
-        最高気温: data.temperatures.weeks.max[i]
-          ? calculateAverage(data.temperatures.weeks.max[i])
-          : null,
-        最低気温: data.temperatures.weeks.min[i]
-          ? calculateAverage(data.temperatures.weeks.min[i])
-          : null,
+        最高気温: data.temperatures.weeks.max[i] ?? null,
+        最低気温: data.temperatures.weeks.min[i] ?? null,
         降雪確率: data.snowfalls.significantSnowfall[i] || 0,
       };
     });
@@ -471,7 +459,7 @@ export const WeeklyWeatherChart = ({
         ]}
       />
       <Box w="full" h="300px" mt={8}>
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <ComposedChart
             data={chartData}
             margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
@@ -633,7 +621,7 @@ export const SnowDepthLineChart = ({
   return (
     <Box>
       <Box w="full" h="400px" mt={8}>
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <ComposedChart
             data={lineData}
             margin={{ top: 5, right: 20, left: 0, bottom: 5 }}

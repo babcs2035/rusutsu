@@ -1,12 +1,19 @@
 export interface ForecastData {
   temperatures: {
     weeks: {
-      max: number[][];
-      min: number[][];
+      max: number[];
+      min: number[];
     };
   };
   snowfalls: {
+    snowfall: number[];
     significantSnowfall: number[];
+    significantRainfall: number[];
+  };
+  conditions: {
+    bluebirdPowder: number[];
+    powder: number[];
+    bluebird: number[];
   };
 }
 
