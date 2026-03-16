@@ -28,78 +28,138 @@ type Props = {
  */
 export const SkiResortList = ({ resorts, onSelectResort }: Props) => {
   return (
-    <Flex h="100%" flexDirection="column" bg="#f3f4f6">
+    <Flex h="100%" flexDirection="column" bg="transparent">
       {/* ヘッダーエリア */}
-      <Box p={4} pt={{ base: 2, md: 4 }}>
-        <Heading size="lg" color="#1f2937">
-          {resorts.length}件のスキー場
+      <Box
+        p={4}
+        pt={{ base: 2, md: 6 }}
+        borderBottom="1px solid"
+        borderColor="gray.100"
+      >
+        <Heading size="lg" color="gray.900">
+          {resorts.length} 件見つかりました
         </Heading>
+        <Text fontSize="sm" color="gray.500" mt={1}>
+          選択すると詳細を表示します
+        </Text>
       </Box>
 
       {/* スクロール可能なリスト本体 */}
       <List.Root
         as="ul"
         flexGrow={1}
-        gap={2}
+        gap={3}
         overflowY="auto"
-        px={2}
-        pb={2}
+        px={4}
+        py={4}
         listStyleType="none"
       >
         {resorts.map(resort => (
-          <List.Item key={resort.id} as="li">
+          <List.Item key={resort.id} as="li" display="block">
             <Box
               as="button"
               onClick={() => onSelectResort(resort.id)}
               w="100%"
               cursor="pointer"
-              borderRadius="md"
+              borderRadius="xl"
               bg="white"
-              p={3}
+              p={4}
               textAlign="left"
+              border="1px solid"
+              borderColor="gray.200"
               boxShadow="sm"
-              transition="box-shadow 0.2s"
-              _hover={{ boxShadow: "lg" }}
+              transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
+              _hover={{
+                borderColor: "brand.500",
+                boxShadow: "0 4px 20px rgba(0, 0, 0, 0.08)",
+                transform: "translateY(-2px)",
+              }}
             >
-              <Text fontWeight="bold" color="#1f2937">
+              <Text
+                fontWeight="800"
+                fontSize="lg"
+                color="gray.900"
+                fontFamily="var(--font-heading)"
+              >
                 {resort.nameJa}
               </Text>
-              <Flex justifyContent="space-between" alignItems="center">
-                <Text fontSize="sm" color="#4b5563">
-                  {resort.prefecture}
+              <Flex justifyContent="space-between" alignItems="center" mt={1}>
+                <Text fontSize="xs" color="gray.500" fontWeight="600">
+                  {resort.prefecture} • {resort.town}
                 </Text>
                 {resort.yukiMagiId && (
                   <Box
                     px={2}
                     py={0.5}
                     bg="pink.50"
-                    color="pink.600"
-                    fontSize="xs"
+                    color="pink.500"
+                    fontSize={{ base: "10px", sm: "xs" }}
                     fontWeight="bold"
                     borderRadius="full"
                     borderWidth="1px"
                     borderColor="pink.200"
+                    whiteSpace="nowrap"
                   >
-                    雪マジ
+                    ユキマジ対象
                   </Box>
                 )}
               </Flex>
               <Flex
-                mt={2}
+                mt={4}
                 justifyContent="space-between"
+                alignItems="center"
                 fontSize="sm"
-                color="#374151"
+                color="gray.600"
               >
-                <Text as="span">コース: {resort.numberOfCourses}</Text>
-                <Text as="span">標高差: {resort.verticalDrop}m</Text>
+                <Flex gap={{ base: 2, sm: 3 }} flexWrap="wrap">
+                  <Text
+                    as="span"
+                    display="flex"
+                    alignItems="center"
+                    gap={1}
+                    fontSize={{ base: "xs", sm: "sm" }}
+                    whiteSpace="nowrap"
+                  >
+                    <Box
+                      as="span"
+                      h="6px"
+                      w="6px"
+                      borderRadius="full"
+                      bg="green.500"
+                    />
+                    {resort.numberOfCourses} コース
+                  </Text>
+                  <Text
+                    as="span"
+                    display="flex"
+                    alignItems="center"
+                    gap={1}
+                    fontSize={{ base: "xs", sm: "sm" }}
+                    whiteSpace="nowrap"
+                  >
+                    <Box
+                      as="span"
+                      h="6px"
+                      w="6px"
+                      borderRadius="full"
+                      bg="blue.500"
+                    />
+                    標高差 {resort.verticalDrop}m
+                  </Text>
+                </Flex>
                 <Checkbox.Root
                   onClick={e => e.stopPropagation()}
                   aria-label={`${resort.nameJa}を比較対象に追加`}
                 >
                   <Checkbox.HiddenInput />
                   <Checkbox.Control
-                    borderColor="#d1d5db"
-                    _checked={{ bg: "#4f46e5", borderColor: "#4f46e5" }}
+                    borderColor="gray.200"
+                    bg="white"
+                    _checked={{
+                      bg: "brand.500",
+                      borderColor: "brand.500",
+                      color: "white",
+                    }}
                   />
                 </Checkbox.Root>
               </Flex>

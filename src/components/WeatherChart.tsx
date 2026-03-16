@@ -33,19 +33,38 @@ const ElevationSelector = ({
   options: { label: string; value: string }[];
 }) => (
   <Flex w="full" justify="center">
-    <Flex gap={1} rounded="lg" bg="gray.100" p={1}>
+    <Flex
+      gap={2}
+      rounded="full"
+      bg="gray.100"
+      border="1px solid"
+      borderColor="gray.200"
+      p={1.5}
+      boxShadow="sm"
+    >
       {options.map(option => (
         <Button
           key={option.value}
           onClick={() => onChange(option.value)}
           size="sm"
-          w={{ base: "16", sm: "20" }}
+          w={{ base: "20", sm: "24" }}
           variant="ghost"
           bg={value === option.value ? "white" : "transparent"}
-          color={value === option.value ? "gray.800" : "gray.500"}
+          color={value === option.value ? "brand.500" : "gray.500"}
+          border={
+            value === option.value ? "1px solid" : "1px solid transparent"
+          }
+          borderColor={value === option.value ? "gray.200" : "transparent"}
+          borderRadius="full"
           shadow={value === option.value ? "sm" : "none"}
-          _hover={{ bg: value === option.value ? "white" : "whiteAlpha.500" }}
+          _hover={{
+            bg: value === option.value ? "white" : "gray.50",
+            color: "gray.900",
+          }}
           fontSize={{ base: "xs", sm: "sm" }}
+          fontWeight="700"
+          fontFamily="var(--font-heading)"
+          transition="all 0.2s"
         >
           {option.label}
         </Button>
@@ -76,42 +95,61 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
     return (
       <Box
-        rounded="lg"
+        rounded="xl"
         border="1px solid"
         borderColor="gray.200"
-        bg="whiteAlpha.900"
-        p={3}
+        bg="white"
+        p={4}
         shadow="md"
-        backdropFilter="blur(4px)"
       >
-        <Text fontWeight="bold" color="gray.700" mb={1}>
+        <Text
+          fontWeight="800"
+          fontFamily="var(--font-heading)"
+          color="gray.900"
+          mb={2}
+        >
           {label}
         </Text>
-        {payload.map((pld: TooltipPayload, idx: number) => {
-          const displayValue = Array.isArray(pld.value)
-            ? `${pld.value[0]} - ${pld.value[1]}`
-            : pld.value;
+        <Flex flexDirection="column" gap={1}>
+          {payload.map((pld: TooltipPayload, idx: number) => {
+            const displayValue = Array.isArray(pld.value)
+              ? `${pld.value[0]} - ${pld.value[1]}`
+              : pld.value;
 
-          // Resolve color based on name to ensure visibility
-          // Fallback to payload colors, then default gray
-          let textColor = "gray.700";
-          if (pld.name === "四分位範囲") textColor = "#10b981";
-          else if (pld.name === "中央値") textColor = "#059669";
-          else if (pld.name === "最大値") textColor = "#ef4444";
-          else if (pld.name === "最小値") textColor = "#3b82f6";
-          else if (pld.name === "最高気温") textColor = "#f97316";
-          else if (pld.name === "最低気温") textColor = "#3b82f6";
-          else if (pld.name === "降雪確率") textColor = "#8b5cf6";
-          else if (pld.fill && pld.fill !== "none") textColor = pld.fill;
-          else if (pld.stroke && pld.stroke !== "none") textColor = pld.stroke;
-          else if (pld.color) textColor = pld.color;
+            // Resolve color based on name to ensure visibility
+            // Fallback to payload colors, then default gray
+            let textColor = "gray.700";
+            if (pld.name === "四分位範囲" || pld.name === "Interquartile Range")
+              textColor = "#10b981";
+            else if (pld.name === "中央値" || pld.name === "Median")
+              textColor = "#059669";
+            else if (pld.name === "最大値" || pld.name === "Max")
+              textColor = "#ef4444";
+            else if (pld.name === "最小値" || pld.name === "Min")
+              textColor = "#3b82f6";
+            else if (pld.name === "最高気温" || pld.name === "High Temp")
+              textColor = "#f97316";
+            else if (pld.name === "最低気温" || pld.name === "Low Temp")
+              textColor = "#3b82f6";
+            else if (pld.name === "降雪確率" || pld.name === "Snow Prob.")
+              textColor = "#8b5cf6";
+            else if (pld.fill && pld.fill !== "none") textColor = pld.fill;
+            else if (pld.stroke && pld.stroke !== "none")
+              textColor = pld.stroke;
+            else if (pld.color) textColor = pld.color;
 
-          return (
-            <Text key={`${pld.name}-${idx}`} fontSize="sm" color={textColor}>
-              {`${pld.name}: ${displayValue}${pld.unit || ""}`}
-            </Text>
-          );
-        })}
+            return (
+              <Text
+                key={`${pld.name}-${idx}`}
+                fontSize="sm"
+                color={textColor}
+                fontWeight="700"
+              >
+                {`${pld.name}: ${displayValue}${pld.unit || ""}`}
+              </Text>
+            );
+          })}
+        </Flex>
       </Box>
     );
   }
@@ -133,7 +171,7 @@ export const ForecastTable = ({ weathers }: { weathers: WeathersT }) => {
     0;
 
   const colsPerDay = 3; // Snow-Forecast 6day is typically AM/PM/Night
-  const timeLabels = ["朝", "夕", "夜"];
+  const timeLabels = ["朝", "昼", "夜"];
 
   const forecastDays = useMemo(() => {
     if (dataLength === 0) return [];
@@ -143,26 +181,30 @@ export const ForecastTable = ({ weathers }: { weathers: WeathersT }) => {
         ? new Date(weathers.meta.date)
         : new Date();
       date.setDate(date.getDate() + i);
-      const day = ["日", "月", "火", "水", "木", "金", "土"][date.getDay()];
-      return `${date.getMonth() + 1}/${date.getDate()}(${day})`;
+      const day = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][
+        date.getDay()
+      ];
+      return `${date.getMonth() + 1}/${date.getDate()} (${day})`;
     });
   }, [weathers.meta.date, dataLength]);
 
   const getSnowStyle = (snow: number) => {
     if (snow <= 0) return { bg: "transparent", color: "gray.400" };
-    if (snow < 5) return { bg: "blue.50", color: "blue.800" };
-    if (snow < 10) return { bg: "blue.100", color: "blue.900" };
-    if (snow < 20) return { bg: "blue.200", color: "blue.900" };
-    return { bg: "blue.300", color: "white" };
+    if (snow < 5) return { bg: "blue.50", color: "blue.400" };
+    if (snow < 10) return { bg: "blue.100", color: "blue.500" };
+    if (snow < 20) return { bg: "blue.300", color: "white" };
+    return { bg: "blue.500", color: "white" };
   };
 
   const getTempStyle = (temp: number) => {
-    if (temp < -10) return { bg: "blue.700", color: "white" };
-    if (temp < -5) return { bg: "blue.500", color: "white" };
-    if (temp < 0) return { bg: "blue.300", color: "white" };
-    if (temp < 5) return { bg: "orange.300", color: "gray.800" };
-    if (temp < 10) return { bg: "orange.400", color: "white" };
-    return { bg: "orange.600", color: "white" };
+    if (temp < -10) return { bg: "blue.800", color: "blue.100" };
+    if (temp < -5) return { bg: "blue.600", color: "white" };
+    if (temp < 0) return { bg: "blue.400", color: "white" };
+    if (temp < 5)
+      return { bg: "orange.400", color: "black", textShadow: "none" };
+    if (temp < 10)
+      return { bg: "orange.500", color: "black", textShadow: "none" };
+    return { bg: "orange.700", color: "white" };
   };
 
   return (
@@ -176,7 +218,15 @@ export const ForecastTable = ({ weathers }: { weathers: WeathersT }) => {
           { label: "山麓", value: "bot" },
         ]}
       />
-      <Box mt={4} w="full" overflowX="auto" rounded="lg" borderWidth="1px">
+      <Box
+        mt={4}
+        w="full"
+        overflowX="auto"
+        rounded="lg"
+        borderWidth="1px"
+        borderColor="gray.200"
+        bg="white"
+      >
         {dataLength > 0 ? (
           <Box
             as="table"
@@ -191,12 +241,13 @@ export const ForecastTable = ({ weathers }: { weathers: WeathersT }) => {
                   position="sticky"
                   left={0}
                   zIndex={10}
-                  w={{ base: "12", sm: "16" }}
+                  w={{ base: "14", sm: "20" }}
                   borderRightWidth="1px"
+                  borderColor="gray.200"
                   bg="gray.100"
-                  p={{ base: 0.5, sm: 1 }}
+                  p={{ base: 0.5, sm: 2 }}
                   fontSize="xs"
-                  fontWeight="medium"
+                  fontWeight="700"
                 />
                 {forecastDays.map(day => (
                   <Box
@@ -206,9 +257,11 @@ export const ForecastTable = ({ weathers }: { weathers: WeathersT }) => {
                     colSpan={colsPerDay}
                     borderBottomWidth="1px"
                     borderRightWidth="1px"
-                    p={{ base: 0.5, sm: 1 }}
+                    borderColor="gray.200"
+                    p={{ base: 1, sm: 2 }}
                     fontSize="xs"
-                    fontWeight="medium"
+                    fontWeight="700"
+                    color="gray.600"
                     minW={0}
                   >
                     <Box
@@ -228,10 +281,9 @@ export const ForecastTable = ({ weathers }: { weathers: WeathersT }) => {
                   left={0}
                   zIndex={10}
                   borderRightWidth="1px"
+                  borderColor="gray.200"
                   bg="gray.50"
                   p={{ base: 0.5, sm: 1 }}
-                  fontSize="xs"
-                  fontWeight="medium"
                 />
                 {Array.from({ length: dataLength }).map((_, i) => {
                   const timeOfDay = timeLabels[i % colsPerDay];
@@ -243,11 +295,14 @@ export const ForecastTable = ({ weathers }: { weathers: WeathersT }) => {
                       key={key}
                       borderBottomWidth="1px"
                       borderRightWidth="1px"
-                      p={0.5}
+                      borderColor="gray.200"
+                      p={1}
                       fontSize="xs"
-                      fontWeight="medium"
+                      fontWeight="700"
                       color="gray.500"
-                      w={{ base: "8", sm: "10" }}
+                      textTransform="uppercase"
+                      w={{ base: "12", sm: "16" }}
+                      whiteSpace="nowrap"
                     >
                       {timeOfDay}
                     </Box>
@@ -256,21 +311,25 @@ export const ForecastTable = ({ weathers }: { weathers: WeathersT }) => {
               </Box>
             </Box>
             <Box as="tbody">
-              <Box as="tr">
+              <Box as="tr" borderBottomWidth="1px" borderColor="gray.200">
                 <Box
                   as="td"
                   position="sticky"
                   left={0}
                   zIndex={10}
                   borderRightWidth="1px"
-                  bg="gray.50"
-                  p={{ base: 0.5, sm: 1 }}
-                  fontSize="xs"
-                  fontWeight="semibold"
+                  borderColor="gray.200"
+                  bg="white"
+                  p={{ base: 1, sm: 2 }}
+                  fontSize="sm"
+                  fontWeight="700"
+                  color="gray.800"
+                  whiteSpace="nowrap"
                 >
                   <Box textAlign="center">
-                    風<br />
-                    <Text as="span" color="gray.400" fontSize="xs">
+                    風
+                    <br />
+                    <Text as="span" color="gray.500" fontSize="xs">
                       km/h
                     </Text>
                   </Box>
@@ -279,12 +338,12 @@ export const ForecastTable = ({ weathers }: { weathers: WeathersT }) => {
                   const windSpeed = wind.speed;
                   const windColor =
                     windSpeed >= 30
-                      ? "red.500"
+                      ? "pink.500"
                       : windSpeed >= 20
                         ? "orange.500"
                         : windSpeed >= 10
-                          ? "yellow.500"
-                          : "gray.400";
+                          ? "yellow.400"
+                          : "brand.300";
 
                   let angle = 0;
                   if (wind.direction) {
@@ -300,26 +359,30 @@ export const ForecastTable = ({ weathers }: { weathers: WeathersT }) => {
                       as="td"
                       key={`wind-${i}-${wind.speed}-${wind.direction}`}
                       borderRightWidth="1px"
-                      p={0.5}
+                      borderColor="gray.200"
+                      p={1}
                       verticalAlign="middle"
+                      bg="white"
+                      whiteSpace="nowrap"
                     >
-                      <Flex direction="column" align="center" gap={0.5}>
+                      <Flex direction="column" align="center" gap={1}>
                         <Box
                           as="svg"
                           // @ts-expect-error: viewBox is valid for svg
                           viewBox="0 0 24 24"
                           fill="currentColor"
-                          width={{ base: "12px", sm: "16px" }}
-                          height={{ base: "12px", sm: "16px" }}
+                          width={{ base: "14px", sm: "18px" }}
+                          height={{ base: "14px", sm: "18px" }}
                           color={windColor}
                           style={{ transform: windAngle }}
                         >
                           <path d="M12 2L22 12H17V22H7V12H2L12 2Z" />
                         </Box>
                         <Text
-                          fontSize="xs"
-                          fontWeight="medium"
+                          fontSize="sm"
+                          fontWeight="700"
                           color={windColor}
+                          fontFamily="mono"
                         >
                           {windSpeed}
                         </Text>
@@ -328,22 +391,25 @@ export const ForecastTable = ({ weathers }: { weathers: WeathersT }) => {
                   );
                 })}
               </Box>
-              <Box as="tr">
+              <Box as="tr" borderBottomWidth="1px" borderColor="gray.200">
                 <Box
                   as="td"
                   position="sticky"
                   left={0}
                   zIndex={10}
                   borderRightWidth="1px"
-                  bg="gray.50"
-                  p={{ base: 0.5, sm: 1 }}
-                  fontSize="xs"
-                  fontWeight="semibold"
+                  borderColor="gray.200"
+                  bg="white"
+                  p={{ base: 1, sm: 2 }}
+                  fontSize="sm"
+                  fontWeight="700"
+                  color="gray.800"
+                  whiteSpace="nowrap"
                 >
                   <Box textAlign="center">
                     降雪
                     <br />
-                    <Text as="span" color="gray.400" fontSize="xs">
+                    <Text as="span" color="gray.500" fontSize="xs">
                       cm
                     </Text>
                   </Box>
@@ -355,33 +421,44 @@ export const ForecastTable = ({ weathers }: { weathers: WeathersT }) => {
                       as="td"
                       key={`snow-${i}-${snow}`}
                       borderRightWidth="1px"
-                      p={0.5}
-                      fontSize="xs"
+                      borderColor="gray.200"
+                      p={1}
+                      fontSize="sm"
+                      fontFamily="mono"
                       bg={style.bg}
-                      fontWeight={snow > 0 ? "medium" : "normal"}
+                      fontWeight="700"
                       color={style.color}
+                      whiteSpace="nowrap"
                     >
                       {snow > 0 ? snow : "-"}
                     </Box>
                   );
                 })}
               </Box>
-              <Box as="tr" borderTopWidth="1px">
+              <Box as="tr" borderBottomWidth="1px" borderColor="gray.200">
                 <Box
                   as="td"
                   position="sticky"
                   left={0}
                   zIndex={10}
                   borderRightWidth="1px"
-                  bg="gray.50"
-                  p={{ base: 0.5, sm: 1 }}
-                  fontSize="xs"
-                  fontWeight="semibold"
+                  borderColor="gray.200"
+                  bg="white"
+                  p={{ base: 1.5, sm: 2 }}
+                  fontSize={{ base: "xs", sm: "sm" }}
+                  fontWeight="700"
+                  color="gray.800"
+                  minW={{ base: "60px", sm: "80px" }}
+                  whiteSpace="nowrap"
                 >
                   <Box textAlign="center">
                     気温
                     <br />
-                    <Text as="span" color="gray.400" fontSize="xs">
+                    <Text
+                      as="span"
+                      color="gray.500"
+                      fontSize={{ base: "10px", sm: "xs" }}
+                    >
                       °C
                     </Text>
                   </Box>
@@ -395,11 +472,14 @@ export const ForecastTable = ({ weathers }: { weathers: WeathersT }) => {
                         as="td"
                         key={`temp-${i}-${temp}`}
                         borderRightWidth="1px"
-                        p={0.5}
-                        fontSize="xs"
-                        fontWeight="bold"
-                        color={style.color}
+                        borderColor="gray.200"
+                        p={1}
+                        fontSize="sm"
+                        fontFamily="mono"
+                        fontWeight="700"
+                        color={style.color === "white" ? "white" : style.color}
                         bg={style.bg}
+                        whiteSpace="nowrap"
                       >
                         {temp}
                       </Box>
@@ -409,8 +489,8 @@ export const ForecastTable = ({ weathers }: { weathers: WeathersT }) => {
             </Box>
           </Box>
         ) : (
-          <Box p={4} textAlign="center">
-            <Text color="gray.500" fontSize="sm">
+          <Box p={8} textAlign="center">
+            <Text color="gray.400" fontSize="md" fontWeight="700">
               データがありません
             </Text>
           </Box>
@@ -458,17 +538,23 @@ export const WeeklyWeatherChart = ({
           { label: "山麓", value: "bottom" },
         ]}
       />
-      <Box w="full" h="300px" mt={8}>
+      <Box w="full" h={{ base: "220px", sm: "260px", md: "300px" }} mt={8}>
         <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <ComposedChart
             data={chartData}
-            margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
+            margin={{ top: 5, right: 10, left: -20, bottom: 5 }}
           >
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="#e5e7eb"
+              vertical={false}
+            />
             <XAxis
               dataKey="name"
               interval={4}
-              tick={{ fontSize: 12, fill: "#6B7280" }}
+              tick={{ fontSize: 12, fill: "#6b7280", fontWeight: "bold" }}
+              axisLine={{ stroke: "#e5e7eb" }}
+              tickLine={{ stroke: "#e5e7eb" }}
             />
             <YAxis
               yAxisId="left"
@@ -478,9 +564,15 @@ export const WeeklyWeatherChart = ({
                 value: "気温 (°C)",
                 angle: -90,
                 position: "insideLeft",
-                fill: "#6B7280",
+                fill: "#f97316",
+                fontWeight: "bold",
+                fontSize: 10,
+                dx: 15,
               }}
-              tick={{ fontSize: 12, fill: "#6B7280" }}
+              tick={{ fontSize: 10, fill: "#9ca3af", fontWeight: "bold" }}
+              axisLine={{ stroke: "#e5e7eb" }}
+              tickLine={{ stroke: "#e5e7eb" }}
+              width={40}
             />
             <YAxis
               yAxisId="right"
@@ -488,23 +580,36 @@ export const WeeklyWeatherChart = ({
               stroke="#8b5cf6"
               unit="%"
               label={{
-                value: "確率 (%)",
+                value: "降雪確率 (%)",
                 angle: 90,
                 position: "insideRight",
-                fill: "#6B7280",
+                fill: "#8b5cf6",
+                fontWeight: "bold",
+                fontSize: 10,
+                dx: -15,
               }}
-              tick={{ fontSize: 12, fill: "#6B7280" }}
+              tick={{ fontSize: 10, fill: "#9ca3af", fontWeight: "bold" }}
+              axisLine={{ stroke: "#e5e7eb" }}
+              tickLine={{ stroke: "#e5e7eb" }}
+              width={40}
             />
             <Tooltip content={<CustomTooltip />} />
-            <Legend />
+            <Legend
+              wrapperStyle={{
+                color: "#374151",
+                fontWeight: "bold",
+                fontSize: "14px",
+              }}
+            />
             <Line
               yAxisId="left"
               type="monotone"
               dataKey="最高気温"
+              name="最高気温"
               stroke="#f97316"
-              strokeWidth={2}
-              dot={{ r: 3, fill: "#f97316" }}
-              activeDot={{ r: 6 }}
+              strokeWidth={3}
+              dot={{ r: 4, fill: "white", stroke: "#f97316", strokeWidth: 2 }}
+              activeDot={{ r: 6, fill: "#f97316" }}
               unit="°C"
               connectNulls
             />
@@ -512,20 +617,23 @@ export const WeeklyWeatherChart = ({
               yAxisId="left"
               type="monotone"
               dataKey="最低気温"
+              name="最低気温"
               stroke="#3b82f6"
-              strokeWidth={2}
-              dot={{ r: 3, fill: "#3b82f6" }}
-              activeDot={{ r: 6 }}
+              strokeWidth={3}
+              dot={{ r: 4, fill: "white", stroke: "#3b82f6", strokeWidth: 2 }}
+              activeDot={{ r: 6, fill: "#3b82f6" }}
               unit="°C"
               connectNulls
             />
             <Bar
               yAxisId="right"
               dataKey="降雪確率"
+              name="降雪確率"
               fill="#8b5cf6"
               fillOpacity={0.6}
-              barSize={15}
+              barSize={12}
               unit="%"
+              radius={[4, 4, 0, 0]}
             />
           </ComposedChart>
         </ResponsiveContainer>
@@ -626,19 +734,35 @@ export const SnowDepthLineChart = ({
             data={lineData}
             margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
           >
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="#e5e7eb"
+              vertical={false}
+            />
             <XAxis
               dataKey="name"
-              interval={Math.floor(lineData.length / 8)}
-              tick={{ fontSize: 12, fill: "#6B7280" }}
+              interval={Math.floor(lineData.length / 5)}
+              tick={{ fontSize: 10, fill: "#9ca3af", fontWeight: "bold" }}
+              axisLine={{ stroke: "#e5e7eb" }}
+              tickLine={{ stroke: "#e5e7eb" }}
             />
             <YAxis
               unit="cm"
               domain={[0, "dataMax + 50"]}
-              tick={{ fontSize: 12, fill: "#6B7280" }}
+              tick={{ fontSize: 10, fill: "#9ca3af", fontWeight: "bold" }}
+              axisLine={{ stroke: "#e5e7eb" }}
+              tickLine={{ stroke: "#e5e7eb" }}
+              width={45}
             />
             <Tooltip content={<CustomTooltip />} />
-            <Legend />
+            <Legend
+              wrapperStyle={{
+                color: "#374151",
+                fontWeight: "700",
+                fontSize: "12px",
+                paddingTop: "10px",
+              }}
+            />
             <Area
               type="monotone"
               dataKey={data =>
@@ -648,15 +772,15 @@ export const SnowDepthLineChart = ({
               }
               fill="#10b981"
               stroke="none"
-              name="四分位範囲"
-              fillOpacity={0.4}
+              name="中央50%範囲"
+              fillOpacity={0.15}
               unit="cm"
             />
             <Line
               type="monotone"
               dataKey="median"
-              stroke="#059669"
-              strokeWidth={2}
+              stroke="#10b981"
+              strokeWidth={3}
               name="中央値"
               dot={false}
               connectNulls
@@ -668,8 +792,8 @@ export const SnowDepthLineChart = ({
               stroke="#ef4444"
               name="最大値"
               strokeWidth={0}
-              dot={{ r: 3, fill: "#ef4444" }}
-              activeDot={{ r: 6 }}
+              dot={{ r: 4, fill: "#ef4444" }}
+              activeDot={{ r: 7 }}
               connectNulls
               unit="cm"
             />
@@ -679,8 +803,8 @@ export const SnowDepthLineChart = ({
               stroke="#3b82f6"
               name="最小値"
               strokeWidth={0}
-              dot={{ r: 3, fill: "#3b82f6" }}
-              activeDot={{ r: 6 }}
+              dot={{ r: 4, fill: "#3b82f6" }}
+              activeDot={{ r: 7 }}
               connectNulls
               unit="cm"
             />

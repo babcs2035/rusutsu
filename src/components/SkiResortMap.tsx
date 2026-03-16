@@ -89,39 +89,40 @@ const MapControls = () => {
       <Flex
         flexDirection="column"
         borderRadius="lg"
-        bg="rgba(30, 41, 59, 0.8)"
-        boxShadow="lg"
-        backdropFilter="blur(4px)"
+        bg="white"
+        boxShadow="md"
         overflow="hidden"
+        border="1px solid"
+        borderColor="gray.200"
       >
         <Button
           onClick={() => map.zoomIn()}
           p={2}
-          color="white"
+          color="gray.700"
           bg="transparent"
-          _hover={{ bg: "rgba(51, 65, 85, 0.9)" }}
+          _hover={{ bg: "gray.50" }}
           borderRadius="0"
-          borderTopRadius="lg"
           fontSize="xl"
-          fontWeight="bold"
+          fontWeight="700"
           minW="auto"
-          h="auto"
+          h={{ base: 10, sm: 12 }}
+          w={{ base: 10, sm: 12 }}
         >
           +
         </Button>
-        <Box h="1px" w="100%" bg="rgba(255, 255, 255, 0.1)" />
+        <Box h="1px" w="100%" bg="gray.100" />
         <Button
           onClick={() => map.zoomOut()}
           p={2}
-          color="white"
+          color="gray.700"
           bg="transparent"
-          _hover={{ bg: "rgba(51, 65, 85, 0.9)" }}
+          _hover={{ bg: "gray.50" }}
           borderRadius="0"
-          borderBottomRadius="lg"
           fontSize="xl"
-          fontWeight="bold"
+          fontWeight="700"
           minW="auto"
-          h="auto"
+          h={{ base: 10, sm: 12 }}
+          w={{ base: 10, sm: 12 }}
         >
           -
         </Button>
@@ -129,16 +130,18 @@ const MapControls = () => {
       <Button
         onClick={() => map.setView(INITIAL_CENTER, INITIAL_ZOOM)}
         borderRadius="lg"
-        bg="rgba(30, 41, 59, 0.8)"
+        bg="white"
         p={2}
-        color="white"
-        boxShadow="lg"
-        backdropFilter="blur(4px)"
-        _hover={{ bg: "rgba(51, 65, 85, 0.9)" }}
+        color="gray.700"
+        boxShadow="md"
+        border="1px solid"
+        borderColor="gray.200"
+        _hover={{ bg: "gray.50" }}
         minW="auto"
-        h="auto"
+        h={{ base: 10, sm: 12 }}
+        w={{ base: 10, sm: 12 }}
       >
-        <Home size={16} />
+        <Home size={20} />
       </Button>
     </Flex>
   );
