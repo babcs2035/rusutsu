@@ -18,12 +18,12 @@ export const LoadingSpinner = ({
       alignItems="center"
       justifyContent="center"
       gap={4}
-      bg="#f1f5f9"
+      bg="var(--bg-light)"
       aria-live="polite"
       aria-busy="true"
     >
-      <Spinner size="xl" color="#0ea5e9" borderWidth="4px" />
-      <Text fontSize="lg" fontWeight="semibold" color="#475569">
+      <Spinner size="xl" color="brand.500" borderWidth="4px" />
+      <Text fontSize="lg" fontWeight="semibold" color="gray.600">
         {text}
       </Text>
     </Flex>

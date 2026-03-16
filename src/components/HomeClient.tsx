@@ -100,6 +100,7 @@ export function HomeClient({ initialResorts }: Props) {
 
   const handleSelectResort = useCallback((id: string) => {
     setSelectedResortId(id);
+    setIsListSheetOpen(false); // モーダルを開くときにボトムシートを閉じる
     startTransition(async () => {
       const data = await getSkiResortById(id);
       setSelectedResortData(data);
@@ -119,9 +120,10 @@ export function HomeClient({ initialResorts }: Props) {
       w="100vw"
       overflow="hidden"
       flexDirection={{ md: "row" }}
+      bg="var(--bg-light)"
     >
       {/* --- 地図表示エリア --- */}
-      <Box h="100%" w="100%">
+      <Box h="100%" w="100%" position="relative">
         <FilterPanel filters={filters} onFilterChange={handleFilterChange} />
         <DynamicMap
           resorts={filteredResorts}
@@ -134,10 +136,15 @@ export function HomeClient({ initialResorts }: Props) {
       <Box
         display={{ base: "none", md: "block" }}
         h="100%"
-        w="380px"
+        w="400px"
         flexShrink={0}
         borderLeft="1px solid"
         borderColor="gray.200"
+        bg="rgba(255, 255, 255, 0.8)"
+        backdropFilter="blur(16px)"
+        position="relative"
+        zIndex={10}
+        boxShadow="-4px 0 20px rgba(0,0,0,0.05)"
       >
         <SkiResortList
           resorts={visibleResorts}
@@ -159,6 +166,7 @@ export function HomeClient({ initialResorts }: Props) {
                 inset: 0,
                 zIndex: 9998,
                 backgroundColor: "rgba(0, 0, 0, 0.4)",
+                backdropFilter: "blur(4px)",
               }}
             />
             <Drawer.Content
@@ -170,10 +178,13 @@ export function HomeClient({ initialResorts }: Props) {
                 zIndex: 9999,
                 display: "flex",
                 flexDirection: "column",
-                borderTopLeftRadius: "0.75rem",
-                borderTopRightRadius: "0.75rem",
-                backgroundColor: "#f3f4f6",
-                height: "min(80vh, 800px)",
+                borderTopLeftRadius: "1.5rem",
+                borderTopRightRadius: "1.5rem",
+                backgroundColor: "rgba(255, 255, 255, 0.95)",
+                borderTop: "1px solid rgba(0, 0, 0, 0.05)",
+                backdropFilter: "blur(20px)",
+                height: "min(85vh, 800px)",
+                boxShadow: "0 -10px 40px rgba(0, 0, 0, 0.1)",
               }}
             >
               <Drawer.Title
@@ -194,10 +205,10 @@ export function HomeClient({ initialResorts }: Props) {
                 mx="auto"
                 my={4}
                 h={1.5}
-                w={12}
+                w={16}
                 flexShrink={0}
                 borderRadius="full"
-                bg="#d1d5db"
+                bg="gray.300"
               />
               <Box flexGrow={1} overflowY="auto">
                 <SkiResortList
@@ -215,33 +226,35 @@ export function HomeClient({ initialResorts }: Props) {
           right={0}
           zIndex={9999}
           display={{ base: "flex", md: "none" }}
-          h={16}
+          h={20}
           cursor="pointer"
           alignItems="center"
           justifyContent="center"
-          borderTopRadius="xl"
+          borderTopRadius="2xl"
           borderTop="1px solid"
           borderColor="gray.200"
-          bg="#f3f4f6"
+          bg="rgba(255, 255, 255, 0.95)"
+          backdropFilter="blur(10px)"
           p={4}
-          boxShadow="0 -10px 25px -5px rgba(0,0,0,0.1)"
-          transition="opacity 0.3s"
+          boxShadow="0 -10px 30px rgba(0, 0, 0, 0.05)"
+          transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
           opacity={isListSheetOpen ? 0 : 1}
           pointerEvents={isListSheetOpen ? "none" : "auto"}
           onClick={() => setIsListSheetOpen(true)}
           aria-label="リストを開く"
           flexDirection="column"
+          _hover={{ bg: "rgba(31, 40, 51, 0.95)" }}
         >
           <Box
             position="absolute"
-            top={2}
+            top={3}
             h={1.5}
-            w={12}
+            w={16}
             borderRadius="full"
-            bg="#d1d5db"
+            bg="gray.300"
           />
-          <Heading pt={2} size="lg" color="#1f2937">
-            {visibleResorts.length}件のスキー場
+          <Heading pt={3} size="md" color="gray.900">
+            {visibleResorts.length} 件のスキー場を表示中
           </Heading>
         </Button>
       </Box>

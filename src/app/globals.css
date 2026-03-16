@@ -6,8 +6,48 @@
   box-sizing: border-box;
 }
 
+:root {
+  --bg-light: #f4f6f8;
+  --bg-gradient: radial-gradient(circle at top right, #ffffff, #f4f6f8);
+  --brand-main: #3b82f6;
+  --brand-dim: #93c5fd;
+  --text-primary: #111827;
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(0, 0, 0, 0.06);
+}
+
 body {
   padding: 0;
   margin: 0;
   overflow: hidden;
+  background-color: var(--bg-light);
+  background-image: var(--bg-gradient);
+  color: var(--text-primary);
+  /* Custom scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: var(--brand-dim) var(--bg-light);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-light);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--brand-dim);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--brand-main);
+}
+
+/* Base leaflet overrides for light theme */
+html body .leaflet-container {
+  background: #e5e7eb;
+  font-family: inherit;
 }
