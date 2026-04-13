@@ -3,19 +3,483 @@
 import { Box, Button, Flex } from "@chakra-ui/react";
 import L from "leaflet";
 import { Home } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import {
+  CircleMarker,
   MapContainer,
   Marker,
-  Popup,
+  Pane,
+  Polyline,
   TileLayer,
   useMap,
   useMapEvents,
 } from "react-leaflet";
-import MarkerClusterGroup from "react-leaflet-markercluster";
+import resortNameAliasesData from "@/data/SkiResortNameAliases.json";
 
 const INITIAL_CENTER: L.LatLngTuple = [38.25, 139.0];
 const INITIAL_ZOOM = 6;
+const LABEL_SHOW_ZOOM = 8;
+const LABEL_ADVANCED_LAYOUT_ZOOM = 11;
+
+const LABEL_HEIGHT = 24;
+const LABEL_POINT_GAP = 4;
+const ADVANCED_NEAR_POINT_DISTANCE = 60;
+const LABEL_COLLISION_PADDING = 4;
+const LABEL_MARGIN = 6;
+
+const LABEL_POINT_CLEARANCE = 8;
+const LEADER_POINT_CLEARANCE = 8;
+
+const BASE_MARKER_PANE = "resort-markers-base";
+const FRONT_MARKER_PANE = "resort-markers-front";
+
+let cachedLabelMeasureElement: HTMLDivElement | undefined;
+
+type Rect = {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+};
+
+type Segment = {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+};
+
+type LabelLayout = {
+  labelPosition: L.LatLngTuple;
+  leaderEndPosition: L.LatLngTuple;
+  showLeaderLine: boolean;
+  labelWidth: number;
+};
+
+type CandidatePlacement = {
+  left: number;
+  top: number;
+  priority: number;
+  forceLeaderLine?: boolean;
+};
+
+type CandidateEvaluation = {
+  rect: Rect;
+  collisionRect: Rect;
+  leaderSegment: Segment;
+  showLeaderLine: boolean;
+  score: number;
+};
+
+type MapPointEntry = {
+  id: string;
+  point: L.Point;
+};
+
+const escapeHtml = (text: string) =>
+  text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+
+const getLabelMeasureElement = () => {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+
+  if (cachedLabelMeasureElement?.isConnected) {
+    return cachedLabelMeasureElement;
+  }
+
+  const probe = document.createElement("div");
+  probe.className = "resort-name-label";
+  probe.style.position = "absolute";
+  probe.style.left = "-100000px";
+  probe.style.top = "-100000px";
+  probe.style.visibility = "hidden";
+  probe.style.pointerEvents = "none";
+  probe.style.whiteSpace = "nowrap";
+  probe.style.width = "fit-content";
+
+  document.body.appendChild(probe);
+  cachedLabelMeasureElement = probe;
+  return probe;
+};
+
+const measureTextWidth = (text: string): number => {
+  const probe = getLabelMeasureElement();
+  if (!probe) return text.length * 8;
+  probe.textContent = text;
+  return Math.ceil(probe.getBoundingClientRect().width);
+};
+
+const createNameLabelIcon = (
+  name: string,
+  width: number,
+  isSelected: boolean,
+) =>
+  L.divIcon({
+    className: "resort-name-label-icon",
+    html: `<div class="resort-name-label${isSelected ? " is-selected" : ""}" style="width:${width}px">${escapeHtml(name)}</div>`,
+    iconSize: [width, LABEL_HEIGHT],
+    iconAnchor: [0, 0],
+  });
+
+const pointInRect = (x: number, y: number, rect: Rect) =>
+  x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+
+const rectsOverlap = (a: Rect, b: Rect) =>
+  a.left <= b.right &&
+  a.right >= b.left &&
+  a.top <= b.bottom &&
+  a.bottom >= b.top;
+
+const expandRect = (rect: Rect, padding: number): Rect => ({
+  left: rect.left - padding,
+  right: rect.right + padding,
+  top: rect.top - padding,
+  bottom: rect.bottom + padding,
+});
+
+const rectContainsPoint = (
+  rect: Rect,
+  point: L.Point,
+  padding = 0,
+): boolean => {
+  const expanded = expandRect(rect, padding);
+  return pointInRect(point.x, point.y, expanded);
+};
+
+const distancePointToRect = (point: L.Point, rect: Rect): number => {
+  const dx =
+    point.x < rect.left
+      ? rect.left - point.x
+      : point.x > rect.right
+        ? point.x - rect.right
+        : 0;
+  const dy =
+    point.y < rect.top
+      ? rect.top - point.y
+      : point.y > rect.bottom
+        ? point.y - rect.bottom
+        : 0;
+
+  return Math.hypot(dx, dy);
+};
+
+const segmentsIntersect = (a: Segment, b: Segment) => {
+  const orient = (
+    px: number,
+    py: number,
+    qx: number,
+    qy: number,
+    rx: number,
+    ry: number,
+  ) => {
+    const value = (qy - py) * (rx - qx) - (qx - px) * (ry - qy);
+    if (Math.abs(value) < 1e-7) return 0;
+    return value > 0 ? 1 : -1;
+  };
+
+  const onSegment = (
+    px: number,
+    py: number,
+    qx: number,
+    qy: number,
+    rx: number,
+    ry: number,
+  ) =>
+    qx <= Math.max(px, rx) + 1e-7 &&
+    qx + 1e-7 >= Math.min(px, rx) &&
+    qy <= Math.max(py, ry) + 1e-7 &&
+    qy + 1e-7 >= Math.min(py, ry);
+
+  const o1 = orient(a.x1, a.y1, a.x2, a.y2, b.x1, b.y1);
+  const o2 = orient(a.x1, a.y1, a.x2, a.y2, b.x2, b.y2);
+  const o3 = orient(b.x1, b.y1, b.x2, b.y2, a.x1, a.y1);
+  const o4 = orient(b.x1, b.y1, b.x2, b.y2, a.x2, a.y2);
+
+  if (o1 !== o2 && o3 !== o4) return true;
+
+  if (o1 === 0 && onSegment(a.x1, a.y1, b.x1, b.y1, a.x2, a.y2)) return true;
+  if (o2 === 0 && onSegment(a.x1, a.y1, b.x2, b.y2, a.x2, a.y2)) return true;
+  if (o3 === 0 && onSegment(b.x1, b.y1, a.x1, a.y1, b.x2, b.y2)) return true;
+  if (o4 === 0 && onSegment(b.x1, b.y1, a.x2, a.y2, b.x2, b.y2)) return true;
+
+  return false;
+};
+
+const segmentIntersectsRect = (segment: Segment, rect: Rect) => {
+  if (
+    pointInRect(segment.x1, segment.y1, rect) ||
+    pointInRect(segment.x2, segment.y2, rect)
+  ) {
+    return true;
+  }
+
+  const edges: Segment[] = [
+    { x1: rect.left, y1: rect.top, x2: rect.right, y2: rect.top },
+    { x1: rect.right, y1: rect.top, x2: rect.right, y2: rect.bottom },
+    { x1: rect.right, y1: rect.bottom, x2: rect.left, y2: rect.bottom },
+    { x1: rect.left, y1: rect.bottom, x2: rect.left, y2: rect.top },
+  ];
+
+  return edges.some(edge => segmentsIntersect(segment, edge));
+};
+
+const distancePointToSegment = (point: L.Point, segment: Segment): number => {
+  const dx = segment.x2 - segment.x1;
+  const dy = segment.y2 - segment.y1;
+
+  if (Math.abs(dx) < 1e-7 && Math.abs(dy) < 1e-7) {
+    return Math.hypot(point.x - segment.x1, point.y - segment.y1);
+  }
+
+  const t =
+    ((point.x - segment.x1) * dx + (point.y - segment.y1) * dy) /
+    (dx * dx + dy * dy);
+  const clampedT = Math.max(0, Math.min(1, t));
+
+  const projX = segment.x1 + dx * clampedT;
+  const projY = segment.y1 + dy * clampedT;
+
+  return Math.hypot(point.x - projX, point.y - projY);
+};
+
+const getLeaderEndPoint = (point: L.Point, rect: Rect): L.Point => {
+  const centerX = (rect.left + rect.right) / 2;
+  const centerY = (rect.top + rect.bottom) / 2;
+  const dx = centerX - point.x;
+  const dy = centerY - point.y;
+
+  if (Math.abs(dx) < 1e-7 && Math.abs(dy) < 1e-7) {
+    return L.point(centerX, centerY);
+  }
+
+  const candidates: Array<{ t: number; x: number; y: number }> = [];
+
+  if (Math.abs(dx) > 1e-7) {
+    const boundaryX = dx > 0 ? rect.left : rect.right;
+    const t = (boundaryX - point.x) / dx;
+    if (t >= 0 && t <= 1) {
+      const y = point.y + dy * t;
+      if (y >= rect.top - 1e-7 && y <= rect.bottom + 1e-7) {
+        candidates.push({ t, x: boundaryX, y });
+      }
+    }
+  }
+
+  if (Math.abs(dy) > 1e-7) {
+    const boundaryY = dy > 0 ? rect.top : rect.bottom;
+    const t = (boundaryY - point.y) / dy;
+    if (t >= 0 && t <= 1) {
+      const x = point.x + dx * t;
+      if (x >= rect.left - 1e-7 && x <= rect.right + 1e-7) {
+        candidates.push({ t, x, y: boundaryY });
+      }
+    }
+  }
+
+  if (candidates.length > 0) {
+    const best = candidates.reduce((prev, current) =>
+      current.t < prev.t ? current : prev,
+    );
+    return L.point(best.x, best.y);
+  }
+
+  return L.point(
+    Math.max(rect.left, Math.min(point.x, rect.right)),
+    Math.max(rect.top, Math.min(point.y, rect.bottom)),
+  );
+};
+
+const createSimpleVerticalCandidates = ({
+  point,
+  labelWidth,
+}: {
+  point: L.Point;
+  labelWidth: number;
+}): CandidatePlacement[] => [
+  {
+    left: point.x - labelWidth / 2,
+    top: point.y - LABEL_HEIGHT - LABEL_POINT_GAP,
+    priority: 0,
+  },
+  {
+    left: point.x - labelWidth / 2,
+    top: point.y + LABEL_POINT_GAP,
+    priority: 1,
+  },
+];
+
+const createPrimaryCandidates = ({
+  point,
+  labelWidth,
+  mapSize,
+  useAdvancedLayout,
+  shouldForceLeaderLine,
+}: {
+  point: L.Point;
+  labelWidth: number;
+  mapSize: L.Point;
+  useAdvancedLayout: boolean;
+  shouldForceLeaderLine: boolean;
+}): CandidatePlacement[] => {
+  const candidates: CandidatePlacement[] = [];
+
+  if (!shouldForceLeaderLine) {
+    candidates.push(
+      {
+        left: point.x - labelWidth / 2,
+        top: point.y - LABEL_HEIGHT - LABEL_POINT_GAP,
+        priority: 0,
+      },
+      {
+        left: point.x - labelWidth / 2,
+        top: point.y + LABEL_POINT_GAP,
+        priority: 2,
+      },
+    );
+
+    if (useAdvancedLayout) {
+      candidates.push(
+        {
+          left: point.x + LABEL_POINT_GAP,
+          top: point.y - LABEL_HEIGHT / 2,
+          priority: 4,
+          forceLeaderLine: true,
+        },
+        {
+          left: point.x - labelWidth - LABEL_POINT_GAP,
+          top: point.y - LABEL_HEIGHT / 2,
+          priority: 5,
+          forceLeaderLine: true,
+        },
+      );
+    }
+  }
+
+  if (useAdvancedLayout) {
+    const maxRadius = Math.max(mapSize.x, mapSize.y) * 0.38;
+    const preferredAngles = [
+      { angle: 300, priority: 0 },
+      { angle: 240, priority: 1 },
+      { angle: 60, priority: 2 },
+      { angle: 120, priority: 3 },
+      { angle: 330, priority: 4 },
+      { angle: 210, priority: 5 },
+      { angle: 30, priority: 6 },
+      { angle: 150, priority: 7 },
+      { angle: 0, priority: 8 },
+      { angle: 180, priority: 9 },
+      { angle: 270, priority: 10 },
+      { angle: 90, priority: 11 },
+    ];
+
+    for (let radius = 30; radius <= maxRadius; radius += 18) {
+      for (const { angle, priority } of preferredAngles) {
+        const rad = (angle * Math.PI) / 180;
+        const cx = point.x + Math.cos(rad) * radius;
+        const cy = point.y + Math.sin(rad) * radius;
+
+        candidates.push({
+          left: cx - labelWidth / 2,
+          top: cy - LABEL_HEIGHT / 2,
+          priority: priority + radius / 20,
+          forceLeaderLine: true,
+        });
+      }
+    }
+  }
+
+  return candidates;
+};
+
+const createDenseFallbackCandidates = ({
+  point,
+  labelWidth,
+  mapSize,
+}: {
+  point: L.Point;
+  labelWidth: number;
+  mapSize: L.Point;
+}): CandidatePlacement[] => {
+  const candidates: CandidatePlacement[] = [];
+  const maxRadius = Math.max(mapSize.x, mapSize.y) * 0.9;
+  const angles = [
+    0, 15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180, 195, 210, 225, 240,
+    255, 270, 285, 300, 315, 330, 345,
+  ];
+
+  for (let radius = 28; radius <= maxRadius; radius += 14) {
+    for (const angle of angles) {
+      const rad = (angle * Math.PI) / 180;
+      const cx = point.x + Math.cos(rad) * radius;
+      const cy = point.y + Math.sin(rad) * radius;
+
+      candidates.push({
+        left: cx - labelWidth / 2,
+        top: cy - LABEL_HEIGHT / 2,
+        priority: 100 + radius / 10,
+        forceLeaderLine: true,
+      });
+    }
+  }
+
+  return candidates;
+};
+
+const createViewportScanCandidates = ({
+  labelWidth,
+  mapSize,
+}: {
+  labelWidth: number;
+  mapSize: L.Point;
+}): CandidatePlacement[] => {
+  const candidates: CandidatePlacement[] = [];
+  const stepX = 12;
+  const stepY = LABEL_HEIGHT + 6;
+
+  for (
+    let top = LABEL_MARGIN;
+    top <= mapSize.y - LABEL_HEIGHT - LABEL_MARGIN;
+    top += stepY
+  ) {
+    for (
+      let left = LABEL_MARGIN;
+      left <= mapSize.x - labelWidth - LABEL_MARGIN;
+      left += stepX
+    ) {
+      candidates.push({
+        left,
+        top,
+        priority: 1000 + top + left / 1000,
+        forceLeaderLine: true,
+      });
+    }
+  }
+
+  return candidates;
+};
+
+const isRectInsideViewport = (rect: Rect, mapSize: L.Point): boolean =>
+  rect.left >= LABEL_MARGIN &&
+  rect.right <= mapSize.x - LABEL_MARGIN &&
+  rect.top >= LABEL_MARGIN &&
+  rect.bottom <= mapSize.y - LABEL_MARGIN;
+
+const getResortDisplayName = (
+  resort: MapResort,
+  displayNameById: Map<string, string>,
+): string => displayNameById.get(resort.id) ?? resort.nameJa;
+
+const getResortLabelWidth = (
+  resort: MapResort,
+  displayNameById: Map<string, string>,
+): number =>
+  Math.max(measureTextWidth(getResortDisplayName(resort, displayNameById)), 1);
 
 // コンパクトな地図表示用リゾート型
 type MapResort = {
@@ -23,12 +487,10 @@ type MapResort = {
   nameJa: string;
   latitude: number;
   longitude: number;
+  numberOfCourses: number;
   yukiMagiId: string | null;
 };
 
-/**
- * 地図の表示領域変更を親コンポーネントに通知するための内部コンポーネント
- */
 const MapEventsHandler = ({
   onBoundsChange,
 }: {
@@ -48,33 +510,28 @@ const MapEventsHandler = ({
   return null;
 };
 
-// カスタムマーカーアイコン
-const createCustomIcon = (yukiMagiAvailable: boolean) => {
-  const color = yukiMagiAvailable ? "#db2777" : "#0284c7";
-  const iconHtml = `
-    <div style="filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3)); cursor: pointer;">
-      <svg width="36" height="42" viewBox="0 0 24 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <!-- Pin Shape -->
-        <path d="M12 28C12 28 22 18 22 11C22 5.47715 17.5228 1 12 1C6.47715 1 2 5.47715 2 11C2 18 12 28 12 28Z" fill="${color}" stroke="white" stroke-width="1.5"/>
-        <!-- Mountain Icon -->
-        <g transform="translate(5, 5) scale(0.6)">
-          <path d="M12 2L2 19H22L12 2Z" fill="white"/>
-          <!-- Snow Cap effect -->
-          <path d="M12 2L8.5 8L10 9.5L12 7.5L14 9.5L15.5 8L12 2Z" fill="${color}"/>
-        </g>
-      </svg>
-    </div>
-  `;
-  return L.divIcon({
-    html: iconHtml,
-    className: "bg-transparent border-none",
-    iconSize: [36, 42],
-    iconAnchor: [18, 42],
-    popupAnchor: [0, -40],
+const LabelLayoutWatcher = ({
+  onLayout,
+}: {
+  onLayout: (map: L.Map) => void;
+}) => {
+  const map = useMap();
+
+  useMapEvents({
+    zoom: () => onLayout(map),
+    zoomend: () => onLayout(map),
+    move: () => onLayout(map),
+    moveend: () => onLayout(map),
+    resize: () => onLayout(map),
   });
+
+  useEffect(() => {
+    onLayout(map);
+  }, [map, onLayout]);
+
+  return null;
 };
 
-// マップ操作ボタン
 const MapControls = () => {
   const map = useMap();
   return (
@@ -149,19 +606,390 @@ const MapControls = () => {
 
 type Props = {
   resorts: MapResort[];
+  selectedResortId: string | null;
   onSelectResort: (id: string) => void;
   onBoundsChange: (bounds: L.LatLngBounds) => void;
 };
 
 export const SkiResortMap = ({
   resorts,
+  selectedResortId,
   onSelectResort,
   onBoundsChange,
 }: Props) => {
-  const clusterKey = useMemo(() => resorts.map(r => r.id).join(","), [resorts]);
+  const [labelLayouts, setLabelLayouts] = useState<Record<string, LabelLayout>>(
+    {},
+  );
 
-  const blueIcon = useMemo(() => createCustomIcon(false), []);
-  const pinkIcon = useMemo(() => createCustomIcon(true), []);
+  const aliasById = useMemo(() => {
+    const aliasEntries: Array<[string, string]> =
+      resortNameAliasesData.resorts.map(resort => [
+        resort.id,
+        resort.shortName,
+      ]);
+
+    return new Map<string, string>(aliasEntries);
+  }, []);
+
+  const displayNameById = useMemo(() => {
+    const entries: Array<[string, string]> = resorts.map(resort => {
+      const customAlias = aliasById.get(resort.id)?.trim();
+      const genericAlias = resort.nameJa.replaceAll("スキー場", "").trim();
+      const displayName =
+        customAlias && customAlias.length > 0 ? customAlias : genericAlias;
+
+      return [resort.id, displayName.length > 0 ? displayName : resort.nameJa];
+    });
+
+    return new Map<string, string>(entries);
+  }, [aliasById, resorts]);
+
+  const updateLabelLayout = useCallback(
+    (map: L.Map) => {
+      const currentZoom = map.getZoom();
+      if (currentZoom < LABEL_SHOW_ZOOM) {
+        setLabelLayouts({});
+        return;
+      }
+
+      const isSimpleVerticalLayout =
+        currentZoom >= LABEL_SHOW_ZOOM &&
+        currentZoom < LABEL_ADVANCED_LAYOUT_ZOOM;
+      const useAdvancedLayout = currentZoom >= LABEL_ADVANCED_LAYOUT_ZOOM;
+
+      const mapBounds = map.getBounds();
+      const mapSize = map.getSize();
+
+      const placedCollisionRects: Rect[] = [];
+      const placedActualRects: Rect[] = [];
+      const placedLeaderSegments: Segment[] = [];
+
+      const sortedCandidates = resorts
+        .filter(resort =>
+          mapBounds.contains([
+            resort.latitude,
+            resort.longitude,
+          ] as L.LatLngTuple),
+        )
+        .sort((a, b) => {
+          if (isSimpleVerticalLayout) {
+            return b.numberOfCourses - a.numberOfCourses;
+          }
+
+          const aSelected = a.id === selectedResortId ? 1 : 0;
+          const bSelected = b.id === selectedResortId ? 1 : 0;
+
+          if (aSelected !== bSelected) {
+            return bSelected - aSelected;
+          }
+
+          return b.numberOfCourses - a.numberOfCourses;
+        });
+
+      const pointById = new Map<string, L.Point>(
+        sortedCandidates.map(resort => [
+          resort.id,
+          map.latLngToContainerPoint([
+            resort.latitude,
+            resort.longitude,
+          ] as L.LatLngTuple),
+        ]),
+      );
+
+      const pointEntries: MapPointEntry[] = sortedCandidates
+        .map(resort => {
+          const point = pointById.get(resort.id);
+          return point ? { id: resort.id, point } : null;
+        })
+        .filter((value): value is MapPointEntry => value !== null);
+
+      const nextLayouts: Record<string, LabelLayout> = {};
+
+      if (isSimpleVerticalLayout) {
+        for (const resort of sortedCandidates) {
+          const point = pointById.get(resort.id);
+          if (!point) continue;
+
+          const labelWidth = getResortLabelWidth(resort, displayNameById);
+
+          const candidates = createSimpleVerticalCandidates({
+            point,
+            labelWidth,
+          });
+
+          let acceptedRect: Rect | undefined;
+          let acceptedCollisionRect: Rect | undefined;
+
+          for (const candidate of candidates) {
+            const rect: Rect = {
+              left: candidate.left,
+              right: candidate.left + labelWidth,
+              top: candidate.top,
+              bottom: candidate.top + LABEL_HEIGHT,
+            };
+
+            const collisionRect = expandRect(rect, LABEL_COLLISION_PADDING);
+
+            const inViewport = isRectInsideViewport(collisionRect, mapSize);
+
+            if (!inViewport) {
+              continue;
+            }
+
+            const overlapsPlacedLabel = placedCollisionRects.some(placed =>
+              rectsOverlap(collisionRect, placed),
+            );
+            if (overlapsPlacedLabel) {
+              continue;
+            }
+
+            acceptedRect = rect;
+            acceptedCollisionRect = collisionRect;
+            break;
+          }
+
+          if (!acceptedRect || !acceptedCollisionRect) {
+            continue;
+          }
+
+          placedCollisionRects.push(acceptedCollisionRect);
+          placedActualRects.push(acceptedRect);
+
+          const labelTopLeftLatLng = map.containerPointToLatLng(
+            L.point(acceptedRect.left, acceptedRect.top),
+          );
+
+          nextLayouts[resort.id] = {
+            labelPosition: [labelTopLeftLatLng.lat, labelTopLeftLatLng.lng],
+            leaderEndPosition: [resort.latitude, resort.longitude],
+            showLeaderLine: false,
+            labelWidth,
+          };
+        }
+
+        setLabelLayouts(nextLayouts);
+        return;
+      }
+
+      const crowdedPointIds = new Set<string>();
+      if (useAdvancedLayout) {
+        for (let i = 0; i < pointEntries.length; i += 1) {
+          const base = pointEntries[i];
+
+          for (let j = i + 1; j < pointEntries.length; j += 1) {
+            const other = pointEntries[j];
+            const distance = Math.hypot(
+              base.point.x - other.point.x,
+              base.point.y - other.point.y,
+            );
+
+            if (distance <= ADVANCED_NEAR_POINT_DISTANCE) {
+              crowdedPointIds.add(base.id);
+              crowdedPointIds.add(other.id);
+            }
+          }
+        }
+      }
+
+      for (const resort of sortedCandidates) {
+        const point = pointById.get(resort.id);
+        if (!point) continue;
+
+        const shouldForceLeaderLine =
+          useAdvancedLayout && crowdedPointIds.has(resort.id);
+
+        const labelWidth = getResortLabelWidth(resort, displayNameById);
+
+        const evaluateCandidates = (
+          candidates: CandidatePlacement[],
+          options: { allowLineCrossing: boolean },
+        ): CandidateEvaluation | undefined => {
+          let best: CandidateEvaluation | undefined;
+
+          for (const candidate of candidates) {
+            const rect: Rect = {
+              left: candidate.left,
+              right: candidate.left + labelWidth,
+              top: candidate.top,
+              bottom: candidate.top + LABEL_HEIGHT,
+            };
+
+            const collisionRect = expandRect(rect, LABEL_COLLISION_PADDING);
+
+            const inViewport = isRectInsideViewport(collisionRect, mapSize);
+
+            if (!inViewport) {
+              continue;
+            }
+
+            const overlapsPlacedLabel = placedCollisionRects.some(placed =>
+              rectsOverlap(collisionRect, placed),
+            );
+            if (overlapsPlacedLabel) {
+              continue;
+            }
+
+            const coversOtherPoint = pointEntries.some(
+              ({ id, point: otherPoint }) =>
+                id !== resort.id &&
+                rectContainsPoint(rect, otherPoint, LABEL_POINT_CLEARANCE),
+            );
+            if (coversOtherPoint) {
+              continue;
+            }
+
+            const leaderEndPoint = getLeaderEndPoint(point, rect);
+            const leaderSegment: Segment = {
+              x1: point.x,
+              y1: point.y,
+              x2: leaderEndPoint.x,
+              y2: leaderEndPoint.y,
+            };
+
+            const leaderLength = Math.hypot(
+              leaderSegment.x2 - leaderSegment.x1,
+              leaderSegment.y2 - leaderSegment.y1,
+            );
+
+            const showLeaderLine =
+              useAdvancedLayout &&
+              (candidate.forceLeaderLine ||
+                shouldForceLeaderLine ||
+                leaderLength > LABEL_POINT_GAP + 4);
+
+            if (showLeaderLine) {
+              const intersectsExistingLabel = placedActualRects.some(
+                existingRect =>
+                  segmentIntersectsRect(leaderSegment, existingRect),
+              );
+              if (intersectsExistingLabel) {
+                continue;
+              }
+
+              const existingLineCrossesNewLabel = placedLeaderSegments.some(
+                existingSegment => segmentIntersectsRect(existingSegment, rect),
+              );
+              if (existingLineCrossesNewLabel) {
+                continue;
+              }
+
+              const intersectsOtherPoint = pointEntries.some(
+                ({ id, point: otherPoint }) =>
+                  id !== resort.id &&
+                  distancePointToSegment(otherPoint, leaderSegment) <
+                    LEADER_POINT_CLEARANCE,
+              );
+              if (intersectsOtherPoint) {
+                continue;
+              }
+
+              if (!options.allowLineCrossing) {
+                const crossesExistingLeader = placedLeaderSegments.some(
+                  existingSegment =>
+                    segmentsIntersect(existingSegment, leaderSegment),
+                );
+                if (crossesExistingLeader) {
+                  continue;
+                }
+              }
+            }
+
+            const centerY = (rect.top + rect.bottom) / 2;
+
+            let score = candidate.priority * 40;
+
+            score += leaderLength;
+            if (showLeaderLine) score += 18;
+            if (centerY > point.y) score += 12;
+
+            const nearestOtherPointDistance = pointEntries
+              .filter(({ id }) => id !== resort.id)
+              .reduce((minDistance, { point: otherPoint }) => {
+                const distance = distancePointToRect(otherPoint, rect);
+                return Math.min(minDistance, distance);
+              }, Number.POSITIVE_INFINITY);
+
+            if (nearestOtherPointDistance < 28) {
+              score += (28 - nearestOtherPointDistance) * 3;
+            }
+
+            if (best === undefined || score < best.score) {
+              best = {
+                rect,
+                collisionRect,
+                leaderSegment,
+                showLeaderLine,
+                score,
+              };
+            }
+          }
+
+          return best;
+        };
+
+        const primaryCandidates = createPrimaryCandidates({
+          point,
+          labelWidth,
+          mapSize,
+          useAdvancedLayout,
+          shouldForceLeaderLine,
+        });
+
+        const denseFallbackCandidates = useAdvancedLayout
+          ? createDenseFallbackCandidates({
+              point,
+              labelWidth,
+              mapSize,
+            })
+          : [];
+
+        const viewportCandidates = useAdvancedLayout
+          ? createViewportScanCandidates({
+              labelWidth,
+              mapSize,
+            })
+          : [];
+
+        const accepted =
+          evaluateCandidates(primaryCandidates, { allowLineCrossing: false }) ??
+          evaluateCandidates(denseFallbackCandidates, {
+            allowLineCrossing: false,
+          }) ??
+          evaluateCandidates(denseFallbackCandidates, {
+            allowLineCrossing: true,
+          }) ??
+          evaluateCandidates(viewportCandidates, { allowLineCrossing: true });
+
+        if (!accepted) {
+          continue;
+        }
+
+        placedCollisionRects.push(accepted.collisionRect);
+        placedActualRects.push(accepted.rect);
+
+        if (accepted.showLeaderLine) {
+          placedLeaderSegments.push(accepted.leaderSegment);
+        }
+
+        const labelTopLeftLatLng = map.containerPointToLatLng(
+          L.point(accepted.rect.left, accepted.rect.top),
+        );
+        const leaderEndLatLng = map.containerPointToLatLng(
+          L.point(accepted.leaderSegment.x2, accepted.leaderSegment.y2),
+        );
+
+        nextLayouts[resort.id] = {
+          labelPosition: [labelTopLeftLatLng.lat, labelTopLeftLatLng.lng],
+          leaderEndPosition: [leaderEndLatLng.lat, leaderEndLatLng.lng],
+          showLeaderLine: accepted.showLeaderLine,
+          labelWidth,
+        };
+      }
+
+      setLabelLayouts(nextLayouts);
+    },
+    [displayNameById, resorts, selectedResortId],
+  );
 
   return (
     <MapContainer
@@ -174,26 +1002,71 @@ export const SkiResortMap = ({
         url="https://{s}.tile.openstreetmap.jp/styles/maptiler-basic-ja/{z}/{x}/{y}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       />
-      <MarkerClusterGroup key={clusterKey}>
-        {resorts.map(resort => (
-          <Marker
-            key={resort.id}
-            position={[resort.latitude, resort.longitude]}
-            icon={resort.yukiMagiId ? pinkIcon : blueIcon}
-            eventHandlers={{ click: () => onSelectResort(resort.id) }}
-          >
-            <Popup>
-              <Box fontWeight="bold">{resort.nameJa}</Box>
-              {resort.yukiMagiId && (
-                <Box color="pink.600" fontSize="xs" mt={1}>
-                  ✨ 雪マジ！対象校
-                </Box>
-              )}
-            </Popup>
-          </Marker>
-        ))}
-      </MarkerClusterGroup>
+      <Pane name={BASE_MARKER_PANE} style={{ zIndex: 430 }} />
+      <Pane name={FRONT_MARKER_PANE} style={{ zIndex: 470 }} />
+
+      {resorts.map(resort => {
+        const isSelected = resort.id === selectedResortId;
+        const displayName = getResortDisplayName(resort, displayNameById);
+        const labelLayout = labelLayouts[resort.id];
+        const hasVisibleLabel = Boolean(labelLayout);
+        const markerPane =
+          isSelected || hasVisibleLabel ? FRONT_MARKER_PANE : BASE_MARKER_PANE;
+        const markerRadius = isSelected ? 6 : 4;
+
+        return (
+          <Fragment key={resort.id}>
+            {labelLayout?.showLeaderLine && (
+              <Polyline
+                pane={markerPane}
+                positions={[
+                  [resort.latitude, resort.longitude],
+                  labelLayout.leaderEndPosition,
+                ]}
+                pathOptions={{
+                  color: isSelected ? "#ca8a04" : "#64748b",
+                  opacity: 0.7,
+                  weight: 1,
+                }}
+                interactive={false}
+              />
+            )}
+
+            <CircleMarker
+              center={[resort.latitude, resort.longitude]}
+              radius={markerRadius}
+              pane={markerPane}
+              pathOptions={{
+                color: "#ffffff",
+                weight: isSelected ? 2 : 1,
+                fillColor: isSelected
+                  ? "#facc15"
+                  : resort.yukiMagiId
+                    ? "#db2777"
+                    : "#0284c7",
+                fillOpacity: 0.95,
+              }}
+              eventHandlers={{ click: () => onSelectResort(resort.id) }}
+            />
+
+            {hasVisibleLabel && (
+              <Marker
+                pane={markerPane}
+                position={labelLayout.labelPosition}
+                icon={createNameLabelIcon(
+                  displayName,
+                  labelLayout.labelWidth,
+                  isSelected,
+                )}
+                eventHandlers={{ click: () => onSelectResort(resort.id) }}
+              />
+            )}
+          </Fragment>
+        );
+      })}
+
       <MapControls />
+      <LabelLayoutWatcher onLayout={updateLabelLayout} />
       <MapEventsHandler onBoundsChange={onBoundsChange} />
     </MapContainer>
   );
