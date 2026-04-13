@@ -127,6 +127,7 @@ export function HomeClient({ initialResorts }: Props) {
         <FilterPanel filters={filters} onFilterChange={handleFilterChange} />
         <DynamicMap
           resorts={filteredResorts}
+          selectedResortId={selectedResortId}
           onSelectResort={handleSelectResort}
           onBoundsChange={setMapBounds}
         />

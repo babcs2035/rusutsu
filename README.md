@@ -40,7 +40,7 @@ mise run setup
 mise run dev
 ```
 
-ブラウザで [http://localhost:3000](http://localhost:3000) を開く．
+ブラウザで [http://localhost:3000/rusutsu](http://localhost:3000/rusutsu) を開く．
 
 ## データ処理アーキテクチャ
 
