@@ -8,7 +8,7 @@
     {
       "id": "asahi-shizenkan-snow-park",
       "nameJa": "Asahi自然観スノーパーク",
-      "shortName": "Asahi自然観スノーパーク"
+      "shortName": "Asahi自然観"
     },
     {
       "id": "gala-yuzawa",
@@ -48,7 +48,7 @@
     {
       "id": "ohana-resort",
       "nameJa": "Ohana Resort (国境高原スノーパーク)",
-      "shortName": "Ohana Resort (国境高原スノーパーク)"
+      "shortName": "Ohana Resort (国境高原)"
     },
     {
       "id": "sol-fa-oda",
@@ -103,7 +103,7 @@
     {
       "id": "iizuna-resort",
       "nameJa": "いいづなリゾートスキー場",
-      "shortName": "いいづなリゾート"
+      "shortName": "いいづな"
     },
     {
       "id": "ibukinosato",
@@ -293,7 +293,7 @@
     {
       "id": "miyagi-zao-eboshi",
       "nameJa": "みやぎ蔵王えぼしリゾート",
-      "shortName": "みやぎ蔵王えぼしリゾート"
+      "shortName": "みやぎ蔵王えぼし"
     },
     {
       "id": "miyagi-zao-shichikashuku",
@@ -568,17 +568,17 @@
     {
       "id": "snow-park-oze-tokura",
       "nameJa": "スノーパーク尾瀬戸倉",
-      "shortName": "スノーパーク尾瀬戸倉"
+      "shortName": "尾瀬戸倉"
     },
     {
       "id": "snow-park-dorogawa",
       "nameJa": "スノーパーク洞川",
-      "shortName": "スノーパーク洞川"
+      "shortName": "洞川"
     },
     {
       "id": "kijimadaira",
       "nameJa": "スノーリゾート ロマンスの神様",
-      "shortName": "スノーリゾート ロマンスの神様"
+      "shortName": "ロマンスの神様"
     },
     {
       "id": "snow-resort-nekoyama",
@@ -663,7 +663,7 @@
     {
       "id": "northern-arc-resort",
       "nameJa": "ノーザンアークリゾートスキー場",
-      "shortName": "ノーザンアークリゾート"
+      "shortName": "ノーザンアーク"
     },
     {
       "id": "hyperbowl-tohachi",
@@ -688,12 +688,12 @@
     {
       "id": "pallcall-tsumagoi-resort",
       "nameJa": "パルコール嬬恋リゾートスキー場",
-      "shortName": "パルコール嬬恋リゾート"
+      "shortName": "パルコール嬬恋"
     },
     {
       "id": "pilatus-tateshina-snow-resort",
       "nameJa": "ピラタス蓼科スノーリゾート",
-      "shortName": "ピラタス蓼科スノーリゾート"
+      "shortName": "ピラタス蓼科"
     },
     {
       "id": "pirika",
@@ -733,7 +733,7 @@
     {
       "id": "white-valley",
       "nameJa": "ホワイトバレースキー場",
-      "shortName": "ホワイトバレー"
+      "shortName": "ホワイトバレーみなかみ"
     },
     {
       "id": "white-pia-takasu",
@@ -748,7 +748,7 @@
     {
       "id": "mountain-field-miyagi-zao-sumikawa-snow-park",
       "nameJa": "マウンテンフィールド宮城蔵王すみかわスノーパーク",
-      "shortName": "マウンテンフィールド宮城蔵王すみかわスノーパーク"
+      "shortName": "宮城蔵王すみかわ"
     },
     {
       "id": "mt-jeans-ski-resort-nasu",
@@ -768,7 +768,7 @@
     {
       "id": "muica-snow-resort",
       "nameJa": "ムイカ スノーリゾート",
-      "shortName": "ムイカ スノーリゾート"
+      "shortName": "ムイカ"
     },
     {
       "id": "utopia-saioto",
@@ -808,7 +808,7 @@
     {
       "id": "ipponsugi",
       "nameJa": "一本杉スノーパーク",
-      "shortName": "一本杉スノーパーク"
+      "shortName": "一本杉"
     },
     {
       "id": "korosa",
@@ -1093,7 +1093,7 @@
     {
       "id": "rokkosan-snow-park",
       "nameJa": "六甲山スノーパーク",
-      "shortName": "六甲山スノーパーク"
+      "shortName": "六甲山"
     },
     {
       "id": "fuyudorigoe-ski-garden",
@@ -1828,7 +1828,7 @@
     {
       "id": "minakami-kogen-ski-resort",
       "nameJa": "水上高原スキーリゾート",
-      "shortName": "水上高原スキーリゾート"
+      "shortName": "水上高原"
     },
     {
       "id": "suishozan",
@@ -1973,7 +1973,7 @@
     {
       "id": "shirakaba-resort-ikenotaira-snow-park",
       "nameJa": "白樺リゾート池の平スノーパーク",
-      "shortName": "白樺リゾート池の平スノーパーク"
+      "shortName": "白樺リゾート池の平"
     },
     {
       "id": "shirakabako-royal-hill",
@@ -2508,7 +2508,7 @@
     {
       "id": "hakuba-valley-kashimayari",
       "nameJa": "鹿島槍スキー場 ファミリーパーク",
-      "shortName": "鹿島槍 ファミリーパーク"
+      "shortName": "鹿島槍"
     },
     {
       "id": "kazawa-snow-area",
