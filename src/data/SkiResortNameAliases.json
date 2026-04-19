@@ -1,2533 +1,451 @@
 {
   "resorts": [
     {
-      "id": "ashimoi-kanko-takaho",
-      "nameJa": "ASHIMOI KANKO高穂スキー場",
-      "shortName": "ASHIMOI KANKO高穂"
-    },
-    {
       "id": "asahi-shizenkan-snow-park",
-      "nameJa": "Asahi自然観スノーパーク",
       "shortName": "Asahi自然観"
     },
     {
       "id": "gala-yuzawa",
-      "nameJa": "GALA湯沢スノーリゾート",
       "shortName": "GALA湯沢"
     },
     {
       "id": "hakuba-47-winter-sports-park",
-      "nameJa": "Hakuba47ウインタースポーツパーク",
       "shortName": "Hakuba47"
     },
     {
-      "id": "iwanai-resort",
-      "nameJa": "Iwanai Resort",
-      "shortName": "Iwanai Resort"
-    },
-    {
       "id": "tanigawadake-tenjindaira",
-      "nameJa": "Mt.T by 星野リゾート（谷川岳天神平スキー場）",
       "shortName": "Mt.T"
     },
     {
       "id": "mt-norikura-snow-resort",
-      "nameJa": "Mt.乗鞍スノーリゾート",
       "shortName": "Mt.乗鞍"
     },
     {
-      "id": "mt-granview",
-      "nameJa": "Mtグランビュースキー場",
-      "shortName": "Mtグランビュー"
-    },
-    {
-      "id": "naspa-ski-garden",
-      "nameJa": "NASPAスキーガーデン",
-      "shortName": "NASPAスキーガーデン"
-    },
-    {
       "id": "ohana-resort",
-      "nameJa": "Ohana Resort (国境高原スノーパーク)",
       "shortName": "Ohana Resort (国境高原)"
     },
     {
       "id": "sol-fa-oda",
-      "nameJa": "SOL-FAオダスキーゲレンデ",
       "shortName": "SOL-FAオダ"
     },
     {
       "id": "makinoiri-snow-park",
-      "nameJa": "The きじまスノーパーク",
       "shortName": "きじまスノーパーク"
     },
     {
-      "id": "hakuba-sanosaka",
-      "nameJa": "White Resort 白馬さのさかスキー場",
-      "shortName": "White Resort 白馬さのさか"
-    },
-    {
-      "id": "x-jam-takaifuji",
-      "nameJa": "X-JAM高井富士スキー場",
-      "shortName": "X-JAM高井富士"
-    },
-    {
       "id": "yamaboku-wild-snow-park",
-      "nameJa": "YAMABOKUワイルドスノーパーク",
       "shortName": "YAMABOKU"
     },
     {
-      "id": "zao-sarukura",
-      "nameJa": "ZAO猿倉スキー場",
-      "shortName": "ZAO猿倉"
-    },
-    {
-      "id": "asahi",
-      "nameJa": "あさひスキー場",
-      "shortName": "あさひ"
-    },
-    {
-      "id": "asahi-prime",
-      "nameJa": "あさひプライムスキー場",
-      "shortName": "あさひプライム"
-    },
-    {
-      "id": "adatara-kogen",
-      "nameJa": "あだたら高原スキー場",
-      "shortName": "あだたら高原"
-    },
-    {
-      "id": "awasuno",
-      "nameJa": "あわすのスキー場",
-      "shortName": "あわすの"
-    },
-    {
       "id": "iizuna-resort",
-      "nameJa": "いいづなリゾートスキー場",
       "shortName": "いいづな"
     },
     {
-      "id": "ibukinosato",
-      "nameJa": "いぶきの里スキー場",
-      "shortName": "いぶきの里"
-    },
-    {
-      "id": "engaru-rock-valley",
-      "nameJa": "えんがるロックバレースキー場",
-      "shortName": "えんがるロックバレー"
-    },
-    {
-      "id": "ojiro",
-      "nameJa": "おじろスキー場",
-      "shortName": "おじろ"
-    },
-    {
-      "id": "kagura",
-      "nameJa": "かぐらスキー場",
-      "shortName": "かぐら"
-    },
-    {
-      "id": "katashina-kogen",
-      "nameJa": "かたしな高原スキー場",
-      "shortName": "かたしな高原"
-    },
-    {
-      "id": "kamoidake",
-      "nameJa": "かもい岳国際スキー場",
-      "shortName": "かもい岳国際"
-    },
-    {
-      "id": "sakae-club",
-      "nameJa": "さかえ倶楽部スキー場",
-      "shortName": "さかえ倶楽部"
-    },
-    {
-      "id": "shirakaba-2-in-1",
-      "nameJa": "しらかば2in1スキー場",
-      "shortName": "しらかば2in1"
-    },
-    {
-      "id": "soma-romantopia",
-      "nameJa": "そうまロマントピアスキー場",
-      "shortName": "そうまロマントピア"
-    },
-    {
-      "id": "taira",
-      "nameJa": "たいらスキー場",
-      "shortName": "たいら"
-    },
-    {
-      "id": "tazawako",
-      "nameJa": "たざわ湖スキー場",
-      "shortName": "たざわ湖"
-    },
-    {
-      "id": "taranokidai",
-      "nameJa": "たらのきだいスキー場",
-      "shortName": "たらのきだい"
-    },
-    {
       "id": "tambara-ski-park",
-      "nameJa": "たんばらスキーパーク",
       "shortName": "たんばら"
     },
     {
       "id": "daisen-white-resort",
-      "nameJa": "だいせんホワイトリゾート",
       "shortName": "だいせん"
     },
     {
-      "id": "chikusa-kogen",
-      "nameJa": "ちくさ高原スキー場",
-      "shortName": "ちくさ高原"
-    },
-    {
       "id": "tsugaike-mountain-resort",
-      "nameJa": "つがいけマウンテンリゾート",
       "shortName": "つがいけ"
     },
     {
-      "id": "toma-choei",
-      "nameJa": "とうま山スキー場",
-      "shortName": "とうま山"
-    },
-    {
-      "id": "tochio-family",
-      "nameJa": "とちおファミリースキー場",
-      "shortName": "とちおファミリー"
-    },
-    {
-      "id": "tonami-yumenotaira",
-      "nameJa": "となみ夢の平スキー場",
-      "shortName": "となみ夢の平"
-    },
-    {
-      "id": "nakasato-kiyotsu",
-      "nameJa": "なかさと清津スキー場",
-      "shortName": "なかさと清津"
-    },
-    {
-      "id": "nukabira-gensenkyo",
-      "nameJa": "ぬかびら源泉郷スキー場",
-      "shortName": "ぬかびら源泉郷"
-    },
-    {
       "id": "sapporo-bankei",
-      "nameJa": "ばんけいの森　さっぽろばんけいスキー場",
       "shortName": "さっぽろばんけい"
     },
     {
-      "id": "bansyu-tokura-snow-park",
-      "nameJa": "ばんしゅう戸倉スキー場",
-      "shortName": "ばんしゅう戸倉"
-    },
-    {
-      "id": "hida-nagareha",
-      "nameJa": "ひだ流葉スキー場",
-      "shortName": "ひだ流葉"
-    },
-    {
-      "id": "hiraya-kogen",
-      "nameJa": "ひらや高原スキー場",
-      "shortName": "ひらや高原"
-    },
-    {
-      "id": "hirugano-kogen",
-      "nameJa": "ひるがの高原スキー場",
-      "shortName": "ひるがの高原"
-    },
-    {
-      "id": "hiruzen-kids-snow-park",
-      "nameJa": "ひるぜんキッズスノーパーク",
-      "shortName": "ひるぜんキッズスノーパーク"
-    },
-    {
-      "id": "hiruzen-bear-valley",
-      "nameJa": "ひるぜんベアバレースキー場",
-      "shortName": "ひるぜんベアバレー"
-    },
-    {
-      "id": "biwako-valley",
-      "nameJa": "びわ湖バレイスキー場",
-      "shortName": "びわ湖バレイ"
-    },
-    {
-      "id": "pippu",
-      "nameJa": "ぴっぷスキー場",
-      "shortName": "ぴっぷ"
-    },
-    {
       "id": "fujiten-snow-resort",
-      "nameJa": "ふじてんスノーリゾート",
       "shortName": "ふじてん"
     },
     {
       "id": "budoh",
-      "nameJa": "ぶどうスノーリゾート",
       "shortName": "ぶどう"
     },
     {
-      "id": "hounokidaira",
-      "nameJa": "ほおのき平スキー場",
-      "shortName": "ほおのき平"
-    },
-    {
-      "id": "kokusetsu-horotachi",
-      "nameJa": "ほろたちスキー場",
-      "shortName": "ほろたち"
-    },
-    {
-      "id": "makado-onsen",
-      "nameJa": "まかど温泉スキー場",
-      "shortName": "まかど温泉"
-    },
-    {
-      "id": "matsudai-family",
-      "nameJa": "まつだいファミリースキー場",
-      "shortName": "まつだいファミリー"
-    },
-    {
-      "id": "midori-no-daichi-to-roman-no-mori-koen",
-      "nameJa": "みどりの大地とロマンの森公園スキー場",
-      "shortName": "みどりの大地とロマンの森公園"
-    },
-    {
       "id": "miyagi-zao-eboshi",
-      "nameJa": "みやぎ蔵王えぼしリゾート",
       "shortName": "みやぎ蔵王えぼし"
     },
     {
-      "id": "miyagi-zao-shichikashuku",
-      "nameJa": "みやぎ蔵王七ヶ宿スキー場",
-      "shortName": "みやぎ蔵王七ヶ宿"
-    },
-    {
-      "id": "miyagi-zao-shiroishi",
-      "nameJa": "みやぎ蔵王白石スキー場",
-      "shortName": "みやぎ蔵王白石"
-    },
-    {
-      "id": "mutsushi-kamafuseyama",
-      "nameJa": "むつ市釜臥山スキー場",
-      "shortName": "むつ市釜臥山"
-    },
-    {
-      "id": "meihou",
-      "nameJa": "めいほうスキー場",
-      "shortName": "めいほう"
-    },
-    {
-      "id": "memuro",
-      "nameJa": "めむろ新嵐山スカイパークスキー場",
-      "shortName": "めむろ新嵐山スカイパーク"
-    },
-    {
-      "id": "mominoki-shinrin-koen",
-      "nameJa": "もみのき森林公園スキー場",
-      "shortName": "もみのき森林公園"
-    },
-    {
-      "id": "yakurai-family",
-      "nameJa": "やくらいファミリースキー場",
-      "shortName": "やくらいファミリー"
-    },
-    {
       "id": "yabuhara-kogen",
-      "nameJa": "やぶはら高原スキー場",
       "shortName": "やぶはら"
     },
     {
-      "id": "yamagata-akakura-onsen",
-      "nameJa": "やまがた赤倉温泉スキー場",
-      "shortName": "やまがた赤倉温泉"
-    },
-    {
       "id": "yawata-highland-191-resort",
-      "nameJa": "やわたハイランド191リゾート",
       "shortName": "やわたハイランド191"
     },
     {
-      "id": "yomase-onsen",
-      "nameJa": "よませ温泉スキー場",
-      "shortName": "よませ温泉"
-    },
-    {
-      "id": "ringo-kyowakoku",
-      "nameJa": "りんご今日話国スキー場",
-      "shortName": "りんご今日話国"
-    },
-    {
-      "id": "wakasa-hyonosen",
-      "nameJa": "わかさ氷ノ山スキー場",
-      "shortName": "わかさ氷ノ山"
-    },
-    {
-      "id": "outdoor-in-motai",
-      "nameJa": "アウトドアイン母袋スキー場",
-      "shortName": "アウトドアイン母袋"
-    },
-    {
-      "id": "up-kannabe",
-      "nameJa": "アップかんなべスキー場",
-      "shortName": "アップかんなべ"
-    },
-    {
       "id": "lotte-arai-resort",
-      "nameJa": "アライスノーリゾート",
       "shortName": "アライ"
     },
     {
-      "id": "iox-arosa",
-      "nameJa": "イオックス・アローザスキー場",
-      "shortName": "イオックス・アローザ"
-    },
-    {
-      "id": "windsor-snow-village",
-      "nameJa": "ウィンザースノービレッジ",
-      "shortName": "ウィンザースノービレッジ"
-    },
-    {
       "id": "winghills-shirotori-resort",
-      "nameJa": "ウイングヒルズ白鳥リゾート",
       "shortName": "ウイングヒルズ白鳥"
     },
     {
-      "id": "unabetsu",
-      "nameJa": "ウナベツスキー場",
-      "shortName": "ウナベツ"
-    },
-    {
       "id": "able-hakuba-goryu",
-      "nameJa": "エイブル白馬五竜スキー場",
       "shortName": "白馬五竜"
     },
     {
-      "id": "echo-valley",
-      "nameJa": "エコーバレースキー場",
-      "shortName": "エコーバレー"
-    },
-    {
       "id": "edelweiss-ski-resort",
-      "nameJa": "エーデルワイススキーリゾート",
       "shortName": "エーデルワイス"
     },
     {
-      "id": "oguna-hotaka",
-      "nameJa": "オグナほたかスキー場",
-      "shortName": "オグナほたか"
-    },
-    {
-      "id": "onikoube",
-      "nameJa": "オニコウベスキー場",
-      "shortName": "オニコウベ"
-    },
-    {
-      "id": "orofure",
-      "nameJa": "オロフレスキー場",
-      "shortName": "オロフレ"
-    },
-    {
-      "id": "kamui-misaka",
-      "nameJa": "カムイみさかスキー場",
-      "shortName": "カムイみさか"
-    },
-    {
       "id": "kamui-ski-links",
-      "nameJa": "カムイスキーリンクス",
       "shortName": "カムイ"
     },
     {
       "id": "canmore-ski-village",
-      "nameJa": "キャンモアスキービレッジ",
       "shortName": "キャンモア"
     },
     {
-      "id": "cupid-valley",
-      "nameJa": "キューピットバレイスキー場",
-      "shortName": "キューピットバレイ"
-    },
-    {
       "id": "kiroro-snow-world",
-      "nameJa": "キロロスノーワールド",
       "shortName": "キロロ"
     },
     {
-      "id": "classe-snow-park",
-      "nameJa": "クラッセスノーパーク",
-      "shortName": "クラッセスノーパーク"
-    },
-    {
       "id": "gransnow-okuibuki",
-      "nameJa": "グランスノー奥伊吹スキー場",
       "shortName": "奥伊吹"
     },
     {
       "id": "grandee-hatoriko-ski-resort",
-      "nameJa": "グランディ羽鳥湖スキーリゾート",
       "shortName": "グランディ羽鳥湖"
     },
     {
       "id": "grandeco-snow-resort",
-      "nameJa": "グランデコ・スノーリゾート",
       "shortName": "グランデコ"
     },
     {
-      "id": "kamuro",
-      "nameJa": "グリーンバレー神室スキー場",
-      "shortName": "グリーンバレー神室"
-    },
-    {
-      "id": "greenpia-onuma",
-      "nameJa": "グリーンピア大沼スキー場",
-      "shortName": "グリーンピア大沼"
-    },
-    {
-      "id": "niki-chomin",
-      "nameJa": "コンサドーレ仁木スキーパーク",
-      "shortName": "コンサドーレ仁木スキーパーク"
-    },
-    {
-      "id": "sapporo-teine",
-      "nameJa": "サッポロテイネスキー場",
-      "shortName": "サッポロテイネ"
-    },
-    {
       "id": "sahoro-resort",
-      "nameJa": "サホロリゾート",
       "shortName": "サホロ"
     },
     {
       "id": "santa-present-park-mallows",
-      "nameJa": "サンタプレゼントパーク・マロースゲレンデ",
       "shortName": "サンタプレゼントパーク"
     },
     {
-      "id": "sun-meadows-kiyosato",
-      "nameJa": "サンメドウズ清里スキー場",
-      "shortName": "サンメドウズ清里"
-    },
-    {
-      "id": "sanlaiva",
-      "nameJa": "サンライバスキー場",
-      "shortName": "サンライバ"
-    },
-    {
-      "id": "chateraise-ski-valley-koumi",
-      "nameJa": "シャトレーゼスキーバレー小海",
-      "shortName": "シャトレーゼスキーバレー小海"
-    },
-    {
-      "id": "chateraise-ski-valley-nobeyama",
-      "nameJa": "シャトレーゼスキーバレー野辺山",
-      "shortName": "シャトレーゼスキーバレー野辺山"
-    },
-    {
-      "id": "chateau-shiozawa",
-      "nameJa": "シャトー塩沢スキー場",
-      "shortName": "シャトー塩沢"
-    },
-    {
-      "id": "charmant-hiuchi",
-      "nameJa": "シャルマン火打スキー場",
-      "shortName": "シャルマン火打"
-    },
-    {
-      "id": "jeunesse-kurikoma",
-      "nameJa": "ジュネス栗駒スキー場",
-      "shortName": "ジュネス栗駒"
-    },
-    {
-      "id": "sky-valley",
-      "nameJa": "スカイバレイスキー場",
-      "shortName": "スカイバレイ"
-    },
-    {
-      "id": "ski-jam-katsuyama",
-      "nameJa": "スキージャム勝山",
-      "shortName": "スキージャム勝山"
-    },
-    {
-      "id": "ski-resort-tenei",
-      "nameJa": "スキーリゾート天栄",
-      "shortName": "スキーリゾート天栄"
-    },
-    {
       "id": "snow-wave-park-shiratori-kogen",
-      "nameJa": "スノーウェーブパーク白鳥高原",
       "shortName": "白鳥高原"
     },
     {
       "id": "snow-cruise-onze",
-      "nameJa": "スノークルーズオーンズ",
       "shortName": "オーンズ"
     },
     {
       "id": "snow-park-yeti",
-      "nameJa": "スノーパークイエティ",
       "shortName": "イエティ"
     },
     {
       "id": "snow-park-oze-tokura",
-      "nameJa": "スノーパーク尾瀬戸倉",
       "shortName": "尾瀬戸倉"
     },
     {
       "id": "snow-park-dorogawa",
-      "nameJa": "スノーパーク洞川",
       "shortName": "洞川"
     },
     {
       "id": "kijimadaira",
-      "nameJa": "スノーリゾート ロマンスの神様",
       "shortName": "ロマンスの神様"
     },
     {
       "id": "snow-resort-nekoyama",
-      "nameJa": "スノーリゾート猫山",
       "shortName": "猫山"
     },
     {
-      "id": "spring-valley-izumi-kogen",
-      "nameJa": "スプリングバレー仙台泉スキー場",
-      "shortName": "スプリングバレー仙台泉"
-    },
-    {
-      "id": "st-mary",
-      "nameJa": "セントメリースキー場",
-      "shortName": "セントメリー"
-    },
-    {
-      "id": "takanbo",
-      "nameJa": "タカンボースキー場",
-      "shortName": "タカンボー"
-    },
-    {
       "id": "tangram-ski-circus",
-      "nameJa": "タングラムスキーサーカス",
-      "shortName": "タングラムスキーサーカス"
+      "shortName": "タングラム"
     },
     {
       "id": "dynasty-ski-resort",
-      "nameJa": "ダイナスティスキーリゾート",
       "shortName": "ダイナスティ"
     },
     {
-      "id": "dynaland",
-      "nameJa": "ダイナランドスキー場",
-      "shortName": "ダイナランド"
-    },
-    {
       "id": "niseko-hanazono-resort",
-      "nameJa": "ニセコHANAZONOリゾート",
       "shortName": "ニセコ HANAZONO"
     },
     {
       "id": "niseko-annupuri-kokusai",
-      "nameJa": "ニセコアンヌプリ国際スキー場",
       "shortName": "ニセコ アンヌプリ"
     },
     {
       "id": "niseko-village-ski-resort",
-      "nameJa": "ニセコビレッジスキーリゾート",
       "shortName": "ニセコ ビレッジ"
     },
     {
       "id": "niseko-moiwa-ski-resort",
-      "nameJa": "ニセコモイワスキーリゾート",
       "shortName": "ニセコ モイワ"
     },
     {
       "id": "niseko-mountain-resort-grand-hirafu",
-      "nameJa": "ニセコ東急 グラン・ヒラフ",
       "shortName": "ニセコ ヒラフ"
     },
     {
       "id": "ninox-snow-park",
-      "nameJa": "ニノックススノーパーク",
       "shortName": "ニノックス"
     },
     {
-      "id": "niyama-kogen",
-      "nameJa": "ニヤマ高原スキー場",
-      "shortName": "ニヤマ高原"
-    },
-    {
-      "id": "new-greenpia-tsunan",
-      "nameJa": "ニューグリーンピア津南スキー場",
-      "shortName": "ニューグリーンピア津南"
-    },
-    {
-      "id": "norn-minakami",
-      "nameJa": "ノルンみなかみスキー場",
-      "shortName": "ノルンみなかみ"
-    },
-    {
       "id": "northern-arc-resort",
-      "nameJa": "ノーザンアークリゾートスキー場",
       "shortName": "ノーザンアーク"
     },
     {
-      "id": "hyperbowl-tohachi",
-      "nameJa": "ハイパーボウル東鉢スキー場",
-      "shortName": "ハイパーボウル東鉢"
-    },
-    {
       "id": "hachi-kita-kogen",
-      "nameJa": "ハチ北高原スキー場",
       "shortName": "ハチ北"
     },
     {
       "id": "hachi-kogen",
-      "nameJa": "ハチ高原スキー場",
       "shortName": "ハチ"
     },
     {
-      "id": "hunter-mountain-shiobara",
-      "nameJa": "ハンターマウンテン塩原スキー場",
-      "shortName": "ハンターマウンテン塩原"
-    },
-    {
       "id": "pallcall-tsumagoi-resort",
-      "nameJa": "パルコール嬬恋リゾートスキー場",
       "shortName": "パルコール嬬恋"
     },
     {
       "id": "pilatus-tateshina-snow-resort",
-      "nameJa": "ピラタス蓼科スノーリゾート",
       "shortName": "ピラタス蓼科"
     },
     {
-      "id": "pirika",
-      "nameJa": "ピリカスキー場",
-      "shortName": "ピリカ"
-    },
-    {
-      "id": "family-gerende-kirigamine",
-      "nameJa": "ファミリーゲレンデ 霧ヶ峰スキー場",
-      "shortName": "ファミリーゲレンデ 霧ヶ峰"
-    },
-    {
-      "id": "family-snow-park-bandai-x2",
-      "nameJa": "ファミリースノーパークばんだいx2",
-      "shortName": "ファミリースノーパークばんだいx2"
-    },
-    {
-      "id": "fairy-land-kaneyama",
-      "nameJa": "フェアリーランドかねやまスキー場",
-      "shortName": "フェアリーランドかねやま"
-    },
-    {
       "id": "fus-snow-area",
-      "nameJa": "フッズスノーエリア",
       "shortName": "フッズ"
     },
     {
       "id": "blanche-takayama-ski-resort",
-      "nameJa": "ブランシュたかやまスキーリゾート",
       "shortName": "ブランシュたかやま"
     },
     {
       "id": "heavens-sonohara-snow-world",
-      "nameJa": "ヘブンスそのはらSNOW WORLD",
       "shortName": "ヘブンスそのはら"
     },
     {
       "id": "white-valley",
-      "nameJa": "ホワイトバレースキー場",
       "shortName": "ホワイトバレーみなかみ"
     },
     {
-      "id": "white-pia-takasu",
-      "nameJa": "ホワイトピアたかすスキー場",
-      "shortName": "ホワイトピアたかす"
-    },
-    {
       "id": "white-world-oze-iwakura",
-      "nameJa": "ホワイトワールド尾瀬岩鞍",
       "shortName": "尾瀬岩鞍"
     },
     {
       "id": "mountain-field-miyagi-zao-sumikawa-snow-park",
-      "nameJa": "マウンテンフィールド宮城蔵王すみかわスノーパーク",
       "shortName": "宮城蔵王すみかわ"
     },
     {
-      "id": "mt-jeans-ski-resort-nasu",
-      "nameJa": "マウントジーンズ那須",
-      "shortName": "マウントジーンズ那須"
-    },
-    {
-      "id": "mount-racey",
-      "nameJa": "マウントレースイスキー場",
-      "shortName": "マウントレースイ"
-    },
-    {
-      "id": "makino-kogen-makino",
-      "nameJa": "マキノ高原 マキノスキー場",
-      "shortName": "マキノ高原 マキノ"
-    },
-    {
       "id": "muica-snow-resort",
-      "nameJa": "ムイカ スノーリゾート",
       "shortName": "ムイカ"
     },
     {
       "id": "utopia-saioto",
-      "nameJa": "ユートピアサイオトスキー場",
       "shortName": "サイオト"
     },
     {
-      "id": "listel-ski-fantasia",
-      "nameJa": "リステル スキーファンタジア",
-      "shortName": "リステル スキーファンタジア"
-    },
-    {
-      "id": "riverwell-ikawa",
-      "nameJa": "リバウェル井川スキー場",
-      "shortName": "リバウェル井川"
-    },
-    {
-      "id": "lily-yama",
-      "nameJa": "リリー山スキー場",
-      "shortName": "リリー山"
-    },
-    {
-      "id": "rewild-ninja-snow-highland",
-      "nameJa": "リワイルド ニンジャ スノーハイランド",
-      "shortName": "リワイルド ニンジャ スノーハイランド"
-    },
-    {
-      "id": "moya-hills",
-      "nameJa": "リンクステーションヒルズ雲谷",
-      "shortName": "リンクステーションヒルズ雲谷"
-    },
-    {
       "id": "rusutsu-resort",
-      "nameJa": "ルスツリゾート",
       "shortName": "ルスツ"
     },
     {
       "id": "ipponsugi",
-      "nameJa": "一本杉スノーパーク",
       "shortName": "一本杉"
     },
     {
-      "id": "korosa",
-      "nameJa": "七尾コロサスキー場",
-      "shortName": "七尾コロサ"
-    },
-    {
-      "id": "shichinohe-choei",
-      "nameJa": "七戸町営スキー場",
-      "shortName": "七戸町営"
-    },
-    {
-      "id": "manba",
-      "nameJa": "万場スキー場",
-      "shortName": "万場"
-    },
-    {
-      "id": "manza-onsen",
-      "nameJa": "万座温泉スキー場",
-      "shortName": "万座温泉"
-    },
-    {
-      "id": "mitsunomata",
-      "nameJa": "三ノ俣スキー場",
-      "shortName": "三ノ俣"
-    },
-    {
-      "id": "sannokura",
-      "nameJa": "三ノ倉スキー場",
-      "shortName": "三ノ倉"
-    },
-    {
-      "id": "miinohara",
-      "nameJa": "三井野原スキー場",
-      "shortName": "三井野原"
-    },
-    {
-      "id": "mikawa-onsen",
-      "nameJa": "三川温泉スキー場",
-      "shortName": "三川温泉"
-    },
-    {
-      "id": "kaminokuni-chomin",
-      "nameJa": "上ノ国町民スキー場",
-      "shortName": "上ノ国町民"
-    },
-    {
-      "id": "uenotai",
-      "nameJa": "上ノ岱スキー場",
-      "shortName": "上ノ岱"
-    },
-    {
-      "id": "kamifuranocho-hinode",
-      "nameJa": "上富良野町日の出スキー場",
-      "shortName": "上富良野町日の出"
-    },
-    {
-      "id": "kamikawa-choei-nakayama",
-      "nameJa": "上川町営中山スキー場",
-      "shortName": "上川町営中山"
-    },
-    {
-      "id": "joetsu-kokusai",
-      "nameJa": "上越国際スキー場",
-      "shortName": "上越国際"
-    },
-    {
-      "id": "uenono",
-      "nameJa": "上野々スキー場",
-      "shortName": "上野々"
-    },
-    {
-      "id": "shimokawacho",
-      "nameJa": "下川町スキー場",
-      "shortName": "下川町"
-    },
-    {
       "id": "chuo-do-ina-ski-resort",
-      "nameJa": "中央道　伊那スキーリゾート",
       "shortName": "伊那スキーリゾート"
     },
     {
-      "id": "nakafurano-hokusei",
-      "nameJa": "中富良野北星スキー場",
-      "shortName": "中富良野北星"
-    },
-    {
-      "id": "nakayamatoge",
-      "nameJa": "中山峠スキー場",
-      "shortName": "中山峠"
-    },
-    {
-      "id": "nakagawa",
-      "nameJa": "中川スキー場",
-      "shortName": "中川"
-    },
-    {
-      "id": "nakazato-snow-wood",
-      "nameJa": "中里スノーウッドスキー場",
-      "shortName": "中里スノーウッド"
-    },
-    {
-      "id": "nakatonbetsucho-kotobuki",
-      "nameJa": "中頓別町寿スキー場",
-      "shortName": "中頓別町寿"
-    },
-    {
       "id": "marunuma-kogen",
-      "nameJa": "丸沼高原スキー場",
       "shortName": "丸沼"
     },
     {
-      "id": "kuma-ski-land",
-      "nameJa": "久万スキーランド",
-      "shortName": "久万スキーランド"
-    },
-    {
-      "id": "kushukohan",
-      "nameJa": "久種湖畔スキー場",
-      "shortName": "久種湖畔"
-    },
-    {
-      "id": "kujyu-shinrin-koen",
-      "nameJa": "九重森林公園スキー場",
-      "shortName": "九重森林公園"
-    },
-    {
-      "id": "kuzuryu",
-      "nameJa": "九頭竜スキー場",
-      "shortName": "九頭竜"
-    },
-    {
-      "id": "nihonmatsu-shiozawa",
-      "nameJa": "二本松塩沢スキー場",
-      "shortName": "二本松塩沢"
-    },
-    {
-      "id": "gokase-highland",
-      "nameJa": "五ヶ瀬ハイランドスキー場",
-      "shortName": "五ヶ瀬ハイランド"
-    },
-    {
-      "id": "kase",
-      "nameJa": "五所川原市嘉瀬スキー場",
-      "shortName": "五所川原市嘉瀬"
-    },
-    {
-      "id": "itsukamachi",
-      "nameJa": "五日町スキー場",
-      "shortName": "五日町"
-    },
-    {
-      "id": "gorinsaka",
-      "nameJa": "五輪坂スキー場",
-      "shortName": "五輪坂"
-    },
-    {
-      "id": "gokazan",
-      "nameJa": "五鹿山スキー場",
-      "shortName": "五鹿山"
-    },
-    {
       "id": "ikawa-skijo-kainayama",
-      "nameJa": "井川スキー場腕山",
       "shortName": "井川腕山"
     },
     {
-      "id": "kyogoku-chomin",
-      "nameJa": "京極町民スキー場",
-      "shortName": "京極町民"
-    },
-    {
-      "id": "kyoto-hirogawara",
-      "nameJa": "京都広河原スキー場",
-      "shortName": "京都広河原"
-    },
-    {
-      "id": "imajo-365",
-      "nameJa": "今庄365スキー場",
-      "shortName": "今庄365"
-    },
-    {
-      "id": "inosawa-shimin",
-      "nameJa": "伊ノ沢市民スキー場",
-      "shortName": "伊ノ沢市民"
-    },
-    {
-      "id": "kyukamura-myoko-run-run",
-      "nameJa": "休暇村妙高ルンルンスキー場",
-      "shortName": "休暇村妙高ルンルン"
-    },
-    {
       "id": "aizu-kogen-takatsue",
-      "nameJa": "会津高原たかつえスキー場",
       "shortName": "たかつえ"
     },
     {
       "id": "aizu-kogen-daikura",
-      "nameJa": "会津高原だいくらスキー場",
       "shortName": "だいくら"
     },
     {
       "id": "aizu-kogen-nango",
-      "nameJa": "会津高原南郷スキー場",
       "shortName": "南郷"
     },
     {
-      "id": "tajima-bokujo-koen",
-      "nameJa": "但馬牧場公園スキー場",
-      "shortName": "但馬牧場公園"
-    },
-    {
       "id": "saku-ski-garden-parada",
-      "nameJa": "佐久スキーガーデンパラダ",
       "shortName": "パラダ"
     },
     {
-      "id": "saroma-choei",
-      "nameJa": "佐呂間スキー場",
-      "shortName": "佐呂間"
-    },
-    {
-      "id": "sado-shi-daira",
-      "nameJa": "佐渡市平スキー場",
-      "shortName": "佐渡市平"
-    },
-    {
-      "id": "yogo-kogen-resort-yap",
-      "nameJa": "余呉高原リゾートヤップ",
-      "shortName": "余呉高原リゾートヤップ"
-    },
-    {
-      "id": "yachiho-kogen",
-      "nameJa": "八千穂高原スキー場",
-      "shortName": "八千穂高原"
-    },
-    {
       "id": "hachimantai-resort-panorama",
-      "nameJa": "八幡平リゾートパノラマスキー場",
       "shortName": "八幡平 パノラマ"
     },
     {
       "id": "hachimantai-resort-shimokura",
-      "nameJa": "八幡平リゾート下倉スキー場",
       "shortName": "八幡平 下倉"
     },
     {
-      "id": "hachimantai-tayama",
-      "nameJa": "八幡平市田山スキー場",
-      "shortName": "八幡平市田山"
-    },
-    {
-      "id": "hachimoriyama",
-      "nameJa": "八森山スキー場",
-      "shortName": "八森山"
-    },
-    {
-      "id": "hakkai-sanroku",
-      "nameJa": "八海山麓スキー場",
-      "shortName": "八海山麓"
-    },
-    {
-      "id": "hakkoda-ropeway",
-      "nameJa": "八甲田ロープウェー",
-      "shortName": "八甲田ロープウェー"
-    },
-    {
-      "id": "hakkoda-kokusai",
-      "nameJa": "八甲田国際スキー場",
-      "shortName": "八甲田国際"
-    },
-    {
-      "id": "yakumo-choei",
-      "nameJa": "八雲町営スキー場",
-      "shortName": "八雲町営"
-    },
-    {
-      "id": "muikamachi-hakkaisan",
-      "nameJa": "六日町八海山スキー場",
-      "shortName": "六日町八海山"
-    },
-    {
       "id": "rokkosan-snow-park",
-      "nameJa": "六甲山スノーパーク",
       "shortName": "六甲山"
     },
     {
-      "id": "fuyudorigoe-ski-garden",
-      "nameJa": "冬鳥越スキーガーデン",
-      "shortName": "冬鳥越スキーガーデン"
-    },
-    {
       "id": "hakodate-nanae-snow-park",
-      "nameJa": "函館七飯スノーパーク",
       "shortName": "函館七飯"
     },
     {
-      "id": "shosanbetsu-mura",
-      "nameJa": "初山別村スキー場",
-      "shortName": "初山別村"
-    },
-    {
-      "id": "rishiri-tenbouzan",
-      "nameJa": "利尻天望山スキー場",
-      "shortName": "利尻天望山"
-    },
-    {
-      "id": "soyumura-229-ski-land",
-      "nameJa": "創遊村229スキーランド",
-      "shortName": "創遊村229スキーランド"
-    },
-    {
-      "id": "kita-shiga-komaruyama",
-      "nameJa": "北志賀小丸山スキー場",
-      "shortName": "北志賀小丸山"
-    },
-    {
       "id": "kita-nikko-takahata",
-      "nameJa": "北日光・高畑スキー場",
       "shortName": "高畑"
     },
     {
-      "id": "hokkaido-greenland-white-park",
-      "nameJa": "北海道グリーンランド ホワイトパーク ",
-      "shortName": "北海道グリーンランド ホワイトパーク"
-    },
-    {
-      "id": "hokuryu-choei",
-      "nameJa": "北竜町営スキー場",
-      "shortName": "北竜町営"
-    },
-    {
-      "id": "kitanaganuma",
-      "nameJa": "北長沼スキー場",
-      "shortName": "北長沼"
-    },
-    {
-      "id": "iohzan",
-      "nameJa": "医王山スキー場",
-      "shortName": "医王山"
-    },
-    {
-      "id": "tokusagamine",
-      "nameJa": "十種ヶ峰スキー場",
-      "shortName": "十種ヶ峰"
-    },
-    {
-      "id": "chitose-shimin",
-      "nameJa": "千歳市民スキー場",
-      "shortName": "千歳市民"
-    },
-    {
-      "id": "senjojiki",
-      "nameJa": "千畳敷スキー場",
-      "shortName": "千畳敷"
-    },
-    {
-      "id": "sengoku-kaze-no-hiroba",
-      "nameJa": "千石風の広場スキー場",
-      "shortName": "千石風の広場"
-    },
-    {
-      "id": "kyowa",
-      "nameJa": "協和スキー場",
-      "shortName": "協和"
-    },
-    {
-      "id": "minami-furano",
-      "nameJa": "南ふらのスキー場",
-      "shortName": "南ふらの"
-    },
-    {
-      "id": "minamigaoka",
-      "nameJa": "南ヶ丘スキー場",
-      "shortName": "南ヶ丘"
-    },
-    {
       "id": "assabu-chomin-taikoyama",
-      "nameJa": "厚沢部町民スキー場（太鼓山スキー場）",
       "shortName": "厚沢部町民（太鼓山）"
     },
     {
-      "id": "koshi-kogen",
-      "nameJa": "古志高原スキー場",
-      "shortName": "古志高原"
-    },
-    {
-      "id": "tadami",
-      "nameJa": "只見スキー場",
-      "shortName": "只見"
-    },
-    {
-      "id": "nayoro-piyashiri",
-      "nameJa": "名寄ピヤシリスキー場",
-      "shortName": "名寄ピヤシリ"
-    },
-    {
-      "id": "wassamu-higashiyama",
-      "nameJa": "和寒東山スキー場",
-      "shortName": "和寒東山"
-    },
-    {
-      "id": "kunimidaira",
-      "nameJa": "国見平スキー場",
-      "shortName": "国見平"
-    },
-    {
-      "id": "kokusetsu-akankohan",
-      "nameJa": "国設阿寒湖畔スキー場",
-      "shortName": "国設阿寒湖畔"
-    },
-    {
-      "id": "mashike-choei-syokanbetsudake",
-      "nameJa": "増毛町営暑寒別岳スキー場",
-      "shortName": "増毛町営暑寒別岳"
-    },
-    {
-      "id": "shibetsu-shi-hinata",
-      "nameJa": "士別市日向スキー場",
-      "shortName": "士別市日向"
-    },
-    {
       "id": "geto-kogen",
-      "nameJa": "夏油高原スキー場",
       "shortName": "夏油"
     },
     {
-      "id": "sotogahama-kanita",
-      "nameJa": "外ヶ浜町蟹田スキー場",
-      "shortName": "外ヶ浜町蟹田"
-    },
-    {
-      "id": "yogoshiyama",
-      "nameJa": "夜越山スキー場",
-      "shortName": "夜越山"
-    },
-    {
-      "id": "osa",
-      "nameJa": "大佐スキー場",
-      "shortName": "大佐"
-    },
-    {
-      "id": "okuradake-kogen",
-      "nameJa": "大倉岳高原スキー場",
-      "shortName": "大倉岳高原"
-    },
-    {
-      "id": "oh-dai",
-      "nameJa": "大台スキー場",
-      "shortName": "大台"
-    },
-    {
       "id": "daisen-masumizu-kogen-snow-park",
-      "nameJa": "大山ますみず高原スノーパーク",
       "shortName": "大山ますみず高原"
     },
     {
-      "id": "ohdaira",
-      "nameJa": "大平スキー場",
-      "shortName": "大平"
-    },
-    {
-      "id": "omagari-family",
-      "nameJa": "大曲ファミリースキー場",
-      "shortName": "大曲ファミリー"
-    },
-    {
-      "id": "ogaya",
-      "nameJa": "大茅スキー場",
-      "shortName": "大茅"
-    },
-    {
-      "id": "daisetsuzan-sounkyo-kurodake",
-      "nameJa": "大雪山層雲峡黒岳スキー場",
-      "shortName": "大雪山層雲峡黒岳"
-    },
-    {
-      "id": "owani-onsen",
-      "nameJa": "大鰐温泉スキー場",
-      "shortName": "大鰐温泉"
-    },
-    {
-      "id": "tengamori",
-      "nameJa": "天下森スキー場",
-      "shortName": "天下森"
-    },
-    {
-      "id": "tengendai-kogen",
-      "nameJa": "天元台高原スキー場",
-      "shortName": "天元台高原"
-    },
-    {
-      "id": "teshio-chomin",
-      "nameJa": "天塩町町民スキー場",
-      "shortName": "天塩町町民"
-    },
-    {
-      "id": "tendo-kogen",
-      "nameJa": "天童高原スキー場",
-      "shortName": "天童高原"
-    },
-    {
-      "id": "taiheizan-opas",
-      "nameJa": "太平山 オーパススキー場",
-      "shortName": "太平山 オーパス"
-    },
-    {
-      "id": "okunakayama-kogen",
-      "nameJa": "奥中山高原スキー場",
-      "shortName": "奥中山高原"
-    },
-    {
-      "id": "oirase-keiryu-onsen",
-      "nameJa": "奥入瀬渓流温泉スキー場",
-      "shortName": "奥入瀬渓流温泉"
-    },
-    {
       "id": "okutone-snow-park",
-      "nameJa": "奥利根スノーパーク",
       "shortName": "奥利根"
     },
     {
-      "id": "okutadami-maruyama",
-      "nameJa": "奥只見丸山スキー場",
-      "shortName": "奥只見丸山"
-    },
-    {
-      "id": "oku-daisen",
-      "nameJa": "奥大山スキー場",
-      "shortName": "奥大山"
-    },
-    {
-      "id": "okushiri-sakuragaoka",
-      "nameJa": "奥尻町桜ヶ丘スキー場",
-      "shortName": "奥尻町桜ヶ丘"
-    },
-    {
-      "id": "oku-kannabe",
-      "nameJa": "奥神鍋スキー場",
-      "shortName": "奥神鍋"
-    },
-    {
       "id": "megahira-onsen-megahira",
-      "nameJa": "女鹿平温泉めがひらスキー場",
       "shortName": "めがひら"
     },
     {
-      "id": "myoko-ski-park",
-      "nameJa": "妙高スキーパーク",
-      "shortName": "妙高スキーパーク"
-    },
-    {
-      "id": "myoko-suginohara",
-      "nameJa": "妙高杉ノ原スキー場",
-      "shortName": "妙高杉ノ原"
-    },
-    {
       "id": "unazuki-snow-park",
-      "nameJa": "宇奈月スノーパーク",
       "shortName": "宇奈月"
     },
     {
-      "id": "anpeizan",
-      "nameJa": "安平山スキー場",
-      "shortName": "安平山"
-    },
-    {
-      "id": "appi-kogen",
-      "nameJa": "安比高原スキー場",
-      "shortName": "安比高原"
-    },
-    {
-      "id": "azo-koen",
-      "nameJa": "安蔵公園スキー場",
-      "shortName": "安蔵公園"
-    },
-    {
-      "id": "jozankei-mikasa",
-      "nameJa": "定山渓三笠スキー場",
-      "shortName": "定山渓三笠"
-    },
-    {
-      "id": "muroran-kogen-danpara",
-      "nameJa": "室蘭市だんパラスキー場",
-      "shortName": "室蘭市だんパラ"
-    },
-    {
       "id": "fujimi-panorama-resort",
-      "nameJa": "富士見パノラマリゾート",
       "shortName": "富士見パノラマ"
     },
     {
-      "id": "fujimigaoka",
-      "nameJa": "富士見ヶ丘スキー場",
-      "shortName": "富士見ヶ丘"
-    },
-    {
-      "id": "fujimi-kogen",
-      "nameJa": "富士見高原スキー場",
-      "shortName": "富士見高原"
-    },
-    {
-      "id": "furano",
-      "nameJa": "富良野スキー場",
-      "shortName": "富良野"
-    },
-    {
-      "id": "suttsu-chomin",
-      "nameJa": "寿都町民スキー場",
-      "shortName": "寿都町民"
-    },
-    {
-      "id": "koide",
-      "nameJa": "小出スキー場",
-      "shortName": "小出"
-    },
-    {
-      "id": "otaru-tenguyama",
-      "nameJa": "小樽天狗山スキー場",
-      "shortName": "小樽天狗山"
-    },
-    {
-      "id": "koshimizu-chomin",
-      "nameJa": "小清水町民スキー場",
-      "shortName": "小清水町民"
-    },
-    {
-      "id": "onogawa-onsen",
-      "nameJa": "小野川温泉スキー場",
-      "shortName": "小野川温泉"
-    },
-    {
-      "id": "kodoriyama",
-      "nameJa": "小鳥山スキー場",
-      "shortName": "小鳥山"
-    },
-    {
-      "id": "oze-hinoemata-onsen",
-      "nameJa": "尾瀬檜枝岐温泉スキー場",
-      "shortName": "尾瀬檜枝岐温泉"
-    },
-    {
-      "id": "yamagata-shi-shonen-shizen-no-ie",
-      "nameJa": "山形市少年自然の家スキー場",
-      "shortName": "山形市少年自然の家"
-    },
-    {
-      "id": "yamada-onsen-kids-snow-park",
-      "nameJa": "山田温泉キッズスノーパーク",
-      "shortName": "山田温泉キッズスノーパーク"
-    },
-    {
-      "id": "iwappara",
-      "nameJa": "岩原スキー場",
-      "shortName": "岩原"
-    },
-    {
       "id": "iwate-kogen-snow-park",
-      "nameJa": "岩手高原スノーパーク",
       "shortName": "岩手高原"
     },
     {
-      "id": "iwakisan-hyakuzawa",
-      "nameJa": "岩木山百沢スキー場",
-      "shortName": "岩木山百沢"
-    },
-    {
       "id": "minayama-kogen-resort-white-peak",
-      "nameJa": "峰山高原リゾート WHITE PEAKスキー場",
       "shortName": "峰山高原"
     },
     {
-      "id": "kawaba",
-      "nameJa": "川場スキー場",
-      "shortName": "川場"
-    },
-    {
-      "id": "kawanishi-choei-komatsu",
-      "nameJa": "川西町営小松スキー場",
-      "shortName": "川西町営小松"
-    },
-    {
-      "id": "habayama",
-      "nameJa": "巾山スキー場",
-      "shortName": "巾山"
-    },
-    {
-      "id": "hiraniwa-kogen",
-      "nameJa": "平庭高原スキー場",
-      "shortName": "平庭高原"
-    },
-    {
-      "id": "hirayu-onsen",
-      "nameJa": "平湯温泉スキー場",
-      "shortName": "平湯温泉"
-    },
-    {
-      "id": "hirata",
-      "nameJa": "平田スキー場",
-      "shortName": "平田"
-    },
-    {
-      "id": "kowa",
-      "nameJa": "幸和スキー場",
-      "shortName": "幸和"
-    },
-    {
       "id": "hiroshima-kenmin-no-mori",
-      "nameJa": "広島県県民の森スキー場",
       "shortName": "広島県民の森"
     },
     {
-      "id": "gosannen",
-      "nameJa": "後三年スキー場",
-      "shortName": "後三年"
-    },
-    {
-      "id": "gozaisho",
-      "nameJa": "御在所スキー場",
-      "shortName": "御在所"
-    },
-    {
-      "id": "ontake",
-      "nameJa": "御嶽スキー場",
-      "shortName": "御嶽"
-    },
-    {
-      "id": "shigarai",
-      "nameJa": "志賀来スキー場",
-      "shortName": "志賀来"
-    },
-    {
-      "id": "shiga-kogen-sun-valley",
-      "nameJa": "志賀高原 サンバレースキー場",
-      "shortName": "志賀高原 サンバレー"
-    },
-    {
-      "id": "shiga-kogen-giant",
-      "nameJa": "志賀高原 ジャイアントスキー場",
-      "shortName": "志賀高原 ジャイアント"
-    },
-    {
-      "id": "shiga-kogen-tannenomori-okojo",
-      "nameJa": "志賀高原 タンネの森 オコジョスキー場",
-      "shortName": "志賀高原 タンネの森 オコジョ"
-    },
-    {
-      "id": "shiga-kogen-ichinose-diamond",
-      "nameJa": "志賀高原 一の瀬ダイヤモンドスキー場",
-      "shortName": "志賀高原 一の瀬ダイヤモンド"
-    },
-    {
-      "id": "shiga-kogen-ichinose-family",
-      "nameJa": "志賀高原 一の瀬ファミリースキー場",
-      "shortName": "志賀高原 一の瀬ファミリー"
-    },
-    {
-      "id": "shiga-kogen-ichinose-yamanokami",
-      "nameJa": "志賀高原 一の瀬山の神スキー場",
-      "shortName": "志賀高原 一の瀬山の神"
-    },
-    {
-      "id": "shiga-kogen-maruike",
-      "nameJa": "志賀高原 丸池スキー場",
-      "shortName": "志賀高原 丸池"
-    },
-    {
       "id": "shiga-kogen-okushiga-kogen",
-      "nameJa": "志賀高原 奥志賀高原スキー場",
       "shortName": "奥志賀"
     },
     {
-      "id": "shiga-kogen-terakoya",
-      "nameJa": "志賀高原 寺小屋スキー場",
-      "shortName": "志賀高原 寺小屋"
-    },
-    {
-      "id": "shiga-kogen-higashidateyama",
-      "nameJa": "志賀高原 東館山スキー場",
-      "shortName": "志賀高原 東館山"
-    },
-    {
-      "id": "shiga-kogen-yokoteyama",
-      "nameJa": "志賀高原 横手山スキー場",
-      "shortName": "志賀高原 横手山"
-    },
-    {
-      "id": "shiga-kogen-shibutoge",
-      "nameJa": "志賀高原 渋峠スキー場",
-      "shortName": "志賀高原 渋峠"
-    },
-    {
-      "id": "shiga-kogen-yakebitaiyama",
-      "nameJa": "志賀高原 焼額山スキー場",
-      "shortName": "志賀高原 焼額山"
-    },
-    {
-      "id": "shiga-kogen-kumanoyu",
-      "nameJa": "志賀高原 熊の湯スキー場",
-      "shortName": "志賀高原 熊の湯"
-    },
-    {
-      "id": "shiga-kogen-hoppo-bunadaira",
-      "nameJa": "志賀高原 発哺ブナ平スキー場",
-      "shortName": "志賀高原 発哺ブナ平"
-    },
-    {
-      "id": "shiga-kogen-hasuike",
-      "nameJa": "志賀高原 蓮池スキー場",
-      "shortName": "志賀高原 蓮池"
-    },
-    {
-      "id": "shiga-kogen-nishidateyama",
-      "nameJa": "志賀高原 西館山スキー場",
-      "shortName": "志賀高原 西館山"
-    },
-    {
-      "id": "shiga-kogen-takamagahara-mammoth",
-      "nameJa": "志賀高原 高天ヶ原マンモススキー場",
-      "shortName": "志賀高原 高天ヶ原マンモス"
-    },
-    {
       "id": "osorakan-snow-park",
-      "nameJa": "恐羅漢スノーパーク ",
       "shortName": "恐羅漢"
     },
     {
-      "id": "onbara-kogen",
-      "nameJa": "恩原高原スキー場",
-      "shortName": "恩原高原"
-    },
-    {
-      "id": "eniwa-shimin",
-      "nameJa": "恵庭市民スキー場",
-      "shortName": "恵庭市民"
-    },
-    {
-      "id": "aibetsu-family",
-      "nameJa": "愛別ファミリースキー場",
-      "shortName": "愛別ファミリー"
-    },
-    {
-      "id": "togari-onsen",
-      "nameJa": "戸狩温泉スキー場",
-      "shortName": "戸狩温泉"
-    },
-    {
-      "id": "togakushi",
-      "nameJa": "戸隠スキー場",
-      "shortName": "戸隠"
-    },
-    {
-      "id": "tenoko",
-      "nameJa": "手ノ子スキー場",
-      "shortName": "手ノ子"
-    },
-    {
       "id": "madarao-mountain-resort",
-      "nameJa": "斑尾高原スキー場",
       "shortName": "斑尾"
     },
     {
-      "id": "shinbo-family",
-      "nameJa": "新保ファミリースキー場",
-      "shortName": "新保ファミリー"
-    },
-    {
-      "id": "shintotsukawa-sochidake",
-      "nameJa": "新十津川町そっち岳スキー場",
-      "shortName": "新十津川町そっち岳"
-    },
-    {
-      "id": "shinjo-shimin",
-      "nameJa": "新庄市民スキー場",
-      "shortName": "新庄市民"
-    },
-    {
-      "id": "shintokuyama",
-      "nameJa": "新得山スキー場",
-      "shortName": "新得山"
-    },
-    {
-      "id": "nikko-yumoto-onsen",
-      "nameJa": "日光湯元温泉スキー場",
-      "shortName": "日光湯元温泉"
-    },
-    {
-      "id": "hidaka-kokusai",
-      "nameJa": "日高国際スキー場",
-      "shortName": "日高国際"
-    },
-    {
-      "id": "asahigaoka",
-      "nameJa": "旭ヶ丘スキー場",
-      "shortName": "旭ヶ丘"
-    },
-    {
-      "id": "asahiyama-yuki-no-mura",
-      "nameJa": "旭山雪の村",
-      "shortName": "旭山雪の村"
-    },
-    {
       "id": "asahidake-ropeway",
-      "nameJa": "旭岳ロープウゥイ・旭岳スキーコース",
       "shortName": "旭岳"
     },
     {
-      "id": "akenogaoka",
-      "nameJa": "明野ヶ丘スキー場",
-      "shortName": "明野ヶ丘"
-    },
-    {
       "id": "hoshino-resorts-tomamu",
-      "nameJa": "星野リゾート トマムスキー場",
       "shortName": "トマム"
     },
     {
       "id": "hoshino-resorts-nekoma-mountain",
-      "nameJa": "星野リゾート ネコマ マウンテン",
       "shortName": "ネコマ"
     },
     {
-      "id": "gassan",
-      "nameJa": "月山スキー場",
-      "shortName": "月山"
-    },
-    {
-      "id": "boyodai",
-      "nameJa": "望洋台スキー場",
-      "shortName": "望洋台"
-    },
-    {
-      "id": "asarigawa-onsen",
-      "nameJa": "朝里川温泉スキー場",
-      "shortName": "朝里川温泉"
-    },
-    {
-      "id": "kiso-fukushima",
-      "nameJa": "木曽福島スキー場",
-      "shortName": "木曽福島"
-    },
-    {
-      "id": "sapporo-kokusai",
-      "nameJa": "札幌国際スキー場",
-      "shortName": "札幌国際"
-    },
-    {
-      "id": "sapporo-moiwayama",
-      "nameJa": "札幌藻岩山スキー場",
-      "shortName": "札幌藻岩山"
-    },
-    {
-      "id": "kutsuki",
-      "nameJa": "朽木スキー場",
-      "shortName": "朽木"
-    },
-    {
-      "id": "sonei-kunohe",
-      "nameJa": "村営くのへスキー場",
-      "shortName": "村営くのへ"
-    },
-    {
-      "id": "higashigaoka",
-      "nameJa": "東ヶ丘スキー場",
-      "shortName": "東ヶ丘"
-    },
-    {
-      "id": "higashiyama-koen",
-      "nameJa": "東山公園スキー場",
-      "shortName": "東山公園"
-    },
-    {
-      "id": "higashimokoto-shirakabadai",
-      "nameJa": "東藻琴白かば台スキー場",
-      "shortName": "東藻琴白かば台"
-    },
-    {
-      "id": "matsunoyama-onsen",
-      "nameJa": "松之山温泉スキー場",
-      "shortName": "松之山温泉"
-    },
-    {
-      "id": "matsuyama",
-      "nameJa": "松山スキー場",
-      "shortName": "松山"
-    },
-    {
-      "id": "esashicho-mikasayama",
-      "nameJa": "枝幸町三笠山スキー場",
-      "shortName": "枝幸町三笠山"
-    },
-    {
-      "id": "katsurazawa-kokusetsu",
-      "nameJa": "桂沢国設スキー場",
-      "shortName": "桂沢国設"
-    },
-    {
-      "id": "mori-chomin",
-      "nameJa": "森町民スキー場",
-      "shortName": "森町民"
-    },
-    {
-      "id": "shibetsu-choei-kanayama",
-      "nameJa": "標津町営金山スキー場",
-      "shortName": "標津町営金山"
-    },
-    {
-      "id": "yokone",
-      "nameJa": "横根スキー場",
-      "shortName": "横根"
-    },
-    {
-      "id": "banshogahara",
-      "nameJa": "武石番所ヶ原スキー場",
-      "shortName": "武石番所ヶ原"
-    },
-    {
       "id": "minakami-kogen-ski-resort",
-      "nameJa": "水上高原スキーリゾート",
       "shortName": "水上高原"
     },
     {
-      "id": "suishozan",
-      "nameJa": "水晶山スキー場",
-      "shortName": "水晶山"
-    },
-    {
-      "id": "hyonosen-kokusai",
-      "nameJa": "氷ノ山国際スキー場",
-      "shortName": "氷ノ山国際"
-    },
-    {
-      "id": "ikenotaira-onsen-alpen-blick",
-      "nameJa": "池の平温泉アルペンブリックスキー場",
-      "shortName": "池の平温泉アルペンブリック"
-    },
-    {
-      "id": "jibuzaka-kogen",
-      "nameJa": "治部坂高原スキー場",
-      "shortName": "治部坂高原"
-    },
-    {
-      "id": "numajiri",
-      "nameJa": "沼尻スキー場",
-      "shortName": "沼尻"
-    },
-    {
-      "id": "izumigatake",
-      "nameJa": "泉ヶ岳スキー場",
-      "shortName": "泉ヶ岳"
-    },
-    {
-      "id": "tsuguro-kogen",
-      "nameJa": "津黒高原スキー場",
-      "shortName": "津黒高原"
-    },
-    {
-      "id": "kiyosato-choei-midori",
-      "nameJa": "清里町営緑スキー場",
-      "shortName": "清里町営緑"
-    },
-    {
-      "id": "yunomaru",
-      "nameJa": "湯の丸スキー場",
-      "shortName": "湯の丸"
-    },
-    {
-      "id": "yunodai",
-      "nameJa": "湯の台スキー場",
-      "shortName": "湯の台"
-    },
-    {
-      "id": "yudonosan",
-      "nameJa": "湯殿山スキー場",
-      "shortName": "湯殿山"
-    },
-    {
-      "id": "yuzawa-park",
-      "nameJa": "湯沢パークスキー場",
-      "shortName": "湯沢パーク"
-    },
-    {
       "id": "yuzawa-nakazato-snow-resort",
-      "nameJa": "湯沢中里スノーリゾート",
       "shortName": "湯沢中里"
     },
     {
-      "id": "yuzawa-kogen",
-      "nameJa": "湯沢高原スキー場",
-      "shortName": "湯沢高原"
-    },
-    {
-      "id": "takinouecho-sakuragaoka",
-      "nameJa": "滝上町桜ヶ丘スキー場",
-      "shortName": "滝上町桜ヶ丘"
-    },
-    {
-      "id": "takino-snow-world",
-      "nameJa": "滝野スノーワールド",
-      "shortName": "滝野スノーワールド"
-    },
-    {
-      "id": "jigatake",
-      "nameJa": "爺ガ岳スキー場",
-      "shortName": "爺ガ岳"
-    },
-    {
-      "id": "ushidake-onsen",
-      "nameJa": "牛岳温泉スキー場",
-      "shortName": "牛岳温泉"
-    },
-    {
-      "id": "sayama",
-      "nameJa": "狭山スキー場",
-      "shortName": "狭山"
-    },
-    {
-      "id": "inawashiro-resort",
-      "nameJa": "猪苗代リゾートスキー場",
-      "shortName": "猪苗代リゾート"
-    },
-    {
-      "id": "sarufutsu-sonei",
-      "nameJa": "猿払村営スキー場",
-      "shortName": "猿払村営"
-    },
-    {
       "id": "kotobiki-forest-park",
-      "nameJa": "琴引フォレストパークスキー場",
       "shortName": "琴引"
     },
     {
       "id": "mizuho-highland",
-      "nameJa": "瑞穂ハイランドスキー場",
       "shortName": "瑞穂"
     },
     {
-      "id": "choei-yuda",
-      "nameJa": "町営湯田スキー場",
-      "shortName": "町営湯田"
-    },
-    {
-      "id": "rubeshibe-cho-happodai",
-      "nameJa": "留辺蘂町八方台スキー場",
-      "shortName": "留辺蘂町八方台"
-    },
-    {
-      "id": "hakusan-seymour",
-      "nameJa": "白山セイモアスキー場",
-      "shortName": "白山セイモア"
-    },
-    {
-      "id": "hakusan-ichirino-onsen",
-      "nameJa": "白山一里野温泉スキー場",
-      "shortName": "白山一里野温泉"
-    },
-    {
-      "id": "shiramine-alpen-kyogijou",
-      "nameJa": "白峰アルペン競技場",
-      "shortName": "白峰アルペン競技場"
-    },
-    {
       "id": "shirakaba-resort-ikenotaira-snow-park",
-      "nameJa": "白樺リゾート池の平スノーパーク",
       "shortName": "白樺リゾート池の平"
     },
     {
-      "id": "shirakabako-royal-hill",
-      "nameJa": "白樺湖ロイヤルヒルスキー場",
-      "shortName": "白樺湖ロイヤルヒル"
-    },
-    {
-      "id": "shirakaba-kogen-kokusai",
-      "nameJa": "白樺高原国際スキー場",
-      "shortName": "白樺高原国際"
-    },
-    {
-      "id": "hakugindai",
-      "nameJa": "白銀台スキー場",
-      "shortName": "白銀台"
-    },
-    {
-      "id": "hakuba-cortina",
-      "nameJa": "白馬コルチナスキー場",
-      "shortName": "白馬コルチナ"
-    },
-    {
-      "id": "hakuba-norikura-onsen",
-      "nameJa": "白馬乗鞍温泉スキー場",
-      "shortName": "白馬乗鞍温泉"
-    },
-    {
-      "id": "hakuba-happo-one",
-      "nameJa": "白馬八方尾根スキー場",
-      "shortName": "白馬八方尾根"
-    },
-    {
       "id": "hakuba-iwatake-snow-field",
-      "nameJa": "白馬岩岳スノーフィールド",
       "shortName": "白馬岩岳"
     },
     {
-      "id": "shirataka-choei",
-      "nameJa": "白鷹町営スキー場",
-      "shortName": "白鷹町営"
-    },
-    {
-      "id": "morioka-shiritsu-oide",
-      "nameJa": "盛岡市立生出スキー場",
-      "shortName": "盛岡市立生出"
-    },
-    {
-      "id": "shiriuchi-choei",
-      "nameJa": "知内町営スキー場",
-      "shortName": "知内町営"
-    },
-    {
-      "id": "ishiuchi-maruyama",
-      "nameJa": "石打丸山スキー場",
-      "shortName": "石打丸山"
-    },
-    {
-      "id": "ishiuchi-hanaoka",
-      "nameJa": "石打花岡スキー場",
-      "shortName": "石打花岡"
-    },
-    {
-      "id": "ishikari-heigen",
-      "nameJa": "石狩平原スキー場",
-      "shortName": "石狩平原"
-    },
-    {
-      "id": "ishizuchi",
-      "nameJa": "石鎚スキー場",
-      "shortName": "石鎚"
-    },
-    {
-      "id": "gionyama",
-      "nameJa": "祇園山スキー場",
-      "shortName": "祇園山"
-    },
-    {
       "id": "kandatsu-snow-resort",
-      "nameJa": "神立スノーリゾート",
       "shortName": "神立"
     },
     {
-      "id": "matsurube-snowland",
-      "nameJa": "祭畤スノーランド",
-      "shortName": "祭畤スノーランド"
-    },
-    {
-      "id": "fukui-izumi",
-      "nameJa": "福井和泉スキー場",
-      "shortName": "福井和泉"
-    },
-    {
-      "id": "akiyama",
-      "nameJa": "秋山スキー場",
-      "shortName": "秋山"
-    },
-    {
-      "id": "akita-hachimantai",
-      "nameJa": "秋田八幡平スキー場",
-      "shortName": "秋田八幡平"
-    },
-    {
-      "id": "wakkanai-komadori",
-      "nameJa": "稚内市こまどりスキー場",
-      "shortName": "稚内市こまどり"
-    },
-    {
       "id": "inagawa-ski-jo-suberotta",
-      "nameJa": "稲川スキー場スベロッタ",
       "shortName": "稲川スベロッタ"
     },
     {
-      "id": "tateyama-sanroku",
-      "nameJa": "立山山麓スキー場",
-      "shortName": "立山山麓"
-    },
-    {
       "id": "ryuoo-ski-park",
-      "nameJa": "竜王スキーパーク",
       "shortName": "竜王"
     },
     {
-      "id": "minowa",
-      "nameJa": "箕輪スキー場",
-      "shortName": "箕輪"
-    },
-    {
-      "id": "hakodateyama",
-      "nameJa": "箱館山スキー場",
-      "shortName": "箱館山"
-    },
-    {
-      "id": "yonezawa",
-      "nameJa": "米沢スキー場",
-      "shortName": "米沢"
-    },
-    {
-      "id": "itoigawa-seaside-valley",
-      "nameJa": "糸魚川シーサイドバレースキー場",
-      "shortName": "糸魚川シーサイドバレー"
-    },
-    {
-      "id": "mombetsu-ouyama",
-      "nameJa": "紋別大山スキー場",
-      "shortName": "紋別大山"
-    },
-    {
-      "id": "inawashiro",
-      "nameJa": "絶景・猪苗代スキー場",
-      "shortName": "絶景・猪苗代"
-    },
-    {
-      "id": "amihari-onsen",
-      "nameJa": "網張温泉スキー場",
-      "shortName": "網張温泉"
-    },
-    {
-      "id": "abashiri-lake-view",
-      "nameJa": "網走レークビュースキー場",
-      "shortName": "網走レークビュー"
-    },
-    {
-      "id": "bibai-kokusetsu",
-      "nameJa": "美唄国設スキー場",
-      "shortName": "美唄国設"
-    },
-    {
-      "id": "bifuka",
-      "nameJa": "美深スキー場",
-      "shortName": "美深"
-    },
-    {
-      "id": "biei",
-      "nameJa": "美瑛スキー場",
-      "shortName": "美瑛"
-    },
-    {
       "id": "gunma-minakami-houdaigi",
-      "nameJa": "群馬 みなかみほうだいぎスキー場",
       "shortName": "ほうだいぎ"
     },
     {
       "id": "haboro-chomin-skijo-byu",
-      "nameJa": "羽幌町民スキー場「びゅー」",
       "shortName": "羽幌町民「びゅー」"
     },
     {
-      "id": "hagurosan",
-      "nameJa": "羽黒山スキー場",
-      "shortName": "羽黒山"
-    },
-    {
-      "id": "hijiri-kogen",
-      "nameJa": "聖高原スキー場",
-      "shortName": "聖高原"
-    },
-    {
-      "id": "tainai",
-      "nameJa": "胎内スキー場",
-      "shortName": "胎内"
-    },
-    {
-      "id": "okoppe-choei",
-      "nameJa": "興部町営スキー場",
-      "shortName": "興部町営"
-    },
-    {
       "id": "maiko-snow-resort",
-      "nameJa": "舞子スノーリゾート",
       "shortName": "舞子"
     },
     {
-      "id": "funamidai",
-      "nameJa": "船見台スキー場",
-      "shortName": "船見台"
-    },
-    {
-      "id": "hanagasa-kogen",
-      "nameJa": "花笠高原スキー場",
-      "shortName": "花笠高原"
-    },
-    {
-      "id": "hanawa",
-      "nameJa": "花輪スキー場",
-      "shortName": "花輪"
-    },
-    {
-      "id": "naeba",
-      "nameJa": "苗場スキー場",
-      "shortName": "苗場"
-    },
-    {
-      "id": "wakasugi-kogen-oya",
-      "nameJa": "若杉高原おおやスキー場",
-      "shortName": "若杉高原おおや"
-    },
-    {
-      "id": "kitami-wakamatsu-shimin",
-      "nameJa": "若松市民スキー場",
-      "shortName": "若松市民"
-    },
-    {
-      "id": "chausuyama-kogen",
-      "nameJa": "茶臼山高原スキー場",
-      "shortName": "茶臼山高原"
-    },
-    {
-      "id": "kusatsu-onsen",
-      "nameJa": "草津温泉スキー場",
-      "shortName": "草津温泉"
-    },
-    {
-      "id": "shokawa-kogen",
-      "nameJa": "荘川高原スキー場",
-      "shortName": "荘川高原"
-    },
-    {
-      "id": "azoda",
-      "nameJa": "莇生田スキー場",
-      "shortName": "莇生田"
-    },
-    {
       "id": "sugadaira-kogen-snow-resort",
-      "nameJa": "菅平高原スノーリゾート",
       "shortName": "菅平"
     },
     {
-      "id": "haginoyama-shimin",
-      "nameJa": "萩の山市民スキー場",
-      "shortName": "萩の山市民"
-    },
-    {
-      "id": "tateshina-tokyu",
-      "nameJa": "蓼科東急スキー場",
-      "shortName": "蓼科東急"
-    },
-    {
-      "id": "zao-liza-world",
-      "nameJa": "蔵王ライザワールドスキー場",
-      "shortName": "蔵王ライザワールド"
-    },
-    {
-      "id": "zao-onsen",
-      "nameJa": "蔵王温泉スキー場",
-      "shortName": "蔵王温泉"
-    },
-    {
-      "id": "yakushi",
-      "nameJa": "薬師スキー場",
-      "shortName": "薬師"
-    },
-    {
-      "id": "yakushisan",
-      "nameJa": "薬師山スキー場",
-      "shortName": "薬師山"
-    },
-    {
-      "id": "fujiwara",
-      "nameJa": "藤原スキー場",
-      "shortName": "藤原"
-    },
-    {
-      "id": "fujisato-choei",
-      "nameJa": "藤里町営スキー場",
-      "shortName": "藤里町営"
-    },
-    {
-      "id": "urabandai",
-      "nameJa": "裏磐梯スキー場",
-      "shortName": "裏磐梯"
-    },
-    {
-      "id": "nishikawa-chomin",
-      "nameJa": "西川町民スキー場",
-      "shortName": "西川町民"
-    },
-    {
-      "id": "toyotomi-onsen",
-      "nameJa": "豊富温泉スキー場",
-      "shortName": "豊富温泉"
-    },
-    {
-      "id": "akakura-onsen",
-      "nameJa": "赤倉温泉スキー場",
-      "shortName": "赤倉温泉"
-    },
-    {
       "id": "akakura-kanko-resort",
-      "nameJa": "赤倉観光リゾートスキー場",
       "shortName": "赤倉観光"
     },
     {
-      "id": "akagisan-daiichi",
-      "nameJa": "赤城山第１スキー場",
-      "shortName": "赤城山第１"
-    },
-    {
       "id": "akoyama-skijo-snowpal",
-      "nameJa": "赤子山スキー場 スノーパル",
       "shortName": "赤子山 スノーパル"
     },
     {
-      "id": "akasawa",
-      "nameJa": "赤沢スキー場",
-      "shortName": "赤沢"
-    },
-    {
-      "id": "akabane",
-      "nameJa": "赤羽根スキー場",
-      "shortName": "赤羽根"
-    },
-    {
-      "id": "kurumayama-kogen-skypark",
-      "nameJa": "車山高原SKYPARKスキー場",
-      "shortName": "車山高原SKYPARK"
-    },
-    {
-      "id": "karuizawa-snow-park",
-      "nameJa": "軽井沢スノーパーク",
-      "shortName": "軽井沢スノーパーク"
-    },
-    {
       "id": "karuizawa-prince-hotel",
-      "nameJa": "軽井沢プリンスホテルスキー場",
       "shortName": "軽井沢プリンス"
     },
     {
-      "id": "dogoyama-kogen",
-      "nameJa": "道後山高原スキー場",
-      "shortName": "道後山高原"
-    },
-    {
-      "id": "doshojidaira",
-      "nameJa": "道照寺平スキー場",
-      "shortName": "道照寺平"
-    },
-    {
-      "id": "takkomori",
-      "nameJa": "達子森スキー場",
-      "shortName": "達子森"
-    },
-    {
-      "id": "gujo-vacance-mura",
-      "nameJa": "郡上ヴァカンス村スキー場",
-      "shortName": "郡上ヴァカンス村"
-    },
-    {
-      "id": "nozawa-onsen",
-      "nameJa": "野沢温泉スキー場",
-      "shortName": "野沢温泉"
-    },
-    {
-      "id": "nomugitoge",
-      "nameJa": "野麦峠スキー場",
-      "shortName": "野麦峠"
-    },
-    {
-      "id": "kanayasan",
-      "nameJa": "金谷山スキー場",
-      "shortName": "金谷山"
-    },
-    {
-      "id": "namari-onsen",
-      "nameJa": "鉛温泉スキー場",
-      "shortName": "鉛温泉"
-    },
-    {
-      "id": "kagamiganaru",
-      "nameJa": "鏡ヶ成スキー場",
-      "shortName": "鏡ヶ成"
-    },
-    {
-      "id": "oshamambe-choei",
-      "nameJa": "長万部町営スキー場",
-      "shortName": "長万部町営"
-    },
-    {
-      "id": "nagasaka",
-      "nameJa": "長坂スキー場",
-      "shortName": "長坂"
-    },
-    {
-      "id": "nagaoka-shiei",
-      "nameJa": "長岡市営スキー場",
-      "shortName": "長岡市営"
-    },
-    {
-      "id": "mia",
-      "nameJa": "開田高原マイアスキー場",
-      "shortName": "開田高原マイア"
-    },
-    {
-      "id": "seki-onsen",
-      "nameJa": "関温泉スキー場",
-      "shortName": "関温泉"
-    },
-    {
-      "id": "ani",
-      "nameJa": "阿仁スキー場",
-      "shortName": "阿仁"
-    },
-    {
-      "id": "akan-royal-valley",
-      "nameJa": "阿寒ロイヤルバレイスキー場",
-      "shortName": "阿寒ロイヤルバレイ"
-    },
-    {
-      "id": "shizukuishi",
-      "nameJa": "雫石スキー場",
-      "shortName": "雫石"
-    },
-    {
       "id": "aomori-spring-ski-resort",
-      "nameJa": "青森スプリング・スキーリゾート",
       "shortName": "青森スプリング"
     },
     {
-      "id": "otoifuji",
-      "nameJa": "音威富士スキー場",
-      "shortName": "音威富士"
-    },
-    {
-      "id": "suhara",
-      "nameJa": "須原スキー場",
-      "shortName": "須原"
-    },
-    {
-      "id": "kaze-no-oka-koen",
-      "nameJa": "風の丘公園スキー場",
-      "shortName": "風の丘公園"
-    },
-    {
-      "id": "furen",
-      "nameJa": "風連スキー場",
-      "shortName": "風連"
-    },
-    {
-      "id": "hida-kawai",
-      "nameJa": "飛騨かわいスキー場",
-      "shortName": "飛騨かわい"
-    },
-    {
-      "id": "hida-takayama",
-      "nameJa": "飛騨高山スキー場",
-      "shortName": "飛騨高山"
-    },
-    {
       "id": "komagane-kogen",
-      "nameJa": "駒ヶ根スキーリゾート（駒ヶ根高原スキー場）",
       "shortName": "駒ヶ根高原"
     },
     {
-      "id": "takayama-shimin",
-      "nameJa": "高山市民スキー場",
-      "shortName": "高山市民"
-    },
-    {
       "id": "takamine-mountain-park",
-      "nameJa": "高峰マウンテンパークスキー場",
       "shortName": "高峰"
     },
     {
-      "id": "takayanagi-garuru",
-      "nameJa": "高柳ガルルのスキー場",
-      "shortName": "高柳ガルルの"
-    },
-    {
       "id": "takasu-snow-park",
-      "nameJa": "高鷲スノーパーク",
       "shortName": "高鷲"
     },
     {
-      "id": "oniwaki-ishiyama",
-      "nameJa": "鬼脇石山スキー場",
-      "shortName": "鬼脇石山"
-    },
-    {
-      "id": "chokai-kogen-yashima",
-      "nameJa": "鳥海高原 矢島スキー場",
-      "shortName": "鳥海高原 矢島"
-    },
-    {
-      "id": "oshidomari",
-      "nameJa": "鴛泊スキー場",
-      "shortName": "鴛泊"
-    },
-    {
-      "id": "washigatake",
-      "nameJa": "鷲ヶ岳スキー場",
-      "shortName": "鷲ヶ岳"
-    },
-    {
       "id": "hakuba-valley-kashimayari",
-      "nameJa": "鹿島槍スキー場 ファミリーパーク",
       "shortName": "鹿島槍"
     },
     {
-      "id": "kazawa-snow-area",
-      "nameJa": "鹿沢スノーエリア",
-      "shortName": "鹿沢スノーエリア"
-    },
-    {
-      "id": "shikaoi-cho-undo-koen",
-      "nameJa": "鹿追町運動公園スキー場",
-      "shortName": "鹿追町運動公園"
-    },
-    {
       "id": "kurobushi-kogen-snow-park-jangle-jungle",
-      "nameJa": "黒伏高原スノーパーク　ジャングル・ジャングル",
       "shortName": "黒伏高原 ジャングル・ジャングル"
     },
     {
       "id": "kurohime-kogen-snow-park",
-      "nameJa": "黒姫高原スノーパーク",
       "shortName": "黒姫"
     }
   ]

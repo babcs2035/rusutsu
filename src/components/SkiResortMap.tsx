@@ -14,7 +14,6 @@ import {
   useMap,
   useMapEvents,
 } from "react-leaflet";
-import resortNameAliasesData from "@/data/SkiResortNameAliases.json";
 
 const INITIAL_CENTER: L.LatLngTuple = [38.25, 139.0];
 const INITIAL_ZOOM = 6;
@@ -23,7 +22,7 @@ const LABEL_ADVANCED_LAYOUT_ZOOM = 11;
 
 const LABEL_HEIGHT = 24;
 const LABEL_POINT_GAP = 4;
-const ADVANCED_NEAR_POINT_DISTANCE = 60;
+const ADVANCED_NEAR_POINT_DISTANCE = 40;
 const LABEL_COLLISION_PADDING = 4;
 const LABEL_MARGIN = 6;
 
@@ -34,6 +33,14 @@ const BASE_MARKER_PANE = "resort-markers-base";
 const FRONT_MARKER_PANE = "resort-markers-front";
 
 let cachedLabelMeasureElement: HTMLDivElement | undefined;
+let aliasByIdPromise: Promise<Map<string, string>> | null = null;
+
+type ResortNameAliasesData = {
+  resorts: Array<{
+    id: string;
+    shortName: string;
+  }>;
+};
 
 type Rect = {
   left: number;
@@ -59,7 +66,6 @@ type LabelLayout = {
 type CandidatePlacement = {
   left: number;
   top: number;
-  priority: number;
   forceLeaderLine?: boolean;
 };
 
@@ -113,6 +119,27 @@ const measureTextWidth = (text: string): number => {
   if (!probe) return text.length * 8;
   probe.textContent = text;
   return Math.ceil(probe.getBoundingClientRect().width);
+};
+
+const removeSkiResortWord = (name: string): string =>
+  name.replaceAll("スキー場", "").trim();
+
+const loadAliasById = async (): Promise<Map<string, string>> => {
+  if (aliasByIdPromise) {
+    return aliasByIdPromise;
+  }
+
+  aliasByIdPromise = import("@/data/SkiResortNameAliases.json")
+    .then(module => {
+      const data = (module.default ?? module) as ResortNameAliasesData;
+      const entries = data.resorts.map(
+        resort => [resort.id, resort.shortName] as const,
+      );
+      return new Map<string, string>(entries);
+    })
+    .catch(() => new Map<string, string>());
+
+  return aliasByIdPromise;
 };
 
 const createNameLabelIcon = (
@@ -305,12 +332,10 @@ const createSimpleVerticalCandidates = ({
   {
     left: point.x - labelWidth / 2,
     top: point.y - LABEL_HEIGHT - LABEL_POINT_GAP,
-    priority: 0,
   },
   {
     left: point.x - labelWidth / 2,
     top: point.y + LABEL_POINT_GAP,
-    priority: 1,
   },
 ];
 
@@ -334,12 +359,10 @@ const createPrimaryCandidates = ({
       {
         left: point.x - labelWidth / 2,
         top: point.y - LABEL_HEIGHT - LABEL_POINT_GAP,
-        priority: 0,
       },
       {
         left: point.x - labelWidth / 2,
         top: point.y + LABEL_POINT_GAP,
-        priority: 2,
       },
     );
 
@@ -348,13 +371,11 @@ const createPrimaryCandidates = ({
         {
           left: point.x + LABEL_POINT_GAP,
           top: point.y - LABEL_HEIGHT / 2,
-          priority: 4,
           forceLeaderLine: true,
         },
         {
           left: point.x - labelWidth - LABEL_POINT_GAP,
           top: point.y - LABEL_HEIGHT / 2,
-          priority: 5,
           forceLeaderLine: true,
         },
       );
@@ -363,23 +384,10 @@ const createPrimaryCandidates = ({
 
   if (useAdvancedLayout) {
     const maxRadius = Math.max(mapSize.x, mapSize.y) * 0.38;
-    const preferredAngles = [
-      { angle: 300, priority: 0 },
-      { angle: 240, priority: 1 },
-      { angle: 60, priority: 2 },
-      { angle: 120, priority: 3 },
-      { angle: 330, priority: 4 },
-      { angle: 210, priority: 5 },
-      { angle: 30, priority: 6 },
-      { angle: 150, priority: 7 },
-      { angle: 0, priority: 8 },
-      { angle: 180, priority: 9 },
-      { angle: 270, priority: 10 },
-      { angle: 90, priority: 11 },
-    ];
+    const angles = [300, 240, 60, 120, 330, 210, 30, 150, 0, 180, 270, 90];
 
     for (let radius = 30; radius <= maxRadius; radius += 18) {
-      for (const { angle, priority } of preferredAngles) {
+      for (const angle of angles) {
         const rad = (angle * Math.PI) / 180;
         const cx = point.x + Math.cos(rad) * radius;
         const cy = point.y + Math.sin(rad) * radius;
@@ -387,7 +395,6 @@ const createPrimaryCandidates = ({
         candidates.push({
           left: cx - labelWidth / 2,
           top: cy - LABEL_HEIGHT / 2,
-          priority: priority + radius / 20,
           forceLeaderLine: true,
         });
       }
@@ -422,7 +429,6 @@ const createDenseFallbackCandidates = ({
       candidates.push({
         left: cx - labelWidth / 2,
         top: cy - LABEL_HEIGHT / 2,
-        priority: 100 + radius / 10,
         forceLeaderLine: true,
       });
     }
@@ -455,7 +461,6 @@ const createViewportScanCandidates = ({
       candidates.push({
         left,
         top,
-        priority: 1000 + top + left / 1000,
         forceLeaderLine: true,
       });
     }
@@ -620,23 +625,32 @@ export const SkiResortMap = ({
   const [labelLayouts, setLabelLayouts] = useState<Record<string, LabelLayout>>(
     {},
   );
+  const [aliasById, setAliasById] = useState<Map<string, string>>(new Map());
 
-  const aliasById = useMemo(() => {
-    const aliasEntries: Array<[string, string]> =
-      resortNameAliasesData.resorts.map(resort => [
-        resort.id,
-        resort.shortName,
-      ]);
+  useEffect(() => {
+    if (resorts.length === 0) {
+      return;
+    }
 
-    return new Map<string, string>(aliasEntries);
-  }, []);
+    let cancelled = false;
+
+    loadAliasById().then(map => {
+      if (!cancelled) {
+        setAliasById(map);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [resorts.length]);
 
   const displayNameById = useMemo(() => {
     const entries: Array<[string, string]> = resorts.map(resort => {
       const customAlias = aliasById.get(resort.id)?.trim();
-      const genericAlias = resort.nameJa.replaceAll("スキー場", "").trim();
-      const displayName =
-        customAlias && customAlias.length > 0 ? customAlias : genericAlias;
+      const baseName =
+        customAlias && customAlias.length > 0 ? customAlias : resort.nameJa;
+      const displayName = removeSkiResortWord(baseName);
 
       return [resort.id, displayName.length > 0 ? displayName : resort.nameJa];
     });
@@ -838,6 +852,12 @@ export const SkiResortMap = ({
               continue;
             }
 
+            const overlapsOwnPoint =
+              distancePointToRect(point, rect) < LABEL_POINT_GAP;
+            if (overlapsOwnPoint) {
+              continue;
+            }
+
             const leaderEndPoint = getLeaderEndPoint(point, rect);
             const leaderSegment: Segment = {
               x1: point.x,
@@ -894,13 +914,10 @@ export const SkiResortMap = ({
               }
             }
 
-            const centerY = (rect.top + rect.bottom) / 2;
-
-            let score = candidate.priority * 40;
+            let score = 0;
 
             score += leaderLength;
             if (showLeaderLine) score += 18;
-            if (centerY > point.y) score += 12;
 
             const nearestOtherPointDistance = pointEntries
               .filter(({ id }) => id !== resort.id)
