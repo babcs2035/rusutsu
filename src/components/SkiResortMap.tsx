@@ -3,7 +3,15 @@
 import { Box, Button, Flex } from "@chakra-ui/react";
 import L from "leaflet";
 import { Home } from "lucide-react";
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
 import {
   CircleMarker,
   MapContainer,
@@ -20,7 +28,7 @@ const INITIAL_ZOOM = 6;
 const LABEL_SHOW_ZOOM = 8;
 const LABEL_ADVANCED_LAYOUT_ZOOM = 11;
 
-const LABEL_HEIGHT = 24;
+const FALLBACK_LABEL_HEIGHT = 24;
 const LABEL_POINT_GAP = 4;
 const ADVANCED_NEAR_POINT_DISTANCE = 40;
 const LABEL_COLLISION_PADDING = 4;
@@ -33,6 +41,29 @@ const BASE_MARKER_PANE = "resort-markers-base";
 const FRONT_MARKER_PANE = "resort-markers-front";
 
 let cachedLabelMeasureElement: HTMLDivElement | undefined;
+const LABEL_MEASURE_ELEMENT_ATTRIBUTE = "data-resort-label-measure-probe";
+
+const cleanupLabelMeasureElement = () => {
+  if (cachedLabelMeasureElement?.parentNode) {
+    cachedLabelMeasureElement.parentNode.removeChild(cachedLabelMeasureElement);
+  }
+  cachedLabelMeasureElement = undefined;
+};
+const cleanupOrphanedLabelMeasureElements = () => {
+  if (typeof document === "undefined") {
+    return;
+  }
+  document
+    .querySelectorAll<HTMLDivElement>(
+      `div[${LABEL_MEASURE_ELEMENT_ATTRIBUTE}="true"]`,
+    )
+    .forEach(element => {
+      if (element !== cachedLabelMeasureElement) {
+        element.remove();
+      }
+    });
+};
+
 let aliasByIdPromise: Promise<Map<string, string>> | null = null;
 
 type ResortNameAliasesData = {
@@ -99,8 +130,14 @@ const getLabelMeasureElement = () => {
     return cachedLabelMeasureElement;
   }
 
+  if (cachedLabelMeasureElement && !cachedLabelMeasureElement.isConnected) {
+    cleanupLabelMeasureElement();
+  }
+  cleanupOrphanedLabelMeasureElements();
+
   const probe = document.createElement("div");
   probe.className = "resort-name-label";
+  probe.setAttribute(LABEL_MEASURE_ELEMENT_ATTRIBUTE, "true");
   probe.style.position = "absolute";
   probe.style.left = "-100000px";
   probe.style.top = "-100000px";
@@ -119,6 +156,17 @@ const measureTextWidth = (text: string): number => {
   if (!probe) return text.length * 8;
   probe.textContent = text;
   return Math.ceil(probe.getBoundingClientRect().width);
+};
+
+const measureLabelHeight = (): number => {
+  const probe = getLabelMeasureElement();
+  if (!probe) {
+    return FALLBACK_LABEL_HEIGHT;
+  }
+
+  probe.textContent = "Hg";
+  const measuredHeight = Math.ceil(probe.getBoundingClientRect().height);
+  return measuredHeight > 0 ? measuredHeight : FALLBACK_LABEL_HEIGHT;
 };
 
 const removeSkiResortWord = (name: string): string =>
@@ -145,12 +193,13 @@ const loadAliasById = async (): Promise<Map<string, string>> => {
 const createNameLabelIcon = (
   name: string,
   width: number,
+  height: number,
   isSelected: boolean,
 ) =>
   L.divIcon({
     className: "resort-name-label-icon",
     html: `<div class="resort-name-label${isSelected ? " is-selected" : ""}" style="width:${width}px">${escapeHtml(name)}</div>`,
-    iconSize: [width, LABEL_HEIGHT],
+    iconSize: [width, height],
     iconAnchor: [0, 0],
   });
 
@@ -325,13 +374,15 @@ const getLeaderEndPoint = (point: L.Point, rect: Rect): L.Point => {
 const createSimpleVerticalCandidates = ({
   point,
   labelWidth,
+  labelHeight,
 }: {
   point: L.Point;
   labelWidth: number;
+  labelHeight: number;
 }): CandidatePlacement[] => [
   {
     left: point.x - labelWidth / 2,
-    top: point.y - LABEL_HEIGHT - LABEL_POINT_GAP,
+    top: point.y - labelHeight - LABEL_POINT_GAP,
   },
   {
     left: point.x - labelWidth / 2,
@@ -342,12 +393,14 @@ const createSimpleVerticalCandidates = ({
 const createPrimaryCandidates = ({
   point,
   labelWidth,
+  labelHeight,
   mapSize,
   useAdvancedLayout,
   shouldForceLeaderLine,
 }: {
   point: L.Point;
   labelWidth: number;
+  labelHeight: number;
   mapSize: L.Point;
   useAdvancedLayout: boolean;
   shouldForceLeaderLine: boolean;
@@ -358,7 +411,7 @@ const createPrimaryCandidates = ({
     candidates.push(
       {
         left: point.x - labelWidth / 2,
-        top: point.y - LABEL_HEIGHT - LABEL_POINT_GAP,
+        top: point.y - labelHeight - LABEL_POINT_GAP,
       },
       {
         left: point.x - labelWidth / 2,
@@ -370,12 +423,12 @@ const createPrimaryCandidates = ({
       candidates.push(
         {
           left: point.x + LABEL_POINT_GAP,
-          top: point.y - LABEL_HEIGHT / 2,
+          top: point.y - labelHeight / 2,
           forceLeaderLine: true,
         },
         {
           left: point.x - labelWidth - LABEL_POINT_GAP,
-          top: point.y - LABEL_HEIGHT / 2,
+          top: point.y - labelHeight / 2,
           forceLeaderLine: true,
         },
       );
@@ -394,7 +447,7 @@ const createPrimaryCandidates = ({
 
         candidates.push({
           left: cx - labelWidth / 2,
-          top: cy - LABEL_HEIGHT / 2,
+          top: cy - labelHeight / 2,
           forceLeaderLine: true,
         });
       }
@@ -407,10 +460,12 @@ const createPrimaryCandidates = ({
 const createDenseFallbackCandidates = ({
   point,
   labelWidth,
+  labelHeight,
   mapSize,
 }: {
   point: L.Point;
   labelWidth: number;
+  labelHeight: number;
   mapSize: L.Point;
 }): CandidatePlacement[] => {
   const candidates: CandidatePlacement[] = [];
@@ -428,7 +483,7 @@ const createDenseFallbackCandidates = ({
 
       candidates.push({
         left: cx - labelWidth / 2,
-        top: cy - LABEL_HEIGHT / 2,
+        top: cy - labelHeight / 2,
         forceLeaderLine: true,
       });
     }
@@ -439,18 +494,20 @@ const createDenseFallbackCandidates = ({
 
 const createViewportScanCandidates = ({
   labelWidth,
+  labelHeight,
   mapSize,
 }: {
   labelWidth: number;
+  labelHeight: number;
   mapSize: L.Point;
 }): CandidatePlacement[] => {
   const candidates: CandidatePlacement[] = [];
   const stepX = 12;
-  const stepY = LABEL_HEIGHT + 6;
+  const stepY = labelHeight + 6;
 
   for (
     let top = LABEL_MARGIN;
-    top <= mapSize.y - LABEL_HEIGHT - LABEL_MARGIN;
+    top <= mapSize.y - labelHeight - LABEL_MARGIN;
     top += stepY
   ) {
     for (
@@ -485,6 +542,59 @@ const getResortLabelWidth = (
   displayNameById: Map<string, string>,
 ): number =>
   Math.max(measureTextWidth(getResortDisplayName(resort, displayNameById)), 1);
+
+const detectCrowdedPointIds = (
+  pointEntries: MapPointEntry[],
+  nearDistance: number,
+): Set<string> => {
+  const crowdedPointIds = new Set<string>();
+
+  if (pointEntries.length <= 1) {
+    return crowdedPointIds;
+  }
+
+  const cellSize = nearDistance;
+  const grid = new Map<string, MapPointEntry[]>();
+
+  const getCellKey = (cellX: number, cellY: number) => `${cellX}:${cellY}`;
+
+  for (const entry of pointEntries) {
+    const cellX = Math.floor(entry.point.x / cellSize);
+    const cellY = Math.floor(entry.point.y / cellSize);
+
+    for (let offsetX = -1; offsetX <= 1; offsetX += 1) {
+      for (let offsetY = -1; offsetY <= 1; offsetY += 1) {
+        const neighborKey = getCellKey(cellX + offsetX, cellY + offsetY);
+        const neighborEntries = grid.get(neighborKey);
+        if (!neighborEntries) {
+          continue;
+        }
+
+        for (const other of neighborEntries) {
+          const distance = Math.hypot(
+            entry.point.x - other.point.x,
+            entry.point.y - other.point.y,
+          );
+
+          if (distance <= nearDistance) {
+            crowdedPointIds.add(entry.id);
+            crowdedPointIds.add(other.id);
+          }
+        }
+      }
+    }
+
+    const ownCellKey = getCellKey(cellX, cellY);
+    const ownCellEntries = grid.get(ownCellKey);
+    if (ownCellEntries) {
+      ownCellEntries.push(entry);
+    } else {
+      grid.set(ownCellKey, [entry]);
+    }
+  }
+
+  return crowdedPointIds;
+};
 
 // コンパクトな地図表示用リゾート型
 type MapResort = {
@@ -521,18 +631,34 @@ const LabelLayoutWatcher = ({
   onLayout: (map: L.Map) => void;
 }) => {
   const map = useMap();
+  const layoutFrameRef = useRef<number | null>(null);
+  const scheduleLayout = useCallback(() => {
+    if (layoutFrameRef.current !== null) {
+      return;
+    }
+    layoutFrameRef.current = window.requestAnimationFrame(() => {
+      layoutFrameRef.current = null;
+      onLayout(map);
+    });
+  }, [map, onLayout]);
 
   useMapEvents({
-    zoom: () => onLayout(map),
-    zoomend: () => onLayout(map),
-    move: () => onLayout(map),
-    moveend: () => onLayout(map),
-    resize: () => onLayout(map),
+    zoom: scheduleLayout,
+    zoomend: scheduleLayout,
+    move: scheduleLayout,
+    moveend: scheduleLayout,
+    resize: scheduleLayout,
   });
 
   useEffect(() => {
-    onLayout(map);
-  }, [map, onLayout]);
+    scheduleLayout();
+    return () => {
+      if (layoutFrameRef.current !== null) {
+        window.cancelAnimationFrame(layoutFrameRef.current);
+        layoutFrameRef.current = null;
+      }
+    };
+  }, [scheduleLayout]);
 
   return null;
 };
@@ -662,7 +788,9 @@ export const SkiResortMap = ({
     (map: L.Map) => {
       const currentZoom = map.getZoom();
       if (currentZoom < LABEL_SHOW_ZOOM) {
-        setLabelLayouts({});
+        setLabelLayouts(previousLayouts =>
+          Object.keys(previousLayouts).length === 0 ? previousLayouts : {},
+        );
         return;
       }
 
@@ -673,6 +801,7 @@ export const SkiResortMap = ({
 
       const mapBounds = map.getBounds();
       const mapSize = map.getSize();
+      const labelHeight = measureLabelHeight();
 
       const placedCollisionRects: Rect[] = [];
       const placedActualRects: Rect[] = [];
@@ -729,6 +858,7 @@ export const SkiResortMap = ({
           const candidates = createSimpleVerticalCandidates({
             point,
             labelWidth,
+            labelHeight,
           });
 
           let acceptedRect: Rect | undefined;
@@ -739,7 +869,7 @@ export const SkiResortMap = ({
               left: candidate.left,
               right: candidate.left + labelWidth,
               top: candidate.top,
-              bottom: candidate.top + LABEL_HEIGHT,
+              bottom: candidate.top + labelHeight,
             };
 
             const collisionRect = expandRect(rect, LABEL_COLLISION_PADDING);
@@ -785,25 +915,9 @@ export const SkiResortMap = ({
         return;
       }
 
-      const crowdedPointIds = new Set<string>();
-      if (useAdvancedLayout) {
-        for (let i = 0; i < pointEntries.length; i += 1) {
-          const base = pointEntries[i];
-
-          for (let j = i + 1; j < pointEntries.length; j += 1) {
-            const other = pointEntries[j];
-            const distance = Math.hypot(
-              base.point.x - other.point.x,
-              base.point.y - other.point.y,
-            );
-
-            if (distance <= ADVANCED_NEAR_POINT_DISTANCE) {
-              crowdedPointIds.add(base.id);
-              crowdedPointIds.add(other.id);
-            }
-          }
-        }
-      }
+      const crowdedPointIds = useAdvancedLayout
+        ? detectCrowdedPointIds(pointEntries, ADVANCED_NEAR_POINT_DISTANCE)
+        : new Set<string>();
 
       for (const resort of sortedCandidates) {
         const point = pointById.get(resort.id);
@@ -825,7 +939,7 @@ export const SkiResortMap = ({
               left: candidate.left,
               right: candidate.left + labelWidth,
               top: candidate.top,
-              bottom: candidate.top + LABEL_HEIGHT,
+              bottom: candidate.top + labelHeight,
             };
 
             const collisionRect = expandRect(rect, LABEL_COLLISION_PADDING);
@@ -947,6 +1061,7 @@ export const SkiResortMap = ({
         const primaryCandidates = createPrimaryCandidates({
           point,
           labelWidth,
+          labelHeight,
           mapSize,
           useAdvancedLayout,
           shouldForceLeaderLine,
@@ -956,6 +1071,7 @@ export const SkiResortMap = ({
           ? createDenseFallbackCandidates({
               point,
               labelWidth,
+              labelHeight,
               mapSize,
             })
           : [];
@@ -963,6 +1079,7 @@ export const SkiResortMap = ({
         const viewportCandidates = useAdvancedLayout
           ? createViewportScanCandidates({
               labelWidth,
+              labelHeight,
               mapSize,
             })
           : [];
@@ -1008,6 +1125,29 @@ export const SkiResortMap = ({
     [displayNameById, resorts, selectedResortId],
   );
 
+  const nameLabelIconsByResortId = useMemo(() => {
+    const labelHeight = measureLabelHeight();
+    const icons = new Map<string, L.DivIcon>();
+    resorts.forEach(resort => {
+      const labelLayout = labelLayouts[resort.id];
+      if (!labelLayout) {
+        return;
+      }
+      const isSelected = resort.id === selectedResortId;
+      const displayName = getResortDisplayName(resort, displayNameById);
+      icons.set(
+        resort.id,
+        createNameLabelIcon(
+          displayName,
+          labelLayout.labelWidth,
+          labelHeight,
+          isSelected,
+        ),
+      );
+    });
+    return icons;
+  }, [displayNameById, labelLayouts, resorts, selectedResortId]);
+
   return (
     <MapContainer
       center={INITIAL_CENTER}
@@ -1024,7 +1164,6 @@ export const SkiResortMap = ({
 
       {resorts.map(resort => {
         const isSelected = resort.id === selectedResortId;
-        const displayName = getResortDisplayName(resort, displayNameById);
         const labelLayout = labelLayouts[resort.id];
         const hasVisibleLabel = Boolean(labelLayout);
         const markerPane =
@@ -1070,11 +1209,7 @@ export const SkiResortMap = ({
               <Marker
                 pane={markerPane}
                 position={labelLayout.labelPosition}
-                icon={createNameLabelIcon(
-                  displayName,
-                  labelLayout.labelWidth,
-                  isSelected,
-                )}
+                icon={nameLabelIconsByResortId.get(resort.id)}
                 eventHandlers={{ click: () => onSelectResort(resort.id) }}
               />
             )}
