@@ -92,7 +92,7 @@ interface CustomTooltipProps {
 }
 
 const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
-  if (active && payload && payload.length) {
+  if (active && payload?.length) {
     return (
       <Box
         rounded="xl"
@@ -111,7 +111,7 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
           {label}
         </Text>
         <Flex flexDirection="column" gap={1}>
-          {payload.map((pld: TooltipPayload, idx: number) => {
+          {payload.map((pld: TooltipPayload) => {
             const displayValue = Array.isArray(pld.value)
               ? `${pld.value[0]} - ${pld.value[1]}`
               : pld.value;
@@ -140,7 +140,7 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
 
             return (
               <Text
-                key={`${pld.name}-${idx}`}
+                key={pld.name}
                 fontSize="sm"
                 color={textColor}
                 fontWeight="700"
@@ -334,7 +334,7 @@ export const ForecastTable = ({ weathers }: { weathers: WeathersT }) => {
                     </Text>
                   </Box>
                 </Box>
-                {weatherData?.winds?.slice(0, dataLength).map((wind, i) => {
+                {weatherData?.winds?.slice(0, dataLength).map(wind => {
                   const windSpeed = wind.speed;
                   const windColor =
                     windSpeed >= 30
@@ -357,7 +357,7 @@ export const ForecastTable = ({ weathers }: { weathers: WeathersT }) => {
                   return (
                     <Box
                       as="td"
-                      key={`wind-${i}-${wind.speed}-${wind.direction}`}
+                      key={crypto.randomUUID()}
                       borderRightWidth="1px"
                       borderColor="gray.200"
                       p={1}
@@ -414,12 +414,12 @@ export const ForecastTable = ({ weathers }: { weathers: WeathersT }) => {
                     </Text>
                   </Box>
                 </Box>
-                {weatherData?.snows?.slice(0, dataLength).map((snow, i) => {
+                {weatherData?.snows?.slice(0, dataLength).map(snow => {
                   const style = getSnowStyle(snow);
                   return (
                     <Box
                       as="td"
-                      key={`snow-${i}-${snow}`}
+                      key={crypto.randomUUID()}
                       borderRightWidth="1px"
                       borderColor="gray.200"
                       p={1}
@@ -463,28 +463,26 @@ export const ForecastTable = ({ weathers }: { weathers: WeathersT }) => {
                     </Text>
                   </Box>
                 </Box>
-                {weatherData?.temperatures
-                  ?.slice(0, dataLength)
-                  .map((temp, i) => {
-                    const style = getTempStyle(temp);
-                    return (
-                      <Box
-                        as="td"
-                        key={`temp-${i}-${temp}`}
-                        borderRightWidth="1px"
-                        borderColor="gray.200"
-                        p={1}
-                        fontSize="sm"
-                        fontFamily="mono"
-                        fontWeight="700"
-                        color={style.color === "white" ? "white" : style.color}
-                        bg={style.bg}
-                        whiteSpace="nowrap"
-                      >
-                        {temp}
-                      </Box>
-                    );
-                  })}
+                {weatherData?.temperatures?.slice(0, dataLength).map(temp => {
+                  const style = getTempStyle(temp);
+                  return (
+                    <Box
+                      as="td"
+                      key={crypto.randomUUID()}
+                      borderRightWidth="1px"
+                      borderColor="gray.200"
+                      p={1}
+                      fontSize="sm"
+                      fontFamily="mono"
+                      fontWeight="700"
+                      color={style.color === "white" ? "white" : style.color}
+                      bg={style.bg}
+                      whiteSpace="nowrap"
+                    >
+                      {temp}
+                    </Box>
+                  );
+                })}
               </Box>
             </Box>
           </Box>
