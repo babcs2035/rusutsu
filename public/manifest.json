@@ -1,0 +1,22 @@
+{
+  "name": "Rusutsu - スキー場情報統合プラットフォーム",
+  "short_name": "Rusutsu",
+  "description": "日本全国のスキー場情報を多元的なソースから集約・統合し，可視化するプラットフォームです．",
+  "start_url": "/rusutsu/",
+  "display": "standalone",
+  "background_color": "#f9fafb",
+  "theme_color": "#003366",
+  "icons": [
+    {
+      "src": "/rusutsu/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/rusutsu/favicon.png",
+      "sizes": "64x64",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

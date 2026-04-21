@@ -8,7 +8,7 @@ setup = { description = "プロジェクトの初期セットアップ（依存�
   "cp -n .env.example .env || true",
   "pnpm install",
   "pnpm exec playwright install chromium",
-  "mise run db:up",
+  "docker compose up -d --wait db",
   "mise run db:migrate",
   "mise run db:generate",
   "mise run db:seed"
