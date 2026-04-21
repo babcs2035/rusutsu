@@ -3,51 +3,72 @@
 **Rusutsu** は，日本全国のスキー場情報を多元的なソースから集約・統合し，一元的に可視化するアプリケーションである．
 基本情報，コース詳細，リフト稼働状況，詳細な気象予測，そして積雪履歴などのデータを組み合わせ，スキー場の「今」と「これから」を正確に把握することを目指している．
 
-## 技術スタック
+## 技術スタック (Technical Stack)
 
-本プロジェクトでは，モダンな Web 技術と堅牢なデータ処理パイプラインを採用している．
+プロジェクトはモダンな Web 技術と堅牢なデータ処理パイプラインを採用し，継続的に最新バージョンへのアップデートを行っている．
 
-- **Framework**: [Next.js 14](https://nextjs.org/) (App Router)
-- **Language**: [TypeScript](https://www.typescriptlang.org/) (Strict Mode)
-- **Database**: [PostgreSQL](https://www.postgresql.org/) (via Docker)
-- **ORM**: [Prisma](https://www.prisma.io/)
-- **Scraping**: [Playwright](https://playwright.dev/) (Browser Automation) & Fetch API
-- **Task Runner**: [mise](https://mise.jdx.dev/)
-- **UI**: [Chakra UI](https://chakra-ui.com/) & Tailwind CSS
+*   **Framework**: [Next.js 16](https://nextjs.org/) (App Router & Turbopack 活用)
+*   **Language**: [TypeScript 6](https://www.typescriptlang.org/) (Strict Mode)
+*   **Database**: [PostgreSQL 16](https://www.postgresql.org/) (via Docker Compose)
+*   **ORM**: [Prisma 7](https://www.prisma.io/) ( `prisma.config.ts` による一元管理 )
+*   **UI Framework**: [Chakra UI v3](https://chakra-ui.com/), [Framer Motion](https://www.framer.com/motion/), [Lucide React](https://lucide.dev/)
+*   **State Management**: [Zustand](https://zustand-demo.pmnd.rs/)
+*   **Data Visualization**: [Leaflet](https://leafletjs.com/) (地図表示), [Recharts](https://recharts.org/) (グラフ描画)
+*   **Scraping / Automation**: [Playwright](https://playwright.dev/) & Fetch API
+*   **Validation / Config**: [Zod](https://zod.dev/), [dotenv](https://github.com/motdotla/dotenv)
+*   **Toolchain**: [mise](https://mise.jdx.dev/) (Task Runner), [Biome](https://biomejs.dev/) (Linter/Formatter)
 
-## 開発環境構築
+---
 
-本プロジェクトでは，ツール管理とタスクランナーとして [mise](https://mise.jdx.dev/) を全面的に採用している．
-開発を始めるには，以下のステップのみで環境が整う．
+## 開発環境構築 (Development Setup)
 
-### 1. 依存ツールのインストール
-`mise` がインストールされている前提で，プロジェクトルートにて以下を実行する．これにより Node.js や pnpm のバージョンが自動的に固定される．
+本プロジェクトでは，ツール管理とタスクランナーとして `mise` を全面的に採用しており，再現性の高い環境構築が可能である．
 
+### 1. ツールのインストールと依存パッケージ解決
+依存する Node.js 等のバージョンは `mise` により自動管理される．
 ```bash
 mise install
 ```
 
-### 2. セットアップタスクの実行
-依存パッケージのインストール，ブラウザバイナリの取得，データベースの起動，マイグレーション，シードデータの投入を一括で行う．
+### 2. 自動セットアップ (`mise setup`)
+セットアップタスクにより，以下のステップが自動でフォールト・トレラントに実行される．
+1. **`.env` 生成**: `.env.example` から初期環境変数のコピー．
+2. **パッケージのインストール**: `pnpm install` による依存解決．
+3. **ブラウザバイナリの取得**: クローリング用の `Playwright` バイナリ (Chromium 等) をダウンロード．
+4. **DB コンテナの単独起動**: `docker compose up -d --wait db` により，ネットワークの問題を回避しつつDBコンテナのみを確実に立ち上げ，ヘルスチェックを待機．
+5. **マイグレーションとシード**: `pnpm prisma migrate dev` によりスキーマを同期し，初期セットアップシードを投入．
 
 ```bash
 mise run setup
 ```
 
-### 3. 開発サーバーの起動
-
+### 3. 開発サーバー起動
 ```bash
 mise run dev
 ```
+ブラウザで [http://localhost:3000/rusutsu](http://localhost:3000/rusutsu) にアクセスする．
 
-ブラウザで [http://localhost:3000/rusutsu](http://localhost:3000/rusutsu) を開く．
+---
 
-## データ処理アーキテクチャ
+## アプリケーション技術仕様 (Architecture Details)
 
-本システムの特徴は，複数の異なるデータソースを「辞書」を用いて高精度に名寄せし，統合している点にある．
+### Frontend (Next.js App Router)
+*   **Server Actions**: クライアントとサーバー間のセキュアなデータ通信には Next.js の Server Actions を採用．API Route の複雑性を排除し，型安全かつ直接的なロジック呼び出しを実現している．
+*   **UI/UX**: モダンなコンポーネント指向 UI フレームワークである Chakra UI v3 に移行済み．Framer Motion を用いてリッチなアニメーションやトランジションを提供している．
+*   **Client State**: Zustand を活用して，グローバルなフィルタリング状態やユーザーの設定情報などをオーバーヘッド少なく管理している．
+*   **Visualization**: スキー場の位置情報のプロットには React Leaflet とクラスタリングプロバイダを用いた動的地図コンポーネントを構築．また，気象トレンドや積雪データの可視化には Recharts を採用している．
 
-### 1. データソースと役割
+### Backend & Database (PostgreSQL + Prisma 7)
+*   **Prisma 7 のアーキテクチャ**: 最新の Prisma 7 の仕様に準拠し，接続設定やシードコマンドなどはすべてプロジェクト直下の `prisma.config.ts` で管理している．スキーマファイル上の静的な `url` 定義を廃止し，よりセキュアでモジュラーな設定を実現した．
+*   **テーブルスキーマ**: `SkiResort` を中心的なエンティティに据え，周辺の `Course`, `Lift`, `Weather`, `Forecast`, `SnowDepthRecord` といった詳細情報をリレーションと JSON 型を組み合わせて保持する正規化構造を維持している．
 
+---
+
+## データ処理パイプライン (Crawling & Data Normalization)
+
+多数のスキー場情報は分散・断片化しているため，複数ソースからの情報を統合（名寄せ）してデータベースに対する Upsert 操作（更新・作成）を一元的に行うパイプラインを構築している．
+
+### 1. データ収集ソースの概要
 | データソース        | 取得データ                                | 対応スクリプト                                                        | 役割                                              |
 | :------------------ | :---------------------------------------- | :-------------------------------------------------------------------- | :------------------------------------------------ |
 | **SnowJapan**       | スキー場基本情報 (ID, 名称, 所在地, 標高) | `crawlSkiAreas.ts`                                                    | **マスターデータ**．全てのデータの基点となる．    |
@@ -56,70 +77,54 @@ mise run dev
 | **気象庁 (AMeDAS)** | 気温, 積雪深 (観測値)                     | `crawlAmedas.ts`                                                      | 実際の観測データによる裏付けを行う．              |
 | **独自/その他**     | 積雪履歴, 最新レポート, ゆきまじ          | `crawlSnowDepths.ts`<br>`crawlLatestReports.ts`<br>`crawlYukiMagi.ts` | その他の付加価値情報．                            |
 
-### 2. 名寄せ (Normalization) 戦略
+### 2. 名寄せ (Normalization) 特性
+ウェブ上の情報にはスキー場名に強い「表記揺れ」や ID リテラルの差異が存在するため，`src/data/` 以下の手動整備された辞書ファイル・マップを利用して正確な突合を実現している．
+*   **`SkiAreaNameDict.json`**: ベースとなる和名を正規化し，アプリケーション内で一意となる Master Name を解決する．
+*   **`SnowJapanToSnowForecastDict.json`**: 外部サイト間の ID 同士の直接マッピングで不確実性を排除．
+*   **`SnowForecastDict.json` / `SurfSnowDict.json`**: 各提供元での固有名称（英名・和名）と，内部 DB 上の正規化名とを動的にリンクさせる．
 
-各サイトで異なるスキー場名の表記揺れを吸収するため，`src/data/` ディレクトリ配下の辞書ファイルを活用している．
+### 3. バウンダリと実行フロー (Idempotency)
+すべてのクローリングスクリプトは冪等性を持っており，複数回実行しても差分のみが Upsert される安全な設計となっている．これらは Playwright 等を用いた複雑なスクレイピングロジックにより構築され，手動実行（開発環境）および毎日自動処理としての実行を見据えた堅牢な仕組みに基づく．
 
-*   **`SkiAreaNameDict.json`**:
-    *   SnowJapan の表記揺れを補正し，システム内で統一された「和名 (`nameJa`)」を定義する．
-*   **`SnowJapanToSnowForecastDict.json`**:
-    *   システム ID と Snow-Forecast の ID を直接マッピングする．最も信頼性が高い．
-*   **`SnowForecastDict.json`**:
-    *   Snow-Forecast 上の英名を，データベース上の英名 (`nameEn`) に変換する．
-*   **`SurfSnowDict.json`**:
-    *   Surf&Snow 上の名称を，データベース上の和名 (`nameJa`) に変換する．
+---
 
-### 3. データ更新フロー
+## ディレクトリとモジュール構造
 
-クローリングは冪等性 (Idempotency) を意識して設計されており，`upsert` (更新または作成) 操作を基本としている．
-
-1.  **`crawlSkiAreas.ts`** が実行され，`SkiResort` テーブルのマスターデータが更新される．
-2.  **`crawlGelendes.ts`** などがそのマスターデータを参照し，詳細情報を付与 (Update) する．
-3.  **`crawlForecasts.ts`** などが外部 ID を解決し，関連テーブル (`Weather`, `Forecast`) にデータを追加・更新する．
-
-Cron により，毎日日本時間 06:00 にこれらの処理が自動実行される．
-
-## コマンドリファレンス (mise tasks)
-
-開発中の主要な操作は `mise` タスクとして定義されている．
-
-### 開発・品質管理
-
-*   `mise run dev`: 開発サーバーを起動する．
-*   `mise run check`: Lint (Biome) と型チェック (tsc) を一括実行する．CI で実行されるコマンドと同等．
-*   `mise run lint`: コードのフォーマット修正と Lint を実行する (`biome check --write`)．
-*   `mise run typecheck`: TypeScript の型チェックを行う．
-
-### データベース操作 (Prisma)
-
-*   `mise run db:up`: PostgreSQL コンテナを起動する．
-*   `mise run db:down`: PostgreSQL コンテナを停止する．
-*   `mise run db:studio`: データベースの中身を GUI で確認・編集する (Prisma Studio)．
-*   `mise run db:reset`: データベースを初期化 (全削除) し，シードデータを再投入する．
-
-### クローリング実行
-
-特定のデータを手動で更新したい場合に使用する．
-
-*   `mise run crawl:all`: 定義されている全てのクローリングタスクを順次実行する．(**時間がかかるため注意**)
-
-**個別実行 (推奨)**:
-個別のスクリプトを実行する場合は，以下のように mise タスクを利用する．
-
-```bash
-# 基本情報の更新
-mise run crawl:ski-areas
-
-# 天気予報の更新
-mise run crawl:forecasts
+```text
+├── .husky/              # Git hooks (Lint/Format の実行等)
+├── prisma/              # データベース定義ファイル
+│   └── schema.prisma    # Prisma スキーマ (データモデル)
+│   └── seed.ts          # 初期化用データセットアップ
+├── public/              # 静的アセット (フォント, ロゴ, 画像メタ等)
+├── src/
+│   ├── actions/         # Server Actions (DB クエリラップ, ミューテーション)
+│   ├── app/             # App Router における各ページやレイアウト定義
+│   ├── components/      # クライアント・サーバーコンポーネント・共通 UI
+│   ├── data/            # 名寄せ辞書ファイル・静的マスターデータ群 (JSON)
+│   ├── lib/             # ユーティリティ関数群, Prisma クライアント初期化ロジック等
+│   ├── providers/       # 各種 Context, Chakra テーマプロバイダ設定
+│   ├── scripts/         # Playwright 等を用いた各種クローリングスクリプト群
+│   └── types/           # アプリケーション全体の型定義 (Zod によるスキーマ定義も含む)
+├── docker-compose.yml   # 開発用コンテナ・ネットワーク構成
+├── mise.toml            # タスクランナーおよび依存ツールバージョン管理マニフェスト
+├── package.json         # システム全体の依存ライブラリ構成
+└── prisma.config.ts     # DB 接続設定およびシード処理など一元設定
 ```
 
-## ディレクトリ構造
+---
 
-*   `src/app`: Next.js App Router ページ．
-*   `src/actions`: Server Actions (データフェッチのトリガーなど)．
-*   `src/components`: UI コンポーネント．
-*   `src/data`: **名寄せ用辞書ファイル (JSON)**．
-*   `src/lib`: Prisma クライアント，ユーティリティ関数．
-*   `src/scripts`: **クローリングスクリプト群**．
-    *   `crawl_latest/`: 特定リゾートのリアルタイム独自解析スクリプト．
+## 主要コマンドリファレンス (`mise tasks`)
+
+*   **開発とチェック**:
+    *   `mise run dev` - Next.js ランタイム起動 ( http://localhost:3000 )
+    *   `mise run check` - Biome & TypeScript による厳格なコード品質チェック
+    *   `mise run lint` - コードフォーマットおよび潜在的な問題の修正
+    *   `mise run typecheck` - TypeScript の手動型チェック
+*   **インフラ・データベース**:
+    *   `mise run db:up` - PostgreSQL (Docker) 起動・ヘルスチェック待機
+    *   `mise run db:down` - コンテナ・ネットワークの破棄
+    *   `mise run db:migrate` - Prisma マイグレーション実行
+    *   `mise run db:studio` - Prisma Studio による DB GUI サーバ起動
+*   **各種クローラー実行**:
+    *   `mise run crawl:all` - パイプラインを全体実行 (※長時間・高負荷)
+    *   `mise run crawl:ski-areas` / `mise run crawl:forecasts` など - 任意のサブタスクを実行
