@@ -3,10 +3,10 @@
 # ==============================================================================
 # Base Stage
 # ==============================================================================
-FROM node:25.4-slim AS base
+FROM node:25.6.1-slim AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN npm install -g pnpm@10.28.2
+RUN npm install -g pnpm
 WORKDIR /app
 
 # ==============================================================================
@@ -19,10 +19,10 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 # ==============================================================================
 # Stage 1.5: Generate Prisma Client (on Build Platform / amd64)
 # ==============================================================================
-FROM --platform=$BUILDPLATFORM node:25.4-slim AS prisma-gen
+FROM --platform=$BUILDPLATFORM node:25.6.1-slim AS prisma-gen
 WORKDIR /app
 RUN apt-get update && apt-get install -y openssl
-RUN npm install -g pnpm@10.28.2
+RUN npm install -g pnpm
 RUN echo "node-linker=hoisted" > .npmrc
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --ignore-scripts
