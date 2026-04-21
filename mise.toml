@@ -1,6 +1,6 @@
 [tools]
-node = "25.4.0"
-pnpm = "10.28.2"
+node = "25.6.1"
+pnpm = "latest"
 
 [tasks]
 # --- Project Setup ---
@@ -25,7 +25,7 @@ build = { description = "プロダクションビルド", run = "pnpm build" }
 start = { description = "プロダクションサーバー起動", run = "pnpm start" }
 
 # --- Database (Prisma) ---
-"db:up" = { description = "DBコンテナ起動", run = "docker compose up -d --wait" }
+"db:up" = { description = "DBコンテナ起動", run = "docker compose up -d --wait db" }
 "db:down" = { description = "DBコンテナ停止", run = "docker compose down" }
 "db:studio" = { description = "Prisma Studio 起動", run = "pnpm prisma studio" }
 "db:migrate" = { description = "マイグレーション実行", run = "pnpm prisma migrate dev" }
