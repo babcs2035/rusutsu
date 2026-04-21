@@ -18,11 +18,12 @@ jobs:
         uses: actions/checkout@main
 
       - name: Setup mise
-        run: |
-          curl https://mise.run | sh
-          echo "$HOME/.local/share/mise/bin" >> $GITHUB_PATH
-          echo "$HOME/.local/share/mise/shims" >> $GITHUB_PATH
-          mise install
+        uses: jdx/mise-action@main
+        with:
+          install: true
+
+      - name: Prepare environment variables
+        run: cp .env.example .env
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
