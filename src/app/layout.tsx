@@ -22,7 +22,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: "Rusutsu",
+    default: "Rusutsu | 全国のスキー場情報・積雪予報・コース詳細を一元化",
     template: "%s | Rusutsu",
   },
   icons: {
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
   },
   manifest: "/rusutsu/manifest.json",
   description:
-    "Rusutsu (ルスツ) は，日本全国のスキー場情報を多元的なソースから集約・統合し，可視化するプラットフォームです．リフト稼働状況，詳細な気象予測，積雪履歴など，スキー場の「今」と「これから」を正確に把握できます．",
+    "日本全国のスキー場情報を多元的なソースから集約・統合し，可視化するプラットフォーム．積雪・天気・コース情報を一目で見やすく．",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -56,7 +56,7 @@ export const metadata: Metadata = {
     siteName: "Rusutsu",
     images: [
       {
-        url: "/rusutsu/ogp.webp",
+        url: "https://ktak.dev/rusutsu/ogp.webp",
         width: 1200,
         height: 630,
         alt: "Rusutsu OGP Image",
@@ -69,8 +69,8 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Rusutsu | 全国のスキー場情報・積雪予報・コース詳細を一元化",
     description:
-      "日本全国のスキー場情報を一元化．積雪・天気・コース情報をリアルタイムに把握．",
-    images: ["/rusutsu/ogp.webp"],
+      "日本全国のスキー場情報を多元的なソースから集約・統合し，可視化するプラットフォーム．積雪・天気・コース情報を一目で見やすく．",
+    images: ["https://ktak.dev/rusutsu/ogp.webp"],
   },
 };
 
