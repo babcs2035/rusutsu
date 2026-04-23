@@ -1,10 +1,9 @@
 "use client";
 
-import { Box, Button, Flex, Text } from "@chakra-ui/react";
+import { Box, Button, Flex, Link, Text } from "@chakra-ui/react";
 import { useMemo, useState } from "react";
 import {
   Area,
-  Bar,
   CartesianGrid,
   ComposedChart,
   Legend,
@@ -14,11 +13,79 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { ForecastsT } from "@/types/forecasts";
 import type { SnowDepthsT, WeathersT } from "@/types/weathers";
 
 type Elevation = "top" | "mid" | "bot";
-type ForecastElevation = "top" | "middle" | "bottom";
+
+export const SnowForecastEmbed = ({
+  snowForecastSlug,
+  resortName,
+}: {
+  snowForecastSlug: string;
+  resortName: string;
+}) => {
+  const [elevation, setElevation] = useState<Elevation>("mid");
+  const feedUrl = `https://ja.snow-forecast.com/resorts/${snowForecastSlug}/forecasts/feed/${elevation}/m`;
+  const detailUrl = `https://ja.snow-forecast.com/resorts/${snowForecastSlug}/6day/${elevation}`;
+
+  return (
+    <Box>
+      <ElevationSelector
+        value={elevation}
+        onChange={value => setElevation(value as Elevation)}
+        options={[
+          { label: "山頂", value: "top" },
+          { label: "中腹", value: "mid" },
+          { label: "山麓", value: "bot" },
+        ]}
+      />
+      <Box
+        mt={4}
+        borderWidth="1px"
+        borderColor="gray.200"
+        borderRadius="xl"
+        overflow="hidden"
+        bg="white"
+      >
+        <Box
+          overflowX="auto"
+          overflowY="hidden"
+          css={{ WebkitOverflowScrolling: "touch" }}
+        >
+          <iframe
+            title={`${resortName} Snow-Forecast`}
+            src={feedUrl}
+            width="100%"
+            height={260}
+            scrolling="auto"
+            loading="lazy"
+            style={{
+              border: "none",
+              overflow: "auto",
+              display: "block",
+              minWidth: "720px",
+            }}
+          />
+        </Box>
+
+        <Box px={4} py={3} borderTopWidth="1px" borderColor="gray.100">
+          <Text fontSize="sm" color="gray.600">
+            詳細な予報は{" "}
+            <Link
+              href={detailUrl}
+              color="blue.600"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              snow-forecast.com
+            </Link>{" "}
+            からご確認ください
+          </Text>
+        </Box>
+      </Box>
+    </Box>
+  );
+};
 
 /**
  * 標高を選択するための共通UIコンポーネント
@@ -499,149 +566,7 @@ export const ForecastTable = ({ weathers }: { weathers: WeathersT }) => {
 };
 
 /**
- * 2. 過去の気象データ（週単位）
- */
-export const WeeklyWeatherChart = ({
-  forecasts,
-}: {
-  forecasts: ForecastsT;
-}) => {
-  const [elevation, setElevation] = useState<ForecastElevation>("middle");
-  const chartData = useMemo(() => {
-    const data = forecasts[elevation];
-    if (!data) return [];
-
-    const startDate = new Date(forecasts.meta.date_start);
-    return Array.from({ length: 48 }, (_, i) => {
-      const currentDate = new Date(startDate.getTime());
-      currentDate.setDate(currentDate.getDate() + i * 7);
-      const label = `${currentDate.getMonth() + 1}/${currentDate.getDate()}`;
-      return {
-        name: label,
-        最高気温: data.temperatures.weeks.max[i] ?? null,
-        最低気温: data.temperatures.weeks.min[i] ?? null,
-        降雪確率: data.snowfalls.significantSnowfall[i] || 0,
-      };
-    });
-  }, [forecasts, elevation]);
-
-  return (
-    <Box>
-      <ElevationSelector
-        value={elevation}
-        onChange={value => setElevation(value as ForecastElevation)}
-        options={[
-          { label: "山頂", value: "top" },
-          { label: "中腹", value: "middle" },
-          { label: "山麓", value: "bottom" },
-        ]}
-      />
-      <Box w="full" h={{ base: "220px", sm: "260px", md: "300px" }} mt={8}>
-        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-          <ComposedChart
-            data={chartData}
-            margin={{ top: 5, right: 10, left: -20, bottom: 5 }}
-          >
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="#e5e7eb"
-              vertical={false}
-            />
-            <XAxis
-              dataKey="name"
-              interval={4}
-              tick={{ fontSize: 12, fill: "#6b7280", fontWeight: "bold" }}
-              axisLine={{ stroke: "#e5e7eb" }}
-              tickLine={{ stroke: "#e5e7eb" }}
-            />
-            <YAxis
-              yAxisId="left"
-              orientation="left"
-              stroke="#f97316"
-              label={{
-                value: "気温 (°C)",
-                angle: -90,
-                position: "insideLeft",
-                fill: "#f97316",
-                fontWeight: "bold",
-                fontSize: 10,
-                dx: 15,
-              }}
-              tick={{ fontSize: 10, fill: "#9ca3af", fontWeight: "bold" }}
-              axisLine={{ stroke: "#e5e7eb" }}
-              tickLine={{ stroke: "#e5e7eb" }}
-              width={40}
-            />
-            <YAxis
-              yAxisId="right"
-              orientation="right"
-              stroke="#8b5cf6"
-              unit="%"
-              label={{
-                value: "降雪確率 (%)",
-                angle: 90,
-                position: "insideRight",
-                fill: "#8b5cf6",
-                fontWeight: "bold",
-                fontSize: 10,
-                dx: -15,
-              }}
-              tick={{ fontSize: 10, fill: "#9ca3af", fontWeight: "bold" }}
-              axisLine={{ stroke: "#e5e7eb" }}
-              tickLine={{ stroke: "#e5e7eb" }}
-              width={40}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Legend
-              wrapperStyle={{
-                color: "#374151",
-                fontWeight: "bold",
-                fontSize: "14px",
-              }}
-            />
-            <Line
-              yAxisId="left"
-              type="monotone"
-              dataKey="最高気温"
-              name="最高気温"
-              stroke="#f97316"
-              strokeWidth={3}
-              dot={{ r: 4, fill: "white", stroke: "#f97316", strokeWidth: 2 }}
-              activeDot={{ r: 6, fill: "#f97316" }}
-              unit="°C"
-              connectNulls
-            />
-            <Line
-              yAxisId="left"
-              type="monotone"
-              dataKey="最低気温"
-              name="最低気温"
-              stroke="#3b82f6"
-              strokeWidth={3}
-              dot={{ r: 4, fill: "white", stroke: "#3b82f6", strokeWidth: 2 }}
-              activeDot={{ r: 6, fill: "#3b82f6" }}
-              unit="°C"
-              connectNulls
-            />
-            <Bar
-              yAxisId="right"
-              dataKey="降雪確率"
-              name="降雪確率"
-              fill="#8b5cf6"
-              fillOpacity={0.6}
-              barSize={12}
-              unit="%"
-              radius={[4, 4, 0, 0]}
-            />
-          </ComposedChart>
-        </ResponsiveContainer>
-      </Box>
-    </Box>
-  );
-};
-
-/**
- * 3. 積雪の分布
+ * 2. 積雪の分布
  */
 export const SnowDepthLineChart = ({
   snowDepths,

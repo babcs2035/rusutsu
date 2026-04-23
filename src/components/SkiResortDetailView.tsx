@@ -16,15 +16,14 @@ import {
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
-
 import type { getSkiResortById } from "@/actions/skiResorts";
-import type { ForecastData, ForecastsT } from "@/types/forecasts";
+import SnowForecastSlugBySkiResortId from "@/data/SnowForecastSlugBySkiResortId.json";
 import type { SnowDepthsT, WeatherData, WeathersT } from "@/types/weathers";
 import { LoadingSpinner } from "./LoadingSpinner";
 import {
   ForecastTable,
   SnowDepthLineChart,
-  WeeklyWeatherChart,
+  SnowForecastEmbed,
 } from "./WeatherChart";
 
 type ResortData = Awaited<ReturnType<typeof getSkiResortById>>;
@@ -1218,38 +1217,6 @@ const WeatherTab = ({ resort }: { resort: Resort }) => {
     };
   }, [resort.weathers]);
 
-  const forecastsFormatted: ForecastsT | undefined = useMemo(() => {
-    const forecast = resort.forecasts?.[0];
-    if (!forecast) return undefined;
-
-    // biome-ignore lint/suspicious/noExplicitAny: DB JSON data structure
-    const mapData = (json: any): ForecastData => ({
-      temperatures: {
-        weeks: {
-          max: json?.temperatures?.all?.max || [],
-          min: json?.temperatures?.all?.min || [],
-        },
-      },
-      snowfalls: {
-        snowfall: json?.snowfalls?.snowfall || [],
-        significantSnowfall: json?.snowfalls?.significantSnowfall || [],
-        significantRainfall: json?.snowfalls?.significantRainfall || [],
-      },
-      conditions: {
-        bluebirdPowder: json?.conditions?.bluebirdPowder || [],
-        powder: json?.conditions?.powder || [],
-        bluebird: json?.conditions?.bluebird || [],
-      },
-    });
-
-    return {
-      meta: { date_start: forecast.dateStart || new Date().toISOString() },
-      top: mapData(forecast.topData),
-      middle: mapData(forecast.middleData),
-      bottom: mapData(forecast.bottomData),
-    };
-  }, [resort.forecasts]);
-
   const snowDepthsFormatted: SnowDepthsT | undefined = useMemo(() => {
     const records = resort.snowDepths;
     if (!records || records.length === 0) return undefined;
@@ -1291,6 +1258,50 @@ const WeatherTab = ({ resort }: { resort: Resort }) => {
     };
   }, [resort.snowDepths]);
 
+  const snowForecastSlug = useMemo(() => {
+    const latestWeatherSource = resort.weathers?.[0]?.source;
+    if (latestWeatherSource) {
+      try {
+        const weatherPathname = new URL(latestWeatherSource).pathname;
+        const weatherMatch = weatherPathname.match(/^\/resorts\/([^/]+)/);
+        if (weatherMatch?.[1]) return weatherMatch[1];
+      } catch {
+        // Ignore malformed URL and continue to sources fallback.
+      }
+    }
+
+    const snowForecastUrl = resort.sources.find(source => {
+      try {
+        const url = new URL(source);
+        return (
+          url.hostname.endsWith("snow-forecast.com") &&
+          url.pathname.startsWith("/resorts/")
+        );
+      } catch {
+        return false;
+      }
+    });
+
+    if (snowForecastUrl) {
+      try {
+        const pathname = new URL(snowForecastUrl).pathname;
+        const match = pathname.match(/^\/resorts\/([^/]+)/);
+        if (match?.[1]) return match[1];
+      } catch {
+        // Ignore malformed URL and continue to mapping fallback.
+      }
+    }
+
+    const mappedSlug = (
+      SnowForecastSlugBySkiResortId as Record<string, string>
+    )[resort.id];
+    if (mappedSlug) return mappedSlug;
+
+    return null;
+  }, [resort.id, resort.sources, resort.weathers]);
+
+  const hasSnowForecastEmbed = Boolean(snowForecastSlug);
+
   return (
     <Flex flexDirection="column" gap={10}>
       {weathersFormatted && (
@@ -1307,7 +1318,7 @@ const WeatherTab = ({ resort }: { resort: Resort }) => {
         </Box>
       )}
 
-      {forecastsFormatted && (
+      {hasSnowForecastEmbed && snowForecastSlug && (
         <Box as="section">
           <Heading
             size="lg"
@@ -1316,9 +1327,12 @@ const WeatherTab = ({ resort }: { resort: Resort }) => {
             fontFamily="var(--font-heading)"
             color="gray.900"
           >
-            週間天気予報
+            Snow-Forecast 予報
           </Heading>
-          <WeeklyWeatherChart forecasts={forecastsFormatted} />
+          <SnowForecastEmbed
+            snowForecastSlug={snowForecastSlug}
+            resortName={resort.nameJa}
+          />
         </Box>
       )}
 
@@ -1337,7 +1351,7 @@ const WeatherTab = ({ resort }: { resort: Resort }) => {
         </Box>
       )}
 
-      {!weathersFormatted && !forecastsFormatted && !snowDepthsFormatted && (
+      {!weathersFormatted && !hasSnowForecastEmbed && !snowDepthsFormatted && (
         <Flex justifyContent="center" alignItems="center" py={20}>
           <Text fontSize="lg" color="gray.500" fontFamily="var(--font-heading)">
             気象データがありません。
