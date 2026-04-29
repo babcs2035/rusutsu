@@ -17,14 +17,10 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { getSkiResortById } from "@/actions/skiResorts";
-import SnowForecastSlugBySkiResortId from "@/data/SnowForecastSlugBySkiResortId.json";
-import type { SnowDepthsT, WeatherData, WeathersT } from "@/types/weathers";
+import SkiResortWeatherIds from "@/data/SkiResortWeatherIds.json";
+import type { SnowDepthsT } from "@/types/weathers";
 import { LoadingSpinner } from "./LoadingSpinner";
-import {
-  ForecastTable,
-  SnowDepthLineChart,
-  SnowForecastEmbed,
-} from "./WeatherChart";
+import { SnowDepthLineChart, SnowForecastEmbed } from "./WeatherChart";
 
 type ResortData = Awaited<ReturnType<typeof getSkiResortById>>;
 
@@ -1205,17 +1201,6 @@ const TicketsTab = ({ resort }: { resort: Resort }) => {
 
 const WeatherTab = ({ resort }: { resort: Resort }) => {
   // --- Data Transformation Logic ---
-  const weathersFormatted: WeathersT | undefined = useMemo(() => {
-    const weather = resort.weathers?.[0];
-    if (!weather) return undefined;
-
-    return {
-      meta: { date: weather.date },
-      top: weather.topData as unknown as WeatherData,
-      mid: weather.midData as unknown as WeatherData,
-      bot: weather.botData as unknown as WeatherData,
-    };
-  }, [resort.weathers]);
 
   const snowDepthsFormatted: SnowDepthsT | undefined = useMemo(() => {
     const records = resort.snowDepths;
@@ -1258,19 +1243,43 @@ const WeatherTab = ({ resort }: { resort: Resort }) => {
     };
   }, [resort.snowDepths]);
 
-  const snowForecastSlug = useMemo(() => {
+  const snowForecastLinks = useMemo(() => {
+    const links: Array<{
+      id: string;
+      displayName: string | null;
+      url: string;
+    }> = [];
+    const seen = new Set<string>();
+    const addSnowForecastLink = (
+      id: string | null | undefined,
+      displayName?: string | null,
+    ) => {
+      if (!id) return;
+      if (seen.has(id)) {
+        const existing = links.find(link => link.id === id);
+        if (existing && displayName) existing.displayName = displayName;
+        return;
+      }
+      seen.add(id);
+      links.push({
+        id,
+        displayName: displayName || id,
+        url: `https://ja.snow-forecast.com/resorts/${id}/6day/mid`,
+      });
+    };
+
     const latestWeatherSource = resort.weathers?.[0]?.source;
     if (latestWeatherSource) {
       try {
         const weatherPathname = new URL(latestWeatherSource).pathname;
         const weatherMatch = weatherPathname.match(/^\/resorts\/([^/]+)/);
-        if (weatherMatch?.[1]) return weatherMatch[1];
+        addSnowForecastLink(weatherMatch?.[1]);
       } catch {
         // Ignore malformed URL and continue to sources fallback.
       }
     }
 
-    const snowForecastUrl = resort.sources.find(source => {
+    const snowForecastUrls = resort.sources.filter(source => {
       try {
         const url = new URL(source);
         return (
@@ -1282,59 +1291,271 @@ const WeatherTab = ({ resort }: { resort: Resort }) => {
       }
     });
 
-    if (snowForecastUrl) {
+    for (const snowForecastUrl of snowForecastUrls) {
       try {
         const pathname = new URL(snowForecastUrl).pathname;
         const match = pathname.match(/^\/resorts\/([^/]+)/);
-        if (match?.[1]) return match[1];
+        addSnowForecastLink(match?.[1]);
       } catch {
         // Ignore malformed URL and continue to mapping fallback.
       }
     }
 
-    const mappedSlug = (
-      SnowForecastSlugBySkiResortId as Record<string, string>
-    )[resort.id];
-    if (mappedSlug) return mappedSlug;
+    const merged = (
+      SkiResortWeatherIds as Array<{
+        skiResortId: string;
+        snowForecast?: Array<{
+          snowForecastId: string;
+          snowForecastName?: string | null;
+          displayName?: string | null;
+        }>;
+        SnowForecastId?: string | null;
+        SnowForecastName?: string | null;
+      }>
+    ).find(e => e.skiResortId === resort.id);
 
-    return null;
+    for (const entry of merged?.snowForecast ?? []) {
+      addSnowForecastLink(
+        entry.snowForecastId,
+        entry.displayName || entry.snowForecastName || null,
+      );
+    }
+    addSnowForecastLink(merged?.SnowForecastId, merged?.SnowForecastName);
+
+    return links;
   }, [resort.id, resort.sources, resort.weathers]);
 
-  const hasSnowForecastEmbed = Boolean(snowForecastSlug);
+  const tenkiJpLinks = useMemo(() => {
+    const mergedEntry = (
+      SkiResortWeatherIds as Array<{
+        skiResortId: string;
+        tenkijp?: Array<{
+          tenkijpId: string;
+          tenkijpName?: string | null;
+          displayName?: string | null;
+        }>;
+      }>
+    ).find(e => e.skiResortId === resort.id);
+
+    if (!mergedEntry?.tenkijp || mergedEntry.tenkijp.length === 0) return [];
+
+    return mergedEntry.tenkijp.map(t => ({
+      id: t.tenkijpId,
+      displayName: t.displayName || t.tenkijpName || null,
+      url: `https://tenki.jp/season/ski/${t.tenkijpId}/`,
+    }));
+  }, [resort.id]);
+
+  const weathernewsEntry = useMemo(() => {
+    return (
+      SkiResortWeatherIds as Array<{
+        skiResortId: string;
+        weathernewsSpotId?: string | null;
+      }>
+    ).find(e => e.skiResortId === resort.id);
+  }, [resort.id]);
 
   return (
     <Flex flexDirection="column" gap={10}>
-      {weathersFormatted && (
-        <Box as="section">
-          <Heading
-            size="lg"
-            mb={6}
-            fontFamily="var(--font-heading)"
-            color="gray.900"
-          >
-            直近の天気
-          </Heading>
-          <ForecastTable weathers={weathersFormatted} />
-        </Box>
-      )}
+      <Box as="section">
+        <Heading
+          size="md"
+          mb={6}
+          mt={4}
+          fontFamily="var(--font-heading)"
+          color="gray.900"
+        >
+          リンク一覧
+        </Heading>
+        <Flex flexWrap="wrap" alignItems="center" gap={3} mb={4}>
+          {snowForecastLinks.length === 1 && (
+            <Link
+              href={snowForecastLinks[0].url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={e => {
+                if (e.detail > 0) e.currentTarget.blur();
+              }}
+              display="inline-flex"
+              alignItems="center"
+              gap={2}
+              px={3}
+              py={2}
+              borderRadius="full"
+              bg="red.50"
+              color="red.700"
+              fontSize="sm"
+              fontWeight="700"
+              _hover={{ bg: "red.100", textDecoration: "none" }}
+            >
+              Snow Forecast
+            </Link>
+          )}
+          {snowForecastLinks.length > 1 &&
+            snowForecastLinks.map(link => (
+              <Link
+                key={link.id}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={e => {
+                  if (e.detail > 0) e.currentTarget.blur();
+                }}
+                display="inline-flex"
+                alignItems="center"
+                gap={2}
+                px={3}
+                py={2}
+                borderRadius="full"
+                bg="red.50"
+                color="red.700"
+                fontSize="sm"
+                fontWeight="700"
+                _hover={{ bg: "red.100", textDecoration: "none" }}
+              >
+                {`Snow Forecast ${link.displayName}`}
+              </Link>
+            ))}
+          {tenkiJpLinks.length === 1 && (
+            <Link
+              href={tenkiJpLinks[0].url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={e => {
+                if (e.detail > 0) e.currentTarget.blur();
+              }}
+              display="inline-flex"
+              alignItems="center"
+              gap={2}
+              px={3}
+              py={2}
+              borderRadius="full"
+              bg="brand.50"
+              color="brand.700"
+              fontSize="sm"
+              fontWeight="700"
+              _hover={{ bg: "brand.100", textDecoration: "none" }}
+            >
+              tenki.jp
+            </Link>
+          )}
 
-      {hasSnowForecastEmbed && snowForecastSlug && (
-        <Box as="section">
-          <Heading
-            size="lg"
-            mb={6}
-            mt={4}
-            fontFamily="var(--font-heading)"
-            color="gray.900"
-          >
-            Snow-Forecast 予報
-          </Heading>
-          <SnowForecastEmbed
-            snowForecastSlug={snowForecastSlug}
-            resortName={resort.nameJa}
-          />
-        </Box>
-      )}
+          {tenkiJpLinks.length > 1 &&
+            tenkiJpLinks.map(link => (
+              <Link
+                key={link.id}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={e => {
+                  if (e.detail > 0) e.currentTarget.blur();
+                }}
+                display="inline-flex"
+                alignItems="center"
+                gap={2}
+                px={3}
+                py={2}
+                borderRadius="full"
+                bg="brand.50"
+                color="brand.700"
+                fontSize="sm"
+                fontWeight="700"
+                _hover={{ bg: "brand.100", textDecoration: "none" }}
+              >
+                {`tenki.jp ${link.displayName}`}
+              </Link>
+            ))}
+
+          {/* Weathernews (conditional) + Windy (always when coords exist) */}
+          {(() => {
+            const weathernewsUrl = weathernewsEntry?.weathernewsSpotId
+              ? `https://weathernews.jp/ski/spot/${weathernewsEntry.weathernewsSpotId}/`
+              : null;
+
+            const lat = resort.latitude;
+            const lon = resort.longitude;
+            const hasCoords =
+              typeof lat === "number" && typeof lon === "number";
+            const windyUrl = hasCoords
+              ? `https://www.windy.com/${lat}/${lon}?${lat},${lon},14,i:pressure,p:cities`
+              : null;
+
+            return (
+              <>
+                {weathernewsUrl && (
+                  <Link
+                    key="weathernews"
+                    href={weathernewsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={e => {
+                      if (e.detail > 0) e.currentTarget.blur();
+                    }}
+                    display="inline-flex"
+                    alignItems="center"
+                    gap={2}
+                    px={3}
+                    py={2}
+                    borderRadius="full"
+                    bg="blue.50"
+                    color="blue.800"
+                    fontSize="sm"
+                    fontWeight="700"
+                    _hover={{ bg: "blue.100", textDecoration: "none" }}
+                  >
+                    ウェザーニュース
+                  </Link>
+                )}
+
+                {windyUrl && (
+                  <Link
+                    key="windy"
+                    href={windyUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={e => {
+                      if (e.detail > 0) e.currentTarget.blur();
+                    }}
+                    display="inline-flex"
+                    alignItems="center"
+                    gap={2}
+                    px={3}
+                    py={2}
+                    borderRadius="full"
+                    bg="red.50"
+                    color="red.700"
+                    fontSize="sm"
+                    fontWeight="700"
+                    _hover={{ bg: "red.100", textDecoration: "none" }}
+                  >
+                    Windy
+                  </Link>
+                )}
+              </>
+            );
+          })()}
+        </Flex>
+        {snowForecastLinks.length > 0 &&
+          snowForecastLinks.map((link, index) => (
+            <Box key={link.id}>
+              <Heading
+                size="md"
+                mb={6}
+                mt={index === 0 ? 4 : 8}
+                fontFamily="var(--font-heading)"
+                color="gray.900"
+              >
+                {snowForecastLinks.length === 1
+                  ? "Snow Forecast 予報"
+                  : `Snow Forecast 予報 (${link.displayName})`}
+              </Heading>
+              <SnowForecastEmbed
+                snowForecastSlug={link.id}
+                resortName={resort.nameJa}
+              />
+            </Box>
+          ))}
+      </Box>
 
       {snowDepthsFormatted && (
         <Box as="section">
@@ -1349,14 +1570,6 @@ const WeatherTab = ({ resort }: { resort: Resort }) => {
           </Heading>
           <SnowDepthLineChart snowDepths={snowDepthsFormatted} />
         </Box>
-      )}
-
-      {!weathersFormatted && !hasSnowForecastEmbed && !snowDepthsFormatted && (
-        <Flex justifyContent="center" alignItems="center" py={20}>
-          <Text fontSize="lg" color="gray.500" fontFamily="var(--font-heading)">
-            気象データがありません。
-          </Text>
-        </Flex>
       )}
     </Flex>
   );
