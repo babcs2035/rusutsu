@@ -17,7 +17,6 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { getSkiResortById } from "@/actions/skiResorts";
-import SkiResortWeatherIds from "@/data/SkiResortWeatherIds.json";
 import type { SnowDepthsT } from "@/types/weathers";
 import { LoadingSpinner } from "./LoadingSpinner";
 import { SnowDepthLineChart, SnowForecastEmbed } from "./WeatherChart";
@@ -1301,18 +1300,7 @@ const WeatherTab = ({ resort }: { resort: Resort }) => {
       }
     }
 
-    const merged = (
-      SkiResortWeatherIds as Array<{
-        skiResortId: string;
-        snowForecast?: Array<{
-          snowForecastId: string;
-          snowForecastName?: string | null;
-          displayName?: string | null;
-        }>;
-        SnowForecastId?: string | null;
-        SnowForecastName?: string | null;
-      }>
-    ).find(e => e.skiResortId === resort.id);
+    const merged = resort.weatherIds;
 
     for (const entry of merged?.snowForecast ?? []) {
       addSnowForecastLink(
@@ -1323,19 +1311,10 @@ const WeatherTab = ({ resort }: { resort: Resort }) => {
     addSnowForecastLink(merged?.SnowForecastId, merged?.SnowForecastName);
 
     return links;
-  }, [resort.id, resort.sources, resort.weathers]);
+  }, [resort.sources, resort.weatherIds, resort.weathers]);
 
   const tenkiJpLinks = useMemo(() => {
-    const mergedEntry = (
-      SkiResortWeatherIds as Array<{
-        skiResortId: string;
-        tenkijp?: Array<{
-          tenkijpId: string;
-          tenkijpName?: string | null;
-          displayName?: string | null;
-        }>;
-      }>
-    ).find(e => e.skiResortId === resort.id);
+    const mergedEntry = resort.weatherIds;
 
     if (!mergedEntry?.tenkijp || mergedEntry.tenkijp.length === 0) return [];
 
@@ -1344,16 +1323,9 @@ const WeatherTab = ({ resort }: { resort: Resort }) => {
       displayName: t.displayName || t.tenkijpName || null,
       url: `https://tenki.jp/season/ski/${t.tenkijpId}/`,
     }));
-  }, [resort.id]);
+  }, [resort.weatherIds]);
 
-  const weathernewsEntry = useMemo(() => {
-    return (
-      SkiResortWeatherIds as Array<{
-        skiResortId: string;
-        weathernewsSpotId?: string | null;
-      }>
-    ).find(e => e.skiResortId === resort.id);
-  }, [resort.id]);
+  const weathernewsSpotId = resort.weatherIds?.weathernewsSpotId ?? null;
 
   return (
     <Flex flexDirection="column" gap={10}>
@@ -1468,8 +1440,8 @@ const WeatherTab = ({ resort }: { resort: Resort }) => {
 
           {/* Weathernews (conditional) + Windy (always when coords exist) */}
           {(() => {
-            const weathernewsUrl = weathernewsEntry?.weathernewsSpotId
-              ? `https://weathernews.jp/ski/spot/${weathernewsEntry.weathernewsSpotId}/`
+            const weathernewsUrl = weathernewsSpotId
+              ? `https://weathernews.jp/ski/spot/${weathernewsSpotId}/`
               : null;
 
             const lat = resort.latitude;
