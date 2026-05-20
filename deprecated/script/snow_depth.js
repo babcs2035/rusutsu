@@ -60,24 +60,24 @@ export function SnowDepths(
     const snowDataMean = [];
 
     const skiData = snowDepthsData[index];
-    const firstYear = skiData["firstYear"];
-    if (firstYear == 2023 || firstYear == 2024) {
+    const firstYear = skiData.firstYear;
+    if (firstYear === 2023 || firstYear === 2024) {
       resortContainer.remove();
       return;
     }
-    const snowData = skiData["data"];
+    const snowData = skiData.data;
 
     const monthLengthList = [31, 28, 31, 30, 31];
 
     formattedWeeks.forEach(date => {
       var month = date.month;
-      if (month == 12) month = 5;
+      if (month === 12) month = 5;
       const snowDataList = [];
       const week = date.week;
       const id = date.id;
       // console.log("week", week)
       for (const [index, yearData] of snowData.entries()) {
-        if ((index == 0) & (month != 5)) {
+        if ((index === 0) & (month !== 5)) {
           continue;
         }
         // console.log("yearData",yearData)
@@ -88,7 +88,7 @@ export function SnowDepths(
         for (let i = 7 * (week - 1); i < 7 * week; i++) {
           snowDataList.push(data[i]);
         }
-        if (week == 4) {
+        if (week === 4) {
           for (let i = 7 * week; i < monthLength; i++) {
             snowDataList.push(data[i]);
           }
@@ -112,10 +112,10 @@ export function SnowDepths(
       .attr("width", width + margin.left + margin.right)
       .attr("height", height + margin.top + margin.bottom)
       .append("g")
-      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+      .attr("transform", `translate(${margin.left},${margin.top})`);
 
     // Tooltip functions
-    var mouseover = function (event, d) {
+    var mouseover = (_event, d) => {
       d3.selectAll(`[data-id='${d.id}']`)
         .style("stroke", "black")
         .each(function (d) {
@@ -169,8 +169,8 @@ export function SnowDepths(
             .html(tooltipHtml); // 表示するテキスト
         });
     };
-    var mousemove = function () {};
-    var mouseleave = function (event, d) {
+    var mousemove = () => {};
+    var mouseleave = (_event, d) => {
       d3.selectAll(`[data-id='${d.id}']`).style("stroke", "none");
 
       d3.selectAll(".tooltip").remove();
@@ -187,7 +187,7 @@ export function SnowDepths(
       // X軸
       const xAxis = d3
         .axisBottom(x)
-        .tickFormat((d, i) => `${formattedWeeks[i].week}`) // 各週番号を表示
+        .tickFormat((_d, i) => `${formattedWeeks[i].week}`) // 各週番号を表示
         .tickSize(0);
       svg
         .append("g")
@@ -270,17 +270,13 @@ export function SnowDepths(
 
     svg
       .selectAll(".snow-depth-rect")
-      .data(snowDataMean, function (d) {
-        return d.id;
-      })
+      .data(snowDataMean, d => d.id)
       .enter()
       .append("rect")
       .attr("class", "snow-depth-rect")
       .attr("x", d => x(d.id)) // 横方向の位置 (X軸スケール)
       .attr("y", center - 15) // 縦方向の固定位置（1行の場合）
-      .attr("data-id", function (d) {
-        return d.id;
-      })
+      .attr("data-id", d => d.id)
       .attr("width", x.bandwidth()) // 矩形の幅 (X軸のバンド幅)
       .attr("height", 30) // 矩形の高さ（例: 50px）
       .attr("fill", d => colorScale(d.value)) // 値に基づいて色を設定

@@ -3,6 +3,7 @@
 import {
   Box,
   Button,
+  Checkbox,
   Flex,
   Grid,
   Heading,
@@ -12,6 +13,7 @@ import {
   Portal,
   Table,
   Text,
+  useBreakpointValue,
 } from "@chakra-ui/react";
 import { motion } from "framer-motion";
 import Image from "next/image";
@@ -27,6 +29,8 @@ type Props = {
   resortId: string;
   resortData: ResortData | null;
   isLoading: boolean;
+  isCompareSelected: boolean;
+  onToggleCompare: (id: string, selected: boolean) => void;
   onClose: () => void;
 };
 
@@ -41,9 +45,22 @@ export const SkiResortDetailView = ({
   resortId: _resortId,
   resortData,
   isLoading,
+  isCompareSelected,
+  onToggleCompare,
   onClose,
 }: Props) => {
   const [activeTab, setActiveTab] = useState(TABS[0]);
+  const isSidePanel =
+    useBreakpointValue({ base: false, lg: true }, { ssr: false }) ?? false;
+  const panelVariants = isSidePanel
+    ? {
+        hidden: { opacity: 0, x: 24 },
+        visible: { opacity: 1, x: 0 },
+      }
+    : {
+        hidden: { opacity: 0 },
+        visible: { opacity: 1 },
+      };
 
   // モーダル表示時にスクロールを防止
   useEffect(() => {
@@ -61,35 +78,33 @@ export const SkiResortDetailView = ({
           inset={0}
           zIndex={99999}
           alignItems="center"
-          justifyContent="center"
-          p={{ base: 0, md: 6 }}
+          justifyContent={{ base: "center", lg: "flex-end" }}
+          p={0}
+          pointerEvents="none"
         >
           <MotionBox
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={onClose}
             position="absolute"
             inset={0}
-            bg="rgba(0, 0, 0, 0.7)"
-            backdropFilter="blur(10px)"
+            bg="transparent"
+            backdropFilter="none"
+            pointerEvents="none"
             aria-hidden="true"
           />
           <MotionBox
-            variants={{
-              hidden: { opacity: 0, scale: 0.95, y: 20 },
-              visible: { opacity: 1, scale: 1, y: 0 },
-            }}
+            variants={panelVariants}
             initial="hidden"
             animate="visible"
             exit="hidden"
             position="relative"
             zIndex={10}
             display="flex"
-            h={{ base: "100%", md: "90vh" }}
-            maxH={{ md: "800px" }}
-            w={{ base: "100%", md: "90vw" }}
-            maxW={{ md: "4xl" }}
+            h="100%"
+            maxH="none"
+            w={{ base: "100%", lg: "min(720px, 70vw)" }}
+            maxW={{ lg: "none" }}
             flexDirection="column"
             alignItems="center"
             justifyContent="center"
@@ -98,7 +113,8 @@ export const SkiResortDetailView = ({
             border="1px solid"
             borderColor="gray.200"
             boxShadow="2xl"
-            borderRadius={{ base: "0", md: "2xl" }}
+            borderRadius="0"
+            pointerEvents="auto"
           >
             <LoadingSpinner text="読み込み中..." />
           </MotionBox>
@@ -116,43 +132,42 @@ export const SkiResortDetailView = ({
         inset={0}
         zIndex={100000}
         alignItems="center"
-        justifyContent="center"
-        p={{ base: 0, md: 6 }}
+        justifyContent={{ base: "center", lg: "flex-end" }}
+        p={0}
+        pointerEvents="none"
       >
         <MotionBox
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          onClick={onClose}
           position="absolute"
           inset={0}
-          bg="rgba(0, 0, 0, 0.7)"
-          backdropFilter="blur(10px)"
+          bg="transparent"
+          backdropFilter="none"
+          pointerEvents="none"
           aria-hidden="true"
         />
         <MotionBox
-          variants={{
-            hidden: { opacity: 0, scale: 0.95, y: 20 },
-            visible: { opacity: 1, scale: 1, y: 0 },
-          }}
+          variants={panelVariants}
           initial="hidden"
           animate="visible"
           exit="hidden"
-          transition={{ type: "spring", stiffness: 350, damping: 25 }}
+          transition={{ type: "tween", duration: 0.18, ease: "easeOut" }}
           position="relative"
           zIndex={10}
           display="flex"
-          h={{ base: "100%", md: "90vh" }}
-          maxH={{ md: "800px" }}
-          w={{ base: "100%", md: "90vw" }}
-          maxW={{ md: "4xl" }}
+          h="100%"
+          maxH="none"
+          w={{ base: "100%", lg: "min(720px, 70vw)" }}
+          maxW={{ lg: "none" }}
           flexDirection="column"
           overflow="hidden"
           bg="white"
           border="1px solid"
           borderColor="gray.200"
           boxShadow="2xl"
-          borderRadius={{ base: "0", md: "2xl" }}
+          borderRadius="0"
+          pointerEvents="auto"
         >
           <Button
             onClick={onClose}
@@ -192,7 +207,11 @@ export const SkiResortDetailView = ({
               ]}
               alt={resort.nameJa}
             />
-            <InfoSection resort={resort} />
+            <InfoSection
+              resort={resort}
+              isCompareSelected={isCompareSelected}
+              onToggleCompare={onToggleCompare}
+            />
             <Flex
               as="nav"
               position="sticky"
@@ -213,8 +232,7 @@ export const SkiResortDetailView = ({
                 <Button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  flex={{ base: "0 0 auto", md: 1 }}
-                  minW={{ base: "80px", md: "unset" }}
+                  flex={{ base: "1 0 80px", md: "1 0 96px" }}
                   py={4}
                   px={{ base: 4, md: 2 }}
                   textAlign="center"
@@ -377,16 +395,52 @@ const ImageCarousel = ({ images, alt }: { images: string[]; alt: string }) => {
 
 type Resort = NonNullable<ResortData>;
 
-const InfoSection = ({ resort }: { resort: Resort }) => (
+const InfoSection = ({
+  resort,
+  isCompareSelected,
+  onToggleCompare,
+}: {
+  resort: Resort;
+  isCompareSelected: boolean;
+  onToggleCompare: (id: string, selected: boolean) => void;
+}) => (
   <Box
     bg="transparent"
     p={{ base: 4, md: 8 }}
     borderBottom="1px solid"
     borderColor="gray.200"
   >
-    <Heading size="3xl" color="gray.900" fontFamily="var(--font-heading)">
-      {resort.nameJa}
-    </Heading>
+    <Flex
+      alignItems={{ base: "flex-start", sm: "center" }}
+      justifyContent="space-between"
+      gap={4}
+      flexWrap="wrap"
+    >
+      <Heading size="3xl" color="gray.900" fontFamily="var(--font-heading)">
+        {resort.nameJa}
+      </Heading>
+      <Checkbox.Root
+        checked={isCompareSelected}
+        onCheckedChange={details =>
+          onToggleCompare(resort.id, details.checked === true)
+        }
+        aria-label={`${resort.nameJa}を比較対象に追加`}
+      >
+        <Checkbox.HiddenInput />
+        <Checkbox.Control
+          borderColor="gray.300"
+          bg="white"
+          _checked={{
+            bg: "brand.500",
+            borderColor: "brand.500",
+            color: "white",
+          }}
+        />
+        <Checkbox.Label color="gray.700" fontSize="sm" fontWeight="800">
+          比較する
+        </Checkbox.Label>
+      </Checkbox.Root>
+    </Flex>
     <Text mt={2} fontSize="sm" color="brand.600" fontWeight="700">
       {resort.prefecture} • {resort.town}
     </Text>
@@ -1267,39 +1321,6 @@ const WeatherTab = ({ resort }: { resort: Resort }) => {
       });
     };
 
-    const latestWeatherSource = resort.weathers?.[0]?.source;
-    if (latestWeatherSource) {
-      try {
-        const weatherPathname = new URL(latestWeatherSource).pathname;
-        const weatherMatch = weatherPathname.match(/^\/resorts\/([^/]+)/);
-        addSnowForecastLink(weatherMatch?.[1]);
-      } catch {
-        // Ignore malformed URL and continue to sources fallback.
-      }
-    }
-
-    const snowForecastUrls = resort.sources.filter(source => {
-      try {
-        const url = new URL(source);
-        return (
-          url.hostname.endsWith("snow-forecast.com") &&
-          url.pathname.startsWith("/resorts/")
-        );
-      } catch {
-        return false;
-      }
-    });
-
-    for (const snowForecastUrl of snowForecastUrls) {
-      try {
-        const pathname = new URL(snowForecastUrl).pathname;
-        const match = pathname.match(/^\/resorts\/([^/]+)/);
-        addSnowForecastLink(match?.[1]);
-      } catch {
-        // Ignore malformed URL and continue to mapping fallback.
-      }
-    }
-
     const merged = resort.weatherIds;
 
     for (const entry of merged?.snowForecast ?? []) {
@@ -1311,7 +1332,7 @@ const WeatherTab = ({ resort }: { resort: Resort }) => {
     addSnowForecastLink(merged?.SnowForecastId, merged?.SnowForecastName);
 
     return links;
-  }, [resort.sources, resort.weatherIds, resort.weathers]);
+  }, [resort.weatherIds]);
 
   const tenkiJpLinks = useMemo(() => {
     const mergedEntry = resort.weatherIds;
@@ -1332,14 +1353,14 @@ const WeatherTab = ({ resort }: { resort: Resort }) => {
       <Box as="section">
         <Heading
           size="md"
-          mb={6}
+          mb={4}
           mt={4}
           fontFamily="var(--font-heading)"
           color="gray.900"
         >
           リンク一覧
         </Heading>
-        <Flex flexWrap="wrap" alignItems="center" gap={3} mb={4}>
+        <Flex flexWrap="wrap" alignItems="center" gap={3} mb={8}>
           {snowForecastLinks.length === 1 && (
             <Link
               href={snowForecastLinks[0].url}
@@ -1513,7 +1534,7 @@ const WeatherTab = ({ resort }: { resort: Resort }) => {
               <Heading
                 size="md"
                 mb={6}
-                mt={index === 0 ? 4 : 8}
+                mt={index === 0 ? 0 : 8}
                 fontFamily="var(--font-heading)"
                 color="gray.900"
               >

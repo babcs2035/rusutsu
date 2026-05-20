@@ -5,6 +5,7 @@ import L from "leaflet";
 import { Home } from "lucide-react";
 import {
   Fragment,
+  memo,
   useCallback,
   useEffect,
   useMemo,
@@ -18,6 +19,7 @@ import {
   Marker,
   Pane,
   Polyline,
+  Popup,
   TileLayer,
   useMap,
   useMapEvents,
@@ -39,6 +41,12 @@ const LEADER_POINT_CLEARANCE = 8;
 
 const BASE_MARKER_PANE = "resort-markers-base";
 const FRONT_MARKER_PANE = "resort-markers-front";
+const FILTER_MATCH_MARKER_PANE = "resort-markers-filter-match";
+const SELECTED_MARKER_PANE = "resort-markers-selected";
+const DETAIL_PANEL_MAX_WIDTH = 720;
+const COMPARE_PANEL_MAX_WIDTH = 860;
+const SIDE_PANEL_WIDTH_RATIO = 0.7;
+const SIDE_PANEL_BREAKPOINT_WIDTH = 1024;
 
 let cachedLabelMeasureElement: HTMLDivElement | undefined;
 const LABEL_MEASURE_ELEMENT_ATTRIBUTE = "data-resort-label-measure-probe";
@@ -195,10 +203,11 @@ const createNameLabelIcon = (
   width: number,
   height: number,
   isSelected: boolean,
+  isDimmed: boolean,
 ) =>
   L.divIcon({
     className: "resort-name-label-icon",
-    html: `<div class="resort-name-label${isSelected ? " is-selected" : ""}" style="width:${width}px">${escapeHtml(name)}</div>`,
+    html: `<div class="resort-name-label${isSelected ? " is-selected" : ""}${isDimmed ? " is-dimmed" : ""}" style="width:${width}px">${escapeHtml(name)}</div>`,
     iconSize: [width, height],
     iconAnchor: [0, 0],
   });
@@ -737,21 +746,148 @@ const MapControls = () => {
 
 type Props = {
   resorts: MapResort[];
+  filteredResortIdSet?: Set<string>;
+  isFilterActive?: boolean;
   selectedResortId: string | null;
   onSelectResort: (id: string) => void;
+  interactionMode?: "default" | "detail" | "compare";
+  selectedCompareIdSet?: Set<string>;
+  onToggleCompare?: (id: string, selected: boolean) => void;
   onBoundsChange: (bounds: L.LatLngBounds) => void;
 };
 
-export const SkiResortMap = ({
+type ResortPriority = "selected" | "filter-match" | "normal";
+
+const getResortPriority = ({
+  resortId,
+  filteredResortIdSet,
+  isFilterActive,
+  selectedResortIdSet,
+}: {
+  resortId: string;
+  filteredResortIdSet?: Set<string>;
+  isFilterActive: boolean;
+  selectedResortIdSet: Set<string>;
+}): ResortPriority => {
+  if (selectedResortIdSet.has(resortId)) return "selected";
+  if (isFilterActive && filteredResortIdSet?.has(resortId)) {
+    return "filter-match";
+  }
+  return "normal";
+};
+
+const getResortPriorityRank = (priority: ResortPriority): number => {
+  if (priority === "selected") return 2;
+  if (priority === "filter-match") return 1;
+  return 0;
+};
+
+const getSidePanelWidth = (mode: "default" | "detail" | "compare"): number => {
+  if (typeof window === "undefined") return 0;
+  if (mode === "default" || window.innerWidth < SIDE_PANEL_BREAKPOINT_WIDTH) {
+    return 0;
+  }
+
+  const maxWidth =
+    mode === "compare" ? COMPARE_PANEL_MAX_WIDTH : DETAIL_PANEL_MAX_WIDTH;
+  return Math.min(maxWidth, window.innerWidth * SIDE_PANEL_WIDTH_RATIO);
+};
+
+const MapViewportController = ({
   resorts,
   selectedResortId,
+  selectedCompareIdSet,
+  interactionMode,
+  onViewportChange,
+  skipCompareRecenterRef,
+}: {
+  resorts: MapResort[];
+  selectedResortId: string | null;
+  selectedCompareIdSet: Set<string>;
+  interactionMode: "default" | "detail" | "compare";
+  onViewportChange: (map: L.Map) => void;
+  skipCompareRecenterRef?: React.MutableRefObject<boolean>;
+}) => {
+  const map = useMap();
+
+  useEffect(() => {
+    map.setMinZoom(INITIAL_ZOOM);
+  }, [map]);
+
+  useEffect(() => {
+    if (interactionMode === "detail" && selectedResortId) {
+      const resort = resorts.find(resort => resort.id === selectedResortId);
+      if (!resort) return;
+
+      map.setView([resort.latitude, resort.longitude], map.getZoom(), {
+        animate: true,
+      });
+      onViewportChange(map);
+      return;
+    }
+
+    if (interactionMode === "compare" && selectedCompareIdSet.size > 0) {
+      if (skipCompareRecenterRef?.current) {
+        skipCompareRecenterRef.current = false;
+        return;
+      }
+      const selectedResorts = resorts.filter(resort =>
+        selectedCompareIdSet.has(resort.id),
+      );
+      if (selectedResorts.length === 0) return;
+
+      const bounds = L.latLngBounds(
+        selectedResorts.map(resort => [resort.latitude, resort.longitude]),
+      );
+
+      if (selectedResorts.length === 1) {
+        map.setView(
+          [selectedResorts[0].latitude, selectedResorts[0].longitude],
+          Math.max(map.getZoom(), INITIAL_ZOOM),
+          { animate: true },
+        );
+      } else {
+        map.fitBounds(bounds, {
+          animate: true,
+          paddingTopLeft: [24, 24],
+          paddingBottomRight: [getSidePanelWidth(interactionMode) + 24, 24],
+        });
+      }
+      onViewportChange(map);
+    }
+  }, [
+    interactionMode,
+    map,
+    onViewportChange,
+    resorts,
+    selectedCompareIdSet,
+    selectedResortId,
+    skipCompareRecenterRef,
+  ]);
+
+  return null;
+};
+
+export const SkiResortMap = memo(function SkiResortMap({
+  resorts,
+  filteredResortIdSet,
+  isFilterActive = false,
+  selectedResortId,
   onSelectResort,
+  interactionMode = "default",
+  selectedCompareIdSet,
+  onToggleCompare,
   onBoundsChange,
-}: Props) => {
+}: Props) {
   const [labelLayouts, setLabelLayouts] = useState<Record<string, LabelLayout>>(
     {},
   );
   const [aliasById, setAliasById] = useState<Map<string, string>>(new Map());
+  const [openActionPopupResortId, setOpenActionPopupResortId] = useState<
+    string | null
+  >(null);
+  const [mapZoom, setMapZoom] = useState(INITIAL_ZOOM);
+  const skipCompareRecenterRef = useRef(false);
 
   useEffect(() => {
     if (resorts.length === 0) {
@@ -787,16 +923,24 @@ export const SkiResortMap = ({
   const updateLabelLayout = useCallback(
     (map: L.Map) => {
       const currentZoom = map.getZoom();
-      if (currentZoom < LABEL_SHOW_ZOOM) {
+      setMapZoom(currentZoom);
+      const selectedResortIdSet =
+        interactionMode === "compare"
+          ? (selectedCompareIdSet ?? new Set<string>())
+          : selectedResortId
+            ? new Set([selectedResortId])
+            : new Set<string>();
+      const shouldShowLabelsBelowDefaultZoom =
+        interactionMode !== "default" && selectedResortIdSet.size > 0;
+
+      if (currentZoom < LABEL_SHOW_ZOOM && !shouldShowLabelsBelowDefaultZoom) {
         setLabelLayouts(previousLayouts =>
           Object.keys(previousLayouts).length === 0 ? previousLayouts : {},
         );
         return;
       }
 
-      const isSimpleVerticalLayout =
-        currentZoom >= LABEL_SHOW_ZOOM &&
-        currentZoom < LABEL_ADVANCED_LAYOUT_ZOOM;
+      const isSimpleVerticalLayout = currentZoom < LABEL_ADVANCED_LAYOUT_ZOOM;
       const useAdvancedLayout = currentZoom >= LABEL_ADVANCED_LAYOUT_ZOOM;
 
       const mapBounds = map.getBounds();
@@ -807,27 +951,49 @@ export const SkiResortMap = ({
       const placedActualRects: Rect[] = [];
       const placedLeaderSegments: Segment[] = [];
 
-      const sortedCandidates = resorts
-        .filter(resort =>
-          mapBounds.contains([
-            resort.latitude,
-            resort.longitude,
-          ] as L.LatLngTuple),
-        )
-        .sort((a, b) => {
-          if (isSimpleVerticalLayout) {
-            return b.numberOfCourses - a.numberOfCourses;
-          }
+      const visibleCandidates = resorts.filter(resort =>
+        mapBounds.contains([
+          resort.latitude,
+          resort.longitude,
+        ] as L.LatLngTuple),
+      );
+      const labelCandidates = visibleCandidates.filter(resort => {
+        if (currentZoom < LABEL_SHOW_ZOOM) {
+          return selectedResortIdSet.has(resort.id);
+        }
 
-          const aSelected = a.id === selectedResortId ? 1 : 0;
-          const bSelected = b.id === selectedResortId ? 1 : 0;
+        if (isFilterActive && currentZoom < LABEL_ADVANCED_LAYOUT_ZOOM) {
+          return (
+            selectedResortIdSet.has(resort.id) ||
+            filteredResortIdSet?.has(resort.id) === true
+          );
+        }
 
-          if (aSelected !== bSelected) {
-            return bSelected - aSelected;
-          }
+        return true;
+      });
 
-          return b.numberOfCourses - a.numberOfCourses;
+      const sortedCandidates = labelCandidates.sort((a, b) => {
+        const aPriority = getResortPriority({
+          resortId: a.id,
+          filteredResortIdSet,
+          isFilterActive,
+          selectedResortIdSet,
         });
+        const bPriority = getResortPriority({
+          resortId: b.id,
+          filteredResortIdSet,
+          isFilterActive,
+          selectedResortIdSet,
+        });
+        const priorityDiff =
+          getResortPriorityRank(bPriority) - getResortPriorityRank(aPriority);
+
+        if (priorityDiff !== 0) {
+          return priorityDiff;
+        }
+
+        return b.numberOfCourses - a.numberOfCourses;
+      });
 
       const pointById = new Map<string, L.Point>(
         sortedCandidates.map(resort => [
@@ -1122,7 +1288,15 @@ export const SkiResortMap = ({
 
       setLabelLayouts(nextLayouts);
     },
-    [displayNameById, resorts, selectedResortId],
+    [
+      displayNameById,
+      filteredResortIdSet,
+      interactionMode,
+      isFilterActive,
+      resorts,
+      selectedCompareIdSet,
+      selectedResortId,
+    ],
   );
 
   const nameLabelIconsByResortId = useMemo(() => {
@@ -1133,7 +1307,14 @@ export const SkiResortMap = ({
       if (!labelLayout) {
         return;
       }
-      const isSelected = resort.id === selectedResortId;
+      const isSelected =
+        resort.id === selectedResortId ||
+        (interactionMode === "compare" &&
+          selectedCompareIdSet?.has(resort.id) === true);
+      const isDimmedByFilter =
+        isFilterActive &&
+        !isSelected &&
+        filteredResortIdSet?.has(resort.id) !== true;
       const displayName = getResortDisplayName(resort, displayNameById);
       icons.set(
         resort.id,
@@ -1142,16 +1323,74 @@ export const SkiResortMap = ({
           labelLayout.labelWidth,
           labelHeight,
           isSelected,
+          isDimmedByFilter,
         ),
       );
     });
     return icons;
-  }, [displayNameById, labelLayouts, resorts, selectedResortId]);
+  }, [
+    displayNameById,
+    interactionMode,
+    isFilterActive,
+    labelLayouts,
+    resorts,
+    filteredResortIdSet,
+    selectedCompareIdSet,
+    selectedResortId,
+  ]);
+
+  const shouldShowCompareActions = interactionMode === "compare";
+
+  useEffect(() => {
+    if (!shouldShowCompareActions) {
+      setOpenActionPopupResortId(null);
+    }
+  }, [shouldShowCompareActions]);
+
+  const openActionPopupResort = useMemo(
+    () =>
+      openActionPopupResortId
+        ? (resorts.find(resort => resort.id === openActionPopupResortId) ??
+          null)
+        : null,
+    [openActionPopupResortId, resorts],
+  );
+  const selectedResortIdSet = useMemo(() => {
+    if (interactionMode === "compare") {
+      return selectedCompareIdSet ?? new Set<string>();
+    }
+    return selectedResortId ? new Set([selectedResortId]) : new Set<string>();
+  }, [interactionMode, selectedCompareIdSet, selectedResortId]);
+  const renderedResorts = useMemo(
+    () =>
+      [...resorts].sort((a, b) => {
+        const aPriority = getResortPriority({
+          resortId: a.id,
+          filteredResortIdSet,
+          isFilterActive,
+          selectedResortIdSet,
+        });
+        const bPriority = getResortPriority({
+          resortId: b.id,
+          filteredResortIdSet,
+          isFilterActive,
+          selectedResortIdSet,
+        });
+        const priorityDiff =
+          getResortPriorityRank(aPriority) - getResortPriorityRank(bPriority);
+
+        if (priorityDiff !== 0) return priorityDiff;
+
+        return a.numberOfCourses - b.numberOfCourses;
+      }),
+    [filteredResortIdSet, isFilterActive, resorts, selectedResortIdSet],
+  );
 
   return (
     <MapContainer
       center={INITIAL_CENTER}
       zoom={INITIAL_ZOOM}
+      minZoom={INITIAL_ZOOM}
       zoomControl={false}
       style={{ width: "100%", height: "100%" }}
     >
@@ -1161,14 +1400,82 @@ export const SkiResortMap = ({
       />
       <Pane name={BASE_MARKER_PANE} style={{ zIndex: 430 }} />
       <Pane name={FRONT_MARKER_PANE} style={{ zIndex: 470 }} />
+      <Pane name={FILTER_MATCH_MARKER_PANE} style={{ zIndex: 520 }} />
+      <Pane name={SELECTED_MARKER_PANE} style={{ zIndex: 560 }} />
 
-      {resorts.map(resort => {
-        const isSelected = resort.id === selectedResortId;
+      {renderedResorts.map(resort => {
+        const priority = getResortPriority({
+          resortId: resort.id,
+          filteredResortIdSet,
+          isFilterActive,
+          selectedResortIdSet,
+        });
+        const isSelected = priority === "selected";
+        const isFilterMatch =
+          isFilterActive && filteredResortIdSet?.has(resort.id) === true;
         const labelLayout = labelLayouts[resort.id];
-        const hasVisibleLabel = Boolean(labelLayout);
-        const markerPane =
-          isSelected || hasVisibleLabel ? FRONT_MARKER_PANE : BASE_MARKER_PANE;
+        const hasOpenActionPopup = openActionPopupResortId === resort.id;
+        const hasVisibleLabel =
+          Boolean(labelLayout) &&
+          !(shouldShowCompareActions && hasOpenActionPopup);
         const markerRadius = isSelected ? 6 : 4;
+        const shouldDimUnselectedComparePoint =
+          interactionMode === "compare" &&
+          mapZoom < LABEL_SHOW_ZOOM &&
+          !isSelected &&
+          !isFilterMatch;
+        const isDimmedByFilter =
+          isFilterActive &&
+          priority === "normal" &&
+          filteredResortIdSet?.has(resort.id) !== true;
+        const shouldDimPoint =
+          shouldDimUnselectedComparePoint || isDimmedByFilter;
+        const markerPane = isSelected
+          ? SELECTED_MARKER_PANE
+          : isFilterMatch
+            ? FILTER_MATCH_MARKER_PANE
+            : hasVisibleLabel
+              ? FRONT_MARKER_PANE
+              : BASE_MARKER_PANE;
+        const markerEventHandlers = {
+          ...(shouldShowCompareActions
+            ? { click: () => setOpenActionPopupResortId(resort.id) }
+            : { click: () => onSelectResort(resort.id) }),
+          ...(shouldDimPoint
+            ? {
+                mouseout: (event: L.LeafletMouseEvent) => {
+                  event.target.setStyle({
+                    fillOpacity: 0.48,
+                    opacity: 0.58,
+                  });
+                },
+                mouseover: (event: L.LeafletMouseEvent) => {
+                  event.target.setStyle({
+                    fillOpacity: 0.95,
+                    opacity: 1,
+                  });
+                },
+              }
+            : {}),
+          ...(!shouldDimPoint && !isSelected
+            ? {
+                mouseout: (event: L.LeafletMouseEvent) => {
+                  event.target.setStyle({
+                    fillOpacity: 0.95,
+                    opacity: 1,
+                    weight: 1,
+                  });
+                },
+                mouseover: (event: L.LeafletMouseEvent) => {
+                  event.target.setStyle({
+                    fillOpacity: 1,
+                    opacity: 1,
+                    weight: 2,
+                  });
+                },
+              }
+            : {}),
+        };
 
         return (
           <Fragment key={resort.id}>
@@ -1195,14 +1502,11 @@ export const SkiResortMap = ({
               pathOptions={{
                 color: "#ffffff",
                 weight: isSelected ? 2 : 1,
-                fillColor: isSelected
-                  ? "#facc15"
-                  : resort.yukiMagiId
-                    ? "#db2777"
-                    : "#0284c7",
-                fillOpacity: 0.95,
+                fillColor: isFilterMatch ? "#dc2626" : "#0284c7",
+                fillOpacity: shouldDimPoint ? 0.48 : 0.95,
+                opacity: shouldDimPoint ? 0.58 : 1,
               }}
-              eventHandlers={{ click: () => onSelectResort(resort.id) }}
+              eventHandlers={markerEventHandlers}
             />
 
             {hasVisibleLabel && (
@@ -1210,16 +1514,103 @@ export const SkiResortMap = ({
                 pane={markerPane}
                 position={labelLayout.labelPosition}
                 icon={nameLabelIconsByResortId.get(resort.id)}
-                eventHandlers={{ click: () => onSelectResort(resort.id) }}
+                eventHandlers={
+                  shouldShowCompareActions
+                    ? { click: () => setOpenActionPopupResortId(resort.id) }
+                    : { click: () => onSelectResort(resort.id) }
+                }
               />
             )}
           </Fragment>
         );
       })}
 
+      {shouldShowCompareActions && openActionPopupResort && (
+        <ResortActionPopup
+          key={openActionPopupResort.id}
+          resort={openActionPopupResort}
+          isCompareSelected={
+            selectedCompareIdSet?.has(openActionPopupResort.id) ?? false
+          }
+          onClose={() => setOpenActionPopupResortId(null)}
+          onSelectResort={onSelectResort}
+          onToggleCompare={
+            onToggleCompare
+              ? (id, selected) => {
+                  skipCompareRecenterRef.current = true;
+                  onToggleCompare(id, selected);
+                }
+              : undefined
+          }
+        />
+      )}
+
       <MapControls />
+      <MapViewportController
+        resorts={resorts}
+        selectedResortId={selectedResortId}
+        selectedCompareIdSet={selectedCompareIdSet ?? new Set<string>()}
+        interactionMode={interactionMode}
+        onViewportChange={updateLabelLayout}
+        skipCompareRecenterRef={skipCompareRecenterRef}
+      />
       <LabelLayoutWatcher onLayout={updateLabelLayout} />
       <MapEventsHandler onBoundsChange={onBoundsChange} />
     </MapContainer>
   );
-};
+});
+
+const ResortActionPopup = ({
+  resort,
+  isCompareSelected,
+  onClose,
+  onSelectResort,
+  onToggleCompare,
+}: {
+  resort: MapResort;
+  isCompareSelected: boolean;
+  onClose: () => void;
+  onSelectResort: (id: string) => void;
+  onToggleCompare?: (id: string, selected: boolean) => void;
+}) => (
+  <Popup
+    position={[resort.latitude, resort.longitude]}
+    closeButton={false}
+    autoPan={false}
+    eventHandlers={{ remove: onClose }}
+  >
+    <Flex flexDirection="column" gap={2} minW="160px">
+      <Box color="gray.900" fontSize="sm" fontWeight="800" lineHeight="1.35">
+        {resort.nameJa}
+      </Box>
+      <Flex gap={2}>
+        <Button
+          size="xs"
+          flex="1"
+          variant="outline"
+          fontWeight="800"
+          onClick={() => {
+            onSelectResort(resort.id);
+            onClose();
+          }}
+        >
+          詳細を見る
+        </Button>
+        {onToggleCompare && (
+          <Button
+            size="xs"
+            flex="1"
+            variant="outline"
+            fontWeight="800"
+            onClick={() => {
+              onToggleCompare(resort.id, !isCompareSelected);
+              onClose();
+            }}
+          >
+            {isCompareSelected ? "比較から外す" : "比較に追加"}
+          </Button>
+        )}
+      </Flex>
+    </Flex>
+  </Popup>
+);

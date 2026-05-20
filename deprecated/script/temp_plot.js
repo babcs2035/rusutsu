@@ -39,7 +39,7 @@ export async function drawDistribution(
     .style("gap", "5px");
 
   // スキー場名
-  var h3 = dropdownGroup
+  dropdownGroup
     .append("h3")
     .attr("class", "skiResortData-name")
     .style("width", "100px")
@@ -79,7 +79,7 @@ export async function drawDistribution(
       .append("option")
       .attr("value", section)
       .text(
-        `${sectionDict[section]["text"]} (標高${sectionDict[section]["height"]}m)`,
+        `${sectionDict[section].text} (標高${sectionDict[section].height}m)`,
       );
   });
 
@@ -120,15 +120,15 @@ function temperatureDistribution(
   // d3.json(jsonFile).then((jsonData) => {
   const skiResortData = forecastsData.find(entry => entry.meta.id === name);
 
-  const values = skiResortData[section]["temperatures"]["weeks"]["max"];
+  const values = skiResortData[section].temperatures.weeks.max;
 
   //weeksに該当する要素のみ抽出
   var filteredData = [];
-  weeks.forEach((key, i) =>
+  weeks.forEach(key => {
     values[key - 1].forEach(value => {
       filteredData.push({ week: key, value: value });
-    }),
-  );
+    });
+  });
 
   // pointCountsを計算（同一week-value組み合わせの頻度）
   const pointCounts = {};
@@ -157,7 +157,7 @@ function temperatureDistribution(
 
   const xAxis = d3
     .axisBottom(x)
-    .tickFormat((d, i) => `${formattedWeeks[i].week}`) // 各週番号を表示
+    .tickFormat((_d, i) => `${formattedWeeks[i].week}`) // 各週番号を表示
     .tickSize(0);
   svg
     .append("g")

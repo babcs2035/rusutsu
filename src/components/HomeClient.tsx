@@ -9,6 +9,7 @@ import { Drawer } from "vaul";
 import { getSkiResortById } from "@/actions/skiResorts";
 import { FilterPanel, type Filters } from "@/components/FilterPanel";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { SkiResortCompareView } from "@/components/SkiResortCompareView";
 import { SkiResortDetailView } from "@/components/SkiResortDetailView";
 import { SkiResortList } from "@/components/SkiResortList";
 
@@ -59,6 +60,12 @@ export function HomeClient({ initialResorts }: Props) {
   const [selectedResortData, setSelectedResortData] = useState<Awaited<
     ReturnType<typeof getSkiResortById>
   > | null>(null);
+  const [selectedCompareIds, setSelectedCompareIds] = useState<string[]>([]);
+  const [compareResortData, setCompareResortData] = useState<
+    NonNullable<Awaited<ReturnType<typeof getSkiResortById>>>[]
+  >([]);
+  const [isCompareOpen, setIsCompareOpen] = useState(false);
+  const [isCompareLoading, setIsCompareLoading] = useState(false);
   const [isListSheetOpen, setIsListSheetOpen] = useState(false);
   const [mapBounds, setMapBounds] = useState<L.LatLngBounds | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -82,6 +89,17 @@ export function HomeClient({ initialResorts }: Props) {
       return true;
     });
   }, [initialResorts, filters]);
+  const filteredResortIdSet = useMemo(
+    () => new Set(filteredResorts.map(resort => resort.id)),
+    [filteredResorts],
+  );
+  const isFilterActive =
+    filters.keyword.trim() !== "" ||
+    filters.status ||
+    filters.yukiMagi ||
+    filters.beginnerFriendly ||
+    filters.minVertical > 0 ||
+    filters.minCourses > 0;
 
   // 2. 地図の表示領域による絞り込み
   const visibleResorts = useMemo(() => {
@@ -95,10 +113,21 @@ export function HomeClient({ initialResorts }: Props) {
     });
   }, [filteredResorts, mapBounds]);
 
+  const selectedCompareIdSet = useMemo(
+    () => new Set(selectedCompareIds),
+    [selectedCompareIds],
+  );
+  const mapInteractionMode = isCompareOpen
+    ? "compare"
+    : selectedResortId
+      ? "detail"
+      : "default";
+
   // --- イベントハンドラ ---
   const handleFilterChange = (newFilters: Filters) => setFilters(newFilters);
 
   const handleSelectResort = useCallback((id: string) => {
+    setIsCompareOpen(false);
     setSelectedResortId(id);
     setIsListSheetOpen(false); // モーダルを開くときにボトムシートを閉じる
     startTransition(async () => {
@@ -110,6 +139,54 @@ export function HomeClient({ initialResorts }: Props) {
   const handleCloseDetail = () => {
     setSelectedResortId(null);
     setSelectedResortData(null);
+  };
+
+  const handleToggleCompare = useCallback(
+    (id: string, selected: boolean) => {
+      setSelectedCompareIds(prev => {
+        if (selected) return prev.includes(id) ? prev : [...prev, id];
+        return prev.filter(compareId => compareId !== id);
+      });
+
+      if (!isCompareOpen) return;
+
+      if (!selected) {
+        setCompareResortData(prev => prev.filter(resort => resort.id !== id));
+        return;
+      }
+
+      setIsCompareLoading(true);
+      startTransition(async () => {
+        const data = await getSkiResortById(id);
+        if (data) {
+          setCompareResortData(prev =>
+            prev.some(resort => resort.id === data.id) ? prev : [...prev, data],
+          );
+        }
+        setIsCompareLoading(false);
+      });
+    },
+    [isCompareOpen],
+  );
+
+  const handleOpenCompare = useCallback(async () => {
+    if (selectedCompareIds.length === 0) return;
+
+    setIsCompareOpen(true);
+    setIsCompareLoading(true);
+    setIsListSheetOpen(false);
+    setCompareResortData([]);
+
+    const data = await Promise.all(
+      selectedCompareIds.map(id => getSkiResortById(id)),
+    );
+
+    setCompareResortData(data.filter(resort => resort !== null));
+    setIsCompareLoading(false);
+  }, [selectedCompareIds]);
+
+  const handleCloseCompare = () => {
+    setIsCompareOpen(false);
   };
 
   return (
@@ -126,9 +203,14 @@ export function HomeClient({ initialResorts }: Props) {
       <Box h="100%" w="100%" position="relative">
         <FilterPanel filters={filters} onFilterChange={handleFilterChange} />
         <DynamicMap
-          resorts={filteredResorts}
+          resorts={initialResorts}
+          filteredResortIdSet={filteredResortIdSet}
+          isFilterActive={isFilterActive}
           selectedResortId={selectedResortId}
           onSelectResort={handleSelectResort}
+          interactionMode={mapInteractionMode}
+          selectedCompareIdSet={selectedCompareIdSet}
+          onToggleCompare={handleToggleCompare}
           onBoundsChange={setMapBounds}
         />
       </Box>
@@ -150,6 +232,8 @@ export function HomeClient({ initialResorts }: Props) {
         <SkiResortList
           resorts={visibleResorts}
           onSelectResort={handleSelectResort}
+          selectedCompareIdSet={selectedCompareIdSet}
+          onToggleCompare={handleToggleCompare}
         />
       </Box>
 
@@ -215,6 +299,8 @@ export function HomeClient({ initialResorts }: Props) {
                 <SkiResortList
                   resorts={visibleResorts}
                   onSelectResort={handleSelectResort}
+                  selectedCompareIdSet={selectedCompareIdSet}
+                  onToggleCompare={handleToggleCompare}
                 />
               </Box>
             </Drawer.Content>
@@ -260,6 +346,26 @@ export function HomeClient({ initialResorts }: Props) {
         </Button>
       </Box>
 
+      {selectedCompareIds.length > 0 && (
+        <Button
+          position="fixed"
+          right={{ base: 4, md: "424px" }}
+          bottom={{ base: 24, md: 6 }}
+          zIndex={10000}
+          h={12}
+          px={5}
+          borderRadius="full"
+          bg="gray.900"
+          color="white"
+          fontWeight="800"
+          boxShadow="0 12px 30px rgba(0, 0, 0, 0.22)"
+          _hover={{ bg: "gray.800", transform: "translateY(-1px)" }}
+          onClick={handleOpenCompare}
+        >
+          {selectedCompareIds.length} 件を比較
+        </Button>
+      )}
+
       {/* --- 詳細モーダルの表示 --- */}
       <AnimatePresence>
         {selectedResortId && (
@@ -267,7 +373,20 @@ export function HomeClient({ initialResorts }: Props) {
             resortId={selectedResortId}
             resortData={selectedResortData}
             isLoading={isPending}
+            isCompareSelected={selectedCompareIdSet.has(selectedResortId)}
+            onToggleCompare={handleToggleCompare}
             onClose={handleCloseDetail}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* --- 比較モーダルの表示 --- */}
+      <AnimatePresence>
+        {isCompareOpen && (
+          <SkiResortCompareView
+            resorts={compareResortData}
+            isLoading={isCompareLoading}
+            onClose={handleCloseCompare}
           />
         )}
       </AnimatePresence>

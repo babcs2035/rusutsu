@@ -1,7 +1,7 @@
 import * as d3 from "d3";
 
 // 全てのscrollContainerへの参照を保持する配列を定義
-let scrollContainers = [];
+const scrollContainers = [];
 let isSyncingScroll = false; // スクロールイベント相互反映中かを示すフラグ
 
 export function weather(
@@ -77,7 +77,7 @@ export function weather(
         .append("option")
         .attr("value", section)
         .text(
-          `${sectionDict[section]["text"]} (標高${sectionDict[section]["height"]}m)`,
+          `${sectionDict[section].text} (標高${sectionDict[section].height}m)`,
         );
     });
 
@@ -113,10 +113,10 @@ export function weather(
     scrollContainer.on("scroll", function () {
       if (isSyncingScroll) return;
       isSyncingScroll = true;
-      const source = this;
-      const scrollLeft = source.scrollLeft;
+
+      const scrollLeft = this.scrollLeft;
       scrollContainers.forEach(el => {
-        if (el !== source) {
+        if (el !== this) {
           el.scrollLeft = scrollLeft;
         }
       });
@@ -136,7 +136,7 @@ export function weather(
 
 function weatherDisplay(
   weatherData,
-  name,
+  _name,
   section,
   fixedContainer,
   scrollContainer,
@@ -153,13 +153,13 @@ function weatherDisplay(
   scrollContainer.select("svg").remove();
 
   const skiResortData = weatherData;
-  const winds = skiResortData[section]["winds"];
-  const snows = skiResortData[section]["snows"];
-  const temperatures = skiResortData[section]["temperatures"];
-  const today = new Date(skiResortData.meta["date"]);
+  const winds = skiResortData[section].winds;
+  const snows = skiResortData[section].snows;
+  const temperatures = skiResortData[section].temperatures;
+  const today = new Date(skiResortData.meta.date);
   const date = new Date(today);
 
-  const times = ["朝", "昼", "夜"];
+  const _times = ["朝", "昼", "夜"];
   const days = ["日", "月", "火", "水", "木", "金", "土"];
 
   // SVGのサイズ
@@ -189,13 +189,13 @@ function weatherDisplay(
   }
 
   // グリッドレイアウト設定
-  const rows = 12; // 12日分
-  const cols = 3; // 朝, 昼, 夜
+  const _rows = 12; // 12日分
+  const _cols = 3; // 朝, 昼, 夜
 
   // グリッド線を引く
   for (let i = 0; i <= 38; i++) {
     // 縦線
-    if (i % 3 == 0) {
+    if (i % 3 === 0) {
       svgScroll
         .append("line")
         .attr("x1", i * cellWidth)
@@ -227,7 +227,7 @@ function weatherDisplay(
         .attr("fill", "black") // テキストの色
         .attr("font-size", "17px")
         .text(`朝`);
-    } else if (i % 3 == 1) {
+    } else if (i % 3 === 1) {
       svgScroll
         .append("text")
         .attr("x", (i + 0.5) * cellWidth)
@@ -329,7 +329,7 @@ function weatherDisplay(
     const x = i * cellWidth;
     const y = 50;
 
-    if (i == 1) {
+    if (i === 1) {
       svgFixed
         .append("text")
         .attr("x", x - 0.5 * cellWidth)
@@ -348,7 +348,7 @@ function weatherDisplay(
         .text(`m/s`);
     }
 
-    const rotation = parseInt(wind.direction.match(/\d+/)[0]);
+    const rotation = parseInt(wind.direction.match(/\d+/)[0], 10);
     const windSpeed = Math.ceil(wind.speed / 3.6);
     let color = "#ccc";
     let opacity = 0;
@@ -414,7 +414,7 @@ function weatherDisplay(
     const snowDisplay = 4 * Math.sqrt(snow >= 35 ? 35 : snow);
     const y = 147 - snowDisplay;
 
-    if (i == 1) {
+    if (i === 1) {
       svgFixed
         .append("text")
         .attr("x", x - 0.5 * cellWidth)
@@ -458,7 +458,7 @@ function weatherDisplay(
       .scaleLinear()
       .domain([-12, 0, 12]) // ドメインを -12, 0, 12 に設定
       .range(["blue", "#fffaf0", "red"]);
-    let color = colorScale(temperature);
+    const color = colorScale(temperature);
 
     svgScroll
       .append("rect")

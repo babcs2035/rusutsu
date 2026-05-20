@@ -108,7 +108,7 @@ export async function avgTemp(
         .append("option")
         .attr("value", section)
         .text(
-          `${sectionDict[section]["text"]} (標高${sectionDict[section]["height"]}m)`,
+          `${sectionDict[section].text} (標高${sectionDict[section].height}m)`,
         );
     });
 
@@ -171,10 +171,10 @@ function temperatureHeatmap(
     .attr("width", width + margin.left + margin.right)
     .attr("height", height + margin.top + margin.bottom)
     .append("g")
-    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+    .attr("transform", `translate(${margin.left},${margin.top})`);
 
   // Tooltip functions
-  var mouseover = function (event, d) {
+  var mouseover = (_event, d) => {
     d3.selectAll(`[data-id='${d.id}']`)
       .style("stroke", "black")
       .each(function (d) {
@@ -228,9 +228,9 @@ function temperatureHeatmap(
           .html(tooltipHtml); // 表示するテキスト
       });
   };
-  var mousemove = function () {};
+  var mousemove = () => {};
 
-  var mouseleave = function (event, d) {
+  var mouseleave = (_event, d) => {
     d3.selectAll(`[data-id='${d.id}']`).style("stroke", "none");
 
     d3.selectAll(".tooltip").remove();
@@ -245,7 +245,7 @@ function temperatureHeatmap(
     .domain([-12, 0, 12]) // ドメインを -12, 0, 12 に設定
     .range(["blue", "#fffaf0", "red"]); // -15度は青、0度は白、30度は赤
 
-  const weatherData = skiResortData[section]["temperatures"]["all"]["max"].map(
+  const weatherData = skiResortData[section].temperatures.all.max.map(
     (value, index) => ({
       id: index + 1, // 1から始まるID
       value: value, // 元のデータ
@@ -263,7 +263,7 @@ function temperatureHeatmap(
     // X軸
     const xAxis = d3
       .axisBottom(x)
-      .tickFormat((d, i) => `${formattedWeeks[i].week}`) // 各週番号を表示
+      .tickFormat((_d, i) => `${formattedWeeks[i].week}`) // 各週番号を表示
       .tickSize(0);
     svg
       .append("g")
@@ -344,17 +344,13 @@ function temperatureHeatmap(
 
   svg
     .selectAll(".temperature-rect")
-    .data(filteredData, function (d) {
-      return d.id;
-    })
+    .data(filteredData, d => d.id)
     .enter()
     .append("rect")
     .attr("class", "temperature-rect")
     .attr("x", d => x(d.id)) // 横方向の位置 (X軸スケール)
     .attr("y", center - 15) // 縦方向の固定位置（1行の場合）
-    .attr("data-id", function (d) {
-      return d.id;
-    })
+    .attr("data-id", d => d.id)
     .attr("width", x.bandwidth()) // 矩形の幅 (X軸のバンド幅)
     .attr("height", 30) // 矩形の高さ（例: 50px）
     .attr("fill", d => colorScale(d.value)) // 値に基づいて色を設定
