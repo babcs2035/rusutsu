@@ -34,21 +34,21 @@ start = { description = "プロダクションサーバー起動", run = "pnpm s
 "db:reset" = { description = "DB リセット（全データ削除 & シード）", run = "pnpm prisma migrate reset --force" }
 
 # --- Crawling ---
-"crawl:ski-areas" = { description = "基本情報 (SkiAreas) の更新", run = "pnpm tsx src/scripts/crawlSkiAreas.ts" }
-"crawl:gelendes" = { description = "詳細情報 (Gelendes) の更新", run = "pnpm tsx src/scripts/crawlGelendes.ts" }
-"crawl:weathers" = { description = "天気 (Weathers) の更新", run = "pnpm tsx src/scripts/crawlWeathers.ts" }
-"crawl:forecasts" = { description = "予報 (Forecasts) の更新", run = "pnpm tsx src/scripts/crawlForecasts.ts" }
+"crawl:ski-areas" = { description = "基本情報 (SkiAreas) の更新", run = "pnpm tsx src/private/scripts/crawlSkiAreas.ts" }
+"crawl:gelendes" = { description = "詳細情報 (Gelendes) の更新", run = "pnpm tsx src/private/scripts/crawlGelendes.ts" }
+"crawl:weathers" = { description = "天気 (Weathers) の更新", run = "pnpm tsx src/private/scripts/crawlWeathers.ts" }
+"crawl:forecasts" = { description = "予報 (Forecasts) の更新", run = "pnpm tsx src/private/scripts/crawlForecasts.ts" }
 
 "crawl:all" = { description = "全データのクローリング実行", run = [
   "mise run crawl:ski-areas",
   "mise run crawl:gelendes",
   "mise run crawl:weathers",
   "mise run crawl:forecasts",
-  "pnpm tsx src/scripts/crawlSnowDepths.ts",
-  "pnpm tsx src/scripts/crawlSnowFalls.ts",
-  "pnpm tsx src/scripts/crawlLatestReports.ts",
-  "pnpm tsx src/scripts/crawlYukiMagi.ts",
-  "pnpm tsx src/scripts/crawlAmedas.ts"
+  "pnpm tsx src/private/scripts/crawlSnowDepths.ts",
+  "pnpm tsx src/private/scripts/crawlSnowFalls.ts",
+  "pnpm tsx src/private/scripts/crawlLatestReports.ts",
+  "pnpm tsx src/private/scripts/crawlYukiMagi.ts",
+  "pnpm tsx src/private/scripts/crawlAmedas.ts"
 ]}
 
 # --- Docker ---

@@ -1,7 +1,7 @@
 "use server";
 
-import SkiResortWeatherIds from "@/data/SkiResortWeatherIds.json";
 import { prisma } from "@/lib/prisma";
+import SkiResortWeatherIds from "@/private/data/SkiResortWeatherIds.json";
 import type { SkiResortWithRelations } from "@/types";
 
 type TenkiJpWeatherId = {

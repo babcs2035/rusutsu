@@ -66,49 +66,63 @@ async function executeCrawler(crawlerName: CrawlerName): Promise<void> {
   // 注意: これらのスクリプトは main() をエクスポートする必要がある
   switch (crawlerName) {
     case "skiAreas": {
-      const { runCrawlSkiAreas } = await import("@/scripts/crawlSkiAreas");
+      const { runCrawlSkiAreas } = await import(
+        "@/private/scripts/crawlSkiAreas"
+      );
       await runCrawlSkiAreas();
       break;
     }
     case "gelendes": {
-      const { runCrawlGelendes } = await import("@/scripts/crawlGelendes");
+      const { runCrawlGelendes } = await import(
+        "@/private/scripts/crawlGelendes"
+      );
       await runCrawlGelendes();
       break;
     }
     case "weathers": {
-      const { runCrawlWeathers } = await import("@/scripts/crawlWeathers");
+      const { runCrawlWeathers } = await import(
+        "@/private/scripts/crawlWeathers"
+      );
       await runCrawlWeathers();
       break;
     }
     case "forecasts": {
-      const { runCrawlForecasts } = await import("@/scripts/crawlForecasts");
+      const { runCrawlForecasts } = await import(
+        "@/private/scripts/crawlForecasts"
+      );
       await runCrawlForecasts();
       break;
     }
     case "snowDepths": {
-      const { runCrawlSnowDepths } = await import("@/scripts/crawlSnowDepths");
+      const { runCrawlSnowDepths } = await import(
+        "@/private/scripts/crawlSnowDepths"
+      );
       await runCrawlSnowDepths();
       break;
     }
     case "snowFalls": {
-      const { runCrawlSnowFalls } = await import("@/scripts/crawlSnowFalls");
+      const { runCrawlSnowFalls } = await import(
+        "@/private/scripts/crawlSnowFalls"
+      );
       await runCrawlSnowFalls();
       break;
     }
     case "latestReports": {
       const { runCrawlLatestReports } = await import(
-        "@/scripts/crawlLatestReports"
+        "@/private/scripts/crawlLatestReports"
       );
       await runCrawlLatestReports();
       break;
     }
     case "yukiMagi": {
-      const { runCrawlYukiMagi } = await import("@/scripts/crawlYukiMagi");
+      const { runCrawlYukiMagi } = await import(
+        "@/private/scripts/crawlYukiMagi"
+      );
       await runCrawlYukiMagi();
       break;
     }
     case "amedas": {
-      const { runCrawlAmedas } = await import("@/scripts/crawlAmedas");
+      const { runCrawlAmedas } = await import("@/private/scripts/crawlAmedas");
       await runCrawlAmedas();
       break;
     }

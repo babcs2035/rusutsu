@@ -185,7 +185,7 @@ const loadAliasById = async (): Promise<Map<string, string>> => {
     return aliasByIdPromise;
   }
 
-  aliasByIdPromise = import("@/data/SkiResortNameAliases.json")
+  aliasByIdPromise = import("@/private/data/SkiResortNameAliases.json")
     .then(module => {
       const data = (module.default ?? module) as ResortNameAliasesData;
       const entries = data.resorts.map(
