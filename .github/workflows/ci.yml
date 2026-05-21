@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@main
+        with:
+          submodules: recursive
 
       - name: Setup mise
         uses: jdx/mise-action@main
