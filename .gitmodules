@@ -1,0 +1,4 @@
+[submodule "src/private"]
+	path = src/private
+	url = https://github.com/babcs2035/rusutsu-library.git
+	branch = add_ski_resort_data
