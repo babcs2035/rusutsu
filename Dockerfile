@@ -14,6 +14,7 @@ WORKDIR /app
 # ==============================================================================
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN echo "node-linker=hoisted" > .npmrc
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --ignore-scripts
 
 # ==============================================================================
@@ -43,9 +44,8 @@ RUN pnpm exec playwright install-deps chromium && \
     pnpm exec playwright install chromium
 
 # Copy generated Prisma Client
-RUN rm -rf node_modules/.prisma node_modules/@prisma
+RUN rm -rf node_modules/.prisma
 COPY --from=prisma-gen /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=prisma-gen /app/node_modules/@prisma ./node_modules/@prisma
 
 ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 
@@ -57,11 +57,7 @@ RUN --mount=type=cache,id=nextjs,target=/app/.next/cache pnpm build
 # included in the standalone build or handled by serverExternalPackages in Turbopack
 RUN cp -R -L node_modules/pg .next/standalone/node_modules/ || true \
     && cp -R -L node_modules/node-cron .next/standalone/node_modules/ || true \
-    && cp -R -L node_modules/@prisma/adapter-pg .next/standalone/node_modules/@prisma/ || true \
-    && cp -R -L node_modules/@prisma/driver-adapter-utils .next/standalone/node_modules/@prisma/ || true \
-    && cp -R -L node_modules/@prisma/debug .next/standalone/node_modules/@prisma/ || true \
-    && cp -R -L node_modules/dotenv .next/standalone/node_modules/ || true \
-    && cp -R -L node_modules/prisma .next/standalone/node_modules/ || true
+    && cp -R -L node_modules/dotenv .next/standalone/node_modules/ || true
 
 # ==============================================================================
 # Stage 3: Production runner
@@ -96,6 +92,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./
 # Copy Playwright binaries
 COPY --from=builder --chown=nextjs:nodejs /root/.cache/ms-playwright /home/nextjs/.cache/ms-playwright
+
+# Install @prisma packages locally for prisma.config.ts and seed.ts module resolution
+# Must be done AFTER standalone copy since standalone overwrites node_modules/
+RUN echo "node-linker=hoisted" > .npmrc && \
+    pnpm add @prisma/config@7.7.0 @prisma/adapter-pg@7.7.0 @prisma/client@7.7.0
 
 # Setup permissions
 RUN mkdir -p .cache /pnpm && chown -R nextjs:nodejs /app /home/nextjs/.cache /pnpm
