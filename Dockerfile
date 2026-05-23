@@ -3,10 +3,11 @@
 # ==============================================================================
 # Base Stage
 # ==============================================================================
-FROM node:25.6.1-slim AS base
+FROM node:24-slim AS base
+ENV PRISMA_CLIENT_DMMF_ENGINE=nodejs
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME/bin:$PNPM_HOME:$PATH"
-RUN npm install -g pnpm
+RUN npm install -g pnpm@11.2.2
 WORKDIR /app
 
 # ==============================================================================
@@ -18,46 +19,26 @@ RUN echo "node-linker=hoisted" > .npmrc
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --ignore-scripts
 
 # ==============================================================================
-# Stage 1.5: Generate Prisma Client (on Build Platform / amd64)
-# ==============================================================================
-FROM --platform=$BUILDPLATFORM node:25.6.1-slim AS prisma-gen
-WORKDIR /app
-RUN apt-get update && apt-get install -y openssl
-RUN npm install -g pnpm
-RUN echo "node-linker=hoisted" > .npmrc
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --ignore-scripts
-COPY prisma ./prisma
-RUN pnpm prisma generate
-
-# ==============================================================================
 # Stage 2: Build the application
 # ==============================================================================
-FROM base AS builder
+FROM base AS build-cache
+ARG DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
+ENV DATABASE_URL=${DATABASE_URL}
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+
+# Generate Prisma Client
+# Node 24 + arm64 does not have the WASM DMMF bug (prisma/prisma#29464)
+RUN pnpm exec prisma generate
 
 # Playwright install (Note: Only needed if build process uses it, otherwise move to runner)
 # Installing here to ensure binaries are available for copy
 RUN pnpm exec playwright install-deps chromium && \
     pnpm exec playwright install chromium
 
-# Copy generated Prisma Client
-RUN rm -rf node_modules/.prisma
-COPY --from=prisma-gen /app/node_modules/.prisma ./node_modules/.prisma
-
-ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
-
 # Build Next.js application
 RUN --mount=type=cache,id=nextjs,target=/app/.next/cache pnpm build
-
-# FIX: Explicitly copy external packages to standalone node_modules
-# This addresses the issue where 'pg' and other native modules are not correctly
-# included in the standalone build or handled by serverExternalPackages in Turbopack
-RUN cp -R -L node_modules/pg .next/standalone/node_modules/ || true \
-    && cp -R -L node_modules/node-cron .next/standalone/node_modules/ || true \
-    && cp -R -L node_modules/dotenv .next/standalone/node_modules/ || true
 
 # ==============================================================================
 # Stage 3: Production runner
@@ -85,18 +66,19 @@ RUN mkdir -p "$PNPM_HOME/bin" \
     && pnpm add -g prisma@7.7.0 tsx@4.21.0
 
 # Copy standalone build
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
-COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./
+COPY --from=build-cache --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=build-cache --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=build-cache --chown=nextjs:nodejs /app/public ./public
+COPY --from=build-cache --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=build-cache --chown=nextjs:nodejs /app/prisma.config.ts ./
 # Copy Playwright binaries
-COPY --from=builder --chown=nextjs:nodejs /root/.cache/ms-playwright /home/nextjs/.cache/ms-playwright
-
-# Install @prisma packages locally for prisma.config.ts and seed.ts module resolution
-# Must be done AFTER standalone copy since standalone overwrites node_modules/
-RUN echo "node-linker=hoisted" > .npmrc && \
-    pnpm add @prisma/config@7.7.0 @prisma/adapter-pg@7.7.0 @prisma/client@7.7.0
+COPY --from=build-cache --chown=nextjs:nodejs /root/.cache/ms-playwright /home/nextjs/.cache/ms-playwright
+# Copy full node_modules for Prisma CLI module resolution
+# Prisma CLI needs @prisma/config and its transitive dependencies (c12, effect, etc.)
+# Copy to temp location first, then merge to avoid Docker overlay file-to-dir conflict
+COPY --from=build-cache /app/node_modules /tmp/node_modules
+RUN cp -a -n /tmp/node_modules/* ./node_modules/ && \
+    cp -a -n /tmp/node_modules/.??* ./node_modules/ 2>/dev/null || true
 
 # Setup permissions
 RUN mkdir -p .cache /pnpm && chown -R nextjs:nodejs /app /home/nextjs/.cache /pnpm

@@ -59,11 +59,20 @@ jobs:
           submodules: recursive
           token: ${{ secrets.SUBMODULES_TOKEN }}
 
+      - name: Setup mise
+        uses: jdx/mise-action@main
+        with:
+          install: true
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@master
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@master
+        with:
+          driver-opts: |
+            image=moby/buildkit:latest
+            network=host
 
       - name: Log in to the Container registry
         uses: docker/login-action@master
@@ -73,15 +82,15 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@master
-        with:
-          context: .
-          push: true
-          platforms: linux/arm64
-          tags: ${{ env.REGISTRY }}/babcs2035/rusutsu:latest, ${{ env.REGISTRY }}/babcs2035/rusutsu:${{ github.sha }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+        run: |
+          docker buildx build \
+            --platform linux/arm64 \
+            --push \
+            --tag "${{ env.REGISTRY }}/babcs2035/rusutsu:latest" \
+            --tag "${{ env.REGISTRY }}/babcs2035/rusutsu:${{ github.sha }}" \
+            --cache-from=type=gha \
+            --cache-to=type=gha,mode=max \
+            .
 
       - name: Setup Tailscale
         uses: tailscale/github-action@main

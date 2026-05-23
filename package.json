@@ -19,6 +19,7 @@
     "@next/third-parties": "^16.2.4",
     "@prisma/adapter-pg": "^7.7.0",
     "@prisma/client": "^7.7.0",
+    "@prisma/config": "^7.7.0",
     "dotenv": "^17.4.2",
     "framer-motion": "^12.38.0",
     "leaflet": "^1.9.4",
