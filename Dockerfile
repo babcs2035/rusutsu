@@ -4,7 +4,6 @@
 # Base Stage
 # ==============================================================================
 FROM node:24-slim AS base
-ENV PRISMA_CLIENT_DMMF_ENGINE=nodejs
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME/bin:$PNPM_HOME:$PATH"
 RUN npm install -g pnpm@11.2.2
