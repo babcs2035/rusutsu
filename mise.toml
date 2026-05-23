@@ -1,5 +1,5 @@
 [tools]
-node = "25.6.1"
+node = "latest"
 pnpm = "latest"
 
 [tasks]

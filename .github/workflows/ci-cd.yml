@@ -1,7 +1,10 @@
-name: Deploy
+name: CI/CD
 
 on:
   push:
+    branches:
+      - main
+  pull_request:
     branches:
       - main
 
@@ -9,16 +12,49 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
+  ci-checks:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@main
+        with:
+          submodules: recursive
+          token: ${{ secrets.SUBMODULES_TOKEN }}
+
+      - name: Setup mise
+        uses: jdx/mise-action@main
+        with:
+          install: true
+
+      - name: Prepare environment variables
+        run: cp .env.example .env
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm prisma generate
+
+      - name: Run Format & Lint Check with Biome
+        run: pnpm biome ci ./src
+
+      - name: Run Type Check
+        run: pnpm tsc --noEmit
+
   build-and-deploy:
     name: Build and Deploy
+    needs: ci-checks
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: read
       packages: write
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@main
         with:
           submodules: recursive
           token: ${{ secrets.SUBMODULES_TOKEN }}
