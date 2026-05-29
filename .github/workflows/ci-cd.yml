@@ -1,7 +1,10 @@
-name: Deploy
+name: CI/CD
 
 on:
   push:
+    branches:
+      - main
+  pull_request:
     branches:
       - main
 
@@ -9,25 +12,65 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
+  ci-checks:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@main
+        with:
+          submodules: recursive
+          token: ${{ secrets.SUBMODULES_TOKEN }}
+
+      - name: Setup mise
+        uses: jdx/mise-action@main
+        with:
+          install: true
+
+      - name: Prepare environment variables
+        run: cp .env.example .env
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm prisma generate
+
+      - name: Run Format & Lint Check with Biome
+        run: pnpm biome ci ./src
+
+      - name: Run Type Check
+        run: pnpm tsc --noEmit
+
   build-and-deploy:
     name: Build and Deploy
+    needs: ci-checks
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: read
       packages: write
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@main
         with:
           submodules: recursive
           token: ${{ secrets.SUBMODULES_TOKEN }}
+
+      - name: Setup mise
+        uses: jdx/mise-action@main
+        with:
+          install: true
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@master
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@master
+        with:
+          driver-opts: image=moby/buildkit:latest
 
       - name: Log in to the Container registry
         uses: docker/login-action@master
@@ -37,15 +80,15 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@master
-        with:
-          context: .
-          push: true
-          platforms: linux/arm64
-          tags: ${{ env.REGISTRY }}/babcs2035/rusutsu:latest, ${{ env.REGISTRY }}/babcs2035/rusutsu:${{ github.sha }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+        run: |
+          docker buildx build \
+            --platform linux/arm64 \
+            --push \
+            --tag "${{ env.REGISTRY }}/babcs2035/rusutsu:latest" \
+            --tag "${{ env.REGISTRY }}/babcs2035/rusutsu:${{ github.sha }}" \
+            --cache-from=type=gha \
+            --cache-to=type=gha,mode=max \
+            .
 
       - name: Setup Tailscale
         uses: tailscale/github-action@main
@@ -72,7 +115,7 @@ jobs:
           key: ${{ secrets.DEPLOY_KEY }}
           port: ${{ secrets.DEPLOY_PORT }}
           script: |
-            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            echo ${{ secrets.GHCR_DEPLOY_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             cd ${{ secrets.DEPLOY_TARGET }}
             mv docker-compose.production.yml docker-compose.yml
             docker compose pull

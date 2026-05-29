@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   serverExternalPackages: [
     "@prisma/client",
+    "@prisma/config",
     "playwright",
     "pg",
     "node-cron",
