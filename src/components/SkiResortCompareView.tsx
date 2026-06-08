@@ -13,12 +13,16 @@ import {
   useBreakpointValue,
 } from "@chakra-ui/react";
 import { motion } from "framer-motion";
+import type {
+  TouchEvent as ReactTouchEvent,
+  WheelEvent as ReactWheelEvent,
+} from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { getSkiResortById } from "@/actions/skiResorts";
+import { Drawer } from "vaul";
+import type { SkiResortDetail } from "@/types/skiResorts";
 import { LoadingSpinner } from "./LoadingSpinner";
 
-type ResortData = Awaited<ReturnType<typeof getSkiResortById>>;
-type Resort = NonNullable<ResortData>;
+type Resort = SkiResortDetail;
 type Elevation = "top" | "mid" | "bot";
 type WeatherLink = {
   kind: "snowForecast" | "tenkiJp" | "weathernews" | "windy";
@@ -39,14 +43,68 @@ type Props = {
   resorts: Resort[];
   isLoading: boolean;
   onClose: () => void;
+  presentation?: "sheet" | "inline";
+  canScrollContent?: boolean;
+  onContentScrollIntent?: () => void;
 };
 
 const TABS = ["概要", "天候"] as const;
+const BOTTOM_SHEET_EXPANDED_SNAP_POINT = 0.94;
+const BOTTOM_SHEET_SNAP_POINTS = [
+  0.12,
+  0.52,
+  BOTTOM_SHEET_EXPANDED_SNAP_POINT,
+] as const;
+const BOTTOM_SHEET_INITIAL_SNAP_POINT = BOTTOM_SHEET_SNAP_POINTS[1];
+const BOTTOM_SHEET_MAP_PEEK_HEIGHT = "6vh";
+const isBottomSheetExpanded = (snapPoint: number | string | null) =>
+  typeof snapPoint === "number" &&
+  Math.abs(snapPoint - BOTTOM_SHEET_EXPANDED_SNAP_POINT) < 0.001;
+const ELEVATION_OPTIONS: Array<{ label: string; value: Elevation }> = [
+  { label: "山頂", value: "top" },
+  { label: "中腹", value: "mid" },
+  { label: "山麓", value: "bot" },
+];
+const VISUALLY_HIDDEN_STYLE: React.CSSProperties = {
+  position: "absolute",
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: "hidden",
+  clip: "rect(0, 0, 0, 0)",
+  border: 0,
+};
+const BOTTOM_SHEET_CONTENT_STYLE: React.CSSProperties = {
+  position: "fixed",
+  bottom: 0,
+  left: 0,
+  right: 0,
+  zIndex: 100001,
+  display: "flex",
+  flexDirection: "column",
+  height: "100vh",
+  borderTopLeftRadius: "1.5rem",
+  borderTopRightRadius: "1.5rem",
+  backgroundColor: "rgba(255, 255, 255, 0.98)",
+  borderTop: "1px solid rgba(0, 0, 0, 0.05)",
+  boxShadow: "0 -10px 40px rgba(0, 0, 0, 0.14)",
+};
+const BOTTOM_SHEET_HANDLE_STYLE: React.CSSProperties = {
+  width: "4rem",
+  height: "0.375rem",
+  flexShrink: 0,
+  borderRadius: "999px",
+  backgroundColor: "#d1d5db",
+  margin: "1rem auto",
+};
 const MotionBox = motion.create(Box);
 const DESKTOP_WEATHER_LINK_WIDTH = "116px";
 const DESKTOP_WEATHER_RESORT_INFO_WIDTH = "180px";
 const WEATHER_PANEL_PADDING_WIDTH = "16px";
 const WEATHER_PANEL_COLUMN_GAP = "8px";
+const SNOW_FORECAST_SOURCE_WIDTH = 750;
+const SNOW_FORECAST_SOURCE_HEIGHT = 250;
 const SNOW_FORECAST_ELEVATION_CONTROLS_WIDTH = 44;
 const SNOW_FORECAST_FEED_VIEWPORT_WIDTH = 430;
 const SNOW_FORECAST_FEED_TOTAL_WIDTH = `${
@@ -63,15 +121,43 @@ const MOBILE_SNOW_FORECAST_FEED_CROP_LEFT = 40;
 const DESKTOP_SNOW_FORECAST_FEED_INITIAL_SCROLL_X = 20;
 const DESKTOP_SNOW_FORECAST_FEED_INITIAL_SCROLL_Y = 10;
 const SNOW_FORECAST_FEED_INITIAL_SCROLL_Y_RATIO = 0.58;
+const MOBILE_SNOW_FORECAST_CROPPED_FEED_WIDTH =
+  (SNOW_FORECAST_SOURCE_WIDTH -
+    MOBILE_SNOW_FORECAST_FEED_CROP_LEFT -
+    MOBILE_SNOW_FORECAST_FEED_CROP_RIGHT) *
+  SNOW_FORECAST_FEED_ZOOM;
+const MOBILE_SNOW_FORECAST_CROPPED_FEED_HEIGHT =
+  MOBILE_SNOW_FORECAST_FEED_CROP_HEIGHT * SNOW_FORECAST_FEED_ZOOM;
+const MOBILE_SNOW_FORECAST_FEED_TRANSFORM = `translate(-${MOBILE_SNOW_FORECAST_FEED_CROP_LEFT}px, -${MOBILE_SNOW_FORECAST_FEED_CROP_TOP}px) scale(${SNOW_FORECAST_FEED_ZOOM})`;
+
+const WEATHER_LINK_TOP_MODE_STYLES = {
+  flexDirection: "row",
+  alignItems: "center",
+  flexWrap: "wrap",
+  overflowX: "visible",
+  paddingBottom: 0,
+  "& .weather-link": {
+    width: "max-content",
+  },
+} as const;
 
 export const SkiResortCompareView = ({
   resorts,
   isLoading,
   onClose,
+  presentation = "sheet",
+  canScrollContent,
+  onContentScrollIntent,
 }: Props) => {
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("概要");
+  const [sheetSnapPoint, setSheetSnapPoint] = useState<number | string | null>(
+    BOTTOM_SHEET_INITIAL_SNAP_POINT,
+  );
+  const sheetContentTouchStartYRef = useRef<number | null>(null);
   const isSidePanel =
-    useBreakpointValue({ base: false, lg: true }, { ssr: false }) ?? false;
+    useBreakpointValue({ base: false, md: true }, { ssr: false }) ?? false;
+  const isSheetContentScrollable =
+    canScrollContent ?? (isSidePanel || isBottomSheetExpanded(sheetSnapPoint));
   const panelVariants = isSidePanel
     ? {
         hidden: { opacity: 0, x: 24 },
@@ -83,158 +169,270 @@ export const SkiResortCompareView = ({
       };
 
   useEffect(() => {
+    const previousBodyOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = "auto";
+      document.body.style.overflow = previousBodyOverflow;
     };
   }, []);
 
-  return (
-    <Portal>
-      <Flex
-        position="fixed"
-        inset={0}
-        zIndex={100001}
+  const expandSheetFromContentScroll = useCallback(() => {
+    if (isSheetContentScrollable) return;
+
+    if (onContentScrollIntent) {
+      onContentScrollIntent();
+      return;
+    }
+
+    setSheetSnapPoint(BOTTOM_SHEET_EXPANDED_SNAP_POINT);
+  }, [isSheetContentScrollable, onContentScrollIntent]);
+  const handleCompareContentWheelCapture = useCallback(
+    (event: ReactWheelEvent<HTMLDivElement>) => {
+      if (isSheetContentScrollable || event.deltaY <= 0) return;
+
+      event.preventDefault();
+      expandSheetFromContentScroll();
+    },
+    [expandSheetFromContentScroll, isSheetContentScrollable],
+  );
+  const handleCompareContentTouchStartCapture = useCallback(
+    (event: ReactTouchEvent<HTMLDivElement>) => {
+      sheetContentTouchStartYRef.current = event.touches[0]?.clientY ?? null;
+    },
+    [],
+  );
+  const handleCompareContentTouchMoveCapture = useCallback(
+    (event: ReactTouchEvent<HTMLDivElement>) => {
+      if (isSheetContentScrollable) return;
+
+      const startY = sheetContentTouchStartYRef.current;
+      const currentY = event.touches[0]?.clientY;
+      if (startY == null || currentY == null || startY - currentY < 8) return;
+
+      event.preventDefault();
+      expandSheetFromContentScroll();
+    },
+    [expandSheetFromContentScroll, isSheetContentScrollable],
+  );
+
+  const comparePanelContent = (
+    <>
+      <Button
+        onClick={onClose}
+        position="absolute"
+        top={4}
+        right={4}
+        zIndex={20}
+        display="flex"
+        h={10}
+        w={10}
         alignItems="center"
-        justifyContent={{ base: "center", lg: "flex-end" }}
+        justifyContent="center"
+        borderRadius="full"
+        bg="white"
+        border="1px solid"
+        borderColor="gray.200"
+        fontSize="xl"
+        color="gray.600"
+        boxShadow="sm"
+        _hover={{
+          bg: "gray.50",
+          color: "gray.900",
+          transform: "scale(1.05)",
+        }}
+        minW="auto"
         p={0}
-        pointerEvents="none"
+        aria-label="比較画面を閉じる"
       >
-        <MotionBox
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          position="absolute"
-          inset={0}
-          bg="transparent"
-          backdropFilter="none"
-          pointerEvents="none"
-          aria-hidden="true"
-        />
-        <MotionBox
-          variants={panelVariants}
-          initial="hidden"
-          animate="visible"
-          exit="hidden"
-          transition={{ type: "tween", duration: 0.18, ease: "easeOut" }}
-          position="relative"
-          zIndex={10}
-          display="flex"
-          h="100%"
-          w={{ base: "100%", lg: "min(800px, 70vw)" }}
-          maxW={{ lg: "none" }}
-          flexDirection="column"
-          overflow="hidden"
-          bg="white"
-          border="1px solid"
-          borderColor="gray.200"
-          boxShadow="2xl"
-          borderRadius="0"
-          pointerEvents="auto"
-        >
+        ✕
+      </Button>
+
+      <Box
+        px={{ base: 4, md: 8 }}
+        pt={{ base: 6, md: 8 }}
+        pb={5}
+        borderBottom="1px solid"
+        borderColor="gray.200"
+      >
+        <Heading size="2xl" color="gray.900" fontFamily="var(--font-heading)">
+          スキー場比較
+        </Heading>
+        <Text mt={2} fontSize="sm" color="gray.500" fontWeight="700">
+          {resorts.length} 件を比較中
+        </Text>
+      </Box>
+
+      <Flex
+        as="nav"
+        borderBottom="1px solid"
+        borderColor="gray.100"
+        bg="rgba(255, 255, 255, 0.95)"
+        backdropFilter="blur(16px)"
+      >
+        {TABS.map(tab => (
           <Button
-            onClick={onClose}
-            position="absolute"
-            top={4}
-            right={4}
-            zIndex={20}
-            display="flex"
-            h={10}
-            w={10}
-            alignItems="center"
-            justifyContent="center"
-            borderRadius="full"
-            bg="white"
-            border="1px solid"
-            borderColor="gray.200"
-            fontSize="xl"
-            color="gray.600"
-            boxShadow="sm"
-            _hover={{
-              bg: "gray.50",
-              color: "gray.900",
-              transform: "scale(1.05)",
-            }}
-            minW="auto"
-            p={0}
-            aria-label="比較画面を閉じる"
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            flex="1"
+            py={4}
+            textAlign="center"
+            fontSize={{ base: "sm", md: "md" }}
+            fontWeight="700"
+            bg="transparent"
+            borderRadius={0}
+            borderBottom={activeTab === tab ? "2px solid" : "none"}
+            borderColor={activeTab === tab ? "brand.500" : "transparent"}
+            color={activeTab === tab ? "brand.600" : "gray.500"}
+            _hover={{ bg: "gray.50", color: "brand.600" }}
           >
-            ✕
+            {tab}
           </Button>
+        ))}
+      </Flex>
 
-          <Box
-            px={{ base: 4, md: 8 }}
-            pt={{ base: 6, md: 8 }}
-            pb={5}
-            borderBottom="1px solid"
-            borderColor="gray.200"
-          >
-            <Heading
-              size="2xl"
-              color="gray.900"
-              fontFamily="var(--font-heading)"
-            >
-              スキー場比較
-            </Heading>
-            <Text mt={2} fontSize="sm" color="gray.500" fontWeight="700">
-              {resorts.length} 件を比較中
-            </Text>
-          </Box>
-
-          <Flex
-            as="nav"
-            borderBottom="1px solid"
-            borderColor="gray.100"
-            bg="rgba(255, 255, 255, 0.95)"
-            backdropFilter="blur(16px)"
-          >
-            {TABS.map(tab => (
-              <Button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                flex="1"
-                py={4}
-                textAlign="center"
-                fontSize={{ base: "sm", md: "md" }}
-                fontWeight="700"
-                bg="transparent"
-                borderRadius={0}
-                borderBottom={activeTab === tab ? "2px solid" : "none"}
-                borderColor={activeTab === tab ? "brand.500" : "transparent"}
-                color={activeTab === tab ? "brand.600" : "gray.500"}
-                _hover={{ bg: "gray.50", color: "brand.600" }}
-              >
-                {tab}
-              </Button>
-            ))}
+      <Box
+        flexGrow={1}
+        overflowY={isSheetContentScrollable ? "auto" : "hidden"}
+        className="custom-scroll"
+        onTouchMoveCapture={handleCompareContentTouchMoveCapture}
+        onTouchStartCapture={handleCompareContentTouchStartCapture}
+        onWheelCapture={handleCompareContentWheelCapture}
+      >
+        {isLoading ? (
+          <Flex minH="360px" alignItems="center" justifyContent="center">
+            <LoadingSpinner text="比較データを読み込み中..." />
           </Flex>
-
-          <Box flexGrow={1} overflowY="auto" className="custom-scroll">
-            {isLoading ? (
-              <Flex minH="360px" alignItems="center" justifyContent="center">
-                <LoadingSpinner text="比較データを読み込み中..." />
-              </Flex>
-            ) : (
-              <Box
-                px={{ base: 2, md: 8 }}
-                py={{ base: 4, md: 8 }}
-                color="gray.800"
-              >
-                {activeTab === "概要" && (
-                  <CompareOverviewTab resorts={resorts} />
-                )}
-                {activeTab === "天候" && (
-                  <CompareWeatherTab
-                    resorts={resorts}
-                    isSidePanel={isSidePanel}
-                  />
-                )}
-              </Box>
+        ) : (
+          <Box px={{ base: 2, md: 8 }} py={{ base: 4, md: 8 }} color="gray.800">
+            {activeTab === "概要" && <CompareOverviewTab resorts={resorts} />}
+            {activeTab === "天候" && (
+              <CompareWeatherTab resorts={resorts} isSidePanel={isSidePanel} />
             )}
           </Box>
-        </MotionBox>
-      </Flex>
-    </Portal>
+        )}
+      </Box>
+    </>
+  );
+
+  if (presentation === "inline") {
+    return (
+      <Box
+        position="relative"
+        display="flex"
+        h="100%"
+        minH={0}
+        flexDirection="column"
+        overflow="hidden"
+        bg="white"
+      >
+        {comparePanelContent}
+      </Box>
+    );
+  }
+
+  return (
+    <>
+      {isSidePanel && (
+        <Portal>
+          <Flex
+            position="fixed"
+            inset={0}
+            zIndex={100001}
+            alignItems="center"
+            justifyContent="flex-end"
+            p={0}
+            pointerEvents="none"
+          >
+            <MotionBox
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              position="absolute"
+              inset={0}
+              bg="transparent"
+              backdropFilter="none"
+              pointerEvents="none"
+              aria-hidden="true"
+            />
+            <MotionBox
+              data-ski-resort-compare-panel="true"
+              variants={panelVariants}
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
+              transition={{ type: "tween", duration: 0.18, ease: "easeOut" }}
+              position="relative"
+              zIndex={10}
+              display="flex"
+              h="100%"
+              w="min(800px, 70vw)"
+              maxW="none"
+              flexDirection="column"
+              overflow="hidden"
+              bg="white"
+              border="1px solid"
+              borderColor="gray.200"
+              boxShadow="2xl"
+              borderRadius="0"
+              pointerEvents="auto"
+            >
+              {comparePanelContent}
+            </MotionBox>
+          </Flex>
+        </Portal>
+      )}
+      {!isSidePanel && (
+        <Box>
+          {isBottomSheetExpanded(sheetSnapPoint) && (
+            <Box
+              as="button"
+              position="fixed"
+              top={0}
+              left={0}
+              right={0}
+              zIndex={100002}
+              h={BOTTOM_SHEET_MAP_PEEK_HEIGHT}
+              bg="transparent"
+              aria-label="地図を表示"
+              onClick={() => setSheetSnapPoint(BOTTOM_SHEET_INITIAL_SNAP_POINT)}
+            />
+          )}
+          <Drawer.Root
+            open
+            onOpenChange={open => {
+              if (!open) onClose();
+            }}
+            activeSnapPoint={sheetSnapPoint}
+            setActiveSnapPoint={setSheetSnapPoint}
+            snapPoints={[...BOTTOM_SHEET_SNAP_POINTS]}
+            modal={false}
+            noBodyStyles
+            snapToSequentialPoint
+          >
+            <Drawer.Portal>
+              <Drawer.Content
+                data-ski-resort-compare-panel="true"
+                style={BOTTOM_SHEET_CONTENT_STYLE}
+              >
+                <Drawer.Title style={VISUALLY_HIDDEN_STYLE}>
+                  スキー場比較
+                </Drawer.Title>
+                <Drawer.Handle style={BOTTOM_SHEET_HANDLE_STYLE} />
+                <Box
+                  position="relative"
+                  display="flex"
+                  h="calc(100vh - var(--snap-point-height, 0px) - 38px)"
+                  flexDirection="column"
+                  overflow="hidden"
+                >
+                  {comparePanelContent}
+                </Box>
+              </Drawer.Content>
+            </Drawer.Portal>
+          </Drawer.Root>
+        </Box>
+      )}
+    </>
   );
 };
 
@@ -473,6 +671,7 @@ const ResortWeatherPanel = ({
           },
           "& .weather-info": {
             flex: "0 0 auto",
+            maxWidth: "none",
             minWidth: 0,
             width: "100%",
           },
@@ -481,13 +680,26 @@ const ResortWeatherPanel = ({
             width: "100%",
           },
           "& .weather-links": {
-            flexDirection: "row",
-            flexWrap: "wrap",
-            overflowX: "visible",
-            paddingBottom: 0,
+            ...WEATHER_LINK_TOP_MODE_STYLES,
           },
-          "& .weather-link": {
-            width: "max-content",
+          "& .snow-forecast-viewport": {
+            height: `${MOBILE_SNOW_FORECAST_FEED_VIEWPORT_HEIGHT}px`,
+          },
+          "& .snow-forecast-desktop-elevation-controls": {
+            display: "none",
+          },
+          "& .snow-forecast-feed-crop": {
+            height: `${MOBILE_SNOW_FORECAST_CROPPED_FEED_HEIGHT}px`,
+            width: `${MOBILE_SNOW_FORECAST_CROPPED_FEED_WIDTH}px`,
+          },
+          "& .snow-forecast-feed-transform": {
+            transform: MOBILE_SNOW_FORECAST_FEED_TRANSFORM,
+          },
+          "& .snow-forecast-mobile-footer": {
+            display: "flex",
+          },
+          "& .snow-forecast-desktop-source": {
+            display: "none",
           },
         },
       }}
@@ -608,17 +820,12 @@ const CompactSnowForecastEmbed = ({
     snowForecastLinks[0];
   const feedUrl = `https://ja.snow-forecast.com/resorts/${selectedSnowForecast.id}/forecasts/feed/${elevation}/m`;
   const detailUrl = selectedSnowForecast.url;
-  const sourceWidth = 750;
-  const sourceHeight = 250;
+  const sourceWidth = SNOW_FORECAST_SOURCE_WIDTH;
+  const sourceHeight = SNOW_FORECAST_SOURCE_HEIGHT;
   const scaledFeedWidth = sourceWidth * SNOW_FORECAST_FEED_ZOOM;
   const scaledFeedHeight = sourceHeight * SNOW_FORECAST_FEED_ZOOM;
-  const mobileCroppedFeedWidth =
-    (sourceWidth -
-      MOBILE_SNOW_FORECAST_FEED_CROP_LEFT -
-      MOBILE_SNOW_FORECAST_FEED_CROP_RIGHT) *
-    SNOW_FORECAST_FEED_ZOOM;
-  const mobileCroppedFeedHeight =
-    MOBILE_SNOW_FORECAST_FEED_CROP_HEIGHT * SNOW_FORECAST_FEED_ZOOM;
+  const mobileCroppedFeedWidth = MOBILE_SNOW_FORECAST_CROPPED_FEED_WIDTH;
+  const mobileCroppedFeedHeight = MOBILE_SNOW_FORECAST_CROPPED_FEED_HEIGHT;
 
   const resetFeedScroll = useCallback(() => {
     const scrollContainer = scrollRef.current;
@@ -749,6 +956,7 @@ const CompactSnowForecastEmbed = ({
         )}
 
         <Flex
+          className="snow-forecast-viewport"
           h={{
             base: `${MOBILE_SNOW_FORECAST_FEED_VIEWPORT_HEIGHT}px`,
             md: `${SNOW_FORECAST_FEED_VIEWPORT_HEIGHT}px`,
@@ -757,6 +965,7 @@ const CompactSnowForecastEmbed = ({
           minW={0}
         >
           <Flex
+            className="snow-forecast-desktop-elevation-controls"
             display={{ base: "none", md: "flex" }}
             w={`${SNOW_FORECAST_ELEVATION_CONTROLS_WIDTH}px`}
             flexShrink={0}
@@ -767,15 +976,11 @@ const CompactSnowForecastEmbed = ({
             borderRight="1px solid"
             borderColor="gray.200"
           >
-            {[
-              { label: "山頂", value: "top" },
-              { label: "中腹", value: "mid" },
-              { label: "山麓", value: "bot" },
-            ].map(option => (
+            {ELEVATION_OPTIONS.map(option => (
               <Button
                 key={option.value}
                 onClick={() => {
-                  onElevationChange(option.value as Elevation);
+                  onElevationChange(option.value);
                   resetFeedScroll();
                 }}
                 flex="1"
@@ -829,6 +1034,7 @@ const CompactSnowForecastEmbed = ({
             )}
 
             <Box
+              className="snow-forecast-feed-crop"
               h={{
                 base: `${mobileCroppedFeedHeight}px`,
                 md: `${scaledFeedHeight}px`,
@@ -840,10 +1046,11 @@ const CompactSnowForecastEmbed = ({
               overflow="hidden"
             >
               <Box
+                className="snow-forecast-feed-transform"
                 h={`${sourceHeight}px`}
                 w={`${sourceWidth}px`}
                 transform={{
-                  base: `translate(-${MOBILE_SNOW_FORECAST_FEED_CROP_LEFT}px, -${MOBILE_SNOW_FORECAST_FEED_CROP_TOP}px) scale(${SNOW_FORECAST_FEED_ZOOM})`,
+                  base: MOBILE_SNOW_FORECAST_FEED_TRANSFORM,
                   md: `scale(${SNOW_FORECAST_FEED_ZOOM})`,
                 }}
                 transformOrigin="top left"
@@ -870,6 +1077,7 @@ const CompactSnowForecastEmbed = ({
         </Flex>
 
         <Flex
+          className="snow-forecast-mobile-footer"
           display={{ base: "flex", md: "none" }}
           alignItems="center"
           gap={2}
@@ -879,15 +1087,11 @@ const CompactSnowForecastEmbed = ({
           borderColor="gray.200"
         >
           <Flex flex="0 0 auto" gap={0}>
-            {[
-              { label: "山頂", value: "top" },
-              { label: "中腹", value: "mid" },
-              { label: "山麓", value: "bot" },
-            ].map(option => (
+            {ELEVATION_OPTIONS.map(option => (
               <Button
                 key={option.value}
                 onClick={() => {
-                  onElevationChange(option.value as Elevation);
+                  onElevationChange(option.value);
                   resetFeedScroll();
                 }}
                 minW="max-content"
@@ -940,6 +1144,7 @@ const CompactSnowForecastEmbed = ({
       </Flex>
 
       <Text
+        className="snow-forecast-desktop-source"
         display={{ base: "none", md: "block" }}
         mt={1.5}
         w="100%"

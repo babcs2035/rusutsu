@@ -3,7 +3,6 @@
 import {
   Box,
   Button,
-  Checkbox,
   Flex,
   Grid,
   Heading,
@@ -16,20 +15,28 @@ import {
   useBreakpointValue,
 } from "@chakra-ui/react";
 import { motion } from "framer-motion";
+import { Check, ChevronDown, Plus } from "lucide-react";
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import type { getSkiResortById } from "@/actions/skiResorts";
+import type {
+  TouchEvent as ReactTouchEvent,
+  WheelEvent as ReactWheelEvent,
+} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Drawer } from "vaul";
+import type {
+  NullableSkiResortDetail,
+  SkiResortDetail,
+} from "@/types/skiResorts";
 import type { SnowDepthsT } from "@/types/weathers";
 import { LoadingSpinner } from "./LoadingSpinner";
 import { SnowDepthLineChart, SnowForecastEmbed } from "./WeatherChart";
 
-type ResortData = Awaited<ReturnType<typeof getSkiResortById>>;
-
 type Props = {
-  resortId: string;
-  resortData: ResortData | null;
+  resortData: NullableSkiResortDetail | null;
   isLoading: boolean;
   isCompareSelected: boolean;
+  sheetSnapPoint: number | string | null;
+  setSheetSnapPoint: (snapPoint: number | string | null) => void;
   onToggleCompare: (id: string, selected: boolean) => void;
   onClose: () => void;
 };
@@ -37,21 +44,69 @@ type Props = {
 const TABS = ["概要", "コース", "リフト", "チケット", "気候"];
 
 const MotionBox = motion.create(Box);
+const BOTTOM_SHEET_EXPANDED_SNAP_POINT = 0.94;
+const BOTTOM_SHEET_SNAP_POINTS = [
+  0.12,
+  0.52,
+  BOTTOM_SHEET_EXPANDED_SNAP_POINT,
+] as const;
+const BOTTOM_SHEET_INITIAL_SNAP_POINT = BOTTOM_SHEET_SNAP_POINTS[1];
+const MOBILE_DETAIL_SHEET_Z_INDEX = 300000;
+const isBottomSheetExpanded = (snapPoint: number | string | null) =>
+  typeof snapPoint === "number" &&
+  Math.abs(snapPoint - BOTTOM_SHEET_EXPANDED_SNAP_POINT) < 0.001;
+const VISUALLY_HIDDEN_STYLE: React.CSSProperties = {
+  position: "absolute",
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: "hidden",
+  clip: "rect(0, 0, 0, 0)",
+  border: 0,
+};
+const BOTTOM_SHEET_CONTENT_STYLE: React.CSSProperties = {
+  position: "fixed",
+  bottom: 0,
+  left: 0,
+  right: 0,
+  zIndex: MOBILE_DETAIL_SHEET_Z_INDEX,
+  display: "flex",
+  flexDirection: "column",
+  height: "100vh",
+  borderTopLeftRadius: "1.5rem",
+  borderTopRightRadius: "1.5rem",
+  backgroundColor: "rgba(255, 255, 255, 0.98)",
+  borderTop: "1px solid rgba(0, 0, 0, 0.05)",
+  boxShadow: "0 -10px 40px rgba(0, 0, 0, 0.14)",
+};
+const BOTTOM_SHEET_HANDLE_STYLE: React.CSSProperties = {
+  width: "4rem",
+  height: "0.375rem",
+  flexShrink: 0,
+  borderRadius: "999px",
+  backgroundColor: "#d1d5db",
+  margin: "0.5rem auto 0.125rem",
+};
 
 /**
  * スキー場の詳細情報を表示するレスポンシブ対応モーダル
  */
 export const SkiResortDetailView = ({
-  resortId: _resortId,
   resortData,
   isLoading,
   isCompareSelected,
+  sheetSnapPoint,
+  setSheetSnapPoint,
   onToggleCompare,
   onClose,
 }: Props) => {
   const [activeTab, setActiveTab] = useState(TABS[0]);
+  const sheetContentTouchStartYRef = useRef<number | null>(null);
   const isSidePanel =
-    useBreakpointValue({ base: false, lg: true }, { ssr: false }) ?? false;
+    useBreakpointValue({ base: false, md: true }, { ssr: false }) ?? false;
+  const canScrollDetailContent =
+    isSidePanel || isBottomSheetExpanded(sheetSnapPoint);
   const panelVariants = isSidePanel
     ? {
         hidden: { opacity: 0, x: 24 },
@@ -64,203 +119,379 @@ export const SkiResortDetailView = ({
 
   // モーダル表示時にスクロールを防止
   useEffect(() => {
+    const previousBodyOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = "auto";
+      document.body.style.overflow = previousBodyOverflow;
     };
   }, []);
 
+  const expandSheetFromContentScroll = useCallback(() => {
+    if (isSidePanel || isBottomSheetExpanded(sheetSnapPoint)) return;
+
+    setSheetSnapPoint(BOTTOM_SHEET_EXPANDED_SNAP_POINT);
+  }, [isSidePanel, setSheetSnapPoint, sheetSnapPoint]);
+  const handleDetailContentWheelCapture = useCallback(
+    (event: ReactWheelEvent<HTMLDivElement>) => {
+      if (canScrollDetailContent || event.deltaY <= 0) return;
+
+      event.preventDefault();
+      expandSheetFromContentScroll();
+    },
+    [canScrollDetailContent, expandSheetFromContentScroll],
+  );
+  const handleDetailContentTouchStartCapture = useCallback(
+    (event: ReactTouchEvent<HTMLDivElement>) => {
+      sheetContentTouchStartYRef.current = event.touches[0]?.clientY ?? null;
+    },
+    [],
+  );
+  const handleDetailContentTouchMoveCapture = useCallback(
+    (event: ReactTouchEvent<HTMLDivElement>) => {
+      if (canScrollDetailContent) return;
+
+      const startY = sheetContentTouchStartYRef.current;
+      const currentY = event.touches[0]?.clientY;
+      if (startY == null || currentY == null || startY - currentY < 8) return;
+
+      event.preventDefault();
+      expandSheetFromContentScroll();
+    },
+    [canScrollDetailContent, expandSheetFromContentScroll],
+  );
+
   if (isLoading || !resortData) {
     return (
-      <Portal>
-        <Flex
-          position="fixed"
-          inset={0}
-          zIndex={99999}
-          alignItems="center"
-          justifyContent={{ base: "center", lg: "flex-end" }}
-          p={0}
-          pointerEvents="none"
-        >
-          <MotionBox
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            position="absolute"
-            inset={0}
-            bg="transparent"
-            backdropFilter="none"
-            pointerEvents="none"
-            aria-hidden="true"
-          />
-          <MotionBox
-            variants={panelVariants}
-            initial="hidden"
-            animate="visible"
-            exit="hidden"
-            position="relative"
-            zIndex={10}
-            display="flex"
-            h="100%"
-            maxH="none"
-            w={{ base: "100%", lg: "min(720px, 70vw)" }}
-            maxW={{ lg: "none" }}
-            flexDirection="column"
-            alignItems="center"
-            justifyContent="center"
-            overflow="hidden"
-            bg="white"
-            border="1px solid"
-            borderColor="gray.200"
-            boxShadow="2xl"
-            borderRadius="0"
-            pointerEvents="auto"
-          >
-            <LoadingSpinner text="読み込み中..." />
-          </MotionBox>
-        </Flex>
-      </Portal>
+      <>
+        {isSidePanel && (
+          <Portal>
+            <Flex
+              position="fixed"
+              inset={0}
+              zIndex={99999}
+              display={{ base: "none", md: "flex" }}
+              alignItems="center"
+              justifyContent="flex-end"
+              p={0}
+              pointerEvents="none"
+            >
+              <MotionBox
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                position="absolute"
+                inset={0}
+                bg="transparent"
+                backdropFilter="none"
+                pointerEvents="none"
+                aria-hidden="true"
+              />
+              <MotionBox
+                data-ski-resort-detail-panel="true"
+                variants={panelVariants}
+                initial="hidden"
+                animate="visible"
+                exit="hidden"
+                position="relative"
+                zIndex={10}
+                display="flex"
+                h="100%"
+                maxH="none"
+                w="min(720px, 70vw)"
+                maxW="none"
+                flexDirection="column"
+                alignItems="center"
+                justifyContent="center"
+                overflow="hidden"
+                bg="white"
+                border="1px solid"
+                borderColor="gray.200"
+                boxShadow="2xl"
+                borderRadius="0"
+                pointerEvents="auto"
+              >
+                <LoadingSpinner text="読み込み中..." />
+              </MotionBox>
+            </Flex>
+          </Portal>
+        )}
+        {!isSidePanel && (
+          <Box>
+            <Drawer.Root
+              open
+              onOpenChange={open => {
+                if (!open) onClose();
+              }}
+              activeSnapPoint={sheetSnapPoint}
+              setActiveSnapPoint={setSheetSnapPoint}
+              snapPoints={[...BOTTOM_SHEET_SNAP_POINTS]}
+              modal={false}
+              noBodyStyles
+            >
+              <Drawer.Portal>
+                <Drawer.Content
+                  data-ski-resort-detail-panel="true"
+                  style={BOTTOM_SHEET_CONTENT_STYLE}
+                >
+                  <Drawer.Title style={VISUALLY_HIDDEN_STYLE}>
+                    スキー場詳細
+                  </Drawer.Title>
+                  <Drawer.Handle style={BOTTOM_SHEET_HANDLE_STYLE} />
+                  <Flex
+                    h="calc(100vh - var(--snap-point-height, 0px) - 38px)"
+                    alignItems="center"
+                    justifyContent="center"
+                  >
+                    <LoadingSpinner text="読み込み中..." />
+                  </Flex>
+                </Drawer.Content>
+              </Drawer.Portal>
+            </Drawer.Root>
+          </Box>
+        )}
+      </>
     );
   }
 
   const resort = resortData;
-
-  return (
-    <Portal>
-      <Flex
-        position="fixed"
-        inset={0}
-        zIndex={100000}
-        alignItems="center"
-        justifyContent={{ base: "center", lg: "flex-end" }}
-        p={0}
-        pointerEvents="none"
-      >
-        <MotionBox
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+  const images = [
+    ...(resort.outlineImages || []),
+    ...(resort.courseImages || []),
+  ];
+  const mobileDetailHeader = (
+    <>
+      <InfoSection
+        resort={resort}
+        isCompareSelected={isCompareSelected}
+        onToggleCompare={onToggleCompare}
+        onClose={onClose}
+      />
+      <ImageCarousel images={images} alt={resort.nameJa} />
+    </>
+  );
+  const desktopDetailHeader = (
+    <>
+      <ImageCarousel images={images} alt={resort.nameJa} />
+      <InfoSection
+        resort={resort}
+        isCompareSelected={isCompareSelected}
+        onToggleCompare={onToggleCompare}
+        onClose={onClose}
+      />
+    </>
+  );
+  const detailPanelContent = (
+    <>
+      {isSidePanel && (
+        <Button
+          onClick={onClose}
           position="absolute"
-          inset={0}
-          bg="transparent"
-          backdropFilter="none"
-          pointerEvents="none"
-          aria-hidden="true"
-        />
-        <MotionBox
-          variants={panelVariants}
-          initial="hidden"
-          animate="visible"
-          exit="hidden"
-          transition={{ type: "tween", duration: 0.18, ease: "easeOut" }}
-          position="relative"
-          zIndex={10}
+          top={4}
+          right={4}
+          zIndex={20}
           display="flex"
-          h="100%"
-          maxH="none"
-          w={{ base: "100%", lg: "min(720px, 70vw)" }}
-          maxW={{ lg: "none" }}
-          flexDirection="column"
-          overflow="hidden"
+          h={10}
+          w={10}
+          alignItems="center"
+          justifyContent="center"
+          borderRadius="full"
           bg="white"
           border="1px solid"
           borderColor="gray.200"
-          boxShadow="2xl"
-          borderRadius="0"
-          pointerEvents="auto"
+          fontSize="xl"
+          color="gray.600"
+          boxShadow="sm"
+          _hover={{
+            bg: "gray.50",
+            color: "gray.900",
+            transform: "scale(1.05)",
+          }}
+          _focus={{ outline: "none", ring: "2px", ringColor: "brand.400" }}
+          minW="auto"
+          p={0}
+          transition="all 0.2s"
         >
-          <Button
-            onClick={onClose}
-            position="absolute"
-            top={4}
-            right={4}
+          ✕
+        </Button>
+      )}
+      <Box
+        flexGrow={1}
+        overflowY={canScrollDetailContent ? "auto" : "hidden"}
+        className="custom-scroll"
+        onTouchMoveCapture={handleDetailContentTouchMoveCapture}
+        onTouchStartCapture={handleDetailContentTouchStartCapture}
+        onWheelCapture={handleDetailContentWheelCapture}
+      >
+        {!isSidePanel && isBottomSheetExpanded(sheetSnapPoint) && (
+          <Flex
+            position="sticky"
+            top={0}
             zIndex={20}
-            display="flex"
-            h={10}
-            w={10}
-            alignItems="center"
             justifyContent="center"
-            borderRadius="full"
-            bg="white"
-            border="1px solid"
-            borderColor="gray.200"
-            fontSize="xl"
-            color="gray.600"
-            boxShadow="sm"
-            _hover={{
-              bg: "gray.50",
-              color: "gray.900",
-              transform: "scale(1.05)",
-            }}
-            _focus={{ outline: "none", ring: "2px", ringColor: "brand.400" }}
-            minW="auto"
-            p={0}
-            transition="all 0.2s"
+            bg="rgba(255, 255, 255, 0.96)"
+            backdropFilter="blur(12px)"
+            py={1}
           >
-            ✕
-          </Button>
-          <Box flexGrow={1} overflowY="auto" className="custom-scroll">
-            <ImageCarousel
-              images={[
-                ...(resort.outlineImages || []),
-                ...(resort.courseImages || []),
-              ]}
-              alt={resort.nameJa}
-            />
-            <InfoSection
-              resort={resort}
-              isCompareSelected={isCompareSelected}
-              onToggleCompare={onToggleCompare}
-            />
-            <Flex
-              as="nav"
-              position="sticky"
-              top={0}
-              zIndex={10}
-              borderBottom="1px solid"
-              borderColor="gray.100"
-              bg="rgba(255, 255, 255, 0.95)"
-              backdropFilter="blur(16px)"
-              overflowX="auto"
-              css={{
-                "&::-webkit-scrollbar": { display: "none" },
-                msOverflowStyle: "none",
-                scrollbarWidth: "none",
-              }}
+            <Button
+              type="button"
+              aria-label="詳細を中間位置に戻す"
+              onClick={() => setSheetSnapPoint(BOTTOM_SHEET_INITIAL_SNAP_POINT)}
+              display="flex"
+              h={9}
+              w={12}
+              minW="auto"
+              alignItems="center"
+              justifyContent="center"
+              borderRadius="full"
+              bg="gray.100"
+              color="gray.700"
+              p={0}
+              _hover={{ bg: "gray.200", color: "gray.900" }}
+              _focus={{ outline: "none", ring: "2px", ringColor: "brand.400" }}
             >
-              {TABS.map(tab => (
-                <Button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  flex={{ base: "1 0 80px", md: "1 0 96px" }}
-                  py={4}
-                  px={{ base: 4, md: 2 }}
-                  textAlign="center"
-                  fontSize={{ base: "sm", md: "md" }}
-                  fontWeight="700"
-                  bg="transparent"
-                  borderRadius={0}
-                  borderBottom={activeTab === tab ? "2px solid" : "none"}
-                  borderColor={activeTab === tab ? "brand.500" : "transparent"}
-                  color={activeTab === tab ? "brand.600" : "gray.500"}
-                  _hover={{ bg: "gray.50", color: "brand.600" }}
-                  transition="all 0.2s"
+              <ChevronDown size={22} strokeWidth={2.8} />
+            </Button>
+          </Flex>
+        )}
+        {isSidePanel ? desktopDetailHeader : mobileDetailHeader}
+        <Flex
+          as="nav"
+          position="sticky"
+          top={0}
+          zIndex={10}
+          borderBottom="1px solid"
+          borderColor="gray.100"
+          bg="rgba(255, 255, 255, 0.95)"
+          backdropFilter="blur(16px)"
+          overflowX="auto"
+          css={{
+            "&::-webkit-scrollbar": { display: "none" },
+            msOverflowStyle: "none",
+            scrollbarWidth: "none",
+          }}
+        >
+          {TABS.map(tab => (
+            <Button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              flex={{ base: "1 0 80px", md: "1 0 96px" }}
+              py={4}
+              px={{ base: 4, md: 2 }}
+              textAlign="center"
+              fontSize={{ base: "sm", md: "md" }}
+              fontWeight="700"
+              bg="transparent"
+              borderRadius={0}
+              borderBottom={activeTab === tab ? "2px solid" : "none"}
+              borderColor={activeTab === tab ? "brand.500" : "transparent"}
+              color={activeTab === tab ? "brand.600" : "gray.500"}
+              _hover={{ bg: "gray.50", color: "brand.600" }}
+              transition="all 0.2s"
+            >
+              {tab}
+            </Button>
+          ))}
+        </Flex>
+        <Box p={{ base: 4, md: 8 }} color="gray.800">
+          {activeTab === "概要" && <OverviewTab resort={resort} />}
+          {activeTab === "コース" && <CoursesTab resort={resort} />}
+          {activeTab === "リフト" && <LiftsTab resort={resort} />}
+          {activeTab === "チケット" && <TicketsTab resort={resort} />}
+          {activeTab === "気候" && <WeatherTab resort={resort} />}
+        </Box>
+      </Box>
+    </>
+  );
+
+  return (
+    <>
+      {isSidePanel && (
+        <Portal>
+          <Flex
+            position="fixed"
+            inset={0}
+            zIndex={100000}
+            alignItems="center"
+            justifyContent="flex-end"
+            p={0}
+            pointerEvents="none"
+          >
+            <MotionBox
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              position="absolute"
+              inset={0}
+              bg="transparent"
+              backdropFilter="none"
+              pointerEvents="none"
+              aria-hidden="true"
+            />
+            <MotionBox
+              data-ski-resort-detail-panel="true"
+              variants={panelVariants}
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
+              transition={{ type: "tween", duration: 0.18, ease: "easeOut" }}
+              position="relative"
+              zIndex={10}
+              display="flex"
+              h="100%"
+              maxH="none"
+              w="min(720px, 70vw)"
+              maxW="none"
+              flexDirection="column"
+              overflow="hidden"
+              bg="white"
+              border="1px solid"
+              borderColor="gray.200"
+              boxShadow="2xl"
+              borderRadius="0"
+              pointerEvents="auto"
+            >
+              {detailPanelContent}
+            </MotionBox>
+          </Flex>
+        </Portal>
+      )}
+      {!isSidePanel && (
+        <Box>
+          <Drawer.Root
+            open
+            onOpenChange={open => {
+              if (!open) onClose();
+            }}
+            activeSnapPoint={sheetSnapPoint}
+            setActiveSnapPoint={setSheetSnapPoint}
+            snapPoints={[...BOTTOM_SHEET_SNAP_POINTS]}
+            modal={false}
+            noBodyStyles
+          >
+            <Drawer.Portal>
+              <Drawer.Content
+                data-ski-resort-detail-panel="true"
+                style={BOTTOM_SHEET_CONTENT_STYLE}
+              >
+                <Drawer.Title style={VISUALLY_HIDDEN_STYLE}>
+                  {resort.nameJa}
+                </Drawer.Title>
+                <Drawer.Handle style={BOTTOM_SHEET_HANDLE_STYLE} />
+                <Box
+                  position="relative"
+                  display="flex"
+                  h="calc(100vh - var(--snap-point-height, 0px) - 38px)"
+                  flexDirection="column"
+                  overflow="hidden"
                 >
-                  {tab}
-                </Button>
-              ))}
-            </Flex>
-            <Box p={{ base: 4, md: 8 }} color="gray.800">
-              {activeTab === "概要" && <OverviewTab resort={resort} />}
-              {activeTab === "コース" && <CoursesTab resort={resort} />}
-              {activeTab === "リフト" && <LiftsTab resort={resort} />}
-              {activeTab === "チケット" && <TicketsTab resort={resort} />}
-              {activeTab === "気候" && <WeatherTab resort={resort} />}
-            </Box>
-          </Box>
-        </MotionBox>
-      </Flex>
-    </Portal>
+                  {detailPanelContent}
+                </Box>
+              </Drawer.Content>
+            </Drawer.Portal>
+          </Drawer.Root>
+        </Box>
+      )}
+    </>
   );
 };
 
@@ -287,7 +518,7 @@ const ImageCarousel = ({ images, alt }: { images: string[]; alt: string }) => {
   if (!images || images.length === 0)
     return (
       <Box
-        h={{ base: "192px", md: "256px" }}
+        h={{ base: "160px", md: "256px" }}
         w="100%"
         flexShrink={0}
         bg="#d1d5db"
@@ -297,7 +528,7 @@ const ImageCarousel = ({ images, alt }: { images: string[]; alt: string }) => {
   return (
     <Box
       position="relative"
-      h={{ base: "192px", md: "256px" }}
+      h={{ base: "160px", md: "256px" }}
       w="100%"
       flexShrink={0}
       overflow="hidden"
@@ -393,73 +624,158 @@ const ImageCarousel = ({ images, alt }: { images: string[]; alt: string }) => {
   );
 };
 
-type Resort = NonNullable<ResortData>;
+type Resort = SkiResortDetail;
 
 const InfoSection = ({
   resort,
   isCompareSelected,
   onToggleCompare,
+  onClose,
 }: {
   resort: Resort;
   isCompareSelected: boolean;
   onToggleCompare: (id: string, selected: boolean) => void;
+  onClose: () => void;
 }) => (
   <Box
     bg="transparent"
-    p={{ base: 4, md: 8 }}
+    pt={{ base: 1.5, md: 8 }}
+    pr={{ base: 4, md: 8 }}
+    pb={{ base: 3, md: 8 }}
+    pl={{ base: 4, md: 8 }}
     borderBottom="1px solid"
     borderColor="gray.200"
   >
-    <Flex
-      alignItems={{ base: "flex-start", sm: "center" }}
-      justifyContent="space-between"
-      gap={4}
-      flexWrap="wrap"
-    >
-      <Heading size="3xl" color="gray.900" fontFamily="var(--font-heading)">
+    <Flex alignItems="flex-start" justifyContent="space-between" gap={2}>
+      <Heading
+        flex="1 1 auto"
+        minW={0}
+        color="gray.900"
+        fontFamily="var(--font-heading)"
+        fontSize={{ base: "1.25rem", md: "2.5rem" }}
+        lineHeight={{ base: "1.18", md: "1.16" }}
+      >
         {resort.nameJa}
       </Heading>
-      <Checkbox.Root
-        checked={isCompareSelected}
-        onCheckedChange={details =>
-          onToggleCompare(resort.id, details.checked === true)
-        }
-        aria-label={`${resort.nameJa}を比較対象に追加`}
+      <Flex
+        display={{ base: "flex", md: "none" }}
+        flex="0 0 auto"
+        alignItems="center"
+        gap={2}
       >
-        <Checkbox.HiddenInput />
-        <Checkbox.Control
-          borderColor="gray.300"
-          bg="white"
-          _checked={{
-            bg: "brand.500",
-            borderColor: "brand.500",
-            color: "white",
+        <Button
+          size="xs"
+          flex="0 0 5.75rem"
+          w="5.75rem"
+          h="28px"
+          minW="5.75rem"
+          px={2}
+          borderRadius="md"
+          gap={1}
+          fontSize="0.68rem"
+          fontWeight="800"
+          color={isCompareSelected ? "white" : "brand.600"}
+          bg={isCompareSelected ? "brand.500" : "white"}
+          border="1px solid"
+          borderColor={isCompareSelected ? "brand.400" : "brand.500"}
+          aria-pressed={isCompareSelected}
+          aria-label={`${resort.nameJa}を${
+            isCompareSelected ? "比較から外す" : "比較に追加"
+          }`}
+          _hover={{
+            bg: isCompareSelected ? "brand.600" : "brand.50",
           }}
-        />
-        <Checkbox.Label color="gray.700" fontSize="sm" fontWeight="800">
-          比較する
-        </Checkbox.Label>
-      </Checkbox.Root>
+          onClick={() => onToggleCompare(resort.id, !isCompareSelected)}
+        >
+          <Box
+            as={isCompareSelected ? Check : Plus}
+            boxSize="12px"
+            strokeWidth={3}
+          />
+          <Box as="span">
+            {isCompareSelected ? "比較から外す" : "比較に追加"}
+          </Box>
+        </Button>
+        <Button
+          onClick={onClose}
+          h={10}
+          w={10}
+          minW={10}
+          flex="0 0 auto"
+          alignItems="center"
+          justifyContent="center"
+          borderRadius="full"
+          bg="white"
+          border="1px solid"
+          borderColor="gray.200"
+          fontSize="xl"
+          color="gray.600"
+          boxShadow="sm"
+          _hover={{ bg: "gray.50", color: "gray.900" }}
+          _focus={{ outline: "none", ring: "2px", ringColor: "brand.400" }}
+          p={0}
+          aria-label="詳細を閉じる"
+        >
+          ✕
+        </Button>
+      </Flex>
     </Flex>
-    <Text mt={2} fontSize="sm" color="brand.600" fontWeight="700">
+    <Flex
+      display={{ base: "none", md: "flex" }}
+      mt={4}
+      alignItems="center"
+      gap={3}
+      wrap="wrap"
+    >
+      <Button
+        size="xs"
+        w="100px"
+        minW="100px"
+        h="var(--chakra-sizes-8)"
+        px={2}
+        borderRadius="md"
+        gap={1.5}
+        fontWeight="800"
+        color={isCompareSelected ? "white" : "brand.600"}
+        bg={isCompareSelected ? "brand.500" : "white"}
+        border="1px solid"
+        borderColor="brand.500"
+        aria-pressed={isCompareSelected}
+        aria-label={`${resort.nameJa}を${
+          isCompareSelected ? "比較から外す" : "比較に追加"
+        }`}
+        _hover={{
+          bg: isCompareSelected ? "brand.600" : "brand.50",
+        }}
+        onClick={() => onToggleCompare(resort.id, !isCompareSelected)}
+      >
+        <Box
+          as={isCompareSelected ? Check : Plus}
+          boxSize="16px"
+          strokeWidth={3}
+        />
+        {isCompareSelected ? "比較から外す" : "比較に追加"}
+      </Button>
+    </Flex>
+    <Text mt={2.5} fontSize="sm" color="brand.600" fontWeight="700">
       {resort.prefecture} • {resort.town}
     </Text>
     <Text
-      mt={4}
+      mt={{ base: 3, md: 4 }}
       color="gray.600"
-      fontSize="md"
-      lineHeight="1.6"
+      fontSize={{ base: "0.95rem", md: "md" }}
+      lineHeight={{ base: "1.45", md: "1.6" }}
       w={{ base: "100%", md: "80%" }}
     >
       {resort.descriptionShort}
     </Text>
     <Grid
-      mt={8}
+      mt={{ base: 4, md: 8 }}
       templateColumns={{
         base: "repeat(2, 1fr)",
         md: resort.yukiMagi ? "repeat(4, 1fr)" : "repeat(3, 1fr)",
       }}
-      gap={{ base: 3, md: 5 }}
+      gap={{ base: 2, md: 5 }}
       textAlign="center"
     >
       <StatCard title="コンディション" value={resort.condition || "--"} />
@@ -1579,7 +1895,8 @@ const StatCard = ({
 }) => (
   <Box
     p={{ base: 2, sm: 3, md: 4 }}
-    borderRadius="xl"
+    minH={{ base: "64px", md: "auto" }}
+    borderRadius={{ base: "lg", md: "xl" }}
     bg="white"
     border="1px solid"
     borderColor="gray.200"
@@ -1603,8 +1920,8 @@ const StatCard = ({
     </Text>
     <Text
       fontWeight="800"
-      mt={1}
-      fontSize={{ base: "md", sm: "lg", md: "2xl" }}
+      mt={{ base: 0.5, md: 1 }}
+      fontSize={{ base: "0.95rem", sm: "lg", md: "2xl" }}
       color={valueColor}
       fontFamily="var(--font-heading)"
       lineHeight="1.2"

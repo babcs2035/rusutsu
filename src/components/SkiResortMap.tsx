@@ -2,10 +2,12 @@
 
 import { Box, Button, Flex } from "@chakra-ui/react";
 import L from "leaflet";
-import { Home } from "lucide-react";
+import { Check, Home, Plus } from "lucide-react";
 import {
   Fragment,
   memo,
+  type TouchEvent as ReactTouchEvent,
+  type WheelEvent as ReactWheelEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -14,7 +16,6 @@ import {
 } from "react";
 
 import {
-  CircleMarker,
   MapContainer,
   Marker,
   Pane,
@@ -24,29 +25,46 @@ import {
   useMap,
   useMapEvents,
 } from "react-leaflet";
+import type { MapSkiResort } from "@/types/skiResorts";
 
-const INITIAL_CENTER: L.LatLngTuple = [38.25, 139.0];
-const INITIAL_ZOOM = 6;
-const LABEL_SHOW_ZOOM = 8;
-const LABEL_ADVANCED_LAYOUT_ZOOM = 11;
+const INITIAL_CENTER: L.LatLngTuple = [38.25, 138.0];
+const MOBILE_INITIAL_ZOOM = 5;
+const DESKTOP_INITIAL_ZOOM = 6;
+const MOBILE_MAP_MEDIA_QUERY = "(max-width: 47.999em)";
+const MOBILE_LABEL_SHOW_ZOOM = 7;
+const DESKTOP_LABEL_SHOW_ZOOM = 8;
+const MOBILE_LABEL_ADVANCED_LAYOUT_ZOOM = 11;
+const DESKTOP_LABEL_ADVANCED_LAYOUT_ZOOM = 11;
+const LABEL_PREFETCH_PADDING_RATIO = 0.2;
+const LABEL_PREFETCH_MIN_PADDING_PX = 150;
+const VIEWPORT_PADDING_RATIO_CHANGE_THRESHOLD = 0.001;
 
 const FALLBACK_LABEL_HEIGHT = 24;
-const LABEL_POINT_GAP = 4;
 const ADVANCED_NEAR_POINT_DISTANCE = 40;
+const PRIMARY_LABEL_SEARCH_MAX_RADIUS_PX = 180;
+const DENSE_LABEL_SEARCH_MAX_RADIUS_PX = 260;
 const LABEL_COLLISION_PADDING = 4;
 const LABEL_MARGIN = 6;
 
 const LABEL_POINT_CLEARANCE = 8;
 const LEADER_POINT_CLEARANCE = 8;
+const RESORT_POINT_RADIUS = 4;
+const SELECTED_MARKER_RING_WIDTH = 3;
 
 const BASE_MARKER_PANE = "resort-markers-base";
 const FRONT_MARKER_PANE = "resort-markers-front";
 const FILTER_MATCH_MARKER_PANE = "resort-markers-filter-match";
 const SELECTED_MARKER_PANE = "resort-markers-selected";
-const DETAIL_PANEL_MAX_WIDTH = 720;
-const COMPARE_PANEL_MAX_WIDTH = 860;
-const SIDE_PANEL_WIDTH_RATIO = 0.7;
-const SIDE_PANEL_BREAKPOINT_WIDTH = 1024;
+const COMPARE_PANEL_ATTRIBUTE = "data-ski-resort-compare-panel";
+const DETAIL_PANEL_ATTRIBUTE = "data-ski-resort-detail-panel";
+const MOBILE_ZOOM_SETTINGS = {
+  zoomSnap: 0,
+  zoomDelta: 0.5,
+};
+const DESKTOP_ZOOM_SETTINGS = {
+  zoomSnap: 1,
+  zoomDelta: 1,
+};
 
 let cachedLabelMeasureElement: HTMLDivElement | undefined;
 const LABEL_MEASURE_ELEMENT_ATTRIBUTE = "data-resort-label-measure-probe";
@@ -211,6 +229,38 @@ const createNameLabelIcon = (
     iconSize: [width, height],
     iconAnchor: [0, 0],
   });
+
+const createResortPointIcon = ({
+  radius,
+  isSelected,
+  isFilterMatch,
+  isDimmed,
+}: {
+  radius: number;
+  isSelected: boolean;
+  isFilterMatch: boolean;
+  isDimmed: boolean;
+}) => {
+  const selectedRingWidth = isSelected ? SELECTED_MARKER_RING_WIDTH : 0;
+  const size = radius * 2;
+  const iconSize = size + selectedRingWidth * 2;
+  const markerStyle = [
+    `width:${size}px`,
+    `height:${size}px`,
+    selectedRingWidth > 0
+      ? `margin:${selectedRingWidth}px;--selected-ring-width:${selectedRingWidth}px`
+      : "",
+  ]
+    .filter(Boolean)
+    .join(";");
+
+  return L.divIcon({
+    className: "resort-point-marker-icon",
+    html: `<div class="resort-point-marker${isSelected ? " is-selected" : ""}${isFilterMatch ? " is-filter-match" : ""}${isDimmed ? " is-dimmed" : ""}" style="${markerStyle}"></div>`,
+    iconSize: [iconSize, iconSize],
+    iconAnchor: [iconSize / 2, iconSize / 2],
+  });
+};
 
 const pointInRect = (x: number, y: number, rect: Rect) =>
   x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
@@ -384,18 +434,20 @@ const createSimpleVerticalCandidates = ({
   point,
   labelWidth,
   labelHeight,
+  pointGap,
 }: {
   point: L.Point;
   labelWidth: number;
   labelHeight: number;
+  pointGap: number;
 }): CandidatePlacement[] => [
   {
     left: point.x - labelWidth / 2,
-    top: point.y - labelHeight - LABEL_POINT_GAP,
+    top: point.y - labelHeight - pointGap,
   },
   {
     left: point.x - labelWidth / 2,
-    top: point.y + LABEL_POINT_GAP,
+    top: point.y + pointGap,
   },
 ];
 
@@ -406,6 +458,7 @@ const createPrimaryCandidates = ({
   mapSize,
   useAdvancedLayout,
   shouldForceLeaderLine,
+  pointGap,
 }: {
   point: L.Point;
   labelWidth: number;
@@ -413,6 +466,7 @@ const createPrimaryCandidates = ({
   mapSize: L.Point;
   useAdvancedLayout: boolean;
   shouldForceLeaderLine: boolean;
+  pointGap: number;
 }): CandidatePlacement[] => {
   const candidates: CandidatePlacement[] = [];
 
@@ -420,23 +474,23 @@ const createPrimaryCandidates = ({
     candidates.push(
       {
         left: point.x - labelWidth / 2,
-        top: point.y - labelHeight - LABEL_POINT_GAP,
+        top: point.y - labelHeight - pointGap,
       },
       {
         left: point.x - labelWidth / 2,
-        top: point.y + LABEL_POINT_GAP,
+        top: point.y + pointGap,
       },
     );
 
     if (useAdvancedLayout) {
       candidates.push(
         {
-          left: point.x + LABEL_POINT_GAP,
+          left: point.x + pointGap,
           top: point.y - labelHeight / 2,
           forceLeaderLine: true,
         },
         {
-          left: point.x - labelWidth - LABEL_POINT_GAP,
+          left: point.x - labelWidth - pointGap,
           top: point.y - labelHeight / 2,
           forceLeaderLine: true,
         },
@@ -445,7 +499,10 @@ const createPrimaryCandidates = ({
   }
 
   if (useAdvancedLayout) {
-    const maxRadius = Math.max(mapSize.x, mapSize.y) * 0.38;
+    const maxRadius = Math.min(
+      Math.max(mapSize.x, mapSize.y) * 0.26,
+      PRIMARY_LABEL_SEARCH_MAX_RADIUS_PX,
+    );
     const angles = [300, 240, 60, 120, 330, 210, 30, 150, 0, 180, 270, 90];
 
     for (let radius = 30; radius <= maxRadius; radius += 18) {
@@ -478,13 +535,13 @@ const createDenseFallbackCandidates = ({
   mapSize: L.Point;
 }): CandidatePlacement[] => {
   const candidates: CandidatePlacement[] = [];
-  const maxRadius = Math.max(mapSize.x, mapSize.y) * 0.9;
-  const angles = [
-    0, 15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180, 195, 210, 225, 240,
-    255, 270, 285, 300, 315, 330, 345,
-  ];
+  const maxRadius = Math.min(
+    Math.max(mapSize.x, mapSize.y) * 0.34,
+    DENSE_LABEL_SEARCH_MAX_RADIUS_PX,
+  );
+  const angles = [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330];
 
-  for (let radius = 28; radius <= maxRadius; radius += 14) {
+  for (let radius = 28; radius <= maxRadius; radius += 22) {
     for (const angle of angles) {
       const rad = (angle * Math.PI) / 180;
       const cx = point.x + Math.cos(rad) * radius;
@@ -501,53 +558,51 @@ const createDenseFallbackCandidates = ({
   return candidates;
 };
 
-const createViewportScanCandidates = ({
-  labelWidth,
-  labelHeight,
-  mapSize,
-}: {
-  labelWidth: number;
-  labelHeight: number;
-  mapSize: L.Point;
-}): CandidatePlacement[] => {
-  const candidates: CandidatePlacement[] = [];
-  const stepX = 12;
-  const stepY = labelHeight + 6;
+const createExpandedLabelViewport = (mapSize: L.Point): Rect => {
+  const paddingX = Math.max(
+    mapSize.x * LABEL_PREFETCH_PADDING_RATIO,
+    LABEL_PREFETCH_MIN_PADDING_PX,
+  );
+  const paddingY = Math.max(
+    mapSize.y * LABEL_PREFETCH_PADDING_RATIO,
+    LABEL_PREFETCH_MIN_PADDING_PX,
+  );
 
-  for (
-    let top = LABEL_MARGIN;
-    top <= mapSize.y - labelHeight - LABEL_MARGIN;
-    top += stepY
-  ) {
-    for (
-      let left = LABEL_MARGIN;
-      left <= mapSize.x - labelWidth - LABEL_MARGIN;
-      left += stepX
-    ) {
-      candidates.push({
-        left,
-        top,
-        forceLeaderLine: true,
-      });
-    }
-  }
-
-  return candidates;
+  return {
+    left: -paddingX,
+    right: mapSize.x + paddingX,
+    top: -paddingY,
+    bottom: mapSize.y + paddingY,
+  };
 };
 
-const isRectInsideViewport = (rect: Rect, mapSize: L.Point): boolean =>
-  rect.left >= LABEL_MARGIN &&
-  rect.right <= mapSize.x - LABEL_MARGIN &&
-  rect.top >= LABEL_MARGIN &&
-  rect.bottom <= mapSize.y - LABEL_MARGIN;
+const createLabelCandidateBounds = (
+  map: L.Map,
+  labelViewport: Rect,
+): L.LatLngBounds =>
+  L.latLngBounds(
+    map.containerPointToLatLng(L.point(labelViewport.left, labelViewport.top)),
+    map.containerPointToLatLng(
+      L.point(labelViewport.right, labelViewport.bottom),
+    ),
+  );
+
+const isRectInsideLabelViewport = (rect: Rect, layoutViewport: Rect): boolean =>
+  rect.left >= layoutViewport.left + LABEL_MARGIN &&
+  rect.right <= layoutViewport.right - LABEL_MARGIN &&
+  rect.top >= layoutViewport.top + LABEL_MARGIN &&
+  rect.bottom <= layoutViewport.bottom - LABEL_MARGIN;
 
 const getResortDisplayName = (
-  resort: MapResort,
+  resort: MapSkiResort,
   displayNameById: Map<string, string>,
 ): string => displayNameById.get(resort.id) ?? resort.nameJa;
 
+const getResortPointLabelGap = (isSelected: boolean): number =>
+  RESORT_POINT_RADIUS + (isSelected ? SELECTED_MARKER_RING_WIDTH : 0);
+
 const getResortLabelWidth = (
-  resort: MapResort,
+  resort: MapSkiResort,
   displayNameById: Map<string, string>,
 ): number =>
   Math.max(measureTextWidth(getResortDisplayName(resort, displayNameById)), 1);
@@ -605,31 +660,174 @@ const detectCrowdedPointIds = (
   return crowdedPointIds;
 };
 
-// コンパクトな地図表示用リゾート型
-type MapResort = {
-  id: string;
-  nameJa: string;
-  latitude: number;
-  longitude: number;
-  numberOfCourses: number;
-  yukiMagiId: string | null;
-};
-
 const MapEventsHandler = ({
   onBoundsChange,
+  onViewChange,
+  onUserMapInteraction,
+  onUserMapZoomInteraction,
 }: {
   onBoundsChange: (bounds: L.LatLngBounds) => void;
+  onViewChange?: (view: MapViewSnapshot) => void;
+  onUserMapInteraction?: () => void;
+  onUserMapZoomInteraction?: () => void;
 }) => {
   const map = useMap();
+  const hasUserZoomInteractionRef = useRef(false);
+  const zoomInteractionFallbackTimeoutRef = useRef<number | null>(null);
+  const notifyViewportChange = useCallback(() => {
+    const center = map.getCenter();
+    onBoundsChange(map.getBounds());
+    onViewChange?.({
+      center: { lat: center.lat, lng: center.lng },
+      zoom: map.getZoom(),
+    });
+  }, [map, onBoundsChange, onViewChange]);
+  const clearZoomInteractionFallback = useCallback(() => {
+    if (zoomInteractionFallbackTimeoutRef.current === null) return;
+
+    window.clearTimeout(zoomInteractionFallbackTimeoutRef.current);
+    zoomInteractionFallbackTimeoutRef.current = null;
+  }, []);
+  const completeUserZoomInteraction = useCallback(() => {
+    clearZoomInteractionFallback();
+    if (!hasUserZoomInteractionRef.current) return;
+
+    hasUserZoomInteractionRef.current = false;
+    onUserMapZoomInteraction?.();
+  }, [clearZoomInteractionFallback, onUserMapZoomInteraction]);
+  const markUserZoomInteraction = useCallback(() => {
+    hasUserZoomInteractionRef.current = true;
+  }, []);
 
   useMapEvents({
-    zoomend: () => onBoundsChange(map.getBounds()),
-    moveend: () => onBoundsChange(map.getBounds()),
+    dragstart: () => {
+      onUserMapInteraction?.();
+    },
+    zoomstart: () => {
+      clearZoomInteractionFallback();
+    },
+    zoomend: () => {
+      notifyViewportChange();
+      completeUserZoomInteraction();
+    },
+    moveend: notifyViewportChange,
   });
 
   useEffect(() => {
-    onBoundsChange(map.getBounds());
-  }, [map, onBoundsChange]);
+    const container = map.getContainer();
+    const scheduleFallback = () => {
+      clearZoomInteractionFallback();
+      zoomInteractionFallbackTimeoutRef.current = window.setTimeout(() => {
+        zoomInteractionFallbackTimeoutRef.current = null;
+        completeUserZoomInteraction();
+      }, 180);
+    };
+    const handleWheel = () => {
+      markUserZoomInteraction();
+      completeUserZoomInteraction();
+    };
+    const handleDoubleClick = () => {
+      markUserZoomInteraction();
+      completeUserZoomInteraction();
+    };
+    const handleTouchStart = (event: TouchEvent) => {
+      if (event.touches.length < 2) return;
+
+      markUserZoomInteraction();
+      completeUserZoomInteraction();
+    };
+    const handleTouchEnd = (event: TouchEvent) => {
+      if (!hasUserZoomInteractionRef.current || event.touches.length > 0) {
+        return;
+      }
+
+      scheduleFallback();
+    };
+
+    container.addEventListener("wheel", handleWheel, { passive: true });
+    container.addEventListener("dblclick", handleDoubleClick);
+    container.addEventListener("touchstart", handleTouchStart, {
+      passive: true,
+    });
+    container.addEventListener("touchend", handleTouchEnd, { passive: true });
+    container.addEventListener("touchcancel", handleTouchEnd, {
+      passive: true,
+    });
+
+    return () => {
+      clearZoomInteractionFallback();
+      container.removeEventListener("wheel", handleWheel);
+      container.removeEventListener("dblclick", handleDoubleClick);
+      container.removeEventListener("touchstart", handleTouchStart);
+      container.removeEventListener("touchend", handleTouchEnd);
+      container.removeEventListener("touchcancel", handleTouchEnd);
+    };
+  }, [
+    clearZoomInteractionFallback,
+    completeUserZoomInteraction,
+    map,
+    markUserZoomInteraction,
+  ]);
+
+  useEffect(() => {
+    notifyViewportChange();
+  }, [notifyViewportChange]);
+
+  return null;
+};
+
+const MapZoomSettingsController = ({
+  initialZoom,
+  zoomSnap,
+  zoomDelta,
+}: {
+  initialZoom: number;
+  zoomSnap: number;
+  zoomDelta: number;
+}) => {
+  const map = useMap();
+
+  useEffect(() => {
+    map.options.zoomSnap = zoomSnap;
+    map.options.zoomDelta = zoomDelta;
+
+    if (zoomSnap >= 1) {
+      const roundedZoom = Math.max(initialZoom, Math.round(map.getZoom()));
+      if (Math.abs(map.getZoom() - roundedZoom) > 0.001) {
+        map.setZoom(roundedZoom);
+      }
+    }
+  }, [initialZoom, map, zoomDelta, zoomSnap]);
+
+  return null;
+};
+
+const RestoreViewportController = ({
+  restoreViewRequest,
+  onViewportChange,
+}: {
+  restoreViewRequest: MapViewRestoreRequest | null;
+  onViewportChange: (map: L.Map) => void;
+}) => {
+  const map = useMap();
+  const lastRestoreKeyRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (
+      !restoreViewRequest ||
+      restoreViewRequest.key === lastRestoreKeyRef.current
+    ) {
+      return;
+    }
+
+    lastRestoreKeyRef.current = restoreViewRequest.key;
+    map.setView(
+      [restoreViewRequest.center.lat, restoreViewRequest.center.lng],
+      restoreViewRequest.zoom,
+      { animate: true },
+    );
+    onViewportChange(map);
+  }, [map, onViewportChange, restoreViewRequest]);
 
   return null;
 };
@@ -652,9 +850,7 @@ const LabelLayoutWatcher = ({
   }, [map, onLayout]);
 
   useMapEvents({
-    zoom: scheduleLayout,
     zoomend: scheduleLayout,
-    move: scheduleLayout,
     moveend: scheduleLayout,
     resize: scheduleLayout,
   });
@@ -672,13 +868,29 @@ const LabelLayoutWatcher = ({
   return null;
 };
 
-const MapControls = () => {
+const MapControls = ({
+  initialZoom,
+  bottomPaddingRatio,
+  onUserMapInteraction,
+  onUserMapZoomInteraction,
+}: {
+  initialZoom: number;
+  bottomPaddingRatio: number;
+  onUserMapInteraction?: () => void;
+  onUserMapZoomInteraction?: () => void;
+}) => {
   const map = useMap();
+  const mobileBottomOffset =
+    bottomPaddingRatio > 0
+      ? `clamp(1rem, calc(${bottomPaddingRatio * 100}dvh + 1rem), calc(100dvh - 11rem))`
+      : "1rem";
+
   return (
     <Flex
       position="absolute"
-      top={4}
+      top={{ base: "auto", md: 4 }}
       right={4}
+      bottom={{ base: mobileBottomOffset, md: "auto" }}
       zIndex={1000}
       flexDirection="column"
       gap={2}
@@ -693,7 +905,10 @@ const MapControls = () => {
         borderColor="gray.200"
       >
         <Button
-          onClick={() => map.zoomIn()}
+          onClick={() => {
+            map.zoomIn();
+            window.setTimeout(() => onUserMapZoomInteraction?.(), 0);
+          }}
           p={2}
           color="gray.700"
           bg="transparent"
@@ -709,7 +924,10 @@ const MapControls = () => {
         </Button>
         <Box h="1px" w="100%" bg="gray.100" />
         <Button
-          onClick={() => map.zoomOut()}
+          onClick={() => {
+            map.zoomOut();
+            window.setTimeout(() => onUserMapZoomInteraction?.(), 0);
+          }}
           p={2}
           color="gray.700"
           bg="transparent"
@@ -725,7 +943,10 @@ const MapControls = () => {
         </Button>
       </Flex>
       <Button
-        onClick={() => map.setView(INITIAL_CENTER, INITIAL_ZOOM)}
+        onClick={() => {
+          onUserMapInteraction?.();
+          map.setView(INITIAL_CENTER, initialZoom);
+        }}
         borderRadius="lg"
         bg="white"
         p={2}
@@ -745,15 +966,34 @@ const MapControls = () => {
 };
 
 type Props = {
-  resorts: MapResort[];
+  resorts: MapSkiResort[];
   filteredResortIdSet?: Set<string>;
   isFilterActive?: boolean;
+  searchResultResortIds?: string[];
+  searchViewportRequestKey?: number;
+  searchViewportBottomPaddingRatio?: number;
+  mapControlBottomPaddingRatio?: number;
   selectedResortId: string | null;
+  selectedViewportBottomPaddingRatio?: number;
+  hoveredResortId?: string | null;
   onSelectResort: (id: string) => void;
   interactionMode?: "default" | "detail" | "compare";
   selectedCompareIdSet?: Set<string>;
   onToggleCompare?: (id: string, selected: boolean) => void;
   onBoundsChange: (bounds: L.LatLngBounds) => void;
+  onViewChange?: (view: MapViewSnapshot) => void;
+  onUserMapInteraction?: () => void;
+  onUserMapZoomInteraction?: () => void;
+  restoreViewRequest?: MapViewRestoreRequest | null;
+};
+
+type MapViewSnapshot = {
+  center: { lat: number; lng: number };
+  zoom: number;
+};
+
+type MapViewRestoreRequest = MapViewSnapshot & {
+  key: number;
 };
 
 type ResortPriority = "selected" | "filter-match" | "normal";
@@ -782,46 +1022,239 @@ const getResortPriorityRank = (priority: ResortPriority): number => {
   return 0;
 };
 
-const getSidePanelWidth = (mode: "default" | "detail" | "compare"): number => {
-  if (typeof window === "undefined") return 0;
-  if (mode === "default" || window.innerWidth < SIDE_PANEL_BREAKPOINT_WIDTH) {
-    return 0;
+const getMarkerZIndexOffset = (priority: ResortPriority): number => {
+  if (priority === "selected") return 10000;
+  if (priority === "filter-match") return 5000;
+  return 0;
+};
+
+const getPanelOverlapRightWidth = (
+  map: L.Map,
+  panelAttribute: string,
+): number => {
+  if (typeof document === "undefined") return 0;
+
+  const panel = document.querySelector<HTMLElement>(
+    `[${panelAttribute}="true"]`,
+  );
+  if (!panel) return 0;
+
+  const mapRect = map.getContainer().getBoundingClientRect();
+  const panelRect = panel.getBoundingClientRect();
+  const overlapsVertically =
+    panelRect.bottom > mapRect.top && panelRect.top < mapRect.bottom;
+  if (!overlapsVertically || panelRect.width >= mapRect.width) return 0;
+
+  const overlapRight = mapRect.right - Math.max(mapRect.left, panelRect.left);
+  return Math.max(0, Math.min(mapRect.width, overlapRight));
+};
+
+const getComparePanelOverlapRightWidth = (map: L.Map): number =>
+  getPanelOverlapRightWidth(map, COMPARE_PANEL_ATTRIBUTE);
+
+const getDetailPanelOverlapRightWidth = (map: L.Map): number =>
+  getPanelOverlapRightWidth(map, DETAIL_PANEL_ATTRIBUTE);
+
+const getPanelAdjustedCenter = (
+  map: L.Map,
+  latLng: L.LatLngExpression,
+  rightPanelWidth: number,
+  bottomPanelHeight: number,
+  zoom = map.getZoom(),
+): L.LatLng => {
+  if (rightPanelWidth <= 0 && bottomPanelHeight <= 0) return L.latLng(latLng);
+
+  const point = map.project(latLng, zoom);
+  return map.unproject(
+    point.add([rightPanelWidth / 2, bottomPanelHeight / 2]),
+    zoom,
+  );
+};
+
+const getSafeFitPadding = (
+  map: L.Map,
+  rightPanelWidth: number,
+  bottomPanelHeight: number,
+): {
+  paddingTopLeft: L.PointExpression;
+  paddingBottomRight: L.PointExpression;
+} => {
+  const mapSize = map.getSize();
+  const basePadding = 32;
+  const maxRightPadding = Math.max(basePadding, mapSize.x - basePadding * 3);
+  const maxBottomPadding = Math.max(basePadding, mapSize.y - basePadding * 3);
+  const rightPadding = Math.min(rightPanelWidth + basePadding, maxRightPadding);
+  const bottomPadding = Math.min(
+    bottomPanelHeight + basePadding,
+    maxBottomPadding,
+  );
+
+  return {
+    paddingTopLeft: [basePadding, basePadding],
+    paddingBottomRight: [rightPadding, bottomPadding],
+  };
+};
+
+const fitResortsInViewport = ({
+  map,
+  resorts,
+  rightPanelWidth = 0,
+  bottomPanelHeight = 0,
+  labelShowZoom = DESKTOP_LABEL_SHOW_ZOOM,
+}: {
+  map: L.Map;
+  resorts: MapSkiResort[];
+  rightPanelWidth?: number;
+  bottomPanelHeight?: number;
+  labelShowZoom?: number;
+}) => {
+  if (resorts.length === 0) return;
+
+  const fitPadding = getSafeFitPadding(map, rightPanelWidth, bottomPanelHeight);
+
+  if (resorts.length === 1) {
+    const resortLatLng: L.LatLngTuple = [
+      resorts[0].latitude,
+      resorts[0].longitude,
+    ];
+    const targetZoom = Math.max(map.getZoom(), labelShowZoom);
+    map.setView(
+      getPanelAdjustedCenter(
+        map,
+        resortLatLng,
+        rightPanelWidth,
+        bottomPanelHeight,
+        targetZoom,
+      ),
+      targetZoom,
+      { animate: true },
+    );
+    return;
   }
 
-  const maxWidth =
-    mode === "compare" ? COMPARE_PANEL_MAX_WIDTH : DETAIL_PANEL_MAX_WIDTH;
-  return Math.min(maxWidth, window.innerWidth * SIDE_PANEL_WIDTH_RATIO);
+  const bounds = L.latLngBounds(
+    resorts.map(resort => [resort.latitude, resort.longitude]),
+  );
+
+  map.fitBounds(bounds, {
+    animate: true,
+    ...fitPadding,
+  });
+};
+
+const SearchViewportController = ({
+  enabled,
+  resorts,
+  searchResultResortIds,
+  searchViewportRequestKey,
+  searchViewportBottomPaddingRatio,
+  labelShowZoom,
+  onViewportChange,
+}: {
+  enabled: boolean;
+  resorts: MapSkiResort[];
+  searchResultResortIds: string[];
+  searchViewportRequestKey: number;
+  searchViewportBottomPaddingRatio: number;
+  labelShowZoom: number;
+  onViewportChange: (map: L.Map) => void;
+}) => {
+  const map = useMap();
+  const lastRequestKeyRef = useRef(searchViewportRequestKey);
+  const lastBottomPaddingRatioRef = useRef(searchViewportBottomPaddingRatio);
+
+  useEffect(() => {
+    const hasNewSearchRequest =
+      searchViewportRequestKey !== lastRequestKeyRef.current;
+    const hasBottomPaddingChanged =
+      Math.abs(
+        searchViewportBottomPaddingRatio - lastBottomPaddingRatioRef.current,
+      ) > VIEWPORT_PADDING_RATIO_CHANGE_THRESHOLD;
+
+    if (
+      !enabled ||
+      searchViewportRequestKey === 0 ||
+      (!hasNewSearchRequest && !hasBottomPaddingChanged)
+    ) {
+      return;
+    }
+    lastRequestKeyRef.current = searchViewportRequestKey;
+    lastBottomPaddingRatioRef.current = searchViewportBottomPaddingRatio;
+
+    const searchResultResortIdSet = new Set(searchResultResortIds);
+    const searchResultResorts = resorts.filter(resort =>
+      searchResultResortIdSet.has(resort.id),
+    );
+
+    fitResortsInViewport({
+      map,
+      resorts: searchResultResorts,
+      bottomPanelHeight: map.getSize().y * searchViewportBottomPaddingRatio,
+      labelShowZoom,
+    });
+    onViewportChange(map);
+  }, [
+    map,
+    enabled,
+    onViewportChange,
+    resorts,
+    searchResultResortIds,
+    searchViewportRequestKey,
+    searchViewportBottomPaddingRatio,
+    labelShowZoom,
+  ]);
+
+  return null;
 };
 
 const MapViewportController = ({
+  initialZoom,
   resorts,
   selectedResortId,
   selectedCompareIdSet,
   interactionMode,
+  selectedViewportBottomPaddingRatio,
+  labelShowZoom,
   onViewportChange,
   skipCompareRecenterRef,
 }: {
-  resorts: MapResort[];
+  initialZoom: number;
+  resorts: MapSkiResort[];
   selectedResortId: string | null;
   selectedCompareIdSet: Set<string>;
   interactionMode: "default" | "detail" | "compare";
+  selectedViewportBottomPaddingRatio: number;
+  labelShowZoom: number;
   onViewportChange: (map: L.Map) => void;
   skipCompareRecenterRef?: React.MutableRefObject<boolean>;
 }) => {
   const map = useMap();
 
   useEffect(() => {
-    map.setMinZoom(INITIAL_ZOOM);
-  }, [map]);
+    map.setMinZoom(initialZoom);
+  }, [initialZoom, map]);
 
   useEffect(() => {
     if (interactionMode === "detail" && selectedResortId) {
       const resort = resorts.find(resort => resort.id === selectedResortId);
       if (!resort) return;
 
-      map.setView([resort.latitude, resort.longitude], map.getZoom(), {
-        animate: true,
-      });
+      const resortLatLng: L.LatLngTuple = [resort.latitude, resort.longitude];
+      const sidePanelWidth = getDetailPanelOverlapRightWidth(map);
+      const bottomPanelHeight =
+        map.getSize().y * selectedViewportBottomPaddingRatio;
+      const targetZoom = Math.max(map.getZoom(), labelShowZoom);
+      map.setView(
+        getPanelAdjustedCenter(
+          map,
+          resortLatLng,
+          sidePanelWidth,
+          bottomPanelHeight,
+          targetZoom,
+        ),
+        targetZoom,
+        { animate: true },
+      );
       onViewportChange(map);
       return;
     }
@@ -836,32 +1269,24 @@ const MapViewportController = ({
       );
       if (selectedResorts.length === 0) return;
 
-      const bounds = L.latLngBounds(
-        selectedResorts.map(resort => [resort.latitude, resort.longitude]),
-      );
-
-      if (selectedResorts.length === 1) {
-        map.setView(
-          [selectedResorts[0].latitude, selectedResorts[0].longitude],
-          Math.max(map.getZoom(), INITIAL_ZOOM),
-          { animate: true },
-        );
-      } else {
-        map.fitBounds(bounds, {
-          animate: true,
-          paddingTopLeft: [24, 24],
-          paddingBottomRight: [getSidePanelWidth(interactionMode) + 24, 24],
-        });
-      }
+      const sidePanelWidth = getComparePanelOverlapRightWidth(map);
+      fitResortsInViewport({
+        map,
+        resorts: selectedResorts,
+        rightPanelWidth: sidePanelWidth,
+        labelShowZoom,
+      });
       onViewportChange(map);
     }
   }, [
     interactionMode,
+    labelShowZoom,
     map,
     onViewportChange,
     resorts,
     selectedCompareIdSet,
     selectedResortId,
+    selectedViewportBottomPaddingRatio,
     skipCompareRecenterRef,
   ]);
 
@@ -872,12 +1297,22 @@ export const SkiResortMap = memo(function SkiResortMap({
   resorts,
   filteredResortIdSet,
   isFilterActive = false,
+  searchResultResortIds = [],
+  searchViewportRequestKey = 0,
+  searchViewportBottomPaddingRatio = 0,
+  mapControlBottomPaddingRatio = 0,
   selectedResortId,
+  selectedViewportBottomPaddingRatio = 0,
+  hoveredResortId = null,
   onSelectResort,
   interactionMode = "default",
   selectedCompareIdSet,
   onToggleCompare,
   onBoundsChange,
+  onViewChange,
+  onUserMapInteraction,
+  onUserMapZoomInteraction,
+  restoreViewRequest = null,
 }: Props) {
   const [labelLayouts, setLabelLayouts] = useState<Record<string, LabelLayout>>(
     {},
@@ -886,8 +1321,37 @@ export const SkiResortMap = memo(function SkiResortMap({
   const [openActionPopupResortId, setOpenActionPopupResortId] = useState<
     string | null
   >(null);
-  const [mapZoom, setMapZoom] = useState(INITIAL_ZOOM);
+  const [isMobileMapZoom, setIsMobileMapZoom] = useState(() =>
+    typeof window === "undefined"
+      ? true
+      : window.matchMedia(MOBILE_MAP_MEDIA_QUERY).matches,
+  );
+  const initialZoom = isMobileMapZoom
+    ? MOBILE_INITIAL_ZOOM
+    : DESKTOP_INITIAL_ZOOM;
+  const [mapZoom, setMapZoom] = useState(initialZoom);
   const skipCompareRecenterRef = useRef(false);
+  const mapZoomSurfaceRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(MOBILE_MAP_MEDIA_QUERY);
+    const syncMapZoomMode = () => {
+      setIsMobileMapZoom(mediaQuery.matches);
+    };
+
+    syncMapZoomMode();
+    mediaQuery.addEventListener("change", syncMapZoomMode);
+    return () => {
+      mediaQuery.removeEventListener("change", syncMapZoomMode);
+    };
+  }, []);
+
+  const labelShowZoom = isMobileMapZoom
+    ? MOBILE_LABEL_SHOW_ZOOM
+    : DESKTOP_LABEL_SHOW_ZOOM;
+  const labelAdvancedLayoutZoom = isMobileMapZoom
+    ? MOBILE_LABEL_ADVANCED_LAYOUT_ZOOM
+    : DESKTOP_LABEL_ADVANCED_LAYOUT_ZOOM;
 
   useEffect(() => {
     if (resorts.length === 0) {
@@ -926,25 +1390,31 @@ export const SkiResortMap = memo(function SkiResortMap({
       setMapZoom(currentZoom);
       const selectedResortIdSet =
         interactionMode === "compare"
-          ? (selectedCompareIdSet ?? new Set<string>())
+          ? new Set(selectedCompareIdSet ?? [])
           : selectedResortId
             ? new Set([selectedResortId])
             : new Set<string>();
-      const shouldShowLabelsBelowDefaultZoom =
-        interactionMode !== "default" && selectedResortIdSet.size > 0;
+      if (hoveredResortId) {
+        selectedResortIdSet.add(hoveredResortId);
+      }
+      const shouldShowLabelsBelowDefaultZoom = selectedResortIdSet.size > 0;
 
-      if (currentZoom < LABEL_SHOW_ZOOM && !shouldShowLabelsBelowDefaultZoom) {
+      if (currentZoom < labelShowZoom && !shouldShowLabelsBelowDefaultZoom) {
         setLabelLayouts(previousLayouts =>
           Object.keys(previousLayouts).length === 0 ? previousLayouts : {},
         );
         return;
       }
 
-      const isSimpleVerticalLayout = currentZoom < LABEL_ADVANCED_LAYOUT_ZOOM;
-      const useAdvancedLayout = currentZoom >= LABEL_ADVANCED_LAYOUT_ZOOM;
+      const isSimpleVerticalLayout = currentZoom < labelAdvancedLayoutZoom;
+      const useAdvancedLayout = currentZoom >= labelAdvancedLayoutZoom;
 
-      const mapBounds = map.getBounds();
       const mapSize = map.getSize();
+      const labelViewport = createExpandedLabelViewport(mapSize);
+      const labelCandidateBounds = createLabelCandidateBounds(
+        map,
+        labelViewport,
+      );
       const labelHeight = measureLabelHeight();
 
       const placedCollisionRects: Rect[] = [];
@@ -952,17 +1422,17 @@ export const SkiResortMap = memo(function SkiResortMap({
       const placedLeaderSegments: Segment[] = [];
 
       const visibleCandidates = resorts.filter(resort =>
-        mapBounds.contains([
+        labelCandidateBounds.contains([
           resort.latitude,
           resort.longitude,
         ] as L.LatLngTuple),
       );
       const labelCandidates = visibleCandidates.filter(resort => {
-        if (currentZoom < LABEL_SHOW_ZOOM) {
+        if (currentZoom < labelShowZoom) {
           return selectedResortIdSet.has(resort.id);
         }
 
-        if (isFilterActive && currentZoom < LABEL_ADVANCED_LAYOUT_ZOOM) {
+        if (isFilterActive && currentZoom < labelAdvancedLayoutZoom) {
           return (
             selectedResortIdSet.has(resort.id) ||
             filteredResortIdSet?.has(resort.id) === true
@@ -1020,11 +1490,15 @@ export const SkiResortMap = memo(function SkiResortMap({
           if (!point) continue;
 
           const labelWidth = getResortLabelWidth(resort, displayNameById);
+          const pointGap = getResortPointLabelGap(
+            selectedResortIdSet.has(resort.id),
+          );
 
           const candidates = createSimpleVerticalCandidates({
             point,
             labelWidth,
             labelHeight,
+            pointGap,
           });
 
           let acceptedRect: Rect | undefined;
@@ -1040,7 +1514,10 @@ export const SkiResortMap = memo(function SkiResortMap({
 
             const collisionRect = expandRect(rect, LABEL_COLLISION_PADDING);
 
-            const inViewport = isRectInsideViewport(collisionRect, mapSize);
+            const inViewport = isRectInsideLabelViewport(
+              collisionRect,
+              labelViewport,
+            );
 
             if (!inViewport) {
               continue;
@@ -1093,6 +1570,9 @@ export const SkiResortMap = memo(function SkiResortMap({
           useAdvancedLayout && crowdedPointIds.has(resort.id);
 
         const labelWidth = getResortLabelWidth(resort, displayNameById);
+        const pointGap = getResortPointLabelGap(
+          selectedResortIdSet.has(resort.id),
+        );
 
         const evaluateCandidates = (
           candidates: CandidatePlacement[],
@@ -1110,7 +1590,10 @@ export const SkiResortMap = memo(function SkiResortMap({
 
             const collisionRect = expandRect(rect, LABEL_COLLISION_PADDING);
 
-            const inViewport = isRectInsideViewport(collisionRect, mapSize);
+            const inViewport = isRectInsideLabelViewport(
+              collisionRect,
+              labelViewport,
+            );
 
             if (!inViewport) {
               continue;
@@ -1133,7 +1616,7 @@ export const SkiResortMap = memo(function SkiResortMap({
             }
 
             const overlapsOwnPoint =
-              distancePointToRect(point, rect) < LABEL_POINT_GAP;
+              distancePointToRect(point, rect) < pointGap;
             if (overlapsOwnPoint) {
               continue;
             }
@@ -1155,7 +1638,7 @@ export const SkiResortMap = memo(function SkiResortMap({
               useAdvancedLayout &&
               (candidate.forceLeaderLine ||
                 shouldForceLeaderLine ||
-                leaderLength > LABEL_POINT_GAP + 4);
+                leaderLength > pointGap + 4);
 
             if (showLeaderLine) {
               const intersectsExistingLabel = placedActualRects.some(
@@ -1231,19 +1714,12 @@ export const SkiResortMap = memo(function SkiResortMap({
           mapSize,
           useAdvancedLayout,
           shouldForceLeaderLine,
+          pointGap,
         });
 
         const denseFallbackCandidates = useAdvancedLayout
           ? createDenseFallbackCandidates({
               point,
-              labelWidth,
-              labelHeight,
-              mapSize,
-            })
-          : [];
-
-        const viewportCandidates = useAdvancedLayout
-          ? createViewportScanCandidates({
               labelWidth,
               labelHeight,
               mapSize,
@@ -1257,8 +1733,7 @@ export const SkiResortMap = memo(function SkiResortMap({
           }) ??
           evaluateCandidates(denseFallbackCandidates, {
             allowLineCrossing: true,
-          }) ??
-          evaluateCandidates(viewportCandidates, { allowLineCrossing: true });
+          });
 
         if (!accepted) {
           continue;
@@ -1293,9 +1768,12 @@ export const SkiResortMap = memo(function SkiResortMap({
       filteredResortIdSet,
       interactionMode,
       isFilterActive,
+      labelAdvancedLayoutZoom,
+      labelShowZoom,
       resorts,
       selectedCompareIdSet,
       selectedResortId,
+      hoveredResortId,
     ],
   );
 
@@ -1308,6 +1786,7 @@ export const SkiResortMap = memo(function SkiResortMap({
         return;
       }
       const isSelected =
+        resort.id === hoveredResortId ||
         resort.id === selectedResortId ||
         (interactionMode === "compare" &&
           selectedCompareIdSet?.has(resort.id) === true);
@@ -1335,6 +1814,7 @@ export const SkiResortMap = memo(function SkiResortMap({
     labelLayouts,
     resorts,
     filteredResortIdSet,
+    hoveredResortId,
     selectedCompareIdSet,
     selectedResortId,
   ]);
@@ -1356,11 +1836,24 @@ export const SkiResortMap = memo(function SkiResortMap({
     [openActionPopupResortId, resorts],
   );
   const selectedResortIdSet = useMemo(() => {
-    if (interactionMode === "compare") {
-      return selectedCompareIdSet ?? new Set<string>();
+    const next =
+      interactionMode === "compare"
+        ? new Set(selectedCompareIdSet ?? [])
+        : selectedResortId
+          ? new Set([selectedResortId])
+          : new Set<string>();
+
+    if (hoveredResortId) {
+      next.add(hoveredResortId);
     }
-    return selectedResortId ? new Set([selectedResortId]) : new Set<string>();
-  }, [interactionMode, selectedCompareIdSet, selectedResortId]);
+
+    return next;
+  }, [
+    hoveredResortId,
+    interactionMode,
+    selectedCompareIdSet,
+    selectedResortId,
+  ]);
   const renderedResorts = useMemo(
     () =>
       [...resorts].sort((a, b) => {
@@ -1385,178 +1878,302 @@ export const SkiResortMap = memo(function SkiResortMap({
       }),
     [filteredResortIdSet, isFilterActive, resorts, selectedResortIdSet],
   );
+  const handleBoundsChange = useCallback(
+    (bounds: L.LatLngBounds) => {
+      onBoundsChange(bounds);
+    },
+    [onBoundsChange],
+  );
+  const zoomSettings = isMobileMapZoom
+    ? MOBILE_ZOOM_SETTINGS
+    : DESKTOP_ZOOM_SETTINGS;
+  const pendingWrapperZoomInteractionRef = useRef(false);
+  const wrapperZoomInteractionTimeoutRef = useRef<number | null>(null);
+  const clearWrapperZoomInteractionTimeout = useCallback(() => {
+    if (wrapperZoomInteractionTimeoutRef.current === null) return;
+
+    window.clearTimeout(wrapperZoomInteractionTimeoutRef.current);
+    wrapperZoomInteractionTimeoutRef.current = null;
+  }, []);
+  const completeWrapperZoomInteraction = useCallback(() => {
+    clearWrapperZoomInteractionTimeout();
+    if (!pendingWrapperZoomInteractionRef.current) return;
+
+    pendingWrapperZoomInteractionRef.current = false;
+    onUserMapZoomInteraction?.();
+  }, [clearWrapperZoomInteractionTimeout, onUserMapZoomInteraction]);
+  const scheduleWrapperZoomInteraction = useCallback(() => {
+    pendingWrapperZoomInteractionRef.current = true;
+    clearWrapperZoomInteractionTimeout();
+    completeWrapperZoomInteraction();
+  }, [clearWrapperZoomInteractionTimeout, completeWrapperZoomInteraction]);
+  const handleMapWheelCapture = useCallback(
+    (_event: ReactWheelEvent<HTMLDivElement>) => {
+      scheduleWrapperZoomInteraction();
+    },
+    [scheduleWrapperZoomInteraction],
+  );
+  const handleMapDoubleClickCapture = useCallback(() => {
+    scheduleWrapperZoomInteraction();
+  }, [scheduleWrapperZoomInteraction]);
+  const handleMapTouchStartCapture = useCallback(
+    (event: ReactTouchEvent<HTMLDivElement>) => {
+      if (event.touches.length < 2) return;
+
+      scheduleWrapperZoomInteraction();
+    },
+    [scheduleWrapperZoomInteraction],
+  );
+  const handleMapTouchEndCapture = useCallback(
+    (event: ReactTouchEvent<HTMLDivElement>) => {
+      if (
+        !pendingWrapperZoomInteractionRef.current ||
+        event.touches.length > 0
+      ) {
+        return;
+      }
+
+      scheduleWrapperZoomInteraction();
+    },
+    [scheduleWrapperZoomInteraction],
+  );
+
+  useEffect(() => {
+    const surface = mapZoomSurfaceRef.current;
+    if (!surface) return;
+
+    const handleWheel = () => {
+      scheduleWrapperZoomInteraction();
+    };
+    const handleDoubleClick = () => {
+      scheduleWrapperZoomInteraction();
+    };
+    const handleTouchStart = (event: TouchEvent) => {
+      if (event.touches.length < 2) return;
+
+      scheduleWrapperZoomInteraction();
+    };
+    const handleTouchEnd = (event: TouchEvent) => {
+      if (
+        !pendingWrapperZoomInteractionRef.current ||
+        event.touches.length > 0
+      ) {
+        return;
+      }
+
+      scheduleWrapperZoomInteraction();
+    };
+
+    surface.addEventListener("wheel", handleWheel, { passive: true });
+    surface.addEventListener("dblclick", handleDoubleClick);
+    surface.addEventListener("touchstart", handleTouchStart, {
+      passive: true,
+    });
+    surface.addEventListener("touchend", handleTouchEnd, { passive: true });
+    surface.addEventListener("touchcancel", handleTouchEnd, {
+      passive: true,
+    });
+
+    return () => {
+      surface.removeEventListener("wheel", handleWheel);
+      surface.removeEventListener("dblclick", handleDoubleClick);
+      surface.removeEventListener("touchstart", handleTouchStart);
+      surface.removeEventListener("touchend", handleTouchEnd);
+      surface.removeEventListener("touchcancel", handleTouchEnd);
+    };
+  }, [scheduleWrapperZoomInteraction]);
+
+  useEffect(() => {
+    return () => {
+      clearWrapperZoomInteractionTimeout();
+    };
+  }, [clearWrapperZoomInteractionTimeout]);
 
   return (
-    <MapContainer
-      center={INITIAL_CENTER}
-      zoom={INITIAL_ZOOM}
-      minZoom={INITIAL_ZOOM}
-      zoomControl={false}
-      style={{ width: "100%", height: "100%" }}
+    <Box
+      ref={mapZoomSurfaceRef}
+      data-map-zoom-surface="true"
+      h="100%"
+      w="100%"
+      onDoubleClickCapture={handleMapDoubleClickCapture}
+      onTouchCancelCapture={handleMapTouchEndCapture}
+      onTouchEndCapture={handleMapTouchEndCapture}
+      onTouchStartCapture={handleMapTouchStartCapture}
+      onWheelCapture={handleMapWheelCapture}
     >
-      <TileLayer
-        url="https://{s}.tile.openstreetmap.jp/styles/maptiler-basic-ja/{z}/{x}/{y}.png"
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-      />
-      <Pane name={BASE_MARKER_PANE} style={{ zIndex: 430 }} />
-      <Pane name={FRONT_MARKER_PANE} style={{ zIndex: 470 }} />
-      <Pane name={FILTER_MATCH_MARKER_PANE} style={{ zIndex: 520 }} />
-      <Pane name={SELECTED_MARKER_PANE} style={{ zIndex: 560 }} />
-
-      {renderedResorts.map(resort => {
-        const priority = getResortPriority({
-          resortId: resort.id,
-          filteredResortIdSet,
-          isFilterActive,
-          selectedResortIdSet,
-        });
-        const isSelected = priority === "selected";
-        const isFilterMatch =
-          isFilterActive && filteredResortIdSet?.has(resort.id) === true;
-        const labelLayout = labelLayouts[resort.id];
-        const hasOpenActionPopup = openActionPopupResortId === resort.id;
-        const hasVisibleLabel =
-          Boolean(labelLayout) &&
-          !(shouldShowCompareActions && hasOpenActionPopup);
-        const markerRadius = isSelected ? 6 : 4;
-        const shouldDimUnselectedComparePoint =
-          interactionMode === "compare" &&
-          mapZoom < LABEL_SHOW_ZOOM &&
-          !isSelected &&
-          !isFilterMatch;
-        const isDimmedByFilter =
-          isFilterActive &&
-          priority === "normal" &&
-          filteredResortIdSet?.has(resort.id) !== true;
-        const shouldDimPoint =
-          shouldDimUnselectedComparePoint || isDimmedByFilter;
-        const markerPane = isSelected
-          ? SELECTED_MARKER_PANE
-          : isFilterMatch
-            ? FILTER_MATCH_MARKER_PANE
-            : hasVisibleLabel
-              ? FRONT_MARKER_PANE
-              : BASE_MARKER_PANE;
-        const markerEventHandlers = {
-          ...(shouldShowCompareActions
-            ? { click: () => setOpenActionPopupResortId(resort.id) }
-            : { click: () => onSelectResort(resort.id) }),
-          ...(shouldDimPoint
-            ? {
-                mouseout: (event: L.LeafletMouseEvent) => {
-                  event.target.setStyle({
-                    fillOpacity: 0.48,
-                    opacity: 0.58,
-                  });
-                },
-                mouseover: (event: L.LeafletMouseEvent) => {
-                  event.target.setStyle({
-                    fillOpacity: 0.95,
-                    opacity: 1,
-                  });
-                },
-              }
-            : {}),
-          ...(!shouldDimPoint && !isSelected
-            ? {
-                mouseout: (event: L.LeafletMouseEvent) => {
-                  event.target.setStyle({
-                    fillOpacity: 0.95,
-                    opacity: 1,
-                    weight: 1,
-                  });
-                },
-                mouseover: (event: L.LeafletMouseEvent) => {
-                  event.target.setStyle({
-                    fillOpacity: 1,
-                    opacity: 1,
-                    weight: 2,
-                  });
-                },
-              }
-            : {}),
-        };
-
-        return (
-          <Fragment key={resort.id}>
-            {labelLayout?.showLeaderLine && (
-              <Polyline
-                pane={markerPane}
-                positions={[
-                  [resort.latitude, resort.longitude],
-                  labelLayout.leaderEndPosition,
-                ]}
-                pathOptions={{
-                  color: isSelected ? "#ca8a04" : "#64748b",
-                  opacity: 0.7,
-                  weight: 1,
-                }}
-                interactive={false}
-              />
-            )}
-
-            <CircleMarker
-              center={[resort.latitude, resort.longitude]}
-              radius={markerRadius}
-              pane={markerPane}
-              pathOptions={{
-                color: "#ffffff",
-                weight: isSelected ? 2 : 1,
-                fillColor: isFilterMatch ? "#dc2626" : "#0284c7",
-                fillOpacity: shouldDimPoint ? 0.48 : 0.95,
-                opacity: shouldDimPoint ? 0.58 : 1,
-              }}
-              eventHandlers={markerEventHandlers}
-            />
-
-            {hasVisibleLabel && (
-              <Marker
-                pane={markerPane}
-                position={labelLayout.labelPosition}
-                icon={nameLabelIconsByResortId.get(resort.id)}
-                eventHandlers={
-                  shouldShowCompareActions
-                    ? { click: () => setOpenActionPopupResortId(resort.id) }
-                    : { click: () => onSelectResort(resort.id) }
-                }
-              />
-            )}
-          </Fragment>
-        );
-      })}
-
-      {shouldShowCompareActions && openActionPopupResort && (
-        <ResortActionPopup
-          key={openActionPopupResort.id}
-          resort={openActionPopupResort}
-          isCompareSelected={
-            selectedCompareIdSet?.has(openActionPopupResort.id) ?? false
-          }
-          onClose={() => setOpenActionPopupResortId(null)}
-          onSelectResort={onSelectResort}
-          onToggleCompare={
-            onToggleCompare
-              ? (id, selected) => {
-                  skipCompareRecenterRef.current = true;
-                  onToggleCompare(id, selected);
-                }
-              : undefined
-          }
+      <MapContainer
+        center={INITIAL_CENTER}
+        zoom={initialZoom}
+        minZoom={initialZoom}
+        zoomSnap={zoomSettings.zoomSnap}
+        zoomDelta={zoomSettings.zoomDelta}
+        zoomControl={false}
+        style={{ width: "100%", height: "100%" }}
+      >
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.jp/styles/maptiler-basic-ja/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
-      )}
+        <Pane name={BASE_MARKER_PANE} style={{ zIndex: 430 }} />
+        <Pane name={FRONT_MARKER_PANE} style={{ zIndex: 470 }} />
+        <Pane name={FILTER_MATCH_MARKER_PANE} style={{ zIndex: 520 }} />
+        <Pane name={SELECTED_MARKER_PANE} style={{ zIndex: 560 }} />
 
-      <MapControls />
-      <MapViewportController
-        resorts={resorts}
-        selectedResortId={selectedResortId}
-        selectedCompareIdSet={selectedCompareIdSet ?? new Set<string>()}
-        interactionMode={interactionMode}
-        onViewportChange={updateLabelLayout}
-        skipCompareRecenterRef={skipCompareRecenterRef}
-      />
-      <LabelLayoutWatcher onLayout={updateLabelLayout} />
-      <MapEventsHandler onBoundsChange={onBoundsChange} />
-    </MapContainer>
+        {renderedResorts.map(resort => {
+          const priority = getResortPriority({
+            resortId: resort.id,
+            filteredResortIdSet,
+            isFilterActive,
+            selectedResortIdSet,
+          });
+          const isSelected = priority === "selected";
+          const isFilterMatch =
+            isFilterActive && filteredResortIdSet?.has(resort.id) === true;
+          const labelLayout = labelLayouts[resort.id];
+          const hasOpenActionPopup = openActionPopupResortId === resort.id;
+          const hasVisibleLabel =
+            Boolean(labelLayout) &&
+            !(shouldShowCompareActions && hasOpenActionPopup);
+          const markerRadius = RESORT_POINT_RADIUS;
+          const shouldDimUnselectedComparePoint =
+            interactionMode === "compare" &&
+            mapZoom < labelShowZoom &&
+            !isSelected;
+          const isDimmedByFilter =
+            isFilterActive &&
+            priority === "normal" &&
+            filteredResortIdSet?.has(resort.id) !== true;
+          const shouldDimPoint =
+            shouldDimUnselectedComparePoint || isDimmedByFilter;
+          const markerPane = isSelected
+            ? SELECTED_MARKER_PANE
+            : isFilterMatch
+              ? FILTER_MATCH_MARKER_PANE
+              : hasVisibleLabel
+                ? FRONT_MARKER_PANE
+                : BASE_MARKER_PANE;
+          const markerClickEventHandlers = shouldShowCompareActions
+            ? { click: () => setOpenActionPopupResortId(resort.id) }
+            : { click: () => onSelectResort(resort.id) };
+          const markerZIndexOffset = getMarkerZIndexOffset(priority);
+          const pointIcon = createResortPointIcon({
+            radius: markerRadius,
+            isSelected,
+            isFilterMatch,
+            isDimmed: shouldDimPoint,
+          });
+
+          return (
+            <Fragment key={resort.id}>
+              {labelLayout?.showLeaderLine && (
+                <Polyline
+                  pane={markerPane}
+                  positions={[
+                    [resort.latitude, resort.longitude],
+                    labelLayout.leaderEndPosition,
+                  ]}
+                  pathOptions={{
+                    color: isSelected ? "#ca8a04" : "#64748b",
+                    opacity: 0.7,
+                    weight: 1,
+                  }}
+                  interactive={false}
+                />
+              )}
+
+              <Marker
+                key={`${resort.id}-point-${hasVisibleLabel ? "interactive" : "static"}`}
+                pane={markerPane}
+                position={[resort.latitude, resort.longitude]}
+                icon={pointIcon}
+                interactive={hasVisibleLabel}
+                zIndexOffset={markerZIndexOffset}
+                eventHandlers={
+                  hasVisibleLabel ? markerClickEventHandlers : undefined
+                }
+              />
+
+              {hasVisibleLabel && (
+                <Marker
+                  key={`${resort.id}-label`}
+                  pane={markerPane}
+                  position={labelLayout.labelPosition}
+                  icon={nameLabelIconsByResortId.get(resort.id)}
+                  interactive={hasVisibleLabel}
+                  zIndexOffset={markerZIndexOffset}
+                  eventHandlers={markerClickEventHandlers}
+                />
+              )}
+            </Fragment>
+          );
+        })}
+
+        {shouldShowCompareActions && openActionPopupResort && (
+          <ResortActionPopup
+            key={openActionPopupResort.id}
+            resort={openActionPopupResort}
+            isCompareSelected={
+              selectedCompareIdSet?.has(openActionPopupResort.id) ?? false
+            }
+            onClose={() => setOpenActionPopupResortId(null)}
+            onSelectResort={onSelectResort}
+            onToggleCompare={
+              onToggleCompare
+                ? (id, selected) => {
+                    skipCompareRecenterRef.current = true;
+                    onToggleCompare(id, selected);
+                  }
+                : undefined
+            }
+          />
+        )}
+
+        <MapControls
+          initialZoom={initialZoom}
+          bottomPaddingRatio={mapControlBottomPaddingRatio}
+          onUserMapInteraction={onUserMapInteraction}
+          onUserMapZoomInteraction={onUserMapZoomInteraction}
+        />
+        <MapViewportController
+          initialZoom={initialZoom}
+          resorts={resorts}
+          selectedResortId={selectedResortId}
+          selectedCompareIdSet={selectedCompareIdSet ?? new Set<string>()}
+          interactionMode={interactionMode}
+          selectedViewportBottomPaddingRatio={
+            selectedViewportBottomPaddingRatio
+          }
+          labelShowZoom={labelShowZoom}
+          onViewportChange={updateLabelLayout}
+          skipCompareRecenterRef={skipCompareRecenterRef}
+        />
+        <SearchViewportController
+          enabled={interactionMode === "default"}
+          resorts={resorts}
+          searchResultResortIds={searchResultResortIds}
+          searchViewportRequestKey={searchViewportRequestKey}
+          searchViewportBottomPaddingRatio={searchViewportBottomPaddingRatio}
+          labelShowZoom={labelShowZoom}
+          onViewportChange={updateLabelLayout}
+        />
+        <RestoreViewportController
+          restoreViewRequest={restoreViewRequest}
+          onViewportChange={updateLabelLayout}
+        />
+        <LabelLayoutWatcher onLayout={updateLabelLayout} />
+        <MapEventsHandler
+          onBoundsChange={handleBoundsChange}
+          onViewChange={onViewChange}
+          onUserMapInteraction={onUserMapInteraction}
+          onUserMapZoomInteraction={onUserMapZoomInteraction}
+        />
+        <MapZoomSettingsController
+          initialZoom={initialZoom}
+          zoomSnap={zoomSettings.zoomSnap}
+          zoomDelta={zoomSettings.zoomDelta}
+        />
+      </MapContainer>
+    </Box>
   );
 });
 
@@ -1567,7 +2184,7 @@ const ResortActionPopup = ({
   onSelectResort,
   onToggleCompare,
 }: {
-  resort: MapResort;
+  resort: MapSkiResort;
   isCompareSelected: boolean;
   onClose: () => void;
   onSelectResort: (id: string) => void;
@@ -1579,14 +2196,15 @@ const ResortActionPopup = ({
     autoPan={false}
     eventHandlers={{ remove: onClose }}
   >
-    <Flex flexDirection="column" gap={2} minW="160px">
+    <Flex flexDirection="column" gap={2} minW="190px">
       <Box color="gray.900" fontSize="sm" fontWeight="800" lineHeight="1.35">
         {resort.nameJa}
       </Box>
       <Flex gap={2}>
         <Button
           size="xs"
-          flex="1"
+          flex="1 1 0"
+          minW={0}
           variant="outline"
           fontWeight="800"
           onClick={() => {
@@ -1599,14 +2217,28 @@ const ResortActionPopup = ({
         {onToggleCompare && (
           <Button
             size="xs"
-            flex="1"
+            flex="1 1 0"
+            minW={0}
             variant="outline"
+            gap={1}
             fontWeight="800"
+            color={isCompareSelected ? "white" : "brand.600"}
+            bg={isCompareSelected ? "brand.500" : "white"}
+            borderColor="brand.500"
+            aria-pressed={isCompareSelected}
+            _hover={{
+              bg: isCompareSelected ? "brand.600" : "brand.50",
+            }}
             onClick={() => {
               onToggleCompare(resort.id, !isCompareSelected);
               onClose();
             }}
           >
+            <Box
+              as={isCompareSelected ? Check : Plus}
+              boxSize="14px"
+              strokeWidth={3}
+            />
             {isCompareSelected ? "比較から外す" : "比較に追加"}
           </Button>
         )}

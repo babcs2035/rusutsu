@@ -57,6 +57,45 @@ html body .resort-name-label-icon {
   border: 0;
 }
 
+html body .resort-point-marker-icon {
+  background: transparent;
+  border: 0;
+}
+
+html body .resort-point-marker {
+  background: #5fb9d4;
+  border: 1px solid #ffffff;
+  border-radius: 999px;
+  box-sizing: border-box;
+  opacity: 0.95;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
+}
+
+html body .resort-point-marker:hover {
+  opacity: 1;
+  transform: scale(1.16);
+}
+
+html body .resort-point-marker.is-selected {
+  box-shadow:
+    0 0 0 var(--selected-ring-width, 3px) #3b2e83,
+    0 0 0 calc(var(--selected-ring-width, 3px) + 1px) rgba(255, 255, 255, 0.95);
+}
+
+html body .resort-point-marker.is-filter-match {
+  background: #f47c48;
+}
+
+html body .resort-point-marker.is-dimmed {
+  opacity: 0.48;
+}
+
+html body .resort-point-marker.is-dimmed:hover {
+  opacity: 0.95;
+}
+
 html body .resort-name-label {
   background: rgba(255, 255, 255, 0.78);
   border: 1px solid rgba(17, 24, 39, 0.14);
