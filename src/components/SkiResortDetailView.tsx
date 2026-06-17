@@ -15,7 +15,7 @@ import {
   useBreakpointValue,
 } from "@chakra-ui/react";
 import { motion } from "framer-motion";
-import { Check, ChevronDown, Plus } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, Plus } from "lucide-react";
 import Image from "next/image";
 import type {
   TouchEvent as ReactTouchEvent,
@@ -23,6 +23,14 @@ import type {
 } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Drawer } from "vaul";
+import type { SelectedMapFeature } from "@/components/SkiResortMap";
+import {
+  COURSE_DIFFICULTY_META,
+  type FinalizedLiftFeature,
+  type FinalizedResortMapData,
+  type GeoCoordinate,
+  getCourseDifficulty,
+} from "@/lib/finalizedResortGeojsonShared";
 import type {
   NullableSkiResortDetail,
   SkiResortDetail,
@@ -38,6 +46,10 @@ type Props = {
   sheetSnapPoint: number | string | null;
   setSheetSnapPoint: (snapPoint: number | string | null) => void;
   onToggleCompare: (id: string, selected: boolean) => void;
+  selectedFinalizedFeature: SelectedMapFeature | null;
+  onSelectedFinalizedFeatureChange: (
+    feature: SelectedMapFeature | null,
+  ) => void;
   onClose: () => void;
 };
 
@@ -99,6 +111,8 @@ export const SkiResortDetailView = ({
   sheetSnapPoint,
   setSheetSnapPoint,
   onToggleCompare,
+  selectedFinalizedFeature,
+  onSelectedFinalizedFeatureChange,
   onClose,
 }: Props) => {
   const [activeTab, setActiveTab] = useState(TABS[0]);
@@ -116,6 +130,15 @@ export const SkiResortDetailView = ({
         hidden: { opacity: 0 },
         visible: { opacity: 1 },
       };
+
+  useEffect(() => {
+    if (selectedFinalizedFeature?.kind === "course") {
+      setActiveTab("コース");
+    }
+    if (selectedFinalizedFeature?.kind === "lift") {
+      setActiveTab("リフト");
+    }
+  }, [selectedFinalizedFeature]);
 
   // モーダル表示時にスクロールを防止
   useEffect(() => {
@@ -394,8 +417,26 @@ export const SkiResortDetailView = ({
         </Flex>
         <Box p={{ base: 4, md: 8 }} color="gray.800">
           {activeTab === "概要" && <OverviewTab resort={resort} />}
-          {activeTab === "コース" && <CoursesTab resort={resort} />}
-          {activeTab === "リフト" && <LiftsTab resort={resort} />}
+          {activeTab === "コース" && (
+            <CoursesTab
+              resort={resort}
+              finalizedMapData={resortData?.finalizedMapData ?? null}
+              selectedFinalizedFeature={selectedFinalizedFeature}
+              onSelectedFinalizedFeatureChange={
+                onSelectedFinalizedFeatureChange
+              }
+            />
+          )}
+          {activeTab === "リフト" && (
+            <LiftsTab
+              resort={resort}
+              finalizedMapData={resortData?.finalizedMapData ?? null}
+              selectedFinalizedFeature={selectedFinalizedFeature}
+              onSelectedFinalizedFeatureChange={
+                onSelectedFinalizedFeatureChange
+              }
+            />
+          )}
           {activeTab === "チケット" && <TicketsTab resort={resort} />}
           {activeTab === "気候" && <WeatherTab resort={resort} />}
         </Box>
@@ -625,6 +666,243 @@ const ImageCarousel = ({ images, alt }: { images: string[]; alt: string }) => {
 };
 
 type Resort = SkiResortDetail;
+
+type FinalizedCourseGroup = {
+  id: string;
+  displayName: string;
+  courses: NonNullable<FinalizedResortMapData["courses"]>["features"];
+};
+
+type ElevationProfilePoint = {
+  distance: number;
+  elevation: number;
+  slope: number | null;
+};
+
+const normalizeIconSymbol = (value: string | null | undefined) => {
+  if (!value) return null;
+  if (/[○〇◯]/u.test(value)) return "○";
+  if (/[△]/u.test(value)) return "△";
+  if (/[×✕✖]/u.test(value)) return "×";
+  return null;
+};
+
+const formatCourseStatus = (status: string | null | undefined) => {
+  const symbol = normalizeIconSymbol(status);
+  if (symbol === "○") return "全面滑走可";
+  if (symbol === "△") return "一部滑走可";
+  if (symbol === "×") return "クローズ";
+  return status ?? "--";
+};
+
+const formatLiftStatus = (status: string | null | undefined) => {
+  const symbol = normalizeIconSymbol(status);
+  if (symbol === "○") return "運行中";
+  if (symbol === "△") return "準備中・待機中";
+  if (symbol === "×") return "運休";
+  return status ?? "--";
+};
+
+const formatPisteStatus = (piste: string | null | undefined) => {
+  const symbol = normalizeIconSymbol(piste);
+  if (symbol === "○") return "圧雪";
+  if (symbol === "△") return "一部圧雪";
+  if (symbol === "×") return "非圧雪";
+  return piste ?? "--";
+};
+
+const formatMeters = (value: number | null | undefined) =>
+  value == null ? "--" : `${Math.round(value).toLocaleString()}m`;
+
+const formatDegree = (value: number | null | undefined) =>
+  value == null ? "--" : `${value.toFixed(1)}°`;
+
+const getLiftElevationDiff = (lift: FinalizedLiftFeature) => {
+  if (lift.properties.elevationDiffMap != null) {
+    return lift.properties.elevationDiffMap;
+  }
+
+  const first = lift.coordinates[0]?.[2];
+  const last = lift.coordinates[lift.coordinates.length - 1]?.[2];
+  if (typeof first === "number" && typeof last === "number") {
+    return Math.abs(last - first);
+  }
+
+  return lift.properties.vertical;
+};
+
+const maxNullable = (values: Array<number | null | undefined>) => {
+  const numericValues = values.filter(
+    (value): value is number => typeof value === "number",
+  );
+  return numericValues.length > 0 ? Math.max(...numericValues) : null;
+};
+
+const averageNullable = (values: Array<number | null | undefined>) => {
+  const numericValues = values.filter(
+    (value): value is number => typeof value === "number",
+  );
+  if (numericValues.length === 0) return null;
+  return (
+    numericValues.reduce((sum, value) => sum + value, 0) / numericValues.length
+  );
+};
+
+const createFinalizedCourseGroups = (
+  courses: NonNullable<FinalizedResortMapData["courses"]>["features"],
+): FinalizedCourseGroup[] => {
+  const groups = new Map<string, FinalizedCourseGroup>();
+  for (const course of courses) {
+    const current = groups.get(course.groupId);
+    if (current) {
+      current.courses.push(course);
+    } else {
+      groups.set(course.groupId, {
+        id: course.groupId,
+        displayName: course.displayName,
+        courses: [course],
+      });
+    }
+  }
+  return [...groups.values()];
+};
+
+const haversineMeters = (a: GeoCoordinate, b: GeoCoordinate) => {
+  const radius = 6371000;
+  const lat1 = (a[1] * Math.PI) / 180;
+  const lat2 = (b[1] * Math.PI) / 180;
+  const dLat = ((b[1] - a[1]) * Math.PI) / 180;
+  const dLng = ((b[0] - a[0]) * Math.PI) / 180;
+  const value =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return radius * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
+};
+
+const createElevationProfile = (
+  coordinates: GeoCoordinate[],
+  slopeDeg: number[] | null = null,
+): ElevationProfilePoint[] => {
+  if (!coordinates.every(coordinate => coordinate.length >= 3)) return [];
+
+  const shouldReverse =
+    (coordinates[0][2] ?? 0) < (coordinates[coordinates.length - 1][2] ?? 0);
+  const displayCoordinates = shouldReverse
+    ? [...coordinates].reverse()
+    : coordinates;
+  const displaySlopes =
+    shouldReverse && slopeDeg?.length === coordinates.length
+      ? [...slopeDeg].reverse()
+      : slopeDeg;
+
+  let distance = 0;
+  return displayCoordinates.map((coordinate, index) => {
+    if (index > 0) {
+      distance += haversineMeters(displayCoordinates[index - 1], coordinate);
+    }
+
+    return {
+      distance,
+      elevation: coordinate[2] as number,
+      slope:
+        displaySlopes && displaySlopes.length === displayCoordinates.length
+          ? displaySlopes[index]
+          : null,
+    };
+  });
+};
+
+const ElevationProfile = ({
+  points,
+  showSlope,
+}: {
+  points: ElevationProfilePoint[];
+  showSlope: boolean;
+}) => {
+  if (points.length < 2) return null;
+
+  const width = 420;
+  const height = 132;
+  const padding = 14;
+  const maxDistance = Math.max(...points.map(point => point.distance));
+  const minElevation = Math.min(...points.map(point => point.elevation));
+  const maxElevation = Math.max(...points.map(point => point.elevation));
+  const elevationRange = Math.max(1, maxElevation - minElevation);
+  const toX = (distance: number) =>
+    padding + (distance / Math.max(1, maxDistance)) * (width - padding * 2);
+  const toY = (elevation: number) =>
+    height -
+    padding -
+    ((elevation - minElevation) / elevationRange) * (height - padding * 2);
+  const path = points
+    .map(
+      (point, index) =>
+        `${index === 0 ? "M" : "L"}${toX(point.distance).toFixed(1)} ${toY(
+          point.elevation,
+        ).toFixed(1)}`,
+    )
+    .join(" ");
+  const steepestPoint =
+    showSlope && points.some(point => point.slope != null)
+      ? points.reduce((best, point) =>
+          (point.slope ?? -Infinity) > (best.slope ?? -Infinity) ? point : best,
+        )
+      : null;
+
+  return (
+    <Box
+      border="1px solid"
+      borderColor="gray.200"
+      borderRadius="lg"
+      bg="white"
+      p={4}
+    >
+      <Text mb={2} fontSize="sm" fontWeight="900" color="gray.900">
+        標高プロファイル
+      </Text>
+      <svg
+        aria-hidden="true"
+        viewBox={`0 0 ${width} ${height}`}
+        style={{ display: "block", width: "100%" }}
+      >
+        <path
+          d={path}
+          fill="none"
+          stroke="#2563EB"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={4}
+        />
+      </svg>
+      <Grid templateColumns={{ base: "1fr", sm: "repeat(3, 1fr)" }} gap={3}>
+        <Box>
+          <Text color="gray.500" fontSize="xs" fontWeight="700">
+            距離
+          </Text>
+          <Text fontWeight="900">{formatMeters(maxDistance)}</Text>
+        </Box>
+        <Box>
+          <Text color="gray.500" fontSize="xs" fontWeight="700">
+            標高差
+          </Text>
+          <Text fontWeight="900">
+            {formatMeters(maxElevation - minElevation)}
+          </Text>
+        </Box>
+        {steepestPoint && (
+          <Box>
+            <Text color="gray.500" fontSize="xs" fontWeight="700">
+              最大付近
+            </Text>
+            <Text fontWeight="900">
+              {Math.round(steepestPoint.slope ?? 0)}°
+            </Text>
+          </Box>
+        )}
+      </Grid>
+    </Box>
+  );
+};
 
 const InfoSection = ({
   resort,
@@ -994,7 +1272,32 @@ const OverviewTab = ({ resort }: { resort: Resort }) => (
   </Flex>
 );
 
-const CoursesTab = ({ resort }: { resort: Resort }) => {
+const CoursesTab = ({
+  resort,
+  finalizedMapData,
+  selectedFinalizedFeature,
+  onSelectedFinalizedFeatureChange,
+}: {
+  resort: Resort;
+  finalizedMapData: FinalizedResortMapData | null;
+  selectedFinalizedFeature: SelectedMapFeature | null;
+  onSelectedFinalizedFeatureChange: (
+    feature: SelectedMapFeature | null,
+  ) => void;
+}) => {
+  const finalizedCourses = finalizedMapData?.courses?.features ?? [];
+  const finalizedCourseGroups = useMemo(
+    () => createFinalizedCourseGroups(finalizedCourses),
+    [finalizedCourses],
+  );
+  const selectedFinalizedCourseGroup =
+    selectedFinalizedFeature?.kind === "course"
+      ? (finalizedCourseGroups.find(
+          group => group.id === selectedFinalizedFeature.id,
+        ) ?? null)
+      : null;
+  const selectedFinalizedCourse =
+    selectedFinalizedCourseGroup?.courses[0] ?? null;
   const courses = resort.courses;
   const [difficultyFilter, setDifficultyFilter] = useState("全て");
   const [sortConfig, setSortConfig] = useState<{
@@ -1028,6 +1331,275 @@ const CoursesTab = ({ resort }: { resort: Resort }) => {
     }
     return filtered;
   }, [courses, difficultyFilter, sortConfig]);
+
+  if (selectedFinalizedCourseGroup && selectedFinalizedCourse) {
+    const distance = selectedFinalizedCourseGroup.courses.reduce(
+      (sum, course) =>
+        sum +
+        (course.properties.slopeDistMap ?? course.properties.distance ?? 0),
+      0,
+    );
+    const profilePoints = createElevationProfile(
+      selectedFinalizedCourse.coordinates,
+      selectedFinalizedCourse.slopeDeg,
+    );
+
+    return (
+      <Flex flexDirection="column" gap={5}>
+        <Button
+          type="button"
+          alignSelf="flex-start"
+          variant="ghost"
+          color="gray.700"
+          fontWeight="800"
+          px={2}
+          onClick={() => onSelectedFinalizedFeatureChange(null)}
+        >
+          <ArrowLeft size={18} />
+          コース一覧へ戻る
+        </Button>
+        <Box>
+          <Heading size="lg" color="gray.900">
+            {selectedFinalizedCourseGroup.displayName}
+          </Heading>
+          <Text mt={1} color="gray.600" fontWeight="800">
+            {
+              COURSE_DIFFICULTY_META[
+                getCourseDifficulty(selectedFinalizedCourse.properties.level)
+              ].label
+            }
+          </Text>
+        </Box>
+
+        {selectedFinalizedCourse.properties.image && (
+          <Box
+            position="relative"
+            h={{ base: "180px", md: "220px" }}
+            w="100%"
+            overflow="hidden"
+            borderRadius="lg"
+          >
+            <Image
+              src={selectedFinalizedCourse.properties.image}
+              alt={selectedFinalizedCourseGroup.displayName}
+              fill
+              unoptimized
+              style={{ objectFit: "cover" }}
+            />
+          </Box>
+        )}
+
+        <Grid templateColumns={{ base: "1fr", sm: "repeat(2, 1fr)" }} gap={3}>
+          <StatCard
+            title="営業状況"
+            value={formatCourseStatus(
+              selectedFinalizedCourse.properties.status,
+            )}
+          />
+          <StatCard
+            title="圧雪"
+            value={formatPisteStatus(selectedFinalizedCourse.properties.piste)}
+          />
+          <StatCard title="距離" value={formatMeters(distance)} />
+          <StatCard
+            title="平均斜度"
+            value={formatDegree(
+              averageNullable(
+                selectedFinalizedCourseGroup.courses.map(
+                  course => course.properties.avgSlopeDegMap,
+                ),
+              ),
+            )}
+          />
+          <StatCard
+            title="最大斜度"
+            value={formatDegree(
+              maxNullable(
+                selectedFinalizedCourseGroup.courses.map(
+                  course => course.properties.maxSlopeDegMap,
+                ),
+              ),
+            )}
+          />
+          <StatCard
+            title="区間"
+            value={
+              selectedFinalizedCourseGroup.courses
+                .map(course => course.sectionName)
+                .filter(Boolean)
+                .join(" / ") || "--"
+            }
+          />
+        </Grid>
+
+        <ElevationProfile points={profilePoints} showSlope />
+
+        {(selectedFinalizedCourse.properties.latestNote ||
+          selectedFinalizedCourse.properties.note) && (
+          <Text color="gray.700" lineHeight="1.7">
+            {selectedFinalizedCourse.properties.latestNote ??
+              selectedFinalizedCourse.properties.note}
+          </Text>
+        )}
+      </Flex>
+    );
+  }
+
+  if (finalizedCourseGroups.length > 0) {
+    return (
+      <Flex flexDirection="column" gap={6}>
+        <Grid
+          templateColumns={{ base: "repeat(2, 1fr)", md: "repeat(4, 1fr)" }}
+          gap={4}
+        >
+          <StatCard
+            title="総コース数"
+            value={`${finalizedCourseGroups.length}`}
+          />
+          <StatCard
+            title="最長滑走距離"
+            value={formatMeters(
+              Math.max(
+                ...finalizedCourseGroups.map(group =>
+                  group.courses.reduce(
+                    (sum, course) =>
+                      sum +
+                      (course.properties.slopeDistMap ??
+                        course.properties.distance ??
+                        0),
+                    0,
+                  ),
+                ),
+              ),
+            )}
+          />
+          <StatCard
+            title="最大斜度"
+            value={formatDegree(
+              Math.max(
+                ...finalizedCourseGroups.map(
+                  group =>
+                    maxNullable(
+                      group.courses.map(
+                        course => course.properties.maxSlopeDegMap,
+                      ),
+                    ) ?? 0,
+                ),
+              ),
+            )}
+          />
+          <StatCard
+            title="データ"
+            value={finalizedMapData?.courses?.fileName ?? "--"}
+          />
+        </Grid>
+
+        <Box as="section">
+          <Heading size="lg" fontFamily="var(--font-heading)" color="gray.900">
+            コース一覧
+          </Heading>
+          <Box
+            mt={4}
+            w="100%"
+            overflowX="auto"
+            borderRadius="xl"
+            border="1px solid"
+            borderColor="gray.200"
+            bg="white"
+          >
+            <Table.Root size="md">
+              <Table.Header>
+                <Table.Row bg="gray.100">
+                  <Table.ColumnHeader px={6} py={4}>
+                    コース名
+                  </Table.ColumnHeader>
+                  <Table.ColumnHeader px={6} py={4}>
+                    難易度
+                  </Table.ColumnHeader>
+                  <Table.ColumnHeader px={6} py={4}>
+                    距離
+                  </Table.ColumnHeader>
+                  <Table.ColumnHeader px={6} py={4}>
+                    状況
+                  </Table.ColumnHeader>
+                  <Table.ColumnHeader px={6} py={4}>
+                    圧雪
+                  </Table.ColumnHeader>
+                </Table.Row>
+              </Table.Header>
+              <Table.Body>
+                {finalizedCourseGroups.map(group => {
+                  const representative = group.courses[0];
+                  const isSelected =
+                    selectedFinalizedFeature?.kind === "course" &&
+                    selectedFinalizedFeature.id === group.id;
+                  return (
+                    <Table.Row
+                      key={group.id}
+                      cursor="pointer"
+                      bg={isSelected ? "blue.50" : "white"}
+                      borderColor="gray.200"
+                      _hover={{ bg: isSelected ? "blue.100" : "gray.50" }}
+                      onClick={() =>
+                        onSelectedFinalizedFeatureChange({
+                          kind: "course",
+                          id: group.id,
+                        })
+                      }
+                    >
+                      <Table.Cell
+                        px={6}
+                        py={4}
+                        fontWeight="800"
+                        whiteSpace="nowrap"
+                      >
+                        {group.displayName}
+                        {group.courses.length > 1 && (
+                          <Text as="span" ml={2} color="gray.500" fontSize="xs">
+                            {group.courses
+                              .map(course => course.sectionName)
+                              .filter(Boolean)
+                              .join(" / ")}
+                          </Text>
+                        )}
+                      </Table.Cell>
+                      <Table.Cell px={6} py={4} whiteSpace="nowrap">
+                        {
+                          COURSE_DIFFICULTY_META[
+                            getCourseDifficulty(
+                              representative?.properties.level,
+                            )
+                          ].label
+                        }
+                      </Table.Cell>
+                      <Table.Cell px={6} py={4} whiteSpace="nowrap">
+                        {formatMeters(
+                          group.courses.reduce(
+                            (sum, course) =>
+                              sum +
+                              (course.properties.slopeDistMap ??
+                                course.properties.distance ??
+                                0),
+                            0,
+                          ),
+                        )}
+                      </Table.Cell>
+                      <Table.Cell px={6} py={4} whiteSpace="nowrap">
+                        {formatCourseStatus(representative?.properties.status)}
+                      </Table.Cell>
+                      <Table.Cell px={6} py={4} whiteSpace="nowrap">
+                        {formatPisteStatus(representative?.properties.piste)}
+                      </Table.Cell>
+                    </Table.Row>
+                  );
+                })}
+              </Table.Body>
+            </Table.Root>
+          </Box>
+        </Box>
+      </Flex>
+    );
+  }
 
   const handleSort = (key: "distance") => {
     setSortConfig(prev => ({
@@ -1272,7 +1844,25 @@ const CoursesTab = ({ resort }: { resort: Resort }) => {
   );
 };
 
-const LiftsTab = ({ resort }: { resort: Resort }) => {
+const LiftsTab = ({
+  resort,
+  finalizedMapData,
+  selectedFinalizedFeature,
+  onSelectedFinalizedFeatureChange,
+}: {
+  resort: Resort;
+  finalizedMapData: FinalizedResortMapData | null;
+  selectedFinalizedFeature: SelectedMapFeature | null;
+  onSelectedFinalizedFeatureChange: (
+    feature: SelectedMapFeature | null,
+  ) => void;
+}) => {
+  const finalizedLifts = finalizedMapData?.lifts?.features ?? [];
+  const selectedFinalizedLift =
+    selectedFinalizedFeature?.kind === "lift"
+      ? (finalizedLifts.find(lift => lift.id === selectedFinalizedFeature.id) ??
+        null)
+      : null;
   const lifts = resort.lifts;
   const [typeFilter, setTypeFilter] = useState("全て");
 
@@ -1290,6 +1880,202 @@ const LiftsTab = ({ resort }: { resort: Resort }) => {
     if (typeFilter === "全て") return lifts;
     return lifts.filter(l => l.type === typeFilter);
   }, [lifts, typeFilter]);
+
+  if (selectedFinalizedLift) {
+    const profilePoints = createElevationProfile(
+      selectedFinalizedLift.coordinates,
+    );
+
+    return (
+      <Flex flexDirection="column" gap={5}>
+        <Button
+          type="button"
+          alignSelf="flex-start"
+          variant="ghost"
+          color="gray.700"
+          fontWeight="800"
+          px={2}
+          onClick={() => onSelectedFinalizedFeatureChange(null)}
+        >
+          <ArrowLeft size={18} />
+          リフト一覧へ戻る
+        </Button>
+        <Box>
+          <Heading size="lg" color="gray.900">
+            {selectedFinalizedLift.name}
+          </Heading>
+          <Text mt={1} color="gray.600" fontWeight="800">
+            {selectedFinalizedLift.properties.type ?? "リフト"}
+          </Text>
+        </Box>
+
+        <Grid templateColumns={{ base: "1fr", sm: "repeat(2, 1fr)" }} gap={3}>
+          <StatCard
+            title="営業状況"
+            value={formatLiftStatus(selectedFinalizedLift.properties.status)}
+          />
+          <StatCard
+            title="速度"
+            value={selectedFinalizedLift.properties.speed ?? "--"}
+          />
+          <StatCard
+            title="距離"
+            value={formatMeters(
+              selectedFinalizedLift.properties.slopeDistMap ??
+                selectedFinalizedLift.properties.distance,
+            )}
+          />
+          <StatCard
+            title="標高差"
+            value={formatMeters(getLiftElevationDiff(selectedFinalizedLift))}
+          />
+          <StatCard
+            title="定員"
+            value={
+              selectedFinalizedLift.properties.capacity == null
+                ? "--"
+                : `${selectedFinalizedLift.properties.capacity}名`
+            }
+          />
+          <StatCard
+            title="フード"
+            value={selectedFinalizedLift.properties.hood ?? "--"}
+          />
+        </Grid>
+
+        <ElevationProfile points={profilePoints} showSlope={false} />
+
+        {(selectedFinalizedLift.properties.latestNote ||
+          selectedFinalizedLift.properties.note) && (
+          <Text color="gray.700" lineHeight="1.7">
+            {selectedFinalizedLift.properties.latestNote ??
+              selectedFinalizedLift.properties.note}
+          </Text>
+        )}
+      </Flex>
+    );
+  }
+
+  if (finalizedLifts.length > 0) {
+    return (
+      <Flex flexDirection="column" gap={6}>
+        <Grid
+          templateColumns={{ base: "repeat(2, 1fr)", sm: "repeat(4, 1fr)" }}
+          gap={4}
+        >
+          <StatCard title="全リフト数" value={`${finalizedLifts.length}`} />
+          <StatCard
+            title="最長距離"
+            value={formatMeters(
+              Math.max(
+                ...finalizedLifts.map(
+                  lift =>
+                    lift.properties.slopeDistMap ??
+                    lift.properties.distance ??
+                    0,
+                ),
+              ),
+            )}
+          />
+          <StatCard
+            title="最大高低差"
+            value={formatMeters(
+              Math.max(
+                ...finalizedLifts.map(lift => getLiftElevationDiff(lift) ?? 0),
+              ),
+            )}
+          />
+          <StatCard
+            title="データ"
+            value={finalizedMapData?.lifts?.fileName ?? "--"}
+          />
+        </Grid>
+
+        <Box as="section">
+          <Heading size="lg" fontFamily="var(--font-heading)" color="gray.900">
+            リフト一覧
+          </Heading>
+          <Box
+            mt={4}
+            w="100%"
+            overflowX="auto"
+            borderRadius="xl"
+            border="1px solid"
+            borderColor="gray.200"
+            bg="white"
+          >
+            <Table.Root size="md">
+              <Table.Header>
+                <Table.Row bg="gray.100">
+                  <Table.ColumnHeader px={6} py={4}>
+                    名称
+                  </Table.ColumnHeader>
+                  <Table.ColumnHeader px={6} py={4}>
+                    タイプ
+                  </Table.ColumnHeader>
+                  <Table.ColumnHeader px={6} py={4}>
+                    速度
+                  </Table.ColumnHeader>
+                  <Table.ColumnHeader px={6} py={4}>
+                    距離
+                  </Table.ColumnHeader>
+                  <Table.ColumnHeader px={6} py={4}>
+                    状況
+                  </Table.ColumnHeader>
+                </Table.Row>
+              </Table.Header>
+              <Table.Body>
+                {finalizedLifts.map(lift => {
+                  const isSelected =
+                    selectedFinalizedFeature?.kind === "lift" &&
+                    selectedFinalizedFeature.id === lift.id;
+                  return (
+                    <Table.Row
+                      key={lift.id}
+                      cursor="pointer"
+                      bg={isSelected ? "blue.50" : "white"}
+                      borderColor="gray.200"
+                      _hover={{ bg: isSelected ? "blue.100" : "gray.50" }}
+                      onClick={() =>
+                        onSelectedFinalizedFeatureChange({
+                          kind: "lift",
+                          id: lift.id,
+                        })
+                      }
+                    >
+                      <Table.Cell
+                        px={6}
+                        py={4}
+                        fontWeight="800"
+                        whiteSpace="nowrap"
+                      >
+                        {lift.name}
+                      </Table.Cell>
+                      <Table.Cell px={6} py={4} whiteSpace="nowrap">
+                        {lift.properties.type ?? "--"}
+                      </Table.Cell>
+                      <Table.Cell px={6} py={4} whiteSpace="nowrap">
+                        {lift.properties.speed ?? "--"}
+                      </Table.Cell>
+                      <Table.Cell px={6} py={4} whiteSpace="nowrap">
+                        {formatMeters(
+                          lift.properties.slopeDistMap ??
+                            lift.properties.distance,
+                        )}
+                      </Table.Cell>
+                      <Table.Cell px={6} py={4} whiteSpace="nowrap">
+                        {formatLiftStatus(lift.properties.status)}
+                      </Table.Cell>
+                    </Table.Row>
+                  );
+                })}
+              </Table.Body>
+            </Table.Root>
+          </Box>
+        </Box>
+      </Flex>
+    );
+  }
 
   return (
     <Flex flexDirection="column" gap={10}>

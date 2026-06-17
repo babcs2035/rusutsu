@@ -25,11 +25,48 @@ import {
   useMap,
   useMapEvents,
 } from "react-leaflet";
+import {
+  COURSE_DIFFICULTY_META,
+  createCourseSlopeSegments,
+  type FinalizedCourseFeature,
+  type FinalizedLiftFeature,
+  type FinalizedResortMapData,
+  type GeoCoordinate,
+  getCourseDifficulty,
+  getPisteStyle,
+  getSlopeColor,
+  getStatusOpacity,
+  SLOPE_COLOR_STOPS,
+} from "@/lib/finalizedResortGeojsonShared";
 import type { MapSkiResort } from "@/types/skiResorts";
 
 const INITIAL_CENTER: L.LatLngTuple = [38.25, 138.0];
 const MOBILE_INITIAL_ZOOM = 5;
 const DESKTOP_INITIAL_ZOOM = 6;
+type MapTileVariant = "pale" | "photo";
+const GSI_TILE_LAYERS: Record<
+  MapTileVariant,
+  {
+    label: string;
+    opacity: number;
+    url: string;
+  }
+> = {
+  pale: {
+    label: "地図",
+    opacity: 0.9,
+    url: "https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png",
+  },
+  photo: {
+    label: "写真",
+    opacity: 0.76,
+    url: "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
+  },
+};
+const GSI_TILE_ATTRIBUTION =
+  '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener noreferrer">地理院タイル</a>';
+const GSI_TILE_MIN_ZOOM = 5;
+const GSI_TILE_MAX_ZOOM = 18;
 const MOBILE_MAP_MEDIA_QUERY = "(max-width: 47.999em)";
 const MOBILE_LABEL_SHOW_ZOOM = 7;
 const DESKTOP_LABEL_SHOW_ZOOM = 8;
@@ -55,6 +92,9 @@ const BASE_MARKER_PANE = "resort-markers-base";
 const FRONT_MARKER_PANE = "resort-markers-front";
 const FILTER_MATCH_MARKER_PANE = "resort-markers-filter-match";
 const SELECTED_MARKER_PANE = "resort-markers-selected";
+const FINALIZED_LIFT_PANE = "resort-finalized-lifts";
+const FINALIZED_COURSE_PANE = "resort-finalized-courses";
+const FINALIZED_SELECTED_PANE = "resort-finalized-selected";
 const COMPARE_PANEL_ATTRIBUTE = "data-ski-resort-compare-panel";
 const DETAIL_PANEL_ATTRIBUTE = "data-ski-resort-detail-panel";
 const MOBILE_ZOOM_SETTINGS = {
@@ -137,6 +177,57 @@ type CandidateEvaluation = {
 type MapPointEntry = {
   id: string;
   point: L.Point;
+};
+
+type CourseColorMode = "difficulty" | "slope";
+
+export type SelectedMapFeature =
+  | { kind: "course"; id: string }
+  | { kind: "lift"; id: string };
+
+type FinalizedLineFeatureProperties = {
+  id: string;
+  kind: "course" | "lift";
+  sourceId: string;
+  name?: string;
+  color: string;
+  flowColor?: string;
+  opacity: number;
+  pisteStyle?: "solid" | "dash" | "dot";
+  segmented?: boolean;
+  liftStatus?: "open" | "limited" | "closed" | "unknown";
+  flowSpeed?: "slow" | "normal" | "fast";
+};
+
+type FinalizedLineFeature = {
+  type: "Feature";
+  geometry: {
+    type: "LineString";
+    coordinates: GeoCoordinate[];
+  };
+  properties: FinalizedLineFeatureProperties;
+};
+
+type FinalizedLineFeatureCollection = {
+  type: "FeatureCollection";
+  features: FinalizedLineFeature[];
+};
+
+const EMPTY_FINALIZED_COURSES: FinalizedCourseFeature[] = [];
+const EMPTY_FINALIZED_LIFTS: FinalizedLiftFeature[] = [];
+
+const COURSE_LABEL_MIN_ZOOM = 15;
+const LIFT_LABEL_MIN_ZOOM = 14;
+
+const getScaledMapLineWidth = (
+  zoom: number,
+  kind: "course" | "lift" | "ungroomedCourse" | "liftFlow",
+) => {
+  const t = Math.max(0, Math.min(1, (zoom - 10) / 7));
+  if (kind === "course") return 0.4 + t * 2.0;
+  if (kind === "ungroomedCourse") return 0.4 + t * 2.0;
+  if (kind === "lift") return 1.0 + t * 2.0;
+  return 1.6 + t * 2.8;
 };
 
 const escapeHtml = (text: string) =>
@@ -601,6 +692,197 @@ const getResortDisplayName = (
 const getResortPointLabelGap = (isSelected: boolean): number =>
   RESORT_POINT_RADIUS + (isSelected ? SELECTED_MARKER_RING_WIDTH : 0);
 
+const toLatLngTuple = (coordinate: GeoCoordinate): L.LatLngTuple => [
+  coordinate[1],
+  coordinate[0],
+];
+
+const getFeatureBounds = (coordinates: GeoCoordinate[]) =>
+  L.latLngBounds(coordinates.map(toLatLngTuple));
+
+const getFinalizedMapDataBounds = (
+  courses: FinalizedCourseFeature[],
+  lifts: FinalizedLiftFeature[],
+): L.LatLngBounds | null => {
+  const coordinates = [
+    ...courses.flatMap(course => course.coordinates),
+    ...lifts.flatMap(lift => lift.coordinates),
+  ];
+
+  return coordinates.length > 0 ? getFeatureBounds(coordinates) : null;
+};
+
+const getLiftStatusKind = (
+  status: string | null | undefined,
+): "open" | "limited" | "closed" | "unknown" => {
+  if (/[○〇◯]/u.test(status ?? "")) return "open";
+  if (/[△]/u.test(status ?? "")) return "limited";
+  if (/[×✕✖]/u.test(status ?? "")) return "closed";
+  return "unknown";
+};
+
+type LiftStatusPalette = {
+  baseColor: string;
+  flowColor: string;
+};
+
+const LIFT_STATUS_PALETTE: Record<
+  "open" | "limited" | "closed" | "unknown",
+  LiftStatusPalette
+> = {
+  open: {
+    baseColor: "#1E3A8A", // 濃い青・紺色
+    flowColor: "#00ffff", // 明るい水色
+  },
+  limited: {
+    baseColor: "#DC2626",
+    flowColor: "#FFFFFF",
+  },
+  closed: {
+    baseColor: "#64748B",
+    flowColor: "#FFFFFF",
+  },
+  unknown: {
+    baseColor: "#4F46E5",
+    flowColor: "#FFFFFF",
+  },
+};
+
+const getLiftStatusPalette = (
+  status: string | null | undefined,
+): LiftStatusPalette => LIFT_STATUS_PALETTE[getLiftStatusKind(status)];
+
+const getLiftStatusColor = (status: string | null | undefined) =>
+  getLiftStatusPalette(status).baseColor;
+
+const getLiftFlowColor = (status: string | null | undefined) =>
+  getLiftStatusPalette(status).flowColor;
+
+const getSlopeSegmentPointStride = (zoom: number) => {
+  if (zoom < 12) return 8;
+  if (zoom < 13) return 6;
+  if (zoom < 14) return 4;
+  if (zoom < 15) return 3;
+  if (zoom < 16) return 2;
+  return 1;
+};
+
+const getLiftFlowDashLength = (zoom: number) => {
+  const zoomScale = 2 ** Math.max(0, zoom - 11);
+  return Number((6 * zoomScale).toFixed(2));
+};
+
+const buildCourseFeatureCollection = (
+  courses: FinalizedCourseFeature[],
+  mode: CourseColorMode,
+  zoom: number,
+): FinalizedLineFeatureCollection => {
+  if (mode === "slope") {
+    const pointStride = getSlopeSegmentPointStride(zoom);
+    return {
+      type: "FeatureCollection",
+      features: courses.flatMap(course =>
+        createCourseSlopeSegments(course, pointStride).map(segment => ({
+          type: "Feature" as const,
+          geometry: {
+            type: "LineString" as const,
+            coordinates: segment.coordinates,
+          },
+          properties: {
+            id: `${course.id}-segment-${segment.index}`,
+            kind: "course" as const,
+            sourceId: course.groupId,
+            name: course.displayName,
+            color: getSlopeColor(segment.slope),
+            opacity: getStatusOpacity(course.properties.status),
+            pisteStyle: getPisteStyle(course.properties.piste),
+            segmented: true,
+          },
+        })),
+      ),
+    };
+  }
+
+  return {
+    type: "FeatureCollection",
+    features: courses.map(course => ({
+      type: "Feature",
+      geometry: {
+        type: "LineString",
+        coordinates: course.coordinates,
+      },
+      properties: {
+        id: course.id,
+        kind: "course",
+        sourceId: course.groupId,
+        name: course.displayName,
+        color:
+          COURSE_DIFFICULTY_META[getCourseDifficulty(course.properties.level)]
+            .color,
+        opacity: getStatusOpacity(course.properties.status),
+        pisteStyle: getPisteStyle(course.properties.piste),
+      },
+    })),
+  };
+};
+
+const getLiftDisplayCoordinates = (lift: FinalizedLiftFeature) => {
+  const first = lift.coordinates[0];
+  const last = lift.coordinates[lift.coordinates.length - 1];
+  const firstElevation = first?.[2];
+  const lastElevation = last?.[2];
+
+  if (
+    typeof firstElevation === "number" &&
+    typeof lastElevation === "number" &&
+    firstElevation > lastElevation
+  ) {
+    return [...lift.coordinates].reverse();
+  }
+
+  return lift.coordinates;
+};
+
+const getLiftFlowSpeed = (
+  speed: string | null | undefined,
+): "slow" | "normal" | "fast" => {
+  if (!speed) return "normal";
+  if (/高速|high|fast|express/i.test(speed)) return "fast";
+  if (/低速|slow/i.test(speed)) return "slow";
+  return "normal";
+};
+
+const buildLiftFeatureCollection = (
+  lifts: FinalizedLiftFeature[],
+): FinalizedLineFeatureCollection => ({
+  type: "FeatureCollection",
+  features: lifts.map(lift => ({
+    type: "Feature",
+    geometry: {
+      type: "LineString",
+      coordinates: getLiftDisplayCoordinates(lift),
+    },
+    properties: {
+      id: lift.id,
+      kind: "lift",
+      sourceId: lift.id,
+      name: lift.name,
+      color: getLiftStatusColor(lift.properties.status),
+      flowColor: getLiftFlowColor(lift.properties.status),
+      opacity: getStatusOpacity(lift.properties.status),
+      liftStatus: getLiftStatusKind(lift.properties.status),
+      flowSpeed: getLiftFlowSpeed(lift.properties.speed),
+    },
+  })),
+});
+
+const getUngroomedDashArray = (zoom: number) => {
+  if (zoom >= 16) return "6 3";
+  if (zoom >= 14) return "4 2";
+  if (zoom >= 12) return "3 1.5";
+  return "3 1.5";
+};
+
 const getResortLabelWidth = (
   resort: MapSkiResort,
   displayNameById: Map<string, string>,
@@ -832,6 +1114,538 @@ const RestoreViewportController = ({
   return null;
 };
 
+const FinalizedGeoJsonLayer = ({
+  collection,
+  pane,
+  featureKind,
+  hitWeight,
+  mapTileVariant,
+  isFocusMode,
+  selectedFeature,
+  onSelectFeature,
+}: {
+  collection: FinalizedLineFeatureCollection | null;
+  pane: string;
+  featureKind: "course" | "lift";
+  hitWeight: number;
+  mapTileVariant: MapTileVariant;
+  isFocusMode: boolean;
+  selectedFeature: SelectedMapFeature | null;
+  onSelectFeature: (feature: SelectedMapFeature) => void;
+}) => {
+  const map = useMap();
+  const [renderZoom, setRenderZoom] = useState(() => map.getZoom());
+  const layerGroupRef = useRef<L.LayerGroup | null>(null);
+
+  useEffect(() => {
+    const handleZoomEnd = () => setRenderZoom(map.getZoom());
+    map.on("zoomend", handleZoomEnd);
+    return () => {
+      map.off("zoomend", handleZoomEnd);
+    };
+  }, [map]);
+
+  useEffect(() => {
+    if (layerGroupRef.current) {
+      layerGroupRef.current.removeFrom(map);
+      layerGroupRef.current = null;
+    }
+
+    if (!collection || collection.features.length === 0) return;
+
+    const group = L.layerGroup();
+    layerGroupRef.current = group;
+
+    const getStyle = (
+      feature: FinalizedLineFeature,
+      variant: "outline" | "line" | "hit" | "selected",
+    ): L.PathOptions => {
+      const properties = feature.properties;
+      const isSelected =
+        selectedFeature?.kind === properties.kind &&
+        selectedFeature.id === properties.sourceId;
+      const isUngroomedCourse = properties.pisteStyle === "dot";
+      const isSegmentedCourse =
+        featureKind === "course" && properties.segmented === true;
+      const lineCap = isUngroomedCourse
+        ? "butt"
+        : isSegmentedCourse
+          ? "square"
+          : "round";
+      const dashArray = isUngroomedCourse
+        ? getUngroomedDashArray(renderZoom)
+        : undefined;
+      const isPhotoTile = mapTileVariant === "photo";
+      const focusWeightBoost = isFocusMode ? 0.8 : 0;
+      const baseLineWeight = getScaledMapLineWidth(
+        renderZoom,
+        isUngroomedCourse ? "ungroomedCourse" : featureKind,
+      );
+      const outlineWeight =
+        baseLineWeight + (featureKind === "course" ? 3.4 : 2.6);
+      const outlineOpacity = isPhotoTile
+        ? Math.max(
+            isFocusMode ? 0.72 : 0.58,
+            properties.opacity * (isFocusMode ? 1 : 0.98),
+          )
+        : Math.max(
+            isFocusMode ? 0.5 : 0.36,
+            properties.opacity * (isFocusMode ? 0.98 : 0.9),
+          );
+      const visibleOutlineWeight = isPhotoTile
+        ? outlineWeight +
+          (featureKind === "course" ? 1.4 : 0.9) +
+          focusWeightBoost
+        : outlineWeight + focusWeightBoost;
+      const visibleLineWeight =
+        baseLineWeight + (isPhotoTile ? 0.4 : 0) + focusWeightBoost;
+      const lineOpacity =
+        featureKind === "lift"
+          ? properties.liftStatus === "closed"
+            ? 0.88
+            : properties.liftStatus === "limited"
+              ? 0.94
+              : 1
+          : isSegmentedCourse
+            ? properties.opacity
+            : Math.max(0.9, properties.opacity);
+
+      if (variant === "hit") {
+        return {
+          color: "#000000",
+          opacity: 0,
+          weight: hitWeight,
+        };
+      }
+
+      if (variant === "outline") {
+        return {
+          color: "#ffffff",
+          opacity: outlineOpacity,
+          weight: visibleOutlineWeight,
+          lineCap,
+          lineJoin: "round",
+        };
+      }
+
+      if (variant === "selected" && isSelected) {
+        return {
+          color: "#ffffff",
+          opacity: 0.95,
+          weight: visibleOutlineWeight + 4,
+          lineCap,
+          lineJoin: "round",
+        };
+      }
+
+      return {
+        color: properties.color,
+        opacity: lineOpacity,
+        weight: isSelected ? visibleLineWeight + 2 : visibleLineWeight,
+        dashArray,
+        lineCap,
+        lineJoin: "round",
+      };
+    };
+
+    const createLayer = (
+      variant: "outline" | "line" | "hit" | "selected",
+      interactive: boolean,
+    ) =>
+      L.geoJSON(collection, {
+        pane,
+        interactive,
+        style: feature =>
+          getStyle(feature as unknown as FinalizedLineFeature, variant),
+        onEachFeature: (feature, layer) => {
+          if (!interactive) return;
+          const properties = (feature as unknown as FinalizedLineFeature)
+            .properties;
+          layer.on("click", event => {
+            L.DomEvent.stopPropagation(event);
+            onSelectFeature({
+              kind: properties.kind,
+              id: properties.sourceId,
+            });
+          });
+        },
+      });
+
+    createLayer("outline", false).addTo(group);
+    createLayer("selected", false).addTo(group);
+    createLayer("line", false).addTo(group);
+    let openLiftFlowLayer: L.GeoJSON | null = null;
+    let openLiftFlowCycle: number | null = null;
+    if (featureKind === "lift" && renderZoom >= 11) {
+      L.geoJSON(collection, {
+        pane,
+        interactive: false,
+        style: feature => {
+          const properties = (feature as unknown as FinalizedLineFeature)
+            .properties;
+          if (properties.liftStatus === "open") {
+            return {
+              opacity: 0,
+              weight: 0,
+            };
+          }
+          const tickWeight = Math.max(
+            1.2,
+            getScaledMapLineWidth(renderZoom, "liftFlow") - 0.2,
+          );
+          return {
+            color: properties.flowColor ?? "#ffffff",
+            opacity: properties.liftStatus === "closed" ? 0.62 : 0.76,
+            weight: tickWeight,
+            dashArray: renderZoom >= 15 ? "4 14" : "3 16",
+            lineCap: "butt",
+            lineJoin: "round",
+          };
+        },
+      }).addTo(group);
+    }
+    if (featureKind === "lift" && renderZoom >= 11) {
+      const dashLength = getLiftFlowDashLength(renderZoom);
+      const gapLength = dashLength;
+      openLiftFlowCycle = dashLength + gapLength;
+      openLiftFlowLayer = L.geoJSON(collection, {
+        pane,
+        interactive: false,
+        style: feature => {
+          const properties = (feature as unknown as FinalizedLineFeature)
+            .properties;
+          if (properties.liftStatus !== "open") {
+            return {
+              opacity: 0,
+              weight: 0,
+            };
+          }
+          const flowWeight = getScaledMapLineWidth(renderZoom, "liftFlow");
+          return {
+            color: properties.flowColor ?? "#ffffff",
+            opacity: 0.94,
+            weight: flowWeight,
+            dashArray: `${dashLength} ${gapLength}`,
+            lineCap: "butt",
+            lineJoin: "round",
+            className: `finalized-lift-flow finalized-lift-flow-${properties.flowSpeed ?? "normal"}`,
+          };
+        },
+      }).addTo(group);
+    }
+    createLayer("hit", true).addTo(group);
+    group.addTo(map);
+    if (openLiftFlowLayer && openLiftFlowCycle != null) {
+      window.requestAnimationFrame(() => {
+        openLiftFlowLayer?.eachLayer(layer => {
+          const path = (layer as L.Path & { _path?: SVGPathElement })._path;
+          path?.style.setProperty(
+            "--lift-flow-offset",
+            `-${openLiftFlowCycle}px`,
+          );
+        });
+      });
+    }
+
+    return () => {
+      group.removeFrom(map);
+      if (layerGroupRef.current === group) {
+        layerGroupRef.current = null;
+      }
+    };
+  }, [
+    collection,
+    featureKind,
+    hitWeight,
+    isFocusMode,
+    map,
+    mapTileVariant,
+    onSelectFeature,
+    pane,
+    renderZoom,
+    selectedFeature,
+  ]);
+
+  return null;
+};
+
+const FinalizedCourseNameLabels = ({
+  courses,
+  mode,
+  selectedFeature,
+}: {
+  courses: FinalizedCourseFeature[];
+  mode: CourseColorMode;
+  selectedFeature: SelectedMapFeature | null;
+}) => {
+  const map = useMap();
+  const groupRef = useRef<L.LayerGroup | null>(null);
+
+  useEffect(() => {
+    const renderLabels = () => {
+      if (groupRef.current) {
+        groupRef.current.removeFrom(map);
+        groupRef.current = null;
+      }
+
+      if (mode !== "difficulty" || map.getZoom() < COURSE_LABEL_MIN_ZOOM) {
+        return;
+      }
+
+      const group = L.layerGroup();
+      const placedRects: Rect[] = [];
+      const labelCourses = [
+        ...new Map(courses.map(course => [course.groupId, course])).values(),
+      ];
+      const sortedCourses = labelCourses.sort((a, b) => {
+        const aSelected =
+          selectedFeature?.kind === "course" &&
+          selectedFeature.id === a.groupId;
+        const bSelected =
+          selectedFeature?.kind === "course" &&
+          selectedFeature.id === b.groupId;
+        if (aSelected !== bSelected) return aSelected ? -1 : 1;
+        return b.coordinates.length - a.coordinates.length;
+      });
+
+      for (const course of sortedCourses) {
+        let best:
+          | {
+              point: L.Point;
+              angle: number;
+              length: number;
+              width: number;
+              height: number;
+            }
+          | undefined;
+
+        for (let index = 0; index < course.coordinates.length - 1; index += 1) {
+          const a = map.latLngToContainerPoint(
+            toLatLngTuple(course.coordinates[index]),
+          );
+          const b = map.latLngToContainerPoint(
+            toLatLngTuple(course.coordinates[index + 1]),
+          );
+          const length = a.distanceTo(b);
+          const width = Math.max(58, course.displayName.length * 13 + 18);
+          const height = 24;
+          if (length < width * 0.72 || length < 74) continue;
+
+          if (!best || length > best.length) {
+            const angle = (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
+            best = {
+              point: L.point((a.x + b.x) / 2, (a.y + b.y) / 2),
+              angle: angle > 90 || angle < -90 ? angle + 180 : angle,
+              length,
+              width,
+              height,
+            };
+          }
+        }
+
+        if (!best) continue;
+
+        const rect = {
+          left: best.point.x - best.width / 2,
+          right: best.point.x + best.width / 2,
+          top: best.point.y - best.height / 2,
+          bottom: best.point.y + best.height / 2,
+        };
+        const collisionRect = expandRect(rect, 8);
+        if (placedRects.some(placed => rectsOverlap(collisionRect, placed))) {
+          continue;
+        }
+
+        placedRects.push(collisionRect);
+        const latLng = map.containerPointToLatLng(best.point);
+        const isSelected =
+          selectedFeature?.kind === "course" &&
+          selectedFeature.id === course.groupId;
+        L.marker(latLng, {
+          pane: FINALIZED_SELECTED_PANE,
+          interactive: false,
+          icon: L.divIcon({
+            className: "finalized-course-name-label-icon",
+            iconSize: [best.width, best.height],
+            iconAnchor: [best.width / 2, best.height / 2],
+            html: `<span class="finalized-course-name-label${isSelected ? " finalized-course-name-label-selected" : ""}" style="transform: rotate(${best.angle.toFixed(1)}deg)">${escapeHtml(course.displayName)}</span>`,
+          }),
+        }).addTo(group);
+      }
+
+      group.addTo(map);
+      groupRef.current = group;
+    };
+
+    renderLabels();
+    map.on("zoomend moveend resize", renderLabels);
+    return () => {
+      map.off("zoomend moveend resize", renderLabels);
+      if (groupRef.current) {
+        groupRef.current.removeFrom(map);
+        groupRef.current = null;
+      }
+    };
+  }, [courses, map, mode, selectedFeature]);
+
+  return null;
+};
+
+const FinalizedLiftNameLabels = ({
+  lifts,
+  selectedFeature,
+}: {
+  lifts: FinalizedLiftFeature[];
+  selectedFeature: SelectedMapFeature | null;
+}) => {
+  const map = useMap();
+  const groupRef = useRef<L.LayerGroup | null>(null);
+
+  useEffect(() => {
+    const renderLabels = () => {
+      if (groupRef.current) {
+        groupRef.current.removeFrom(map);
+        groupRef.current = null;
+      }
+
+      if (map.getZoom() < LIFT_LABEL_MIN_ZOOM) return;
+
+      const group = L.layerGroup();
+      const placedRects: Rect[] = [];
+      const sortedLifts = [...lifts].sort((a, b) => {
+        const aSelected =
+          selectedFeature?.kind === "lift" && selectedFeature.id === a.id;
+        const bSelected =
+          selectedFeature?.kind === "lift" && selectedFeature.id === b.id;
+        if (aSelected !== bSelected) return aSelected ? -1 : 1;
+        return b.coordinates.length - a.coordinates.length;
+      });
+
+      for (const lift of sortedLifts) {
+        let best:
+          | {
+              point: L.Point;
+              angle: number;
+              length: number;
+              width: number;
+              height: number;
+            }
+          | undefined;
+
+        for (let index = 0; index < lift.coordinates.length - 1; index += 1) {
+          const a = map.latLngToContainerPoint(
+            toLatLngTuple(lift.coordinates[index]),
+          );
+          const b = map.latLngToContainerPoint(
+            toLatLngTuple(lift.coordinates[index + 1]),
+          );
+          const length = a.distanceTo(b);
+          const width = Math.max(64, lift.name.length * 12 + 16);
+          const height = 22;
+          if (length < width * 0.82 || length < 86) continue;
+
+          if (!best || length > best.length) {
+            const angle = (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
+            best = {
+              point: L.point((a.x + b.x) / 2, (a.y + b.y) / 2),
+              angle: angle > 90 || angle < -90 ? angle + 180 : angle,
+              length,
+              width,
+              height,
+            };
+          }
+        }
+
+        if (!best) continue;
+
+        const rect = {
+          left: best.point.x - best.width / 2,
+          right: best.point.x + best.width / 2,
+          top: best.point.y - best.height / 2,
+          bottom: best.point.y + best.height / 2,
+        };
+        const collisionRect = expandRect(rect, 8);
+        if (placedRects.some(placed => rectsOverlap(collisionRect, placed))) {
+          continue;
+        }
+
+        placedRects.push(collisionRect);
+        const latLng = map.containerPointToLatLng(best.point);
+        const isSelected =
+          selectedFeature?.kind === "lift" && selectedFeature.id === lift.id;
+        L.marker(latLng, {
+          pane: FINALIZED_SELECTED_PANE,
+          interactive: false,
+          icon: L.divIcon({
+            className: "finalized-lift-name-label-icon",
+            iconSize: [best.width, best.height],
+            iconAnchor: [best.width / 2, best.height / 2],
+            html: `<span class="finalized-lift-name-label${isSelected ? " finalized-lift-name-label-selected" : ""}" style="transform: rotate(${best.angle.toFixed(1)}deg)">${escapeHtml(lift.name)}</span>`,
+          }),
+        }).addTo(group);
+      }
+
+      group.addTo(map);
+      groupRef.current = group;
+    };
+
+    renderLabels();
+    map.on("zoomend moveend resize", renderLabels);
+    return () => {
+      map.off("zoomend moveend resize", renderLabels);
+      if (groupRef.current) {
+        groupRef.current.removeFrom(map);
+        groupRef.current = null;
+      }
+    };
+  }, [lifts, map, selectedFeature]);
+
+  return null;
+};
+
+const SelectedFinalizedFeatureViewportController = ({
+  selectedFeature,
+  selectedCourses,
+  selectedLift,
+  bottomPaddingRatio,
+}: {
+  selectedFeature: SelectedMapFeature | null;
+  selectedCourses: FinalizedCourseFeature[];
+  selectedLift: FinalizedLiftFeature | null;
+  bottomPaddingRatio: number;
+}) => {
+  const map = useMap();
+  const lastSelectedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!selectedFeature) {
+      lastSelectedRef.current = null;
+      return;
+    }
+
+    const key = `${selectedFeature.kind}:${selectedFeature.id}`;
+    if (lastSelectedRef.current === key) return;
+    lastSelectedRef.current = key;
+
+    const coordinates =
+      selectedFeature.kind === "course"
+        ? selectedCourses.flatMap(course => course.coordinates)
+        : selectedLift?.coordinates;
+    if (!coordinates || coordinates.length < 2) return;
+
+    map.fitBounds(getFeatureBounds(coordinates), {
+      animate: true,
+      paddingTopLeft: [32, 32],
+      paddingBottomRight: [
+        32,
+        Math.max(32, map.getSize().y * bottomPaddingRatio + 32),
+      ],
+    });
+  }, [bottomPaddingRatio, map, selectedCourses, selectedFeature, selectedLift]);
+
+  return null;
+};
+
 const LabelLayoutWatcher = ({
   onLayout,
 }: {
@@ -871,11 +1685,17 @@ const LabelLayoutWatcher = ({
 const MapControls = ({
   initialZoom,
   bottomPaddingRatio,
+  mapTileVariant,
+  shouldAvoidDetailPanel,
+  onMapTileVariantChange,
   onUserMapInteraction,
   onUserMapZoomInteraction,
 }: {
   initialZoom: number;
   bottomPaddingRatio: number;
+  mapTileVariant: MapTileVariant;
+  shouldAvoidDetailPanel: boolean;
+  onMapTileVariantChange: (variant: MapTileVariant) => void;
   onUserMapInteraction?: () => void;
   onUserMapZoomInteraction?: () => void;
 }) => {
@@ -889,7 +1709,10 @@ const MapControls = ({
     <Flex
       position="absolute"
       top={{ base: "auto", md: 4 }}
-      right={4}
+      right={{
+        base: 4,
+        md: shouldAvoidDetailPanel ? "calc(min(720px, 70vw) + 1rem)" : 4,
+      }}
       bottom={{ base: mobileBottomOffset, md: "auto" }}
       zIndex={1000}
       flexDirection="column"
@@ -961,7 +1784,199 @@ const MapControls = ({
       >
         <Home size={20} />
       </Button>
+      <Flex
+        borderRadius="lg"
+        bg="white"
+        boxShadow="md"
+        overflow="hidden"
+        border="1px solid"
+        borderColor="gray.200"
+      >
+        {Object.entries(GSI_TILE_LAYERS).map(([variant, layer]) => {
+          const tileVariant = variant as MapTileVariant;
+          const isActive = mapTileVariant === tileVariant;
+
+          return (
+            <Button
+              key={variant}
+              onClick={() => onMapTileVariantChange(tileVariant)}
+              aria-label={`${layer.label}に切り替え`}
+              borderRadius="0"
+              bg={isActive ? "blue.500" : "transparent"}
+              color={isActive ? "white" : "gray.700"}
+              _hover={{ bg: isActive ? "blue.600" : "gray.50" }}
+              fontSize="xs"
+              fontWeight="700"
+              h={{ base: 9, sm: 10 }}
+              minW="auto"
+              px={{ base: 2.5, sm: 3 }}
+            >
+              {layer.label}
+            </Button>
+          );
+        })}
+      </Flex>
     </Flex>
+  );
+};
+
+const FinalizedMapModeControl = ({
+  mode,
+  onModeChange,
+  hasCourses,
+}: {
+  mode: CourseColorMode;
+  onModeChange: (mode: CourseColorMode) => void;
+  hasCourses: boolean;
+}) => {
+  if (!hasCourses) return null;
+
+  return (
+    <Flex
+      position="absolute"
+      top={{ base: "calc(env(safe-area-inset-top, 0px) + 4.25rem)", md: 4 }}
+      left={4}
+      zIndex={1000}
+      overflow="hidden"
+      border="1px solid"
+      borderColor="gray.200"
+      borderRadius="lg"
+      bg="white"
+      boxShadow="md"
+    >
+      {(["difficulty", "slope"] as const).map(value => (
+        <Button
+          key={value}
+          type="button"
+          aria-label={`コースの色分けを${value === "difficulty" ? "難易度" : "斜度"}に切り替え`}
+          aria-pressed={mode === value}
+          h={{ base: 9, md: 10 }}
+          minW="auto"
+          borderRadius={0}
+          bg={mode === value ? "blue.500" : "white"}
+          color={mode === value ? "white" : "gray.700"}
+          fontSize="xs"
+          fontWeight="800"
+          px={3}
+          _hover={{ bg: mode === value ? "blue.600" : "gray.50" }}
+          onClick={() => onModeChange(value)}
+        >
+          {value === "difficulty" ? "難易度" : "斜度"}
+        </Button>
+      ))}
+    </Flex>
+  );
+};
+
+const FinalizedMapLegend = ({
+  mode,
+  hasCourses,
+  hasLifts,
+}: {
+  mode: CourseColorMode;
+  hasCourses: boolean;
+  hasLifts: boolean;
+}) => {
+  if (!hasCourses && !hasLifts) return null;
+
+  return (
+    <Box
+      position="absolute"
+      left={4}
+      bottom={{ base: "calc(env(safe-area-inset-bottom, 0px) + 1rem)", md: 4 }}
+      zIndex={1000}
+      maxW={{ base: "calc(100vw - 2rem)", md: "320px" }}
+      border="1px solid"
+      borderColor="gray.200"
+      borderRadius="lg"
+      bg="rgba(255,255,255,0.96)"
+      p={{ base: 2.5, md: 3 }}
+      boxShadow="md"
+      color="gray.800"
+      fontSize="xs"
+    >
+      {hasCourses && mode === "difficulty" && (
+        <Flex gap={2} wrap="wrap">
+          {(
+            [
+              "beginner",
+              "beginnerIntermediate",
+              "intermediate",
+              "intermediateAdvanced",
+              "advanced",
+            ] as const
+          ).map(key => (
+            <Flex key={key} alignItems="center" gap={1.5}>
+              <Box
+                w={3}
+                h={3}
+                borderRadius="full"
+                bg={COURSE_DIFFICULTY_META[key].color}
+                border="1px solid rgba(15,23,42,0.18)"
+              />
+              <Box as="span" fontWeight="700">
+                {COURSE_DIFFICULTY_META[key].label}
+              </Box>
+            </Flex>
+          ))}
+        </Flex>
+      )}
+      {hasCourses && mode === "slope" && (
+        <Box>
+          <Box
+            h={2.5}
+            borderRadius="full"
+            bg={`linear-gradient(90deg, ${SLOPE_COLOR_STOPS.map(
+              stop => `${stop.color} ${(stop.slope / 40) * 100}%`,
+            ).join(", ")})`}
+          />
+          <Flex mt={1} justifyContent="space-between" fontWeight="700">
+            <Box>0°</Box>
+            <Box>10°</Box>
+            <Box>20°</Box>
+            <Box>30°</Box>
+            <Box>40°+</Box>
+          </Flex>
+        </Box>
+      )}
+      {hasCourses && (
+        <Flex mt={2} gap={3} wrap="wrap" color="gray.600">
+          <Flex alignItems="center" gap={1.5}>
+            <Box w={6} h="4px" borderRadius="full" bg="gray.800" />
+            <Box>圧雪・一部圧雪</Box>
+          </Flex>
+          <Flex alignItems="center" gap={1.5}>
+            <Box
+              w={8}
+              h="4px"
+              bg="repeating-linear-gradient(90deg, #1f2937 0 8px, #ffffff 8px 16px)"
+              border="1px solid"
+              borderColor="gray.200"
+            />
+            <Box>非圧雪</Box>
+          </Flex>
+        </Flex>
+      )}
+      {hasLifts && (
+        <Flex mt={hasCourses ? 2 : 0} gap={3} wrap="wrap">
+          <Flex alignItems="center" gap={1.5}>
+            <Box w={5} h="3px" bg="#1D4ED8" />
+            <Box>運行中</Box>
+          </Flex>
+          <Flex alignItems="center" gap={1.5}>
+            <Box w={5} h="3px" bg="#DC2626" />
+            <Box>準備中</Box>
+          </Flex>
+          <Flex alignItems="center" gap={1.5}>
+            <Box w={5} h="3px" bg="#64748B" />
+            <Box>運休</Box>
+          </Flex>
+        </Flex>
+      )}
+      <Box mt={2} color="gray.500">
+        薄い線は営業終了・運休
+      </Box>
+    </Box>
   );
 };
 
@@ -985,6 +2000,11 @@ type Props = {
   onUserMapInteraction?: () => void;
   onUserMapZoomInteraction?: () => void;
   restoreViewRequest?: MapViewRestoreRequest | null;
+  finalizedMapData?: FinalizedResortMapData | null;
+  selectedFinalizedFeature?: SelectedMapFeature | null;
+  onSelectedFinalizedFeatureChange?: (
+    feature: SelectedMapFeature | null,
+  ) => void;
 };
 
 type MapViewSnapshot = {
@@ -1210,6 +2230,7 @@ const SearchViewportController = ({
 const MapViewportController = ({
   initialZoom,
   resorts,
+  finalizedBounds,
   selectedResortId,
   selectedCompareIdSet,
   interactionMode,
@@ -1220,6 +2241,7 @@ const MapViewportController = ({
 }: {
   initialZoom: number;
   resorts: MapSkiResort[];
+  finalizedBounds: L.LatLngBounds | null;
   selectedResortId: string | null;
   selectedCompareIdSet: Set<string>;
   interactionMode: "default" | "detail" | "compare";
@@ -1239,10 +2261,20 @@ const MapViewportController = ({
       const resort = resorts.find(resort => resort.id === selectedResortId);
       if (!resort) return;
 
-      const resortLatLng: L.LatLngTuple = [resort.latitude, resort.longitude];
       const sidePanelWidth = getDetailPanelOverlapRightWidth(map);
       const bottomPanelHeight =
         map.getSize().y * selectedViewportBottomPaddingRatio;
+      if (finalizedBounds?.isValid()) {
+        map.fitBounds(finalizedBounds, {
+          animate: true,
+          maxZoom: 15,
+          ...getSafeFitPadding(map, sidePanelWidth, bottomPanelHeight),
+        });
+        onViewportChange(map);
+        return;
+      }
+
+      const resortLatLng: L.LatLngTuple = [resort.latitude, resort.longitude];
       const targetZoom = Math.max(map.getZoom(), labelShowZoom);
       map.setView(
         getPanelAdjustedCenter(
@@ -1280,6 +2312,7 @@ const MapViewportController = ({
     }
   }, [
     interactionMode,
+    finalizedBounds,
     labelShowZoom,
     map,
     onViewportChange,
@@ -1313,6 +2346,9 @@ export const SkiResortMap = memo(function SkiResortMap({
   onUserMapInteraction,
   onUserMapZoomInteraction,
   restoreViewRequest = null,
+  finalizedMapData = null,
+  selectedFinalizedFeature: controlledSelectedFinalizedFeature,
+  onSelectedFinalizedFeatureChange,
 }: Props) {
   const [labelLayouts, setLabelLayouts] = useState<Record<string, LabelLayout>>(
     {},
@@ -1330,8 +2366,26 @@ export const SkiResortMap = memo(function SkiResortMap({
     ? MOBILE_INITIAL_ZOOM
     : DESKTOP_INITIAL_ZOOM;
   const [mapZoom, setMapZoom] = useState(initialZoom);
+  const [mapTileVariant, setMapTileVariant] = useState<MapTileVariant>("pale");
+  const [courseColorMode, setCourseColorMode] =
+    useState<CourseColorMode>("difficulty");
+  const [
+    uncontrolledSelectedFinalizedFeature,
+    setUncontrolledSelectedFinalizedFeature,
+  ] = useState<SelectedMapFeature | null>(null);
   const skipCompareRecenterRef = useRef(false);
   const mapZoomSurfaceRef = useRef<HTMLDivElement | null>(null);
+  const selectedFinalizedFeature =
+    controlledSelectedFinalizedFeature === undefined
+      ? uncontrolledSelectedFinalizedFeature
+      : controlledSelectedFinalizedFeature;
+  const setSelectedFinalizedFeature = useCallback(
+    (feature: SelectedMapFeature | null) => {
+      setUncontrolledSelectedFinalizedFeature(feature);
+      onSelectedFinalizedFeatureChange?.(feature);
+    },
+    [onSelectedFinalizedFeatureChange],
+  );
 
   useEffect(() => {
     const mediaQuery = window.matchMedia(MOBILE_MAP_MEDIA_QUERY);
@@ -1820,6 +2874,58 @@ export const SkiResortMap = memo(function SkiResortMap({
   ]);
 
   const shouldShowCompareActions = interactionMode === "compare";
+  const finalizedCourses =
+    finalizedMapData?.courses?.features ?? EMPTY_FINALIZED_COURSES;
+  const finalizedLifts =
+    finalizedMapData?.lifts?.features ?? EMPTY_FINALIZED_LIFTS;
+  const hasFinalizedCourses = finalizedCourses.length > 0;
+  const hasFinalizedLifts = finalizedLifts.length > 0;
+  const isFinalizedFocusMode =
+    interactionMode === "detail" && (hasFinalizedCourses || hasFinalizedLifts);
+  const finalizedBounds = useMemo(
+    () => getFinalizedMapDataBounds(finalizedCourses, finalizedLifts),
+    [finalizedCourses, finalizedLifts],
+  );
+  const courseFeatureCollection = useMemo(
+    () =>
+      hasFinalizedCourses
+        ? buildCourseFeatureCollection(
+            finalizedCourses,
+            courseColorMode,
+            mapZoom,
+          )
+        : null,
+    [courseColorMode, finalizedCourses, hasFinalizedCourses, mapZoom],
+  );
+  const liftFeatureCollection = useMemo(
+    () =>
+      hasFinalizedLifts ? buildLiftFeatureCollection(finalizedLifts) : null,
+    [finalizedLifts, hasFinalizedLifts],
+  );
+  const selectedCourses = useMemo(() => {
+    if (selectedFinalizedFeature?.kind !== "course") return null;
+    const matchedCourses = finalizedCourses.filter(
+      course =>
+        course.groupId === selectedFinalizedFeature.id ||
+        course.id === selectedFinalizedFeature.id,
+    );
+    return matchedCourses.length > 0 ? matchedCourses : null;
+  }, [finalizedCourses, selectedFinalizedFeature]);
+  const selectedLift = useMemo(() => {
+    if (selectedFinalizedFeature?.kind !== "lift") return null;
+    return (
+      finalizedLifts.find(lift => lift.id === selectedFinalizedFeature.id) ??
+      null
+    );
+  }, [finalizedLifts, selectedFinalizedFeature]);
+
+  useEffect(() => {
+    if (finalizedMapData === null) {
+      setSelectedFinalizedFeature(null);
+      return;
+    }
+    setSelectedFinalizedFeature(null);
+  }, [finalizedMapData, setSelectedFinalizedFeature]);
 
   useEffect(() => {
     if (!shouldShowCompareActions) {
@@ -1887,6 +2993,13 @@ export const SkiResortMap = memo(function SkiResortMap({
   const zoomSettings = isMobileMapZoom
     ? MOBILE_ZOOM_SETTINGS
     : DESKTOP_ZOOM_SETTINGS;
+  const mapTileLayer = GSI_TILE_LAYERS[mapTileVariant];
+  const tileOpacity = isFinalizedFocusMode
+    ? mapTileVariant === "photo"
+      ? 1
+      : 0.9
+    : mapTileLayer.opacity;
+  const isPhotoMapTile = mapTileVariant === "photo";
   const pendingWrapperZoomInteractionRef = useRef(false);
   const wrapperZoomInteractionTimeoutRef = useRef<number | null>(null);
   const clearWrapperZoomInteractionTimeout = useCallback(() => {
@@ -1993,6 +3106,8 @@ export const SkiResortMap = memo(function SkiResortMap({
     <Box
       ref={mapZoomSurfaceRef}
       data-map-zoom-surface="true"
+      data-map-tile-variant={mapTileVariant}
+      data-map-finalized-focus={isFinalizedFocusMode ? "true" : "false"}
       h="100%"
       w="100%"
       onDoubleClickCapture={handleMapDoubleClickCapture}
@@ -2004,20 +3119,70 @@ export const SkiResortMap = memo(function SkiResortMap({
       <MapContainer
         center={INITIAL_CENTER}
         zoom={initialZoom}
-        minZoom={initialZoom}
+        minZoom={GSI_TILE_MIN_ZOOM}
+        maxZoom={GSI_TILE_MAX_ZOOM}
         zoomSnap={zoomSettings.zoomSnap}
         zoomDelta={zoomSettings.zoomDelta}
         zoomControl={false}
         style={{ width: "100%", height: "100%" }}
       >
         <TileLayer
-          url="https://{s}.tile.openstreetmap.jp/styles/maptiler-basic-ja/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          key={mapTileVariant}
+          className={`gsi-tile-layer-${mapTileVariant}`}
+          url={mapTileLayer.url}
+          opacity={tileOpacity}
+          attribution={GSI_TILE_ATTRIBUTION}
+          minZoom={GSI_TILE_MIN_ZOOM}
+          maxZoom={GSI_TILE_MAX_ZOOM}
+          maxNativeZoom={GSI_TILE_MAX_ZOOM}
         />
         <Pane name={BASE_MARKER_PANE} style={{ zIndex: 430 }} />
         <Pane name={FRONT_MARKER_PANE} style={{ zIndex: 470 }} />
         <Pane name={FILTER_MATCH_MARKER_PANE} style={{ zIndex: 520 }} />
         <Pane name={SELECTED_MARKER_PANE} style={{ zIndex: 560 }} />
+        <Pane name={FINALIZED_COURSE_PANE} style={{ zIndex: 440 }} />
+        <Pane name={FINALIZED_LIFT_PANE} style={{ zIndex: 465 }} />
+        <Pane name={FINALIZED_SELECTED_PANE} style={{ zIndex: 590 }} />
+
+        <FinalizedGeoJsonLayer
+          collection={liftFeatureCollection}
+          pane={FINALIZED_LIFT_PANE}
+          featureKind="lift"
+          hitWeight={18}
+          mapTileVariant={mapTileVariant}
+          isFocusMode={isFinalizedFocusMode}
+          selectedFeature={selectedFinalizedFeature}
+          onSelectFeature={setSelectedFinalizedFeature}
+        />
+        <FinalizedGeoJsonLayer
+          collection={courseFeatureCollection}
+          pane={FINALIZED_COURSE_PANE}
+          featureKind="course"
+          hitWeight={18}
+          mapTileVariant={mapTileVariant}
+          isFocusMode={isFinalizedFocusMode}
+          selectedFeature={selectedFinalizedFeature}
+          onSelectFeature={setSelectedFinalizedFeature}
+        />
+        <SelectedFinalizedFeatureViewportController
+          selectedFeature={selectedFinalizedFeature}
+          selectedCourses={selectedCourses ?? []}
+          selectedLift={selectedLift}
+          bottomPaddingRatio={selectedViewportBottomPaddingRatio}
+        />
+        {hasFinalizedCourses && (
+          <FinalizedCourseNameLabels
+            courses={finalizedCourses}
+            mode={courseColorMode}
+            selectedFeature={selectedFinalizedFeature}
+          />
+        )}
+        {hasFinalizedLifts && (
+          <FinalizedLiftNameLabels
+            lifts={finalizedLifts}
+            selectedFeature={selectedFinalizedFeature}
+          />
+        )}
 
         {renderedResorts.map(resort => {
           const priority = getResortPriority({
@@ -2073,9 +3238,15 @@ export const SkiResortMap = memo(function SkiResortMap({
                     labelLayout.leaderEndPosition,
                   ]}
                   pathOptions={{
-                    color: isSelected ? "#ca8a04" : "#64748b",
-                    opacity: 0.7,
-                    weight: 1,
+                    color: isPhotoMapTile
+                      ? isSelected
+                        ? "#fde047"
+                        : "#f8fafc"
+                      : isSelected
+                        ? "#c2410c"
+                        : "#334155",
+                    opacity: isPhotoMapTile ? 0.92 : 0.78,
+                    weight: isPhotoMapTile ? 1.5 : 1.25,
                   }}
                   interactive={false}
                 />
@@ -2131,12 +3302,16 @@ export const SkiResortMap = memo(function SkiResortMap({
         <MapControls
           initialZoom={initialZoom}
           bottomPaddingRatio={mapControlBottomPaddingRatio}
+          mapTileVariant={mapTileVariant}
+          shouldAvoidDetailPanel={interactionMode === "detail"}
+          onMapTileVariantChange={setMapTileVariant}
           onUserMapInteraction={onUserMapInteraction}
           onUserMapZoomInteraction={onUserMapZoomInteraction}
         />
         <MapViewportController
           initialZoom={initialZoom}
           resorts={resorts}
+          finalizedBounds={finalizedBounds}
           selectedResortId={selectedResortId}
           selectedCompareIdSet={selectedCompareIdSet ?? new Set<string>()}
           interactionMode={interactionMode}
@@ -2173,6 +3348,16 @@ export const SkiResortMap = memo(function SkiResortMap({
           zoomDelta={zoomSettings.zoomDelta}
         />
       </MapContainer>
+      <FinalizedMapModeControl
+        mode={courseColorMode}
+        onModeChange={setCourseColorMode}
+        hasCourses={hasFinalizedCourses}
+      />
+      <FinalizedMapLegend
+        mode={courseColorMode}
+        hasCourses={hasFinalizedCourses}
+        hasLifts={hasFinalizedLifts}
+      />
     </Box>
   );
 });

@@ -31,6 +31,7 @@ import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { SkiResortCompareView } from "@/components/SkiResortCompareView";
 import { SkiResortDetailView } from "@/components/SkiResortDetailView";
 import { SkiResortList } from "@/components/SkiResortList";
+import type { SelectedMapFeature } from "@/components/SkiResortMap";
 import type {
   MapSkiResort,
   NullableSkiResortDetail,
@@ -242,6 +243,8 @@ export function HomeClient({ initialResorts }: Props) {
   const [selectedResortId, setSelectedResortId] = useState<string | null>(null);
   const [selectedResortData, setSelectedResortData] =
     useState<NullableSkiResortDetail | null>(null);
+  const [selectedFinalizedFeature, setSelectedFinalizedFeature] =
+    useState<SelectedMapFeature | null>(null);
   const [selectedCompareIds, setSelectedCompareIds] = useState<string[]>([]);
   const [compareResortData, setCompareResortData] = useState<SkiResortDetail[]>(
     [],
@@ -833,6 +836,7 @@ export function HomeClient({ initialResorts }: Props) {
       saveReturnViewState();
       hasUserInteractedWithMapInDetailRef.current = false;
       setIsCompareOpen(false);
+      setSelectedFinalizedFeature(null);
       setSelectedResortId(id);
       setDetailSheetSnapPoint(BOTTOM_SHEET_DETAIL_INITIAL_SNAP_POINT);
       setIsListSheetOpen(false); // モーダルを開くときにボトムシートを閉じる
@@ -848,6 +852,7 @@ export function HomeClient({ initialResorts }: Props) {
     const shouldRestoreMap = !hasUserInteractedWithMapInDetailRef.current;
     setSelectedResortId(null);
     setSelectedResortData(null);
+    setSelectedFinalizedFeature(null);
     setDetailSheetSnapPoint(BOTTOM_SHEET_INITIAL_SNAP_POINT);
     setHoveredResortId(null);
     hasUserInteractedWithMapInDetailRef.current = false;
@@ -984,6 +989,9 @@ export function HomeClient({ initialResorts }: Props) {
           onUserMapInteraction={handleUserMapInteraction}
           onUserMapZoomInteraction={handleUserMapZoomInteraction}
           restoreViewRequest={restoreViewRequest}
+          finalizedMapData={selectedResortData?.finalizedMapData ?? null}
+          selectedFinalizedFeature={selectedFinalizedFeature}
+          onSelectedFinalizedFeatureChange={setSelectedFinalizedFeature}
         />
         <Box
           display={{
@@ -1427,6 +1435,8 @@ export function HomeClient({ initialResorts }: Props) {
             sheetSnapPoint={detailSheetSnapPoint}
             setSheetSnapPoint={setDetailSheetSnapPoint}
             onToggleCompare={handleToggleCompare}
+            selectedFinalizedFeature={selectedFinalizedFeature}
+            onSelectedFinalizedFeatureChange={setSelectedFinalizedFeature}
             onClose={handleCloseDetail}
           />
         )}

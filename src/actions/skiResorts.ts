@@ -1,5 +1,6 @@
 "use server";
 
+import { getFinalizedResortMapData } from "@/lib/finalizedResortGeojson";
 import { prisma } from "@/lib/prisma";
 import SkiResortWeatherIds from "@/private/data/SkiResortWeatherIds.json";
 import type { SkiResortWithRelations } from "@/types";
@@ -80,29 +81,33 @@ export async function getSkiResortsForMap() {
 
 // スキーリゾート詳細を取得
 export async function getSkiResortById(id: string) {
-  const resort = await prisma.skiResort.findUnique({
-    where: { id },
-    include: {
-      courses: true,
-      lifts: true,
-      tickets: true,
-      weathers: {
-        orderBy: { date: "desc" },
-        take: 1,
+  const [resort, finalizedMapData] = await Promise.all([
+    prisma.skiResort.findUnique({
+      where: { id },
+      include: {
+        courses: true,
+        lifts: true,
+        tickets: true,
+        weathers: {
+          orderBy: { date: "desc" },
+          take: 1,
+        },
+        latestReports: true,
+        yukiMagi: true,
+        snowDepths: {
+          orderBy: { date: "asc" },
+        },
       },
-      latestReports: true,
-      yukiMagi: true,
-      snowDepths: {
-        orderBy: { date: "asc" },
-      },
-    },
-  });
+    }),
+    getFinalizedResortMapData(id),
+  ]);
 
   if (!resort) return null;
 
   return {
     ...resort,
     weatherIds: getWeatherIdsBySkiResortId(id),
+    finalizedMapData,
   };
 }
 

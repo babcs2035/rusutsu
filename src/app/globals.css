@@ -52,6 +52,50 @@ html body .leaflet-container {
   font-family: inherit;
 }
 
+html body [data-map-tile-variant="pale"] .gsi-tile-layer-pale {
+  filter: saturate(0.92) contrast(0.98) brightness(1.02);
+}
+
+html body [data-map-tile-variant="pale"] .leaflet-tile {
+  filter: saturate(0.92) contrast(0.98) brightness(1.02);
+}
+
+html body [data-map-tile-variant="photo"] .gsi-tile-layer-photo {
+  filter: saturate(0.78) contrast(0.9) brightness(1.08);
+}
+
+html body [data-map-tile-variant="photo"] .leaflet-tile {
+  filter: saturate(0.78) contrast(0.9) brightness(1.08);
+}
+
+html
+  body
+  [data-map-finalized-focus="true"][data-map-tile-variant="pale"]
+  .gsi-tile-layer-pale {
+  filter: saturate(0.58) contrast(0.82) brightness(1.14);
+}
+
+html
+  body
+  [data-map-finalized-focus="true"][data-map-tile-variant="pale"]
+  .leaflet-tile {
+  filter: saturate(0.58) contrast(0.82) brightness(1.14);
+}
+
+html
+  body
+  [data-map-finalized-focus="true"][data-map-tile-variant="photo"]
+  .gsi-tile-layer-photo {
+  filter: saturate(0.62) contrast(0.82) brightness(1.15);
+}
+
+html
+  body
+  [data-map-finalized-focus="true"][data-map-tile-variant="photo"]
+  .leaflet-tile {
+  filter: saturate(0.62) contrast(0.82) brightness(1.15);
+}
+
 html body .resort-name-label-icon {
   background: transparent;
   border: 0;
@@ -63,10 +107,13 @@ html body .resort-point-marker-icon {
 }
 
 html body .resort-point-marker {
-  background: #5fb9d4;
+  background: #007c89;
   border: 1px solid #ffffff;
   border-radius: 999px;
   box-sizing: border-box;
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.48),
+    0 1px 3px rgba(15, 23, 42, 0.28);
   opacity: 0.95;
   transition:
     opacity 0.15s ease,
@@ -80,12 +127,14 @@ html body .resort-point-marker:hover {
 
 html body .resort-point-marker.is-selected {
   box-shadow:
-    0 0 0 var(--selected-ring-width, 3px) #3b2e83,
-    0 0 0 calc(var(--selected-ring-width, 3px) + 1px) rgba(255, 255, 255, 0.95);
+    0 0 0 1px rgba(255, 255, 255, 0.96),
+    0 0 0 var(--selected-ring-width, 3px) #1e293b,
+    0 0 0 calc(var(--selected-ring-width, 3px) + 2px) rgba(255, 255, 255, 0.96),
+    0 2px 6px rgba(15, 23, 42, 0.32);
 }
 
 html body .resort-point-marker.is-filter-match {
-  background: #f47c48;
+  background: #d9480f;
 }
 
 html body .resort-point-marker.is-dimmed {
@@ -97,17 +146,20 @@ html body .resort-point-marker.is-dimmed:hover {
 }
 
 html body .resort-name-label {
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(17, 24, 39, 0.14);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(15, 23, 42, 0.28);
   border-radius: 8px;
   box-sizing: border-box;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-  color: #111827;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.14),
+    0 4px 14px rgba(15, 23, 42, 0.18);
+  color: #0f172a;
   cursor: pointer;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.2;
   padding: 4px 8px;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.85);
   display: inline-block;
   width: fit-content;
   white-space: nowrap;
@@ -119,14 +171,20 @@ html body .resort-name-label {
 }
 
 html body .resort-name-label:hover {
-  background: rgba(255, 255, 255, 0.94);
-  border-color: rgba(17, 24, 39, 0.26);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+  background: rgba(255, 255, 255, 0.98);
+  border-color: rgba(15, 23, 42, 0.4);
+  box-shadow:
+    0 2px 4px rgba(15, 23, 42, 0.16),
+    0 6px 18px rgba(15, 23, 42, 0.22);
 }
 
 html body .resort-name-label.is-selected {
-  background: rgba(250, 204, 21, 0.76);
-  border-color: rgba(161, 98, 7, 0.35);
+  background: rgba(254, 240, 138, 0.96);
+  border-color: rgba(202, 138, 4, 0.72);
+  box-shadow:
+    0 1px 2px rgba(120, 53, 15, 0.16),
+    0 4px 14px rgba(202, 138, 4, 0.28);
+  color: #713f12;
 }
 
 html body .resort-name-label.is-dimmed {
@@ -135,4 +193,155 @@ html body .resort-name-label.is-dimmed {
 
 html body .resort-name-label.is-dimmed:hover {
   opacity: 0.8;
+}
+
+html body [data-map-tile-variant="photo"] .resort-point-marker {
+  background: #22d3ee;
+  border-color: rgba(255, 255, 255, 0.98);
+  box-shadow:
+    0 0 0 1px rgba(8, 47, 73, 0.86),
+    0 2px 6px rgba(0, 0, 0, 0.42);
+}
+
+html body [data-map-tile-variant="photo"] .resort-point-marker.is-selected {
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.9),
+    0 0 0 var(--selected-ring-width, 3px) #fde047,
+    0 0 0 calc(var(--selected-ring-width, 3px) + 2px) rgba(15, 23, 42, 0.95),
+    0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+html body [data-map-tile-variant="photo"] .resort-point-marker.is-filter-match {
+  background: #fb923c;
+}
+
+html body [data-map-tile-variant="photo"] .resort-name-label {
+  background: rgba(15, 23, 42, 0.88);
+  border-color: rgba(255, 255, 255, 0.72);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.32),
+    0 5px 16px rgba(0, 0, 0, 0.46);
+  color: #f8fafc;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.7);
+}
+
+html body [data-map-tile-variant="photo"] .resort-name-label:hover {
+  background: rgba(15, 23, 42, 0.94);
+  border-color: rgba(255, 255, 255, 0.88);
+}
+
+html body [data-map-tile-variant="photo"] .resort-name-label.is-selected {
+  background: rgba(254, 240, 138, 0.98);
+  border-color: rgba(15, 23, 42, 0.86);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.76),
+    0 5px 16px rgba(0, 0, 0, 0.46);
+  color: #422006;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+html body .course-profile-marker-icon {
+  background: transparent;
+  border: 0;
+}
+
+html body .course-profile-marker {
+  width: 18px;
+  height: 18px;
+  border: 3px solid #ffffff;
+  border-radius: 999px;
+  background: #111827;
+  box-shadow:
+    0 0 0 2px rgba(37, 99, 235, 0.9),
+    0 4px 12px rgba(15, 23, 42, 0.34);
+}
+
+html body .finalized-lift-flow {
+  animation: finalized-lift-flow 2s linear infinite;
+}
+
+html body .finalized-lift-flow-fast {
+  animation-duration: 1.35s;
+}
+
+html body .finalized-lift-flow-slow {
+  animation-duration: 3.1s;
+}
+
+@keyframes finalized-lift-flow {
+  from {
+    stroke-dashoffset: 0;
+  }
+
+  to {
+    stroke-dashoffset: var(--lift-flow-offset, -48px);
+  }
+}
+
+html body .finalized-course-name-label-icon {
+  background: transparent;
+  border: 0;
+  pointer-events: none;
+}
+
+html body .finalized-course-name-label {
+  align-items: center;
+  color: #0f172a;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 900;
+  height: 24px;
+  justify-content: center;
+  line-height: 1;
+  pointer-events: none;
+  transform-origin: center;
+  white-space: nowrap;
+  width: 100%;
+  text-shadow:
+    0 0 2px #ffffff,
+    0 0 4px #ffffff,
+    0 1px 2px rgba(255, 255, 255, 0.95),
+    0 2px 5px rgba(15, 23, 42, 0.35);
+}
+
+html body .finalized-course-name-label-selected {
+  color: #7c2d12;
+  text-shadow:
+    0 0 2px #ffffff,
+    0 0 5px #fef08a,
+    0 2px 5px rgba(15, 23, 42, 0.35);
+}
+
+html body .finalized-lift-name-label-icon {
+  background: transparent;
+  border: 0;
+  pointer-events: none;
+}
+
+html body .finalized-lift-name-label {
+  align-items: center;
+  color: #111827;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 900;
+  height: 22px;
+  justify-content: center;
+  line-height: 1;
+  pointer-events: none;
+  transform-origin: center;
+  white-space: nowrap;
+  width: 100%;
+  text-shadow:
+    0 0 2px #ffffff,
+    0 0 4px #ffffff,
+    0 1px 2px rgba(255, 255, 255, 0.95),
+    0 2px 5px rgba(15, 23, 42, 0.4);
+}
+
+html body .finalized-lift-name-label-selected {
+  color: #1d4ed8;
+  text-shadow:
+    0 0 2px #ffffff,
+    0 0 5px #dbeafe,
+    0 2px 5px rgba(15, 23, 42, 0.42);
 }
