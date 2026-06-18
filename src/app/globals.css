@@ -261,11 +261,11 @@ html body .finalized-lift-flow {
 }
 
 html body .finalized-lift-flow-fast {
-  animation-duration: 1.35s;
+  animation-duration: 0.8s;
 }
 
 html body .finalized-lift-flow-slow {
-  animation-duration: 3.1s;
+  animation-duration: 2.4s;
 }
 
 @keyframes finalized-lift-flow {
@@ -312,10 +312,108 @@ html body .finalized-course-name-label-selected {
     0 2px 5px rgba(15, 23, 42, 0.35);
 }
 
+html body .finalized-course-name-label-svg {
+  overflow: visible;
+  pointer-events: none;
+}
+
+html body .finalized-course-name-label-svg path {
+  fill: none;
+  stroke: none;
+}
+
+html body .finalized-course-name-label-text,
+html body .finalized-course-name-label-text-fill {
+  dominant-baseline: central;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
+  paint-order: stroke fill;
+  pointer-events: none;
+}
+
+html body .finalized-course-name-label-text-halo {
+  fill: none;
+  stroke: #ffffff;
+  stroke-linejoin: round;
+  stroke-width: 5px;
+}
+
+html body .finalized-course-name-label-text-fill {
+  fill: #0f172a;
+  stroke: rgba(255, 255, 255, 0.86);
+  stroke-linejoin: round;
+  stroke-width: 1.2px;
+}
+
+html
+  body
+  .finalized-course-name-label-text-selected
+  .finalized-course-name-label-text-halo {
+  stroke: #fef08a;
+  stroke-width: 5.5px;
+}
+
+html
+  body
+  .finalized-course-name-label-text-fill.finalized-course-name-label-text-selected {
+  fill: #7c2d12;
+  stroke: rgba(255, 255, 255, 0.9);
+}
+
 html body .finalized-lift-name-label-icon {
   background: transparent;
   border: 0;
   pointer-events: none;
+}
+
+html body .finalized-lift-name-label-svg {
+  overflow: visible;
+  pointer-events: none;
+}
+
+html body .finalized-lift-name-label-svg path {
+  fill: none;
+  stroke: none;
+}
+
+html body .finalized-lift-name-label-text,
+html body .finalized-lift-name-label-text-fill {
+  dominant-baseline: central;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0;
+  paint-order: stroke fill;
+  pointer-events: none;
+}
+
+html body .finalized-lift-name-label-text-halo {
+  fill: none;
+  stroke: #ffffff;
+  stroke-linejoin: round;
+  stroke-width: 5px;
+}
+
+html body .finalized-lift-name-label-text-fill {
+  fill: #111827;
+  stroke: rgba(255, 255, 255, 0.9);
+  stroke-linejoin: round;
+  stroke-width: 1.2px;
+}
+
+html
+  body
+  .finalized-lift-name-label-text-selected
+  .finalized-lift-name-label-text-halo {
+  stroke: #dbeafe;
+  stroke-width: 5.5px;
+}
+
+html
+  body
+  .finalized-lift-name-label-text-fill.finalized-lift-name-label-text-selected {
+  fill: #1d4ed8;
+  stroke: rgba(255, 255, 255, 0.92);
 }
 
 html body .finalized-lift-name-label {

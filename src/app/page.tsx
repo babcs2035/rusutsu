@@ -1,5 +1,5 @@
 import { getSkiResortsForMap } from "@/actions/skiResorts";
-import { HomeClient } from "@/components/HomeClient";
+import { HomeClient } from "@/features/home/HomeClient";
 
 export const dynamic = "force-dynamic";
 

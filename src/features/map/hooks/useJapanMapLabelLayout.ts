@@ -1,0 +1,452 @@
+"use client";
+
+import L from "leaflet";
+import { useCallback, useState } from "react";
+import type { MapSkiResort } from "@/types/skiResorts";
+import {
+  ADVANCED_NEAR_POINT_DISTANCE,
+  DESKTOP_INITIAL_ZOOM,
+  LABEL_COLLISION_PADDING,
+  LABEL_POINT_CLEARANCE,
+  LEADER_POINT_CLEARANCE,
+  MOBILE_INITIAL_ZOOM,
+} from "../constants";
+import type {
+  CandidateEvaluation,
+  CandidatePlacement,
+  LabelLayout,
+  MapPointEntry,
+  Rect,
+  Segment,
+} from "../types";
+import {
+  createDenseFallbackCandidates,
+  createExpandedLabelViewport,
+  createLabelCandidateBounds,
+  createPrimaryCandidates,
+  createSimpleVerticalCandidates,
+  distancePointToRect,
+  distancePointToSegment,
+  expandRect,
+  getLeaderEndPoint,
+  isRectInsideLabelViewport,
+  rectContainsPoint,
+  rectsOverlap,
+  segmentIntersectsRect,
+  segmentsIntersect,
+} from "../utils/labelCollision";
+import { measureLabelHeight } from "../utils/leafletIcons";
+import {
+  detectCrowdedPointIds,
+  getResortLabelWidth,
+  getResortPointLabelGap,
+} from "../utils/resortLabels";
+import {
+  getResortPriority,
+  getResortPriorityRank,
+} from "../utils/resortMarkerPriority";
+
+type UseJapanMapLabelLayoutParams = {
+  resorts: MapSkiResort[];
+  displayNameById: Map<string, string>;
+  filteredResortIdSet?: Set<string>;
+  hoveredResortId: string | null;
+  interactionMode: "default" | "detail" | "compare";
+  isFilterActive: boolean;
+  isMobileMapZoom: boolean;
+  labelAdvancedLayoutZoom: number;
+  labelShowZoom: number;
+  selectedCompareIdSet?: Set<string>;
+  selectedResortId: string | null;
+};
+
+export const useJapanMapLabelLayout = ({
+  resorts,
+  displayNameById,
+  filteredResortIdSet,
+  hoveredResortId,
+  interactionMode,
+  isFilterActive,
+  isMobileMapZoom,
+  labelAdvancedLayoutZoom,
+  labelShowZoom,
+  selectedCompareIdSet,
+  selectedResortId,
+}: UseJapanMapLabelLayoutParams) => {
+  const [labelLayouts, setLabelLayouts] = useState<Record<string, LabelLayout>>(
+    {},
+  );
+  const initialZoom = isMobileMapZoom
+    ? MOBILE_INITIAL_ZOOM
+    : DESKTOP_INITIAL_ZOOM;
+  const [mapZoom, setMapZoom] = useState(initialZoom);
+
+  const updateLabelLayout = useCallback(
+    (map: L.Map) => {
+      const currentZoom = map.getZoom();
+      setMapZoom(currentZoom);
+      const selectedResortIdSet =
+        interactionMode === "compare"
+          ? new Set(selectedCompareIdSet ?? [])
+          : selectedResortId
+            ? new Set([selectedResortId])
+            : new Set<string>();
+      if (hoveredResortId) {
+        selectedResortIdSet.add(hoveredResortId);
+      }
+      const shouldShowLabelsBelowDefaultZoom = selectedResortIdSet.size > 0;
+
+      if (currentZoom < labelShowZoom && !shouldShowLabelsBelowDefaultZoom) {
+        setLabelLayouts(previousLayouts =>
+          Object.keys(previousLayouts).length === 0 ? previousLayouts : {},
+        );
+        return;
+      }
+
+      const isSimpleVerticalLayout = currentZoom < labelAdvancedLayoutZoom;
+      const useAdvancedLayout = currentZoom >= labelAdvancedLayoutZoom;
+
+      const mapSize = map.getSize();
+      const labelViewport = createExpandedLabelViewport(mapSize);
+      const labelCandidateBounds = createLabelCandidateBounds(
+        map,
+        labelViewport,
+      );
+      const labelHeight = measureLabelHeight();
+
+      const placedCollisionRects: Rect[] = [];
+      const placedActualRects: Rect[] = [];
+      const placedLeaderSegments: Segment[] = [];
+
+      const visibleCandidates = resorts.filter(resort =>
+        labelCandidateBounds.contains([
+          resort.latitude,
+          resort.longitude,
+        ] as L.LatLngTuple),
+      );
+      const labelCandidates = visibleCandidates.filter(resort => {
+        if (currentZoom < labelShowZoom) {
+          return selectedResortIdSet.has(resort.id);
+        }
+
+        if (isFilterActive && currentZoom < labelAdvancedLayoutZoom) {
+          return (
+            selectedResortIdSet.has(resort.id) ||
+            filteredResortIdSet?.has(resort.id) === true
+          );
+        }
+
+        return true;
+      });
+
+      const sortedCandidates = labelCandidates.sort((a, b) => {
+        const aPriority = getResortPriority({
+          resortId: a.id,
+          filteredResortIdSet,
+          isFilterActive,
+          selectedResortIdSet,
+        });
+        const bPriority = getResortPriority({
+          resortId: b.id,
+          filteredResortIdSet,
+          isFilterActive,
+          selectedResortIdSet,
+        });
+        const priorityDiff =
+          getResortPriorityRank(bPriority) - getResortPriorityRank(aPriority);
+
+        if (priorityDiff !== 0) {
+          return priorityDiff;
+        }
+
+        return b.numberOfCourses - a.numberOfCourses;
+      });
+
+      const pointById = new Map<string, L.Point>(
+        sortedCandidates.map(resort => [
+          resort.id,
+          map.latLngToContainerPoint([
+            resort.latitude,
+            resort.longitude,
+          ] as L.LatLngTuple),
+        ]),
+      );
+
+      const pointEntries: MapPointEntry[] = sortedCandidates
+        .map(resort => {
+          const point = pointById.get(resort.id);
+          return point ? { id: resort.id, point } : null;
+        })
+        .filter((value): value is MapPointEntry => value !== null);
+
+      const nextLayouts: Record<string, LabelLayout> = {};
+
+      if (isSimpleVerticalLayout) {
+        for (const resort of sortedCandidates) {
+          const point = pointById.get(resort.id);
+          if (!point) continue;
+
+          const labelWidth = getResortLabelWidth(resort, displayNameById);
+          const pointGap = getResortPointLabelGap(
+            selectedResortIdSet.has(resort.id),
+          );
+
+          const candidates = createSimpleVerticalCandidates({
+            point,
+            labelWidth,
+            labelHeight,
+            pointGap,
+          });
+
+          let acceptedRect: Rect | undefined;
+          let acceptedCollisionRect: Rect | undefined;
+
+          for (const candidate of candidates) {
+            const rect: Rect = {
+              left: candidate.left,
+              right: candidate.left + labelWidth,
+              top: candidate.top,
+              bottom: candidate.top + labelHeight,
+            };
+
+            const collisionRect = expandRect(rect, LABEL_COLLISION_PADDING);
+
+            const inViewport = isRectInsideLabelViewport(
+              collisionRect,
+              labelViewport,
+            );
+
+            if (!inViewport) continue;
+
+            const overlapsPlacedLabel = placedCollisionRects.some(placed =>
+              rectsOverlap(collisionRect, placed),
+            );
+            if (overlapsPlacedLabel) continue;
+
+            acceptedRect = rect;
+            acceptedCollisionRect = collisionRect;
+            break;
+          }
+
+          if (!acceptedRect || !acceptedCollisionRect) continue;
+
+          placedCollisionRects.push(acceptedCollisionRect);
+          placedActualRects.push(acceptedRect);
+
+          const labelTopLeftLatLng = map.containerPointToLatLng(
+            L.point(acceptedRect.left, acceptedRect.top),
+          );
+
+          nextLayouts[resort.id] = {
+            labelPosition: [labelTopLeftLatLng.lat, labelTopLeftLatLng.lng],
+            leaderEndPosition: [resort.latitude, resort.longitude],
+            showLeaderLine: false,
+            labelWidth,
+          };
+        }
+
+        setLabelLayouts(nextLayouts);
+        return;
+      }
+
+      const crowdedPointIds = useAdvancedLayout
+        ? detectCrowdedPointIds(pointEntries, ADVANCED_NEAR_POINT_DISTANCE)
+        : new Set<string>();
+
+      for (const resort of sortedCandidates) {
+        const point = pointById.get(resort.id);
+        if (!point) continue;
+
+        const shouldForceLeaderLine =
+          useAdvancedLayout && crowdedPointIds.has(resort.id);
+
+        const labelWidth = getResortLabelWidth(resort, displayNameById);
+        const pointGap = getResortPointLabelGap(
+          selectedResortIdSet.has(resort.id),
+        );
+
+        const evaluateCandidates = (
+          candidates: CandidatePlacement[],
+          options: { allowLineCrossing: boolean },
+        ): CandidateEvaluation | undefined => {
+          let best: CandidateEvaluation | undefined;
+
+          for (const candidate of candidates) {
+            const rect: Rect = {
+              left: candidate.left,
+              right: candidate.left + labelWidth,
+              top: candidate.top,
+              bottom: candidate.top + labelHeight,
+            };
+
+            const collisionRect = expandRect(rect, LABEL_COLLISION_PADDING);
+
+            const inViewport = isRectInsideLabelViewport(
+              collisionRect,
+              labelViewport,
+            );
+
+            if (!inViewport) continue;
+
+            const overlapsPlacedLabel = placedCollisionRects.some(placed =>
+              rectsOverlap(collisionRect, placed),
+            );
+            if (overlapsPlacedLabel) continue;
+
+            const coversOtherPoint = pointEntries.some(
+              ({ id, point: otherPoint }) =>
+                id !== resort.id &&
+                rectContainsPoint(rect, otherPoint, LABEL_POINT_CLEARANCE),
+            );
+            if (coversOtherPoint) continue;
+
+            const overlapsOwnPoint =
+              distancePointToRect(point, rect) < pointGap;
+            if (overlapsOwnPoint) continue;
+
+            const leaderEndPoint = getLeaderEndPoint(point, rect);
+            const leaderSegment: Segment = {
+              x1: point.x,
+              y1: point.y,
+              x2: leaderEndPoint.x,
+              y2: leaderEndPoint.y,
+            };
+
+            const leaderLength = Math.hypot(
+              leaderSegment.x2 - leaderSegment.x1,
+              leaderSegment.y2 - leaderSegment.y1,
+            );
+
+            const showLeaderLine =
+              useAdvancedLayout &&
+              (candidate.forceLeaderLine ||
+                shouldForceLeaderLine ||
+                leaderLength > pointGap + 4);
+
+            if (showLeaderLine) {
+              const intersectsExistingLabel = placedActualRects.some(
+                existingRect =>
+                  segmentIntersectsRect(leaderSegment, existingRect),
+              );
+              if (intersectsExistingLabel) continue;
+
+              const existingLineCrossesNewLabel = placedLeaderSegments.some(
+                existingSegment => segmentIntersectsRect(existingSegment, rect),
+              );
+              if (existingLineCrossesNewLabel) continue;
+
+              const intersectsOtherPoint = pointEntries.some(
+                ({ id, point: otherPoint }) =>
+                  id !== resort.id &&
+                  distancePointToSegment(otherPoint, leaderSegment) <
+                    LEADER_POINT_CLEARANCE,
+              );
+              if (intersectsOtherPoint) continue;
+
+              if (!options.allowLineCrossing) {
+                const crossesExistingLeader = placedLeaderSegments.some(
+                  existingSegment =>
+                    segmentsIntersect(existingSegment, leaderSegment),
+                );
+                if (crossesExistingLeader) continue;
+              }
+            }
+
+            let score = leaderLength;
+            if (showLeaderLine) score += 18;
+
+            const nearestOtherPointDistance = pointEntries
+              .filter(({ id }) => id !== resort.id)
+              .reduce((minDistance, { point: otherPoint }) => {
+                const distance = distancePointToRect(otherPoint, rect);
+                return Math.min(minDistance, distance);
+              }, Number.POSITIVE_INFINITY);
+
+            if (nearestOtherPointDistance < 28) {
+              score += (28 - nearestOtherPointDistance) * 3;
+            }
+
+            if (best === undefined || score < best.score) {
+              best = {
+                rect,
+                collisionRect,
+                leaderSegment,
+                showLeaderLine,
+                score,
+              };
+            }
+          }
+
+          return best;
+        };
+
+        const primaryCandidates = createPrimaryCandidates({
+          point,
+          labelWidth,
+          labelHeight,
+          mapSize,
+          useAdvancedLayout,
+          shouldForceLeaderLine,
+          pointGap,
+        });
+
+        const denseFallbackCandidates = useAdvancedLayout
+          ? createDenseFallbackCandidates({
+              point,
+              labelWidth,
+              labelHeight,
+              mapSize,
+            })
+          : [];
+
+        const accepted =
+          evaluateCandidates(primaryCandidates, { allowLineCrossing: false }) ??
+          evaluateCandidates(denseFallbackCandidates, {
+            allowLineCrossing: false,
+          }) ??
+          evaluateCandidates(denseFallbackCandidates, {
+            allowLineCrossing: true,
+          });
+
+        if (!accepted) continue;
+
+        placedCollisionRects.push(accepted.collisionRect);
+        placedActualRects.push(accepted.rect);
+
+        if (accepted.showLeaderLine) {
+          placedLeaderSegments.push(accepted.leaderSegment);
+        }
+
+        const labelTopLeftLatLng = map.containerPointToLatLng(
+          L.point(accepted.rect.left, accepted.rect.top),
+        );
+        const leaderEndLatLng = map.containerPointToLatLng(
+          L.point(accepted.leaderSegment.x2, accepted.leaderSegment.y2),
+        );
+
+        nextLayouts[resort.id] = {
+          labelPosition: [labelTopLeftLatLng.lat, labelTopLeftLatLng.lng],
+          leaderEndPosition: [leaderEndLatLng.lat, leaderEndLatLng.lng],
+          showLeaderLine: accepted.showLeaderLine,
+          labelWidth,
+        };
+      }
+
+      setLabelLayouts(nextLayouts);
+    },
+    [
+      displayNameById,
+      filteredResortIdSet,
+      interactionMode,
+      isFilterActive,
+      labelAdvancedLayoutZoom,
+      labelShowZoom,
+      resorts,
+      selectedCompareIdSet,
+      selectedResortId,
+      hoveredResortId,
+    ],
+  );
+
+  return { labelLayouts, mapZoom, updateLabelLayout };
+};
