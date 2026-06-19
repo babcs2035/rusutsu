@@ -1,6 +1,6 @@
 [tools]
 node = "24"
-pnpm = "latest"
+"npm:pnpm" = "11.8.0"
 
 [tasks]
 # --- Project Setup ---
@@ -16,9 +16,10 @@ setup = { description = "プロジェクトの初期セットアップ（依存�
 
 # --- Development ---
 dev = { description = "開発サーバー起動", run = "pnpm dev" }
-lint = { description = "Lint & Format (Biome)", run = "pnpm lint" }
+format = { description = "Format (Biome)", run = "pnpm format" }
+lint = { description = "Lint (Biome)", run = "pnpm lint" }
 typecheck = { description = "型チェック", run = "pnpm typecheck" }
-check = { description = "コード品質チェック (Lint, Format, TypeCheck)", run = ["mise run lint", "mise run typecheck"] }
+check = { description = "コード品質チェック (Format, Lint, TypeCheck)", run = ["mise run format", "mise run lint", "mise run typecheck"] }
 
 # --- Build ---
 build = { description = "プロダクションビルド", run = "pnpm build" }
