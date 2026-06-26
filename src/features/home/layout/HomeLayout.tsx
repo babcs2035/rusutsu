@@ -216,6 +216,9 @@ export const HomeLayout = ({
         selectedFinalizedFeature={selectedFinalizedFeature}
         onSelectedFinalizedFeatureChange={onSelectedFinalizedFeatureChange}
         selectedElevationProfilePoint={selectedElevationProfilePoint}
+        onSelectedElevationProfilePointChange={
+          onSelectedElevationProfilePointChange
+        }
       />
       <MobileSearchButton
         keyword={filters.keyword}

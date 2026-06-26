@@ -240,20 +240,29 @@ html body [data-map-tile-variant="photo"] .resort-name-label.is-selected {
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.65);
 }
 
-html body .course-profile-marker-icon {
+html body .course-profile-label-icon {
   background: transparent;
   border: 0;
 }
 
-html body .course-profile-marker {
-  width: 18px;
-  height: 18px;
-  border: 3px solid #ffffff;
-  border-radius: 999px;
-  background: #111827;
-  box-shadow:
-    0 0 0 2px rgba(37, 99, 235, 0.9),
-    0 4px 12px rgba(15, 23, 42, 0.34);
+html body .course-profile-label {
+  display: inline-flex;
+  min-width: 52px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  border: 1px solid rgba(17, 24, 39, 0.24);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
+  color: #111827;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.1;
+  padding: 5px 6px;
+  text-align: center;
+  white-space: nowrap;
 }
 
 html body .finalized-lift-flow {

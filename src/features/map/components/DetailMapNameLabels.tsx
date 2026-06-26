@@ -661,6 +661,8 @@ export const FinalizedCourseNameLabels = ({
         const isSelected =
           selectedFeature?.kind === "course" &&
           course.sourceGroupIds.has(selectedFeature.id);
+        if (isSelected) continue;
+
         const minimumLineLength = getMinimumLineLength(zoom, width, "course");
         const best = course.lines
           .map(line =>

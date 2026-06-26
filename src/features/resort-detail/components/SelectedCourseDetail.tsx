@@ -1,8 +1,16 @@
 "use client";
 
-import { Box, Button, Flex, Grid, Heading, Text } from "@chakra-ui/react";
+import {
+  Box,
+  Button,
+  Flex,
+  Grid,
+  Heading,
+  Image,
+  Link,
+  Text,
+} from "@chakra-ui/react";
 import { ArrowLeft } from "lucide-react";
-import Image from "next/image";
 import type { ElevationProfileMapPoint } from "@/features/map/types";
 import {
   COURSE_DIFFICULTY_META,
@@ -11,7 +19,7 @@ import {
 import type { FinalizedCourseGroup } from "../types";
 import {
   averageNullable,
-  createElevationProfile,
+  createConnectedCourseElevationProfile,
   formatCourseStatus,
   formatDegree,
   formatMeters,
@@ -19,7 +27,6 @@ import {
   maxNullable,
 } from "../utils/detailMetrics";
 import { ElevationProfile } from "./ElevationProfile";
-import { StatCard } from "./StatCard";
 
 type Props = {
   courseGroup: FinalizedCourseGroup;
@@ -45,10 +52,33 @@ export const SelectedCourseDetail = ({
       sum + (course.properties.slopeDistMap ?? course.properties.distance ?? 0),
     0,
   );
-  const profilePoints = createElevationProfile(
-    selectedCourse.coordinates,
-    selectedCourse.slopeDeg,
+  const horizontalDistances = courseGroup.courses.map(
+    course => course.properties.horizontalDistMap,
   );
+  const horizontalDistance = horizontalDistances.some(
+    (value): value is number => typeof value === "number",
+  )
+    ? horizontalDistances.reduce<number>((sum, value) => sum + (value ?? 0), 0)
+    : null;
+  const averageSlope = averageNullable(
+    courseGroup.courses.map(course => course.properties.avgSlopeDegMap),
+  );
+  const maxSlope = maxNullable(
+    courseGroup.courses.map(course => course.properties.maxSlopeDegMap),
+  );
+  const profilePoints = createConnectedCourseElevationProfile(
+    courseGroup.courses,
+  );
+  const profileElevations = profilePoints.map(point => point.elevation);
+  const elevationDiff =
+    profileElevations.length > 0
+      ? Math.max(...profileElevations) - Math.min(...profileElevations)
+      : null;
+  const sectionText =
+    courseGroup.courses
+      .map(course => course.sectionName)
+      .filter(Boolean)
+      .join(" / ") || "--";
 
   return (
     <Flex flexDirection="column" gap={5}>
@@ -78,63 +108,40 @@ export const SelectedCourseDetail = ({
       </Box>
 
       {selectedCourse.properties.image && (
-        <Box
-          position="relative"
+        <Link
+          display="inline-flex"
           h={{ base: "180px", md: "220px" }}
-          w="100%"
+          maxW="100%"
+          alignSelf="flex-start"
           overflow="hidden"
-          borderRadius="lg"
+          borderRadius="md"
+          href={selectedCourse.properties.image}
+          rel="noopener noreferrer"
+          target="_blank"
         >
           <Image
             src={selectedCourse.properties.image}
             alt={courseGroup.displayName}
-            fill
-            unoptimized
-            style={{ objectFit: "cover" }}
+            h="100%"
+            maxW="100%"
+            objectFit="contain"
           />
-        </Box>
+        </Link>
       )}
 
-      <Grid templateColumns={{ base: "1fr", sm: "repeat(2, 1fr)" }} gap={3}>
-        <StatCard
-          title="営業状況"
-          value={formatCourseStatus(selectedCourse.properties.status)}
-        />
-        <StatCard
-          title="圧雪"
-          value={formatPisteStatus(selectedCourse.properties.piste)}
-        />
-        <StatCard title="距離" value={formatMeters(distance)} />
-        <StatCard
-          title="平均斜度"
-          value={formatDegree(
-            averageNullable(
-              courseGroup.courses.map(
-                course => course.properties.avgSlopeDegMap,
-              ),
-            ),
-          )}
-        />
-        <StatCard
-          title="最大斜度"
-          value={formatDegree(
-            maxNullable(
-              courseGroup.courses.map(
-                course => course.properties.maxSlopeDegMap,
-              ),
-            ),
-          )}
-        />
-        <StatCard
-          title="区間"
-          value={
-            courseGroup.courses
-              .map(course => course.sectionName)
-              .filter(Boolean)
-              .join(" / ") || "--"
-          }
-        />
-      </Grid>
+      <CourseStatusTable
+        rows={[
+          ["営業状況", formatCourseStatus(selectedCourse.properties.status)],
+          ["圧雪", formatPisteStatus(selectedCourse.properties.piste)],
+          [
+            "難易度",
+            COURSE_DIFFICULTY_META[
+              getCourseDifficulty(selectedCourse.properties.level)
+            ].label,
+          ],
+          ["区間", sectionText],
+        ]}
+      />
 
       <ElevationProfile
         points={profilePoints}
@@ -156,6 +163,20 @@ export const SelectedCourseDetail = ({
         }
       />
 
+      <Grid
+        templateColumns={{ base: "repeat(2, 1fr)", md: "repeat(5, 1fr)" }}
+        gap={3}
+      >
+        <CourseMetric
+          title="水平距離"
+          value={formatMeters(horizontalDistance)}
+        />
+        <CourseMetric title="斜面距離" value={formatMeters(distance)} />
+        <CourseMetric title="標高差" value={formatMeters(elevationDiff)} />
+        <CourseMetric title="平均斜度" value={formatDegree(averageSlope)} />
+        <CourseMetric title="最大斜度" value={formatDegree(maxSlope)} />
+      </Grid>
+
       {(selectedCourse.properties.latestNote ||
         selectedCourse.properties.note) && (
         <Text color="gray.700" lineHeight="1.7">
@@ -166,3 +187,50 @@ export const SelectedCourseDetail = ({
     </Flex>
   );
 };
+
+const CourseMetric = ({ title, value }: { title: string; value: string }) => (
+  <Box borderBottom="1px solid" borderColor="gray.200" pb={2}>
+    <Text color="gray.500" fontSize="xs" fontWeight="800">
+      {title}
+    </Text>
+    <Text color="gray.900" fontSize="lg" fontWeight="900">
+      {value}
+    </Text>
+  </Box>
+);
+
+const CourseStatusTable = ({ rows }: { rows: [string, string][] }) => (
+  <Box
+    as="table"
+    w="100%"
+    borderCollapse="collapse"
+    fontSize="sm"
+    color="gray.700"
+  >
+    <Box as="tbody">
+      {rows.map(([label, value]) => (
+        <Box
+          key={label}
+          as="tr"
+          borderBottom="1px solid"
+          borderColor="gray.100"
+        >
+          <Box
+            as="th"
+            w="7rem"
+            py={2}
+            pr={3}
+            textAlign="left"
+            color="gray.500"
+            fontWeight="800"
+          >
+            {label}
+          </Box>
+          <Box as="td" py={2} fontWeight="800">
+            {value}
+          </Box>
+        </Box>
+      ))}
+    </Box>
+  </Box>
+);

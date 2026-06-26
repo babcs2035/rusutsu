@@ -1,16 +1,19 @@
 "use client";
 
 import { Box } from "@chakra-ui/react";
-import type L from "leaflet";
+import L from "leaflet";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   CircleMarker,
   MapContainer,
+  Marker,
   Pane,
   TileLayer,
-  Tooltip,
+  useMap,
 } from "react-leaflet";
+import { createConnectedCourseElevationProfile } from "@/features/resort-detail/utils/detailMetrics";
+import type { FinalizedCourseFeature } from "@/lib/finalizedResortGeojsonShared";
 import { FinalizedGeoJsonLayer } from "./components/DetailMapLayers";
 import {
   FinalizedCourseNameLabels,
@@ -62,6 +65,7 @@ import { useMapZoomInteractionSurface } from "./hooks/useMapZoomInteractionSurfa
 import { useResortAliases } from "./hooks/useResortAliases";
 import type {
   CourseColorMode,
+  ElevationProfileMapPoint,
   JapanResortMapProps,
   MapTileVariant,
   SelectedMapFeature,
@@ -75,6 +79,187 @@ import {
 } from "./utils/resortMarkerPriority";
 
 export type { ElevationProfileMapPoint, SelectedMapFeature } from "./types";
+
+type CourseLinePoint = ElevationProfileMapPoint & {
+  segmentDy: number;
+};
+
+const getElevationProfileLabelIcon = (
+  point: ElevationProfileMapPoint,
+  placement: "top" | "bottom",
+) =>
+  L.divIcon({
+    className: `course-profile-label-icon course-profile-label-icon-${placement}`,
+    html: `<div class="course-profile-label"><span>${point.slope == null ? "--" : `${Math.round(point.slope)}°`}</span><span>${Math.round(point.elevation).toLocaleString()}m</span></div>`,
+    iconSize: [56, 44],
+    iconAnchor: placement === "top" ? [28, 54] : [28, -10],
+  });
+
+const ElevationProfileMapMarker = ({
+  point,
+  selectedCourses,
+  pane,
+  onPointChange,
+}: {
+  point: ElevationProfileMapPoint;
+  selectedCourses: FinalizedCourseFeature[];
+  pane: string;
+  onPointChange?: (point: ElevationProfileMapPoint | null) => void;
+}) => {
+  const map = useMap();
+  const profilePoints = useMemo(
+    () => createConnectedCourseElevationProfile(selectedCourses),
+    [selectedCourses],
+  );
+  const [isDraggingProfilePoint, setIsDraggingProfilePoint] = useState(false);
+  const getNearestCourseLinePoint = useCallback(
+    (latLng: L.LatLng): CourseLinePoint | null => {
+      if (profilePoints.length === 0) return null;
+      if (profilePoints.length === 1) {
+        return {
+          ...profilePoints[0],
+          courseGroupId: point.courseGroupId,
+          courseName: point.courseName,
+          segmentDy: 0,
+        };
+      }
+
+      const draggedPoint = map.latLngToLayerPoint(latLng);
+      let nearest: (CourseLinePoint & { layerDistance: number }) | null = null;
+
+      for (let index = 1; index < profilePoints.length; index += 1) {
+        const start = profilePoints[index - 1];
+        const end = profilePoints[index];
+        const startPoint = map.latLngToLayerPoint(
+          toLatLngTuple(start.coordinate),
+        );
+        const endPoint = map.latLngToLayerPoint(toLatLngTuple(end.coordinate));
+        const segment = endPoint.subtract(startPoint);
+        const segmentLengthSquared = segment.x ** 2 + segment.y ** 2;
+        const rawT =
+          segmentLengthSquared === 0
+            ? 0
+            : ((draggedPoint.x - startPoint.x) * segment.x +
+                (draggedPoint.y - startPoint.y) * segment.y) /
+              segmentLengthSquared;
+        const t = Math.min(1, Math.max(0, rawT));
+        const projectedPoint = L.point(
+          startPoint.x + segment.x * t,
+          startPoint.y + segment.y * t,
+        );
+        const layerDistance = projectedPoint.distanceTo(draggedPoint);
+        if (nearest !== null && layerDistance >= nearest.layerDistance) {
+          continue;
+        }
+
+        const startDistance = start.distance;
+        const endDistance = end.distance;
+        const startElevation = start.elevation;
+        const endElevation = end.elevation;
+        const projectedLatLng = map.layerPointToLatLng(projectedPoint);
+        const elevation = startElevation + (endElevation - startElevation) * t;
+        nearest = {
+          courseGroupId: point.courseGroupId,
+          courseName: point.courseName,
+          coordinate: [projectedLatLng.lng, projectedLatLng.lat, elevation],
+          distance: startDistance + (endDistance - startDistance) * t,
+          elevation,
+          slope: t < 0.5 ? start.slope : end.slope,
+          segmentDy: segment.y,
+          layerDistance,
+        };
+      }
+
+      return nearest;
+    },
+    [map, point.courseGroupId, point.courseName, profilePoints],
+  );
+  const updateToNearestCourseLinePoint = useCallback(
+    (latLng: L.LatLng) => {
+      if (!onPointChange) return;
+      const nearestPoint = getNearestCourseLinePoint(latLng);
+      if (!nearestPoint) return;
+
+      onPointChange({
+        courseGroupId: point.courseGroupId,
+        courseName: point.courseName,
+        coordinate: nearestPoint.coordinate,
+        distance: nearestPoint.distance,
+        elevation: nearestPoint.elevation,
+        slope: nearestPoint.slope,
+      });
+    },
+    [
+      getNearestCourseLinePoint,
+      onPointChange,
+      point.courseGroupId,
+      point.courseName,
+    ],
+  );
+  const selectedLinePoint = useMemo(
+    () => getNearestCourseLinePoint(L.latLng(toLatLngTuple(point.coordinate))),
+    [getNearestCourseLinePoint, point.coordinate],
+  );
+  const labelPlacement =
+    selectedLinePoint && selectedLinePoint.segmentDy < 0 ? "bottom" : "top";
+  const labelIcon = useMemo(
+    () => getElevationProfileLabelIcon(point, labelPlacement),
+    [labelPlacement, point],
+  );
+
+  useEffect(() => {
+    if (!isDraggingProfilePoint) return;
+
+    map.dragging.disable();
+    const handleMouseMove = (event: L.LeafletMouseEvent) => {
+      updateToNearestCourseLinePoint(event.latlng);
+    };
+    const handleMouseUp = () => {
+      setIsDraggingProfilePoint(false);
+    };
+
+    map.on("mousemove", handleMouseMove);
+    map.on("mouseup", handleMouseUp);
+    return () => {
+      map.off("mousemove", handleMouseMove);
+      map.off("mouseup", handleMouseUp);
+      map.dragging.enable();
+    };
+  }, [isDraggingProfilePoint, map, updateToNearestCourseLinePoint]);
+
+  return (
+    <>
+      <CircleMarker
+        center={toLatLngTuple(point.coordinate)}
+        eventHandlers={{
+          mousedown: event => {
+            L.DomEvent.stopPropagation(event.originalEvent);
+            if (!onPointChange) return;
+            setIsDraggingProfilePoint(true);
+          },
+          click: event => {
+            L.DomEvent.stopPropagation(event.originalEvent);
+          },
+        }}
+        pane={pane}
+        radius={10}
+        pathOptions={{
+          color: "#111827",
+          fillColor: "transparent",
+          fillOpacity: 0,
+          opacity: 1,
+          weight: 2.5,
+        }}
+      />
+      <Marker
+        interactive={false}
+        icon={labelIcon}
+        pane={pane}
+        position={toLatLngTuple(point.coordinate)}
+      />
+    </>
+  );
+};
 
 export const JapanResortMap = memo(function JapanResortMap({
   resorts,
@@ -100,6 +285,7 @@ export const JapanResortMap = memo(function JapanResortMap({
   selectedFinalizedFeature: controlledSelectedFinalizedFeature,
   onSelectedFinalizedFeatureChange,
   selectedElevationProfilePoint,
+  onSelectedElevationProfilePointChange,
 }: JapanResortMapProps) {
   const displayNameById = useResortAliases(resorts);
   const [openActionPopupResortId, setOpenActionPopupResortId] = useState<
@@ -409,31 +595,13 @@ export const JapanResortMap = memo(function JapanResortMap({
             selectedFeature={selectedFinalizedFeature}
           />
         )}
-        {selectedElevationProfilePoint && (
-          <CircleMarker
-            center={toLatLngTuple(selectedElevationProfilePoint.coordinate)}
+        {selectedElevationProfilePoint && selectedCourses && (
+          <ElevationProfileMapMarker
+            point={selectedElevationProfilePoint}
+            selectedCourses={selectedCourses}
             pane={FINALIZED_SELECTED_PANE}
-            radius={7}
-            pathOptions={{
-              color: "#111827",
-              fillColor: "#FACC15",
-              fillOpacity: 0.95,
-              opacity: 1,
-              weight: 3,
-            }}
-          >
-            <Tooltip
-              direction="top"
-              offset={[0, -8]}
-              opacity={1}
-              permanent
-              pane={FINALIZED_SELECTED_PANE}
-            >
-              {selectedElevationProfilePoint.slope == null
-                ? "斜度 --"
-                : `斜度 ${Math.round(selectedElevationProfilePoint.slope)}°`}
-            </Tooltip>
-          </CircleMarker>
+            onPointChange={onSelectedElevationProfilePointChange}
+          />
         )}
 
         <ResortMarkersLayer

@@ -127,4 +127,7 @@ export type JapanResortMapProps = {
     feature: SelectedMapFeature | null,
   ) => void;
   selectedElevationProfilePoint?: ElevationProfileMapPoint | null;
+  onSelectedElevationProfilePointChange?: (
+    point: ElevationProfileMapPoint | null,
+  ) => void;
 };

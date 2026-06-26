@@ -1,4 +1,5 @@
 import type {
+  FinalizedCourseFeature,
   FinalizedLiftFeature,
   FinalizedResortMapData,
   GeoCoordinate,
@@ -137,4 +138,82 @@ export const createElevationProfile = (
       coordinate,
     };
   });
+};
+
+const COURSE_SECTION_ORDER: Record<string, number> = {
+  上部: 0,
+  中部: 1,
+  下部: 2,
+};
+
+const getProfileCoordinates = (
+  coordinates: GeoCoordinate[],
+  slopeDeg: number[] | null,
+) => {
+  const shouldReverse =
+    (coordinates[0]?.[2] ?? 0) <
+    (coordinates[coordinates.length - 1]?.[2] ?? 0);
+  return {
+    coordinates: shouldReverse ? [...coordinates].reverse() : coordinates,
+    slopes:
+      shouldReverse && slopeDeg?.length === coordinates.length
+        ? [...slopeDeg].reverse()
+        : slopeDeg,
+  };
+};
+
+export const createConnectedCourseElevationProfile = (
+  courses: FinalizedCourseFeature[],
+): ElevationProfilePoint[] => {
+  const sortedCourses = courses
+    .map((course, index) => ({ course, index }))
+    .sort((a, b) => {
+      const aOrder =
+        a.course.sectionName == null
+          ? Number.POSITIVE_INFINITY
+          : (COURSE_SECTION_ORDER[a.course.sectionName] ??
+            Number.POSITIVE_INFINITY);
+      const bOrder =
+        b.course.sectionName == null
+          ? Number.POSITIVE_INFINITY
+          : (COURSE_SECTION_ORDER[b.course.sectionName] ??
+            Number.POSITIVE_INFINITY);
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      return a.index - b.index;
+    })
+    .map(item => item.course);
+
+  const points: ElevationProfilePoint[] = [];
+  let distance = 0;
+
+  for (const course of sortedCourses) {
+    if (!course.coordinates.every(coordinate => coordinate.length >= 3)) {
+      continue;
+    }
+
+    const { coordinates, slopes } = getProfileCoordinates(
+      course.coordinates,
+      course.slopeDeg,
+    );
+
+    for (const [index, coordinate] of coordinates.entries()) {
+      const previousCoordinate =
+        index === 0
+          ? points[points.length - 1]?.coordinate
+          : coordinates[index - 1];
+      if (previousCoordinate) {
+        distance += haversineMeters(previousCoordinate, coordinate);
+      }
+
+      points.push({
+        distance,
+        elevation: coordinate[2] as number,
+        slope:
+          slopes && slopes.length === coordinates.length ? slopes[index] : null,
+        coordinate,
+      });
+    }
+  }
+
+  return points;
 };

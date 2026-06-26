@@ -226,13 +226,17 @@ export const SelectedFinalizedFeatureViewportController = ({
         : selectedLift?.coordinates;
     if (!coordinates || coordinates.length < 2) return;
 
+    const bottomPanelHeight = map.getSize().y * bottomPaddingRatio;
+    const rightPanelWidth = getDetailPanelOverlapRightWidth(map);
+    const fitPadding = getSafeFitPadding(
+      map,
+      rightPanelWidth,
+      bottomPanelHeight,
+    );
+
     map.fitBounds(getFeatureBounds(coordinates), {
       animate: true,
-      paddingTopLeft: [32, 32],
-      paddingBottomRight: [
-        32,
-        Math.max(32, map.getSize().y * bottomPaddingRatio + 32),
-      ],
+      ...fitPadding,
     });
   }, [bottomPaddingRatio, map, selectedCourses, selectedFeature, selectedLift]);
 

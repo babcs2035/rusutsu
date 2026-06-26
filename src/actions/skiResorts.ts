@@ -81,32 +81,31 @@ export async function getSkiResortsForMap() {
 
 // スキーリゾート詳細を取得
 export async function getSkiResortById(id: string) {
-  const [resort, finalizedMapData] = await Promise.all([
-    prisma.skiResort.findUnique({
-      where: { id },
-      include: {
-        courses: true,
-        lifts: true,
-        tickets: true,
-        weathers: {
-          orderBy: { date: "desc" },
-          take: 1,
-        },
-        latestReports: true,
-        yukiMagi: true,
-        snowDepths: {
-          orderBy: { date: "asc" },
-        },
+  const resort = await prisma.skiResort.findUnique({
+    where: { id },
+    include: {
+      courses: true,
+      lifts: true,
+      tickets: true,
+      weathers: {
+        orderBy: { date: "desc" },
+        take: 1,
       },
-    }),
-    getFinalizedResortMapData(id),
-  ]);
+      latestReports: true,
+      yukiMagi: true,
+      snowDepths: {
+        orderBy: { date: "asc" },
+      },
+    },
+  });
 
   if (!resort) return null;
 
+  const finalizedMapData = await getFinalizedResortMapData(resort.id);
+
   return {
     ...resort,
-    weatherIds: getWeatherIdsBySkiResortId(id),
+    weatherIds: getWeatherIdsBySkiResortId(resort.id),
     finalizedMapData,
   };
 }
