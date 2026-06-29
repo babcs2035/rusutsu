@@ -1,7 +1,46 @@
 "use server";
 
+import { getFinalizedResortMapData } from "@/lib/finalizedResortGeojson";
 import { prisma } from "@/lib/prisma";
+import SkiResortWeatherIds from "@/private/data/SkiResortWeatherIds.json";
 import type { SkiResortWithRelations } from "@/types";
+
+type TenkiJpWeatherId = {
+  tenkijpId: string;
+  tenkijpName?: string | null;
+  displayName?: string | null;
+};
+
+type SnowForecastWeatherId = {
+  snowForecastId: string;
+  snowForecastName?: string | null;
+  displayName?: string | null;
+};
+
+type SkiResortWeatherIdsEntry = {
+  skiResortId?: string;
+  tenkijp?: TenkiJpWeatherId[];
+  weathernewsSpotId?: string | null;
+  snowForecast?: SnowForecastWeatherId[];
+  SnowForecastId?: string | null;
+  SnowForecastName?: string | null;
+};
+
+function getWeatherIdsBySkiResortId(id: string) {
+  const entry = (SkiResortWeatherIds as SkiResortWeatherIdsEntry[]).find(
+    weatherIds => weatherIds.skiResortId === id,
+  );
+
+  if (!entry) return null;
+
+  return {
+    tenkijp: entry.tenkijp ?? [],
+    weathernewsSpotId: entry.weathernewsSpotId ?? null,
+    snowForecast: entry.snowForecast ?? [],
+    SnowForecastId: entry.SnowForecastId ?? null,
+    SnowForecastName: entry.SnowForecastName ?? null,
+  };
+}
 
 // スキーリゾート一覧を取得（リレーション込み）
 export async function getSkiResorts(): Promise<SkiResortWithRelations[]> {
@@ -27,8 +66,11 @@ export async function getSkiResortsForMap() {
       town: true,
       latitude: true,
       longitude: true,
+      topElevation: true,
+      baseElevation: true,
       verticalDrop: true,
       numberOfCourses: true,
+      numberOfLifts: true,
       beginnersCoursesPercent: true,
       status: true,
       yukiMagiId: true,
@@ -39,7 +81,7 @@ export async function getSkiResortsForMap() {
 
 // スキーリゾート詳細を取得
 export async function getSkiResortById(id: string) {
-  return prisma.skiResort.findUnique({
+  const resort = await prisma.skiResort.findUnique({
     where: { id },
     include: {
       courses: true,
@@ -49,7 +91,6 @@ export async function getSkiResortById(id: string) {
         orderBy: { date: "desc" },
         take: 1,
       },
-      forecasts: true,
       latestReports: true,
       yukiMagi: true,
       snowDepths: {
@@ -57,6 +98,16 @@ export async function getSkiResortById(id: string) {
       },
     },
   });
+
+  if (!resort) return null;
+
+  const finalizedMapData = await getFinalizedResortMapData(resort.id);
+
+  return {
+    ...resort,
+    weatherIds: getWeatherIdsBySkiResortId(resort.id),
+    finalizedMapData,
+  };
 }
 
 // スキーリゾートの天気データを取得

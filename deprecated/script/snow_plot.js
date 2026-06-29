@@ -1,20 +1,20 @@
 import * as d3 from "d3";
 
-export function snowPlot(name, snowDepthsData, parentId) {
+export function snowPlot(_name, snowDepthsData, parentId) {
   const container = d3
     .select(`#${parentId}`)
     .append("div")
     .attr("class", "dropdown-container-snow-depth-plot");
 
-  var h3 = container
+  container
     .append("h3")
     .attr("class", "skiResortData-name")
     .style("width", "100px")
     .text("積雪の分布");
 
-  const firstYear = snowDepthsData["firstYear"];
+  const firstYear = snowDepthsData.firstYear;
   // console.log("snowDepthData", snowDepthsData)
-  const snowData = snowDepthsData["data"];
+  const snowData = snowDepthsData.data;
 
   const selectedDates = getDatesBetween(
     new Date(2024, 11, 1),
@@ -30,13 +30,13 @@ export function snowPlot(name, snowDepthsData, parentId) {
     const dateKey = `${month + 1}/${day}`;
     snowfallDataByDate[dateKey] = [];
 
-    if (month == 11) month = 4; //snowDataは1,2,3,4,12月の積雪量が年ごとに格納されている
+    if (month === 11) month = 4; //snowDataは1,2,3,4,12月の積雪量が年ごとに格納されている
 
     for (let i = 0; i < year - firstYear; i++) {
-      if (i == 0) {
+      if (i === 0) {
         //firstYearでは12月からのみの記録を取る
         if (
-          month == 4 &&
+          month === 4 &&
           snowData[i] &&
           snowData[i][month] &&
           day <= snowData[i][month].length
@@ -88,7 +88,7 @@ const createTooltip = container => {
 
 function getDatesBetween(startDate, endDate) {
   const dates = [];
-  let currentDate = new Date(startDate);
+  const currentDate = new Date(startDate);
   while (currentDate <= endDate) {
     dates.push(new Date(currentDate));
     currentDate.setDate(currentDate.getDate() + 1);
@@ -96,7 +96,7 @@ function getDatesBetween(startDate, endDate) {
   return dates;
 }
 
-function drawBoxPlot(dataByDate, tooltip, scrollContainer) {
+function drawBoxPlot(dataByDate, _tooltip, scrollContainer) {
   scrollContainer.select("svg").remove();
 
   const margin = { top: 20, right: 40, bottom: 40, left: 40 };
@@ -160,13 +160,6 @@ function drawBoxPlot(dataByDate, tooltip, scrollContainer) {
     const snowData = dataByDate[date].map(d => d.snow);
     const min = d3.min(snowData);
     const max = d3.max(snowData);
-    const minYear = dataByDate[date]
-      .filter(d => d.snow === min)
-      .map(d => d.year);
-    const maxYear = dataByDate[date]
-      .filter(d => d.snow === max)
-      .map(d => d.year);
-
     const boxData = snowData.sort(d3.ascending);
     if (boxData.length === 0) return; // Skip if no data
 
