@@ -1,7 +1,7 @@
 "use client";
 
 import L from "leaflet";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useMap } from "react-leaflet";
 import type {
   CourseColorMode,
@@ -20,6 +20,29 @@ const NON_OPEN_LIFT_OPACITY = 0.44;
 const SELECTED_HALO_COLOR = "#FFFFFF";
 const UNGROOMED_LIMITED_UNDERLAY_COLOR = "#BAE6FD";
 const UNGROOMED_CLOSED_UNDERLAY_COLOR = "#7DD3FC";
+const FINALIZED_RENDERER_PADDING = 1;
+
+type LayerVariant =
+  | "outline"
+  | "pisteUnderlay"
+  | "selectedPisteUnderlay"
+  | "line"
+  | "hit"
+  | "selectedHalo"
+  | "selectedLine";
+
+type FinalizedPathOptions = L.PathOptions & {
+  noClip?: boolean;
+};
+
+type GeoJsonOptionsWithRenderer = L.GeoJSONOptions & {
+  renderer: L.Renderer;
+};
+
+const withRenderer = (
+  options: L.GeoJSONOptions,
+  renderer: L.Renderer,
+): GeoJsonOptionsWithRenderer => ({ ...options, renderer });
 
 export const FinalizedGeoJsonLayer = ({
   collection,
@@ -48,7 +71,37 @@ export const FinalizedGeoJsonLayer = ({
 }) => {
   const map = useMap();
   const [renderZoom, setRenderZoom] = useState(() => map.getZoom());
-  const layerGroupRef = useRef<L.LayerGroup | null>(null);
+  const baseLayerGroupRef = useRef<L.LayerGroup | null>(null);
+  const selectedLayerGroupRef = useRef<L.LayerGroup | null>(null);
+  const baseRendererRef = useRef<L.SVG | null>(null);
+  const selectedRendererRef = useRef<L.SVG | null>(null);
+
+  const getOrCreateRenderers = useCallback(() => {
+    if (!map.getPane(pane)) {
+      map.createPane(pane);
+    }
+    if (!map.getPane(selectedPane)) {
+      map.createPane(selectedPane);
+    }
+
+    if (!baseRendererRef.current) {
+      baseRendererRef.current = L.svg({
+        padding: FINALIZED_RENDERER_PADDING,
+        pane,
+      });
+    }
+    if (!selectedRendererRef.current) {
+      selectedRendererRef.current = L.svg({
+        padding: FINALIZED_RENDERER_PADDING,
+        pane: selectedPane,
+      });
+    }
+
+    return {
+      baseRenderer: baseRendererRef.current,
+      selectedRenderer: selectedRendererRef.current,
+    };
+  }, [map, pane, selectedPane]);
 
   useEffect(() => {
     const handleZoomEnd = () => setRenderZoom(map.getZoom());
@@ -59,32 +112,70 @@ export const FinalizedGeoJsonLayer = ({
   }, [map]);
 
   useEffect(() => {
-    if (layerGroupRef.current) {
-      layerGroupRef.current.removeFrom(map);
-      layerGroupRef.current = null;
+    const container = map.getContainer();
+    let resizeFrame: number | null = null;
+    const invalidateMapSize = () => {
+      if (resizeFrame !== null) {
+        window.cancelAnimationFrame(resizeFrame);
+      }
+      resizeFrame = window.requestAnimationFrame(() => {
+        resizeFrame = null;
+        map.invalidateSize({ pan: false, debounceMoveend: true });
+      });
+    };
+
+    invalidateMapSize();
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", invalidateMapSize);
+      return () => {
+        window.removeEventListener("resize", invalidateMapSize);
+        if (resizeFrame !== null) {
+          window.cancelAnimationFrame(resizeFrame);
+        }
+      };
     }
 
-    if (!collection || collection.features.length === 0) return;
+    const resizeObserver = new ResizeObserver(invalidateMapSize);
+    resizeObserver.observe(container);
+    return () => {
+      resizeObserver.disconnect();
+      if (resizeFrame !== null) {
+        window.cancelAnimationFrame(resizeFrame);
+      }
+    };
+  }, [map]);
 
-    const group = L.layerGroup();
-    layerGroupRef.current = group;
+  useEffect(() => {
+    return () => {
+      baseLayerGroupRef.current?.removeFrom(map);
+      selectedLayerGroupRef.current?.removeFrom(map);
+      baseLayerGroupRef.current = null;
+      selectedLayerGroupRef.current = null;
 
-    const getStyle = (
+      const baseRenderer = baseRendererRef.current;
+      const selectedRenderer = selectedRendererRef.current;
+      if (baseRenderer && map.hasLayer(baseRenderer)) {
+        map.removeLayer(baseRenderer);
+      }
+      if (selectedRenderer && map.hasLayer(selectedRenderer)) {
+        map.removeLayer(selectedRenderer);
+      }
+      baseRendererRef.current = null;
+      selectedRendererRef.current = null;
+    };
+  }, [map]);
+
+  const getStyle = useCallback(
+    (
       feature: FinalizedLineFeature,
-      variant:
-        | "outline"
-        | "pisteUnderlay"
-        | "selectedPisteUnderlay"
-        | "line"
-        | "hit"
-        | "selectedHalo"
-        | "selectedLine",
-    ): L.PathOptions => {
+      variant: LayerVariant,
+      selection: SelectedMapFeature | null,
+    ): FinalizedPathOptions => {
       const properties = feature.properties;
       const isSelected =
-        selectedFeature?.kind === properties.kind &&
-        selectedFeature.id === properties.sourceId;
-      const isDimmedBySelection = selectedFeature !== null && !isSelected;
+        selection?.kind === properties.kind &&
+        selection.id === properties.sourceId;
+      const isDimmedBySelection = selection !== null && !isSelected;
       const statusKind = properties.statusKind;
       const isOpen = statusKind === "open";
       const isNonOpenInOpenOnlyMode = showOpenOnly && !isOpen && !isSelected;
@@ -154,6 +245,7 @@ export const FinalizedGeoJsonLayer = ({
       if (variant === "hit") {
         return {
           color: "#000000",
+          noClip: true,
           opacity: 0,
           weight: hitWeight,
         };
@@ -162,12 +254,14 @@ export const FinalizedGeoJsonLayer = ({
       if (variant === "outline") {
         if (featureKind === "course" && isNonOpenInOpenOnlyMode) {
           return {
+            noClip: true,
             opacity: 0,
             weight: 0,
           };
         }
         return {
           color: "#ffffff",
+          noClip: true,
           opacity: isDimmedBySelection ? 0.1 : outlineOpacity,
           weight: visibleOutlineWeight,
           lineCap,
@@ -181,6 +275,7 @@ export const FinalizedGeoJsonLayer = ({
           (variant === "selectedPisteUnderlay" && !isSelected)
         ) {
           return {
+            noClip: true,
             opacity: 0,
             weight: 0,
           };
@@ -191,6 +286,7 @@ export const FinalizedGeoJsonLayer = ({
             : properties.pisteStatus === "closed"
               ? UNGROOMED_CLOSED_UNDERLAY_COLOR
               : UNGROOMED_LIMITED_UNDERLAY_COLOR,
+          noClip: true,
           opacity: isDimmedBySelection
             ? 0.16
             : properties.pisteStatus === "closed"
@@ -206,12 +302,14 @@ export const FinalizedGeoJsonLayer = ({
       if (variant === "selectedHalo") {
         if (!isSelected) {
           return {
+            noClip: true,
             opacity: 0,
             weight: 0,
           };
         }
         return {
           color: SELECTED_HALO_COLOR,
+          noClip: true,
           opacity: 0.95,
           weight: visibleOutlineWeight + 4,
           lineCap,
@@ -222,6 +320,7 @@ export const FinalizedGeoJsonLayer = ({
       if (variant === "selectedLine") {
         if (!isSelected) {
           return {
+            noClip: true,
             opacity: 0,
             weight: 0,
           };
@@ -229,6 +328,7 @@ export const FinalizedGeoJsonLayer = ({
         return {
           color: properties.color,
           opacity: 1,
+          noClip: true,
           weight: visibleLineWeight + 2,
           dashArray,
           lineCap,
@@ -238,91 +338,131 @@ export const FinalizedGeoJsonLayer = ({
 
       return {
         color: lineColor,
+        noClip: true,
         opacity: lineOpacity,
         weight: isSelected ? visibleLineWeight + 2 : visibleLineWeight,
         dashArray,
         lineCap,
         lineJoin: "round",
       };
-    };
+    },
+    [
+      courseColorMode,
+      featureKind,
+      hitWeight,
+      isFocusMode,
+      mapTileVariant,
+      renderZoom,
+      showOpenOnly,
+    ],
+  );
+
+  useEffect(() => {
+    if (baseLayerGroupRef.current) {
+      baseLayerGroupRef.current.removeFrom(map);
+      baseLayerGroupRef.current = null;
+    }
+
+    if (!collection || collection.features.length === 0) return;
+
+    const { baseRenderer } = getOrCreateRenderers();
+    const group = L.layerGroup();
+    baseLayerGroupRef.current = group;
 
     const createLayer = (
-      variant:
-        | "outline"
-        | "pisteUnderlay"
-        | "selectedPisteUnderlay"
-        | "line"
-        | "hit"
-        | "selectedHalo"
-        | "selectedLine",
+      variant: Extract<
+        LayerVariant,
+        "outline" | "pisteUnderlay" | "line" | "hit"
+      >,
       interactive: boolean,
-      targetPane = pane,
     ) =>
-      L.geoJSON(collection, {
-        pane: targetPane,
-        interactive,
-        style: feature =>
-          getStyle(feature as unknown as FinalizedLineFeature, variant),
-        onEachFeature: (feature, layer) => {
-          if (!interactive) return;
-          const properties = (feature as unknown as FinalizedLineFeature)
-            .properties;
-          layer.on("click", event => {
-            L.DomEvent.stopPropagation(event);
-            onSelectFeature({
-              kind: properties.kind,
-              id: properties.sourceId,
-            });
-          });
-        },
-      });
+      L.geoJSON(
+        collection,
+        withRenderer(
+          {
+            interactive,
+            filter: feature => {
+              const geometryType = feature.geometry?.type;
+              return (
+                geometryType === "LineString" ||
+                geometryType === "MultiLineString"
+              );
+            },
+            style: feature =>
+              getStyle(
+                feature as unknown as FinalizedLineFeature,
+                variant,
+                null,
+              ),
+            onEachFeature: (feature, layer) => {
+              if (!interactive) return;
+              const properties = (feature as unknown as FinalizedLineFeature)
+                .properties;
+              layer.on("click", event => {
+                L.DomEvent.stopPropagation(event);
+                onSelectFeature({
+                  kind: properties.kind,
+                  id: properties.sourceId,
+                });
+              });
+            },
+          },
+          baseRenderer,
+        ),
+      );
 
+    // Base layers intentionally ignore selectedFeature and keep pane ownership
+    // on the shared SVG renderer. Passing pane again to L.geoJSON can create
+    // paths in the wrong pane, which makes finalized lines disappear.
     createLayer("outline", false).addTo(group);
     if (featureKind === "course") {
       createLayer("pisteUnderlay", false).addTo(group);
     }
     createLayer("line", false).addTo(group);
-    createLayer("selectedHalo", false, selectedPane).addTo(group);
-    if (featureKind === "course") {
-      createLayer("selectedPisteUnderlay", false, selectedPane).addTo(group);
-    }
-    createLayer("selectedLine", false, selectedPane).addTo(group);
     let openLiftFlowLayer: L.GeoJSON | null = null;
     let openLiftFlowCycle: number | null = null;
     if (featureKind === "lift" && renderZoom >= 11) {
       const dashLength = getLiftFlowDashLength(renderZoom);
       const gapLength = dashLength;
       openLiftFlowCycle = dashLength + gapLength;
-      openLiftFlowLayer = L.geoJSON(collection, {
-        pane,
-        interactive: false,
-        style: feature => {
-          const properties = (feature as unknown as FinalizedLineFeature)
-            .properties;
-          const isSelected =
-            selectedFeature?.kind === properties.kind &&
-            selectedFeature.id === properties.sourceId;
-          if (
-            properties.liftStatus !== "open" ||
-            (selectedFeature !== null && !isSelected)
-          ) {
-            return {
-              opacity: 0,
-              weight: 0,
-            };
-          }
-          const flowWeight = getScaledMapLineWidth(renderZoom, "liftFlow");
-          return {
-            color: properties.flowColor ?? "#ffffff",
-            opacity: 0.94,
-            weight: flowWeight,
-            dashArray: `${dashLength} ${gapLength}`,
-            lineCap: "butt",
-            lineJoin: "round",
-            className: `finalized-lift-flow finalized-lift-flow-${properties.flowSpeed ?? "normal"}`,
-          };
-        },
-      }).addTo(group);
+      openLiftFlowLayer = L.geoJSON(
+        collection,
+        withRenderer(
+          {
+            interactive: false,
+            filter: feature => {
+              const geometryType = feature.geometry?.type;
+              return (
+                geometryType === "LineString" ||
+                geometryType === "MultiLineString"
+              );
+            },
+            style: feature => {
+              const properties = (feature as unknown as FinalizedLineFeature)
+                .properties;
+              if (properties.liftStatus !== "open") {
+                return {
+                  noClip: true,
+                  opacity: 0,
+                  weight: 0,
+                };
+              }
+              const flowWeight = getScaledMapLineWidth(renderZoom, "liftFlow");
+              return {
+                color: properties.flowColor ?? "#ffffff",
+                opacity: 0.94,
+                weight: flowWeight,
+                dashArray: `${dashLength} ${gapLength}`,
+                lineCap: "butt",
+                lineJoin: "round",
+                className: `finalized-lift-flow finalized-lift-flow-${properties.flowSpeed ?? "normal"}`,
+                noClip: true,
+              };
+            },
+          },
+          baseRenderer,
+        ),
+      ).addTo(group);
     }
     createLayer("hit", true).addTo(group);
     group.addTo(map);
@@ -340,24 +480,97 @@ export const FinalizedGeoJsonLayer = ({
 
     return () => {
       group.removeFrom(map);
-      if (layerGroupRef.current === group) {
-        layerGroupRef.current = null;
+      if (baseLayerGroupRef.current === group) {
+        baseLayerGroupRef.current = null;
       }
     };
   }, [
     collection,
-    courseColorMode,
     featureKind,
-    hitWeight,
-    isFocusMode,
+    getOrCreateRenderers,
+    getStyle,
     map,
-    mapTileVariant,
     onSelectFeature,
-    pane,
     renderZoom,
+  ]);
+
+  useEffect(() => {
+    if (selectedLayerGroupRef.current) {
+      selectedLayerGroupRef.current.removeFrom(map);
+      selectedLayerGroupRef.current = null;
+    }
+
+    if (!collection || collection.features.length === 0 || !selectedFeature) {
+      return;
+    }
+
+    const { selectedRenderer } = getOrCreateRenderers();
+    const selectedFeatures = collection.features.filter(
+      feature =>
+        selectedFeature.kind === feature.properties.kind &&
+        selectedFeature.id === feature.properties.sourceId,
+    );
+    if (selectedFeatures.length === 0) return;
+
+    const selectedCollection: FinalizedLineFeatureCollection = {
+      type: "FeatureCollection",
+      features: selectedFeatures,
+    };
+    const group = L.layerGroup();
+    selectedLayerGroupRef.current = group;
+
+    const createSelectedLayer = (
+      variant: Extract<
+        LayerVariant,
+        "selectedHalo" | "selectedPisteUnderlay" | "selectedLine"
+      >,
+    ) =>
+      L.geoJSON(
+        selectedCollection,
+        withRenderer(
+          {
+            interactive: false,
+            filter: feature => {
+              const geometryType = feature.geometry?.type;
+              return (
+                geometryType === "LineString" ||
+                geometryType === "MultiLineString"
+              );
+            },
+            style: feature =>
+              getStyle(
+                feature as unknown as FinalizedLineFeature,
+                variant,
+                selectedFeature,
+              ),
+          },
+          selectedRenderer,
+        ),
+      );
+
+    // Selection is rendered as a tiny overlay containing only the active
+    // course/lift. Keep this separate from the base renderer so selection
+    // changes do not rebuild every finalized path.
+    createSelectedLayer("selectedHalo").addTo(group);
+    if (featureKind === "course") {
+      createSelectedLayer("selectedPisteUnderlay").addTo(group);
+    }
+    createSelectedLayer("selectedLine").addTo(group);
+    group.addTo(map);
+
+    return () => {
+      group.removeFrom(map);
+      if (selectedLayerGroupRef.current === group) {
+        selectedLayerGroupRef.current = null;
+      }
+    };
+  }, [
+    collection,
+    featureKind,
+    getOrCreateRenderers,
+    getStyle,
+    map,
     selectedFeature,
-    selectedPane,
-    showOpenOnly,
   ]);
 
   return null;

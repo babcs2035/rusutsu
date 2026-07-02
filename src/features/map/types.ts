@@ -122,6 +122,8 @@ export type JapanResortMapProps = {
   onUserMapZoomInteraction?: () => void;
   restoreViewRequest?: MapViewRestoreRequest | null;
   finalizedMapData?: FinalizedResortMapData | null;
+  mapPresentation?: "default" | "preview" | "expanded";
+  detailViewportMode?: "finalized" | "resort";
   selectedFinalizedFeature?: SelectedMapFeature | null;
   onSelectedFinalizedFeatureChange?: (
     feature: SelectedMapFeature | null,

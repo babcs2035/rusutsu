@@ -1,6 +1,6 @@
 "use client";
 
-import { Box, Flex } from "@chakra-ui/react";
+import { Box, Button, Flex } from "@chakra-ui/react";
 import { FilterPanel } from "@/features/filters/FilterPanel";
 import type { Filters } from "@/features/filters/types";
 import type { MapSkiResort } from "@/types/skiResorts";
@@ -10,13 +10,17 @@ type Props = {
   filters: Filters;
   resorts: MapSkiResort[];
   filteredResorts: MapSkiResort[];
+  compareCount: number;
   hasSearched: boolean;
+  isCompareOpen: boolean;
   isFilterEditorOpen: boolean;
   selectedCompareIdSet: Set<string>;
   onExpandedChange: (isExpanded: boolean) => void;
   onFilterChange: (filters: Filters) => void;
   onKeyboardInputBlur: () => void;
   onKeyboardInputFocus: () => void;
+  onClearCompare: () => void;
+  onOpenCompare: () => void;
   onSearch: () => void;
   onSelectResort: (id: string) => void;
   onToggleCompare: (id: string, selected: boolean) => void;
@@ -27,13 +31,17 @@ export const DesktopSearchPanel = ({
   filters,
   resorts,
   filteredResorts,
+  compareCount,
   hasSearched,
+  isCompareOpen,
   isFilterEditorOpen,
   selectedCompareIdSet,
   onExpandedChange,
   onFilterChange,
   onKeyboardInputBlur,
   onKeyboardInputFocus,
+  onClearCompare,
+  onOpenCompare,
   onSearch,
   onSelectResort,
   onToggleCompare,
@@ -65,6 +73,50 @@ export const DesktopSearchPanel = ({
         onKeyboardInputFocus={onKeyboardInputFocus}
         onSearch={onSearch}
       />
+      {compareCount > 0 && (
+        <Flex
+          display="flex"
+          w="100%"
+          flexShrink={0}
+          gap={2}
+          px={4}
+          py={3}
+          borderBottom="1px solid"
+          borderColor="gray.100"
+          bg="white"
+        >
+          <Button
+            flex={1}
+            minW={0}
+            h={10}
+            borderRadius="md"
+            bg="orange.500"
+            color="white"
+            fontSize="sm"
+            fontWeight="800"
+            _hover={{ bg: "orange.600" }}
+            onClick={onOpenCompare}
+            disabled={isCompareOpen}
+          >
+            {compareCount} 件を比較
+          </Button>
+          <Button
+            flex={1}
+            minW={0}
+            h={10}
+            borderRadius="md"
+            variant="outline"
+            borderColor="gray.200"
+            color="gray.700"
+            fontSize="sm"
+            fontWeight="800"
+            _hover={{ bg: "gray.50" }}
+            onClick={onClearCompare}
+          >
+            比較をクリア
+          </Button>
+        </Flex>
+      )}
       {hasSearched && !isFilterEditorOpen && (
         <Box data-ski-resort-list-scroll-container="true" flexGrow={1} minH={0}>
           <SkiResortList

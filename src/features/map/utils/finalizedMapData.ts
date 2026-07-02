@@ -97,11 +97,12 @@ const getLiftFlowColor = (status: string | null | undefined) =>
   getLiftStatusPalette(status).flowColor;
 
 const getSlopeSegmentPointStride = (zoom: number) => {
-  if (zoom < 12) return 8;
-  if (zoom < 13) return 6;
-  if (zoom < 14) return 4;
-  if (zoom < 15) return 3;
-  if (zoom < 16) return 2;
+  if (zoom < 12) return 16;
+  if (zoom < 13) return 12;
+  if (zoom < 14) return 8;
+  if (zoom < 15) return 6;
+  if (zoom < 16) return 4;
+  if (zoom < 17) return 2;
   return 1;
 };
 

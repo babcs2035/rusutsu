@@ -5,20 +5,24 @@ import {
   Button,
   Flex,
   Portal,
+  Text,
   useBreakpointValue,
 } from "@chakra-ui/react";
 import { motion } from "framer-motion";
-import { ChevronDown } from "lucide-react";
+import { Maximize2, X } from "lucide-react";
+import type { ComponentType } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type {
-  TouchEvent as ReactTouchEvent,
-  WheelEvent as ReactWheelEvent,
-} from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Drawer } from "vaul";
-import type { SelectedMapFeature } from "@/features/map/JapanResortMap";
-import type { ElevationProfileMapPoint } from "@/features/map/types";
+  ElevationProfileMapPoint,
+  JapanResortMapProps,
+  SelectedMapFeature,
+} from "@/features/map/types";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
-import type { NullableSkiResortDetail } from "@/types/skiResorts";
+import type {
+  MapSkiResort,
+  NullableSkiResortDetail,
+  SkiResortDetail,
+} from "@/types/skiResorts";
 import { DetailTabs } from "./components/DetailTabs";
 import { useBodyScrollLock } from "./hooks/useBodyScrollLock";
 import {
@@ -32,6 +36,8 @@ import {
 } from "./tabs/DetailTabContent";
 
 type Props = {
+  DynamicMap: ComponentType<JapanResortMapProps>;
+  mapResorts: MapSkiResort[];
   resortData: NullableSkiResortDetail | null;
   isLoading: boolean;
   isCompareSelected: boolean;
@@ -47,78 +53,273 @@ type Props = {
     point: ElevationProfileMapPoint | null,
   ) => void;
   onClose: () => void;
+  mobileContentTab?: "info" | "map";
+  mobilePresentation?: "overlay" | "inline";
+  hideMobileInfoSection?: boolean;
 };
 
 const TABS = ["概要", "コース", "リフト", "チケット", "気候"];
+type DetailMapMode = "finalized" | "location";
 
 const MotionBox = motion.create(Box);
-const BOTTOM_SHEET_EXPANDED_SNAP_POINT = 0.94;
-const BOTTOM_SHEET_SNAP_POINTS = [
-  0.12,
-  0.52,
-  BOTTOM_SHEET_EXPANDED_SNAP_POINT,
-] as const;
-const BOTTOM_SHEET_INITIAL_SNAP_POINT = BOTTOM_SHEET_SNAP_POINTS[1];
-const MOBILE_DETAIL_SHEET_Z_INDEX = 300000;
-const isBottomSheetExpanded = (snapPoint: number | string | null) =>
-  typeof snapPoint === "number" &&
-  Math.abs(snapPoint - BOTTOM_SHEET_EXPANDED_SNAP_POINT) < 0.001;
-const VISUALLY_HIDDEN_STYLE: React.CSSProperties = {
-  position: "absolute",
-  width: 1,
-  height: 1,
-  padding: 0,
-  margin: -1,
-  overflow: "hidden",
-  clip: "rect(0, 0, 0, 0)",
-  border: 0,
-};
-const BOTTOM_SHEET_CONTENT_STYLE: React.CSSProperties = {
-  position: "fixed",
-  bottom: 0,
-  left: 0,
-  right: 0,
-  zIndex: MOBILE_DETAIL_SHEET_Z_INDEX,
-  display: "flex",
-  flexDirection: "column",
-  height: "100vh",
-  borderTopLeftRadius: "1.5rem",
-  borderTopRightRadius: "1.5rem",
-  backgroundColor: "rgba(255, 255, 255, 0.98)",
-  borderTop: "1px solid rgba(0, 0, 0, 0.05)",
-  boxShadow: "0 -10px 40px rgba(0, 0, 0, 0.14)",
-};
-const BOTTOM_SHEET_HANDLE_STYLE: React.CSSProperties = {
-  width: "4rem",
-  height: "0.375rem",
-  flexShrink: 0,
-  borderRadius: "999px",
-  backgroundColor: "#d1d5db",
-  margin: "0.5rem auto 0.125rem",
+
+const MobileResortMapPreview = ({
+  DynamicMap,
+  resort,
+  mapResorts,
+  selectedFinalizedFeature,
+  selectedElevationProfilePoint,
+  onSelectedFinalizedFeatureChange,
+  onSelectedElevationProfilePointChange,
+}: {
+  DynamicMap: ComponentType<JapanResortMapProps>;
+  resort: SkiResortDetail;
+  mapResorts: MapSkiResort[];
+  selectedFinalizedFeature: SelectedMapFeature | null;
+  selectedElevationProfilePoint: ElevationProfileMapPoint | null;
+  onSelectedFinalizedFeatureChange: (
+    feature: SelectedMapFeature | null,
+  ) => void;
+  onSelectedElevationProfilePointChange: (
+    point: ElevationProfileMapPoint | null,
+  ) => void;
+}) => {
+  const hasFinalizedMap =
+    (resort.finalizedMapData?.courses?.features.length ?? 0) > 0 ||
+    (resort.finalizedMapData?.lifts?.features.length ?? 0) > 0;
+  const [mapMode, setMapMode] = useState<DetailMapMode>(
+    hasFinalizedMap ? "finalized" : "location",
+  );
+  const [isExpanded, setIsExpanded] = useState(false);
+  const selectedResortIdSet = useMemo(() => new Set([resort.id]), [resort.id]);
+  const emptyCompareIdSet = useMemo(() => new Set<string>(), []);
+
+  useEffect(() => {
+    setMapMode(hasFinalizedMap ? "finalized" : "location");
+  }, [hasFinalizedMap, resort.id]);
+
+  const modeOptions = hasFinalizedMap
+    ? ([
+        { value: "finalized", label: "コースマップ" },
+        { value: "location", label: "周辺位置" },
+      ] as const)
+    : ([{ value: "location", label: "周辺位置" }] as const);
+  const mapFinalizedData =
+    mapMode === "finalized" ? (resort.finalizedMapData ?? null) : null;
+  const detailViewportMode = mapMode === "finalized" ? "finalized" : "resort";
+
+  const renderMap = (presentation: "preview" | "expanded") => (
+    <DynamicMap
+      resorts={mapResorts}
+      filteredResortIdSet={selectedResortIdSet}
+      isFilterActive={false}
+      selectedResortId={resort.id}
+      selectedCompareIdSet={emptyCompareIdSet}
+      interactionMode="detail"
+      finalizedMapData={mapFinalizedData}
+      mapPresentation={presentation}
+      detailViewportMode={detailViewportMode}
+      selectedFinalizedFeature={selectedFinalizedFeature}
+      selectedElevationProfilePoint={selectedElevationProfilePoint}
+      selectedViewportBottomPaddingRatio={0}
+      mapControlBottomPaddingRatio={0}
+      onBoundsChange={() => undefined}
+      onSelectResort={() => undefined}
+      onSelectedFinalizedFeatureChange={onSelectedFinalizedFeatureChange}
+      onSelectedElevationProfilePointChange={
+        onSelectedElevationProfilePointChange
+      }
+    />
+  );
+
+  const modeTabs = (
+    <Flex
+      gap={1}
+      borderRadius="md"
+      bg="white"
+      p={1}
+      border="1px solid"
+      borderColor="gray.200"
+      boxShadow="sm"
+    >
+      {modeOptions.map(option => {
+        const isActive = mapMode === option.value;
+        return (
+          <Button
+            key={option.value}
+            type="button"
+            h={7}
+            minW={0}
+            px={2.5}
+            borderRadius="sm"
+            bg={isActive ? "blue.600" : "white"}
+            color={isActive ? "white" : "gray.700"}
+            fontSize="0.72rem"
+            fontWeight="800"
+            _hover={{ bg: isActive ? "blue.700" : "gray.50" }}
+            onClick={() => setMapMode(option.value)}
+          >
+            {option.label}
+          </Button>
+        );
+      })}
+    </Flex>
+  );
+
+  return (
+    <>
+      <Box
+        position="relative"
+        h="210px"
+        w="100%"
+        flexShrink={0}
+        overflow="hidden"
+        borderTop="1px solid"
+        borderBottom="1px solid"
+        borderColor="gray.100"
+        bg="gray.100"
+      >
+        {renderMap("preview")}
+        <Flex
+          position="absolute"
+          top={2}
+          left={2}
+          right={2}
+          zIndex={1200}
+          alignItems="flex-start"
+          justifyContent="space-between"
+          gap={2}
+          pointerEvents="none"
+        >
+          <Box pointerEvents="auto">{modeTabs}</Box>
+          <Button
+            type="button"
+            aria-label="地図を拡大"
+            onClick={() => setIsExpanded(true)}
+            h={8}
+            w={8}
+            minW={8}
+            p={0}
+            borderRadius="md"
+            bg="white"
+            color="gray.700"
+            border="1px solid"
+            borderColor="gray.200"
+            boxShadow="sm"
+            pointerEvents="auto"
+            _hover={{ bg: "gray.50" }}
+          >
+            <Maximize2 size={15} strokeWidth={2.6} />
+          </Button>
+        </Flex>
+      </Box>
+
+      {isExpanded && (
+        <Portal>
+          <Box
+            position="fixed"
+            inset={0}
+            zIndex={300000}
+            bg="white"
+            display={{ base: "block", md: "none" }}
+          >
+            <Flex
+              position="absolute"
+              top={0}
+              left={0}
+              right={0}
+              zIndex={10}
+              alignItems="center"
+              justifyContent="space-between"
+              gap={2}
+              px={3}
+              pt="calc(env(safe-area-inset-top, 0px) + 0.625rem)"
+              pb={2}
+              bg="rgba(255,255,255,0.94)"
+              borderBottom="1px solid"
+              borderColor="gray.100"
+              backdropFilter="blur(10px)"
+            >
+              <Box minW={0}>
+                <Text
+                  color="gray.900"
+                  fontSize="0.95rem"
+                  fontWeight="900"
+                  lineHeight="1.25"
+                  overflow="hidden"
+                  textOverflow="ellipsis"
+                  whiteSpace="nowrap"
+                >
+                  {resort.nameJa}
+                </Text>
+                <Text
+                  mt={0.5}
+                  color="brand.600"
+                  fontSize="0.75rem"
+                  fontWeight="800"
+                  lineHeight="1"
+                >
+                  {mapMode === "finalized" ? "コースマップ" : "周辺位置"}
+                </Text>
+              </Box>
+              <Flex alignItems="center" gap={2} flexShrink={0}>
+                {modeTabs}
+                <Button
+                  type="button"
+                  aria-label="地図を閉じる"
+                  onClick={() => setIsExpanded(false)}
+                  h={8}
+                  w={8}
+                  minW={8}
+                  p={0}
+                  borderRadius="full"
+                  bg="white"
+                  color="gray.700"
+                  border="1px solid"
+                  borderColor="gray.200"
+                  _hover={{ bg: "gray.50" }}
+                >
+                  <X size={15} strokeWidth={2.8} />
+                </Button>
+              </Flex>
+            </Flex>
+            <Box
+              h="100%"
+              w="100%"
+              pt="calc(env(safe-area-inset-top, 0px) + 3.75rem)"
+            >
+              {renderMap("expanded")}
+            </Box>
+          </Box>
+        </Portal>
+      )}
+    </>
+  );
 };
 
 /**
  * スキー場の詳細情報を表示するレスポンシブ対応モーダル
  */
 export const SkiResortDetailView = ({
+  DynamicMap,
+  mapResorts,
   resortData,
   isLoading,
   isCompareSelected,
-  sheetSnapPoint,
-  setSheetSnapPoint,
   onToggleCompare,
   selectedFinalizedFeature,
   selectedElevationProfilePoint,
   onSelectedFinalizedFeatureChange,
   onSelectedElevationProfilePointChange,
   onClose,
+  mobileContentTab = "info",
+  mobilePresentation = "overlay",
+  hideMobileInfoSection = false,
 }: Props) => {
   const [activeTab, setActiveTab] = useState(TABS[0]);
-  const sheetContentTouchStartYRef = useRef<number | null>(null);
   const isSidePanel =
     useBreakpointValue({ base: false, md: true }, { ssr: false }) ?? false;
-  const canScrollDetailContent =
-    isSidePanel || isBottomSheetExpanded(sheetSnapPoint);
+  const canScrollDetailContent = true;
   const panelVariants = isSidePanel
     ? {
         hidden: { opacity: 0, x: 24 },
@@ -139,40 +340,20 @@ export const SkiResortDetailView = ({
   }, [selectedFinalizedFeature]);
 
   useBodyScrollLock();
-
-  const expandSheetFromContentScroll = useCallback(() => {
-    if (isSidePanel || isBottomSheetExpanded(sheetSnapPoint)) return;
-
-    setSheetSnapPoint(BOTTOM_SHEET_EXPANDED_SNAP_POINT);
-  }, [isSidePanel, setSheetSnapPoint, sheetSnapPoint]);
-  const handleDetailContentWheelCapture = useCallback(
-    (event: ReactWheelEvent<HTMLDivElement>) => {
-      if (canScrollDetailContent || event.deltaY <= 0) return;
-
-      event.preventDefault();
-      expandSheetFromContentScroll();
-    },
-    [canScrollDetailContent, expandSheetFromContentScroll],
-  );
-  const handleDetailContentTouchStartCapture = useCallback(
-    (event: ReactTouchEvent<HTMLDivElement>) => {
-      sheetContentTouchStartYRef.current = event.touches[0]?.clientY ?? null;
-    },
-    [],
-  );
-  const handleDetailContentTouchMoveCapture = useCallback(
-    (event: ReactTouchEvent<HTMLDivElement>) => {
-      if (canScrollDetailContent) return;
-
-      const startY = sheetContentTouchStartYRef.current;
-      const currentY = event.touches[0]?.clientY;
-      if (startY == null || currentY == null || startY - currentY < 8) return;
-
-      event.preventDefault();
-      expandSheetFromContentScroll();
-    },
-    [canScrollDetailContent, expandSheetFromContentScroll],
-  );
+  const shouldRenderMobilePanel = isSidePanel || mobileContentTab === "info";
+  const mobilePanelPositionProps =
+    mobilePresentation === "inline"
+      ? {
+          position: "relative" as const,
+          h: "100%",
+        }
+      : {
+          position: "fixed" as const,
+          top: "calc(env(safe-area-inset-top, 0px) + 6.75rem)",
+          left: 0,
+          right: 0,
+          bottom: 0,
+        };
 
   if (isLoading || !resortData) {
     return (
@@ -229,38 +410,17 @@ export const SkiResortDetailView = ({
             </Flex>
           </Portal>
         )}
-        {!isSidePanel && (
-          <Box>
-            <Drawer.Root
-              open
-              onOpenChange={open => {
-                if (!open) onClose();
-              }}
-              activeSnapPoint={sheetSnapPoint}
-              setActiveSnapPoint={setSheetSnapPoint}
-              snapPoints={[...BOTTOM_SHEET_SNAP_POINTS]}
-              modal={false}
-              noBodyStyles
-            >
-              <Drawer.Portal>
-                <Drawer.Content
-                  data-ski-resort-detail-panel="true"
-                  style={BOTTOM_SHEET_CONTENT_STYLE}
-                >
-                  <Drawer.Title style={VISUALLY_HIDDEN_STYLE}>
-                    スキー場詳細
-                  </Drawer.Title>
-                  <Drawer.Handle style={BOTTOM_SHEET_HANDLE_STYLE} />
-                  <Flex
-                    h="calc(100vh - var(--snap-point-height, 0px) - 38px)"
-                    alignItems="center"
-                    justifyContent="center"
-                  >
-                    <LoadingSpinner text="読み込み中..." />
-                  </Flex>
-                </Drawer.Content>
-              </Drawer.Portal>
-            </Drawer.Root>
+        {!isSidePanel && shouldRenderMobilePanel && (
+          <Box
+            data-ski-resort-detail-panel="true"
+            {...mobilePanelPositionProps}
+            zIndex={200000}
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            bg="white"
+          >
+            <LoadingSpinner text="読み込み中..." />
           </Box>
         )}
       </>
@@ -272,101 +432,57 @@ export const SkiResortDetailView = ({
     ...(resort.outlineImages || []),
     ...(resort.courseImages || []),
   ];
+  const resortInfo = {
+    id: resort.id,
+    nameJa: resort.nameJa,
+    prefecture: resort.prefecture,
+    town: resort.town,
+    descriptionShort: resort.descriptionShort,
+    yukiMagi: resort.yukiMagi,
+  };
   const mobileDetailHeader = (
     <>
-      <InfoSection
+      {!hideMobileInfoSection && (
+        <InfoSection
+          resort={resortInfo}
+          finalizedOperationSummary={resort.finalizedOperationSummary}
+          isCompareSelected={isCompareSelected}
+          onToggleCompare={onToggleCompare}
+          onClose={onClose}
+        />
+      )}
+      <MobileResortMapPreview
+        DynamicMap={DynamicMap}
         resort={resort}
-        isCompareSelected={isCompareSelected}
-        onToggleCompare={onToggleCompare}
-        onClose={onClose}
+        mapResorts={mapResorts}
+        selectedFinalizedFeature={selectedFinalizedFeature}
+        selectedElevationProfilePoint={selectedElevationProfilePoint}
+        onSelectedFinalizedFeatureChange={onSelectedFinalizedFeatureChange}
+        onSelectedElevationProfilePointChange={
+          onSelectedElevationProfilePointChange
+        }
       />
-      <ImageCarousel images={images} alt={resort.nameJa} />
     </>
   );
   const desktopDetailHeader = (
     <>
-      <ImageCarousel images={images} alt={resort.nameJa} />
       <InfoSection
-        resort={resort}
+        resort={resortInfo}
+        finalizedOperationSummary={resort.finalizedOperationSummary}
         isCompareSelected={isCompareSelected}
         onToggleCompare={onToggleCompare}
         onClose={onClose}
       />
+      <ImageCarousel images={images} alt={resort.nameJa} />
     </>
   );
   const detailPanelContent = (
     <>
-      {isSidePanel && (
-        <Button
-          onClick={onClose}
-          position="absolute"
-          top={4}
-          right={4}
-          zIndex={20}
-          display="flex"
-          h={10}
-          w={10}
-          alignItems="center"
-          justifyContent="center"
-          borderRadius="full"
-          bg="white"
-          border="1px solid"
-          borderColor="gray.200"
-          fontSize="xl"
-          color="gray.600"
-          boxShadow="sm"
-          _hover={{
-            bg: "gray.50",
-            color: "gray.900",
-            transform: "scale(1.05)",
-          }}
-          _focus={{ outline: "none", ring: "2px", ringColor: "brand.400" }}
-          minW="auto"
-          p={0}
-          transition="all 0.2s"
-        >
-          ✕
-        </Button>
-      )}
       <Box
         flexGrow={1}
         overflowY={canScrollDetailContent ? "auto" : "hidden"}
         className="custom-scroll"
-        onTouchMoveCapture={handleDetailContentTouchMoveCapture}
-        onTouchStartCapture={handleDetailContentTouchStartCapture}
-        onWheelCapture={handleDetailContentWheelCapture}
       >
-        {!isSidePanel && isBottomSheetExpanded(sheetSnapPoint) && (
-          <Flex
-            position="sticky"
-            top={0}
-            zIndex={20}
-            justifyContent="center"
-            bg="rgba(255, 255, 255, 0.96)"
-            backdropFilter="blur(12px)"
-            py={1}
-          >
-            <Button
-              type="button"
-              aria-label="詳細を中間位置に戻す"
-              onClick={() => setSheetSnapPoint(BOTTOM_SHEET_INITIAL_SNAP_POINT)}
-              display="flex"
-              h={9}
-              w={12}
-              minW="auto"
-              alignItems="center"
-              justifyContent="center"
-              borderRadius="full"
-              bg="gray.100"
-              color="gray.700"
-              p={0}
-              _hover={{ bg: "gray.200", color: "gray.900" }}
-              _focus={{ outline: "none", ring: "2px", ringColor: "brand.400" }}
-            >
-              <ChevronDown size={22} strokeWidth={2.8} />
-            </Button>
-          </Flex>
-        )}
         {isSidePanel ? desktopDetailHeader : mobileDetailHeader}
         <DetailTabs
           tabs={TABS}
@@ -458,40 +574,28 @@ export const SkiResortDetailView = ({
           </Flex>
         </Portal>
       )}
-      {!isSidePanel && (
-        <Box>
-          <Drawer.Root
-            open
-            onOpenChange={open => {
-              if (!open) onClose();
-            }}
-            activeSnapPoint={sheetSnapPoint}
-            setActiveSnapPoint={setSheetSnapPoint}
-            snapPoints={[...BOTTOM_SHEET_SNAP_POINTS]}
-            modal={false}
-            noBodyStyles
+      {!isSidePanel && shouldRenderMobilePanel && (
+        <Box
+          data-ski-resort-detail-panel="true"
+          {...mobilePanelPositionProps}
+          zIndex={200000}
+          display="flex"
+          flexDirection="column"
+          overflow="hidden"
+          bg="white"
+          borderTop="1px solid"
+          borderColor="gray.100"
+        >
+          <Box
+            position="relative"
+            display="flex"
+            h="100%"
+            minH={0}
+            flexDirection="column"
+            overflow="hidden"
           >
-            <Drawer.Portal>
-              <Drawer.Content
-                data-ski-resort-detail-panel="true"
-                style={BOTTOM_SHEET_CONTENT_STYLE}
-              >
-                <Drawer.Title style={VISUALLY_HIDDEN_STYLE}>
-                  {resort.nameJa}
-                </Drawer.Title>
-                <Drawer.Handle style={BOTTOM_SHEET_HANDLE_STYLE} />
-                <Box
-                  position="relative"
-                  display="flex"
-                  h="calc(100vh - var(--snap-point-height, 0px) - 38px)"
-                  flexDirection="column"
-                  overflow="hidden"
-                >
-                  {detailPanelContent}
-                </Box>
-              </Drawer.Content>
-            </Drawer.Portal>
-          </Drawer.Root>
+            {detailPanelContent}
+          </Box>
         </Box>
       )}
     </>

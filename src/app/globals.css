@@ -297,6 +297,9 @@ html body .finalized-course-name-label {
   align-items: center;
   color: #0f172a;
   display: inline-flex;
+  font-family:
+    "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo,
+    sans-serif;
   font-size: 12px;
   font-weight: 900;
   height: 24px;
@@ -332,8 +335,12 @@ html body .finalized-course-name-label-svg path {
 }
 
 html body .finalized-course-name-label-text,
+html body .finalized-course-name-label-text-halo,
 html body .finalized-course-name-label-text-fill {
   dominant-baseline: central;
+  font-family:
+    "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo,
+    sans-serif;
   font-size: 12px;
   font-weight: 900;
   letter-spacing: 0;
@@ -357,8 +364,19 @@ html body .finalized-course-name-label-text-fill {
 
 html
   body
-  .finalized-course-name-label-text-selected
-  .finalized-course-name-label-text-halo {
+  .finalized-course-name-label-text-halo.finalized-course-name-label-text-horizontal {
+  stroke-width: 4px;
+}
+
+html
+  body
+  .finalized-course-name-label-text-fill.finalized-course-name-label-text-horizontal {
+  stroke: none;
+}
+
+html
+  body
+  .finalized-course-name-label-text-halo.finalized-course-name-label-text-selected {
   stroke: #fef08a;
   stroke-width: 5.5px;
 }
@@ -368,6 +386,18 @@ html
   .finalized-course-name-label-text-fill.finalized-course-name-label-text-selected {
   fill: #7c2d12;
   stroke: rgba(255, 255, 255, 0.9);
+}
+
+html
+  body
+  .finalized-course-name-label-text-halo.finalized-course-name-label-text-horizontal.finalized-course-name-label-text-selected {
+  stroke-width: 4.4px;
+}
+
+html
+  body
+  .finalized-course-name-label-text-fill.finalized-course-name-label-text-horizontal.finalized-course-name-label-text-selected {
+  stroke: none;
 }
 
 html body .finalized-lift-name-label-icon {
@@ -387,8 +417,12 @@ html body .finalized-lift-name-label-svg path {
 }
 
 html body .finalized-lift-name-label-text,
+html body .finalized-lift-name-label-text-halo,
 html body .finalized-lift-name-label-text-fill {
   dominant-baseline: central;
+  font-family:
+    "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo,
+    sans-serif;
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0;
@@ -412,8 +446,19 @@ html body .finalized-lift-name-label-text-fill {
 
 html
   body
-  .finalized-lift-name-label-text-selected
-  .finalized-lift-name-label-text-halo {
+  .finalized-lift-name-label-text-halo.finalized-lift-name-label-text-horizontal {
+  stroke-width: 3.4px;
+}
+
+html
+  body
+  .finalized-lift-name-label-text-fill.finalized-lift-name-label-text-horizontal {
+  stroke: none;
+}
+
+html
+  body
+  .finalized-lift-name-label-text-halo.finalized-lift-name-label-text-selected {
   stroke: #dbeafe;
   stroke-width: 5.5px;
 }
@@ -425,10 +470,25 @@ html
   stroke: rgba(255, 255, 255, 0.92);
 }
 
+html
+  body
+  .finalized-lift-name-label-text-halo.finalized-lift-name-label-text-horizontal.finalized-lift-name-label-text-selected {
+  stroke-width: 3.8px;
+}
+
+html
+  body
+  .finalized-lift-name-label-text-fill.finalized-lift-name-label-text-horizontal.finalized-lift-name-label-text-selected {
+  stroke: none;
+}
+
 html body .finalized-lift-name-label {
   align-items: center;
   color: #111827;
   display: inline-flex;
+  font-family:
+    "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo,
+    sans-serif;
   font-size: 11px;
   font-weight: 900;
   height: 22px;

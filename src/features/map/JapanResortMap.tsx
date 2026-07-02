@@ -282,12 +282,15 @@ export const JapanResortMap = memo(function JapanResortMap({
   onUserMapZoomInteraction,
   restoreViewRequest = null,
   finalizedMapData = null,
+  mapPresentation = "default",
+  detailViewportMode = "finalized",
   selectedFinalizedFeature: controlledSelectedFinalizedFeature,
   onSelectedFinalizedFeatureChange,
   selectedElevationProfilePoint,
   onSelectedElevationProfilePointChange,
 }: JapanResortMapProps) {
   const displayNameById = useResortAliases(resorts);
+  const isPreviewMap = mapPresentation === "preview";
   const [openActionPopupResortId, setOpenActionPopupResortId] = useState<
     string | null
   >(null);
@@ -515,6 +518,7 @@ export const JapanResortMap = memo(function JapanResortMap({
       data-map-zoom-surface="true"
       data-map-tile-variant={mapTileVariant}
       data-map-finalized-focus={isFinalizedFocusMode ? "true" : "false"}
+      data-map-presentation={mapPresentation}
       h="100%"
       w="100%"
       onDoubleClickCapture={handleMapDoubleClickCapture}
@@ -530,7 +534,15 @@ export const JapanResortMap = memo(function JapanResortMap({
         maxZoom={GSI_TILE_MAX_ZOOM}
         zoomSnap={zoomSettings.zoomSnap}
         zoomDelta={zoomSettings.zoomDelta}
+        bounceAtZoomLimits={false}
         zoomControl={false}
+        dragging={!isPreviewMap}
+        touchZoom={!isPreviewMap}
+        scrollWheelZoom={!isPreviewMap}
+        doubleClickZoom={!isPreviewMap}
+        boxZoom={!isPreviewMap}
+        keyboard={!isPreviewMap}
+        attributionControl={!isPreviewMap}
         style={{ width: "100%", height: "100%" }}
       >
         <TileLayer
@@ -642,14 +654,16 @@ export const JapanResortMap = memo(function JapanResortMap({
           />
         )}
 
-        <MapControls
-          initialZoom={initialZoom}
-          bottomPaddingRatio={mapControlBottomPaddingRatio}
-          mapTileVariant={mapTileVariant}
-          onMapTileVariantChange={setMapTileVariant}
-          onUserMapInteraction={onUserMapInteraction}
-          onUserMapZoomInteraction={onUserMapZoomInteraction}
-        />
+        {!isPreviewMap && (
+          <MapControls
+            initialZoom={initialZoom}
+            bottomPaddingRatio={mapControlBottomPaddingRatio}
+            mapTileVariant={mapTileVariant}
+            onMapTileVariantChange={setMapTileVariant}
+            onUserMapInteraction={onUserMapInteraction}
+            onUserMapZoomInteraction={onUserMapZoomInteraction}
+          />
+        )}
         <MapViewportController
           initialZoom={initialZoom}
           resorts={resorts}
@@ -657,6 +671,7 @@ export const JapanResortMap = memo(function JapanResortMap({
           selectedResortId={selectedResortId}
           selectedCompareIdSet={selectedCompareIdSet ?? new Set<string>()}
           interactionMode={interactionMode}
+          detailViewportMode={detailViewportMode}
           selectedViewportBottomPaddingRatio={
             selectedViewportBottomPaddingRatio
           }
@@ -690,35 +705,40 @@ export const JapanResortMap = memo(function JapanResortMap({
           zoomDelta={zoomSettings.zoomDelta}
         />
       </MapContainer>
-      <Box
-        position="absolute"
-        top={{ base: "calc(env(safe-area-inset-top, 0px) + 4.25rem)", md: 4 }}
-        left={4}
-        zIndex={1000}
-        display="flex"
-        flexDirection="column"
-        gap={2}
-        alignItems="flex-start"
-        pointerEvents="none"
-      >
-        <Box pointerEvents="auto">
-          <FinalizedMapModeControl
-            mode={courseColorMode}
-            onModeChange={setCourseColorMode}
-            hasCourses={hasFinalizedCourses}
-            hasLifts={hasFinalizedLifts}
-            showOpenOnly={showOpenFinalizedOnly}
-            onShowOpenOnlyChange={setShowOpenFinalizedOnly}
-          />
+      {!isPreviewMap && (
+        <Box
+          position="absolute"
+          top={{
+            base: "calc(env(safe-area-inset-top, 0px) + 4.25rem)",
+            md: 4,
+          }}
+          left={4}
+          zIndex={1000}
+          display="flex"
+          flexDirection="column"
+          gap={2}
+          alignItems="flex-start"
+          pointerEvents="none"
+        >
+          <Box pointerEvents="auto">
+            <FinalizedMapModeControl
+              mode={courseColorMode}
+              onModeChange={setCourseColorMode}
+              hasCourses={hasFinalizedCourses}
+              hasLifts={hasFinalizedLifts}
+              showOpenOnly={showOpenFinalizedOnly}
+              onShowOpenOnlyChange={setShowOpenFinalizedOnly}
+            />
+          </Box>
+          <Box pointerEvents="auto">
+            <FinalizedMapLegend
+              mode={courseColorMode}
+              hasCourses={hasFinalizedCourses}
+              hasLifts={hasFinalizedLifts}
+            />
+          </Box>
         </Box>
-        <Box pointerEvents="auto">
-          <FinalizedMapLegend
-            mode={courseColorMode}
-            hasCourses={hasFinalizedCourses}
-            hasLifts={hasFinalizedLifts}
-          />
-        </Box>
-      </Box>
+      )}
     </Box>
   );
 });

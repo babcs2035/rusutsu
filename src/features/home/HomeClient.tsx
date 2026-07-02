@@ -42,9 +42,6 @@ import {
   BOTTOM_SHEET_SEARCH_SNAP_POINT,
   BOTTOM_SHEET_SNAP_POINTS,
   getBottomSheetHeightRatio,
-  isBottomSheetExpanded,
-  MOBILE_COMPARE_BUTTON_BOTTOM_CLOSED,
-  MOBILE_COMPARE_BUTTON_BOTTOM_GAP,
   MOBILE_KEYBOARD_INSET_THRESHOLD,
 } from "./constants";
 import { useHomeGestureGuards } from "./hooks/useHomeGestureGuards";
@@ -89,6 +86,8 @@ export function HomeClient({ initialResorts }: Props) {
 
   // --- State管理 ---
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [mobileDraftFilters, setMobileDraftFilters] =
+    useState<Filters>(DEFAULT_FILTERS);
   const [isFilterEditorOpen, setIsFilterEditorOpen] = useState(true);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedResortId, setSelectedResortId] = useState<string | null>(null);
@@ -123,6 +122,9 @@ export function HomeClient({ initialResorts }: Props) {
     });
   const [isMobileSearchKeyboardActive, setIsMobileSearchKeyboardActive] =
     useState(false);
+  const [mobileContentTab, setMobileContentTab] = useState<"info" | "map">(
+    "info",
+  );
   const [isPending, startTransition] = useTransition();
   const latestMapViewRef = useRef<MapViewSnapshot | null>(null);
   const listSheetContentRef = useRef<HTMLDivElement | null>(null);
@@ -146,7 +148,6 @@ export function HomeClient({ initialResorts }: Props) {
     selectedResortId,
   });
   useMobileSearchOverlayEffects({
-    inputRef: mobileSearchPanelInputRef,
     isOpen: isMobileFilterOverlayOpen,
     isSidePanelLayout,
     viewportBaseHeightRef: mobileSearchViewportBaseHeightRef,
@@ -168,7 +169,17 @@ export function HomeClient({ initialResorts }: Props) {
     () => filteredResorts.map(resort => resort.id),
     [filteredResorts],
   );
+  const mobileDraftFilteredResortCount = useMemo(() => {
+    let count = 0;
+    for (const resort of initialResorts) {
+      if (matchesFilters(resort, mobileDraftFilters)) {
+        count += 1;
+      }
+    }
+    return count;
+  }, [initialResorts, mobileDraftFilters]);
   const hasActiveFilters = isFilterActive(filters);
+  const hasActiveMobileDraftFilters = isFilterActive(mobileDraftFilters);
 
   const selectedCompareIdSet = useMemo(
     () => new Set(selectedCompareIds),
@@ -192,33 +203,12 @@ export function HomeClient({ initialResorts }: Props) {
     }
   }, [isSidePanelLayout]);
 
-  const mobileCompareButtonBottom = useMemo(() => {
-    if (!isListSheetOpen) {
-      return MOBILE_COMPARE_BUTTON_BOTTOM_CLOSED;
-    }
-
-    if (isBottomSheetExpanded(listSheetSnapPoint)) {
-      return "auto";
-    }
-
-    if (typeof listSheetSnapPoint === "number") {
-      return `calc(${listSheetSnapPoint * 100}vh + ${MOBILE_COMPARE_BUTTON_BOTTOM_GAP})`;
-    }
-
-    if (typeof listSheetSnapPoint === "string") {
-      return `calc(${listSheetSnapPoint} + ${MOBILE_COMPARE_BUTTON_BOTTOM_GAP})`;
-    }
-
-    return MOBILE_COMPARE_BUTTON_BOTTOM_CLOSED;
-  }, [isListSheetOpen, listSheetSnapPoint]);
-  const isMobileCompareButtonPinnedToTop =
-    isListSheetOpen && isBottomSheetExpanded(listSheetSnapPoint);
   const searchViewportBottomPaddingRatio =
-    !isSidePanelLayout && isListSheetOpen
+    !isSidePanelLayout && isListSheetOpen && mobileContentTab === "info"
       ? getBottomSheetHeightRatio(listSheetSnapPoint)
       : 0;
   const selectedViewportBottomPaddingRatio =
-    !isSidePanelLayout && selectedResortId
+    !isSidePanelLayout && selectedResortId && mobileContentTab === "info"
       ? getBottomSheetHeightRatio(detailSheetSnapPoint)
       : 0;
 
@@ -255,6 +245,7 @@ export function HomeClient({ initialResorts }: Props) {
   }, []);
   const handleSearch = useCallback(() => {
     mobileSearchReturnStateRef.current = null;
+    setMobileContentTab("info");
     setHasSearched(true);
     setIsFilterEditorOpen(false);
     setIsMobileFilterOverlayOpen(false);
@@ -263,20 +254,50 @@ export function HomeClient({ initialResorts }: Props) {
     setListSheetSnapPoint(BOTTOM_SHEET_SEARCH_SNAP_POINT);
     setSearchViewportRequestKey(key => key + 1);
   }, []);
+  const handleMobileSearch = useCallback(() => {
+    if (!isFilterActive(mobileDraftFilters)) return;
+
+    setFilters(mobileDraftFilters);
+    handleSearch();
+  }, [handleSearch, mobileDraftFilters]);
   const handleMobileKeywordChange = useCallback(
     (event: ReactChangeEvent<HTMLInputElement>) => {
       const { value } = event.target;
-      setFilters(prev => ({ ...prev, keyword: value }));
+      setMobileDraftFilters(prev => ({ ...prev, keyword: value }));
     },
     [],
   );
+  const handleMobileSearchButtonKeywordClear = useCallback(() => {
+    const nextFilters = { ...filters, keyword: "" };
+    const shouldKeepSearchResults = isFilterActive(nextFilters);
+
+    setFilters(nextFilters);
+    setMobileDraftFilters(nextFilters);
+
+    // キーワード以外の条件が残る場合は、その条件で検索結果を出し続ける。
+    // 何も条件が残らない場合は、全件表示の重い検索結果ではなく未検索状態へ戻す。
+    if (shouldKeepSearchResults) {
+      setMobileContentTab("info");
+      setHasSearched(true);
+      setIsFilterEditorOpen(false);
+      setIsListSheetOpen(true);
+      setListSheetSnapPoint(BOTTOM_SHEET_SEARCH_SNAP_POINT);
+      setSearchViewportRequestKey(key => key + 1);
+      return;
+    }
+
+    setHasSearched(false);
+    setIsFilterEditorOpen(true);
+    setIsListSheetOpen(false);
+    setListSheetSnapPoint(BOTTOM_SHEET_INITIAL_SNAP_POINT);
+  }, [filters]);
   const handleMobileSearchSubmit = useCallback(
     (event: ReactFormEvent<HTMLElement>) => {
       event.preventDefault();
       event.currentTarget.querySelector("input")?.blur();
-      handleSearch();
+      handleMobileSearch();
     },
-    [handleSearch],
+    [handleMobileSearch],
   );
   const handleOpenMobileFilterOverlay = useCallback(() => {
     if (isSidePanelLayout) return;
@@ -298,9 +319,15 @@ export function HomeClient({ initialResorts }: Props) {
       setIsCompareOpen(false);
     }
 
+    setMobileDraftFilters(filters);
     flushSync(() => {
       setIsMobileFilterOverlayOpen(true);
     });
+    // モバイルブラウザでは、ユーザー操作から遅れた focus だと
+    // input にフォーカスしてもソフトウェアキーボードが開かないことがある。
+    // flushSync で overlay の input を同期的に mount してから、
+    // 検索ボタンを押した同じイベントの流れの中で focus する。
+    mobileSearchPanelInputRef.current?.focus({ preventScroll: true });
     setIsListSheetOpen(false);
   }, [
     detailSheetSnapPoint,
@@ -308,6 +335,7 @@ export function HomeClient({ initialResorts }: Props) {
     isListSheetOpen,
     isSidePanelLayout,
     listSheetSnapPoint,
+    filters,
     selectedResortData,
     selectedResortId,
   ]);
@@ -317,6 +345,20 @@ export function HomeClient({ initialResorts }: Props) {
       handleOpenMobileFilterOverlay();
     },
     [handleOpenMobileFilterOverlay],
+  );
+  const handleMobileContentTabChange = useCallback(
+    (tab: "info" | "map") => {
+      setMobileContentTab(tab);
+      if (tab === "map") {
+        setSearchViewportRequestKey(key => key + 1);
+        return;
+      }
+
+      if (!selectedResortId && (hasSearched || isCompareOpen)) {
+        setIsListSheetOpen(true);
+      }
+    },
+    [hasSearched, isCompareOpen, selectedResortId],
   );
   const handleCloseMobileFilterOverlay = useCallback(() => {
     mobileSearchPanelInputRef.current?.blur();
@@ -328,6 +370,20 @@ export function HomeClient({ initialResorts }: Props) {
 
     const returnState = mobileSearchReturnStateRef.current;
     mobileSearchReturnStateRef.current = null;
+    if (!isFilterActive(mobileDraftFilters)) {
+      // 条件なしで戻る場合は、直前の検索結果へ復帰せず地図だけの状態に戻す。
+      setFilters(mobileDraftFilters);
+      setHasSearched(false);
+      setIsFilterEditorOpen(true);
+      setSelectedResortId(null);
+      setSelectedResortData(null);
+      setDetailSheetSnapPoint(BOTTOM_SHEET_INITIAL_SNAP_POINT);
+      setIsCompareOpen(false);
+      setIsListSheetOpen(false);
+      setListSheetSnapPoint(BOTTOM_SHEET_INITIAL_SNAP_POINT);
+      return;
+    }
+
     if (!returnState) {
       setIsListSheetOpen(hasSearched);
       setListSheetSnapPoint(
@@ -344,7 +400,7 @@ export function HomeClient({ initialResorts }: Props) {
     setIsCompareOpen(returnState.isCompareOpen);
     setIsListSheetOpen(returnState.isListSheetOpen);
     setListSheetSnapPoint(returnState.listSheetSnapPoint);
-  }, [hasSearched]);
+  }, [hasSearched, mobileDraftFilters]);
   const handleMobileFilterAreaPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLElement> | ReactTouchEvent<HTMLElement>) => {
       const target = event.target;
@@ -493,6 +549,7 @@ export function HomeClient({ initialResorts }: Props) {
 
   const handleSelectResort = useCallback(
     (id: string) => {
+      setMobileContentTab("info");
       setHoveredResortId(null);
       saveReturnViewState();
       hasUserInteractedWithMapInDetailRef.current = false;
@@ -511,6 +568,7 @@ export function HomeClient({ initialResorts }: Props) {
   );
 
   const handleCloseDetail = () => {
+    setMobileContentTab("info");
     const shouldRestoreMap = !hasUserInteractedWithMapInDetailRef.current;
     setSelectedResortId(null);
     setSelectedResortData(null);
@@ -519,9 +577,17 @@ export function HomeClient({ initialResorts }: Props) {
     setDetailSheetSnapPoint(BOTTOM_SHEET_INITIAL_SNAP_POINT);
     setHoveredResortId(null);
     hasUserInteractedWithMapInDetailRef.current = false;
+    if (!isSidePanelLayout && hasSearched) {
+      setIsListSheetOpen(true);
+      setListSheetSnapPoint(BOTTOM_SHEET_SEARCH_SNAP_POINT);
+    }
     window.requestAnimationFrame(() => {
       scheduleRestoreDocumentPointerEvents();
       restoreReturnViewState(shouldRestoreMap);
+      if (!isSidePanelLayout && hasSearched) {
+        setIsListSheetOpen(true);
+        setListSheetSnapPoint(BOTTOM_SHEET_SEARCH_SNAP_POINT);
+      }
     });
   };
 
@@ -557,6 +623,7 @@ export function HomeClient({ initialResorts }: Props) {
   const handleOpenCompare = useCallback(async () => {
     if (selectedCompareIds.length === 0) return;
 
+    setMobileContentTab("info");
     setHoveredResortId(null);
     saveReturnViewState();
     setIsCompareOpen(true);
@@ -593,9 +660,19 @@ export function HomeClient({ initialResorts }: Props) {
   );
 
   const handleCloseCompare = () => {
+    setMobileContentTab("info");
     setIsCompareOpen(false);
     restoreReturnViewState();
   };
+  const handleClearCompare = useCallback(() => {
+    setSelectedCompareIds([]);
+    setCompareResortData([]);
+    setIsCompareLoading(false);
+    if (isCompareOpen) {
+      setIsCompareOpen(false);
+      restoreReturnViewState();
+    }
+  }, [isCompareOpen, restoreReturnViewState]);
   const mobileSearchResultSnapPoints = useMemo(
     () => [...BOTTOM_SHEET_SNAP_POINTS],
     [],
@@ -615,7 +692,9 @@ export function HomeClient({ initialResorts }: Props) {
       : 0;
   const mobileSearchFilterBottomPadding = `calc(env(safe-area-inset-bottom, 0px) + ${mobileSearchKeyboardInset}px + 1rem)`;
   const shouldRenderMobileListSheet =
-    !isSidePanelLayout && (hasSearched || isCompareOpen);
+    !isSidePanelLayout &&
+    mobileContentTab === "info" &&
+    (hasSearched || isCompareOpen);
 
   return (
     <HomeLayout
@@ -634,16 +713,18 @@ export function HomeClient({ initialResorts }: Props) {
       isCompareOpen={isCompareOpen}
       isFilterEditorOpen={isFilterEditorOpen}
       isListSheetOpen={isListSheetOpen}
-      isMobileCompareButtonPinnedToTop={isMobileCompareButtonPinnedToTop}
       isMobileFilterOverlayOpen={isMobileFilterOverlayOpen}
       isPending={isPending}
       isSidePanelLayout={isSidePanelLayout}
       listSheetContentRef={listSheetContentRef}
       listSheetSnapPoint={listSheetSnapPoint}
       mapInteractionMode={mapInteractionMode}
-      mobileCompareButtonBottom={mobileCompareButtonBottom}
+      mobileContentTab={mobileContentTab}
       mobileFilterOverlayRef={mobileFilterOverlayRef}
       mobileListSheetSnapPoints={mobileListSheetSnapPoints}
+      hasActiveMobileDraftFilters={hasActiveMobileDraftFilters}
+      mobileDraftFilteredResortCount={mobileDraftFilteredResortCount}
+      mobileDraftFilters={mobileDraftFilters}
       mobileSearchFilterBottomPadding={mobileSearchFilterBottomPadding}
       mobileSearchFilterScrollRef={mobileSearchFilterScrollRef}
       mobileSearchFilterTop={mobileSearchFilterTop}
@@ -660,6 +741,7 @@ export function HomeClient({ initialResorts }: Props) {
       selectedViewportBottomPaddingRatio={selectedViewportBottomPaddingRatio}
       shouldRenderMobileListSheet={shouldRenderMobileListSheet}
       onCloseCompare={handleCloseCompare}
+      onClearCompare={handleClearCompare}
       onCloseDetail={handleCloseDetail}
       onCloseMobileFilterOverlay={handleCloseMobileFilterOverlay}
       onFilterChange={handleFilterChange}
@@ -668,17 +750,21 @@ export function HomeClient({ initialResorts }: Props) {
       onMainPointerDownCapture={handleMainPointerDownCapture}
       onMapViewChange={handleMapViewChange}
       onMobileFilterAreaPointerDown={handleMobileFilterAreaPointerDown}
+      onMobileFilterChange={setMobileDraftFilters}
       onMobileKeywordChange={handleMobileKeywordChange}
       onMobileKeywordClear={() =>
-        setFilters(prev => ({ ...prev, keyword: "" }))
+        setMobileDraftFilters(prev => ({ ...prev, keyword: "" }))
       }
+      onMobileSearchButtonKeywordClear={handleMobileSearchButtonKeywordClear}
       onMobileSearchButtonPointerDown={handleMobileSearchButtonPointerDown}
+      onMobileContentTabChange={handleMobileContentTabChange}
       onMobileSearchFilterInputBlur={handleMobileSearchFilterInputBlur}
       onMobileSearchFilterInputFocus={handleMobileSearchFilterInputFocus}
       onMobileSearchSubmit={handleMobileSearchSubmit}
       onOpenCompare={handleOpenCompare}
       onOpenMobileFilterOverlay={handleOpenMobileFilterOverlay}
       onSearch={handleSearch}
+      onMobileSearch={handleMobileSearch}
       onSelectResort={handleSelectResort}
       onSelectedFinalizedFeatureChange={handleSelectedFinalizedFeatureChange}
       onSelectedElevationProfilePointChange={setSelectedElevationProfilePoint}

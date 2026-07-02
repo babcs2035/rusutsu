@@ -1,6 +1,11 @@
 "use server";
 
 import { getFinalizedResortMapData } from "@/lib/finalizedResortGeojson";
+import type {
+  FinalizedCourseFeature,
+  FinalizedLiftFeature,
+  FinalizedResortMapData,
+} from "@/lib/finalizedResortGeojsonShared";
 import { prisma } from "@/lib/prisma";
 import SkiResortWeatherIds from "@/private/data/SkiResortWeatherIds.json";
 import type { SkiResortWithRelations } from "@/types";
@@ -25,6 +30,71 @@ type SkiResortWeatherIdsEntry = {
   SnowForecastId?: string | null;
   SnowForecastName?: string | null;
 };
+
+type OperationCountSummary = {
+  total: number;
+  open: number;
+  partial: number;
+  hasPartial: boolean;
+};
+
+type FinalizedOperationSummary = {
+  courses: OperationCountSummary | null;
+  lifts: OperationCountSummary | null;
+};
+
+const getOperationSymbol = (status: string | null | undefined) => {
+  if (!status) return null;
+  if (/[○〇◯]/u.test(status)) return "open";
+  if (/[△]/u.test(status)) return "partial";
+  return null;
+};
+
+const isCountableCourseName = (name: string) =>
+  !name.startsWith("無名") && !name.includes("_");
+
+const createOperationCountSummary = (
+  statuses: Array<string | null | undefined>,
+): OperationCountSummary | null => {
+  if (statuses.length === 0) return null;
+
+  const open = statuses.filter(status => getOperationSymbol(status) === "open");
+  const partial = statuses.filter(
+    status => getOperationSymbol(status) === "partial",
+  );
+
+  return {
+    total: statuses.length,
+    open: open.length,
+    partial: partial.length,
+    hasPartial: partial.length > 0,
+  };
+};
+
+const createCourseOperationSummary = (
+  courses: FinalizedCourseFeature[],
+): OperationCountSummary | null =>
+  createOperationCountSummary(
+    courses
+      .filter(course => isCountableCourseName(course.name))
+      .map(course => course.properties.status),
+  );
+
+const createLiftOperationSummary = (
+  lifts: FinalizedLiftFeature[],
+): OperationCountSummary | null =>
+  createOperationCountSummary(lifts.map(lift => lift.properties.status));
+
+const createFinalizedOperationSummary = (
+  finalizedMapData: FinalizedResortMapData | null,
+): FinalizedOperationSummary => ({
+  courses: finalizedMapData?.courses
+    ? createCourseOperationSummary(finalizedMapData.courses.features)
+    : null,
+  lifts: finalizedMapData?.lifts
+    ? createLiftOperationSummary(finalizedMapData.lifts.features)
+    : null,
+});
 
 function getWeatherIdsBySkiResortId(id: string) {
   const entry = (SkiResortWeatherIds as SkiResortWeatherIdsEntry[]).find(
@@ -107,6 +177,8 @@ export async function getSkiResortById(id: string) {
     ...resort,
     weatherIds: getWeatherIdsBySkiResortId(resort.id),
     finalizedMapData,
+    finalizedOperationSummary:
+      createFinalizedOperationSummary(finalizedMapData),
   };
 }
 

@@ -1,9 +1,8 @@
 import type { Dispatch, RefObject, SetStateAction } from "react";
-import { useEffect, useLayoutEffect } from "react";
+import { useEffect } from "react";
 import type { VisualViewportState } from "../types";
 
 type Options = {
-  inputRef: RefObject<HTMLInputElement | null>;
   isOpen: boolean;
   isSidePanelLayout: boolean;
   viewportBaseHeightRef: RefObject<number | null>;
@@ -12,24 +11,12 @@ type Options = {
 };
 
 export const useMobileSearchOverlayEffects = ({
-  inputRef,
   isOpen,
   isSidePanelLayout,
   viewportBaseHeightRef,
   setIsKeyboardActive,
   setViewport,
 }: Options) => {
-  useLayoutEffect(() => {
-    if (!isOpen || isSidePanelLayout) return;
-
-    const frame = window.requestAnimationFrame(() => {
-      inputRef.current?.focus({ preventScroll: true });
-    });
-    return () => {
-      window.cancelAnimationFrame(frame);
-    };
-  }, [inputRef, isOpen, isSidePanelLayout]);
-
   useEffect(() => {
     if (!isOpen || isSidePanelLayout) return;
 

@@ -18,6 +18,7 @@ type Props = {
   filters: Filters;
   resorts: MapSkiResort[];
   filteredResortCount: number;
+  canSearch: boolean;
   isOpen: boolean;
   isSidePanelLayout: boolean;
   overlayRef: RefObject<HTMLDivElement | null>;
@@ -42,6 +43,7 @@ export const MobileSearchOverlay = ({
   filters,
   resorts,
   filteredResortCount,
+  canSearch,
   isOpen,
   isSidePanelLayout,
   overlayRef,
@@ -182,24 +184,26 @@ export const MobileSearchOverlay = ({
                   </Button>
                 )}
               </Box>
-              <Button
-                type="submit"
-                flexShrink={0}
-                h={10}
-                minW="4.75rem"
-                mr={1}
-                px={4}
-                borderRadius="full"
-                bg="brand.500"
-                color="white"
-                fontSize="0.9rem"
-                fontWeight="900"
-                boxShadow="none"
-                _hover={{ bg: "brand.600" }}
-                aria-label="検索"
-              >
-                検索
-              </Button>
+              {canSearch && (
+                <Button
+                  type="submit"
+                  flexShrink={0}
+                  h={10}
+                  minW="4.75rem"
+                  mr={1}
+                  px={4}
+                  borderRadius="full"
+                  bg="brand.500"
+                  color="white"
+                  fontSize="0.9rem"
+                  fontWeight="900"
+                  boxShadow="none"
+                  _hover={{ bg: "brand.600" }}
+                  aria-label="検索"
+                >
+                  検索
+                </Button>
+              )}
             </Flex>
           </Flex>
           <Box
