@@ -16,10 +16,18 @@
   --glass-border: rgba(0, 0, 0, 0.06);
 }
 
+html {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 body {
   padding: 0;
   margin: 0;
+  min-height: 100%;
   overflow: hidden;
+  overscroll-behavior: none;
   background-color: var(--bg-light);
   background-image: var(--bg-gradient);
   color: var(--text-primary);
@@ -329,6 +337,10 @@ html body .finalized-course-name-label-svg {
   pointer-events: none;
 }
 
+html body .finalized-course-name-label-svg.is-map-zooming {
+  opacity: 0;
+}
+
 html body .finalized-course-name-label-svg path {
   fill: none;
   stroke: none;
@@ -409,6 +421,10 @@ html body .finalized-lift-name-label-icon {
 html body .finalized-lift-name-label-svg {
   overflow: visible;
   pointer-events: none;
+}
+
+html body .finalized-lift-name-label-svg.is-map-zooming {
+  opacity: 0;
 }
 
 html body .finalized-lift-name-label-svg path {

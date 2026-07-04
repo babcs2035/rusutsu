@@ -297,7 +297,7 @@ export const SearchViewportController = ({
   onViewportChange: (map: L.Map) => void;
 }) => {
   const map = useMap();
-  const lastRequestKeyRef = useRef(searchViewportRequestKey);
+  const lastRequestKeyRef = useRef(0);
   const lastBottomPaddingRatioRef = useRef(searchViewportBottomPaddingRatio);
 
   useEffect(() => {

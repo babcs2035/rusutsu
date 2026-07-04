@@ -96,7 +96,7 @@ const MobileResortMapPreview = ({
 
   useEffect(() => {
     setMapMode(hasFinalizedMap ? "finalized" : "location");
-  }, [hasFinalizedMap, resort.id]);
+  }, [hasFinalizedMap]);
 
   const modeOptions = hasFinalizedMap
     ? ([

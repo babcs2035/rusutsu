@@ -48,6 +48,26 @@ type StraightPlacementOptions = {
 const COURSE_SECTION_SUFFIX_RE = /_#?(上部|中部|下部)$/u;
 const liftLabelRectsByMap = new WeakMap<L.Map, Rect[]>();
 const COURSE_TO_LIFT_COLLISION_RELAX_PX = 6;
+const LINE_LABEL_ZOOMING_CLASS = "is-map-zooming";
+
+const getLineLabelClassPrefix = (kind: "course" | "lift") =>
+  kind === "course"
+    ? "finalized-course-name-label"
+    : "finalized-lift-name-label";
+
+const setLineLabelSvgZooming = (
+  map: L.Map,
+  kind: "course" | "lift",
+  isZooming: boolean,
+) => {
+  const pane = map.getPane(FINALIZED_SELECTED_PANE);
+  if (!pane) return;
+
+  const classPrefix = getLineLabelClassPrefix(kind);
+  pane.querySelectorAll<SVGSVGElement>(`.${classPrefix}-svg`).forEach(svg => {
+    svg.classList.toggle(LINE_LABEL_ZOOMING_CLASS, isZooming);
+  });
+};
 
 const normalizeLabelAngle = (angle: number) =>
   angle > 90 || angle < -90 ? angle + 180 : angle;
@@ -538,10 +558,7 @@ const createLineLabelSvgLayer = (
   const defs = document.createElementNS(svgNamespace, "defs");
   const textGroup = document.createElementNS(svgNamespace, "g");
   const mapSize = map.getSize();
-  const classPrefix =
-    kind === "course"
-      ? "finalized-course-name-label"
-      : "finalized-lift-name-label";
+  const classPrefix = getLineLabelClassPrefix(kind);
 
   svg.setAttribute("class", `${classPrefix}-svg`);
   svg.setAttribute("width", `${mapSize.x}`);
@@ -762,9 +779,15 @@ export const FinalizedCourseNameLabels = ({
       groupRef.current = group;
     };
 
+    const handleZoomStart = () => {
+      setLineLabelSvgZooming(map, "course", true);
+    };
+
     renderLabels();
+    map.on("zoomstart", handleZoomStart);
     map.on("zoomend moveend resize", renderLabels);
     return () => {
+      map.off("zoomstart", handleZoomStart);
       map.off("zoomend moveend resize", renderLabels);
       if (groupRef.current) {
         groupRef.current.removeFrom(map);
@@ -875,9 +898,15 @@ export const FinalizedLiftNameLabels = ({
       groupRef.current = group;
     };
 
+    const handleZoomStart = () => {
+      setLineLabelSvgZooming(map, "lift", true);
+    };
+
     renderLabels();
+    map.on("zoomstart", handleZoomStart);
     map.on("zoomend moveend resize", renderLabels);
     return () => {
+      map.off("zoomstart", handleZoomStart);
       map.off("zoomend moveend resize", renderLabels);
       if (groupRef.current) {
         groupRef.current.removeFrom(map);

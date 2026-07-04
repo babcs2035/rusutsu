@@ -16,6 +16,23 @@ export const isFilterActive = (filters: Filters) =>
   hasNumericFilterValue(filters.minCourses) ||
   hasNumericFilterValue(filters.minLifts);
 
+export const areFiltersEqual = (left: Filters, right: Filters) =>
+  left.keyword === right.keyword &&
+  left.status === right.status &&
+  left.yukiMagi === right.yukiMagi &&
+  left.beginnerFriendly === right.beginnerFriendly &&
+  left.minVertical === right.minVertical &&
+  left.minBaseElevation === right.minBaseElevation &&
+  left.maxBaseElevation === right.maxBaseElevation &&
+  left.minTopElevation === right.minTopElevation &&
+  left.maxTopElevation === right.maxTopElevation &&
+  left.minCourses === right.minCourses &&
+  left.minLifts === right.minLifts &&
+  left.prefectures.length === right.prefectures.length &&
+  left.prefectures.every(
+    (prefecture, index) => prefecture === right.prefectures[index],
+  );
+
 export const matchesFilters = (resort: MapSkiResort, filters: Filters) => {
   if (filters.status && !resort.status?.includes("滑走可")) return false;
   if (filters.yukiMagi && !resort.yukiMagiId) return false;

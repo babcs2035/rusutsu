@@ -242,6 +242,10 @@ export const useJapanMapLabelLayout = ({
             leaderEndPosition: [resort.latitude, resort.longitude],
             showLeaderLine: false,
             labelWidth,
+            labelOffsetPx: {
+              x: acceptedRect.left - point.x,
+              y: acceptedRect.top - point.y,
+            },
           };
         }
 
@@ -429,6 +433,10 @@ export const useJapanMapLabelLayout = ({
           leaderEndPosition: [leaderEndLatLng.lat, leaderEndLatLng.lng],
           showLeaderLine: accepted.showLeaderLine,
           labelWidth,
+          labelOffsetPx: {
+            x: accepted.rect.left - point.x,
+            y: accepted.rect.top - point.y,
+          },
         };
       }
 

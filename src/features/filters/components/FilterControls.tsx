@@ -362,6 +362,7 @@ const CompactNumberInput = ({
       borderRadius="md"
       fontSize={{ base: MOBILE_INPUT_FONT_SIZE, md: "xs" }}
       textAlign="center"
+      scrollMarginTop="calc(env(safe-area-inset-top, 0px) + 5.5rem)"
       _focus={{
         bg: "white",
         borderColor: "brand.500",

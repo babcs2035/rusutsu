@@ -92,11 +92,12 @@ export const useFilterPanelState = ({
   };
 
   const handleReset = () => {
-    onFilterChange(DEFAULT_FILTERS);
+    onFilterChange({ ...DEFAULT_FILTERS, keyword: filters.keyword });
   };
 
   const handleResetClick = () => {
-    if (!window.confirm("検索フィルタをリセットしますか？")) return;
+    if (!window.confirm("キーワード以外の検索フィルタをリセットしますか？"))
+      return;
     handleReset();
   };
 

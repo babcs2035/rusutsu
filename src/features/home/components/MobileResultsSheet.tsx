@@ -9,7 +9,6 @@ import { SkiResortList } from "./SkiResortList";
 type Props = {
   compareResorts: SkiResortDetail[];
   filteredResorts: MapSkiResort[];
-  hasSearched: boolean;
   isCompareLoading: boolean;
   isCompareOpen: boolean;
   isListSheetOpen: boolean;
@@ -28,7 +27,6 @@ type Props = {
 export const MobileResultsSheet = ({
   compareResorts,
   filteredResorts,
-  hasSearched,
   isCompareLoading,
   isCompareOpen,
   isListSheetOpen,
@@ -65,16 +63,14 @@ export const MobileResultsSheet = ({
         minH={0}
         overflowY="auto"
       >
-        {hasSearched && (
-          <SkiResortList
-            resorts={filteredResorts}
-            onSelectResort={onSelectResort}
-            selectedCompareIdSet={selectedCompareIdSet}
-            onToggleCompare={onToggleCompare}
-            onHoverResortChange={onHoverResortChange}
-            showHeader={false}
-          />
-        )}
+        <SkiResortList
+          resorts={filteredResorts}
+          onSelectResort={onSelectResort}
+          selectedCompareIdSet={selectedCompareIdSet}
+          onToggleCompare={onToggleCompare}
+          onHoverResortChange={onHoverResortChange}
+          showHeader={false}
+        />
       </Box>
     )}
   </Box>

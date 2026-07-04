@@ -2,7 +2,7 @@
 
 import { Box, Button, Flex, Heading, Text } from "@chakra-ui/react";
 import { AnimatePresence } from "framer-motion";
-import { Check, Filter, Plus, SlidersHorizontal, X } from "lucide-react";
+import { Check, Plus, X } from "lucide-react";
 import type {
   ComponentType,
   ChangeEvent as ReactChangeEvent,
@@ -11,12 +11,14 @@ import type {
   TouchEvent as ReactTouchEvent,
   RefObject,
 } from "react";
+import { useState } from "react";
 import { REGION_PREFECTURES } from "@/features/filters/constants";
 import type { Filters } from "@/features/filters/types";
 import { getActiveFilterLabels } from "@/features/filters/utils/filterLabels";
 import type {
   ElevationProfileMapPoint,
   JapanResortMapProps,
+  MapTileVariant,
   SelectedMapFeature,
 } from "@/features/map/types";
 import { SkiResortDetailView } from "@/features/resort-detail/SkiResortDetailView";
@@ -29,8 +31,17 @@ import { DesktopSearchPanel } from "../components/DesktopSearchPanel";
 import { MobileResultsSheet } from "../components/MobileResultsSheet";
 import { MobileSearchButton } from "../components/MobileSearchButton";
 import { MobileSearchOverlay } from "../components/MobileSearchOverlay";
+import {
+  MOBILE_SEARCH_TOP_BAR_HEIGHT,
+  MobileSearchTopBarShell,
+} from "../components/MobileSearchTopBarShell";
 import { SkiResortCompareView } from "../components/SkiResortCompareView";
 import type { MapViewRestoreRequest } from "../types";
+
+const MAP_TILE_OPTIONS: Array<{ label: string; value: MapTileVariant }> = [
+  { label: "地図", value: "pale" },
+  { label: "衛星", value: "photo" },
+];
 
 type Props = {
   DynamicMap: ComponentType<JapanResortMapProps>;
@@ -57,12 +68,11 @@ type Props = {
   mobileContentTab: "info" | "map";
   mobileFilterOverlayRef: RefObject<HTMLDivElement | null>;
   mobileListSheetSnapPoints: (number | string)[];
-  hasActiveMobileDraftFilters: boolean;
   mobileDraftFilteredResortCount: number;
+  mobileDraftHasChanges: boolean;
   mobileDraftFilters: Filters;
   mobileSearchFilterBottomPadding: string;
   mobileSearchFilterScrollRef: RefObject<HTMLDivElement | null>;
-  mobileSearchFilterTop: string;
   mobileSearchPanelInputRef: RefObject<HTMLInputElement | null>;
   restoreViewRequest: MapViewRestoreRequest | null;
   searchViewportBottomPaddingRatio: number;
@@ -144,12 +154,11 @@ export const HomeLayout = ({
   mobileContentTab,
   mobileFilterOverlayRef,
   mobileListSheetSnapPoints,
-  hasActiveMobileDraftFilters,
   mobileDraftFilteredResortCount,
+  mobileDraftHasChanges,
   mobileDraftFilters,
   mobileSearchFilterBottomPadding,
   mobileSearchFilterScrollRef,
-  mobileSearchFilterTop,
   mobileSearchPanelInputRef,
   restoreViewRequest,
   searchViewportBottomPaddingRatio,
@@ -197,6 +206,7 @@ export const HomeLayout = ({
   onUserMapInteraction,
   onUserMapZoomInteraction,
 }: Props) => {
+  const [mapTileVariant, setMapTileVariant] = useState<MapTileVariant>("pale");
   const isMobileCompareMapFocus = !isSidePanelLayout && isCompareOpen;
   const mapFilteredResortIdSet = isMobileCompareMapFocus
     ? selectedCompareIdSet
@@ -206,38 +216,50 @@ export const HomeLayout = ({
     : hasActiveFilters
       ? filteredResortIds
       : [];
+  const shouldShowMobileSearchScreen =
+    !isSidePanelLayout && isMobileFilterOverlayOpen;
   const shouldShowMobileContextHeader =
     !isSidePanelLayout &&
     !isMobileFilterOverlayOpen &&
     (isCompareOpen || Boolean(selectedResortId) || hasSearched);
-  const shouldRenderMap =
-    isSidePanelLayout ||
-    (!selectedResortId && mobileContentTab === "map") ||
-    !shouldShowMobileContextHeader;
   const shouldShowMobileSearchButton =
-    !isCompareOpen &&
-    !isMobileFilterOverlayOpen &&
-    !selectedResortId &&
-    !hasSearched;
+    !isCompareOpen && !isMobileFilterOverlayOpen && !selectedResortId;
   const shouldShowMobileTopChrome =
     !isSidePanelLayout &&
     !isMobileFilterOverlayOpen &&
     (shouldShowMobileSearchButton || shouldShowMobileContextHeader);
+  const shouldRenderMap =
+    isSidePanelLayout ||
+    mobileContentTab === "map" ||
+    (!shouldShowMobileTopChrome && !shouldShowMobileSearchScreen);
 
-  const mobileRegionOptions = Object.entries(REGION_PREFECTURES).map(
-    ([region, prefectures]) => ({ region, prefectures }),
+  const availablePrefectureSet = new Set(
+    initialResorts.map(resort => resort.prefecture).filter(Boolean),
   );
+  const mobileRegionOptions = Object.entries(REGION_PREFECTURES)
+    .map(([region, prefectures]) => ({
+      region,
+      prefectures: prefectures.filter(prefecture =>
+        availablePrefectureSet.has(prefecture),
+      ),
+    }))
+    .filter(option => option.prefectures.length > 0);
   const mobileActiveFilterLabels = getActiveFilterLabels(
     filters,
     mobileRegionOptions,
+    { includeKeyword: false },
   );
 
   return (
     <Flex
       as="main"
       onPointerDownCapture={onMainPointerDownCapture}
-      position="relative"
-      h="100vh"
+      position="fixed"
+      top={0}
+      right={0}
+      bottom={0}
+      left={0}
+      minH={0}
       w="100vw"
       overflow="hidden"
       flexDirection={{ md: "row" }}
@@ -254,25 +276,50 @@ export const HomeLayout = ({
         {shouldShowMobileTopChrome && (
           <Flex
             display={{ base: "flex", md: "none" }}
-            flex="0 0 auto"
+            position="fixed"
+            top={0}
+            right={0}
+            left={0}
+            zIndex={150000}
             flexDirection="column"
             gap={0}
             px={0}
-            pt="calc(env(safe-area-inset-top, 0px) + 0.75rem)"
             pb={0}
             bg="white"
-            borderBottom="1px solid"
-            borderColor="gray.100"
-            boxShadow="0 1px 0 rgba(15, 23, 42, 0.04)"
           >
-            <MobileSearchButton
-              keyword={filters.keyword}
-              isHidden={!shouldShowMobileSearchButton}
-              placement="static"
-              onKeywordClear={onMobileSearchButtonKeywordClear}
-              onOpen={onOpenMobileFilterOverlay}
-              onPointerDown={onMobileSearchButtonPointerDown}
-            />
+            {shouldShowMobileSearchButton && (
+              <MobileSearchHeader
+                activeTab={mobileContentTab}
+                keyword={filters.keyword}
+                onKeywordClear={onMobileSearchButtonKeywordClear}
+                onOpenSearch={onOpenMobileFilterOverlay}
+                onPointerDown={onMobileSearchButtonPointerDown}
+                onTabChange={onMobileContentTabChange}
+              />
+            )}
+          </Flex>
+        )}
+        <Box
+          flex="1 1 auto"
+          minH={0}
+          position="relative"
+          display="flex"
+          flexDirection="column"
+          pt={{
+            base:
+              shouldShowMobileSearchButton && shouldShowMobileTopChrome
+                ? MOBILE_SEARCH_TOP_BAR_HEIGHT
+                : 0,
+            md: 0,
+          }}
+        >
+          <Box
+            flex="1 1 auto"
+            minH={0}
+            position="relative"
+            display="flex"
+            flexDirection="column"
+          >
             {shouldShowMobileContextHeader && (
               <MobileContextHeader
                 mode={
@@ -295,129 +342,145 @@ export const HomeLayout = ({
                     : false
                 }
                 activeFilterLabels={mobileActiveFilterLabels}
+                mapTileVariant={mapTileVariant}
                 onTabChange={onMobileContentTabChange}
                 onAddCompare={onCloseCompare}
-                onChangeFilters={onOpenMobileFilterOverlay}
                 onCloseDetail={onCloseDetail}
                 onClearCompare={onClearCompare}
+                onMapTileVariantChange={setMapTileVariant}
                 onOpenCompare={onOpenCompare}
                 onToggleCompare={onToggleCompare}
               />
             )}
-          </Flex>
-        )}
-        <Box flex="1 1 auto" minH={0} position="relative">
-          {shouldRenderMap && (
-            <DynamicMap
-              resorts={initialResorts}
-              filteredResortIdSet={mapFilteredResortIdSet}
-              isFilterActive={isMobileCompareMapFocus ? true : hasActiveFilters}
-              // 条件なしで検索結果を閉じる時に、全スキー場へ fit して地図位置が動くのを防ぐ。
-              searchResultResortIds={mapSearchResultResortIds}
-              searchViewportRequestKey={searchViewportRequestKey}
-              searchViewportBottomPaddingRatio={
-                searchViewportBottomPaddingRatio
-              }
-              mapControlBottomPaddingRatio={searchViewportBottomPaddingRatio}
-              selectedResortId={selectedResortId}
-              selectedViewportBottomPaddingRatio={
-                selectedViewportBottomPaddingRatio
-              }
-              hoveredResortId={hoveredResortId}
-              onSelectResort={onSelectResort}
-              interactionMode={mapInteractionMode}
-              selectedCompareIdSet={selectedCompareIdSet}
-              onToggleCompare={onToggleCompare}
-              onBoundsChange={() => undefined}
-              onViewChange={onMapViewChange}
-              onUserMapInteraction={onUserMapInteraction}
-              onUserMapZoomInteraction={onUserMapZoomInteraction}
-              restoreViewRequest={restoreViewRequest}
-              finalizedMapData={selectedResortData?.finalizedMapData ?? null}
-              selectedFinalizedFeature={selectedFinalizedFeature}
-              onSelectedFinalizedFeatureChange={
-                onSelectedFinalizedFeatureChange
-              }
-              selectedElevationProfilePoint={selectedElevationProfilePoint}
-              onSelectedElevationProfilePointChange={
-                onSelectedElevationProfilePointChange
-              }
-            />
-          )}
-          {!shouldRenderMap &&
-            !selectedResortId &&
-            shouldRenderMobileListSheet && (
-              <MobileResultsSheet
-                compareResorts={compareResortData}
-                filteredResorts={filteredResorts}
-                hasSearched={hasSearched}
-                isCompareLoading={isCompareLoading}
-                isCompareOpen={isCompareOpen}
-                isListSheetOpen={isListSheetOpen}
-                listSheetContentRef={listSheetContentRef}
-                listSheetSnapPoint={listSheetSnapPoint}
-                snapPoints={mobileListSheetSnapPoints}
-                selectedCompareIdSet={selectedCompareIdSet}
-                onCloseCompare={onCloseCompare}
-                onHoverResortChange={onSetHoveredResortId}
-                onOpenChange={open => {
-                  onSetListSheetOpen(open && (hasSearched || isCompareOpen));
-                  if (!open && isCompareOpen) {
-                    onCloseCompare();
+            <Box flex="1 1 auto" minH={0} position="relative">
+              {shouldRenderMap && (
+                <DynamicMap
+                  resorts={initialResorts}
+                  filteredResortIdSet={mapFilteredResortIdSet}
+                  isFilterActive={
+                    isMobileCompareMapFocus ? true : hasActiveFilters
                   }
-                }}
-                onSelectResort={onSelectResort}
-                onSetSnapPoint={onSetListSheetSnapPoint}
-                onToggleCompare={onToggleCompare}
-              />
+                  // 条件なしで検索結果を閉じる時に、全スキー場へ fit して地図位置が動くのを防ぐ。
+                  searchResultResortIds={mapSearchResultResortIds}
+                  searchViewportRequestKey={searchViewportRequestKey}
+                  searchViewportBottomPaddingRatio={
+                    searchViewportBottomPaddingRatio
+                  }
+                  mapControlBottomPaddingRatio={
+                    searchViewportBottomPaddingRatio
+                  }
+                  selectedResortId={selectedResortId}
+                  selectedViewportBottomPaddingRatio={
+                    selectedViewportBottomPaddingRatio
+                  }
+                  hoveredResortId={hoveredResortId}
+                  onSelectResort={onSelectResort}
+                  interactionMode={mapInteractionMode}
+                  selectedCompareIdSet={selectedCompareIdSet}
+                  onToggleCompare={onToggleCompare}
+                  onBoundsChange={() => undefined}
+                  onViewChange={onMapViewChange}
+                  onUserMapInteraction={onUserMapInteraction}
+                  onUserMapZoomInteraction={onUserMapZoomInteraction}
+                  restoreViewRequest={restoreViewRequest}
+                  finalizedMapData={
+                    selectedResortData?.finalizedMapData ?? null
+                  }
+                  mapTileVariant={mapTileVariant}
+                  onMapTileVariantChange={setMapTileVariant}
+                  selectedFinalizedFeature={selectedFinalizedFeature}
+                  onSelectedFinalizedFeatureChange={
+                    onSelectedFinalizedFeatureChange
+                  }
+                  selectedElevationProfilePoint={selectedElevationProfilePoint}
+                  onSelectedElevationProfilePointChange={
+                    onSelectedElevationProfilePointChange
+                  }
+                />
+              )}
+              {!shouldRenderMap &&
+                !selectedResortId &&
+                shouldRenderMobileListSheet && (
+                  <MobileResultsSheet
+                    compareResorts={compareResortData}
+                    filteredResorts={filteredResorts}
+                    isCompareLoading={isCompareLoading}
+                    isCompareOpen={isCompareOpen}
+                    isListSheetOpen={isListSheetOpen}
+                    listSheetContentRef={listSheetContentRef}
+                    listSheetSnapPoint={listSheetSnapPoint}
+                    snapPoints={mobileListSheetSnapPoints}
+                    selectedCompareIdSet={selectedCompareIdSet}
+                    onCloseCompare={onCloseCompare}
+                    onHoverResortChange={onSetHoveredResortId}
+                    onOpenChange={open => {
+                      onSetListSheetOpen(open && mobileContentTab === "info");
+                      if (!open && isCompareOpen) {
+                        onCloseCompare();
+                      }
+                    }}
+                    onSelectResort={onSelectResort}
+                    onSetSnapPoint={onSetListSheetSnapPoint}
+                    onToggleCompare={onToggleCompare}
+                  />
+                )}
+              {!shouldRenderMap && selectedResortId && (
+                <SkiResortDetailView
+                  DynamicMap={DynamicMap}
+                  mapResorts={initialResorts}
+                  resortData={selectedResortData}
+                  isLoading={isPending}
+                  isCompareSelected={selectedCompareIdSet.has(selectedResortId)}
+                  sheetSnapPoint={detailSheetSnapPoint}
+                  setSheetSnapPoint={onSetDetailSheetSnapPoint}
+                  onToggleCompare={onToggleCompare}
+                  selectedFinalizedFeature={selectedFinalizedFeature}
+                  selectedElevationProfilePoint={selectedElevationProfilePoint}
+                  onSelectedFinalizedFeatureChange={
+                    onSelectedFinalizedFeatureChange
+                  }
+                  onSelectedElevationProfilePointChange={
+                    onSelectedElevationProfilePointChange
+                  }
+                  onClose={onCloseDetail}
+                  mobileContentTab="info"
+                  mobilePresentation="inline"
+                  hideMobileInfoSection
+                />
+              )}
+            </Box>
+            {shouldShowMobileSearchScreen && (
+              <Box
+                position="absolute"
+                inset={0}
+                zIndex={200000}
+                display={{ base: "block", md: "none" }}
+              >
+                <MobileSearchOverlay
+                  filters={mobileDraftFilters}
+                  resorts={initialResorts}
+                  filteredResortCount={mobileDraftFilteredResortCount}
+                  isOpen={isMobileFilterOverlayOpen}
+                  isSidePanelLayout={isSidePanelLayout}
+                  overlayRef={mobileFilterOverlayRef}
+                  inputRef={mobileSearchPanelInputRef}
+                  scrollRef={mobileSearchFilterScrollRef}
+                  filterBottomPadding={mobileSearchFilterBottomPadding}
+                  hasChanges={mobileDraftHasChanges}
+                  onClose={onCloseMobileFilterOverlay}
+                  onFilterAreaPointerDown={onMobileFilterAreaPointerDown}
+                  onFilterChange={onMobileFilterChange}
+                  onInputBlur={onMobileSearchFilterInputBlur}
+                  onInputFocus={onMobileSearchFilterInputFocus}
+                  onKeywordChange={onMobileKeywordChange}
+                  onKeywordClear={onMobileKeywordClear}
+                  onSearch={onMobileSearch}
+                  onSubmit={onMobileSearchSubmit}
+                />
+              </Box>
             )}
-          {!shouldRenderMap && selectedResortId && (
-            <SkiResortDetailView
-              DynamicMap={DynamicMap}
-              mapResorts={initialResorts}
-              resortData={selectedResortData}
-              isLoading={isPending}
-              isCompareSelected={selectedCompareIdSet.has(selectedResortId)}
-              sheetSnapPoint={detailSheetSnapPoint}
-              setSheetSnapPoint={onSetDetailSheetSnapPoint}
-              onToggleCompare={onToggleCompare}
-              selectedFinalizedFeature={selectedFinalizedFeature}
-              selectedElevationProfilePoint={selectedElevationProfilePoint}
-              onSelectedFinalizedFeatureChange={
-                onSelectedFinalizedFeatureChange
-              }
-              onSelectedElevationProfilePointChange={
-                onSelectedElevationProfilePointChange
-              }
-              onClose={onCloseDetail}
-              mobileContentTab="info"
-              mobilePresentation="inline"
-              hideMobileInfoSection
-            />
-          )}
+          </Box>
         </Box>
-        <MobileSearchOverlay
-          filters={mobileDraftFilters}
-          resorts={initialResorts}
-          filteredResortCount={mobileDraftFilteredResortCount}
-          canSearch={hasActiveMobileDraftFilters}
-          isOpen={isMobileFilterOverlayOpen}
-          isSidePanelLayout={isSidePanelLayout}
-          overlayRef={mobileFilterOverlayRef}
-          inputRef={mobileSearchPanelInputRef}
-          scrollRef={mobileSearchFilterScrollRef}
-          filterTop={mobileSearchFilterTop}
-          filterBottomPadding={mobileSearchFilterBottomPadding}
-          onClose={onCloseMobileFilterOverlay}
-          onFilterAreaPointerDown={onMobileFilterAreaPointerDown}
-          onFilterChange={onMobileFilterChange}
-          onInputBlur={onMobileSearchFilterInputBlur}
-          onInputFocus={onMobileSearchFilterInputFocus}
-          onKeywordChange={onMobileKeywordChange}
-          onKeywordClear={onMobileKeywordClear}
-          onSearch={onMobileSearch}
-          onSubmit={onMobileSearchSubmit}
-        />
       </Box>
 
       <DesktopSearchPanel
@@ -478,6 +541,81 @@ export const HomeLayout = ({
   );
 };
 
+type MobileSearchHeaderProps = {
+  activeTab: "info" | "map";
+  keyword: string;
+  onKeywordClear: () => void;
+  onOpenSearch: () => void;
+  onPointerDown: (event: ReactPointerEvent<HTMLButtonElement>) => void;
+  onTabChange: (tab: "info" | "map") => void;
+};
+
+const MobileSearchHeader = ({
+  activeTab,
+  keyword,
+  onKeywordClear,
+  onOpenSearch,
+  onPointerDown,
+  onTabChange,
+}: MobileSearchHeaderProps) => (
+  <MobileSearchTopBarShell
+    action={
+      <Flex
+        minW={0}
+        h={10}
+        p={1}
+        borderRadius="full"
+        bg="gray.100"
+        border="1px solid"
+        borderColor="gray.200"
+        gap={1}
+        overflow="hidden"
+      >
+        {[
+          ["map", "地図"],
+          ["info", "リスト"],
+        ].map(([tab, label]) => {
+          const isActive = activeTab === tab;
+          return (
+            <Button
+              key={tab}
+              type="button"
+              aria-pressed={isActive}
+              onClick={() => onTabChange(tab as "info" | "map")}
+              flex="1 1 0"
+              minW={0}
+              h="100%"
+              px={1}
+              borderRadius="full"
+              bg={isActive ? "brand.500" : "transparent"}
+              color={isActive ? "white" : "gray.600"}
+              boxShadow={
+                isActive ? "0 1px 4px rgba(37, 99, 235, 0.24)" : "none"
+              }
+              fontSize="0.78rem"
+              fontWeight="800"
+              lineHeight="1"
+              whiteSpace="nowrap"
+              _hover={{ bg: isActive ? "brand.600" : "gray.200" }}
+            >
+              {label}
+            </Button>
+          );
+        })}
+      </Flex>
+    }
+  >
+    <MobileSearchButton
+      keyword={keyword}
+      isHidden={false}
+      placement="static"
+      onKeywordClear={onKeywordClear}
+      onOpen={onOpenSearch}
+      onPointerDown={onPointerDown}
+    />
+  </MobileSearchTopBarShell>
+);
+
 type MobileContextHeaderProps = {
   mode: "results" | "compare" | "detail";
   activeTab: "info" | "map";
@@ -489,11 +627,12 @@ type MobileContextHeaderProps = {
   detailResortId: string | null;
   isDetailCompareSelected: boolean;
   activeFilterLabels: string[];
+  mapTileVariant: MapTileVariant;
   onTabChange: (tab: "info" | "map") => void;
   onAddCompare: () => void;
-  onChangeFilters: () => void;
   onCloseDetail: () => void;
   onClearCompare: () => void;
+  onMapTileVariantChange: (variant: MapTileVariant) => void;
   onOpenCompare: () => void;
   onToggleCompare: (id: string, selected: boolean) => void;
 };
@@ -509,11 +648,12 @@ const MobileContextHeader = ({
   detailResortId,
   isDetailCompareSelected,
   activeFilterLabels,
+  mapTileVariant,
   onTabChange,
   onAddCompare,
-  onChangeFilters,
   onCloseDetail,
   onClearCompare,
+  onMapTileVariantChange,
   onOpenCompare,
   onToggleCompare,
 }: MobileContextHeaderProps) => {
@@ -524,8 +664,8 @@ const MobileContextHeader = ({
       : mode === "detail"
         ? { info: "詳細", map: "地図" }
         : { info: "リストで探す", map: "地図で探す" };
-  const filterLabels =
-    activeFilterLabels.length > 0 ? activeFilterLabels : ["条件なし"];
+  const filterLabels = activeFilterLabels;
+  const shouldShowMapTileControl = isResults && activeTab === "map";
 
   return (
     <Box
@@ -535,57 +675,8 @@ const MobileContextHeader = ({
       pointerEvents="auto"
     >
       {isResults && (
-        <Box px={4} pb={3}>
-          <Flex alignItems="center" justifyContent="space-between" gap={3}>
-            <Heading
-              as="h2"
-              size="md"
-              color="gray.900"
-              display="flex"
-              alignItems="center"
-              gap={2}
-            >
-              <Filter size={16} color="var(--brand-main)" />
-              スキー場検索
-              <Box
-                as="span"
-                display="inline-flex"
-                alignItems="center"
-                h="30px"
-                px={3}
-                borderRadius="full"
-                bg="brand.50"
-                color="brand.700"
-                fontSize="1rem"
-                fontWeight="900"
-                lineHeight="1"
-                whiteSpace="nowrap"
-              >
-                {resultCount.toLocaleString()}件
-              </Box>
-            </Heading>
-            <Button
-              type="button"
-              onClick={onChangeFilters}
-              size="sm"
-              flex="0 0 auto"
-              h={8}
-              px={3}
-              borderRadius="md"
-              bg="gray.900"
-              color="white"
-              border="1px solid"
-              borderColor="gray.900"
-              gap={1.5}
-              fontSize="0.78rem"
-              fontWeight="800"
-              _hover={{ bg: "gray.800", borderColor: "gray.800" }}
-            >
-              <SlidersHorizontal size={14} />
-              フィルタを変更
-            </Button>
-          </Flex>
-          <Flex mt={3} gap={1.5} flexWrap="wrap" alignItems="center">
+        <Box px={4} pt={0} pb={2}>
+          <Flex gap={1.5} flexWrap="wrap" alignItems="center">
             {filterLabels.map(label => (
               <Box
                 key={label}
@@ -599,10 +690,69 @@ const MobileContextHeader = ({
                 lineHeight="1.4"
                 display="flex"
                 alignItems="center"
+                whiteSpace="normal"
+                overflowWrap="anywhere"
               >
                 {label}
               </Box>
             ))}
+            <Box
+              as="span"
+              px={2}
+              minH="28px"
+              borderRadius="md"
+              bg="brand.50"
+              color="brand.700"
+              fontSize="0.8125rem"
+              fontWeight="800"
+              lineHeight="1.4"
+              display="flex"
+              alignItems="center"
+            >
+              {resultCount.toLocaleString()}件
+            </Box>
+            {shouldShowMapTileControl && (
+              <Flex
+                ml="auto"
+                h="28px"
+                minW="fit-content"
+                p="2px"
+                borderRadius="md"
+                bg="gray.100"
+                border="1px solid"
+                borderColor="gray.200"
+                gap="2px"
+              >
+                {MAP_TILE_OPTIONS.map(option => {
+                  const isActive = mapTileVariant === option.value;
+
+                  return (
+                    <Button
+                      key={option.value}
+                      type="button"
+                      aria-label={`${option.label}に切り替え`}
+                      aria-pressed={isActive}
+                      onClick={() => onMapTileVariantChange(option.value)}
+                      h="100%"
+                      minW={0}
+                      px={2}
+                      borderRadius="sm"
+                      bg={isActive ? "brand.500" : "transparent"}
+                      color={isActive ? "white" : "gray.600"}
+                      boxShadow={
+                        isActive ? "0 1px 4px rgba(37, 99, 235, 0.24)" : "none"
+                      }
+                      fontSize="0.75rem"
+                      fontWeight="800"
+                      lineHeight="1"
+                      _hover={{ bg: isActive ? "brand.600" : "gray.200" }}
+                    >
+                      {option.label}
+                    </Button>
+                  );
+                })}
+              </Flex>
+            )}
           </Flex>
         </Box>
       )}
@@ -762,7 +912,7 @@ const MobileContextHeader = ({
         </Flex>
       )}
 
-      {mode !== "detail" && (
+      {mode === "compare" && (
         <Flex
           w="100%"
           borderTop="0"

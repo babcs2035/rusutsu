@@ -47,15 +47,13 @@ export const useMobileSearchOverlayEffects = ({
     const visualViewport = window.visualViewport;
     const syncViewport = () => {
       const height = visualViewport?.height ?? window.innerHeight;
-      const offsetTop = visualViewport?.offsetTop ?? 0;
-      const effectiveHeight = height + offsetTop;
       const previousBaseHeight = viewportBaseHeightRef.current;
       const baseHeight =
         previousBaseHeight == null
-          ? effectiveHeight
-          : Math.max(previousBaseHeight, effectiveHeight);
+          ? height
+          : Math.max(previousBaseHeight, height);
       viewportBaseHeightRef.current = baseHeight;
-      const keyboardInset = Math.max(0, baseHeight - effectiveHeight);
+      const keyboardInset = Math.max(0, baseHeight - height);
       setViewport({ keyboardInset });
     };
 

@@ -283,6 +283,8 @@ export const JapanResortMap = memo(function JapanResortMap({
   restoreViewRequest = null,
   finalizedMapData = null,
   mapPresentation = "default",
+  mapTileVariant: controlledMapTileVariant,
+  onMapTileVariantChange,
   detailViewportMode = "finalized",
   selectedFinalizedFeature: controlledSelectedFinalizedFeature,
   onSelectedFinalizedFeatureChange,
@@ -302,7 +304,16 @@ export const JapanResortMap = memo(function JapanResortMap({
   const initialZoom = isMobileMapZoom
     ? MOBILE_INITIAL_ZOOM
     : DESKTOP_INITIAL_ZOOM;
-  const [mapTileVariant, setMapTileVariant] = useState<MapTileVariant>("pale");
+  const [uncontrolledMapTileVariant, setUncontrolledMapTileVariant] =
+    useState<MapTileVariant>("pale");
+  const mapTileVariant = controlledMapTileVariant ?? uncontrolledMapTileVariant;
+  const setMapTileVariant = useCallback(
+    (variant: MapTileVariant) => {
+      setUncontrolledMapTileVariant(variant);
+      onMapTileVariantChange?.(variant);
+    },
+    [onMapTileVariantChange],
+  );
   const [courseColorMode, setCourseColorMode] =
     useState<CourseColorMode>("difficulty");
   const [showOpenFinalizedOnly, setShowOpenFinalizedOnly] = useState(false);
@@ -660,6 +671,7 @@ export const JapanResortMap = memo(function JapanResortMap({
             bottomPaddingRatio={mapControlBottomPaddingRatio}
             mapTileVariant={mapTileVariant}
             onMapTileVariantChange={setMapTileVariant}
+            hideMobileTileVariantControl={mapPresentation === "default"}
             onUserMapInteraction={onUserMapInteraction}
             onUserMapZoomInteraction={onUserMapZoomInteraction}
           />

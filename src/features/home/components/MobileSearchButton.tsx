@@ -26,7 +26,7 @@ export const MobileSearchButton = ({
       base: isHidden ? "none" : "flex",
       md: "none",
     }}
-    position={placement}
+    position={placement === "static" ? "relative" : placement}
     top={
       placement === "fixed"
         ? "calc(env(safe-area-inset-top, 0px) + 0.75rem)"
@@ -35,8 +35,8 @@ export const MobileSearchButton = ({
     left={placement === "fixed" ? 4 : undefined}
     right={placement === "fixed" ? 4 : undefined}
     zIndex={placement === "fixed" ? 200001 : undefined}
-    w={placement === "static" ? "calc(100% - 2rem)" : undefined}
-    mx={placement === "static" ? 4 : undefined}
+    w={placement === "static" ? "100%" : undefined}
+    minW={0}
     pointerEvents="auto"
   >
     <Button
@@ -47,14 +47,14 @@ export const MobileSearchButton = ({
       justifyContent="flex-start"
       w="100%"
       h={12}
-      pl={12}
-      pr={keyword ? 12 : 4}
+      pl={10}
+      pr={keyword ? 10 : 3}
       borderRadius="full"
       border="1px solid"
       borderColor="rgba(226, 232, 240, 0.88)"
       bg="rgba(255, 255, 255, 0.97)"
       color={keyword ? "gray.800" : "gray.500"}
-      fontSize="1.1rem"
+      fontSize="0.95rem"
       fontWeight="500"
       boxShadow="0 10px 30px rgba(15, 23, 42, 0.18)"
       backdropFilter="blur(18px)"
@@ -65,13 +65,13 @@ export const MobileSearchButton = ({
     >
       <Box
         position="absolute"
-        left={4}
+        left={3.5}
         top="50%"
         transform="translateY(-50%)"
         color="gray.500"
         pointerEvents="none"
       >
-        <Search size={20} />
+        <Search size={18} />
       </Box>
       <Box
         as="span"
@@ -88,7 +88,7 @@ export const MobileSearchButton = ({
         aria-label="検索キーワードをクリア"
         position="absolute"
         top="50%"
-        right={2}
+        right={1.5}
         zIndex={2}
         transform="translateY(-50%)"
         w={8}
