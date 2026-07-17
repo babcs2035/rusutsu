@@ -87,13 +87,7 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${bricolage.variable} ${manrope.variable}`}
     >
-      <body
-        className={manrope.className}
-        style={{
-          backgroundColor: "var(--bg-light)",
-          color: "var(--text-primary)",
-        }}
-      >
+      <body className={manrope.className}>
         <ChakraProvider>{children}</ChakraProvider>
         <GoogleAnalytics gaId="G-YMEM5C2F4C" />
       </body>

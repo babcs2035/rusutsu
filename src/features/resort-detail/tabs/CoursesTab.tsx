@@ -444,6 +444,8 @@ export const CoursesTab = ({
     );
   }
 
+  const maxSlope = resort.steepestSlope ?? resort.angleMax;
+
   return (
     <Flex flexDirection="column" gap={10}>
       <Box as="section">
@@ -454,11 +456,11 @@ export const CoursesTab = ({
           <StatCard title="総コース数" value={`${resort.numberOfCourses}`} />
           <StatCard
             title="最長滑走距離"
-            value={`${resort.longestCourse?.toLocaleString() || "--"}m`}
+            value={formatMeters(resort.longestCourse)}
           />
           <StatCard
             title="最大斜度"
-            value={`${resort.steepestSlope || resort.angleMax || "--"}°`}
+            value={maxSlope == null ? "--" : `${maxSlope}°`}
           />
           <StatCard title="標高差" value={`${resort.verticalDrop}m`} />
         </Grid>

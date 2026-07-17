@@ -102,6 +102,7 @@ export const getActiveFilterLabels = (
     labels.push(getPrefectureFilterLabel(filters.prefectures, regionOptions));
   }
   if (filters.yukiMagi) labels.push("雪マジ対象");
+  if (filters.status) labels.push("営業中のみ");
   if (filters.beginnerFriendly) labels.push("初級者向け");
   if (hasNumericFilterValue(filters.minVertical))
     labels.push(`標高差 ${filters.minVertical}m〜`);
