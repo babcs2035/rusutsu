@@ -25,7 +25,7 @@
  *       [--source-dir <lift-ticket-sourceディレクトリ>] [--out <lift-ticketルートdir>] \
  *       [--url <追加URL>]... \
  *       [--download <PDF/画像URL>]... [--linked-from <URL>] [--headed]
- *       [--accept-season]
+ *       [--accept-season] [--follow-links] [--max-followed <件数>]
  *
  *   URL登録ファイルは <source-dir>/{resort-id}.json （既定は
  *   src/private/data/lift-ticket-source/）。スキー場IDはファイル名が正本で、
@@ -37,9 +37,16 @@
  *   一致しない・判定できない場合は警告して異常終了し、以降の処理を止める。
  *   人間が確認したうえで続行する場合のみ --accept-season を付ける。
  *
+ *   --follow-links を付けると、**指定URLのページに貼られたリンクを1階層だけ辿る**。
+ *   同じ公式ドメイン内で、料金・営業・割引に関係しそうなリンクだけを対象にし、
+ *   シーズン券などの収集対象外は除外する。辿った先のリンクは辿らない
+ *   （再帰するとサイト全巡回になる）。既定の上限は12件（--max-followed で変更）。
+ *   追跡で取ったページは manifest に user_specified: false / linked_from 付きで記録され、
+ *   抽出担当はそれを sources[].linked_from_source_id に写す。
+ *
  * 方針:
- *   - 検索エンジンでの情報源探索は行わない。登録ファイル / --url / --download で
- *     渡されたURLのみアクセスする。
+ *   - 検索エンジンでの情報源探索は行わない。登録ファイル / --url / --download /
+ *     --follow-links（指定URLからのリンク）で得たURLのみアクセスする。
  *   - Cookie同意・タブ・アコーディオンなど表示に必要な最低限の操作のみ行う。
  *     ログイン回避やアクセス制限の回避は行わない。
  *   - このスクリプトは証拠保存のみを行い、料金JSONは作成しない。
@@ -79,6 +86,9 @@ const DEFAULT_SOURCE_DIR = path.join(
 const JPEG_QUALITY = 80;
 const MAX_NETWORK_RESPONSES_PER_PAGE = 50;
 const MAX_NETWORK_BODY_BYTES = 2 * 1024 * 1024;
+/** リンク追跡で取る件数の上限（既定）。無制限にすると保存資料が膨らむ */
+const DEFAULT_MAX_FOLLOWED = 12;
+
 const OUT_OF_SCOPE_SOURCE_PATTERN =
   /シーズン券|season(?:[-_\s]?)(?:pass|ticket|price)/iu;
 
@@ -87,6 +97,20 @@ function isOutOfScopeSource(...values) {
     values.filter((value) => typeof value === "string").join(" "),
   );
 }
+
+/**
+ * リンク追跡で拾う候補かどうか。
+ *
+ * ★**指定URLに貼られたリンクは辿ってよい**が、サイト全体を巡回してはいけない。
+ * 料金・営業・割引に関係しそうなリンクだけに絞る（会社概要やSNSまで
+ * 取ると保存資料が膨らみ、抽出担当が読む量だけ増える）。
+ */
+const FOLLOW_HINT_PATTERN =
+  /料金|価格|리프트|lift|ticket|price|fee|営業|時間|hours|calendar|カレンダー|割引|クーポン|coupon|discount|キャンペーン|campaign|前売|web|オンライン|online|購入|shop|store|イベント|event|レッスン|スクール|school|セット|パック|pack|宿泊|stay|温泉|規約|terms|pdf/iu;
+
+/** 追跡しないリンク（外部サイト・SNS・問い合わせ・画像以外のファイル） */
+const FOLLOW_DENY_PATTERN =
+  /twitter|x\.com|facebook|instagram|youtube|line\.me|tiktok|mailto:|tel:|\.(?:zip|docx?|xlsx?|pptx?|mp4|mov)$|privacy|プライバシー|会社概要|company|recruit|採用|sitemap|問い合わせ|contact/iu;
 
 function parseArgs(argv) {
   const opts = { urls: [], downloads: [] };
@@ -123,6 +147,12 @@ function parseArgs(argv) {
         break;
       case "--accept-season":
         opts.acceptSeason = true;
+        break;
+      case "--follow-links":
+        opts.followLinks = true;
+        break;
+      case "--max-followed":
+        opts.maxFollowed = Number(argv[++i]);
         break;
       default:
         console.error(`不明な引数: ${arg}`);
@@ -515,11 +545,88 @@ async function downloadAsset(context, url, downloadsDir, linkedFrom) {
   return entry;
 }
 
+/**
+ * ページとして開くのではなくファイルとして保存すべきURLか。
+ * PDFや画像を page.goto で開こうとするとダウンロードが始まって失敗する
+ * （リンク追跡の主目的が料金PDFなので、ここを間違えると意味がない）。
+ */
+function isFileAsset(url) {
+  try {
+    return /\.(?:pdf|png|jpe?g|gif|webp|svg)$/i.test(new URL(url).pathname);
+  } catch {
+    return false;
+  }
+}
+
+/** URLを比較用に正規化する（末尾スラッシュ・フラグメント・追跡パラメータを無視） */
+function normalizeUrl(url) {
+  try {
+    const parsed = new URL(url);
+    parsed.hash = "";
+    for (const key of [...parsed.searchParams.keys()]) {
+      if (/^utm_|^fbclid$|^gclid$/i.test(key)) parsed.searchParams.delete(key);
+    }
+    const pathname = parsed.pathname.replace(/\/+$/, "");
+    return `${parsed.origin}${pathname}${parsed.search}`;
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * 保存済みページの links.json から、追加取得する候補を集める。
+ *
+ * ★**同じ公式ドメイン内のリンクを1階層だけ辿る。** 辿った先のリンクは辿らない
+ * （「指定URLに貼られたリンク」までが範囲。再帰するとサイト全巡回になる）。
+ * シーズン券などの収集対象外は除外する。
+ */
+function collectFollowCandidates(seasonDir, manifest, alreadyCaptured, limit) {
+  const candidates = new Map();
+  for (const page of manifest.pages) {
+    if (!page.success) continue;
+    const linksPath = path.join(seasonDir, page.dir, "links.json");
+    if (!fs.existsSync(linksPath)) continue;
+    let links;
+    try {
+      links = JSON.parse(fs.readFileSync(linksPath, "utf8"));
+    } catch {
+      continue;
+    }
+    const parentUrl = page.final_url ?? page.requested_url;
+    let parentHost;
+    try {
+      parentHost = new URL(parentUrl).host;
+    } catch {
+      continue;
+    }
+    for (const link of Array.isArray(links) ? links : []) {
+      const href = link?.href;
+      if (typeof href !== "string" || !/^https?:/i.test(href)) continue;
+      let host;
+      try {
+        host = new URL(href).host;
+      } catch {
+        continue;
+      }
+      // 公式サイトの外へは出ない
+      if (host !== parentHost) continue;
+      const key = normalizeUrl(href);
+      if (alreadyCaptured.has(key) || candidates.has(key)) continue;
+      const text = typeof link.text === "string" ? link.text : "";
+      if (FOLLOW_DENY_PATTERN.test(`${href} ${text}`)) continue;
+      if (isOutOfScopeSource(href, text)) continue;
+      if (!FOLLOW_HINT_PATTERN.test(`${href} ${text}`)) continue;
+      candidates.set(key, { url: href, text, linkedFrom: parentUrl });
+    }
+  }
+  return [...candidates.values()].slice(0, limit);
+}
+
 async function main() {
   const opts = parseArgs(process.argv.slice(2));
   if (!opts.resort || !opts.season) {
     console.error(
-      "使い方: node capture-sources.mjs --resort <id> --season <id> --from-registry [--source-dir dir] [--out dir] [--url URL]... [--download URL]...",
+      "使い方: node capture-sources.mjs --resort <id> --season <id> --from-registry [--source-dir dir] [--out dir] [--url URL]... [--download URL]... [--follow-links] [--max-followed N]",
     );
     process.exit(2);
   }
@@ -555,9 +662,15 @@ async function main() {
     locale: "ja-JP",
   });
 
-  let failures = 0;
-  try {
-    for (const url of urls) {
+  /**
+   * URLを順に取得して manifest に記録する。
+   * リンク追跡でも同じ手順を使うので関数にしてある。
+   */
+  const capturePages = async (targets) => {
+    let failed = 0;
+    for (const target of targets) {
+      const url = typeof target === "string" ? target : target.url;
+      const linkedFrom = typeof target === "string" ? null : target.linkedFrom;
       const { pageId, replaced } = pageIdFor(manifest, url);
       const pageDir = path.join(seasonDir, pageId);
       if (replaced) {
@@ -565,7 +678,7 @@ async function main() {
         fs.rmSync(pageDir, { recursive: true, force: true });
       }
       console.log(
-        `[capture] ${pageId}${replaced ? "（取り直し）" : ""}: ${url}`,
+        `[capture] ${pageId}${replaced ? "（取り直し）" : ""}${linkedFrom ? "（リンク追跡）" : ""}: ${url}`,
       );
       const { metadata, networkCount } = await capturePage(
         context,
@@ -582,10 +695,11 @@ async function main() {
         )
       ) {
         fs.rmSync(pageDir, { recursive: true, force: true });
-        failures++;
         console.error(
           `[capture] 収集対象外のシーズン券ページを破棄しました: ${url}`,
         );
+        // リンク追跡で拾ったものは失敗ではない（除外できたのは正常）
+        if (linkedFrom == null) failed++;
         continue;
       }
       const pageEntry = {
@@ -601,6 +715,10 @@ async function main() {
         network_responses_saved: networkCount,
         tables_extracted: metadata.tables_extracted ?? 0,
         screen_tiles: metadata.screen_tiles ?? 0,
+        // ユーザー指定URLか、そこから辿ったリンクかを区別する。
+        // 抽出担当が sources[].user_specified / linked_from_source_id を書くのに使う
+        user_specified: linkedFrom == null,
+        linked_from: linkedFrom,
       };
       const existingIndex = manifest.pages.findIndex((p) => p.id === pageId);
       if (existingIndex >= 0) {
@@ -609,8 +727,67 @@ async function main() {
         manifest.pages.push(pageEntry);
       }
       if (!metadata.success) {
-        failures++;
+        failed++;
         console.error(`[capture] 失敗: ${url} (${metadata.notes.join(" / ")})`);
+      }
+    }
+    return failed;
+  };
+
+  let failures = 0;
+  try {
+    failures += await capturePages(urls);
+
+    // ★指定URLに貼られたリンクを1階層だけ辿る。
+    // 料金PDFやキャンペーンページが別ページに分かれているサイトが多い
+    if (opts.followLinks) {
+      const captured = new Set(
+        manifest.pages.flatMap((page) =>
+          [page.requested_url, page.final_url]
+            .filter(Boolean)
+            .map((value) => normalizeUrl(value)),
+        ),
+      );
+      const limit = Number.isFinite(opts.maxFollowed)
+        ? Math.max(0, opts.maxFollowed)
+        : DEFAULT_MAX_FOLLOWED;
+      const candidates = collectFollowCandidates(
+        seasonDir,
+        manifest,
+        captured,
+        limit,
+      );
+      console.log("");
+      console.log(
+        `[follow] 指定URLから辿る候補: ${candidates.length}件（上限 ${limit}）`,
+      );
+      for (const candidate of candidates) {
+        console.log(
+          `  - ${candidate.url}${candidate.text ? ` … ${candidate.text}` : ""}`,
+        );
+      }
+      // PDF・画像はページとして開けないのでファイルとして保存する
+      const followPages = candidates.filter(
+        (candidate) => !isFileAsset(candidate.url),
+      );
+      const followAssets = candidates.filter((candidate) =>
+        isFileAsset(candidate.url),
+      );
+      failures += await capturePages(followPages);
+      for (const candidate of followAssets) {
+        console.log(`[download]（リンク追跡） ${candidate.url}`);
+        const entry = await downloadAsset(
+          context,
+          candidate.url,
+          path.join(seasonDir, "downloads"),
+          candidate.linkedFrom,
+        );
+        manifest.downloads.push(entry);
+        if (!entry.success) {
+          console.error(
+            `[download] 失敗: ${candidate.url} (${entry.notes.join(" / ")})`,
+          );
+        }
       }
     }
 

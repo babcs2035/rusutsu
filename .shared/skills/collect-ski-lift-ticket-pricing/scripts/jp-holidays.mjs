@@ -1,7 +1,8 @@
 /**
  * jp-holidays.mjs — 日本の国民の祝日の計算（2022年以降の制度に準拠）
  *
- * lookup-price.mjs のカレンダー解決（day_type: weekday / public_holiday）で
+ * lookup-price.mjs のカレンダー解決（included_day_types の
+ * weekday / public_holiday）で
  * 使う「標準カレンダー」の実装。2021年以前の特例（東京五輪による移動等）は
  * 扱わない。祝日法が改正された場合はこのファイルを更新すること。
  */

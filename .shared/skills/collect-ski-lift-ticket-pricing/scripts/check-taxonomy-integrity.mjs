@@ -69,7 +69,7 @@ const bySignature = new Map();
 for (const groupName of taxonomy.groupNames()) {
   bySignature.set(signature(taxonomy.labels(groupName)), groupName);
 }
-// 群のサブセットとして意図的に一部を除いている enum はここに登録する
+// 群のサブセットとして意図的に一部を除いている enum は、理由付きでここに登録する
 const ALLOWED_SUBSETS = {};
 
 for (const entry of collectEnums(schema)) {
@@ -153,6 +153,13 @@ if (pending.length > 0) {
 }
 
 // --- 4. 定義の整合性 ---
+// excludes_ja の誘導先として妥当なもの: ラベル / 群名 / JSONのセクション名
+const validTargets = new Set([
+  ...taxonomy.groupNames(),
+  ...taxonomy.groupNames().flatMap((g) => taxonomy.labels(g)),
+  ...Object.keys(schema.properties ?? {}),
+]);
+
 for (const groupName of taxonomy.groupNames()) {
   const group = taxonomy.raw.groups[groupName];
   if (!group.description_ja) {
@@ -165,25 +172,82 @@ for (const groupName of taxonomy.groupNames()) {
     if (!def.definition_ja) {
       reporter.error(`${at}/definition_ja`, `定義がありません（status: defined なのに）`);
     }
-    // excludes_ja が「〇〇 → label」形式で他ラベルを指す場合、実在するか確認する
+    // excludes_ja が「〇〇 → 誘導先」形式で他を指す場合、誘導先が実在するか確認する。
+    // 誘導先はラベル名だけでなく、ラベル群名（discount_reasons 等）や
+    // JSONのセクション名（audiences / fees 等）でもよい
+    // （「証明書は fees へ」のように、別ラベルではなく別セクションが正解の場合がある）
     for (const text of def.excludes_ja ?? []) {
       const match = /→\s*([a-z0-9_]+)/.exec(text);
       if (!match) continue;
       const target = match[1];
-      const exists = taxonomy
-        .groupNames()
-        .some((g) => taxonomy.labels(g).includes(target));
-      if (!exists) {
-        reporter.error(
-          `${at}/excludes_ja`,
-          `誘導先のラベル "${target}" が taxonomy に存在しません`,
-        );
-      }
+      if (validTargets.has(target)) continue;
+      reporter.error(
+        `${at}/excludes_ja`,
+        `誘導先 "${target}" が taxonomy のラベル・群・JSONのセクションのいずれにも存在しません`,
+      );
     }
   }
 }
 
-// --- 5. 順序の値が群に存在するか ---
+// --- 5. 廃止したフィールド・群がラベル定義の文章に残っていないか ---
+// 定義の文章はモデルが読む唯一の手引きなので、廃止済みのフィールド名が残ると
+// 「eligibility_conditions に書け」と指示してしまう（実際に2件残っていた）。
+//
+// 「廃止済み」の判定は名前の一覧を手で持つのではなく、
+// **taxonomy のラベル・群にも schema のどのフィールドにも存在しないこと**で行う。
+// moved_elsewhere.target_restrictions のキー（purchase_deadline / membership 等）は
+// 「絞り込み条件として書くな」という案内であって廃止名ではないため、この方法だと
+// 誤検出しない。
+function collectSchemaKeys(node, into = new Set()) {
+  if (!node || typeof node !== "object") return into;
+  for (const key of Object.keys(node.properties ?? {})) into.add(key);
+  for (const value of Object.values(node)) {
+    if (value && typeof value === "object") collectSchemaKeys(value, into);
+  }
+  return into;
+}
+const liveNames = new Set([
+  ...taxonomy.groupNames(),
+  ...taxonomy.groupNames().flatMap((g) => taxonomy.labels(g)),
+  ...collectSchemaKeys(schema),
+]);
+
+const abolishedCandidates = new Set([
+  ...Object.keys(taxonomy.raw.moved_elsewhere ?? {}),
+  // 過去に廃止した名前（moved_elsewhere に残していないもの）
+  "eligibility_conditions",
+  "condition_types",
+  "condition_operators",
+  "product_types",
+  "calendar_types",
+  "forbidden_aliases",
+]);
+abolishedCandidates.delete("target_restrictions");
+const abolished = [...abolishedCandidates].filter((name) => !liveNames.has(name));
+
+const PROSE_FIELDS = ["definition_ja", "decision_rule_ja", "includes_ja", "excludes_ja"];
+for (const groupName of taxonomy.groupNames()) {
+  for (const [labelName, def] of Object.entries(
+    taxonomy.raw.groups[groupName].labels ?? {},
+  )) {
+    const prose = PROSE_FIELDS.flatMap((f) => def[f])
+      .filter((v) => typeof v === "string")
+      .join(" ");
+    for (const name of abolished) {
+      // 識別子として現れた場合だけを検出する。部分一致だと
+      // 後継フィールド名（usable_within → usable_within_ja）を誤検出する
+      if (!new RegExp(`(?<![a-z0-9_])${name}(?![a-z0-9_])`).test(prose)) continue;
+      const hint = taxonomy.raw.moved_elsewhere?.[name];
+      const where = typeof hint === "string" ? `（正しい行き先: ${hint}）` : "";
+      reporter.error(
+        `/groups/${groupName}/labels/${labelName}`,
+        `廃止した "${name}" を定義の文章が参照しています${where}。モデルはこの文章に従うため、廃止済みの書き方を指示してしまいます`,
+      );
+    }
+  }
+}
+
+// --- 6. 順序の値が群に存在するか ---
 for (const [orderName, values] of Object.entries(taxonomy.raw.orders ?? {})) {
   const groupName = orderName.replace(/_order$/, "").replace(/_level$/, "_levels");
   const labels = taxonomy.labels(groupName) ?? taxonomy.labels(`${groupName}s`);

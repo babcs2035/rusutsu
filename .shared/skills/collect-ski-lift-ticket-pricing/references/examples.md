@@ -6,40 +6,65 @@
 
 ## 0. カレンダーの指定方法（日付→料金が引ける形にする）
 
-平日・土日祝は `day_types`（標準カレンダー準拠）、年末年始・特定日は
-公式資料の日付を明示する。優先度は `dates` ＞ `date_ranges` ＞ `day_types`。
+平日・土日祝は `included_day_types`（標準カレンダー準拠）、年末年始・特定日は
+公式資料の日付を明示する。料金区分を移す日は、元区分のexcludeと適用先区分の
+includeを必ずペアで記録する。暗黙のカレンダー優先順位はない。
 
 ```json
 {
-  "calendars": [
-    { "id": "cal-weekday", "name_ja": "平日", "calendar_type": "weekday",
-      "day_types": ["weekday"], "source_refs": ["src-page-001"] },
-    { "id": "cal-holiday", "name_ja": "土日祝", "calendar_type": "weekend_holiday",
-      "day_types": ["saturday", "sunday", "public_holiday"], "source_refs": ["src-page-001"] },
-    { "id": "cal-yearend", "name_ja": "年末年始", "calendar_type": "year_end_new_year",
-      "day_types": ["year_end_new_year"],
-      "date_ranges": [{ "start": "2025-12-28", "end": "2026-01-03" }],
-      "official_label_ja": "年末年始（12/28〜1/3）", "source_refs": ["src-page-001"] },
-    { "id": "cal-ladies", "name_ja": "レディースデー対象日", "calendar_type": "special_day",
-      "dates": ["2026-01-08", "2026-01-15"], "source_refs": ["src-page-001"] }
-  ],
+  "id": "cal-weekday",
+  "included_day_types": ["weekday"],
+  "excluded_date_ranges": [
+    { "start": "2025-12-29", "end": "2026-01-03" }
+  ]
+}
+{
+  "id": "cal-holiday",
+  "included_day_types": ["saturday", "sunday", "public_holiday"],
+  "included_date_ranges": [
+    { "start": "2025-12-29", "end": "2026-01-03" }
+  ]
+}
+```
+
+`kids_day` / `special_day` 等の割引日は通常料金から除外せず、両方を候補に残す。
+
+```json
+{
   "offers": [
     {
-      "id": "offer-adult-day",
-      "price": {
-        "mode": "date_table",
-        "date_table": [
-          { "calendar_id": "cal-weekday", "amount": 6000, "source_refs": ["src-page-001"] },
-          { "calendar_id": "cal-holiday", "amount": 6500, "source_refs": ["src-page-001"] },
-          { "calendar_id": "cal-yearend", "amount": 7000, "source_refs": ["src-page-001"] }
-        ]
-      }
+      "id": "offer-adult-day-weekday",
+      "official_label_ja": "リフト1日券（おとな・平日）",
+      "audience_ids": ["adult"],
+      "calendar_ids": ["cal-weekday"],
+      "price": { "currency": "JPY", "amount": 6000 },
+      "source_refs": ["src-page-001"]
+    },
+    {
+      "id": "offer-adult-day-holiday",
+      "official_label_ja": "リフト1日券（おとな・土日祝）",
+      "audience_ids": ["adult"],
+      "calendar_ids": ["cal-holiday"],
+      "price": { "currency": "JPY", "amount": 6500 },
+      "source_refs": ["src-page-001"]
+    },
+    {
+      "id": "offer-adult-day-yearend",
+      "official_label_ja": "リフト1日券（おとな・年末年始）",
+      "audience_ids": ["adult"],
+      "calendar_ids": ["cal-yearend"],
+      "price": { "currency": "JPY", "amount": 7000 },
+      "source_refs": ["src-page-001"]
     }
   ]
 }
 ```
 
-日付を指定して料金を引く（1/1は祝日だが年末年始の明示期間が優先され7,000円）:
+★**1 offer = 1 金額。** 日付で料金が変わるならカレンダーごとに offer を分ける
+（`price.date_table` は廃止した）。
+
+日付を指定して料金を引く（1/1は通常の祝日区分から除外され、年末年始料金の
+明示期間に含まれるため7,000円）:
 
 ```bash
 node scripts/lookup-price.mjs tickets/yukigaoka/2025-2026.json \
@@ -47,38 +72,40 @@ node scripts/lookup-price.mjs tickets/yukigaoka/2025-2026.json \
 # 祝日・平日の判定は scripts/jp-holidays.mjs（振替休日・国民の休日込み）
 ```
 
-公式が独自定義（例:「祝日は平日料金」）の場合のみ、`dates` /
-`excluded_dates` の明示指定で標準カレンダーを上書きし、公式表記を
+公式が独自定義（例:「祝日は平日料金」）の場合は、休日側の
+`excluded_dates` / `excluded_date_ranges` と平日側の
+`included_dates` / `included_date_ranges` をペアで記録し、公式表記を
 `notes_ja` に写す。
 
 ## 1. 地域割引（道民割）
 
-`geographic_areas` に地域を定義し、offerの `eligibility_conditions` で参照する。
-「県民の大人」のようなaudienceは作らない。
+**地域を構造化しない。** 公式表記と誰が対象かを `target_qualification` の文章で残す
+（照会の入力に居住地が無いので、都道府県／市町村や居住／在勤／在学を分類しても
+料金計算に効かない）。「県民の大人」のようなaudienceは作らない
+（audienceは料金表の行であり、地域はそれと直交する）。
+証明書は絞り込み条件ではなく持ち物なので `requirements` へ。
 
 ```json
 {
-  "geographic_areas": [
-    { "id": "hokkaido", "name_ja": "北海道", "level": "prefecture", "parent_id": null }
-  ],
   "offers": [
     {
       "id": "offer-adult-day-dominwari",
       "name_ja": "大人1日券（道民割）",
       "official_label_ja": "道民割引1日券",
-      "offer_type": "discounted",
       "discount_reasons": ["local_resident"],
-      "eligibility_conditions": [
+      "target_qualification": {
+        "official_label_ja": "北海道にお住まいの方",
+        "description_ja": "北海道に住所がある方",
+        "source_refs": ["src-page-001"]
+      },
+      "requirements": [
         {
-          "type": "area_relationship",
-          "relationships": ["resident"],
-          "area_ids": ["hokkaido"],
-          "match": "any",
-          "proof_types": ["address_proof"],
+          "description_ja": "住所を確認できるものの提示が必要",
+          "proof_ja": "住所を確認できるもの",
           "source_refs": ["src-page-001"]
         }
       ],
-      "price": { "mode": "fixed", "currency": "JPY", "amount": 5500 }
+      "price": { "currency": "JPY", "amount": 5500 }
     }
   ]
 }
@@ -92,26 +119,30 @@ node scripts/lookup-price.mjs tickets/yukigaoka/2025-2026.json \
 ## 2. WEB購入と前売り（online_purchase / advance_purchase と purchase_deadline）
 
 複合ラベル（`web_advance_discount` 等）を新設せず、配列で表す。
-**当日購入可か・期限があるかで分類が変わり、`purchase_deadline` は
-オンライン券に必須**。
+
+`purchase_deadline` は `same_day_allowed`（当日買えるか）/
+`days_before_use`（何日前までか・1日単位）/ `deadline_date`（固定期限）/
+`official_text_ja`（公式表記）。**当日内の分単位の期限（「15分前まで」等）は
+構造化せず `official_text_ja` にだけ書く**（1日単位の判定に効かないため）。
+**窓口・券売機だけで買う券には書かない**（「当日その場で買う」以外の選択肢が
+無いため情報にならない）。**購入URLがある券には必須**（「今日これを買えるのか」は
+実際に問われる）。
 
 前日までの期限がある前売り（`advance_purchase` を付ける）:
 
 ```json
 {
   "official_label_ja": "WEB前売スペシャル",
-  "offer_type": "discounted",
   "discount_reasons": ["online_purchase", "advance_purchase"],
   "channel_ids": ["web-shop"],
   "sales_period": { "start": "2025-11-01", "end": "2026-03-28", "deadline_ja": "利用日前日23:59まで" },
   "purchase_deadline": {
-    "mode": "relative",
+    "same_day_allowed": false,
     "days_before_use": 1,
-    "time_of_day": "23:59",
     "official_text_ja": "利用日前日23:59まで",
     "source_refs": ["src-page-webshop"]
   },
-  "price": { "mode": "fixed", "currency": "JPY", "amount": 5800 }
+  "price": { "currency": "JPY", "amount": 5800 }
 }
 ```
 
@@ -120,16 +151,26 @@ node scripts/lookup-price.mjs tickets/yukigaoka/2025-2026.json \
 ```json
 {
   "discount_reasons": ["online_purchase"],
-  "purchase_deadline": { "mode": "same_day_allowed", "official_text_ja": "当日購入OK" }
+  "purchase_deadline": { "same_day_allowed": true, "days_before_use": 0, "official_text_ja": "当日購入OK" }
 }
 ```
 
-当日内の期限（利用15分前まで等。これも `online_purchase` のみ）:
+当日内の期限（利用15分前まで等。これも `online_purchase` のみ）。
+**分単位の期限は公式表記にだけ書く**:
 
 ```json
 {
   "discount_reasons": ["online_purchase"],
-  "purchase_deadline": { "mode": "relative", "minutes_before_use": 15, "official_text_ja": "リフト利用開始15分前まで" }
+  "purchase_deadline": { "same_day_allowed": true, "days_before_use": 0, "official_text_ja": "リフト利用開始15分前まで" }
+}
+```
+
+固定期限（「1/31まで販売」）:
+
+```json
+{
+  "discount_reasons": ["online_purchase", "advance_purchase"],
+  "purchase_deadline": { "same_day_allowed": false, "deadline_date": "2026-01-31", "official_text_ja": "2026年1月31日まで販売" }
 }
 ```
 
@@ -137,11 +178,11 @@ node scripts/lookup-price.mjs tickets/yukigaoka/2025-2026.json \
 
 ```json
 {
-  "purchase_deadline": { "mode": "not_stated", "official_text_ja": null, "notes_ja": "公式ページに購入期限の記載なし" }
+  "purchase_deadline": { "same_day_allowed": null, "official_text_ja": null, "notes_ja": "公式ページに購入期限の記載なし" }
 }
 ```
 
-`web-shop` channel は `channel_type: "online"` かつ `url` を持つこと。
+`web-shop` channel は購入ページの `url` を持つこと（購入場所の分類ラベルは持たない）。
 
 ## 3. レディースデーと子供デー
 
@@ -152,24 +193,20 @@ node scripts/lookup-price.mjs tickets/yukigaoka/2025-2026.json \
 {
   "calendars": [
     { "id": "cal-ladies", "name_ja": "レディースデー対象日", "calendar_type": "special_day",
-      "dates": ["2026-01-08", "2026-01-15"], "source_refs": ["src-page-001"] }
+      "included_dates": ["2026-01-08", "2026-01-15"], "source_refs": ["src-page-001"] }
   ],
   "offers": [
     {
       "id": "offer-ladies-day",
       "official_label_ja": "レディースデー",
-      "offer_type": "discounted",
-      "discount_reasons": ["ladies_day"],
+      "discount_reasons": ["special_day"],
       "calendar_ids": ["cal-ladies"],
-      "eligibility_conditions": [
-        {
-          "type": "other",
-          "official_label_ja": "レディースデー",
-          "description_ja": "女性を対象とした割引（taxonomyに性別条件が無いためother）",
-          "taxonomy_review_required": true,
-          "source_refs": ["src-page-001"]
-        }
-      ]
+      "audience_ids": ["adult"],
+      "target_genders": {
+        "genders": ["female"],
+        "official_label_ja": "レディースデー",
+        "source_refs": ["src-page-001"]
+      }
     }
   ]
 }
@@ -178,20 +215,26 @@ node scripts/lookup-price.mjs tickets/yukigaoka/2025-2026.json \
 ## 4. party rule（大人1人につき未就学児2人無料）
 
 個人向けofferで無理に表現せず、`party_rules` に構造化する。
+**ルールの種類を表す `rule_type` は持たない**（合計金額は `price_effect` と
+`per_qualifying_count` だけで決まり、種類ラベルは表示にしか使われていなかった）。
+
+★**「大人1名につき」の大人は資格の判定であって、このルールで買う人ではない。**
+比率指定 (`per_qualifying_count`) を持つcomponentより前のcomponentは資格側とみなし、
+人数だけ数えて消費しない（消費すると「ペア券×2 ＋ 未就学児無料」が成立しなくなる）。
+資格側の `price_effect` は `null`（＝通常料金のまま別に購入）にする。
 
 ```json
 {
   "id": "rule-preschool-free",
   "name_ja": "大人同伴の未就学児無料",
   "official_label_ja": "未就学児無料（保護者同伴）",
-  "rule_type": "companion_free",
   "description_ja": "リフト券購入の大人1名につき未就学児2名までリフト券無料",
   "components": [
     {
       "role_ja": "大人（リフト券購入者）",
       "audience_ids": ["adult"],
       "min_count": 1,
-      "price_effect": { "type": "other", "notes_ja": "通常料金を支払う" }
+      "price_effect": null
     },
     {
       "role_ja": "未就学児",
@@ -200,8 +243,7 @@ node scripts/lookup-price.mjs tickets/yukigaoka/2025-2026.json \
       "price_effect": { "type": "free", "amount": 0 }
     }
   ],
-  "source_refs": ["src-page-001"],
-  "confidence": "high"
+  "source_refs": ["src-page-001"]
 }
 ```
 
@@ -211,9 +253,7 @@ node scripts/lookup-price.mjs tickets/yukigaoka/2025-2026.json \
 
 ```json
 {
-  "offer_type": "dynamic",
   "price": {
-    "mode": "live_dynamic",
     "currency": "JPY",
     "amount": null,
     "live_lookup_required": true,
@@ -235,21 +275,17 @@ node scripts/lookup-price.mjs tickets/yukigaoka/2025-2026.json \
   "sources": [
     {
       "id": "src-img-night",
-      "type": "image",
       "url": "https://example.com/img/night-price.png",
       "path": "downloads/night-price.png",
       "linked_from_source_id": "src-page-001",
       "user_specified": false,
-      "reading_confidence": "medium",
       "notes_ja": "ナイター料金表の画像。シニア欄の金額が低解像度で判読不能"
     }
   ],
   "offers": [
     {
       "id": "offer-night-senior",
-      "offer_type": "standard",
-      "price": { "mode": "unknown", "amount": null },
-      "confidence": "unknown",
+      "price": { "amount": null, "notes_ja": "画像の該当セルが判読不能のため金額未確定。" },
       "source_refs": ["src-img-night"]
     }
   ],
@@ -282,24 +318,33 @@ node scripts/lookup-price.mjs tickets/yukigaoka/2025-2026.json \
 }
 ```
 
-## 8. 複数スキー場の共通券（shared_pass）
+## 8. 単独券と共通券の両方があるスキー場
 
-どのスキー場と共通かを必ず明記し、**相手スキー場側のJSONにも同じ共通券を
-記載する**。
+★**苗場とかぐらのように、そのスキー場だけの券と隣接スキー場との共通券の
+両方が売られている**場合がある。**`shared_with_resorts` が空なら単独券、
+1件以上あれば共通券**（「単独券か共通券か」を表す分類ラベルは持たない）。
 
 ```json
 {
   "products": [
     {
+      "id": "day-pass",
+      "name_ja": "リフト1日券",
+      "validity": { "mode": "calendar_day", "days": 1 },
+      "shared_with_resorts": [],
+      "source_refs": ["src-page-001"]
+    },
+    {
       "id": "two-resort-pass",
-      "name_ja": "A・B共通1日券",
+      "name_ja": "2山共通1日券",
+      "official_label_ja": "苗場・かぐら共通1日券",
       "validity": { "mode": "calendar_day", "days": 1 },
       "shared_with_resorts": [
         {
-          "resort_id": "resort-b",
-          "name_ja": "Bスキー場",
-          "official_label_ja": "2山共通1日券",
-          "notes_ja": "Bスキー場側のJSONにも同じ共通券を記載する。",
+          "resort_id": "kagura",
+          "name_ja": "かぐらスキー場",
+          "official_label_ja": "苗場・かぐら共通",
+          "notes_ja": "共通券のため、かぐら側のJSONにも同じ共通券を記載すること。",
           "source_refs": ["src-page-001"]
         }
       ],
@@ -308,6 +353,20 @@ node scripts/lookup-price.mjs tickets/yukigaoka/2025-2026.json \
   ]
 }
 ```
+
+- `resort_id` は `SkiResort.id` と一致させる（**画面から相手スキー場へ辿るために必須**。
+  マスタに無いスキー場なら null にして `human_review_required` に記録する）
+- **相手スキー場側のJSONにも同じ共通券を記載する**（片方だけに書かない）
+- `validity` は利用単位のまま（共通1日券なら `calendar_day` / `days: 1`）
+
+照会時は単独券／共通券で絞り込める:
+
+```bash
+node scripts/lookup-price.mjs <tickets.json> --date 2026-01-14 --scope single
+node scripts/lookup-price.mjs <tickets.json> --date 2026-01-14 --scope shared
+```
+
+画面では「このスキー場のみ / 共通券（かぐらスキー場）」の切り替えに使う。
 
 ## 9. 昼食付き・温泉付きなどのセット券（package + included_items）
 
@@ -319,7 +378,7 @@ node scripts/lookup-price.mjs tickets/yukigaoka/2025-2026.json \
       "name_ja": "1日券＋ランチパック",
       "validity": { "mode": "calendar_day", "days": 1 },
       "included_items": [
-        { "type": "lunch", "name_ja": "場内レストラン食事券",
+        { "type": "meal", "name_ja": "場内レストラン食事券",
           "official_label_ja": "ランチ券1,000円分", "value_amount": 1000,
           "source_refs": ["src-page-001"] }
       ],
@@ -327,14 +386,14 @@ node scripts/lookup-price.mjs tickets/yukigaoka/2025-2026.json \
     }
   ],
   "offers": [
-    { "id": "offer-lunch-pack-adult", "offer_type": "package",
+    { "id": "offer-lunch-pack-adult",
       "product_id": "day-pass-lunch",
-      "price": { "mode": "fixed", "currency": "JPY", "amount": 7500 } }
+      "price": { "currency": "JPY", "amount": 7500 } }
   ]
 }
 ```
 
-温泉付きなら `"type": "onsen"`、レンタル付きなら `"type": "rental"` など
+温泉・風呂付きなら `"type": "bath"`、レンタル付きなら `"type": "rental"` など
 （taxonomyの `included_item_types` 参照）。
 
 ## 10. 学生区分（大学院生を含むかを明示する）

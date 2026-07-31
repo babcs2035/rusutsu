@@ -6,8 +6,9 @@ import {
   REVIEW_CATEGORY_LABELS,
   type ResortReviewCategory,
   type ResortReviewData,
+  type ReviewArticleFile,
   type ReviewCategoryId,
-  type ReviewScore,
+  type ReviewDetailFile,
 } from "@/features/reviews/types";
 
 const DATA_ROOT = path.join(process.cwd(), "src/private/data");
@@ -56,6 +57,11 @@ const readTextIfExists = async (filePath: string) => {
   }
 };
 
+const readJsonIfExists = async <T>(filePath: string): Promise<T | null> => {
+  const raw = await readTextIfExists(filePath);
+  return raw ? (JSON.parse(raw) as T) : null;
+};
+
 const stripMarkdown = (value: string) =>
   value
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
@@ -64,70 +70,38 @@ const stripMarkdown = (value: string) =>
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 
-const parseLabeledValue = (article: string, labels: string[]) => {
-  const lines = article.split("\n");
-  const startIndex = lines.findIndex(line =>
-    labels.some(label =>
-      new RegExp(`^\\s*-\\s*\\*\\*${label}[：:]?\\*\\*`).test(line),
-    ),
-  );
-  if (startIndex < 0) return null;
-
-  const startLine = lines[startIndex] ?? "";
-  const labelStart = startLine.indexOf("**");
-  const labelEnd = startLine.indexOf("**", labelStart + 2);
-  const content: string[] = [
-    labelEnd >= 0 ? startLine.slice(labelEnd + 2) : startLine,
-  ];
-  for (let index = startIndex + 1; index < lines.length; index += 1) {
-    const line = lines[index] ?? "";
-    if (/^\s*-\s*\*\*/.test(line)) break;
-    content.push(line);
-  }
-  return stripMarkdown(content.join("\n"));
-};
-
-const parseCourses = (article: string) => {
-  const lines = article.split("\n");
-  const startIndex = lines.findIndex(line =>
-    /^\s*-\s*\*\*コース[：:]?\*\*/.test(line),
-  );
-  if (startIndex < 0) return [];
-
-  const courses: string[] = [];
-  for (let index = startIndex + 1; index < lines.length; index += 1) {
-    const line = lines[index] ?? "";
-    if (/^\s*-\s*\*\*/.test(line)) break;
-    if (!/^\s+-\s+/.test(line)) continue;
-    courses.push(stripMarkdown(line.replace(/^\s*-\s*/, "")));
-  }
-  return courses;
-};
-
-const parseReviewCategory = async (
-  resortDirectory: string,
+const parseReviewCategory = (
   categoryId: ReviewCategoryId,
-): Promise<ResortReviewCategory> => {
-  const categoryDirectory = path.join(resortDirectory, categoryId);
-  const [article, detail] = await Promise.all([
-    readTextIfExists(path.join(categoryDirectory, "article.md")),
-    readTextIfExists(path.join(categoryDirectory, "detail.md")),
-  ]);
-  const score =
-    (article?.match(/評価[：:]\s*([◎○△])/u)?.[1] as ReviewScore | undefined) ??
-    null;
+  detail: ReviewDetailFile | null,
+  article: ReviewArticleFile | null,
+): ResortReviewCategory => {
+  const articleCategory = article?.[categoryId];
+  const detailCategory = detail?.[categoryId];
+  const good = articleCategory?.good.trim() || null;
+  const concern = articleCategory?.bad.trim() || null;
+  const courses =
+    articleCategory?.courses.map(
+      course => `${course.name}：${course.description}`,
+    ) ?? [];
+  const articleText = [
+    good,
+    concern,
+    ...(articleCategory?.courses.map(
+      course => `${course.name}。${course.description}`,
+    ) ?? []),
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 
   return {
     id: categoryId,
     label: REVIEW_CATEGORY_LABELS[categoryId],
-    score,
-    good: article ? parseLabeledValue(article, ["良い点", "強み"]) : null,
-    concern: article
-      ? parseLabeledValue(article, ["気になる点", "弱み"])
-      : null,
-    courses: article ? parseCourses(article) : [],
-    article: article ? stripMarkdown(article.replace(/^##.*$/m, "")) : null,
-    hasResearchDetail: Boolean(detail),
+    score: articleCategory?.score ?? null,
+    good,
+    concern,
+    courses,
+    article: articleText ? stripMarkdown(articleText) : null,
+    hasResearchDetail: Boolean(detailCategory),
   };
 };
 
@@ -135,25 +109,24 @@ const loadReviewDirectory = async (
   sourceSlug: string,
 ): Promise<ResortReviewData> => {
   const resortDirectory = path.join(REVIEWS_ROOT, sourceSlug);
-  const [fullArticle, legacyArticle, categories] = await Promise.all([
-    readTextIfExists(path.join(resortDirectory, "full_article.md")),
-    readTextIfExists(path.join(resortDirectory, "article.md")),
-    Promise.all(
-      REVIEW_CATEGORY_IDS.map(categoryId =>
-        parseReviewCategory(resortDirectory, categoryId),
-      ),
+  const [detail, article] = await Promise.all([
+    readJsonIfExists<ReviewDetailFile>(
+      path.join(resortDirectory, "detail.json"),
+    ),
+    readJsonIfExists<ReviewArticleFile>(
+      path.join(resortDirectory, "article.json"),
     ),
   ]);
-  const summaryArticle = fullArticle ?? legacyArticle;
+  const categories = REVIEW_CATEGORY_IDS.map(categoryId =>
+    parseReviewCategory(categoryId, detail, article),
+  );
   const dataIssues: string[] = [];
 
-  if (!fullArticle && legacyArticle) {
-    dataIssues.push(
-      "full_article.md がないため、互換用の article.md を概要に使用しています。",
-    );
+  if (!detail) {
+    dataIssues.push("調査詳細（detail.json）がありません。");
   }
-  if (!summaryArticle) {
-    dataIssues.push("概要記事（full_article.md / article.md）がありません。");
+  if (!article?.full) {
+    dataIssues.push("概要記事（article.json の full）がありません。");
   }
   const missingScores = categories.filter(category => !category.score);
   if (missingScores.length > 0) {
@@ -163,15 +136,25 @@ const loadReviewDirectory = async (
         .join("、")}`,
     );
   }
+  const warningCount = detail
+    ? REVIEW_CATEGORY_IDS.reduce((count, categoryId) => {
+        const category = detail[categoryId];
+        return (
+          count +
+          [...category.good, ...category.bad, ...category.courses].filter(
+            item => item.warn,
+          ).length
+        );
+      }, 0)
+    : 0;
+  if (warningCount > 0) {
+    dataIssues.push(`人間による確認が必要な調査項目: ${warningCount}件`);
+  }
 
   return {
     sourceSlug,
-    fullArticle: summaryArticle ? stripMarkdown(summaryArticle) : null,
-    articleSource: fullArticle
-      ? "full_article"
-      : legacyArticle
-        ? "legacy_article"
-        : null,
+    fullArticle: article?.full ? stripMarkdown(article.full) : null,
+    articleSource: article ? "article_json" : null,
     categories,
     dataIssues,
   };
@@ -221,20 +204,7 @@ const loadLiftTicketData = async () => {
       const parsed = JSON.parse(
         await fs.readFile(path.join(directoryPath, fileName), "utf8"),
       ) as LiftTicketData;
-      const compactData: LiftTicketData = {
-        schema_version: parsed.schema_version,
-        resort: parsed.resort,
-        season: parsed.season,
-        audiences: parsed.audiences,
-        calendars: parsed.calendars,
-        products: parsed.products,
-        channels: parsed.channels,
-        offers: parsed.offers,
-        party_rules: parsed.party_rules,
-        fees: parsed.fees,
-        calculation_policy: parsed.calculation_policy,
-        data_quality: parsed.data_quality,
-      };
+      const compactData = toClientLiftTicketData(parsed);
       // リフト券データの resort.id は SkiResort.id と同じ値を使う
       const resortId = parsed.resort.id;
       const seasons = byResortId.get(resortId) ?? [];
@@ -247,6 +217,32 @@ const loadLiftTicketData = async () => {
   }
 
   return byResortId;
+};
+
+/**
+ * リフト券データをクライアントへ渡す形にする。
+ *
+ * ★**必要なフィールドを列挙するのではなく、渡さないものだけを落とす。**
+ * 列挙する形にしていたため `sources`（出典）と `operating_hours`（営業時間）を
+ * 渡し忘れ、料金表の出典番号が常に空・「1日」の指定が解決できない状態になっていた。
+ * フィールドを足すたびに渡し忘れる構造だったのをやめる。
+ */
+const toClientLiftTicketData = (parsed: LiftTicketData): LiftTicketData => {
+  const { sources, data_quality, ...rest } = parsed;
+  return {
+    ...rest,
+    // 保存資料のパスは画面から辿れないので落とす（URLとタイトルだけ渡す）
+    sources: (sources ?? [])
+      .filter(source => Boolean(source.url))
+      .map(source => ({
+        id: source.id,
+        url: source.url,
+        page_title: source.page_title ?? null,
+      })),
+    // unresolved_questions / human_review_required / illegible_items は
+    // 収集担当への申し送りなので画面に出さない＝クライアントへも送らない
+    data_quality: { status: data_quality.status },
+  };
 };
 
 const loadReviewData = async () => {

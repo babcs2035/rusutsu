@@ -31,15 +31,15 @@
 | 子供の年齢範囲 | 「小学生=6〜12歳」と補完 | `school_levels` のみ設定、年齢は null |
 | シニアの下限年齢 | 「60歳以上」と仮定 | 年齢 null ＋ 未解決事項 |
 | 未就学児無料の条件 | 「保護者同伴で無料」と仮定 | 資料の表記どおりに。同伴条件が無ければ書かない |
-| 平日・休日の定義 | 標準カレンダーと**異なる**独自定義を見落とす | 基本は標準カレンダー準拠の `day_types`（weekday=月〜金の非祝日）でよい。公式が独自定義（「祝日は平日料金」等）をしている場合のみ `dates`/`excluded_dates` で上書きし公式表記をnotesへ |
+| 平日・休日の定義 | 標準カレンダーと**異なる**独自定義を見落とす | 基本は標準カレンダー準拠の `included_day_types`（weekday=月〜金の非祝日）でよい。公式が独自定義（「祝日は平日料金」等）をしている場合は、元区分のexcludeと適用先区分のincludeを必ずペアで記録し、公式表記をnotesへ |
 | 年末年始の日付 | 「12/29〜1/3」と仮定 | 公式に日付があればdate_range、無ければcalendarを作らず未解決事項 |
 | 年末年始の料金区分 | 「普通は休日料金」と仮定 | **公式に明記が無ければ未解決事項へ。** `weekday` は年末年始を飲み込むので、放置すると安すぎる料金を出す（taxonomyチェックが未定義を検出する） |
 | 「大学生」の範囲 | 大学院生・短大・専門を含むと仮定 | 明記があるschool_levelsのみ（`graduate` 等）。不明なら `university` のみ＋未解決事項 |
-| Web購入の期限 | 「期限なし」「前日まで」と仮定 | `purchase_deadline` に記載どおり記録。記載が無ければ mode `not_stated` |
+| Web購入の期限 | 「期限なし」「前日まで」と仮定 | `purchase_deadline` に記載どおり記録。記載が無ければ `same_day_allowed: null` |
 | 共通券の利用範囲 | 「隣のスキー場でも使える」と仮定 | `shared_with_resorts` は公式記載のみ。対象スキー場が不明なら未解決事項 |
 | Web価格 | 窓口価格から割引額を計算 | 公式に金額が無ければ `derived_discount` か `unknown` |
 | 割引の併用可否 | 「併用不可が普通」と仮定 | `stacking: "unknown"` |
-| 必要な証明書 | 「住所確認できるもの」と仮定 | `proof_types` は公式記載のみ。無ければ空 |
+| 必要な証明書 | 「住所確認できるもの」と仮定 | `proof_ja` は公式表記のみ。記載が無ければ null |
 | 利用可能エリア | 「全山共通のはず」と仮定 | `area_ids` 空 ＋ 必要なら未解決事項 |
 | 券の有効時間 | 「4時間券=4時間」以外の補完 | `validity` は公式記載のみ、無ければ `unknown` |
 | ICカード費用 | 「500円デポジット」と仮定 | 記載が無ければ fees に入れない ＋ 未解決事項 |
@@ -105,9 +105,9 @@
    料金PDF）: 「ファミリー割引10%」の近くに小さく
    **「割引はシーズン券のみになります」** と書かれており、これを読み落とすと
    **対象外の割引を通常券の割引として記録してしまう**
-3. 画像料金表は元画像・取得元URL・読み取り結果・確信度
-   （`reading_confidence`）・判読できない箇所を記録する。判読できない数字を
-   隣接料金・過去料金から推測しない（`unknown` ＋ `illegible_items`）
+3. 画像料金表は元画像・取得元URL・読み取り結果を残す。判読できない箇所は
+   `illegible_items` と `human_review_required` に確認場所まで記録し、数字を
+   隣接料金・過去料金から推測しない
 4. 行と列の取り違え防止のため、抽出後に「1セル=1金額」の対応を最低2箇所、
    画像上の位置で再確認する
 5. 10ページを超えるPDFは `pages` を分けて読む
@@ -144,12 +144,20 @@
 1. **営業期間**（`season.start_date` / `end_date`）
 2. **通常営業の時間帯** — リフト別に書かれている場合はリフト単位で記録し、
    滑走可能な時間帯は運行するリフトの和集合で決める
-3. **ナイター営業** — 対象日を `calendars` の `dates` に列挙する
-   （「毎週土曜」なら `day_types: ["saturday"]`）。**ナイター時に運休する
+3. **ナイター営業** — 対象日を `calendars` の `included_dates` に列挙する
+   （「毎週土曜」なら `included_day_types: ["saturday"]`）。**ナイター時に運休する
    リフトを `operating: false` で明記する**
 4. **定休日** — `hours_type: "closed"` の `operating_hours` として記録する。
-   「毎週火曜定休（12/30は営業）」は `day_types: ["tuesday"]` ＋
+   「毎週火曜定休（12/30は営業）」は `included_day_types: ["tuesday"]` ＋
    `excluded_dates: ["2025-12-30"]`
+
+料金区分へ曜日以外の日を追加するときは、適用先calendarの `included_dates`
+（個別日）または `included_date_ranges`（連続期間）へ追加し、元の料金区分の
+`excluded_dates` または `excluded_date_ranges` にも同じ日・期間を記録する。
+**料金区分を移すinclude/excludeは必ずペア**であり、暗黙の優先順位に依存しない。
+
+ただし、`kids_day` / `special_day` 等の割引日は通常料金に重ねる候補なので、
+通常区分から除外しない。通常料金と割引料金を両方残して安い方を選べるようにする。
 
 **営業していない日に料金を出さないために必要な情報である。** 定休日を落とすと、
 休業日に料金を提示してしまう。
@@ -157,27 +165,62 @@
 営業時間の記載が資料に無い場合は推測せず `unresolved_questions` へ記録する。
 ただしその場合、**1日券が何時間滑れるかが確定しない**ことを明記する。
 
-## 条件（eligibility_conditions）の書き方
+## 対象者の絞り込み（target_genders / target_qualification）
 
-**他のセクションで表せるものは条件にしない**（同じことを2箇所に書かせない）:
+| フィールド | 何を表すか | 必須 |
+| --- | --- | --- |
+| `target_genders` | レディースデー・メンズデー等 | `genders`, `official_label_ja`, `source_refs` |
+| `target_qualification` | 道民割・県民割・市民割、宿泊者割、会員割、出身者割 | `official_label_ja`, `description_ja`, `source_refs` |
+
+**性別だけを構造化する。** 性別は「女性か否か」で機械的に判定でき、
+料金表の行（大人／子供／シニア）と直交するため独立した軸になる。
+
+**資格（地域・宿泊・会員）は分類せず、公式表記と誰が対象かを文章で残す。**
+かつて地域を `geographic_areas`（階層）＋ `relationships`（居住／在勤／在学）＋
+`geographic_levels`（都道府県／市町村）で構造化していたが、料金照会の入力は
+日付とパーティ構成だけで**居住地を受け取らない**ため、どれだけ細かく分類しても
+料金計算に効かず、判断の揺れだけが増えた。「資格が必要だから代表にしない」の
+判定は `discount_reasons` の `applies_to` が担っている。
+
+**`target_qualification` を省略して「絞り込みが無いoffer」にしてはいけない。**
+対象外の人に安い金額を提示することになる。設定されたofferは代表にならず、
+「もっと安いものがある」側に回る。
+
+**他のセクションで表せるものはここに書かない**（同じことを2箇所に書かせない）:
 
 | 表したいこと | 書く場所 |
 | --- | --- |
 | 年齢・学校区分 | `audiences`（`age_min` / `age_max` / `school_levels`） |
 | 対象日 | `calendars` |
-| 利用時間帯 | `products.validity`（`fixed_time_window`） |
+| 利用時間帯 | `products.validity`（fixed_time_window） |
 | 購入期限 | `offers.purchase_deadline` |
 | 人数で料金が変わるもの | `party_rules` |
+| 会員・支払方法・事前購入の資格 | `discount_reasons` ＋ `offers.requirements` の自由文 |
+| 証明書の提示 | `offers.requirements[].proof_ja`（持ち物であって絞り込みではない） |
 
-条件に使えるのは9種類（`gender` / `area_relationship` / `proof_required` /
-`companion` / `membership` / `payment_method` / `prior_purchase` /
-`unknown`）。上表の概念を条件に書くと**どこに書くべきかを案内するエラー**になる。
+行き先は `taxonomy.json` の `moved_elsewhere.target_restrictions` が正本。
 
-証明書（`proof_types`）は**公式に書かれているものだけ**を記録する。
-「住所を確認できるもの」としか書かれていなければ `address_proof` のままにし、
-運転免許証・保険証などに具体化してはいけない。
-「証明書不要」は**明記されている場合のみ** `none_required` を使う
-（書いていない＝不要、と解釈しない）。
+## 1 offer = 1 金額
+
+★**日付によって料金が変わる場合は、カレンダーごとに offer を分ける。**
+
+```
+✗ offer「大人1日券」1件に平日6,000円/土日6,500円/年末年始7,000円を持たせる
+✓ offer「大人1日券（平日）」6,000円
+  offer「大人1日券（土日祝）」6,500円
+  offer「大人1日券（年末年始）」7,000円
+```
+
+かつて `price.date_table` で1つの offer に日付別の金額表を持たせられたが、
+**同じ事実を2通りで書けてしまい**（実データにも両方の書き方が混在した）、
+日付マッチングが `calendar_ids` と `date_table` の行で二重実装になっていた。
+料金表を組む処理でも「金額の読み方」が2通り必要になり、実際に date_table 側を
+読み忘れて表から料金が欠落した。
+
+- **差額指定の割引（「通常料金から1,000円引き」）も、基準 offer が分かれているなら
+  同じ数に分ける**（`base_offer_id` は単一の offer を指す）
+- 日付で料金が変わらない券種は分けない。「子供は全期間4,300円」なら
+  カレンダー1つで offer 1件（分けると同じ金額が並んで「日付で変わる」と誤読される）
 
 ## ラベル付けの規則
 
@@ -186,7 +229,8 @@
 
 ★**`discount_reasons` は `applies_to` で「誰に適用できるか」を宣言している。**
 `qualified_only`（会員・宿泊者・地域住民・クーポン等）の割引には
-**必ず `eligibility_conditions` で資格の条件を書く。** 書き忘れると
+**必ず `target_qualification` か `target_genders` で資格を書く**
+（対象者が `audiences` 側で絞られていれば可）**。** 書き忘れると
 「誰でも使える割引」として扱われ、資格の無い人に安い金額を提示してしまう。
 `party_composition`（家族割・団体割）は `party_rules` に人数条件を構造化する。
 
@@ -195,61 +239,97 @@
 - Web割引・オンライン割引・ネット割はすべて `online_purchase`
 - **当日購入可か、期限があるかで分類を分ける**:
   - 当日でも買えるWeb券 → `online_purchase` のみ
-    （`purchase_deadline.mode: "same_day_allowed"`）
+    （`purchase_deadline.same_day_allowed: true`）
   - 前日以前の購入期限があるWeb券（前売り）→ `online_purchase` ＋
-    `advance_purchase`（`purchase_deadline.mode: "relative"` で
-    `days_before_use` を記録。「前日23:59まで」= days 1 + time_of_day）
+    `advance_purchase`（`purchase_deadline.same_day_allowed: false` ＋
+    **`days_before_use` に何日前までかを1日単位で記録**。「前日23:59まで」なら
+    `days_before_use: 1` ＋ `official_text_ja: "利用日前日23:59まで"`）
   - 当日内の期限（「利用15分前まで」等）→ `online_purchase` のみ＋
-    `purchase_deadline.mode: "relative"` で `minutes_before_use` を記録
+    `purchase_deadline.same_day_allowed: true` ＋ `days_before_use: 0`。
+    **分単位の期限は `official_text_ja` にだけ書く**（1日単位の判定に効かないため
+    構造化しない）
   - `online_purchase` のofferでは `purchase_deadline` を省略しない。
-    資料に期限の記載が無ければ `mode: "not_stated"` を明示する
-    （「期限がない」と推測して `same_day_allowed` にしない）
-- 道民割・県民割・市民割・町民割はすべて `local_resident` ＋ `area_relationship`
-  条件（`relationships`, `area_ids`）で構造化する。notes_jaに書くだけでは検証が落ちる。
+    資料に期限の記載が無ければ `same_day_allowed: null` を明示する
+    （「期限がない」と推測して `true` にしない）。
+    逆に**窓口・券売機だけで買う券には書かない**
+- 道民割・県民割・市民割・町民割はすべて `local_resident` ＋ `target_qualification`。
+  notes_jaに書くだけでは検証が落ちる。
   **`local_worker` / `local_student` というラベルは無い**（表記揺れとして拒否される）。
-  在勤だけ・在学だけが対象の場合も `local_resident` を使い、
-  `relationships: ["employed"]` / `["enrolled"]` で区別する
-- 居住（resident）・在勤（employed）・在学（enrolled）を区別する。
-  「〇〇市にお住まい・お勤め・通学の方」→ relationships に3つ並べ、`match: "any"`
+  在勤だけ・在学だけが対象の場合も `local_resident` を使う
+- **居住・在勤・在学をラベルで区別しない。** 公式表記をそのまま
+  `official_label_ja` に写す（「〇〇市にお住まい・お勤め・通学の方」）
 - **早割も `advance_purchase` に含める**（`early_bird` というラベルは無い）。
   「いつまでに買う必要があるか」はラベルではなく構造で表す:
   利用日基準の期限 → `purchase_deadline`、販売期間の締切 → `sales_period`。
   販売期間が終了した割引は照会結果に出ない（`lookup-price.mjs` が除外する）
-- 「地元の方」など対象地域が公式に特定できない場合は area を推測せず
-  `unknown` 条件＋未解決事項
+- 「地元の方」など対象地域が公式に特定できない場合は地域を推測せず、
+  公式表記をそのまま `target_qualification` に写し未解決事項に記録する
 - **レディースデー・メンズデー・シニアデー・こどもデー等に専用ラベルは無い。**
   すべて `special_day` ＋ 対象者条件で表す（専用ラベルは無限に増えるため）:
   - 対象日 → `calendars`（必須）
-  - 性別の限定 → `eligibility_conditions`（`type: "gender"`, `genders: ["female"]`）
+  - 性別の限定 → `target_genders`（`genders: ["female"]`）。
+    **性別を `audiences` に入れてはいけない**（audiences は互いに排他的な料金表の行で、
+    性別はそれと直交するため、混ぜると女性が通常料金を買えなくなる）
   - 年齢・学校区分の限定 → `audience_ids`
+- 公式に対象者区分が何も書かれていないofferは `audience_ids` を空にせず、
+  `is_default: true` の人物区分（通常は大人）へ紐付ける。「全区分共通」と
+  明記されている場合だけ、明記された全区分へ紐付ける
+- 障がい者本人・公式に対象となる介護者の料金は専用audienceを作り、
+  `is_disability_qualified: true` と、専用料金が無い場合に使う通常人物区分の
+  `base_audience_id` を設定する。該当offerの `audience_ids` は専用audienceへ
+  紐付け、障がいの種類・介護者条件・必要証明は公式表記のまま残す。
+  人物区分そのものの料金は `discount_reasons: []` とする
+- 「20才」等の年齢名に対して「2005年4月2日〜2006年4月1日生まれ」等の
+  年度単位の生年月日範囲が条件となる割引は、年齢を `audience_ids` で検索可能にし、
+  公式名称の年齢を `target_qualification.nominal_age`、公式の生年月日範囲を
+  `target_qualification.official_label_ja` にそのまま保存する。
+  年齢検索では割引料金を適用し、生年月日範囲と付随条件を警告表示する。
+  `nominal_age` は実年齢の厳密判定には使わない
 - 特定日の子供料金は通常の子供料金と**別offer**にし、calendarで日付を限定する
-- **`special_day` は対象日の明示が必須。** `day_type: "special"` 単独では
-  日付に一致しないので `dates` / `date_ranges` / 曜日（`day_types`）を持つ
+- **`special_day` は対象日の明示が必須。**
+  `included_day_types: ["special"]` 単独では
+  日付に一致しないので `included_dates` / `included_date_ranges` / 曜日（`included_day_types`）を持つ
   calendarを紐づける
 - **家族割（`family`）・団体割（`group`）で人数条件により料金が決まる場合は
   `party_rules` に構造化する。** discount_reasons だけでは料金を算出できない。
   `lookup-price.mjs --party "adult:2,elementary:2"` が party_rules を適用して
   合計を計算し、個別購入の合計と比べて安い方を出す
-- 保証金（返金あり）と発行手数料（返金なし）を混同しない。どちらも fees へ
+- ★**fees に載せるのは「返ってこない追加負担」だけ。** 発行手数料・システム利用料・
+  配送料など。**返金される保証金（ICカードデポジット）は記録しない**
+  （返却すれば戻るので実質の負担ではない）。紛失時の再発行手数料も収集対象外。
+  券の提示価格に保証金が含まれている場合は、**price を保証金を差し引いた実質負担で
+  記録し**、公式提示額と差し引いた金額を `price.notes_ja` に書く
+- **日により価格が変わる券を固定価格として保存してはいけない。**
+  `amount: null` ＋ `live_lookup_required: true` にし、取得時点で見えていた額は
+  `observed_amount` / `observed_at` に記録する
+  （`amount` に書くと「その日の確定料金」として提示されてしまう）。
+  **`price` に「どういう料金か」を表す分類フィールドは無い** — どのフィールドを
+  埋めたかで決まる（`price_modes` というラベル群は廃止した）
 - **券の分類は `validity` だけで表す**（`product_type` というフィールドは無い）。
   セット券・共通券・ナイター・エリア限定は専用フィールドが担う
   （1つのラベルに押し込むと「1日券である」情報が失われ、1日券の検索から漏れる）:
-  - 昼食付き・温泉付き → `offer_type: "package"` ＋ product の `included_items`。
+  - 昼食付き・温泉付き → product の `included_items` に何が付くかを構造化する
+    （`offer_type: "package"` というラベルは無い。「パックかどうか」は
+    `included_items` が空かどうかで決まる）。
     `validity` は利用単位のまま（ランチ付き1日券なら `calendar_day` / `days: 1`）
-  - 複数スキー場の共通券 → `shared_with_resorts` で相手スキー場を明記し、
+  - 複数スキー場の共通券 → `shared_with_resorts` に相手スキー場を明記する。
+    ★**苗場とかぐらのように単独券と共通券の両方を売るスキー場がある。**
+    `resort_id` は `SkiResort.id` と一致させる（画面から相手へ辿るため必須。
+    マスタに無ければ null ＋ human_review_required）。
     **関係する全スキー場のJSONに同じ共通券を記載する**（片方だけに書かない）
   - ナイター券 → `validity` を `fixed_time_window`（17:00〜21:00等）で表す。
-    **`covers_hours_types` は設定しない**（時間帯から判定できるため）
+    `covers_hours_types: ["night"]` も設定し、この券自体がナイター営業区分の
+    券であることを明示する（営業時間との突き合わせで推測しない）
   - ナイター込み1日券 → `covers_hours_types: ["regular","night"]`。
-    **`covers_hours_types` は1日券・複数日券にのみ設定する**
-    （時間券に付けると validity と二重になり矛盾しうる）
+    **`covers_hours_types` は1日券・複数日券・時間帯固定券にのみ設定する**。
+    `fixed_time_window` では1区分だけを必須で設定する
   - 初心者エリア限定 → `area_ids`
   - 観光用ゴンドラ券・歩行者用乗車券 → **収集対象外**（記録しない）。
     滑走できない券はこのデータの用途外
 - 「半日券」は所要時間で `hours_from_first_use` か `fixed_time_window` にする
   （「半日」は時間数が確定しないため専用ラベルを作らない）
 - 共通券であってもシーズン券は対象外。利用日数が明示された日券・複数日券だけを
-  `shared_pass` として記録する
+  収集し、共通相手を `shared_with_resorts` に記録する
 
 ## 監査チェックリスト（Stage 2）
 
@@ -271,7 +351,7 @@
 - [ ] 公式名称（official_label_ja）と標準ラベルを混同していない
 - [ ] Web割引が `online_purchase` へ統一されている
 - [ ] 事前購入が `advance_purchase` として分離されている
-- [ ] 県民割・市民割が geographic_areas ＋ area_relationship で構造化されている
+- [ ] 県民割・市民割に target_qualification（公式表記＋誰が対象か）がある
 - [ ] 居住・在勤・在学が区別されている
 - [ ] レディースデーに日付条件と対象者条件がある
 - [ ] 子供デーが通常子供料金と区別されている
@@ -284,6 +364,13 @@
 - [ ] 定休日が `hours_type: "closed"` として記録され、例外営業日が
       `excluded_dates` に入っている
 - [ ] 基準となる人物区分に `is_default: true` が付いている（「大人」など）
+- [ ] 対象者区分の記載がないofferが `is_default: true` の人物区分に紐づき、
+      `audience_ids` が空になっていない
+- [ ] 障がい者向け料金に専用audience、`is_disability_qualified: true`、
+      `base_audience_id` があり、専用料金が無い券種は通常料金へ戻せる
+- [ ] 条件付き料金は現在適用される料金より安い候補だけを表示できる
+- [ ] 年齢名と年度単位の生年月日範囲を併記した割引が、年齢検索で適用でき、
+      公式の生年月日範囲を警告表示できる形で保存されている
 - [ ] `school_levels` の列挙は「上が学校区分で閉じている」場合のみ
       （「中学生以上」「高校生以上」は社会人を含むので列挙せず `is_default` で表す）
 - [ ] 年齢が学校区分から推測されていない（公式表記に数値がある場合のみ age を入れる）
@@ -302,6 +389,8 @@
       同じ共通券が記載されている（未作成なら human_review_required に記録）
 - [ ] 昼食・温泉等のセット内容が `included_items` に構造化されている
 - [ ] 平日・休日のcalendarが標準カレンダー準拠でよいか（公式の独自定義が
-      ないか）を確認し、年末年始・特定日は公式の明示日付になっている
+      ないか）を確認する。年末年始など料金区分を移す日は、元区分のexcludeと
+      適用先区分のincludeが同じ日・期間でペアになっている
+- [ ] `kids_day` / `special_day` 等の割引日は通常区分から除外していない
 - [ ] `lookup-price.mjs` で平日・祝日・年末年始・特定日の料金が
       実際に引けることを確認した

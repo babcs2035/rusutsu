@@ -23,7 +23,8 @@
  *     3. hours_pool（25時間券のように複数日へ分けられる券）と days>=2 の券は
  *        1日券の候補にしない
  *   --with-night を付けると、covers_hours_types に night を含む1日券を優先し、
- *   無ければ「1日券 ＋ ナイター券」の合算を出す。ナイター券が資料に無い場合は
+ *   無ければ「1日券 ＋ ナイター単独券（covers_hours_types が ["night"] の
+ *   fixed_time_window）」の合算を出す。ナイター単独券が資料に無い場合は
  *   その旨を明示する（推測で料金を作らない）。
  *
  * 代表とその他の分け方:
@@ -36,19 +37,28 @@
  *   （UIで「もっと安いものがあります」と出すため）。
  *
  * カレンダー解決規則（references/data-model.md「calendars」参照）:
- *   - day_type weekday      = 月〜金かつ祝日でない（標準カレンダー準拠）
- *   - day_type saturday / sunday / public_holiday = 標準カレンダー準拠
+ *   - included_day_types の weekday = 月〜金かつ祝日でない（標準カレンダー準拠）
+ *   - saturday / sunday / public_holiday = 標準カレンダー準拠
  *     （祝日は jp-holidays.mjs で計算。振替休日・国民の休日を含む）
- *   - day_type year_end_new_year / special = 単独では日付に一致しない。
- *     必ず公式資料の date_ranges / dates で指定する
- *   - 優先度: dates(明示日) > date_ranges > day_types
- *     （例: 1/1 は「年末年始」の date_range が「土日祝」の day_type に勝つ）
- *   - excluded_dates に含まれる日は不一致
+ *   - year_end_new_year / special = 単独では日付に一致しない。
+ *     必ず公式資料の included_date_ranges / included_dates で指定する
+ *   - 平日・休日など既存区分から別区分へ日を移す場合は、
+ *     元区分の excluded_dates / excluded_date_ranges と、適用先区分の
+ *     included_dates / included_date_ranges を必ずペアで記録する
+ *   - 一致したofferはすべて候補に残し、暗黙のカレンダー優先順位は設けない
+ *   - excluded_dates / excluded_date_ranges に含まれる日は不一致
  *
  * シナリオテスト（SKILL.md 手順9）にもこのスクリプトを使う。
  */
 import { dayInfo } from "./jp-holidays.mjs";
-import { loadTaxonomy, parseArgs, readJson } from "./_lib.mjs";
+import {
+  hasTargetRestriction,
+  loadTaxonomy,
+  parseArgs,
+  priceModeOf,
+  readJson,
+  targetLabels,
+} from "./_lib.mjs";
 
 // 割引が「誰に適用できるか」はラベルの性質なので taxonomy が正本。
 // 条件の有無から推測すると、条件を書き忘れた割引が「誰でも使える」扱いになる
@@ -65,17 +75,144 @@ const { files, opts } = parseArgs(process.argv.slice(2), [
   "party",
   "product",
   "channel",
+  "today",
+  "scope",
 ]);
 
 if (files.length !== 1 || !/^\d{4}-\d{2}-\d{2}$/.test(opts.date ?? "")) {
   console.error(
-    "使い方: node lookup-price.mjs <data.json> --date YYYY-MM-DD [--audience id] [--age n] [--school level] [--hours n] [--from HH:MM] [--night] [--product id] [--channel id] [--json]",
+    "使い方: node lookup-price.mjs <data.json> --date YYYY-MM-DD [--today YYYY-MM-DD] [--scope single|shared] [--audience id] [--age n] [--school level] [--hours n] [--from HH:MM] [--night] [--product id] [--channel id] [--json]",
   );
+  process.exit(2);
+}
+
+if (opts.today != null && !/^\d{4}-\d{2}-\d{2}$/.test(opts.today)) {
+  console.error("--today は YYYY-MM-DD 形式で指定してください");
+  process.exit(2);
+}
+
+if (opts.scope != null && !["single", "shared", "any"].includes(opts.scope)) {
+  console.error("--scope は single（単独券）/ shared（共通券）/ any のいずれかです");
   process.exit(2);
 }
 
 const data = readJson(files[0]);
 const info = dayInfo(opts.date);
+const audienceById = new Map(
+  (data.audiences ?? []).map((audience) => [audience.id, audience]),
+);
+const requestedAge = opts.age == null ? null : Number(opts.age);
+if (
+  requestedAge != null &&
+  (!Number.isInteger(requestedAge) || requestedAge < 0 || requestedAge > 120)
+) {
+  console.error("--age は 0〜120 の整数で指定してください");
+  process.exit(2);
+}
+const requestedSchool = opts.school ?? null;
+const requestedAudience = opts.audience
+  ? audienceById.get(opts.audience)
+  : null;
+
+/**
+ * audience が未指定なら、学校区分、公式の年齢範囲、デフォルト区分の順で解決する。
+ * 学校区分から年齢、年齢から学校区分は推測しない。
+ */
+function inferredAudienceIds() {
+  if (opts.audience) return [];
+  const audiences = [...audienceById.values()].filter(
+    (audience) => audience.is_disability_qualified !== true,
+  );
+  if (requestedSchool) {
+    const schoolMatches = audiences.filter((audience) =>
+      (audience.school_levels ?? []).includes(requestedSchool),
+    );
+    if (schoolMatches.length > 0) {
+      return schoolMatches.map((audience) => audience.id);
+    }
+  }
+  if (requestedAge != null) {
+    const ageMatches = audiences.filter(
+      (audience) =>
+        (audience.age_min != null || audience.age_max != null) &&
+        (audience.age_min == null || requestedAge >= audience.age_min) &&
+        (audience.age_max == null || requestedAge <= audience.age_max),
+    );
+    if (ageMatches.length > 0) {
+      return ageMatches.map((audience) => audience.id);
+    }
+  }
+  const defaultAudience = audiences.find(
+    (audience) => audience.is_default === true,
+  );
+  return defaultAudience ? [defaultAudience.id] : [];
+}
+
+const acceptedAudienceIds = new Set(
+  [
+    opts.audience,
+    requestedAudience?.is_disability_qualified === true
+      ? requestedAudience.base_audience_id
+      : null,
+    ...inferredAudienceIds(),
+  ].filter(Boolean),
+);
+
+const hasTextValue = (v) => typeof v === "string" && v.trim().length > 0;
+
+/** 日付文字列の差（日数）。タイムゾーンに依存させないためUTC正午で比較する */
+function daysBetween(from, to) {
+  const at = (text) => Date.parse(`${text}T12:00:00Z`);
+  return Math.round((at(to) - at(from)) / 86400000);
+}
+
+// 「今日」は既定でシステム日付。テストや将来日の検証では --today で固定する
+const today = opts.today ?? new Date().toISOString().slice(0, 10);
+const daysUntilUse = daysBetween(today, opts.date);
+
+/**
+ * 照会日 (today) 時点でその券をまだ買えるか判定する。
+ *
+ * 「8/10に行く。今日は7/27だから14日前。前日までの前売りはまだ買える」という
+ * 判断に答えるためのもの。判定できない場合は null を返す（買えないと断定しない）。
+ */
+function purchasabilityOf(offer) {
+  const deadline = offer.purchase_deadline;
+  if (!deadline) return null; // 現地購入のみ等。期限の概念がない
+  if (daysUntilUse < 0) {
+    return { purchasable: false, reason_ja: "利用日が過去です" };
+  }
+  if (hasTextValue(deadline.deadline_date) && today > deadline.deadline_date) {
+    return {
+      purchasable: false,
+      reason_ja: `販売期限 ${deadline.deadline_date} を過ぎています`,
+    };
+  }
+  const days = deadline.days_before_use;
+  if (days != null && daysUntilUse < days) {
+    return {
+      purchasable: false,
+      reason_ja: `利用日の${days}日前までに購入が必要ですが、あと${daysUntilUse}日しかありません`,
+    };
+  }
+  if (deadline.same_day_allowed === false && daysUntilUse < 1) {
+    return { purchasable: false, reason_ja: "当日は購入できません" };
+  }
+  if (deadline.same_day_allowed == null) {
+    return { purchasable: null, reason_ja: "購入期限が公式資料に記載されていません" };
+  }
+  if (days != null && days >= 1) {
+    const margin = daysUntilUse - days;
+    return {
+      purchasable: true,
+      reason_ja:
+        margin === 0
+          ? "今日が購入期限です"
+          : `あと${margin}日以内に購入すれば買えます`,
+    };
+  }
+  return { purchasable: true, reason_ja: "当日でも購入できます" };
+}
 const calendarById = new Map((data.calendars ?? []).map((c) => [c.id, c]));
 const offerById = new Map((data.offers ?? []).map((o) => [o.id, o]));
 const channelById = new Map((data.channels ?? []).map((c) => [c.id, c]));
@@ -109,18 +246,28 @@ function dayTypeMatches(dayType) {
   }
 }
 
-// 一致レベル: 3=明示日付, 2=date_range, 1=day_type, null=不一致
-function calendarMatchLevel(cal) {
-  if (!cal) return null;
-  if ((cal.excluded_dates ?? []).includes(opts.date)) return null;
-  if ((cal.dates ?? []).includes(opts.date)) return 3;
+function calendarMatches(cal) {
+  if (!cal) return false;
+  if ((cal.excluded_dates ?? []).includes(opts.date)) return false;
   if (
-    (cal.date_ranges ?? []).some((r) => r.start <= opts.date && opts.date <= r.end)
+    (cal.excluded_date_ranges ?? []).some(
+      (r) => r.start <= opts.date && opts.date <= r.end,
+    )
   ) {
-    return 2;
+    return false;
   }
-  if ((cal.day_types ?? []).some(dayTypeMatches)) return 1;
-  return null;
+  return (
+    (cal.included_dates ?? []).includes(opts.date) ||
+    (cal.included_date_ranges ?? []).some((r) => r.start <= opts.date && opts.date <= r.end)
+    || (cal.included_day_types ?? []).some(dayTypeMatches)
+  );
+}
+
+function offerMatchesCalendar(offer) {
+  if (!periodContains(offer.use_period)) return false;
+  const calendarIds = offer.calendar_ids ?? [];
+  return calendarIds.length === 0 ||
+    calendarIds.some((id) => calendarMatches(calendarById.get(id)));
 }
 
 function periodContains(period) {
@@ -132,45 +279,19 @@ function periodContains(period) {
 
 function resolvePrice(offer, depth = 0) {
   const p = offer.price ?? {};
-  const result = { mode: p.mode ?? "unknown", amount: null };
+  const mode = priceModeOf(p);
+  const result = { mode, amount: null };
   if (depth > 5) {
     result.note_ja = "derived_discountの参照が深すぎます（循環の可能性）";
     return result;
   }
-  switch (p.mode) {
+  switch (mode) {
     case "fixed":
       result.amount = p.amount;
       break;
     case "free":
       result.amount = 0;
       break;
-    case "date_table": {
-      let best = null;
-      for (const row of p.date_table ?? []) {
-        let level = null;
-        if ((row.dates ?? []).includes(opts.date)) level = 5;
-        else if (
-          typeof row.start === "string" &&
-          typeof row.end === "string" &&
-          row.start <= opts.date &&
-          opts.date <= row.end
-        ) {
-          level = 4;
-        } else if (row.calendar_id) {
-          level = calendarMatchLevel(calendarById.get(row.calendar_id));
-        }
-        if (level != null && (best == null || level > best.level)) {
-          best = { level, row };
-        }
-      }
-      if (best) {
-        result.amount = best.row.amount;
-        result.matched_calendar_id = best.row.calendar_id ?? null;
-      } else {
-        result.note_ja = "この日に該当する料金行がありません";
-      }
-      break;
-    }
     case "derived_discount": {
       const baseOffer = offerById.get(p.base_offer_id);
       const baseResult = baseOffer ? resolvePrice(baseOffer, depth + 1) : null;
@@ -180,13 +301,19 @@ function resolvePrice(offer, depth = 0) {
         break;
       }
       result.base_amount = baseResult.amount;
-      result.amount =
-        p.discount.type === "amount"
-          ? Math.max(0, baseResult.amount - p.discount.value)
-          : Math.max(
-              0,
-              Math.round((baseResult.amount * (100 - p.discount.value)) / 100),
-            );
+      if (p.discount?.amount != null) {
+        result.amount = Math.max(0, baseResult.amount - p.discount.amount);
+      } else if (p.discount?.percent != null) {
+        // 端数処理が公式に書かれていない場合の丸めは推測になるため、
+        // 計算値であることを明示する（実際の請求額とずれる可能性がある）
+        result.amount = Math.max(
+          0,
+          Math.round((baseResult.amount * (100 - p.discount.percent)) / 100),
+        );
+        result.note_ja = `${p.discount.percent}%引きの計算値（端数処理は公式表記を確認してください）`;
+      } else {
+        result.note_ja = "割引額が記録されていません";
+      }
       break;
     }
     case "live_dynamic":
@@ -226,12 +353,9 @@ function resolveOperating() {
 
   const matched = [];
   for (const entry of data.operating_hours ?? []) {
-    let best = null;
-    for (const id of entry.calendar_ids ?? []) {
-      const level = calendarMatchLevel(calendarById.get(id));
-      if (level != null && (best == null || level > best)) best = level;
+    if ((entry.calendar_ids ?? []).some((id) => calendarMatches(calendarById.get(id)))) {
+      matched.push({ entry });
     }
-    if (best != null) matched.push({ entry, level: best });
   }
   if (matched.length === 0) {
     return {
@@ -377,18 +501,108 @@ function coversNight(product) {
   return covers.includes("night");
 }
 
+/**
+ * その券がナイター単独券か。
+ *
+ * ナイター券は1日券ではなく fixed_time_window（17:00〜21:00等）で表されるが、
+ * covers_hours_types は fixed_time_window にも設定できる（この券自体がどの
+ * 営業区分の時間帯かを表す）。"night" を含み "regular" を含まない券を
+ * ナイター単独券とみなす（1日券は "regular" も含むのでここでは弾く）。
+ */
+function isNightOnlyTicket(product) {
+  const covers = product?.covers_hours_types;
+  return (
+    Array.isArray(covers) && covers.includes("night") && !covers.includes("regular")
+  );
+}
+
+/**
+ * 制約を人間向けの1文にする。UIの「もっと安いものがある」の理由に出るので、
+ * ラベル名 (advance_purchase_required 等) をそのまま見せてはいけない
+ */
+function describeConstraint(constraint) {
+  switch (constraint.type) {
+    case "time_window_fixed":
+      return `利用時間帯が固定（${constraint.description_ja}）— 開始時刻を指定すれば選べます`;
+    case "qualification_required":
+      return `資格が必要: ${constraint.description_ja} — 条件を満たす場合のみ`;
+    case "eligibility_required":
+      return `対象者が限定されている: ${constraint.description_ja}`;
+    case "advance_purchase_required": {
+      if (constraint.purchasability_ja != null) {
+        return `事前購入が必要（${constraint.description_ja}）— ${constraint.purchasability_ja}`;
+      }
+      return `事前購入が必要（${constraint.description_ja}）— 当日は買えません`;
+    }
+    default:
+      return constraint.description_ja ?? constraint.type;
+  }
+}
+
+/** 年齢名と年度生まれ条件を組み合わせたキャンペーンの検索年齢。 */
+function nominalAgeOf(offer) {
+  const explicit = offer.target_qualification?.nominal_age;
+  if (Number.isInteger(explicit)) return explicit;
+
+  // 旧データとの後方互換。新規抽出では nominal_age を必ず保存する。
+  const label = [offer.name_ja, offer.official_label_ja]
+    .filter(Boolean)
+    .join(" ");
+  const match = label.match(/(\d{1,3})\s*(?:才|歳)/);
+  return match ? Number(match[1]) : null;
+}
+
+function ageGenerationNominalAgeOf(offer) {
+  const nominalAge = nominalAgeOf(offer);
+  if (nominalAge == null) return null;
+  const qualification = [
+    offer.target_qualification?.official_label_ja,
+    offer.target_qualification?.description_ja,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  return /\d{4}年\d{1,2}月\d{1,2}日.+\d{4}年\d{1,2}月\d{1,2}日.+生まれ/u.test(
+    qualification,
+  )
+    ? nominalAge
+    : null;
+}
+
+function isAgeGenerationOffer(offer) {
+  return (
+    requestedAge != null &&
+    ageGenerationNominalAgeOf(offer) === requestedAge
+  );
+}
+
+function ageGenerationWarnings(offer) {
+  if (!isAgeGenerationOffer(offer)) return [];
+  return [
+    offer.target_qualification?.official_label_ja,
+    ...(offer.requirements ?? []).map(
+      (requirement) =>
+        requirement.description_ja ??
+        requirement.proof_ja ??
+        null,
+    ),
+  ].filter(Boolean);
+}
+
 /** 「滑る自由度を狭める制約」を列挙する。代表を選ぶときに使う */
 function constraintsOf(offer, product, skiable) {
   const list = [];
+  const selectedDisabilityOffer =
+    requestedAudience?.is_disability_qualified === true &&
+    (offer.audience_ids ?? []).includes(requestedAudience.id);
+  const selectedAgeGenerationOffer = isAgeGenerationOffer(offer);
   // 資格が必要な割引（会員・宿泊者・地域住民・クーポン等）は、
   // 資格の無い人に代表として出してはいけない。
   // ラベルの applies_to で判定する（条件の書き忘れに影響されない）
   for (const reason of offer.discount_reasons ?? []) {
     if (taxonomy.appliesTo("discount_reasons", reason) !== "qualified_only") continue;
+    if (selectedDisabilityOffer || selectedAgeGenerationOffer) continue;
     const label = taxonomy.label("discount_reasons", reason);
-    const conditionText = (offer.eligibility_conditions ?? [])
-      .map((c) => c.official_label_ja ?? c.description_ja ?? c.type)
-      .join(", ");
+    const conditionText = targetLabels(offer).join(", ");
     list.push({
       type: "qualification_required",
       reason,
@@ -399,48 +613,90 @@ function constraintsOf(offer, product, skiable) {
     const label = product?.validity?.notes_ja ?? `${product?.validity?.start_time}〜${product?.validity?.end_time}のみ`;
     list.push({ type: "time_window_fixed", description_ja: label });
   }
-  if ((offer.eligibility_conditions ?? []).length > 0) {
+  // 資格が必要な割引理由が既に説明済みなら、同じ事実を2回並べない
+  // （道民割で「資格が必要: 地域割引（…）」と「対象者限定: …」が両方出ていた）
+  const alreadyExplained = list.some((c) => c.type === "qualification_required");
+  if (
+    hasTargetRestriction(offer) &&
+    !alreadyExplained &&
+    !selectedDisabilityOffer &&
+    !selectedAgeGenerationOffer
+  ) {
     list.push({
       type: "eligibility_required",
-      description_ja: (offer.eligibility_conditions ?? [])
-        .map((c) => c.official_label_ja ?? c.description_ja ?? c.type)
-        .join(", "),
+      description_ja: targetLabels(offer).join(", "),
     });
   }
+  // 前日以前に買う必要がある券は、今日決める人の代表にはしない。
+  // ただし「あと何日あるからまだ買える」なら候補に出せるので判定結果も持たせる
   const deadline = offer.purchase_deadline ?? {};
-  const advance =
-    deadline.mode === "absolute" ||
-    (deadline.mode === "relative" && (deadline.days_before_use ?? 0) >= 1);
-  if (advance) {
+  if (deadline.same_day_allowed === false) {
+    const purchasability = purchasabilityOf(offer);
     list.push({
       type: "advance_purchase_required",
       description_ja: deadline.official_text_ja ?? "事前購入が必要",
+      purchasable: purchasability?.purchasable ?? null,
+      purchasability_ja: purchasability?.reason_ja ?? null,
     });
   }
   return list;
 }
 
-const offers = [];
+/**
+ * その券が共通券か（他のスキー場でも使えるか）。
+ *
+ * 苗場とかぐらのように単独券と共通券の両方が売られているスキー場があるため、
+ * 画面では「単独券か共通券か」を選ばせる。**分類ラベルは持たない** —
+ * shared_with_resorts が空かどうかで決まる。
+ */
+function isSharedPass(product) {
+  return (product?.shared_with_resorts ?? []).length > 0;
+}
+
+/** 共通券の相手スキー場（画面から辿るため id と名称を返す） */
+function sharedResortsOf(product) {
+  return (product?.shared_with_resorts ?? []).map((sw) => ({
+    resort_id: sw.resort_id ?? null,
+    name_ja: sw.name_ja,
+  }));
+}
+
+const scope = opts.scope ?? "any";
+
+let offers = [];
 for (const offer of data.offers ?? []) {
-  if (opts.audience && (offer.audience_ids ?? []).length > 0 && !offer.audience_ids.includes(opts.audience)) continue;
+  if (
+    !opts.party &&
+    acceptedAudienceIds.size > 0 &&
+    (offer.audience_ids ?? []).length > 0 &&
+    !(offer.audience_ids ?? []).some((id) => acceptedAudienceIds.has(id))
+  ) continue;
+  const campaignAge = ageGenerationNominalAgeOf(offer);
+  if (
+    requestedAge != null &&
+    campaignAge != null &&
+    campaignAge !== requestedAge
+  ) continue;
   if (opts.product && offer.product_id !== opts.product) continue;
+  // 単独券／共通券の絞り込み
+  if (scope !== "any") {
+    const shared = isSharedPass(productById.get(offer.product_id));
+    if (scope === "single" && shared) continue;
+    if (scope === "shared" && !shared) continue;
+  }
   if (opts.channel && (offer.channel_ids ?? []).length > 0 && !offer.channel_ids.includes(opts.channel)) continue;
-  if (!periodContains(offer.use_period)) continue;
   // 販売期間が終了した割引（早割など）は候補に出さない。
   // 「数日前に調べる」使い方では既に買えないため
   if (!periodContains(offer.sales_period)) continue;
-  const calendarIds = offer.calendar_ids ?? [];
+  if (!offerMatchesCalendar(offer)) continue;
   let matchedCalendar = null;
-  if (calendarIds.length > 0) {
-    let bestLevel = null;
-    for (const id of calendarIds) {
-      const level = calendarMatchLevel(calendarById.get(id));
-      if (level != null && (bestLevel == null || level > bestLevel)) {
-        bestLevel = level;
+  if ((offer.calendar_ids ?? []).length > 0) {
+    for (const id of offer.calendar_ids ?? []) {
+      if (calendarMatches(calendarById.get(id))) {
         matchedCalendar = id;
+        break;
       }
     }
-    if (bestLevel == null) continue;
   }
 
   const product = productById.get(offer.product_id);
@@ -455,12 +711,13 @@ for (const offer of data.offers ?? []) {
     audience_ids_raw: offer.audience_ids ?? [],
     name_ja: offer.name_ja,
     official_label_ja: offer.official_label_ja,
-    offer_type: offer.offer_type,
     discount_reasons: offer.discount_reasons ?? [],
     product_id: offer.product_id,
     product_label_ja: product?.official_label_ja ?? product?.name_ja ?? null,
     category_ja: categoryOf(product),
     validity_mode: product?.validity?.mode ?? null,
+    shared_pass: isSharedPass(product),
+    shared_with_resorts: sharedResortsOf(product),
     skiable_hours: skiable.hours,
     skiable_window:
       skiable.start != null && skiable.end != null
@@ -478,11 +735,12 @@ for (const offer of data.offers ?? []) {
       url: channelById.get(id)?.url ?? null,
     })),
     purchase_deadline: offer.purchase_deadline ?? null,
-    conditions: (offer.eligibility_conditions ?? []).map(
-      (c) => c.official_label_ja ?? c.description_ja ?? c.type,
-    ),
+    purchasability: purchasabilityOf(offer),
+    conditions: targetLabels(offer),
+    requirements: offer.requirements ?? [],
+    age_generation_match: isAgeGenerationOffer(offer),
+    warnings_ja: ageGenerationWarnings(offer),
     price: resolvePrice(offer),
-    confidence: offer.confidence,
   });
 }
 
@@ -508,27 +766,86 @@ function cheaperThan(representative, reasons = new Map()) {
   for (const o of offers) {
     if (o.id === representative.id) continue;
     if (o.price.amount == null || o.price.amount >= representative.price.amount) continue;
+    // 券種の理由（1日券ではない等）と制約（時間帯固定・要資格）は別の話なので
+    // 両方あるときは両方見せる。ゴゴイチ券は「4時間」かつ「午後のみ」である
+    const parts = [reasons.get(o.id), ...o.constraints.map(describeConstraint)].filter(
+      Boolean,
+    );
     out.push({
       id: o.id,
       name_ja: o.name_ja,
       amount: o.price.amount,
       saving: representative.price.amount - o.price.amount,
+      // 理由の無いまま並べると「もっと安い券がある」と誤読される
       why_not_representative:
-        reasons.get(o.id) ??
-        (o.constraints
-          .map((c) =>
-            c.type === "time_window_fixed"
-              ? `利用時間帯が固定（${c.description_ja}）— 開始時刻を指定すれば選べます`
-              : c.type === "qualification_required"
-                ? `資格が必要: ${c.description_ja} — 条件を満たす場合のみ`
-                : `${c.type}: ${c.description_ja}`,
-          )
-          .join(" / ") ||
-          null),
+        parts.join(" / ") || "代表より安いが要件を満たすか確認が必要",
       constraints: o.constraints,
     });
   }
   return out.sort((a, b) => a.amount - b.amount);
+}
+
+/**
+ * 「20才」等の年齢名で検索された年度生まれキャンペーンは自動適用する。
+ * 実年齢は利用日によってずれるため、公式の生年月日範囲を必ず警告へ残す。
+ */
+function selectAgeGenerationOffer() {
+  const candidates = offers.filter(
+    (offer) =>
+      offer.age_generation_match === true &&
+      offer.price.amount != null,
+  );
+  if (candidates.length === 0) return null;
+  const representative = candidates[0];
+  return {
+    mode: "age_generation_offer",
+    representative,
+    total_amount: representative.price.amount,
+    breakdown: [
+      {
+        id: representative.id,
+        name_ja: representative.name_ja,
+        amount: representative.price.amount,
+      },
+    ],
+    cheaper_alternatives: [],
+    warnings_ja: representative.warnings_ja,
+    notes_ja: [
+      `「${requestedAge}歳」の入力に基づく料金です。対象可否は警告の生年月日範囲で確認してください。`,
+    ],
+  };
+}
+
+/**
+ * 1日券モードで代表にしなかった理由を券ごとに作る。
+ *
+ * 「1日券が欲しい」に対して回数券や短時間券が安いのは当然なので、
+ * 何が足りないのかを言わずに金額だけ並べると「もっと安い1日券がある」と誤読される。
+ */
+function dayPassReasons(representativeHours) {
+  const reasons = new Map();
+  for (const o of offers) {
+    const product = productById.get(o.product_id);
+    if (isDayPass(product)) continue; // 1日券同士の差は制約側の説明に任せる
+    const skiable = skiableOf(product);
+    if (skiable.multi_visit) {
+      reasons.set(
+        o.id,
+        `合計${skiable.hours}時間を複数日に分けて使う券 — 1日券の代わりにならない`,
+      );
+    } else if ((product?.validity?.days ?? 1) > 1) {
+      reasons.set(o.id, `${product.validity.days}日券（単日利用の代表にしない）`);
+    } else if (typeof skiable.hours !== "number") {
+      reasons.set(o.id, "1日券ではない（回数券などで滑走時間を比較できない）");
+    } else {
+      const suffix =
+        representativeHours == null
+          ? ""
+          : `（代表は${representativeHours}時間）`;
+      reasons.set(o.id, `${skiable.hours}時間券で1日分をカバーしない${suffix}`);
+    }
+  }
+  return reasons;
 }
 
 /**
@@ -575,9 +892,7 @@ function selectDayPass() {
       };
     }
     // ② 1日券 ＋ ナイター券の合算
-    const nightOnly = priced.filter(
-      (o) => coversNight(productById.get(o.product_id)) === true && !isDayPass(productById.get(o.product_id)),
-    );
+    const nightOnly = priced.filter((o) => isNightOnlyTicket(productById.get(o.product_id)));
     const base = dayPasses[0] ?? null;
     if (base && nightOnly.length > 0) {
       const total = base.price.amount + nightOnly[0].price.amount;
@@ -612,7 +927,10 @@ function selectDayPass() {
       representative: pick,
       total_amount: pick.price.amount,
       breakdown: [{ id: pick.id, name_ja: pick.name_ja, amount: pick.price.amount }],
-      cheaper_alternatives: cheaperThan(pick),
+      cheaper_alternatives: cheaperThan(
+        pick,
+        dayPassReasons(skiableOf(productById.get(pick.product_id)).hours),
+      ),
       notes_ja: notes,
     };
   }
@@ -645,7 +963,7 @@ function selectDayPass() {
     representative: longest.offer,
     total_amount: longest.offer.price.amount,
     breakdown: [{ id: longest.offer.id, name_ja: longest.offer.name_ja, amount: longest.offer.price.amount }],
-    cheaper_alternatives: cheaperThan(longest.offer),
+    cheaper_alternatives: cheaperThan(longest.offer, dayPassReasons(maxHours)),
     substituted_hours: maxHours,
     operating_hours_total: fullHours,
     covers_full_day: fullHours == null ? null : maxHours >= fullHours,
@@ -740,16 +1058,8 @@ function selectRepresentative() {
       // なぜ代表にしなかったのか。UIで「もっと安いものがあります」と出すための理由
       why_not_representative:
         reasons.get(o.id) ??
-        o.constraints
-          .map((c) =>
-            c.type === "time_window_fixed"
-              ? `利用時間帯が固定（${c.description_ja}）— 開始時刻を指定すれば選べます`
-              : c.type === "qualification_required"
-                ? `資格が必要: ${c.description_ja} — 条件を満たす場合のみ`
-                : `${c.type}: ${c.description_ja}`,
-          )
-          .join(" / ") ??
-        null,
+        (o.constraints.map(describeConstraint).join(" / ") ||
+          "代表より安いが要件を満たすか確認が必要"),
       constraints: o.constraints,
     });
   }
@@ -757,12 +1067,15 @@ function selectRepresentative() {
 }
 
 const wantDayPass = opts["day-pass"] === true;
+const ageGenerationSelection =
+  operating.open === false ? null : selectAgeGenerationOffer();
 const selection =
   operating.open === false
     ? null
-    : wantDayPass
+    : ageGenerationSelection ??
+      (wantDayPass
       ? selectDayPass()
-      : selectRepresentative();
+      : selectRepresentative());
 const partyResult = operating.open === false ? null : calculateParty();
 
 /**
@@ -783,17 +1096,14 @@ const partyResult = operating.open === false ? null : calculateParty();
  */
 function cheapestPerPerson(audienceId) {
   const wantHours = opts.hours != null ? Number(opts.hours) : null;
-  const narrowing = new Set([
-    "time_window_fixed",
-    "eligibility_required",
-    "advance_purchase_required",
-  ]);
   const candidates = offers.filter((o) => {
     if (o.price.amount == null) return false;
     if (!(o.audience_ids_raw ?? []).includes(audienceId)) return false;
     if (o.multi_visit) return false;
     if ((o.validity_days ?? 1) > 1) return false;
-    if (o.constraints.some((c) => narrowing.has(c.type))) return false;
+    // NARROWING_CONSTRAINTS を共有する。かつてここに独自のコピーがあり
+    // qualification_required が漏れていて、道民割がパーティ合計に混入した
+    if (o.constraints.some((c) => NARROWING_CONSTRAINTS.has(c.type))) return false;
     if (wantDayPass && !isDayPass(productById.get(o.product_id))) return false;
     if (wantHours != null) {
       if (!o.time_comparable || o.skiable_hours == null) return false;
@@ -807,45 +1117,63 @@ function cheapestPerPerson(audienceId) {
   return candidates.length > 0 ? candidates[0] : null;
 }
 
-function applyPartyRules(party) {
-  const applicable = (data.party_rules ?? []).filter((rule) => {
+/** その日に適用できる party_rule だけを返す */
+function applicablePartyRules() {
+  return (data.party_rules ?? []).filter((rule) => {
     const ids = rule.calendar_ids ?? [];
     const dateOk =
       ids.length === 0 ||
-      ids.some((id) => calendarMatchLevel(calendarById.get(id)) != null);
+      ids.some((id) => calendarMatches(calendarById.get(id)));
     return dateOk && periodContains(rule.use_period) && periodContains(rule.sales_period);
   });
+}
 
-  const results = [];
-  for (const rule of applicable) {
-    const remaining = new Map(party);
-    const lines = [];
-    let total = 0;
-    let usable = true;
-    // fixed_total は「セット全体の合計」なので1度だけ加算する
-    const fixedTotal = (rule.components ?? []).find(
-      (c) => c.price_effect?.type === "fixed_total",
-    )?.price_effect?.amount;
+/** そのルールに「〇名につき」の比率指定があるか */
+function hasQualifyingRatio(rule) {
+  return (rule.components ?? []).some((c) => c.per_qualifying_count != null);
+}
 
-    for (const component of rule.components ?? []) {
-      const ids = component.audience_ids ?? [];
-      const available = ids.reduce((sum, id) => sum + (remaining.get(id) ?? 0), 0);
-      const min = component.min_count ?? 0;
-      if (available < min) {
-        usable = false;
-        break;
-      }
-      // per_qualifying_count: 「大人1名につき未就学児2名まで」
-      let take = component.max_count ?? available;
-      if (component.per_qualifying_count != null) {
-        const qualifying = lines.reduce((sum, l) => sum + l.count, 0);
-        take = Math.min(available, qualifying * component.per_qualifying_count);
-      }
-      take = Math.min(take, available);
-      if (take <= 0 && min > 0) {
-        usable = false;
-        break;
-      }
+/**
+ * party_rule を1回だけ適用する。適用できなければ null。
+ *
+ * 戻り値の remaining は「このルールでカバーしきれなかった人」。
+ * 呼び出し側が残りに別のルールや同じルールを重ねる（bestPartyPlan）。
+ *
+ * ★**「大人1名につき未就学児2名まで無料」の「大人」は資格の判定であって、
+ * このルールで買う人ではない。** 大人はペア券や通常券で別に買うので、
+ * ここで消費してはいけない（消費すると「ペア券×2＋未就学児無料」が成立しなくなる）。
+ * 資格の有無は `fullParty`（元のパーティ構成）で判定する。
+ */
+function applyRuleOnce(rule, party, fullParty = party) {
+  const ratioRule = hasQualifyingRatio(rule);
+  const ratioIndex = (rule.components ?? []).findIndex(
+    (c) => c.per_qualifying_count != null,
+  );
+  const remaining = new Map(party);
+  const lines = [];
+  let total = 0;
+  // fixed_total は「セット全体の合計」なので1度だけ加算する
+  const fixedTotal = (rule.components ?? []).find(
+    (c) => c.price_effect?.type === "fixed_total" && c.price_effect?.amount != null,
+  )?.price_effect?.amount;
+
+  for (const [index, component] of (rule.components ?? []).entries()) {
+    const ids = component.audience_ids ?? [];
+    // 比率指定の前にあるcomponentは「資格を満たす人」。消費せず人数だけ数える
+    const isQualifier = ratioRule && index < ratioIndex;
+    const pool = isQualifier ? fullParty : remaining;
+    const available = ids.reduce((sum, id) => sum + (pool.get(id) ?? 0), 0);
+    const min = component.min_count ?? 0;
+    if (available < min) return null;
+    // per_qualifying_count: 「大人1名につき未就学児2名まで」
+    let take = component.max_count ?? available;
+    if (component.per_qualifying_count != null) {
+      const qualifying = lines.reduce((sum, l) => sum + l.count, 0);
+      take = Math.min(available, qualifying * component.per_qualifying_count);
+    }
+    take = Math.min(take, available);
+    if (take <= 0 && min > 0) return null;
+    if (!isQualifier) {
       let left = take;
       for (const id of ids) {
         const have = remaining.get(id) ?? 0;
@@ -855,71 +1183,172 @@ function applyPartyRules(party) {
           left -= used;
         }
       }
-      const effect = component.price_effect ?? {};
-      let amount = 0;
-      if (effect.type === "free") {
-        amount = 0;
-      } else if (effect.type === "fixed_per_person") {
-        amount = (effect.amount ?? 0) * take;
-      } else if (effect.type === "fixed_total") {
-        amount = 0; // セット合計として後で加算する
-      } else if (fixedTotal != null) {
-        // セット合計が別componentで指定されているので個別金額は持たない
-        amount = 0;
-      } else {
-        // discount_amount / discount_percent / other は個別料金を基準にする
-        const base = cheapestPerPerson(ids[0]);
-        const unit = base?.price.amount ?? null;
-        if (unit == null) {
-          usable = false;
-          break;
-        }
-        if (effect.type === "discount_amount") amount = Math.max(0, unit - (effect.amount ?? 0)) * take;
-        else if (effect.type === "discount_percent")
-          amount = Math.round((unit * (100 - (effect.percent ?? 0))) / 100) * take;
-        else amount = unit * take;
-      }
-      total += amount;
-      lines.push({ role_ja: component.role_ja, audience_ids: ids, count: take, amount });
     }
-    if (!usable) continue;
-    if (fixedTotal != null) {
-      total = fixedTotal;
-      // 内訳が合計と矛盾しないよう、セット料金は1行にまとめる
-      for (const line of lines) line.amount = null;
+    // 資格判定の人はこのルールでは買わないので、金額も持たない
+    if (isQualifier) {
       lines.push({
-        role_ja: "セット合計",
-        audience_ids: [],
-        count: lines.reduce((sum, l) => sum + l.count, 0),
-        amount: fixedTotal,
+        role_ja: component.role_ja,
+        audience_ids: ids,
+        count: take,
+        amount: null,
+        qualifier: true,
       });
+      continue;
     }
-
-    // ルールでカバーされなかった人は個別最安を足す
-    let leftoverTotal = 0;
-    const leftover = [];
-    for (const [id, count] of remaining) {
-      if (count <= 0) continue;
-      const best = cheapestPerPerson(id);
-      if (!best) {
-        usable = false;
-        break;
+    const effect = component.price_effect ?? {};
+    let amount = 0;
+    if (effect.type === "free") {
+      amount = 0;
+    } else if (effect.type === "fixed_per_person") {
+      amount = (effect.amount ?? 0) * take;
+    } else if (effect.type === "fixed_total" || fixedTotal != null) {
+      amount = 0; // セット合計として後で加算する
+    } else {
+      // discount_amount / discount_percent は個別料金を基準にする
+      const base = cheapestPerPerson(ids[0]);
+      const unit = base?.price.amount ?? null;
+      if (unit == null) return null;
+      if (effect.type === "discount_amount") {
+        amount = Math.max(0, unit - (effect.amount ?? 0)) * take;
+      } else if (effect.type === "discount_percent") {
+        amount = Math.round((unit * (100 - (effect.percent ?? 0))) / 100) * take;
+      } else {
+        amount = unit * take;
       }
-      leftoverTotal += best.price.amount * count;
-      leftover.push({ audience_id: id, count, offer_id: best.id, amount: best.price.amount * count });
     }
-    if (!usable) continue;
-    results.push({
-      rule_id: rule.id,
-      name_ja: rule.name_ja,
-      official_label_ja: rule.official_label_ja,
-      rule_type: rule.rule_type,
-      total_amount: total + leftoverTotal,
-      covered: lines,
-      leftover,
+    total += amount;
+    lines.push({ role_ja: component.role_ja, audience_ids: ids, count: take, amount });
+  }
+
+  if (fixedTotal != null) {
+    total = fixedTotal;
+    // 内訳が合計と矛盾しないよう、セット料金は1行にまとめる
+    for (const line of lines) line.amount = null;
+    lines.push({
+      role_ja: "セット合計",
+      audience_ids: [],
+      count: lines.reduce((sum, l) => sum + l.count, 0),
+      amount: fixedTotal,
     });
   }
-  return results;
+
+  // 誰も消費しない適用は、繰り返し探索が止まらなくなるので無効扱いにする
+  const consumed = [...party.entries()].reduce(
+    (sum, [id, count]) => sum + (count - (remaining.get(id) ?? 0)),
+    0,
+  );
+  if (consumed <= 0) return null;
+
+  return { cost: total, covered: lines, remaining };
+}
+
+// 関数宣言にする（calculateParty がファイル上部で呼ばれるため巻き上げが必要）
+function partyKey(party) {
+  return [...party.entries()]
+    .filter(([, count]) => count > 0)
+    .sort(([a], [b]) => (a < b ? -1 : 1))
+    .map(([id, count]) => `${id}:${count}`)
+    .join(",");
+}
+
+/** 全員を個別最安で買う場合の合計。解決できない人がいれば null */
+function individualPlan(party) {
+  const breakdown = [];
+  let total = 0;
+  for (const [id, count] of party) {
+    if (count <= 0) continue;
+    const best = cheapestPerPerson(id);
+    if (!best) return null;
+    total += best.price.amount * count;
+    breakdown.push({
+      audience_id: id,
+      count,
+      offer_id: best.id,
+      name_ja: best.name_ja,
+      unit_amount: best.price.amount,
+      amount: best.price.amount * count,
+    });
+  }
+  return { total, breakdown };
+}
+
+/**
+ * パーティ全員をいくらで買えるかを、ルールの**繰り返しと組み合わせ**を含めて探索する。
+ *
+ * 「親1人＋子供1人のペア券」しか無いスキー場に親2人＋子供3人で行くなら、
+ * **ペア券×2 ＋ 残り子供1人の個別料金**が正しい。ルールを1回だけ適用していた
+ * ときは「ペア券1回＋残り4人個別」になり高すぎる金額を出していた。
+ * 未就学児無料のような別のルールとも同時に成立させる必要がある
+ * （ペア券×2 ＋ 未就学児無料）。
+ *
+ * ラベルを増やす代わりに探索で解く。同じルールを再帰で再利用できるので
+ * 「何回まで適用できるか」という情報を持たなくてよい
+ * （1回の適用が必ず1人以上を消費するので停止する）。
+ */
+function bestPartyPlan(party, rules, memo = new Map(), fullParty = party, usedRatio = new Set()) {
+  const key = `${partyKey(party)}|${[...usedRatio].sort().join(",")}`;
+  if (key === "") return { total: 0, steps: [] };
+  if (memo.has(key)) return memo.get(key);
+  memo.set(key, null); // 再入防止
+
+  let best = null;
+  const individual = individualPlan(party);
+  if (individual) {
+    best = {
+      total: individual.total,
+      steps: [{ kind: "individual", name_ja: "個別に購入", amount: individual.total, breakdown: individual.breakdown }],
+    };
+  }
+
+  for (const rule of rules) {
+    // 「〇名につき」の比率ルールは1回の適用で上限まで取るので、
+    // 同じプランで2回適用すると上限（大人1名につき2名まで）を超えてしまう
+    const ratioRule = hasQualifyingRatio(rule);
+    if (ratioRule && usedRatio.has(rule.id)) continue;
+    const applied = applyRuleOnce(rule, party, fullParty);
+    if (!applied) continue;
+    const nextUsed = ratioRule ? new Set([...usedRatio, rule.id]) : usedRatio;
+    const rest = bestPartyPlan(applied.remaining, rules, memo, fullParty, nextUsed);
+    if (!rest) continue;
+    const total = applied.cost + rest.total;
+    if (best != null && total >= best.total) continue;
+    best = {
+      total,
+      steps: [
+        {
+          kind: "party_rule",
+          rule_id: rule.id,
+          name_ja: rule.official_label_ja ?? rule.name_ja,
+          amount: applied.cost,
+          covered: applied.covered,
+        },
+        ...rest.steps,
+      ],
+    };
+  }
+
+  memo.set(key, best);
+  return best;
+}
+
+/** 同じルールが連続で適用された場合は「×2」とまとめて見せる */
+function mergePlanSteps(steps) {
+  const merged = [];
+  for (const step of steps) {
+    const last = merged[merged.length - 1];
+    if (
+      last != null &&
+      last.kind === "party_rule" &&
+      step.kind === "party_rule" &&
+      last.rule_id === step.rule_id
+    ) {
+      last.applications += 1;
+      last.amount += step.amount;
+      continue;
+    }
+    merged.push({ ...step, applications: step.kind === "party_rule" ? 1 : undefined });
+  }
+  return merged;
 }
 
 function calculateParty() {
@@ -938,45 +1367,94 @@ function calculateParty() {
     return { error_ja: `audience が見つかりません: ${unknown.join(", ")}` };
   }
 
-  // 基準: 1人ずつ最安を足した合計
-  const individual = [];
-  let individualTotal = 0;
-  let complete = true;
-  for (const [id, count] of party) {
-    const best = cheapestPerPerson(id);
-    if (!best) {
-      complete = false;
-      individual.push({ audience_id: id, count, offer_id: null, amount: null });
-      continue;
-    }
-    individualTotal += best.price.amount * count;
-    individual.push({
-      audience_id: id,
-      count,
-      offer_id: best.id,
-      name_ja: best.name_ja,
-      unit_amount: best.price.amount,
-      amount: best.price.amount * count,
-    });
+  const rules = applicablePartyRules();
+  const individual = individualPlan(party);
+  const plan = bestPartyPlan(party, rules);
+  if (!plan) {
+    // 誰の料金が出せなかったのかを示す。「見つかりません」だけでは
+    // 人間がどこを調べればよいか分からない
+    const unresolved = [...party.entries()]
+      .filter(([id, count]) => count > 0 && cheapestPerPerson(id) == null)
+      .map(([id, count]) => {
+        const audience = (data.audiences ?? []).find((a) => a.id === id);
+        return { audience_id: id, name_ja: audience?.name_ja ?? id, count };
+      });
+    return {
+      party: Object.fromEntries(party),
+      individual_total: individual?.total ?? null,
+      best: null,
+      unresolved,
+      notes_ja: [
+        unresolved.length > 0
+          ? `次の区分に単独で購入できる料金がありません: ${unresolved
+              .map((u) => `${u.name_ja}×${u.count}`)
+              .join("、")}。同伴条件付きの券しか無い場合、人数上限を超えた分の料金は公式資料に記載がない可能性があります。`
+          : "パーティ全員をカバーする買い方が見つかりませんでした。",
+      ],
+    };
   }
 
-  const ruleResults = applyPartyRules(party).sort(
-    (a, b) => a.total_amount - b.total_amount,
-  );
-  const options = [
-    ...(complete
-      ? [{ kind: "individual", name_ja: "個別に購入", total_amount: individualTotal, breakdown: individual }]
-      : []),
-    ...ruleResults.map((r) => ({ kind: "party_rule", ...r })),
-  ].sort((a, b) => a.total_amount - b.total_amount);
+  const steps = mergePlanSteps(plan.steps);
+  const partyCount = [...party.values()].reduce((sum, n) => sum + n, 0);
+  const fees = feesFor({ total_amount: plan.total, breakdown: collectPlanOffers(steps) }, partyCount);
 
   return {
     party: Object.fromEntries(party),
-    individual_total: complete ? individualTotal : null,
-    cheapest: options[0] ?? null,
-    options,
-    notes_ja: complete ? [] : ["一部のaudienceに適用できる料金が見つかりませんでした。"],
+    individual_total: individual?.total ?? null,
+    best: { total_amount: plan.total, steps },
+    // ルールを使わない場合との差額。UIで「〇〇円お得」と出せる
+    saving_vs_individual:
+      individual == null ? null : individual.total - plan.total,
+    fees,
+    notes_ja: fees.notes_ja,
   };
+}
+
+/**
+ * その買い方の実質負担を出す。
+ *
+ * `fees` に載っているのは**返ってこない追加負担だけ**（返金される保証金は
+ * そもそも記録しない）。だから「券の合計 ＋ fees」がそのまま実質負担になる。
+ * かつて refundable / included_in_offer_price のフラグから
+ * 「窓口で払う額」「戻る額」「実質負担」の3つを出していたが、
+ * 知りたいのは実質いくら払うかだけだった。
+ */
+function feesFor(option, partyCount) {
+  const productIds = new Set(
+    (option?.breakdown ?? [])
+      .map((line) => offerById.get(line.offer_id)?.product_id)
+      .filter(Boolean),
+  );
+  const applicable = (data.fees ?? []).filter((fee) => {
+    if (fee.amount == null) return false;
+    const targets = fee.applies_to_product_ids ?? [];
+    return targets.length === 0 || targets.some((id) => productIds.has(id));
+  });
+
+  const lines = applicable.map((fee) => ({
+    id: fee.id,
+    name_ja: fee.official_label_ja ?? fee.name_ja,
+    unit_amount: fee.amount,
+    count: partyCount,
+    total: fee.amount * partyCount,
+  }));
+  const feeTotal = lines.reduce((sum, line) => sum + line.total, 0);
+  const ticketTotal = option?.total_amount ?? null;
+
+  return {
+    lines,
+    fee_total: feeTotal,
+    // 券の合計 ＋ 返ってこない追加負担 ＝ 実質いくら払うか
+    net_total: ticketTotal == null ? null : ticketTotal + feeTotal,
+    notes_ja: [],
+  };
+}
+
+/** 費用の対象product判定に使うため、計画に含まれるofferを集める */
+function collectPlanOffers(steps) {
+  return steps.flatMap((step) =>
+    step.kind === "individual" ? (step.breakdown ?? []) : [],
+  );
 }
 
 const partyRules = (data.party_rules ?? [])
@@ -984,11 +1462,15 @@ const partyRules = (data.party_rules ?? [])
     const ids = rule.calendar_ids ?? [];
     return (
       ids.length === 0 ||
-      ids.some((id) => calendarMatchLevel(calendarById.get(id)) != null)
+      ids.some((id) => calendarMatches(calendarById.get(id)))
     );
   })
   .filter((rule) => periodContains(rule.use_period))
-  .map((rule) => ({ id: rule.id, name_ja: rule.name_ja, description_ja: rule.description_ja }));
+  .map((rule) => ({
+    id: rule.id,
+    name_ja: rule.official_label_ja ?? rule.name_ja,
+    description_ja: rule.description_ja ?? null,
+  }));
 
 // 営業していない日に料金を出さない
 const notOpen = operating.open === false;
@@ -1000,8 +1482,22 @@ const output = {
   date: opts.date,
   day: info,
   operating,
+  scope,
+  shared_passes: (data.products ?? [])
+    .filter((p) => (p.shared_with_resorts ?? []).length > 0)
+    .map((p) => ({
+      product_id: p.id,
+      name_ja: p.official_label_ja ?? p.name_ja,
+      shared_with_resorts: (p.shared_with_resorts ?? []).map((sw) => ({
+        resort_id: sw.resort_id ?? null,
+        name_ja: sw.name_ja,
+      })),
+    })),
   filters: {
     audience: opts.audience ?? null,
+    age: requestedAge,
+    school: requestedSchool,
+    resolved_audience_ids: [...acceptedAudienceIds],
     product: opts.product ?? null,
     channel: opts.channel ?? null,
     hours: opts.hours ?? null,
@@ -1047,9 +1543,16 @@ if (opts.json) {
     }
   }
 
-  if (selection && wantDayPass) {
+  if (
+    selection &&
+    (wantDayPass || selection.mode === "age_generation_offer")
+  ) {
     console.log("");
-    console.log(`  条件: 1日券${opts["with-night"] ? "（ナイターあり）" : "（ナイターなし）"}`);
+    console.log(
+      selection.mode === "age_generation_offer"
+        ? `  条件: ${requestedAge}歳`
+        : `  条件: 1日券${opts["with-night"] ? "（ナイターあり）" : "（ナイターなし）"}`,
+    );
     if (selection.representative) {
       const parts = selection.breakdown
         .map((b) => `${b.name_ja} ¥${b.amount.toLocaleString("ja-JP")}`)
@@ -1062,6 +1565,9 @@ if (opts.json) {
       console.log(
         `    ↓ もっと安い: ¥${a.amount.toLocaleString("ja-JP")}（-¥${a.saving.toLocaleString("ja-JP")}） ${a.name_ja} — ${a.why_not_representative}`,
       );
+    }
+    for (const warning of selection.warnings_ja ?? []) {
+      console.log(`    ⚠ ${warning}`);
     }
     for (const n of selection.notes_ja ?? []) console.log(`    ※ ${n}`);
     console.log("");
@@ -1104,7 +1610,7 @@ if (opts.json) {
     console.log(`  ${price}  ${o.name_ja} (${o.id})${deadline}${conds}`);
   }
   for (const r of partyRules) {
-    console.log(`  [party] ${r.name_ja}: ${r.description_ja}`);
+    console.log(`  [party] ${r.name_ja}${r.description_ja ? `: ${r.description_ja}` : ""}`);
   }
 
   if (partyResult) {
@@ -1116,33 +1622,57 @@ if (opts.json) {
         .map(([id, n]) => `${id}×${n}`)
         .join(" ＋ ");
       console.log(`  パーティ: ${members}`);
-      for (const option of partyResult.options) {
-        const mark = option === partyResult.cheapest ? "▶ 最安" : "      ";
-        const label =
-          option.kind === "individual"
-            ? "個別に購入"
-            : `${option.official_label_ja ?? option.name_ja}（${option.rule_type}）`;
+      if (partyResult.best == null) {
+        console.log("  パーティ全員をカバーする買い方が見つかりませんでした。");
+        for (const u of partyResult.unresolved ?? []) {
+          console.log(`      ${u.name_ja}×${u.count}: 単独で購入できる料金が資料にありません`);
+        }
+      } else {
         console.log(
-          `  ${mark} ¥${option.total_amount.toLocaleString("ja-JP")}  ${label}`,
+          `  ▶ 最安 ¥${partyResult.best.total_amount.toLocaleString("ja-JP")}`,
         );
-        if (option.kind === "individual") {
-          for (const b of option.breakdown) {
-            console.log(
-              `           ${b.audience_id}×${b.count}: ${b.name_ja ?? "(該当なし)"} ¥${(b.unit_amount ?? 0).toLocaleString("ja-JP")} → ¥${(b.amount ?? 0).toLocaleString("ja-JP")}`,
-            );
+        for (const step of partyResult.best.steps) {
+          if (step.kind === "individual") {
+            if ((step.breakdown ?? []).length === 0) continue;
+            console.log(`      個別に購入 ¥${step.amount.toLocaleString("ja-JP")}`);
+            for (const b of step.breakdown) {
+              console.log(
+                `           ${b.audience_id}×${b.count}: ${b.name_ja ?? "(該当なし)"} ¥${(b.unit_amount ?? 0).toLocaleString("ja-JP")} → ¥${(b.amount ?? 0).toLocaleString("ja-JP")}`,
+              );
+            }
+            continue;
           }
-        } else {
-          for (const c of option.covered) {
-            const amount =
-              c.amount == null ? "（セット料金に含む）" : `¥${c.amount.toLocaleString("ja-JP")}`;
-            console.log(`           ${c.role_ja}×${c.count}: ${amount}`);
-          }
-          for (const l of option.leftover) {
-            console.log(
-              `           （ルール外）${l.audience_id}×${l.count}: ¥${l.amount.toLocaleString("ja-JP")}`,
-            );
+          const times = step.applications > 1 ? ` ×${step.applications}組` : "";
+          console.log(
+            `      ${step.name_ja}${times} ¥${step.amount.toLocaleString("ja-JP")}`,
+          );
+          const per = step.applications > 1 ? "（1組あたり）" : "";
+          for (const c of step.covered) {
+            const amount = c.qualifier
+              ? "（無料枠の条件を満たす人・料金は別に計上）"
+              : c.amount == null
+                ? "（セット料金に含む）"
+                : `¥${c.amount.toLocaleString("ja-JP")}`;
+            console.log(`           ${per}${c.role_ja}×${c.count}: ${amount}`);
           }
         }
+        if (partyResult.individual_total != null) {
+          const saving = partyResult.saving_vs_individual ?? 0;
+          console.log(
+            `      （全員individualなら ¥${partyResult.individual_total.toLocaleString("ja-JP")}${saving > 0 ? ` — ¥${saving.toLocaleString("ja-JP")}お得` : ""}）`,
+          );
+        }
+      }
+      const fees = partyResult.fees;
+      if (fees && fees.lines.length > 0) {
+        for (const line of fees.lines) {
+          console.log(
+            `      ${line.name_ja} ¥${line.unit_amount.toLocaleString("ja-JP")}×${line.count} = ¥${line.total.toLocaleString("ja-JP")}`,
+          );
+        }
+      }
+      if (fees?.net_total != null) {
+        console.log(`  実質負担: ¥${fees.net_total.toLocaleString("ja-JP")}`);
       }
       for (const n of partyResult.notes_ja) console.log(`    ※ ${n}`);
     }

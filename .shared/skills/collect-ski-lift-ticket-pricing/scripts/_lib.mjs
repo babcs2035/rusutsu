@@ -149,17 +149,68 @@ export function isValidCalendarDate(str) {
   );
 }
 
-export function forEachCondition(data, callback) {
-  for (const [i, offer] of (data.offers ?? []).entries()) {
-    for (const [j, cond] of (offer.eligibility_conditions ?? []).entries()) {
-      callback(cond, `/offers/${i}/eligibility_conditions/${j}`, offer);
+/**
+ * 対象者の絞り込み（target_genders / target_qualification）を走査する。
+ *
+ * 機械的に判定できる軸は性別だけ（`target_genders`）。
+ * 地域住民・宿泊者・会員などは照会の入力から判定できないため、
+ * 分類せず公式表記のまま `target_qualification` に置く。
+ * かつて geographic_areas ＋ area_relationships ＋ geographic_levels で
+ * 構造化していたが、料金計算に一切効かず分類の手間だけが残っていた。
+ */
+export const TARGET_FIELDS = ["target_genders", "target_qualification"];
+
+export function forEachTarget(data, callback) {
+  const scan = (holder, basePath) => {
+    for (const [i, item] of (holder ?? []).entries()) {
+      for (const field of TARGET_FIELDS) {
+        const value = item[field];
+        if (value == null) continue;
+        callback(value, `${basePath}/${i}/${field}`, item, field);
+      }
     }
+  };
+  scan(data.offers, "/offers");
+  scan(data.party_rules, "/party_rules");
+}
+
+/** そのofferに対象者の絞り込みがあるか */
+export function hasTargetRestriction(item) {
+  return TARGET_FIELDS.some((field) => item?.[field] != null);
+}
+
+/**
+ * 料金の種類を、どのフィールドが埋まっているかから決める。
+ *
+ * かつて `price.mode` という分類フィールドがあったが、実データ290件で例外なく
+ * 導出でき、しかも「mode: free なのに amount: 500」のような**内部矛盾を
+ * 書けてしまう**穴だった（それを取り締まる検査とfixtureまで存在した）。
+ * 導出にすればその矛盾は構造的に書けない。
+ */
+export function priceModeOf(price) {
+  // date_table は廃止（1 offer = 1 金額。日付で変わるならカレンダーごとにofferを分ける）
+  if (price?.live_lookup_required === true) return "live_dynamic";
+  if (price?.base_offer_id != null) return "derived_discount";
+  if (price?.range != null) return "range";
+  if (price?.amount === 0) return "free";
+  if (typeof price?.amount === "number") return "fixed";
+  return "unknown";
+}
+
+/** 金額が確定している料金か（未確定なら推測で埋めさせない） */
+export function isConfirmedPrice(price) {
+  return priceModeOf(price) !== "unknown";
+}
+
+/** 絞り込みを人間向けの文言（公式表記優先）にする */
+export function targetLabels(item) {
+  const out = [];
+  for (const field of TARGET_FIELDS) {
+    const value = item?.[field];
+    if (value == null) continue;
+    out.push(value.official_label_ja ?? value.description_ja ?? field);
   }
-  for (const [i, rule] of (data.party_rules ?? []).entries()) {
-    for (const [j, cond] of (rule.eligibility_conditions ?? []).entries()) {
-      callback(cond, `/party_rules/${i}/eligibility_conditions/${j}`, rule);
-    }
-  }
+  return out;
 }
 
 export function periodInverted(period) {

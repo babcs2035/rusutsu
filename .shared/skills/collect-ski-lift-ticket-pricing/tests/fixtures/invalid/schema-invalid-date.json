@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "taxonomy_version": "13.1.0",
+  "taxonomy_version": "33.0.0",
   "resort": {
     "id": "broken-resort"
   },
@@ -17,7 +17,6 @@
   "sources": [
     {
       "id": "src-page",
-      "type": "html",
       "url": "https://example.com/ticket/",
       "requested_url": "https://example.com/ticket/",
       "final_url": "https://example.com/ticket/",
@@ -30,11 +29,9 @@
       "linked_from_source_id": null,
       "user_specified": true,
       "capture_success": true,
-      "reading_confidence": null,
       "notes_ja": null
     }
   ],
-  "geographic_areas": [],
   "audiences": [
     {
       "id": "adult",
@@ -56,16 +53,17 @@
       "id": "cal-season",
       "name_ja": "シーズン全日",
       "official_label_ja": null,
-      "day_types": [
-        "all"
-      ],
-      "dates": [],
-      "date_ranges": [],
       "excluded_dates": [],
       "notes_ja": null,
       "source_refs": [
         "src-page"
-      ]
+      ],
+      "included_day_types": [
+        "all"
+      ],
+      "included_dates": [],
+      "included_date_ranges": [],
+      "excluded_date_ranges": []
     }
   ],
   "operating_hours": [],
@@ -97,7 +95,6 @@
       "id": "window",
       "name_ja": "チケット窓口",
       "official_label_ja": null,
-      "channel_type": "onsite_ticket_window",
       "url": null,
       "location_ja": null,
       "purchase_deadline_ja": null,
@@ -118,7 +115,7 @@
     "notes_ja": null
   },
   "data_quality": {
-    "status": "draft",
+    "status": "complete",
     "generated_at": null,
     "last_verified_at": null,
     "unresolved_questions": [],

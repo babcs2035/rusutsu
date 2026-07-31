@@ -11,8 +11,10 @@
  */
 import {
   Reporter,
-  forEachCondition,
+  forEachTarget,
+  isConfirmedPrice,
   parseArgs,
+  priceModeOf,
   periodInverted,
   readJson,
 } from "./_lib.mjs";
@@ -24,7 +26,6 @@ if (files.length === 0) {
   process.exit(2);
 }
 
-const CONFIRMED_PRICE_MODES = ["fixed", "free", "date_table", "range", "derived_discount"];
 const OUT_OF_SCOPE_DATA_PATTERN =
   /シーズン券|season(?:[-_\s]?)(?:pass|ticket|price)/iu;
 
@@ -41,7 +42,6 @@ function checkFile(file) {
 
   const collections = [
     "sources",
-    "geographic_areas",
     "audiences",
     "calendars",
     "areas",
@@ -108,37 +108,48 @@ function checkFile(file) {
     for (const [i, refId] of (refs ?? []).entries()) {
       const src = sourceById.get(refId);
       if (!src) continue;
-      if (["image", "pdf"].includes(src.type)) {
-        if (!src.path) {
-          reporter.error(
-            `${jsonPath}/${i}`,
-            `画像/PDFを根拠とする source "${refId}" に保存資料のパス (path) がありません`,
-          );
-        }
-        if (src.capture_success === false) {
-          reporter.error(
-            `${jsonPath}/${i}`,
-            `取得に失敗した source "${refId}" を確定情報の根拠にしています`,
-          );
-        }
+      // 資料の種類を分類するフィールドは持たない（拡張子が表す）。
+      // 保存パスは種類に関係なく必須 — 根拠を人間が目で確認できないJSONにしない
+      if (!src.path) {
+        reporter.error(
+          `${jsonPath}/${i}`,
+          `根拠にしている source "${refId}" に保存資料のパス (path) がありません。後から人間が確認できません`,
+        );
+      }
+      if (src.capture_success === false) {
+        reporter.error(
+          `${jsonPath}/${i}`,
+          `取得に失敗した source "${refId}" を確定情報の根拠にしています`,
+        );
       }
     }
   }
 
   // --- 参照整合性 ---
-  for (const [i, g] of (data.geographic_areas ?? []).entries()) {
-    checkRef(`/geographic_areas/${i}/parent_id`, g.parent_id, "geographic_areas");
-    checkRefArray(`/geographic_areas/${i}/member_area_ids`, g.member_area_ids, "geographic_areas");
-    checkSourceRefs(`/geographic_areas/${i}/source_refs`, g.source_refs);
-  }
   for (const [i, a] of (data.audiences ?? []).entries()) {
     checkSourceRefs(`/audiences/${i}/source_refs`, a.source_refs);
+    checkRef(
+      `/audiences/${i}/base_audience_id`,
+      a.base_audience_id,
+      "audiences",
+    );
   }
   for (const [i, c] of (data.calendars ?? []).entries()) {
     checkSourceRefs(`/calendars/${i}/source_refs`, c.source_refs);
-    for (const [j, r] of (c.date_ranges ?? []).entries()) {
+    for (const [j, r] of (c.included_date_ranges ?? []).entries()) {
       if (r.start > r.end) {
-        reporter.error(`/calendars/${i}/date_ranges/${j}`, `期間が逆転しています (${r.start} > ${r.end})`);
+        reporter.error(
+          `/calendars/${i}/included_date_ranges/${j}`,
+          `期間が逆転しています (${r.start} > ${r.end})`,
+        );
+      }
+    }
+    for (const [j, r] of (c.excluded_date_ranges ?? []).entries()) {
+      if (r.start > r.end) {
+        reporter.error(
+          `/calendars/${i}/excluded_date_ranges/${j}`,
+          `期間が逆転しています (${r.start} > ${r.end})`,
+        );
       }
     }
   }
@@ -178,20 +189,8 @@ function checkFile(file) {
   }
   checkSourceRefs("/season/source_refs", data.season?.source_refs);
 
-  forEachCondition(data, (cond, condPath) => {
-    checkRefArray(`${condPath}/area_ids`, cond.area_ids, "geographic_areas");
-    checkSourceRefs(`${condPath}/source_refs`, cond.source_refs);
-    if (
-      cond.type === "area_relationship" &&
-      (cond.relationships ?? []).length > 0 &&
-      (cond.area_ids ?? []).length === 0 &&
-      !["hotel_guest", "member"].some((r) => (cond.relationships ?? []).includes(r))
-    ) {
-      reporter.error(
-        condPath,
-        `area_relationship 条件に area_ids がありません。対象地域を geographic_areas に定義して参照してください（対象地域が公式資料で不明な場合は unknown 条件を使う）`,
-      );
-    }
+  forEachTarget(data, (target, path) => {
+    checkSourceRefs(`${path}/source_refs`, target.source_refs);
   });
 
   // --- offers ---
@@ -224,55 +223,23 @@ function checkFile(file) {
         reporter.error(`${oPath}/price/base_offer_id`, `自分自身を割引元として参照しています`);
       }
     }
-    for (const [j, row] of (price.date_table ?? []).entries()) {
-      checkRef(`${oPath}/price/date_table/${j}/calendar_id`, row.calendar_id, "calendars");
-      checkSourceRefs(`${oPath}/price/date_table/${j}/source_refs`, row.source_refs);
-      if (typeof row.start === "string" && typeof row.end === "string" && row.start > row.end) {
-        reporter.error(`${oPath}/price/date_table/${j}`, `期間が逆転しています`);
-      }
-    }
-
     // 確定料金には source_refs が必要
-    if (CONFIRMED_PRICE_MODES.includes(price.mode)) {
+    if (isConfirmedPrice(price)) {
       if ((offer.source_refs ?? []).length === 0) {
         reporter.error(
           `${oPath}/source_refs`,
-          `確定料金 (price.mode: ${price.mode}) には保存資料への source_refs が必要です`,
+          `確定料金（${priceModeOf(price)}）には保存資料への source_refs が必要です`,
         );
       }
     }
-    if (price.mode === "range" && price.range && price.range.min > price.range.max) {
+    if (price.range && price.range.min > price.range.max) {
       reporter.error(`${oPath}/price/range`, `料金レンジが逆転しています`);
     }
 
-    // Web料金は購入URLまたは購入条件が必要
-    if ((offer.discount_reasons ?? []).includes("online_purchase")) {
-      const refChannels = (offer.channel_ids ?? [])
-        .map((id) => channelById.get(id))
-        .filter(Boolean);
-      const hasUrl = refChannels.some((ch) => typeof ch.url === "string" && ch.url.length > 0);
-      const hasRequirements = (offer.requirements ?? []).length > 0;
-      if (!hasUrl && !hasRequirements) {
-        reporter.error(
-          `${oPath}`,
-          `online_purchase のofferには購入URL（channel.url）または購入手順 (requirements) が必要です`,
-        );
-      }
-    }
+    // online_purchase の購入URL必須は check-taxonomy.mjs が担当する
+    // （channel_type というラベルを廃止し、URLの有無に一本化した）
 
-    // 地域割引が構造化されていること（notesだけはNG）
-    const localReasons = ["local_resident", "local_worker", "local_student"];
-    if ((offer.discount_reasons ?? []).some((r) => localReasons.includes(r))) {
-      const hasAreaCond = (offer.eligibility_conditions ?? []).some(
-        (c) => c.type === "area_relationship" && (c.area_ids ?? []).length > 0,
-      );
-      if (!hasAreaCond) {
-        reporter.error(
-          `${oPath}/eligibility_conditions`,
-          `地域割引が構造化されていません。geographic_areas を参照する area_relationship 条件が必要です（notes_ja だけに書いてはいけません）`,
-        );
-      }
-    }
+    // 地域割引に target_qualification が必要なことは check-taxonomy.mjs が担当する
 
     // 保証金・手数料の混入チェック（ヒューリスティック）
     const nameText = `${offer.name_ja ?? ""} ${offer.official_label_ja ?? ""}`;
@@ -322,9 +289,11 @@ function checkFile(file) {
   // --- calendar の意図しない重複 ---
   const calSignature = (c) =>
     JSON.stringify({
-      d: [...(c.dates ?? [])].sort(),
-      r: (c.date_ranges ?? []).map((r) => `${r.start}~${r.end}`).sort(),
-      w: [...(c.day_types ?? [])].sort(),
+      d: [...(c.included_dates ?? [])].sort(),
+      r: (c.included_date_ranges ?? []).map((r) => `${r.start}~${r.end}`).sort(),
+      w: [...(c.included_day_types ?? [])].sort(),
+      xd: [...(c.excluded_dates ?? [])].sort(),
+      xr: (c.excluded_date_ranges ?? []).map((r) => `${r.start}~${r.end}`).sort(),
     });
   const bySig = new Map();
   for (const c of data.calendars ?? []) {
@@ -386,15 +355,8 @@ function checkFile(file) {
     if (fee.amount != null && (fee.source_refs ?? []).length === 0) {
       reporter.error(`${fPath}/source_refs`, `確定した手数料・保証金には source_refs が必要です`);
     }
-    if (
-      ["ic_card_deposit", "ic_card_issue_fee"].includes(fee.fee_type) &&
-      fee.refundable == null
-    ) {
-      reporter.warn(
-        `${fPath}/refundable`,
-        `保証金/発行手数料は返金の有無 (refundable) を公式資料で確認して記録してください（不明なら未解決事項へ）`,
-      );
-    }
+    // fees に載るのは「返ってこない追加負担」だけなので、
+    // 返金の有無を表すフラグは持たない（check-taxonomy が保証金の混入を検出する）
   }
 
   // --- data_quality ---
@@ -407,13 +369,11 @@ function checkFile(file) {
       if (!offer) continue;
       const price = offer.price ?? {};
       const hasConfirmedAmount =
-        (price.mode === "fixed" && price.amount != null) ||
-        (price.mode === "date_table" && (price.date_table ?? []).length > 0) ||
-        (price.mode === "range" && price.range != null);
+        isConfirmedPrice(price);
       if (hasConfirmedAmount) {
         reporter.error(
           iPath,
-          `判読不能と記録された箇所に紐づくoffer "${offerId}" に確定料金が入っています。判読できない金額は price.mode "unknown" とし、推測で埋めてはいけません`,
+          `判読不能と記録された箇所に紐づくoffer "${offerId}" に確定料金が入っています。判読できない金額は amount: null のまま、理由を price.notes_ja に書いてください（推測で埋めてはいけません）`,
         );
       }
     }
