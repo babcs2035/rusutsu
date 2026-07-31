@@ -2,12 +2,20 @@
 
 import { Box, Button, Flex, Grid, Heading, Text } from "@chakra-ui/react";
 import { Check, Plus } from "lucide-react";
+import { RubyText } from "@/shared/components/RubyText";
 import type { Resort } from "../types";
 import { StatCard } from "./StatCard";
 
 type ResortInfo = Pick<
   Resort,
-  "id" | "nameJa" | "prefecture" | "town" | "descriptionShort" | "yukiMagi"
+  | "id"
+  | "nameJa"
+  | "nameRuby"
+  | "formerNames"
+  | "prefecture"
+  | "town"
+  | "descriptionShort"
+  | "yukiMagi"
 >;
 
 type OperationSummary = Resort["finalizedOperationSummary"];
@@ -63,9 +71,16 @@ export const InfoSection = ({
         color="gray.900"
         fontFamily="var(--font-heading)"
         fontSize={{ base: "1.25rem", md: "1.8rem" }}
-        lineHeight={{ base: "1.16", md: "1.16" }}
+        lineHeight={{ base: "1.5", md: "1.5" }}
+        css={{
+          "& rt": {
+            fontSize: "0.42em",
+            fontWeight: 600,
+            color: "var(--chakra-colors-gray-500)",
+          },
+        }}
       >
-        {resort.nameJa}
+        <RubyText segments={resort.nameRuby} fallback={resort.nameJa} />
       </Heading>
       <Button
         display="flex"
@@ -92,6 +107,18 @@ export const InfoSection = ({
         ×
       </Button>
     </Flex>
+    {resort.formerNames.length > 0 && (
+      <Text mt={{ base: 0.5, md: 1 }} fontSize="xs" color="gray.500">
+        旧称:{" "}
+        {resort.formerNames
+          .map(formerName =>
+            formerName.reading
+              ? `${formerName.name}（${formerName.reading}）`
+              : formerName.name,
+          )
+          .join("、")}
+      </Text>
+    )}
     <Flex mt={{ base: 0.5, md: 2.5 }} alignItems="center" gap={2}>
       <Text
         flex="1 1 auto"

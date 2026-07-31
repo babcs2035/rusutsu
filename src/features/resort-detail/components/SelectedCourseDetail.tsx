@@ -47,11 +47,16 @@ export const SelectedCourseDetail = ({
 
   if (!selectedCourse) return null;
 
-  const distance = courseGroup.courses.reduce(
-    (sum, course) =>
-      sum + (course.properties.slopeDistMap ?? course.properties.distance ?? 0),
-    0,
-  );
+  const distances = courseGroup.courses
+    .map(
+      course =>
+        course.properties.slopeDistMap ?? course.properties.distance ?? null,
+    )
+    .filter((value): value is number => value !== null);
+  const distance =
+    distances.length > 0
+      ? distances.reduce((sum, value) => sum + value, 0)
+      : null;
   const horizontalDistances = courseGroup.courses.map(
     course => course.properties.horizontalDistMap,
   );

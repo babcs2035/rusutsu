@@ -1,3 +1,7 @@
+import {
+  buildDefaultSearchWord,
+  updateDefaultSearchWord,
+} from "@/shared/utils/searchWord";
 import { UNNAMED_PREFIX } from "../constants";
 import type { CourseDetail, EditorCourse, LngLat } from "../types";
 
@@ -9,6 +13,8 @@ export const createEmptyDetail = (): CourseDetail => ({
   piste: "",
   morning: "",
   night: "",
+  image: "",
+  searchWord: "",
 });
 
 export const createCourseId = (): string =>
@@ -22,10 +28,27 @@ export const createEmptyCourse = (): EditorCourse => ({
   unnamed: false,
   coordinates: [],
   detail: createEmptyDetail(),
+  beforeExtras: {},
   detailExtras: null,
   splitGroupId: null,
   splitBaseName: null,
 });
+
+export const fillEmptyCourseSearchWords = (
+  courses: EditorCourse[],
+  resortName: string,
+): EditorCourse[] =>
+  courses.map(course =>
+    course.detail.searchWord.trim() === ""
+      ? {
+          ...course,
+          detail: {
+            ...course.detail,
+            searchWord: buildDefaultSearchWord(resortName, course.name),
+          },
+        }
+      : course,
+  );
 
 // 無名コースへ既存データと同じ「無名_1」形式の名前を割り当てる
 export const assignUnnamedCourseNames = (
@@ -67,6 +90,7 @@ const stripSplitSuffix = (name: string): string => name.replace(/_#.*$/, "");
 const relabelSplitGroup = (
   courses: EditorCourse[],
   groupId: string,
+  resortName = "",
 ): EditorCourse[] => {
   const members = courses.filter(course => course.splitGroupId === groupId);
   if (members.length === 0) return courses;
@@ -85,7 +109,20 @@ const relabelSplitGroup = (
   return courses.map(course => {
     const nextName = nameByCourseId.get(course.id);
     if (nextName === undefined) return course;
-    return { ...course, name: nextName, splitBaseName: baseName };
+    return {
+      ...course,
+      name: nextName,
+      detail: {
+        ...course.detail,
+        searchWord: updateDefaultSearchWord(
+          course.detail.searchWord,
+          resortName,
+          course.name,
+          nextName,
+        ),
+      },
+      splitBaseName: baseName,
+    };
   });
 };
 
@@ -94,6 +131,7 @@ export const splitCourseAtVertex = (
   courses: EditorCourse[],
   courseId: string,
   vertexIndex: number,
+  resortName = "",
 ): EditorCourse[] => {
   const target = courses.find(course => course.id === courseId);
   if (!target) return courses;
@@ -121,7 +159,7 @@ export const splitCourseAtVertex = (
   const next = courses.flatMap(course =>
     course.id === courseId ? [upper, lower] : [course],
   );
-  return relabelSplitGroup(next, groupId);
+  return relabelSplitGroup(next, groupId, resortName);
 };
 
 const isSameCoordinate = (a: LngLat, b: LngLat): boolean =>
@@ -131,6 +169,7 @@ const isSameCoordinate = (a: LngLat, b: LngLat): boolean =>
 export const mergeSplitGroup = (
   courses: EditorCourse[],
   groupId: string,
+  resortName = "",
 ): EditorCourse[] => {
   const members = courses.filter(course => course.splitGroupId === groupId);
   if (members.length < 2) return courses;
@@ -145,9 +184,19 @@ export const mergeSplitGroup = (
   }
 
   const first = members[0];
+  const mergedName = first.splitBaseName ?? stripSplitSuffix(first.name);
   const merged: EditorCourse = {
     ...first,
-    name: first.splitBaseName ?? stripSplitSuffix(first.name),
+    name: mergedName,
+    detail: {
+      ...first.detail,
+      searchWord: updateDefaultSearchWord(
+        first.detail.searchWord,
+        resortName,
+        first.name,
+        mergedName,
+      ),
+    },
     coordinates,
     splitGroupId: null,
     splitBaseName: null,

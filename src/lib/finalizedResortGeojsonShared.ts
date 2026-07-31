@@ -99,10 +99,12 @@ export type FinalizedLiftFeature = {
 
 export type FinalizedResortMapData = {
   courses: {
+    source: "resorts-finalized" | "slope_10m" | "slope_before";
     fileName: string;
     features: FinalizedCourseFeature[];
   } | null;
   lifts: {
+    source: "resorts-finalized" | "lift_20m" | "lift_before";
     fileName: string;
     features: FinalizedLiftFeature[];
   } | null;

@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0.0",
+  "taxonomy_version": "13.1.0",
+  "resort": {
+    "id": "minimal-resort"
+  },
+  "season": {
+    "id": "2025-2026",
+    "label_ja": "2025-2026シーズン",
+    "start_date": null,
+    "end_date": null,
+    "notes_ja": null
+  },
+  "sources": [],
+  "geographic_areas": [],
+  "audiences": [],
+  "calendars": [],
+  "operating_hours": [],
+  "areas": [],
+  "products": [],
+  "channels": [],
+  "offers": [],
+  "party_rules": [],
+  "fees": [],
+  "calculation_policy": {
+    "currency": "JPY",
+    "tax_included": null,
+    "stacking_default": "unknown",
+    "best_price_hint_ja": null,
+    "notes_ja": null
+  },
+  "data_quality": {
+    "status": "draft",
+    "generated_at": null,
+    "last_verified_at": null,
+    "unresolved_questions": [],
+    "illegible_items": [],
+    "human_review_required": [],
+    "notes_ja": null
+  }
+}

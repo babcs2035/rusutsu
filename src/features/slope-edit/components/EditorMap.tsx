@@ -53,6 +53,8 @@ type EditorMapProps = {
   // タイルレイヤーを親で管理する場合に指定（未指定なら内部 state で管理）
   layerId?: TileLayerId;
   onLayerIdChange?: (layerId: TileLayerId) => void;
+  // 非表示のまま地図を保持し、再表示時にサイズだけ再計算する
+  visible?: boolean;
 };
 
 const toLatLng = (coordinate: LngLat): L.LatLngTuple => [
@@ -93,6 +95,15 @@ function ViewController({ center, zoom }: { center: LngLat; zoom: number }) {
   useEffect(() => {
     map.setView(toLatLng(center), zoom);
   }, [center[0], center[1], map]);
+  return null;
+}
+
+function VisibilityController({ visible }: { visible: boolean }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!visible) return;
+    map.invalidateSize({ pan: false });
+  }, [map, visible]);
   return null;
 }
 
@@ -193,6 +204,7 @@ export function EditorMap({
   onMoveMidstation,
   layerId: controlledLayerId,
   onLayerIdChange,
+  visible = true,
 }: EditorMapProps) {
   const [internalLayerId, setInternalLayerId] =
     useState<TileLayerId>("gsiPale");
@@ -263,6 +275,7 @@ export function EditorMap({
           maxZoom={baseLayer.maxZoom}
         />
         <ViewController center={center} zoom={zoom} />
+        <VisibilityController visible={visible} />
         <FitBoundsController courses={courses} fitBoundsKey={fitBoundsKey} />
         {mode === "draw" && <MapClickHandler onClick={onAppendVertex} />}
         {mode === "midstation" && (

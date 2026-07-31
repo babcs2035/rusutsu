@@ -1,7 +1,17 @@
 "use client";
 
-import { Box, Button, Flex, Grid, Heading, Input } from "@chakra-ui/react";
+import {
+  Box,
+  Button,
+  Flex,
+  Grid,
+  Heading,
+  Input,
+  Text,
+} from "@chakra-ui/react";
 import { Filter, RotateCcw, Search, SlidersHorizontal } from "lucide-react";
+import { TicketPartyEditor } from "@/features/lift-ticket/components/TicketPartyEditor";
+import { DEFAULT_LIFT_TICKET_SEARCH_INPUT } from "@/features/lift-ticket/utils/calculateLiftTicket";
 import type { MapSkiResort } from "@/types/skiResorts";
 import {
   CompactMetricFilter,
@@ -274,6 +284,32 @@ export const FilterPanel = ({
           pr={{ base: 0.5, md: 1 }}
           pt={{ base: 4, md: 0 }}
         >
+          <Box
+            p={3}
+            borderRadius="xl"
+            bg="blue.50"
+            border="1px solid"
+            borderColor="blue.100"
+          >
+            <Text
+              mb={2}
+              color="blue.900"
+              fontSize={{ base: MOBILE_BODY_FONT_SIZE, md: "sm" }}
+              fontWeight="900"
+            >
+              日程・人数からリフト券代を比較
+            </Text>
+            <TicketPartyEditor
+              value={filters.liftTicket ?? DEFAULT_LIFT_TICKET_SEARCH_INPUT}
+              onChange={liftTicket =>
+                onFilterChange({ ...filters, liftTicket })
+              }
+              compact
+              onInputBlur={onKeyboardInputBlur}
+              onInputFocus={onKeyboardInputFocus}
+            />
+          </Box>
+
           <Grid
             templateColumns="repeat(3, minmax(0, 1fr))"
             gap={{ base: 1.5, md: 2 }}

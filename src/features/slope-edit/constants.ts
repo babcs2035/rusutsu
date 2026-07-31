@@ -1,4 +1,4 @@
-import type { TileLayerId } from "./types";
+import type { CourseDetail, TileLayerId } from "./types";
 
 export const DRAFT_STORAGE_PREFIX = "rusutsu-slope-edit-draft:";
 export const TUTORIAL_SEEN_STORAGE_KEY = "rusutsu-slope-edit-tutorial-seen";
@@ -13,6 +13,37 @@ export const LEVEL_OPTIONS = [
 
 export const PISTE_OPTIONS = ["○", "△", "×", ""] as const;
 export const BINARY_OPTIONS = ["○", "×", ""] as const;
+
+export const REQUIRED_COURSE_FIELDS = [
+  "name",
+  "level",
+  "morning",
+  "night",
+  "searchWord",
+] as const;
+
+export type RequiredCourseField = (typeof REQUIRED_COURSE_FIELDS)[number];
+
+export const REQUIRED_COURSE_FIELD_LABELS: Record<RequiredCourseField, string> =
+  {
+    name: "コース名",
+    level: "難易度",
+    morning: "早朝",
+    night: "ナイター",
+    searchWord: "検索ワード",
+  };
+
+export const COURSE_DETAIL_LABELS: Record<keyof CourseDetail, string> = {
+  level: "難易度",
+  distance: "滑走距離（m）",
+  avg: "平均斜度（°）",
+  max: "最大斜度（°）",
+  piste: "圧雪",
+  morning: "早朝営業",
+  night: "ナイター営業",
+  image: "画像URL",
+  searchWord: "検索ワード",
+};
 
 export const PISTE_DESCRIPTIONS: Record<string, string> = {
   "○": "常に圧雪",

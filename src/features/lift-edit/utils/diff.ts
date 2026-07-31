@@ -72,14 +72,6 @@ export const collectLiftChanges = (lift: EditorLift): LiftChanges => {
       after: lift.name,
     });
   }
-  if (lift.aerialway !== lift.original.aerialway) {
-    fieldChanges.push({
-      key: "aerialway",
-      label: "aerialway",
-      before: lift.original.aerialway,
-      after: lift.aerialway,
-    });
-  }
   for (const key of DETAIL_KEYS) {
     if (lift.detail[key] !== lift.original.detail[key]) {
       fieldChanges.push({

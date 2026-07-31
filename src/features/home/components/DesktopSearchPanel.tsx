@@ -3,6 +3,7 @@
 import { Box, Button, Flex } from "@chakra-ui/react";
 import { FilterPanel } from "@/features/filters/FilterPanel";
 import type { Filters } from "@/features/filters/types";
+import { DEFAULT_LIFT_TICKET_SEARCH_INPUT } from "@/features/lift-ticket/utils/calculateLiftTicket";
 import type { MapSkiResort } from "@/types/skiResorts";
 import { SkiResortList } from "./SkiResortList";
 
@@ -121,6 +122,9 @@ export const DesktopSearchPanel = ({
         <Box data-ski-resort-list-scroll-container="true" flexGrow={1} minH={0}>
           <SkiResortList
             resorts={filteredResorts}
+            liftTicketInput={
+              filters.liftTicket ?? DEFAULT_LIFT_TICKET_SEARCH_INPUT
+            }
             onSelectResort={onSelectResort}
             selectedCompareIdSet={selectedCompareIdSet}
             onToggleCompare={onToggleCompare}

@@ -1,4 +1,4 @@
-import type { EditorCourse } from "../types";
+import type { EditorCourse, SaveCoursePayload } from "../types";
 
 const toNumberOrEmpty = (value: string): number | "" => {
   if (value.trim() === "") return "";
@@ -6,14 +6,56 @@ const toNumberOrEmpty = (value: string): number | "" => {
   return Number.isFinite(parsed) ? parsed : "";
 };
 
-// slope_before と同じ形式（properties は name のみ）の GeoJSON
-export const buildRusutsuGeojson = (courses: EditorCourse[]): string =>
+const buildCourseDetailProperties = (
+  resortId: string,
+  course: EditorCourse,
+): Record<string, unknown> => ({
+  maxWidth: "",
+  minWidth: "",
+  snowboard: "",
+  ...(course.detailExtras ?? {}),
+  resort: resortId,
+  name: course.name,
+  level: course.detail.level,
+  distance: toNumberOrEmpty(course.detail.distance),
+  avg: toNumberOrEmpty(course.detail.avg),
+  max: toNumberOrEmpty(course.detail.max),
+  piste: course.detail.piste,
+  morning: course.detail.morning,
+  night: course.detail.night,
+  image: course.detail.image,
+  searchWord: course.detail.searchWord,
+});
+
+const buildCourseBeforeProperties = (
+  resortId: string,
+  course: EditorCourse,
+): Record<string, unknown> => ({
+  ...course.beforeExtras,
+  ...buildCourseDetailProperties(resortId, course),
+});
+
+export const courseToSavePayload = (
+  resortId: string,
+  course: EditorCourse,
+): SaveCoursePayload => ({
+  properties: buildCourseBeforeProperties(resortId, course),
+  coordinates: course.coordinates,
+  // slope_detail 形式のダウンロードにも同じ詳細を出力する。
+  detail: buildCourseDetailProperties(resortId, course),
+});
+
+// slope_before と同じ形式（詳細情報を properties に含む）の GeoJSON
+export const buildRusutsuGeojson = (
+  resortId: string,
+  courses: EditorCourse[],
+): string =>
   JSON.stringify(
     {
       type: "FeatureCollection",
       features: courses.map(course => ({
         type: "Feature",
-        properties: { name: course.name },
+        properties: buildCourseBeforeProperties(resortId, course),
         geometry: {
           type: "LineString",
           coordinates: course.coordinates,
@@ -30,21 +72,7 @@ export const buildSlopeDetailJson = (
   courses: EditorCourse[],
 ): string =>
   JSON.stringify(
-    courses.map(course => ({
-      maxWidth: "",
-      minWidth: "",
-      snowboard: "",
-      ...(course.detailExtras ?? {}),
-      resort: resortId,
-      name: course.name,
-      level: course.detail.level,
-      distance: toNumberOrEmpty(course.detail.distance),
-      avg: toNumberOrEmpty(course.detail.avg),
-      max: toNumberOrEmpty(course.detail.max),
-      piste: course.detail.piste,
-      morning: course.detail.morning,
-      night: course.detail.night,
-    })),
+    courses.map(course => courseToSavePayload(resortId, course).detail),
     null,
     2,
   );
@@ -65,6 +93,8 @@ export const buildStandardGeojson = (courses: EditorCourse[]): string =>
           piste: course.detail.piste,
           morning: course.detail.morning,
           night: course.detail.night,
+          image: course.detail.image,
+          searchWord: course.detail.searchWord,
         },
         geometry: {
           type: "LineString",

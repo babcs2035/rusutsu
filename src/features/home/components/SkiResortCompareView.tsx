@@ -17,8 +17,11 @@ import type {
 } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Drawer } from "vaul";
+import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
+import { CompareLiftTicketTab } from "./compare/CompareLiftTicketTab";
 import { CompareOverviewTab } from "./compare/CompareOverviewTab";
+import { CompareReviewsTab } from "./compare/CompareReviewsTab";
 import { CompareWeatherTab } from "./compare/CompareWeatherTab";
 import type { Resort } from "./compare/types";
 
@@ -29,9 +32,10 @@ type Props = {
   presentation?: "sheet" | "inline";
   canScrollContent?: boolean;
   onContentScrollIntent?: () => void;
+  initialLiftTicketInput: LiftTicketSearchInput;
 };
 
-const TABS = ["概要", "天候"] as const;
+const TABS = ["概要", "料金", "レビュー", "天候"] as const;
 const BOTTOM_SHEET_EXPANDED_SNAP_POINT = 0.94;
 const BOTTOM_SHEET_SNAP_POINTS = [
   0.12,
@@ -85,6 +89,7 @@ export const SkiResortCompareView = ({
   presentation = "sheet",
   canScrollContent,
   onContentScrollIntent,
+  initialLiftTicketInput,
 }: Props) => {
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("概要");
   const [sheetSnapPoint, setSheetSnapPoint] = useState<number | string | null>(
@@ -242,6 +247,15 @@ export const SkiResortCompareView = ({
         ) : (
           <Box px={{ base: 2, md: 8 }} py={{ base: 4, md: 8 }} color="gray.800">
             {activeTab === "概要" && <CompareOverviewTab resorts={resorts} />}
+            {activeTab === "料金" && (
+              <CompareLiftTicketTab
+                resorts={resorts}
+                initialInput={initialLiftTicketInput}
+              />
+            )}
+            {activeTab === "レビュー" && (
+              <CompareReviewsTab resorts={resorts} />
+            )}
             {activeTab === "天候" && (
               <CompareWeatherTab resorts={resorts} isSidePanel={isSidePanel} />
             )}

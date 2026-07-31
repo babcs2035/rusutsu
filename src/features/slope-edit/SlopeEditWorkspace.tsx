@@ -3,20 +3,33 @@
 import { Box, Button, Flex, Heading, Text } from "@chakra-ui/react";
 import { useCallback, useEffect, useState } from "react";
 import { loadSlopeSourceData } from "./actions";
+import { ConfirmStep } from "./components/ConfirmStep";
 import { DetailEditStep } from "./components/DetailEditStep";
+import { EditorMap, type EditorMapMode } from "./components/EditorMap";
 import { LineEditStep } from "./components/LineEditStep";
 import { ResortSelectStep } from "./components/ResortSelectStep";
 import { TutorialOverlay } from "./components/TutorialOverlay";
-import { TUTORIAL_SEEN_STORAGE_KEY } from "./constants";
+import { RESORT_INITIAL_ZOOM, TUTORIAL_SEEN_STORAGE_KEY } from "./constants";
 import { loadDraft, useDraftStorage } from "./hooks/useDraftStorage";
 import type {
   EditorCourse,
   EditStep,
   ResortOption,
+  SlopeBeforeFeature,
+  SlopeDetailEntry,
   StartSource,
 } from "./types";
-import { assignUnnamedCourseNames } from "./utils/courseOps";
-import { sourceDataToCourses } from "./utils/loadSource";
+import {
+  assignUnnamedCourseNames,
+  createEmptyDetail,
+  fillEmptyCourseSearchWords,
+  splitCourseAtVertex,
+} from "./utils/courseOps";
+import {
+  buildLevelNormalizationWarning,
+  normalizeLevel,
+  sourceDataToCourses,
+} from "./utils/loadSource";
 
 type SlopeEditWorkspaceProps = {
   resorts: ResortOption[];
@@ -27,7 +40,17 @@ const STEP_LABELS: Array<{ step: EditStep; label: string }> = [
   { step: "select", label: "1. スキー場選択" },
   { step: "lines", label: "2. コース線編集" },
   { step: "details", label: "3. 分割・詳細編集" },
+  { step: "confirm", label: "4. 確認・保存" },
 ];
+
+const normalizeDraftCourse = (course: EditorCourse): EditorCourse => ({
+  ...course,
+  detail: { ...createEmptyDetail(), ...course.detail },
+  beforeExtras: course.beforeExtras ?? {},
+  detailExtras: course.detailExtras ?? null,
+  splitGroupId: course.splitGroupId ?? null,
+  splitBaseName: course.splitBaseName ?? null,
+});
 
 export function SlopeEditWorkspace({
   resorts,
@@ -36,13 +59,31 @@ export function SlopeEditWorkspace({
   const [step, setStep] = useState<EditStep>("select");
   const [resort, setResort] = useState<ResortOption | null>(null);
   const [courses, setCoursesState] = useState<EditorCourse[]>([]);
+  const [preservedFeatures, setPreservedFeatures] = useState<
+    SlopeBeforeFeature[]
+  >([]);
+  const [preservedDetails, setPreservedDetails] = useState<SlopeDetailEntry[]>(
+    [],
+  );
+  const [fileHash, setFileHash] = useState<string | null>(null);
+  const [detailFileHash, setDetailFileHash] = useState<string | null>(null);
+  const [activeCourseId, setActiveCourseId] = useState<string | null>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [isSplitMode, setIsSplitMode] = useState(false);
+  const [fitBoundsKey, setFitBoundsKey] = useState(0);
   const [isLoadingSource, setIsLoadingSource] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadWarning, setLoadWarning] = useState<string | null>(null);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [showTutorial, setShowTutorial] = useState(false);
 
-  const { savedAt, markExported } = useDraftStorage(
+  const { savedAt, markExported, markSavedToServer } = useDraftStorage(
     resort?.id ?? null,
+    fileHash,
+    detailFileHash,
     courses,
+    preservedFeatures,
+    preservedDetails,
     step !== "select",
   );
 
@@ -68,11 +109,30 @@ export function SlopeEditWorkspace({
     [],
   );
 
+  const updateActiveCourse = useCallback(
+    (updater: (course: EditorCourse) => EditorCourse) => {
+      if (!activeCourseId) return;
+      setCoursesState(previous =>
+        previous.map(course =>
+          course.id === activeCourseId ? updater(course) : course,
+        ),
+      );
+    },
+    [activeCourseId],
+  );
+
+  const resetMapModes = () => {
+    setIsDrawing(false);
+    setIsSplitMode(false);
+  };
+
   const handleStart = async (
     selected: ResortOption,
     source: StartSource,
   ): Promise<void> => {
     setLoadError(null);
+    setLoadWarning(null);
+    setSaveMessage(null);
 
     if (source !== "draft" && loadDraft(selected.id)) {
       const confirmed = window.confirm(
@@ -81,51 +141,154 @@ export function SlopeEditWorkspace({
       if (!confirmed) return;
     }
 
-    if (source === "draft") {
-      const draft = loadDraft(selected.id);
-      setResort(selected);
-      setCoursesState(draft?.courses ?? []);
-      setStep("lines");
-      return;
-    }
+    setIsLoadingSource(true);
+    try {
+      const data = await loadSlopeSourceData(selected.id);
+      let nextCourses: EditorCourse[];
+      let nextPreservedFeatures: SlopeBeforeFeature[] = [];
+      let nextPreservedDetails: SlopeDetailEntry[] = [];
+      let nextFileHash = data.fileHash;
+      let nextDetailFileHash = data.detailFileHash;
+      const nextLoadWarnings: string[] = [];
 
-    if (source === "existing") {
-      setIsLoadingSource(true);
-      try {
-        const data = await loadSlopeSourceData(selected.id);
+      if (source === "draft") {
+        const draft = loadDraft(selected.id);
+        if (!draft) {
+          setLoadError("下書きを読み込めませんでした。");
+          return;
+        }
+        nextCourses = draft.courses.map((course, index) => {
+          const normalizedCourse = normalizeDraftCourse(course);
+          const levelNormalization = normalizeLevel(
+            normalizedCourse.detail.level,
+          );
+          const warning = buildLevelNormalizationWarning(
+            normalizedCourse.name,
+            index,
+            levelNormalization,
+          );
+          if (warning) nextLoadWarnings.push(warning);
+          return {
+            ...normalizedCourse,
+            detail: {
+              ...normalizedCourse.detail,
+              level: levelNormalization.level,
+            },
+          };
+        });
+        nextPreservedFeatures = draft.preservedFeatures ?? [];
+        nextPreservedDetails = draft.preservedDetails ?? [];
+        nextFileHash = draft.fileHash ?? data.fileHash;
+        nextDetailFileHash = draft.detailFileHash ?? data.detailFileHash;
+        if (
+          (draft.fileHash !== undefined && draft.fileHash !== data.fileHash) ||
+          (draft.detailFileHash !== undefined &&
+            draft.detailFileHash !== data.detailFileHash)
+        ) {
+          nextLoadWarnings.push(
+            "下書きの作成後に slope_before または slope_detail が変更されています。このままでは保存時に競合エラーになります。",
+          );
+        }
+      } else if (source === "existing") {
         if (!data.geojson) {
           setLoadError(
             `${selected.id} の slope_before を読み込めませんでした。`,
           );
           return;
         }
-        setResort(selected);
-        setCoursesState(sourceDataToCourses(data));
-        setStep("lines");
-      } catch {
-        setLoadError("既存データの読み込みに失敗しました。");
-      } finally {
-        setIsLoadingSource(false);
+        const result = sourceDataToCourses(data);
+        nextCourses = result.courses;
+        nextPreservedFeatures = result.preservedFeatures;
+        nextPreservedDetails = result.preservedDetails;
+        nextLoadWarnings.push(...result.warnings);
+        if (
+          result.preservedFeatures.length > 0 ||
+          result.preservedDetails.length > 0
+        ) {
+          nextLoadWarnings.push(
+            `編集対象外の feature ${result.preservedFeatures.length} 件は slope_before の末尾に保持します。コース線に未対応の slope_detail ${result.preservedDetails.length} 件は読み込み対象外で、元ファイルは変更しません。`,
+          );
+        }
+      } else {
+        nextCourses = [];
       }
-      return;
-    }
 
-    setResort(selected);
-    setCoursesState([]);
-    setStep("lines");
+      setResort(selected);
+      setCoursesState(nextCourses);
+      setPreservedFeatures(nextPreservedFeatures);
+      setPreservedDetails(nextPreservedDetails);
+      setFileHash(nextFileHash);
+      setDetailFileHash(nextDetailFileHash);
+      setLoadWarning(
+        nextLoadWarnings.length > 0 ? nextLoadWarnings.join("\n") : null,
+      );
+      setActiveCourseId(nextCourses[0]?.id ?? null);
+      resetMapModes();
+      setFitBoundsKey(key => key + 1);
+      setStep("lines");
+    } catch {
+      setLoadError("既存データの読み込みに失敗しました。");
+    } finally {
+      setIsLoadingSource(false);
+    }
   };
 
   const handleProceedToDetails = () => {
-    setCoursesState(previous => assignUnnamedCourseNames(previous));
+    const nextCourses = fillEmptyCourseSearchWords(
+      assignUnnamedCourseNames(courses),
+      resort?.searchName ?? "",
+    );
+    setCoursesState(nextCourses);
+    if (!activeCourseId) setActiveCourseId(nextCourses[0]?.id ?? null);
+    resetMapModes();
     setStep("details");
   };
 
   const handleBackToSelect = () => {
-    // 編集内容はローカルキャッシュに自動保存済みなのでそのまま戻れる
     setStep("select");
     setResort(null);
     setCoursesState([]);
+    setPreservedFeatures([]);
+    setPreservedDetails([]);
+    setFileHash(null);
+    setDetailFileHash(null);
+    setActiveCourseId(null);
+    resetMapModes();
+    setLoadWarning(null);
   };
+
+  const handleSaved = (writtenFiles: string[]) => {
+    markSavedToServer();
+    setSaveMessage(`保存しました: ${writtenFiles.join(", ")}`);
+    handleBackToSelect();
+  };
+
+  const handleSplitAtVertex = (vertexIndex: number) => {
+    if (!activeCourseId) return;
+    setCoursesState(previous =>
+      splitCourseAtVertex(
+        previous,
+        activeCourseId,
+        vertexIndex,
+        resort?.searchName ?? "",
+      ),
+    );
+    setIsSplitMode(false);
+  };
+
+  const selectedCourse =
+    courses.find(course => course.id === activeCourseId) ?? null;
+  const mapIsVisible = step === "lines" || step === "details";
+  const mapMode: EditorMapMode =
+    step === "lines"
+      ? isDrawing
+        ? "draw"
+        : selectedCourse
+          ? "edit"
+          : "view"
+      : step === "details" && isSplitMode
+        ? "split"
+        : "view";
 
   return (
     <Flex direction="column" h="100dvh" minH={0}>
@@ -139,7 +302,7 @@ export function SlopeEditWorkspace({
         borderColor="gray.200"
         bg="white"
       >
-        <Heading size="sm">スキー場コース入力</Heading>
+        <Heading size="sm">スキー場コース編集</Heading>
         <Flex gap={1}>
           {STEP_LABELS.map(({ step: stepId, label }) => (
             <Text
@@ -167,6 +330,23 @@ export function SlopeEditWorkspace({
             {loadError}
           </Text>
         )}
+        {loadWarning && (
+          <Text
+            fontSize="xs"
+            color="orange.600"
+            maxW="520px"
+            maxH="72px"
+            overflowY="auto"
+            whiteSpace="pre-line"
+          >
+            {loadWarning}
+          </Text>
+        )}
+        {saveMessage && (
+          <Text fontSize="xs" color="green.600">
+            {saveMessage}
+          </Text>
+        )}
         {isLoadingSource && (
           <Text fontSize="xs" color="gray.500">
             既存データを読み込み中…
@@ -181,7 +361,7 @@ export function SlopeEditWorkspace({
         </Button>
       </Flex>
 
-      <Box flex="1" minH={0}>
+      <Box flex="1" minH={0} position="relative">
         {step === "select" && (
           <ResortSelectStep resorts={resorts} onStart={handleStart} />
         )}
@@ -190,8 +370,12 @@ export function SlopeEditWorkspace({
             resort={resort}
             courses={courses}
             setCourses={setCourses}
-            googleMapsApiKey={googleMapsApiKey}
             savedAt={savedAt}
+            activeCourseId={activeCourseId}
+            onActiveCourseIdChange={setActiveCourseId}
+            isDrawing={isDrawing}
+            onDrawingChange={setIsDrawing}
+            onFitBounds={() => setFitBoundsKey(key => key + 1)}
             onProceed={handleProceedToDetails}
             onBackToSelect={handleBackToSelect}
           />
@@ -201,11 +385,96 @@ export function SlopeEditWorkspace({
             resort={resort}
             courses={courses}
             setCourses={setCourses}
-            googleMapsApiKey={googleMapsApiKey}
             savedAt={savedAt}
-            onBackToLines={() => setStep("lines")}
+            selectedCourseId={activeCourseId}
+            onSelectedCourseIdChange={setActiveCourseId}
+            isSplitMode={isSplitMode}
+            onSplitModeChange={setIsSplitMode}
+            onBackToLines={() => {
+              resetMapModes();
+              setStep("lines");
+            }}
+            onProceed={() => {
+              resetMapModes();
+              setStep("confirm");
+            }}
             onExported={markExported}
           />
+        )}
+        {step === "confirm" && resort && (
+          <ConfirmStep
+            resort={resort}
+            courses={courses}
+            fileHash={fileHash}
+            detailFileHash={detailFileHash}
+            preservedFeatures={preservedFeatures}
+            preservedDetails={preservedDetails}
+            onBack={() => setStep("details")}
+            onSaved={handleSaved}
+          />
+        )}
+
+        {resort && step !== "select" && (
+          <Box
+            position="absolute"
+            top={0}
+            right={0}
+            bottom={0}
+            left="460px"
+            visibility={mapIsVisible ? "visible" : "hidden"}
+            pointerEvents={mapIsVisible ? "auto" : "none"}
+          >
+            <EditorMap
+              center={[resort.longitude, resort.latitude]}
+              zoom={RESORT_INITIAL_ZOOM}
+              courses={courses}
+              activeCourseId={activeCourseId}
+              mode={mapMode}
+              googleMapsApiKey={googleMapsApiKey}
+              fitBoundsKey={fitBoundsKey}
+              visible={mapIsVisible}
+              onSelectCourse={courseId => {
+                if (!isDrawing && !isSplitMode) {
+                  setActiveCourseId(courseId);
+                }
+              }}
+              onAppendVertex={lngLat =>
+                updateActiveCourse(course => ({
+                  ...course,
+                  coordinates: [...course.coordinates, lngLat],
+                }))
+              }
+              onMoveVertex={(index, lngLat) =>
+                updateActiveCourse(course => ({
+                  ...course,
+                  coordinates: course.coordinates.map(
+                    (coordinate, coordinateIndex) =>
+                      coordinateIndex === index ? lngLat : coordinate,
+                  ),
+                }))
+              }
+              onInsertVertex={(index, lngLat) =>
+                updateActiveCourse(course => ({
+                  ...course,
+                  coordinates: [
+                    ...course.coordinates.slice(0, index),
+                    lngLat,
+                    ...course.coordinates.slice(index),
+                  ],
+                }))
+              }
+              onDeleteVertex={index =>
+                updateActiveCourse(course => ({
+                  ...course,
+                  coordinates: course.coordinates.filter(
+                    (_, coordinateIndex) => coordinateIndex !== index,
+                  ),
+                }))
+              }
+              onFinishDraw={() => setIsDrawing(false)}
+              onSplitVertex={handleSplitAtVertex}
+            />
+          </Box>
         )}
       </Box>
 

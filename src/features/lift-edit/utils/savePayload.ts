@@ -19,7 +19,6 @@ export const liftToSavePayload = (lift: EditorLift): SaveLiftPayload => {
   const properties: Record<string, unknown> = {};
   if (lift.osmId !== null) properties["@id"] = lift.osmId;
   if (lift.name !== "") properties.name = lift.name;
-  if (lift.aerialway !== "") properties.aerialway = lift.aerialway;
   if (isSameMidstation(lift.midstation, lift.original.midstation)) {
     // 未変更なら（標高付き配列や空文字も含めて）読み込んだ生の値を維持する
     if (lift.midstationRaw !== null && lift.midstationRaw !== undefined) {
@@ -33,7 +32,7 @@ export const liftToSavePayload = (lift: EditorLift): SaveLiftPayload => {
     const value = lift.detail[key];
     if (value !== "") properties[key] = toStoredValue(key, value);
   }
-  // midstation / start_date などの未対応フィールドをそのまま引き継ぐ
+  // aerialway / start_date などの未対応フィールドをそのまま引き継ぐ
   for (const [key, value] of Object.entries(lift.extras)) {
     if (!(key in properties)) properties[key] = value;
   }

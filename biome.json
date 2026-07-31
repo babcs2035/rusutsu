@@ -13,7 +13,8 @@
       "!**/.next",
       "!**/out",
       "!**/build",
-      "!**/coverage"
+      "!**/coverage",
+      "!**/src/private/data"
     ]
   },
   "formatter": {

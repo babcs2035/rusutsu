@@ -20,6 +20,7 @@ export type LiftDetail = {
   year: string;
   note: string;
   searchWord: string;
+  link: string;
   morning: string;
   night: string;
 };
@@ -33,10 +34,11 @@ export type EditorLift = {
   id: string;
   // 読み込み時点の lift_before ファイル内でのインデックス（新規追加リフトは -1）
   sourceIndex: number;
-  // このセッションで新規追加したリフト（削除可能なのは新規のみ）
+  // このセッションで新規追加したリフト
   isNew?: boolean;
+  // 既存リフトの削除予定。下書きでも削除状態を維持するため配列には残す
+  isDeleted?: boolean;
   name: string;
-  aerialway: string;
   // OSM 由来の @id。ユーザーは変更しない
   osmId: string | null;
   // 現在の所属スキー場（編集対象）
@@ -48,7 +50,7 @@ export type EditorLift = {
   // 未変更のまま保存するときは（標高値付き配列などを壊さないよう）これを書き戻す
   midstationRaw: unknown;
   detail: LiftDetail;
-  // name / aerialway / @id / 詳細フィールド以外の元 properties（そのまま保存へ引き継ぐ）
+  // name / @id / 詳細フィールド以外の元 properties（aerialway も含めそのまま保存へ引き継ぐ）
   extras: Record<string, unknown>;
   // lift_detail との結合情報
   detailMatch: {
@@ -63,7 +65,6 @@ export type EditorLift = {
   original: {
     skiId: string;
     name: string;
-    aerialway: string;
     coordinates: LngLat[];
     midstation: LngLat | null;
     detail: LiftDetail;
@@ -99,6 +100,8 @@ export type LiftSourceData = {
 export type ResortOption = {
   id: string;
   nameJa: string;
+  // 検索ワードの先頭に使う名前（地図表示用の省略名を優先）
+  searchName: string;
   nameEn: string;
   prefecture: string;
   latitude: number;
@@ -106,9 +109,42 @@ export type ResortOption = {
   hasLiftBefore: boolean;
   // lift_confirmed.json 由来。確認済みにした日時（未確認なら null）
   confirmedAt: string | null;
+  // false の場合、id が DB の SkiResort に存在しない
+  // （shiga-kogen-central のような意図的な仮 ID で、lift_before だけが存在する）
+  isKnownResort: boolean;
 };
 
-export type EditStep = "select" | "assign" | "geometry" | "details" | "confirm";
+export type EditStep =
+  | "select"
+  | "assign"
+  | "geometry"
+  | "details"
+  | "links"
+  | "confirm";
+
+// スキー場全体の参考リンク（lift_before/lift_detail とは別に SkiResortLinks.json へ保存）
+// description は「スクールブログ」など、URLだけでは用途が分かりにくい場合にのみ付ける
+export type ResortLink = {
+  url: string;
+  description?: string;
+};
+
+// 各項目とも複数リンクを持ちうるため配列で保持する
+export type ResortLinks = {
+  officialSiteUrls: ResortLink[];
+  mapUrls: ResortLink[];
+  skiSchoolUrls: ResortLink[];
+  snowboardSchoolUrls: ResortLink[];
+  skiResortInfoUrls: ResortLink[];
+  espeYukiUrls: ResortLink[];
+  gelandePlusTubeUrls: ResortLink[];
+  youtubeUrls: ResortLink[];
+  lineUrls: ResortLink[];
+  xUrls: ResortLink[];
+  threadsUrls: ResortLink[];
+  instagramUrls: ResortLink[];
+  facebookUrls: ResortLink[];
+};
 
 // 保存時にサーバーへ送る 1 リフト分のデータ
 export type SaveLiftPayload = {

@@ -2,6 +2,7 @@
 
 import { Box } from "@chakra-ui/react";
 import type { RefObject } from "react";
+import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
 import type { MapSkiResort, SkiResortDetail } from "@/types/skiResorts";
 import { SkiResortCompareView } from "./SkiResortCompareView";
 import { SkiResortList } from "./SkiResortList";
@@ -16,6 +17,7 @@ type Props = {
   listSheetSnapPoint: number | string | null;
   snapPoints: (number | string)[];
   selectedCompareIdSet: Set<string>;
+  liftTicketInput: LiftTicketSearchInput;
   onCloseCompare: () => void;
   onHoverResortChange: (id: string | null) => void;
   onOpenChange: (open: boolean) => void;
@@ -32,6 +34,7 @@ export const MobileResultsSheet = ({
   isListSheetOpen,
   listSheetContentRef,
   selectedCompareIdSet,
+  liftTicketInput,
   onCloseCompare,
   onHoverResortChange,
   onSelectResort,
@@ -52,6 +55,7 @@ export const MobileResultsSheet = ({
       <SkiResortCompareView
         resorts={compareResorts}
         isLoading={isCompareLoading}
+        initialLiftTicketInput={liftTicketInput}
         onClose={onCloseCompare}
         presentation="inline"
         canScrollContent
@@ -65,6 +69,7 @@ export const MobileResultsSheet = ({
       >
         <SkiResortList
           resorts={filteredResorts}
+          liftTicketInput={liftTicketInput}
           onSelectResort={onSelectResort}
           selectedCompareIdSet={selectedCompareIdSet}
           onToggleCompare={onToggleCompare}

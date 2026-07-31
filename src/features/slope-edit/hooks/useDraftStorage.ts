@@ -2,7 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DRAFT_STORAGE_PREFIX } from "../constants";
-import type { DraftSummary, EditorCourse, SlopeEditDraft } from "../types";
+import type {
+  DraftSummary,
+  EditorCourse,
+  SlopeBeforeFeature,
+  SlopeDetailEntry,
+  SlopeEditDraft,
+} from "../types";
 
 const draftKey = (resortId: string): string =>
   `${DRAFT_STORAGE_PREFIX}${resortId}`;
@@ -48,13 +54,18 @@ type DraftStorageState = {
   savedAt: string | null;
   isDirty: boolean;
   markExported: () => void;
+  markSavedToServer: () => void;
   discard: () => void;
 };
 
 // スキー場IDごとにローカルストレージへ自動保存する
 export const useDraftStorage = (
   resortId: string | null,
+  fileHash: string | null,
+  detailFileHash: string | null,
   courses: EditorCourse[],
+  preservedFeatures: SlopeBeforeFeature[],
+  preservedDetails: SlopeDetailEntry[],
   enabled: boolean,
 ): DraftStorageState => {
   const [savedAt, setSavedAt] = useState<string | null>(null);
@@ -85,7 +96,11 @@ export const useDraftStorage = (
       const draft: SlopeEditDraft = {
         version: 1,
         resortId,
+        fileHash,
+        detailFileHash,
         courses,
+        preservedFeatures,
+        preservedDetails,
         updatedAt,
         exportedAt,
       };
@@ -97,7 +112,16 @@ export const useDraftStorage = (
       }
     }, 400);
     return () => window.clearTimeout(timer);
-  }, [enabled, resortId, courses, exportedAt]);
+  }, [
+    enabled,
+    resortId,
+    fileHash,
+    detailFileHash,
+    courses,
+    preservedFeatures,
+    preservedDetails,
+    exportedAt,
+  ]);
 
   const isDirty =
     savedAt !== null && (exportedAt === null || savedAt > exportedAt);
@@ -130,6 +154,14 @@ export const useDraftStorage = (
     }
   }, [resortId]);
 
+  const markSavedToServer = useCallback(() => {
+    if (!resortId) return;
+    discardDraft(resortId);
+    setSavedAt(null);
+    setExportedAt(null);
+    skipNextSaveRef.current = true;
+  }, [resortId]);
+
   const discard = useCallback(() => {
     if (!resortId) return;
     discardDraft(resortId);
@@ -138,5 +170,5 @@ export const useDraftStorage = (
     skipNextSaveRef.current = true;
   }, [resortId]);
 
-  return { savedAt, isDirty, markExported, discard };
+  return { savedAt, isDirty, markExported, markSavedToServer, discard };
 };

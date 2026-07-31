@@ -435,6 +435,8 @@ export const SkiResortDetailView = ({
   const resortInfo = {
     id: resort.id,
     nameJa: resort.nameJa,
+    nameRuby: resort.nameRuby,
+    formerNames: resort.formerNames,
     prefecture: resort.prefecture,
     town: resort.town,
     descriptionShort: resort.descriptionShort,

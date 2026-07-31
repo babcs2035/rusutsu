@@ -2,24 +2,39 @@
 
 import { Box, Flex, Heading, Text } from "@chakra-ui/react";
 import { useCallback, useState } from "react";
+import {
+  EditorMap,
+  type EditorMapMode,
+} from "@/features/slope-edit/components/EditorMap";
 import type { TileLayerId } from "@/features/slope-edit/types";
-import { loadLiftSourceData, setLiftConfirmed } from "./actions";
+import {
+  loadLiftSourceData,
+  loadResortLinks,
+  setLiftConfirmed,
+} from "./actions";
 import { AssignStep } from "./components/AssignStep";
 import { ConfirmStep } from "./components/ConfirmStep";
 import { DetailStep } from "./components/DetailStep";
 import { GeometryStep } from "./components/GeometryStep";
+import { LinksStep } from "./components/LinksStep";
 import {
   ResortSelectStep,
   type StartSource,
 } from "./components/ResortSelectStep";
+import { EMPTY_RESORT_LINKS, RESORT_INITIAL_ZOOM } from "./constants";
 import { loadDraft, useDraftStorage } from "./hooks/useDraftStorage";
 import type {
   EditorLift,
   EditStep,
   LiftDetailEntry,
+  ResortLinks,
   ResortOption,
 } from "./types";
-import { liftDisplayName } from "./utils/liftOps";
+import {
+  fillEmptyLiftSearchWords,
+  hasLineChange,
+  liftDisplayName,
+} from "./utils/liftOps";
 import { sourceDataToLifts } from "./utils/loadSource";
 
 type LiftEditWorkspaceProps = {
@@ -32,7 +47,8 @@ const STEP_LABELS: Array<{ step: EditStep; label: string }> = [
   { step: "assign", label: "2. 所属確認・変更" },
   { step: "geometry", label: "3. 位置補正" },
   { step: "details", label: "4. 詳細情報" },
-  { step: "confirm", label: "5. 確認・保存" },
+  { step: "links", label: "5. 全体情報リンク" },
+  { step: "confirm", label: "6. 確認・保存" },
 ];
 
 export function LiftEditWorkspace({
@@ -43,8 +59,13 @@ export function LiftEditWorkspace({
   const [resort, setResort] = useState<ResortOption | null>(null);
   const [lifts, setLiftsState] = useState<EditorLift[]>([]);
   const [details, setDetails] = useState<LiftDetailEntry[]>([]);
+  const [resortLinks, setResortLinks] =
+    useState<ResortLinks>(EMPTY_RESORT_LINKS);
   const [fileHash, setFileHash] = useState<string | null>(null);
   const [selectedLiftId, setSelectedLiftId] = useState<string | null>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [isMidstationMode, setIsMidstationMode] = useState(false);
+  const [fitBoundsKey, setFitBoundsKey] = useState(0);
   const [isLoadingSource, setIsLoadingSource] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadWarning, setLoadWarning] = useState<string | null>(null);
@@ -65,7 +86,7 @@ export function LiftEditWorkspace({
   const handleToggleConfirmed = async (
     target: ResortOption,
     confirmed: boolean,
-  ) => {
+  ): Promise<void> => {
     try {
       const result = await setLiftConfirmed(target.id, confirmed);
       setConfirmedOverrides(previous => ({
@@ -91,7 +112,31 @@ export function LiftEditWorkspace({
     [],
   );
 
-  const selectedLift = lifts.find(lift => lift.id === selectedLiftId) ?? null;
+  const updateSelectedLift = useCallback(
+    (updater: (lift: EditorLift) => EditorLift) => {
+      if (!selectedLiftId) return;
+      setLiftsState(previous =>
+        previous.map(lift =>
+          lift.id === selectedLiftId ? updater(lift) : lift,
+        ),
+      );
+    },
+    [selectedLiftId],
+  );
+
+  const resetMapModes = () => {
+    setIsDrawing(false);
+    setIsMidstationMode(false);
+  };
+
+  const activeLifts = lifts.filter(lift => !lift.isDeleted);
+  const deletedLifts = lifts.filter(lift => lift.isDeleted);
+  const selectedLift =
+    activeLifts.find(lift => lift.id === selectedLiftId) ?? null;
+  // resort state に確認済みフラグの最新値を反映する（ConfirmStep でのトグル直後に表示へ反映するため）
+  const effectiveResort = resort
+    ? (effectiveResorts.find(option => option.id === resort.id) ?? resort)
+    : null;
 
   const handleStart = async (
     selected: ResortOption,
@@ -110,7 +155,11 @@ export function LiftEditWorkspace({
 
     setIsLoadingSource(true);
     try {
-      const data = await loadLiftSourceData(selected.id);
+      const [data, links] = await Promise.all([
+        loadLiftSourceData(selected.id),
+        loadResortLinks(selected.id),
+      ]);
+      setResortLinks(links);
 
       if (source === "draft") {
         const draft = loadDraft(selected.id);
@@ -137,7 +186,9 @@ export function LiftEditWorkspace({
         setLiftsState(draftLifts);
         setDetails(data.details ?? []);
         setFileHash(draft.fileHash);
-        setSelectedLiftId(draftLifts[0]?.id ?? null);
+        setSelectedLiftId(draftLifts.find(lift => !lift.isDeleted)?.id ?? null);
+        resetMapModes();
+        setFitBoundsKey(key => key + 1);
         setStep("assign");
         return;
       }
@@ -149,6 +200,7 @@ export function LiftEditWorkspace({
         setDetails(data.details ?? []);
         setFileHash(data.fileHash);
         setSelectedLiftId(null);
+        resetMapModes();
         setStep("geometry");
         return;
       }
@@ -168,6 +220,8 @@ export function LiftEditWorkspace({
       setDetails(data.details ?? []);
       setFileHash(data.fileHash);
       setSelectedLiftId(result.lifts[0]?.id ?? null);
+      resetMapModes();
+      setFitBoundsKey(key => key + 1);
       setStep("assign");
     } catch {
       setLoadError("既存データの読み込みに失敗しました。");
@@ -182,8 +236,10 @@ export function LiftEditWorkspace({
     setResort(null);
     setLiftsState([]);
     setDetails([]);
+    setResortLinks(EMPTY_RESORT_LINKS);
     setFileHash(null);
     setSelectedLiftId(null);
+    resetMapModes();
     setLoadWarning(null);
   };
 
@@ -192,6 +248,17 @@ export function LiftEditWorkspace({
     setSaveMessage(`保存しました: ${writtenFiles.join(", ")}`);
     handleBackToSelect();
   };
+
+  const mapIsVisible =
+    step === "assign" || step === "geometry" || step === "details";
+  const mapMode: EditorMapMode =
+    step !== "geometry" || !selectedLift
+      ? "view"
+      : isDrawing
+        ? "draw"
+        : isMidstationMode
+          ? "midstation"
+          : "edit";
 
   return (
     <Flex direction="column" h="100dvh" minH={0}>
@@ -256,7 +323,7 @@ export function LiftEditWorkspace({
         )}
       </Flex>
 
-      <Box flex="1" minH={0}>
+      <Box flex="1" minH={0} position="relative">
         {step === "select" && (
           <ResortSelectStep
             resorts={effectiveResorts}
@@ -268,58 +335,184 @@ export function LiftEditWorkspace({
           <AssignStep
             resort={resort}
             resorts={effectiveResorts}
-            lifts={lifts}
+            lifts={activeLifts}
             setLifts={setLifts}
-            googleMapsApiKey={googleMapsApiKey}
             savedAt={savedAt}
             selectedLiftId={selectedLiftId}
-            onSelectLift={setSelectedLiftId}
-            tileLayerId={tileLayerId}
-            onTileLayerIdChange={setTileLayerId}
-            onProceed={() => setStep("geometry")}
+            onSelectLift={liftId => {
+              setSelectedLiftId(liftId);
+              resetMapModes();
+            }}
+            onProceed={() => {
+              resetMapModes();
+              setStep("geometry");
+            }}
             onBackToSelect={handleBackToSelect}
           />
         )}
         {step === "geometry" && resort && (
           <GeometryStep
             resort={resort}
-            lifts={lifts}
+            lifts={activeLifts}
+            deletedLifts={deletedLifts}
             setLifts={setLifts}
-            googleMapsApiKey={googleMapsApiKey}
             savedAt={savedAt}
             selectedLiftId={selectedLiftId}
             onSelectLift={setSelectedLiftId}
-            tileLayerId={tileLayerId}
-            onTileLayerIdChange={setTileLayerId}
-            onProceed={() => setStep("details")}
-            onBack={() => setStep("assign")}
+            isDrawing={isDrawing}
+            onDrawingChange={setIsDrawing}
+            isMidstationMode={isMidstationMode}
+            onMidstationModeChange={setIsMidstationMode}
+            onFitBounds={() => setFitBoundsKey(key => key + 1)}
+            onProceed={() => {
+              resetMapModes();
+              setLiftsState(previous =>
+                fillEmptyLiftSearchWords(
+                  previous,
+                  new Map(
+                    effectiveResorts.map(option => [
+                      option.id,
+                      option.searchName,
+                    ]),
+                  ),
+                ),
+              );
+              setStep("details");
+            }}
+            onBack={() => {
+              resetMapModes();
+              setStep("assign");
+            }}
           />
         )}
         {step === "details" && resort && (
           <DetailStep
             resort={resort}
-            lifts={lifts}
+            resorts={effectiveResorts}
+            lifts={activeLifts}
             setLifts={setLifts}
             details={details}
-            googleMapsApiKey={googleMapsApiKey}
             savedAt={savedAt}
             selectedLiftId={selectedLiftId}
             onSelectLift={setSelectedLiftId}
-            tileLayerId={tileLayerId}
-            onTileLayerIdChange={setTileLayerId}
-            onProceed={() => setStep("confirm")}
-            onBack={() => setStep("geometry")}
+            onProceed={() => setStep("links")}
+            onBack={() => {
+              resetMapModes();
+              setStep("geometry");
+            }}
           />
         )}
-        {step === "confirm" && resort && (
-          <ConfirmStep
+        {step === "links" && resort && (
+          <LinksStep
             resort={resort}
-            resorts={effectiveResorts}
-            lifts={lifts}
-            fileHash={fileHash}
+            links={resortLinks}
+            setLinks={setResortLinks}
+            onProceed={() => setStep("confirm")}
             onBack={() => setStep("details")}
-            onSaved={handleSaved}
           />
+        )}
+        {step === "confirm" && effectiveResort && (
+          <ConfirmStep
+            resort={effectiveResort}
+            resorts={effectiveResorts}
+            lifts={activeLifts}
+            deletedLifts={deletedLifts}
+            links={resortLinks}
+            setLinks={setResortLinks}
+            fileHash={fileHash}
+            onBack={() => setStep("links")}
+            onSaved={handleSaved}
+            onToggleConfirmed={handleToggleConfirmed}
+          />
+        )}
+
+        {resort && step !== "select" && (
+          <Box
+            position="absolute"
+            top={0}
+            right={0}
+            bottom={0}
+            left="480px"
+            visibility={mapIsVisible ? "visible" : "hidden"}
+            pointerEvents={mapIsVisible ? "auto" : "none"}
+          >
+            <EditorMap
+              center={[resort.longitude, resort.latitude]}
+              zoom={RESORT_INITIAL_ZOOM}
+              courses={activeLifts}
+              backgroundLines={
+                step === "geometry" &&
+                selectedLift &&
+                hasLineChange(selectedLift) &&
+                !selectedLift.isNew
+                  ? [
+                      {
+                        id: `${selectedLift.id}-original`,
+                        name: `${liftDisplayName(selectedLift)}（編集前）`,
+                        coordinates: selectedLift.original.coordinates,
+                      },
+                    ]
+                  : []
+              }
+              activeCourseId={selectedLiftId}
+              mode={mapMode}
+              googleMapsApiKey={googleMapsApiKey}
+              fitBoundsKey={fitBoundsKey}
+              layerId={tileLayerId}
+              onLayerIdChange={setTileLayerId}
+              visible={mapIsVisible}
+              midstation={selectedLift?.midstation ?? null}
+              onPlaceMidstation={lngLat => {
+                updateSelectedLift(lift => ({ ...lift, midstation: lngLat }));
+                setIsMidstationMode(false);
+              }}
+              onMoveMidstation={lngLat =>
+                updateSelectedLift(lift => ({ ...lift, midstation: lngLat }))
+              }
+              onSelectCourse={liftId => {
+                if (step !== "geometry" || (!isDrawing && !isMidstationMode)) {
+                  setSelectedLiftId(liftId);
+                  if (step === "geometry") resetMapModes();
+                }
+              }}
+              onAppendVertex={lngLat =>
+                updateSelectedLift(lift => ({
+                  ...lift,
+                  coordinates: [...lift.coordinates, lngLat],
+                }))
+              }
+              onFinishDraw={() => setIsDrawing(false)}
+              onMoveVertex={(index, lngLat) =>
+                updateSelectedLift(lift => ({
+                  ...lift,
+                  coordinates: lift.coordinates.map((pair, pairIndex) =>
+                    pairIndex === index ? lngLat : pair,
+                  ),
+                }))
+              }
+              onInsertVertex={(index, lngLat) =>
+                updateSelectedLift(lift => ({
+                  ...lift,
+                  coordinates: [
+                    ...lift.coordinates.slice(0, index),
+                    lngLat,
+                    ...lift.coordinates.slice(index),
+                  ],
+                }))
+              }
+              onDeleteVertex={index =>
+                updateSelectedLift(lift => {
+                  if (!lift.isNew && lift.coordinates.length <= 2) return lift;
+                  return {
+                    ...lift,
+                    coordinates: lift.coordinates.filter(
+                      (_, pairIndex) => pairIndex !== index,
+                    ),
+                  };
+                })
+              }
+            />
+          </Box>
         )}
       </Box>
     </Flex>

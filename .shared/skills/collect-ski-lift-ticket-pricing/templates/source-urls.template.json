@@ -1,0 +1,15 @@
+{
+  "description_ja": "（記入例）〇〇スキー場のリフト券料金の情報源ホワイトリスト。src/private/data/lift-ticket-source/{ski-resort-id}.json としてコピーして使う。スキー場IDはファイル名が正本なので、このJSON内にIDやスキー場名は書かない。シーズンにも紐づけない（同じURLをシーズンをまたいで再取得する）。",
+  "urls": [
+    {
+      "url": "https://example.com/ticket/",
+      "label_ja": "リフト券料金ページ",
+      "added_at": "2026-07-18"
+    },
+    {
+      "url": "https://example.com/shop/",
+      "label_ja": "公式オンラインチケットストア",
+      "added_at": "2026-07-18"
+    }
+  ]
+}

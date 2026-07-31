@@ -3,21 +3,37 @@
 import { Box, Button, Flex, Heading, Text } from "@chakra-ui/react";
 import { useMemo, useState } from "react";
 import type { ValidationResult } from "@/features/slope-edit/types";
-import { saveLiftEdits } from "../actions";
-import type { EditorLift, ResortOption } from "../types";
+import { saveLiftEdits, saveResortLinks } from "../actions";
+import { RESORT_LINK_KEYS, RESORT_LINK_LABELS } from "../constants";
+import type { EditorLift, ResortLinks, ResortOption } from "../types";
 import { collectLiftChanges, hasAnyChange } from "../utils/diff";
 import { liftDisplayName } from "../utils/liftOps";
+import { validateResortLinks } from "../utils/linkValidation";
 import { liftToSavePayload } from "../utils/savePayload";
 import { validateLifts } from "../utils/validation";
+import { LinkListField } from "./LinksStep";
 
 type ConfirmStepProps = {
   resort: ResortOption;
   resorts: ResortOption[];
   lifts: EditorLift[];
+  deletedLifts: EditorLift[];
+  links: ResortLinks;
+  setLinks: (links: ResortLinks) => void;
   fileHash: string | null;
   onBack: () => void;
   // 保存成功後に呼ばれる（下書き破棄・選択画面へ戻る）
   onSaved: (writtenFiles: string[]) => void;
+  // 確認済みフラグの切り替え（lift_confirmed.json を更新する）
+  onToggleConfirmed: (
+    resort: ResortOption,
+    confirmed: boolean,
+  ) => Promise<void>;
+};
+
+const formatDateTime = (iso: string): string => {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? iso : date.toLocaleString("ja-JP");
 };
 
 const ChangeValue = ({ before, after }: { before: string; after: string }) => (
@@ -36,48 +52,79 @@ export function ConfirmStep({
   resort,
   resorts,
   lifts,
+  deletedLifts,
+  links,
+  setLinks,
   fileHash,
   onBack,
   onSaved,
+  onToggleConfirmed,
 }: ConfirmStepProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [serverErrors, setServerErrors] = useState<string[]>([]);
+  const [isTogglingConfirmed, setIsTogglingConfirmed] = useState(false);
+
+  const handleToggleConfirmed = async () => {
+    setIsTogglingConfirmed(true);
+    try {
+      await onToggleConfirmed(resort, resort.confirmedAt === null);
+    } finally {
+      setIsTogglingConfirmed(false);
+    }
+  };
 
   const resortById = useMemo(
     () => new Map(resorts.map(option => [option.id, option])),
     [resorts],
   );
 
-  const validation: ValidationResult = useMemo(
-    () => validateLifts(lifts, new Set(resorts.map(option => option.id))),
-    [lifts, resorts],
-  );
+  const validation: ValidationResult = useMemo(() => {
+    const liftValidation = validateLifts(
+      lifts,
+      new Set(resorts.map(option => option.id)),
+    );
+    return {
+      errors: liftValidation.errors,
+      warnings: [
+        ...liftValidation.warnings,
+        ...validateResortLinks(resort.id, links, lifts),
+      ],
+    };
+  }, [lifts, links, resort.id, resorts]);
 
   const allChanges = useMemo(
     () => lifts.map(collectLiftChanges).filter(hasAnyChange),
     [lifts],
   );
 
-  const resortLabel = (skiId: string): string =>
-    `${skiId}（${resortById.get(skiId)?.nameJa ?? "不明"}）`;
+  const resortLabel = (skiId: string): string => {
+    const nameJa = resortById.get(skiId)?.nameJa;
+    return nameJa ? `${skiId}（${nameJa}）` : skiId;
+  };
 
   const handleSave = async () => {
     if (validation.errors.length > 0 || isSaving) return;
     if (
-      !window.confirm(`編集結果で lift_before を書き換えます。よろしいですか？`)
+      !window.confirm(
+        deletedLifts.length > 0
+          ? `編集結果で lift_before とスキー場全体リンクを書き換え、${deletedLifts.length} 件のリフトを削除します。よろしいですか？`
+          : "編集結果で lift_before とスキー場全体リンクを書き換えます。よろしいですか？",
+      )
     ) {
       return;
     }
     setIsSaving(true);
     setServerErrors([]);
     try {
+      // 手順6でリンクを追加・修正した場合も、リフトと同じ保存操作で反映する。
+      await saveResortLinks(resort.id, links);
       const result = await saveLiftEdits({
         resortId: resort.id,
         fileHash,
         lifts: lifts.map(liftToSavePayload),
       });
       if (result.ok) {
-        onSaved(result.writtenFiles);
+        onSaved([...result.writtenFiles, "SkiResortLinks.json"]);
       } else {
         setServerErrors(result.errors);
       }
@@ -106,23 +153,95 @@ export function ConfirmStep({
           <Box>
             <Heading size="md">変更内容の確認</Heading>
             <Text fontSize="sm" color="gray.600">
-              {resort.nameJa}（{resort.id}）/ 全 {lifts.length} リフト
+              {resort.nameJa ? `${resort.nameJa}（${resort.id}）` : resort.id} /
+              全 {lifts.length} リフト
             </Text>
+            {resort.confirmedAt && (
+              <Text fontSize="xs" color="green.700">
+                ✓ 確認済み（{formatDateTime(resort.confirmedAt)}）
+              </Text>
+            )}
           </Box>
-          <Button size="sm" variant="outline" onClick={onBack}>
-            詳細編集へ戻る
-          </Button>
+          <Flex gap={2}>
+            <Button
+              size="sm"
+              variant="outline"
+              colorPalette={resort.confirmedAt ? "orange" : "green"}
+              disabled={isTogglingConfirmed}
+              onClick={handleToggleConfirmed}
+            >
+              {resort.confirmedAt ? "確認済みを解除" : "✓ 確認済みにする"}
+            </Button>
+            <Button size="sm" variant="outline" onClick={onBack}>
+              全体情報リンクへ戻る
+            </Button>
+          </Flex>
         </Flex>
 
-        {allChanges.length === 0 && (
+        {allChanges.length === 0 && deletedLifts.length === 0 && (
           <Box borderWidth="1px" borderRadius="md" p={4} bg="white">
             <Text fontSize="sm" color="gray.600">
-              変更はありません。このまま保存すると、lift_detail
+              リフトの変更はありません。このまま保存すると、lift_detail
               から自動結合された情報も含めて現在の内容で lift_before
               を書き換えます。
             </Text>
           </Box>
         )}
+
+        {deletedLifts.length > 0 && (
+          <Box
+            borderWidth="1px"
+            borderColor="red.300"
+            borderRadius="md"
+            p={4}
+            bg="red.50"
+          >
+            <Heading size="sm" mb={2} color="red.700">
+              削除するリフト（{deletedLifts.length} 件）
+            </Heading>
+            <Text fontSize="xs" color="red.700" mb={2}>
+              保存すると lift_before から削除されます。
+            </Text>
+            {deletedLifts.map(lift => (
+              <Text key={lift.id} fontSize="sm">
+                ・{liftDisplayName(lift)}
+              </Text>
+            ))}
+          </Box>
+        )}
+
+        <Box borderWidth="1px" borderRadius="md" p={4} bg="white">
+          <Heading size="sm" mb={1}>
+            保存後のリフト順（{lifts.length} 件）
+          </Heading>
+          <Text fontSize="xs" color="gray.500" mb={2}>
+            この順番で GeoJSON の features に保存されます。
+          </Text>
+          {lifts.map((lift, index) => (
+            <Text key={lift.id} fontSize="sm">
+              {index + 1}. {liftDisplayName(lift, index)}
+            </Text>
+          ))}
+        </Box>
+
+        <Box borderWidth="1px" borderRadius="md" p={4} bg="white">
+          <Heading size="sm" mb={1}>
+            スキー場全体のリンク
+          </Heading>
+          <Text fontSize="xs" color="gray.500" mb={4}>
+            手順5で追加した内容を確認できます。この画面でも追加・修正できます。
+          </Text>
+          <Flex direction="column" gap={4}>
+            {RESORT_LINK_KEYS.map(key => (
+              <LinkListField
+                key={key}
+                label={RESORT_LINK_LABELS[key]}
+                values={links[key] ?? []}
+                onChange={values => setLinks({ ...links, [key]: values })}
+              />
+            ))}
+          </Flex>
+        </Box>
 
         <Box borderWidth="1px" borderRadius="md" p={4} bg="white">
           <Heading size="sm" mb={2}>
@@ -270,7 +389,7 @@ export function ConfirmStep({
             bg="red.50"
           >
             <Text fontSize="sm" fontWeight="bold" color="red.700" mb={1}>
-              保存時にエラーが発生しました（ファイルは変更されていません）
+              保存時にエラーが発生しました
             </Text>
             {serverErrors.map(error => (
               <Text key={error} fontSize="xs" color="red.600">
@@ -286,7 +405,7 @@ export function ConfirmStep({
             disabled={validation.errors.length > 0 || isSaving}
             onClick={handleSave}
           >
-            {isSaving ? "保存中…" : "保存（lift_before を書き換える）"}
+            {isSaving ? "保存中…" : "保存（リフト・リンクを書き換える）"}
           </Button>
           <Button variant="outline" onClick={onBack} disabled={isSaving}>
             戻る

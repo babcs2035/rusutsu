@@ -1,3 +1,4 @@
+import { DEFAULT_LIFT_TICKET_SEARCH_INPUT } from "@/features/lift-ticket/utils/calculateLiftTicket";
 import type { Filters, NumericFilterValue, RegionOption } from "../types";
 
 export const hasNumericFilterValue = (
@@ -95,6 +96,7 @@ export const getActiveFilterLabels = (
   options: { includeKeyword?: boolean } = {},
 ) => {
   const { includeKeyword = true } = options;
+  const liftTicket = filters.liftTicket ?? DEFAULT_LIFT_TICKET_SEARCH_INPUT;
   const labels: string[] = [];
   if (includeKeyword && filters.keyword.trim())
     labels.push(`キーワード: ${filters.keyword.trim()}`);
@@ -104,6 +106,17 @@ export const getActiveFilterLabels = (
   if (filters.yukiMagi) labels.push("雪マジ対象");
   if (filters.status) labels.push("営業中のみ");
   if (filters.beginnerFriendly) labels.push("初級者向け");
+  if (liftTicket.visitDate) {
+    const partyCount = liftTicket.party.reduce(
+      (total, group) => total + group.count,
+      0,
+    );
+    labels.push(
+      `リフト券 ${liftTicket.visitDate}・${partyCount}人・${
+        liftTicket.usePreference === "full_day" ? "1日" : "半日"
+      }`,
+    );
+  }
   if (hasNumericFilterValue(filters.minVertical))
     labels.push(`標高差 ${filters.minVertical}m〜`);
   if (

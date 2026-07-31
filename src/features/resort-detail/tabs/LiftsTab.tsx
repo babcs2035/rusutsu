@@ -22,6 +22,7 @@ import {
   formatLiftStatus,
   formatMeters,
   getLiftElevationDiff,
+  maxNullable,
 } from "../utils/detailMetrics";
 
 export const LiftsTab = ({
@@ -147,12 +148,10 @@ export const LiftsTab = ({
           <StatCard
             title="最長距離"
             value={formatMeters(
-              Math.max(
-                ...finalizedLifts.map(
+              maxNullable(
+                finalizedLifts.map(
                   lift =>
-                    lift.properties.slopeDistMap ??
-                    lift.properties.distance ??
-                    0,
+                    lift.properties.slopeDistMap ?? lift.properties.distance,
                 ),
               ),
             )}
@@ -160,8 +159,8 @@ export const LiftsTab = ({
           <StatCard
             title="最大高低差"
             value={formatMeters(
-              Math.max(
-                ...finalizedLifts.map(lift => getLiftElevationDiff(lift) ?? 0),
+              maxNullable(
+                finalizedLifts.map(lift => getLiftElevationDiff(lift)),
               ),
             )}
           />

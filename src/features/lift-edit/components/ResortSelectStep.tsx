@@ -104,10 +104,24 @@ export function ResortSelectStep({
             p={3}
             bg="blue.50"
           >
-            <Text fontWeight="bold">{pendingResort.nameJa}</Text>
-            <Text fontSize="xs" color="gray.600" mb={2}>
-              {pendingResort.prefecture} / {pendingResort.id}
-            </Text>
+            {pendingResort.isKnownResort ? (
+              <>
+                <Text fontWeight="bold">{pendingResort.nameJa}</Text>
+                <Text fontSize="xs" color="gray.600" mb={2}>
+                  {pendingResort.prefecture} / {pendingResort.id}
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text fontWeight="bold" fontFamily="mono">
+                  {pendingResort.id}
+                </Text>
+                <Text fontSize="xs" color="gray.600" mb={2}>
+                  DB のスキー場一覧には無い ID です（lift_before
+                  のみ存在する意図的な仮 ID の可能性があります）
+                </Text>
+              </>
+            )}
             <Flex direction="column" gap={2}>
               {pendingDraft && (
                 <>
@@ -182,13 +196,39 @@ export function ResortSelectStep({
               onClick={() => setPendingResortId(resort.id)}
             >
               <Box flex="1" minW={0}>
-                <Text fontSize="sm" fontWeight="medium" truncate>
-                  {resort.nameJa}
-                </Text>
-                <Text fontSize="xs" color="gray.500">
-                  {resort.prefecture} / {resort.id}
-                </Text>
+                {resort.isKnownResort ? (
+                  <>
+                    <Text fontSize="sm" fontWeight="medium" truncate>
+                      {resort.nameJa}
+                    </Text>
+                    <Text fontSize="xs" color="gray.500">
+                      {resort.prefecture} / {resort.id}
+                    </Text>
+                  </>
+                ) : (
+                  <Text
+                    fontSize="sm"
+                    fontWeight="medium"
+                    fontFamily="mono"
+                    truncate
+                  >
+                    {resort.id}
+                  </Text>
+                )}
               </Box>
+              {!resort.isKnownResort && (
+                <Text
+                  fontSize="xs"
+                  color="gray.600"
+                  bg="gray.100"
+                  px={2}
+                  borderRadius="sm"
+                  whiteSpace="nowrap"
+                  title="DB のスキー場一覧には無い ID です"
+                >
+                  未登録ID
+                </Text>
+              )}
               {resort.confirmedAt && (
                 <Text
                   fontSize="xs"
@@ -267,7 +307,7 @@ export function ResortSelectStep({
                 click: () => setPendingResortId(resort.id),
               }}
             >
-              <Tooltip>{resort.nameJa}</Tooltip>
+              <Tooltip>{resort.nameJa || resort.id}</Tooltip>
             </CircleMarker>
           ))}
         </MapContainer>

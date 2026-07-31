@@ -7,6 +7,11 @@ import type {
   FinalizedResortMapData,
 } from "@/lib/finalizedResortGeojsonShared";
 import { prisma } from "@/lib/prisma";
+import {
+  getLiftTicketDataMap,
+  getResortDecisionData,
+} from "@/lib/resortDecisionData";
+import { getResortReadingInfo } from "@/lib/resortReadings";
 import SkiResortWeatherIds from "@/private/data/SkiResortWeatherIds.json";
 import type { SkiResortWithRelations } from "@/types";
 
@@ -58,10 +63,11 @@ const createOperationCountSummary = (
 ): OperationCountSummary | null => {
   if (statuses.length === 0) return null;
 
-  const open = statuses.filter(status => getOperationSymbol(status) === "open");
-  const partial = statuses.filter(
-    status => getOperationSymbol(status) === "partial",
-  );
+  const operationSymbols = statuses.map(getOperationSymbol);
+  if (operationSymbols.every(symbol => symbol === null)) return null;
+
+  const open = operationSymbols.filter(symbol => symbol === "open");
+  const partial = operationSymbols.filter(symbol => symbol === "partial");
 
   return {
     total: statuses.length,
@@ -127,7 +133,7 @@ export async function getSkiResorts(): Promise<SkiResortWithRelations[]> {
 
 // スキーリゾート一覧を地図表示用に軽量取得
 export async function getSkiResortsForMap() {
-  return prisma.skiResort.findMany({
+  const resorts = await prisma.skiResort.findMany({
     select: {
       id: true,
       nameJa: true,
@@ -147,6 +153,15 @@ export async function getSkiResortsForMap() {
     },
     orderBy: { nameJa: "asc" },
   });
+  const liftTicketsByResortId = await getLiftTicketDataMap(
+    resorts.map(resort => resort.id),
+  );
+
+  return resorts.map(resort => ({
+    ...resort,
+    ...getResortReadingInfo(resort.id),
+    liftTickets: liftTicketsByResortId.get(resort.id) ?? [],
+  }));
 }
 
 // スキーリゾート詳細を取得
@@ -171,10 +186,15 @@ export async function getSkiResortById(id: string) {
 
   if (!resort) return null;
 
-  const finalizedMapData = await getFinalizedResortMapData(resort.id);
+  const [finalizedMapData, decisionData] = await Promise.all([
+    getFinalizedResortMapData(resort.id),
+    getResortDecisionData(resort.id),
+  ]);
 
   return {
     ...resort,
+    ...getResortReadingInfo(resort.id),
+    ...decisionData,
     weatherIds: getWeatherIdsBySkiResortId(resort.id),
     finalizedMapData,
     finalizedOperationSummary:

@@ -2,9 +2,7 @@
 
 import { Box, Button, Flex, Heading, Text } from "@chakra-ui/react";
 import { useMemo } from "react";
-import { EditorMap } from "@/features/slope-edit/components/EditorMap";
-import type { TileLayerId } from "@/features/slope-edit/types";
-import { RESORT_INITIAL_ZOOM } from "../constants";
+import { buildDefaultSearchWord } from "@/shared/utils/searchWord";
 import type { EditorLift, ResortOption } from "../types";
 import { distanceM, formatDistanceM, liftDisplayName } from "../utils/liftOps";
 
@@ -13,12 +11,9 @@ type AssignStepProps = {
   resorts: ResortOption[];
   lifts: EditorLift[];
   setLifts: (updater: (lifts: EditorLift[]) => EditorLift[]) => void;
-  googleMapsApiKey: string | null;
   savedAt: string | null;
   selectedLiftId: string | null;
   onSelectLift: (liftId: string | null) => void;
-  tileLayerId: TileLayerId;
-  onTileLayerIdChange: (layerId: TileLayerId) => void;
   onProceed: () => void;
   onBackToSelect: () => void;
 };
@@ -40,17 +35,17 @@ const selectStyle: React.CSSProperties = {
 // 所属候補として距離の近い順に表示するスキー場数
 const NEARBY_OPTION_COUNT = 20;
 
+const resortLabel = (option: ResortOption | undefined, id: string): string =>
+  option?.nameJa ? `${id}（${option.nameJa}）` : id;
+
 export function AssignStep({
   resort,
   resorts,
   lifts,
   setLifts,
-  googleMapsApiKey,
   savedAt,
   selectedLiftId,
   onSelectLift,
-  tileLayerId,
-  onTileLayerIdChange,
   onProceed,
   onBackToSelect,
 }: AssignStepProps) {
@@ -89,7 +84,9 @@ export function AssignStep({
         lift.id,
         nearby.map(option => ({
           id: option.id,
-          label: `${option.id}（${option.nameJa}, ${formatDistanceM(option.distance)}）`,
+          label: option.nameJa
+            ? `${option.id}（${option.nameJa}, ${formatDistanceM(option.distance)}）`
+            : `${option.id}（${formatDistanceM(option.distance)}）`,
           distance: option.distance,
         })),
       );
@@ -103,175 +100,177 @@ export function AssignStep({
 
   const updateLiftSkiId = (liftId: string, skiId: string) => {
     setLifts(previous =>
-      previous.map(lift => (lift.id === liftId ? { ...lift, skiId } : lift)),
+      previous.map(lift => {
+        if (lift.id !== liftId) return lift;
+        const currentResortName =
+          resortById.get(lift.skiId)?.searchName ?? lift.skiId;
+        const nextResortName = resortById.get(skiId)?.searchName ?? skiId;
+        const currentDefault = buildDefaultSearchWord(
+          currentResortName,
+          lift.name,
+        );
+        const searchWord =
+          lift.detail.searchWord.trim() === "" ||
+          lift.detail.searchWord === currentDefault
+            ? buildDefaultSearchWord(nextResortName, lift.name)
+            : lift.detail.searchWord;
+        return {
+          ...lift,
+          skiId,
+          detail: { ...lift.detail, searchWord },
+        };
+      }),
     );
   };
 
   return (
-    <Flex h="100%" minH={0}>
-      <Flex
-        direction="column"
-        w="460px"
-        minW="460px"
-        borderRightWidth="1px"
-        borderColor="gray.200"
-        p={4}
-        gap={3}
-        overflow="hidden"
-      >
-        <Flex justify="space-between" align="center">
-          <Box>
-            <Heading size="md">{resort.nameJa}</Heading>
-            <Text fontSize="xs" color="gray.500">
-              {savedAt
-                ? `最終保存: ${formatDateTime(savedAt)}（下書き自動保存）`
-                : "未保存"}
-            </Text>
-          </Box>
-          <Button size="xs" variant="outline" onClick={onBackToSelect}>
-            スキー場選択へ戻る
-          </Button>
-        </Flex>
-
-        <Box
-          borderWidth="1px"
-          borderRadius="md"
-          p={2}
-          flexShrink={0}
-          bg="gray.50"
-          fontSize="xs"
-          color="gray.600"
-        >
-          <Text>
-            各リフトの所属スキー場IDを確認し、誤っていれば近隣のスキー場へ変更してください。
+    <Flex
+      direction="column"
+      h="100%"
+      minH={0}
+      w="480px"
+      minW="480px"
+      borderRightWidth="1px"
+      borderColor="gray.200"
+      p={4}
+      gap={3}
+      overflow="hidden"
+    >
+      <Flex justify="space-between" align="center">
+        <Box>
+          <Heading size="md" fontFamily={resort.nameJa ? undefined : "mono"}>
+            {resort.nameJa || resort.id}
+          </Heading>
+          <Text fontSize="xs" color="gray.500">
+            {savedAt
+              ? `最終保存: ${formatDateTime(savedAt)}（下書き自動保存）`
+              : "未保存"}
           </Text>
-          <Text>
-            別のスキー場へ変更したリフトは、保存時にそのスキー場の lift_before
-            へ移動します。
-          </Text>
-          {changedCount > 0 && (
-            <Text mt={1} color="orange.600" fontWeight="bold">
-              所属変更: {changedCount} 件
-            </Text>
-          )}
         </Box>
-
-        <Box
-          flex="1"
-          minH="200px"
-          borderWidth="1px"
-          borderRadius="md"
-          overflowY="auto"
-        >
-          {lifts.map((lift, index) => {
-            const isActive = lift.id === selectedLiftId;
-            const isChanged = lift.skiId !== lift.original.skiId;
-            const options = optionsByLiftId.get(lift.id) ?? [];
-            return (
-              <Box
-                key={lift.id}
-                p={2}
-                borderBottomWidth="1px"
-                borderColor="gray.100"
-                bg={isActive ? "blue.50" : undefined}
-                cursor="pointer"
-                onClick={() => onSelectLift(lift.id)}
-              >
-                <Flex gap={2} align="center">
-                  <Text fontSize="xs" color="gray.500" w="24px">
-                    {index + 1}
-                  </Text>
-                  <Text fontSize="sm" fontWeight="medium" flex="1" truncate>
-                    {liftDisplayName(lift, index)}
-                  </Text>
-                  {lift.aerialway && (
-                    <Text fontSize="xs" color="gray.500">
-                      {lift.aerialway}
-                    </Text>
-                  )}
-                  {isChanged && (
-                    <Text
-                      fontSize="xs"
-                      color="orange.700"
-                      bg="orange.100"
-                      px={2}
-                      borderRadius="sm"
-                      whiteSpace="nowrap"
-                    >
-                      変更
-                    </Text>
-                  )}
-                </Flex>
-                <Flex mt={1} pl="32px" direction="column" gap={1}>
-                  <select
-                    style={selectStyle}
-                    value={lift.skiId}
-                    onClick={event => event.stopPropagation()}
-                    onChange={event =>
-                      updateLiftSkiId(lift.id, event.target.value)
-                    }
-                  >
-                    {options.map(option => (
-                      <option key={option.id} value={option.id}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  {isChanged && (
-                    <Flex gap={2} align="center">
-                      <Text fontSize="xs" color="orange.700">
-                        {lift.original.skiId}（
-                        {resortById.get(lift.original.skiId)?.nameJa ?? "不明"}
-                        ） → {lift.skiId}（
-                        {resortById.get(lift.skiId)?.nameJa ?? "不明"}）
-                      </Text>
-                      <Button
-                        size="xs"
-                        variant="outline"
-                        onClick={event => {
-                          event.stopPropagation();
-                          updateLiftSkiId(lift.id, lift.original.skiId);
-                        }}
-                      >
-                        元に戻す
-                      </Button>
-                    </Flex>
-                  )}
-                </Flex>
-              </Box>
-            );
-          })}
-          {lifts.length === 0 && (
-            <Text p={3} fontSize="sm" color="gray.500">
-              このスキー場の lift_before にリフトがありません。
-            </Text>
-          )}
-        </Box>
-
-        <Button
-          colorPalette="blue"
-          flexShrink={0}
-          onClick={onProceed}
-          disabled={lifts.length === 0}
-        >
-          次へ（リフト位置の補正）
+        <Button size="xs" variant="outline" onClick={onBackToSelect}>
+          スキー場選択へ戻る
         </Button>
       </Flex>
 
-      <Box flex="1" minW={0}>
-        <EditorMap
-          center={[resort.longitude, resort.latitude]}
-          zoom={RESORT_INITIAL_ZOOM}
-          courses={lifts}
-          activeCourseId={selectedLiftId}
-          mode="view"
-          googleMapsApiKey={googleMapsApiKey}
-          fitBoundsKey={1}
-          layerId={tileLayerId}
-          onLayerIdChange={onTileLayerIdChange}
-          onSelectCourse={onSelectLift}
-        />
+      <Box
+        borderWidth="1px"
+        borderRadius="md"
+        p={2}
+        flexShrink={0}
+        bg="gray.50"
+        fontSize="xs"
+        color="gray.600"
+      >
+        <Text>
+          各リフトの所属スキー場IDを確認し、誤っていれば近隣のスキー場へ変更してください。
+        </Text>
+        <Text>
+          別のスキー場へ変更したリフトは、保存時にそのスキー場の lift_before
+          へ移動します。
+        </Text>
+        {changedCount > 0 && (
+          <Text mt={1} color="orange.600" fontWeight="bold">
+            所属変更: {changedCount} 件
+          </Text>
+        )}
       </Box>
+
+      <Box
+        flex="1"
+        minH="200px"
+        borderWidth="1px"
+        borderRadius="md"
+        overflowY="auto"
+      >
+        {lifts.map((lift, index) => {
+          const isActive = lift.id === selectedLiftId;
+          const isChanged = lift.skiId !== lift.original.skiId;
+          const options = optionsByLiftId.get(lift.id) ?? [];
+          return (
+            <Box
+              key={lift.id}
+              p={2}
+              borderBottomWidth="1px"
+              borderColor="gray.100"
+              bg={isActive ? "blue.50" : undefined}
+              cursor="pointer"
+              onClick={() => onSelectLift(lift.id)}
+            >
+              <Flex gap={2} align="center">
+                <Text fontSize="xs" color="gray.500" w="24px">
+                  {index + 1}
+                </Text>
+                <Text fontSize="sm" fontWeight="medium" flex="1" truncate>
+                  {liftDisplayName(lift, index)}
+                </Text>
+                {isChanged && (
+                  <Text
+                    fontSize="xs"
+                    color="orange.700"
+                    bg="orange.100"
+                    px={2}
+                    borderRadius="sm"
+                    whiteSpace="nowrap"
+                  >
+                    変更
+                  </Text>
+                )}
+              </Flex>
+              <Flex mt={1} pl="32px" direction="column" gap={1}>
+                <select
+                  style={selectStyle}
+                  value={lift.skiId}
+                  onClick={event => event.stopPropagation()}
+                  onChange={event =>
+                    updateLiftSkiId(lift.id, event.target.value)
+                  }
+                >
+                  {options.map(option => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                {isChanged && (
+                  <Flex gap={2} align="center">
+                    <Text fontSize="xs" color="orange.700">
+                      {resortLabel(
+                        resortById.get(lift.original.skiId),
+                        lift.original.skiId,
+                      )}{" "}
+                      → {resortLabel(resortById.get(lift.skiId), lift.skiId)}
+                    </Text>
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      onClick={event => {
+                        event.stopPropagation();
+                        updateLiftSkiId(lift.id, lift.original.skiId);
+                      }}
+                    >
+                      元に戻す
+                    </Button>
+                  </Flex>
+                )}
+              </Flex>
+            </Box>
+          );
+        })}
+        {lifts.length === 0 && (
+          <Text p={3} fontSize="sm" color="gray.500">
+            このスキー場の lift_before にリフトがありません。
+          </Text>
+        )}
+      </Box>
+
+      <Button
+        colorPalette="blue"
+        flexShrink={0}
+        onClick={onProceed}
+        disabled={lifts.length === 0}
+      >
+        次へ（リフト位置の補正）
+      </Button>
     </Flex>
   );
 }

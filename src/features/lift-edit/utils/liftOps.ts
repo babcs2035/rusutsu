@@ -1,3 +1,4 @@
+import { buildDefaultSearchWord } from "@/shared/utils/searchWord";
 import type { EditorLift, LngLat } from "../types";
 import { createEmptyLiftDetail } from "./detailMerge";
 
@@ -18,7 +19,6 @@ export const createEmptyLift = (resortId: string): EditorLift => ({
   sourceIndex: -1,
   isNew: true,
   name: "",
-  aerialway: "chair_lift",
   osmId: null,
   skiId: resortId,
   coordinates: [],
@@ -30,12 +30,30 @@ export const createEmptyLift = (resortId: string): EditorLift => ({
   original: {
     skiId: resortId,
     name: "",
-    aerialway: "chair_lift",
     coordinates: [],
     midstation: null,
     detail: createEmptyLiftDetail(),
   },
 });
+
+export const fillEmptyLiftSearchWords = (
+  lifts: EditorLift[],
+  resortNamesById: ReadonlyMap<string, string>,
+): EditorLift[] =>
+  lifts.map(lift =>
+    lift.detail.searchWord.trim() === ""
+      ? {
+          ...lift,
+          detail: {
+            ...lift.detail,
+            searchWord: buildDefaultSearchWord(
+              resortNamesById.get(lift.skiId) ?? lift.skiId,
+              lift.name,
+            ),
+          },
+        }
+      : lift,
+  );
 
 export const isSameCoordinates = (a: LngLat[], b: LngLat[]): boolean =>
   a.length === b.length &&

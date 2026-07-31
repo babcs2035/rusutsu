@@ -1,0 +1,2140 @@
+{
+  "taxonomy_version": "13.1.0",
+  "notes_ja": "リフト券料金JSONで使用できる機械判定用ラベルの正本。**ラベル1件ごとに定義を持つ**。調査担当エージェントが独断でラベルを追加してはならない。\n★**`other` というラベルは全群で廃止した。** ラベル体系は公式資料に出てくる概念を網羅しているはずなので、当てはまらないものが出たら「ラベル体系が不足している」ということである。その場合は **`unknown` を使い、どの項目を・公式表記が何で・なぜ確定できなかったのかを人間に通知する**（`check-taxonomy.mjs` が集計して報告する）。勝手にラベルを追加してはならない。",
+  "label_schema_notes_ja": "各ラベルは label_ja（日本語名）/ definition_ja（何を指すか1文で確定）/ includes_ja（含むもの）/ excludes_ja（含まないもの＝別ラベルへの誘導）/ official_examples_ja（公式サイトでの実際の表記）/ decision_rule_ja（迷ったときの判断規則）を持つ。status が pending のラベルは定義未記入であり、check-taxonomy-integrity.mjs が件数を報告する。",
+  "groups": {
+    "offer_types": {
+      "description_ja": "1件のofferがどういう種類の料金なのか。",
+      "notes_ja": null,
+      "labels": {
+        "standard": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "discounted": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "free": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "package": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "dynamic": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "unknown": {
+          "label_ja": "オファーの種類が確定できない",
+          "definition_ja": "通常料金なのか割引なのか、資料から確定できない。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": "`official_label_ja` に公式表記を写し、なぜ確定できないかを notes_ja に書く。**人間に通知される。**",
+          "status": "defined"
+        }
+      }
+    },
+    "discount_reasons": {
+      "description_ja": "**なぜその料金が安いのか**（割引の理由）。公式名称ではなく機械判定用のラベル。複数該当する場合は配列で並べ、複合ラベルを新設しない（WEB前売 → [online_purchase, advance_purchase]）。",
+      "notes_ja": "★**各ラベルは `applies_to` で「誰に適用できるか」を宣言する。**これが料金の出し方を決める:\n\n・`everyone` — **誰でも利用できる。** 最安なら代表として提示してよい（例: オンライン購入割引は誰でもWebで買える）\n・`party_composition` — **入力されたパーティ構成から自動的に判定する。**人数・年齢構成が合えば適用して合計を計算する（`party_rules` が担う）\n・`qualified_only` — **条件を満たす人だけ。代表にしてはいけない。**「〜なら¥X」という条件付きの選択肢として別に提示するか、条件を満たすかを利用者に確認してから出す（例: 会員割引・宿泊者割引・地域割引を、会員でも宿泊者でも地域住民でもない人に代表として出すと誤った金額になる）\n\n`qualified_only` の理由には **`eligibility_conditions` が必須**（taxonomyチェックが強制する）。条件を書き忘れると「誰でも使える割引」として扱われ、資格の無い人に安い金額を提示してしまう。\n\ndiscount_reasons は「理由」だけを表す。誰が対象か・どの条件を満たすかは別のフィールドで構造化する: 対象者の区分 → `audiences` / 地域との関係・性別・証明書 → `eligibility_conditions` / 対象日 → `calendars` / 購入経路 → `channels` / 購入期限 → `purchase_deadline` / 同行者構成 → `party_rules`。",
+      "labels": {
+        "online_purchase": {
+          "label_ja": "オンライン購入割引",
+          "definition_ja": "オンライン（Web・アプリ）で購入することで安くなる割引。",
+          "applies_to": "everyone",
+          "includes_ja": [],
+          "excludes_ja": [
+            "前日以前の購入期限がある場合は advance_purchase も併記する"
+          ],
+          "official_examples_ja": [
+            "WEB割",
+            "ネット割",
+            "オンライン限定",
+            "WEB前売",
+            "web価格",
+            "インターネット割引"
+          ],
+          "decision_rule_ja": "**Web割引・オンライン割引・ネット割はすべてこれに統一する。**誰でもオンラインで買えるので `everyone`。`purchase_deadline` を省略しない（当日可なら same_day_allowed、前日以前なら relative、記載が無ければ not_stated）。",
+          "status": "defined"
+        },
+        "advance_purchase": {
+          "label_ja": "前売り（事前購入）割引",
+          "definition_ja": "利用日より前に購入することで安くなる割引。",
+          "applies_to": "everyone",
+          "includes_ja": [],
+          "excludes_ja": [
+            "オンライン購入が条件なら online_purchase も併記する"
+          ],
+          "official_examples_ja": [
+            "前売り",
+            "前売券",
+            "事前購入割引",
+            "早割",
+            "早期購入割引"
+          ],
+          "decision_rule_ja": "**早割もこれに含める。** 誰でも期限内なら買えるので `everyone` だが、**当日には買えない**ため代表選択では「事前購入必須」の制約として扱われる。期限は `purchase_deadline`（利用日基準）と `sales_period`（販売期間）で表す。",
+          "status": "defined"
+        },
+        "special_day": {
+          "label_ja": "特定日割引",
+          "definition_ja": "**特定の日に限定された**割引・イベント料金。",
+          "applies_to": "everyone",
+          "includes_ja": [
+            "レディースデー",
+            "メンズデー",
+            "シニアデー",
+            "こどもデー",
+            "感謝デー",
+            "〇〇応援デー"
+          ],
+          "excludes_ja": [
+            "日付の限定がない対象者別の割引 → 通常の料金区分として audiences で表す"
+          ],
+          "official_examples_ja": [
+            "レディースデー",
+            "メンズデー",
+            "シニアデー",
+            "こどもデー",
+            "〇〇応援デー",
+            "感謝デー"
+          ],
+          "decision_rule_ja": "その日に行けば誰でも対象なので `everyone`。ただし**対象者が限定されている場合（女性限定等）は `eligibility_conditions` に条件を書く**（性別なら type: gender）。専用ラベル（ladies_day 等）は作らない（無限に増えるため）。**対象日は必ず calendars で明示する。**",
+          "status": "defined"
+        },
+        "family": {
+          "label_ja": "家族割引",
+          "definition_ja": "家族・親子での利用が理由の割引。",
+          "applies_to": "party_composition",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "ファミリー割引",
+            "親子割",
+            "ファミリーパック"
+          ],
+          "decision_rule_ja": "**パーティ構成から自動的に判定する。** 人数・年齢構成で料金が決まるので `party_rules` に構造化する（`lookup-price.mjs --party` が合計を計算する）。会員割引のような「資格を取得しないと使えない割引」とは性質が違う。",
+          "status": "defined"
+        },
+        "group": {
+          "label_ja": "団体割引",
+          "definition_ja": "一定人数以上の団体であることが理由の割引。",
+          "applies_to": "party_composition",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "団体割引",
+            "20名以上",
+            "グループ料金"
+          ],
+          "decision_rule_ja": "**パーティ構成から自動的に判定する。** 人数条件を `party_rules` の `components`（`min_count` 等）に構造化する。",
+          "status": "defined"
+        },
+        "local_resident": {
+          "label_ja": "地域割引",
+          "definition_ja": "**そのスキー場のある地域と関係がある人**が対象の割引。",
+          "applies_to": "qualified_only",
+          "includes_ja": [
+            "居住（在住）",
+            "在勤（お勤め）",
+            "在学（通学）",
+            "土地所有者",
+            "納税者",
+            "出身者"
+          ],
+          "excludes_ja": [
+            "宿泊者向け → hotel_guest"
+          ],
+          "official_examples_ja": [
+            "道民割引",
+            "県民割",
+            "市民限定料金",
+            "〇〇町民の方",
+            "〇〇市にお住まい・お勤め・通学の方"
+          ],
+          "decision_rule_ja": "★**地域住民でない人に代表として出してはいけない。** 居住・在勤・在学の区別は `eligibility_conditions`（type: area_relationship、relationships、area_ids）で表す。対象地域は geographic_areas に登録する。",
+          "status": "defined"
+        },
+        "membership": {
+          "label_ja": "会員割引",
+          "definition_ja": "会員であることで安くなる割引。",
+          "applies_to": "qualified_only",
+          "includes_ja": [],
+          "excludes_ja": [
+            "地域との関係 → local_resident",
+            "宿泊者向け → hotel_guest"
+          ],
+          "official_examples_ja": [
+            "会員料金",
+            "〇〇カード会員",
+            "メンバーズ"
+          ],
+          "decision_rule_ja": "★**会員でない人に代表として出してはいけない**（会員にならないと使えない）。会員資格を `eligibility_conditions`（type: membership）に、会員証の提示を proof_types（membership_card）に記録する。",
+          "status": "defined"
+        },
+        "hotel_guest": {
+          "label_ja": "宿泊者割引",
+          "definition_ja": "提携宿泊施設の宿泊者が対象の割引。",
+          "applies_to": "qualified_only",
+          "includes_ja": [],
+          "excludes_ja": [
+            "会員資格 → membership"
+          ],
+          "official_examples_ja": [
+            "宿泊者割引",
+            "ご宿泊の方",
+            "宿泊者限定料金"
+          ],
+          "decision_rule_ja": "★**宿泊しない人に代表として出してはいけない。** 対象施設・証明方法を `eligibility_conditions`（area_relationships の hotel_guest、proof_types の hotel_receipt）に記録する。",
+          "status": "defined"
+        },
+        "disability": {
+          "label_ja": "障害者割引",
+          "definition_ja": "障害者手帳等の提示による割引。",
+          "applies_to": "qualified_only",
+          "includes_ja": [],
+          "excludes_ja": [
+            "介護者・同伴者の割引は party_rules の caregiver で表す"
+          ],
+          "official_examples_ja": [
+            "障害者割引",
+            "障がい者手帳をお持ちの方"
+          ],
+          "decision_rule_ja": "`eligibility_conditions` に proof_types: disability_certificate を記録する。",
+          "status": "defined"
+        },
+        "coupon": {
+          "label_ja": "クーポン割引",
+          "definition_ja": "クーポン・割引券の提示で安くなる割引。",
+          "applies_to": "qualified_only",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "クーポン持参で",
+            "割引券",
+            "チラシ持参"
+          ],
+          "decision_rule_ja": "★**クーポンを持っていない人に代表として出してはいけない。** 入手方法・必要な持ち物を `eligibility_conditions` と `requirements` に記録する。",
+          "status": "defined"
+        },
+        "app_registration": {
+          "label_ja": "アプリ登録割引",
+          "definition_ja": "スマートフォンアプリの登録・提示で安くなる割引。",
+          "applies_to": "qualified_only",
+          "includes_ja": [],
+          "excludes_ja": [
+            "オンラインでの購入自体が条件 → online_purchase"
+          ],
+          "official_examples_ja": [
+            "アプリ会員限定",
+            "アプリ提示で"
+          ],
+          "decision_rule_ja": "アプリ登録が必要なので `qualified_only`。条件を `eligibility_conditions` に記録する。",
+          "status": "defined"
+        },
+        "payment_method": {
+          "label_ja": "支払方法割引",
+          "definition_ja": "特定の支払手段を使うことが理由の割引。",
+          "applies_to": "qualified_only",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "〇〇ペイ利用で",
+            "クレジットカード決済割引"
+          ],
+          "decision_rule_ja": "その手段を使える人だけなので `qualified_only`。`eligibility_conditions`（type: payment_method）に手段を記録する。",
+          "status": "defined"
+        },
+        "prior_purchase": {
+          "label_ja": "事前利用・リピーター割引",
+          "definition_ja": "過去の購入・利用実績が理由の割引。",
+          "applies_to": "qualified_only",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "リピーター割引",
+            "2回目以降",
+            "再来場特典",
+            "日中券をお持ちの方"
+          ],
+          "decision_rule_ja": "★**初回の人に代表として出してはいけない。** 条件を `eligibility_conditions`（type: prior_purchase）に記録する。",
+          "status": "defined"
+        },
+        "unknown": {
+          "label_ja": "割引理由が確定できない",
+          "definition_ja": "既存の割引理由ラベルのどれにも当てはまらない、または資料が曖昧で理由を確定できない。",
+          "applies_to": "qualified_only",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": "`official_label_ja` に公式表記をそのまま写し、`description_ja` に「なぜ既存ラベルに当てはまらないのか」を書く。誰でも使える割引か判断できないため、安全側に倒して qualified_only として扱う（代表にせず条件付きとして別掲される）。**人間に通知される。**",
+          "status": "defined"
+        }
+      }
+    },
+    "validity_modes": {
+      "description_ja": "その券を**いつ・どれだけ使えるか**の数え方。「何時間滑れるか」の算出に直結する（`lookup-price.mjs` がこのモードで分岐する）。\n**券の分類はこの1軸だけで表す。** かつて product_types という別の群があったが、validity から100%導出できる冗長なものだったため廃止した（実データ19件で検証）。表示用の分類名（「1日券」等）が必要な場合も validity から導出する。",
+      "notes_ja": "`hours_from_first_use` と `hours_pool` の区別が重要。25時間券を `hours_from_first_use: 25` と書くと「初回利用から連続25時間滑れる券」の意味になり、1日券や「9時間以上」の候補として誤って選ばれる。\n券の付帯情報は validity ではなく専用フィールドが担う:\n・滑走できるか → `skiable`（観光用ゴンドラ券は false）\n・ナイターに使えるか → `covers_hours_types`\n・共通券 → `shared_with_resorts` / セット券 → `included_items`\n・エリア限定 → `area_ids`",
+      "labels": {
+        "calendar_day": {
+          "label_ja": "暦日",
+          "definition_ja": "1営業日を通して使える。",
+          "includes_ja": [],
+          "excludes_ja": [
+            "2日以上 → consecutive_days / selectable_days"
+          ],
+          "official_examples_ja": [
+            "1日券",
+            "当日有効"
+          ],
+          "decision_rule_ja": "`days: 1` が必須。**何時間滑れるかは `operating_hours` から算出する**（券自体に時間が書かれていないため）。",
+          "status": "defined"
+        },
+        "consecutive_days": {
+          "label_ja": "連続日数",
+          "definition_ja": "連続した複数日で使える。",
+          "includes_ja": [],
+          "excludes_ja": [
+            "日を分けて使える → selectable_days"
+          ],
+          "official_examples_ja": [
+            "連続2日券",
+            "3日間有効"
+          ],
+          "decision_rule_ja": "`days` が必須。利用開始日から連続。",
+          "status": "defined"
+        },
+        "selectable_days": {
+          "label_ja": "選択日数",
+          "definition_ja": "シーズン中の任意の日を選んで使える。",
+          "includes_ja": [],
+          "excludes_ja": [
+            "連続でなければならない → consecutive_days"
+          ],
+          "official_examples_ja": [
+            "選べる5日券",
+            "5日分回数券"
+          ],
+          "decision_rule_ja": "`days` と `usable_within`（有効範囲）が必須。「シーズン中の任意5日」と「購入から30日以内の任意3日」は別物。",
+          "status": "defined"
+        },
+        "hours_from_first_use": {
+          "label_ja": "初回利用からN時間",
+          "definition_ja": "初回利用（ゲート通過）から連続N時間使える。**その日に使い切る前提。**",
+          "includes_ja": [],
+          "excludes_ja": [
+            "複数日に分けて使える → hours_pool",
+            "時間帯が固定 → fixed_time_window"
+          ],
+          "official_examples_ja": [
+            "4時間券",
+            "9時間券（ゲート通過から9時間）"
+          ],
+          "decision_rule_ja": "`hours` が必須。**24時間以上をこのモードにしてはいけない**（複数日に分けて使う券のはずなので `hours_pool`）。",
+          "status": "defined"
+        },
+        "hours_pool": {
+          "label_ja": "合計時間（分割利用可）",
+          "definition_ja": "合計N時間を**複数回・複数日に分けて**使える。",
+          "includes_ja": [],
+          "excludes_ja": [
+            "その日に使い切る → hours_from_first_use"
+          ],
+          "official_examples_ja": [
+            "25時間券",
+            "時間貯金券"
+          ],
+          "decision_rule_ja": "`hours` が必須。`usable_within` に有効範囲を記録する。**単日の料金照会では代表にしない**（買い方の前提が違うため）。",
+          "status": "defined"
+        },
+        "fixed_time_window": {
+          "label_ja": "時間帯固定",
+          "definition_ja": "決まった時間帯だけ使える。開始時刻を選べない。",
+          "includes_ja": [],
+          "excludes_ja": [
+            "開始時刻が自由 → hours_from_first_use"
+          ],
+          "official_examples_ja": [
+            "ナイター券（17:00〜21:00）",
+            "午後券（13:00〜17:00）",
+            "ゴゴイチ券"
+          ],
+          "decision_rule_ja": "`start_time` と `end_time` が必須。**滑る自由度を狭める制約**なので、利用者が開始時刻を指定しない限り代表候補にしない。",
+          "status": "defined"
+        },
+        "points": {
+          "label_ja": "ポイント",
+          "definition_ja": "ポイントを消費して乗る。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "ポイント券"
+          ],
+          "decision_rule_ja": "`points` が必須。**滑走時間では比較できない**ので「何時間滑りたい」の候補にしない。",
+          "status": "defined"
+        },
+        "rides": {
+          "label_ja": "回数",
+          "definition_ja": "リフトに乗れる回数で数える。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "1回券",
+            "5回券",
+            "回数券"
+          ],
+          "decision_rule_ja": "`rides` が必須。**滑走時間では比較できない**ので「何時間滑りたい」の候補にしない。",
+          "status": "defined"
+        },
+        "unknown": {
+          "label_ja": "有効範囲が確定できない",
+          "definition_ja": "既存の数え方のどれにも当てはまらない、または資料に記載がなく有効範囲を確定できない。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": "`notes_ja` に公式表記のとおり記録する。「4時間券だから4時間」以外の補完をしない。**人間に通知される。**",
+          "status": "defined"
+        }
+      }
+    },
+    "channel_types": {
+      "description_ja": "どこで買えるか。",
+      "notes_ja": null,
+      "labels": {
+        "onsite_ticket_window": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "onsite_vending_machine": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "online": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "app": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "convenience_store": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "travel_agent": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "hotel_front_desk": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "phone": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "partner_shop": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "unknown": {
+          "label_ja": "購入経路が確定できない",
+          "definition_ja": "既存の購入経路のどれにも当てはまらない、または資料が曖昧で経路を確定できない。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": "`official_label_ja` に公式表記を写す。**人間に通知される。**",
+          "status": "defined"
+        }
+      }
+    },
+    "condition_types": {
+      "description_ja": "offerを利用するために**利用者が満たす必要がある条件**の種類。\n**他のセクションで表せるものは条件にしない**（同じことを2箇所に書かせない）:\n・年齢・学校区分 → `audiences`（age_min / age_max / school_levels）\n・対象日 → `calendars`\n・利用時間帯 → `products.validity`（fixed_time_window）\n・購入期限 → `offers.purchase_deadline`\n・人数で料金が変わるもの → `party_rules`",
+      "notes_ja": "各条件は type ごとに決まった専用フィールドで値を持つ（gender→`genders` / area_relationship→`relationships`+`area_ids` / proof_required→`proof_types`）。",
+      "labels": {
+        "gender": {
+          "label_ja": "性別",
+          "definition_ja": "対象となる性別による限定。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "女性限定",
+            "レディースデー",
+            "メンズデー"
+          ],
+          "decision_rule_ja": "`genders` に該当ラベルを列挙する（[\"female\"] 等）。",
+          "status": "defined"
+        },
+        "area_relationship": {
+          "label_ja": "地域との関係",
+          "definition_ja": "対象地域に住んでいる・勤めている・通っている等の関係による限定。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "北海道にお住まいの方",
+            "〇〇市にお住まい・お勤め・通学の方"
+          ],
+          "decision_rule_ja": "`relationships`（resident / employed / enrolled 等）と `area_ids`（geographic_areas への参照）が必須。複数を満たせばよい場合は `match: \"any\"`。",
+          "status": "defined"
+        },
+        "proof_required": {
+          "label_ja": "証明書の提示",
+          "definition_ja": "購入・利用時に証明書の提示が必要という条件。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "要学生証",
+            "住所を確認できるもの",
+            "障がい者手帳をご提示ください"
+          ],
+          "decision_rule_ja": "`proof_types` に該当ラベルを列挙する。**公式に書かれている証明書だけ**を記録し、「住所確認できるもの」等と推測で補完しない。",
+          "status": "defined"
+        },
+        "companion": {
+          "label_ja": "同伴者",
+          "definition_ja": "同伴者がいることが**利用資格の条件**になっているもの。",
+          "includes_ja": [],
+          "excludes_ja": [
+            "人数によって料金が変わるもの → `party_rules` に構造化する"
+          ],
+          "official_examples_ja": [
+            "保護者同伴に限る",
+            "大人1名以上の同伴が必要"
+          ],
+          "decision_rule_ja": "料金そのものが人数で決まる場合（「大人1人につき未就学児2人無料」）は party_rules で表す。ここは「同伴者がいないと買えない・使えない」という資格条件のみ。",
+          "status": "defined"
+        },
+        "membership": {
+          "label_ja": "会員資格",
+          "definition_ja": "特定の会員であることによる限定。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "〇〇カード会員限定",
+            "メンバーズクラブ会員"
+          ],
+          "decision_rule_ja": "会員名は `official_label_ja` に公式表記のまま書く（機械判定用の専用フィールドは無い）。会員証の提示が必要なら proof_required の条件も併記する。",
+          "status": "defined"
+        },
+        "payment_method": {
+          "label_ja": "支払方法",
+          "definition_ja": "特定の支払手段を使うことによる限定。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "〇〇ペイ決済限定",
+            "クレジットカード払いのみ"
+          ],
+          "decision_rule_ja": "手段名は `official_label_ja` に公式表記のまま書く。",
+          "status": "defined"
+        },
+        "prior_purchase": {
+          "label_ja": "事前の購入・利用実績",
+          "definition_ja": "過去の購入や利用が条件になっているもの。",
+          "includes_ja": [],
+          "excludes_ja": [
+            "購入の期限 → `offers.purchase_deadline`"
+          ],
+          "official_examples_ja": [
+            "前回のレシート提示で",
+            "日中券をお持ちの方限定"
+          ],
+          "decision_rule_ja": "条件の内容は `official_label_ja` / `description_ja` に書く。",
+          "status": "defined"
+        },
+        "unknown": {
+          "label_ja": "条件が確定できない",
+          "definition_ja": "既存の条件種別のどれにも当てはまらない、または資料が曖昧で条件を確定できない。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": "`official_label_ja` に公式表記、`description_ja` に判断できない理由を書き、`unresolved: true` を付ける。**人間に通知される。**",
+          "status": "defined"
+        }
+      }
+    },
+    "day_types": {
+      "description_ja": "カレンダーが一致する日の種類。**日付判定の本体。**\n1つのカレンダーは `day_types`（曜日・祝日等）／`dates`（明示日）／`date_ranges`（期間）／`excluded_dates`（除外日）の組み合わせで日付集合を表す。\n**優先度: `dates` ＞ `date_ranges` ＞ `day_types`。**`excluded_dates` に含まれる日は常に不一致。",
+      "notes_ja": "★**最重要の落とし穴: `weekday` は年末年始を飲み込む。**\n`weekday` は「月〜金かつ祝日でない日」なので、12/29(月)や1/2(金)にも一致する。多くのスキー場で年末年始は休日料金なので、年末年始を別カレンダーで定義しないと**安すぎる料金を提示する**。年末年始の期間が公式に書かれていれば `year_end_new_year` ＋ `date_ranges` のカレンダーを作り、平日カレンダーの `excluded_dates` に入れるか、優先度（date_ranges > day_types）で上書きされるようにする。記載が無ければ `unresolved_questions` に記録する（taxonomyチェックが未定義を検出する）。\n祝日は `scripts/jp-holidays.mjs` が振替休日・国民の休日込みで計算する。",
+      "labels": {
+        "weekday": {
+          "label_ja": "平日",
+          "definition_ja": "月曜〜金曜のうち祝日でない日。",
+          "includes_ja": [],
+          "excludes_ja": [
+            "土曜 → saturday",
+            "日曜 → sunday",
+            "祝日 → public_holiday"
+          ],
+          "official_examples_ja": [
+            "平日",
+            "ウィークデー"
+          ],
+          "decision_rule_ja": "★**年末年始を含んでしまう。** 公式が年末年始を別料金にしている場合は、年末年始のカレンダーを別に作る（優先度で上書きされる）か `excluded_dates` に入れる。公式が独自定義（「祝日も平日料金」等）をしている場合は `dates` / `excluded_dates` で上書きし、公式表記を notes_ja に写す。",
+          "status": "defined"
+        },
+        "monday": {
+          "label_ja": "月曜日",
+          "definition_ja": "月曜日（祝日かどうかは問わない）。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "毎週月曜",
+            "月曜定休"
+          ],
+          "decision_rule_ja": "定休日や曜日限定サービスに使う。祝日を除きたい場合は `excluded_dates` で除く。",
+          "status": "defined"
+        },
+        "tuesday": {
+          "label_ja": "火曜日",
+          "definition_ja": "火曜日（祝日かどうかは問わない）。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "毎週火曜定休"
+          ],
+          "decision_rule_ja": "定休日で最も多い曜日。例外営業日は `excluded_dates` に入れる（例: 「毎週火曜定休（12/30は営業）」）。",
+          "status": "defined"
+        },
+        "wednesday": {
+          "label_ja": "水曜日",
+          "definition_ja": "水曜日（祝日かどうかは問わない）。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "defined"
+        },
+        "thursday": {
+          "label_ja": "木曜日",
+          "definition_ja": "木曜日（祝日かどうかは問わない）。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "レディースデー（毎週木曜）"
+          ],
+          "decision_rule_ja": null,
+          "status": "defined"
+        },
+        "friday": {
+          "label_ja": "金曜日",
+          "definition_ja": "金曜日（祝日かどうかは問わない）。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "defined"
+        },
+        "saturday": {
+          "label_ja": "土曜日",
+          "definition_ja": "土曜日。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "毎週土曜はこどもデー",
+            "土日"
+          ],
+          "decision_rule_ja": null,
+          "status": "defined"
+        },
+        "sunday": {
+          "label_ja": "日曜日",
+          "definition_ja": "日曜日。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "土日",
+            "日曜・祝日"
+          ],
+          "decision_rule_ja": null,
+          "status": "defined"
+        },
+        "public_holiday": {
+          "label_ja": "祝日",
+          "definition_ja": "国民の祝日。振替休日・国民の休日を含む。",
+          "includes_ja": [],
+          "excludes_ja": [
+            "年末年始 → year_end_new_year"
+          ],
+          "official_examples_ja": [
+            "祝日",
+            "祝",
+            "日曜・祝日"
+          ],
+          "decision_rule_ja": "`jp-holidays.mjs` が計算する。**公式が「土日」としか書いておらず祝日の扱いが不明な場合は、暫定処理した旨を `unresolved_questions` に記録する**（勝手に休日料金に含めない）。",
+          "status": "defined"
+        },
+        "year_end_new_year": {
+          "label_ja": "年末年始",
+          "definition_ja": "年末年始の特別期間。**この値は単独では日付に一致しない。**",
+          "includes_ja": [],
+          "excludes_ja": [
+            "通常の祝日 → public_holiday"
+          ],
+          "official_examples_ja": [
+            "年末年始",
+            "年末年始期間",
+            "12/29〜1/3"
+          ],
+          "decision_rule_ja": "★**必ず公式の期間を `date_ranges` で明示する。** 期間はスキー場ごとに違うため、「12/29〜1/3」のような一般的な期間を推測して書いてはいけない。公式に期間が無ければカレンダーを作らず `unresolved_questions` へ。優先度（date_ranges > day_types）により、年末年始が平日・土日祝より優先される。",
+          "status": "defined"
+        },
+        "special": {
+          "label_ja": "特定日",
+          "definition_ja": "イベント日・キャンペーン日など。**この値は単独では日付に一致しない。**",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "〇〇応援デー",
+            "感謝デー"
+          ],
+          "decision_rule_ja": "★**必ず `dates` に対象日を列挙する。** 曜日で決まるもの（毎週土曜のこどもデー等）は `special` ではなく該当する曜日（`saturday` 等）を使う。",
+          "status": "defined"
+        },
+        "all": {
+          "label_ja": "全日",
+          "definition_ja": "営業期間中のすべての日。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "シーズン中",
+            "通年"
+          ],
+          "decision_rule_ja": "`date_ranges` に営業期間を入れて範囲を限定する（無限に一致させない）。",
+          "status": "defined"
+        },
+        "unknown": {
+          "label_ja": "対象日が判読できない",
+          "definition_ja": "対象日がありそうだが確定できない。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": "推測で日付を決めない。`unresolved_questions` に記録する。",
+          "status": "defined"
+        }
+      }
+    },
+    "geographic_levels": {
+      "description_ja": "地域割の対象地域の行政区分レベル。",
+      "notes_ja": null,
+      "labels": {
+        "country": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "prefecture": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "subprefecture": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "municipality": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "district": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "region_group": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "unknown": {
+          "label_ja": "行政区分が確定できない",
+          "definition_ja": "既存の行政区分レベルのどれにも当てはまらない、または対象地域の範囲を確定できない。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": "公式表記を `name_ja` に写す。**人間に通知される。**",
+          "status": "defined"
+        }
+      }
+    },
+    "area_relationships": {
+      "description_ja": "その地域とどういう関係にあるか（居住・在勤・在学の区別）。",
+      "notes_ja": null,
+      "labels": {
+        "resident": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "employed": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "enrolled": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "property_owner": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "taxpayer": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "hometown": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "hotel_guest": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "member": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "unknown": {
+          "label_ja": "地域との関係が確定できない",
+          "definition_ja": "既存の関係のどれにも当てはまらない、または「地元の方」等で関係を確定できない。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": "公式表記を条件の `official_label_ja` に写す。**人間に通知される。**",
+          "status": "defined"
+        }
+      }
+    },
+    "proof_types": {
+      "description_ja": "購入・利用時に提示が必要な証明書の種類。**公式に書かれている証明書だけを記録する。** 「住所を確認できるもの」のような曖昧な表記から具体的な書類を推測してはいけない。",
+      "notes_ja": "複数の候補が示されている場合は該当するものをすべて列挙する。",
+      "labels": {
+        "photo_id": {
+          "label_ja": "写真付き身分証明書",
+          "definition_ja": "顔写真のある本人確認書類（種類を限定していない場合）。",
+          "includes_ja": [],
+          "excludes_ja": [
+            "運転免許証と明記 → drivers_license",
+            "学生証 → student_id"
+          ],
+          "official_examples_ja": [
+            "写真付き身分証明書",
+            "顔写真付き本人確認書類"
+          ],
+          "decision_rule_ja": "公式が書類を特定せず「写真付き身分証」と書いている場合。",
+          "status": "defined"
+        },
+        "address_proof": {
+          "label_ja": "住所を確認できる書類",
+          "definition_ja": "住所の確認ができる書類（種類を限定していない場合）。",
+          "includes_ja": [],
+          "excludes_ja": [
+            "運転免許証と明記 → drivers_license",
+            "健康保険証と明記 → insurance_card"
+          ],
+          "official_examples_ja": [
+            "住所を確認できるもの",
+            "住所記載のある書類"
+          ],
+          "decision_rule_ja": "地域割引で最も多い表記。**公式が書類を特定していないなら、これ以上具体化しない。**",
+          "status": "defined"
+        },
+        "drivers_license": {
+          "label_ja": "運転免許証",
+          "definition_ja": "運転免許証。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "運転免許証"
+          ],
+          "decision_rule_ja": null,
+          "status": "defined"
+        },
+        "insurance_card": {
+          "label_ja": "健康保険証",
+          "definition_ja": "健康保険証。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "健康保険証",
+            "保険証"
+          ],
+          "decision_rule_ja": null,
+          "status": "defined"
+        },
+        "student_id": {
+          "label_ja": "学生証",
+          "definition_ja": "学生証・生徒手帳。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "学生証",
+            "生徒手帳",
+            "要学生証"
+          ],
+          "decision_rule_ja": "学生割引で使う。どこまでが学生かは audiences.school_levels で表す。",
+          "status": "defined"
+        },
+        "age_proof": {
+          "label_ja": "年齢を確認できる書類",
+          "definition_ja": "年齢の確認ができる書類（種類を限定していない場合）。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "年齢が確認できるもの",
+            "生年月日が確認できるもの"
+          ],
+          "decision_rule_ja": "シニア割引で多い表記。",
+          "status": "defined"
+        },
+        "disability_certificate": {
+          "label_ja": "障害者手帳",
+          "definition_ja": "障害者手帳・療育手帳等。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "障がい者手帳",
+            "身体障害者手帳"
+          ],
+          "decision_rule_ja": null,
+          "status": "defined"
+        },
+        "membership_card": {
+          "label_ja": "会員証",
+          "definition_ja": "会員であることを示すカード・アプリ画面。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "会員証",
+            "〇〇カード",
+            "アプリの会員画面"
+          ],
+          "decision_rule_ja": null,
+          "status": "defined"
+        },
+        "hotel_receipt": {
+          "label_ja": "宿泊の証明",
+          "definition_ja": "宿泊を証明する書類（宿泊証明書・領収書・宿泊券等）。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "宿泊証明書",
+            "ご宿泊の領収書",
+            "宿泊クーポン"
+          ],
+          "decision_rule_ja": null,
+          "status": "defined"
+        },
+        "employee_id": {
+          "label_ja": "社員証",
+          "definition_ja": "勤務先を示す社員証・在勤証明。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "社員証",
+            "在勤証明書"
+          ],
+          "decision_rule_ja": "地域割引の在勤（employed）条件で使う。",
+          "status": "defined"
+        },
+        "residence_card": {
+          "label_ja": "在留カード",
+          "definition_ja": "在留カード・特別永住者証明書。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "在留カード"
+          ],
+          "decision_rule_ja": null,
+          "status": "defined"
+        },
+        "none_required": {
+          "label_ja": "証明書不要",
+          "definition_ja": "証明書の提示が不要と**明記されている**。",
+          "includes_ja": [],
+          "excludes_ja": [
+            "記載が無い場合 → 条件を作らない（unknown も使わない）"
+          ],
+          "official_examples_ja": [
+            "証明書不要",
+            "確認書類は不要です"
+          ],
+          "decision_rule_ja": "**明記されている場合のみ使う。** 「書いていない＝不要」と解釈してはいけない。",
+          "status": "defined"
+        },
+        "unknown": {
+          "label_ja": "必要な証明書が確定できない",
+          "definition_ja": "既存の証明書のどれにも当てはまらない、または何が必要か確定できない。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": "推測で書類を特定しない。**人間に通知される。**",
+          "status": "defined"
+        }
+      }
+    },
+    "purchase_deadline_modes": {
+      "description_ja": "いつまでに購入する必要があるかの表し方。",
+      "notes_ja": null,
+      "labels": {
+        "same_day_allowed": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "relative": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "absolute": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "not_stated": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "unknown": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        }
+      }
+    },
+    "included_item_types": {
+      "description_ja": "セット券に含まれる付帯サービスの種類。",
+      "notes_ja": null,
+      "labels": {
+        "lunch": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "meal_voucher": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "drink": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "onsen": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "spa": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "rental": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "lesson": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "gondola_sightseeing": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "parking": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "coupon_voucher": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "unknown": {
+          "label_ja": "付帯サービスの種別が確定できない",
+          "definition_ja": "既存の付帯サービスのどれにも当てはまらない、または内容を確定できない。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": "`official_label_ja` に公式表記を写す。**人間に通知される。**",
+          "status": "defined"
+        }
+      }
+    },
+    "price_modes": {
+      "description_ja": "金額の表し方。「分からない」を型で表すためのもの。",
+      "notes_ja": null,
+      "labels": {
+        "fixed": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "free": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "date_table": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "derived_discount": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "live_dynamic": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "range": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "unknown": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        }
+      }
+    },
+    "confidence_levels": {
+      "description_ja": "抽出の確信度。",
+      "notes_ja": null,
+      "labels": {
+        "high": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "medium": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "low": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "unknown": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        }
+      }
+    },
+    "data_quality_statuses": {
+      "description_ja": "JSON全体の完成度。",
+      "notes_ja": "これは**抽出担当の自己申告**であり公式資料から読むものではないため、unknown は持たない（自分の作業状態は必ず分かる）。",
+      "labels": {
+        "complete": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "partial": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "needs_review": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "draft": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "failed": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        }
+      }
+    },
+    "fee_types": {
+      "description_ja": "チケット料金とは別に必要な費用の種類。",
+      "notes_ja": null,
+      "labels": {
+        "ic_card_deposit": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "ic_card_issue_fee": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "reissue_fee": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "system_fee": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "shipping_fee": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "unknown": {
+          "label_ja": "費用の種別が確定できない",
+          "definition_ja": "既存の費用種別のどれにも当てはまらない、または費用の性質を確定できない。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": "`official_label_ja` に公式表記を写し、返金されるか（`refundable`）が不明ならそれも記録する。**人間に通知される。**",
+          "status": "defined"
+        }
+      }
+    },
+    "source_types": {
+      "description_ja": "根拠資料の種別。",
+      "notes_ja": null,
+      "labels": {
+        "html": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "pdf": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "image": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "api_response": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "screenshot": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "text": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "unknown": {
+          "label_ja": "資料の種別が確定できない",
+          "definition_ja": "既存の資料種別のどれにも当てはまらない。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": "**人間に通知される。**",
+          "status": "defined"
+        }
+      }
+    },
+    "party_rule_types": {
+      "description_ja": "同行者構成で変わる料金のルールの種類。",
+      "notes_ja": null,
+      "labels": {
+        "companion_free": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "companion_discount": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "set_price": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "group_price": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "caregiver": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "nth_person_discount": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "cross_product_discount": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "unknown": {
+          "label_ja": "同行者ルールの種別が確定できない",
+          "definition_ja": "既存のルール種別のどれにも当てはまらない、または内容を確定できない。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": "`official_label_ja` と `description_ja` に公式表記と内容を書く。**人間に通知される。**",
+          "status": "defined"
+        }
+      }
+    },
+    "price_effect_types": {
+      "description_ja": "party_rule が料金にどう作用するか。",
+      "notes_ja": null,
+      "labels": {
+        "free": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "fixed_total": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "fixed_per_person": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "discount_amount": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "discount_percent": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "unknown": {
+          "label_ja": "料金への作用が確定できない",
+          "definition_ja": "既存の作用のどれにも当てはまらない、または金額の決まり方を確定できない。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": "**人間に通知される。** 料金が算出できないことを明記する。",
+          "status": "defined"
+        }
+      }
+    },
+    "school_levels": {
+      "description_ja": "在籍している学校の区分。**年齢とは別軸**（年齢は age_min / age_max で表す）。公式資料が学校区分でしか書いていない場合、年齢を推測して補完してはならない（「小学生＝6〜12歳」と書かない）。逆に年齢でしか書かれていなければ学校区分を空にする。",
+      "notes_ja": "**列挙できるのは「上が学校区分で閉じている」場合だけ。**\n・「小学生以下」「小学生まで」→ [preschool, elementary_school]（上が小学生で閉じている）\n・「中学生・高校生」（中人）→ [junior_high_school, high_school]（両端が閉じている）\n・「学生（大学生・大学院生）」→ [university, graduate]（「学生」が範囲を限定している）\n**「中学生以上」「高校生以上」のように上が開いているものは列挙してはいけない。**社会人を含むため学校区分では表せない。この場合は school_levels を空にし、その区分が基準なら is_default: true、上限が年齢で示されているなら age_max を使う（例: 「おとな（中学生〜59歳）」→ school_levels: []、age_max: 59、is_default: true）。\n**学校区分から年齢を推測してはいけない。** 「中学生」から age_min: 13 と書くのは禁止（絶対原則1）。年齢は公式表記に数値がある場合のみ入れる。",
+      "labels": {
+        "preschool": {
+          "label_ja": "未就学児",
+          "definition_ja": "小学校入学前。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": "公式が「3歳以上」等の年齢で区切っている場合は age_min / age_max も併記する（年齢と学校区分は別軸）。",
+          "status": "defined"
+        },
+        "elementary_school": {
+          "label_ja": "小学生",
+          "definition_ja": "小学校に在籍。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "defined"
+        },
+        "junior_high_school": {
+          "label_ja": "中学生",
+          "definition_ja": "中学校に在籍。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "defined"
+        },
+        "high_school": {
+          "label_ja": "高校生",
+          "definition_ja": "高等学校に在籍。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "defined"
+        },
+        "university": {
+          "label_ja": "大学生",
+          "definition_ja": "大学の学部に在籍。",
+          "includes_ja": [],
+          "excludes_ja": [
+            "大学院生 → graduate",
+            "短大生・専門学校生・高専生など学部生以外の高等教育 → 該当ラベルは無い。data_quality.human_review_required に公式表記を記録して人間に通知する"
+          ],
+          "official_examples_ja": [
+            "大学生",
+            "大学生（要学生証）",
+            "学生",
+            "学生（大学生・大学院生）",
+            "学生（大学生・大学院生・短大生・専門学校生）"
+          ],
+          "decision_rule_ja": "**この区分だけは公式表記の範囲を必ず確認する。** 学生割引の対象範囲はスキー場ごとに異なり、「大学生」だけの場合と、大学院生・短大生・専門学校生・高専生まで含む場合がある。確認手順: (1) 公式表記をそのまま official_label_ja に写す。(2) 明記されている区分だけをラベルにする。university だけの表記から大学院生を含むと推測しない。(3) 短大生・専門学校生・高専生などが明記されていれば、**data_quality.human_review_required に公式表記とともに記録して人間に通知する**（ラベルを勝手に追加しない）。(4) 公式表記が「学生」だけで範囲の記載が無い場合は、どこまで含むか不明である旨を unresolved_questions に記録する（勝手に広げない・狭めない）。",
+          "status": "defined"
+        },
+        "graduate": {
+          "label_ja": "大学院生",
+          "definition_ja": "大学院に在籍。",
+          "includes_ja": [],
+          "excludes_ja": [
+            "大学の学部生 → university"
+          ],
+          "official_examples_ja": [
+            "大学院生",
+            "院生",
+            "学生（大学生・大学院生）"
+          ],
+          "decision_rule_ja": "公式が大学院生を明記している場合のみ付ける。「大学生」だけの表記から推測しない。",
+          "status": "defined"
+        },
+        "unknown": {
+          "label_ja": "学校区分が確定できない",
+          "definition_ja": "資料が曖昧・判読不能で、どの学校区分か**確定できない**。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "「学生」（範囲の記載なし）",
+            "画像の文字が判読できない"
+          ],
+          "decision_rule_ja": "notes_ja に判断できない理由を書く。推測で区分を決めない。**6区分のどれにも当てはまらない学校区分が公式に書かれている場合はこれではなく、human_review_required に記録して人間に通知する**（unknown は「読めない・確定できない」専用）。",
+          "status": "defined"
+        }
+      }
+    },
+    "operating_hours_types": {
+      "description_ja": "営業時間帯の種類。`operating_hours` の1件が何の営業を表すか。",
+      "notes_ja": "`closed` は他の営業時間より**優先される**（定休日には料金を提示しない）。営業期間外（`season.start_date` より前 / `end_date` より後）も営業していないものとして扱う。",
+      "labels": {
+        "regular": {
+          "label_ja": "通常営業",
+          "definition_ja": "日中の通常営業。",
+          "includes_ja": [],
+          "excludes_ja": [
+            "ナイター → night",
+            "早朝 → early_morning"
+          ],
+          "official_examples_ja": [
+            "営業時間",
+            "リフト運行時間"
+          ],
+          "decision_rule_ja": "**1日券が何時間滑れるかはこの時間帯から算出する。** リフト別に時間が違う場合は `lifts` に個別に記録し、滑走可能な時間帯は運行するリフトの和集合で決める。",
+          "status": "defined"
+        },
+        "night": {
+          "label_ja": "ナイター営業",
+          "definition_ja": "夜間の営業。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "ナイター",
+            "ナイター営業日"
+          ],
+          "decision_rule_ja": "対象日を `calendars` で限定する（毎週土曜なら `day_types: [\"saturday\"]`、特定日なら `dates`）。**ナイター時に運休するリフトを `operating: false` で明記する。**",
+          "status": "defined"
+        },
+        "early_morning": {
+          "label_ja": "早朝営業",
+          "definition_ja": "通常営業より early に始まる特別営業。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "早朝営業",
+            "アーリーモーニング"
+          ],
+          "decision_rule_ja": null,
+          "status": "defined"
+        },
+        "special": {
+          "label_ja": "特別営業",
+          "definition_ja": "通常・ナイター・早朝のいずれでもない特別な営業時間。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "延長営業",
+            "イベント時の特別営業"
+          ],
+          "decision_rule_ja": "何の特別営業かを `notes_ja` に書く。",
+          "status": "defined"
+        },
+        "closed": {
+          "label_ja": "定休日・休業",
+          "definition_ja": "営業しない日。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "定休日",
+            "休業日",
+            "毎週火曜定休"
+          ],
+          "decision_rule_ja": "★**この日は料金を提示しない。** `start_time` / `end_time` は null。他の営業時間より優先される。例外営業日は参照するカレンダーの `excluded_dates` に入れる（例: 「毎週火曜定休（12/30は営業）」）。",
+          "status": "defined"
+        },
+        "unknown": {
+          "label_ja": "営業時間が判読できない",
+          "definition_ja": "営業していそうだが時間が確定できない。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": "推測で時間を決めない。`unresolved_questions` に記録する。",
+          "status": "defined"
+        }
+      }
+    },
+    "usable_within_types": {
+      "description_ja": "分割して使える券の有効範囲の表し方。",
+      "notes_ja": null,
+      "labels": {
+        "season": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "days_from_purchase": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "days_from_first_use": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "date_range": {
+          "label_ja": null,
+          "definition_ja": null,
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "pending"
+        },
+        "unknown": {
+          "label_ja": "有効範囲の表し方が確定できない",
+          "definition_ja": "既存の表し方のどれにも当てはまらない、または期間を確定できない。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": "`official_text_ja` に公式表記を写す。**人間に通知される。**",
+          "status": "defined"
+        }
+      }
+    },
+    "stacking_modes": {
+      "description_ja": "他の割引と併用できるか。**同じ概念を yes/no と stackable/not_stackable の2語彙で書いていたため統一した。**資料に記載が無ければ unknown（「併用不可が普通」と推測しない）。",
+      "notes_ja": null,
+      "labels": {
+        "stackable": {
+          "label_ja": "併用可",
+          "definition_ja": "他の割引と同時に適用できると公式資料に明記されている。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "併用可",
+            "他の割引と併用できます"
+          ],
+          "decision_rule_ja": "明記がある場合のみ。「書いていない＝可」と解釈しない。",
+          "status": "defined"
+        },
+        "not_stackable": {
+          "label_ja": "併用不可",
+          "definition_ja": "他の割引と同時には適用できないと公式資料に明記されている。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "併用不可",
+            "割引は複数併用はできません",
+            "他の割引との併用はできません"
+          ],
+          "decision_rule_ja": "紋別市営大山スキー場のPDFのように、注記や吹き出しの中に小さく書かれていることがある。見落とすと誤って併用可として計算してしまう。",
+          "status": "defined"
+        },
+        "unknown": {
+          "label_ja": "併用可否が不明",
+          "definition_ja": "資料に併用可否の記載が無い、または判読できない。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "（記載なし）"
+          ],
+          "decision_rule_ja": "**これが既定値。** 記載が無い場合は必ず unknown にする。",
+          "status": "defined"
+        }
+      }
+    },
+    "condition_match_modes": {
+      "description_ja": "1つの条件に複数の値を並べたとき、それらをどう満たす必要があるか。",
+      "notes_ja": "condition_operators の any / all とは用途が異なる（あちらは値の比較演算子）。",
+      "labels": {
+        "any": {
+          "label_ja": "いずれか1つ",
+          "definition_ja": "並べた値のうち**どれか1つ**を満たせばよい。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "〇〇市にお住まい・お勤め・通学の方（3つのいずれか）"
+          ],
+          "decision_rule_ja": "「または」で結ばれている条件はこれ。",
+          "status": "defined"
+        },
+        "all": {
+          "label_ja": "すべて",
+          "definition_ja": "並べた値の**すべて**を満たす必要がある。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "〇〇市在住かつ在勤"
+          ],
+          "decision_rule_ja": "「かつ」で結ばれている条件はこれ。",
+          "status": "defined"
+        }
+      }
+    },
+    "discount_value_types": {
+      "description_ja": "derived_discount（「通常料金から〇〇引き」）で、割引の値が金額か割合か。",
+      "notes_ja": null,
+      "labels": {
+        "amount": {
+          "label_ja": "金額",
+          "definition_ja": "割引額を円で表す。value: 500 なら500円引き。",
+          "includes_ja": [],
+          "excludes_ja": [
+            "割合 → percent"
+          ],
+          "official_examples_ja": [
+            "500円引き",
+            "¥500 OFF"
+          ],
+          "decision_rule_ja": null,
+          "status": "defined"
+        },
+        "percent": {
+          "label_ja": "割合",
+          "definition_ja": "割引率を%で表す。value: 10 なら10%引き。",
+          "includes_ja": [],
+          "excludes_ja": [
+            "金額 → amount"
+          ],
+          "official_examples_ja": [
+            "10%割引",
+            "1割引"
+          ],
+          "decision_rule_ja": null,
+          "status": "defined"
+        }
+      }
+    },
+    "currencies": {
+      "description_ja": "金額の通貨。日本のスキー場のみを扱うため現在は JPY だけ。",
+      "notes_ja": "schema の3箇所（calculation_policy / price / fee）で同じ enum を重複定義していたため群として集約した。",
+      "labels": {
+        "JPY": {
+          "label_ja": "日本円",
+          "definition_ja": "日本円。金額は税込・整数（小数を使わない）。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "円",
+            "¥"
+          ],
+          "decision_rule_ja": null,
+          "status": "defined"
+        }
+      }
+    },
+    "genders": {
+      "description_ja": "割引の対象となる性別。レディースデー・メンズデーのような特定日割引の対象者条件を機械判定するために使う。公式資料が性別を限定していない場合は条件を作らない。",
+      "notes_ja": null,
+      "labels": {
+        "female": {
+          "label_ja": "女性",
+          "definition_ja": "公式資料が女性を対象と明記している。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "女性限定",
+            "レディース",
+            "女性の方"
+          ],
+          "decision_rule_ja": null,
+          "status": "defined"
+        },
+        "male": {
+          "label_ja": "男性",
+          "definition_ja": "公式資料が男性を対象と明記している。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "男性限定",
+            "メンズ",
+            "男性の方"
+          ],
+          "decision_rule_ja": null,
+          "status": "defined"
+        },
+        "unknown": {
+          "label_ja": "性別の限定が確定できない",
+          "definition_ja": "女性・男性のどちらにも当てはまらない区分、または性別による限定かが確定できない。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": "推測で female / male を決めない。**人間に通知される。**",
+          "status": "defined"
+        }
+      }
+    },
+    "covers_hours_types": {
+      "description_ja": "その券が使える営業区分。**1日券・複数日券にのみ設定する。**\n1日券は券自体に時間が書かれていないため「ナイターを含むか」を validity から導出できない。時間券（`hours_from_first_use` / `fixed_time_window`）はvalidity の時間帯・時間数から判定できるので**設定しない**（設定すると validity と二重になり矛盾しうる）。",
+      "notes_ja": "資料に記載が無い場合は null。「1日券にナイターが含まれるか書いていない」サイトを false と決めつけない。",
+      "labels": {
+        "regular": {
+          "label_ja": "通常営業",
+          "definition_ja": "日中の通常営業時間に使える。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "1日券",
+            "日中のみ"
+          ],
+          "decision_rule_ja": null,
+          "status": "defined"
+        },
+        "night": {
+          "label_ja": "ナイター営業",
+          "definition_ja": "ナイター営業時間に使える。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "ナイター付",
+            "ナイターもご利用いただけます"
+          ],
+          "decision_rule_ja": "1日券にナイターが含まれると明記されている場合は [\"regular\",\"night\"]。",
+          "status": "defined"
+        },
+        "early_morning": {
+          "label_ja": "早朝営業",
+          "definition_ja": "早朝営業の時間帯に使える。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "early morning",
+            "朝一番"
+          ],
+          "decision_rule_ja": null,
+          "status": "defined"
+        },
+        "special": {
+          "label_ja": "特別営業",
+          "definition_ja": "通常でも夜でもない特別営業時間に使える。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": "何の特別営業かを notes_ja に書く。",
+          "status": "defined"
+        }
+      }
+    }
+  },
+  "moved_elsewhere": {
+    "condition_types": {
+      "age": "audiences の age_min / age_max",
+      "school_level": "audiences の school_levels",
+      "date": "calendars",
+      "time": "products.validity（fixed_time_window の start_time / end_time）",
+      "purchase_deadline": "offers.purchase_deadline"
+    }
+  }
+}

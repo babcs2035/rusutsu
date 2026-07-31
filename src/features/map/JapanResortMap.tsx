@@ -528,6 +528,7 @@ export const JapanResortMap = memo(function JapanResortMap({
       ref={mapZoomSurfaceRef}
       data-map-zoom-surface="true"
       data-map-tile-variant={mapTileVariant}
+      data-map-course-color-mode={courseColorMode}
       data-map-finalized-focus={isFinalizedFocusMode ? "true" : "false"}
       data-map-presentation={mapPresentation}
       h="100%"

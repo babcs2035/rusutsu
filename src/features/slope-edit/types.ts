@@ -11,6 +11,8 @@ export type CourseDetail = {
   piste: PisteMark;
   morning: BinaryMark;
   night: BinaryMark;
+  image: string;
+  searchWord: string;
 };
 
 export type EditorCourse = {
@@ -19,6 +21,8 @@ export type EditorCourse = {
   unnamed: boolean;
   coordinates: LngLat[];
   detail: CourseDetail;
+  // slope_before 由来の、詳細編集対象以外の properties を保持する
+  beforeExtras: Record<string, unknown>;
   // slope_detail 由来の編集対象外フィールド（maxWidth, snowboard 等）を保持する
   detailExtras: Record<string, unknown> | null;
   splitGroupId: string | null;
@@ -28,7 +32,11 @@ export type EditorCourse = {
 export type SlopeEditDraft = {
   version: 1;
   resortId: string;
+  fileHash: string | null;
+  detailFileHash: string | null;
   courses: EditorCourse[];
+  preservedFeatures: SlopeBeforeFeature[];
+  preservedDetails: SlopeDetailEntry[];
   updatedAt: string;
   exportedAt: string | null;
 };
@@ -42,6 +50,8 @@ export type DraftSummary = {
 export type ResortOption = {
   id: string;
   nameJa: string;
+  // 検索ワードの先頭に使う名前（地図表示用の省略名を優先）
+  searchName: string;
   nameEn: string;
   prefecture: string;
   latitude: number;
@@ -49,7 +59,7 @@ export type ResortOption = {
   hasSlopeBefore: boolean;
 };
 
-export type EditStep = "select" | "lines" | "details";
+export type EditStep = "select" | "lines" | "details" | "confirm";
 
 export type StartSource = "draft" | "existing" | "new";
 
@@ -82,7 +92,28 @@ export type SlopeDetailEntry = Record<string, unknown> & {
 export type SlopeSourceData = {
   geojson: SlopeBeforeGeojson | null;
   details: SlopeDetailEntry[] | null;
+  fileHash: string | null;
+  detailFileHash: string | null;
 };
+
+export type SaveCoursePayload = {
+  properties: Record<string, unknown>;
+  coordinates: LngLat[];
+  detail: Record<string, unknown>;
+};
+
+export type SaveRequest = {
+  resortId: string;
+  fileHash: string | null;
+  detailFileHash: string | null;
+  courses: SaveCoursePayload[];
+  preservedFeatures: SlopeBeforeFeature[];
+  preservedDetails: SlopeDetailEntry[];
+};
+
+export type SaveResult =
+  | { ok: true; writtenFiles: string[] }
+  | { ok: false; errors: string[] };
 
 export type ValidationResult = {
   errors: string[];

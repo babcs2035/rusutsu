@@ -10,7 +10,6 @@ import {
 const PROPERTY_KEYS_HANDLED = new Set<string>([
   "@id",
   "name",
-  "aerialway",
   "midstation",
   ...DETAIL_KEYS,
 ]);
@@ -70,8 +69,6 @@ export const sourceDataToLifts = (
 
     const properties = feature.properties ?? {};
     const name = typeof properties.name === "string" ? properties.name : "";
-    const aerialway =
-      typeof properties.aerialway === "string" ? properties.aerialway : "";
     const osmId =
       typeof properties["@id"] === "string" ? properties["@id"] : null;
     const midstation = parseMidstation(properties.midstation);
@@ -91,7 +88,6 @@ export const sourceDataToLifts = (
       id: createLiftId(),
       sourceIndex: index,
       name,
-      aerialway,
       osmId,
       skiId: resortId,
       coordinates,
@@ -103,7 +99,6 @@ export const sourceDataToLifts = (
       original: {
         skiId: resortId,
         name,
-        aerialway,
         coordinates: coordinates.map(pair => [...pair] as LngLat),
         midstation: midstation ? ([...midstation] as LngLat) : null,
         detail: { ...detail },

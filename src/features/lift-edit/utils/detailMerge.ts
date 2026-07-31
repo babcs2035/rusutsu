@@ -22,6 +22,7 @@ export const createEmptyLiftDetail = (): LiftDetail => ({
   year: "",
   note: "",
   searchWord: "",
+  link: "",
   morning: "",
   night: "",
 });

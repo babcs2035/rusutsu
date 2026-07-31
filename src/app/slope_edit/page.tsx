@@ -3,6 +3,7 @@ import { getSkiResortsForMap } from "@/actions/skiResorts";
 import { SlopeEditClient } from "@/features/slope-edit/SlopeEditClient";
 import { listSlopeBeforeResortIds } from "@/features/slope-edit/server/slopeFiles";
 import type { ResortOption } from "@/features/slope-edit/types";
+import { getResortSearchName } from "@/lib/resortAliases";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ export default async function SlopeEditPage() {
   const resortOptions: ResortOption[] = resorts.map(resort => ({
     id: resort.id,
     nameJa: resort.nameJa,
+    searchName: getResortSearchName(resort.id, resort.nameJa),
     nameEn: resort.nameEn,
     prefecture: resort.prefecture,
     latitude: resort.latitude,

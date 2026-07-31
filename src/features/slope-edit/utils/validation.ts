@@ -1,4 +1,8 @@
-import { JAPAN_BOUNDS } from "../constants";
+import {
+  JAPAN_BOUNDS,
+  REQUIRED_COURSE_FIELD_LABELS,
+  REQUIRED_COURSE_FIELDS,
+} from "../constants";
 import type { EditorCourse, LngLat, ValidationResult } from "../types";
 
 const isFiniteLngLat = (coordinate: LngLat): boolean =>
@@ -23,8 +27,19 @@ export const courseDisplayName = (
   return `名前未入力のコース（${index + 1}番目）`;
 };
 
+export const getEmptyRequiredCourseFields = (
+  course: EditorCourse,
+): Array<(typeof REQUIRED_COURSE_FIELDS)[number]> =>
+  REQUIRED_COURSE_FIELDS.filter(key => {
+    const value = key === "name" ? course.name : course.detail[key];
+    return value.trim() === "";
+  });
+
 // Step 2 → Step 3 へ進む前のバリデーション
-export const validateCourses = (courses: EditorCourse[]): ValidationResult => {
+export const validateCourses = (
+  courses: EditorCourse[],
+  includeRequiredWarnings = false,
+): ValidationResult => {
   const errors: string[] = [];
   const warnings: string[] = [];
 
@@ -46,6 +61,14 @@ export const validateCourses = (courses: EditorCourse[]): ValidationResult => {
     if (course.name === "" && !course.unnamed) {
       errors.push(
         `「${label}」のコース名が未入力です。名前を入力するか「名前なし」を選んでください。`,
+      );
+    }
+    const emptyFields = getEmptyRequiredCourseFields(course);
+    if (includeRequiredWarnings && emptyFields.length > 0) {
+      warnings.push(
+        `「${label}」の ${emptyFields
+          .map(key => REQUIRED_COURSE_FIELD_LABELS[key])
+          .join("、")} が未入力です。`,
       );
     }
     if (course.coordinates.some(coordinate => !isFiniteLngLat(coordinate))) {

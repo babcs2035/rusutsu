@@ -104,6 +104,28 @@ html
   filter: saturate(0.62) contrast(0.82) brightness(1.15);
 }
 
+html
+  body
+  [data-map-course-color-mode="slope"][data-map-tile-variant="pale"]
+  .gsi-tile-layer-pale,
+html
+  body
+  [data-map-course-color-mode="slope"][data-map-tile-variant="pale"]
+  .leaflet-tile {
+  filter: grayscale(1) contrast(0.9) brightness(1.08);
+}
+
+html
+  body
+  [data-map-course-color-mode="slope"][data-map-tile-variant="photo"]
+  .gsi-tile-layer-photo,
+html
+  body
+  [data-map-course-color-mode="slope"][data-map-tile-variant="photo"]
+  .leaflet-tile {
+  filter: grayscale(1) contrast(0.92) brightness(1.06);
+}
+
 html body .resort-name-label-icon {
   background: transparent;
   border: 0;

@@ -7,12 +7,15 @@ import {
   parseLiftBeforeGeojson,
   readLiftBeforeRaw,
   readLiftDetailEntries,
+  readResortLinks,
   writeLiftBeforeGeojson,
   writeLiftConfirmed,
+  writeResortLinks,
 } from "./server/liftFiles";
 import type {
   LiftBeforeFeature,
   LiftSourceData,
+  ResortLinks,
   SaveLiftPayload,
   SaveRequest,
   SaveResult,
@@ -191,4 +194,17 @@ export async function setLiftConfirmed(
 ): Promise<{ confirmedAt: string | null }> {
   const map = await writeLiftConfirmed(resortId, confirmed);
   return { confirmedAt: map[resortId] ?? null };
+}
+
+// スキー場全体の参考リンク（SkiResortLinks.json）を読み込む
+export async function loadResortLinks(resortId: string): Promise<ResortLinks> {
+  return readResortLinks(resortId);
+}
+
+// スキー場全体の参考リンク（SkiResortLinks.json）を保存する
+export async function saveResortLinks(
+  resortId: string,
+  links: ResortLinks,
+): Promise<void> {
+  await writeResortLinks(resortId, links);
 }

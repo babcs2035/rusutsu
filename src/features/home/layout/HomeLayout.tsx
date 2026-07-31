@@ -15,6 +15,7 @@ import { useState } from "react";
 import { REGION_PREFECTURES } from "@/features/filters/constants";
 import type { Filters } from "@/features/filters/types";
 import { getActiveFilterLabels } from "@/features/filters/utils/filterLabels";
+import { DEFAULT_LIFT_TICKET_SEARCH_INPUT } from "@/features/lift-ticket/utils/calculateLiftTicket";
 import type {
   ElevationProfileMapPoint,
   JapanResortMapProps,
@@ -207,6 +208,8 @@ export const HomeLayout = ({
   onUserMapZoomInteraction,
 }: Props) => {
   const [mapTileVariant, setMapTileVariant] = useState<MapTileVariant>("pale");
+  const liftTicketInput =
+    filters.liftTicket ?? DEFAULT_LIFT_TICKET_SEARCH_INPUT;
   const isMobileCompareMapFocus = !isSidePanelLayout && isCompareOpen;
   const mapFilteredResortIdSet = isMobileCompareMapFocus
     ? selectedCompareIdSet
@@ -411,6 +414,7 @@ export const HomeLayout = ({
                     listSheetSnapPoint={listSheetSnapPoint}
                     snapPoints={mobileListSheetSnapPoints}
                     selectedCompareIdSet={selectedCompareIdSet}
+                    liftTicketInput={liftTicketInput}
                     onCloseCompare={onCloseCompare}
                     onHoverResortChange={onSetHoveredResortId}
                     onOpenChange={open => {
@@ -533,6 +537,7 @@ export const HomeLayout = ({
           <SkiResortCompareView
             resorts={compareResortData}
             isLoading={isCompareLoading}
+            initialLiftTicketInput={liftTicketInput}
             onClose={onCloseCompare}
           />
         )}

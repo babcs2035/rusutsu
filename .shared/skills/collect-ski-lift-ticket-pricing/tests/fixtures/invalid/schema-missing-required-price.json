@@ -1,0 +1,177 @@
+{
+  "schema_version": "1.0.0",
+  "taxonomy_version": "13.1.0",
+  "resort": {
+    "id": "broken-resort"
+  },
+  "season": {
+    "id": "2025-2026",
+    "label_ja": "2025-2026シーズン",
+    "start_date": "2025-12-06",
+    "end_date": "2026-03-29",
+    "notes_ja": null,
+    "source_refs": [
+      "src-page"
+    ]
+  },
+  "sources": [
+    {
+      "id": "src-page",
+      "type": "html",
+      "url": "https://example.com/ticket/",
+      "requested_url": "https://example.com/ticket/",
+      "final_url": "https://example.com/ticket/",
+      "page_title": "料金",
+      "http_status": 200,
+      "captured_at": "2026-07-18T02:00:00Z",
+      "content_type": "text/html",
+      "content_hash": "00000000000000000000000000000000000000000000000000000000000000aa",
+      "path": "page-001/page.html",
+      "linked_from_source_id": null,
+      "user_specified": true,
+      "capture_success": true,
+      "reading_confidence": null,
+      "notes_ja": null
+    }
+  ],
+  "geographic_areas": [],
+  "audiences": [
+    {
+      "id": "adult",
+      "name_ja": "大人",
+      "official_label_ja": "おとな",
+      "age_min": null,
+      "age_max": null,
+      "age_basis_ja": null,
+      "school_levels": [],
+      "notes_ja": "公式表記「おとな」に年齢の数値が無いため age_min は null（学校区分から年齢を推測しない）。 公式表記「おとな」に年齢の数値が無いため age_max は null（学校区分から年齢を推測しない）。",
+      "source_refs": [
+        "src-page"
+      ],
+      "is_default": true
+    }
+  ],
+  "calendars": [
+    {
+      "id": "cal-season",
+      "name_ja": "シーズン全日",
+      "official_label_ja": null,
+      "day_types": [
+        "all"
+      ],
+      "dates": [],
+      "date_ranges": [],
+      "excluded_dates": [],
+      "notes_ja": null,
+      "source_refs": [
+        "src-page"
+      ]
+    }
+  ],
+  "operating_hours": [
+    {
+      "id": "oh-regular",
+      "name_ja": "通常営業",
+      "official_label_ja": null,
+      "hours_type": "regular",
+      "calendar_ids": [
+        "cal-season"
+      ],
+      "start_time": "08:30",
+      "end_time": "16:30",
+      "lifts": [],
+      "notes_ja": "テスト用の営業時間（8時間）。",
+      "source_refs": [
+        "src-page"
+      ]
+    }
+  ],
+  "areas": [],
+  "products": [
+    {
+      "id": "day-pass",
+      "name_ja": "リフト1日券",
+      "official_label_ja": null,
+      "validity": {
+        "mode": "calendar_day",
+        "hours": null,
+        "days": 1,
+        "points": null,
+        "rides": null,
+        "start_time": null,
+        "end_time": null,
+        "notes_ja": null
+      },
+      "area_ids": [],
+      "notes_ja": null,
+      "source_refs": [
+        "src-page"
+      ]
+    }
+  ],
+  "channels": [
+    {
+      "id": "window",
+      "name_ja": "チケット窓口",
+      "official_label_ja": null,
+      "channel_type": "onsite_ticket_window",
+      "url": null,
+      "location_ja": null,
+      "purchase_deadline_ja": null,
+      "notes_ja": null,
+      "source_refs": [
+        "src-page"
+      ]
+    }
+  ],
+  "offers": [
+    {
+      "id": "offer-adult-day",
+      "name_ja": "大人1日券",
+      "official_label_ja": "リフト1日券（おとな）",
+      "offer_type": "standard",
+      "discount_reasons": [],
+      "product_id": "day-pass",
+      "audience_ids": [
+        "adult"
+      ],
+      "calendar_ids": [
+        "cal-season"
+      ],
+      "channel_ids": [
+        "window"
+      ],
+      "eligibility_conditions": [],
+      "sales_period": null,
+      "use_period": null,
+      "requirements": [],
+      "stacking": {
+        "stackable_with_other_discounts": "unknown",
+        "notes_ja": null
+      },
+      "source_refs": [
+        "src-page"
+      ],
+      "confidence": "high",
+      "notes_ja": null
+    }
+  ],
+  "party_rules": [],
+  "fees": [],
+  "calculation_policy": {
+    "currency": "JPY",
+    "tax_included": null,
+    "stacking_default": "unknown",
+    "best_price_hint_ja": null,
+    "notes_ja": null
+  },
+  "data_quality": {
+    "status": "draft",
+    "generated_at": null,
+    "last_verified_at": null,
+    "unresolved_questions": [],
+    "illegible_items": [],
+    "human_review_required": [],
+    "notes_ja": null
+  }
+}

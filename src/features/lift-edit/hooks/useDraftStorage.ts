@@ -37,7 +37,7 @@ export const listDraftSummaries = (): DraftSummary[] => {
       summaries.push({
         resortId,
         updatedAt: draft.updatedAt,
-        liftCount: draft.lifts.length,
+        liftCount: draft.lifts.filter(lift => !lift.isDeleted).length,
       });
     }
   }
