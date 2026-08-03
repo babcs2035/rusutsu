@@ -1,0 +1,1405 @@
+{
+  "schema_version": "1.0.0",
+  "taxonomy_version": "33.0.0",
+  "resort": {
+    "id": "yukigaoka"
+  },
+  "season": {
+    "id": "2025-2026",
+    "label_ja": "2025-2026シーズン",
+    "start_date": "2025-12-06",
+    "end_date": "2026-03-29",
+    "notes_ja": "テスト用の架空データ。実在のスキー場・料金ではない。",
+    "source_refs": [
+      "src-page-ryokin"
+    ]
+  },
+  "sources": [
+    {
+      "id": "src-page-ryokin",
+      "url": "https://example.com/yukigaoka/ticket/",
+      "requested_url": "https://example.com/yukigaoka/ticket/",
+      "final_url": "https://example.com/yukigaoka/ticket/",
+      "page_title": "リフト券料金 | ゆきがおかスノーリゾート",
+      "http_status": 200,
+      "captured_at": "2026-07-18T02:00:00Z",
+      "content_type": "text/html; charset=utf-8",
+      "content_hash": "0000000000000000000000000000000000000000000000000000000000000001",
+      "path": "page-001/page.html",
+      "linked_from_source_id": null,
+      "user_specified": true,
+      "capture_success": true,
+      "notes_ja": "料金表本体。タブ内にWEB前売・割引情報あり。"
+    },
+    {
+      "id": "src-page-webshop",
+      "url": "https://example.com/yukigaoka/shop/",
+      "requested_url": "https://example.com/yukigaoka/shop/",
+      "final_url": "https://example.com/yukigaoka/shop/",
+      "page_title": "WEBチケットストア | ゆきがおかスノーリゾート",
+      "http_status": 200,
+      "captured_at": "2026-07-18T02:05:00Z",
+      "content_type": "text/html; charset=utf-8",
+      "content_hash": "0000000000000000000000000000000000000000000000000000000000000002",
+      "path": "page-002/page.html",
+      "linked_from_source_id": "src-page-ryokin",
+      "user_specified": false,
+      "capture_success": true,
+      "notes_ja": "公式オンライン販売ページ。ダイナミックプライシング対象。"
+    },
+    {
+      "id": "src-pdf-price",
+      "url": "https://example.com/yukigaoka/pdf/price-2025-26.pdf",
+      "requested_url": "https://example.com/yukigaoka/pdf/price-2025-26.pdf",
+      "final_url": "https://example.com/yukigaoka/pdf/price-2025-26.pdf",
+      "page_title": null,
+      "http_status": 200,
+      "captured_at": "2026-07-18T02:10:00Z",
+      "content_type": "application/pdf",
+      "content_hash": "0000000000000000000000000000000000000000000000000000000000000003",
+      "path": "downloads/price-2025-26-00000003.pdf",
+      "linked_from_source_id": "src-page-ryokin",
+      "user_specified": false,
+      "capture_success": true,
+      "notes_ja": "公式料金PDF。ファミリーパックの記載は2ページ目。"
+    },
+    {
+      "id": "src-img-night",
+      "url": "https://example.com/yukigaoka/img/night-price.png",
+      "requested_url": "https://example.com/yukigaoka/img/night-price.png",
+      "final_url": "https://example.com/yukigaoka/img/night-price.png",
+      "page_title": null,
+      "http_status": 200,
+      "captured_at": "2026-07-18T02:12:00Z",
+      "content_type": "image/png",
+      "content_hash": "0000000000000000000000000000000000000000000000000000000000000004",
+      "path": "downloads/night-price-00000004.png",
+      "linked_from_source_id": "src-page-ryokin",
+      "user_specified": false,
+      "capture_success": true,
+      "notes_ja": "ナイター料金表の画像。シニア欄の金額が低解像度で判読不能。"
+    },
+    {
+      "id": "src-api-dynamic",
+      "url": "https://example.com/yukigaoka/api/products/day-pass/price",
+      "requested_url": null,
+      "final_url": null,
+      "page_title": null,
+      "http_status": 200,
+      "captured_at": "2026-07-18T02:05:30Z",
+      "content_type": "application/json",
+      "content_hash": "0000000000000000000000000000000000000000000000000000000000000005",
+      "path": "page-002/network/response-001.json",
+      "linked_from_source_id": "src-page-webshop",
+      "user_specified": false,
+      "capture_success": true,
+      "notes_ja": "WEBストアの価格APIレスポンス。日別の変動価格を返す。"
+    }
+  ],
+  "audiences": [
+    {
+      "id": "preschool",
+      "name_ja": "未就学児",
+      "official_label_ja": "未就学児",
+      "age_min": null,
+      "age_max": null,
+      "age_basis_ja": null,
+      "school_levels": [
+        "preschool"
+      ],
+      "notes_ja": "公式資料に年齢の記載なし（学校区分のみ）。",
+      "source_refs": [
+        "src-page-ryokin"
+      ],
+      "is_default": false
+    },
+    {
+      "id": "elementary",
+      "name_ja": "小学生",
+      "official_label_ja": "こども（小学生）",
+      "age_min": null,
+      "age_max": null,
+      "age_basis_ja": null,
+      "school_levels": [
+        "elementary_school"
+      ],
+      "notes_ja": "公式資料に年齢の記載なし（学校区分のみ）。 公式表記は「こども（小学生）」で小学生のみ。未就学児は別区分。",
+      "source_refs": [
+        "src-page-ryokin"
+      ],
+      "is_default": false
+    },
+    {
+      "id": "adult",
+      "name_ja": "大人",
+      "official_label_ja": "おとな（中学生〜59歳）",
+      "age_min": null,
+      "age_max": 59,
+      "age_basis_ja": "利用日時点の年齢（公式表記: 中学生〜59歳）",
+      "school_levels": [],
+      "notes_ja": "公式表記「おとな（中学生〜59歳）」に年齢の数値が無いため age_min は null（学校区分から年齢を推測しない）。",
+      "source_refs": [
+        "src-page-ryokin"
+      ],
+      "is_default": true
+    },
+    {
+      "id": "senior",
+      "name_ja": "シニア",
+      "official_label_ja": "シニア（60歳以上）",
+      "age_min": 60,
+      "age_max": null,
+      "age_basis_ja": "利用日時点の年齢",
+      "school_levels": [],
+      "notes_ja": null,
+      "source_refs": [
+        "src-page-ryokin"
+      ],
+      "is_default": false
+    },
+    {
+      "id": "student",
+      "name_ja": "学生",
+      "official_label_ja": "学生（大学生・大学院生・短大生・専門学校生）",
+      "age_min": null,
+      "age_max": null,
+      "age_basis_ja": null,
+      "school_levels": [
+        "university",
+        "graduate"
+      ],
+      "notes_ja": "公式表記に大学院生を含むことが明記されているケース。年齢の記載は無いため年齢は入れない。 公式表記に含まれる短大生・専門学校生は school_levels に該当ラベルが無いため other で保持している（junior_college、vocational 相当）。",
+      "source_refs": [
+        "src-page-ryokin"
+      ],
+      "is_default": false
+    }
+  ],
+  "calendars": [
+    {
+      "id": "cal-season-all",
+      "name_ja": "シーズン全日",
+      "official_label_ja": null,
+      "excluded_dates": [],
+      "notes_ja": null,
+      "source_refs": [
+        "src-page-ryokin"
+      ],
+      "included_day_types": [
+        "all"
+      ],
+      "included_dates": [],
+      "included_date_ranges": [
+        {
+          "start": "2025-12-06",
+          "end": "2026-03-29"
+        }
+      ],
+      "excluded_date_ranges": []
+    },
+    {
+      "id": "cal-weekday",
+      "name_ja": "平日",
+      "official_label_ja": "平日",
+      "excluded_dates": [],
+      "notes_ja": "公式表記は「平日」。祝日の扱いは資料に記載なし（未解決事項参照）。",
+      "source_refs": [
+        "src-page-ryokin"
+      ],
+      "included_day_types": [
+        "weekday"
+      ],
+      "included_dates": [],
+      "included_date_ranges": [],
+      "excluded_date_ranges": []
+    },
+    {
+      "id": "cal-holiday",
+      "name_ja": "土日祝",
+      "official_label_ja": "土日祝",
+      "excluded_dates": [],
+      "notes_ja": null,
+      "source_refs": [
+        "src-page-ryokin"
+      ],
+      "included_day_types": [
+        "saturday",
+        "sunday",
+        "public_holiday"
+      ],
+      "included_dates": [],
+      "included_date_ranges": [],
+      "excluded_date_ranges": []
+    },
+    {
+      "id": "cal-yearend",
+      "name_ja": "年末年始",
+      "official_label_ja": "年末年始（12/28〜1/3）",
+      "excluded_dates": [],
+      "notes_ja": null,
+      "source_refs": [
+        "src-page-ryokin"
+      ],
+      "included_day_types": [
+        "year_end_new_year"
+      ],
+      "included_dates": [],
+      "included_date_ranges": [
+        {
+          "start": "2025-12-28",
+          "end": "2026-01-03"
+        }
+      ],
+      "excluded_date_ranges": []
+    },
+    {
+      "id": "cal-ladies",
+      "name_ja": "レディースデー対象日",
+      "official_label_ja": "レディースデー（毎週木曜）",
+      "excluded_dates": [],
+      "notes_ja": "公式ページに掲載された対象日のみ登録。",
+      "source_refs": [
+        "src-page-ryokin"
+      ],
+      "included_day_types": [
+        "special"
+      ],
+      "included_dates": [
+        "2026-01-08",
+        "2026-01-15",
+        "2026-01-22",
+        "2026-01-29"
+      ],
+      "included_date_ranges": [],
+      "excluded_date_ranges": []
+    },
+    {
+      "id": "cal-kids",
+      "name_ja": "こどもデー対象日",
+      "official_label_ja": "こどもデー（第3日曜）",
+      "excluded_dates": [],
+      "notes_ja": null,
+      "source_refs": [
+        "src-page-ryokin"
+      ],
+      "included_day_types": [
+        "special"
+      ],
+      "included_dates": [
+        "2025-12-21",
+        "2026-01-18",
+        "2026-02-15",
+        "2026-03-15"
+      ],
+      "included_date_ranges": [],
+      "excluded_date_ranges": []
+    }
+  ],
+  "operating_hours": [
+    {
+      "id": "oh-regular",
+      "name_ja": "通常営業",
+      "official_label_ja": null,
+      "hours_type": "regular",
+      "calendar_ids": [
+        "cal-season-all"
+      ],
+      "start_time": "08:30",
+      "end_time": "16:30",
+      "lifts": [],
+      "notes_ja": "テスト用の営業時間（8時間）。",
+      "source_refs": [
+        "src-page-ryokin"
+      ]
+    }
+  ],
+  "areas": [
+    {
+      "id": "all-mountain",
+      "name_ja": "全山",
+      "official_label_ja": "全山共通",
+      "description_ja": "全リフト・全コース利用可",
+      "notes_ja": null,
+      "source_refs": [
+        "src-page-ryokin"
+      ]
+    }
+  ],
+  "products": [
+    {
+      "id": "day-pass",
+      "name_ja": "リフト1日券",
+      "official_label_ja": "リフト1日券",
+      "validity": {
+        "mode": "calendar_day",
+        "hours": null,
+        "days": 1,
+        "points": null,
+        "rides": null,
+        "start_time": null,
+        "end_time": null,
+        "notes_ja": null
+      },
+      "area_ids": [
+        "all-mountain"
+      ],
+      "notes_ja": null,
+      "source_refs": [
+        "src-page-ryokin"
+      ]
+    },
+    {
+      "id": "night-pass",
+      "name_ja": "ナイター券",
+      "official_label_ja": "ナイター券（16:00〜21:00）",
+      "validity": {
+        "mode": "fixed_time_window",
+        "hours": null,
+        "days": 1,
+        "points": null,
+        "rides": null,
+        "start_time": "16:00",
+        "end_time": "21:00",
+        "notes_ja": null
+      },
+      "area_ids": [
+        "all-mountain"
+      ],
+      "notes_ja": null,
+      "source_refs": [
+        "src-img-night"
+      ],
+      "covers_hours_types": [
+        "night"
+      ]
+    },
+    {
+      "id": "day-pass-lunch",
+      "name_ja": "1日券＋ランチパック",
+      "official_label_ja": "ランチパック1日券",
+      "validity": {
+        "mode": "calendar_day",
+        "hours": null,
+        "days": 1,
+        "points": null,
+        "rides": null,
+        "start_time": null,
+        "end_time": null,
+        "notes_ja": null
+      },
+      "area_ids": [
+        "all-mountain"
+      ],
+      "included_items": [
+        {
+          "type": "meal",
+          "name_ja": "場内レストラン食事券",
+          "official_label_ja": "ランチ券1,000円分",
+          "description_ja": "場内レストランで利用できる1,000円分の食事券付き。",
+          "value_amount": 1000,
+          "notes_ja": null,
+          "source_refs": [
+            "src-page-ryokin"
+          ]
+        }
+      ],
+      "notes_ja": null,
+      "source_refs": [
+        "src-page-ryokin"
+      ]
+    },
+    {
+      "id": "two-resort-pass",
+      "name_ja": "ゆきがおか・ゆきだに共通1日券",
+      "official_label_ja": "2山共通1日券",
+      "validity": {
+        "mode": "calendar_day",
+        "hours": null,
+        "days": 1,
+        "points": null,
+        "rides": null,
+        "start_time": null,
+        "end_time": null,
+        "notes_ja": null
+      },
+      "area_ids": [
+        "all-mountain"
+      ],
+      "shared_with_resorts": [
+        {
+          "resort_id": "yukidani",
+          "name_ja": "ゆきだにスキー場",
+          "official_label_ja": "2山共通1日券",
+          "notes_ja": "共通券のため、ゆきだにスキー場側のJSONにも同じ共通券を記載すること。",
+          "source_refs": [
+            "src-pdf-price"
+          ]
+        }
+      ],
+      "notes_ja": null,
+      "source_refs": [
+        "src-pdf-price"
+      ]
+    }
+  ],
+  "channels": [
+    {
+      "id": "window",
+      "name_ja": "チケット窓口",
+      "official_label_ja": "チケット窓口",
+      "url": null,
+      "location_ja": "センターハウス1F",
+      "purchase_deadline_ja": null,
+      "notes_ja": null,
+      "source_refs": [
+        "src-page-ryokin"
+      ]
+    },
+    {
+      "id": "web-shop",
+      "name_ja": "公式WEBチケットストア",
+      "official_label_ja": "WEBチケットストア",
+      "url": "https://example.com/yukigaoka/shop/",
+      "location_ja": null,
+      "purchase_deadline_ja": "利用日前日23:59まで",
+      "notes_ja": null,
+      "source_refs": [
+        "src-page-webshop"
+      ]
+    }
+  ],
+  "offers": [
+    {
+      "id": "offer-adult-day-standard-weekday",
+      "name_ja": "大人1日券（窓口）／平日",
+      "official_label_ja": "リフト1日券（おとな）（平日）",
+      "discount_reasons": [],
+      "product_id": "day-pass",
+      "audience_ids": [
+        "adult"
+      ],
+      "calendar_ids": [
+        "cal-weekday"
+      ],
+      "channel_ids": [
+        "window"
+      ],
+      "sales_period": null,
+      "use_period": {
+        "start": "2025-12-06",
+        "end": "2026-03-29",
+        "start_time": null,
+        "end_time": null,
+        "deadline_ja": null,
+        "notes_ja": null
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": 6000,
+        "notes_ja": null
+      },
+      "requirements": [],
+      "stacking": {
+        "stackable_with_other_discounts": "unknown",
+        "notes_ja": "併用可否の記載なし。"
+      },
+      "source_refs": [
+        "src-page-ryokin"
+      ],
+      "notes_ja": null
+    },
+    {
+      "id": "offer-adult-day-standard-holiday",
+      "name_ja": "大人1日券（窓口）／土日祝",
+      "official_label_ja": "リフト1日券（おとな）（土日祝）",
+      "discount_reasons": [],
+      "product_id": "day-pass",
+      "audience_ids": [
+        "adult"
+      ],
+      "calendar_ids": [
+        "cal-holiday"
+      ],
+      "channel_ids": [
+        "window"
+      ],
+      "sales_period": null,
+      "use_period": {
+        "start": "2025-12-06",
+        "end": "2026-03-29",
+        "start_time": null,
+        "end_time": null,
+        "deadline_ja": null,
+        "notes_ja": null
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": 6500,
+        "notes_ja": null
+      },
+      "requirements": [],
+      "stacking": {
+        "stackable_with_other_discounts": "unknown",
+        "notes_ja": "併用可否の記載なし。"
+      },
+      "source_refs": [
+        "src-page-ryokin"
+      ],
+      "notes_ja": null
+    },
+    {
+      "id": "offer-adult-day-standard-yearend",
+      "name_ja": "大人1日券（窓口）／年末年始",
+      "official_label_ja": "リフト1日券（おとな）（年末年始）",
+      "discount_reasons": [],
+      "product_id": "day-pass",
+      "audience_ids": [
+        "adult"
+      ],
+      "calendar_ids": [
+        "cal-yearend"
+      ],
+      "channel_ids": [
+        "window"
+      ],
+      "sales_period": null,
+      "use_period": {
+        "start": "2025-12-06",
+        "end": "2026-03-29",
+        "start_time": null,
+        "end_time": null,
+        "deadline_ja": null,
+        "notes_ja": null
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": 7000,
+        "notes_ja": null
+      },
+      "requirements": [],
+      "stacking": {
+        "stackable_with_other_discounts": "unknown",
+        "notes_ja": "併用可否の記載なし。"
+      },
+      "source_refs": [
+        "src-pdf-price"
+      ],
+      "notes_ja": null
+    },
+    {
+      "id": "offer-adult-day-web-advance",
+      "name_ja": "大人1日券（WEB前売）",
+      "official_label_ja": "WEB前売スペシャル",
+      "discount_reasons": [
+        "online_purchase",
+        "advance_purchase"
+      ],
+      "product_id": "day-pass",
+      "audience_ids": [
+        "adult"
+      ],
+      "calendar_ids": [
+        "cal-season-all"
+      ],
+      "channel_ids": [
+        "web-shop"
+      ],
+      "sales_period": {
+        "start": "2025-11-01",
+        "end": "2026-03-28",
+        "start_time": null,
+        "end_time": null,
+        "deadline_ja": "利用日前日23:59まで",
+        "notes_ja": null
+      },
+      "purchase_deadline": {
+        "same_day_allowed": false,
+        "official_text_ja": "利用日前日23:59まで",
+        "notes_ja": null,
+        "source_refs": [
+          "src-page-webshop"
+        ],
+        "days_before_use": 1,
+        "deadline_date": null
+      },
+      "use_period": {
+        "start": "2025-12-06",
+        "end": "2026-03-29",
+        "start_time": null,
+        "end_time": null,
+        "deadline_ja": null,
+        "notes_ja": null
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": 5800,
+        "notes_ja": null
+      },
+      "requirements": [
+        {
+          "description_ja": "WEBチケットストアで利用日前日までに購入し、現地の発券機でQRコードを提示する。",
+          "source_refs": [
+            "src-page-webshop"
+          ],
+          "proof_ja": null
+        }
+      ],
+      "stacking": {
+        "stackable_with_other_discounts": "not_stackable",
+        "notes_ja": "他の割引との併用不可と明記。"
+      },
+      "source_refs": [
+        "src-page-webshop",
+        "src-page-ryokin"
+      ],
+      "notes_ja": null
+    },
+    {
+      "id": "offer-adult-day-dominwari-weekday",
+      "name_ja": "大人1日券（道民割）／平日",
+      "official_label_ja": "道民割引（平日）",
+      "discount_reasons": [
+        "local_resident"
+      ],
+      "product_id": "day-pass",
+      "audience_ids": [
+        "adult"
+      ],
+      "calendar_ids": [
+        "cal-weekday"
+      ],
+      "channel_ids": [
+        "window"
+      ],
+      "sales_period": null,
+      "use_period": {
+        "start": "2025-12-06",
+        "end": "2026-03-29",
+        "start_time": null,
+        "end_time": null,
+        "deadline_ja": null,
+        "notes_ja": null
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": null,
+        "base_offer_id": "offer-adult-day-standard-weekday",
+        "discount": {
+          "amount": 1000
+        },
+        "notes_ja": "窓口通常料金から1,000円引き（公式表記どおり）。"
+      },
+      "requirements": [
+        {
+          "description_ja": "窓口で住所を確認できる証明書（免許証・保険証等）を提示する。",
+          "source_refs": [
+            "src-page-ryokin"
+          ],
+          "proof_ja": "住所を確認できるもの"
+        },
+        {
+          "description_ja": "北海道にお住まいの方",
+          "source_refs": [
+            "src-page-ryokin"
+          ],
+          "proof_ja": "住所を確認できるもの"
+        }
+      ],
+      "stacking": {
+        "stackable_with_other_discounts": "unknown",
+        "notes_ja": null
+      },
+      "source_refs": [
+        "src-page-ryokin"
+      ],
+      "notes_ja": null,
+      "target_qualification": {
+        "official_label_ja": "北海道にお住まいの方",
+        "description_ja": "北海道にお住まいの方",
+        "source_refs": [
+          "src-page-ryokin"
+        ],
+        "notes_ja": null
+      }
+    },
+    {
+      "id": "offer-adult-day-dominwari-holiday",
+      "name_ja": "大人1日券（道民割）／土日祝",
+      "official_label_ja": "道民割引（土日祝）",
+      "discount_reasons": [
+        "local_resident"
+      ],
+      "product_id": "day-pass",
+      "audience_ids": [
+        "adult"
+      ],
+      "calendar_ids": [
+        "cal-holiday"
+      ],
+      "channel_ids": [
+        "window"
+      ],
+      "sales_period": null,
+      "use_period": {
+        "start": "2025-12-06",
+        "end": "2026-03-29",
+        "start_time": null,
+        "end_time": null,
+        "deadline_ja": null,
+        "notes_ja": null
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": null,
+        "base_offer_id": "offer-adult-day-standard-holiday",
+        "discount": {
+          "amount": 1000
+        },
+        "notes_ja": "窓口通常料金から1,000円引き（公式表記どおり）。"
+      },
+      "requirements": [
+        {
+          "description_ja": "窓口で住所を確認できる証明書（免許証・保険証等）を提示する。",
+          "source_refs": [
+            "src-page-ryokin"
+          ],
+          "proof_ja": "住所を確認できるもの"
+        },
+        {
+          "description_ja": "北海道にお住まいの方",
+          "source_refs": [
+            "src-page-ryokin"
+          ],
+          "proof_ja": "住所を確認できるもの"
+        }
+      ],
+      "stacking": {
+        "stackable_with_other_discounts": "unknown",
+        "notes_ja": null
+      },
+      "source_refs": [
+        "src-page-ryokin"
+      ],
+      "notes_ja": null,
+      "target_qualification": {
+        "official_label_ja": "北海道にお住まいの方",
+        "description_ja": "北海道にお住まいの方",
+        "source_refs": [
+          "src-page-ryokin"
+        ],
+        "notes_ja": null
+      }
+    },
+    {
+      "id": "offer-adult-day-dominwari-yearend",
+      "name_ja": "大人1日券（道民割）／年末年始",
+      "official_label_ja": "道民割引（年末年始）",
+      "discount_reasons": [
+        "local_resident"
+      ],
+      "product_id": "day-pass",
+      "audience_ids": [
+        "adult"
+      ],
+      "calendar_ids": [
+        "cal-yearend"
+      ],
+      "channel_ids": [
+        "window"
+      ],
+      "sales_period": null,
+      "use_period": {
+        "start": "2025-12-06",
+        "end": "2026-03-29",
+        "start_time": null,
+        "end_time": null,
+        "deadline_ja": null,
+        "notes_ja": null
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": null,
+        "base_offer_id": "offer-adult-day-standard-yearend",
+        "discount": {
+          "amount": 1000
+        },
+        "notes_ja": "窓口通常料金から1,000円引き（公式表記どおり）。"
+      },
+      "requirements": [
+        {
+          "description_ja": "窓口で住所を確認できる証明書（免許証・保険証等）を提示する。",
+          "source_refs": [
+            "src-page-ryokin"
+          ],
+          "proof_ja": "住所を確認できるもの"
+        },
+        {
+          "description_ja": "北海道にお住まいの方",
+          "source_refs": [
+            "src-page-ryokin"
+          ],
+          "proof_ja": "住所を確認できるもの"
+        }
+      ],
+      "stacking": {
+        "stackable_with_other_discounts": "unknown",
+        "notes_ja": null
+      },
+      "source_refs": [
+        "src-page-ryokin"
+      ],
+      "notes_ja": null,
+      "target_qualification": {
+        "official_label_ja": "北海道にお住まいの方",
+        "description_ja": "北海道にお住まいの方",
+        "source_refs": [
+          "src-page-ryokin"
+        ],
+        "notes_ja": null
+      }
+    },
+    {
+      "id": "offer-ladies-day",
+      "name_ja": "レディースデー1日券",
+      "official_label_ja": "レディースデー",
+      "discount_reasons": [
+        "special_day"
+      ],
+      "product_id": "day-pass",
+      "audience_ids": [
+        "adult",
+        "senior"
+      ],
+      "calendar_ids": [
+        "cal-ladies"
+      ],
+      "channel_ids": [
+        "window"
+      ],
+      "sales_period": null,
+      "use_period": null,
+      "price": {
+        "currency": "JPY",
+        "amount": 4500,
+        "notes_ja": null
+      },
+      "requirements": [],
+      "stacking": {
+        "stackable_with_other_discounts": "unknown",
+        "notes_ja": null
+      },
+      "source_refs": [
+        "src-page-ryokin"
+      ],
+      "notes_ja": null,
+      "target_genders": {
+        "genders": [],
+        "official_label_ja": "レディースデー",
+        "description_ja": "公式資料が女性を対象と明記している。",
+        "source_refs": [
+          "src-page-ryokin"
+        ],
+        "notes_ja": null
+      }
+    },
+    {
+      "id": "offer-kids-day",
+      "name_ja": "こどもデー小学生1日券",
+      "official_label_ja": "こどもデー",
+      "discount_reasons": [
+        "special_day"
+      ],
+      "product_id": "day-pass",
+      "audience_ids": [
+        "elementary"
+      ],
+      "calendar_ids": [
+        "cal-kids"
+      ],
+      "channel_ids": [
+        "window"
+      ],
+      "sales_period": null,
+      "use_period": null,
+      "price": {
+        "currency": "JPY",
+        "amount": 1000,
+        "notes_ja": null
+      },
+      "requirements": [],
+      "stacking": {
+        "stackable_with_other_discounts": "unknown",
+        "notes_ja": null
+      },
+      "source_refs": [
+        "src-page-ryokin"
+      ],
+      "notes_ja": "通常の小学生料金（offer-elementary-day-standard）とは別のoffer。"
+    },
+    {
+      "id": "offer-elementary-day-standard",
+      "name_ja": "小学生1日券（窓口）",
+      "official_label_ja": "リフト1日券（こども）",
+      "discount_reasons": [],
+      "product_id": "day-pass",
+      "audience_ids": [
+        "elementary"
+      ],
+      "calendar_ids": [
+        "cal-season-all"
+      ],
+      "channel_ids": [
+        "window"
+      ],
+      "sales_period": null,
+      "use_period": null,
+      "price": {
+        "currency": "JPY",
+        "amount": 3200,
+        "notes_ja": null
+      },
+      "requirements": [],
+      "stacking": {
+        "stackable_with_other_discounts": "unknown",
+        "notes_ja": null
+      },
+      "source_refs": [
+        "src-page-ryokin"
+      ],
+      "notes_ja": null
+    },
+    {
+      "id": "offer-preschool-free",
+      "name_ja": "未就学児無料",
+      "official_label_ja": "未就学児 リフト券無料",
+      "discount_reasons": [],
+      "product_id": "day-pass",
+      "audience_ids": [
+        "preschool"
+      ],
+      "calendar_ids": [
+        "cal-season-all"
+      ],
+      "channel_ids": [
+        "window"
+      ],
+      "sales_period": null,
+      "use_period": null,
+      "price": {
+        "currency": "JPY",
+        "amount": 0,
+        "notes_ja": null
+      },
+      "requirements": [],
+      "stacking": {
+        "stackable_with_other_discounts": "unknown",
+        "notes_ja": null
+      },
+      "source_refs": [
+        "src-page-ryokin"
+      ],
+      "notes_ja": "同伴条件は party_rules の rule-preschool-free を参照（公式表記に同伴人数の条件あり）。"
+    },
+    {
+      "id": "offer-night-adult",
+      "name_ja": "大人ナイター券",
+      "official_label_ja": "ナイター券（おとな）",
+      "discount_reasons": [],
+      "product_id": "night-pass",
+      "audience_ids": [
+        "adult"
+      ],
+      "calendar_ids": [
+        "cal-season-all"
+      ],
+      "channel_ids": [
+        "window"
+      ],
+      "sales_period": null,
+      "use_period": null,
+      "price": {
+        "currency": "JPY",
+        "amount": 2500,
+        "notes_ja": null
+      },
+      "requirements": [],
+      "stacking": {
+        "stackable_with_other_discounts": "unknown",
+        "notes_ja": null
+      },
+      "source_refs": [
+        "src-img-night"
+      ],
+      "notes_ja": "画像料金表からの読み取り。行列の対応をスクリーンショットで確認済み。"
+    },
+    {
+      "id": "offer-night-senior",
+      "name_ja": "シニアナイター券",
+      "official_label_ja": "ナイター券（シニア）",
+      "discount_reasons": [],
+      "product_id": "night-pass",
+      "audience_ids": [
+        "senior"
+      ],
+      "calendar_ids": [
+        "cal-season-all"
+      ],
+      "channel_ids": [
+        "window"
+      ],
+      "sales_period": null,
+      "use_period": null,
+      "price": {
+        "currency": "JPY",
+        "amount": null,
+        "notes_ja": "画像の該当セルが判読不能のため金額未確定。"
+      },
+      "requirements": [],
+      "stacking": {
+        "stackable_with_other_discounts": "unknown",
+        "notes_ja": null
+      },
+      "source_refs": [
+        "src-img-night"
+      ],
+      "notes_ja": "推測禁止のため金額は unknown。data_quality.illegible_items を参照。"
+    },
+    {
+      "id": "offer-adult-day-web-dynamic",
+      "name_ja": "大人1日券（WEB当日・変動価格）",
+      "official_label_ja": "WEBチケット（当日価格）",
+      "discount_reasons": [],
+      "product_id": "day-pass",
+      "audience_ids": [
+        "adult"
+      ],
+      "calendar_ids": [
+        "cal-season-all"
+      ],
+      "channel_ids": [
+        "web-shop"
+      ],
+      "sales_period": null,
+      "use_period": null,
+      "purchase_deadline": {
+        "same_day_allowed": true,
+        "official_text_ja": "当日購入OK（公式ストア表記）",
+        "notes_ja": null,
+        "source_refs": [
+          "src-page-webshop"
+        ],
+        "days_before_use": 0,
+        "deadline_date": null
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": null,
+        "live_lookup_required": true,
+        "live_lookup_url": "https://example.com/yukigaoka/shop/",
+        "observed_at": "2026-07-18T02:05:30Z",
+        "observed_amount": 6200,
+        "notes_ja": "日により価格変動。取得時点の観測値のみ記録し、固定価格としては保存しない。"
+      },
+      "requirements": [],
+      "stacking": {
+        "stackable_with_other_discounts": "unknown",
+        "notes_ja": null
+      },
+      "source_refs": [
+        "src-api-dynamic",
+        "src-page-webshop"
+      ],
+      "notes_ja": null
+    },
+    {
+      "id": "offer-student-day",
+      "name_ja": "学生1日券",
+      "official_label_ja": "学生割引1日券",
+      "discount_reasons": [],
+      "product_id": "day-pass",
+      "audience_ids": [
+        "student"
+      ],
+      "calendar_ids": [
+        "cal-season-all"
+      ],
+      "channel_ids": [
+        "window"
+      ],
+      "sales_period": null,
+      "use_period": null,
+      "price": {
+        "currency": "JPY",
+        "amount": 4800,
+        "notes_ja": null
+      },
+      "requirements": [
+        {
+          "description_ja": "学生証の提示",
+          "source_refs": [
+            "src-page-ryokin"
+          ],
+          "proof_ja": "学生証"
+        }
+      ],
+      "stacking": {
+        "stackable_with_other_discounts": "unknown",
+        "notes_ja": null
+      },
+      "source_refs": [
+        "src-page-ryokin"
+      ],
+      "notes_ja": "学生であることは audiences.school_levels で表すため discount_reasons からは外した。"
+    },
+    {
+      "id": "offer-lunch-pack-adult",
+      "name_ja": "大人ランチパック1日券",
+      "official_label_ja": "ランチパック1日券（おとな）",
+      "discount_reasons": [],
+      "product_id": "day-pass-lunch",
+      "audience_ids": [
+        "adult"
+      ],
+      "calendar_ids": [
+        "cal-season-all"
+      ],
+      "channel_ids": [
+        "window"
+      ],
+      "sales_period": null,
+      "use_period": null,
+      "price": {
+        "currency": "JPY",
+        "amount": 7500,
+        "notes_ja": null
+      },
+      "requirements": [],
+      "stacking": {
+        "stackable_with_other_discounts": "unknown",
+        "notes_ja": null
+      },
+      "source_refs": [
+        "src-page-ryokin"
+      ],
+      "notes_ja": "リフト1日券＋ランチ券1,000円分のセット。"
+    },
+    {
+      "id": "offer-two-resort-adult",
+      "name_ja": "大人2山共通1日券",
+      "official_label_ja": "2山共通1日券（おとな）",
+      "discount_reasons": [],
+      "product_id": "two-resort-pass",
+      "audience_ids": [
+        "adult"
+      ],
+      "calendar_ids": [
+        "cal-season-all"
+      ],
+      "channel_ids": [
+        "window"
+      ],
+      "sales_period": null,
+      "use_period": null,
+      "price": {
+        "currency": "JPY",
+        "amount": 8000,
+        "notes_ja": null
+      },
+      "requirements": [],
+      "stacking": {
+        "stackable_with_other_discounts": "unknown",
+        "notes_ja": null
+      },
+      "source_refs": [
+        "src-pdf-price"
+      ],
+      "notes_ja": "ゆきだにスキー場でも利用可能な共通券。"
+    }
+  ],
+  "party_rules": [
+    {
+      "id": "rule-preschool-free",
+      "name_ja": "大人同伴の未就学児無料",
+      "official_label_ja": "未就学児無料（保護者同伴）",
+      "description_ja": "リフト券を購入した大人1名につき、未就学児2名までリフト券無料。",
+      "calendar_ids": [
+        "cal-season-all"
+      ],
+      "channel_ids": [
+        "window"
+      ],
+      "components": [
+        {
+          "role_ja": "大人（リフト券購入者）",
+          "audience_ids": [
+            "adult"
+          ],
+          "product_ids": [
+            "day-pass"
+          ],
+          "offer_ids": [],
+          "min_count": 1,
+          "max_count": null,
+          "per_qualifying_count": null,
+          "price_effect": null,
+          "notes_ja": null
+        },
+        {
+          "role_ja": "未就学児",
+          "audience_ids": [
+            "preschool"
+          ],
+          "product_ids": [
+            "day-pass"
+          ],
+          "offer_ids": [],
+          "min_count": null,
+          "max_count": null,
+          "per_qualifying_count": 2,
+          "price_effect": {
+            "type": "free",
+            "amount": 0,
+            "percent": null,
+            "notes_ja": null
+          },
+          "notes_ja": "大人1名につき2名まで。"
+        }
+      ],
+      "sales_period": null,
+      "use_period": null,
+      "requirements": [],
+      "source_refs": [
+        "src-page-ryokin"
+      ],
+      "notes_ja": null
+    },
+    {
+      "id": "rule-family-pack",
+      "name_ja": "ファミリーパック",
+      "official_label_ja": "ファミリーパック（大人2＋小学生2）",
+      "description_ja": "大人2名＋小学生2名の1日券セットで合計14,000円。",
+      "calendar_ids": [
+        "cal-season-all"
+      ],
+      "channel_ids": [
+        "window"
+      ],
+      "components": [
+        {
+          "role_ja": "大人",
+          "audience_ids": [
+            "adult"
+          ],
+          "product_ids": [
+            "day-pass"
+          ],
+          "offer_ids": [],
+          "min_count": 2,
+          "max_count": 2,
+          "per_qualifying_count": null,
+          "price_effect": {
+            "type": "fixed_total",
+            "amount": 14000,
+            "percent": null,
+            "notes_ja": "セット全体の合計金額"
+          },
+          "notes_ja": null
+        },
+        {
+          "role_ja": "小学生",
+          "audience_ids": [
+            "elementary"
+          ],
+          "product_ids": [
+            "day-pass"
+          ],
+          "offer_ids": [],
+          "min_count": 2,
+          "max_count": 2,
+          "per_qualifying_count": null,
+          "price_effect": null,
+          "notes_ja": null
+        }
+      ],
+      "sales_period": null,
+      "use_period": null,
+      "requirements": [],
+      "source_refs": [
+        "src-pdf-price"
+      ],
+      "notes_ja": "PDF料金表2ページ目に記載。"
+    }
+  ],
+  "fees": [],
+  "calculation_policy": {
+    "currency": "JPY",
+    "tax_included": true,
+    "stacking_default": "unknown",
+    "best_price_hint_ja": "大人はWEB前売（5,800円）が窓口平日（6,000円）より安い。道民は窓口で道民割（通常−1,000円）とWEB前売の比較が必要（併用可否は未確認）。",
+    "notes_ja": "税込表記は公式料金ページの記載による。"
+  },
+  "data_quality": {
+    "status": "needs_review",
+    "generated_at": "2026-07-18T03:00:00Z",
+    "last_verified_at": "2026-07-18T03:30:00Z",
+    "unresolved_questions": [
+      {
+        "id": "q-weekday-def",
+        "question_ja": "「平日」料金における祝日の扱い（祝日が土日祝側である旨の明記）が資料に無い。",
+        "related_ids": [
+          "cal-weekday",
+          "cal-holiday"
+        ],
+        "source_refs": [
+          "src-page-ryokin"
+        ]
+      },
+      {
+        "id": "q-dominwari-web",
+        "question_ja": "道民割とWEB前売の併用可否が資料に無い。",
+        "related_ids": [
+          "offer-adult-day-dominwari",
+          "offer-adult-day-web-advance"
+        ],
+        "source_refs": [
+          "src-page-ryokin"
+        ]
+      }
+    ],
+    "illegible_items": [
+      {
+        "id": "illegible-night-senior",
+        "description_ja": "ナイター料金表画像のシニア料金セルが低解像度で判読不能。",
+        "source_refs": [
+          "src-img-night"
+        ],
+        "related_offer_ids": [
+          "offer-night-senior"
+        ]
+      }
+    ],
+    "human_review_required": [
+      {
+        "what_ja": "ナイター料金表画像のシニア料金（高解像度の資料入手が必要）",
+        "why_ja": "公式資料から確定できなかった（旧形式の記録を移行）",
+        "where_ja": "page-001/page.html",
+        "source_refs": [
+          "src-page-ryokin"
+        ],
+        "related_ids": [],
+        "notes_ja": null
+      },
+      {
+        "what_ja": "audience \"student\"（公式表記「学生（大学生・大学院生・短大生・専門学校生）」）に 専門学校、短大 が含まれるが school_levels に該当ラベルが無い。ラベル追加の可否を判断すること。",
+        "why_ja": "公式資料から確定できなかった（旧形式の記録を移行）",
+        "where_ja": "page-001/page.html",
+        "source_refs": [
+          "src-page-ryokin"
+        ],
+        "related_ids": [],
+        "notes_ja": null
+      }
+    ],
+    "notes_ja": "テスト用の架空データ。"
+  }
+}

@@ -1,10 +1,59 @@
 "use client";
 
-import { Box, Flex, Heading, Table } from "@chakra-ui/react";
+import { Box, Flex, Heading, Table, Text } from "@chakra-ui/react";
+import { LiftTicketCalculator } from "@/features/lift-ticket/components/LiftTicketCalculator";
+import { LiftTicketPriceTable } from "@/features/lift-ticket/components/LiftTicketPriceTable";
 import type { Resort } from "../types";
 
 export const TicketsTab = ({ resort }: { resort: Resort }) => {
   const tickets = resort.tickets;
+  const liftTicketData = resort.liftTickets[0] ?? null;
+
+  if (liftTicketData) {
+    return (
+      <Flex flexDirection="column" gap={8}>
+        <LiftTicketCalculator seasons={resort.liftTickets} />
+        <Box as="section">
+          <Heading size="lg" fontFamily="var(--font-heading)" color="gray.900">
+            公式リフト料金表
+          </Heading>
+          <Text mt={2} mb={4} color="gray.600" fontSize="sm">
+            {liftTicketData.season.label_ja}
+            の券種・対象・適用日を表示しています。
+          </Text>
+          <LiftTicketPriceTable data={liftTicketData} />
+        </Box>
+        {(liftTicketData.data_quality.unresolved_questions?.length ?? 0) >
+          0 && (
+          <Box
+            p={4}
+            borderRadius="xl"
+            bg="orange.50"
+            border="1px solid"
+            borderColor="orange.200"
+          >
+            <Text color="orange.900" fontSize="sm" fontWeight="900">
+              公式資料だけでは確定できない条件があります
+            </Text>
+            <Flex mt={2} flexDirection="column" gap={1.5}>
+              {liftTicketData.data_quality.unresolved_questions
+                ?.slice(0, 5)
+                .map(question => (
+                  <Text
+                    key={question.id}
+                    color="orange.900"
+                    fontSize="xs"
+                    lineHeight="1.6"
+                  >
+                    ・{question.question_ja}
+                  </Text>
+                ))}
+            </Flex>
+          </Box>
+        )}
+      </Flex>
+    );
+  }
 
   return (
     <Flex flexDirection="column" gap={10}>

@@ -1,0 +1,65 @@
+{
+  "schema_version": "1.0.0",
+  "taxonomy_version": "33.0.0",
+  "resort": {
+    "id": "minimal-resort"
+  },
+  "season": {
+    "id": "2025-2026",
+    "label_ja": "2025-2026シーズン",
+    "start_date": null,
+    "end_date": null,
+    "notes_ja": null,
+    "source_refs": [
+      "src-season"
+    ]
+  },
+  "sources": [
+    {
+      "id": "src-season",
+      "url": "https://example.com/ticket/",
+      "path": "page-001/page.html",
+      "page_title": "料金ページ（テスト用）",
+      "captured_at": "2026-01-01T00:00:00.000Z",
+      "user_specified": true,
+      "capture_success": true,
+      "notes_ja": "シーズン判定の根拠用"
+    }
+  ],
+  "audiences": [],
+  "calendars": [],
+  "operating_hours": [],
+  "areas": [],
+  "products": [],
+  "channels": [],
+  "offers": [],
+  "party_rules": [],
+  "fees": [],
+  "calculation_policy": {
+    "currency": "JPY",
+    "tax_included": null,
+    "stacking_default": "unknown",
+    "best_price_hint_ja": null,
+    "notes_ja": null
+  },
+  "data_quality": {
+    "status": "needs_review",
+    "generated_at": null,
+    "last_verified_at": null,
+    "unresolved_questions": [],
+    "illegible_items": [],
+    "human_review_required": [
+      {
+        "what_ja": "リフト券料金の記録がまだ無いこと（骨組みだけの状態）",
+        "why_ja": "URL登録直後で抽出が済んでいない。営業時間・料金を記録してから complete にする。",
+        "where_ja": "page-001/page.html のリフト券料金セクション",
+        "source_refs": [
+          "src-season"
+        ],
+        "related_ids": [],
+        "notes_ja": null
+      }
+    ],
+    "notes_ja": null
+  }
+}

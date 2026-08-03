@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
+import { promises as fs } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { test } from "node:test";
 import {
   getFinalizedResortMapData,
+  getResortMapDataFromRoots,
   selectLatestTimestampedGeojsonFile,
 } from "./finalizedResortGeojson";
 import {
@@ -168,4 +172,143 @@ test("empty strings are treated as missing numeric values", () => {
 
 test("unknown resort ids return no finalized map data", async () => {
   assert.equal(await getFinalizedResortMapData("missing-resort-id"), null);
+});
+
+test("map data follows finalized, measured, then before priority", async () => {
+  const fixtureRoot = await fs.mkdtemp(
+    path.join(os.tmpdir(), "resort-map-data-"),
+  );
+  const roots = {
+    finalizedRoot: path.join(fixtureRoot, "finalized"),
+    temporaryRoot: path.join(fixtureRoot, "temporary"),
+  };
+  const writeGeojson = async (
+    filePath: string,
+    name: string,
+    coordinates: number[][],
+    properties: Record<string, unknown> = {},
+  ) => {
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.writeFile(
+      filePath,
+      JSON.stringify({
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            geometry: { type: "LineString", coordinates },
+            properties: { name, ...properties },
+          },
+        ],
+      }),
+    );
+  };
+
+  try {
+    const finalizedId = "finalized-priority";
+    for (const kind of ["courses", "lifts"] as const) {
+      await writeGeojson(
+        path.join(
+          roots.finalizedRoot,
+          kind,
+          finalizedId,
+          "2026_0101_000000.geojson",
+        ),
+        `finalized-${kind}`,
+        [
+          [140, 40, 1000],
+          [140.01, 40.01, 900],
+        ],
+      );
+    }
+    await writeGeojson(
+      path.join(roots.temporaryRoot, "slope_10m", `${finalizedId}.geojson`),
+      "temporary-course",
+      [
+        [140, 40, 1000],
+        [140.01, 40.01, 900],
+      ],
+    );
+    await writeGeojson(
+      path.join(roots.temporaryRoot, "lift_20m", `${finalizedId}.geojson`),
+      "temporary-lift",
+      [
+        [140, 40, 900],
+        [140.01, 40.01, 1000],
+      ],
+    );
+
+    const measuredId = "measured-fallback";
+    await writeGeojson(
+      path.join(roots.temporaryRoot, "slope_10m", `${measuredId}.geojson`),
+      "measured-course",
+      [
+        [140, 40, 1000],
+        [140.01, 40.01, 900],
+      ],
+      { slope_deg: [10, 20] },
+    );
+    await writeGeojson(
+      path.join(roots.temporaryRoot, "lift_20m", `${measuredId}.geojson`),
+      "measured-lift",
+      [
+        [140, 40, 900],
+        [140.01, 40.01, 1000],
+      ],
+    );
+
+    const beforeId = "before-fallback";
+    await writeGeojson(
+      path.join(roots.temporaryRoot, "slope_before", `${beforeId}.geojson`),
+      "before-course",
+      [
+        [140, 40],
+        [140.01, 40.01],
+      ],
+    );
+    await writeGeojson(
+      path.join(roots.temporaryRoot, "lift_before", `${beforeId}.geojson`),
+      "before-lift",
+      [
+        [140, 40],
+        [140.01, 40.01],
+      ],
+      { aerialway: "chair_lift" },
+    );
+
+    const finalizedData = await getResortMapDataFromRoots(finalizedId, roots);
+    assert.equal(finalizedData?.courses?.source, "resorts-finalized");
+    assert.equal(
+      finalizedData?.courses?.features[0]?.name,
+      "finalized-courses",
+    );
+    assert.equal(finalizedData?.lifts?.source, "resorts-finalized");
+    assert.equal(finalizedData?.lifts?.features[0]?.name, "finalized-lifts");
+
+    const measuredData = await getResortMapDataFromRoots(measuredId, roots);
+    assert.equal(measuredData?.courses?.source, "slope_10m");
+    assert.equal(measuredData?.lifts?.source, "lift_20m");
+    assert.deepEqual(measuredData?.courses?.features[0]?.slopeDeg, [10, 20]);
+
+    const beforeData = await getResortMapDataFromRoots(beforeId, roots);
+    assert.equal(beforeData?.courses?.source, "slope_before");
+    assert.equal(beforeData?.lifts?.source, "lift_before");
+    const course = beforeData?.courses?.features[0];
+    const lift = beforeData?.lifts?.features[0];
+    assert.ok(course);
+    assert.ok(lift);
+    assert.equal(course.slopeDeg, null);
+    assert.equal(
+      course.coordinates.every(coordinate => coordinate.length === 2),
+      true,
+    );
+    assert.equal(
+      lift.coordinates.every(coordinate => coordinate.length === 2),
+      true,
+    );
+    assert.equal(lift.properties.type, "chair_lift");
+    assert.doesNotThrow(() => createCourseSlopeSegments(course));
+  } finally {
+    await fs.rm(fixtureRoot, { recursive: true, force: true });
+  }
 });

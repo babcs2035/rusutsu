@@ -1,7 +1,17 @@
 "use server";
 
 import { getFinalizedResortMapData } from "@/lib/finalizedResortGeojson";
+import type {
+  FinalizedCourseFeature,
+  FinalizedLiftFeature,
+  FinalizedResortMapData,
+} from "@/lib/finalizedResortGeojsonShared";
 import { prisma } from "@/lib/prisma";
+import {
+  getLiftTicketDataMap,
+  getResortDecisionData,
+} from "@/lib/resortDecisionData";
+import { getResortReadingInfo } from "@/lib/resortReadings";
 import SkiResortWeatherIds from "@/private/data/SkiResortWeatherIds.json";
 import type { SkiResortWithRelations } from "@/types";
 
@@ -25,6 +35,72 @@ type SkiResortWeatherIdsEntry = {
   SnowForecastId?: string | null;
   SnowForecastName?: string | null;
 };
+
+type OperationCountSummary = {
+  total: number;
+  open: number;
+  partial: number;
+  hasPartial: boolean;
+};
+
+type FinalizedOperationSummary = {
+  courses: OperationCountSummary | null;
+  lifts: OperationCountSummary | null;
+};
+
+const getOperationSymbol = (status: string | null | undefined) => {
+  if (!status) return null;
+  if (/[○〇◯]/u.test(status)) return "open";
+  if (/[△]/u.test(status)) return "partial";
+  return null;
+};
+
+const isCountableCourseName = (name: string) =>
+  !name.startsWith("無名") && !name.includes("_");
+
+const createOperationCountSummary = (
+  statuses: Array<string | null | undefined>,
+): OperationCountSummary | null => {
+  if (statuses.length === 0) return null;
+
+  const operationSymbols = statuses.map(getOperationSymbol);
+  if (operationSymbols.every(symbol => symbol === null)) return null;
+
+  const open = operationSymbols.filter(symbol => symbol === "open");
+  const partial = operationSymbols.filter(symbol => symbol === "partial");
+
+  return {
+    total: statuses.length,
+    open: open.length,
+    partial: partial.length,
+    hasPartial: partial.length > 0,
+  };
+};
+
+const createCourseOperationSummary = (
+  courses: FinalizedCourseFeature[],
+): OperationCountSummary | null =>
+  createOperationCountSummary(
+    courses
+      .filter(course => isCountableCourseName(course.name))
+      .map(course => course.properties.status),
+  );
+
+const createLiftOperationSummary = (
+  lifts: FinalizedLiftFeature[],
+): OperationCountSummary | null =>
+  createOperationCountSummary(lifts.map(lift => lift.properties.status));
+
+const createFinalizedOperationSummary = (
+  finalizedMapData: FinalizedResortMapData | null,
+): FinalizedOperationSummary => ({
+  courses: finalizedMapData?.courses
+    ? createCourseOperationSummary(finalizedMapData.courses.features)
+    : null,
+  lifts: finalizedMapData?.lifts
+    ? createLiftOperationSummary(finalizedMapData.lifts.features)
+    : null,
+});
 
 function getWeatherIdsBySkiResortId(id: string) {
   const entry = (SkiResortWeatherIds as SkiResortWeatherIdsEntry[]).find(
@@ -57,7 +133,7 @@ export async function getSkiResorts(): Promise<SkiResortWithRelations[]> {
 
 // スキーリゾート一覧を地図表示用に軽量取得
 export async function getSkiResortsForMap() {
-  return prisma.skiResort.findMany({
+  const resorts = await prisma.skiResort.findMany({
     select: {
       id: true,
       nameJa: true,
@@ -77,6 +153,15 @@ export async function getSkiResortsForMap() {
     },
     orderBy: { nameJa: "asc" },
   });
+  const liftTicketsByResortId = await getLiftTicketDataMap(
+    resorts.map(resort => resort.id),
+  );
+
+  return resorts.map(resort => ({
+    ...resort,
+    ...getResortReadingInfo(resort.id),
+    liftTickets: liftTicketsByResortId.get(resort.id) ?? [],
+  }));
 }
 
 // スキーリゾート詳細を取得
@@ -101,12 +186,19 @@ export async function getSkiResortById(id: string) {
 
   if (!resort) return null;
 
-  const finalizedMapData = await getFinalizedResortMapData(resort.id);
+  const [finalizedMapData, decisionData] = await Promise.all([
+    getFinalizedResortMapData(resort.id),
+    getResortDecisionData(resort.id),
+  ]);
 
   return {
     ...resort,
+    ...getResortReadingInfo(resort.id),
+    ...decisionData,
     weatherIds: getWeatherIdsBySkiResortId(resort.id),
     finalizedMapData,
+    finalizedOperationSummary:
+      createFinalizedOperationSummary(finalizedMapData),
   };
 }
 

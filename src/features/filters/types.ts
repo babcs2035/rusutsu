@@ -1,3 +1,5 @@
+import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
+
 export type NumericFilterValue = number | null;
 
 export type NumericFilterName =
@@ -22,6 +24,7 @@ export type Filters = {
   maxTopElevation: NumericFilterValue;
   minCourses: NumericFilterValue;
   minLifts: NumericFilterValue;
+  liftTicket: LiftTicketSearchInput;
 };
 
 export type RegionOption = {

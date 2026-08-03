@@ -24,6 +24,10 @@ export type LabelLayout = {
   leaderEndPosition: L.LatLngTuple;
   showLeaderLine: boolean;
   labelWidth: number;
+  labelOffsetPx: {
+    x: number;
+    y: number;
+  };
 };
 
 export type CandidatePlacement = {
@@ -122,6 +126,10 @@ export type JapanResortMapProps = {
   onUserMapZoomInteraction?: () => void;
   restoreViewRequest?: MapViewRestoreRequest | null;
   finalizedMapData?: FinalizedResortMapData | null;
+  mapPresentation?: "default" | "preview" | "expanded";
+  mapTileVariant?: MapTileVariant;
+  onMapTileVariantChange?: (variant: MapTileVariant) => void;
+  detailViewportMode?: "finalized" | "resort";
   selectedFinalizedFeature?: SelectedMapFeature | null;
   onSelectedFinalizedFeatureChange?: (
     feature: SelectedMapFeature | null,

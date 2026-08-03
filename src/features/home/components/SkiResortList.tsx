@@ -4,6 +4,10 @@ import { Box, Button, Flex, Heading, List, Text } from "@chakra-ui/react";
 import { Check, Plus } from "lucide-react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { memo, startTransition, useCallback, useEffect, useState } from "react";
+import { TicketCalculationCard } from "@/features/lift-ticket/components/TicketCalculationCard";
+import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
+import { calculateLiftTicketForSeasons } from "@/features/lift-ticket/utils/calculateLiftTicket";
+import { RubyText } from "@/shared/components/RubyText";
 import type { MapSkiResort } from "@/types/skiResorts";
 
 const HOVER_HIGHLIGHT_MEDIA_QUERY = "(min-width: 48em)";
@@ -19,6 +23,7 @@ type Props = {
   onToggleCompare: (id: string, selected: boolean) => void;
   onHoverResortChange?: (id: string | null) => void;
   showHeader?: boolean;
+  liftTicketInput: LiftTicketSearchInput;
 };
 
 /**
@@ -31,6 +36,7 @@ export const SkiResortList = ({
   onToggleCompare,
   onHoverResortChange,
   showHeader = true,
+  liftTicketInput,
 }: Props) => {
   const [localSelectedCompareIdSet, setLocalSelectedCompareIdSet] = useState(
     () => new Set(selectedCompareIdSet),
@@ -109,6 +115,7 @@ export const SkiResortList = ({
               onSelectResort={onSelectResort}
               onToggleCompare={handleToggleCompare}
               onHoverResortChange={onHoverResortChange}
+              liftTicketInput={liftTicketInput}
             />
           ))}
         </List.Root>
@@ -124,12 +131,14 @@ const SkiResortListItem = memo(
     onSelectResort,
     onToggleCompare,
     onHoverResortChange,
+    liftTicketInput,
   }: {
     resort: MapSkiResort;
     isCompareSelected: boolean;
     onSelectResort: (id: string) => void;
     onToggleCompare: (id: string, selected: boolean) => void;
     onHoverResortChange?: (id: string | null) => void;
+    liftTicketInput: LiftTicketSearchInput;
   }) => {
     const highlightResort = () => {
       if (!canUseHoverHighlight()) return;
@@ -148,6 +157,10 @@ const SkiResortListItem = memo(
       clearHighlight();
       onSelectResort(resort.id);
     };
+    const liftTicketResult =
+      resort.liftTickets.length > 0 && liftTicketInput.visitDate
+        ? calculateLiftTicketForSeasons(resort.liftTickets, liftTicketInput)
+        : null;
 
     return (
       <List.Item as="li" display="block">
@@ -205,14 +218,21 @@ const SkiResortListItem = memo(
               <Text
                 fontWeight="800"
                 fontSize={{ base: "0.9rem", md: "lg" }}
-                lineHeight={{ base: "1.1", md: "1.25" }}
+                lineHeight={{ base: "1.55", md: "1.6" }}
                 color="gray.900"
                 fontFamily="var(--font-heading)"
                 overflow="hidden"
                 textOverflow="ellipsis"
                 whiteSpace="nowrap"
+                css={{
+                  "& rt": {
+                    fontSize: "0.45em",
+                    fontWeight: 600,
+                    color: "var(--chakra-colors-gray-500)",
+                  },
+                }}
               >
-                {resort.nameJa}
+                <RubyText segments={resort.nameRuby} fallback={resort.nameJa} />
               </Text>
               <Text
                 minW={0}
@@ -226,6 +246,38 @@ const SkiResortListItem = memo(
               >
                 {resort.prefecture} • {resort.town}
               </Text>
+              {resort.formerNames.length > 0 && (
+                <Text
+                  minW={0}
+                  fontSize={{ base: "0.65rem", md: "xs" }}
+                  color="gray.400"
+                  fontWeight="600"
+                  lineHeight={{ base: "1.15", md: "1.4" }}
+                  overflow="hidden"
+                  textOverflow="ellipsis"
+                  whiteSpace="nowrap"
+                >
+                  旧称:{" "}
+                  {resort.formerNames
+                    .map(formerName => formerName.name)
+                    .join("、")}
+                </Text>
+              )}
+              {resort.liftTickets.length > 0 &&
+                (liftTicketInput.visitDate ? (
+                  <Box mt={1} onClick={event => event.stopPropagation()}>
+                    <TicketCalculationCard result={liftTicketResult} compact />
+                  </Box>
+                ) : (
+                  <Text
+                    mt={1}
+                    color="blue.700"
+                    fontSize="0.68rem"
+                    fontWeight="900"
+                  >
+                    日付・人数別の料金計算に対応
+                  </Text>
+                ))}
             </Flex>
             <Flex
               gap={2}

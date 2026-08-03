@@ -21,6 +21,7 @@ export const CompareActionButton = ({
 
   return (
     <Button
+      display={{ base: "inline-flex", md: "none" }}
       position="fixed"
       top={{
         base: isPinnedToTop ? 4 : "auto",
@@ -28,7 +29,7 @@ export const CompareActionButton = ({
       }}
       right={{ base: 4, md: "424px" }}
       bottom={{ base: mobileBottom, md: 6 }}
-      zIndex={10000}
+      zIndex={210000}
       pointerEvents="auto"
       h={12}
       px={5}

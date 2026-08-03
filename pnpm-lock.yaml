@@ -111,6 +111,12 @@ importers:
       '@types/react-leaflet':
         specifier: ^3.0.0
         version: 3.0.0(leaflet@1.9.4)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      ajv:
+        specifier: ^8.20.0
+        version: 8.20.0
+      ajv-formats:
+        specifier: ^3.0.1
+        version: 3.0.1(ajv@8.20.0)
       husky:
         specifier: ^9.1.7
         version: 9.1.7
@@ -1350,6 +1356,14 @@ packages:
 
   '@zag-js/utils@1.41.2':
     resolution: {integrity: sha512-Yj8FSrR7vGA6ahUhjrThfHAF+PM2Y1Yv2lkXkqZZd60mPBhixcot1+SHOfEMV63JimQcWrmQ8QbeYYMmF+ZpLQ==}
+
+  ajv-formats@3.0.1:
+    resolution: {integrity: sha512-8iUql50EUR+uUcdRQ3HDqa6EVyo3docL8g5WJ3FNcWmu62IbkGUue/pEyLBW8VGKKucTPgqeks4fIU1DA4yowQ==}
+    peerDependencies:
+      ajv: ^8.0.0
+    peerDependenciesMeta:
+      ajv:
+        optional: true
 
   ajv@8.20.0:
     resolution: {integrity: sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA==}
@@ -3747,6 +3761,10 @@ snapshots:
       csstype: 3.2.3
 
   '@zag-js/utils@1.41.2': {}
+
+  ajv-formats@3.0.1(ajv@8.20.0):
+    optionalDependencies:
+      ajv: 8.20.0
 
   ajv@8.20.0:
     dependencies:

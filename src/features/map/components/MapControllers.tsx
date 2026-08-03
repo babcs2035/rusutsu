@@ -297,7 +297,7 @@ export const SearchViewportController = ({
   onViewportChange: (map: L.Map) => void;
 }) => {
   const map = useMap();
-  const lastRequestKeyRef = useRef(searchViewportRequestKey);
+  const lastRequestKeyRef = useRef(0);
   const lastBottomPaddingRatioRef = useRef(searchViewportBottomPaddingRatio);
 
   useEffect(() => {
@@ -351,6 +351,7 @@ export const MapViewportController = ({
   selectedResortId,
   selectedCompareIdSet,
   interactionMode,
+  detailViewportMode,
   selectedViewportBottomPaddingRatio,
   labelShowZoom,
   onViewportChange,
@@ -362,6 +363,7 @@ export const MapViewportController = ({
   selectedResortId: string | null;
   selectedCompareIdSet: Set<string>;
   interactionMode: "default" | "detail" | "compare";
+  detailViewportMode: "finalized" | "resort";
   selectedViewportBottomPaddingRatio: number;
   labelShowZoom: number;
   onViewportChange: (map: L.Map) => void;
@@ -381,7 +383,7 @@ export const MapViewportController = ({
       const sidePanelWidth = getDetailPanelOverlapRightWidth(map);
       const bottomPanelHeight =
         map.getSize().y * selectedViewportBottomPaddingRatio;
-      if (finalizedBounds?.isValid()) {
+      if (detailViewportMode === "finalized" && finalizedBounds?.isValid()) {
         map.fitBounds(finalizedBounds, {
           animate: true,
           maxZoom: 15,
@@ -429,6 +431,7 @@ export const MapViewportController = ({
     }
   }, [
     interactionMode,
+    detailViewportMode,
     finalizedBounds,
     labelShowZoom,
     map,

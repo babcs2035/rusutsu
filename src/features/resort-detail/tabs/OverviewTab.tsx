@@ -1,6 +1,7 @@
 "use client";
 
 import { Box, Flex, Heading, Link, List, Table, Text } from "@chakra-ui/react";
+import { ResortReviewSection } from "@/features/reviews/components/ResortReviewSection";
 import type { Resort } from "../types";
 
 export const OverviewTab = ({ resort }: { resort: Resort }) => (
@@ -97,6 +98,7 @@ export const OverviewTab = ({ resort }: { resort: Resort }) => (
         {resort.descriptionLong}
       </Text>
     </Box>
+    {resort.reviewData && <ResortReviewSection review={resort.reviewData} />}
     <Box as="section">
       <Heading size="lg" fontFamily="var(--font-heading)" color="gray.900">
         営業時間

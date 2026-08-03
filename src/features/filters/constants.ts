@@ -1,3 +1,4 @@
+import { DEFAULT_LIFT_TICKET_SEARCH_INPUT } from "@/features/lift-ticket/utils/calculateLiftTicket";
 import type { Filters } from "./types";
 
 export const DEFAULT_FILTERS: Filters = {
@@ -13,6 +14,7 @@ export const DEFAULT_FILTERS: Filters = {
   maxTopElevation: null,
   minCourses: null,
   minLifts: null,
+  liftTicket: DEFAULT_LIFT_TICKET_SEARCH_INPUT,
 };
 
 export const REGION_PREFECTURES: Record<string, string[]> = {

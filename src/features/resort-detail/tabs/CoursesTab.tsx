@@ -28,12 +28,18 @@ import {
   maxNullable,
 } from "../utils/detailMetrics";
 
-const getCourseGroupDistance = (group: FinalizedCourseGroup) =>
-  group.courses.reduce(
-    (sum, course) =>
-      sum + (course.properties.slopeDistMap ?? course.properties.distance ?? 0),
-    0,
-  );
+const getCourseGroupDistance = (group: FinalizedCourseGroup) => {
+  const distances = group.courses
+    .map(
+      course =>
+        course.properties.slopeDistMap ?? course.properties.distance ?? null,
+    )
+    .filter((distance): distance is number => distance !== null);
+
+  return distances.length > 0
+    ? distances.reduce((sum, distance) => sum + distance, 0)
+    : null;
+};
 
 const getCourseGroupDifficulty = (group: FinalizedCourseGroup) => {
   const primaryCourse = group.courses[0];
@@ -147,8 +153,8 @@ export const CoursesTab = ({
     }
     if (sortConfig !== null) {
       filtered.sort((a, b) => {
-        const aVal = getCourseGroupDistance(a);
-        const bVal = getCourseGroupDistance(b);
+        const aVal = getCourseGroupDistance(a) ?? 0;
+        const bVal = getCourseGroupDistance(b) ?? 0;
         if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1;
         if (aVal > bVal) return sortConfig.direction === "asc" ? 1 : -1;
         return 0;
@@ -444,6 +450,8 @@ export const CoursesTab = ({
     );
   }
 
+  const maxSlope = resort.steepestSlope ?? resort.angleMax;
+
   return (
     <Flex flexDirection="column" gap={10}>
       <Box as="section">
@@ -454,11 +462,11 @@ export const CoursesTab = ({
           <StatCard title="総コース数" value={`${resort.numberOfCourses}`} />
           <StatCard
             title="最長滑走距離"
-            value={`${resort.longestCourse?.toLocaleString() || "--"}m`}
+            value={formatMeters(resort.longestCourse)}
           />
           <StatCard
             title="最大斜度"
-            value={`${resort.steepestSlope || resort.angleMax || "--"}°`}
+            value={maxSlope == null ? "--" : `${maxSlope}°`}
           />
           <StatCard title="標高差" value={`${resort.verticalDrop}m`} />
         </Grid>

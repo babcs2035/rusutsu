@@ -1,0 +1,2054 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rusutsu.local/schemas/lift-ticket.schema.json",
+  "title": "Ski Lift Ticket Pricing (1 resort x 1 season)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "taxonomy_version",
+    "resort",
+    "season",
+    "sources",
+    "audiences",
+    "calendars",
+    "operating_hours",
+    "areas",
+    "products",
+    "channels",
+    "offers",
+    "party_rules",
+    "fees",
+    "calculation_policy",
+    "data_quality"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "taxonomy_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "resort": {
+      "description": "スキー場。名称・都道府県・公式サイトURLは SkiResort マスタが正本なので持たない（二重管理を避ける）。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id",
+          "description": "SkiResort.id と同じ値。ディレクトリ名とも一致する。"
+        }
+      }
+    },
+    "season": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label_ja",
+        "source_refs"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "label_ja": {
+          "type": "string",
+          "minLength": 1
+        },
+        "start_date": {
+          "$ref": "#/$defs/nullableDate"
+        },
+        "end_date": {
+          "$ref": "#/$defs/nullableDate"
+        },
+        "notes_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_refs": {
+          "description": "このシーズンだと判断した根拠（保存資料のID）。「この料金がいつのものか」は最も重要な前提なので、他の確定情報と同様に証拠を必須にする。",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        }
+      }
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/source"
+      }
+    },
+    "audiences": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/audience"
+      }
+    },
+    "calendars": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/calendar"
+      }
+    },
+    "operating_hours": {
+      "description": "その日の営業時間・ナイターの有無・定休日。1日券が何時間滑れるかの算出にも使う",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/operatingHours"
+      }
+    },
+    "areas": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/skiArea"
+      }
+    },
+    "products": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/product"
+      }
+    },
+    "channels": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/channel"
+      }
+    },
+    "offers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/offer"
+      }
+    },
+    "party_rules": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/partyRule"
+      }
+    },
+    "fees": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/fee"
+      }
+    },
+    "calculation_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "currency": {
+          "type": "string",
+          "enum": [
+            "JPY"
+          ]
+        },
+        "tax_included": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "stacking_default": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "stackable",
+            "not_stackable",
+            "unknown",
+            null
+          ],
+          "description": "他割引との併用可否の既定値。語彙は taxonomy の stacking_modes に統一。"
+        },
+        "best_price_hint_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "notes_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "data_quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "unresolved_questions",
+        "illegible_items"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "complete",
+            "needs_review",
+            "failed"
+          ]
+        },
+        "generated_at": {
+          "$ref": "#/$defs/nullableDateTime"
+        },
+        "last_verified_at": {
+          "$ref": "#/$defs/nullableDateTime"
+        },
+        "unresolved_questions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "question_ja"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/id"
+              },
+              "question_ja": {
+                "type": "string",
+                "minLength": 1
+              },
+              "related_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "source_refs": {
+                "$ref": "#/$defs/sourceRefs"
+              }
+            }
+          }
+        },
+        "illegible_items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "description_ja",
+              "source_refs"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/id"
+              },
+              "description_ja": {
+                "type": "string",
+                "minLength": 1
+              },
+              "source_refs": {
+                "$ref": "#/$defs/sourceRefs"
+              },
+              "related_offer_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "human_review_required": {
+          "description": "★**人間が確認すべきこと。「何を・なぜ・どこを見れば確認できるか」を必ず書く。** 「自信がない」という申告だけでは人間がどこを見ればよいか分からないため、抽出担当の確信度ラベル (confidence) は廃止してこちらに一本化した。1件でもあれば status は complete にできない。",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "what_ja",
+              "why_ja",
+              "where_ja",
+              "source_refs"
+            ],
+            "properties": {
+              "what_ja": {
+                "description": "何を確認してほしいか（「『学生』に短大生・専門学校生が含まれるか」）",
+                "type": "string",
+                "minLength": 1
+              },
+              "why_ja": {
+                "description": "なぜ確定できなかったのか（「公式表記に6区分に無い区分が含まれている」）",
+                "type": "string",
+                "minLength": 1
+              },
+              "where_ja": {
+                "description": "★**どこを見れば確認できるか。** 保存資料のパスとページ内の場所、または公式URL（「page-001/page.html のリフト券料金表の『学生』行」）",
+                "type": "string",
+                "minLength": 1
+              },
+              "source_refs": {
+                "$ref": "#/$defs/sourceRefs"
+              },
+              "related_ids": {
+                "description": "関係する offer / audience / product などのid",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "notes_ja": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "notes_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_\\-.]*$",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "date": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "nullableDate": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/date"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "nullableDateTime": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "timeOfDay": {
+      "type": "string",
+      "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+    },
+    "nonNegativeAmount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "nullableAmount": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/nonNegativeAmount"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "sourceRefs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "period": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "start": {
+          "$ref": "#/$defs/nullableDate"
+        },
+        "end": {
+          "$ref": "#/$defs/nullableDate"
+        },
+        "start_time": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/timeOfDay"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "end_time": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/timeOfDay"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "deadline_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "notes_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "nullablePeriod": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/period"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "url",
+        "path"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "requested_url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "final_url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "page_title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "http_status": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "captured_at": {
+          "$ref": "#/$defs/nullableDateTime"
+        },
+        "content_type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "content_hash": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "path": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "保存資料への相対パス（例: `page-001/page.html`）。**必須** — 根拠を後から人間が目で確認できないJSONにしない。**拡張子が資料の種類を表す**（.html / .pdf / .png / .json）ので、種類を分類するフィールドは持たない"
+        },
+        "linked_from_source_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "user_specified": {
+          "type": "boolean"
+        },
+        "capture_success": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "notes_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "audience": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name_ja"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name_ja": {
+          "type": "string",
+          "minLength": 1
+        },
+        "official_label_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "age_min": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "age_max": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "age_basis_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "school_levels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "preschool",
+              "elementary_school",
+              "junior_high_school",
+              "high_school",
+              "university",
+              "graduate",
+              "unknown"
+            ]
+          },
+          "description": "該当する学校区分をすべて列挙する。「小学生以下」なら [\"preschool\",\"elementary_school\"]。「中学生以上」のように学校区分で上限を切れないものは is_default: true で表す。"
+        },
+        "is_disability_qualified": {
+          "description": "障がい者本人・公式に割引対象とされた介護者向けの人物区分なら true。",
+          "type": "boolean"
+        },
+        "base_audience_id": {
+          "description": "資格料金が無い場合に使う通常人物区分。is_disability_qualified: true の区分で必須。",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "allow_age_overlap": {
+          "type": "boolean"
+        },
+        "notes_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_refs": {
+          "$ref": "#/$defs/sourceRefs"
+        },
+        "is_default": {
+          "description": "他のどのaudienceの条件にも当てはまらなかった場合に適用される区分（多くのスキー場の「大人」）。1スキー場につきちょうど1件。",
+          "type": "boolean"
+        }
+      }
+    },
+    "calendar": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name_ja"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name_ja": {
+          "type": "string",
+          "minLength": 1
+        },
+        "official_label_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "included_day_types": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "weekday",
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday",
+              "saturday",
+              "sunday",
+              "public_holiday",
+              "year_end_new_year",
+              "special",
+              "all",
+              "unknown"
+            ]
+          }
+        },
+        "included_dates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/date"
+          }
+        },
+        "included_date_ranges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "start",
+              "end"
+            ],
+            "properties": {
+              "start": {
+                "$ref": "#/$defs/date"
+              },
+              "end": {
+                "$ref": "#/$defs/date"
+              }
+            }
+          }
+        },
+        "excluded_dates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/date"
+          }
+        },
+        "excluded_date_ranges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "start",
+              "end"
+            ],
+            "properties": {
+              "start": {
+                "$ref": "#/$defs/date"
+              },
+              "end": {
+                "$ref": "#/$defs/date"
+              }
+            }
+          }
+        },
+        "notes_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_refs": {
+          "$ref": "#/$defs/sourceRefs"
+        }
+      },
+      "description": "日付集合。included_day_types（曜日・祝日等）/ included_dates（明示日）/ included_date_ranges（期間）と、excluded_dates（除外日）/ excluded_date_ranges（除外期間）の組み合わせで表す。料金区分を移す場合は元区分のexcludeと適用先区分のincludeを同じ日・期間でペアにする。暗黙のカレンダー優先順位は設けない。除外指定は同じカレンダー内の包含指定より優先する。"
+    },
+    "skiArea": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name_ja"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name_ja": {
+          "type": "string",
+          "minLength": 1
+        },
+        "official_label_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "description_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "notes_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_refs": {
+          "$ref": "#/$defs/sourceRefs"
+        }
+      }
+    },
+    "product": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name_ja",
+        "validity"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name_ja": {
+          "type": "string",
+          "minLength": 1
+        },
+        "official_label_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "validity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "mode"
+          ],
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": [
+                "calendar_day",
+                "consecutive_days",
+                "selectable_days",
+                "hours_from_first_use",
+                "hours_pool",
+                "fixed_time_window",
+                "points",
+                "rides",
+                "unknown"
+              ]
+            },
+            "hours": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "exclusiveMinimum": 0
+            },
+            "days": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1
+            },
+            "points": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1
+            },
+            "rides": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1
+            },
+            "start_time": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/timeOfDay"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "end_time": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/timeOfDay"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "notes_ja": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "usable_within_ja": {
+              "description": "分割して使える券（`selectable_days` の「選べる5日券」/ `hours_pool` の「25時間券」）を**いつまでに使い切る必要があるか**を公式表記のまま書く（「シーズン中有効」「購入日から30日以内の任意5日」「初回利用日から30日以内」）。\n★**当日しか使えない券（`calendar_day` / `hours_from_first_use` / `fixed_time_window` / `rides` / `points`）には書かない。** その日で終わる券に「いつまでに使い切るか」という概念が無いため（taxonomyチェックが検出する）。\n**日数を構造化するフィールドは持たない。** かつて `usable_within` として `days_from_purchase` / `days_from_first_use` / `valid_until` ＋ 分類ラベル `usable_within_types` を持っていたが、**照会にも表示にも一度も使われておらず**（実データ39券種のうち設定は1件、その中身も「シーズン中有効」＝相対期限なし）、分類の手間だけが残っていた。購入日基準か初回利用日基準かの判定を機械化する必要が出たときに、実データを見てから構造を足す。\n**公式資料に記載が無ければ null にし、`data_quality.human_review_required` に記録する**（「シーズン中いつでも」と推測してはいけない）。",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "area_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "included_items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "name_ja"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "meal",
+                  "bath",
+                  "rental",
+                  "lesson",
+                  "parking",
+                  "voucher",
+                  "unknown"
+                ]
+              },
+              "name_ja": {
+                "type": "string",
+                "minLength": 1
+              },
+              "official_label_ja": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "description_ja": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "value_amount": {
+                "$ref": "#/$defs/nullableAmount"
+              },
+              "notes_ja": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "source_refs": {
+                "$ref": "#/$defs/sourceRefs"
+              }
+            }
+          }
+        },
+        "shared_with_resorts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "resort_id",
+              "name_ja",
+              "source_refs"
+            ],
+            "properties": {
+              "resort_id": {
+                "description": "相手スキー場の SkiResort.id（例: megahira-onsen-megahira）。マスタに無い場合のみ null にし、human_review_required に記録する",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "name_ja": {
+                "description": "相手スキー場の名称（公式表記のまま）",
+                "type": "string",
+                "minLength": 1
+              },
+              "official_label_ja": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "notes_ja": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "source_refs": {
+                "$ref": "#/$defs/sourceRefs"
+              }
+            }
+          },
+          "description": "★**この券が他のスキー場でも使えるなら、相手スキー場をここに列挙する。**苗場とかぐらのように、単独券と共通券の両方が売られているスキー場がある。\n**空なら単独券、1件以上あれば共通券**（「単独券か共通券か」を表す分類ラベルは持たない — この配列が空かどうかで決まる）。画面ではこれを使って単独券／共通券を選ばせる。\n`resort_id` は `SkiResort` マスタのidと一致させる（画面から相手スキー場へ辿るため）。マスタに無いスキー場なら null にし、human_review_required に公式表記とともに記録する。\n**相手スキー場側のJSONにも同じ共通券を記載する**（1スキー場×1シーズン×1JSONの原則のため、共通券は関係する全スキー場のJSONに現れる）。"
+        },
+        "notes_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_refs": {
+          "$ref": "#/$defs/sourceRefs"
+        },
+        "covers_hours_types": {
+          "description": "この券がどの営業区分の券か。**1日券・複数日券・時間帯固定券（fixed_time_window）にのみ設定する**。1日券・複数日券では「その1券でどの区分まで滑れるか」（複数可。券自体に時間が書かれていないため validity から導出できない）、fixed_time_window では「この券自体がどの区分の時間帯か」（1つだけ。例: ナイター券なら [\"night\"]）を表す。回数券・ポイント券・初回利用からN時間券は営業区分という概念が無いので設定しない。1日券・複数日券は資料に記載が無ければ null（推測しない）。fixed_time_window は必須。",
+          "anyOf": [
+            {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "enum": [
+                  "regular",
+                  "night",
+                  "early_morning",
+                  "closed",
+                  "unknown"
+                ]
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "purchaseDeadline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string"
+        },
+        "days_before_use": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "time_of_day": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/timeOfDay"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "minutes_before_use": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "date": {
+          "$ref": "#/$defs/nullableDate"
+        },
+        "official_text_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "notes_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_refs": {
+          "$ref": "#/$defs/sourceRefs"
+        }
+      }
+    },
+    "channel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name_ja"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name_ja": {
+          "type": "string",
+          "minLength": 1
+        },
+        "official_label_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "location_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "purchase_deadline_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "notes_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_refs": {
+          "$ref": "#/$defs/sourceRefs"
+        }
+      }
+    },
+    "dateTableRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "amount"
+      ],
+      "properties": {
+        "calendar_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "start": {
+          "$ref": "#/$defs/nullableDate"
+        },
+        "end": {
+          "$ref": "#/$defs/nullableDate"
+        },
+        "dates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/date"
+          }
+        },
+        "amount": {
+          "$ref": "#/$defs/nonNegativeAmount"
+        },
+        "notes_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_refs": {
+          "$ref": "#/$defs/sourceRefs"
+        }
+      }
+    },
+    "price": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "currency": {
+          "type": "string",
+          "enum": [
+            "JPY"
+          ]
+        },
+        "amount": {
+          "$ref": "#/$defs/nullableAmount"
+        },
+        "base_offer_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "discount": {
+          "description": "「通常料金から〇〇引き」の割引の値。**金額か割合かを表す判別子は持たない** — amount と percent の別フィールドにしてある（判別子と値の食い違いを書けなくするため）。どちらか一方だけを設定する。",
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "amount": {
+              "description": "割引額（円）。「1,000円引き」→ 1000",
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "percent": {
+              "description": "割引率（%）。「10%引き」→ 10。**端数処理が公式に書かれていない場合、最終金額を自分で計算して固定料金にしてはいけない**（実際の請求額とずれる）",
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 100
+            }
+          }
+        },
+        "range": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "min",
+            "max"
+          ],
+          "properties": {
+            "min": {
+              "$ref": "#/$defs/nonNegativeAmount"
+            },
+            "max": {
+              "$ref": "#/$defs/nonNegativeAmount"
+            }
+          }
+        },
+        "live_lookup_required": {
+          "type": "boolean"
+        },
+        "live_lookup_url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "observed_at": {
+          "$ref": "#/$defs/nullableDateTime"
+        },
+        "observed_amount": {
+          "$ref": "#/$defs/nullableAmount"
+        },
+        "notes_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "fixed"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "properties": {
+              "amount": {
+                "$ref": "#/$defs/nonNegativeAmount"
+              }
+            },
+            "required": [
+              "amount"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "date_table"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "properties": {
+              "date_table": {
+                "type": "array",
+                "minItems": 1
+              }
+            },
+            "required": [
+              "date_table"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "live_dynamic"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "properties": {
+              "amount": {
+                "type": "null"
+              },
+              "live_lookup_required": {
+                "const": true
+              }
+            },
+            "required": [
+              "live_lookup_required"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "range"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "properties": {
+              "range": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "range"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "derived_discount"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "properties": {
+              "base_offer_id": {
+                "type": "string"
+              },
+              "discount": {
+                "description": "「通常料金から〇〇引き」の割引の値。**金額か割合かを表す判別子は持たない** — amount と percent の別フィールドにしてある（判別子と値の食い違いを書けなくするため）。どちらか一方だけを設定する。",
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "amount": {
+                    "description": "割引額（円）。「1,000円引き」→ 1000",
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 0
+                  },
+                  "percent": {
+                    "description": "割引率（%）。「10%引き」→ 10。**端数処理が公式に書かれていない場合、最終金額を自分で計算して固定料金にしてはいけない**（実際の請求額とずれる）",
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "maximum": 100
+                  }
+                }
+              }
+            },
+            "required": [
+              "base_offer_id",
+              "discount"
+            ]
+          }
+        }
+      ],
+      "description": "料金。★**1つの offer は1つの金額を持つ。** 日付によって料金が変わるなら**カレンダーごとに offer を分ける**（「大人1日券（平日）」「大人1日券（土日祝）」）。\nかつて `date_table` で1つの offer に日付別の金額表を持たせられたが、**同じ事実を2通りで書けてしまい**（実データにも両方の書き方が混在した）、しかも日付マッチングが offer の `calendar_ids` と `date_table` の行の2箇所に重複実装されていた。料金表を組む処理でも「金額の読み方」が2通り必要になり、実際に date_table 側を読み忘れて表から料金が欠落した。\n**「どういう料金か」を表す分類フィールド (mode) も持たない** — どのフィールドが埋まっているかで決まる（amount が数値なら固定、0なら無料、base_offer_id があれば差額指定、live_lookup_required なら変動、range があれば範囲、どれも無ければ未確定）。金額が確定できない場合は amount を null にし、なぜ確定できないかを notes_ja に必ず書く。"
+    },
+    "offer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name_ja",
+        "official_label_ja",
+        "discount_reasons",
+        "product_id",
+        "audience_ids",
+        "calendar_ids",
+        "channel_ids",
+        "sales_period",
+        "use_period",
+        "price",
+        "requirements",
+        "stacking",
+        "source_refs",
+        "notes_ja"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name_ja": {
+          "type": "string",
+          "minLength": 1
+        },
+        "official_label_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "discount_reasons": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "online_purchase",
+              "advance_purchase",
+              "special_day",
+              "family",
+              "group",
+              "local_resident",
+              "membership",
+              "hotel_guest",
+              "coupon",
+              "app_registration",
+              "payment_method",
+              "prior_purchase",
+              "unknown"
+            ]
+          }
+        },
+        "product_id": {
+          "type": "string"
+        },
+        "audience_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "calendar_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "channel_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "target_genders": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/targetGenders"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sales_period": {
+          "$ref": "#/$defs/nullablePeriod"
+        },
+        "use_period": {
+          "$ref": "#/$defs/nullablePeriod"
+        },
+        "purchase_deadline": {
+          "description": "いつまでに買う必要があるか。**窓口など遠隔購入できない券には書かない**（「当日その場で買う」以外の選択肢が無いため情報にならない）。購入URLがあるchannelを参照する券には書く。**期限の表し方を分類するラベルは持たない** — 「当日買えるか」と「何日前までか」で判定でき、それ以外は公式表記のまま文章で足りる。",
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "same_day_allowed",
+            "official_text_ja"
+          ],
+          "properties": {
+            "same_day_allowed": {
+              "description": "利用日当日に買えるか。true＝当日購入可（「当日OK」「利用15分前まで」）、false＝前日以前に買う必要がある（前売り）、null＝**公式に記載がない**（推測してはいけない。人間に通知される）",
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "days_before_use": {
+              "description": "利用日の何日前までに買う必要があるか（**1日単位**）。「前日まで」＝1、「3日前まで」＝3、当日購入可なら 0 か null。**照会日から「あと何日あるので買えるか」を判定するために使う**。当日内の分単位の期限（「利用15分前まで」等）はここに入れず official_text_ja だけに書く（1日単位の判定には効かないため）",
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "deadline_date": {
+              "description": "「〇月〇日まで販売」のように利用日と無関係な固定期限。照会日がこの日を過ぎていれば買えない",
+              "$ref": "#/$defs/nullableDate"
+            },
+            "official_text_ja": {
+              "description": "期限の公式表記をそのまま（「利用日前日23:59まで」「リフト利用開始15分前まで」「1/31まで販売」）。same_day_allowed が null のときのみ null にできる",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "notes_ja": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "source_refs": {
+              "$ref": "#/$defs/sourceRefs"
+            }
+          }
+        },
+        "price": {
+          "$ref": "#/$defs/price"
+        },
+        "requirements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/requirement"
+          }
+        },
+        "stacking": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "stackable_with_other_discounts"
+          ],
+          "properties": {
+            "stackable_with_other_discounts": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "stackable",
+                "not_stackable",
+                "unknown",
+                null
+              ],
+              "description": "他割引と併用できるか。**以前は yes/no という別語彙だったため calculation_policy.stacking_default と食い違っていた。** taxonomy の stacking_modes に統一。資料に記載が無ければ unknown。"
+            },
+            "notes_ja": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "source_refs": {
+          "$ref": "#/$defs/sourceRefs"
+        },
+        "notes_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "target_qualification": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/targetQualification"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "partyRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name_ja",
+        "official_label_ja",
+        "description_ja",
+        "components",
+        "source_refs"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name_ja": {
+          "type": "string",
+          "minLength": 1
+        },
+        "official_label_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "description_ja": {
+          "type": "string",
+          "minLength": 1
+        },
+        "calendar_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "channel_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "target_genders": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/targetGenders"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "components": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "role_ja"
+            ],
+            "properties": {
+              "role_ja": {
+                "type": "string",
+                "minLength": 1
+              },
+              "audience_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "product_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "offer_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "min_count": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "max_count": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "per_qualifying_count": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1
+              },
+              "price_effect": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/priceEffect"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "notes_ja": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "sales_period": {
+          "$ref": "#/$defs/nullablePeriod"
+        },
+        "use_period": {
+          "$ref": "#/$defs/nullablePeriod"
+        },
+        "requirements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/requirement"
+          }
+        },
+        "source_refs": {
+          "$ref": "#/$defs/sourceRefs"
+        },
+        "notes_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "target_qualification": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/targetQualification"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "fee": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name_ja",
+        "amount",
+        "source_refs"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name_ja": {
+          "type": "string",
+          "minLength": 1
+        },
+        "official_label_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "amount": {
+          "description": "返ってこない負担額（円）。券の合計に足すとその買い方の実質負担になる",
+          "$ref": "#/$defs/nullableAmount"
+        },
+        "currency": {
+          "type": "string",
+          "enum": [
+            "JPY"
+          ]
+        },
+        "applies_to_product_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "applies_to_channel_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "notes_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_refs": {
+          "$ref": "#/$defs/sourceRefs"
+        }
+      },
+      "description": "★**券の料金とは別に払う「返ってこない追加負担」だけ**を記録する（ICカード発行手数料・システム利用料・送料など）。\n★**返金される保証金（ICカードデポジット等）は記録しない。** 返却すれば戻ってくるので実質の負担ではない。返金の有無を表すフラグも持たない — 載っているものは全て負担、というだけにする。\n★**特定の状況でのみ発生する費用も記録しない**（再発行手数料＝紛失時、キャンセル料など）。\n券の提示価格に返金される保証金が含まれている場合は、**offerの price を実質負担（保証金を差し引いた額）で記録し**、公式提示額と差し引いた理由を price.notes_ja に書く。知りたいのは実質いくら払うかであって、内訳の分類ではない。"
+    },
+    "operatingHours": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name_ja",
+        "hours_type",
+        "calendar_ids",
+        "source_refs"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name_ja": {
+          "type": "string",
+          "minLength": 1
+        },
+        "official_label_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "hours_type": {
+          "description": "regular=通常営業 / night=ナイター / early_morning=早朝 / closed=定休日・休業 / unknown=判読不能",
+          "type": "string",
+          "enum": [
+            "regular",
+            "night",
+            "early_morning",
+            "closed",
+            "unknown"
+          ]
+        },
+        "calendar_ids": {
+          "description": "この営業時間が適用される日。calendars を参照する（定休日は included_day_types の曜日 ＋ excluded_dates で「毎週火曜、ただし12/30は営業」を表せる）",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "start_time": {
+          "description": "滑走可能な開始時刻。hours_type=closed の場合は null。calendar_day の券が何時間滑れるかの算出に使う",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/timeOfDay"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "end_time": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/timeOfDay"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lifts": {
+          "description": "リフト別の運行時間。全体の営業時間しか公表されていない場合は空でよい",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name_ja"
+            ],
+            "properties": {
+              "name_ja": {
+                "type": "string",
+                "minLength": 1
+              },
+              "start_time": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/timeOfDay"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "end_time": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/timeOfDay"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "operating": {
+                "description": "この時間帯に運行するか。ナイター時に運休するリフトは false",
+                "type": "boolean"
+              },
+              "notes_ja": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "notes_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_refs": {
+          "$ref": "#/$defs/sourceRefs"
+        }
+      }
+    },
+    "targetGenders": {
+      "description": "offerの対象となる性別による絞り込み。レディースデー・メンズデー等。**性別は audiences に入れない**（audiences は互いに排他的な料金区分で、性別はそれと直交するため、混ぜると女性が通常料金を買えなくなる）。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "genders",
+        "official_label_ja",
+        "source_refs"
+      ],
+      "properties": {
+        "genders": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": [
+              "female",
+              "male",
+              "unknown"
+            ]
+          }
+        },
+        "official_label_ja": {
+          "description": "公式表記をそのまま（「レディースデー」等）",
+          "type": "string",
+          "minLength": 1
+        },
+        "description_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_refs": {
+          "$ref": "#/$defs/sourceRefs"
+        },
+        "notes_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "targetQualification": {
+      "description": "offerの対象者を「資格」で絞り込む条件を、公式表記のまま記録する。地域住民（道民割等）・宿泊者・会員・出身者など、照会の入力から機械的に判定できない絞り込みはすべてここ。通常、このフィールドがあるofferは代表価格にしない。例外は、公式名称の年齢と年度単位の生年月日範囲を併記したキャンペーンで、nominal_age が検索年齢に一致するときだけ警告付きで適用する。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "official_label_ja",
+        "description_ja",
+        "source_refs"
+      ],
+      "properties": {
+        "official_label_ja": {
+          "description": "公式表記をそのまま（「北海道にお住まいの方」「ご宿泊のお客様」等）",
+          "type": "string",
+          "minLength": 1
+        },
+        "description_ja": {
+          "description": "誰が対象なのかを1文で。公式表記に書かれていないことを補ってはいけない",
+          "type": "string",
+          "minLength": 1
+        },
+        "nominal_age": {
+          "description": "公式名称が「20才」等で、年度単位の生年月日範囲が条件となる場合の検索用年齢。公式名称に年齢が明記されている場合だけ設定し、実年齢の厳密判定には使わない",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 120
+        },
+        "source_refs": {
+          "$ref": "#/$defs/sourceRefs"
+        },
+        "notes_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "requirement": {
+      "description": "そのofferを買う・使うために必要な手続きや持ち物。**証明書の種類を分類するラベルは持たない**（写真付き身分証明書と運転免許証を機械的に区別しても料金計算に効かない）。公式表記のまま文章で残す。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "description_ja"
+      ],
+      "properties": {
+        "description_ja": {
+          "description": "何をする必要があるか（「窓口で住所を確認できる証明書を提示する」等）",
+          "type": "string",
+          "minLength": 1
+        },
+        "proof_ja": {
+          "description": "提示・持参が必要なものを公式表記のまま（「住所を確認できるもの」「学生証」）。公式に「証明書不要」と明記されている場合もそのまま写す。記載が無ければ null（不要と解釈しない）",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_refs": {
+          "$ref": "#/$defs/sourceRefs"
+        }
+      }
+    },
+    "priceEffect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "free",
+            "fixed_total",
+            "fixed_per_person",
+            "discount_amount",
+            "discount_percent",
+            "unknown"
+          ]
+        },
+        "amount": {
+          "$ref": "#/$defs/nullableAmount"
+        },
+        "percent": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "notes_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "description": "料金への効き方。**null＝その構成員は通常料金のまま**（同伴者無料ルールの「大人」側）、または**同じルール内の fixed_total のセット合計に含まれる**（ファミリーパックの2人目以降）。効き方が公式資料から確定できない場合だけ type を \"unknown\" にし、human_review_required に確認箇所を書く。"
+    }
+  }
+}

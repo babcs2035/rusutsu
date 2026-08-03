@@ -96,10 +96,12 @@ export type FinalizedLiftFeature = {
 
 export type FinalizedResortMapData = {
   courses: {
+    source: "resorts-finalized" | "slope_10m" | "slope_before";
     fileName: string;
     features: FinalizedCourseFeature[];
   } | null;
   lifts: {
+    source: "resorts-finalized" | "lift_20m" | "lift_before";
     fileName: string;
     features: FinalizedLiftFeature[];
   } | null;
@@ -127,6 +129,11 @@ type TimestampedFile = {
 export const FINALIZED_RESORTS_ROOT = path.join(
   /* turbopackIgnore: true */ process.cwd(),
   "src/private/data/resorts-finalized",
+);
+
+export const TEMPORARY_RESORTS_ROOT = path.join(
+  /* turbopackIgnore: true */ process.cwd(),
+  "src/private/data/resorts-temporary",
 );
 
 const TIMESTAMPED_GEOJSON_RE =
@@ -308,7 +315,9 @@ const normalizeLiftFeature = (
     coordinates,
     properties: {
       name,
-      type: normalizeString(properties.type),
+      type:
+        normalizeString(properties.type) ??
+        normalizeString(properties.aerialway),
       speed: normalizeString(properties.speed),
       hood: normalizeString(properties.hood),
       capacity: normalizeNumber(properties.capacity),
@@ -350,14 +359,29 @@ const isSafeResortId = (resortId: string) =>
 const resolveFinalizedDataPath = (
   kind: "courses" | "lifts",
   resortId: string,
+  finalizedRoot: string,
 ) => {
   if (!isSafeResortId(resortId)) return null;
 
-  const resolved = path.resolve(FINALIZED_RESORTS_ROOT, kind, resortId);
-  const root = path.resolve(FINALIZED_RESORTS_ROOT);
+  const resolved = path.resolve(finalizedRoot, kind, resortId);
+  const root = path.resolve(finalizedRoot);
   if (resolved !== root && !resolved.startsWith(`${root}${path.sep}`)) {
     return null;
   }
+
+  return resolved;
+};
+
+const resolveTemporaryDataPath = (
+  kind: "slope_10m" | "slope_before" | "lift_20m" | "lift_before",
+  resortId: string,
+  temporaryRoot: string,
+) => {
+  if (!isSafeResortId(resortId)) return null;
+
+  const directory = path.resolve(temporaryRoot, kind);
+  const resolved = path.resolve(directory, `${resortId}.geojson`);
+  if (!resolved.startsWith(`${directory}${path.sep}`)) return null;
 
   return resolved;
 };
@@ -366,8 +390,13 @@ const loadLatestKindData = async <TFeature>(
   resortId: string,
   kind: "courses" | "lifts",
   normalizeFeature: (feature: unknown, index: number) => TFeature | null,
-): Promise<{ fileName: string; features: TFeature[] } | null> => {
-  const directory = resolveFinalizedDataPath(kind, resortId);
+  finalizedRoot: string,
+): Promise<{
+  source: "resorts-finalized";
+  fileName: string;
+  features: TFeature[];
+} | null> => {
+  const directory = resolveFinalizedDataPath(kind, resortId, finalizedRoot);
   if (!directory) return null;
 
   let fileNames: string[];
@@ -392,6 +421,7 @@ const loadLatestKindData = async <TFeature>(
 
       if (features.length > 0) {
         return {
+          source: "resorts-finalized",
           fileName: candidate.fileName,
           features,
         };
@@ -408,18 +438,112 @@ const loadLatestKindData = async <TFeature>(
   return null;
 };
 
-export const getFinalizedResortMapData = async (
+const loadTemporaryKindData = async <
+  TFeature,
+  TSource extends "slope_10m" | "slope_before" | "lift_20m" | "lift_before",
+>(
   resortId: string,
+  source: TSource,
+  normalizeFeature: (feature: unknown, index: number) => TFeature | null,
+  temporaryRoot: string,
+): Promise<{
+  source: TSource;
+  fileName: string;
+  features: TFeature[];
+} | null> => {
+  const filePath = resolveTemporaryDataPath(source, resortId, temporaryRoot);
+  if (!filePath) return null;
+
+  try {
+    const raw = await fs.readFile(filePath, "utf8");
+    const collection = parseFeatureCollection(JSON.parse(raw));
+    const features = collection.features
+      .map(normalizeFeature)
+      .filter((feature): feature is TFeature => feature !== null);
+
+    if (features.length === 0) return null;
+
+    return {
+      source,
+      fileName: path.basename(filePath),
+      features,
+    };
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      console.warn(`Failed to load temporary ${source} GeoJSON`, {
+        resortId,
+        fileName: path.basename(filePath),
+        error,
+      });
+    }
+    return null;
+  }
+};
+
+export type ResortMapDataRoots = {
+  finalizedRoot: string;
+  temporaryRoot: string;
+};
+
+const loadCourseData = async (resortId: string, roots: ResortMapDataRoots) =>
+  (await loadLatestKindData(
+    resortId,
+    "courses",
+    normalizeCourseFeature,
+    roots.finalizedRoot,
+  )) ??
+  (await loadTemporaryKindData(
+    resortId,
+    "slope_10m",
+    normalizeCourseFeature,
+    roots.temporaryRoot,
+  )) ??
+  loadTemporaryKindData(
+    resortId,
+    "slope_before",
+    normalizeCourseFeature,
+    roots.temporaryRoot,
+  );
+
+const loadLiftData = async (resortId: string, roots: ResortMapDataRoots) =>
+  (await loadLatestKindData(
+    resortId,
+    "lifts",
+    normalizeLiftFeature,
+    roots.finalizedRoot,
+  )) ??
+  (await loadTemporaryKindData(
+    resortId,
+    "lift_20m",
+    normalizeLiftFeature,
+    roots.temporaryRoot,
+  )) ??
+  loadTemporaryKindData(
+    resortId,
+    "lift_before",
+    normalizeLiftFeature,
+    roots.temporaryRoot,
+  );
+
+export const getResortMapDataFromRoots = async (
+  resortId: string,
+  roots: ResortMapDataRoots,
 ): Promise<FinalizedResortMapData | null> => {
   const [courses, lifts] = await Promise.all([
-    loadLatestKindData(resortId, "courses", normalizeCourseFeature),
-    loadLatestKindData(resortId, "lifts", normalizeLiftFeature),
+    loadCourseData(resortId, roots),
+    loadLiftData(resortId, roots),
   ]);
 
   if (!courses && !lifts) return null;
 
   return { courses, lifts };
 };
+
+export const getFinalizedResortMapData = (resortId: string) =>
+  getResortMapDataFromRoots(resortId, {
+    finalizedRoot: FINALIZED_RESORTS_ROOT,
+    temporaryRoot: TEMPORARY_RESORTS_ROOT,
+  });
 
 export type CourseDifficulty =
   | "beginner"

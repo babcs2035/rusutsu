@@ -1,0 +1,118 @@
+◇ injected env (3) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+DB スキー場数: 506
+
+===== higashinihon.geojson (619 features) =====
+[既存ski_id条件違反: 最寄りではない] higashinihon.geojson "第5トリプル": ski_id=katashina-kogen (かたしな高原スキー場, 0.51km) / 最寄り=white-world-oze-iwakura (ホワイトワールド尾瀬岩鞍, 0.29km)
+[既存ski_id条件違反: 最寄りではない] higashinihon.geojson "第3ペア": ski_id=hunter-mountain-shiobara (ハンターマウンテン塩原スキー場, 1.84km) / 最寄り=edelweiss-ski-resort (エーデルワイススキーリゾート, 1.54km)
+[未割り当て: 8km以上] higashinihon.geojson "榛名山ロープウェイ": 最寄り=karuizawa-snow-park (軽井沢スノーパーク, 23.05km)
+[未割り当て: 8km以上] higashinihon.geojson "新穂高ロープウェイ": 最寄り=hirayu-onsen (平湯温泉スキー場, 11.20km)
+[未割り当て: 8km以上] higashinihon.geojson "新穂高ロープウェイ": 最寄り=hirayu-onsen (平湯温泉スキー場, 10.23km)
+[未割り当て: 8km以上] higashinihon.geojson "鋸山ロープウェー": 最寄り=sayama (狭山スキー場, 76.76km)
+[未割り当て: 8km以上] higashinihon.geojson "エコーリフト": 最寄り=sayama (狭山スキー場, 20.51km)
+[未割り当て: 8km以上] higashinihon.geojson "伊香保ロープウェイ": 最寄り=akagisan-daiichi (赤城山第１スキー場, 24.19km)
+[未割り当て: 8km以上] higashinihon.geojson "立山ロープウェイ": 最寄り=jigatake (爺ガ岳スキー場, 13.73km)
+[未割り当て: 8km以上] higashinihon.geojson "スカイシャトル": 最寄り=sayama (狭山スキー場, 17.62km)
+[未割り当て: 8km以上] higashinihon.geojson "日本平ロープウェイ": 最寄り=riverwell-ikawa (リバウェル井川スキー場, 31.79km)
+[未割り当て: 8km以上] higashinihon.geojson "かんざんじロープウェイ": 最寄り=chausuyama-kogen (茶臼山高原スキー場, 50.17km)
+[未割り当て: 8km以上] higashinihon.geojson "(no name)": 最寄り=jigatake (爺ガ岳スキー場, 19.56km)
+[未割り当て: 8km以上] higashinihon.geojson "鬼怒川温泉ロープウェイ": 最寄り=edelweiss-ski-resort (エーデルワイススキーリゾート, 9.85km)
+[未割り当て: 8km以上] higashinihon.geojson "昇仙峡ロープウェイ": 最寄り=chateraise-ski-valley-nobeyama (シャトレーゼスキーバレー野辺山, 20.62km)
+[未割り当て: 8km以上] higashinihon.geojson "大室山登山リフト": 最寄り=snow-park-yeti (スノーパークイエティ, 52.87km)
+[未割り当て: 8km以上] higashinihon.geojson "宝登山ロープウェイ": 最寄り=sayama (狭山スキー場, 45.80km)
+[未割り当て: 8km以上] higashinihon.geojson "(no name)": 最寄り=yakushi (薬師スキー場, 9.25km)
+[未割り当て: 8km以上] higashinihon.geojson "伊豆の国パノラマパークロープウェイ": 最寄り=snow-park-yeti (スノーパークイエティ, 33.72km)
+[未割り当て: 8km以上] higashinihon.geojson "(no name)": 最寄り=riverwell-ikawa (リバウェル井川スキー場, 19.18km)
+[未割り当て: 8km以上] higashinihon.geojson "ターザンロープ": 最寄り=sayama (狭山スキー場, 28.12km)
+[未割り当て: 8km以上] higashinihon.geojson "身延山ロープウェイ": 最寄り=riverwell-ikawa (リバウェル井川スキー場, 22.90km)
+[未割り当て: 8km以上] higashinihon.geojson "(2017年撤去) 淡島海上ロープウェイ": 最寄り=snow-park-yeti (スノーパークイエティ, 31.63km)
+[未割り当て: 8km以上] higashinihon.geojson "アタミロープウェイ": 最寄り=snow-park-yeti (スノーパークイエティ, 36.64km)
+[未割り当て: 8km以上] higashinihon.geojson "ジップライン": 最寄り=mt-jeans-ski-resort-nasu (マウントジーンズ那須, 9.73km)
+[未割り当て: 8km以上] higashinihon.geojson "(no name)": 最寄り=mt-jeans-ski-resort-nasu (マウントジーンズ那須, 9.72km)
+[未割り当て: 8km以上] higashinihon.geojson "(no name)": 最寄り=suhara (須原スキー場, 10.82km)
+[未割り当て: 8km以上] higashinihon.geojson "(no name)": 最寄り=suhara (須原スキー場, 10.89km)
+[未割り当て: 8km以上] higashinihon.geojson "(no name)": 最寄り=sayama (狭山スキー場, 14.06km)
+[未割り当て: 8km以上] higashinihon.geojson "パノラマチェア": 最寄り=akagisan-daiichi (赤城山第１スキー場, 30.29km)
+[未割り当て: 8km以上] higashinihon.geojson "YOKOHAMA AIR CABIN": 最寄り=sayama (狭山スキー場, 40.18km)
+[未割り当て: 8km以上] higashinihon.geojson "鬼怒川温泉ロープウェイ": 最寄り=edelweiss-ski-resort (エーデルワイススキーリゾート, 9.86km)
+[未割り当て: 8km以上] higashinihon.geojson "(no name)": 最寄り=adatara-kogen (あだたら高原スキー場, 77.47km)
+[未割り当て: 8km以上] higashinihon.geojson "(no name)": 最寄り=sayama (狭山スキー場, 29.36km)
+[未割り当て: 8km以上] higashinihon.geojson "小室山観光リフト": 最寄り=snow-park-yeti (スノーパークイエティ, 51.69km)
+[未割り当て: 8km以上] higashinihon.geojson "(no name)": 最寄り=family-gerende-kirigamine (ファミリーゲレンデ 霧ヶ峰スキー場, 12.38km)
+[未割り当て: 8km以上] higashinihon.geojson "ペアパラレルリフト": 最寄り=sayama (狭山スキー場, 26.48km)
+[未割り当て: 8km以上] higashinihon.geojson "ペアパラレルリフト": 最寄り=sayama (狭山スキー場, 26.48km)
+[未割り当て: 8km以上] higashinihon.geojson "(no name)": 最寄り=sayama (狭山スキー場, 14.06km)
+[未割り当て: 8km以上] higashinihon.geojson "(no name)": 最寄り=sayama (狭山スキー場, 20.51km)
+[未割り当て: 8km以上] higashinihon.geojson "(no name)": 最寄り=sayama (狭山スキー場, 20.51km)
+[未割り当て: 8km以上] higashinihon.geojson "(no name)": 最寄り=sayama (狭山スキー場, 21.00km)
+[未割り当て: 8km以上] higashinihon.geojson "(no name)": 最寄り=sayama (狭山スキー場, 21.00km)
+[未割り当て: 8km以上] higashinihon.geojson "エコーリフト": 最寄り=sayama (狭山スキー場, 20.51km)
+→ higashinihon.geojson: 新規割り当て 442 件, 距離超過で未割り当て 42 件
+
+===== hokkaido.geojson (188 features) =====
+[既存ski_id条件違反: 最寄りではない] hokkaido.geojson "エース第4ペア": ski_id=niseko-mountain-resort-grand-hirafu (ニセコ東急 グラン・ヒラフ, 2.44km) / 最寄り=niseko-village-ski-resort (ニセコビレッジスキーリゾート, 2.44km)
+→ hokkaido.geojson: 新規割り当て 0 件, 距離超過で未割り当て 0 件
+
+===== kitanihon.geojson (522 features) =====
+[未割り当て: 8km以上] kitanihon.geojson "明智平ロープウェイ": 最寄り=nikko-yumoto-onsen (日光湯元温泉スキー場, 11.40km)
+[未割り当て: 8km以上] kitanihon.geojson "筑波山ロープウェイ": 最寄り=sayama (狭山スキー場, 80.02km)
+[未割り当て: 8km以上] kitanihon.geojson "エコーリフト": 最寄り=sayama (狭山スキー場, 20.51km)
+[未割り当て: 8km以上] kitanihon.geojson "スカイシャトル": 最寄り=sayama (狭山スキー場, 17.62km)
+[未割り当て: 8km以上] kitanihon.geojson "鬼怒川温泉ロープウェイ": 最寄り=edelweiss-ski-resort (エーデルワイススキーリゾート, 9.85km)
+[未割り当て: 8km以上] kitanihon.geojson "宝登山ロープウェイ": 最寄り=sayama (狭山スキー場, 45.80km)
+[未割り当て: 8km以上] kitanihon.geojson "第一リフト": 最寄り=fairy-land-kaneyama (フェアリーランドかねやまスキー場, 18.79km)
+[未割り当て: 8km以上] kitanihon.geojson "第二リフト": 最寄り=fairy-land-kaneyama (フェアリーランドかねやまスキー場, 18.61km)
+[未割り当て: 8km以上] kitanihon.geojson "way/246573212": 最寄り=fairy-land-kaneyama (フェアリーランドかねやまスキー場, 18.60km)
+[未割り当て: 8km以上] kitanihon.geojson "ターザンロープ": 最寄り=sayama (狭山スキー場, 28.12km)
+[未割り当て: 8km以上] kitanihon.geojson "ジップライン": 最寄り=mt-jeans-ski-resort-nasu (マウントジーンズ那須, 9.73km)
+[未割り当て: 8km以上] kitanihon.geojson "way/618703371": 最寄り=mt-jeans-ski-resort-nasu (マウントジーンズ那須, 9.72km)
+[未割り当て: 8km以上] kitanihon.geojson "way/627261677": 最寄り=suhara (須原スキー場, 10.82km)
+[未割り当て: 8km以上] kitanihon.geojson "way/627261678": 最寄り=suhara (須原スキー場, 10.89km)
+[未割り当て: 8km以上] kitanihon.geojson "way/754175468": 最寄り=sayama (狭山スキー場, 14.06km)
+[未割り当て: 8km以上] kitanihon.geojson "パノラマチェア": 最寄り=akagisan-daiichi (赤城山第１スキー場, 30.29km)
+[未割り当て: 8km以上] kitanihon.geojson "鬼怒川温泉ロープウェイ": 最寄り=edelweiss-ski-resort (エーデルワイススキーリゾート, 9.86km)
+[未割り当て: 8km以上] kitanihon.geojson "way/920711257": 最寄り=adatara-kogen (あだたら高原スキー場, 77.47km)
+[未割り当て: 8km以上] kitanihon.geojson "way/970043614": 最寄り=sayama (狭山スキー場, 29.36km)
+[未割り当て: 8km以上] kitanihon.geojson "ペアパラレルリフト": 最寄り=sayama (狭山スキー場, 26.48km)
+[未割り当て: 8km以上] kitanihon.geojson "ペアパラレルリフト": 最寄り=sayama (狭山スキー場, 26.48km)
+[未割り当て: 8km以上] kitanihon.geojson "way/1128405646": 最寄り=uenotai (上ノ岱スキー場, 10.07km)
+[未割り当て: 8km以上] kitanihon.geojson "way/1128405647": 最寄り=ani (阿仁スキー場, 10.33km)
+[未割り当て: 8km以上] kitanihon.geojson "way/1128405649": 最寄り=uenotai (上ノ岱スキー場, 10.16km)
+[未割り当て: 8km以上] kitanihon.geojson "way/1202315652": 最寄り=sayama (狭山スキー場, 14.06km)
+[未割り当て: 8km以上] kitanihon.geojson "way/1216842023": 最寄り=sayama (狭山スキー場, 83.48km)
+[未割り当て: 8km以上] kitanihon.geojson "way/1426472129": 最寄り=sayama (狭山スキー場, 20.51km)
+[未割り当て: 8km以上] kitanihon.geojson "way/1426472130": 最寄り=sayama (狭山スキー場, 20.51km)
+[未割り当て: 8km以上] kitanihon.geojson "way/1426472145": 最寄り=sayama (狭山スキー場, 21.00km)
+[未割り当て: 8km以上] kitanihon.geojson "way/1426472146": 最寄り=sayama (狭山スキー場, 21.00km)
+[未割り当て: 8km以上] kitanihon.geojson "エコーリフト": 最寄り=sayama (狭山スキー場, 20.51km)
+[未割り当て: 8km以上] kitanihon.geojson "ペアリフト": 最寄り=akabane (赤羽根スキー場, 22.88km)
+[未割り当て: 8km以上] kitanihon.geojson "way/1486736459": 最寄り=akabane (赤羽根スキー場, 22.89km)
+[未割り当て: 8km以上] kitanihon.geojson "way/1486736460": 最寄り=akabane (赤羽根スキー場, 23.43km)
+[未割り当て: 8km以上] kitanihon.geojson "way/1486736461": 最寄り=akabane (赤羽根スキー場, 23.04km)
+[未割り当て: 8km以上] kitanihon.geojson "way/1486736462": 最寄り=akabane (赤羽根スキー場, 23.09km)
+[未割り当て: 8km以上] kitanihon.geojson "way/1487054787": 最寄り=hachimoriyama (八森山スキー場, 11.97km)
+[未割り当て: 8km以上] kitanihon.geojson "way/1487054788": 最寄り=hachimoriyama (八森山スキー場, 11.98km)
+→ kitanihon.geojson: 新規割り当て 484 件, 距離超過で未割り当て 38 件
+
+===== nakanihon.geojson (102 features) =====
+[既存ski_idがDBに無い] nakanihon.geojson "ペア": ski_id=Iohzan / 最寄り=iohzan (医王山スキー場, 0.32km)
+[既存ski_idがDBに無い] nakanihon.geojson "ファミリー": ski_id=Iohzan / 最寄り=iohzan (医王山スキー場, 0.00km)
+→ nakanihon.geojson: 新規割り当て 0 件, 距離超過で未割り当て 0 件
+
+===== nishinihon.geojson (106 features) =====
+[既存ski_idがDBに無い] nishinihon.geojson "登降ペアパラレルA線": ski_id=sky-valley-tohachi / 最寄り=sky-valley (スカイバレイスキー場, 0.00km)
+[既存ski_idがDBに無い] nishinihon.geojson "ベアトリプル": ski_id=sky-valley-tohachi / 最寄り=sky-valley (スカイバレイスキー場, 0.65km)
+[既存ski_idがDBに無い] nishinihon.geojson "ラビットペア": ski_id=sky-valley-tohachi / 最寄り=sky-valley (スカイバレイスキー場, 0.63km)
+[既存ski_idがDBに無い] nishinihon.geojson "山頂ペアリフト": ski_id=sky-valley-tohachi / 最寄り=sky-valley (スカイバレイスキー場, 0.86km)
+[既存ski_idがDBに無い] nishinihon.geojson "かつら1号ペア": ski_id=sky-valley-tohachi / 最寄り=hyperbowl-tohachi (ハイパーボウル東鉢スキー場, 0.00km)
+[既存ski_idがDBに無い] nishinihon.geojson "パノラマトリプル": ski_id=hyonosen-kokudsai / 最寄り=hyonosen-kokusai (氷ノ山国際スキー場, 0.42km)
+[既存ski_idがDBに無い] nishinihon.geojson "かつら3号ペア": ski_id=sky-valley-tohachi / 最寄り=hyperbowl-tohachi (ハイパーボウル東鉢スキー場, 0.73km)
+[既存ski_idがDBに無い] nishinihon.geojson "かつら2号ペア": ski_id=sky-valley-tohachi / 最寄り=hyperbowl-tohachi (ハイパーボウル東鉢スキー場, 0.88km)
+[既存ski_idがDBに無い] nishinihon.geojson "かつら4号ペア": ski_id=sky-valley-tohachi / 最寄り=hyperbowl-tohachi (ハイパーボウル東鉢スキー場, 0.24km)
+[既存ski_idがDBに無い] nishinihon.geojson "登降ペアパラレルB線": ski_id=sky-valley-tohachi / 最寄り=sky-valley (スカイバレイスキー場, 0.01km)
+→ nishinihon.geojson: 新規割り当て 0 件, 距離超過で未割り当て 0 件
+
+===== 合計 =====
+新規割り当て: 926 件
+距離超過で未割り当て: 80 件
+既存ski_idの条件違反: 3 件
+既存ski_idがDBに見つからない: 12 件

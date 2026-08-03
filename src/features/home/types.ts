@@ -17,6 +17,7 @@ export type ReturnViewState = {
 };
 
 export type MobileSearchReturnState = {
+  mobileContentTab: "info" | "map";
   isListSheetOpen: boolean;
   listSheetSnapPoint: number | string | null;
   selectedResortId: string | null;

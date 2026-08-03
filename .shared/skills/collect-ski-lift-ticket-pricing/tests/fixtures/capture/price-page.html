@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <title>リフト券料金 | テスト用スキー場</title>
+</head>
+<body>
+  <h1>リフト券料金（2025-2026シーズン）</h1>
+
+  <h2>窓口料金</h2>
+  <table border="1">
+    <tr><th>券種</th><th>平日</th><th>土日祝</th></tr>
+    <tr><td>大人1日券</td><td>6,000円</td><td>6,500円</td></tr>
+    <tr><td>小学生1日券</td><td>3,200円</td><td>3,200円</td></tr>
+  </table>
+
+  <h2>セット券料金（セル結合あり）</h2>
+  <!--
+    rowspan/colspan の解決を検証するための表。
+    「大人」が2行を縦結合し、「ナイター」が2列を横結合している。
+    グリッド化に失敗すると行と列がずれ、金額が別の区分に付く。
+  -->
+  <table border="1">
+    <tr>
+      <th rowspan="2">対象</th><th rowspan="2">券種</th>
+      <th colspan="2">ナイター</th>
+    </tr>
+    <tr><th>平日</th><th>土日祝</th></tr>
+    <tr><td rowspan="2">大人</td><td>ナイター券</td><td>3,000円</td><td>3,500円</td></tr>
+    <tr><td>ナイター＋温泉</td><td>4,000円</td><td>4,500円</td></tr>
+    <tr><td>小学生</td><td>ナイター券</td><td>1,500円</td><td>1,500円</td></tr>
+  </table>
+
+  <details>
+    <summary>WEB前売について</summary>
+    <p id="web-price-note">WEB前売スペシャル: 大人1日券 5,800円（利用日前日23:59まで販売）</p>
+  </details>
+
+  <div id="dynamic-price">読み込み中...</div>
+  <a href="https://example.com/pdf/price-2025-26.pdf">料金表PDF</a>
+  <a href="https://example.com/shop/">WEBチケットストア</a>
+
+  <script>
+    // JavaScript実行後にのみ現れる料金（動的表示のテスト用）
+    document.getElementById("dynamic-price").textContent =
+      "本日のWEB当日価格: 6,200円（ダイナミックプライシング）";
+  </script>
+</body>
+</html>

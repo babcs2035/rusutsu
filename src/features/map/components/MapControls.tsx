@@ -16,6 +16,7 @@ export const MapControls = ({
   bottomPaddingRatio,
   mapTileVariant,
   onMapTileVariantChange,
+  hideMobileTileVariantControl = false,
   onUserMapInteraction,
   onUserMapZoomInteraction,
 }: {
@@ -23,6 +24,7 @@ export const MapControls = ({
   bottomPaddingRatio: number;
   mapTileVariant: MapTileVariant;
   onMapTileVariantChange: (variant: MapTileVariant) => void;
+  hideMobileTileVariantControl?: boolean;
   onUserMapInteraction?: () => void;
   onUserMapZoomInteraction?: () => void;
 }) => {
@@ -110,6 +112,10 @@ export const MapControls = ({
         <Home size={18} />
       </Button>
       <Flex
+        display={{
+          base: hideMobileTileVariantControl ? "none" : "flex",
+          md: "flex",
+        }}
         borderRadius="lg"
         bg="white"
         boxShadow="md"
@@ -334,10 +340,6 @@ export const FinalizedMapLegend = ({
           {hasCourses && (
             <Flex mt={2} gap={3} wrap="wrap" color="gray.600">
               <Flex alignItems="center" gap={1.5}>
-                <Box w={6} h="4px" borderRadius="full" bg="gray.800" />
-                <Box>圧雪・一部圧雪</Box>
-              </Flex>
-              <Flex alignItems="center" gap={1.5}>
                 <Box
                   w={8}
                   h="8px"
@@ -351,7 +353,7 @@ export const FinalizedMapLegend = ({
             <Flex mt={hasCourses ? 2 : 0} gap={3} wrap="wrap">
               <Flex alignItems="center" gap={1.5}>
                 <Box w={5} h="3px" bg="#1D4ED8" />
-                <Box>営業中</Box>
+                <Box>Open</Box>
               </Flex>
               <Flex alignItems="center" gap={1.5}>
                 <Box
@@ -363,13 +365,10 @@ export const FinalizedMapLegend = ({
               </Flex>
               <Flex alignItems="center" gap={1.5}>
                 <Box w={5} h="3px" bg="#CBD5E1" opacity={0.58} />
-                <Box>終了・運休</Box>
+                <Box>Close</Box>
               </Flex>
             </Flex>
           )}
-          <Box mt={2} color="gray.500">
-            選択時は選択中のコース・リフトだけを強調
-          </Box>
         </>
       )}
     </Box>

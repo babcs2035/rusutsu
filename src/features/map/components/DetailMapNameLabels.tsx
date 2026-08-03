@@ -48,6 +48,26 @@ type StraightPlacementOptions = {
 const COURSE_SECTION_SUFFIX_RE = /_#?(上部|中部|下部)$/u;
 const liftLabelRectsByMap = new WeakMap<L.Map, Rect[]>();
 const COURSE_TO_LIFT_COLLISION_RELAX_PX = 6;
+const LINE_LABEL_ZOOMING_CLASS = "is-map-zooming";
+
+const getLineLabelClassPrefix = (kind: "course" | "lift") =>
+  kind === "course"
+    ? "finalized-course-name-label"
+    : "finalized-lift-name-label";
+
+const setLineLabelSvgZooming = (
+  map: L.Map,
+  kind: "course" | "lift",
+  isZooming: boolean,
+) => {
+  const pane = map.getPane(FINALIZED_SELECTED_PANE);
+  if (!pane) return;
+
+  const classPrefix = getLineLabelClassPrefix(kind);
+  pane.querySelectorAll<SVGSVGElement>(`.${classPrefix}-svg`).forEach(svg => {
+    svg.classList.toggle(LINE_LABEL_ZOOMING_CLASS, isZooming);
+  });
+};
 
 const normalizeLabelAngle = (angle: number) =>
   angle > 90 || angle < -90 ? angle + 180 : angle;
@@ -393,6 +413,54 @@ const getVerticalLiftLabelRotation = (placement: LabelPlacement) => {
   return angle - 90;
 };
 
+const VERTICAL_COMBINED_TOKEN_RE = /^[0-9A-Za-z]+$/u;
+const VERTICAL_LONG_VOWEL_CHARS = new Set([
+  "ー",
+  "ｰ",
+  "-",
+  "−",
+  "—",
+  "―",
+  "－",
+]);
+
+const getVerticalLabelAdvance = (classPrefix: string) =>
+  classPrefix.includes("course") ? 14 : 13;
+
+const normalizeVerticalText = (label: string) =>
+  Array.from(label)
+    .map(character =>
+      VERTICAL_LONG_VOWEL_CHARS.has(character) ? "ー" : character,
+    )
+    .join("");
+
+const splitVerticalLabelTokens = (label: string) => {
+  const tokens: { text: string; rotate: boolean }[] = [];
+  let buffer = "";
+
+  const flushBuffer = () => {
+    if (buffer.length === 0) return;
+    tokens.push({ text: buffer, rotate: false });
+    buffer = "";
+  };
+
+  for (const character of Array.from(normalizeVerticalText(label))) {
+    if (VERTICAL_COMBINED_TOKEN_RE.test(character)) {
+      buffer += character;
+      continue;
+    }
+
+    flushBuffer();
+    tokens.push({
+      text: character,
+      rotate: character === "ー",
+    });
+  }
+
+  flushBuffer();
+  return tokens;
+};
+
 const addVerticalLiftText = ({
   classPrefix,
   isSelected,
@@ -416,23 +484,26 @@ const addVerticalLiftText = ({
     `translate(${center.x.toFixed(1)} ${center.y.toFixed(1)}) rotate(${getVerticalLiftLabelRotation(label.placement).toFixed(1)})`,
   );
 
-  const text = document.createElementNS(svgNamespace, "text");
-  text.setAttribute(
-    "class",
-    `${classPrefix}-text-${variant}${isSelected ? ` ${classPrefix}-text-selected` : ""}`,
-  );
-  text.setAttribute("x", "0");
-  text.setAttribute("y", "0");
-  text.setAttribute("text-anchor", "middle");
-  text.setAttribute("dominant-baseline", "central");
-  text.setAttribute("writing-mode", "vertical-rl");
-  text.setAttribute("text-orientation", "upright");
-  text.setAttribute(
-    "style",
-    "writing-mode: vertical-rl; text-orientation: upright;",
-  );
-  text.textContent = label.name;
-  group.append(text);
+  const tokens = splitVerticalLabelTokens(label.name);
+  const advance = getVerticalLabelAdvance(classPrefix);
+  const startY = -((tokens.length - 1) * advance) / 2;
+  tokens.forEach((token, index) => {
+    const y = startY + index * advance;
+    const text = document.createElementNS(svgNamespace, "text");
+    text.setAttribute(
+      "class",
+      `${classPrefix}-text-${variant} ${classPrefix}-text-vertical${isSelected ? ` ${classPrefix}-text-selected` : ""}`,
+    );
+    text.setAttribute("x", "0");
+    text.setAttribute("y", y.toFixed(1));
+    text.setAttribute("text-anchor", "middle");
+    text.setAttribute("dominant-baseline", "central");
+    if (token.rotate) {
+      text.setAttribute("transform", `rotate(90 0 ${y.toFixed(1)})`);
+    }
+    text.textContent = token.text;
+    group.append(text);
+  });
 
   textGroup.append(group);
 };
@@ -456,7 +527,7 @@ const addStraightText = ({
   const center = label.placement.point;
   text.setAttribute(
     "class",
-    `${classPrefix}-text-${variant}${isSelected ? ` ${classPrefix}-text-selected` : ""}`,
+    `${classPrefix}-text-${variant} ${classPrefix}-text-horizontal${isSelected ? ` ${classPrefix}-text-selected` : ""}`,
   );
   text.setAttribute("x", center.x.toFixed(1));
   text.setAttribute("y", center.y.toFixed(1));
@@ -487,10 +558,7 @@ const createLineLabelSvgLayer = (
   const defs = document.createElementNS(svgNamespace, "defs");
   const textGroup = document.createElementNS(svgNamespace, "g");
   const mapSize = map.getSize();
-  const classPrefix =
-    kind === "course"
-      ? "finalized-course-name-label"
-      : "finalized-lift-name-label";
+  const classPrefix = getLineLabelClassPrefix(kind);
 
   svg.setAttribute("class", `${classPrefix}-svg`);
   svg.setAttribute("width", `${mapSize.x}`);
@@ -531,6 +599,9 @@ const createLineLabelSvgLayer = (
       continue;
     }
 
+    // Horizontal labels stay as one text node. The vertical mobile fix splits
+    // glyphs for digits and long vowels, but doing that here makes the SVG
+    // halo look like separate white blobs around each character.
     const path = document.createElementNS(svgNamespace, "path");
     const pathId = `finalized-${kind}-label-path-${label.id}`;
     path.setAttribute("id", pathId);
@@ -540,11 +611,14 @@ const createLineLabelSvgLayer = (
     const text = document.createElementNS(svgNamespace, "text");
     text.setAttribute(
       "class",
-      `${classPrefix}-text${label.isSelected ? ` ${classPrefix}-text-selected` : ""}`,
+      `${classPrefix}-text ${classPrefix}-text-horizontal${label.isSelected ? ` ${classPrefix}-text-selected` : ""}`,
     );
 
     const halo = document.createElementNS(svgNamespace, "textPath");
-    halo.setAttribute("class", `${classPrefix}-text-halo`);
+    halo.setAttribute(
+      "class",
+      `${classPrefix}-text-halo ${classPrefix}-text-horizontal${label.isSelected ? ` ${classPrefix}-text-selected` : ""}`,
+    );
     halo.setAttribute("startOffset", "50%");
     halo.setAttribute("text-anchor", "middle");
     halo.setAttributeNS(xlinkNamespace, "href", `#${pathId}`);
@@ -554,7 +628,7 @@ const createLineLabelSvgLayer = (
     const fill = document.createElementNS(svgNamespace, "text");
     fill.setAttribute(
       "class",
-      `${classPrefix}-text-fill${label.isSelected ? ` ${classPrefix}-text-selected` : ""}`,
+      `${classPrefix}-text-fill ${classPrefix}-text-horizontal${label.isSelected ? ` ${classPrefix}-text-selected` : ""}`,
     );
     const fillPath = document.createElementNS(svgNamespace, "textPath");
     fillPath.setAttribute("startOffset", "50%");
@@ -705,9 +779,15 @@ export const FinalizedCourseNameLabels = ({
       groupRef.current = group;
     };
 
+    const handleZoomStart = () => {
+      setLineLabelSvgZooming(map, "course", true);
+    };
+
     renderLabels();
+    map.on("zoomstart", handleZoomStart);
     map.on("zoomend moveend resize", renderLabels);
     return () => {
+      map.off("zoomstart", handleZoomStart);
       map.off("zoomend moveend resize", renderLabels);
       if (groupRef.current) {
         groupRef.current.removeFrom(map);
@@ -818,9 +898,15 @@ export const FinalizedLiftNameLabels = ({
       groupRef.current = group;
     };
 
+    const handleZoomStart = () => {
+      setLineLabelSvgZooming(map, "lift", true);
+    };
+
     renderLabels();
+    map.on("zoomstart", handleZoomStart);
     map.on("zoomend moveend resize", renderLabels);
     return () => {
+      map.off("zoomstart", handleZoomStart);
       map.off("zoomend moveend resize", renderLabels);
       if (groupRef.current) {
         groupRef.current.removeFrom(map);

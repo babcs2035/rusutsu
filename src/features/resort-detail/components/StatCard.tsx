@@ -1,6 +1,7 @@
 "use client";
 
 import { Box, Text } from "@chakra-ui/react";
+import type { ReactNode } from "react";
 
 export const StatCard = ({
   title,
@@ -8,13 +9,13 @@ export const StatCard = ({
   valueColor = "gray.900",
 }: {
   title: string;
-  value: string | number;
+  value: ReactNode;
   valueColor?: string;
 }) => (
   <Box
-    p={{ base: 2, sm: 3, md: 4 }}
-    minH={{ base: "64px", md: "auto" }}
-    borderRadius={{ base: "lg", md: "xl" }}
+    p={{ base: 2, md: 3 }}
+    minH={{ base: "58px", md: "66px" }}
+    borderRadius="lg"
     bg="white"
     border="1px solid"
     borderColor="gray.200"
@@ -39,10 +40,10 @@ export const StatCard = ({
     <Text
       fontWeight="800"
       mt={{ base: 0.5, md: 1 }}
-      fontSize={{ base: "0.95rem", sm: "lg", md: "2xl" }}
+      fontSize={{ base: "0.85rem", sm: "md", md: "lg" }}
       color={valueColor}
       fontFamily="var(--font-heading)"
-      lineHeight="1.2"
+      lineHeight="1.25"
     >
       {value}
     </Text>
