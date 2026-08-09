@@ -6,7 +6,7 @@
 FROM node:24-slim AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME/bin:$PNPM_HOME:$PATH"
-RUN npm install -g pnpm@11.8.0
+RUN npm install -g pnpm@11.20.0
 WORKDIR /app
 
 # ==============================================================================
@@ -62,7 +62,7 @@ RUN groupadd --system --gid 1001 nodejs && \
 # Install global tools
 RUN mkdir -p "$PNPM_HOME/bin" \
     && pnpm config set global-bin-dir "$PNPM_HOME/bin" \
-    && pnpm add -g prisma@7.7.0 tsx@4.21.0
+    && pnpm add -g prisma@7.9.1 tsx@4.23.11
 
 # Copy standalone build
 COPY --from=build-cache --chown=nextjs:nodejs /app/.next/standalone ./

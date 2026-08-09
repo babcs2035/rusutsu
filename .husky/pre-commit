@@ -1,6 +1,4 @@
-export PATH="$HOME/.local/share/mise/installs/npm-pnpm/latest/bin:$PATH"
+export PATH="$HOME/.local/share/mise/installs/npm-pnpm/11.20.0/bin:$PATH"
 
 cd "$(dirname "$0")/.."
-pnpm format
-pnpm lint
-pnpm typecheck
+mise run check
