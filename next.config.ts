@@ -26,6 +26,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "www.snowjapan.com",
       },
+      {
+        protocol: "https",
+        hostname: "*.googleusercontent.com",
+      },
     ],
   },
   experimental: {

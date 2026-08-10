@@ -43,3 +43,13 @@ Rusutsu は、日本全国のスキー場情報（基本情報・コース/リ�
 ## コーディングスタイル・設計パターンについて
 - **一貫している点**: Biome によるフォーマット（ダブルクォート、セミコロン必須、インデント2スペース、行幅80）と lint ルールはプロジェクト全体で強制されている（`mise run check` で担保）。Prisma へのアクセスは `src/lib/prisma.ts` のシングルトンクライアント経由に統一されている。
 - **現状は統一されていない点**: クローラースクリプト間で「削除→再作成」「upsert」「create + try/catch」のいずれを使うかはサイト・モデルごとに異なり、明文化された規約はない。また `src/features/<domain>` 配下のサブディレクトリ構成（`layout/` vs `layouts/`、`tabs/` の有無など）もドメインごとにばらつきがあり、共通テンプレートに従っているわけではない。名寄せ辞書のキー→値の向き（正式名→別名か別名→正式名か）もファイルごとに異なるため、利用時は個別に確認が必要。
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

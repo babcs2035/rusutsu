@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AdminHeader } from "@/components/AdminHeader";
 import {
   readEnumLabels,
   readTicketSchemaSpec,
@@ -14,7 +15,7 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "リフト券編集",
+  title: "リフト券編集 | 管理画面",
 };
 
 export default async function TicketEditPage() {
@@ -48,15 +49,18 @@ export default async function TicketEditPage() {
     : null;
 
   return (
-    <TicketEditWorkspace
-      files={files}
-      resortOptions={resorts.map(resort => ({
-        id: resort.id,
-        name: resort.nameJa,
-      }))}
-      schemaSpec={schemaSpec}
-      enumLabels={enumLabels}
-      initialData={initialData}
-    />
+    <div>
+      <AdminHeader />
+      <TicketEditWorkspace
+        files={files}
+        resortOptions={resorts.map(resort => ({
+          id: resort.id,
+          name: resort.nameJa,
+        }))}
+        schemaSpec={schemaSpec}
+        enumLabels={enumLabels}
+        initialData={initialData}
+      />
+    </div>
   );
 }

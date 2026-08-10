@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getSkiResortsForMap } from "@/actions/skiResorts";
+import { AdminHeader } from "@/components/AdminHeader";
 import { LiftEditClient } from "@/features/lift-edit/LiftEditClient";
 import {
   computeLiftBeforeCentroid,
@@ -12,7 +13,7 @@ import { getResortSearchName } from "@/lib/resortAliases";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "リフト入力",
+  title: "リフト入力 | 管理画面",
 };
 
 export default async function LiftEditPage() {
@@ -58,9 +59,12 @@ export default async function LiftEditPage() {
   }
 
   return (
-    <LiftEditClient
-      resorts={[...resortOptions, ...orphanOptions]}
-      googleMapsApiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? null}
-    />
+    <div>
+      <AdminHeader />
+      <LiftEditClient
+        resorts={[...resortOptions, ...orphanOptions]}
+        googleMapsApiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? null}
+      />
+    </div>
   );
 }

@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --webpack",
-    "build": "next build --webpack",
+    "dev": "next dev",
+    "build": "next build",
     "start": "next start",
     "format": "biome format --write src",
     "lint": "biome check --write src",
@@ -13,6 +13,8 @@
   },
   "packageManager": "pnpm@11.20.0",
   "dependencies": {
+    "@auth/core": "^0.41.3",
+    "@auth/prisma-adapter": "^2.11.3",
     "@chakra-ui/react": "^3.36.1",
     "@emotion/react": "^11.14.0",
     "@next/third-parties": "^16.3.0",
@@ -25,6 +27,7 @@
     "leaflet.markercluster": "^1.5.3",
     "lucide-react": "^1.30.0",
     "next": "^16.3.0",
+    "next-auth": "5.0.0-beta.32",
     "node-cron": "^4.6.0",
     "pg": "^8.22.0",
     "playwright": "^1.62.1",

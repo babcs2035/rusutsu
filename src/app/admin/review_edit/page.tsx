@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AdminHeader } from "@/components/AdminHeader";
 import { ReviewEditWorkspace } from "@/features/review-edit/ReviewEditWorkspace";
 import {
   listReviewResorts,
@@ -10,7 +11,7 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "レビュー編集",
+  title: "レビュー編集 | 管理画面",
 };
 
 export default async function ReviewEditPage() {
@@ -39,10 +40,13 @@ export default async function ReviewEditPage() {
     : null;
 
   return (
-    <ReviewEditWorkspace
-      resorts={resorts}
-      initialResortId={initialResortId ?? null}
-      initialData={initialData}
-    />
+    <div>
+      <AdminHeader />
+      <ReviewEditWorkspace
+        resorts={resorts}
+        initialResortId={initialResortId ?? null}
+        initialData={initialData}
+      />
+    </div>
   );
 }

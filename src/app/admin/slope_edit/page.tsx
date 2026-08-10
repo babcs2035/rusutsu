@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getSkiResortsForMap } from "@/actions/skiResorts";
+import { AdminHeader } from "@/components/AdminHeader";
 import { SlopeEditClient } from "@/features/slope-edit/SlopeEditClient";
 import { listSlopeBeforeResortIds } from "@/features/slope-edit/server/slopeFiles";
 import type { ResortOption } from "@/features/slope-edit/types";
@@ -8,7 +9,7 @@ import { getResortSearchName } from "@/lib/resortAliases";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "コース入力",
+  title: "コース入力 | 管理画面",
 };
 
 export default async function SlopeEditPage() {
@@ -30,9 +31,12 @@ export default async function SlopeEditPage() {
   }));
 
   return (
-    <SlopeEditClient
-      resorts={resortOptions}
-      googleMapsApiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? null}
-    />
+    <div>
+      <AdminHeader />
+      <SlopeEditClient
+        resorts={resortOptions}
+        googleMapsApiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? null}
+      />
+    </div>
   );
 }
