@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   basePath: "/rusutsu",
   allowedDevOrigins: ["10.100.160.132", "*.trycloudflare.com", "192.168.10.25"], //TODO: Add your dev origins here
   output: "standalone",
+  compiler: {
+    emotion: true,
+  },
   experimental: {
     optimizePackageImports: ["@chakra-ui/react"],
     serverActions: {
