@@ -1,4 +1,4 @@
-import { signIn } from "@/auth";
+import { signInWithGoogle } from "@/actions/auth";
 import { AdminHeader } from "@/components/AdminHeader";
 
 export default function LoginPage() {
@@ -29,12 +29,7 @@ export default function LoginPage() {
             Google アカウントでログインしてください
           </p>
 
-          <form
-            action={async () => {
-              "use server";
-              await signIn("google", { redirectTo: "/admin" });
-            }}
-          >
+          <form action={signInWithGoogle}>
             <button
               type="submit"
               style={{
