@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
     "start": "next start",
     "format": "biome format --write src",
     "lint": "biome check --write src",
@@ -17,7 +17,6 @@
     "@auth/prisma-adapter": "^2.11.3",
     "@chakra-ui/next-js": "^2.4.2",
     "@chakra-ui/react": "^3.36.1",
-    "@emotion/cache": "^11.14.0",
     "@emotion/react": "^11.14.0",
     "@next/third-parties": "^16.3.0",
     "@prisma/adapter-pg": "^7.9.1",
