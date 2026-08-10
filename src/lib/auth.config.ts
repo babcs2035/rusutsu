@@ -47,6 +47,17 @@ export const authConfig: AuthConfig = {
       if (user) {
         token.id = user.id;
         token.role = (user as { role?: string }).role;
+
+        // 初回サインイン時に ADMIN_EMAILS のメールアドレスなら DB の role を admin に設定
+        if (isAdmin(token.email as string)) {
+          if (token.role !== "admin") {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { role: "admin" },
+            });
+          }
+          token.role = "admin";
+        }
       }
       // 環境変数 ADMIN_EMAILS に基づいて role を設定（DB に role がなければ常に適用）
       if (token.email) {

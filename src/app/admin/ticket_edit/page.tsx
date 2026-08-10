@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { AdminHeader } from "@/components/AdminHeader";
 import {
   readEnumLabels,
   readTicketSchemaSpec,
@@ -49,18 +48,15 @@ export default async function TicketEditPage() {
     : null;
 
   return (
-    <div>
-      <AdminHeader />
-      <TicketEditWorkspace
-        files={files}
-        resortOptions={resorts.map(resort => ({
-          id: resort.id,
-          name: resort.nameJa,
-        }))}
-        schemaSpec={schemaSpec}
-        enumLabels={enumLabels}
-        initialData={initialData}
-      />
-    </div>
+    <TicketEditWorkspace
+      files={files}
+      resortOptions={resorts.map(resort => ({
+        id: resort.id,
+        name: resort.nameJa,
+      }))}
+      schemaSpec={schemaSpec}
+      enumLabels={enumLabels}
+      initialData={initialData}
+    />
   );
 }

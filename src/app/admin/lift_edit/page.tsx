@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { getSkiResortsForMap } from "@/actions/skiResorts";
-import { AdminHeader } from "@/components/AdminHeader";
 import { LiftEditClient } from "@/features/lift-edit/LiftEditClient";
 import {
   computeLiftBeforeCentroid,
@@ -59,12 +58,9 @@ export default async function LiftEditPage() {
   }
 
   return (
-    <div>
-      <AdminHeader />
-      <LiftEditClient
-        resorts={[...resortOptions, ...orphanOptions]}
-        googleMapsApiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? null}
-      />
-    </div>
+    <LiftEditClient
+      resorts={[...resortOptions, ...orphanOptions]}
+      googleMapsApiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? null}
+    />
   );
 }

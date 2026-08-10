@@ -58,11 +58,11 @@ export async function AdminHeader() {
           </div>
         )}
 
-        {user ? (
+        {user && (
           <form
             action={async () => {
               "use server";
-              await signOut({ redirectTo: "/admin" });
+              await signOut({ redirectTo: "/admin/logout" });
             }}
           >
             <button
@@ -80,10 +80,6 @@ export async function AdminHeader() {
               ログアウト
             </button>
           </form>
-        ) : (
-          <span style={{ fontSize: "0.875rem", opacity: 0.6 }}>
-            ログインが必要です
-          </span>
         )}
       </div>
     </header>

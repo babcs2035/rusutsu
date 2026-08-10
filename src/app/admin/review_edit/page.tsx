@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { AdminHeader } from "@/components/AdminHeader";
 import { ReviewEditWorkspace } from "@/features/review-edit/ReviewEditWorkspace";
 import {
   listReviewResorts,
@@ -40,13 +39,10 @@ export default async function ReviewEditPage() {
     : null;
 
   return (
-    <div>
-      <AdminHeader />
-      <ReviewEditWorkspace
-        resorts={resorts}
-        initialResortId={initialResortId ?? null}
-        initialData={initialData}
-      />
-    </div>
+    <ReviewEditWorkspace
+      resorts={resorts}
+      initialResortId={initialResortId ?? null}
+      initialData={initialData}
+    />
   );
 }
