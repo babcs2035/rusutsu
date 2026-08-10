@@ -2,6 +2,7 @@ import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Manrope } from "next/font/google";
 import { ChakraProvider } from "@/providers/ChakraProvider";
+import { EmotionRegistry } from "@/providers/EmotionRegistry";
 import "./globals.css";
 
 const bricolage = Bricolage_Grotesque({
@@ -88,7 +89,9 @@ export default function RootLayout({
       className={`${bricolage.variable} ${manrope.variable}`}
     >
       <body className={manrope.className}>
-        <ChakraProvider>{children}</ChakraProvider>
+        <EmotionRegistry>
+          <ChakraProvider>{children}</ChakraProvider>
+        </EmotionRegistry>
         <GoogleAnalytics gaId="G-YMEM5C2F4C" />
       </body>
     </html>

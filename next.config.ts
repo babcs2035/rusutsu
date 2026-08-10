@@ -4,6 +4,12 @@ const nextConfig: NextConfig = {
   basePath: "/rusutsu",
   allowedDevOrigins: ["10.100.160.132", "*.trycloudflare.com", "192.168.10.25"], //TODO: Add your dev origins here
   output: "standalone",
+  experimental: {
+    optimizePackageImports: ["@chakra-ui/react"],
+    serverActions: {
+      allowedOrigins: ["ktak.dev", "*.trycloudflare.com"],
+    },
+  },
   serverExternalPackages: [
     "@prisma/client",
     "@prisma/config",
@@ -31,11 +37,6 @@ const nextConfig: NextConfig = {
         hostname: "*.googleusercontent.com",
       },
     ],
-  },
-  experimental: {
-    serverActions: {
-      allowedOrigins: ["ktak.dev", "*.trycloudflare.com"],
-    },
   },
 };
 
