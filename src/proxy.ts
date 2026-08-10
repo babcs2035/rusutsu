@@ -1,10 +1,10 @@
-// ミドルウェア用認証ハンドラー（Edge ランタイム対応）
-// @auth/core/jwt の getToken を使用し、 Prisma に依存しないため Edge で動作します
+// Proxy 用認証ハンドラー（Edge ランタイム対応）
+// @auth/core/jwt の getToken を使用し、Prisma に依存しないため Edge で動作します
 
 import { getToken } from "@auth/core/jwt";
 import type { NextRequest } from "next/server";
 
-export default async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   // JWT トークンを取得（Prisma なしでクッキーから直接検証）
   const token = await getToken({ req, secret: process.env.AUTH_SECRET });
 

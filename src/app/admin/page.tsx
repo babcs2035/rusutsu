@@ -1,6 +1,10 @@
 import { getAdminDashboardData } from "@/app/admin/actions";
 import { UserManagement } from "@/app/admin/UserManagement";
 
+// Admin dashboard requires live database access and authentication.
+// Disable prerendering to avoid DB connection failures during build.
+export const dynamic = "force-dynamic";
+
 export default async function AdminDashboardPage() {
   const dashboardData = await getAdminDashboardData();
 
