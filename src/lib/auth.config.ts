@@ -24,63 +24,53 @@ export const authConfig: AuthConfig = {
   // @auth/core can parse the action/providerId from the pathname.
   basePath: "/rusutsu/api/auth",
   adapter: PrismaAdapter(prisma),
-  // Explicit cookie config for Cloudflare Access deployment.
-  // Without this, Auth.js infers HTTPS from x-forwarded-proto,
-  // which Cloudflare Access may not forward correctly.
+  // Cookie config — secure defaults are handled by Auth.js v5.
+  // secure: true is set automatically when AUTH_URL uses https://.
+  // secure: false is used when AUTH_URL uses http:// (e.g. localhost).
+  // Do NOT set cookie name explicitly — Auth.js adds __Secure-/__Host prefix
+  // based on the secure flag. Setting a fixed name breaks local development.
   cookies: {
     sessionToken: {
-      name: `__Secure-authjs.session-token`,
       options: {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
-        secure: true,
       },
     },
     callbackUrl: {
-      name: `__Secure-authjs.callback-url`,
       options: {
         sameSite: "lax",
         path: "/",
-        secure: true,
       },
     },
     csrfToken: {
-      name: `__Host-authjs.csrf-token`,
       options: {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
-        secure: true,
       },
     },
     pkceCodeVerifier: {
-      name: `__Secure-authjs.pkce.code_verifier`,
       options: {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
-        secure: true,
         maxAge: 900,
       },
     },
     state: {
-      name: `__Secure-authjs.state`,
       options: {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
-        secure: true,
         maxAge: 900,
       },
     },
     nonce: {
-      name: `__Secure-authjs.nonce`,
       options: {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
-        secure: true,
       },
     },
   },
