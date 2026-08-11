@@ -90,8 +90,19 @@ export const authConfig: AuthConfig = {
       const base = baseUrl.replace(/\/$/, "");
 
       if (url.startsWith(base)) {
+        const urlObj = new URL(url);
+        const callbackUrl = urlObj.searchParams.get("callbackUrl");
+
+        // Use the callbackUrl if present (from OAuth flow or signIn redirect)
+        if (callbackUrl) {
+          if (callbackUrl.startsWith("/")) {
+            return `${base}${basePath}${callbackUrl}`;
+          }
+          return callbackUrl;
+        }
+
         const withoutBase = url.replace(base, "");
-        // url is an auth callback URL — return the post-signin destination
+        // url is an auth callback URL without callbackUrl — return home
         if (withoutBase.startsWith("/api/auth")) return `${base}${basePath}/`;
         // Already has basePath — return as-is (idempotent)
         if (withoutBase.startsWith(basePath)) return url;
