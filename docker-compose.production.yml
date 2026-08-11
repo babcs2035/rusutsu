@@ -9,6 +9,11 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-rusutsu}:${POSTGRES_PASSWORD:-rusutsu}@db:5432/${POSTGRES_DB:-rusutsu}
       - TZ=Asia/Tokyo
       - APP_PORT=${APP_PORT:-3000}
+      - AUTH_SECRET=${AUTH_SECRET}
+      - AUTH_URL=${AUTH_URL}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - ADMIN_EMAILS=${ADMIN_EMAILS}
     restart: unless-stopped
     depends_on:
       db:

@@ -11,6 +11,11 @@ services:
       - DATABASE_URL=postgresql://rusutsu:rusutsu@db:5432/rusutsu
       - TZ=Asia/Tokyo
       - APP_PORT=${APP_PORT:-3000}
+      - AUTH_SECRET=${AUTH_SECRET}
+      - AUTH_URL=${AUTH_URL}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - ADMIN_EMAILS=${ADMIN_EMAILS}
     restart: unless-stopped
     depends_on:
       db:

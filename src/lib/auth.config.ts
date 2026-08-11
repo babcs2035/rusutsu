@@ -75,21 +75,30 @@ export const authConfig: AuthConfig = {
       return session;
     },
     // Override redirect to include Next.js basePath (/rusutsu).
-    // AUTH_URL is origin-only, so baseUrl = http://localhost:3000.
-    // The callback may be called multiple times during signin —
-    // guard against double-prefixing by checking if /rusutsu is already present.
+    // baseUrl is origin-only (from AUTH_URL or request origin).
+    // When url is an OAuth callback URL (e.g. /rusutsu/api/auth/callback/...),
+    // returning it as-is causes an infinite redirect loop. Detect and return
+    // the post-signin destination instead.
     redirect({ url, baseUrl }) {
       const basePath = "/rusutsu";
+
       if (url.startsWith("/")) {
         return `${baseUrl}${basePath}${url}`;
       }
-      if (url.startsWith(baseUrl)) {
-        const withoutBase = url.replace(baseUrl, "");
+
+      // url is a full URL — normalize baseUrl (strip trailing slash)
+      const base = baseUrl.replace(/\/$/, "");
+
+      if (url.startsWith(base)) {
+        const withoutBase = url.replace(base, "");
+        // url is an auth callback URL — return the post-signin destination
+        if (withoutBase.startsWith("/api/auth")) return `${base}${basePath}/`;
         // Already has basePath — return as-is (idempotent)
         if (withoutBase.startsWith(basePath)) return url;
-        return `${baseUrl}${basePath}${withoutBase}`;
+        return `${base}${basePath}${withoutBase}`;
       }
-      return `${baseUrl}${basePath}/`;
+
+      return `${base}${basePath}/`;
     },
   },
   secret: process.env.AUTH_SECRET,
