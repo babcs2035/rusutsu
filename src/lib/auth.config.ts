@@ -24,6 +24,66 @@ export const authConfig: AuthConfig = {
   // @auth/core can parse the action/providerId from the pathname.
   basePath: "/rusutsu/api/auth",
   adapter: PrismaAdapter(prisma),
+  // Explicit cookie config for Cloudflare Access deployment.
+  // Without this, Auth.js infers HTTPS from x-forwarded-proto,
+  // which Cloudflare Access may not forward correctly.
+  cookies: {
+    sessionToken: {
+      name: `__Secure-authjs.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: true,
+      },
+    },
+    callbackUrl: {
+      name: `__Secure-authjs.callback-url`,
+      options: {
+        sameSite: "lax",
+        path: "/",
+        secure: true,
+      },
+    },
+    csrfToken: {
+      name: `__Host-authjs.csrf-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: true,
+      },
+    },
+    pkceCodeVerifier: {
+      name: `__Secure-authjs.pkce.code_verifier`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: true,
+        maxAge: 900,
+      },
+    },
+    state: {
+      name: `__Secure-authjs.state`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: true,
+        maxAge: 900,
+      },
+    },
+    nonce: {
+      name: `__Secure-authjs.nonce`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: true,
+      },
+    },
+  },
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
@@ -113,4 +173,5 @@ export const authConfig: AuthConfig = {
     },
   },
   secret: process.env.AUTH_SECRET,
+  debug: true,
 };
