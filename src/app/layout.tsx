@@ -2,7 +2,6 @@ import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Geist, Manrope } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { ThemeProvider } from "@/providers/ThemeProvider";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 
@@ -88,7 +87,6 @@ export default function RootLayout({
   return (
     <html
       lang="ja"
-      suppressHydrationWarning
       className={cn(
         bricolage.variable,
         manrope.variable,
@@ -97,9 +95,7 @@ export default function RootLayout({
       )}
     >
       <body className={cn(manrope.className, "bg-[var(--bg-light)]")}>
-        <ThemeProvider>
-          <TooltipProvider>{children}</TooltipProvider>
-        </ThemeProvider>
+        <TooltipProvider>{children}</TooltipProvider>
         <GoogleAnalytics gaId="G-YMEM5C2F4C" />
       </body>
     </html>
