@@ -1,6 +1,7 @@
 "use client";
 
-import { Button, Flex } from "@chakra-ui/react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 
 type Props<TTab extends string> = {
   tabs: readonly TTab[];
@@ -13,42 +14,28 @@ export const DetailTabs = <TTab extends string>({
   activeTab,
   onTabChange,
 }: Props<TTab>) => (
-  <Flex
-    as="nav"
-    position="sticky"
-    top={0}
-    zIndex={10}
-    borderBottom="1px solid"
-    borderColor="gray.100"
-    bg="rgba(255, 255, 255, 0.95)"
-    backdropFilter="blur(16px)"
-    overflowX="auto"
-    css={{
-      "&::-webkit-scrollbar": { display: "none" },
-      msOverflowStyle: "none",
-      scrollbarWidth: "none",
-    }}
+  <Tabs
+    value={activeTab}
+    onValueChange={value => onTabChange(value as TTab)}
+    className="sticky top-0 z-10 overflow-x-auto border-b border-gray-200 bg-white"
+    orientation="horizontal"
   >
-    {tabs.map(tab => (
-      <Button
-        key={tab}
-        onClick={() => onTabChange(tab)}
-        flex={{ base: "1 0 80px", md: "1 0 96px" }}
-        py={4}
-        px={{ base: 4, md: 2 }}
-        textAlign="center"
-        fontSize={{ base: "sm", md: "md" }}
-        fontWeight="700"
-        bg="transparent"
-        borderRadius={0}
-        borderBottom={activeTab === tab ? "2px solid" : "none"}
-        borderColor={activeTab === tab ? "brand.500" : "transparent"}
-        color={activeTab === tab ? "brand.600" : "gray.500"}
-        _hover={{ bg: "gray.50", color: "brand.600" }}
-        transition="all 0.2s"
-      >
-        {tab}
-      </Button>
-    ))}
-  </Flex>
+    <TabsList className="bg-transparent border-0 gap-0 h-auto p-0 flex">
+      {tabs.map(tab => (
+        <TabsTrigger
+          key={tab}
+          value={tab}
+          className={cn(
+            "flex-1 py-3.5 px-2 md:px-4 text-center rounded-none border-b-2 border-transparent text-gray-600 hover:bg-gray-50 hover:text-blue-700 transition-all duration-200",
+            "text-sm md:text-base font-medium",
+            "min-w-[80px] md:min-w-[96px]",
+            "data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:font-bold data-[state=active]:bg-transparent",
+            "after:hidden",
+          )}
+        >
+          {tab}
+        </TabsTrigger>
+      ))}
+    </TabsList>
+  </Tabs>
 );

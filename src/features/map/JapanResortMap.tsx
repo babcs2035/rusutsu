@@ -1,6 +1,5 @@
 "use client";
 
-import { Box } from "@chakra-ui/react";
 import L from "leaflet";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -524,15 +523,14 @@ export const JapanResortMap = memo(function JapanResortMap({
   } = useMapZoomInteractionSurface(onUserMapZoomInteraction);
 
   return (
-    <Box
+    <div
       ref={mapZoomSurfaceRef}
       data-map-zoom-surface="true"
       data-map-tile-variant={mapTileVariant}
       data-map-course-color-mode={courseColorMode}
       data-map-finalized-focus={isFinalizedFocusMode ? "true" : "false"}
       data-map-presentation={mapPresentation}
-      h="100%"
-      w="100%"
+      className="relative z-0 h-full w-full"
       onDoubleClickCapture={handleMapDoubleClickCapture}
       onTouchCancelCapture={handleMapTouchEndCapture}
       onTouchEndCapture={handleMapTouchEndCapture}
@@ -555,7 +553,7 @@ export const JapanResortMap = memo(function JapanResortMap({
         boxZoom={!isPreviewMap}
         keyboard={!isPreviewMap}
         attributionControl={!isPreviewMap}
-        style={{ width: "100%", height: "100%" }}
+        className="w-full h-full"
       >
         <TileLayer
           key={mapTileVariant}
@@ -719,21 +717,8 @@ export const JapanResortMap = memo(function JapanResortMap({
         />
       </MapContainer>
       {!isPreviewMap && (
-        <Box
-          position="absolute"
-          top={{
-            base: "calc(env(safe-area-inset-top, 0px) + 4.25rem)",
-            md: 4,
-          }}
-          left={4}
-          zIndex={1000}
-          display="flex"
-          flexDirection="column"
-          gap={2}
-          alignItems="flex-start"
-          pointerEvents="none"
-        >
-          <Box pointerEvents="auto">
+        <div className="absolute left-4 z-[750] flex flex-col gap-2 items-start pointer-events-none top-[calc(env(safe-area-inset-top,0px)+4.25rem)] md:top-4">
+          <div className="pointer-events-auto">
             <FinalizedMapModeControl
               mode={courseColorMode}
               onModeChange={setCourseColorMode}
@@ -742,16 +727,16 @@ export const JapanResortMap = memo(function JapanResortMap({
               showOpenOnly={showOpenFinalizedOnly}
               onShowOpenOnlyChange={setShowOpenFinalizedOnly}
             />
-          </Box>
-          <Box pointerEvents="auto">
+          </div>
+          <div className="pointer-events-auto">
             <FinalizedMapLegend
               mode={courseColorMode}
               hasCourses={hasFinalizedCourses}
               hasLifts={hasFinalizedLifts}
             />
-          </Box>
-        </Box>
+          </div>
+        </div>
       )}
-    </Box>
+    </div>
   );
 });

@@ -1,16 +1,18 @@
 "use client";
 
-import {
-  Box,
-  Button,
-  Flex,
-  Grid,
-  Input,
-  NativeSelect,
-  Text,
-} from "@chakra-ui/react";
 import { Plus, Trash2 } from "lucide-react";
 import { useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import type {
   LiftTicketSearchInput,
   TicketDayPlan,
@@ -41,7 +43,6 @@ export const TicketPartyEditor = ({
   value,
   onChange,
   durationHint,
-  compact = false,
   onInputBlur,
   onInputFocus,
 }: Props) => {
@@ -134,32 +135,25 @@ export const TicketPartyEditor = ({
   };
 
   return (
-    <Flex flexDirection="column" gap={compact ? 2.5 : 4}>
-      <Flex flexDirection="column" gap={2}>
-        <Flex alignItems="center" justifyContent="space-between" gap={2}>
-          <Text color="gray.600" fontSize="xs" fontWeight="800">
-            利用日
-          </Text>
+    <div className="flex flex-col gap-2.5 md:gap-4">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-gray-600 text-xs font-medium">利用日</p>
           <Button
             type="button"
-            size="xs"
-            h={7}
-            px={2.5}
-            variant="outline"
-            borderColor="brand.300"
-            color="brand.700"
-            gap={1}
+            variant="default"
+            className="flex-shrink-0 h-9 gap-1 font-bold text-sm"
             onClick={addDay}
           >
             <Plus size={14} />
             日を追加
           </Button>
-        </Flex>
+        </div>
 
         {days.map((day, index) => {
           const duration = day.duration;
           return (
-            <Flex key={day.id} gap={1.5} alignItems="center" flexWrap="wrap">
+            <div key={day.id} className="flex gap-1.5 items-center flex-wrap">
               <Input
                 aria-label={`${index + 1}日目の日付`}
                 type="date"
@@ -172,52 +166,46 @@ export const TicketPartyEditor = ({
                 }
                 onBlur={onInputBlur}
                 onFocus={onInputFocus}
-                h={9}
-                flex="1 1 9rem"
-                minW="8.5rem"
-                bg="white"
-                borderColor="gray.300"
-                fontSize="sm"
+                className="flex-[1_1_9rem] min-w-[8.5rem] h-[2.25rem]"
               />
 
               {/* 「1日（ナイター無）」「1日（ナイター込）」「○時間」の3択 */}
-              <NativeSelect.Root size="sm" width="10.5rem" flexShrink={0}>
-                <NativeSelect.Field
+              <Select
+                value={
+                  duration.kind === "hours"
+                    ? "hours"
+                    : duration.withNight
+                      ? "day-night"
+                      : "day"
+                }
+                onValueChange={value => {
+                  updateDay(day.id, current => ({
+                    ...current,
+                    duration:
+                      value === "hours"
+                        ? { kind: "hours", hours: 4 }
+                        : {
+                            kind: "day",
+                            withNight: value === "day-night",
+                          },
+                  }));
+                }}
+              >
+                <SelectTrigger
+                  className="h-9 w-[10.5rem] flex-shrink-0"
                   aria-label={`${index + 1}日目の滑る長さ`}
-                  value={
-                    duration.kind === "hours"
-                      ? "hours"
-                      : duration.withNight
-                        ? "day-night"
-                        : "day"
-                  }
-                  onChange={event => {
-                    const choice = event.target.value;
-                    updateDay(day.id, current => ({
-                      ...current,
-                      duration:
-                        choice === "hours"
-                          ? { kind: "hours", hours: 4 }
-                          : {
-                              kind: "day",
-                              withNight: choice === "day-night",
-                            },
-                    }));
-                  }}
-                  h={9}
-                  bg="white"
-                  borderColor="gray.300"
-                  fontSize="sm"
                 >
-                  <option value="day">1日（ナイター無）</option>
-                  <option value="day-night">1日（ナイター込）</option>
-                  <option value="hours">時間で指定</option>
-                </NativeSelect.Field>
-                <NativeSelect.Indicator />
-              </NativeSelect.Root>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="day">1日（ナイター無）</SelectItem>
+                  <SelectItem value="day-night">1日（ナイター込）</SelectItem>
+                  <SelectItem value="hours">時間で指定</SelectItem>
+                </SelectContent>
+              </Select>
 
               {duration.kind === "hours" && (
-                <Flex alignItems="center" gap={1} flexShrink={0}>
+                <div className="flex items-center gap-1 flex-shrink-0">
                   <Input
                     aria-label={`${index + 1}日目の滑る時間`}
                     type="text"
@@ -236,122 +224,83 @@ export const TicketPartyEditor = ({
                     }}
                     onBlur={onInputBlur}
                     onFocus={onInputFocus}
-                    h={9}
-                    w="3.5rem"
-                    px={1}
-                    bg="white"
-                    borderColor="gray.300"
-                    fontSize="sm"
-                    textAlign="center"
+                    className="w-14 h-[2.25rem] px-1 text-center"
                   />
-                  <Text color="gray.700" fontSize="sm" fontWeight="700">
-                    時間
-                  </Text>
-                </Flex>
+                  <p className="text-gray-700 text-sm font-medium">時間</p>
+                </div>
               )}
 
               <Button
                 type="button"
                 aria-label={`${index + 1}日目を削除`}
                 size="xs"
-                h={9}
-                w={9}
-                p={0}
-                flexShrink={0}
+                className="h-9 w-9 p-0 text-gray-500"
                 variant="ghost"
-                color="gray.500"
                 disabled={days.length <= 1}
                 onClick={() => removeDay(day.id)}
               >
                 <Trash2 size={16} />
               </Button>
-            </Flex>
+            </div>
           );
         })}
 
         {durationHint && (
-          <Text color="gray.600" fontSize="0.68rem" lineHeight="1.6">
+          <p className="text-gray-600 text-[0.6875rem] leading-relaxed">
             {durationHint}
-          </Text>
+          </p>
         )}
-      </Flex>
+      </div>
 
-      <Flex flexDirection="column" gap={2}>
-        <Flex alignItems="center" justifyContent="space-between" gap={2}>
-          <Text color="gray.600" fontSize="xs" fontWeight="800">
-            利用者情報
-          </Text>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-gray-600 text-xs font-medium">利用者情報</p>
           <Button
             type="button"
-            size="xs"
-            h={7}
-            px={2.5}
-            variant="outline"
-            borderColor="brand.300"
-            color="brand.700"
-            gap={1}
+            variant="default"
+            className="flex-shrink-0 h-9 gap-1 font-bold text-sm"
             onClick={addGroup}
           >
-            <Plus size={13} />
+            <Plus size={14} />
             利用者を追加
           </Button>
-        </Flex>
+        </div>
         {value.party.map(group => (
-          <Grid
+          <div
             key={group.id}
-            templateColumns="minmax(0, 1fr) 4.25rem 4rem 1.75rem"
-            gap={1.5}
-            alignItems="end"
+            className="grid grid-cols-[minmax(0,1fr)_4.25rem_4rem_1.75rem] gap-1.5 items-end"
           >
-            <Box>
-              <Text
-                as="label"
-                display="block"
-                mb={0.5}
-                color="gray.500"
-                fontSize="0.68rem"
-                fontWeight="700"
-              >
+            <div>
+              <Label className="block mb-0.5 text-gray-500 text-[0.6875rem] font-medium">
                 区分
-              </Text>
-              <NativeSelect.Root size="sm">
-                <NativeSelect.Field
-                  aria-label="人物区分"
-                  value={group.category}
-                  onChange={event =>
-                    updateGroup(group.id, current => ({
-                      ...current,
-                      category: event.target.value as TicketPartyCategory,
-                    }))
-                  }
-                  h={9}
-                  px={2}
-                  bg="white"
-                  borderColor="gray.300"
-                  fontSize="xs"
-                >
+              </Label>
+              <Select
+                value={group.category}
+                onValueChange={value =>
+                  updateGroup(group.id, current => ({
+                    ...current,
+                    category: value as TicketPartyCategory,
+                  }))
+                }
+              >
+                <SelectTrigger className="h-9 w-full px-2 bg-white border border-gray-200 text-xs">
+                  <SelectValue className="min-w-0 truncate" />
+                </SelectTrigger>
+                <SelectContent>
                   {Object.entries(TICKET_PARTY_CATEGORY_LABELS).map(
                     ([category, label]) => (
-                      <option key={category} value={category}>
+                      <SelectItem key={category} value={category}>
                         {label}
-                      </option>
+                      </SelectItem>
                     ),
                   )}
-                </NativeSelect.Field>
-                <NativeSelect.Indicator />
-              </NativeSelect.Root>
-            </Box>
-            <Box>
-              <Text
-                as="label"
-                display="block"
-                mb={0.5}
-                color="gray.500"
-                fontSize="0.68rem"
-                fontWeight="700"
-              >
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="block mb-0.5 text-gray-500 text-[0.6875rem] font-medium">
                 年齢
-              </Text>
+              </Label>
               <Input
                 aria-label={`${TICKET_PARTY_CATEGORY_LABELS[group.category]}の年齢`}
                 type="text"
@@ -367,34 +316,16 @@ export const TicketPartyEditor = ({
                 }
                 onBlur={onInputBlur}
                 onFocus={onInputFocus}
-                h={{ base: 9, md: 8 }}
-                px={{ base: 0.5, md: 1 }}
-                bg={{ base: "gray.50", md: "white" }}
-                borderColor={{ base: "gray.300", md: "gray.200" }}
-                borderWidth={{ base: "1.5px", md: "1px" }}
-                color="gray.800"
-                borderRadius="md"
-                fontSize={{ base: "1rem", md: "xs" }}
-                textAlign="center"
-                scrollMarginTop="calc(env(safe-area-inset-top, 0px) + 5.5rem)"
-                _focus={{
-                  bg: "white",
-                  borderColor: "brand.500",
-                  boxShadow: "0 0 0 2px rgba(59, 130, 246, 0.12)",
-                }}
+                className={cn(
+                  "text-center h-9 bg-gray-50 border-gray-200 border-[1.5px] text-base",
+                  "md:h-8 md:bg-white md:border-gray-200 md:border md:text-sm",
+                )}
               />
-            </Box>
-            <Box>
-              <Text
-                as="label"
-                display="block"
-                mb={0.5}
-                color="gray.500"
-                fontSize="0.68rem"
-                fontWeight="700"
-              >
+            </div>
+            <div>
+              <Label className="block mb-0.5 text-gray-500 text-[0.6875rem] font-medium">
                 人数
-              </Text>
+              </Label>
               <Input
                 aria-label={`${TICKET_PARTY_CATEGORY_LABELS[group.category]}の人数`}
                 type="text"
@@ -412,40 +343,25 @@ export const TicketPartyEditor = ({
                 }
                 onBlur={onInputBlur}
                 onFocus={onInputFocus}
-                h={{ base: 9, md: 8 }}
-                px={{ base: 0.5, md: 1 }}
-                bg={{ base: "gray.50", md: "white" }}
-                borderColor={{ base: "gray.300", md: "gray.200" }}
-                borderWidth={{ base: "1.5px", md: "1px" }}
-                color="gray.800"
-                borderRadius="md"
-                fontSize={{ base: "1rem", md: "xs" }}
-                textAlign="center"
-                scrollMarginTop="calc(env(safe-area-inset-top, 0px) + 5.5rem)"
-                _focus={{
-                  bg: "white",
-                  borderColor: "brand.500",
-                  boxShadow: "0 0 0 2px rgba(59, 130, 246, 0.12)",
-                }}
+                className={cn(
+                  "text-center h-9 bg-gray-50 border-gray-200 border-[1.5px] text-base",
+                  "md:h-8 md:bg-white md:border-gray-200 md:border md:text-sm",
+                )}
               />
-            </Box>
+            </div>
             <Button
               type="button"
               aria-label="この人数行を削除"
-              h={9}
-              minW={7}
-              w={7}
-              p={0}
-              color="gray.500"
-              bg="transparent"
+              className="h-9 min-w-7 w-7 p-0 text-gray-500 bg-transparent"
+              variant="ghost"
               disabled={value.party.length <= 1}
               onClick={() => removeGroup(group.id)}
             >
               <Trash2 size={14} />
             </Button>
-          </Grid>
+          </div>
         ))}
-      </Flex>
-    </Flex>
+      </div>
+    </div>
   );
 };

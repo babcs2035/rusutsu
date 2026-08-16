@@ -1,6 +1,15 @@
 "use client";
 
-import { Box, Flex, Heading, Table, Text } from "@chakra-ui/react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { LiftTicketCalculator } from "@/features/lift-ticket/components/LiftTicketCalculator";
 import { LiftTicketPriceTable } from "@/features/lift-ticket/components/LiftTicketPriceTable";
 import type { Resort } from "../types";
@@ -11,162 +20,98 @@ export const TicketsTab = ({ resort }: { resort: Resort }) => {
 
   if (liftTicketData) {
     return (
-      <Flex flexDirection="column" gap={8}>
+      <div className="flex flex-col gap-6">
         <LiftTicketCalculator seasons={resort.liftTickets} />
-        <Box as="section">
-          <Heading size="lg" fontFamily="var(--font-heading)" color="gray.900">
+        <section>
+          <h2 className="text-lg font-bold text-gray-900 font-[var(--font-heading)]">
             公式リフト料金表
-          </Heading>
-          <Text mt={2} mb={4} color="gray.600" fontSize="sm">
+          </h2>
+          <p className="mt-2 mb-4 text-gray-600 text-sm">
             {liftTicketData.season.label_ja}
             の券種・対象・適用日を表示しています。
-          </Text>
+          </p>
           <LiftTicketPriceTable data={liftTicketData} />
-        </Box>
+        </section>
         {(liftTicketData.data_quality.unresolved_questions?.length ?? 0) >
           0 && (
-          <Box
-            p={4}
-            borderRadius="xl"
-            bg="orange.50"
-            border="1px solid"
-            borderColor="orange.200"
-          >
-            <Text color="orange.900" fontSize="sm" fontWeight="900">
+          <Alert className="bg-orange-50 border-orange-300">
+            <AlertTitle className="text-orange-900 text-sm font-semibold">
               公式資料だけでは確定できない条件があります
-            </Text>
-            <Flex mt={2} flexDirection="column" gap={1.5}>
-              {liftTicketData.data_quality.unresolved_questions
-                ?.slice(0, 5)
-                .map(question => (
-                  <Text
-                    key={question.id}
-                    color="orange.900"
-                    fontSize="xs"
-                    lineHeight="1.6"
-                  >
-                    ・{question.question_ja}
-                  </Text>
-                ))}
-            </Flex>
-          </Box>
+            </AlertTitle>
+            <AlertDescription className="mt-1 text-orange-900">
+              <div className="flex flex-col gap-1.5">
+                {liftTicketData.data_quality.unresolved_questions
+                  ?.slice(0, 5)
+                  .map(question => (
+                    <p
+                      key={question.id}
+                      className="text-orange-900 text-xs leading-relaxed"
+                    >
+                      ・{question.question_ja}
+                    </p>
+                  ))}
+              </div>
+            </AlertDescription>
+          </Alert>
         )}
-      </Flex>
+      </div>
     );
   }
 
   return (
-    <Flex flexDirection="column" gap={10}>
-      <Box as="section">
-        <Heading size="lg" fontFamily="var(--font-heading)" color="gray.900">
+    <div className="flex flex-col gap-6">
+      <section>
+        <h2 className="text-lg font-bold text-gray-900 font-[var(--font-heading)]">
           リフト券
-        </Heading>
-        <Box
-          mt={4}
-          w="100%"
-          overflowX="auto"
-          borderRadius="xl"
-          border="1px solid"
-          borderColor="gray.200"
-          bg="white"
-        >
-          <Table.Root size="md">
-            <Table.Header>
-              <Table.Row bg="gray.100">
-                <Table.ColumnHeader
-                  px={6}
-                  py={4}
-                  color="gray.600"
-                  fontWeight="700"
-                  fontSize="sm"
-                  whiteSpace="nowrap"
-                >
-                  券種
-                </Table.ColumnHeader>
-                <Table.ColumnHeader
-                  px={6}
-                  py={4}
-                  color="gray.600"
-                  fontWeight="700"
-                  fontSize="sm"
-                  whiteSpace="nowrap"
-                >
-                  大人
-                </Table.ColumnHeader>
-                <Table.ColumnHeader
-                  px={6}
-                  py={4}
-                  color="gray.600"
-                  fontWeight="700"
-                  fontSize="sm"
-                  whiteSpace="nowrap"
-                >
-                  子供
-                </Table.ColumnHeader>
-                <Table.ColumnHeader
-                  px={6}
-                  py={4}
-                  color="gray.600"
-                  fontWeight="700"
-                  fontSize="sm"
-                  whiteSpace="nowrap"
-                >
-                  シニア
-                </Table.ColumnHeader>
-              </Table.Row>
-            </Table.Header>
-            <Table.Body>
-              {tickets.map(t => (
-                <Table.Row
-                  key={t.id}
-                  borderColor="gray.200"
-                  _hover={{ bg: "gray.50" }}
-                >
-                  <Table.Cell
-                    px={6}
-                    py={4}
-                    fontWeight="700"
-                    color="gray.800"
-                    whiteSpace="nowrap"
+        </h2>
+        <Card className="mt-4 overflow-x-auto py-0">
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50">
+                  <TableHead className="table-header-cell">券種</TableHead>
+                  <TableHead className="table-header-cell">大人</TableHead>
+                  <TableHead className="table-header-cell">子供</TableHead>
+                  <TableHead className="table-header-cell">シニア</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {tickets.length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={4}
+                      className="px-4 py-8 text-center text-sm font-semibold text-gray-500"
+                    >
+                      リフト券データがありません
+                    </TableCell>
+                  </TableRow>
+                )}
+                {tickets.map(t => (
+                  <TableRow
+                    key={t.id}
+                    className="border-gray-200 hover:bg-gray-50 hover:text-gray-900"
                   >
-                    {t.name}
-                  </Table.Cell>
-                  <Table.Cell
-                    px={6}
-                    py={4}
-                    color="gray.800"
-                    fontFamily="mono"
-                    fontWeight="700"
-                    whiteSpace="nowrap"
-                  >
-                    {t.priceAdult ? `¥${t.priceAdult.toLocaleString()}` : "-"}
-                  </Table.Cell>
-                  <Table.Cell
-                    px={6}
-                    py={4}
-                    color="gray.800"
-                    fontFamily="mono"
-                    fontWeight="700"
-                    whiteSpace="nowrap"
-                  >
-                    {t.priceChild ? `¥${t.priceChild.toLocaleString()}` : "-"}
-                  </Table.Cell>
-                  <Table.Cell
-                    px={6}
-                    py={4}
-                    color="gray.800"
-                    fontFamily="mono"
-                    fontWeight="700"
-                    whiteSpace="nowrap"
-                  >
-                    {t.priceSenior ? `¥${t.priceSenior.toLocaleString()}` : "-"}
-                  </Table.Cell>
-                </Table.Row>
-              ))}
-            </Table.Body>
-          </Table.Root>
-        </Box>
-      </Box>
-    </Flex>
+                    <TableCell className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">
+                      {t.name}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-gray-700 font-mono font-semibold whitespace-nowrap">
+                      {t.priceAdult ? `¥${t.priceAdult.toLocaleString()}` : "-"}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-gray-700 font-mono font-semibold whitespace-nowrap">
+                      {t.priceChild ? `¥${t.priceChild.toLocaleString()}` : "-"}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-gray-700 font-mono font-semibold whitespace-nowrap">
+                      {t.priceSenior
+                        ? `¥${t.priceSenior.toLocaleString()}`
+                        : "-"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </section>
+    </div>
   );
 };

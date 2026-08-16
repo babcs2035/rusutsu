@@ -1,6 +1,5 @@
 "use client";
 
-import { Box, Flex, Heading } from "@chakra-ui/react";
 import { useMemo, useState } from "react";
 import type { LiftTicketData, LiftTicketSearchInput } from "../types";
 import {
@@ -61,25 +60,18 @@ export const LiftTicketCalculator = ({
   }, [data, plan]);
 
   return (
-    <Box
-      as="section"
-      p={{ base: 4, md: 5 }}
-      borderRadius="2xl"
-      bg="gray.50"
-      border="1px solid"
-      borderColor="gray.200"
-    >
-      <Heading size="md" color="gray.900" fontFamily="var(--font-heading)">
+    <section className="rounded-2xl bg-gray-50 border border-gray-200 p-4 md:p-5">
+      <h2 className="text-lg font-bold text-gray-900 font-[var(--font-heading)]">
         日付・人数から料金を計算
-      </Heading>
-      <Flex mt={4} flexDirection="column" gap={4}>
+      </h2>
+      <div className="mt-4 flex flex-col gap-4">
         <TicketPartyEditor
           value={input}
           onChange={setInput}
           durationHint={durationHint}
         />
         {plan && <TicketPlanCard plan={plan} />}
-      </Flex>
-    </Box>
+      </div>
+    </section>
   );
 };

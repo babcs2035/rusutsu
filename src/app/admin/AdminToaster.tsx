@@ -1,43 +1,59 @@
 "use client";
 
-import { Box, createToaster, Toast, Toaster } from "@chakra-ui/react";
-import type { CSSProperties } from "react";
+import { Toaster, toast } from "sonner";
 
-export const adminToaster = createToaster({
-  placement: "top-end",
-  duration: 3000,
-});
+/**
+ * 管理画面用の Toast 通知
+ *
+ * 使い方の例:
+ * ```tsx
+ * import { adminToaster } from "@/app/admin/AdminToaster"
+ * adminToaster.create({ title: "保存しました" })
+ * ```
+ */
+export const adminToaster = {
+  create: (options: {
+    title?: string;
+    description?: string;
+    type?: "success" | "error" | "warning" | "info";
+  }) => {
+    const { title, description, type = "info" } = options;
+    switch (type) {
+      case "success":
+        toast.success(title ?? "");
+        break;
+      case "error":
+        toast.error(title ?? "");
+        break;
+      case "warning":
+        toast.warning(title ?? "");
+        break;
+      default:
+        toast(title ?? "");
+    }
+    if (description) {
+      toast(description);
+    }
+  },
+};
 
+/**
+ * 管理画面用の Toaster コンポーネント
+ *
+ * layout.tsx でインポートして使用してください:
+ * ```tsx
+ * import { AdminToaster } from "@/app/admin/AdminToaster"
+ * // ...
+ * <AdminToaster />
+ * ```
+ */
 export function AdminToaster() {
-  const rootStyle: CSSProperties = {
-    width: "380px",
-    maxWidth: "100vw",
-    padding: "12px 16px",
-    borderRadius: "8px",
-    display: "flex",
-    alignItems: "center",
-    gap: "12px",
-  };
-
-  const contentStyle: CSSProperties = {
-    flex: 1,
-    minWidth: 0,
-  };
-
   return (
-    <Toaster toaster={adminToaster}>
-      {toast => (
-        <Toast.Root id={toast.id} style={rootStyle}>
-          <Toast.Indicator />
-          <Box style={contentStyle}>
-            {toast.title && <Toast.Title>{toast.title}</Toast.Title>}
-            {toast.description && (
-              <Toast.Description>{toast.description}</Toast.Description>
-            )}
-          </Box>
-          <Toast.CloseTrigger />
-        </Toast.Root>
-      )}
-    </Toaster>
+    <Toaster
+      position="top-right"
+      toastOptions={{
+        className: "w-[380px] max-w-full rounded-lg px-4 py-3",
+      }}
+    />
   );
 }

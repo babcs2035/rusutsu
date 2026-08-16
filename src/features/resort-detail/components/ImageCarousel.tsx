@@ -1,9 +1,20 @@
 "use client";
 
-import { Box, Button, Flex } from "@chakra-ui/react";
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
+import {
+  Carousel,
+  type CarouselApi,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 
+/**
+ * スキー場の画像をスライドショーで表示する-carousel。
+ * 4秒ごとに自動で次の画像に切り替わる。
+ */
 export const ImageCarousel = ({
   images,
   alt,
@@ -11,128 +22,66 @@ export const ImageCarousel = ({
   images: string[];
   alt: string;
 }) => {
-  const [currentSlide, setCurrentSlide] = useState(0);
+  const [api, setApi] = useState<CarouselApi | null>(null);
+  const [, setCurrentSlide] = useState(0);
 
-  const nextSlide = useCallback(
-    () => setCurrentSlide(s => (s === images.length - 1 ? 0 : s + 1)),
-    [images.length],
-  );
-  const prevSlide = useCallback(
-    () => setCurrentSlide(s => (s === 0 ? images.length - 1 : s - 1)),
-    [images.length],
-  );
+  const onNext = useCallback(() => {
+    setCurrentSlide(s => (s === images.length - 1 ? 0 : s + 1));
+  }, [images.length]);
 
   useEffect(() => {
-    if (!images || images.length <= 1) return;
-    const interval = setInterval(nextSlide, 4000);
-    return () => clearInterval(interval);
-  }, [images, nextSlide]);
+    if (!api || images.length <= 1) return;
+    api.on("select", () => {
+      setCurrentSlide(api.selectedScrollSnap());
+    });
+    const subscribeApi = api;
+
+    const interval = setInterval(onNext, 4000);
+    return () => {
+      clearInterval(interval);
+      subscribeApi.off("select", () => {});
+    };
+  }, [api, images.length, onNext]);
 
   if (!images || images.length === 0)
     return (
-      <Box
-        h={{ base: "160px", md: "256px" }}
-        w="100%"
-        flexShrink={0}
-        bg="#d1d5db"
-      />
+      <div className="h-[160px] w-full shrink-0 md:h-[256px] bg-gray-100" />
     );
 
   return (
-    <Box
-      position="relative"
-      h={{ base: "160px", md: "256px" }}
-      w="100%"
-      flexShrink={0}
-      overflow="hidden"
+    <Carousel
+      className="w-full shrink-0 rounded-xl overflow-hidden"
+      opts={{ align: "start" }}
+      setApi={setApi}
     >
-      <Flex
-        h="100%"
-        w="100%"
-        transition="transform 0.7s ease-in-out"
-        style={{ transform: `translateX(-${currentSlide * 100}%)` }}
-      >
-        {images.map((src: string) => (
-          <Box key={src} position="relative" h="100%" w="100%" flexShrink={0}>
-            <Image
-              src={src}
-              alt={alt}
-              fill
-              style={{ objectFit: "contain" }}
-              unoptimized
-              priority
-            />
-          </Box>
+      <CarouselContent className="h-[160px] md:h-[256px]">
+        {images.map(src => (
+          <CarouselItem key={src}>
+            <div className="relative h-full w-full bg-gray-100">
+              <Image
+                src={src}
+                alt={alt}
+                fill
+                objectFit="contain"
+                unoptimized
+                priority
+              />
+            </div>
+          </CarouselItem>
         ))}
-      </Flex>
+      </CarouselContent>
       {images.length > 1 && (
         <>
-          <Button
-            onClick={prevSlide}
-            position="absolute"
-            left={3}
-            top="50%"
-            transform="translateY(-50%)"
-            display="flex"
-            h={7}
-            w={7}
-            alignItems="center"
-            justifyContent="center"
-            borderRadius="full"
-            bg="blackAlpha.500"
-            fontSize="2xl"
-            color="white"
-            boxShadow="lg"
-            backdropFilter="blur(4px)"
-            _hover={{
-              bg: "blackAlpha.700",
-              transform: "translateY(-50%) scale(1.1)",
-            }}
-            _focus={{
-              outline: "none",
-              ring: "2px",
-              ringColor: "whiteAlpha.500",
-            }}
-            minW="auto"
-            p={0}
-            aria-label="前の画像"
-          >
-            ‹
-          </Button>
-          <Button
-            onClick={nextSlide}
-            position="absolute"
-            right={3}
-            top="50%"
-            transform="translateY(-50%)"
-            display="flex"
-            h={7}
-            w={7}
-            alignItems="center"
-            justifyContent="center"
-            borderRadius="full"
-            bg="blackAlpha.500"
-            fontSize="2xl"
-            color="white"
-            boxShadow="lg"
-            backdropFilter="blur(4px)"
-            _hover={{
-              bg: "blackAlpha.700",
-              transform: "translateY(-50%) scale(1.1)",
-            }}
-            _focus={{
-              outline: "none",
-              ring: "2px",
-              ringColor: "whiteAlpha.500",
-            }}
-            minW="auto"
-            p={0}
-            aria-label="次の画像"
-          >
-            ›
-          </Button>
+          <CarouselPrevious
+            className="left-3 right-auto h-7 w-7 bg-black/50 text-white shadow-sm backdrop-blur-sm hover:bg-black/70"
+            size="icon"
+          />
+          <CarouselNext
+            className="right-3 left-auto h-7 w-7 bg-black/50 text-white shadow-sm backdrop-blur-sm hover:bg-black/70"
+            size="icon"
+          />
         </>
       )}
-    </Box>
+    </Carousel>
   );
 };

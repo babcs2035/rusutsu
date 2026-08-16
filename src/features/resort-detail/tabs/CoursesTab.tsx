@@ -1,15 +1,24 @@
 "use client";
 
-import {
-  Box,
-  Button,
-  Flex,
-  Grid,
-  Heading,
-  NativeSelect,
-  Table,
-} from "@chakra-ui/react";
 import { useMemo, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import type { SelectedMapFeature } from "@/features/map/JapanResortMap";
 import type { ElevationProfileMapPoint } from "@/features/map/types";
 import type { FinalizedResortMapData } from "@/lib/finalizedResortGeojsonShared";
@@ -17,6 +26,7 @@ import {
   COURSE_DIFFICULTY_META,
   getCourseDifficulty,
 } from "@/lib/finalizedResortGeojsonShared";
+import { cn } from "@/lib/utils";
 import { SelectedCourseDetail } from "../components/SelectedCourseDetail";
 import { StatCard } from "../components/StatCard";
 import type { FinalizedCourseGroup, Resort } from "../types";
@@ -216,12 +226,9 @@ export const CoursesTab = ({
 
   if (hasFinalizedCourses) {
     return (
-      <Flex flexDirection="column" gap={10}>
-        <Box as="section">
-          <Grid
-            templateColumns={{ base: "repeat(2, 1fr)", md: "repeat(4, 1fr)" }}
-            gap={4}
-          >
+      <div className="flex flex-col gap-6">
+        <section>
+          <div className="grid grid-cols-2 gap-4">
             <StatCard title="総コース数" value={`${finalizedStats.total}`} />
             <StatCard
               title="最長滑走距離"
@@ -239,226 +246,188 @@ export const CoursesTab = ({
               title="標高差"
               value={formatMeters(finalizedStats.maxElevationDiff)}
             />
-          </Grid>
-        </Box>
+          </div>
+        </section>
 
-        <Box as="section">
-          <Heading size="lg" fontFamily="var(--font-heading)" color="gray.900">
+        <section>
+          <h2 className="text-lg font-bold text-gray-900 font-[var(--font-heading)]">
             レベル別割合
-          </Heading>
-          <Flex
-            mt={5}
-            h={6}
-            w="100%"
-            overflow="hidden"
-            borderRadius="full"
-            bg="gray.100"
-            border="1px solid"
-            borderColor="gray.200"
-            fontSize="xs"
-            fontWeight="700"
-            color="white"
-          >
-            <Flex
-              w={`${Math.max(finalizedStats.beginnerPercent, 5)}%`}
-              bg="green.500"
-              alignItems="center"
-              justifyContent="center"
-              display={finalizedStats.beginnerPercent > 0 ? "flex" : "none"}
+          </h2>
+          <div className="mt-4 h-6 w-full overflow-hidden rounded-full bg-gray-100 border border-gray-200 text-xs font-bold text-white flex">
+            <div
+              className="bg-green-500 flex items-center justify-center px-1"
+              style={{
+                width: `${Math.max(finalizedStats.beginnerPercent, 5)}%`,
+              }}
             >
-              {finalizedStats.beginnerPercent}%
-            </Flex>
-            <Flex
-              w={`${Math.max(finalizedStats.intermediatePercent, 5)}%`}
-              bg="blue.500"
-              alignItems="center"
-              justifyContent="center"
-              display={finalizedStats.intermediatePercent > 0 ? "flex" : "none"}
+              {finalizedStats.beginnerPercent >= 15 &&
+                `${finalizedStats.beginnerPercent}%`}
+            </div>
+            <div
+              className="bg-blue-500 flex items-center justify-center px-1"
+              style={{
+                width: `${Math.max(finalizedStats.intermediatePercent, 5)}%`,
+              }}
             >
-              {finalizedStats.intermediatePercent}%
-            </Flex>
-            <Flex
-              w={`${Math.max(finalizedStats.advancedPercent, 5)}%`}
-              bg="red.500"
-              alignItems="center"
-              justifyContent="center"
-              display={finalizedStats.advancedPercent > 0 ? "flex" : "none"}
+              {finalizedStats.intermediatePercent >= 15 &&
+                `${finalizedStats.intermediatePercent}%`}
+            </div>
+            <div
+              className="bg-red-500 flex items-center justify-center px-1"
+              style={{
+                width: `${Math.max(finalizedStats.advancedPercent, 5)}%`,
+              }}
             >
-              {finalizedStats.advancedPercent}%
-            </Flex>
-          </Flex>
-          <Flex
-            justifyContent="center"
-            gap={6}
-            mt={3}
-            fontSize="sm"
-            color="gray.600"
-          >
-            <Flex alignItems="center" gap={2}>
-              <Box w={3} h={3} borderRadius="full" bg="green.500" /> 初級
-            </Flex>
-            <Flex alignItems="center" gap={2}>
-              <Box w={3} h={3} borderRadius="full" bg="blue.500" /> 中級
-            </Flex>
-            <Flex alignItems="center" gap={2}>
-              <Box w={3} h={3} borderRadius="full" bg="red.500" /> 上級
-            </Flex>
-          </Flex>
-        </Box>
+              {finalizedStats.advancedPercent >= 15 &&
+                `${finalizedStats.advancedPercent}%`}
+            </div>
+          </div>
+          <div className="mt-3 flex justify-center gap-6 text-sm text-gray-600">
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-2.5 rounded-full bg-green-500 flex-shrink-0" />{" "}
+              初級
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-2.5 rounded-full bg-blue-500 flex-shrink-0" />{" "}
+              中級
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0" />{" "}
+              上級
+            </div>
+          </div>
+        </section>
 
-        <Box as="section">
-          <Flex
-            flexDirection={{ base: "column", md: "row" }}
-            gap={4}
-            alignItems={{ md: "center" }}
-            justifyContent={{ md: "space-between" }}
-          >
-            <Heading
-              size="lg"
-              fontFamily="var(--font-heading)"
-              color="gray.900"
-            >
+        <section>
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <h2 className="text-lg font-bold text-gray-900 font-[var(--font-heading)]">
               コース一覧
-            </Heading>
-            <NativeSelect.Root
-              w={{ base: "100%", md: "200px" }}
-              size="md"
-              variant="outline"
+            </h2>
+            <Select
+              value={difficultyFilter}
+              onValueChange={v => v && setDifficultyFilter(v)}
             >
-              <NativeSelect.Field
-                value={difficultyFilter}
-                onChange={e => setDifficultyFilter(e.target.value)}
-                bg="white"
-                color="gray.800"
-                borderColor="gray.200"
-                _focus={{ borderColor: "brand.500" }}
-              >
+              <SelectTrigger className="w-full md:w-[200px] h-10">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
                 {difficultyOptions.map(opt => (
-                  <option key={opt} value={opt}>
+                  <SelectItem key={opt} value={opt}>
                     {opt === "全て" ? "すべての難易度" : opt}
-                  </option>
+                  </SelectItem>
                 ))}
-              </NativeSelect.Field>
-            </NativeSelect.Root>
-          </Flex>
-          <Box
-            mt={4}
-            w="100%"
-            overflowX="auto"
-            borderRadius="xl"
-            border="1px solid"
-            borderColor="gray.200"
-            bg="white"
-          >
-            <Table.Root size="md">
-              <Table.Header>
-                <Table.Row bg="gray.100">
-                  <Table.ColumnHeader px={6} py={4}>
-                    コース名
-                  </Table.ColumnHeader>
-                  <Table.ColumnHeader px={6} py={4}>
-                    難易度
-                  </Table.ColumnHeader>
-                  <Table.ColumnHeader px={6} py={4}>
-                    <Button
-                      onClick={() => handleSort("distance")}
-                      variant="ghost"
-                      p={0}
-                      h="auto"
-                      minW="auto"
-                      color="gray.600"
-                      _hover={{ color: "brand.600" }}
-                    >
-                      距離{" "}
-                      {sortConfig?.key === "distance" &&
-                        (sortConfig.direction === "asc" ? "▲" : "▼")}
-                    </Button>
-                  </Table.ColumnHeader>
-                  <Table.ColumnHeader px={6} py={4}>
-                    状況
-                  </Table.ColumnHeader>
-                  <Table.ColumnHeader px={6} py={4}>
-                    圧雪
-                  </Table.ColumnHeader>
-                  <Table.ColumnHeader px={6} py={4}>
-                    スノボ
-                  </Table.ColumnHeader>
-                </Table.Row>
-              </Table.Header>
-              <Table.Body>
-                {processedFinalizedCourseGroups.map(group => {
-                  const primaryCourse = group.courses[0];
-                  const isSelected =
-                    selectedFinalizedFeature?.kind === "course" &&
-                    selectedFinalizedFeature.id === group.id;
-                  return (
-                    <Table.Row
-                      key={group.id}
-                      cursor="pointer"
-                      bg={isSelected ? "blue.50" : "white"}
-                      borderColor="gray.200"
-                      _hover={{ bg: isSelected ? "blue.100" : "gray.50" }}
-                      onClick={() =>
-                        onSelectedFinalizedFeatureChange({
-                          kind: "course",
-                          id: group.id,
-                        })
-                      }
-                    >
-                      <Table.Cell
-                        px={6}
-                        py={4}
-                        fontWeight="800"
-                        whiteSpace="nowrap"
+              </SelectContent>
+            </Select>
+          </div>
+          <Card className="mt-4 w-full overflow-x-auto py-0">
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-50">
+                    <TableHead className="table-header-cell">
+                      コース名
+                    </TableHead>
+                    <TableHead className="table-header-cell">難易度</TableHead>
+                    <TableHead className="table-header-cell">
+                      <Button
+                        onClick={() => handleSort("distance")}
+                        variant="ghost"
+                        className="px-0 py-0 h-auto min-w-0 text-gray-600 hover:text-blue-700"
                       >
-                        {group.displayName}
-                      </Table.Cell>
-                      <Table.Cell px={6} py={4} whiteSpace="nowrap">
-                        <Box
-                          as="span"
-                          px={2}
-                          py={1}
-                          borderRadius="md"
-                          bg="gray.100"
-                          color="gray.700"
-                          fontSize="xs"
-                          whiteSpace="nowrap"
-                        >
-                          {getCourseGroupDifficulty(group)}
-                        </Box>
-                      </Table.Cell>
-                      <Table.Cell px={6} py={4} whiteSpace="nowrap">
-                        {formatMeters(getCourseGroupDistance(group))}
-                      </Table.Cell>
-                      <Table.Cell px={6} py={4} whiteSpace="nowrap">
-                        {formatCourseStatus(primaryCourse?.properties.status)}
-                      </Table.Cell>
-                      <Table.Cell px={6} py={4} whiteSpace="nowrap">
-                        {formatPisteStatus(primaryCourse?.properties.piste)}
-                      </Table.Cell>
-                      <Table.Cell px={6} py={4} whiteSpace="nowrap">
-                        {primaryCourse?.properties.snowboard ?? "--"}
-                      </Table.Cell>
-                    </Table.Row>
-                  );
-                })}
-              </Table.Body>
-            </Table.Root>
-          </Box>
-        </Box>
-      </Flex>
+                        距離{" "}
+                        {sortConfig?.key === "distance" &&
+                          (sortConfig.direction === "asc" ? "▲" : "▼")}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="table-header-cell">状況</TableHead>
+                    <TableHead className="table-header-cell">圧雪</TableHead>
+                    <TableHead className="table-header-cell">スノボ</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {processedFinalizedCourseGroups.length === 0 && (
+                    <TableRow>
+                      <TableCell
+                        colSpan={6}
+                        className="px-4 py-8 text-center text-sm font-semibold text-gray-500"
+                      >
+                        条件に合うコースがありません
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {processedFinalizedCourseGroups.map(group => {
+                    const primaryCourse = group.courses[0];
+                    const isSelected =
+                      selectedFinalizedFeature?.kind === "course" &&
+                      selectedFinalizedFeature.id === group.id;
+                    return (
+                      <TableRow
+                        key={group.id}
+                        className={cn(
+                          "cursor-pointer",
+                          isSelected
+                            ? "bg-blue-50 hover:bg-blue-100 hover:text-blue-700"
+                            : "bg-white hover:bg-gray-50 hover:text-gray-900",
+                          "border-b border-gray-200",
+                        )}
+                        onClick={() =>
+                          onSelectedFinalizedFeatureChange({
+                            kind: "course",
+                            id: group.id,
+                          })
+                        }
+                      >
+                        <TableCell className="px-4 py-3 font-semibold whitespace-nowrap">
+                          {group.displayName}
+                        </TableCell>
+                        <TableCell className="px-4 py-3 whitespace-nowrap">
+                          <Badge
+                            variant="secondary"
+                            className="text-xs whitespace-nowrap"
+                          >
+                            {getCourseGroupDifficulty(group)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="px-4 py-3 whitespace-nowrap">
+                          {formatMeters(getCourseGroupDistance(group))}
+                        </TableCell>
+                        <TableCell className="px-4 py-3 whitespace-nowrap">
+                          {formatCourseStatus(primaryCourse?.properties.status)}
+                        </TableCell>
+                        <TableCell className="px-4 py-3 whitespace-nowrap">
+                          {formatPisteStatus(primaryCourse?.properties.piste)}
+                        </TableCell>
+                        <TableCell className="px-4 py-3 whitespace-nowrap">
+                          {primaryCourse?.properties.snowboard ?? "--"}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </section>
+      </div>
     );
   }
 
   const maxSlope = resort.steepestSlope ?? resort.angleMax;
+  // 3 セグメントの合計を 100% に正規化する（最低幅クランプによる合計超過・末尾クリップを防止）
+  const levelCounts = [
+    resort.beginnersCoursesPercent,
+    resort.intermediateCoursesPercent,
+    resort.advancedCoursesPercent,
+  ];
+  const levelCountTotal = levelCounts.reduce((sum, value) => sum + value, 0);
+  const levelWidths = levelCounts.map(value =>
+    levelCountTotal > 0 ? (value / levelCountTotal) * 100 : 0,
+  );
 
   return (
-    <Flex flexDirection="column" gap={10}>
-      <Box as="section">
-        <Grid
-          templateColumns={{ base: "repeat(2, 1fr)", md: "repeat(4, 1fr)" }}
-          gap={4}
-        >
+    <div className="flex flex-col gap-6">
+      <section>
+        <div className="grid grid-cols-2 gap-4">
           <StatCard title="総コース数" value={`${resort.numberOfCourses}`} />
           <StatCard
             title="最長滑走距離"
@@ -469,221 +438,119 @@ export const CoursesTab = ({
             value={maxSlope == null ? "--" : `${maxSlope}°`}
           />
           <StatCard title="標高差" value={`${resort.verticalDrop}m`} />
-        </Grid>
-      </Box>
-      <Box as="section">
-        <Heading size="lg" fontFamily="var(--font-heading)" color="gray.900">
+        </div>
+      </section>
+      <section>
+        <h2 className="text-lg font-bold text-gray-900 font-[var(--font-heading)]">
           レベル別割合
-        </Heading>
-        <Flex
-          mt={5}
-          h={6}
-          w="100%"
-          overflow="hidden"
-          borderRadius="full"
-          bg="gray.100"
-          border="1px solid"
-          borderColor="gray.200"
-          fontSize="xs"
-          fontWeight="700"
-          color="white"
-        >
-          <Flex
-            w={`${Math.max(resort.beginnersCoursesPercent, 5)}%`}
-            bg="green.500"
-            alignItems="center"
-            justifyContent="center"
-            display={resort.beginnersCoursesPercent > 0 ? "flex" : "none"}
+        </h2>
+        <div className="mt-4 h-6 w-full overflow-hidden rounded-full bg-gray-100 border border-gray-200 text-xs font-bold text-white flex">
+          <div
+            className="bg-green-500 flex items-center justify-center px-1"
+            style={{ width: `${levelWidths[0]}%` }}
           >
-            {resort.beginnersCoursesPercent}%
-          </Flex>
-          <Flex
-            w={`${Math.max(resort.intermediateCoursesPercent, 5)}%`}
-            bg="blue.500"
-            alignItems="center"
-            justifyContent="center"
-            display={resort.intermediateCoursesPercent > 0 ? "flex" : "none"}
+            {resort.beginnersCoursesPercent >= 15 &&
+              `${resort.beginnersCoursesPercent}%`}
+          </div>
+          <div
+            className="bg-blue-500 flex items-center justify-center px-1"
+            style={{ width: `${levelWidths[1]}%` }}
           >
-            {resort.intermediateCoursesPercent}%
-          </Flex>
-          <Flex
-            w={`${Math.max(resort.advancedCoursesPercent, 5)}%`}
-            bg="red.500"
-            alignItems="center"
-            justifyContent="center"
-            display={resort.advancedCoursesPercent > 0 ? "flex" : "none"}
+            {resort.intermediateCoursesPercent >= 15 &&
+              `${resort.intermediateCoursesPercent}%`}
+          </div>
+          <div
+            className="bg-red-500 flex items-center justify-center px-1"
+            style={{ width: `${levelWidths[2]}%` }}
           >
-            {resort.advancedCoursesPercent}%
-          </Flex>
-        </Flex>
-        <Flex
-          justifyContent="center"
-          gap={6}
-          mt={3}
-          fontSize="sm"
-          color="gray.600"
-        >
-          <Flex alignItems="center" gap={2}>
-            <Box w={3} h={3} borderRadius="full" bg="green.500" /> 初級
-          </Flex>
-          <Flex alignItems="center" gap={2}>
-            <Box w={3} h={3} borderRadius="full" bg="blue.500" /> 中級
-          </Flex>
-          <Flex alignItems="center" gap={2}>
-            <Box w={3} h={3} borderRadius="full" bg="red.500" /> 上級
-          </Flex>
-        </Flex>
-      </Box>
-      <Box as="section">
-        <Flex
-          flexDirection={{ base: "column", md: "row" }}
-          gap={4}
-          alignItems={{ md: "center" }}
-          justifyContent={{ md: "space-between" }}
-        >
-          <Heading size="lg" fontFamily="var(--font-heading)" color="gray.900">
+            {resort.advancedCoursesPercent >= 15 &&
+              `${resort.advancedCoursesPercent}%`}
+          </div>
+        </div>
+        <div className="mt-3 flex justify-center gap-6 text-sm text-gray-600">
+          <div className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full bg-green-500 flex-shrink-0" />{" "}
+            初級
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full bg-blue-500 flex-shrink-0" />{" "}
+            中級
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0" />{" "}
+            上級
+          </div>
+        </div>
+      </section>
+      <section>
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          <h2 className="text-lg font-bold text-gray-900 font-[var(--font-heading)]">
             コース一覧
-          </Heading>
-          <NativeSelect.Root
-            w={{ base: "100%", md: "200px" }}
-            size="md"
-            variant="outline"
+          </h2>
+          <Select
+            value={difficultyFilter}
+            onValueChange={v => v && setDifficultyFilter(v)}
           >
-            <NativeSelect.Field
-              value={difficultyFilter}
-              onChange={e => setDifficultyFilter(e.target.value)}
-              bg="white"
-              color="gray.800"
-              borderColor="gray.200"
-              _focus={{ borderColor: "brand.500" }}
-            >
+            <SelectTrigger className="w-full md:w-[200px] h-10">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
               {difficultyOptions.map(opt => (
-                <option key={opt} value={opt}>
+                <SelectItem key={opt} value={opt}>
                   {opt === "全て" ? "すべての難易度" : opt}
-                </option>
+                </SelectItem>
               ))}
-            </NativeSelect.Field>
-          </NativeSelect.Root>
-        </Flex>
-        <Box
-          mt={4}
-          w="100%"
-          overflowX="auto"
-          borderRadius="xl"
-          border="1px solid"
-          borderColor="gray.200"
-          bg="white"
-        >
-          <Table.Root size="md">
-            <Table.Header>
-              <Table.Row bg="gray.100">
-                <Table.ColumnHeader
-                  px={6}
-                  py={4}
-                  color="gray.600"
-                  fontWeight="700"
-                  fontSize="sm"
-                  whiteSpace="nowrap"
-                >
-                  コース名
-                </Table.ColumnHeader>
-                <Table.ColumnHeader
-                  px={6}
-                  py={4}
-                  color="gray.600"
-                  fontWeight="700"
-                  fontSize="sm"
-                  whiteSpace="nowrap"
-                >
-                  難易度
-                </Table.ColumnHeader>
-                <Table.ColumnHeader
-                  px={6}
-                  py={4}
-                  color="gray.600"
-                  fontWeight="700"
-                  fontSize="sm"
-                  whiteSpace="nowrap"
-                >
-                  <Button
-                    onClick={() => handleSort("distance")}
-                    variant="ghost"
-                    p={0}
-                    h="auto"
-                    minW="auto"
-                    color="gray.600"
-                    _hover={{ color: "brand.600" }}
-                  >
-                    距離 (m){" "}
-                    {sortConfig?.key === "distance" &&
-                      (sortConfig.direction === "asc" ? "▲" : "▼")}
-                  </Button>
-                </Table.ColumnHeader>
-                <Table.ColumnHeader
-                  px={6}
-                  py={4}
-                  color="gray.600"
-                  fontWeight="700"
-                  fontSize="sm"
-                  whiteSpace="nowrap"
-                >
-                  スノボ
-                </Table.ColumnHeader>
-              </Table.Row>
-            </Table.Header>
-            <Table.Body>
-              {processedCourses.map(c => (
-                <Table.Row
-                  key={c.id}
-                  borderColor="gray.200"
-                  _hover={{ bg: "gray.50" }}
-                >
-                  <Table.Cell
-                    px={6}
-                    py={4}
-                    fontWeight="700"
-                    color="gray.800"
-                    whiteSpace="nowrap"
-                  >
-                    {c.name}
-                  </Table.Cell>
-                  <Table.Cell px={6} py={4} whiteSpace="nowrap">
-                    <Box
-                      as="span"
-                      px={2}
-                      py={1}
-                      borderRadius="md"
-                      bg="gray.100"
-                      color="gray.700"
-                      fontSize="xs"
-                      whiteSpace="nowrap"
+            </SelectContent>
+          </Select>
+        </div>
+        <Card className="mt-4 w-full overflow-x-auto py-0">
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50">
+                  <TableHead className="table-header-cell">コース名</TableHead>
+                  <TableHead className="table-header-cell">難易度</TableHead>
+                  <TableHead className="table-header-cell">
+                    <Button
+                      onClick={() => handleSort("distance")}
+                      variant="ghost"
+                      className="px-0 py-0 h-auto min-w-0 text-gray-600 hover:text-blue-700"
                     >
-                      {c.difficulty}
-                    </Box>
-                  </Table.Cell>
-                  <Table.Cell
-                    px={6}
-                    py={4}
-                    color="gray.700"
-                    fontFamily="mono"
-                    whiteSpace="nowrap"
+                      距離 (m){" "}
+                      {sortConfig?.key === "distance" &&
+                        (sortConfig.direction === "asc" ? "▲" : "▼")}
+                    </Button>
+                  </TableHead>
+                  <TableHead className="table-header-cell">スノボ</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {processedCourses.map(c => (
+                  <TableRow
+                    key={c.id}
+                    className="border-gray-200 hover:bg-gray-50 hover:text-gray-900"
                   >
-                    {c.distance?.toLocaleString() || "--"}
-                  </Table.Cell>
-                  <Table.Cell
-                    px={6}
-                    py={4}
-                    color="gray.700"
-                    whiteSpace="nowrap"
-                  >
-                    {c.snowboard}
-                  </Table.Cell>
-                </Table.Row>
-              ))}
-            </Table.Body>
-          </Table.Root>
-        </Box>
-      </Box>
-    </Flex>
+                    <TableCell className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">
+                      {c.name}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 whitespace-nowrap">
+                      <Badge variant="secondary" className="text-xs">
+                        {c.difficulty}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-gray-700 font-mono whitespace-nowrap">
+                      {c.distance?.toLocaleString() || "--"}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-gray-700 whitespace-nowrap">
+                      {c.snowboard}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </section>
+    </div>
   );
 };

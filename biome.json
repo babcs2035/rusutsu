@@ -14,7 +14,8 @@
       "!**/out",
       "!**/build",
       "!**/coverage",
-      "!**/src/private/data"
+      "!**/src/private/data",
+      "!src/app/globals.css"
     ]
   },
   "formatter": {
@@ -54,7 +55,11 @@
       "!**/public"
     ],
     "rules": {
-      "preset": "recommended"
+      "preset": "recommended",
+      "a11y": {
+        "useSemanticElements": "off",
+        "noLabelWithoutControl": "off"
+      }
     }
   },
   "javascript": {

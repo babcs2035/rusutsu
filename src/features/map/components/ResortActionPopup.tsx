@@ -1,8 +1,9 @@
 "use client";
 
-import { Box, Button, Flex } from "@chakra-ui/react";
 import { Check, Plus } from "lucide-react";
 import { Popup } from "react-leaflet";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import type { MapSkiResort } from "@/types/skiResorts";
 
 type Props = {
@@ -26,17 +27,15 @@ export const ResortActionPopup = ({
     autoPan={false}
     eventHandlers={{ remove: onClose }}
   >
-    <Flex flexDirection="column" gap={2} minW="190px">
-      <Box color="gray.900" fontSize="sm" fontWeight="800" lineHeight="1.35">
+    <div className="flex flex-col gap-2 min-w-[190px]">
+      <p className="text-gray-900 text-sm font-bold leading-snug font-[var(--font-heading)]">
         {resort.nameJa}
-      </Box>
-      <Flex gap={2}>
+      </p>
+      <div className="flex gap-2">
         <Button
           size="xs"
-          flex="1 1 0"
-          minW={0}
+          className="flex-[1_1_0] min-w-0 font-bold"
           variant="outline"
-          fontWeight="800"
           onClick={() => {
             onSelectResort(resort.id);
             onClose();
@@ -47,32 +46,28 @@ export const ResortActionPopup = ({
         {onToggleCompare && (
           <Button
             size="xs"
-            flex="1 1 0"
-            minW={0}
             variant="outline"
-            gap={1}
-            fontWeight="800"
-            color={isCompareSelected ? "white" : "brand.600"}
-            bg={isCompareSelected ? "brand.500" : "white"}
-            borderColor="brand.500"
+            className={cn(
+              "flex-[1_1_0] min-w-0 font-bold gap-1",
+              isCompareSelected
+                ? "bg-blue-600 text-white border-blue-600"
+                : "bg-white text-blue-600 border-blue-600",
+            )}
             aria-pressed={isCompareSelected}
-            _hover={{
-              bg: isCompareSelected ? "brand.600" : "brand.50",
-            }}
             onClick={() => {
               onToggleCompare(resort.id, !isCompareSelected);
               onClose();
             }}
           >
-            <Box
-              as={isCompareSelected ? Check : Plus}
-              boxSize="14px"
-              strokeWidth={3}
-            />
+            {isCompareSelected ? (
+              <Check size={14} strokeWidth={3} />
+            ) : (
+              <Plus size={14} strokeWidth={3} />
+            )}
             {isCompareSelected ? "比較から外す" : "比較に追加"}
           </Button>
         )}
-      </Flex>
-    </Flex>
+      </div>
+    </div>
   </Popup>
 );

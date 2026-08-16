@@ -1,84 +1,55 @@
 import Link from "next/link";
 import { signOut } from "@/auth";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 export default function NoAccessPage() {
   return (
-    <div
-      style={{
-        minHeight: "calc(100vh - 64px)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#f5f5f5",
-      }}
-    >
-      <div
-        style={{
-          background: "white",
-          padding: "2rem",
-          borderRadius: "8px",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-          textAlign: "center",
-          maxWidth: "400px",
-          width: "100%",
-        }}
-      >
-        <h2 style={{ marginBottom: "1rem", color: "#333" }}>
-          権限がありません
-        </h2>
-        <p style={{ marginBottom: "2rem", color: "#666" }}>
-          管理画面には管理者アカウントのみアクセスできます。
-        </p>
-
-        <div
-          style={{
-            display: "flex",
-            gap: "1rem",
-            justifyContent: "center",
-            marginBottom: "2rem",
-          }}
-        >
-          <Link
-            href="/"
-            style={{
-              display: "inline-block",
-              padding: "0.6rem 1.5rem",
-              background: "white",
-              color: "#003366",
-              borderRadius: "6px",
-              textDecoration: "none",
-              fontSize: "0.875rem",
-              fontWeight: 500,
-              border: "1px solid #003366",
-            }}
-          >
-            トップページへ
-          </Link>
-          <form
-            action={async () => {
-              "use server";
-              await signOut({ redirectTo: "/admin/logout" });
-            }}
-          >
-            <button
-              type="submit"
-              style={{
-                display: "inline-block",
-                padding: "0.6rem 1.5rem",
-                background: "white",
-                color: "#666",
-                borderRadius: "6px",
-                border: "1px solid #ccc",
-                cursor: "pointer",
-                fontSize: "0.875rem",
-                fontWeight: 500,
+    <div className="flex min-h-[calc(100vh-64px)] w-full items-center justify-center">
+      {/* 背景グラデーションは admin layout.tsx が単一情報源として提供するため，ページ側では指定しない（p0002 §17） */}
+      <Card className="w-full max-w-[400px] rounded-xl shadow-lg border-gray-200">
+        <CardHeader className="text-center space-y-3">
+          <CardTitle className="text-xl font-bold text-gray-900">
+            権限がありません
+          </CardTitle>
+          <CardDescription className="text-sm text-gray-500">
+            管理画面には管理者アカウントのみアクセスできます。
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center gap-4">
+          <div className="flex w-full gap-3">
+            <Link href="/" className="flex-1">
+              <Button
+                variant="outline"
+                className="w-full border-gray-200 text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+              >
+                トップページへ
+              </Button>
+            </Link>
+            <form
+              action={async () => {
+                "use server";
+                await signOut({ redirectTo: "/admin/logout" });
               }}
+              className="flex-1"
             >
-              ログアウト
-            </button>
-          </form>
-        </div>
-      </div>
+              <Button
+                type="submit"
+                variant="outline"
+                className="w-full border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+              >
+                ログアウト
+              </Button>
+            </form>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

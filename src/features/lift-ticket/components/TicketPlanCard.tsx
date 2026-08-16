@@ -1,6 +1,7 @@
 "use client";
 
-import { Box, Flex, Text } from "@chakra-ui/react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import type { TicketPlanResult } from "../utils/calculateLiftTicket";
 import { SourceList, SourceMarks } from "./SourceMarks";
 
@@ -44,114 +45,88 @@ export const TicketPlanCard = ({ plan }: { plan: TicketPlanResult }) => {
 
   if (plan.days.length === 0 || blockingNote) {
     return (
-      <Box
-        p={4}
-        borderRadius="xl"
-        bg="gray.50"
-        border="1px solid"
-        borderColor="gray.200"
-      >
-        <Text color="gray.600" fontSize="sm" fontWeight="800">
-          {blockingNote ?? "日付と1人以上の人数を入力してください。"}
-        </Text>
-      </Box>
+      <Card>
+        <CardContent className="p-4 text-center">
+          <p className="text-sm font-semibold text-gray-500">
+            {blockingNote ?? "日付と1人以上の人数を入力してください。"}
+          </p>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <Flex flexDirection="column" gap={3}>
-      <Box
-        p={4}
-        borderRadius="xl"
-        bg={plan.total == null ? "gray.50" : "orange.50"}
-        border="1px solid"
-        borderColor={plan.total == null ? "gray.200" : "orange.200"}
+    <div className="flex flex-col gap-3">
+      <div
+        className={cn(
+          "rounded-xl border p-4",
+          plan.total == null
+            ? "bg-gray-50 border-gray-200"
+            : "bg-orange-50 border-orange-300",
+        )}
       >
-        <Flex alignItems="baseline" justifyContent="space-between" gap={3}>
-          <Text color="gray.700" fontSize="xs" fontWeight="800">
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="text-xs font-medium text-gray-700">
             {plan.days.length === 1 ? "合計" : `${plan.days.length}日の合計額`}
-          </Text>
+          </p>
           {plan.total == null ? (
-            <Text color="gray.600" fontSize="sm" fontWeight="800">
-              未確定
-            </Text>
+            <p className="text-sm font-semibold text-gray-600">未確定</p>
           ) : (
-            <Text
-              color="gray.900"
-              fontFamily="mono"
-              fontSize="2xl"
-              fontWeight="900"
-            >
+            <p className="text-2xl font-bold text-gray-900 font-mono">
               {yen(plan.total)}
-            </Text>
+            </p>
           )}
-        </Flex>
+        </div>
 
         {plan.multiDay && (
-          <Text mt={1.5} color="orange.800" fontSize="xs" lineHeight="1.6">
+          <p className="mt-1.5 text-xs text-orange-900 leading-relaxed">
             {plan.multiDay.productName}（{plan.multiDay.days}
             日券）を使うほうが安いです。 1日ずつ買うと{" "}
             {yen(plan.multiDay.perDayTotal)}。
-          </Text>
+          </p>
         )}
 
-        <Flex mt={3} flexDirection="column" gap={2}>
+        <div className="mt-3 flex flex-col gap-2">
           {plan.days.map((day, index) => {
             const covered =
               usesMultiDay && plan.multiDay?.dates.includes(day.plan.date);
             return (
-              <Box
-                key={day.plan.id}
-                pb={2}
-                borderBottom="1px solid"
-                borderColor="blackAlpha.100"
-              >
-                <Flex
-                  alignItems="flex-start"
-                  justifyContent="space-between"
-                  gap={3}
-                >
-                  <Box minW={0}>
-                    <Text color="gray.800" fontSize="sm" fontWeight="800">
+              <div key={day.plan.id} className="pb-2 border-b border-gray-100">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-900">
                       {index + 1}日目
                       {day.plan.date && (
-                        <Text
-                          as="span"
-                          ml={1.5}
-                          color="gray.600"
-                          fontWeight="600"
-                        >
+                        <span className="ml-1.5 text-gray-600 font-semibold">
                           {day.plan.date}（{weekdayOf(day.plan.date)}）
-                        </Text>
+                        </span>
                       )}
-                    </Text>
-                    <Text mt={0.5} color="gray.600" fontSize="xs">
+                    </p>
+                    <p className="mt-0.5 text-xs text-gray-600">
                       {durationLabelOf(day.plan.duration)}
                       {day.result.productName
                         ? ` → ${day.result.productName}`
                         : ""}
-                    </Text>
+                    </p>
                     {day.result.status === "closed" && (
-                      <Text mt={0.5} color="orange.800" fontSize="xs">
+                      <p className="mt-0.5 text-xs text-orange-900">
                         この日は営業していません
                         {day.result.notes[0]
                           ? `（${day.result.notes[0]}）`
                           : ""}
-                      </Text>
+                      </p>
                     )}
                     {day.result.status === "outside_season" && (
-                      <Text mt={0.5} color="orange.800" fontSize="xs">
+                      <p className="mt-0.5 text-xs text-orange-900">
                         {day.result.notes[0]}
-                      </Text>
+                      </p>
                     )}
-                  </Box>
-                  <Text
-                    flexShrink={0}
-                    color={covered ? "gray.500" : "gray.900"}
-                    fontFamily="mono"
-                    fontSize="sm"
-                    fontWeight="900"
-                    textDecoration={covered ? "line-through" : undefined}
+                  </div>
+                  <p
+                    className={cn(
+                      "flex-shrink-0 text-sm font-bold font-mono",
+                      covered ? "text-gray-500 line-through" : "text-gray-900",
+                    )}
                   >
                     {day.result.payableTotal == null
                       ? "未確定"
@@ -162,52 +137,44 @@ export const TicketPlanCard = ({ plan }: { plan: TicketPlanResult }) => {
                       )}
                       references={plan.references}
                     />
-                  </Text>
-                </Flex>
+                  </p>
+                </div>
 
                 {/* 誰がいくらか。日ごとに区分が変わることはないが、
                     どの券が当たったかは日によって変わる */}
                 {day.result.lines.length > 0 && (
-                  <Flex mt={1} flexDirection="column" gap={0.5}>
+                  <div className="mt-1 flex flex-col gap-0.5">
                     {day.result.lines.map(line => (
-                      <Flex
+                      <div
                         key={line.groupId}
-                        justifyContent="space-between"
-                        gap={2}
+                        className="flex justify-between gap-2"
                       >
-                        <Text color="gray.600" fontSize="0.68rem">
+                        <p className="text-[0.6875rem] text-gray-600">
                           {line.groupLabel} × {line.count}
-                          {line.offerName ? `　${line.offerName}` : ""}
-                          {line.note ? `　${line.note}` : ""}
-                        </Text>
-                        <Text
-                          flexShrink={0}
-                          color="gray.700"
-                          fontFamily="mono"
-                          fontSize="0.68rem"
-                        >
+                          {line.offerName ? ` ${line.offerName}` : ""}
+                          {line.note ? ` ${line.note}` : ""}
+                        </p>
+                        <p className="flex-shrink-0 text-[0.6875rem] text-gray-700 font-mono">
                           {line.subtotal == null
                             ? "未確定"
                             : yen(line.subtotal)}
-                        </Text>
-                      </Flex>
+                        </p>
+                      </div>
                     ))}
                     {day.result.lines.flatMap(line =>
                       (line.warnings ?? []).map(warning => (
-                        <Text
+                        <p
                           key={`${line.groupId}:${warning}`}
-                          color="orange.800"
-                          fontSize="0.68rem"
-                          lineHeight="1.5"
+                          className="text-[0.6875rem] text-orange-900 leading-snug"
                         >
                           ※ {warning}
-                        </Text>
+                        </p>
                       )),
                     )}
                     {day.result.lines.some(
                       line => line.standardSubtotal != null,
                     ) && (
-                      <Text color="gray.500" fontSize="0.68rem">
+                      <p className="text-[0.6875rem] text-gray-500">
                         通常料金:{" "}
                         {day.result.lines
                           .filter(line => line.standardSubtotal != null)
@@ -216,95 +183,70 @@ export const TicketPlanCard = ({ plan }: { plan: TicketPlanResult }) => {
                               `${line.groupLabel} ${yen(line.standardSubtotal ?? 0)}`,
                           )
                           .join("、")}
-                      </Text>
+                      </p>
                     )}
-                  </Flex>
+                  </div>
                 )}
 
                 {day.result.conditionalOffers.length > 0 && (
-                  <Box
-                    mt={2}
-                    p={2.5}
-                    borderRadius="lg"
-                    bg="purple.50"
-                    border="1px solid"
-                    borderColor="purple.200"
-                  >
-                    <Text color="purple.900" fontSize="0.7rem" fontWeight="900">
-                      条件を満たす場合の割引料金
-                    </Text>
-                    <Flex mt={1.5} flexDirection="column" gap={1.5}>
-                      {day.result.conditionalOffers.map(offer => (
-                        <Flex
-                          key={offer.id}
-                          alignItems="flex-start"
-                          justifyContent="space-between"
-                          gap={2}
-                        >
-                          <Box minW={0}>
-                            <Text
-                              color="purple.900"
-                              fontSize="0.68rem"
-                              fontWeight="800"
-                            >
-                              {offer.offerName}（{offer.groupLabel} ×{" "}
-                              {offer.count}）
-                            </Text>
-                            <Text
-                              mt={0.5}
-                              color="purple.800"
-                              fontSize="0.64rem"
-                              lineHeight="1.5"
-                            >
-                              {offer.conditions.length > 0
-                                ? offer.conditions.join(" / ")
-                                : "公式の適用条件を確認してください。"}
-                            </Text>
-                          </Box>
-                          <Text
-                            flexShrink={0}
-                            color="purple.900"
-                            fontFamily="mono"
-                            fontSize="0.68rem"
-                            fontWeight="900"
+                  <Card className="mt-2 rounded-lg border-purple-200 bg-purple-50">
+                    <CardHeader>
+                      <CardTitle className="text-[0.6875rem] font-bold text-purple-900">
+                        条件を満たす場合の割引料金
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="mt-1.5 flex flex-col gap-1.5">
+                        {day.result.conditionalOffers.map(offer => (
+                          <div
+                            key={offer.id}
+                            className="flex items-start justify-between gap-2"
                           >
-                            {yen(offer.subtotal)}
-                            <SourceMarks
-                              numbers={offer.sourceNumbers}
-                              references={plan.references}
-                            />
-                          </Text>
-                        </Flex>
-                      ))}
-                    </Flex>
-                  </Box>
+                            <div className="min-w-0">
+                              <p className="text-[0.6875rem] font-bold text-purple-900">
+                                {offer.offerName}（{offer.groupLabel} ×{" "}
+                                {offer.count}）
+                              </p>
+                              <p className="mt-0.5 text-[0.6875rem] text-purple-900 leading-snug">
+                                {offer.conditions.length > 0
+                                  ? offer.conditions.join(" / ")
+                                  : "公式の適用条件を確認してください。"}
+                              </p>
+                            </div>
+                            <p className="flex-shrink-0 text-[0.6875rem] font-bold text-purple-900 font-mono">
+                              {yen(offer.subtotal)}
+                              <SourceMarks
+                                numbers={offer.sourceNumbers}
+                                references={plan.references}
+                              />
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
                 )}
-              </Box>
+              </div>
             );
           })}
-        </Flex>
+        </div>
 
         {usesMultiDay && plan.multiDay && (
-          <Flex mt={2} justifyContent="space-between" gap={3}>
-            <Text color="orange.900" fontSize="sm" fontWeight="800">
+          <div className="mt-2 flex justify-between gap-3">
+            <p className="text-sm font-bold text-orange-900">
               {plan.multiDay.productName}（
               {plan.multiDay.dates.map(date => date.slice(5)).join("・")}）
-            </Text>
-            <Text
-              color="orange.900"
-              fontFamily="mono"
-              fontSize="sm"
-              fontWeight="900"
-            >
+            </p>
+            <p className="text-sm font-bold text-orange-900 font-mono">
               {yen(plan.multiDay.total)}
-            </Text>
-          </Flex>
+            </p>
+          </div>
         )}
-      </Box>
+      </div>
 
       {plan.references.length > 0 && (
         <SourceList references={plan.references} />
       )}
-    </Flex>
+    </div>
   );
 };

@@ -1,7 +1,9 @@
 "use client";
 
-import { Box, Button, Flex, Grid, Heading, Text } from "@chakra-ui/react";
-import { Check, Plus } from "lucide-react";
+import { Check, Plus, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { RubyText } from "@/shared/components/RubyText";
 import type { Resort } from "../types";
 import { StatCard } from "./StatCard";
@@ -31,14 +33,14 @@ const formatOperationSummary = (
   }
 
   return (
-    <Box>
-      <Box>
+    <div>
+      <div>
         {labels.open} {summary.open}/{summary.total}
-      </Box>
-      <Box>
+      </div>
+      <div>
         {labels.partial} {summary.partial}/{summary.total}
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 };
 
@@ -54,168 +56,95 @@ export const InfoSection = ({
   isCompareSelected: boolean;
   onToggleCompare: (id: string, selected: boolean) => void;
   onClose: () => void;
-}) => (
-  <Box
-    bg="transparent"
-    pt={{ base: 1.5, md: 8 }}
-    pr={{ base: 4, md: 8 }}
-    pb={{ base: 3, md: 8 }}
-    pl={{ base: 4, md: 8 }}
-    borderBottom="1px solid"
-    borderColor="gray.200"
-  >
-    <Flex alignItems="center" justifyContent="space-between" gap={2}>
-      <Heading
-        flex="1 1 auto"
-        minW={0}
-        color="gray.900"
-        fontFamily="var(--font-heading)"
-        fontSize={{ base: "1.25rem", md: "1.8rem" }}
-        lineHeight={{ base: "1.5", md: "1.5" }}
-        css={{
-          "& rt": {
-            fontSize: "0.42em",
-            fontWeight: 600,
-            color: "var(--chakra-colors-gray-500)",
-          },
-        }}
-      >
-        <RubyText segments={resort.nameRuby} fallback={resort.nameJa} />
-      </Heading>
-      <Button
-        display="flex"
-        onClick={onClose}
-        h={7}
-        w={7}
-        minW={7}
-        minH={7}
-        flex="0 0 auto"
-        alignItems="center"
-        justifyContent="center"
-        borderRadius="full"
-        bg="white"
-        border="1px solid"
-        borderColor="gray.200"
-        fontSize={{ base: "xl", md: "2xl" }}
-        color="gray.600"
-        boxShadow="sm"
-        _hover={{ bg: "gray.50", color: "gray.900" }}
-        _focus={{ outline: "none", ring: "2px", ringColor: "brand.400" }}
-        p={0}
-        aria-label="詳細を閉じる"
-      >
-        ×
-      </Button>
-    </Flex>
-    {resort.formerNames.length > 0 && (
-      <Text mt={{ base: 0.5, md: 1 }} fontSize="xs" color="gray.500">
-        旧称:{" "}
-        {resort.formerNames
-          .map(formerName =>
-            formerName.reading
-              ? `${formerName.name}（${formerName.reading}）`
-              : formerName.name,
-          )
-          .join("、")}
-      </Text>
-    )}
-    <Flex mt={{ base: 0.5, md: 2.5 }} alignItems="center" gap={2}>
-      <Text
-        flex="1 1 auto"
-        minW={0}
-        fontSize="sm"
-        color="brand.600"
-        fontWeight="700"
-      >
-        {resort.prefecture} • {resort.town}
-        {resort.yukiMagi && (
-          <Box
-            as="span"
-            ml={2}
-            px={1.5}
-            py={0.5}
-            borderRadius="full"
-            bg="pink.50"
-            color="pink.500"
-            fontSize="10px"
-            fontWeight="800"
-            verticalAlign="middle"
-            whiteSpace="nowrap"
-          >
-            雪マジ
-          </Box>
-        )}
-      </Text>
-      <Button
-        size="xs"
-        flex={{ base: "0 0 auto", md: "0 0 100px" }}
-        w={{ base: "5.75rem", md: "100px" }}
-        h={{ base: "28px", md: "var(--chakra-sizes-8)" }}
-        minW={{ base: "5.75rem", md: "100px" }}
-        px={2}
-        borderRadius="md"
-        gap={{ base: 1, md: 1.5 }}
-        fontSize={{ base: "0.68rem", md: "xs" }}
-        fontWeight="800"
-        color={isCompareSelected ? "white" : "brand.600"}
-        bg={isCompareSelected ? "brand.500" : "white"}
-        border="1px solid"
-        borderColor={{
-          base: isCompareSelected ? "brand.400" : "brand.500",
-          md: "brand.500",
-        }}
-        aria-pressed={isCompareSelected}
-        aria-label={`${resort.nameJa}を${
-          isCompareSelected ? "比較から外す" : "比較に追加"
-        }`}
-        _hover={{
-          bg: isCompareSelected ? "brand.600" : "brand.50",
-        }}
-        onClick={() => onToggleCompare(resort.id, !isCompareSelected)}
-      >
-        <Box
-          as={isCompareSelected ? Check : Plus}
-          boxSize={{ base: "10px", md: "16px" }}
-          strokeWidth={3}
+}) => {
+  const compareBtnClassName = cn(
+    "flex shrink-0 items-center justify-center rounded-lg gap-1 transition-colors",
+    "h-7 md:h-8",
+  );
+
+  return (
+    <div className="w-full px-4 md:px-8 pb-4 md:pb-8 border-b border-gray-200">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="flex-1 min-w-0 text-gray-900 text-xl md:text-2xl leading-snug font-bold font-[var(--font-heading)]">
+          <RubyText segments={resort.nameRuby} fallback={resort.nameJa} />
+        </h2>
+        <Button
+          type="button"
+          variant="ghost"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-gray-200 shadow-sm hover:bg-gray-50 hover:text-gray-900 text-lg p-0 min-h-8 text-gray-500 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10"
+          onClick={onClose}
+          aria-label="詳細を閉じる"
+        >
+          <X size={18} strokeWidth={2.5} />
+        </Button>
+      </div>
+      {resort.formerNames.length > 0 && (
+        <p className="mt-0.5 text-xs text-gray-500">
+          旧称:{" "}
+          {resort.formerNames
+            .map(formerName =>
+              formerName.reading
+                ? `${formerName.name}（${formerName.reading}）`
+                : formerName.name,
+            )
+            .join("、")}
+        </p>
+      )}
+      <div className="mt-0.5 md:mt-2.5 flex items-center gap-2">
+        <p className="flex-1 min-w-0 text-sm text-blue-600 font-medium">
+          {resort.prefecture} • {resort.town}
+          {resort.yukiMagi && (
+            <Badge
+              variant="secondary"
+              className="ml-2 rounded-full bg-pink-50 text-pink-700 text-[0.6875rem] font-semibold whitespace-nowrap"
+            >
+              雪マジ
+            </Badge>
+          )}
+        </p>
+        <Button
+          type="button"
+          variant={isCompareSelected ? "default" : "outline"}
+          className={cn(
+            compareBtnClassName,
+            "w-auto min-w-[5.75rem] md:w-[5.75rem] px-2 text-xs",
+          )}
+          aria-pressed={isCompareSelected}
+          aria-label={`${resort.nameJa}を${
+            isCompareSelected ? "比較から外す" : "比較に追加"
+          }`}
+          onClick={() => onToggleCompare(resort.id, !isCompareSelected)}
+        >
+          {isCompareSelected ? (
+            <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
+          ) : (
+            <Plus className="h-3.5 w-3.5 text-blue-600" strokeWidth={2.5} />
+          )}
+          <span>{isCompareSelected ? "比較から外す" : "比較に追加"}</span>
+        </Button>
+      </div>
+      <p className="mt-3 md:mt-4 text-gray-700 text-sm leading-snug">
+        {resort.descriptionShort}
+      </p>
+      <div className="grid grid-cols-3 gap-2 md:gap-3 text-center">
+        <StatCard
+          title="コース"
+          value={formatOperationSummary(finalizedOperationSummary.courses, {
+            open: "全面",
+            partial: "一部",
+          })}
         />
-        <Box as="span">{isCompareSelected ? "比較から外す" : "比較に追加"}</Box>
-      </Button>
-    </Flex>
-    <Text
-      mt={{ base: 3, md: 4 }}
-      color="gray.600"
-      fontSize={{ base: "0.95rem", md: "md" }}
-      lineHeight={{ base: "1.45", md: "1.6" }}
-      w={{ base: "100%", md: "100%" }}
-    >
-      {resort.descriptionShort}
-    </Text>
-    <Grid
-      mt={{ base: 4, md: 8 }}
-      templateColumns={{
-        base: "repeat(2, 1fr)",
-        md: "repeat(5, 1fr)",
-      }}
-      gap={{ base: 2, md: 3 }}
-      textAlign="center"
-    >
-      <StatCard
-        title="コース"
-        value={formatOperationSummary(finalizedOperationSummary.courses, {
-          open: "全面",
-          partial: "一部",
-        })}
-      />
-      <StatCard
-        title="リフト"
-        value={formatOperationSummary(finalizedOperationSummary.lifts, {
-          open: "運行",
-          partial: "待機",
-        })}
-      />
-      <StatCard title="積雪量" value="--" />
-      <StatCard title="天候" value="--" />
-      <StatCard title="気温" value="--" />
-    </Grid>
-  </Box>
-);
+        <StatCard
+          title="リフト"
+          value={formatOperationSummary(finalizedOperationSummary.lifts, {
+            open: "運行",
+            partial: "待機",
+          })}
+        />
+        <StatCard title="積雪量" value="--" />
+        <StatCard title="天候" value="--" />
+        <StatCard title="気温" value="--" />
+      </div>
+    </div>
+  );
+};

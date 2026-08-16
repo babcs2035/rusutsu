@@ -1,19 +1,28 @@
 "use client";
 
-import {
-  Box,
-  Button,
-  Flex,
-  Grid,
-  Heading,
-  NativeSelect,
-  Table,
-  Text,
-} from "@chakra-ui/react";
 import { ArrowLeft } from "lucide-react";
 import { useMemo, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import type { SelectedMapFeature } from "@/features/map/JapanResortMap";
 import type { FinalizedResortMapData } from "@/lib/finalizedResortGeojsonShared";
+import { cn } from "@/lib/utils";
 import { ElevationProfile } from "../components/ElevationProfile";
 import { StatCard } from "../components/StatCard";
 import type { Resort } from "../types";
@@ -68,29 +77,26 @@ export const LiftsTab = ({
     );
 
     return (
-      <Flex flexDirection="column" gap={5}>
+      <div className="flex flex-col gap-6">
         <Button
           type="button"
-          alignSelf="flex-start"
           variant="ghost"
-          color="gray.700"
-          fontWeight="800"
-          px={2}
+          className="self-start text-gray-600 font-medium px-0 hover:bg-gray-50 hover:text-gray-900 -ml-2"
           onClick={() => onSelectedFinalizedFeatureChange(null)}
         >
-          <ArrowLeft size={18} />
+          <ArrowLeft size={16} />
           リフト一覧へ戻る
         </Button>
-        <Box>
-          <Heading size="lg" color="gray.900">
+        <div>
+          <h2 className="text-lg text-gray-900 font-bold font-[var(--font-heading)]">
             {selectedFinalizedLift.name}
-          </Heading>
-          <Text mt={1} color="gray.600" fontWeight="800">
+          </h2>
+          <p className="mt-1 text-gray-600 font-medium">
             {selectedFinalizedLift.properties.type ?? "リフト"}
-          </Text>
-        </Box>
+          </p>
+        </div>
 
-        <Grid templateColumns={{ base: "1fr", sm: "repeat(2, 1fr)" }} gap={3}>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <StatCard
             title="営業状況"
             value={formatLiftStatus(selectedFinalizedLift.properties.status)}
@@ -122,28 +128,25 @@ export const LiftsTab = ({
             title="フード"
             value={selectedFinalizedLift.properties.hood ?? "--"}
           />
-        </Grid>
+        </div>
 
-        <ElevationProfile points={profilePoints} showSlope={false} />
+        <ElevationProfile points={profilePoints} />
 
         {(selectedFinalizedLift.properties.latestNote ||
           selectedFinalizedLift.properties.note) && (
-          <Text color="gray.700" lineHeight="1.7">
+          <p className="text-gray-700 leading-relaxed">
             {selectedFinalizedLift.properties.latestNote ??
               selectedFinalizedLift.properties.note}
-          </Text>
+          </p>
         )}
-      </Flex>
+      </div>
     );
   }
 
   if (finalizedLifts.length > 0) {
     return (
-      <Flex flexDirection="column" gap={6}>
-        <Grid
-          templateColumns={{ base: "repeat(2, 1fr)", sm: "repeat(4, 1fr)" }}
-          gap={4}
-        >
+      <div className="flex flex-col gap-6">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <StatCard title="全リフト数" value={`${finalizedLifts.length}`} />
           <StatCard
             title="最長距離"
@@ -168,101 +171,80 @@ export const LiftsTab = ({
             title="データ"
             value={finalizedMapData?.lifts?.fileName ?? "--"}
           />
-        </Grid>
+        </div>
 
-        <Box as="section">
-          <Heading size="lg" fontFamily="var(--font-heading)" color="gray.900">
+        <section>
+          <h2 className="text-lg font-bold text-gray-900 font-[var(--font-heading)]">
             リフト一覧
-          </Heading>
-          <Box
-            mt={4}
-            w="100%"
-            overflowX="auto"
-            borderRadius="xl"
-            border="1px solid"
-            borderColor="gray.200"
-            bg="white"
-          >
-            <Table.Root size="md">
-              <Table.Header>
-                <Table.Row bg="gray.100">
-                  <Table.ColumnHeader px={6} py={4}>
-                    名称
-                  </Table.ColumnHeader>
-                  <Table.ColumnHeader px={6} py={4}>
-                    タイプ
-                  </Table.ColumnHeader>
-                  <Table.ColumnHeader px={6} py={4}>
-                    速度
-                  </Table.ColumnHeader>
-                  <Table.ColumnHeader px={6} py={4}>
-                    距離
-                  </Table.ColumnHeader>
-                  <Table.ColumnHeader px={6} py={4}>
-                    状況
-                  </Table.ColumnHeader>
-                </Table.Row>
-              </Table.Header>
-              <Table.Body>
-                {finalizedLifts.map(lift => {
-                  const isSelected =
-                    selectedFinalizedFeature?.kind === "lift" &&
-                    selectedFinalizedFeature.id === lift.id;
-                  return (
-                    <Table.Row
-                      key={lift.id}
-                      cursor="pointer"
-                      bg={isSelected ? "blue.50" : "white"}
-                      borderColor="gray.200"
-                      _hover={{ bg: isSelected ? "blue.100" : "gray.50" }}
-                      onClick={() =>
-                        onSelectedFinalizedFeatureChange({
-                          kind: "lift",
-                          id: lift.id,
-                        })
-                      }
-                    >
-                      <Table.Cell
-                        px={6}
-                        py={4}
-                        fontWeight="800"
-                        whiteSpace="nowrap"
-                      >
-                        {lift.name}
-                      </Table.Cell>
-                      <Table.Cell px={6} py={4} whiteSpace="nowrap">
-                        {lift.properties.type ?? "--"}
-                      </Table.Cell>
-                      <Table.Cell px={6} py={4} whiteSpace="nowrap">
-                        {lift.properties.speed ?? "--"}
-                      </Table.Cell>
-                      <Table.Cell px={6} py={4} whiteSpace="nowrap">
-                        {formatMeters(
-                          lift.properties.slopeDistMap ??
-                            lift.properties.distance,
+          </h2>
+          <Card className="mt-4 w-full overflow-x-auto py-0">
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-50">
+                    <TableHead className="table-header-cell">名称</TableHead>
+                    <TableHead className="table-header-cell">タイプ</TableHead>
+                    <TableHead className="table-header-cell">速度</TableHead>
+                    <TableHead className="table-header-cell">距離</TableHead>
+                    <TableHead className="table-header-cell">状況</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {finalizedLifts.map(lift => {
+                    const isSelected =
+                      selectedFinalizedFeature?.kind === "lift" &&
+                      selectedFinalizedFeature.id === lift.id;
+                    return (
+                      <TableRow
+                        key={lift.id}
+                        className={cn(
+                          "cursor-pointer",
+                          isSelected
+                            ? "bg-blue-50 hover:bg-blue-100 hover:text-blue-700"
+                            : "bg-white hover:bg-gray-50 hover:text-gray-900",
+                          "border-b border-gray-200",
                         )}
-                      </Table.Cell>
-                      <Table.Cell px={6} py={4} whiteSpace="nowrap">
-                        {formatLiftStatus(lift.properties.status)}
-                      </Table.Cell>
-                    </Table.Row>
-                  );
-                })}
-              </Table.Body>
-            </Table.Root>
-          </Box>
-        </Box>
-      </Flex>
+                        onClick={() =>
+                          onSelectedFinalizedFeatureChange({
+                            kind: "lift",
+                            id: lift.id,
+                          })
+                        }
+                      >
+                        <TableCell className="px-4 py-3 font-semibold whitespace-nowrap">
+                          {lift.name}
+                        </TableCell>
+                        <TableCell className="px-4 py-3 whitespace-nowrap">
+                          {lift.properties.type ?? "--"}
+                        </TableCell>
+                        <TableCell className="px-4 py-3 whitespace-nowrap">
+                          {lift.properties.speed ?? "--"}
+                        </TableCell>
+                        <TableCell className="px-4 py-3 whitespace-nowrap">
+                          {formatMeters(
+                            lift.properties.slopeDistMap ??
+                              lift.properties.distance,
+                          )}
+                        </TableCell>
+                        <TableCell className="px-4 py-3 whitespace-nowrap">
+                          {formatLiftStatus(lift.properties.status)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </section>
+      </div>
     );
   }
 
   return (
-    <Flex flexDirection="column" gap={10}>
-      <Box as="section">
-        <Grid
-          templateColumns={{ base: "repeat(2, 1fr)", sm: "repeat(4, 1fr)" }}
-          gap={4}
-        >
+    <div className="flex flex-col gap-6">
+      <section>
+        <div className="grid grid-cols-2 gap-4">
           <StatCard title="全リフト数" value={`${resort.numberOfLifts}`} />
           <StatCard
             title="ゴンドラ・ロープウェイ"
@@ -270,146 +252,79 @@ export const LiftsTab = ({
           />
           <StatCard title="クワッドリフト" value={`${resort.quadLifts}`} />
           <StatCard title="ペアリフト" value={`${resort.pairLifts}`} />
-        </Grid>
-      </Box>
-      <Box as="section">
-        <Flex
-          flexDirection={{ base: "column", md: "row" }}
-          gap={4}
-          alignItems={{ md: "center" }}
-          justifyContent={{ md: "space-between" }}
-        >
-          <Heading size="lg" fontFamily="var(--font-heading)" color="gray.900">
+        </div>
+      </section>
+      <section>
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          <h2 className="text-lg font-bold text-gray-900 font-[var(--font-heading)]">
             リフト一覧
-          </Heading>
-          <NativeSelect.Root
-            w={{ base: "100%", md: "200px" }}
-            size="md"
-            variant="outline"
-          >
-            <NativeSelect.Field
-              value={typeFilter}
-              onChange={e => setTypeFilter(e.target.value)}
-              bg="white"
-              color="gray.800"
-              borderColor="gray.200"
-              _focus={{ borderColor: "brand.500" }}
-            >
+          </h2>
+          <Select value={typeFilter} onValueChange={v => v && setTypeFilter(v)}>
+            <SelectTrigger className="w-full md:w-[200px] h-10">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
               {typeOptions.map(opt => (
-                <option key={opt} value={opt}>
+                <SelectItem key={opt} value={opt}>
                   {opt === "全て" ? "すべてのタイプ" : opt}
-                </option>
+                </SelectItem>
               ))}
-            </NativeSelect.Field>
-          </NativeSelect.Root>
-        </Flex>
-        <Box
-          mt={4}
-          w="100%"
-          overflowX="auto"
-          borderRadius="xl"
-          border="1px solid"
-          borderColor="gray.200"
-          bg="white"
-        >
-          <Table.Root size="md">
-            <Table.Header>
-              <Table.Row bg="gray.100">
-                <Table.ColumnHeader
-                  px={6}
-                  py={4}
-                  color="gray.600"
-                  fontWeight="700"
-                  fontSize="sm"
-                  whiteSpace="nowrap"
-                >
-                  名称
-                </Table.ColumnHeader>
-                <Table.ColumnHeader
-                  px={6}
-                  py={4}
-                  color="gray.600"
-                  fontWeight="700"
-                  fontSize="sm"
-                  whiteSpace="nowrap"
-                >
-                  タイプ
-                </Table.ColumnHeader>
-                <Table.ColumnHeader
-                  px={6}
-                  py={4}
-                  color="gray.600"
-                  fontWeight="700"
-                  fontSize="sm"
-                  whiteSpace="nowrap"
-                >
-                  距離 (m)
-                </Table.ColumnHeader>
-                <Table.ColumnHeader
-                  px={6}
-                  py={4}
-                  color="gray.600"
-                  fontWeight="700"
-                  fontSize="sm"
-                  whiteSpace="nowrap"
-                >
-                  フード有無
-                </Table.ColumnHeader>
-              </Table.Row>
-            </Table.Header>
-            <Table.Body>
-              {processedLifts.map(l => (
-                <Table.Row
-                  key={l.id}
-                  borderColor="gray.200"
-                  _hover={{ bg: "gray.50" }}
-                >
-                  <Table.Cell
-                    px={6}
-                    py={4}
-                    fontWeight="700"
-                    color="gray.800"
-                    whiteSpace="nowrap"
-                  >
-                    {l.name}
-                  </Table.Cell>
-                  <Table.Cell px={6} py={4} whiteSpace="nowrap">
-                    <Box
-                      as="span"
-                      px={2}
-                      py={1}
-                      borderRadius="md"
-                      bg="gray.100"
-                      color="gray.700"
-                      fontSize="xs"
-                      whiteSpace="nowrap"
+            </SelectContent>
+          </Select>
+        </div>
+        <Card className="mt-4 w-full overflow-x-auto py-0">
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50">
+                  <TableHead className="table-header-cell">名称</TableHead>
+                  <TableHead className="table-header-cell">タイプ</TableHead>
+                  <TableHead className="table-header-cell">距離 (m)</TableHead>
+                  <TableHead className="table-header-cell">
+                    フード有無
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {processedLifts.length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={4}
+                      className="px-4 py-8 text-center text-sm font-semibold text-gray-500"
                     >
-                      {l.type || "--"}
-                    </Box>
-                  </Table.Cell>
-                  <Table.Cell
-                    px={6}
-                    py={4}
-                    color="gray.700"
-                    fontFamily="mono"
-                    whiteSpace="nowrap"
+                      条件に合うリフトがありません
+                    </TableCell>
+                  </TableRow>
+                )}
+                {processedLifts.map(l => (
+                  <TableRow
+                    key={l.id}
+                    className="border-gray-200 hover:bg-gray-50 hover:text-gray-900"
                   >
-                    {l.distance?.toLocaleString() || "--"}
-                  </Table.Cell>
-                  <Table.Cell
-                    px={6}
-                    py={4}
-                    color="gray.700"
-                    whiteSpace="nowrap"
-                  >
-                    {l.hood || "--"}
-                  </Table.Cell>
-                </Table.Row>
-              ))}
-            </Table.Body>
-          </Table.Root>
-        </Box>
-      </Box>
-    </Flex>
+                    <TableCell className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">
+                      {l.name}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 whitespace-nowrap">
+                      <Badge
+                        variant="secondary"
+                        className="text-xs whitespace-nowrap"
+                      >
+                        {l.type || "--"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-gray-700 font-mono whitespace-nowrap">
+                      {l.distance?.toLocaleString() || "--"}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-gray-700 whitespace-nowrap">
+                      {l.hood || "--"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </section>
+    </div>
   );
 };

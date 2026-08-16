@@ -1,16 +1,12 @@
 import type { RefObject } from "react";
 import { useEffect } from "react";
-import {
-  isEventInsideMapZoomSurface,
-  scheduleRestoreDocumentPointerEvents,
-} from "../utils/dom";
+import { isEventInsideMapZoomSurface } from "../utils/dom";
 
 type Options = {
   isMobileFilterOverlayOpen: boolean;
   isSidePanelLayout: boolean;
   listSheetContentRef: RefObject<HTMLDivElement | null>;
   mobileFilterOverlayRef: RefObject<HTMLDivElement | null>;
-  selectedResortId: string | null;
 };
 
 export const useHomeGestureGuards = ({
@@ -18,14 +14,7 @@ export const useHomeGestureGuards = ({
   isSidePanelLayout,
   listSheetContentRef,
   mobileFilterOverlayRef,
-  selectedResortId,
 }: Options) => {
-  useEffect(() => {
-    if (selectedResortId || isMobileFilterOverlayOpen) return;
-
-    scheduleRestoreDocumentPointerEvents();
-  }, [isMobileFilterOverlayOpen, selectedResortId]);
-
   useEffect(() => {
     const preventNonMapGestureZoom = (event: Event) => {
       if (isEventInsideMapZoomSurface(event)) return;

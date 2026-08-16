@@ -1,8 +1,8 @@
 "use client";
 
-import { Box } from "@chakra-ui/react";
 import type { RefObject } from "react";
 import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
+import { cn } from "@/lib/utils";
 import type { MapSkiResort, SkiResortDetail } from "@/types/skiResorts";
 import { SkiResortCompareView } from "./SkiResortCompareView";
 import { SkiResortList } from "./SkiResortList";
@@ -40,16 +40,13 @@ export const MobileResultsSheet = ({
   onSelectResort,
   onToggleCompare,
 }: Props) => (
-  <Box
+  <div
     ref={listSheetContentRef}
     data-mobile-results-panel="true"
-    position="relative"
-    h="100%"
-    minH={0}
-    display={{ base: isListSheetOpen ? "flex" : "none", md: "none" }}
-    flexDirection="column"
-    bg="white"
-    overflow="hidden"
+    className={cn(
+      "relative h-full min-h-0 flex flex-col bg-white overflow-hidden",
+      !isListSheetOpen && "hidden",
+    )}
   >
     {isCompareOpen ? (
       <SkiResortCompareView
@@ -61,11 +58,9 @@ export const MobileResultsSheet = ({
         canScrollContent
       />
     ) : (
-      <Box
+      <div
         data-ski-resort-list-scroll-container="true"
-        h="100%"
-        minH={0}
-        overflowY="auto"
+        className="h-full min-h-0 overflow-y-auto"
       >
         <SkiResortList
           resorts={filteredResorts}
@@ -76,7 +71,7 @@ export const MobileResultsSheet = ({
           onHoverResortChange={onHoverResortChange}
           showHeader={false}
         />
-      </Box>
+      </div>
     )}
-  </Box>
+  </div>
 );

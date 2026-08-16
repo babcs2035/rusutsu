@@ -1,21 +1,15 @@
 "use client";
 
-import {
-  Box,
-  Button,
-  Flex,
-  Grid,
-  Heading,
-  Image,
-  Link,
-  Text,
-} from "@chakra-ui/react";
 import { ArrowLeft } from "lucide-react";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import type { ElevationProfileMapPoint } from "@/features/map/types";
 import {
   COURSE_DIFFICULTY_META,
   getCourseDifficulty,
 } from "@/lib/finalizedResortGeojsonShared";
+import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import type { FinalizedCourseGroup } from "../types";
 import {
   averageNullable,
@@ -86,52 +80,39 @@ export const SelectedCourseDetail = ({
       .join(" / ") || "--";
 
   return (
-    <Flex flexDirection="column" gap={5}>
+    <div className="flex flex-col gap-5">
       <Button
         type="button"
-        alignSelf="flex-start"
         variant="ghost"
-        color="gray.700"
-        fontWeight="800"
-        px={2}
+        className="self-start text-gray-600 font-medium px-0 hover:bg-gray-50 hover:text-gray-900 -ml-2"
         onClick={onBack}
       >
-        <ArrowLeft size={18} />
+        <ArrowLeft size={16} />
         コース一覧へ戻る
       </Button>
-      <Box>
-        <Heading size="lg" color="gray.900">
+      <div>
+        <h2 className="text-lg text-gray-900 font-bold font-[var(--font-heading)]">
           {courseGroup.displayName}
-        </Heading>
-        <Text mt={1} color="gray.600" fontWeight="800">
+        </h2>
+        <p className="mt-1 text-gray-700 font-medium">
           {
             COURSE_DIFFICULTY_META[
               getCourseDifficulty(selectedCourse.properties.level)
             ].label
           }
-        </Text>
-      </Box>
+        </p>
+      </div>
 
       {selectedCourse.properties.image && (
-        <Link
-          display="inline-flex"
-          h={{ base: "180px", md: "220px" }}
-          maxW="100%"
-          alignSelf="flex-start"
-          overflow="hidden"
-          borderRadius="md"
-          href={selectedCourse.properties.image}
-          rel="noopener noreferrer"
-          target="_blank"
-        >
+        <ExternalLinkComponent className="inline-flex h-[180px] max-w-full overflow-hidden rounded-xl">
           <Image
             src={selectedCourse.properties.image}
             alt={courseGroup.displayName}
-            h="100%"
-            maxW="100%"
+            fill
             objectFit="contain"
+            unoptimized
           />
-        </Link>
+        </ExternalLinkComponent>
       )}
 
       <CourseStatusTable
@@ -150,7 +131,6 @@ export const SelectedCourseDetail = ({
 
       <ElevationProfile
         points={profilePoints}
-        showSlope
         activeDistance={
           selectedElevationProfilePoint?.courseGroupId === courseGroup.id
             ? selectedElevationProfilePoint.distance
@@ -168,10 +148,7 @@ export const SelectedCourseDetail = ({
         }
       />
 
-      <Grid
-        templateColumns={{ base: "repeat(2, 1fr)", md: "repeat(5, 1fr)" }}
-        gap={3}
-      >
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <CourseMetric
           title="水平距離"
           value={formatMeters(horizontalDistance)}
@@ -180,62 +157,37 @@ export const SelectedCourseDetail = ({
         <CourseMetric title="標高差" value={formatMeters(elevationDiff)} />
         <CourseMetric title="平均斜度" value={formatDegree(averageSlope)} />
         <CourseMetric title="最大斜度" value={formatDegree(maxSlope)} />
-      </Grid>
+      </div>
 
       {(selectedCourse.properties.latestNote ||
         selectedCourse.properties.note) && (
-        <Text color="gray.700" lineHeight="1.7">
+        <p className="text-gray-700 leading-relaxed">
           {selectedCourse.properties.latestNote ??
             selectedCourse.properties.note}
-        </Text>
+        </p>
       )}
-    </Flex>
+    </div>
   );
 };
 
 const CourseMetric = ({ title, value }: { title: string; value: string }) => (
-  <Box borderBottom="1px solid" borderColor="gray.200" pb={2}>
-    <Text color="gray.500" fontSize="xs" fontWeight="800">
-      {title}
-    </Text>
-    <Text color="gray.900" fontSize="lg" fontWeight="900">
-      {value}
-    </Text>
-  </Box>
+  <div className="border-b border-gray-200 pb-2">
+    <p className="text-gray-500 text-xs font-medium">{title}</p>
+    <p className="text-gray-900 text-lg font-semibold">{value}</p>
+  </div>
 );
 
 const CourseStatusTable = ({ rows }: { rows: [string, string][] }) => (
-  <Box
-    as="table"
-    w="100%"
-    borderCollapse="collapse"
-    fontSize="sm"
-    color="gray.700"
-  >
-    <Box as="tbody">
+  <Table>
+    <TableBody>
       {rows.map(([label, value]) => (
-        <Box
-          key={label}
-          as="tr"
-          borderBottom="1px solid"
-          borderColor="gray.100"
-        >
-          <Box
-            as="th"
-            w="7rem"
-            py={2}
-            pr={3}
-            textAlign="left"
-            color="gray.500"
-            fontWeight="800"
-          >
+        <TableRow key={label} className="border-b border-gray-100">
+          <TableCell className="w-[7rem] py-2 pr-3 text-left text-gray-600 font-semibold text-xs">
             {label}
-          </Box>
-          <Box as="td" py={2} fontWeight="800">
-            {value}
-          </Box>
-        </Box>
+          </TableCell>
+          <TableCell className="py-2 font-semibold">{value}</TableCell>
+        </TableRow>
       ))}
-    </Box>
-  </Box>
+    </TableBody>
+  </Table>
 );

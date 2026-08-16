@@ -5,7 +5,10 @@ import {
 } from "@/shared/utils/japaneseSearchText";
 import type { MapSkiResort } from "@/types/skiResorts";
 import type { Filters } from "../types";
-import { hasNumericFilterValue } from "./filterLabels";
+import {
+  hasNumericFilterValue,
+  isLiftTicketFilterActive,
+} from "./filterLabels";
 
 /**
  * キーワード検索の対象となる文字列を組み立てる。
@@ -48,12 +51,7 @@ export const isFilterActive = (filters: Filters) => {
     hasNumericFilterValue(filters.maxTopElevation) ||
     hasNumericFilterValue(filters.minCourses) ||
     hasNumericFilterValue(filters.minLifts) ||
-    liftTicket.visitDate !== DEFAULT_LIFT_TICKET_SEARCH_INPUT.visitDate ||
-    liftTicket.usePreference !== "full_day" ||
-    liftTicket.party.length !== 1 ||
-    liftTicket.party[0]?.category !== "adult" ||
-    liftTicket.party[0]?.age !== null ||
-    liftTicket.party[0]?.count !== 0
+    isLiftTicketFilterActive(liftTicket)
   );
 };
 

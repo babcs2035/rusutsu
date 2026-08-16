@@ -22,7 +22,6 @@ export type MobileSearchReturnState = {
   listSheetSnapPoint: number | string | null;
   selectedResortId: string | null;
   selectedResortData: NullableSkiResortDetail | null;
-  detailSheetSnapPoint: number | string | null;
   isCompareOpen: boolean;
 };
 

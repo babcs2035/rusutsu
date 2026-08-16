@@ -26,7 +26,7 @@ export const RubyText = ({ segments, fallback }: Props) => {
     <>
       {keyedSegments.map(({ key, segment }) =>
         segment.ruby ? (
-          <ruby key={key}>
+          <ruby key={key} className="ruby-text">
             {segment.text}
             <rt>{segment.ruby}</rt>
           </ruby>

@@ -1,6 +1,5 @@
 "use client";
 
-import { Box, Button, Flex, Input } from "@chakra-ui/react";
 import { Search, X } from "lucide-react";
 import type {
   ChangeEvent as ReactChangeEvent,
@@ -10,6 +9,8 @@ import type {
   TouchEvent as ReactTouchEvent,
   RefObject,
 } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { FilterPanel } from "@/features/filters/FilterPanel";
 import type { Filters } from "@/features/filters/types";
 import type { MapSkiResort } from "@/types/skiResorts";
@@ -75,116 +76,50 @@ export const MobileSearchOverlay = ({
   };
 
   return (
-    <Box
+    <div
       ref={overlayRef}
       data-mobile-search-panel="true"
-      display={{ base: "flex", md: "none" }}
-      h="100%"
-      minH={0}
-      flexDirection="column"
-      bg="rgba(248, 250, 252, 0.98)"
-      overflow="hidden"
+      className="hide-desktop h-screen min-h-0 flex-col bg-gray-50 overflow-hidden"
     >
-      <Box flex="0 0 auto">
+      <div className="flex-shrink-0 flex-grow-0">
         <MobileSearchTopBarShell
-          background="rgba(248, 250, 252, 0.98)"
           onSubmit={onSubmit}
           action={
-            <Flex minW={0} h={10} alignItems="center" gap={2} overflow="hidden">
+            <div className="flex min-w-0 h-10 items-center gap-2 overflow-hidden">
               <Button
                 type="submit"
-                flex="1 1 auto"
-                minW={0}
-                h={10}
-                px={3}
-                borderRadius="full"
-                bg="brand.500"
-                color="white"
-                fontSize="0.78rem"
-                fontWeight="900"
-                boxShadow="none"
-                whiteSpace="nowrap"
-                _hover={{ bg: "brand.600" }}
+                variant="default"
+                className="flex-1 min-w-0 h-10 px-4 rounded-lg whitespace-nowrap disabled:bg-blue-200 disabled:text-blue-100 disabled:cursor-not-allowed"
                 disabled={!hasChanges}
                 aria-label="検索条件を適用"
-                _disabled={{
-                  bg: "brand.100",
-                  color: "white",
-                  cursor: "not-allowed",
-                  opacity: 0.82,
-                }}
               >
                 適用
               </Button>
               <Button
                 type="button"
+                variant="ghost"
                 aria-label="検索を閉じる"
                 onClick={onClose}
-                flex="0 0 auto"
-                w={10}
-                h={10}
-                minW={10}
-                p={0}
-                borderRadius="full"
-                bg="gray.900"
-                color="white"
-                boxShadow="none"
-                _hover={{ bg: "gray.800" }}
+                className="flex-shrink-0 w-10 h-10 min-w-10 p-0 rounded-full border border-gray-200 bg-white shadow-sm hover:bg-gray-50 text-gray-700 hover:text-gray-900"
               >
-                <X size={18} strokeWidth={2.8} />
+                <X size={18} strokeWidth={2.5} />
               </Button>
-            </Flex>
+            </div>
           }
         >
-          <Box
-            position="relative"
-            minW={0}
-            h={12}
-            borderRadius="full"
-            bg="white"
-            border="1px solid"
-            borderColor="rgba(226, 232, 240, 0.88)"
-            boxShadow="0 10px 30px rgba(15, 23, 42, 0.12)"
-            overflow="hidden"
-          >
-            <Box
-              position="absolute"
-              left={3.5}
-              top="50%"
-              transform="translateY(-50%)"
-              color="gray.500"
-              pointerEvents="none"
-            >
+          <div className="relative min-w-0 h-12 rounded-full bg-white border border-gray-200 shadow-[0_10px_30px_rgba(15,23,42,0.12)] overflow-hidden outline-none">
+            <div className="absolute left-[8.5px] top-1/2 -translate-y-1/2 text-gray-500 tap-highlight-transparent pointer-events-none">
               <Search size={18} />
-            </Box>
+            </div>
             <Input
               ref={inputRef}
               aria-label="スキー場を検索"
               type="text"
               value={filters.keyword}
               placeholder="スキー場名を入力"
-              h={12}
-              pl={10}
-              pr={filters.keyword ? 11 : 3}
-              borderRadius="full"
-              border="0"
-              borderLeft="0"
-              borderRight="0"
-              borderInlineStart="0"
-              borderInlineEnd="0"
-              appearance="none"
-              bg="transparent"
-              color="gray.800"
-              fontSize="0.95rem"
-              fontWeight="500"
-              boxShadow="none"
-              outline="none"
-              _autofill={{
-                boxShadow: "0 0 0 1000px transparent inset",
-              }}
-              _placeholder={{ color: "gray.500", fontWeight: "500" }}
-              _focus={{ boxShadow: "none" }}
-              _focusVisible={{ boxShadow: "none", outline: "none" }}
+              className="h-12 w-full rounded-full border-0 bg-transparent text-gray-800 text-base font-medium outline-none shadow-none appearance-none"
+              style={{ MozAppearance: "textfield" }}
+              autoComplete="off"
               onFocus={onInputFocus}
               onBlur={onInputBlur}
               onChange={onKeywordChange}
@@ -193,46 +128,29 @@ export const MobileSearchOverlay = ({
             {filters.keyword && (
               <Button
                 type="button"
+                variant="ghost"
                 aria-label="検索キーワードをクリア"
-                position="absolute"
-                top="50%"
-                right={2.5}
-                transform="translateY(-50%)"
-                zIndex={1}
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                w={7}
-                h={7}
-                minW={7}
-                p={0}
-                borderRadius="full"
-                bg="transparent"
-                color="gray.600"
-                boxShadow="none"
-                _hover={{ bg: "transparent", color: "gray.800" }}
-                _active={{ bg: "transparent", color: "gray.800" }}
+                className="absolute top-1/2 -translate-y-1/2 right-2.5 z-10 flex items-center justify-center w-7 h-7 min-w-7 p-0 rounded-full bg-transparent text-gray-600 shadow-none hover:bg-gray-50 hover:text-gray-700 active:bg-gray-50 active:text-gray-700"
                 onClick={onKeywordClear}
               >
-                <X size={15} strokeWidth={2.7} />
+                <X size={15} strokeWidth={2.5} />
               </Button>
             )}
-          </Box>
+          </div>
         </MobileSearchTopBarShell>
-      </Box>
-      <Box
+      </div>
+      <div
         ref={scrollRef}
         data-mobile-search-filter-scroll="true"
-        flex="1 1 auto"
-        minH={0}
-        display="flex"
-        flexDirection="column"
-        overflowY="auto"
-        overscrollBehavior="contain"
-        WebkitOverflowScrolling="touch"
-        pb={filterBottomPadding}
-        scrollPaddingTop={MOBILE_SEARCH_TOP_BAR_HEIGHT}
-        scrollPaddingBottom={filterBottomPadding}
+        className="flex-1 min-h-0 flex flex-col overflow-y-auto overscroll-contain"
+        style={{
+          WebkitOverflowScrolling: "touch",
+          paddingBottom: filterBottomPadding,
+          // MOBILE_SEARCH_TOP_BAR_HEIGHT は calc() 完結の値のため単位を付加しない
+          // （`calc(...)px` は不正 CSS で宣言が破棄されていた）
+          scrollPaddingTop: MOBILE_SEARCH_TOP_BAR_HEIGHT,
+          scrollPaddingBottom: filterBottomPadding,
+        }}
         onPointerDown={onFilterAreaPointerDown}
         onTouchStart={onFilterAreaPointerDown}
       >
@@ -251,7 +169,7 @@ export const MobileSearchOverlay = ({
           showKeywordSearch={false}
           title="絞り込み"
         />
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 };

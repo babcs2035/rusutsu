@@ -1,9 +1,9 @@
 "use client";
 
-import { Box, Button, Flex, Heading, List, Text } from "@chakra-ui/react";
 import { Check, Plus } from "lucide-react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { memo, startTransition, useCallback, useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { TicketCalculationCard } from "@/features/lift-ticket/components/TicketCalculationCard";
 import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
 import { calculateLiftTicketForSeasons } from "@/features/lift-ticket/utils/calculateLiftTicket";
@@ -63,48 +63,30 @@ export const SkiResortList = ({
   );
 
   return (
-    <Flex h="100%" flexDirection="column" bg="transparent">
+    <div className="flex h-full flex-col bg-transparent">
       {/* ヘッダーエリア */}
       {showHeader && (
-        <Box
-          p={4}
-          pt={{ base: 2, md: 6 }}
-          borderBottom="1px solid"
-          borderColor="gray.100"
-        >
-          <Heading size="lg" color="gray.900">
+        <div className="border-b border-gray-100 px-4 pt-2 md:pt-6">
+          <h2 className="text-lg font-bold text-gray-900 font-[var(--font-heading)]">
             {resorts.length} 件見つかりました
-          </Heading>
-          <Text fontSize="sm" color="gray.500" mt={1}>
+          </h2>
+          <p className="mt-1 text-xs text-gray-500">
             選択すると詳細を表示します
-          </Text>
-        </Box>
+          </p>
+        </div>
       )}
 
       {/* スクロール可能なリスト本体 */}
       {resorts.length === 0 ? (
-        <Flex
-          flexGrow={1}
-          alignItems="center"
-          justifyContent="center"
-          px={6}
-          py={10}
-          textAlign="center"
-        >
-          <Text color="gray.500" fontSize="sm" fontWeight="600">
+        <div className="flex flex-grow items-center justify-center px-6 py-12 text-center">
+          <p className="text-sm font-semibold text-gray-500">
             条件に合うスキー場がありません
-          </Text>
-        </Flex>
+          </p>
+        </div>
       ) : (
-        <List.Root
+        <ul
           data-ski-resort-list-scroll="true"
-          as="ul"
-          flexGrow={1}
-          gap={{ base: 0, md: 3 }}
-          overflowY="auto"
-          px={{ base: 4, md: 4 }}
-          py={{ base: 0, md: 4 }}
-          listStyleType="none"
+          className="flex-grow list-none overflow-y-auto px-0 pt-0 pb-[env(safe-area-inset-bottom,0px)] md:gap-3 md:px-4 md:py-4"
           onScroll={() => onHoverResortChange?.(null)}
         >
           {resorts.map(resort => (
@@ -118,9 +100,9 @@ export const SkiResortList = ({
               liftTicketInput={liftTicketInput}
             />
           ))}
-        </List.Root>
+        </ul>
       )}
-    </Flex>
+    </div>
   );
 };
 
@@ -163,8 +145,8 @@ const SkiResortListItem = memo(
         : null;
 
     return (
-      <List.Item as="li" display="block">
-        <Box
+      <li className="block">
+        <div
           data-ski-resort-list-item="true"
           role="button"
           tabIndex={0}
@@ -182,155 +164,65 @@ const SkiResortListItem = memo(
             }
           }}
           onClick={handleSelect}
-          w="100%"
-          cursor="pointer"
-          borderRadius={{ base: 0, md: "xl" }}
-          bg={{ base: "transparent", md: "white" }}
-          px={{ base: 0, md: 4 }}
-          py={{ base: 1.75, md: 4 }}
-          textAlign="left"
-          border={{ base: 0, md: "1px solid" }}
-          borderBottom={{ base: "1px solid", md: "1px solid" }}
-          borderColor={{
-            base: "gray.200",
-            md: "gray.200",
-          }}
-          boxShadow={{ base: "none", md: "sm" }}
-          transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
-          _hover={{
-            borderColor: { base: "gray.300", md: "brand.500" },
-            boxShadow: { base: "none", md: "0 4px 20px rgba(0, 0, 0, 0.08)" },
-            transform: { base: "none", md: "translateY(-2px)" },
-          }}
+          className="w-full cursor-pointer text-left transition-all duration-200 ease-in-out border-b border-gray-100 md:border md:rounded-xl md:border-gray-200 md:bg-white md:px-4 md:py-3 md:shadow-sm hover:md:border-blue-600 hover:md:shadow-md hover:md:-translate-y-0.5 focus-visible:outline-none focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10"
         >
-          <Flex
-            justifyContent="space-between"
-            alignItems="center"
-            gap={{ base: 2, md: 2 }}
-            minH={{ base: "42px", md: "auto" }}
-          >
-            <Flex
-              minW={0}
-              flex="1 1 auto"
-              flexDirection="column"
-              gap={{ base: 0.75, md: 0.75 }}
-            >
-              <Text
-                fontWeight="800"
-                fontSize={{ base: "0.9rem", md: "lg" }}
-                lineHeight={{ base: "1.55", md: "1.6" }}
-                color="gray.900"
-                fontFamily="var(--font-heading)"
-                overflow="hidden"
-                textOverflow="ellipsis"
-                whiteSpace="nowrap"
-                css={{
-                  "& rt": {
-                    fontSize: "0.45em",
-                    fontWeight: 600,
-                    color: "var(--chakra-colors-gray-500)",
-                  },
-                }}
-              >
+          <div className="flex min-h-[48px] md:min-h-auto items-center justify-between gap-2">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <p className="overflow-hidden text-ellipsis whitespace-nowrap font-bold text-base md:text-lg leading-tight text-gray-900 font-[var(--font-heading)]">
                 <RubyText segments={resort.nameRuby} fallback={resort.nameJa} />
-              </Text>
-              <Text
-                minW={0}
-                fontSize={{ base: "0.7rem", md: "xs" }}
-                color="gray.500"
-                fontWeight="600"
-                lineHeight={{ base: "1.15", md: "1.4" }}
-                overflow="hidden"
-                textOverflow="ellipsis"
-                whiteSpace="nowrap"
-              >
-                {resort.prefecture} • {resort.town}
-              </Text>
+              </p>
+              <p className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-xs md:text-sm font-medium leading-snug text-gray-500">
+                {resort.prefecture} · {resort.town}
+              </p>
               {resort.formerNames.length > 0 && (
-                <Text
-                  minW={0}
-                  fontSize={{ base: "0.65rem", md: "xs" }}
-                  color="gray.400"
-                  fontWeight="600"
-                  lineHeight={{ base: "1.15", md: "1.4" }}
-                  overflow="hidden"
-                  textOverflow="ellipsis"
-                  whiteSpace="nowrap"
-                >
+                <p className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[0.6875rem] md:text-xs font-medium leading-snug text-gray-400">
                   旧称:{" "}
                   {resort.formerNames
                     .map(formerName => formerName.name)
                     .join("、")}
-                </Text>
+                </p>
               )}
               {resort.liftTickets.length > 0 &&
                 (liftTicketInput.visitDate ? (
-                  <Box mt={1} onClick={event => event.stopPropagation()}>
-                    <TicketCalculationCard result={liftTicketResult} compact />
-                  </Box>
-                ) : (
-                  <Text
-                    mt={1}
-                    color="blue.700"
-                    fontSize="0.68rem"
-                    fontWeight="900"
+                  <div
+                    className="mt-1"
+                    onPointerDown={event => event.stopPropagation()}
                   >
+                    <TicketCalculationCard result={liftTicketResult} compact />
+                  </div>
+                ) : (
+                  <p className="mt-1 text-xs font-semibold text-blue-600">
                     日付・人数別の料金計算に対応
-                  </Text>
+                  </p>
                 ))}
-            </Flex>
-            <Flex
-              gap={2}
-              flex="0 0 auto"
-              flexWrap="nowrap"
-              justifyContent="flex-end"
-              alignItems="center"
-              minW={{ base: "5.75rem", md: "100px" }}
-            >
+            </div>
+            <div className="flex flex-shrink-0 items-center justify-end gap-2 min-w-[5.75rem] md:min-w-[100px]">
               <Button
-                size="xs"
-                flex={{ base: "0 0 5.75rem", md: "0 0 100px" }}
-                w={{ base: "5.75rem", md: "100px" }}
-                h={{ base: "28px", md: "var(--chakra-sizes-8)" }}
-                minW={{ base: "5.75rem", md: "100px" }}
-                px={{ base: 2, md: undefined }}
-                borderRadius="md"
-                gap={1}
-                fontSize={{ base: "0.68rem", md: "xs" }}
-                fontWeight="800"
-                color={isCompareSelected ? "white" : "brand.600"}
-                bg={isCompareSelected ? "brand.500" : "white"}
-                border="1px solid"
-                borderColor={{
-                  base: isCompareSelected ? "brand.400" : "brand.500",
-                  md: "brand.500",
-                }}
+                type="button"
+                size="sm"
+                variant={isCompareSelected ? "default" : "outline"}
+                className={`flex items-center gap-1 rounded-lg font-semibold h-8 md:h-9 min-w-[5.75rem] md:min-w-[100px] w-auto text-xs transition-smooth`}
                 aria-pressed={isCompareSelected}
                 aria-label={`${resort.nameJa}を${
                   isCompareSelected ? "比較対象から外す" : "比較対象に追加"
                 }`}
-                _hover={{
-                  bg: isCompareSelected ? "brand.600" : "brand.50",
-                }}
                 onPointerDown={handleActionPointerDown}
                 onClick={e => {
                   e.stopPropagation();
                   onToggleCompare(resort.id, !isCompareSelected);
                 }}
               >
-                <Box
-                  as={isCompareSelected ? Check : Plus}
-                  boxSize={{ base: "12px", md: "14px" }}
-                  strokeWidth={3}
-                />
-                <Box as="span">
-                  {isCompareSelected ? "比較から外す" : "比較に追加"}
-                </Box>
+                {isCompareSelected ? (
+                  <Check className="h-3 w-3" strokeWidth={3} />
+                ) : (
+                  <Plus className="h-3.5 w-3.5" strokeWidth={3} />
+                )}
+                <span>{isCompareSelected ? "比較から外す" : "比較に追加"}</span>
               </Button>
-            </Flex>
-          </Flex>
-        </Box>
-      </List.Item>
+            </div>
+          </div>
+        </div>
+      </li>
     );
   },
 );

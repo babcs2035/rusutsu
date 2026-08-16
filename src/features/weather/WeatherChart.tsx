@@ -1,6 +1,5 @@
 "use client";
 
-import { Box, Button, Flex, Link, Text } from "@chakra-ui/react";
 import { useMemo, useState } from "react";
 import {
   Area,
@@ -8,11 +7,22 @@ import {
   ComposedChart,
   Legend,
   Line,
+  Tooltip as RechartsTooltip,
   ResponsiveContainer,
-  Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import type { SnowDepthsT } from "@/types/weathers";
 import { createSnowDepthLineData } from "./utils/weatherChartData";
 
@@ -30,7 +40,7 @@ export const SnowForecastEmbed = ({
   const detailUrl = `https://ja.snow-forecast.com/resorts/${snowForecastSlug}/6day/${elevation}`;
 
   return (
-    <Box>
+    <div>
       <ElevationSelector
         value={elevation}
         onChange={value => setElevation(value as Elevation)}
@@ -40,51 +50,36 @@ export const SnowForecastEmbed = ({
           { label: "山麓", value: "bot" },
         ]}
       />
-      <Box
-        mt={4}
-        borderWidth="1px"
-        borderColor="gray.200"
-        borderRadius="xl"
-        overflow="hidden"
-        bg="white"
-      >
-        <Box
-          overflowX="auto"
-          overflowY="hidden"
-          css={{ WebkitOverflowScrolling: "touch" }}
-        >
-          <iframe
-            title={`${resortName} Snow-Forecast`}
-            src={feedUrl}
-            width="100%"
-            height={260}
-            scrolling="auto"
-            loading="lazy"
-            style={{
-              border: "none",
-              overflow: "auto",
-              display: "block",
-              minWidth: "720px",
-            }}
-          />
-        </Box>
+      <Card className="mt-4 overflow-hidden">
+        <CardContent className="p-0">
+          <div className="overflow-x-auto overflow-y-hidden scroll-touch">
+            <iframe
+              title={`${resortName} Snow-Forecast`}
+              src={feedUrl}
+              width="100%"
+              height={260}
+              scrolling="auto"
+              loading="lazy"
+              className="min-w-[720px] block border-0 bg-transparent"
+            />
+          </div>
 
-        <Box px={4} py={3} borderTopWidth="1px" borderColor="gray.100">
-          <Text fontSize="sm" color="gray.600">
-            詳細な予報は{" "}
-            <Link
-              href={detailUrl}
-              color="blue.600"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              snow-forecast.com
-            </Link>{" "}
-            からご確認ください
-          </Text>
-        </Box>
-      </Box>
-    </Box>
+          <Separator className="border-gray-100" />
+          <div className="px-4 py-3">
+            <p className="text-sm text-gray-600">
+              詳細な予報は{" "}
+              <ExternalLinkComponent
+                href={detailUrl}
+                className="text-blue-600 hover:text-blue-700"
+              >
+                snow-forecast.com
+              </ExternalLinkComponent>{" "}
+              からご確認ください
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
@@ -100,45 +95,25 @@ const ElevationSelector = ({
   onChange: (value: string) => void;
   options: { label: string; value: string }[];
 }) => (
-  <Flex w="full" justify="center">
-    <Flex
-      gap={2}
-      rounded="full"
-      bg="gray.100"
-      border="1px solid"
-      borderColor="gray.200"
-      p={1.5}
-      boxShadow="sm"
-    >
+  <div className="flex w-full justify-center">
+    <div className="flex gap-1 rounded-full bg-gray-100 border border-gray-200 p-1 shadow-sm">
       {options.map(option => (
         <Button
           key={option.value}
           onClick={() => onChange(option.value)}
           size="sm"
-          w={{ base: "20", sm: "24" }}
-          variant="ghost"
-          bg={value === option.value ? "white" : "transparent"}
-          color={value === option.value ? "brand.500" : "gray.500"}
-          border={
-            value === option.value ? "1px solid" : "1px solid transparent"
-          }
-          borderColor={value === option.value ? "gray.200" : "transparent"}
-          borderRadius="full"
-          shadow={value === option.value ? "sm" : "none"}
-          _hover={{
-            bg: value === option.value ? "white" : "gray.50",
-            color: "gray.900",
-          }}
-          fontSize={{ base: "xs", sm: "sm" }}
-          fontWeight="700"
-          fontFamily="var(--font-heading)"
-          transition="all 0.2s"
+          variant={value === option.value ? "default" : "ghost"}
+          className={cn(
+            "rounded-full font-semibold transition-all duration-200 w-auto min-w-[5rem] md:min-w-[6rem]",
+            value !== option.value &&
+              "text-gray-500 hover:bg-gray-50 hover:text-gray-900",
+          )}
         >
           {option.label}
         </Button>
       ))}
-    </Flex>
-  </Flex>
+    </div>
+  </div>
 );
 
 /**
@@ -162,63 +137,64 @@ interface CustomTooltipProps {
 const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
   if (active && payload?.length) {
     return (
-      <Box
-        rounded="xl"
-        border="1px solid"
-        borderColor="gray.200"
-        bg="white"
-        p={4}
-        shadow="md"
-      >
-        <Text
-          fontWeight="800"
-          fontFamily="var(--font-heading)"
-          color="gray.900"
-          mb={2}
-        >
-          {label}
-        </Text>
-        <Flex flexDirection="column" gap={1}>
-          {payload.map((pld: TooltipPayload) => {
-            const displayValue = Array.isArray(pld.value)
-              ? `${pld.value[0]} - ${pld.value[1]}`
-              : pld.value;
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger>
+            <span className="opacity-0" />
+          </TooltipTrigger>
+          <TooltipContent className="rounded-xl shadow-md border border-gray-200 p-4 bg-white">
+            <p className="font-bold text-gray-900 mb-2 font-[var(--font-heading)]">
+              {label}
+            </p>
+            <div className="flex flex-col gap-1">
+              {payload.map((pld: TooltipPayload) => {
+                const displayValue = Array.isArray(pld.value)
+                  ? `${pld.value[0]} - ${pld.value[1]}`
+                  : pld.value;
 
-            // Resolve color based on name to ensure visibility
-            // Fallback to payload colors, then default gray
-            let textColor = "gray.700";
-            if (pld.name === "四分位範囲" || pld.name === "Interquartile Range")
-              textColor = "#10b981";
-            else if (pld.name === "中央値" || pld.name === "Median")
-              textColor = "#059669";
-            else if (pld.name === "最大値" || pld.name === "Max")
-              textColor = "#ef4444";
-            else if (pld.name === "最小値" || pld.name === "Min")
-              textColor = "#3b82f6";
-            else if (pld.name === "最高気温" || pld.name === "High Temp")
-              textColor = "#f97316";
-            else if (pld.name === "最低気温" || pld.name === "Low Temp")
-              textColor = "#3b82f6";
-            else if (pld.name === "降雪確率" || pld.name === "Snow Prob.")
-              textColor = "#8b5cf6";
-            else if (pld.fill && pld.fill !== "none") textColor = pld.fill;
-            else if (pld.stroke && pld.stroke !== "none")
-              textColor = pld.stroke;
-            else if (pld.color) textColor = pld.color;
+                // Resolve color based on name to ensure visibility
+                // Fallback to payload colors, then default gray
+                let textColor = "text-gray-700";
+                // 動的な色値（Recharts payload）は Tailwind JIT がクラスを生成できないため
+                // インライン style で適用する（§19 の動的値例外）
+                let dynamicColor: string | null = null;
+                if (
+                  pld.name === "四分位範囲" ||
+                  pld.name === "Interquartile Range"
+                )
+                  textColor = "text-emerald-500";
+                else if (pld.name === "中央値" || pld.name === "Median")
+                  textColor = "text-green-600";
+                else if (pld.name === "最大値" || pld.name === "Max")
+                  textColor = "text-red-500";
+                else if (pld.name === "最小値" || pld.name === "Min")
+                  textColor = "text-blue-600";
+                else if (pld.name === "最高気温" || pld.name === "High Temp")
+                  textColor = "text-orange-500";
+                else if (pld.name === "最低気温" || pld.name === "Low Temp")
+                  textColor = "text-blue-600";
+                else if (pld.name === "降雪確率" || pld.name === "Snow Prob.")
+                  textColor = "text-violet-500";
+                else if (pld.fill && pld.fill !== "none")
+                  dynamicColor = pld.fill;
+                else if (pld.stroke && pld.stroke !== "none")
+                  dynamicColor = pld.stroke;
+                else if (pld.color) dynamicColor = pld.color;
 
-            return (
-              <Text
-                key={pld.name}
-                fontSize="sm"
-                color={textColor}
-                fontWeight="700"
-              >
-                {`${pld.name}: ${displayValue}${pld.unit || ""}`}
-              </Text>
-            );
-          })}
-        </Flex>
-      </Box>
+                return (
+                  <p
+                    key={pld.name}
+                    className={cn("text-sm font-medium", textColor)}
+                    style={dynamicColor ? { color: dynamicColor } : undefined}
+                  >
+                    {`${pld.name}: ${displayValue}${pld.unit || ""}`}
+                  </p>
+                );
+              })}
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     );
   }
   return null;
@@ -238,8 +214,8 @@ export const SnowDepthLineChart = ({
   );
 
   return (
-    <Box>
-      <Box w="full" h="400px" mt={8}>
+    <div>
+      <div className="w-full h-[400px]">
         <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <ComposedChart
             data={lineData}
@@ -253,19 +229,19 @@ export const SnowDepthLineChart = ({
             <XAxis
               dataKey="name"
               interval={Math.floor(lineData.length / 5)}
-              tick={{ fontSize: 10, fill: "#9ca3af", fontWeight: "bold" }}
+              tick={{ fontSize: 11, fill: "#9ca3af", fontWeight: "bold" }}
               axisLine={{ stroke: "#e5e7eb" }}
               tickLine={{ stroke: "#e5e7eb" }}
             />
             <YAxis
               unit="cm"
               domain={[0, "dataMax + 50"]}
-              tick={{ fontSize: 10, fill: "#9ca3af", fontWeight: "bold" }}
+              tick={{ fontSize: 11, fill: "#9ca3af", fontWeight: "bold" }}
               axisLine={{ stroke: "#e5e7eb" }}
               tickLine={{ stroke: "#e5e7eb" }}
               width={45}
             />
-            <Tooltip content={<CustomTooltip />} />
+            <RechartsTooltip content={<CustomTooltip />} />
             <Legend
               wrapperStyle={{
                 color: "#374151",
@@ -321,7 +297,7 @@ export const SnowDepthLineChart = ({
             />
           </ComposedChart>
         </ResponsiveContainer>
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 };

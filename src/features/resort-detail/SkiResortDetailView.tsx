@@ -1,22 +1,17 @@
 "use client";
 
-import {
-  Box,
-  Button,
-  Flex,
-  Portal,
-  Text,
-  useBreakpointValue,
-} from "@chakra-ui/react";
-import { motion } from "framer-motion";
+import { Portal } from "@radix-ui/react-portal";
 import { Maximize2, X } from "lucide-react";
 import type { ComponentType } from "react";
 import { useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
 import type {
   ElevationProfileMapPoint,
   JapanResortMapProps,
   SelectedMapFeature,
 } from "@/features/map/types";
+import { useBreakpointValue } from "@/hooks/use-breakpoint-value";
+import { AnimatedPanel } from "@/shared/components/AnimatedPanel";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
 import type {
   MapSkiResort,
@@ -41,8 +36,6 @@ type Props = {
   resortData: NullableSkiResortDetail | null;
   isLoading: boolean;
   isCompareSelected: boolean;
-  sheetSnapPoint: number | string | null;
-  setSheetSnapPoint: (snapPoint: number | string | null) => void;
   onToggleCompare: (id: string, selected: boolean) => void;
   selectedFinalizedFeature: SelectedMapFeature | null;
   selectedElevationProfilePoint: ElevationProfileMapPoint | null;
@@ -60,8 +53,6 @@ type Props = {
 
 const TABS = ["概要", "コース", "リフト", "チケット", "気候"];
 type DetailMapMode = "finalized" | "location";
-
-const MotionBox = motion.create(Box);
 
 const MobileResortMapPreview = ({
   DynamicMap,
@@ -133,164 +124,74 @@ const MobileResortMapPreview = ({
   );
 
   const modeTabs = (
-    <Flex
-      gap={1}
-      borderRadius="md"
-      bg="white"
-      p={1}
-      border="1px solid"
-      borderColor="gray.200"
-      boxShadow="sm"
-    >
+    <div className="flex gap-1 rounded-lg bg-gray-100 p-1 border border-gray-200 shadow-sm">
       {modeOptions.map(option => {
         const isActive = mapMode === option.value;
         return (
           <Button
             key={option.value}
             type="button"
-            h={7}
-            minW={0}
-            px={2.5}
-            borderRadius="sm"
-            bg={isActive ? "blue.600" : "white"}
-            color={isActive ? "white" : "gray.700"}
-            fontSize="0.72rem"
-            fontWeight="800"
-            _hover={{ bg: isActive ? "blue.700" : "gray.50" }}
+            variant={isActive ? "default" : "outline"}
+            className="h-7 min-w-0 px-3 rounded-md text-xs font-medium transition-colors"
             onClick={() => setMapMode(option.value)}
           >
             {option.label}
           </Button>
         );
       })}
-    </Flex>
+    </div>
   );
 
   return (
     <>
-      <Box
-        position="relative"
-        h="210px"
-        w="100%"
-        flexShrink={0}
-        overflow="hidden"
-        borderTop="1px solid"
-        borderBottom="1px solid"
-        borderColor="gray.100"
-        bg="gray.100"
-      >
+      <div className="relative h-[210px] w-full shrink-0 overflow-hidden border-y border-gray-200 bg-gray-100">
         {renderMap("preview")}
-        <Flex
-          position="absolute"
-          top={2}
-          left={2}
-          right={2}
-          zIndex={1200}
-          alignItems="flex-start"
-          justifyContent="space-between"
-          gap={2}
-          pointerEvents="none"
-        >
-          <Box pointerEvents="auto">{modeTabs}</Box>
+        <div className="absolute top-2 left-2 right-2 z-30 flex items-start justify-between gap-2 pointer-events-none">
+          <div className="pointer-events-auto">{modeTabs}</div>
           <Button
             type="button"
             aria-label="地図を拡大"
             onClick={() => setIsExpanded(true)}
-            h={8}
-            w={8}
-            minW={8}
-            p={0}
-            borderRadius="md"
-            bg="white"
-            color="gray.700"
-            border="1px solid"
-            borderColor="gray.200"
-            boxShadow="sm"
-            pointerEvents="auto"
-            _hover={{ bg: "gray.50" }}
+            className="h-8 w-8 min-w-8 p-0 rounded-md bg-white text-gray-700 border border-gray-200 shadow-sm hover:bg-gray-50 hover:text-gray-900 pointer-events-auto focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10"
           >
-            <Maximize2 size={15} strokeWidth={2.6} />
+            <Maximize2 size={15} strokeWidth={2.5} />
           </Button>
-        </Flex>
-      </Box>
+        </div>
+      </div>
 
       {isExpanded && (
         <Portal>
-          <Box
-            position="fixed"
-            inset={0}
-            zIndex={300000}
-            bg="white"
-            display={{ base: "block", md: "none" }}
-          >
-            <Flex
-              position="absolute"
-              top={0}
-              left={0}
-              right={0}
-              zIndex={10}
-              alignItems="center"
-              justifyContent="space-between"
-              gap={2}
-              px={3}
-              pt="calc(env(safe-area-inset-top, 0px) + 0.625rem)"
-              pb={2}
-              bg="rgba(255,255,255,0.94)"
-              borderBottom="1px solid"
-              borderColor="gray.100"
-              backdropFilter="blur(10px)"
-            >
-              <Box minW={0}>
-                <Text
-                  color="gray.900"
-                  fontSize="0.95rem"
-                  fontWeight="900"
-                  lineHeight="1.25"
-                  overflow="hidden"
-                  textOverflow="ellipsis"
-                  whiteSpace="nowrap"
-                >
+          <div className="fixed inset-0 z-[300] bg-white">
+            <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between gap-2 px-3 pt-[calc(env(safe-area-inset-top,0px)+0.625rem)] pb-2 bg-white/94 border-b border-gray-100 backdrop-blur-md">
+              <div className="min-w-0">
+                <p className="text-gray-900 text-base font-bold leading-tight overflow-hidden text-ellipsis whitespace-nowrap font-[var(--font-heading)]">
                   {resort.nameJa}
-                </Text>
-                <Text
-                  mt={0.5}
-                  color="brand.600"
-                  fontSize="0.75rem"
-                  fontWeight="800"
-                  lineHeight="1"
-                >
+                </p>
+                <p className="mt-0.5 text-blue-600 text-xs font-semibold leading-none">
                   {mapMode === "finalized" ? "コースマップ" : "周辺位置"}
-                </Text>
-              </Box>
-              <Flex alignItems="center" gap={2} flexShrink={0}>
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
                 {modeTabs}
                 <Button
                   type="button"
                   aria-label="地図を閉じる"
                   onClick={() => setIsExpanded(false)}
-                  h={8}
-                  w={8}
-                  minW={8}
-                  p={0}
-                  borderRadius="full"
-                  bg="white"
-                  color="gray.700"
-                  border="1px solid"
-                  borderColor="gray.200"
-                  _hover={{ bg: "gray.50" }}
+                  className="h-8 w-8 min-w-8 p-0 rounded-full bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:text-gray-900 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10"
                 >
-                  <X size={15} strokeWidth={2.8} />
+                  <X size={15} strokeWidth={2.5} />
                 </Button>
-              </Flex>
-            </Flex>
-            <Box
-              h="100%"
-              w="100%"
-              pt="calc(env(safe-area-inset-top, 0px) + 3.75rem)"
+              </div>
+            </div>
+            <div
+              className="h-full w-full"
+              style={{
+                paddingTop: "calc(env(safe-area-inset-top, 0px) + 3.75rem)",
+              }}
             >
               {renderMap("expanded")}
-            </Box>
-          </Box>
+            </div>
+          </div>
         </Portal>
       )}
     </>
@@ -317,18 +218,7 @@ export const SkiResortDetailView = ({
   hideMobileInfoSection = false,
 }: Props) => {
   const [activeTab, setActiveTab] = useState(TABS[0]);
-  const isSidePanel =
-    useBreakpointValue({ base: false, md: true }, { ssr: false }) ?? false;
-  const canScrollDetailContent = true;
-  const panelVariants = isSidePanel
-    ? {
-        hidden: { opacity: 0, x: 24 },
-        visible: { opacity: 1, x: 0 },
-      }
-    : {
-        hidden: { opacity: 0 },
-        visible: { opacity: 1 },
-      };
+  const isSidePanel = useBreakpointValue({ base: false, md: true }) ?? false;
 
   useEffect(() => {
     if (selectedFinalizedFeature?.kind === "course") {
@@ -341,87 +231,39 @@ export const SkiResortDetailView = ({
 
   useBodyScrollLock();
   const shouldRenderMobilePanel = isSidePanel || mobileContentTab === "info";
-  const mobilePanelPositionProps =
+  // inline: 親（モバイル詳細シート）内に相対配置 / overlay: 画面下部に固定配置
+  const mobilePanelPositionClasses =
     mobilePresentation === "inline"
-      ? {
-          position: "relative" as const,
-          h: "100%",
-        }
-      : {
-          position: "fixed" as const,
-          top: "calc(env(safe-area-inset-top, 0px) + 6.75rem)",
-          left: 0,
-          right: 0,
-          bottom: 0,
-        };
+      ? "relative h-full"
+      : "fixed left-0 right-0 bottom-0 top-[calc(env(safe-area-inset-top,0px)+6.75rem)]";
 
   if (isLoading || !resortData) {
     return (
       <>
         {isSidePanel && (
           <Portal>
-            <Flex
-              position="fixed"
-              inset={0}
-              zIndex={99999}
-              display={{ base: "none", md: "flex" }}
-              alignItems="center"
-              justifyContent="flex-end"
-              p={0}
-              pointerEvents="none"
-            >
-              <MotionBox
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                position="absolute"
-                inset={0}
-                bg="transparent"
-                backdropFilter="none"
-                pointerEvents="none"
+            <div className="fixed inset-0 z-[60] hidden md:flex">
+              <div
+                className="absolute inset-0 bg-transparent pointer-events-none"
                 aria-hidden="true"
               />
-              <MotionBox
+              <AnimatedPanel
                 data-ski-resort-detail-panel="true"
-                variants={panelVariants}
-                initial="hidden"
-                animate="visible"
-                exit="hidden"
-                position="relative"
-                zIndex={10}
-                display="flex"
-                h="100%"
-                maxH="none"
-                w="min(720px, 70vw)"
-                maxW="none"
-                flexDirection="column"
-                alignItems="center"
-                justifyContent="center"
-                overflow="hidden"
-                bg="white"
-                border="1px solid"
-                borderColor="gray.200"
-                boxShadow="2xl"
-                borderRadius="0"
-                pointerEvents="auto"
+                visible={isSidePanel}
+                contentClassName="relative z-10 flex h-full max-h-none w-[min(720px,70vw)] max-w-none flex-col items-center justify-center overflow-hidden bg-white border border-gray-200 pointer-events-auto shadow-2xl"
               >
                 <LoadingSpinner text="読み込み中..." />
-              </MotionBox>
-            </Flex>
+              </AnimatedPanel>
+            </div>
           </Portal>
         )}
         {!isSidePanel && shouldRenderMobilePanel && (
-          <Box
+          <div
             data-ski-resort-detail-panel="true"
-            {...mobilePanelPositionProps}
-            zIndex={200000}
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-            bg="white"
+            className={`z-[300] flex items-center justify-center bg-white ${mobilePanelPositionClasses}`}
           >
             <LoadingSpinner text="読み込み中..." />
-          </Box>
+          </div>
         )}
       </>
     );
@@ -480,18 +322,14 @@ export const SkiResortDetailView = ({
   );
   const detailPanelContent = (
     <>
-      <Box
-        flexGrow={1}
-        overflowY={canScrollDetailContent ? "auto" : "hidden"}
-        className="custom-scroll"
-      >
+      <div className="flex-1 overflow-y-auto">
         {isSidePanel ? desktopDetailHeader : mobileDetailHeader}
         <DetailTabs
           tabs={TABS}
           activeTab={activeTab}
           onTabChange={setActiveTab}
         />
-        <Box p={{ base: 4, md: 8 }} color="gray.800">
+        <div className="p-4 md:p-8 text-gray-700">
           {activeTab === "概要" && <OverviewTab resort={resort} />}
           {activeTab === "コース" && (
             <CoursesTab
@@ -519,8 +357,8 @@ export const SkiResortDetailView = ({
           )}
           {activeTab === "チケット" && <TicketsTab resort={resort} />}
           {activeTab === "気候" && <WeatherTab resort={resort} />}
-        </Box>
-      </Box>
+        </div>
+      </div>
     </>
   );
 
@@ -528,80 +366,31 @@ export const SkiResortDetailView = ({
     <>
       {isSidePanel && (
         <Portal>
-          <Flex
-            position="fixed"
-            inset={0}
-            zIndex={100000}
-            alignItems="center"
-            justifyContent="flex-end"
-            p={0}
-            pointerEvents="none"
-          >
-            <MotionBox
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              position="absolute"
-              inset={0}
-              bg="transparent"
-              backdropFilter="none"
-              pointerEvents="none"
+          <div className="fixed inset-0 z-[60] hidden md:flex">
+            <div
+              className="absolute inset-0 bg-transparent pointer-events-none"
               aria-hidden="true"
             />
-            <MotionBox
+            <AnimatedPanel
               data-ski-resort-detail-panel="true"
-              variants={panelVariants}
-              initial="hidden"
-              animate="visible"
-              exit="hidden"
-              transition={{ type: "tween", duration: 0.18, ease: "easeOut" }}
-              position="relative"
-              zIndex={10}
-              display="flex"
-              h="100%"
-              maxH="none"
-              w="min(720px, 70vw)"
-              maxW="none"
-              flexDirection="column"
-              overflow="hidden"
-              bg="white"
-              border="1px solid"
-              borderColor="gray.200"
-              boxShadow="2xl"
-              borderRadius="0"
-              pointerEvents="auto"
+              visible={isSidePanel}
+              contentClassName="relative z-10 flex h-full max-h-none w-[min(720px,70vw)] max-w-none flex-col overflow-hidden bg-white border border-gray-200 pointer-events-auto shadow-2xl"
             >
               {detailPanelContent}
-            </MotionBox>
-          </Flex>
+            </AnimatedPanel>
+          </div>
         </Portal>
       )}
       {!isSidePanel && shouldRenderMobilePanel && (
-        <Box
+        <div
           data-ski-resort-detail-panel="true"
-          {...mobilePanelPositionProps}
-          zIndex={200000}
-          display="flex"
-          flexDirection="column"
-          overflow="hidden"
-          bg="white"
-          borderTop="1px solid"
-          borderColor="gray.100"
+          className={`z-[300] flex h-full flex-col overflow-hidden bg-white border-t border-gray-200 ${mobilePanelPositionClasses}`}
         >
-          <Box
-            position="relative"
-            display="flex"
-            h="100%"
-            minH={0}
-            flexDirection="column"
-            overflow="hidden"
-          >
+          <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
             {detailPanelContent}
-          </Box>
-        </Box>
+          </div>
+        </div>
       )}
     </>
   );
 };
-
-// --- 子コンポーネント群 ---

@@ -1,6 +1,12 @@
 "use client";
 
-import { Box, Flex, Link, Text } from "@chakra-ui/react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import type { PriceReference } from "../utils/priceTable";
 
 /**
@@ -26,105 +32,55 @@ export const SourceMarks = ({
   if (shown.length === 0) return null;
 
   return (
-    <Text
-      as="sup"
-      ml={0.5}
-      fontSize="0.62rem"
-      fontWeight="700"
-      whiteSpace="nowrap"
-    >
+    <sup className="ml-0.5 text-[0.6875rem] font-medium whitespace-nowrap">
       {shown.map(reference => (
-        <Box
-          key={reference.number}
-          as="span"
-          position="relative"
-          display="inline-block"
-          css={{
-            "& .source-tip": { display: "none" },
-            "&:hover .source-tip, &:focus-within .source-tip": {
-              display: "block",
-            },
-          }}
-        >
-          <Link
-            href={reference.url}
-            target="_blank"
-            rel="noreferrer"
-            color="brand.600"
-            textDecoration="none"
-            _hover={{ textDecoration: "underline" }}
-            aria-label={`出典 ${reference.number}: ${reference.title ?? reference.url}`}
-          >
-            [{reference.number}]
-          </Link>
-          <Box
-            className="source-tip"
-            position="absolute"
-            bottom="100%"
-            left="50%"
-            transform="translateX(-50%)"
-            mb={1}
-            px={2.5}
-            py={2}
-            borderRadius="lg"
-            bg="gray.900"
-            color="white"
-            fontSize="0.7rem"
-            fontWeight="500"
-            lineHeight="1.5"
-            textAlign="left"
-            w="max-content"
-            maxW="18rem"
-            zIndex={20}
-            pointerEvents="none"
-            boxShadow="lg"
-          >
-            <Flex flexDirection="column" gap={0.5}>
-              {reference.title && (
-                <Text fontWeight="700" wordBreak="break-word">
-                  {reference.title}
-                </Text>
-              )}
-              <Text color="gray.300" wordBreak="break-all">
-                {reference.url}
-              </Text>
-            </Flex>
-          </Box>
-        </Box>
+        <SourceMarkTip key={reference.number} reference={reference} />
       ))}
-    </Text>
+    </sup>
   );
 };
+
+const SourceMarkTip = ({ reference }: { reference: PriceReference }) => (
+  <TooltipProvider delay={200}>
+    <Tooltip>
+      <TooltipTrigger
+        className="text-blue-600 no-underline hover:underline"
+        aria-label={`出典 ${reference.number}: ${reference.title ?? reference.url}`}
+      >
+        <ExternalLinkComponent className="text-blue-600 no-underline hover:text-blue-700 hover:underline">
+          [{reference.number}]
+        </ExternalLinkComponent>
+      </TooltipTrigger>
+      <TooltipContent
+        side="top"
+        sideOffset={8}
+        className="max-w-[18rem] text-[0.6875rem]"
+      >
+        <div className="flex flex-col gap-0.5">
+          {reference.title && (
+            <p className="font-bold break-words">{reference.title}</p>
+          )}
+          <p className="text-muted-foreground break-all">{reference.url}</p>
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  </TooltipProvider>
+);
 
 /** 出典の一覧。表・計算結果の下に置いて [1] から辿れるようにする */
 export const SourceList = ({ references }: { references: PriceReference[] }) =>
   references.length === 0 ? null : (
-    <Flex flexDirection="column" gap={1}>
-      <Text color="gray.700" fontSize="xs" fontWeight="800">
-        出典
-      </Text>
+    <div className="flex flex-col gap-1">
+      <p className="text-gray-700 text-xs font-medium">出典</p>
       {references.map(reference => (
-        <Flex key={reference.number} gap={1.5} alignItems="baseline">
-          <Text
-            color="brand.600"
-            fontSize="xs"
-            fontWeight="700"
-            whiteSpace="nowrap"
-          >
+        <div key={reference.number} className="flex gap-1.5 items-baseline">
+          <span className="text-blue-600 text-xs font-medium whitespace-nowrap">
             [{reference.number}]
-          </Text>
-          <Link
-            href={reference.url}
-            target="_blank"
-            rel="noreferrer"
-            color="gray.600"
-            fontSize="xs"
-            lineHeight="1.6"
-            wordBreak="break-all"
-          >
+          </span>
+          <ExternalLinkComponent className="text-gray-600 text-xs leading-relaxed break-all hover:text-blue-700">
             {reference.title ?? reference.url}
-          </Link>
-        </Flex>
+          </ExternalLinkComponent>
+        </div>
       ))}
-    </Flex>
+    </div>
   );

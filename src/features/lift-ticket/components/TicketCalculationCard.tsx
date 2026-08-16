@@ -1,6 +1,8 @@
 "use client";
 
-import { Box, Flex, Text } from "@chakra-ui/react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import type { TicketCalculationResult } from "../types";
 import { SourceList, SourceMarks } from "./SourceMarks";
 
@@ -13,17 +15,11 @@ export const TicketCalculationCard = ({
 }) => {
   if (!result) {
     return (
-      <Box
-        p={compact ? 3 : 4}
-        borderRadius="xl"
-        bg="gray.50"
-        border="1px dashed"
-        borderColor="gray.300"
-      >
-        <Text color="gray.500" fontSize="sm" fontWeight="700">
+      <Alert variant="default" className="border-dashed bg-gray-50 text-center">
+        <AlertTitle className="text-sm font-semibold text-gray-500">
           このスキー場には詳細料金データがありません。
-        </Text>
-      </Box>
+        </AlertTitle>
+      </Alert>
     );
   }
 
@@ -36,33 +32,38 @@ export const TicketCalculationCard = ({
     const isAlert =
       result.status === "outside_season" || result.status === "closed";
     return (
-      <Box
-        p={compact ? 3 : 4}
-        borderRadius="xl"
-        bg={isAlert ? "orange.50" : "gray.50"}
-        border="1px solid"
-        borderColor={isAlert ? "orange.200" : "gray.200"}
+      <Alert
+        variant={isAlert ? "destructive" : "default"}
+        className={cn(
+          "rounded-xl",
+          isAlert
+            ? "bg-orange-50 border-orange-300"
+            : "bg-gray-50 border-gray-200",
+        )}
       >
-        <Text
-          color={isAlert ? "orange.800" : "gray.600"}
-          fontSize="sm"
-          fontWeight="800"
+        <AlertTitle
+          className={cn(
+            "text-sm font-bold",
+            isAlert ? "text-orange-900" : "text-gray-600",
+          )}
         >
           {result.status === "closed"
             ? "この日は営業していません"
             : result.notes[0]}
-        </Text>
-        {result.status === "closed" && result.notes[0] && (
-          <Text mt={1} color="gray.700" fontSize="xs" lineHeight="1.6">
-            {result.notes[0]}
-          </Text>
-        )}
-        {result.status === "outside_season" && (
-          <Text mt={1} color="gray.600" fontSize="xs">
-            収録シーズン: {result.seasonLabel}
-          </Text>
-        )}
-      </Box>
+        </AlertTitle>
+        <AlertDescription>
+          {result.status === "closed" && result.notes[0] && (
+            <p className="mt-1 text-xs text-gray-700 leading-relaxed">
+              {result.notes[0]}
+            </p>
+          )}
+          {result.status === "outside_season" && (
+            <p className="mt-1 text-xs text-gray-600">
+              収録シーズン: {result.seasonLabel}
+            </p>
+          )}
+        </AlertDescription>
+      </Alert>
     );
   }
 
@@ -70,74 +71,66 @@ export const TicketCalculationCard = ({
     result.ticketTotal == null ? result.knownTicketTotal : result.ticketTotal;
 
   return (
-    <Box
-      p={compact ? 1.5 : 5}
-      borderRadius="xl"
-      bg={result.status === "complete" ? "blue.50" : "orange.50"}
-      border="1px solid"
-      borderColor={result.status === "complete" ? "blue.200" : "orange.200"}
+    <Alert
+      // 背景・ボーダー・タイトル色は className で明示指定しているため，
+      // destructive バリアントの Description 向け赤文字（*:data-[slot=alert-description]:text-destructive/90，
+      // 具体度 (0,2,0) で注記の text-gray-600 を上書きする）を避けるため default を固定する．
+      variant="default"
+      className={cn(
+        "rounded-xl",
+        result.status === "complete"
+          ? "bg-blue-50 border-blue-200"
+          : "bg-orange-50 border-orange-300",
+      )}
     >
-      <Flex alignItems="flex-start" justifyContent="space-between" gap={3}>
-        <Box minW={0}>
-          <Text
-            mt={1}
-            color="gray.900"
-            fontSize={compact ? "lg" : "2xl"}
-            fontWeight="900"
-            lineHeight="1"
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p
+            className={cn(
+              "mt-1 font-bold leading-none",
+              compact ? "text-lg" : "text-2xl",
+              "text-gray-900",
+            )}
           >
             ¥{displayedTotal.toLocaleString("ja-JP")}
             {result.status === "partial" && (
-              <Box as="span" ml={1} fontSize="xs" color="orange.700">
-                ＋未確定
-              </Box>
+              <span className="ml-1 text-xs text-orange-900">＋未確定</span>
             )}
-          </Text>
-        </Box>
-      </Flex>
+          </p>
+        </div>
+      </div>
 
       {!compact && (
-        <Flex mt={4} flexDirection="column" gap={2}>
+        <div className="mt-4 flex flex-col gap-2">
           {result.lines.map(line => (
-            <Flex
+            <div
               key={line.groupId}
-              alignItems="flex-start"
-              justifyContent="space-between"
-              gap={3}
-              pb={2}
-              borderBottom="1px solid"
-              borderColor="blackAlpha.100"
+              className="flex items-start justify-between gap-3 pb-2 border-b border-gray-100"
             >
-              <Box minW={0}>
-                <Text color="gray.800" fontSize="sm" fontWeight="800">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-gray-900">
                   {line.groupLabel} × {line.count}
-                </Text>
-                <Text mt={0.5} color="gray.600" fontSize="xs">
+                </p>
+                <p className="mt-0.5 text-xs text-gray-600">
                   {line.offerName ?? line.note}
-                </Text>
+                </p>
                 {line.standardSubtotal != null && (
-                  <Text mt={0.5} color="gray.500" fontSize="xs">
+                  <p className="mt-0.5 text-xs text-gray-500">
                     通常料金{" "}
-                    <Box as="span" textDecoration="line-through">
+                    <span className="line-through">
                       ¥{line.standardSubtotal.toLocaleString("ja-JP")}
-                    </Box>
+                    </span>
                     {" → "}
                     {line.offerName}
-                  </Text>
+                  </p>
                 )}
                 {line.warnings?.map(warning => (
-                  <Text key={warning} mt={0.5} color="orange.800" fontSize="xs">
+                  <p key={warning} className="mt-0.5 text-xs text-orange-900">
                     ※ {warning}
-                  </Text>
+                  </p>
                 ))}
-              </Box>
-              <Text
-                flexShrink={0}
-                color="gray.900"
-                fontFamily="mono"
-                fontSize="sm"
-                fontWeight="900"
-              >
+              </div>
+              <p className="flex-shrink-0 text-sm font-bold text-gray-900 font-mono">
                 {line.subtotal == null
                   ? "未確定"
                   : `¥${line.subtotal.toLocaleString("ja-JP")}`}
@@ -145,70 +138,59 @@ export const TicketCalculationCard = ({
                   numbers={line.sourceNumbers}
                   references={result.references}
                 />
-              </Text>
-            </Flex>
+              </p>
+            </div>
           ))}
-        </Flex>
+        </div>
       )}
 
       {result.conditionalOffers.length > 0 && !compact && (
-        <Box
-          mt={3}
-          p={3}
-          borderRadius="lg"
-          bg="purple.50"
-          border="1px solid"
-          borderColor="purple.200"
-        >
-          <Text color="purple.900" fontSize="xs" fontWeight="900">
-            条件を満たす場合の割引料金
-          </Text>
-          <Flex mt={2} flexDirection="column" gap={2}>
-            {result.conditionalOffers.map(offer => (
-              <Flex
-                key={offer.id}
-                alignItems="flex-start"
-                justifyContent="space-between"
-                gap={3}
-              >
-                <Box minW={0}>
-                  <Text color="purple.900" fontSize="xs" fontWeight="800">
-                    {offer.offerName}（{offer.groupLabel} × {offer.count}）
-                  </Text>
-                  <Text mt={0.5} color="purple.800" fontSize="xs">
-                    {offer.conditions.length > 0
-                      ? offer.conditions.join(" / ")
-                      : "公式の適用条件を確認してください。"}
-                  </Text>
-                </Box>
-                <Text
-                  flexShrink={0}
-                  color="purple.900"
-                  fontFamily="mono"
-                  fontSize="xs"
-                  fontWeight="900"
+        <Card className="mt-3 rounded-lg border border-purple-200 bg-purple-50">
+          <CardHeader>
+            <CardTitle className="text-xs font-bold text-purple-900">
+              条件を満たす場合の割引料金
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="mt-2 flex flex-col gap-2">
+              {result.conditionalOffers.map(offer => (
+                <div
+                  key={offer.id}
+                  className="flex items-start justify-between gap-3"
                 >
-                  ¥{offer.subtotal.toLocaleString("ja-JP")}
-                  <SourceMarks
-                    numbers={offer.sourceNumbers}
-                    references={result.references}
-                  />
-                </Text>
-              </Flex>
-            ))}
-          </Flex>
-        </Box>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-purple-900">
+                      {offer.offerName}（{offer.groupLabel} × {offer.count}）
+                    </p>
+                    <p className="mt-0.5 text-xs text-purple-900">
+                      {offer.conditions.length > 0
+                        ? offer.conditions.join(" / ")
+                        : "公式の適用条件を確認してください。"}
+                    </p>
+                  </div>
+                  <p className="flex-shrink-0 text-xs font-bold text-purple-900 font-mono">
+                    ¥{offer.subtotal.toLocaleString("ja-JP")}
+                    <SourceMarks
+                      numbers={offer.sourceNumbers}
+                      references={result.references}
+                    />
+                  </p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       )}
       {result.references.length > 0 && !compact && (
-        <Box mt={3}>
+        <div className="mt-3">
           <SourceList references={result.references} />
-        </Box>
+        </div>
       )}
       {result.notes.length > 0 && !compact && (
-        <Text mt={3} color="gray.600" fontSize="xs" lineHeight="1.6">
+        <AlertDescription className="mt-3 text-xs text-gray-600 leading-relaxed">
           {result.notes.join(" / ")}
-        </Text>
+        </AlertDescription>
       )}
-    </Box>
+    </Alert>
   );
 };

@@ -1,7 +1,17 @@
 "use client";
 
-import { Box, Button, Flex, Table, Text } from "@chakra-ui/react";
 import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 import type { LiftTicketData } from "../types";
 import { sharedResortsOf } from "../types";
 import type {
@@ -16,11 +26,6 @@ import { SourceList, SourceMarks } from "./SourceMarks";
 type TableMode = "single" | "shared";
 
 /**
- * 公式サイトの料金表と同じ見え方（縦=券種、横=人物区分）で出す。
- * 行や列の決め方は `buildLiftTicketPriceTables` が data だけから導くので、
- * スキー場ごとの特別扱いはここにも実装側にも無い。
- */
-/**
  * 1セル。日付によって料金が変わる券は「平日：6,300円 / 土日：6,800円」と
  * 同じセルに並べる（公式サイトの料金表と同じ見え方）。
  */
@@ -32,40 +37,30 @@ const PriceCellBody = ({
   references: PriceReference[];
 }) => {
   if (!cell || cell.entries.length === 0) {
-    return (
-      <Text color="gray.300" fontSize="sm">
-        —
-      </Text>
-    );
+    return <p className="text-gray-500 text-sm">—</p>;
   }
   return (
-    <Flex flexDirection="column" alignItems="flex-end" gap={0.5}>
+    <div className="flex flex-col items-end gap-0.5">
       {cell.entries.map(entry => (
-        <Text
+        <p
           key={entry.offerId}
-          color="gray.900"
-          fontSize={entry.amount == null ? "xs" : "sm"}
-          fontWeight={entry.amount == null ? "500" : "900"}
-          fontFamily={entry.amount == null ? undefined : "mono"}
-          whiteSpace="nowrap"
+          className={cn(
+            "text-gray-900 whitespace-nowrap",
+            entry.amount == null
+              ? "text-xs font-medium"
+              : "text-sm font-bold font-mono",
+          )}
         >
           {entry.calendarLabel && (
-            <Text
-              as="span"
-              mr={1}
-              color="gray.600"
-              fontSize="0.7rem"
-              fontWeight="600"
-              fontFamily="body"
-            >
+            <span className="mr-1 text-gray-600 text-[0.6875rem] font-semibold">
               {entry.calendarLabel}：
-            </Text>
+            </span>
           )}
           {entry.text}
           <SourceMarks numbers={entry.sourceNumbers} references={references} />
-        </Text>
+        </p>
       ))}
-    </Flex>
+    </div>
   );
 };
 
@@ -76,113 +71,85 @@ const PriceGrid = ({
   table: PriceTable;
   references: PriceReference[];
 }) => (
-  <Box
-    w="100%"
-    overflowX="auto"
-    borderRadius="xl"
-    border="1px solid"
-    borderColor="gray.200"
-    bg="white"
-  >
-    <Table.Root size="sm" minW={`${260 + table.audiences.length * 140}px`}>
-      <Table.Header>
-        <Table.Row bg="gray.100">
-          <Table.ColumnHeader
-            px={4}
-            py={3}
-            color="gray.600"
-            fontSize="xs"
-            fontWeight="800"
-            whiteSpace="nowrap"
-          >
-            券種
-          </Table.ColumnHeader>
-          {table.audiences.map(audience => (
-            <Table.ColumnHeader
-              key={audience.id}
-              px={4}
-              py={3}
-              color="gray.600"
-              fontSize="xs"
-              fontWeight="800"
-              textAlign="right"
-            >
-              {audience.label}
-            </Table.ColumnHeader>
-          ))}
-        </Table.Row>
-      </Table.Header>
-      <Table.Body>
-        {table.rows.map(row => (
-          <Table.Row key={row.key} borderColor="gray.200">
-            <Table.Cell px={4} py={3} minW="240px" verticalAlign="top">
-              <Text color="gray.900" fontWeight="800">
-                {row.label}
-              </Text>
-              {row.subLabel && (
-                <Text mt={0.5} color="gray.600" fontSize="0.7rem">
-                  {row.subLabel}
-                </Text>
-              )}
-              {row.conditions.map(condition => (
-                <Text
-                  key={condition}
-                  mt={0.5}
-                  color="gray.600"
-                  fontSize="0.68rem"
-                  lineHeight="1.5"
-                >
-                  {condition}
-                </Text>
-              ))}
-              {row.notes.length > 0 && (
-                <Text
-                  mt={0.5}
-                  color="gray.500"
-                  fontSize="0.68rem"
-                  lineHeight="1.5"
-                >
-                  {row.notes.join(" / ")}
-                </Text>
-              )}
-            </Table.Cell>
-            {/* 全区分で同額なら1つのセルに結合する（回数券は大人・子供同額） */}
-            {row.spansAllAudiences ? (
-              <Table.Cell
-                px={4}
-                py={3}
-                textAlign="center"
-                colSpan={table.audiences.length}
-                verticalAlign="top"
+  <Card className="w-full overflow-x-auto">
+    <CardContent
+      className="p-0"
+      style={{ minWidth: `${260 + table.audiences.length * 140}px` }}
+    >
+      <Table className="w-full">
+        <TableHeader>
+          <TableRow className="bg-gray-50">
+            <TableHead className="table-header-cell">券種</TableHead>
+            {table.audiences.map(audience => (
+              <TableHead
+                key={audience.id}
+                className="table-header-cell"
+                // .table-header-cell は unlayered CSS で text-align: left を持つため，
+                // ユーティリティの text-right では上書きできない（§4 参照）．
+                // 本文セル（text-right）と揃えるためインラインで右揃えを指定する．
+                style={{ textAlign: "right" }}
               >
-                <Flex justifyContent="center">
-                  <PriceCellBody
-                    cell={row.cells.get(table.audiences[0].id)}
-                    references={references}
-                  />
-                </Flex>
-              </Table.Cell>
-            ) : (
-              table.audiences.map(audience => (
-                <Table.Cell
-                  key={audience.id}
-                  px={4}
-                  py={3}
-                  textAlign="right"
-                  verticalAlign="top"
+                {audience.label}
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {table.rows.map(row => (
+            <TableRow key={row.key} className="border-gray-200">
+              <TableCell className="px-4 py-3 min-w-[240px] align-top">
+                <p className="text-gray-900 font-semibold">{row.label}</p>
+                {row.subLabel && (
+                  <p className="mt-0.5 text-gray-600 text-[0.6875rem]">
+                    {row.subLabel}
+                  </p>
+                )}
+                {row.conditions.map(condition => (
+                  <p
+                    key={condition}
+                    className="mt-0.5 text-gray-600 text-[0.6875rem] leading-snug"
+                  >
+                    {condition}
+                  </p>
+                ))}
+                {row.notes.length > 0 && (
+                  <p className="mt-0.5 text-gray-500 text-[0.6875rem] leading-snug">
+                    {row.notes.join(" / ")}
+                  </p>
+                )}
+              </TableCell>
+              {/* 全区分で同額なら1つのセルに結合する（回数券は大人・子供同額） */}
+              {row.spansAllAudiences ? (
+                <TableCell
+                  className="px-4 py-3 text-center"
+                  style={{ gridColumn: `span ${table.audiences.length}` }}
                 >
-                  <PriceCellBody
-                    cell={row.cells.get(audience.id)}
-                    references={references}
-                  />
-                </Table.Cell>
-              ))
-            )}
-          </Table.Row>
-        ))}
-      </Table.Body>
-    </Table.Root>
-  </Box>
+                  <div className="flex justify-center">
+                    <PriceCellBody
+                      cell={row.cells.get(table.audiences[0].id)}
+                      references={references}
+                    />
+                  </div>
+                </TableCell>
+              ) : (
+                table.audiences.map(audience => (
+                  <TableCell
+                    key={audience.id}
+                    className="px-4 py-3 text-right align-top"
+                  >
+                    <PriceCellBody
+                      cell={row.cells.get(audience.id)}
+                      references={references}
+                    />
+                  </TableCell>
+                ))
+              )}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </CardContent>
+  </Card>
 );
 
 export const LiftTicketPriceTable = ({ data }: { data: LiftTicketData }) => {
@@ -212,9 +179,9 @@ export const LiftTicketPriceTable = ({ data }: { data: LiftTicketData }) => {
   ].filter(section => section.table.rows.length > 0);
 
   return (
-    <Flex flexDirection="column" gap={4}>
+    <div className="flex flex-col gap-4">
       {sharedPartners.length > 0 && (
-        <Flex gap={2} flexWrap="wrap">
+        <div className="flex gap-2 flex-wrap">
           {modes.map(([value, label]) => {
             const isActive = mode === value;
             return (
@@ -222,56 +189,48 @@ export const LiftTicketPriceTable = ({ data }: { data: LiftTicketData }) => {
                 key={value}
                 type="button"
                 size="xs"
-                h={8}
-                px={3}
-                borderRadius="full"
-                bg={isActive ? "brand.600" : "white"}
-                color={isActive ? "white" : "gray.700"}
-                border="1px solid"
-                borderColor={isActive ? "brand.600" : "gray.300"}
+                variant={isActive ? "default" : "outline"}
+                className={cn(
+                  "h-8 px-3 rounded-full",
+                  !isActive && "text-gray-700",
+                )}
                 onClick={() => setMode(value)}
               >
                 {label}
               </Button>
             );
           })}
-        </Flex>
+        </div>
       )}
 
       {/* 基本料金と条件付き料金を分ける。同じ表に並べると
           「誰でもその値段で買える」と誤読される */}
       {sections.map(section => (
-        <Flex key={section.key} flexDirection="column" gap={2}>
-          <Text color="gray.900" fontSize="sm" fontWeight="900">
+        <div key={section.key} className="flex flex-col gap-2">
+          <p className="text-gray-900 text-sm font-semibold font-[var(--font-heading)]">
             {section.title}
-          </Text>
+          </p>
           {section.key === "discount" && (
-            <Text color="gray.500" fontSize="xs" lineHeight="1.6">
+            <p className="text-gray-500 text-xs leading-relaxed">
               対象者・購入方法・期限の条件があります。行の下の注記を確認してください。
-            </Text>
+            </p>
           )}
           <PriceGrid table={section.table} references={tables.references} />
-        </Flex>
+        </div>
       ))}
 
       {sections.length === 0 && (
-        <Box
-          w="100%"
-          py={8}
-          borderRadius="xl"
-          border="1px solid"
-          borderColor="gray.200"
-          bg="white"
-          textAlign="center"
-        >
-          <Text color="gray.500" fontSize="sm">
-            この区分の料金はありません。
-          </Text>
-        </Box>
+        <Card>
+          <CardContent className="py-8 text-center">
+            <p className="text-gray-500 text-sm font-semibold">
+              この区分の料金はありません。
+            </p>
+          </CardContent>
+        </Card>
       )}
 
       {data.fees.length > 0 && (
-        <Text color="gray.500" fontSize="xs" lineHeight="1.6">
+        <p className="text-gray-500 text-xs leading-relaxed">
           別途:{" "}
           {data.fees
             .filter(fee => fee.amount != null)
@@ -280,17 +239,17 @@ export const LiftTicketPriceTable = ({ data }: { data: LiftTicketData }) => {
                 `${fee.official_label_ja ?? fee.name_ja} ¥${(fee.amount ?? 0).toLocaleString("ja-JP")}`,
             )
             .join(" / ")}
-        </Text>
+        </p>
       )}
 
       <SourceList references={tables.references} />
 
-      <Text color="gray.500" fontSize="xs" lineHeight="1.6">
+      <p className="text-gray-500 text-xs leading-relaxed">
         {data.season.label_ja}
         {data.calculation_policy?.tax_included === true
           ? "・税込"
           : "・税込表記は公式確認が必要"}
-      </Text>
-    </Flex>
+      </p>
+    </div>
   );
 };

@@ -1,5 +1,6 @@
-import Image from "next/image";
 import { auth, signOut } from "@/auth";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 
 export async function AdminHeader() {
   const session = await auth();
@@ -8,50 +9,32 @@ export async function AdminHeader() {
     | undefined;
 
   return (
-    <header
-      style={{
-        background: "#003366",
-        color: "white",
-        padding: "0.5rem 2rem",
-        minHeight: "64px",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        borderBottom: "1px solid rgba(255,255,255,0.1)",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-        <span style={{ fontWeight: "bold", fontSize: "1rem" }}>Rusutsu</span>
-        <span style={{ fontSize: "1rem", opacity: 0.9 }}>管理画面</span>
+    <header className="flex h-16 items-center justify-between gap-4 border-b border-white/10 bg-[var(--admin-dark)] px-4 md:px-8 shadow-md">
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="text-lg font-bold text-white">Rusutsu</span>
+        <span className="hidden text-lg text-white/80 md:inline">管理画面</span>
       </div>
 
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "1rem",
-          justifyContent: "flex-end",
-        }}
-      >
+      <div className="flex min-w-0 items-center gap-4">
         {user && (
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <div className="flex min-w-0 items-center gap-2">
             {user.image && (
-              <Image
-                src={user.image}
-                alt="Profile"
-                width={28}
-                height={28}
-                style={{
-                  borderRadius: "50%",
-                  border: "2px solid white",
-                }}
-              />
+              <Avatar className="h-8 w-8 shrink-0 border-2 border-white/30">
+                <AvatarImage src={user.image} alt="Profile" />
+              </Avatar>
             )}
-            <div>
-              <div style={{ fontWeight: 500, fontSize: "0.875rem" }}>
+            {!user.image && user.name && (
+              <Avatar className="h-8 w-8 shrink-0 border-2 border-white/30">
+                <AvatarFallback className="bg-white/20 text-white text-sm">
+                  {user.name.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            )}
+            <div className="min-w-0">
+              <div className="truncate text-sm font-medium text-white">
                 {user.name || user.email}
               </div>
-              <div style={{ fontSize: "0.75rem", opacity: 0.8 }}>
+              <div className="text-xs text-white/70">
                 {user.role === "admin" ? "管理者" : "閲覧者"}
               </div>
             </div>
@@ -65,20 +48,13 @@ export async function AdminHeader() {
               await signOut({ redirectTo: "/admin/logout" });
             }}
           >
-            <button
+            <Button
               type="submit"
-              style={{
-                background: "rgba(255,255,255,0.2)",
-                border: "1px solid rgba(255,255,255,0.3)",
-                color: "white",
-                padding: "0.35rem 0.75rem",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontSize: "0.875rem",
-              }}
+              variant="outline"
+              className="border-white/20 bg-white/10 text-white/90 hover:bg-white/20 hover:text-white"
             >
               ログアウト
-            </button>
+            </Button>
           </form>
         )}
       </div>

@@ -1,19 +1,155 @@
+@import "tailwindcss";
+@import "tw-animate-css";
 @import "leaflet/dist/leaflet.css";
 @import "leaflet.markercluster/dist/MarkerCluster.css";
 @import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 
-* {
-  box-sizing: border-box;
+@custom-variant dark (&:is(.dark));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --font-bricolage: var(--font-bricolage);
+  --font-manrope: var(--font-manrope);
+
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+
+  --color-sidebar-dark: var(--sidebar-dark);
+  --color-admin-dark: var(--admin-dark);
 }
 
 :root {
-  --bg-light: #f4f6f8;
-  --bg-gradient: radial-gradient(circle at top right, #ffffff, #f4f6f8);
+  --background: hsl(0 0% 100%);
+  --foreground: hsl(222.2 84% 4.9%);
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(222.2 84% 4.9%);
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(222.2 84% 4.9%);
+  --primary: hsl(211 83% 53%);
+  --primary-foreground: hsl(210 40% 98%);
+  --secondary: hsl(210 40% 96.1%);
+  --secondary-foreground: hsl(222.2 47.4% 11.2%);
+  --muted: hsl(210 40% 96.1%);
+  --muted-foreground: hsl(215.4 16.3% 46.9%);
+  --accent: hsl(210 40% 96.1%);
+  --accent-foreground: hsl(222.2 47.4% 11.2%);
+  --destructive: hsl(0 84.2% 60.2%);
+  --destructive-foreground: hsl(210 40% 98%);
+  --border: hsl(214.3 31.8% 91.4%);
+  --input: hsl(214.3 31.8% 91.4%);
+  --ring: hsl(211 83% 53%);
+  --chart-1: hsl(211 83% 53%);
+  --chart-2: hsl(173 58% 39%);
+  --chart-3: hsl(197 37% 24%);
+  --chart-4: hsl(43 74% 66%);
+  --chart-5: hsl(27 87% 67%);
+  --sidebar: hsl(0 0% 98%);
+  --sidebar-foreground: hsl(240 5.3% 26.1%);
+  --sidebar-primary: hsl(240 5.9% 10%);
+  --sidebar-primary-foreground: hsl(0 0% 98%);
+  --sidebar-accent: hsl(240 4.8% 95.9%);
+  --sidebar-accent-foreground: hsl(240 5.9% 10%);
+  --sidebar-border: hsl(220 13% 91%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
+
+  --font-bricolage: var(--font-bricolage);
+  --font-manrope: var(--font-manrope);
+
+  /* Brand colors (Chakra brand → Tailwind) */
   --brand-main: #3b82f6;
   --brand-dim: #93c5fd;
+
+  /* Dark sidebar backgrounds */
+  --sidebar-dark: #102a43;
+  --admin-dark: #003366;
+
+  /* Custom background tokens */
+  --bg-light: #f4f6f8;
+  --bg-gradient: radial-gradient(circle at top right, #ffffff, #f4f6f8);
   --text-primary: #111827;
   --glass-bg: rgba(255, 255, 255, 0.85);
   --glass-border: rgba(0, 0, 0, 0.06);
+
+  /* Surface tokens from Chakra v3 */
+  --surface-dark: rgba(255, 255, 255, 0.95);
+  --surface-light: rgba(0, 0, 0, 0.05);
+  --surface-glass: rgba(255, 255, 255, 0.7);
+  --surface-border: rgba(0, 0, 0, 0.08);
+
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: hsl(222.2 84% 4.9%);
+  --foreground: hsl(210 40% 98%);
+  --card: hsl(222.2 84% 4.9%);
+  --card-foreground: hsl(210 40% 98%);
+  --popover: hsl(222.2 84% 4.9%);
+  --popover-foreground: hsl(210 40% 98%);
+  --primary: hsl(211 83% 53%);
+  --primary-foreground: hsl(222.2 47.4% 11.2%);
+  --secondary: hsl(217.2 32.6% 17.5%);
+  --secondary-foreground: hsl(210 40% 98%);
+  --muted: hsl(217.2 32.6% 17.5%);
+  --muted-foreground: hsl(215 20.2% 65.1%);
+  --accent: hsl(217.2 32.6% 17.5%);
+  --accent-foreground: hsl(210 40% 98%);
+  --destructive: hsl(0 62.8% 30.6%);
+  --destructive-foreground: hsl(210 40% 98%);
+  --border: hsl(217.2 32.6% 17.5%);
+  --input: hsl(217.2 32.6% 17.5%);
+  --ring: hsl(211 83% 53%);
+  --chart-1: hsl(211 83% 53%);
+  --chart-2: hsl(173 58% 39%);
+  --chart-3: hsl(197 37% 24%);
+  --chart-4: hsl(43 74% 66%);
+  --chart-5: hsl(27 87% 67%);
+  --sidebar: hsl(240 5.9% 10%);
+  --sidebar-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-primary: hsl(224.3 76.3% 48%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(240 3.7% 15.9%);
+  --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-border: hsl(240 3.7% 15.9%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
+}
+
+* {
+  box-sizing: border-box;
 }
 
 html {
@@ -31,27 +167,6 @@ body {
   background-color: var(--bg-light);
   background-image: var(--bg-gradient);
   color: var(--text-primary);
-  /* Custom scrollbar */
-  scrollbar-width: thin;
-  scrollbar-color: var(--brand-dim) var(--bg-light);
-}
-
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--bg-light);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--brand-dim);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--brand-main);
 }
 
 /* Base leaflet overrides for light theme */
@@ -124,6 +239,13 @@ html
   [data-map-course-color-mode="slope"][data-map-tile-variant="photo"]
   .leaflet-tile {
   filter: grayscale(1) contrast(0.92) brightness(1.06);
+}
+
+/* EditorMap: reduce leaflet z-index so portal ed tooltips stay on top */
+html body [data-editor-map="true"] .leaflet-pane,
+html body [data-editor-map="true"] .leaflet-control {
+  /* biome-ignore lint/complexity/noImportantStyles: Leaflet のインライン z-index を上書きする必要がある */
+  z-index: 10 !important;
 }
 
 html body .resort-name-label-icon {
@@ -355,6 +477,7 @@ html body .finalized-course-name-label-selected {
 }
 
 html body .finalized-course-name-label-svg {
+  position: absolute;
   overflow: visible;
   pointer-events: none;
 }
@@ -441,6 +564,7 @@ html body .finalized-lift-name-label-icon {
 }
 
 html body .finalized-lift-name-label-svg {
+  position: absolute;
   overflow: visible;
   pointer-events: none;
 }
@@ -549,4 +673,237 @@ html body .finalized-lift-name-label-selected {
     0 0 2px #ffffff,
     0 0 5px #dbeafe,
     0 2px 5px rgba(15, 23, 42, 0.42);
+}
+
+/* Allow scrolling through hidden tab content in shadcn Tabs */
+/* Overrides Tailwind's `.hidden { display: none }` for TabsContent */
+.scrollable-tabs .hidden {
+  /* biome-ignore lint/complexity/noImportantStyles: Tailwind の .hidden { display: none } を上書きする必要がある */
+  display: contents !important;
+}
+
+/* iOS smooth scrolling for scrollable containers */
+.scroll-touch {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Disable tap highlight on touch devices */
+.tap-highlight-transparent {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Backdrop filter override for specific cases */
+.backdrop-none {
+  /* biome-ignore lint/complexity/noImportantStyles: Tailwind の backdrop-filter を上書きする必要がある */
+  backdrop-filter: none !important;
+}
+
+/* === Custom utility classes for consistent styling === */
+
+/* Consistent card shadow - replaces ad-hoc shadow values */
+.card-shadow {
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.card-shadow-hover {
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.08),
+    0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+/* Consistent border color - replaces ad-hoc border-gray-200 in many places */
+.border-subtle {
+  border-color: hsl(214.3 31.8% 91.4%);
+}
+
+/* Focus ring for interactive elements - consistent across the app */
+.focus-ring {
+  outline: none;
+  --tw-ring-color: hsl(211 83% 53%);
+  --tw-ring-offset-color: transparent;
+}
+
+.focus-ring:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px hsl(211 83% 53% / 0.2);
+}
+
+/* Text truncation utility - single line */
+.truncate-1 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Text truncation utility - two lines */
+.truncate-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* Smooth transition for interactive elements */
+.transition-smooth {
+  transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Consistent section spacing */
+.section-gap {
+  gap: 1.5rem;
+}
+
+/* Consistent card container */
+.card-container {
+  border-radius: 0.75rem;
+  border: 1px solid hsl(214.3 31.8% 91.4%);
+  background: white;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+/* Safe area padding for mobile */
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Mobile bottom padding for fixed elements */
+.pb-safe-bottom {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0.75rem));
+}
+
+/* === Responsive display utilities === */
+
+/* Show only on desktop (md+), hide on mobile */
+.hide-mobile {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .hide-mobile {
+    /* biome-ignore lint/complexity/noImportantStyles: Tailwind の display ユーティリティを上書きする必要がある */
+    display: flex !important;
+  }
+}
+
+/* Show only on mobile, hide on desktop */
+.hide-desktop {
+  display: flex;
+}
+
+@media (min-width: 768px) {
+  .hide-desktop {
+    /* biome-ignore lint/complexity/noImportantStyles: Tailwind の display ユーティリティを上書きする必要がある */
+    display: none !important;
+  }
+}
+
+/* === Table styling === */
+
+/* Consistent table header styling across all tabs */
+.table-header-cell {
+  padding: 0.75rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: hsl(215.4 16.3% 46.9%);
+  background: hsl(0 0% 98%);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.table-body-row {
+  border-color: hsl(214.3 31.8% 91.4%);
+}
+
+.table-body-row:hover {
+  background: hsl(0 0% 98%);
+}
+
+/* Selected table row */
+.table-row-selected {
+  background: hsl(211 83% 53% / 0.08);
+}
+
+.table-row-selected:hover {
+  background: hsl(211 83% 53% / 0.12);
+}
+
+/* === Card elevation variants === */
+
+/* Subtle card - for content cards that sit on light backgrounds */
+.card-subtle {
+  background: white;
+  border: 1px solid hsl(214.3 31.8% 91.4%);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+/* Elevated card - for cards that need more visual separation */
+.card-elevated {
+  background: white;
+  border: 1px solid hsl(214.3 31.8% 91.4%);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.06),
+    0 4px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* === Panel background contrast === */
+
+/* Ensures panels stand out against the light page background */
+.panel-bg {
+  background: white;
+}
+
+.panel-bg-muted {
+  background: hsl(0 0% 98%);
+}
+
+/* === Section heading consistency === */
+
+.section-heading {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: hsl(222.2 84% 4.9%);
+}
+
+.section-heading-sm {
+  font-size: 1rem;
+  font-weight: 600;
+  color: hsl(222.2 84% 4.9%);
+}
+
+/* === Spacing scale === */
+
+/* Consistent vertical rhythm for content sections */
+.section-spacing {
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.section-gap-sm {
+  gap: 1rem;
+}
+
+.section-gap-md {
+  gap: 1.5rem;
+}
+
+.section-gap-lg {
+  gap: 2rem;
+}
+
+/* === Ruby text styling for ski resort names === */
+
+.ruby-text rt {
+  font-size: 0.45em;
+  font-weight: 600;
+  color: #6b7280;
 }

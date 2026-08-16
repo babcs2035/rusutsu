@@ -1,23 +1,13 @@
 "use client";
 
-import {
-  Box,
-  Button,
-  Flex,
-  Heading,
-  Portal,
-  Text,
-  useBreakpointValue,
-} from "@chakra-ui/react";
-import { motion } from "framer-motion";
-import type {
-  CSSProperties,
-  TouchEvent as ReactTouchEvent,
-  WheelEvent as ReactWheelEvent,
-} from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Drawer } from "vaul";
+import { Portal } from "@radix-ui/react-portal";
+import { X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
+import { useBreakpointValue } from "@/hooks/use-breakpoint-value";
+import { AnimatedPanel } from "@/shared/components/AnimatedPanel";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
 import { CompareLiftTicketTab } from "./compare/CompareLiftTicketTab";
 import { CompareOverviewTab } from "./compare/CompareOverviewTab";
@@ -31,56 +21,10 @@ type Props = {
   onClose: () => void;
   presentation?: "sheet" | "inline";
   canScrollContent?: boolean;
-  onContentScrollIntent?: () => void;
   initialLiftTicketInput: LiftTicketSearchInput;
 };
 
 const TABS = ["概要", "料金", "レビュー", "天候"] as const;
-const BOTTOM_SHEET_EXPANDED_SNAP_POINT = 0.94;
-const BOTTOM_SHEET_SNAP_POINTS = [
-  0.12,
-  0.52,
-  BOTTOM_SHEET_EXPANDED_SNAP_POINT,
-] as const;
-const BOTTOM_SHEET_INITIAL_SNAP_POINT = BOTTOM_SHEET_SNAP_POINTS[1];
-const BOTTOM_SHEET_MAP_PEEK_HEIGHT = "6vh";
-const isBottomSheetExpanded = (snapPoint: number | string | null) =>
-  typeof snapPoint === "number" &&
-  Math.abs(snapPoint - BOTTOM_SHEET_EXPANDED_SNAP_POINT) < 0.001;
-const VISUALLY_HIDDEN_STYLE: CSSProperties = {
-  position: "absolute",
-  width: 1,
-  height: 1,
-  padding: 0,
-  margin: -1,
-  overflow: "hidden",
-  clip: "rect(0, 0, 0, 0)",
-  border: 0,
-};
-const BOTTOM_SHEET_CONTENT_STYLE: CSSProperties = {
-  position: "fixed",
-  bottom: 0,
-  left: 0,
-  right: 0,
-  zIndex: 100001,
-  display: "flex",
-  flexDirection: "column",
-  height: "100vh",
-  borderTopLeftRadius: "1.5rem",
-  borderTopRightRadius: "1.5rem",
-  backgroundColor: "rgba(255, 255, 255, 0.98)",
-  borderTop: "1px solid rgba(0, 0, 0, 0.05)",
-  boxShadow: "0 -10px 40px rgba(0, 0, 0, 0.14)",
-};
-const BOTTOM_SHEET_HANDLE_STYLE: CSSProperties = {
-  width: "4rem",
-  height: "0.375rem",
-  flexShrink: 0,
-  borderRadius: "999px",
-  backgroundColor: "#d1d5db",
-  margin: "1rem auto",
-};
-const MotionBox = motion.create(Box);
 
 export const SkiResortCompareView = ({
   resorts,
@@ -88,27 +32,11 @@ export const SkiResortCompareView = ({
   onClose,
   presentation = "sheet",
   canScrollContent,
-  onContentScrollIntent,
   initialLiftTicketInput,
 }: Props) => {
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("概要");
-  const [sheetSnapPoint, setSheetSnapPoint] = useState<number | string | null>(
-    BOTTOM_SHEET_INITIAL_SNAP_POINT,
-  );
-  const sheetContentTouchStartYRef = useRef<number | null>(null);
-  const isSidePanel =
-    useBreakpointValue({ base: false, md: true }, { ssr: false }) ?? false;
-  const isSheetContentScrollable =
-    canScrollContent ?? (isSidePanel || isBottomSheetExpanded(sheetSnapPoint));
-  const panelVariants = isSidePanel
-    ? {
-        hidden: { opacity: 0, x: 24 },
-        visible: { opacity: 1, x: 0 },
-      }
-    : {
-        hidden: { opacity: 0 },
-        visible: { opacity: 1 },
-      };
+  const isSidePanel = useBreakpointValue({ base: false, md: true }) ?? false;
+  const isSheetContentScrollable = canScrollContent ?? isSidePanel;
 
   useEffect(() => {
     const previousBodyOverflow = document.body.style.overflow;
@@ -118,271 +46,120 @@ export const SkiResortCompareView = ({
     };
   }, []);
 
-  const expandSheetFromContentScroll = useCallback(() => {
-    if (isSheetContentScrollable) return;
-
-    if (onContentScrollIntent) {
-      onContentScrollIntent();
-      return;
-    }
-
-    setSheetSnapPoint(BOTTOM_SHEET_EXPANDED_SNAP_POINT);
-  }, [isSheetContentScrollable, onContentScrollIntent]);
-  const handleCompareContentWheelCapture = useCallback(
-    (event: ReactWheelEvent<HTMLDivElement>) => {
-      if (isSheetContentScrollable || event.deltaY <= 0) return;
-
-      event.preventDefault();
-      expandSheetFromContentScroll();
-    },
-    [expandSheetFromContentScroll, isSheetContentScrollable],
-  );
-  const handleCompareContentTouchStartCapture = useCallback(
-    (event: ReactTouchEvent<HTMLDivElement>) => {
-      sheetContentTouchStartYRef.current = event.touches[0]?.clientY ?? null;
-    },
-    [],
-  );
-  const handleCompareContentTouchMoveCapture = useCallback(
-    (event: ReactTouchEvent<HTMLDivElement>) => {
-      if (isSheetContentScrollable) return;
-
-      const startY = sheetContentTouchStartYRef.current;
-      const currentY = event.touches[0]?.clientY;
-      if (startY == null || currentY == null || startY - currentY < 8) return;
-
-      event.preventDefault();
-      expandSheetFromContentScroll();
-    },
-    [expandSheetFromContentScroll, isSheetContentScrollable],
-  );
-
   const comparePanelContent = (
-    <>
+    <div
+      className={`flex-1 flex flex-col ${isSheetContentScrollable ? "overflow-y-auto" : "overflow-y-hidden"}`}
+    >
       <Button
+        variant="ghost"
         onClick={onClose}
-        position="absolute"
-        top={4}
-        right={4}
-        zIndex={20}
-        display="flex"
-        h={10}
-        w={10}
-        alignItems="center"
-        justifyContent="center"
-        borderRadius="full"
-        bg="white"
-        border="1px solid"
-        borderColor="gray.200"
-        fontSize="xl"
-        color="gray.600"
-        boxShadow="sm"
-        _hover={{
-          bg: "gray.50",
-          color: "gray.900",
-          transform: "scale(1.05)",
-        }}
-        minW="auto"
-        p={0}
+        className="absolute top-4 right-4 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-white border border-gray-200 text-gray-600 shadow-sm hover:bg-gray-50 hover:text-gray-900 min-w-0 p-0 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10"
         aria-label="比較画面を閉じる"
       >
-        ✕
+        <X size={18} strokeWidth={2.5} />
       </Button>
 
-      <Box
-        px={{ base: 4, md: 8 }}
-        pt={{ base: 6, md: 8 }}
-        pb={5}
-        borderBottom="1px solid"
-        borderColor="gray.200"
-      >
-        <Heading size="2xl" color="gray.900" fontFamily="var(--font-heading)">
+      <div className="px-4 md:px-8 pt-6 md:pt-8 pb-5 border-b border-gray-200">
+        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 font-[var(--font-heading)]">
           スキー場比較
-        </Heading>
-        <Text mt={2} fontSize="sm" color="gray.500" fontWeight="700">
+        </h1>
+        <p className="mt-2 text-sm font-medium text-gray-500">
           {resorts.length} 件を比較中
-        </Text>
-      </Box>
+        </p>
+      </div>
 
-      <Flex
-        as="nav"
-        borderBottom="1px solid"
-        borderColor="gray.100"
-        bg="rgba(255, 255, 255, 0.95)"
-        backdropFilter="blur(16px)"
+      {/* Tabs ベースクラスは flex row であるため，
+          タブバー上・コンテンツ下の縦積みはここで明示する
+          （base-ui は data-orientation 属性のみを付与するため，
+          orientation 別バリアントは共有コンポーネント側で不使用，SUG-9 参照） */}
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="w-full scrollable-tabs flex-col"
       >
-        {TABS.map(tab => (
-          <Button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            flex="1"
-            py={4}
-            textAlign="center"
-            fontSize={{ base: "sm", md: "md" }}
-            fontWeight="700"
-            bg="transparent"
-            borderRadius={0}
-            borderBottom={activeTab === tab ? "2px solid" : "none"}
-            borderColor={activeTab === tab ? "brand.500" : "transparent"}
-            color={activeTab === tab ? "brand.600" : "gray.500"}
-            _hover={{ bg: "gray.50", color: "brand.600" }}
-          >
-            {tab}
-          </Button>
-        ))}
-      </Flex>
-
-      <Box
-        flexGrow={1}
-        overflowY={isSheetContentScrollable ? "auto" : "hidden"}
-        className="custom-scroll"
-        onTouchMoveCapture={handleCompareContentTouchMoveCapture}
-        onTouchStartCapture={handleCompareContentTouchStartCapture}
-        onWheelCapture={handleCompareContentWheelCapture}
-      >
-        {isLoading ? (
-          <Flex minH="360px" alignItems="center" justifyContent="center">
-            <LoadingSpinner text="比較データを読み込み中..." />
-          </Flex>
-        ) : (
-          <Box px={{ base: 2, md: 8 }} py={{ base: 4, md: 8 }} color="gray.800">
-            {activeTab === "概要" && <CompareOverviewTab resorts={resorts} />}
-            {activeTab === "料金" && (
-              <CompareLiftTicketTab
-                resorts={resorts}
-                initialInput={initialLiftTicketInput}
-              />
-            )}
-            {activeTab === "レビュー" && (
-              <CompareReviewsTab resorts={resorts} />
-            )}
-            {activeTab === "天候" && (
-              <CompareWeatherTab resorts={resorts} isSidePanel={isSidePanel} />
-            )}
-          </Box>
-        )}
-      </Box>
-    </>
+        <TabsList className="flex border-b border-gray-100 bg-white rounded-none h-auto">
+          {TABS.map(tab => (
+            <TabsTrigger
+              key={tab}
+              value={tab}
+              className="flex-1 py-4 text-center text-sm md:text-base font-medium bg-transparent rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:font-bold [&_span]:truncate"
+            >
+              {tab}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        <TabsContent value="概要">
+          {isLoading ? (
+            <div className="min-h-96 flex items-center justify-center">
+              <LoadingSpinner text="比較データを読み込み中..." />
+            </div>
+          ) : (
+            <CompareOverviewTab resorts={resorts} />
+          )}
+        </TabsContent>
+        <TabsContent value="料金">
+          {isLoading ? (
+            <div className="min-h-96 flex items-center justify-center">
+              <LoadingSpinner text="比較データを読み込み中..." />
+            </div>
+          ) : (
+            <CompareLiftTicketTab
+              resorts={resorts}
+              initialInput={initialLiftTicketInput}
+            />
+          )}
+        </TabsContent>
+        <TabsContent value="レビュー">
+          {isLoading ? (
+            <div className="min-h-96 flex items-center justify-center">
+              <LoadingSpinner text="比較データを読み込み中..." />
+            </div>
+          ) : (
+            <CompareReviewsTab resorts={resorts} />
+          )}
+        </TabsContent>
+        <TabsContent value="天候">
+          {isLoading ? (
+            <div className="min-h-96 flex items-center justify-center">
+              <LoadingSpinner text="比較データを読み込み中..." />
+            </div>
+          ) : (
+            <CompareWeatherTab resorts={resorts} isSidePanel={isSidePanel} />
+          )}
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 
   if (presentation === "inline") {
     return (
-      <Box
-        position="relative"
-        display="flex"
-        h="100%"
-        minH={0}
-        flexDirection="column"
-        overflow="hidden"
-        bg="white"
-      >
+      <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-white">
         {comparePanelContent}
-      </Box>
+      </div>
     );
   }
 
+  // モバイルの比較表示は presentation="inline"（MobileResultsSheet）で描画されるため，
+  // このコンポーネントの sheet 表示はデスクトップ側パネルのみ．
+  // 旧: vaul ボトムシート分支（z-[200]）があったが，描画経路が inline 化されて
+  // 到達不能になったため削除（初回レンダでのみ描画される 1 フレームのちらつきも解消）
   return (
-    <>
-      {isSidePanel && (
-        <Portal>
-          <Flex
-            position="fixed"
-            inset={0}
-            zIndex={100001}
-            alignItems="center"
-            justifyContent="flex-end"
-            p={0}
-            pointerEvents="none"
+    isSidePanel && (
+      <Portal>
+        <div className="fixed inset-0 z-[100] flex items-center justify-end p-0 pointer-events-none">
+          <div
+            className="absolute inset-0 backdrop-none bg-transparent"
+            aria-hidden="true"
+          />
+          <AnimatedPanel
+            data-ski-resort-compare-panel="true"
+            visible={isSidePanel}
+            contentClassName="relative z-10 flex h-full w-[min(800px,70vw)] flex-col overflow-hidden bg-white border border-gray-200 shadow-2xl pointer-events-auto"
           >
-            <MotionBox
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              position="absolute"
-              inset={0}
-              bg="transparent"
-              backdropFilter="none"
-              pointerEvents="none"
-              aria-hidden="true"
-            />
-            <MotionBox
-              data-ski-resort-compare-panel="true"
-              variants={panelVariants}
-              initial="hidden"
-              animate="visible"
-              exit="hidden"
-              transition={{ type: "tween", duration: 0.18, ease: "easeOut" }}
-              position="relative"
-              zIndex={10}
-              display="flex"
-              h="100%"
-              w="min(800px, 70vw)"
-              maxW="none"
-              flexDirection="column"
-              overflow="hidden"
-              bg="white"
-              border="1px solid"
-              borderColor="gray.200"
-              boxShadow="2xl"
-              borderRadius="0"
-              pointerEvents="auto"
-            >
-              {comparePanelContent}
-            </MotionBox>
-          </Flex>
-        </Portal>
-      )}
-      {!isSidePanel && (
-        <Box>
-          {isBottomSheetExpanded(sheetSnapPoint) && (
-            <Box
-              as="button"
-              position="fixed"
-              top={0}
-              left={0}
-              right={0}
-              zIndex={100002}
-              h={BOTTOM_SHEET_MAP_PEEK_HEIGHT}
-              bg="transparent"
-              aria-label="地図を表示"
-              onClick={() => setSheetSnapPoint(BOTTOM_SHEET_INITIAL_SNAP_POINT)}
-            />
-          )}
-          <Drawer.Root
-            open
-            onOpenChange={open => {
-              if (!open) onClose();
-            }}
-            activeSnapPoint={sheetSnapPoint}
-            setActiveSnapPoint={setSheetSnapPoint}
-            snapPoints={[...BOTTOM_SHEET_SNAP_POINTS]}
-            modal={false}
-            noBodyStyles
-            snapToSequentialPoint
-          >
-            <Drawer.Portal>
-              <Drawer.Content
-                data-ski-resort-compare-panel="true"
-                style={BOTTOM_SHEET_CONTENT_STYLE}
-              >
-                <Drawer.Title style={VISUALLY_HIDDEN_STYLE}>
-                  スキー場比較
-                </Drawer.Title>
-                <Drawer.Handle style={BOTTOM_SHEET_HANDLE_STYLE} />
-                <Box
-                  position="relative"
-                  display="flex"
-                  h="calc(100vh - var(--snap-point-height, 0px) - 38px)"
-                  flexDirection="column"
-                  overflow="hidden"
-                >
-                  {comparePanelContent}
-                </Box>
-              </Drawer.Content>
-            </Drawer.Portal>
-          </Drawer.Root>
-        </Box>
-      )}
-    </>
+            {comparePanelContent}
+          </AnimatedPanel>
+        </div>
+      </Portal>
+    )
   );
 };

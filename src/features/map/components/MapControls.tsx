@@ -1,13 +1,19 @@
 "use client";
 
-import { Box, Button, Flex } from "@chakra-ui/react";
 import { ChevronDown, ChevronUp, Home } from "lucide-react";
+import type React from "react";
 import { useState } from "react";
 import { useMap } from "react-leaflet";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import {
   COURSE_DIFFICULTY_META,
   SLOPE_COLOR_STOPS,
 } from "@/lib/finalizedResortGeojsonShared";
+import { cn } from "@/lib/utils";
 import { GSI_TILE_LAYERS, INITIAL_CENTER } from "../constants";
 import type { CourseColorMode, MapTileVariant } from "../types";
 
@@ -35,119 +41,74 @@ export const MapControls = ({
       : "1rem";
 
   return (
-    <Flex
-      position="absolute"
-      left={{ base: "auto", md: 4 }}
-      right={{ base: 4, md: "auto" }}
-      bottom={{ base: mobileBottomOffset, md: 4 }}
-      zIndex={1000}
-      flexDirection="column"
-      gap={2}
-      alignItems="flex-start"
+    <div
+      className="absolute z-[750] flex flex-col gap-2 items-start right-4 bottom-[var(--map-controls-bottom)] md:left-4 md:right-auto md:bottom-4"
+      style={
+        { "--map-controls-bottom": mobileBottomOffset } as React.CSSProperties
+      }
     >
-      <Flex
-        flexDirection="column"
-        borderRadius="lg"
-        bg="white"
-        boxShadow="md"
-        overflow="hidden"
-        border="1px solid"
-        borderColor="gray.200"
-      >
-        <Button
-          onClick={() => {
-            map.zoomIn();
-            window.setTimeout(() => onUserMapZoomInteraction?.(), 0);
-          }}
-          p={2}
-          color="gray.700"
-          bg="transparent"
-          _hover={{ bg: "gray.50" }}
-          borderRadius="0"
-          fontSize="xl"
-          fontWeight="700"
-          minW={0}
-          h={{ base: 10, md: 8 }}
-          w={{ base: 10, md: 8 }}
-        >
-          +
-        </Button>
-        <Box h="1px" w="100%" bg="gray.100" />
-        <Button
-          onClick={() => {
-            map.zoomOut();
-            window.setTimeout(() => onUserMapZoomInteraction?.(), 0);
-          }}
-          p={2}
-          color="gray.700"
-          bg="transparent"
-          _hover={{ bg: "gray.50" }}
-          borderRadius="0"
-          fontSize="xl"
-          fontWeight="700"
-          minW={0}
-          h={{ base: 10, md: 8 }}
-          w={{ base: 10, md: 8 }}
-        >
-          -
-        </Button>
-      </Flex>
+      <Card className="overflow-hidden">
+        <CardContent className="p-0">
+          <Button
+            onClick={() => {
+              map.zoomIn();
+              window.setTimeout(() => onUserMapZoomInteraction?.(), 0);
+            }}
+            className="flex h-10 w-10 items-center justify-center p-2 text-gray-700 bg-transparent hover:bg-gray-50 hover:text-gray-900 rounded-none text-xl font-medium min-w-0"
+          >
+            +
+          </Button>
+          <Separator orientation="horizontal" className="bg-gray-100" />
+          <Button
+            onClick={() => {
+              map.zoomOut();
+              window.setTimeout(() => onUserMapZoomInteraction?.(), 0);
+            }}
+            className="flex h-10 w-10 items-center justify-center p-2 text-gray-700 bg-transparent hover:bg-gray-50 hover:text-gray-900 rounded-none text-xl font-medium min-w-0"
+          >
+            -
+          </Button>
+        </CardContent>
+      </Card>
       <Button
         onClick={() => {
           onUserMapInteraction?.();
           map.setView(INITIAL_CENTER, initialZoom);
         }}
-        borderRadius="lg"
-        bg="white"
-        p={2}
-        color="gray.700"
-        boxShadow="md"
-        border="1px solid"
-        borderColor="gray.200"
-        _hover={{ bg: "gray.50" }}
-        minW={0}
-        h={{ base: 10, md: 8 }}
-        w={{ base: 10, md: 8 }}
+        className="flex h-10 w-10 items-center justify-center rounded-lg bg-white p-2 text-gray-700 shadow-sm border border-gray-200 min-w-0"
       >
         <Home size={18} />
       </Button>
-      <Flex
-        display={{
-          base: hideMobileTileVariantControl ? "none" : "flex",
-          md: "flex",
-        }}
-        borderRadius="lg"
-        bg="white"
-        boxShadow="md"
-        overflow="hidden"
-        border="1px solid"
-        borderColor="gray.200"
+      <Card
+        className={cn(
+          "overflow-hidden",
+          hideMobileTileVariantControl ? "hidden md:flex" : "flex",
+        )}
       >
-        {Object.entries(GSI_TILE_LAYERS).map(([variant, layer]) => {
-          const tileVariant = variant as MapTileVariant;
-          const isActive = mapTileVariant === tileVariant;
+        <CardContent className="p-0">
+          {Object.entries(GSI_TILE_LAYERS).map(([variant, layer]) => {
+            const tileVariant = variant as MapTileVariant;
+            const isActive = mapTileVariant === tileVariant;
 
-          return (
-            <Button
-              key={variant}
-              onClick={() => onMapTileVariantChange(tileVariant)}
-              aria-label={`${layer.label}に切り替え`}
-              borderRadius="0"
-              bg={isActive ? "blue.500" : "transparent"}
-              color={isActive ? "white" : "gray.700"}
-              _hover={{ bg: isActive ? "blue.600" : "gray.50" }}
-              fontSize="xs"
-              fontWeight="700"
-              h={{ base: 9, md: 8 }}
-              minW={0}
-              px={{ base: 2.5, sm: 3 }}
-            >
-              {layer.label}
-            </Button>
-          );
-        })}
-      </Flex>
-    </Flex>
+            return (
+              <Button
+                key={variant}
+                onClick={() => onMapTileVariantChange(tileVariant)}
+                aria-label={`${layer.label}に切り替え`}
+                variant={isActive ? "default" : "ghost"}
+                className={cn(
+                  "h-[2.25rem] rounded-none px-2.5 text-xs font-medium",
+                  !isActive &&
+                    "text-gray-700 hover:bg-gray-50 hover:text-gray-900",
+                )}
+              >
+                {layer.label}
+              </Button>
+            );
+          })}
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
@@ -169,67 +130,50 @@ export const FinalizedMapModeControl = ({
   if (!hasCourses && !hasLifts) return null;
 
   return (
-    <Flex
-      overflow="hidden"
-      border="1px solid"
-      borderColor="gray.200"
-      borderRadius="lg"
-      bg="white"
-      boxShadow="md"
-    >
-      {hasCourses && (
-        <Flex>
-          {(["difficulty", "slope"] as const).map(value => (
-            <Button
-              key={value}
-              type="button"
-              aria-label={`コースの色分けを${value === "difficulty" ? "難易度" : "斜度"}に切り替え`}
-              aria-pressed={mode === value}
-              h={{ base: 9, md: 8 }}
-              minW={0}
-              borderRadius={0}
-              bg={mode === value ? "blue.500" : "white"}
-              color={mode === value ? "white" : "gray.700"}
-              fontSize="xs"
-              fontWeight="800"
-              px={{ base: 2.5, sm: 3 }}
-              _hover={{ bg: mode === value ? "blue.600" : "gray.50" }}
-              onClick={() => onModeChange(value)}
-            >
-              {value === "difficulty" ? "難易度" : "斜度"}
-            </Button>
-          ))}
-        </Flex>
-      )}
-      <Flex
-        as="label"
-        h={{ base: 9, md: 8 }}
-        alignItems="center"
-        gap={2}
-        px={{ base: 2.5, sm: 3 }}
-        cursor="pointer"
-        bg="white"
-        color="gray.700"
-        fontSize="xs"
-        fontWeight="800"
-        borderLeft={hasCourses ? "1px solid" : 0}
-        borderColor="gray.100"
-        _hover={{ bg: "gray.50" }}
-      >
-        <input
-          type="checkbox"
-          aria-label="営業中のみ表示"
-          checked={showOpenOnly}
-          style={{
-            width: 14,
-            height: 14,
-            accentColor: "#22c55e",
-          }}
-          onChange={event => onShowOpenOnlyChange(event.currentTarget.checked)}
-        />
-        営業中のみ
-      </Flex>
-    </Flex>
+    <Card className="overflow-hidden">
+      <CardContent className="p-0">
+        {hasCourses && (
+          <div className="flex">
+            {(["difficulty", "slope"] as const).map(value => (
+              <Button
+                key={value}
+                type="button"
+                aria-label={`コースの色分けを${value === "difficulty" ? "難易度" : "斜度"}に切り替え`}
+                aria-pressed={mode === value}
+                variant={mode === value ? "default" : "outline"}
+                className={cn(
+                  "h-[2.25rem] rounded-none px-2.5 text-xs font-medium",
+                  mode !== value &&
+                    "text-gray-700 hover:bg-gray-50 hover:text-gray-900",
+                )}
+                onClick={() => onModeChange(value)}
+              >
+                {value === "difficulty" ? "難易度" : "斜度"}
+              </Button>
+            ))}
+          </div>
+        )}
+        <Label
+          className={cn(
+            "flex h-[2.25rem] items-center gap-2 px-2.5 md:px-3 cursor-pointer bg-white text-gray-700 text-xs font-medium hover:bg-gray-50 hover:text-gray-900",
+            hasCourses ? "border-l border-gray-100" : "",
+          )}
+        >
+          <Checkbox
+            id="map-show-open-only"
+            checked={showOpenOnly}
+            onCheckedChange={checked => onShowOpenOnlyChange(checked === true)}
+            className="h-[14px] w-[14px] data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500"
+          />
+          <Label
+            htmlFor="map-show-open-only"
+            className="ml-2 text-sm font-medium"
+          >
+            営業中のみ
+          </Label>
+        </Label>
+      </CardContent>
+    </Card>
   );
 };
 
@@ -247,130 +191,118 @@ export const FinalizedMapLegend = ({
   if (!hasCourses && !hasLifts) return null;
 
   return (
-    <Box
-      maxW={{ base: "calc(100vw - 2rem)", md: "620px" }}
-      border="1px solid"
-      borderColor="gray.200"
-      borderRadius="lg"
-      bg="rgba(255,255,255,0.96)"
-      px={{ base: 2.5, md: 3 }}
-      py={{ base: 1, md: 1 }}
-      boxShadow="md"
-      color="gray.800"
-      fontSize="xs"
-    >
-      {hasCourses && mode === "difficulty" && (
-        <Flex gap={2} wrap="wrap" alignItems="center">
-          {(
-            [
-              "beginner",
-              "beginnerIntermediate",
-              "intermediate",
-              "intermediateAdvanced",
-              "advanced",
-            ] as const
-          ).map(key => (
-            <Flex key={key} alignItems="center" gap={1.5}>
-              <Box
-                w={3}
-                h={3}
-                borderRadius="full"
-                bg={COURSE_DIFFICULTY_META[key].color}
-                border="1px solid rgba(15,23,42,0.18)"
+    <Card className="max-w-[calc(100vw-2rem)] md:max-w-[620px] bg-white">
+      <CardContent className="px-2.5 md:px-3 py-1 text-xs">
+        {hasCourses && mode === "difficulty" && (
+          <div className="flex gap-2 flex-wrap items-center">
+            {(
+              [
+                "beginner",
+                "beginnerIntermediate",
+                "intermediate",
+                "intermediateAdvanced",
+                "advanced",
+              ] as const
+            ).map(key => (
+              <div key={key} className="flex items-center gap-1.5">
+                <div
+                  className="w-3 h-3 rounded-full border border-black/18"
+                  style={{ background: COURSE_DIFFICULTY_META[key].color }}
+                />
+                <span className="font-medium">
+                  {COURSE_DIFFICULTY_META[key].label}
+                </span>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className="h-6 px-2 text-gray-600 font-medium"
+              onClick={() => setIsExpanded(current => !current)}
+            >
+              <div className="flex items-center gap-1">
+                <span>詳細</span>
+                {isExpanded ? (
+                  <ChevronUp size={14} />
+                ) : (
+                  <ChevronDown size={14} />
+                )}
+              </div>
+            </Button>
+          </div>
+        )}
+        {hasCourses && mode === "slope" && (
+          <div className="flex items-center gap-2">
+            <div className="w-[220px] md:w-[300px] max-w-[calc(100vw-9rem)]">
+              <div
+                className="h-2.5 rounded-full"
+                style={{
+                  background: `linear-gradient(90deg, ${SLOPE_COLOR_STOPS.map(
+                    stop => `${stop.color} ${(stop.slope / 40) * 100}%`,
+                  ).join(", ")})`,
+                }}
               />
-              <Box as="span" fontWeight="700">
-                {COURSE_DIFFICULTY_META[key].label}
-              </Box>
-            </Flex>
-          ))}
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            h={6}
-            px={2}
-            color="gray.600"
-            fontWeight="700"
-            onClick={() => setIsExpanded(current => !current)}
-          >
-            <Flex alignItems="center" gap={1}>
-              <Box as="span">詳細</Box>
-              {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            </Flex>
-          </Button>
-        </Flex>
-      )}
-      {hasCourses && mode === "slope" && (
-        <Flex alignItems="center" gap={2}>
-          <Box w={{ base: "220px", md: "300px" }} maxW="calc(100vw - 9rem)">
-            <Box
-              h={2.5}
-              borderRadius="full"
-              bg={`linear-gradient(90deg, ${SLOPE_COLOR_STOPS.map(
-                stop => `${stop.color} ${(stop.slope / 40) * 100}%`,
-              ).join(", ")})`}
-            />
-            <Flex mt={1} justifyContent="space-between" fontWeight="700">
-              <Box>0°</Box>
-              <Box>10°</Box>
-              <Box>20°</Box>
-              <Box>30°</Box>
-              <Box>40°+</Box>
-            </Flex>
-          </Box>
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            h={6}
-            px={2}
-            color="gray.600"
-            fontWeight="700"
-            onClick={() => setIsExpanded(current => !current)}
-          >
-            <Flex alignItems="center" gap={1}>
-              <Box as="span">詳細</Box>
-              {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            </Flex>
-          </Button>
-        </Flex>
-      )}
-      {isExpanded && (
-        <>
-          {hasCourses && (
-            <Flex mt={2} gap={3} wrap="wrap" color="gray.600">
-              <Flex alignItems="center" gap={1.5}>
-                <Box
-                  w={8}
-                  h="8px"
-                  borderBottom="5px solid rgba(125, 211, 252, 0.42)"
-                />
-                <Box>非圧雪</Box>
-              </Flex>
-            </Flex>
-          )}
-          {(hasCourses || hasLifts) && (
-            <Flex mt={hasCourses ? 2 : 0} gap={3} wrap="wrap">
-              <Flex alignItems="center" gap={1.5}>
-                <Box w={5} h="3px" bg="#1D4ED8" />
-                <Box>Open</Box>
-              </Flex>
-              <Flex alignItems="center" gap={1.5}>
-                <Box
-                  w={6}
-                  h="3px"
-                  bg="repeating-linear-gradient(90deg, #94A3B8 0 8px, transparent 8px 14px)"
-                />
-                <Box>一部・準備中</Box>
-              </Flex>
-              <Flex alignItems="center" gap={1.5}>
-                <Box w={5} h="3px" bg="#CBD5E1" opacity={0.58} />
-                <Box>Close</Box>
-              </Flex>
-            </Flex>
-          )}
-        </>
-      )}
-    </Box>
+              <div className="flex mt-1 justify-between font-medium">
+                <span>0°</span>
+                <span>10°</span>
+                <span>20°</span>
+                <span>30°</span>
+                <span>40°+</span>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className="h-6 px-2 text-gray-600 font-medium"
+              onClick={() => setIsExpanded(current => !current)}
+            >
+              <div className="flex items-center gap-1">
+                <span>詳細</span>
+                {isExpanded ? (
+                  <ChevronUp size={14} />
+                ) : (
+                  <ChevronDown size={14} />
+                )}
+              </div>
+            </Button>
+          </div>
+        )}
+        {isExpanded && (
+          <>
+            {hasCourses && (
+              <div className="mt-2 flex gap-3 flex-wrap text-gray-600">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-8 h-2 border-b-[5px] border-sky-300/42" />
+                  <span>非圧雪</span>
+                </div>
+              </div>
+            )}
+            {(hasCourses || hasLifts) && (
+              <div
+                className={cn(
+                  "mt-0 flex gap-3 flex-wrap",
+                  hasCourses ? "mt-2" : "",
+                )}
+              >
+                <div className="flex items-center gap-1.5">
+                  <div className="w-5 h-[3px] bg-blue-800" />
+                  <span>Open</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-6 h-[3px] bg-[repeating-linear-gradient(90deg,#94A3B8_0_8px,transparent_8px_14px)]" />
+                  <span>一部・準備中</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-5 h-[3px] bg-slate-300 opacity-58" />
+                  <span>Close</span>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 };

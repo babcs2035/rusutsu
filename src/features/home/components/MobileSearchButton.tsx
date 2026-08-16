@@ -1,113 +1,57 @@
 "use client";
 
-import { Box, Button } from "@chakra-ui/react";
 import { Search, X } from "lucide-react";
 import type { PointerEvent as ReactPointerEvent } from "react";
+import { Button } from "@/components/ui/button";
 
 type Props = {
   keyword: string;
-  isHidden: boolean;
-  placement?: "fixed" | "static";
   onKeywordClear: () => void;
   onOpen: () => void;
   onPointerDown: (event: ReactPointerEvent<HTMLButtonElement>) => void;
 };
 
+// トップバー内（静的配置）でのみ使用されるため，配置は固定
 export const MobileSearchButton = ({
   keyword,
-  isHidden,
-  placement = "fixed",
   onKeywordClear,
   onOpen,
   onPointerDown,
 }: Props) => (
-  <Box
-    display={{
-      base: isHidden ? "none" : "flex",
-      md: "none",
-    }}
-    position={placement === "static" ? "relative" : placement}
-    top={
-      placement === "fixed"
-        ? "calc(env(safe-area-inset-top, 0px) + 0.75rem)"
-        : undefined
-    }
-    left={placement === "fixed" ? 4 : undefined}
-    right={placement === "fixed" ? 4 : undefined}
-    zIndex={placement === "fixed" ? 200001 : undefined}
-    w={placement === "static" ? "100%" : undefined}
-    minW={0}
-    pointerEvents="auto"
-  >
+  <div className="flex md:hidden w-full min-w-0 pointer-events-auto relative">
     <Button
       type="button"
       aria-label="スキー場を検索"
-      position="relative"
-      zIndex={1}
-      justifyContent="flex-start"
-      w="100%"
-      h={12}
-      pl={10}
-      pr={keyword ? 10 : 3}
-      borderRadius="full"
-      border="1px solid"
-      borderColor="rgba(226, 232, 240, 0.88)"
-      bg="rgba(255, 255, 255, 0.97)"
-      color={keyword ? "gray.800" : "gray.500"}
-      fontSize="0.95rem"
-      fontWeight="500"
-      boxShadow="0 10px 30px rgba(15, 23, 42, 0.18)"
-      backdropFilter="blur(18px)"
-      pointerEvents="auto"
-      _hover={{ bg: "rgba(255, 255, 255, 0.98)" }}
+      variant="ghost"
+      className={`relative z-10 flex justify-start w-full h-12 pl-10 ${
+        keyword ? "pr-10" : "pr-3"
+      } rounded-full border border-gray-200 bg-white ${
+        keyword ? "text-gray-700" : "text-gray-500"
+      } text-base font-medium shadow-[0_10px_30px_rgba(15,23,42,0.12)] pointer-events-auto hover:bg-gray-50 hover:text-gray-900`}
       onPointerDown={onPointerDown}
       onClick={onOpen}
     >
-      <Box
-        position="absolute"
-        left={3.5}
-        top="50%"
-        transform="translateY(-50%)"
-        color="gray.500"
-        pointerEvents="none"
-      >
+      <div className="absolute left-[14px] top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">
         <Search size={18} />
-      </Box>
-      <Box
-        as="span"
-        overflow="hidden"
-        textOverflow="ellipsis"
-        whiteSpace="nowrap"
-      >
+      </div>
+      <span className="overflow-hidden text-ellipsis whitespace-nowrap">
         {keyword || "スキー場を検索"}
-      </Box>
+      </span>
     </Button>
     {keyword && (
       <Button
         type="button"
         aria-label="検索キーワードをクリア"
-        position="absolute"
-        top="50%"
-        right={1.5}
-        zIndex={2}
-        transform="translateY(-50%)"
-        w={8}
-        h={8}
-        minW={8}
-        p={0}
-        borderRadius="full"
-        bg="transparent"
-        color="gray.500"
-        _hover={{ bg: "gray.100" }}
-        // メインの検索ボタンを開かず、表示中のキーワードだけを消す。
+        variant="ghost"
+        className="absolute top-1/2 right-[6px] z-20 -translate-y-1/2 w-8 h-8 min-w-8 p-0 rounded-full border border-gray-200 bg-transparent text-gray-500 hover:bg-gray-50 hover:text-gray-900"
         onPointerDown={event => event.stopPropagation()}
         onClick={event => {
           event.stopPropagation();
           onKeywordClear();
         }}
       >
-        <X size={18} />
+        <X size={18} strokeWidth={2.5} />
       </Button>
     )}
-  </Box>
+  </div>
 );

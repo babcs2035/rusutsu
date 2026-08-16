@@ -7,7 +7,7 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div>
+    <div className="min-h-screen bg-gradient-to-b from-gray-100 to-gray-200">
       <AdminHeader />
       <AdminToaster />
       {children}

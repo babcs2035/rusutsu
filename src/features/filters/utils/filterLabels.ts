@@ -1,9 +1,21 @@
+import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
 import { DEFAULT_LIFT_TICKET_SEARCH_INPUT } from "@/features/lift-ticket/utils/calculateLiftTicket";
 import type { Filters, NumericFilterValue, RegionOption } from "../types";
 
 export const hasNumericFilterValue = (
   value: NumericFilterValue | undefined,
 ): value is number => value != null;
+
+// リフト券フィルタがデフォルト入力から変更されているかを判定する。
+// isFilterActive（filterResorts.ts）と同一の判定を共有し，
+// デフォルト値（今日・1日券・大人0人）を「フィルタ適用中」として数えないようにする。
+export const isLiftTicketFilterActive = (liftTicket: LiftTicketSearchInput) =>
+  liftTicket.visitDate !== DEFAULT_LIFT_TICKET_SEARCH_INPUT.visitDate ||
+  liftTicket.usePreference !== "full_day" ||
+  liftTicket.party.length !== 1 ||
+  liftTicket.party[0]?.category !== "adult" ||
+  liftTicket.party[0]?.age !== null ||
+  liftTicket.party[0]?.count !== 0;
 
 const formatMetersRangeLabel = (
   minValue: NumericFilterValue | undefined,
@@ -106,7 +118,7 @@ export const getActiveFilterLabels = (
   if (filters.yukiMagi) labels.push("雪マジ対象");
   if (filters.status) labels.push("営業中のみ");
   if (filters.beginnerFriendly) labels.push("初級者向け");
-  if (liftTicket.visitDate) {
+  if (isLiftTicketFilterActive(liftTicket)) {
     const partyCount = liftTicket.party.reduce(
       (total, group) => total + group.count,
       0,

@@ -1,0 +1,119 @@
+.weather-panel-container {
+  container-type: inline-size;
+  /* 下の @container は named query であり，container-name がないと常に非一致になる */
+  container-name: weather-panel-container;
+}
+
+.weather-panel-container .weather-panel-content {
+  flex-direction: row;
+}
+
+.weather-panel-container .weather-info {
+  flex: 1 1 auto;
+  width: auto;
+  max-width: none;
+  min-width: var(--weather-info-width, 0px);
+}
+
+.weather-panel-container .weather-feed {
+  flex: 0 0 var(--feed-width);
+  width: var(--feed-width);
+  max-width: 100%;
+}
+
+.weather-panel-container .weather-links {
+  flex-direction: column;
+  align-items: flex-start;
+  overflow-x: visible;
+  flex-wrap: nowrap;
+  padding-bottom: 0;
+}
+
+.weather-panel-container .weather-link {
+  width: 116px;
+}
+
+/*
+ * デスクトップ（コンテナ幅 > 686px）のフィード寸法。
+ * この CSS がこれらの値の単一情報源である（compare/constants.ts 側の
+ * 対応定数は削除済み）。値を変更した場合は下のコンテナクエリ閾値
+ * calc(180px + 32px + 474px) も併せて確認すること。
+ */
+.weather-panel-container .snow-forecast-viewport {
+  height: 170px;
+}
+
+.weather-panel-container .snow-forecast-feed-crop {
+  width: 690px;
+  height: 230px;
+}
+
+.weather-panel-container .snow-forecast-feed-transform {
+  transform: scale(0.92);
+}
+
+/*
+ * モバイルフッターの表示制御はこの CSS に集約する。
+ * Tailwind の `hidden` クラスを付けない理由: 比較ビューの
+ * `.scrollable-tabs .hidden { display: contents !important }`
+ * に上書きされ，コンテナクエリの display: flex が勝てなくなるため。
+ */
+.weather-panel-container .snow-forecast-mobile-footer {
+  display: none;
+}
+
+@container weather-panel-container (max-width: calc(180px + 32px + 474px)) {
+  .weather-panel-container .weather-panel-content {
+    flex-direction: column;
+  }
+
+  .weather-panel-container .weather-info {
+    flex: 0 0 auto;
+    max-width: none;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .weather-panel-container .weather-feed {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+
+  .weather-panel-container .weather-links {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    overflow-x: visible;
+    padding-bottom: 0;
+  }
+
+  .weather-panel-container .weather-link {
+    width: max-content;
+  }
+
+  .weather-panel-container .snow-forecast-viewport {
+    height: 143px;
+  }
+
+  .weather-panel-container .snow-forecast-desktop-elevation-controls {
+    display: none;
+  }
+
+  /* モバイルのクロップ寸法（単一情報源: この CSS） */
+  .weather-panel-container .snow-forecast-feed-crop {
+    height: 131.56px;
+    width: 386.4px;
+  }
+
+  .weather-panel-container .snow-forecast-feed-transform {
+    transform: translate(-40px, -35px) scale(0.92);
+  }
+
+  .weather-panel-container .snow-forecast-mobile-footer {
+    display: flex;
+  }
+
+  .weather-panel-container .snow-forecast-desktop-source {
+    display: none;
+  }
+}

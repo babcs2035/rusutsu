@@ -1,17 +1,16 @@
 "use client";
 
-import { Box, Flex, Heading, Link } from "@chakra-ui/react";
 import { useMemo } from "react";
 import {
   SnowDepthLineChart,
   SnowForecastEmbed,
 } from "@/features/weather/WeatherChart";
+import { cn } from "@/lib/utils";
+import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import type { SnowDepthsT } from "@/types/weathers";
 import type { Resort } from "../types";
 
 export const WeatherTab = ({ resort }: { resort: Resort }) => {
-  // --- Data Transformation Logic ---
-
   const snowDepthsFormatted: SnowDepthsT | undefined = useMemo(() => {
     const records = resort.snowDepths;
     if (!records || records.length === 0) return undefined;
@@ -23,17 +22,14 @@ export const WeatherTab = ({ resort }: { resort: Resort }) => {
       const m = d.getMonth() + 1;
       const day = d.getDate();
       let seasonYear = d.getFullYear();
-      // December belongs to the next year's season grouping for visualization
       if (m === 12) seasonYear += 1;
 
       if (!seasons[seasonYear]) {
-        // 5 months (Dec, Jan, Feb, Mar, Apr), ~32 days max
         seasons[seasonYear] = Array(5)
           .fill(null)
           .map(() => Array(32).fill(null));
       }
 
-      // Map month to index: 1->0, 2->1, 3->2, 4->3, 12->4
       let mIdx = -1;
       if (m === 1) mIdx = 0;
       else if (m === 2) mIdx = 1;
@@ -105,118 +101,61 @@ export const WeatherTab = ({ resort }: { resort: Resort }) => {
 
   const weathernewsSpotId = resort.weatherIds?.weathernewsSpotId ?? null;
 
+  const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if ((e as unknown as { detail: number }).detail > 0) {
+      (e.currentTarget as HTMLAnchorElement).blur();
+    }
+  };
+
   return (
-    <Flex flexDirection="column" gap={10}>
-      <Box as="section">
-        <Heading
-          size="md"
-          mb={4}
-          mt={4}
-          fontFamily="var(--font-heading)"
-          color="gray.900"
-        >
+    <div className="flex flex-col gap-6">
+      <section>
+        <h3 className="text-base text-gray-900 font-semibold mb-3 font-[var(--font-heading)]">
           リンク一覧
-        </Heading>
-        <Flex flexWrap="wrap" alignItems="center" gap={3} mb={8}>
+        </h3>
+        <div className="flex flex-wrap items-center gap-3 mb-6">
           {snowForecastLinks.length === 1 && (
-            <Link
+            <ExternalLinkComponent
               href={snowForecastLinks[0].url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={e => {
-                if (e.detail > 0) e.currentTarget.blur();
-              }}
-              display="inline-flex"
-              alignItems="center"
-              gap={2}
-              px={3}
-              py={2}
-              borderRadius="full"
-              bg="red.50"
-              color="red.700"
-              fontSize="sm"
-              fontWeight="700"
-              _hover={{ bg: "red.100", textDecoration: "none" }}
+              onClick={handleLinkClick}
+              className="px-3 py-2 rounded-full bg-red-50 text-red-700 text-sm font-medium hover:bg-red-100 hover:text-red-800 hover:no-underline"
             >
               Snow Forecast
-            </Link>
+            </ExternalLinkComponent>
           )}
           {snowForecastLinks.length > 1 &&
             snowForecastLinks.map(link => (
-              <Link
+              <ExternalLinkComponent
                 key={link.id}
                 href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={e => {
-                  if (e.detail > 0) e.currentTarget.blur();
-                }}
-                display="inline-flex"
-                alignItems="center"
-                gap={2}
-                px={3}
-                py={2}
-                borderRadius="full"
-                bg="red.50"
-                color="red.700"
-                fontSize="sm"
-                fontWeight="700"
-                _hover={{ bg: "red.100", textDecoration: "none" }}
+                onClick={handleLinkClick}
+                className="px-3 py-2 rounded-full bg-red-50 text-red-700 text-sm font-medium hover:bg-red-100 hover:text-red-800 hover:no-underline"
               >
                 {`Snow Forecast ${link.displayName}`}
-              </Link>
+              </ExternalLinkComponent>
             ))}
           {tenkiJpLinks.length === 1 && (
-            <Link
+            <ExternalLinkComponent
               href={tenkiJpLinks[0].url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={e => {
-                if (e.detail > 0) e.currentTarget.blur();
-              }}
-              display="inline-flex"
-              alignItems="center"
-              gap={2}
-              px={3}
-              py={2}
-              borderRadius="full"
-              bg="brand.50"
-              color="brand.700"
-              fontSize="sm"
-              fontWeight="700"
-              _hover={{ bg: "brand.100", textDecoration: "none" }}
+              onClick={handleLinkClick}
+              className="px-3 py-2 rounded-full bg-blue-50 text-blue-900 text-sm font-medium hover:bg-blue-100 hover:text-blue-700 hover:no-underline"
             >
               tenki.jp
-            </Link>
+            </ExternalLinkComponent>
           )}
 
           {tenkiJpLinks.length > 1 &&
             tenkiJpLinks.map(link => (
-              <Link
+              <ExternalLinkComponent
                 key={link.id}
                 href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={e => {
-                  if (e.detail > 0) e.currentTarget.blur();
-                }}
-                display="inline-flex"
-                alignItems="center"
-                gap={2}
-                px={3}
-                py={2}
-                borderRadius="full"
-                bg="brand.50"
-                color="brand.700"
-                fontSize="sm"
-                fontWeight="700"
-                _hover={{ bg: "brand.100", textDecoration: "none" }}
+                onClick={handleLinkClick}
+                className="px-3 py-2 rounded-full bg-blue-50 text-blue-900 text-sm font-medium hover:bg-blue-100 hover:text-blue-700 hover:no-underline"
               >
                 {`tenki.jp ${link.displayName}`}
-              </Link>
+              </ExternalLinkComponent>
             ))}
 
-          {/* Weathernews (conditional) + Windy (always when coords exist) */}
           {(() => {
             const weathernewsUrl = weathernewsSpotId
               ? `https://weathernews.jp/ski/spot/${weathernewsSpotId}/`
@@ -233,94 +172,59 @@ export const WeatherTab = ({ resort }: { resort: Resort }) => {
             return (
               <>
                 {weathernewsUrl && (
-                  <Link
+                  <ExternalLinkComponent
                     key="weathernews"
                     href={weathernewsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={e => {
-                      if (e.detail > 0) e.currentTarget.blur();
-                    }}
-                    display="inline-flex"
-                    alignItems="center"
-                    gap={2}
-                    px={3}
-                    py={2}
-                    borderRadius="full"
-                    bg="blue.50"
-                    color="blue.800"
-                    fontSize="sm"
-                    fontWeight="700"
-                    _hover={{ bg: "blue.100", textDecoration: "none" }}
+                    onClick={handleLinkClick}
+                    className="px-3 py-2 rounded-full bg-blue-50 text-blue-900 text-sm font-medium hover:bg-blue-100 hover:text-blue-700 hover:no-underline"
                   >
                     ウェザーニュース
-                  </Link>
+                  </ExternalLinkComponent>
                 )}
 
                 {windyUrl && (
-                  <Link
+                  <ExternalLinkComponent
                     key="windy"
                     href={windyUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={e => {
-                      if (e.detail > 0) e.currentTarget.blur();
-                    }}
-                    display="inline-flex"
-                    alignItems="center"
-                    gap={2}
-                    px={3}
-                    py={2}
-                    borderRadius="full"
-                    bg="red.50"
-                    color="red.700"
-                    fontSize="sm"
-                    fontWeight="700"
-                    _hover={{ bg: "red.100", textDecoration: "none" }}
+                    onClick={handleLinkClick}
+                    className="px-3 py-2 rounded-full bg-red-50 text-red-700 text-sm font-medium hover:bg-red-100 hover:text-red-800 hover:no-underline"
                   >
                     Windy
-                  </Link>
+                  </ExternalLinkComponent>
                 )}
               </>
             );
           })()}
-        </Flex>
+        </div>
         {snowForecastLinks.length > 0 &&
           snowForecastLinks.map((link, index) => (
-            <Box key={link.id}>
-              <Heading
-                size="md"
-                mb={6}
-                mt={index === 0 ? 0 : 8}
-                fontFamily="var(--font-heading)"
-                color="gray.900"
+            <div key={link.id}>
+              <h3
+                className={cn(
+                  "text-base text-gray-900 font-semibold mb-4 font-[var(--font-heading)]",
+                  index !== 0 && "mt-6",
+                )}
               >
                 {snowForecastLinks.length === 1
                   ? "Snow Forecast 予報"
                   : `Snow Forecast 予報 (${link.displayName})`}
-              </Heading>
+              </h3>
               <SnowForecastEmbed
                 snowForecastSlug={link.id}
                 resortName={resort.nameJa}
               />
-            </Box>
+            </div>
           ))}
-      </Box>
+      </section>
 
       {snowDepthsFormatted && (
-        <Box as="section">
-          <Heading
-            size="lg"
-            mb={6}
-            mt={4}
-            fontFamily="var(--font-heading)"
-            color="gray.900"
-          >
+        <section>
+          <h2 className="text-lg text-gray-900 font-bold mb-4 font-[var(--font-heading)]">
             積雪量データ
-          </Heading>
+          </h2>
           <SnowDepthLineChart snowDepths={snowDepthsFormatted} />
-        </Box>
+        </section>
       )}
-    </Flex>
+    </div>
   );
 };

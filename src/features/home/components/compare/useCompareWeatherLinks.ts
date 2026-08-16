@@ -25,9 +25,9 @@ export function useWeatherLinks(
             ? "Snow Forecast"
             : `Snow Forecast ${link.displayName}`,
         url: link.url,
-        bg: "red.50",
-        hoverBg: "red.100",
-        color: "red.700",
+        bg: "bg-red-50",
+        hoverBg: "hover:bg-red-100",
+        color: "text-red-700",
       })),
       ...tenkiJpLinks.map(link => ({
         kind: "tenkiJp" as const,
@@ -37,9 +37,10 @@ export function useWeatherLinks(
             ? "tenki.jp"
             : `tenki.jp ${link.displayName}`,
         url: link.url,
-        bg: "brand.50",
-        hoverBg: "brand.100",
-        color: "brand.700",
+        // brand.* は旧 Chakra テーマで blue パレットのエイリアスだった
+        bg: "bg-blue-50",
+        hoverBg: "hover:bg-blue-100",
+        color: "text-blue-700",
       })),
       {
         kind: "weathernews" as const,
@@ -48,9 +49,9 @@ export function useWeatherLinks(
         url: weathernewsSpotId
           ? `https://weathernews.jp/ski/spot/${weathernewsSpotId}/`
           : null,
-        bg: "blue.50",
-        hoverBg: "blue.100",
-        color: "blue.800",
+        bg: "bg-blue-50",
+        hoverBg: "hover:bg-blue-100",
+        color: "text-blue-800",
       },
       {
         kind: "windy" as const,
@@ -59,9 +60,9 @@ export function useWeatherLinks(
         url: hasCoords
           ? `https://www.windy.com/${resort.latitude}/${resort.longitude}?${resort.latitude},${resort.longitude},14,i:pressure,p:cities`
           : null,
-        bg: "orange.50",
-        hoverBg: "orange.100",
-        color: "orange.700",
+        bg: "bg-orange-50",
+        hoverBg: "hover:bg-orange-100",
+        color: "text-orange-700",
       },
     ];
 

@@ -2,48 +2,17 @@ import type { Elevation } from "./types";
 
 export const DESKTOP_WEATHER_LINK_WIDTH = "116px";
 export const DESKTOP_WEATHER_RESORT_INFO_WIDTH = "180px";
-export const WEATHER_PANEL_PADDING_WIDTH = "16px";
-export const WEATHER_PANEL_COLUMN_GAP = "8px";
+// 44px (標高コントロール) + 430px (フィードビューポート)。
+// CompareWeatherTab.css のコンテナクエリ閾値 calc(180px + 32px + 474px) と同期が必要
+export const SNOW_FORECAST_FEED_TOTAL_WIDTH = "474px";
 export const SNOW_FORECAST_SOURCE_WIDTH = 750;
 export const SNOW_FORECAST_SOURCE_HEIGHT = 250;
-export const SNOW_FORECAST_ELEVATION_CONTROLS_WIDTH = 44;
-export const SNOW_FORECAST_FEED_VIEWPORT_WIDTH = 430;
-export const SNOW_FORECAST_FEED_TOTAL_WIDTH = `${
-  SNOW_FORECAST_ELEVATION_CONTROLS_WIDTH + SNOW_FORECAST_FEED_VIEWPORT_WIDTH
-}px`;
-export const WEATHER_PANEL_DESKTOP_WIDTH = `calc(${DESKTOP_WEATHER_RESORT_INFO_WIDTH} + ${WEATHER_PANEL_COLUMN_GAP} + ${SNOW_FORECAST_FEED_TOTAL_WIDTH} + ${WEATHER_PANEL_PADDING_WIDTH})`;
-export const SNOW_FORECAST_FEED_ZOOM = 0.92;
-export const SNOW_FORECAST_FEED_VIEWPORT_HEIGHT = 170;
-export const MOBILE_SNOW_FORECAST_FEED_VIEWPORT_HEIGHT = 143;
-export const MOBILE_SNOW_FORECAST_FEED_CROP_TOP = 35;
-export const MOBILE_SNOW_FORECAST_FEED_CROP_RIGHT = 290;
-export const MOBILE_SNOW_FORECAST_FEED_CROP_HEIGHT = 143;
-export const MOBILE_SNOW_FORECAST_FEED_CROP_LEFT = 40;
 export const DESKTOP_SNOW_FORECAST_FEED_INITIAL_SCROLL_X = 20;
 export const DESKTOP_SNOW_FORECAST_FEED_INITIAL_SCROLL_Y = 10;
 export const SNOW_FORECAST_FEED_INITIAL_SCROLL_Y_RATIO = 0.58;
-export const MOBILE_SNOW_FORECAST_CROPPED_FEED_WIDTH =
-  (SNOW_FORECAST_SOURCE_WIDTH -
-    MOBILE_SNOW_FORECAST_FEED_CROP_LEFT -
-    MOBILE_SNOW_FORECAST_FEED_CROP_RIGHT) *
-  SNOW_FORECAST_FEED_ZOOM;
-export const MOBILE_SNOW_FORECAST_CROPPED_FEED_HEIGHT =
-  MOBILE_SNOW_FORECAST_FEED_CROP_HEIGHT * SNOW_FORECAST_FEED_ZOOM;
-export const MOBILE_SNOW_FORECAST_FEED_TRANSFORM = `translate(-${MOBILE_SNOW_FORECAST_FEED_CROP_LEFT}px, -${MOBILE_SNOW_FORECAST_FEED_CROP_TOP}px) scale(${SNOW_FORECAST_FEED_ZOOM})`;
 
 export const ELEVATION_OPTIONS: Array<{ label: string; value: Elevation }> = [
   { label: "山頂", value: "top" },
   { label: "中腹", value: "mid" },
   { label: "山麓", value: "bot" },
 ];
-
-export const WEATHER_LINK_TOP_MODE_STYLES = {
-  flexDirection: "row",
-  alignItems: "center",
-  flexWrap: "wrap",
-  overflowX: "visible",
-  paddingBottom: 0,
-  "& .weather-link": {
-    width: "max-content",
-  },
-} as const;

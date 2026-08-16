@@ -1,212 +1,167 @@
 "use client";
 
-import { Box, Flex, Heading, Link, List, Table, Text } from "@chakra-ui/react";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { ResortReviewSection } from "@/features/reviews/components/ResortReviewSection";
+import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import type { Resort } from "../types";
 
 export const OverviewTab = ({ resort }: { resort: Resort }) => (
-  <Flex flexDirection="column" gap={10}>
+  <div className="flex flex-col gap-6">
     {resort.yukiMagi && (
-      <Box
-        as="section"
-        bg="pink.50"
-        p={6}
-        borderRadius="2xl"
-        border="1px solid"
-        borderColor="pink.200"
-      >
-        <Flex alignItems="center" gap={3} mb={4}>
-          <Heading size="md" color="pink.600" fontWeight="700">
-            雪マジ！情報
-          </Heading>
-          {resort.yukiMagi.tag && (
-            <Box
-              px={3}
-              py={1}
-              bg="pink.100"
-              color="pink.700"
-              fontSize="xs"
-              fontWeight="bold"
-              borderRadius="full"
-            >
-              {resort.yukiMagi.tag}
-            </Box>
-          )}
-        </Flex>
-
-        <Flex flexDirection="column" gap={4}>
-          {resort.yukiMagi.benefit && (
-            <Box>
-              <Text fontWeight="700" fontSize="xs" color="pink.700">
-                特典内容
-              </Text>
-              <Text mt={1} fontSize="sm" color="gray.800" whiteSpace="pre-wrap">
-                {resort.yukiMagi.benefit}
-              </Text>
-            </Box>
-          )}
-          {resort.yukiMagi.period && (
-            <Box>
-              <Text fontWeight="700" fontSize="xs" color="pink.700">
-                利用期間
-              </Text>
-              <Text mt={1} fontSize="sm" color="gray.800" whiteSpace="pre-wrap">
-                {resort.yukiMagi.period}
-              </Text>
-            </Box>
-          )}
-          {resort.yukiMagi.exclusionDate && (
-            <Box>
-              <Text fontWeight="700" fontSize="xs" color="pink.700">
-                除外日
-              </Text>
-              <Text mt={1} fontSize="sm" color="gray.800" whiteSpace="pre-wrap">
-                {resort.yukiMagi.exclusionDate}
-              </Text>
-            </Box>
-          )}
-          {resort.yukiMagi.url && (
-            <Link
-              href={resort.yukiMagi.url}
-              target="_blank"
-              fontSize="xs"
-              color="brand.600"
-              textDecoration="underline"
-              _hover={{
-                color: "brand.700",
-              }}
-              display="inline-block"
-              mt={2}
-            >
-              公式サイトで詳細を見る
-            </Link>
-          )}
-        </Flex>
-      </Box>
+      <section>
+        <Card className="rounded-2xl border border-pink-200 bg-pink-50">
+          <CardHeader>
+            <CardTitle className="text-base text-pink-600 font-semibold">
+              雪マジ！情報
+            </CardTitle>
+            {resort.yukiMagi.tag && (
+              <Badge
+                variant="secondary"
+                className="rounded-full bg-pink-100 text-pink-700 text-xs font-medium"
+              >
+                {resort.yukiMagi.tag}
+              </Badge>
+            )}
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col gap-4">
+              {resort.yukiMagi.benefit && (
+                <div>
+                  <p className="font-semibold text-xs text-pink-700">
+                    特典内容
+                  </p>
+                  <p className="mt-1 text-sm text-gray-700 whitespace-pre-wrap">
+                    {resort.yukiMagi.benefit}
+                  </p>
+                </div>
+              )}
+              {resort.yukiMagi.period && (
+                <div>
+                  <p className="font-semibold text-xs text-pink-700">
+                    利用期間
+                  </p>
+                  <p className="mt-1 text-sm text-gray-700 whitespace-pre-wrap">
+                    {resort.yukiMagi.period}
+                  </p>
+                </div>
+              )}
+              {resort.yukiMagi.exclusionDate && (
+                <div>
+                  <p className="font-semibold text-xs text-pink-700">除外日</p>
+                  <p className="mt-1 text-sm text-gray-700 whitespace-pre-wrap">
+                    {resort.yukiMagi.exclusionDate}
+                  </p>
+                </div>
+              )}
+              {resort.yukiMagi.url && (
+                <ExternalLinkComponent
+                  href={resort.yukiMagi.url}
+                  className="text-xs text-blue-600 underline hover:text-blue-700 mt-2"
+                >
+                  公式サイトで詳細を見る
+                </ExternalLinkComponent>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </section>
     )}
-    <Box as="section">
-      <Heading size="lg" fontFamily="var(--font-heading)" color="gray.900">
+    <section>
+      <h2 className="text-lg font-bold text-gray-900 font-[var(--font-heading)]">
         概要
-      </Heading>
-      <Text
-        mt={4}
-        whiteSpace="pre-wrap"
-        color="gray.700"
-        lineHeight="1.8"
-        fontSize="md"
-      >
+      </h2>
+      <p className="mt-4 whitespace-pre-wrap text-gray-700 leading-relaxed text-base">
         {resort.descriptionLong}
-      </Text>
-    </Box>
+      </p>
+    </section>
     {resort.reviewData && <ResortReviewSection review={resort.reviewData} />}
-    <Box as="section">
-      <Heading size="lg" fontFamily="var(--font-heading)" color="gray.900">
+    <section>
+      <h2 className="text-lg font-bold text-gray-900 font-[var(--font-heading)]">
         営業時間
-      </Heading>
-      <Box
-        mt={4}
-        w="100%"
-        overflowX="auto"
-        borderRadius="xl"
-        border="1px solid"
-        borderColor="gray.200"
-        bg="white"
-      >
-        <Table.Root size="md">
-          <Table.Header>
-            <Table.Row bg="gray.100">
-              <Table.ColumnHeader
-                px={6}
-                py={4}
-                color="gray.600"
-                fontWeight="700"
-                fontSize="sm"
-              >
-                区分
-              </Table.ColumnHeader>
-              <Table.ColumnHeader
-                px={6}
-                py={4}
-                color="gray.600"
-                fontWeight="700"
-                fontSize="sm"
-              >
-                時間
-              </Table.ColumnHeader>
-            </Table.Row>
-          </Table.Header>
-          <Table.Body>
-            <Table.Row borderColor="gray.200">
-              <Table.Cell px={6} py={4} fontWeight="700" color="gray.800">
-                平日
-              </Table.Cell>
-              <Table.Cell px={6} py={4} color="gray.600">
-                {resort.weekdayOpen} - {resort.weekdayClose}
-              </Table.Cell>
-            </Table.Row>
-            <Table.Row borderColor="transparent">
-              <Table.Cell px={6} py={4} fontWeight="700" color="gray.800">
-                土日祝
-              </Table.Cell>
-              <Table.Cell px={6} py={4} color="gray.600">
-                {resort.weekendOpen} - {resort.weekendClose}
-              </Table.Cell>
-            </Table.Row>
-          </Table.Body>
-        </Table.Root>
-      </Box>
+      </h2>
+      <Card className="mt-4 w-full overflow-x-auto py-0">
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-gray-50">
+                <TableHead className="table-header-cell">区分</TableHead>
+                <TableHead className="table-header-cell">時間</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow className="border-gray-200">
+                <TableCell className="px-4 py-3 font-semibold text-gray-700">
+                  平日
+                </TableCell>
+                <TableCell className="px-4 py-3 text-gray-600">
+                  {resort.weekdayOpen} - {resort.weekdayClose}
+                </TableCell>
+              </TableRow>
+              <TableRow className="border-gray-200">
+                <TableCell className="px-4 py-3 font-semibold text-gray-700">
+                  土日祝
+                </TableCell>
+                <TableCell className="px-4 py-3 text-gray-600">
+                  {resort.weekendOpen} - {resort.weekendClose}
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
       {resort.timesComment && (
-        <Text mt={3} fontSize="sm" color="gray.500" fontStyle="italic">
+        <p className="mt-3 text-sm text-gray-500 italic">
           * {resort.timesComment}
-        </Text>
+        </p>
       )}
-    </Box>
+    </section>
 
-    <Box as="section">
-      <Heading size="lg" fontFamily="var(--font-heading)" color="gray.900">
+    <section>
+      <h2 className="text-lg font-bold text-gray-900 font-[var(--font-heading)]">
         リンク
-      </Heading>
-      <List.Root as="ul" mt={4} listStyleType="none" gap={3}>
+      </h2>
+      <ul className="mt-4 flex flex-col gap-3">
         {resort.website && (
-          <List.Item as="li">
-            <Link
+          <li>
+            <ExternalLinkComponent
               href={resort.website}
-              target="_blank"
-              rel="noopener noreferrer"
-              color="brand.600"
-              display="flex"
-              alignItems="center"
-              gap={2}
-              _hover={{
-                color: "brand.700",
-                textDecoration: "underline",
-              }}
-              transition="all 0.2s"
+              className="text-blue-600 flex items-center gap-2 hover:text-blue-700 hover:underline transition-all duration-200"
             >
-              <Box as="span" h={2} w={2} borderRadius="full" bg="brand.500" />{" "}
+              <span className="h-2 w-2 rounded-full bg-blue-500 flex-shrink-0" />{" "}
               公式サイト
-            </Link>
-          </List.Item>
+            </ExternalLinkComponent>
+          </li>
         )}
-        {resort.sources.map((src: string) => (
-          <List.Item key={src} as="li">
-            <Link
-              href={src}
-              target="_blank"
-              rel="noopener noreferrer"
-              color="gray.600"
-              display="flex"
-              alignItems="center"
-              gap={2}
-              _hover={{ color: "brand.600", textDecoration: "underline" }}
-              transition="all 0.2s"
-            >
-              <Box as="span" h={2} w={2} borderRadius="full" bg="gray.400" />{" "}
-              {new URL(src).hostname}
-            </Link>
-          </List.Item>
-        ))}
-      </List.Root>
-    </Box>
-  </Flex>
+        {resort.sources.map((src: string) => {
+          const hostname = (() => {
+            try {
+              return new URL(src).hostname;
+            } catch {
+              return src;
+            }
+          })();
+          return (
+            <li key={src}>
+              <ExternalLinkComponent
+                href={src}
+                className="text-gray-600 flex items-center gap-2 hover:text-blue-700 hover:underline transition-all duration-200"
+              >
+                <span className="h-2 w-2 rounded-full bg-gray-400 flex-shrink-0" />{" "}
+                {hostname}
+              </ExternalLinkComponent>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  </div>
 );

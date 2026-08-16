@@ -564,8 +564,6 @@ const createLineLabelSvgLayer = (
   svg.setAttribute("width", `${mapSize.x}`);
   svg.setAttribute("height", `${mapSize.y}`);
   svg.setAttribute("viewBox", `0 0 ${mapSize.x} ${mapSize.y}`);
-  svg.style.pointerEvents = "none";
-  svg.style.position = "absolute";
 
   for (const label of labels) {
     if (

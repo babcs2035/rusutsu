@@ -1,31 +1,19 @@
 "use client";
 
-import { Flex, Spinner, Text } from "@chakra-ui/react";
+import { Spinner } from "@/components/ui/spinner";
 
 /**
  * 中央に表示されるアニメーション付きローディングスピナー
  */
-export const LoadingSpinner = ({
-  text = "読み込み中...",
-}: {
-  text?: string;
-}) => {
+export function LoadingSpinner({ text = "読み込み中..." }: { text?: string }) {
   return (
-    <Flex
-      h="100%"
-      w="100%"
-      flexDirection="column"
-      alignItems="center"
-      justifyContent="center"
-      gap={4}
-      bg="var(--bg-light)"
+    <div
+      className="flex h-full w-full flex-col items-center justify-center gap-4 bg-gray-100"
       aria-live="polite"
       aria-busy="true"
     >
-      <Spinner size="xl" color="brand.500" borderWidth="4px" />
-      <Text fontSize="lg" fontWeight="semibold" color="gray.600">
-        {text}
-      </Text>
-    </Flex>
+      <Spinner className="size-16" />
+      <p className="text-lg font-semibold text-gray-500">{text}</p>
+    </div>
   );
-};
+}

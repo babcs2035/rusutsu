@@ -95,10 +95,15 @@ export const useFilterPanelState = ({
     onFilterChange({ ...DEFAULT_FILTERS, keyword: filters.keyword });
   };
 
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+
   const handleResetClick = () => {
-    if (!window.confirm("キーワード以外の検索フィルタをリセットしますか？"))
-      return;
+    setResetDialogOpen(true);
+  };
+
+  const handleResetConfirm = () => {
     handleReset();
+    setResetDialogOpen(false);
   };
 
   return {
@@ -108,6 +113,9 @@ export const useFilterPanelState = ({
     handlePrefectureChange,
     handleRegionPrefecturesChange,
     handleResetClick,
+    handleResetConfirm,
+    resetDialogOpen,
+    setResetDialogOpen,
     handleTextInputChange,
     ids: {
       beginnerFriendlyId,

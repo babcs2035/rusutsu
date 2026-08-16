@@ -1,8 +1,12 @@
 import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata, Viewport } from "next";
-import { Bricolage_Grotesque, Manrope } from "next/font/google";
-import { ChakraProvider } from "@/providers/ChakraProvider";
+import { Bricolage_Grotesque, Geist, Manrope } from "next/font/google";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { ThemeProvider } from "@/providers/ThemeProvider";
 import "./globals.css";
+import { cn } from "@/lib/utils";
+
+const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 const bricolage = Bricolage_Grotesque({
   subsets: ["latin"],
@@ -85,10 +89,17 @@ export default function RootLayout({
     <html
       lang="ja"
       suppressHydrationWarning
-      className={`${bricolage.variable} ${manrope.variable}`}
+      className={cn(
+        bricolage.variable,
+        manrope.variable,
+        "font-sans",
+        geist.variable,
+      )}
     >
-      <body className={manrope.className}>
-        <ChakraProvider>{children}</ChakraProvider>
+      <body className={cn(manrope.className, "bg-[var(--bg-light)]")}>
+        <ThemeProvider>
+          <TooltipProvider>{children}</TooltipProvider>
+        </ThemeProvider>
         <GoogleAnalytics gaId="G-YMEM5C2F4C" />
       </body>
     </html>

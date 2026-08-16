@@ -1,17 +1,14 @@
 "use client";
 
-import {
-  Box,
-  Button,
-  Flex,
-  Grid,
-  Heading,
-  Input,
-  Text,
-} from "@chakra-ui/react";
 import { Filter, RotateCcw, Search, SlidersHorizontal } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { TicketPartyEditor } from "@/features/lift-ticket/components/TicketPartyEditor";
 import { DEFAULT_LIFT_TICKET_SEARCH_INPUT } from "@/features/lift-ticket/utils/calculateLiftTicket";
+import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import type { MapSkiResort } from "@/types/skiResorts";
 import {
   CompactMetricFilter,
@@ -40,28 +37,15 @@ type Props = {
   title?: string;
 };
 
-const MOBILE_BODY_FONT_SIZE = "0.875rem";
-const MOBILE_COMPACT_FONT_SIZE = "0.8125rem";
-const MOBILE_INPUT_FONT_SIZE = "1rem";
 const MOBILE_NUMBER_INPUT_WIDTH = "3.25rem";
 
 const ResultCountBadge = ({ count }: { count: number }) => (
-  <Box
-    as="span"
-    display="inline-flex"
-    alignItems="center"
-    h={{ base: "30px", md: "26px" }}
-    px={{ base: 3, md: 3 }}
-    borderRadius="full"
-    bg="brand.50"
-    color="brand.700"
-    fontSize={{ base: "1rem", md: "0.8rem" }}
-    fontWeight="900"
-    lineHeight="1"
-    whiteSpace="nowrap"
+  <Badge
+    variant="secondary"
+    className="bg-blue-50 text-blue-900 text-base font-black leading-none whitespace-nowrap md:text-xs md:h-[26px] h-[30px] md:px-2.5 px-2.5"
   >
     {count.toLocaleString()}件
-  </Box>
+  </Badge>
 );
 
 export const FilterPanel = ({
@@ -85,7 +69,9 @@ export const FilterPanel = ({
     handleNumericInputChange,
     handlePrefectureChange,
     handleRegionPrefecturesChange,
-    handleResetClick,
+    handleResetConfirm,
+    resetDialogOpen,
+    setResetDialogOpen,
     handleTextInputChange,
     ids,
     isElevationDetailOpen,
@@ -106,84 +92,67 @@ export const FilterPanel = ({
     yukiMagiId,
   } = ids;
 
-  // isExpanded は詳細条件エリアを開くかどうかだけを表す。
-  // PC では閉じた状態があり、条件サマリと「フィルタを変更」ボタンを表示する。
-  // モバイルの絞り込みオーバーレイでは常に isExpanded=true で呼ばれるため、
-  // 「閉じた簡易パネル」は基本的に PC 用の表示になる。
   const isCollapsed = !isExpanded;
 
   return (
-    <Box
-      p={isExpanded ? { base: 4, md: 4 } : undefined}
-      px={isCollapsed ? { base: 3, md: 4 } : undefined}
-      pt={isCollapsed ? { base: 1, md: 4 } : undefined}
-      pb={isCollapsed ? { base: 3, md: 4 } : undefined}
-      borderBottom="1px solid"
-      borderColor="gray.100"
-      bg={
-        isExpanded ? "rgba(255, 255, 255, 0.96)" : "rgba(255, 255, 255, 0.92)"
-      }
-      display="flex"
-      flexDirection="column"
-      flexGrow={isExpanded && scrollContent ? 1 : 0}
-      flexShrink={isExpanded && scrollContent ? 1 : 0}
-      minH={isExpanded && scrollContent ? 0 : "auto"}
-      overflow={isExpanded && scrollContent ? "hidden" : "visible"}
+    <div
+      className={cn(
+        "flex flex-col bg-white",
+        isExpanded && scrollContent
+          ? "flex-1 min-h-0 overflow-hidden"
+          : "flex-shrink-0 min-h-[auto] overflow-visible",
+        isExpanded ? "p-4" : isCollapsed ? "px-3 py-1" : "p-4",
+      )}
     >
-      <Flex
-        alignItems="center"
-        justifyContent="space-between"
-        gap={{ base: 2, md: 3 }}
-        pr={{ base: reserveHeaderActionSpace ? 11 : 0, md: 0 }}
+      {/* Header */}
+      <div
+        className={cn(
+          "flex items-center justify-between",
+          reserveHeaderActionSpace ? "pr-11" : "pr-0",
+        )}
       >
-        <Box minW={0}>
-          <Heading
-            size={{ base: "md", md: "md" }}
-            color="gray.900"
-            display="flex"
-            alignItems="center"
-            gap={2}
-          >
+        <div className="min-w-0">
+          <h2 className="flex items-center gap-2 text-gray-900 text-base font-bold font-[var(--font-heading)]">
             <Filter size={16} color="var(--brand-main)" />
             {title}
             <ResultCountBadge count={resultCount} />
-          </Heading>
-        </Box>
-        <Flex flexShrink={0} gap={{ base: 2.5, md: 2 }}>
+          </h2>
+        </div>
+        <div className="flex flex-shrink-0 gap-2 md:gap-2">
+          <ConfirmDialog
+            open={resetDialogOpen}
+            onOpenChange={setResetDialogOpen}
+            title="検索条件のクリア"
+            description="キーワード以外の検索フィルタをリセットしますか？"
+            onConfirm={handleResetConfirm}
+            confirmLabel="クリアする"
+          />
           <Button
             aria-label="検索条件をクリア"
-            size="xs"
-            h={{ base: "36px", md: "32px" }}
-            px={{ base: 4, md: 3 }}
-            borderRadius="md"
             variant="outline"
-            color="gray.600"
-            borderColor="gray.200"
-            gap={1}
-            fontWeight="800"
-            onClick={handleResetClick}
+            className="h-9 gap-1.5 border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-700"
+            onClick={() => setResetDialogOpen(true)}
           >
             <RotateCcw size={14} />
             条件をクリア
           </Button>
-        </Flex>
-      </Flex>
+        </div>
+      </div>
 
+      {/* Keyword Search */}
       {showKeywordSearch && (
-        <Flex
-          as="form"
-          mt={{ base: 2, md: 3 }}
-          mb={isExpanded ? { base: 2, md: 3 } : undefined}
-          gap={2}
-          flexShrink={0}
+        <form
+          className={cn(
+            "flex gap-2 flex-shrink-0",
+            isExpanded ? "mt-2 mb-2" : "mt-2",
+          )}
           onSubmit={e => {
             e.preventDefault();
             onSearch();
           }}
         >
           <Input
-            flex={1}
-            minW={0}
+            className="flex-1 min-w-0 h-10 bg-gray-50 border border-gray-200 text-gray-800 placeholder:text-gray-400 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10"
             id={keywordId}
             type="text"
             name="keyword"
@@ -192,128 +161,71 @@ export const FilterPanel = ({
             onChange={handleTextInputChange}
             onBlur={onKeyboardInputBlur}
             onFocus={onKeyboardInputFocus}
-            bg={{ base: "gray.50", md: "white" }}
-            borderColor={{ base: "gray.300", md: "gray.200" }}
-            borderWidth={{ base: "1.5px", md: "1px" }}
-            color="gray.800"
-            borderRadius="md"
-            h={{ base: 10, md: 10 }}
-            fontSize={{ base: MOBILE_INPUT_FONT_SIZE, md: "md" }}
-            _placeholder={{ color: "gray.400" }}
-            _focus={{
-              borderColor: "brand.500",
-              boxShadow: "0 0 0 2px rgba(59, 130, 246, 0.1)",
-            }}
           />
           <Button
             type="submit"
-            flexShrink={0}
-            w={{ base: "8.75rem", md: "90px" }}
-            h={{ base: 9, md: 10 }}
-            borderRadius="md"
-            bg="brand.500"
-            color="white"
-            fontWeight="800"
-            gap={{ base: 1, md: 1 }}
-            fontSize={{ base: MOBILE_BODY_FONT_SIZE, md: "sm" }}
-            _hover={{ bg: "brand.600" }}
+            variant="default"
+            className="flex-shrink-0 w-auto min-w-[7rem] h-9 gap-1 font-bold text-sm"
           >
             <Search size={14} />
             検索
           </Button>
-        </Flex>
+        </form>
       )}
 
+      {/* Collapsed state */}
       {isCollapsed ? (
-        <Flex
-          mt={{ base: 4, md: 3 }}
-          gap={{ base: 1.5, md: 2 }}
-          flexWrap="wrap"
-          alignItems="center"
-        >
+        <div className="flex gap-1.5 md:gap-2 flex-wrap items-center mt-4">
           {(collapsedDetailLabels.length > 0
             ? collapsedDetailLabels
             : ["条件なし"]
           ).map(label => (
-            <Box
+            <Badge
               key={label}
-              px={{ base: 2, md: 2.5 }}
-              py={0}
-              minH={{ base: "28px", md: "32px" }}
-              borderRadius="md"
-              bg="gray.100"
-              color="gray.700"
-              fontSize={{ base: MOBILE_COMPACT_FONT_SIZE, md: "xs" }}
-              fontWeight="700"
-              lineHeight="1.4"
-              display="flex"
-              alignItems="center"
+              variant="secondary"
+              className="text-gray-700 font-semibold leading-none min-h-[28px] text-sm bg-gray-100"
             >
               {label}
-            </Box>
+            </Badge>
           ))}
           <Button
-            size="xs"
-            h={{ base: "28px", md: "32px" }}
-            px={{ base: 2.5, md: 3 }}
-            borderRadius="md"
-            bg="gray.900"
-            color="white"
-            border="1px solid"
-            borderColor="gray.900"
-            gap={1.5}
-            fontWeight="800"
-            _hover={{
-              bg: "gray.800",
-              borderColor: "gray.800",
-            }}
+            className="flex items-center justify-center gap-1.5 h-8 border border-gray-200 bg-white text-gray-700 text-xs font-medium hover:bg-gray-50 hover:text-gray-900 shadow-sm"
             onClick={() => onExpandedChange(true)}
           >
             <SlidersHorizontal size={14} />
             フィルタを変更
           </Button>
-        </Flex>
+        </div>
       ) : (
-        <Flex
-          flexGrow={scrollContent ? 1 : 0}
-          flexShrink={scrollContent ? 1 : 0}
-          minH={0}
-          flexDirection="column"
-          gap={{ base: 5, md: 5 }}
-          overflowY={scrollContent ? "auto" : "visible"}
-          pr={{ base: 0.5, md: 1 }}
-          pt={{ base: 4, md: 0 }}
+        /* Expanded state */
+        <div
+          className={cn(
+            "flex flex-col gap-5 pt-4",
+            scrollContent
+              ? "flex-1 min-h-0 overflow-y-auto pr-0.5"
+              : "flex-shrink-0 min-h-auto",
+          )}
         >
-          <Box
-            p={3}
-            borderRadius="xl"
-            bg="blue.50"
-            border="1px solid"
-            borderColor="blue.100"
-          >
-            <Text
-              mb={2}
-              color="blue.900"
-              fontSize={{ base: MOBILE_BODY_FONT_SIZE, md: "sm" }}
-              fontWeight="900"
-            >
+          {/* Lift ticket editor */}
+          <Alert className="rounded-xl bg-blue-50 border-blue-200">
+            <AlertTitle className="text-blue-900 font-bold text-sm">
               日程・人数からリフト券代を比較
-            </Text>
-            <TicketPartyEditor
-              value={filters.liftTicket ?? DEFAULT_LIFT_TICKET_SEARCH_INPUT}
-              onChange={liftTicket =>
-                onFilterChange({ ...filters, liftTicket })
-              }
-              compact
-              onInputBlur={onKeyboardInputBlur}
-              onInputFocus={onKeyboardInputFocus}
-            />
-          </Box>
+            </AlertTitle>
+            <AlertDescription>
+              <TicketPartyEditor
+                value={filters.liftTicket ?? DEFAULT_LIFT_TICKET_SEARCH_INPUT}
+                onChange={liftTicket =>
+                  onFilterChange({ ...filters, liftTicket })
+                }
+                compact
+                onInputBlur={onKeyboardInputBlur}
+                onInputFocus={onKeyboardInputFocus}
+              />
+            </AlertDescription>
+          </Alert>
 
-          <Grid
-            templateColumns="repeat(3, minmax(0, 1fr))"
-            gap={{ base: 1.5, md: 2 }}
-          >
+          {/* Quick filters */}
+          <div className="grid grid-cols-3 gap-1.5 md:gap-2">
             <FilterToggle
               id={statusId}
               label="営業中のみ"
@@ -325,7 +237,6 @@ export const FilterPanel = ({
               label="雪マジ対象"
               checked={filters.yukiMagi}
               onChange={checked => handleCheckboxChange("yukiMagi", checked)}
-              checkedColor="pink.500"
             />
             <FilterToggle
               id={beginnerFriendlyId}
@@ -334,15 +245,12 @@ export const FilterPanel = ({
               onChange={checked =>
                 handleCheckboxChange("beginnerFriendly", checked)
               }
-              checkedColor="green.500"
             />
-          </Grid>
+          </div>
 
-          <Flex flexDirection="column" gap={{ base: 2, md: 3 }}>
-            <Grid
-              templateColumns="repeat(3, minmax(0, 1fr))"
-              gap={{ base: 1.5, md: 2 }}
-            >
+          {/* Metric filters */}
+          <div className="flex flex-col gap-2 md:gap-3">
+            <div className="grid grid-cols-3 gap-1.5 md:gap-2">
               <CompactMetricFilter
                 label="標高差"
                 id={minVerticalId}
@@ -376,13 +284,13 @@ export const FilterPanel = ({
                 onChange={handleNumericInputChange}
                 onFocus={onKeyboardInputFocus}
               />
-            </Grid>
+            </div>
             <ToggleSection
               isOpen={isElevationDetailOpen}
               label="詳細フィルタ"
               onToggle={() => setIsElevationDetailOpen(prev => !prev)}
             >
-              <Flex flexDirection="column" gap={2}>
+              <div className="flex flex-col gap-1.5">
                 <ElevationFilterRow
                   label="山麓標高"
                   minId={minBaseElevationId}
@@ -409,18 +317,19 @@ export const FilterPanel = ({
                   onChange={handleNumericInputChange}
                   onFocus={onKeyboardInputFocus}
                 />
-              </Flex>
+              </div>
             </ToggleSection>
-          </Flex>
+          </div>
 
+          {/* Prefecture filter */}
           <PrefectureFilter
             regionOptions={regionOptions}
             selectedPrefectures={filters.prefectures}
             onPrefectureChange={handlePrefectureChange}
             onRegionPrefecturesChange={handleRegionPrefecturesChange}
           />
-        </Flex>
+        </div>
       )}
-    </Box>
+    </div>
   );
 };

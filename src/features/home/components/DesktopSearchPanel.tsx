@@ -1,9 +1,10 @@
 "use client";
 
-import { Box, Button, Flex } from "@chakra-ui/react";
+import { Button } from "@/components/ui/button";
 import { FilterPanel } from "@/features/filters/FilterPanel";
 import type { Filters } from "@/features/filters/types";
 import { DEFAULT_LIFT_TICKET_SEARCH_INPUT } from "@/features/lift-ticket/utils/calculateLiftTicket";
+import { cn } from "@/lib/utils";
 import type { MapSkiResort } from "@/types/skiResorts";
 import { SkiResortList } from "./SkiResortList";
 
@@ -48,20 +49,14 @@ export const DesktopSearchPanel = ({
   onToggleCompare,
   onHoverResortChange,
 }: Props) => (
-  <Box
-    display={{ base: "none", md: "block" }}
-    h="100%"
-    w="400px"
-    flexShrink={0}
-    borderLeft="1px solid"
-    borderColor="gray.200"
-    bg="rgba(255, 255, 255, 0.8)"
-    backdropFilter="blur(16px)"
-    position="relative"
-    zIndex={10}
-    boxShadow="-4px 0 20px rgba(0,0,0,0.05)"
+  <div
+    className={cn(
+      "hidden md:block h-full w-[min(400px,50vw)] flex-shrink-0 relative z-10",
+      "border-l border-gray-200 bg-white",
+      "shadow-[4px_0_20px_rgba(0,0,0,0.06)]",
+    )}
   >
-    <Flex h="100%" minH={0} flexDirection="column" overflow="hidden">
+    <div className="flex h-full flex-col overflow-hidden">
       <FilterPanel
         filters={filters}
         resorts={resorts}
@@ -75,51 +70,29 @@ export const DesktopSearchPanel = ({
         onSearch={onSearch}
       />
       {compareCount > 0 && (
-        <Flex
-          display="flex"
-          w="100%"
-          flexShrink={0}
-          gap={2}
-          px={4}
-          py={3}
-          borderBottom="1px solid"
-          borderColor="gray.100"
-          bg="white"
-        >
+        <div className="flex w-full flex-shrink-0 gap-2 px-4 py-3 border-b border-gray-100 bg-white">
           <Button
-            flex={1}
-            minW={0}
-            h={10}
-            borderRadius="md"
-            bg="orange.500"
-            color="white"
-            fontSize="sm"
-            fontWeight="800"
-            _hover={{ bg: "orange.600" }}
+            variant="orange"
+            className="flex-1 min-w-0 h-10 rounded-lg font-medium text-sm"
             onClick={onOpenCompare}
             disabled={isCompareOpen}
           >
             {compareCount} 件を比較
           </Button>
           <Button
-            flex={1}
-            minW={0}
-            h={10}
-            borderRadius="md"
             variant="outline"
-            borderColor="gray.200"
-            color="gray.700"
-            fontSize="sm"
-            fontWeight="800"
-            _hover={{ bg: "gray.50" }}
+            className="flex-1 min-w-0 h-10 rounded-lg border border-gray-200 text-gray-700 font-medium text-sm hover:bg-gray-50 hover:text-gray-900"
             onClick={onClearCompare}
           >
             比較をクリア
           </Button>
-        </Flex>
+        </div>
       )}
       {hasSearched && !isFilterEditorOpen && (
-        <Box data-ski-resort-list-scroll-container="true" flexGrow={1} minH={0}>
+        <div
+          data-ski-resort-list-scroll-container="true"
+          className="flex-grow min-h-0"
+        >
           <SkiResortList
             resorts={filteredResorts}
             liftTicketInput={
@@ -131,8 +104,8 @@ export const DesktopSearchPanel = ({
             onHoverResortChange={onHoverResortChange}
             showHeader={false}
           />
-        </Box>
+        </div>
       )}
-    </Flex>
-  </Box>
+    </div>
+  </div>
 );

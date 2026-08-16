@@ -14,20 +14,6 @@ export const isEventInsideMapZoomSurface = (event: Event) => {
   );
 };
 
-export const restoreDocumentPointerEvents = () => {
-  if (typeof document === "undefined") return;
-
-  document.body.style.pointerEvents = "";
-};
-
-export const scheduleRestoreDocumentPointerEvents = () => {
-  restoreDocumentPointerEvents();
-  window.requestAnimationFrame(restoreDocumentPointerEvents);
-  window.setTimeout(restoreDocumentPointerEvents, 0);
-  window.setTimeout(restoreDocumentPointerEvents, 120);
-  window.setTimeout(restoreDocumentPointerEvents, 300);
-};
-
 export const getSearchResultListScrollElement = () =>
   typeof document === "undefined"
     ? null

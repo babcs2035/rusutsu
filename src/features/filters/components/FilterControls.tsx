@@ -1,12 +1,11 @@
 "use client";
 
-import { Box, Button, Flex, Grid, Input, Text } from "@chakra-ui/react";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import type { NumericFilterName, NumericFilterValue } from "../types";
-
-const MOBILE_BODY_FONT_SIZE = "0.875rem";
-const MOBILE_COMPACT_FONT_SIZE = "0.8125rem";
-const MOBILE_INPUT_FONT_SIZE = "1rem";
 
 export const PrefectureFilter = ({
   regionOptions,
@@ -19,115 +18,64 @@ export const PrefectureFilter = ({
   onPrefectureChange: (prefecture: string, checked: boolean) => void;
   onRegionPrefecturesChange: (prefectures: string[], checked: boolean) => void;
 }) => (
-  <Box>
-    <Flex
-      alignItems="center"
-      gap={2}
-      h={{ base: 7, md: 8 }}
-      color="gray.600"
-      fontSize={{ base: MOBILE_BODY_FONT_SIZE, md: "0.875rem" }}
-      fontWeight="700"
-    >
-      <Text as="span">都道府県で選ぶ</Text>
+  <div>
+    <div className="flex items-center gap-2 text-gray-700 font-medium md:text-sm h-7 text-sm">
+      <span>都道府県で選ぶ</span>
       {selectedPrefectures.length > 0 && (
-        <Text
-          as="span"
-          color="brand.600"
-          fontSize={{ base: MOBILE_COMPACT_FONT_SIZE, md: "xs" }}
-          fontWeight="800"
-        >
+        <span className="text-blue-600 font-medium md:text-xs text-xs">
           {selectedPrefectures.length}件選択中
-        </Text>
+        </span>
       )}
-    </Flex>
-    <Box
-      mt={{ base: 0.75, md: 1 }}
-      ml={{ base: 2, md: 2.5 }}
-      pl={{ base: 2, md: 2.5 }}
-      borderLeft="2px solid"
-      borderColor="gray.200"
-    >
-      <Flex flexDirection="column" gap={{ base: 0.75, md: 1 }}>
+    </div>
+    <div className="border-l-2 border-gray-200 ml-2 pl-2 mt-0.5">
+      <div className="flex flex-col gap-0.75 md:gap-1">
         {regionOptions.map(({ region, prefectures }) => {
           const isRegionSelected = prefectures.every(prefecture =>
             selectedPrefectures.includes(prefecture),
           );
 
           return (
-            <Box
+            <Card
               key={region}
-              border="1px solid"
-              borderColor="gray.100"
-              borderRadius="md"
-              bg="gray.50"
-              overflow="hidden"
+              className="overflow-hidden border-gray-200 bg-gray-50"
             >
-              <Flex
-                alignItems="center"
-                justifyContent="space-between"
-                px={{ base: 1.5, md: 2 }}
-                py={{ base: 0.75, md: 1 }}
-              >
-                <Text
-                  minW={0}
-                  color="gray.700"
-                  fontSize={{ base: MOBILE_COMPACT_FONT_SIZE, md: "0.75rem" }}
-                  fontWeight="800"
-                >
-                  {region}
-                </Text>
-                <Button
-                  type="button"
-                  flexShrink={0}
-                  h={{ base: "2rem", md: "1.75rem" }}
-                  minW={{ base: "4.5rem", md: "auto" }}
-                  px={{ base: 3, md: 2 }}
-                  borderRadius="md"
-                  bg={isRegionSelected ? "brand.500" : "white"}
-                  color={isRegionSelected ? "white" : "brand.600"}
-                  border="1px solid"
-                  borderColor={isRegionSelected ? "brand.500" : "gray.200"}
-                  fontSize={{ base: MOBILE_COMPACT_FONT_SIZE, md: "0.75rem" }}
-                  fontWeight="800"
-                  lineHeight="1.2"
-                  whiteSpace="nowrap"
-                  _hover={{
-                    bg: isRegionSelected ? "brand.600" : "brand.50",
-                    borderColor: "brand.500",
-                  }}
-                  onClick={() =>
-                    onRegionPrefecturesChange(prefectures, !isRegionSelected)
-                  }
-                >
-                  {isRegionSelected ? "解除" : "全選択"}
-                </Button>
-              </Flex>
-
-              <Grid
-                templateColumns="repeat(5, minmax(0, 1fr))"
-                gap={{ base: 0.75, md: 1 }}
-                mt={0.5}
-                px={{ base: 1, md: 1.5 }}
-                pb={{ base: 1, md: 1.5 }}
-              >
-                {prefectures.map(prefecture => (
-                  <FilterToggle
-                    key={prefecture}
-                    id={`prefecture-${prefecture}`}
-                    label={prefecture.replace(/[府県]$/, "")}
-                    checked={selectedPrefectures.includes(prefecture)}
-                    onChange={checked =>
-                      onPrefectureChange(prefecture, checked)
+              <CardContent className="p-0">
+                <div className="flex items-center justify-between px-2 py-1.5">
+                  <span className="text-gray-700 font-medium truncate text-xs md:text-xs">
+                    {region}
+                  </span>
+                  <Button
+                    type="button"
+                    variant={isRegionSelected ? "default" : "outline"}
+                    className="inline-flex items-center justify-center rounded-md text-xs font-medium whitespace-nowrap focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 outline-none select-none disabled:pointer-events-none disabled:opacity-50 h-4 min-w-[72px] px-2 leading-none text-xs"
+                    onClick={() =>
+                      onRegionPrefecturesChange(prefectures, !isRegionSelected)
                     }
-                  />
-                ))}
-              </Grid>
-            </Box>
+                  >
+                    {isRegionSelected ? "解除" : "全選択"}
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-[repeat(5,minmax(0,1fr))] gap-0.5 mt-0.5 p-1">
+                  {prefectures.map(prefecture => (
+                    <FilterToggle
+                      key={prefecture}
+                      id={`prefecture-${prefecture}`}
+                      label={prefecture.replace(/[府県]$/, "")}
+                      checked={selectedPrefectures.includes(prefecture)}
+                      onChange={checked =>
+                        onPrefectureChange(prefecture, checked)
+                      }
+                    />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           );
         })}
-      </Flex>
-    </Box>
-  </Box>
+      </div>
+    </div>
+  </div>
 );
 
 export const ToggleSection = ({
@@ -143,50 +91,30 @@ export const ToggleSection = ({
   onToggle: () => void;
   children: React.ReactNode;
 }) => (
-  <Box>
+  <div>
     <Button
       type="button"
-      w="100%"
-      h={{ base: 7, md: 8 }}
-      justifyContent="flex-start"
-      px={0}
-      borderRadius="md"
       variant="ghost"
-      color="gray.600"
-      fontSize={{ base: MOBILE_BODY_FONT_SIZE, md: "0.875rem" }}
-      fontWeight="700"
-      gap={1}
-      _hover={{ bg: "gray.50" }}
+      className="justify-start text-left text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10 w-full h-7 text-sm transition-colors"
       onClick={onToggle}
+      aria-expanded={isOpen}
     >
-      <Box
-        as={isOpen ? ChevronUp : ChevronDown}
-        boxSize={{ base: "13px", md: "14px" }}
-      />
-      <Text as="span">{label}</Text>
+      <span className="inline-block h-[13px] w-[13px]">
+        {isOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+      </span>
+      <span>{label}</span>
       {meta && (
-        <Text
-          as="span"
-          color="brand.600"
-          fontSize={{ base: MOBILE_COMPACT_FONT_SIZE, md: "xs" }}
-          fontWeight="800"
-        >
+        <span className="text-blue-600 font-medium md:text-xs text-xs">
           {meta}
-        </Text>
+        </span>
       )}
     </Button>
     {isOpen && (
-      <Box
-        mt={{ base: 0.75, md: 1 }}
-        ml={{ base: 2, md: 2.5 }}
-        pl={{ base: 2, md: 2.5 }}
-        borderLeft="2px solid"
-        borderColor="gray.200"
-      >
+      <div className="border-l-2 border-gray-200 ml-2 pl-2 mt-0.5">
         {children}
-      </Box>
+      </div>
     )}
-  </Box>
+  </div>
 );
 
 export const ElevationFilterRow = ({
@@ -214,25 +142,13 @@ export const ElevationFilterRow = ({
   onChange: (name: NumericFilterName, value: string) => void;
   onFocus?: () => void;
 }) => (
-  <Grid
-    templateColumns={{
-      base: "64px max-content max-content",
-      md: "72px max-content max-content",
-    }}
-    alignItems="center"
-    gap={{ base: 1.5, md: 2 }}
-  >
-    <label htmlFor={minId}>
-      <Text
-        as="span"
-        color="gray.500"
-        fontSize={{ base: MOBILE_BODY_FONT_SIZE, md: "0.875rem" }}
-        fontWeight="700"
-        whiteSpace="nowrap"
-      >
-        {label}
-      </Text>
-    </label>
+  <div className="grid grid-cols-[64px_max-content_max-content] items-center gap-1.5 md:gap-2">
+    <Label
+      htmlFor={minId}
+      className="text-gray-500 font-medium whitespace-nowrap block md:text-sm text-sm"
+    >
+      {label}
+    </Label>
     <CompactNumberInput
       id={minId}
       name={minName}
@@ -255,9 +171,9 @@ export const ElevationFilterRow = ({
         onFocus={onFocus}
       />
     ) : (
-      <Box />
+      <div />
     )}
-  </Grid>
+  </div>
 );
 
 export const CompactMetricFilter = ({
@@ -281,23 +197,13 @@ export const CompactMetricFilter = ({
   onChange: (name: NumericFilterName, value: string) => void;
   onFocus?: () => void;
 }) => (
-  <Flex
-    alignItems="center"
-    justifyContent="center"
-    gap={{ base: 1, md: 1 }}
-    minW={0}
-  >
-    <label htmlFor={id}>
-      <Text
-        as="span"
-        color="gray.500"
-        fontSize={{ base: MOBILE_BODY_FONT_SIZE, md: "0.875rem" }}
-        fontWeight="700"
-        whiteSpace="nowrap"
-      >
-        {label}
-      </Text>
-    </label>
+  <div className="flex items-center justify-center gap-1 min-w-0">
+    <Label
+      htmlFor={id}
+      className="text-gray-500 font-medium whitespace-nowrap block md:text-sm text-sm"
+    >
+      {label}
+    </Label>
     <CompactNumberInput
       id={id}
       name={name}
@@ -309,22 +215,18 @@ export const CompactMetricFilter = ({
       onChange={onChange}
       onFocus={onFocus}
     />
-    <Text
-      flexShrink={0}
-      color="gray.600"
-      fontSize={{ base: MOBILE_BODY_FONT_SIZE, md: "xs" }}
-      fontWeight="800"
-    >
+    <span className="flex-shrink-0 text-gray-600 font-medium text-sm md:text-xs">
       {unit}
-    </Text>
-  </Flex>
+    </span>
+  </div>
 );
 
 const CompactNumberInput = ({
   id,
   name,
   value,
-  inputWidth = "30px",
+  // 4 桁（例: 標高 3000）が px-1.5 のパディング内に表示される最小幅
+  inputWidth = "3.25rem",
   unit,
   suffix,
   onBlur,
@@ -341,7 +243,7 @@ const CompactNumberInput = ({
   onChange: (name: NumericFilterName, value: string) => void;
   onFocus?: () => void;
 }) => (
-  <Flex alignItems="center" gap={{ base: 0.75, md: 1 }} minW={0}>
+  <div className="flex items-center gap-0.75 min-w-0">
     <Input
       id={id}
       type="text"
@@ -352,74 +254,47 @@ const CompactNumberInput = ({
       onBlur={onBlur}
       onChange={e => onChange(name, e.target.value)}
       onFocus={onFocus}
-      h={{ base: 9, md: 8 }}
-      w={inputWidth}
-      px={{ base: 0.5, md: 1 }}
-      bg={{ base: "gray.50", md: "white" }}
-      borderColor={{ base: "gray.300", md: "gray.200" }}
-      borderWidth={{ base: "1.5px", md: "1px" }}
-      color="gray.800"
-      borderRadius="md"
-      fontSize={{ base: MOBILE_INPUT_FONT_SIZE, md: "xs" }}
-      textAlign="center"
-      scrollMarginTop="calc(env(safe-area-inset-top, 0px) + 5.5rem)"
-      _focus={{
-        bg: "white",
-        borderColor: "brand.500",
-        boxShadow: "0 0 0 2px rgba(59, 130, 246, 0.12)",
+      className="h-9 w-full rounded-md border border-input bg-white px-1.5 py-1 text-sm shadow-sm text-center text-gray-800 placeholder:text-gray-400 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10 outline-none select-none disabled:pointer-events-none disabled:opacity-50"
+      style={{
+        width: inputWidth,
+        scrollMarginTop: "calc(env(safe-area-inset-top, 0px) + 5.5rem)",
       }}
     />
     {(unit || suffix) && (
-      <Text
-        flexShrink={0}
-        color="gray.600"
-        fontSize={{ base: MOBILE_BODY_FONT_SIZE, md: "xs" }}
-        fontWeight="800"
-      >
+      <span className="flex-shrink-0 text-gray-600 font-medium md:text-xs text-sm">
         {unit}
         {suffix}
-      </Text>
+      </span>
     )}
-  </Flex>
+  </div>
 );
 
 export const FilterToggle = ({
   id,
   label,
   checked,
-  checkedColor = "brand.500",
   onChange,
 }: {
   id: string;
   label: string;
   checked: boolean;
-  checkedColor?: string;
   onChange: (checked: boolean) => void;
-}) => (
-  <Button
-    id={id}
-    type="button"
-    aria-pressed={checked}
-    minW={0}
-    h={{ base: "28px", md: "32px" }}
-    px={{ base: 2, md: 3 }}
-    borderRadius="md"
-    border="1px solid"
-    borderColor={checked ? checkedColor : "gray.200"}
-    bg={checked ? checkedColor : "white"}
-    color={checked ? "white" : "gray.700"}
-    fontSize={{ base: MOBILE_COMPACT_FONT_SIZE, md: "0.75rem" }}
-    fontWeight="800"
-    lineHeight="1"
-    overflow="hidden"
-    textOverflow="ellipsis"
-    whiteSpace="nowrap"
-    _hover={{
-      bg: checked ? checkedColor : "gray.50",
-      borderColor: checked ? checkedColor : "gray.300",
-    }}
-    onClick={() => onChange(!checked)}
-  >
-    {label}
-  </Button>
-);
+}) => {
+  // checkedColor は常に "brand.500" (#3b82f6 = blue-600) で使用されるため固定する
+  return (
+    <Button
+      id={id}
+      type="button"
+      variant="outline"
+      aria-pressed={checked}
+      className={
+        checked
+          ? "inline-flex items-center justify-center rounded-md border text-ellipsis overflow-hidden whitespace-nowrap text-xs font-medium leading-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 outline-none select-none disabled:pointer-events-none disabled:opacity-50 h-7 px-2 min-w-0 transition-colors bg-blue-600 border-blue-600 text-white hover:brightness-95"
+          : "inline-flex items-center justify-center rounded-md border text-ellipsis overflow-hidden whitespace-nowrap text-xs font-medium leading-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 outline-none select-none disabled:pointer-events-none disabled:opacity-50 h-7 px-2 min-w-0 transition-colors border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+      }
+      onClick={() => onChange(!checked)}
+    >
+      {label}
+    </Button>
+  );
+};

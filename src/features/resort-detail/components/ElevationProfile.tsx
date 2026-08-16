@@ -1,7 +1,7 @@
 "use client";
 
-import { Box, Text } from "@chakra-ui/react";
 import { type PointerEvent, useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import type { ElevationProfilePoint } from "../types";
 
 export const ElevationProfile = ({
@@ -10,7 +10,6 @@ export const ElevationProfile = ({
   onPointSelect,
 }: {
   points: ElevationProfilePoint[];
-  showSlope?: boolean;
   activeDistance?: number | null;
   onPointSelect?: (point: ElevationProfilePoint) => void;
 }) => {
@@ -111,177 +110,168 @@ export const ElevationProfile = ({
   };
 
   return (
-    <Box
-      border="1px solid"
-      borderColor="gray.200"
-      borderRadius="lg"
-      bg="white"
-      p={4}
-    >
-      <Text mb={2} fontSize="sm" fontWeight="900" color="gray.900">
-        標高プロファイル
-      </Text>
-      <svg
-        aria-label="標高プロファイル上の位置を選択"
-        viewBox={`0 0 ${width} ${height}`}
-        role={onPointSelect ? "button" : "img"}
-        onPointerDown={handleProfilePointerDown}
-        onPointerMove={handleProfilePointerMove}
-        onPointerCancel={handleProfilePointerUp}
-        onPointerUp={handleProfilePointerUp}
-        style={{
-          cursor: onPointSelect
-            ? isDragging
-              ? "grabbing"
-              : "grab"
-            : "default",
-          display: "block",
-          height: "auto",
-          maxHeight: "320px",
-          touchAction: "none",
-          width: "100%",
-        }}
-      >
-        <path
-          d={`M${chartLeft} ${chartTop}V${chartBottom}H${chartRight}`}
-          fill="none"
-          stroke="#CBD5E1"
-          strokeWidth={1.5}
-          vectorEffect="non-scaling-stroke"
-        />
-        {gridElevations.map(elevation => (
-          <g key={elevation}>
-            <line
-              x1={chartLeft}
-              x2={chartRight}
-              y1={toY(elevation)}
-              y2={toY(elevation)}
-              stroke="#E5E7EB"
-              strokeDasharray="4 6"
-              strokeWidth={1}
-              vectorEffect="non-scaling-stroke"
-            />
-            <text
-              x={chartLeft - 10}
-              y={toY(elevation) + 4}
-              fill="#6B7280"
-              fontSize={12}
-              fontWeight={800}
-              textAnchor="end"
-            >
-              {elevation}m
-            </text>
-          </g>
-        ))}
-        {distanceGridValues.map(distance => (
-          <g key={distance}>
-            <line
-              x1={toX(distance)}
-              x2={toX(distance)}
-              y1={chartTop}
-              y2={chartBottom}
-              stroke="#EEF2F7"
-              strokeDasharray="4 8"
-              strokeWidth={1}
-              vectorEffect="non-scaling-stroke"
-            />
-            <text
-              x={toX(distance)}
-              y={chartBottom + 22}
-              fill="#6B7280"
-              fontSize={12}
-              fontWeight={800}
-              textAnchor={distance === 0 ? "start" : "middle"}
-            >
-              {formatDistanceTick(distance)}
-            </text>
-          </g>
-        ))}
-        <text
-          x={chartRight}
-          y={chartBottom + 46}
-          fill="#374151"
-          fontSize={18}
-          fontWeight={900}
-          textAnchor="end"
-        >
-          水平距離
-        </text>
-        <path
-          d={path}
-          fill="none"
-          stroke="#2563EB"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={4}
-          vectorEffect="non-scaling-stroke"
-        />
-        {steepestPoint && (
-          <g>
-            <circle
-              cx={toX(steepestPoint.distance)}
-              cy={toY(steepestPoint.elevation)}
-              r={6.5}
-              fill="#EF4444"
-              stroke="#FFFFFF"
-              strokeWidth={2}
-              vectorEffect="non-scaling-stroke"
-            />
-            <text
-              x={Math.min(chartRight - 60, toX(steepestPoint.distance) + 10)}
-              y={Math.max(chartTop + 14, toY(steepestPoint.elevation) - 10)}
-              fill="#B91C1C"
-              fontSize={40}
-              fontWeight={900}
-              paintOrder="stroke"
-              stroke="#FFFFFF"
-              strokeLinejoin="round"
-              strokeWidth={4}
-            >
-              最大 {Math.round(steepestPoint.slope ?? 0)}°
-            </text>
-          </g>
-        )}
-        {activePoint && (
-          <>
-            <line
-              x1={toX(activePoint.distance)}
-              x2={toX(activePoint.distance)}
-              y1={chartTop}
-              y2={chartBottom}
-              stroke="#111827"
-              strokeDasharray="3 4"
+    <Card>
+      <CardContent className="p-4">
+        <p className="mb-2 text-sm font-semibold text-gray-900">
+          標高プロファイル
+        </p>
+        {/* 軸ラベルの可読性維持のため最小幅を確保し，狭い画面では横スクロールする */}
+        <div className="overflow-x-auto overflow-y-hidden scroll-touch">
+          <svg
+            aria-label="標高プロファイル上の位置を選択"
+            viewBox={`0 0 ${width} ${height}`}
+            role={onPointSelect ? "button" : "img"}
+            onPointerDown={handleProfilePointerDown}
+            onPointerMove={handleProfilePointerMove}
+            onPointerCancel={handleProfilePointerUp}
+            onPointerUp={handleProfilePointerUp}
+            className={`block h-auto max-h-[320px] touch-pan-x w-full min-w-[640px] ${onPointSelect ? (isDragging ? "cursor-grabbing" : "cursor-grab") : "cursor-default"}`}
+          >
+            <path
+              d={`M${chartLeft} ${chartTop}V${chartBottom}H${chartRight}`}
+              fill="none"
+              stroke="#CBD5E1"
               strokeWidth={1.5}
               vectorEffect="non-scaling-stroke"
             />
-            <circle
-              cx={toX(activePoint.distance)}
-              cy={toY(activePoint.elevation)}
-              r={6}
-              fill="#2563EB"
-              stroke="#111827"
-              strokeWidth={1.8}
-              vectorEffect="non-scaling-stroke"
-            />
+            {gridElevations.map(elevation => (
+              <g key={elevation}>
+                <line
+                  x1={chartLeft}
+                  x2={chartRight}
+                  y1={toY(elevation)}
+                  y2={toY(elevation)}
+                  stroke="#E5E7EB"
+                  strokeDasharray="4 6"
+                  strokeWidth={1}
+                  vectorEffect="non-scaling-stroke"
+                />
+                <text
+                  x={chartLeft - 10}
+                  y={toY(elevation) + 4}
+                  fill="#6B7280"
+                  fontSize={12}
+                  fontWeight={800}
+                  textAnchor="end"
+                >
+                  {elevation}m
+                </text>
+              </g>
+            ))}
+            {distanceGridValues.map(distance => (
+              <g key={distance}>
+                <line
+                  x1={toX(distance)}
+                  x2={toX(distance)}
+                  y1={chartTop}
+                  y2={chartBottom}
+                  stroke="#EEF2F7"
+                  strokeDasharray="4 8"
+                  strokeWidth={1}
+                  vectorEffect="non-scaling-stroke"
+                />
+                <text
+                  x={toX(distance)}
+                  y={chartBottom + 22}
+                  fill="#6B7280"
+                  fontSize={12}
+                  fontWeight={800}
+                  textAnchor={distance === 0 ? "start" : "middle"}
+                >
+                  {formatDistanceTick(distance)}
+                </text>
+              </g>
+            ))}
             <text
-              x={Math.min(chartRight - 28, toX(activePoint.distance) + 8)}
-              y={Math.max(chartTop + 10, toY(activePoint.elevation) - 8)}
-              fill="#111827"
-              fontSize={13}
+              x={chartRight}
+              y={chartBottom + 46}
+              fill="#374151"
+              fontSize={18}
               fontWeight={900}
-              paintOrder="stroke"
-              stroke="#FFFFFF"
+              textAnchor="end"
+            >
+              水平距離
+            </text>
+            <path
+              d={path}
+              fill="none"
+              stroke="#2563EB"
+              strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={4}
-            >
-              {activePoint.slope == null
-                ? "--"
-                : `${Math.round(activePoint.slope)}°`}
-            </text>
-          </>
-        )}
-      </svg>
-    </Box>
+              vectorEffect="non-scaling-stroke"
+            />
+            {steepestPoint && (
+              <g>
+                <circle
+                  cx={toX(steepestPoint.distance)}
+                  cy={toY(steepestPoint.elevation)}
+                  r={6.5}
+                  fill="#EF4444"
+                  stroke="#FFFFFF"
+                  strokeWidth={2}
+                  vectorEffect="non-scaling-stroke"
+                />
+                <text
+                  x={Math.min(
+                    chartRight - 60,
+                    toX(steepestPoint.distance) + 10,
+                  )}
+                  y={Math.max(chartTop + 14, toY(steepestPoint.elevation) - 10)}
+                  fill="#B91C1C"
+                  fontSize={40}
+                  fontWeight={900}
+                  paintOrder="stroke"
+                  stroke="#FFFFFF"
+                  strokeLinejoin="round"
+                  strokeWidth={4}
+                >
+                  最大 {Math.round(steepestPoint.slope ?? 0)}°
+                </text>
+              </g>
+            )}
+            {activePoint && (
+              <>
+                <line
+                  x1={toX(activePoint.distance)}
+                  x2={toX(activePoint.distance)}
+                  y1={chartTop}
+                  y2={chartBottom}
+                  stroke="#111827"
+                  strokeDasharray="3 4"
+                  strokeWidth={1.5}
+                  vectorEffect="non-scaling-stroke"
+                />
+                <circle
+                  cx={toX(activePoint.distance)}
+                  cy={toY(activePoint.elevation)}
+                  r={6}
+                  fill="#2563EB"
+                  stroke="#111827"
+                  strokeWidth={1.8}
+                  vectorEffect="non-scaling-stroke"
+                />
+                <text
+                  x={Math.min(chartRight - 28, toX(activePoint.distance) + 8)}
+                  y={Math.max(chartTop + 10, toY(activePoint.elevation) - 8)}
+                  fill="#111827"
+                  fontSize={13}
+                  fontWeight={900}
+                  paintOrder="stroke"
+                  stroke="#FFFFFF"
+                  strokeLinejoin="round"
+                  strokeWidth={4}
+                >
+                  {activePoint.slope == null
+                    ? "--"
+                    : `${Math.round(activePoint.slope)}°`}
+                </text>
+              </>
+            )}
+          </svg>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
