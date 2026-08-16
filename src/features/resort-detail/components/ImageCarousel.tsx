@@ -62,8 +62,8 @@ export const ImageCarousel = ({
                 src={src}
                 alt={alt}
                 fill
-                objectFit="contain"
-                unoptimized
+                sizes="(min-width: 768px) 1000px, 100vw"
+                className="object-contain"
                 priority
               />
             </div>

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ReviewEditWorkspace } from "@/features/review/ReviewEditWorkspace";
+import { ReviewEditClient } from "@/features/review/ReviewEditClient";
 import {
   listReviewResorts,
   readReviewForEdit,
@@ -39,7 +39,7 @@ export default async function ReviewEditPage() {
     : null;
 
   return (
-    <ReviewEditWorkspace
+    <ReviewEditClient
       resorts={resorts}
       initialResortId={initialResortId ?? null}
       initialData={initialData}

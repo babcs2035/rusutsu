@@ -20,7 +20,7 @@ export const DetailTabs = <TTab extends string>({
     className="sticky top-0 z-10 overflow-x-auto border-b border-gray-200 bg-white"
     orientation="horizontal"
   >
-    <TabsList className="bg-transparent border-0 gap-0 h-auto p-0 flex">
+    <TabsList className="flex w-full bg-transparent border-0 gap-0 h-auto p-0">
       {tabs.map(tab => (
         <TabsTrigger
           key={tab}

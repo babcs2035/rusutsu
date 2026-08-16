@@ -1,23 +1,13 @@
 "use client";
 
 import { Trash2 } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { adminToaster } from "@/app/admin/AdminToaster";
 import type { AdminUser } from "@/app/admin/actions";
 import { deleteUser, updateUserRole } from "@/app/admin/actions";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -35,11 +25,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
+
+// DB の role 値（"admin" / "viewer"）を画面表示用の日本語ラベルに映射する
+const ROLE_LABELS: Record<string, string> = {
+  admin: "管理者",
+  viewer: "閲覧者",
+};
 
 export function UserManagement({ users }: { users: AdminUser[] }) {
   const router = useRouter();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+  const [deletingUser, setDeletingUser] = useState<AdminUser | null>(null);
 
   const handleRoleChange = async (userId: string, newRole: string) => {
     try {
@@ -55,13 +52,13 @@ export function UserManagement({ users }: { users: AdminUser[] }) {
   };
 
   const handleDeleteConfirm = async () => {
-    const userId = deletingUserId;
-    if (!userId) {
+    const user = deletingUser;
+    if (!user) {
       setDeleteDialogOpen(false);
       return;
     }
     try {
-      await deleteUser(userId);
+      await deleteUser(user.id);
       adminToaster.create({ title: "ユーザーを削除しました", type: "success" });
       router.refresh();
     } catch {
@@ -71,108 +68,104 @@ export function UserManagement({ users }: { users: AdminUser[] }) {
       });
     } finally {
       setDeleteDialogOpen(false);
-      setDeletingUserId(null);
+      setDeletingUser(null);
     }
   };
 
-  const handleDeleteCancel = () => {
-    setDeleteDialogOpen(false);
-    setDeletingUserId(null);
-  };
+  const deletingUserLabel = deletingUser
+    ? (deletingUser.email ?? deletingUser.name ?? "このユーザー")
+    : "";
 
   return (
-    <Card className="overflow-hidden shadow-lg border-gray-200">
-      <CardContent className="p-0">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-gray-50">
-              <TableHead className="table-header-cell">名前</TableHead>
-              <TableHead className="table-header-cell">
-                メールアドレス
-              </TableHead>
-              <TableHead className="table-header-cell">ロール</TableHead>
-              <TableHead className="table-header-cell">操作</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {users.map(user => (
-              <TableRow key={user.id}>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Avatar className="h-6 w-6">
-                      {user.image && <AvatarImage src={user.image} alt="" />}
-                      {user.name && (
-                        <AvatarFallback className="text-[0.6875rem]">
-                          {user.name.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      )}
-                    </Avatar>
-                    {user.name || "-"}
-                  </div>
-                </TableCell>
-                <TableCell>{user.email || "-"}</TableCell>
-                <TableCell>
-                  <Select
-                    value={user.role}
-                    onValueChange={(value: string | null) => {
-                      if (value) handleRoleChange(user.id, value);
-                    }}
-                    disabled={user.isEnvAdmin}
-                  >
-                    <SelectTrigger className="w-[120px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="viewer">閲覧者</SelectItem>
-                      <SelectItem value="admin">管理者</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-                <TableCell>
-                  <AlertDialog
-                    open={deleteDialogOpen}
-                    onOpenChange={(open: boolean) => {
-                      if (!open) handleDeleteCancel();
-                    }}
-                  >
-                    <AlertDialogTrigger
-                      render={
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          disabled={user.isEnvAdmin}
-                        >
-                          <Trash2 className="mr-1 h-3 w-3" />
-                          削除
-                        </Button>
-                      }
-                    />
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>ユーザーの削除</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          このユーザーを削除してもよろしいですか？この操作は取り消せません。
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel onClick={handleDeleteCancel}>
-                          キャンセル
-                        </AlertDialogCancel>
-                        <AlertDialogAction
-                          variant="destructive"
-                          onClick={handleDeleteConfirm}
-                        >
-                          削除する
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </TableCell>
+    <>
+      <Card className="overflow-hidden shadow-lg border-gray-200">
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-gray-50">
+                <TableHead className="table-header-cell">名前</TableHead>
+                <TableHead className="table-header-cell">
+                  メールアドレス
+                </TableHead>
+                <TableHead className="table-header-cell">ロール</TableHead>
+                <TableHead className="table-header-cell">操作</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+            </TableHeader>
+            <TableBody>
+              {users.map(user => (
+                <TableRow key={user.id}>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-6 w-6">
+                        {user.image && (
+                          <Image
+                            src={user.image}
+                            alt=""
+                            fill
+                            sizes="24px"
+                            className="rounded-full object-cover"
+                          />
+                        )}
+                        {user.name && (
+                          <AvatarFallback className="text-[0.6875rem]">
+                            {user.name.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
+                      {user.name || "-"}
+                    </div>
+                  </TableCell>
+                  <TableCell>{user.email || "-"}</TableCell>
+                  <TableCell>
+                    <Select
+                      value={user.role}
+                      onValueChange={(value: string | null) => {
+                        if (value) handleRoleChange(user.id, value);
+                      }}
+                      disabled={user.isEnvAdmin}
+                    >
+                      <SelectTrigger className="w-[120px]">
+                        {/* 生の role 値（admin/viewer）ではなく日本語ラベルを表示する */}
+                        <SelectValue>
+                          {(value: string) => ROLE_LABELS[value] ?? value}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="viewer">閲覧者</SelectItem>
+                        <SelectItem value="admin">管理者</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      disabled={user.isEnvAdmin}
+                      onClick={() => {
+                        setDeletingUser(user);
+                        setDeleteDialogOpen(true);
+                      }}
+                    >
+                      <Trash2 className="mr-1 h-3 w-3" />
+                      削除
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+      {/* 削除確認は全行で 1 つのダイアログを共有する
+          （行ごとに AlertDialog を複製すると open state が全行に波及するため） */}
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="ユーザーの削除"
+        description={`「${deletingUserLabel}」を削除してもよろしいですか？この操作は取り消せません。`}
+        confirmLabel="削除する"
+        onConfirm={handleDeleteConfirm}
+      />
+    </>
   );
 }

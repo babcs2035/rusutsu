@@ -7,7 +7,7 @@ import {
   listTicketFiles,
   readTicketForEdit,
 } from "@/features/ticket/server/ticketFiles";
-import { TicketEditWorkspace } from "@/features/ticket/TicketEditWorkspace";
+import { TicketEditClient } from "@/features/ticket/TicketEditClient";
 import type { TicketFileOption } from "@/features/ticket/types";
 import { prisma } from "@/lib/prisma";
 
@@ -48,7 +48,7 @@ export default async function TicketEditPage() {
     : null;
 
   return (
-    <TicketEditWorkspace
+    <TicketEditClient
       files={files}
       resortOptions={resorts.map(resort => ({
         id: resort.id,

@@ -5,8 +5,8 @@
 - ローカルアプリをブラウザや Playwright で開く際は `http://localhost:3000/rusutsu` を使用すること。
 
 ## プロジェクト概要
-Rusutsu は、日本全国のスキー場情報（基本情報・コース/リフト稼働状況・気象予報）を複数の外部サイトから収集・名寄せして一元的に可視化する Next.js アプリケーション。
-主要スタック: Next.js 16 (App Router) + TypeScript (strict) + Prisma 7 / PostgreSQL、UI は Chakra UI v3 + Leaflet/Recharts、クローラーは Playwright + fetch。ツールチェーンは mise + Biome。
+Rusutsu は、日本全国のスキー場情報（基本情報・コース/リフト稼働状況・気象予報・積雪履歴・リフト券料金・レビュー）を複数の外部サイトから収集・名寄せして一元的に可視化する Next.js アプリケーション。
+主要スタック: Next.js 16 (App Router) + TypeScript (strict) + Prisma 7 / PostgreSQL、UI は shadcn/ui (Base UI) + Tailwind CSS v4 + Leaflet/Recharts、クローラーは Playwright + fetch、認証は Auth.js v5 (Google OAuth)。ツールチェーンは mise + Biome。
 
 ## 開発コマンド
 `mise run <task>` で実行する（内部で `pnpm` を呼ぶタスクが多い）。
@@ -28,13 +28,14 @@ Rusutsu は、日本全国のスキー場情報（基本情報・コース/リ�
 - 全クローラー一括: `mise run crawl:all`（上記4件 + snowDepths/snowFalls/latestReports/yukiMagi/amedas を順次実行）
 
 ## ディレクトリ構成
-- `src/app`: Next.js App Router のエントリ（`layout.tsx`, `page.tsx` のみ。ページ本体は features 側に実装）
-- `src/features/<domain>`: 機能単位のディレクトリ。`filters`, `home`, `map`, `resort-detail`, `weather` の5ドメインがあり、各ドメイン配下に `components/`, `hooks/`, `utils/` を持つ（`resort-detail` のみ `tabs/` も持つなど、内訳はドメインごとに多少異なる）
-- `src/shared`: ドメインをまたぐ共通コード置き場（`components/`, `hooks/`, `types/`, `utils/`）
+- `src/app`: Next.js App Router のエントリ（`layout.tsx`, `page.tsx`, `admin/` 管理画面, `api/` API ルート。ページ本体は features 側に実装）
+- `src/features/<domain>`: 機能単位のディレクトリ。`filters`, `home`, `lift`, `lift-ticket`, `map`, `resort-detail`, `review`, `reviews`, `slope`, `ticket`, `weather` の11ドメインがあり、各ドメイン配下に `components/`, `hooks/`, `utils/` を持つ（ドメインによっては `tabs/`, `server/` も持つなど、内訳はドメインごとに多少異なる）
+- `src/shared`: ドメインをまたぐ共通コード置き場（`components/`, `types/`, `utils/`）
 - `src/lib`: Prisma クライアント (`prisma.ts`)、クローラー実行管理 (`crawlerManager.ts`)、cron スケジューラ (`scheduler.ts`)、GeoJSON 生成ロジックなどインフラ寄りの処理
-- `src/actions`: Server Actions（`skiResorts.ts`, `crawl.ts`）
-- `src/providers`: Chakra UI などの Context Provider
-- `src/private`: 一般には公開しないデータ・スクリプト置き場。`data/`（クロール結果・名寄せ辞書・GeoJSON等）と `scripts/`（クローラー本体）
+- `src/actions`: Server Actions（`skiResorts.ts`, `crawl.ts`, `auth.ts`）
+- `src/components`: shadcn/ui コンポーネント (`ui/`) と管理画面共通部品
+- `src/auth.ts`, `src/proxy.ts`, `src/instrumentation.ts`: Auth.js v5 ハンドラ、`/admin` ルートの保護 (JWT 検証)、本番起動時のクローラースケジューラ開始
+- `src/private`: 一般には公開しないデータ・スクリプト置き場（git submodule で別リポジトリ管理）。`data/`（クロール結果・名寄せ辞書・GeoJSON等）と `scripts/`（クローラー本体）
 
 ## Prisma 関連
 - `prisma/schema.prisma`: データモデル定義（`SkiResort`, `Course`, `Lift`, `Weather`, `SnowDepthRecord`, `SnowFallRecord`, `LatestReport`, `AmedasData`, `YukiMagi` 等）とマイグレーション・generator/datasource 設定。

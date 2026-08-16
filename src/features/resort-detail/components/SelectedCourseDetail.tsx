@@ -104,14 +104,16 @@ export const SelectedCourseDetail = ({
       </div>
 
       {selectedCourse.properties.image && (
-        <ExternalLinkComponent className="inline-flex h-[180px] max-w-full overflow-hidden rounded-xl">
-          <Image
-            src={selectedCourse.properties.image}
-            alt={courseGroup.displayName}
-            fill
-            objectFit="contain"
-            unoptimized
-          />
+        <ExternalLinkComponent className="w-full">
+          <div className="relative h-[180px] w-full overflow-hidden rounded-xl">
+            <Image
+              src={selectedCourse.properties.image}
+              alt={courseGroup.displayName}
+              fill
+              sizes="(min-width: 768px) 1000px, 100vw"
+              className="object-contain"
+            />
+          </div>
         </ExternalLinkComponent>
       )}
 

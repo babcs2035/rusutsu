@@ -489,7 +489,7 @@ export const HomeLayout = ({
 
       <AnimatedPanel
         visible={isCompareOpen && isSidePanelLayout}
-        rootClassName="fixed inset-0 z-[100] flex items-center justify-end p-0 pointer-events-none"
+        rootClassName="fixed inset-0 z-[100] flex items-center justify-center p-0 pointer-events-none"
       >
         {isCompareOpen && isSidePanelLayout && (
           <SkiResortCompareView

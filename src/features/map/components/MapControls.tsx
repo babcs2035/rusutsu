@@ -47,14 +47,17 @@ export const MapControls = ({
         { "--map-controls-bottom": mobileBottomOffset } as React.CSSProperties
       }
     >
-      <Card className="overflow-hidden">
+      {/* ズーム・リセットを 1 カードに縦積みし，まとめて 1 つのコントロールに見せる
+          （Card の既定 py-(--card-spacing) は p-0 で除去。残すとボタン周囲に余白が生まれる） */}
+      <Card className="gap-0 overflow-hidden p-0">
         <CardContent className="p-0">
           <Button
             onClick={() => {
               map.zoomIn();
               window.setTimeout(() => onUserMapZoomInteraction?.(), 0);
             }}
-            className="flex h-10 w-10 items-center justify-center p-2 text-gray-700 bg-transparent hover:bg-gray-50 hover:text-gray-900 rounded-none text-xl font-medium min-w-0"
+            aria-label="地図を拡大"
+            className="flex h-10 w-10 items-center justify-center rounded-none bg-white p-0 text-xl font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 min-w-0"
           >
             +
           </Button>
@@ -64,28 +67,32 @@ export const MapControls = ({
               map.zoomOut();
               window.setTimeout(() => onUserMapZoomInteraction?.(), 0);
             }}
-            className="flex h-10 w-10 items-center justify-center p-2 text-gray-700 bg-transparent hover:bg-gray-50 hover:text-gray-900 rounded-none text-xl font-medium min-w-0"
+            aria-label="地図を縮小"
+            className="flex h-10 w-10 items-center justify-center rounded-none bg-white p-0 text-xl font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 min-w-0"
           >
             -
           </Button>
+          <Separator orientation="horizontal" className="bg-gray-100" />
+          <Button
+            onClick={() => {
+              onUserMapInteraction?.();
+              map.setView(INITIAL_CENTER, initialZoom);
+            }}
+            aria-label="地図をリセット"
+            className="flex h-10 w-10 items-center justify-center rounded-none bg-white p-0 text-gray-700 hover:bg-gray-50 hover:text-gray-900 min-w-0"
+          >
+            <Home size={18} />
+          </Button>
         </CardContent>
       </Card>
-      <Button
-        onClick={() => {
-          onUserMapInteraction?.();
-          map.setView(INITIAL_CENTER, initialZoom);
-        }}
-        className="flex h-10 w-10 items-center justify-center rounded-lg bg-white p-2 text-gray-700 shadow-sm border border-gray-200 min-w-0"
-      >
-        <Home size={18} />
-      </Button>
+      {/* タイル切替: セグメントコントロール（active は塗りつぶし，inactive は薄 hover） */}
       <Card
         className={cn(
-          "overflow-hidden",
+          "gap-0 overflow-hidden p-1",
           hideMobileTileVariantControl ? "hidden md:flex" : "flex",
         )}
       >
-        <CardContent className="p-0">
+        <CardContent className="flex gap-1 p-0">
           {Object.entries(GSI_TILE_LAYERS).map(([variant, layer]) => {
             const tileVariant = variant as MapTileVariant;
             const isActive = mapTileVariant === tileVariant;
@@ -95,11 +102,12 @@ export const MapControls = ({
                 key={variant}
                 onClick={() => onMapTileVariantChange(tileVariant)}
                 aria-label={`${layer.label}に切り替え`}
+                aria-pressed={isActive}
                 variant={isActive ? "default" : "ghost"}
                 className={cn(
-                  "h-[2.25rem] rounded-none px-2.5 text-xs font-medium",
+                  "h-8 w-16 rounded-md px-3 text-xs font-semibold",
                   !isActive &&
-                    "text-gray-700 hover:bg-gray-50 hover:text-gray-900",
+                    "text-gray-700 hover:bg-gray-100 hover:text-gray-900",
                 )}
               >
                 {layer.label}

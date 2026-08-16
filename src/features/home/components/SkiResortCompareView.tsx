@@ -47,9 +47,9 @@ export const SkiResortCompareView = ({
   }, []);
 
   const comparePanelContent = (
-    <div
-      className={`flex-1 flex flex-col ${isSheetContentScrollable ? "overflow-y-auto" : "overflow-y-hidden"}`}
-    >
+    // ヘッダーとタブバーは固定し，タブの中身のみスクロールさせる
+    // （全体スクロールだとタブバーが画面外に出てタブ切替しにくくなる）
+    <div className="relative flex h-full min-h-0 flex-col">
       <Button
         variant="ghost"
         onClick={onClose}
@@ -59,7 +59,7 @@ export const SkiResortCompareView = ({
         <X size={18} strokeWidth={2.5} />
       </Button>
 
-      <div className="px-4 md:px-8 pt-6 md:pt-8 pb-5 border-b border-gray-200">
+      <div className="shrink-0 px-4 md:px-8 pt-6 md:pt-8 pb-5 border-b border-gray-200">
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 font-[var(--font-heading)]">
           スキー場比較
         </h1>
@@ -75,9 +75,9 @@ export const SkiResortCompareView = ({
       <Tabs
         value={activeTab}
         onValueChange={setActiveTab}
-        className="w-full scrollable-tabs flex-col"
+        className="min-h-0 flex-1 scrollable-tabs flex-col"
       >
-        <TabsList className="flex border-b border-gray-100 bg-white rounded-none h-auto">
+        <TabsList className="shrink-0 flex w-full border-b border-gray-100 bg-white rounded-none h-auto">
           {TABS.map(tab => (
             <TabsTrigger
               key={tab}
@@ -88,7 +88,10 @@ export const SkiResortCompareView = ({
             </TabsTrigger>
           ))}
         </TabsList>
-        <TabsContent value="概要">
+        <TabsContent
+          value="概要"
+          className={`min-h-0 flex-1 p-4 md:p-6 ${isSheetContentScrollable ? "overflow-y-auto" : "overflow-y-hidden"}`}
+        >
           {isLoading ? (
             <div className="min-h-96 flex items-center justify-center">
               <LoadingSpinner text="比較データを読み込み中..." />
@@ -97,7 +100,10 @@ export const SkiResortCompareView = ({
             <CompareOverviewTab resorts={resorts} />
           )}
         </TabsContent>
-        <TabsContent value="料金">
+        <TabsContent
+          value="料金"
+          className={`min-h-0 flex-1 p-4 md:p-6 ${isSheetContentScrollable ? "overflow-y-auto" : "overflow-y-hidden"}`}
+        >
           {isLoading ? (
             <div className="min-h-96 flex items-center justify-center">
               <LoadingSpinner text="比較データを読み込み中..." />
@@ -109,7 +115,10 @@ export const SkiResortCompareView = ({
             />
           )}
         </TabsContent>
-        <TabsContent value="レビュー">
+        <TabsContent
+          value="レビュー"
+          className={`min-h-0 flex-1 p-4 md:p-6 ${isSheetContentScrollable ? "overflow-y-auto" : "overflow-y-hidden"}`}
+        >
           {isLoading ? (
             <div className="min-h-96 flex items-center justify-center">
               <LoadingSpinner text="比較データを読み込み中..." />
@@ -118,7 +127,10 @@ export const SkiResortCompareView = ({
             <CompareReviewsTab resorts={resorts} />
           )}
         </TabsContent>
-        <TabsContent value="天候">
+        <TabsContent
+          value="天候"
+          className={`min-h-0 flex-1 p-4 md:p-6 ${isSheetContentScrollable ? "overflow-y-auto" : "overflow-y-hidden"}`}
+        >
           {isLoading ? (
             <div className="min-h-96 flex items-center justify-center">
               <LoadingSpinner text="比較データを読み込み中..." />
@@ -146,15 +158,16 @@ export const SkiResortCompareView = ({
   return (
     isSidePanel && (
       <Portal>
-        <div className="fixed inset-0 z-[100] flex items-center justify-end p-0 pointer-events-none">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 pointer-events-none md:p-6">
           <div
-            className="absolute inset-0 backdrop-none bg-transparent"
+            className="absolute inset-0 backdrop-none bg-black/10"
             aria-hidden="true"
           />
           <AnimatedPanel
             data-ski-resort-compare-panel="true"
             visible={isSidePanel}
-            contentClassName="relative z-10 flex h-full w-[min(800px,70vw)] flex-col overflow-hidden bg-white border border-gray-200 shadow-2xl pointer-events-auto"
+            animation="fade"
+            contentClassName="relative z-10 flex h-[min(88vh,900px)] w-[min(1000px,94vw)] flex-col overflow-hidden rounded-xl bg-white border border-gray-200 shadow-2xl pointer-events-auto"
           >
             {comparePanelContent}
           </AnimatedPanel>

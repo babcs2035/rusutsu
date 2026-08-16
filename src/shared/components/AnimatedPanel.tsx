@@ -17,6 +17,12 @@ type AnimatedPanelProps = {
   slideOffset?: number;
   /** アニメーションduration (ms) */
   duration?: number;
+  /**
+   * アニメーションの種類。
+   * - "slide": 右からスライドイン（サイドパネル用）
+   * - "fade": 透明度のみ変化（画面中央のモーダル用。スライドだと中央配置と不自然に映るため）
+   */
+  animation?: "slide" | "fade";
   /** 現在表示中かどうか */
   visible: boolean;
   style?: CSSProperties;
@@ -28,6 +34,7 @@ export function AnimatedPanel({
   contentClassName = "",
   slideOffset = 24,
   duration = 180,
+  animation = "slide",
   visible,
   style,
   ...rest
@@ -50,7 +57,9 @@ export function AnimatedPanel({
             "--panel-opacity": visible ? "1" : "0",
             transition: `opacity ${duration}ms ease-out, transform ${duration}ms ease-out`,
             opacity: "var(--panel-opacity)",
-            transform: `translateX(var(--panel-slide))`,
+            // fade 時は translateX を使わない（中央モーダル用）
+            transform:
+              animation === "fade" ? "none" : "translateX(var(--panel-slide))",
           } as CSSProperties
         }
       >

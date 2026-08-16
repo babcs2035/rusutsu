@@ -242,15 +242,16 @@ export const SkiResortDetailView = ({
       <>
         {isSidePanel && (
           <Portal>
-            <div className="fixed inset-0 z-[60] hidden md:flex">
+            <div className="fixed inset-0 z-[60] hidden items-center justify-center p-4 md:flex md:p-6">
               <div
-                className="absolute inset-0 bg-transparent pointer-events-none"
+                className="absolute inset-0 bg-black/10 pointer-events-none"
                 aria-hidden="true"
               />
               <AnimatedPanel
                 data-ski-resort-detail-panel="true"
                 visible={isSidePanel}
-                contentClassName="relative z-10 flex h-full max-h-none w-[min(720px,70vw)] max-w-none flex-col items-center justify-center overflow-hidden bg-white border border-gray-200 pointer-events-auto shadow-2xl"
+                animation="fade"
+                contentClassName="relative z-10 flex h-[min(88vh,900px)] max-h-none w-[min(1000px,94vw)] max-w-none flex-col items-center justify-center overflow-hidden rounded-xl bg-white border border-gray-200 pointer-events-auto shadow-2xl"
               >
                 <LoadingSpinner text="読み込み中..." />
               </AnimatedPanel>
@@ -366,15 +367,16 @@ export const SkiResortDetailView = ({
     <>
       {isSidePanel && (
         <Portal>
-          <div className="fixed inset-0 z-[60] hidden md:flex">
+          <div className="fixed inset-0 z-[60] hidden items-center justify-center p-4 md:flex md:p-6">
             <div
-              className="absolute inset-0 bg-transparent pointer-events-none"
+              className="absolute inset-0 bg-black/10 pointer-events-none"
               aria-hidden="true"
             />
             <AnimatedPanel
               data-ski-resort-detail-panel="true"
               visible={isSidePanel}
-              contentClassName="relative z-10 flex h-full max-h-none w-[min(720px,70vw)] max-w-none flex-col overflow-hidden bg-white border border-gray-200 pointer-events-auto shadow-2xl"
+              animation="fade"
+              contentClassName="relative z-10 flex h-[min(88vh,900px)] max-h-none w-[min(1000px,94vw)] max-w-none flex-col overflow-hidden rounded-xl bg-white border border-gray-200 pointer-events-auto shadow-2xl"
             >
               {detailPanelContent}
             </AnimatedPanel>

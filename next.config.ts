@@ -2,10 +2,12 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   basePath: "/rusutsu",
-  allowedDevOrigins: ["10.100.160.132", "*.trycloudflare.com", "192.168.10.25"], //TODO: Add your dev origins here
+  devIndicators: {
+    position: "bottom-right",
+  },
+  allowedDevOrigins: ["10.100.160.132", "*.trycloudflare.com", "192.168.10.25"],
   output: "standalone",
   experimental: {
-    optimizePackageImports: ["@chakra-ui/react"],
     serverActions: {
       allowedOrigins: ["ktak.dev", "*.trycloudflare.com"],
     },
