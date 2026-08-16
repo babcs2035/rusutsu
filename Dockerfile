@@ -66,8 +66,6 @@ RUN mkdir -p "$PNPM_HOME/bin" \
 
 # Copy standalone build
 COPY --from=build-cache --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=build-cache --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=build-cache --chown=nextjs:nodejs /app/public ./public
 COPY --from=build-cache --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=build-cache --chown=nextjs:nodejs /app/prisma.config.ts ./
 # Copy Playwright binaries

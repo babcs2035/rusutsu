@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "postbuild": "mkdir -p .next/standalone/public && cp -r public/. .next/standalone/public/ && cp -r .next/static/. .next/standalone/.next/static/",
     "start": "next start",
     "format": "biome format --write src",
     "lint": "biome check --write src",
