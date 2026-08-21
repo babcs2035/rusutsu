@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ski Resort Latest Crawler"
+  short_description: "公式DOMと冬季アーカイブから最新営業情報クローラーを実装・検証"
+  default_prompt: "Use $build-ski-resort-latest-crawler to implement and verify a latest-status crawler for the supplied official ski resort URL, including winter-season archive validation."

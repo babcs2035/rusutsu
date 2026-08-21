@@ -10,7 +10,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ResortReviewSection } from "@/features/reviews/components/ResortReviewSection";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import type { Resort } from "../types";
 
@@ -83,7 +82,6 @@ export const OverviewTab = ({ resort }: { resort: Resort }) => (
         {resort.descriptionLong}
       </p>
     </section>
-    {resort.reviewData && <ResortReviewSection review={resort.reviewData} />}
     <section>
       <h2 className="text-lg font-bold text-gray-900 font-[var(--font-heading)]">
         営業時間

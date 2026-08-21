@@ -77,16 +77,16 @@ const parseReviewCategory = (
 ): ResortReviewCategory => {
   const articleCategory = article?.[categoryId];
   const detailCategory = detail?.[categoryId];
-  const good = articleCategory?.good.trim() || null;
-  const concern = articleCategory?.bad.trim() || null;
+  const good = articleCategory?.good?.trim() || null;
+  const concern = articleCategory?.bad?.trim() || null;
   const courses =
-    articleCategory?.courses.map(
+    articleCategory?.courses?.map(
       course => `${course.name}：${course.description}`,
     ) ?? [];
   const articleText = [
     good,
     concern,
-    ...(articleCategory?.courses.map(
+    ...(articleCategory?.courses?.map(
       course => `${course.name}。${course.description}`,
     ) ?? []),
   ]
@@ -141,9 +141,11 @@ const loadReviewDirectory = async (
         const category = detail[categoryId];
         return (
           count +
-          [...category.good, ...category.bad, ...category.courses].filter(
-            item => item.warn,
-          ).length
+          [
+            ...(category?.good ?? []),
+            ...(category?.bad ?? []),
+            ...(category?.courses ?? []),
+          ].filter(item => item.warn).length
         );
       }, 0)
     : 0;
@@ -262,7 +264,19 @@ const loadReviewData = async () => {
 
   for (const directory of resortDirectories) {
     if (!directory.isDirectory()) continue;
-    const reviewData = await loadReviewDirectory(directory.name);
+    let reviewData: ResortReviewData;
+    try {
+      reviewData = await loadReviewDirectory(directory.name);
+    } catch (error) {
+      // detail.json / article.json が想定形式と食い違うスキー場が混在している。
+      // 1件の不整合で全スキー場のレビュー表示が落ちないよう、その1件だけ
+      // reviewData なしとして読み飛ばす（要因調査は別途）。
+      console.warn(
+        `レビューデータの読み込みに失敗しました（${directory.name}）:`,
+        error,
+      );
+      continue;
+    }
     const destinationIds = REVIEW_RESORT_ID_ALIASES[directory.name] ?? [
       directory.name,
     ];
