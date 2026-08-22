@@ -10,42 +10,61 @@ import type {
   MapTileVariant,
   SelectedMapFeature,
 } from "../types";
-import { getLiftFlowDashLength } from "../utils/finalizedMapData";
-import { getScaledMapLineWidth } from "../utils/leafletIcons";
+import {
+  getLiftFlowDashLength,
+  getLineKind,
+  getLineStyle,
+  getMapCasingWidth,
+  getMapLineWidth,
+  type LayerVariant,
+  type LineStyleContext,
+} from "../utils/lineStyle";
 
-const INACTIVE_LINE_COLOR = "#94A3B8";
-const NON_OPEN_SLOPE_COURSE_COLOR = "#64748B";
-const NON_OPEN_DIFFICULTY_OPACITY = 0.38;
-const NON_OPEN_LIFT_OPACITY = 0.44;
 const SELECTED_HALO_COLOR = "#FFFFFF";
-const UNGROOMED_LIMITED_UNDERLAY_COLOR = "#BAE6FD";
-const UNGROOMED_CLOSED_UNDERLAY_COLOR = "#7DD3FC";
-const FINALIZED_RENDERER_PADDING = 1;
+// 描画面の面積は (1 + 2p)^2 で効く。Retina では特に重いので小さく保つ
+const FINALIZED_RENDERER_PADDING = 0.4;
+// 連続ズームでは zoomend が細かく飛ぶ。線幅は 1/4 段ごとに更新すれば
+// 見た目には十分で、数千パスの setStyle 回数を 1/4 に減らせる。
+const RENDER_ZOOM_STEP = 4;
+const RESTYLE_DEBOUNCE_MS = 140;
 
-type LayerVariant =
-  | "outline"
-  | "pisteUnderlay"
-  | "selectedPisteUnderlay"
-  | "line"
-  | "hit"
-  | "selectedHalo"
-  | "selectedLine";
-
-type FinalizedPathOptions = L.PathOptions & {
-  noClip?: boolean;
-};
+const quantizeZoom = (zoom: number) =>
+  Math.round(zoom * RENDER_ZOOM_STEP) / RENDER_ZOOM_STEP;
 
 type GeoJsonOptionsWithRenderer = L.GeoJSONOptions & {
   renderer: L.Renderer;
 };
+
+/**
+ * コースは Canvas、リフトは SVG で描く。
+ *
+ * SVG レンダラはズームのたびに全パスを再投影して d 属性を書き直す。
+ * 連続ズームでは 1 ジェスチャで何度もズームが確定するため、
+ * 斜度モードの 1,500 本規模では書き直しが間に合わずに固まる。
+ * Canvas なら DOM を持たないので、同じ本数でも 1 枚描き直すだけで済む。
+ *
+ * リフトは運行中のフローを CSS アニメーションで動かしており、
+ * これは SVG のパスにしか効かないので SVG のまま残す（本数も 20〜30 と少ない）。
+ */
+const createRenderer = (
+  featureKind: "course" | "lift",
+  options: { padding: number; pane: string },
+): L.Renderer =>
+  featureKind === "course" ? L.canvas(options) : L.svg(options);
 
 const withRenderer = (
   options: L.GeoJSONOptions,
   renderer: L.Renderer,
 ): GeoJsonOptionsWithRenderer => ({ ...options, renderer });
 
+const isLineGeometry = (feature: { geometry?: { type?: string } | null }) => {
+  const geometryType = feature.geometry?.type;
+  return geometryType === "LineString" || geometryType === "MultiLineString";
+};
+
 export const FinalizedGeoJsonLayer = ({
   collection,
+  outlineCollection,
   pane,
   featureKind,
   hitWeight,
@@ -58,6 +77,8 @@ export const FinalizedGeoJsonLayer = ({
   showOpenOnly,
 }: {
   collection: FinalizedLineFeatureCollection | null;
+  /** ケーシングとヒット領域用。斜度モードでもコース単位で 1 本にする */
+  outlineCollection: FinalizedLineFeatureCollection | null;
   pane: string;
   featureKind: "course" | "lift";
   hitWeight: number;
@@ -70,11 +91,28 @@ export const FinalizedGeoJsonLayer = ({
   showOpenOnly: boolean;
 }) => {
   const map = useMap();
-  const [renderZoom, setRenderZoom] = useState(() => map.getZoom());
+  const [renderZoom, setRenderZoom] = useState(() =>
+    quantizeZoom(map.getZoom()),
+  );
   const baseLayerGroupRef = useRef<L.LayerGroup | null>(null);
+  const styledLayersRef = useRef<{ layer: L.GeoJSON; variant: LayerVariant }[]>(
+    [],
+  );
   const selectedLayerGroupRef = useRef<L.LayerGroup | null>(null);
-  const baseRendererRef = useRef<L.SVG | null>(null);
+  const baseRendererRef = useRef<L.Renderer | null>(null);
   const selectedRendererRef = useRef<L.SVG | null>(null);
+  const flowLayerRef = useRef<L.GeoJSON | null>(null);
+
+  const styleContext: LineStyleContext = {
+    zoom: renderZoom,
+    courseColorMode,
+    mapTileVariant,
+    isFocusMode,
+    showOpenOnly,
+    selectedFeature,
+  };
+  const styleContextRef = useRef(styleContext);
+  styleContextRef.current = styleContext;
 
   const getOrCreateRenderers = useCallback(() => {
     if (!map.getPane(pane)) {
@@ -85,12 +123,13 @@ export const FinalizedGeoJsonLayer = ({
     }
 
     if (!baseRendererRef.current) {
-      baseRendererRef.current = L.svg({
+      baseRendererRef.current = createRenderer(featureKind, {
         padding: FINALIZED_RENDERER_PADDING,
         pane,
       });
     }
     if (!selectedRendererRef.current) {
+      // 選択中の 1 本だけなので、見た目を優先して SVG を使う
       selectedRendererRef.current = L.svg({
         padding: FINALIZED_RENDERER_PADDING,
         pane: selectedPane,
@@ -101,12 +140,36 @@ export const FinalizedGeoJsonLayer = ({
       baseRenderer: baseRendererRef.current,
       selectedRenderer: selectedRendererRef.current,
     };
-  }, [map, pane, selectedPane]);
+  }, [featureKind, map, pane, selectedPane]);
+
+  const styleFor = useCallback(
+    (variant: LayerVariant) => (feature?: GeoJSON.Feature) =>
+      getLineStyle({
+        feature: feature as unknown as FinalizedLineFeature,
+        featureKind,
+        variant,
+        hitWeight,
+        context: styleContextRef.current,
+      }),
+    [featureKind, hitWeight],
+  );
 
   useEffect(() => {
-    const handleZoomEnd = () => setRenderZoom(map.getZoom());
+    // 連続ズームでは zoomend が短い間隔で何度も飛ぶ。線幅の更新は数千パスの
+    // setStyle を伴うので、落ち着いてから 1 回だけ走らせる。
+    // ズーム中はペインごと拡大されるため、見た目は追従している。
+    let timer: number | null = null;
+    const handleZoomEnd = () => {
+      if (timer !== null) window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        timer = null;
+        setRenderZoom(quantizeZoom(map.getZoom()));
+      }, RESTYLE_DEBOUNCE_MS);
+    };
+
     map.on("zoomend", handleZoomEnd);
     return () => {
+      if (timer !== null) window.clearTimeout(timer);
       map.off("zoomend", handleZoomEnd);
     };
   }, [map]);
@@ -151,216 +214,32 @@ export const FinalizedGeoJsonLayer = ({
       selectedLayerGroupRef.current?.removeFrom(map);
       baseLayerGroupRef.current = null;
       selectedLayerGroupRef.current = null;
+      styledLayersRef.current = [];
+      flowLayerRef.current = null;
 
-      const baseRenderer = baseRendererRef.current;
-      const selectedRenderer = selectedRendererRef.current;
-      if (baseRenderer && map.hasLayer(baseRenderer)) {
-        map.removeLayer(baseRenderer);
-      }
-      if (selectedRenderer && map.hasLayer(selectedRenderer)) {
-        map.removeLayer(selectedRenderer);
-      }
+      // パスを外すと Canvas レンダラは再描画を requestAnimationFrame で予約する。
+      // 同じフレームでレンダラを外すと、その再描画がコンテキストを失った状態で
+      // 走って落ちるので、1 フレーム遅らせてから外す。
+      const renderers = [baseRendererRef.current, selectedRendererRef.current];
       baseRendererRef.current = null;
       selectedRendererRef.current = null;
+      window.requestAnimationFrame(() => {
+        for (const renderer of renderers) {
+          if (renderer && map.hasLayer(renderer)) {
+            map.removeLayer(renderer);
+          }
+        }
+      });
     };
   }, [map]);
 
-  const getStyle = useCallback(
-    (
-      feature: FinalizedLineFeature,
-      variant: LayerVariant,
-      selection: SelectedMapFeature | null,
-    ): FinalizedPathOptions => {
-      const properties = feature.properties;
-      const isSelected =
-        selection?.kind === properties.kind &&
-        selection.id === properties.sourceId;
-      const isDimmedBySelection = selection !== null && !isSelected;
-      const statusKind = properties.statusKind;
-      const isOpen = statusKind === "open";
-      const isNonOpenInOpenOnlyMode = showOpenOnly && !isOpen && !isSelected;
-      const shouldUseSlopeModeGray =
-        isNonOpenInOpenOnlyMode &&
-        featureKind === "course" &&
-        courseColorMode === "slope";
-      const isUngroomedCourse =
-        featureKind === "course" &&
-        (!showOpenOnly || isOpen) &&
-        (properties.pisteStatus === "limited" ||
-          properties.pisteStatus === "closed");
-      const isSegmentedCourse =
-        featureKind === "course" && properties.segmented === true;
-      const lineCap = isSegmentedCourse ? "square" : "round";
-      const dashArray = undefined;
-      const isPhotoTile = mapTileVariant === "photo";
-      const focusWeightBoost = isFocusMode ? 0.8 : 0;
-      const baseLineWeight = getScaledMapLineWidth(
-        renderZoom,
-        isUngroomedCourse ? "ungroomedCourse" : featureKind,
-      );
-      const statusWeightReduction = 0;
-      const outlineWeight =
-        baseLineWeight + (featureKind === "course" ? 3.4 : 2.6);
-      const outlineOpacity = isDimmedBySelection
-        ? 0.24
-        : isPhotoTile
-          ? Math.max(
-              isFocusMode ? 0.72 : 0.58,
-              properties.opacity * (isFocusMode ? 1 : 0.98),
-            )
-          : Math.max(
-              isFocusMode ? 0.5 : 0.36,
-              properties.opacity * (isFocusMode ? 0.98 : 0.9),
-            );
-      const visibleOutlineWeight = isPhotoTile
-        ? outlineWeight +
-          (featureKind === "course" ? 1.4 : 0.9) +
-          focusWeightBoost
-        : outlineWeight + focusWeightBoost;
-      const visibleLineWeight = Math.max(
-        1.2,
-        baseLineWeight +
-          (isPhotoTile ? 0.4 : 0) +
-          focusWeightBoost -
-          statusWeightReduction,
-      );
-      const lineOpacity = (() => {
-        if (isDimmedBySelection) return 0.48;
-        if (isSelected) return 1;
-        if (isNonOpenInOpenOnlyMode) {
-          return featureKind === "course"
-            ? NON_OPEN_DIFFICULTY_OPACITY
-            : NON_OPEN_LIFT_OPACITY;
-        }
-        if (featureKind === "lift") return 1;
-        return 1;
-      })();
-      const lineColor = (() => {
-        if (isDimmedBySelection) return INACTIVE_LINE_COLOR;
-        if (isSelected) return properties.color;
-        if (shouldUseSlopeModeGray) return NON_OPEN_SLOPE_COURSE_COLOR;
-        return properties.color;
-      })();
-
-      if (variant === "hit") {
-        return {
-          color: "#000000",
-          noClip: true,
-          opacity: 0,
-          weight: hitWeight,
-        };
-      }
-
-      if (variant === "outline") {
-        if (featureKind === "course" && isNonOpenInOpenOnlyMode) {
-          return {
-            noClip: true,
-            opacity: 0,
-            weight: 0,
-          };
-        }
-        return {
-          color: "#ffffff",
-          noClip: true,
-          opacity: isDimmedBySelection ? 0.1 : outlineOpacity,
-          weight: visibleOutlineWeight,
-          lineCap,
-          lineJoin: "round",
-        };
-      }
-
-      if (variant === "pisteUnderlay" || variant === "selectedPisteUnderlay") {
-        if (
-          !isUngroomedCourse ||
-          (variant === "selectedPisteUnderlay" && !isSelected)
-        ) {
-          return {
-            noClip: true,
-            opacity: 0,
-            weight: 0,
-          };
-        }
-        return {
-          color: isDimmedBySelection
-            ? INACTIVE_LINE_COLOR
-            : properties.pisteStatus === "closed"
-              ? UNGROOMED_CLOSED_UNDERLAY_COLOR
-              : UNGROOMED_LIMITED_UNDERLAY_COLOR,
-          noClip: true,
-          opacity: isDimmedBySelection
-            ? 0.16
-            : properties.pisteStatus === "closed"
-              ? 0.52
-              : 0.34,
-          weight:
-            visibleLineWeight + (properties.pisteStatus === "closed" ? 6 : 5),
-          lineCap: "round",
-          lineJoin: "round",
-        };
-      }
-
-      if (variant === "selectedHalo") {
-        if (!isSelected) {
-          return {
-            noClip: true,
-            opacity: 0,
-            weight: 0,
-          };
-        }
-        return {
-          color: SELECTED_HALO_COLOR,
-          noClip: true,
-          opacity: 0.95,
-          weight: visibleOutlineWeight + 4,
-          lineCap,
-          lineJoin: "round",
-        };
-      }
-
-      if (variant === "selectedLine") {
-        if (!isSelected) {
-          return {
-            noClip: true,
-            opacity: 0,
-            weight: 0,
-          };
-        }
-        return {
-          color: properties.color,
-          opacity: 1,
-          noClip: true,
-          weight: visibleLineWeight + 2,
-          dashArray,
-          lineCap,
-          lineJoin: "round",
-        };
-      }
-
-      return {
-        color: lineColor,
-        noClip: true,
-        opacity: lineOpacity,
-        weight: isSelected ? visibleLineWeight + 2 : visibleLineWeight,
-        dashArray,
-        lineCap,
-        lineJoin: "round",
-      };
-    },
-    [
-      courseColorMode,
-      featureKind,
-      hitWeight,
-      isFocusMode,
-      mapTileVariant,
-      renderZoom,
-      showOpenOnly,
-    ],
-  );
-
+  // ジオメトリの構築。ズーム・選択・タイル種別では再実行しない。
   useEffect(() => {
     if (baseLayerGroupRef.current) {
       baseLayerGroupRef.current.removeFrom(map);
       baseLayerGroupRef.current = null;
+      styledLayersRef.current = [];
+      flowLayerRef.current = null;
     }
 
     if (!collection || collection.features.length === 0) return;
@@ -370,35 +249,22 @@ export const FinalizedGeoJsonLayer = ({
     baseLayerGroupRef.current = group;
 
     const createLayer = (
-      variant: Extract<
-        LayerVariant,
-        "outline" | "pisteUnderlay" | "line" | "hit"
-      >,
+      variant: LayerVariant,
+      source: FinalizedLineFeatureCollection,
       interactive: boolean,
-    ) =>
-      L.geoJSON(
-        collection,
+    ) => {
+      const layer = L.geoJSON(
+        source,
         withRenderer(
           {
             interactive,
-            filter: feature => {
-              const geometryType = feature.geometry?.type;
-              return (
-                geometryType === "LineString" ||
-                geometryType === "MultiLineString"
-              );
-            },
-            style: feature =>
-              getStyle(
-                feature as unknown as FinalizedLineFeature,
-                variant,
-                null,
-              ),
-            onEachFeature: (feature, layer) => {
+            filter: isLineGeometry,
+            style: styleFor(variant),
+            onEachFeature: (feature, featureLayer) => {
               if (!interactive) return;
               const properties = (feature as unknown as FinalizedLineFeature)
                 .properties;
-              layer.on("click", event => {
+              featureLayer.on("click", event => {
                 L.DomEvent.stopPropagation(event);
                 onSelectFeature({
                   kind: properties.kind,
@@ -410,90 +276,82 @@ export const FinalizedGeoJsonLayer = ({
           baseRenderer,
         ),
       );
+      layer.addTo(group);
+      styledLayersRef.current.push({ layer, variant });
+      return layer;
+    };
 
-    // Base layers intentionally ignore selectedFeature and keep pane ownership
-    // on the shared SVG renderer. Passing pane again to L.geoJSON can create
-    // paths in the wrong pane, which makes finalized lines disappear.
-    createLayer("outline", false).addTo(group);
-    if (featureKind === "course") {
-      createLayer("pisteUnderlay", false).addTo(group);
+    // Base layers intentionally keep pane ownership on the shared SVG
+    // renderer. Passing pane again to L.geoJSON can create paths in the wrong
+    // pane, which makes finalized lines disappear.
+    const outline = outlineCollection ?? collection;
+    createLayer("casing", outline, false);
+    createLayer("line", collection, false);
+    if (featureKind === "lift") {
+      flowLayerRef.current = createLayer("flow", collection, false);
     }
-    createLayer("line", false).addTo(group);
-    let openLiftFlowLayer: L.GeoJSON | null = null;
-    let openLiftFlowCycle: number | null = null;
-    if (featureKind === "lift" && renderZoom >= 11) {
-      const dashLength = getLiftFlowDashLength(renderZoom);
-      const gapLength = dashLength;
-      openLiftFlowCycle = dashLength + gapLength;
-      openLiftFlowLayer = L.geoJSON(
-        collection,
-        withRenderer(
-          {
-            interactive: false,
-            filter: feature => {
-              const geometryType = feature.geometry?.type;
-              return (
-                geometryType === "LineString" ||
-                geometryType === "MultiLineString"
-              );
-            },
-            style: feature => {
-              const properties = (feature as unknown as FinalizedLineFeature)
-                .properties;
-              if (properties.liftStatus !== "open") {
-                return {
-                  noClip: true,
-                  opacity: 0,
-                  weight: 0,
-                };
-              }
-              const flowWeight = getScaledMapLineWidth(renderZoom, "liftFlow");
-              return {
-                color: properties.flowColor ?? "#ffffff",
-                opacity: 0.94,
-                weight: flowWeight,
-                dashArray: `${dashLength} ${gapLength}`,
-                lineCap: "butt",
-                lineJoin: "round",
-                className: `finalized-lift-flow finalized-lift-flow-${properties.flowSpeed ?? "normal"}`,
-                noClip: true,
-              };
-            },
-          },
-          baseRenderer,
-        ),
-      ).addTo(group);
-    }
-    createLayer("hit", true).addTo(group);
+    createLayer("hit", outline, true);
     group.addTo(map);
-    if (openLiftFlowLayer && openLiftFlowCycle != null) {
-      window.requestAnimationFrame(() => {
-        openLiftFlowLayer?.eachLayer(layer => {
-          const path = (layer as L.Path & { _path?: SVGPathElement })._path;
-          path?.style.setProperty(
-            "--lift-flow-offset",
-            `-${openLiftFlowCycle}px`,
-          );
-        });
-      });
-    }
 
     return () => {
       group.removeFrom(map);
       if (baseLayerGroupRef.current === group) {
         baseLayerGroupRef.current = null;
+        styledLayersRef.current = [];
+        flowLayerRef.current = null;
       }
     };
   }, [
     collection,
+    outlineCollection,
     featureKind,
     getOrCreateRenderers,
-    getStyle,
     map,
     onSelectFeature,
-    renderZoom,
+    styleFor,
   ]);
 
+  // スタイルだけの更新。パスは再生成しない（FR-1.1 / FR-1.3）。
+  useEffect(() => {
+    const context: LineStyleContext = {
+      zoom: renderZoom,
+      courseColorMode,
+      mapTileVariant,
+      isFocusMode,
+      showOpenOnly,
+      selectedFeature,
+    };
+
+    for (const { layer, variant } of styledLayersRef.current) {
+      if (variant === "hit") continue;
+      layer.setStyle((feature?: GeoJSON.Feature) =>
+        getLineStyle({
+          feature: feature as unknown as FinalizedLineFeature,
+          featureKind,
+          variant,
+          hitWeight,
+          context,
+        }),
+      );
+    }
+
+    const flowCycle = getLiftFlowDashLength(renderZoom) * 2;
+    flowLayerRef.current?.eachLayer(layer => {
+      const path = (layer as L.Path & { _path?: SVGPathElement })._path;
+      path?.style.setProperty("--lift-flow-offset", `-${flowCycle}px`);
+    });
+  }, [
+    courseColorMode,
+    featureKind,
+    hitWeight,
+    isFocusMode,
+    mapTileVariant,
+    renderZoom,
+    selectedFeature,
+    showOpenOnly,
+  ]);
+
+  // 選択中の線だけを別ペインに重ねる。選択のたびに全パスを作り直さないための分離。
   useEffect(() => {
     if (selectedLayerGroupRef.current) {
       selectedLayerGroupRef.current.removeFrom(map);
@@ -504,58 +362,63 @@ export const FinalizedGeoJsonLayer = ({
       return;
     }
 
-    const { selectedRenderer } = getOrCreateRenderers();
-    const selectedFeatures = collection.features.filter(
-      feature =>
-        selectedFeature.kind === feature.properties.kind &&
-        selectedFeature.id === feature.properties.sourceId,
-    );
-    if (selectedFeatures.length === 0) return;
+    const matches = (source: FinalizedLineFeatureCollection) =>
+      source.features.filter(
+        feature =>
+          selectedFeature.kind === feature.properties.kind &&
+          selectedFeature.id === feature.properties.sourceId,
+      );
+    const selectedLineFeatures = matches(collection);
+    if (selectedLineFeatures.length === 0) return;
 
-    const selectedCollection: FinalizedLineFeatureCollection = {
+    const selectedLineCollection: FinalizedLineFeatureCollection = {
       type: "FeatureCollection",
-      features: selectedFeatures,
+      features: selectedLineFeatures,
     };
+    const selectedOutlineCollection: FinalizedLineFeatureCollection = {
+      type: "FeatureCollection",
+      features: matches(outlineCollection ?? collection),
+    };
+    const { selectedRenderer } = getOrCreateRenderers();
     const group = L.layerGroup();
     selectedLayerGroupRef.current = group;
 
-    const createSelectedLayer = (
-      variant: Extract<
-        LayerVariant,
-        "selectedHalo" | "selectedPisteUnderlay" | "selectedLine"
-      >,
-    ) =>
-      L.geoJSON(
-        selectedCollection,
-        withRenderer(
-          {
-            interactive: false,
-            filter: feature => {
-              const geometryType = feature.geometry?.type;
-              return (
-                geometryType === "LineString" ||
-                geometryType === "MultiLineString"
-              );
-            },
-            style: feature =>
-              getStyle(
-                feature as unknown as FinalizedLineFeature,
-                variant,
-                selectedFeature,
-              ),
-          },
-          selectedRenderer,
-        ),
-      );
+    const haloWeight =
+      getMapCasingWidth(
+        getMapLineWidth(renderZoom, getLineKind(featureKind)) + 1.6,
+        mapTileVariant === "photo",
+      ) + 3;
 
-    // Selection is rendered as a tiny overlay containing only the active
-    // course/lift. Keep this separate from the base renderer so selection
-    // changes do not rebuild every finalized path.
-    createSelectedLayer("selectedHalo").addTo(group);
-    if (featureKind === "course") {
-      createSelectedLayer("selectedPisteUnderlay").addTo(group);
-    }
-    createSelectedLayer("selectedLine").addTo(group);
+    L.geoJSON(
+      selectedOutlineCollection,
+      withRenderer(
+        {
+          interactive: false,
+          filter: isLineGeometry,
+          style: () => ({
+            color: SELECTED_HALO_COLOR,
+            opacity: 0.95,
+            weight: haloWeight,
+            lineCap: "round",
+            lineJoin: "round",
+          }),
+        },
+        selectedRenderer,
+      ),
+    ).addTo(group);
+
+    L.geoJSON(
+      selectedLineCollection,
+      withRenderer(
+        {
+          interactive: false,
+          filter: isLineGeometry,
+          style: styleFor("line"),
+        },
+        selectedRenderer,
+      ),
+    ).addTo(group);
+
     group.addTo(map);
 
     return () => {
@@ -568,9 +431,12 @@ export const FinalizedGeoJsonLayer = ({
     collection,
     featureKind,
     getOrCreateRenderers,
-    getStyle,
     map,
+    mapTileVariant,
+    outlineCollection,
+    renderZoom,
     selectedFeature,
+    styleFor,
   ]);
 
   return null;

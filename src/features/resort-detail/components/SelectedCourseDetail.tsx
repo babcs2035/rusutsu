@@ -1,26 +1,26 @@
 "use client";
 
-import { ArrowLeft } from "lucide-react";
 import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import type { ElevationProfileMapPoint } from "@/features/map/types";
 import {
   COURSE_DIFFICULTY_META,
   getCourseDifficulty,
 } from "@/lib/finalizedResortGeojsonShared";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
+import { getExternalImageUrl } from "@/shared/utils/externalImage";
 import type { FinalizedCourseGroup } from "../types";
 import {
   averageNullable,
   createConnectedCourseElevationProfile,
-  formatCourseStatus,
   formatDegree,
   formatMeters,
-  formatPisteStatus,
+  getCourseGroupNotes,
+  getCourseGroupPisteSymbol,
+  getCourseGroupStatus,
   maxNullable,
 } from "../utils/detailMetrics";
 import { ElevationProfile } from "./ElevationProfile";
+import { StatusSummary } from "./StatusRow";
 
 type Props = {
   courseGroup: FinalizedCourseGroup;
@@ -28,18 +28,24 @@ type Props = {
   onSelectedElevationProfilePointChange: (
     point: ElevationProfileMapPoint | null,
   ) => void;
-  onBack: () => void;
 };
 
 export const SelectedCourseDetail = ({
   courseGroup,
   selectedElevationProfilePoint,
   onSelectedElevationProfilePointChange,
-  onBack,
 }: Props) => {
   const selectedCourse = courseGroup.courses[0];
 
   if (!selectedCourse) return null;
+
+  const courseImageUrl = getExternalImageUrl(selectedCourse.properties.image);
+  const difficulty =
+    COURSE_DIFFICULTY_META[
+      getCourseDifficulty(selectedCourse.properties.level)
+    ];
+  const status = getCourseGroupStatus(courseGroup);
+  const pisteSymbol = getCourseGroupPisteSymbol(courseGroup);
 
   const distances = courseGroup.courses
     .map(
@@ -73,63 +79,62 @@ export const SelectedCourseDetail = ({
     profileElevations.length > 0
       ? Math.max(...profileElevations) - Math.min(...profileElevations)
       : null;
-  const sectionText =
-    courseGroup.courses
-      .map(course => course.sectionName)
-      .filter(Boolean)
-      .join(" / ") || "--";
+  const notes = getCourseGroupNotes(courseGroup);
+  // 一部だけオープンしている場合の「下部のみオープン」も当日の状況として扱う
+  const comments = [...(status.note ? [status.note] : []), ...notes.latest];
 
   return (
     <div className="flex flex-col gap-5">
-      <Button
-        type="button"
-        variant="ghost"
-        className="self-start text-gray-600 font-medium px-0 hover:bg-gray-50 hover:text-gray-900 -ml-2"
-        onClick={onBack}
-      >
-        <ArrowLeft size={16} />
-        コース一覧へ戻る
-      </Button>
-      <div>
-        <h2 className="text-lg text-gray-900 font-bold font-[var(--font-heading)]">
-          {courseGroup.displayName}
-        </h2>
-        <p className="mt-1 text-gray-700 font-medium">
-          {
-            COURSE_DIFFICULTY_META[
-              getCourseDifficulty(selectedCourse.properties.level)
-            ].label
-          }
-        </p>
-      </div>
-
-      {selectedCourse.properties.image && (
+      {courseImageUrl && (
         <ExternalLinkComponent className="w-full">
           <div className="relative h-[180px] w-full overflow-hidden rounded-xl">
             <Image
-              src={selectedCourse.properties.image}
+              src={courseImageUrl}
               alt={courseGroup.displayName}
               fill
               sizes="(min-width: 768px) 1000px, 100vw"
               className="object-contain"
+              // コース画像は各スキー場の公式サイト上にあり、ホスト名は
+              // スキー場が増えるたびに増える。remotePatterns で列挙しきれないので
+              // 最適化を切って直接読み込む（getExternalImageUrl の説明を参照）。
+              unoptimized
             />
           </div>
         </ExternalLinkComponent>
       )}
 
-      <CourseStatusTable
-        rows={[
-          ["営業状況", formatCourseStatus(selectedCourse.properties.status)],
-          ["圧雪", formatPisteStatus(selectedCourse.properties.piste)],
-          [
-            "難易度",
-            COURSE_DIFFICULTY_META[
-              getCourseDifficulty(selectedCourse.properties.level)
-            ].label,
-          ],
-          ["区間", sectionText],
-        ]}
+      <StatusSummary
+        statusSymbol={status.symbol}
+        pisteSymbol={pisteSymbol}
+        difficultyLabel={difficulty.label}
+        difficultyColor={difficulty.color}
       />
+
+      {comments.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-gray-500">コメント</p>
+          <ul className="mt-1 flex flex-col gap-1">
+            {comments.map(comment => (
+              <li
+                key={comment}
+                className="text-sm leading-relaxed text-gray-800"
+              >
+                {comment}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {notes.description.length > 0 && (
+        <div className="flex flex-col gap-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
+          {notes.description.map(note => (
+            <p key={note} className="text-sm leading-relaxed text-gray-700">
+              {note}
+            </p>
+          ))}
+        </div>
+      )}
 
       <ElevationProfile
         points={profilePoints}
@@ -150,7 +155,7 @@ export const SelectedCourseDetail = ({
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         <CourseMetric
           title="水平距離"
           value={formatMeters(horizontalDistance)}
@@ -160,14 +165,6 @@ export const SelectedCourseDetail = ({
         <CourseMetric title="平均斜度" value={formatDegree(averageSlope)} />
         <CourseMetric title="最大斜度" value={formatDegree(maxSlope)} />
       </div>
-
-      {(selectedCourse.properties.latestNote ||
-        selectedCourse.properties.note) && (
-        <p className="text-gray-700 leading-relaxed">
-          {selectedCourse.properties.latestNote ??
-            selectedCourse.properties.note}
-        </p>
-      )}
     </div>
   );
 };
@@ -177,19 +174,4 @@ const CourseMetric = ({ title, value }: { title: string; value: string }) => (
     <p className="text-gray-500 text-xs font-medium">{title}</p>
     <p className="text-gray-900 text-lg font-semibold">{value}</p>
   </div>
-);
-
-const CourseStatusTable = ({ rows }: { rows: [string, string][] }) => (
-  <Table>
-    <TableBody>
-      {rows.map(([label, value]) => (
-        <TableRow key={label} className="border-b border-gray-100">
-          <TableCell className="w-[7rem] py-2 pr-3 text-left text-gray-600 font-semibold text-xs">
-            {label}
-          </TableCell>
-          <TableCell className="py-2 font-semibold">{value}</TableCell>
-        </TableRow>
-      ))}
-    </TableBody>
-  </Table>
 );

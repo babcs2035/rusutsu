@@ -4,6 +4,40 @@ import { type PointerEvent, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { ElevationProfilePoint } from "../types";
 
+/** 断面図の線の色。開いている区間と閉じている区間を塗り分ける */
+const STATUS_LINE_COLOR = {
+  "○": "#2563EB",
+  "△": "#F59E0B",
+  "×": "#94A3B8",
+} as const;
+
+const getStatusLineColor = (status: ElevationProfilePoint["status"]) =>
+  status ? STATUS_LINE_COLOR[status] : "#2563EB";
+
+/** 営業状況が変わるところで線を分ける。境界の点は両方に入れて繋ぐ */
+const createStatusSegments = (points: ElevationProfilePoint[]) => {
+  const segments: {
+    status: ElevationProfilePoint["status"];
+    points: ElevationProfilePoint[];
+  }[] = [];
+
+  for (const point of points) {
+    const current = segments[segments.length - 1];
+    if (current && current.status === point.status) {
+      current.points.push(point);
+      continue;
+    }
+
+    const bridge = current ? [current.points[current.points.length - 1]] : [];
+    segments.push({
+      status: point.status,
+      points: [...bridge.filter(Boolean), point],
+    });
+  }
+
+  return segments;
+};
+
 export const ElevationProfile = ({
   points,
   activeDistance = null,
@@ -17,12 +51,14 @@ export const ElevationProfile = ({
 
   if (points.length < 2) return null;
 
-  const width = 900;
-  const height = 300;
-  const chartLeft = 68;
-  const chartRight = width - 42;
-  const chartTop = 24;
-  const chartBottom = height - 60;
+  // 横スクロールなしで収めるため、viewBox を実際の表示幅に近づける。
+  // ここを 900 のように大きく取ると、狭い画面では文字が潰れるほど縮小される。
+  const width = 460;
+  const height = 220;
+  const chartLeft = 44;
+  const chartRight = width - 12;
+  const chartTop = 14;
+  const chartBottom = height - 34;
   const chartWidth = chartRight - chartLeft;
   const chartHeight = chartBottom - chartTop;
   const maxDistance = Math.max(...points.map(point => point.distance));
@@ -50,14 +86,18 @@ export const ElevationProfile = ({
   const toY = (elevation: number) =>
     chartBottom -
     ((elevation - bottomAxisElevation) / elevationRange) * chartHeight;
-  const path = points
-    .map(
-      (point, index) =>
-        `${index === 0 ? "M" : "L"}${toX(point.distance).toFixed(1)} ${toY(
-          point.elevation,
-        ).toFixed(1)}`,
-    )
-    .join(" ");
+  const toPath = (segmentPoints: ElevationProfilePoint[]) =>
+    segmentPoints
+      .map(
+        (point, index) =>
+          `${index === 0 ? "M" : "L"}${toX(point.distance).toFixed(1)} ${toY(
+            point.elevation,
+          ).toFixed(1)}`,
+      )
+      .join(" ");
+  const statusSegments = createStatusSegments(points);
+  const hasMixedStatus =
+    new Set(points.map(point => point.status ?? "")).size > 1;
   const activePoint =
     activeDistance == null
       ? null
@@ -112,11 +152,25 @@ export const ElevationProfile = ({
   return (
     <Card>
       <CardContent className="p-4">
-        <p className="mb-2 text-sm font-semibold text-gray-900">
-          標高プロファイル
-        </p>
-        {/* 軸ラベルの可読性維持のため最小幅を確保し，狭い画面では横スクロールする */}
-        <div className="overflow-x-auto overflow-y-hidden scroll-touch">
+        <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <p className="text-sm font-semibold text-gray-900">
+            標高プロファイル
+          </p>
+          {hasMixedStatus && (
+            <div className="flex items-center gap-2 text-[11px] font-medium text-gray-600">
+              {(["○", "△", "×"] as const).map(status => (
+                <span key={status} className="flex items-center gap-1">
+                  <span
+                    className="h-[3px] w-4 rounded-full"
+                    style={{ background: STATUS_LINE_COLOR[status] }}
+                  />
+                  {status}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        <div>
           <svg
             aria-label="標高プロファイル上の位置を選択"
             viewBox={`0 0 ${width} ${height}`}
@@ -125,7 +179,7 @@ export const ElevationProfile = ({
             onPointerMove={handleProfilePointerMove}
             onPointerCancel={handleProfilePointerUp}
             onPointerUp={handleProfilePointerUp}
-            className={`block h-auto max-h-[320px] touch-pan-x w-full min-w-[640px] ${onPointSelect ? (isDragging ? "cursor-grabbing" : "cursor-grab") : "cursor-default"}`}
+            className={`block h-auto w-full ${onPointSelect ? (isDragging ? "cursor-grabbing" : "cursor-grab") : "cursor-default"}`}
           >
             <path
               d={`M${chartLeft} ${chartTop}V${chartBottom}H${chartRight}`}
@@ -147,10 +201,10 @@ export const ElevationProfile = ({
                   vectorEffect="non-scaling-stroke"
                 />
                 <text
-                  x={chartLeft - 10}
-                  y={toY(elevation) + 4}
+                  x={chartLeft - 6}
+                  y={toY(elevation) + 3.5}
                   fill="#6B7280"
-                  fontSize={12}
+                  fontSize={10}
                   fontWeight={800}
                   textAnchor="end"
                 >
@@ -172,9 +226,9 @@ export const ElevationProfile = ({
                 />
                 <text
                   x={toX(distance)}
-                  y={chartBottom + 22}
+                  y={chartBottom + 15}
                   fill="#6B7280"
-                  fontSize={12}
+                  fontSize={10}
                   fontWeight={800}
                   textAnchor={distance === 0 ? "start" : "middle"}
                 >
@@ -184,42 +238,42 @@ export const ElevationProfile = ({
             ))}
             <text
               x={chartRight}
-              y={chartBottom + 46}
-              fill="#374151"
-              fontSize={18}
-              fontWeight={900}
+              y={chartBottom + 29}
+              fill="#6B7280"
+              fontSize={10}
+              fontWeight={800}
               textAnchor="end"
             >
               水平距離
             </text>
-            <path
-              d={path}
-              fill="none"
-              stroke="#2563EB"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={4}
-              vectorEffect="non-scaling-stroke"
-            />
+            {statusSegments.map(segment => (
+              <path
+                key={`${segment.status ?? "unknown"}-${segment.points[0]?.distance ?? 0}`}
+                d={toPath(segment.points)}
+                fill="none"
+                stroke={getStatusLineColor(segment.status)}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={3}
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
             {steepestPoint && (
               <g>
                 <circle
                   cx={toX(steepestPoint.distance)}
                   cy={toY(steepestPoint.elevation)}
-                  r={6.5}
+                  r={4}
                   fill="#EF4444"
                   stroke="#FFFFFF"
                   strokeWidth={2}
                   vectorEffect="non-scaling-stroke"
                 />
                 <text
-                  x={Math.min(
-                    chartRight - 60,
-                    toX(steepestPoint.distance) + 10,
-                  )}
+                  x={Math.min(chartRight - 52, toX(steepestPoint.distance) + 7)}
                   y={Math.max(chartTop + 14, toY(steepestPoint.elevation) - 10)}
                   fill="#B91C1C"
-                  fontSize={40}
+                  fontSize={12}
                   fontWeight={900}
                   paintOrder="stroke"
                   stroke="#FFFFFF"
@@ -245,26 +299,28 @@ export const ElevationProfile = ({
                 <circle
                   cx={toX(activePoint.distance)}
                   cy={toY(activePoint.elevation)}
-                  r={6}
+                  r={4}
                   fill="#2563EB"
                   stroke="#111827"
                   strokeWidth={1.8}
                   vectorEffect="non-scaling-stroke"
                 />
                 <text
-                  x={Math.min(chartRight - 28, toX(activePoint.distance) + 8)}
+                  x={Math.min(chartRight - 92, toX(activePoint.distance) + 7)}
                   y={Math.max(chartTop + 10, toY(activePoint.elevation) - 8)}
                   fill="#111827"
-                  fontSize={13}
+                  fontSize={15}
                   fontWeight={900}
                   paintOrder="stroke"
                   stroke="#FFFFFF"
                   strokeLinejoin="round"
-                  strokeWidth={4}
+                  strokeWidth={5}
                 >
                   {activePoint.slope == null
                     ? "--"
                     : `${Math.round(activePoint.slope)}°`}
+                  {" / "}
+                  {Math.round(activePoint.elevation).toLocaleString()}m
                 </text>
               </>
             )}

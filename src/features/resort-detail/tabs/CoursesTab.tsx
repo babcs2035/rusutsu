@@ -20,14 +20,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { SelectedMapFeature } from "@/features/map/JapanResortMap";
-import type { ElevationProfileMapPoint } from "@/features/map/types";
 import type { FinalizedResortMapData } from "@/lib/finalizedResortGeojsonShared";
 import {
   COURSE_DIFFICULTY_META,
   getCourseDifficulty,
 } from "@/lib/finalizedResortGeojsonShared";
 import { cn } from "@/lib/utils";
-import { SelectedCourseDetail } from "../components/SelectedCourseDetail";
 import { StatCard } from "../components/StatCard";
 import type { FinalizedCourseGroup, Resort } from "../types";
 import {
@@ -81,19 +79,13 @@ export const CoursesTab = ({
   resort,
   finalizedMapData,
   selectedFinalizedFeature,
-  selectedElevationProfilePoint,
   onSelectedFinalizedFeatureChange,
-  onSelectedElevationProfilePointChange,
 }: {
   resort: Resort;
   finalizedMapData: FinalizedResortMapData | null;
   selectedFinalizedFeature: SelectedMapFeature | null;
-  selectedElevationProfilePoint: ElevationProfileMapPoint | null;
   onSelectedFinalizedFeatureChange: (
     feature: SelectedMapFeature | null,
-  ) => void;
-  onSelectedElevationProfilePointChange: (
-    point: ElevationProfileMapPoint | null,
   ) => void;
 }) => {
   const finalizedCourses = finalizedMapData?.courses?.features ?? [];
@@ -101,14 +93,6 @@ export const CoursesTab = ({
     () => createFinalizedCourseGroups(finalizedCourses),
     [finalizedCourses],
   );
-  const selectedFinalizedCourseGroup =
-    selectedFinalizedFeature?.kind === "course"
-      ? (finalizedCourseGroups.find(
-          group => group.id === selectedFinalizedFeature.id,
-        ) ?? null)
-      : null;
-  const selectedFinalizedCourse =
-    selectedFinalizedCourseGroup?.courses[0] ?? null;
   const courses = resort.courses;
   const hasFinalizedCourses = finalizedCourseGroups.length > 0;
   const [difficultyFilter, setDifficultyFilter] = useState("全て");
@@ -200,22 +184,6 @@ export const CoursesTab = ({
       advancedPercent: total > 0 ? Math.round((advanced / total) * 100) : 0,
     };
   }, [finalizedCourseGroups]);
-
-  if (selectedFinalizedCourseGroup && selectedFinalizedCourse) {
-    return (
-      <SelectedCourseDetail
-        courseGroup={selectedFinalizedCourseGroup}
-        selectedElevationProfilePoint={selectedElevationProfilePoint}
-        onSelectedElevationProfilePointChange={
-          onSelectedElevationProfilePointChange
-        }
-        onBack={() => {
-          onSelectedFinalizedFeatureChange(null);
-          onSelectedElevationProfilePointChange(null);
-        }}
-      />
-    );
-  }
 
   const handleSort = (key: "distance") => {
     setSortConfig(prev => ({

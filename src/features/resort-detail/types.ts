@@ -17,4 +17,6 @@ export type ElevationProfilePoint = {
   elevation: number;
   slope: number | null;
   coordinate: GeoCoordinate;
+  /** その区間の営業状況。断面図で開いている区間と閉じている区間を塗り分ける */
+  status?: "○" | "△" | "×" | null;
 };

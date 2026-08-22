@@ -51,6 +51,8 @@ type UseJapanMapLabelLayoutParams = {
   displayNameById: Map<string, string>;
   filteredResortIdSet?: Set<string>;
   hoveredResortId: string | null;
+  /** このズーム以上ではスキー場名ラベルを出さない（コース表示中） */
+  hideLabelsMinZoom: number | null;
   interactionMode: "default" | "detail" | "compare";
   isFilterActive: boolean;
   isMobileMapZoom: boolean;
@@ -64,6 +66,7 @@ export const useJapanMapLabelLayout = ({
   resorts,
   displayNameById,
   filteredResortIdSet,
+  hideLabelsMinZoom,
   hoveredResortId,
   interactionMode,
   isFilterActive,
@@ -85,6 +88,15 @@ export const useJapanMapLabelLayout = ({
     (map: L.Map) => {
       const currentZoom = map.getZoom();
       setMapZoom(currentZoom);
+
+      // コース・リフトを表示しているズームではスキー場名ラベルを出さないので、
+      // 重い衝突計算そのものを回避する（FR-1.2）
+      if (hideLabelsMinZoom != null && currentZoom >= hideLabelsMinZoom) {
+        setLabelLayouts(previousLayouts =>
+          Object.keys(previousLayouts).length === 0 ? previousLayouts : {},
+        );
+        return;
+      }
       const selectedResortIdSet =
         interactionMode === "compare"
           ? new Set(selectedCompareIdSet ?? [])
@@ -445,6 +457,7 @@ export const useJapanMapLabelLayout = ({
     [
       displayNameById,
       filteredResortIdSet,
+      hideLabelsMinZoom,
       interactionMode,
       isFilterActive,
       labelAdvancedLayoutZoom,

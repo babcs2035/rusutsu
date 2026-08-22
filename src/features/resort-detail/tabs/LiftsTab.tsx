@@ -1,9 +1,7 @@
 "use client";
 
-import { ArrowLeft } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
@@ -23,11 +21,9 @@ import {
 import type { SelectedMapFeature } from "@/features/map/JapanResortMap";
 import type { FinalizedResortMapData } from "@/lib/finalizedResortGeojsonShared";
 import { cn } from "@/lib/utils";
-import { ElevationProfile } from "../components/ElevationProfile";
 import { StatCard } from "../components/StatCard";
 import type { Resort } from "../types";
 import {
-  createElevationProfile,
   formatLiftStatus,
   formatMeters,
   getLiftElevationDiff,
@@ -48,11 +44,6 @@ export const LiftsTab = ({
   ) => void;
 }) => {
   const finalizedLifts = finalizedMapData?.lifts?.features ?? [];
-  const selectedFinalizedLift =
-    selectedFinalizedFeature?.kind === "lift"
-      ? (finalizedLifts.find(lift => lift.id === selectedFinalizedFeature.id) ??
-        null)
-      : null;
   const lifts = resort.lifts;
   const [typeFilter, setTypeFilter] = useState("全て");
 
@@ -70,78 +61,6 @@ export const LiftsTab = ({
     if (typeFilter === "全て") return lifts;
     return lifts.filter(l => l.type === typeFilter);
   }, [lifts, typeFilter]);
-
-  if (selectedFinalizedLift) {
-    const profilePoints = createElevationProfile(
-      selectedFinalizedLift.coordinates,
-    );
-
-    return (
-      <div className="flex flex-col gap-6">
-        <Button
-          type="button"
-          variant="ghost"
-          className="self-start text-gray-600 font-medium px-0 hover:bg-gray-50 hover:text-gray-900 -ml-2"
-          onClick={() => onSelectedFinalizedFeatureChange(null)}
-        >
-          <ArrowLeft size={16} />
-          リフト一覧へ戻る
-        </Button>
-        <div>
-          <h2 className="text-lg text-gray-900 font-bold font-[var(--font-heading)]">
-            {selectedFinalizedLift.name}
-          </h2>
-          <p className="mt-1 text-gray-600 font-medium">
-            {selectedFinalizedLift.properties.type ?? "リフト"}
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <StatCard
-            title="営業状況"
-            value={formatLiftStatus(selectedFinalizedLift.properties.status)}
-          />
-          <StatCard
-            title="速度"
-            value={selectedFinalizedLift.properties.speed ?? "--"}
-          />
-          <StatCard
-            title="距離"
-            value={formatMeters(
-              selectedFinalizedLift.properties.slopeDistMap ??
-                selectedFinalizedLift.properties.distance,
-            )}
-          />
-          <StatCard
-            title="標高差"
-            value={formatMeters(getLiftElevationDiff(selectedFinalizedLift))}
-          />
-          <StatCard
-            title="定員"
-            value={
-              selectedFinalizedLift.properties.capacity == null
-                ? "--"
-                : `${selectedFinalizedLift.properties.capacity}名`
-            }
-          />
-          <StatCard
-            title="フード"
-            value={selectedFinalizedLift.properties.hood ?? "--"}
-          />
-        </div>
-
-        <ElevationProfile points={profilePoints} />
-
-        {(selectedFinalizedLift.properties.latestNote ||
-          selectedFinalizedLift.properties.note) && (
-          <p className="text-gray-700 leading-relaxed">
-            {selectedFinalizedLift.properties.latestNote ??
-              selectedFinalizedLift.properties.note}
-          </p>
-        )}
-      </div>
-    );
-  }
 
   if (finalizedLifts.length > 0) {
     return (

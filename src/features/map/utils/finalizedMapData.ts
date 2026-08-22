@@ -1,17 +1,16 @@
 import L from "leaflet";
 import {
   COURSE_DIFFICULTY_META,
-  createCourseSlopeSegments,
+  createCourseColorSegments,
   type FinalizedCourseFeature,
   type FinalizedLiftFeature,
   type GeoCoordinate,
   getCourseDifficulty,
-  getPisteStyle,
   getSlopeColor,
-  getStatusOpacity,
 } from "@/lib/finalizedResortGeojsonShared";
 import type {
   CourseColorMode,
+  FinalizedFeatureStatus,
   FinalizedLineFeature,
   FinalizedLineFeatureCollection,
 } from "../types";
@@ -39,24 +38,21 @@ export const getFinalizedMapDataBounds = (
   return coordinates.length > 0 ? getFeatureBounds(coordinates) : null;
 };
 
-export const getLiftStatusKind = (
+export const getFeatureStatusKind = (
   status: string | null | undefined,
-): "open" | "limited" | "closed" | "unknown" => {
+): FinalizedFeatureStatus => {
   if (/[○〇◯]/u.test(status ?? "")) return "open";
   if (/[△]/u.test(status ?? "")) return "limited";
   if (/[×✕✖]/u.test(status ?? "")) return "closed";
   return "unknown";
 };
 
-export const getFeatureStatusKind = getLiftStatusKind;
+export const getLiftStatusKind = getFeatureStatusKind;
 
-export const getPisteStatusKind = (
-  piste: string | null | undefined,
-): "open" | "limited" | "closed" | "unknown" => {
-  if (/[○〇◯]/u.test(piste ?? "")) return "open";
-  if (/[△]/u.test(piste ?? "")) return "limited";
-  if (/[×✕✖]/u.test(piste ?? "")) return "closed";
-  return "unknown";
+/** 圧雪されていない（非圧雪）コースか。piste が △ / × のとき true */
+export const isUngroomedPiste = (piste: string | null | undefined) => {
+  const kind = getFeatureStatusKind(piste);
+  return kind === "limited" || kind === "closed";
 };
 
 type LiftStatusPalette = {
@@ -64,90 +60,79 @@ type LiftStatusPalette = {
   flowColor: string;
 };
 
-const LIFT_STATUS_PALETTE: Record<
-  "open" | "limited" | "closed" | "unknown",
-  LiftStatusPalette
-> = {
-  open: {
-    baseColor: "#1E3A8A", // 濃い青・紺色
-    flowColor: "#00ffff", // 明るい水色
-  },
-  limited: {
-    baseColor: "#DC2626",
-    flowColor: "#FFFFFF",
-  },
-  closed: {
-    baseColor: "#64748B",
-    flowColor: "#FFFFFF",
-  },
-  unknown: {
-    baseColor: "#4F46E5",
-    flowColor: "#FFFFFF",
-  },
+/**
+ * リフトの状態パレット（FR-4.4）。
+ * 色で状態、動きで稼働、記号で方向という三重符号化の「色」の部分。
+ * 旧 open の濃紺 #1E3A8A は写真タイル上で沈み、フローの純シアン #00FFFF は
+ * 細線でも目に刺さるため、明度と彩度を調整している。
+ */
+const LIFT_STATUS_PALETTE: Record<FinalizedFeatureStatus, LiftStatusPalette> = {
+  open: { baseColor: "#1E40AF", flowColor: "#00E1FF" },
+  limited: { baseColor: "#DC2626", flowColor: "#FFFFFF" },
+  closed: { baseColor: "#8A99A8", flowColor: "#FFFFFF" },
+  unknown: { baseColor: "#6366F1", flowColor: "#FFFFFF" },
 };
 
-const getLiftStatusPalette = (
-  status: string | null | undefined,
-): LiftStatusPalette => LIFT_STATUS_PALETTE[getLiftStatusKind(status)];
+const getLiftStatusPalette = (status: string | null | undefined) =>
+  LIFT_STATUS_PALETTE[getFeatureStatusKind(status)];
 
-const getLiftStatusColor = (status: string | null | undefined) =>
-  getLiftStatusPalette(status).baseColor;
+/**
+ * 滑走方向（標高が下がる向き）に座標と点ごとの斜度を揃えたコースを返す。
+ * 描画・ラベル・方向記号のすべてがこの向きを前提にする（FR-4.1）。
+ */
+export const toDownhillCourse = (
+  course: FinalizedCourseFeature,
+): FinalizedCourseFeature => {
+  const first = course.coordinates[0]?.[2];
+  const last = course.coordinates[course.coordinates.length - 1]?.[2];
+  if (typeof first !== "number" || typeof last !== "number") return course;
+  if (first >= last) return course;
 
-const getLiftFlowColor = (status: string | null | undefined) =>
-  getLiftStatusPalette(status).flowColor;
+  const canReverseSlopes =
+    course.slopeDeg != null &&
+    course.slopeDeg.length === course.coordinates.length;
 
-const getSlopeSegmentPointStride = (zoom: number) => {
-  if (zoom < 12) return 16;
-  if (zoom < 13) return 12;
-  if (zoom < 14) return 8;
-  if (zoom < 15) return 6;
-  if (zoom < 16) return 4;
-  if (zoom < 17) return 2;
-  return 1;
+  return {
+    ...course,
+    coordinates: [...course.coordinates].reverse(),
+    slopeDeg: canReverseSlopes
+      ? [...(course.slopeDeg ?? [])].reverse()
+      : course.slopeDeg,
+  };
 };
 
-export const getLiftFlowDashLength = (zoom: number) => {
-  const zoomScale = 1.3 ** Math.max(0, zoom - 11);
-  return Number((6 * zoomScale).toFixed(2));
+export const toDownhillCourses = (courses: FinalizedCourseFeature[]) =>
+  courses.map(toDownhillCourse);
+
+/** リフトは下→上に揃える */
+export const getLiftDisplayCoordinates = (lift: FinalizedLiftFeature) => {
+  const first = lift.coordinates[0]?.[2];
+  const last = lift.coordinates[lift.coordinates.length - 1]?.[2];
+
+  if (typeof first === "number" && typeof last === "number" && first > last) {
+    return [...lift.coordinates].reverse();
+  }
+
+  return lift.coordinates;
 };
 
+/**
+ * コースの FeatureCollection。
+ * ズームと「営業中のみ」トグルには依存させない（FR-1.1）。
+ * ズームで変わるのは線幅・不透明度だけで、そこは setStyle で更新する。
+ */
 export const buildCourseFeatureCollection = (
   courses: FinalizedCourseFeature[],
   mode: CourseColorMode,
-  zoom: number,
-  showOpenOnly: boolean,
 ): FinalizedLineFeatureCollection => {
   if (mode === "slope") {
-    const pointStride = getSlopeSegmentPointStride(zoom);
     return {
       type: "FeatureCollection",
       features: courses.flatMap<FinalizedLineFeature>(course => {
         const statusKind = getFeatureStatusKind(course.properties.status);
-        if (showOpenOnly && statusKind !== "open") {
-          return [
-            {
-              type: "Feature" as const,
-              geometry: {
-                type: "LineString" as const,
-                coordinates: course.coordinates,
-              },
-              properties: {
-                id: course.id,
-                kind: "course" as const,
-                sourceId: course.groupId,
-                name: course.displayName,
-                color: getSlopeColor(course.properties.avgSlopeDegMap),
-                opacity: getStatusOpacity(course.properties.status),
-                pisteStyle: getPisteStyle(course.properties.piste),
-                pisteStatus: getPisteStatusKind(course.properties.piste),
-                statusKind,
-                segmented: false,
-              },
-            },
-          ];
-        }
+        const ungroomed = isUngroomedPiste(course.properties.piste);
 
-        return createCourseSlopeSegments(course, pointStride).map(segment => ({
+        return createCourseColorSegments(course).map(segment => ({
           type: "Feature" as const,
           geometry: {
             type: "LineString" as const,
@@ -159,10 +144,8 @@ export const buildCourseFeatureCollection = (
             sourceId: course.groupId,
             name: course.displayName,
             color: getSlopeColor(segment.slope),
-            opacity: getStatusOpacity(course.properties.status),
-            pisteStyle: getPisteStyle(course.properties.piste),
-            pisteStatus: getPisteStatusKind(course.properties.piste),
             statusKind,
+            ungroomed,
             segmented: true,
           },
         }));
@@ -186,31 +169,42 @@ export const buildCourseFeatureCollection = (
         color:
           COURSE_DIFFICULTY_META[getCourseDifficulty(course.properties.level)]
             .color,
-        opacity: getStatusOpacity(course.properties.status),
-        pisteStyle: getPisteStyle(course.properties.piste),
-        pisteStatus: getPisteStatusKind(course.properties.piste),
         statusKind: getFeatureStatusKind(course.properties.status),
+        ungroomed: isUngroomedPiste(course.properties.piste),
+        segmented: false,
       },
     })),
   };
 };
 
-const getLiftDisplayCoordinates = (lift: FinalizedLiftFeature) => {
-  const first = lift.coordinates[0];
-  const last = lift.coordinates[lift.coordinates.length - 1];
-  const firstElevation = first?.[2];
-  const lastElevation = last?.[2];
-
-  if (
-    typeof firstElevation === "number" &&
-    typeof lastElevation === "number" &&
-    firstElevation > lastElevation
-  ) {
-    return [...lift.coordinates].reverse();
-  }
-
-  return lift.coordinates;
-};
+/**
+ * 斜度モードでも、ケーシング・ヒット領域・非圧雪表現はコース単位で 1 本にする
+ * （FR-1.4）。セグメント単位で作ると同じ見た目のままパス数が 24 倍になる。
+ */
+export const buildCourseOutlineFeatureCollection = (
+  courses: FinalizedCourseFeature[],
+): FinalizedLineFeatureCollection => ({
+  type: "FeatureCollection",
+  features: courses.map(course => ({
+    type: "Feature",
+    geometry: {
+      type: "LineString",
+      coordinates: course.coordinates,
+    },
+    properties: {
+      id: `${course.id}-outline`,
+      kind: "course",
+      sourceId: course.groupId,
+      name: course.displayName,
+      color:
+        COURSE_DIFFICULTY_META[getCourseDifficulty(course.properties.level)]
+          .color,
+      statusKind: getFeatureStatusKind(course.properties.status),
+      ungroomed: isUngroomedPiste(course.properties.piste),
+      segmented: false,
+    },
+  })),
+});
 
 const getLiftFlowSpeed = (
   speed: string | null | undefined,
@@ -225,30 +219,27 @@ export const buildLiftFeatureCollection = (
   lifts: FinalizedLiftFeature[],
 ): FinalizedLineFeatureCollection => ({
   type: "FeatureCollection",
-  features: lifts.map(lift => ({
-    type: "Feature",
-    geometry: {
-      type: "LineString",
-      coordinates: getLiftDisplayCoordinates(lift),
-    },
-    properties: {
-      id: lift.id,
-      kind: "lift",
-      sourceId: lift.id,
-      name: lift.name,
-      color: getLiftStatusColor(lift.properties.status),
-      flowColor: getLiftFlowColor(lift.properties.status),
-      opacity: getStatusOpacity(lift.properties.status),
-      liftStatus: getLiftStatusKind(lift.properties.status),
-      statusKind: getFeatureStatusKind(lift.properties.status),
-      flowSpeed: getLiftFlowSpeed(lift.properties.speed),
-    },
-  })),
-});
+  features: lifts.map(lift => {
+    const palette = getLiftStatusPalette(lift.properties.status);
 
-export const getUngroomedDashArray = (zoom: number) => {
-  if (zoom >= 16) return "6 3";
-  if (zoom >= 14) return "4 2";
-  if (zoom >= 12) return "3 1.5";
-  return "3 1.5";
-};
+    return {
+      type: "Feature",
+      geometry: {
+        type: "LineString",
+        coordinates: getLiftDisplayCoordinates(lift),
+      },
+      properties: {
+        id: lift.id,
+        kind: "lift",
+        sourceId: lift.id,
+        name: lift.name,
+        color: palette.baseColor,
+        flowColor: palette.flowColor,
+        statusKind: getFeatureStatusKind(lift.properties.status),
+        ungroomed: false,
+        segmented: false,
+        flowSpeed: getLiftFlowSpeed(lift.properties.speed),
+      },
+    };
+  }),
+});

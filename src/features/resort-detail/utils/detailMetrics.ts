@@ -14,28 +14,112 @@ export const normalizeIconSymbol = (value: string | null | undefined) => {
   return null;
 };
 
+export type StatusSymbol = "○" | "△" | "×";
+
+/** 記号は ○△× に統一し、意味は説明文で補う */
+export const COURSE_STATUS_DESCRIPTION: Record<StatusSymbol, string> = {
+  "○": "全面滑走可",
+  "△": "一部滑走可",
+  "×": "クローズ",
+};
+
+export const LIFT_STATUS_DESCRIPTION: Record<StatusSymbol, string> = {
+  "○": "運行中",
+  "△": "一部運休",
+  "×": "運休",
+};
+
+export const PISTE_STATUS_DESCRIPTION: Record<StatusSymbol, string> = {
+  "○": "圧雪",
+  "△": "一部圧雪",
+  "×": "非圧雪",
+};
+
+/**
+ * コース全体の営業状況。
+ * 上部・下部などに分かれていて一部だけ開いている場合は △ とし、
+ * どこが開いているかを note で返す。
+ */
+export const getCourseGroupStatus = (
+  group: FinalizedCourseGroup,
+): { symbol: StatusSymbol | null; note: string | null } => {
+  const symbols = group.courses.map(course =>
+    normalizeIconSymbol(course.properties.status),
+  );
+  const known = symbols.filter(
+    (symbol): symbol is StatusSymbol => symbol !== null,
+  );
+  if (known.length === 0) return { symbol: null, note: null };
+
+  const openCount = known.filter(symbol => symbol === "○").length;
+  if (openCount === known.length) return { symbol: "○", note: null };
+  if (openCount === 0) {
+    return {
+      symbol: known.every(symbol => symbol === "×") ? "×" : "△",
+      note: null,
+    };
+  }
+
+  const openSections = group.courses
+    .filter((_, index) => symbols[index] === "○")
+    .map(course => course.sectionName)
+    .filter((section): section is string => Boolean(section));
+
+  return {
+    symbol: "△",
+    note:
+      openSections.length > 0
+        ? `${openSections.join("・")}のみオープン`
+        : "一部のみオープン",
+  };
+};
+
+export const getCourseGroupPisteSymbol = (
+  group: FinalizedCourseGroup,
+): StatusSymbol | null => {
+  const symbols = group.courses
+    .map(course => normalizeIconSymbol(course.properties.piste))
+    .filter((symbol): symbol is StatusSymbol => symbol !== null);
+  if (symbols.length === 0) return null;
+  if (symbols.every(symbol => symbol === "○")) return "○";
+  if (symbols.every(symbol => symbol === "×")) return "×";
+  return "△";
+};
+
+const collectUnique = (values: Array<string | null | undefined>) => [
+  ...new Set(
+    values
+      .filter((value): value is string => Boolean(value?.trim()))
+      .map(value => value.trim()),
+  ),
+];
+
+/**
+ * コースごとの注記。
+ * latest_note はその日の状況、note はコースそのものの紹介文なので分けて扱う。
+ */
+export const getCourseGroupNotes = (group: FinalizedCourseGroup) => ({
+  latest: collectUnique(
+    group.courses.map(course => course.properties.latestNote),
+  ),
+  description: collectUnique(
+    group.courses.map(course => course.properties.note),
+  ),
+});
+
 export const formatCourseStatus = (status: string | null | undefined) => {
   const symbol = normalizeIconSymbol(status);
-  if (symbol === "○") return "全面滑走可";
-  if (symbol === "△") return "一部滑走可";
-  if (symbol === "×") return "クローズ";
-  return status ?? "--";
+  return symbol ? COURSE_STATUS_DESCRIPTION[symbol] : (status ?? "--");
 };
 
 export const formatLiftStatus = (status: string | null | undefined) => {
   const symbol = normalizeIconSymbol(status);
-  if (symbol === "○") return "運行中";
-  if (symbol === "△") return "準備中・待機中";
-  if (symbol === "×") return "運休";
-  return status ?? "--";
+  return symbol ? LIFT_STATUS_DESCRIPTION[symbol] : (status ?? "--");
 };
 
 export const formatPisteStatus = (piste: string | null | undefined) => {
   const symbol = normalizeIconSymbol(piste);
-  if (symbol === "○") return "圧雪";
-  if (symbol === "△") return "一部圧雪";
-  if (symbol === "×") return "非圧雪";
-  return piste ?? "--";
+  return symbol ? PISTE_STATUS_DESCRIPTION[symbol] : (piste ?? "--");
 };
 
 export const formatMeters = (value: number | null | undefined) =>
@@ -211,6 +295,7 @@ export const createConnectedCourseElevationProfile = (
         slope:
           slopes && slopes.length === coordinates.length ? slopes[index] : null,
         coordinate,
+        status: normalizeIconSymbol(course.properties.status),
       });
     }
   }

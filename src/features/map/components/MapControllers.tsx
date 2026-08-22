@@ -445,3 +445,59 @@ export const MapViewportController = ({
 
   return null;
 };
+
+/**
+ * 選択の解除と、操作中のアニメーション停止をまとめて扱う。
+ *
+ * - 地図の空白部タップ / Escape で選択を解除する（FR-6.2）
+ * - パン・ズーム中は data-map-interacting を立て、CSS 側でリフトの
+ *   フローアニメーションを止める（FR-1.6）
+ */
+export const FinalizedSelectionInteractionController = ({
+  enabled,
+  hasSelection,
+  onDeselect,
+}: {
+  enabled: boolean;
+  hasSelection: boolean;
+  onDeselect: () => void;
+}) => {
+  const map = useMap();
+
+  useEffect(() => {
+    const container = map.getContainer();
+    const startInteraction = () => {
+      container.setAttribute("data-map-interacting", "true");
+    };
+    const endInteraction = () => {
+      container.removeAttribute("data-map-interacting");
+    };
+
+    map.on("movestart zoomstart", startInteraction);
+    map.on("moveend zoomend", endInteraction);
+    return () => {
+      map.off("movestart zoomstart", startInteraction);
+      map.off("moveend zoomend", endInteraction);
+      endInteraction();
+    };
+  }, [map]);
+
+  useEffect(() => {
+    if (!enabled || !hasSelection) return;
+
+    const handleMapClick = () => onDeselect();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      onDeselect();
+    };
+
+    map.on("click", handleMapClick);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      map.off("click", handleMapClick);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [enabled, hasSelection, map, onDeselect]);
+
+  return null;
+};

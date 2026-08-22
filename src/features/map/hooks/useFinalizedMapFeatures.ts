@@ -5,18 +5,18 @@ import type { FinalizedResortMapData } from "@/lib/finalizedResortGeojsonShared"
 import type { CourseColorMode, SelectedMapFeature } from "../types";
 import {
   buildCourseFeatureCollection,
+  buildCourseOutlineFeatureCollection,
   buildLiftFeatureCollection,
   EMPTY_FINALIZED_COURSES,
   EMPTY_FINALIZED_LIFTS,
   getFinalizedMapDataBounds,
+  toDownhillCourses,
 } from "../utils/finalizedMapData";
 
 type UseFinalizedMapFeaturesParams = {
   courseColorMode: CourseColorMode;
   finalizedMapData: FinalizedResortMapData | null;
   interactionMode: "default" | "detail" | "compare";
-  mapZoom: number;
-  showOpenOnly: boolean;
   selectedFinalizedFeature: SelectedMapFeature | null;
 };
 
@@ -24,14 +24,22 @@ export const useFinalizedMapFeatures = ({
   courseColorMode,
   finalizedMapData,
   interactionMode,
-  mapZoom,
-  showOpenOnly,
   selectedFinalizedFeature,
 }: UseFinalizedMapFeaturesParams) => {
-  const finalizedCourses =
+  const sourceCourses =
     finalizedMapData?.courses?.features ?? EMPTY_FINALIZED_COURSES;
   const finalizedLifts =
     finalizedMapData?.lifts?.features ?? EMPTY_FINALIZED_LIFTS;
+
+  // 滑走方向（標高降順）に揃えたコースを唯一の入力にする。
+  // 線・ラベル・方向記号がすべて同じ向きを前提にできる（FR-4.1）。
+  const finalizedCourses = useMemo(
+    () =>
+      sourceCourses.length > 0
+        ? toDownhillCourses(sourceCourses)
+        : EMPTY_FINALIZED_COURSES,
+    [sourceCourses],
+  );
   const hasFinalizedCourses = finalizedCourses.length > 0;
   const hasFinalizedLifts = finalizedLifts.length > 0;
   const isFinalizedFocusMode =
@@ -40,23 +48,22 @@ export const useFinalizedMapFeatures = ({
     () => getFinalizedMapDataBounds(finalizedCourses, finalizedLifts),
     [finalizedCourses, finalizedLifts],
   );
+
+  // ズームと「営業中のみ」には依存させない（FR-1.1）。
+  // ズームで変わるのは線幅・不透明度だけなので setStyle 側で処理する。
   const courseFeatureCollection = useMemo(
     () =>
       hasFinalizedCourses
-        ? buildCourseFeatureCollection(
-            finalizedCourses,
-            courseColorMode,
-            mapZoom,
-            showOpenOnly,
-          )
+        ? buildCourseFeatureCollection(finalizedCourses, courseColorMode)
         : null,
-    [
-      courseColorMode,
-      finalizedCourses,
-      hasFinalizedCourses,
-      mapZoom,
-      showOpenOnly,
-    ],
+    [courseColorMode, finalizedCourses, hasFinalizedCourses],
+  );
+  const courseOutlineFeatureCollection = useMemo(
+    () =>
+      hasFinalizedCourses
+        ? buildCourseOutlineFeatureCollection(finalizedCourses)
+        : null,
+    [finalizedCourses, hasFinalizedCourses],
   );
   const liftFeatureCollection = useMemo(
     () =>
@@ -82,6 +89,7 @@ export const useFinalizedMapFeatures = ({
 
   return {
     courseFeatureCollection,
+    courseOutlineFeatureCollection,
     finalizedBounds,
     finalizedCourses,
     finalizedLifts,

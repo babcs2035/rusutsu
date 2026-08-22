@@ -138,7 +138,7 @@ export const COURSE_DIFFICULTY_META: Record<
   beginner: { label: "初級", color: "#22C55E" },
   beginnerIntermediate: { label: "初・中級", color: "#F2C94C" },
   intermediate: { label: "中級", color: "#E53935" },
-  intermediateAdvanced: { label: "中・上級", color: "#8B1E2D" },
+  intermediateAdvanced: { label: "中・上級", color: "#B45309" },
   advanced: { label: "上級", color: "#222222" },
   unknown: { label: "不明", color: "#6B7280" },
 };
@@ -202,8 +202,16 @@ const rgbToHex = ({ r, g, b }: { r: number; g: number; b: number }) =>
     )
     .join("")}`;
 
+/**
+ * 斜度の色。
+ * 平坦〜登り返し（マイナス）は青系にして、「板を漕ぐ必要がある区間」だと
+ * ひと目でわかるようにしている。実データの 1.6% はマイナス、6.9% は 3 度未満。
+ */
 export const SLOPE_COLOR_STOPS = [
-  { slope: 0, color: "#22C55E" },
+  { slope: -12, color: "#1D4ED8" },
+  { slope: -3, color: "#3B82F6" },
+  { slope: 1, color: "#38BDF8" },
+  { slope: 4, color: "#22C55E" },
   { slope: 8, color: "#84CC16" },
   { slope: 12, color: "#FACC15" },
   { slope: 16, color: "#F97316" },
@@ -214,10 +222,13 @@ export const SLOPE_COLOR_STOPS = [
   { slope: 40, color: "#222222" },
 ] as const;
 
+export const SLOPE_MIN_DEG = -12;
+export const SLOPE_MAX_DEG = 40;
+
 export const getSlopeColor = (slope: number | null | undefined): string => {
   if (slope == null || !Number.isFinite(slope)) return "#6B7280";
 
-  const clamped = Math.max(0, Math.min(40, slope));
+  const clamped = Math.max(SLOPE_MIN_DEG, Math.min(SLOPE_MAX_DEG, slope));
   const upperIndex = SLOPE_COLOR_STOPS.findIndex(stop => clamped <= stop.slope);
   if (upperIndex <= 0) return SLOPE_COLOR_STOPS[0].color;
 
@@ -275,4 +286,82 @@ export const createCourseSlopeSegments = (
   }
 
   return segments;
+};
+
+/**
+ * 斜度モードの色分割数の上限。
+ * ズームに応じて分割数を変えると、ズーム段ごとにパスを作り直すことになり
+ * 描画がカクつくため、分割数はズームに依存させない（FR-1.4）。
+ * 24 は「幅 390px の画面で 1 区間 16px 以上」を確保できる値。
+ */
+export const COURSE_COLOR_SEGMENT_LIMIT = 24;
+
+/**
+ * 1 コースあたりのセグメント数に上限を設けた色分割。
+ * 点数が少ないコースは間引かず、多いコースだけ間引く。
+ */
+export const createCourseColorSegments = (
+  course: FinalizedCourseFeature,
+  maxSegments = COURSE_COLOR_SEGMENT_LIMIT,
+): CourseSlopeSegment[] => {
+  const pointCount = course.coordinates.length;
+  if (pointCount < 2) return [];
+
+  const stride = Math.max(1, Math.ceil((pointCount - 1) / maxSegments));
+  return createCourseSlopeSegments(course, stride);
+};
+
+/**
+ * 標高が下がる向き（滑走方向）に座標列を正規化する。
+ * 標高を持たないデータはそのまま返す。
+ */
+export const getDownhillCoordinates = (
+  coordinates: GeoCoordinate[],
+): GeoCoordinate[] => {
+  const first = coordinates[0]?.[2];
+  const last = coordinates[coordinates.length - 1]?.[2];
+  if (typeof first !== "number" || typeof last !== "number") {
+    return coordinates;
+  }
+
+  return first < last ? [...coordinates].reverse() : coordinates;
+};
+
+/** 標高差（m）。標高を持たない場合は null。 */
+export const getCoordinatesElevationDrop = (
+  coordinates: GeoCoordinate[],
+): number | null => {
+  const first = coordinates[0]?.[2];
+  const last = coordinates[coordinates.length - 1]?.[2];
+  if (typeof first !== "number" || typeof last !== "number") return null;
+
+  return Math.abs(first - last);
+};
+
+export type LiftClass = "gondola" | "highSpeedQuad" | "quad" | "pair" | "other";
+
+const GONDOLA_RE = /ゴンドラ|ロープウェイ|gondola|cabin/iu;
+
+/** ラベル優先度と種別アイコンに使うリフト種別。 */
+export const getLiftClass = (
+  lift: Pick<FinalizedLiftFeature, "name" | "properties">,
+): LiftClass => {
+  const source = `${lift.name} ${lift.properties.type ?? ""}`;
+  if (GONDOLA_RE.test(source)) return "gondola";
+
+  const capacity = lift.properties.capacity ?? 0;
+  const isHighSpeed = /高速|express|fast/iu.test(
+    `${lift.properties.speed ?? ""} ${lift.name}`,
+  );
+  if (capacity >= 4) return isHighSpeed ? "highSpeedQuad" : "quad";
+  if (capacity >= 2) return "pair";
+  return "other";
+};
+
+export const LIFT_CLASS_LABEL_WEIGHT: Record<LiftClass, number> = {
+  gondola: 1.6,
+  highSpeedQuad: 1.4,
+  quad: 1.25,
+  pair: 1,
+  other: 0.9,
 };

@@ -28,15 +28,29 @@ const cleanupOrphanedLabelMeasureElements = () => {
     });
 };
 
-export const getScaledMapLineWidth = (
-  zoom: number,
-  kind: "course" | "lift" | "ungroomedCourse" | "liftFlow",
-) => {
-  const t = Math.max(0, Math.min(1, (zoom - 10) / 7));
-  if (kind === "course") return 0.4 + t * 2.0;
-  if (kind === "ungroomedCourse") return 0.4 + t * 2.0;
-  if (kind === "lift") return 1.0 + t * 2.0;
-  return 1.6 + t * 2.8;
+let cachedMeasureContext: CanvasRenderingContext2D | null | undefined;
+
+const getMeasureContext = () => {
+  if (cachedMeasureContext !== undefined) return cachedMeasureContext;
+  if (typeof document === "undefined") {
+    cachedMeasureContext = null;
+    return cachedMeasureContext;
+  }
+
+  cachedMeasureContext = document.createElement("canvas").getContext("2d");
+  return cachedMeasureContext;
+};
+
+/**
+ * ラベルの実寸幅（px）。文字数 × 固定幅の概算では日本語と英数字が混ざると
+ * 衝突判定がずれるため、実際のフォントで測る。
+ */
+export const measureCanvasTextWidth = (text: string, font: string): number => {
+  const context = getMeasureContext();
+  if (!context) return text.length * 12;
+
+  context.font = font;
+  return Math.ceil(context.measureText(text).width);
 };
 
 export const escapeHtml = (text: string) =>

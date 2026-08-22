@@ -73,12 +73,12 @@ export type FinalizedLineFeatureProperties = {
   name?: string;
   color: string;
   flowColor?: string;
-  opacity: number;
-  pisteStyle?: "solid" | "dash" | "dot";
-  pisteStatus?: FinalizedFeatureStatus;
-  segmented?: boolean;
+  /** 営業状態（コース・リフト共通） */
   statusKind: FinalizedFeatureStatus;
-  liftStatus?: FinalizedFeatureStatus;
+  /** 非圧雪コースか（芯線を破線にする） */
+  ungroomed: boolean;
+  /** 斜度モードの色分割片か */
+  segmented: boolean;
   flowSpeed?: "slow" | "normal" | "fast";
 };
 

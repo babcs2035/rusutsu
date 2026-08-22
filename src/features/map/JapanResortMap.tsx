@@ -14,11 +14,9 @@ import {
 import { createConnectedCourseElevationProfile } from "@/features/resort-detail/utils/detailMetrics";
 import type { FinalizedCourseFeature } from "@/lib/finalizedResortGeojsonShared";
 import { FinalizedGeoJsonLayer } from "./components/DetailMapLayers";
+import { FinalizedLineOverlay } from "./components/DetailMapLineOverlay";
 import {
-  FinalizedCourseNameLabels,
-  FinalizedLiftNameLabels,
-} from "./components/DetailMapNameLabels";
-import {
+  FinalizedSelectionInteractionController,
   LabelLayoutWatcher,
   MapEventsHandler,
   MapViewportController,
@@ -27,21 +25,20 @@ import {
   SearchViewportController,
   SelectedFinalizedFeatureViewportController,
 } from "./components/MapControllers";
-import {
-  FinalizedMapLegend,
-  FinalizedMapModeControl,
-  MapControls,
-} from "./components/MapControls";
+import { FinalizedMapToolbar, MapControls } from "./components/MapControls";
 import { ResortActionPopup } from "./components/ResortActionPopup";
 import { ResortMarkersLayer } from "./components/ResortMarkersLayer";
+import { SmoothWheelZoomController } from "./components/SmoothWheelZoomController";
 import {
   BASE_MARKER_PANE,
+  COARSE_POINTER_MEDIA_QUERY,
   DESKTOP_INITIAL_ZOOM,
   DESKTOP_LABEL_ADVANCED_LAYOUT_ZOOM,
   DESKTOP_LABEL_SHOW_ZOOM,
   DESKTOP_ZOOM_SETTINGS,
   FILTER_MATCH_MARKER_PANE,
   FINALIZED_COURSE_PANE,
+  FINALIZED_LABEL_PANE,
   FINALIZED_LIFT_PANE,
   FINALIZED_RESORT_LABEL_HIDE_MIN_ZOOM,
   FINALIZED_SELECTED_PANE,
@@ -51,6 +48,7 @@ import {
   GSI_TILE_MAX_ZOOM,
   GSI_TILE_MIN_ZOOM,
   INITIAL_CENTER,
+  MARKER_VIEWPORT_PADDING_RATIO,
   MOBILE_INITIAL_ZOOM,
   MOBILE_LABEL_ADVANCED_LAYOUT_ZOOM,
   MOBILE_LABEL_SHOW_ZOOM,
@@ -58,6 +56,7 @@ import {
   MOBILE_ZOOM_SETTINGS,
   SELECTED_MARKER_PANE,
 } from "./constants";
+import { useDetailPanelRightOverlap } from "./hooks/useDetailPanelRightOverlap";
 import { useFinalizedMapFeatures } from "./hooks/useFinalizedMapFeatures";
 import { useJapanMapLabelLayout } from "./hooks/useJapanMapLabelLayout";
 import { useMapZoomInteractionSurface } from "./hooks/useMapZoomInteractionSurface";
@@ -300,6 +299,11 @@ export const JapanResortMap = memo(function JapanResortMap({
       ? true
       : window.matchMedia(MOBILE_MAP_MEDIA_QUERY).matches,
   );
+  const [isCoarsePointer, setIsCoarsePointer] = useState(() =>
+    typeof window === "undefined"
+      ? true
+      : window.matchMedia(COARSE_POINTER_MEDIA_QUERY).matches,
+  );
   const initialZoom = isMobileMapZoom
     ? MOBILE_INITIAL_ZOOM
     : DESKTOP_INITIAL_ZOOM;
@@ -320,6 +324,7 @@ export const JapanResortMap = memo(function JapanResortMap({
     uncontrolledSelectedFinalizedFeature,
     setUncontrolledSelectedFinalizedFeature,
   ] = useState<SelectedMapFeature | null>(null);
+  const [markerBounds, setMarkerBounds] = useState<L.LatLngBounds | null>(null);
   const skipCompareRecenterRef = useRef(false);
   const _mapZoomSurfaceRef = useRef<HTMLDivElement | null>(null);
   const selectedFinalizedFeature =
@@ -333,6 +338,9 @@ export const JapanResortMap = memo(function JapanResortMap({
     },
     [onSelectedFinalizedFeatureChange],
   );
+  const handleDeselectFinalizedFeature = useCallback(() => {
+    setSelectedFinalizedFeature(null);
+  }, [setSelectedFinalizedFeature]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia(MOBILE_MAP_MEDIA_QUERY);
@@ -347,6 +355,19 @@ export const JapanResortMap = memo(function JapanResortMap({
     };
   }, []);
 
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(COARSE_POINTER_MEDIA_QUERY);
+    const syncPointerKind = () => {
+      setIsCoarsePointer(mediaQuery.matches);
+    };
+
+    syncPointerKind();
+    mediaQuery.addEventListener("change", syncPointerKind);
+    return () => {
+      mediaQuery.removeEventListener("change", syncPointerKind);
+    };
+  }, []);
+
   const labelShowZoom = isMobileMapZoom
     ? MOBILE_LABEL_SHOW_ZOOM
     : DESKTOP_LABEL_SHOW_ZOOM;
@@ -354,9 +375,14 @@ export const JapanResortMap = memo(function JapanResortMap({
     ? MOBILE_LABEL_ADVANCED_LAYOUT_ZOOM
     : DESKTOP_LABEL_ADVANCED_LAYOUT_ZOOM;
 
+  const hasFinalizedCourseData =
+    (finalizedMapData?.courses?.features.length ?? 0) > 0;
   const { labelLayouts, mapZoom, updateLabelLayout } = useJapanMapLabelLayout({
     resorts,
     displayNameById,
+    hideLabelsMinZoom: hasFinalizedCourseData
+      ? FINALIZED_RESORT_LABEL_HIDE_MIN_ZOOM
+      : null,
     filteredResortIdSet,
     hoveredResortId,
     interactionMode,
@@ -413,6 +439,7 @@ export const JapanResortMap = memo(function JapanResortMap({
   const shouldShowCompareActions = interactionMode === "compare";
   const {
     courseFeatureCollection,
+    courseOutlineFeatureCollection,
     finalizedBounds,
     finalizedCourses,
     finalizedLifts,
@@ -426,16 +453,20 @@ export const JapanResortMap = memo(function JapanResortMap({
     courseColorMode,
     finalizedMapData,
     interactionMode,
-    mapZoom,
-    showOpenOnly: showOpenFinalizedOnly,
     selectedFinalizedFeature,
   });
+  // タッチはヒット領域を広く、マウスは狭く（FR-6.1）
+  const finalizedHitWeight = isCoarsePointer ? 24 : 12;
 
+  // スキー場が切り替わったときだけ選択を解除する。
+  // マウントのたびに解除すると、地図インスタンスが複数ある画面
+  // （スマホのプレビュー + 全画面）で、選択した直後に別インスタンスの
+  // マウントが選択を消してしまう。
+  const previousFinalizedMapDataRef = useRef(finalizedMapData);
   useEffect(() => {
-    if (finalizedMapData === null) {
-      setSelectedFinalizedFeature(null);
-      return;
-    }
+    if (previousFinalizedMapDataRef.current === finalizedMapData) return;
+
+    previousFinalizedMapDataRef.current = finalizedMapData;
     setSelectedFinalizedFeature(null);
   }, [finalizedMapData, setSelectedFinalizedFeature]);
 
@@ -472,9 +503,21 @@ export const JapanResortMap = memo(function JapanResortMap({
     selectedCompareIdSet,
     selectedResortId,
   ]);
+  // 画面外のマーカーも Leaflet はズームのたびに再配置するので、
+  // 描く対象を表示範囲の周辺だけに絞る（数百個あると連続ズームで効いてくる）
+  const visibleResorts = useMemo(() => {
+    if (!markerBounds) return resorts;
+
+    const padded = markerBounds.pad(MARKER_VIEWPORT_PADDING_RATIO);
+    return resorts.filter(
+      resort =>
+        selectedResortIdSet.has(resort.id) ||
+        padded.contains([resort.latitude, resort.longitude]),
+    );
+  }, [markerBounds, resorts, selectedResortIdSet]);
   const renderedResorts = useMemo(
     () =>
-      [...resorts].sort((a, b) => {
+      [...visibleResorts].sort((a, b) => {
         const aPriority = getResortPriority({
           resortId: a.id,
           filteredResortIdSet,
@@ -494,10 +537,11 @@ export const JapanResortMap = memo(function JapanResortMap({
 
         return a.numberOfCourses - b.numberOfCourses;
       }),
-    [filteredResortIdSet, isFilterActive, resorts, selectedResortIdSet],
+    [filteredResortIdSet, isFilterActive, selectedResortIdSet, visibleResorts],
   );
   const handleBoundsChange = useCallback(
     (bounds: L.LatLngBounds) => {
+      setMarkerBounds(bounds);
       onBoundsChange(bounds);
     },
     [onBoundsChange],
@@ -512,6 +556,7 @@ export const JapanResortMap = memo(function JapanResortMap({
       : 0.9
     : mapTileLayer.opacity;
   const isPhotoMapTile = mapTileVariant === "photo";
+  const hasFinalizedFeatures = hasFinalizedCourses || hasFinalizedLifts;
   const shouldHideResortLabelsForFinalizedCourses =
     hasFinalizedCourses && mapZoom >= FINALIZED_RESORT_LABEL_HIDE_MIN_ZOOM;
   const {
@@ -521,6 +566,10 @@ export const JapanResortMap = memo(function JapanResortMap({
     handleMapTouchStartCapture,
     handleMapWheelCapture,
   } = useMapZoomInteractionSurface(onUserMapZoomInteraction);
+  const toolbarRightOverlap = useDetailPanelRightOverlap(
+    mapZoomSurfaceRef,
+    !isPreviewMap && hasFinalizedFeatures,
+  );
 
   return (
     <div
@@ -572,12 +621,17 @@ export const JapanResortMap = memo(function JapanResortMap({
         <Pane name={FINALIZED_COURSE_PANE} style={{ zIndex: 440 }} />
         <Pane name={FINALIZED_LIFT_PANE} style={{ zIndex: 465 }} />
         <Pane name={FINALIZED_SELECTED_PANE} style={{ zIndex: 590 }} />
+        <Pane
+          name={FINALIZED_LABEL_PANE}
+          style={{ zIndex: 600, pointerEvents: "none" }}
+        />
 
         <FinalizedGeoJsonLayer
           collection={liftFeatureCollection}
+          outlineCollection={liftFeatureCollection}
           pane={FINALIZED_LIFT_PANE}
           featureKind="lift"
-          hitWeight={18}
+          hitWeight={finalizedHitWeight}
           mapTileVariant={mapTileVariant}
           courseColorMode={courseColorMode}
           isFocusMode={isFinalizedFocusMode}
@@ -588,9 +642,10 @@ export const JapanResortMap = memo(function JapanResortMap({
         />
         <FinalizedGeoJsonLayer
           collection={courseFeatureCollection}
+          outlineCollection={courseOutlineFeatureCollection}
           pane={FINALIZED_COURSE_PANE}
           featureKind="course"
-          hitWeight={18}
+          hitWeight={finalizedHitWeight}
           mapTileVariant={mapTileVariant}
           courseColorMode={courseColorMode}
           isFocusMode={isFinalizedFocusMode}
@@ -605,17 +660,21 @@ export const JapanResortMap = memo(function JapanResortMap({
           selectedLift={selectedLift}
           bottomPaddingRatio={selectedViewportBottomPaddingRatio}
         />
-        {hasFinalizedLifts && (
-          <FinalizedLiftNameLabels
-            lifts={finalizedLifts}
-            selectedFeature={selectedFinalizedFeature}
-          />
-        )}
-        {hasFinalizedCourses && (
-          <FinalizedCourseNameLabels
-            courses={finalizedCourses}
-            selectedFeature={selectedFinalizedFeature}
-          />
+        {(hasFinalizedCourses || hasFinalizedLifts) && (
+          <>
+            <FinalizedLineOverlay
+              courses={finalizedCourses}
+              lifts={finalizedLifts}
+              selectedFeature={selectedFinalizedFeature}
+              onSelectFeature={setSelectedFinalizedFeature}
+              showOpenOnly={showOpenFinalizedOnly}
+            />
+            <FinalizedSelectionInteractionController
+              enabled={interactionMode === "detail"}
+              hasSelection={selectedFinalizedFeature !== null}
+              onDeselect={handleDeselectFinalizedFeature}
+            />
+          </>
         )}
         {selectedElevationProfilePoint && selectedCourses && (
           <ElevationProfileMapMarker
@@ -670,7 +729,8 @@ export const JapanResortMap = memo(function JapanResortMap({
             bottomPaddingRatio={mapControlBottomPaddingRatio}
             mapTileVariant={mapTileVariant}
             onMapTileVariantChange={setMapTileVariant}
-            hideMobileTileVariantControl={mapPresentation === "default"}
+            showTileVariantControl={!hasFinalizedFeatures}
+            showHomeButton={interactionMode !== "detail"}
             onUserMapInteraction={onUserMapInteraction}
             onUserMapZoomInteraction={onUserMapZoomInteraction}
           />
@@ -710,29 +770,31 @@ export const JapanResortMap = memo(function JapanResortMap({
           onUserMapInteraction={onUserMapInteraction}
           onUserMapZoomInteraction={onUserMapZoomInteraction}
         />
+        <SmoothWheelZoomController
+          enabled={!isPreviewMap && interactionMode === "detail"}
+          onUserMapZoomInteraction={onUserMapZoomInteraction}
+        />
         <MapZoomSettingsController
           initialZoom={initialZoom}
           zoomSnap={zoomSettings.zoomSnap}
           zoomDelta={zoomSettings.zoomDelta}
         />
       </MapContainer>
-      {!isPreviewMap && (
-        <div className="absolute left-4 z-[750] flex flex-col gap-2 items-start pointer-events-none top-[calc(env(safe-area-inset-top,0px)+4.25rem)] md:top-4">
-          <div className="pointer-events-auto">
-            <FinalizedMapModeControl
+      {!isPreviewMap && hasFinalizedFeatures && (
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-[750] flex justify-end pl-2 pb-[calc(env(safe-area-inset-bottom,0px)+1.5rem)]"
+          style={{ paddingRight: `${toolbarRightOverlap + 8}px` }}
+        >
+          <div className="pointer-events-auto max-w-full">
+            <FinalizedMapToolbar
               mode={courseColorMode}
               onModeChange={setCourseColorMode}
               hasCourses={hasFinalizedCourses}
               hasLifts={hasFinalizedLifts}
               showOpenOnly={showOpenFinalizedOnly}
               onShowOpenOnlyChange={setShowOpenFinalizedOnly}
-            />
-          </div>
-          <div className="pointer-events-auto">
-            <FinalizedMapLegend
-              mode={courseColorMode}
-              hasCourses={hasFinalizedCourses}
-              hasLifts={hasFinalizedLifts}
+              mapTileVariant={mapTileVariant}
+              onMapTileVariantChange={setMapTileVariant}
             />
           </div>
         </div>

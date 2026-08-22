@@ -175,19 +175,15 @@ html body .leaflet-container {
   font-family: inherit;
 }
 
+/* タイルの色調整。
+   フィルタはレイヤーのコンテナ（.gsi-tile-layer-*）にだけ掛ける。
+   タイル 1 枚ずつに掛けると、そのタイルが独立してラスタライズされ、
+   分数ズームでは端がアンチエイリアスされてタイル境界に線が出る。 */
 html body [data-map-tile-variant="pale"] .gsi-tile-layer-pale {
   filter: saturate(0.92) contrast(0.98) brightness(1.02);
 }
 
-html body [data-map-tile-variant="pale"] .leaflet-tile {
-  filter: saturate(0.92) contrast(0.98) brightness(1.02);
-}
-
 html body [data-map-tile-variant="photo"] .gsi-tile-layer-photo {
-  filter: saturate(0.78) contrast(0.9) brightness(1.08);
-}
-
-html body [data-map-tile-variant="photo"] .leaflet-tile {
   filter: saturate(0.78) contrast(0.9) brightness(1.08);
 }
 
@@ -200,44 +196,23 @@ html
 
 html
   body
-  [data-map-finalized-focus="true"][data-map-tile-variant="pale"]
-  .leaflet-tile {
-  filter: saturate(0.58) contrast(0.82) brightness(1.14);
-}
-
-html
-  body
   [data-map-finalized-focus="true"][data-map-tile-variant="photo"]
   .gsi-tile-layer-photo {
   filter: saturate(0.62) contrast(0.82) brightness(1.15);
 }
 
-html
-  body
-  [data-map-finalized-focus="true"][data-map-tile-variant="photo"]
-  .leaflet-tile {
-  filter: saturate(0.62) contrast(0.82) brightness(1.15);
-}
-
+/* 斜度モードでは地図側を白黒にして、斜度の色だけが目に入るようにする */
 html
   body
   [data-map-course-color-mode="slope"][data-map-tile-variant="pale"]
-  .gsi-tile-layer-pale,
-html
-  body
-  [data-map-course-color-mode="slope"][data-map-tile-variant="pale"]
-  .leaflet-tile {
+  .gsi-tile-layer-pale {
   filter: grayscale(1) contrast(0.9) brightness(1.08);
 }
 
 html
   body
   [data-map-course-color-mode="slope"][data-map-tile-variant="photo"]
-  .gsi-tile-layer-photo,
-html
-  body
-  [data-map-course-color-mode="slope"][data-map-tile-variant="photo"]
-  .leaflet-tile {
+  .gsi-tile-layer-photo {
   filter: grayscale(1) contrast(0.92) brightness(1.06);
 }
 
@@ -417,16 +392,45 @@ html body .course-profile-label {
   white-space: nowrap;
 }
 
+/* ---- コース・リフトの線 ---------------------------------------------- */
+
+/* 線幅にトランジションは掛けない。SVG の paint プロパティの遷移は
+   合成できないため、数百〜千本の線では毎フレーム全体を塗り直すことになり
+   ズーム直後に強い引っ掛かりが出る。 */
+
 html body .finalized-lift-flow {
-  animation: finalized-lift-flow 2s linear infinite;
+  animation: finalized-lift-flow 1.6s linear infinite;
 }
 
 html body .finalized-lift-flow-fast {
-  animation-duration: 0.8s;
+  animation-duration: 0.9s;
 }
 
 html body .finalized-lift-flow-slow {
   animation-duration: 2.4s;
+}
+
+/* 一部運休のリフトは流れる破線ではなく赤い点滅で示す。
+   動き = 運行中 という符号を守りつつ、注意を引く。 */
+html body .finalized-lift-blink {
+  animation: finalized-lift-blink 1.2s ease-in-out infinite;
+}
+
+@keyframes finalized-lift-blink {
+  0%,
+  100% {
+    stroke-opacity: 1;
+  }
+
+  50% {
+    stroke-opacity: 0.22;
+  }
+}
+
+/* パン・ズーム中はアニメーションを止める（FR-1.6） */
+html body [data-map-interacting="true"] .finalized-lift-flow,
+html body [data-map-interacting="true"] .finalized-lift-blink {
+  animation-play-state: paused;
 }
 
 @keyframes finalized-lift-flow {
@@ -439,240 +443,118 @@ html body .finalized-lift-flow-slow {
   }
 }
 
-html body .finalized-course-name-label-icon {
-  background: transparent;
-  border: 0;
+@media (prefers-reduced-motion: reduce) {
+  html body .finalized-lift-flow,
+  html body .finalized-lift-blink {
+    animation: none;
+  }
+}
+
+/* ---- 進行方向の矢羽 -------------------------------------------------- */
+
+/* 線色に依存しない白い矢羽 + 薄い暗色の縁。細い線の上でも向きが読める
+   （FR-4.2）。線幅ではなく画面上の読みやすさでサイズを決めている。 */
+html body .finalized-direction-mark {
+  fill: #ffffff;
+  fill-opacity: 0.97;
+  stroke: rgba(15, 23, 42, 0.55);
+  stroke-width: 0.8;
+  stroke-linejoin: round;
   pointer-events: none;
 }
 
-html body .finalized-course-name-label {
-  align-items: center;
-  color: #0f172a;
-  display: inline-flex;
-  font-family:
-    "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo,
-    sans-serif;
-  font-size: 12px;
-  font-weight: 900;
-  height: 24px;
-  justify-content: center;
-  line-height: 1;
-  pointer-events: none;
-  transform-origin: center;
-  white-space: nowrap;
-  width: 100%;
-  text-shadow:
-    0 0 2px #ffffff,
-    0 0 4px #ffffff,
-    0 1px 2px rgba(255, 255, 255, 0.95),
-    0 2px 5px rgba(15, 23, 42, 0.35);
+/* 何かを選択しているときは、他の線の記号を沈ませる（FR-6.2） */
+html body .finalized-direction-mark.is-dimmed {
+  fill-opacity: 0.45;
+  stroke: rgba(15, 23, 42, 0.22);
 }
 
-html body .finalized-course-name-label-selected {
-  color: #7c2d12;
-  text-shadow:
-    0 0 2px #ffffff,
-    0 0 5px #fef08a,
-    0 2px 5px rgba(15, 23, 42, 0.35);
+html body .finalized-direction-mark.is-selected {
+  fill: #fffbeb;
+  stroke: rgba(15, 23, 42, 0.8);
+  stroke-width: 1;
 }
 
-html body .finalized-course-name-label-svg {
+/* ---- コース名・リフト名 ---------------------------------------------- */
+
+html body .finalized-line-overlay-svg {
   position: absolute;
-  overflow: visible;
+  left: 0;
+  top: 0;
   pointer-events: none;
 }
 
-html body .finalized-course-name-label-svg.is-map-zooming {
-  opacity: 0;
-}
-
-html body .finalized-course-name-label-svg path {
-  fill: none;
-  stroke: none;
-}
-
-html body .finalized-course-name-label-text,
-html body .finalized-course-name-label-text-halo,
-html body .finalized-course-name-label-text-fill {
-  dominant-baseline: central;
+html body .finalized-line-label-text {
   font-family:
     "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo,
     sans-serif;
-  font-size: 12px;
   font-weight: 900;
   letter-spacing: 0;
   paint-order: stroke fill;
   pointer-events: none;
+  dominant-baseline: central;
 }
 
-html body .finalized-course-name-label-text-halo {
+/* ハローは font-size の 0.29 倍。旧実装の 5px は 12px の文字に対して
+   太すぎ、文字が潰れて読めなかった（FR-3.6）。 */
+html body .finalized-line-label-halo {
   fill: none;
   stroke: #ffffff;
+  stroke-width: 3.5px;
   stroke-linejoin: round;
-  stroke-width: 5px;
 }
 
-html body .finalized-course-name-label-text-fill {
+html body .finalized-line-label-fill {
   fill: #0f172a;
-  stroke: rgba(255, 255, 255, 0.86);
-  stroke-linejoin: round;
-  stroke-width: 1.2px;
-}
-
-html
-  body
-  .finalized-course-name-label-text-halo.finalized-course-name-label-text-horizontal {
-  stroke-width: 4px;
-}
-
-html
-  body
-  .finalized-course-name-label-text-fill.finalized-course-name-label-text-horizontal {
   stroke: none;
 }
 
-html
-  body
-  .finalized-course-name-label-text-halo.finalized-course-name-label-text-selected {
-  stroke: #fef08a;
-  stroke-width: 5.5px;
+/* 「営業中のみ」で沈ませたラベル。線と同じくらいまで薄くして、
+   営業中のコースだけがはっきり読める状態にする。 */
+html body .finalized-line-label-text.is-muted.finalized-line-label-fill {
+  fill: #64748b;
+  fill-opacity: 0.34;
 }
 
-html
-  body
-  .finalized-course-name-label-text-fill.finalized-course-name-label-text-selected {
+html body .finalized-line-label-text.is-muted.finalized-line-label-halo {
+  stroke-opacity: 0.3;
+}
+
+/* 何かを選択しているときの、それ以外のラベル（group 側に付く） */
+html body .finalized-line-labels .is-dimmed .finalized-line-label-fill {
+  fill: #64748b;
+  fill-opacity: 0.7;
+}
+
+html body .finalized-line-labels .is-dimmed .finalized-line-label-halo {
+  stroke-opacity: 0.55;
+}
+
+html body .finalized-line-label-course.finalized-line-label-fill.is-selected {
   fill: #7c2d12;
-  stroke: rgba(255, 255, 255, 0.9);
 }
 
-html
-  body
-  .finalized-course-name-label-text-halo.finalized-course-name-label-text-horizontal.finalized-course-name-label-text-selected {
-  stroke-width: 4.4px;
+html body .finalized-line-label-course.finalized-line-label-halo.is-selected {
+  stroke: #fef08a;
+  stroke-width: 4.2px;
 }
 
-html
-  body
-  .finalized-course-name-label-text-fill.finalized-course-name-label-text-horizontal.finalized-course-name-label-text-selected {
-  stroke: none;
-}
-
-html body .finalized-lift-name-label-icon {
-  background: transparent;
-  border: 0;
-  pointer-events: none;
-}
-
-html body .finalized-lift-name-label-svg {
-  position: absolute;
-  overflow: visible;
-  pointer-events: none;
-}
-
-html body .finalized-lift-name-label-svg.is-map-zooming {
-  opacity: 0;
-}
-
-html body .finalized-lift-name-label-svg path {
-  fill: none;
-  stroke: none;
-}
-
-html body .finalized-lift-name-label-text,
-html body .finalized-lift-name-label-text-halo,
-html body .finalized-lift-name-label-text-fill {
-  dominant-baseline: central;
-  font-family:
-    "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo,
-    sans-serif;
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0;
-  paint-order: stroke fill;
-  pointer-events: none;
-}
-
-html body .finalized-lift-name-label-text-halo {
-  fill: none;
-  stroke: #ffffff;
-  stroke-linejoin: round;
-  stroke-width: 5px;
-}
-
-html body .finalized-lift-name-label-text-fill {
-  fill: #111827;
-  stroke: rgba(255, 255, 255, 0.9);
-  stroke-linejoin: round;
-  stroke-width: 1.2px;
-}
-
-html
-  body
-  .finalized-lift-name-label-text-halo.finalized-lift-name-label-text-horizontal {
-  stroke-width: 3.4px;
-}
-
-html
-  body
-  .finalized-lift-name-label-text-fill.finalized-lift-name-label-text-horizontal {
-  stroke: none;
-}
-
-html
-  body
-  .finalized-lift-name-label-text-halo.finalized-lift-name-label-text-selected {
-  stroke: #dbeafe;
-  stroke-width: 5.5px;
-}
-
-html
-  body
-  .finalized-lift-name-label-text-fill.finalized-lift-name-label-text-selected {
+html body .finalized-line-label-lift.finalized-line-label-fill.is-selected {
   fill: #1d4ed8;
-  stroke: rgba(255, 255, 255, 0.92);
 }
 
-html
-  body
-  .finalized-lift-name-label-text-halo.finalized-lift-name-label-text-horizontal.finalized-lift-name-label-text-selected {
-  stroke-width: 3.8px;
+html body .finalized-line-label-lift.finalized-line-label-halo.is-selected {
+  stroke: #dbeafe;
+  stroke-width: 4.2px;
 }
 
-html
-  body
-  .finalized-lift-name-label-text-fill.finalized-lift-name-label-text-horizontal.finalized-lift-name-label-text-selected {
+/* ラベル自体をタップで選択できるようにする（FR-3.13）。
+   ペインは pointer-events: none なので、この矩形だけが拾う。 */
+html body .finalized-line-label-hit {
+  fill: transparent;
   stroke: none;
-}
-
-html body .finalized-lift-name-label {
-  align-items: center;
-  color: #111827;
-  display: inline-flex;
-  font-family:
-    "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo,
-    sans-serif;
-  font-size: 11px;
-  font-weight: 900;
-  height: 22px;
-  justify-content: center;
-  line-height: 1;
-  pointer-events: none;
-  transform-origin: center;
-  white-space: nowrap;
-  width: 100%;
-  text-shadow:
-    0 0 2px #ffffff,
-    0 0 4px #ffffff,
-    0 1px 2px rgba(255, 255, 255, 0.95),
-    0 2px 5px rgba(15, 23, 42, 0.4);
-}
-
-html body .finalized-lift-name-label-selected {
-  color: #1d4ed8;
-  text-shadow:
-    0 0 2px #ffffff,
-    0 0 5px #dbeafe,
-    0 2px 5px rgba(15, 23, 42, 0.42);
+  cursor: pointer;
+  pointer-events: auto;
 }
 
 /* Allow scrolling through hidden tab content in shadcn Tabs */
