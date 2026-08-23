@@ -149,6 +149,22 @@ export const toReadableAngle = (angle: number): number => {
 };
 
 /**
+ * 画面上で天地が逆さになる角度だけ 180° 回す。
+ *
+ * 線の向き（山頂側 → 麓側）はできるだけ残したいので、読める範囲に入っている
+ * うちは触らない。真下向き（90°）は「上から下へ」読む形なのでそのまま、
+ * 真上向き（-90°）だけ裏返して下向きに揃える。
+ */
+export const toUprightAngle = (angle: number): number => {
+  let normalized = angle;
+  while (normalized > 180) normalized -= 360;
+  while (normalized <= -180) normalized += 360;
+  if (normalized > 90) return normalized - 180;
+  if (normalized <= -90) return normalized + 180;
+  return normalized;
+};
+
+/**
  * 線の長さと目標間隔から、配置する距離のリストを返す。
  * 両端から margin だけ離し、間隔は spacing の 0.67〜1.5 倍に収まる。
  */

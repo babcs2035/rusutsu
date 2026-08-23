@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { SelectedMapFeature } from "@/features/map/JapanResortMap";
+import type { SelectedMapFeature } from "@/features/map/types";
 import type { FinalizedResortMapData } from "@/lib/finalizedResortGeojsonShared";
 import {
   COURSE_DIFFICULTY_META,

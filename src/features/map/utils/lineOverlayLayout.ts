@@ -21,6 +21,7 @@ import {
   type OrientedRect,
   orientedRectsOverlap,
   refineAnchor,
+  toUprightAngle,
 } from "./lineLayout";
 
 export type OverlayKind = "course" | "lift";
@@ -149,9 +150,10 @@ export const collectLabelCandidates = ({
         span: labelWidth,
         searchRadius: Math.min(line.length * 0.06, 36),
       });
-      // 文字は線の向きそのままに沿わせる。呼び出し側が山頂側を始点にした
-      // 点列を渡すので、コースもリフトも山頂側から書き始まる。
-      const angle = anchor.angle;
+      // 文字は線の向きに沿わせる。呼び出し側が山頂側を始点にした点列を渡すので、
+      // コースもリフトも山頂側から書き始まる。ただし地図を回すと画面上で
+      // 天地が逆になることがあるので、そこだけ 180° 折り返す。
+      const angle = toUprightAngle(anchor.angle);
       const boxWidth = labelWidth;
       const boxHeight = labelHeight;
 

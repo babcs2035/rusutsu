@@ -1,6 +1,5 @@
 "use client";
 
-import L from "leaflet";
 import { useCallback, useState } from "react";
 import type { MapSkiResort } from "@/types/skiResorts";
 import {
@@ -15,14 +14,15 @@ import type {
   CandidateEvaluation,
   CandidatePlacement,
   LabelLayout,
+  MapPoint,
   MapPointEntry,
+  MapProjection,
   Rect,
   Segment,
 } from "../types";
 import {
   createDenseFallbackCandidates,
   createExpandedLabelViewport,
-  createLabelCandidateBounds,
   createPrimaryCandidates,
   createSimpleVerticalCandidates,
   distancePointToRect,
@@ -85,7 +85,7 @@ export const useJapanMapLabelLayout = ({
   const [mapZoom, setMapZoom] = useState(initialZoom);
 
   const updateLabelLayout = useCallback(
-    (map: L.Map) => {
+    (map: MapProjection) => {
       const currentZoom = map.getZoom();
       setMapZoom(currentZoom);
 
@@ -120,21 +120,19 @@ export const useJapanMapLabelLayout = ({
 
       const mapSize = map.getSize();
       const labelViewport = createExpandedLabelViewport(mapSize);
-      const labelCandidateBounds = createLabelCandidateBounds(
-        map,
-        labelViewport,
-      );
       const labelHeight = measureLabelHeight();
+      const isInsideLabelViewport = (point: MapPoint) =>
+        point.x >= labelViewport.left &&
+        point.x <= labelViewport.right &&
+        point.y >= labelViewport.top &&
+        point.y <= labelViewport.bottom;
 
       const placedCollisionRects: Rect[] = [];
       const placedActualRects: Rect[] = [];
       const placedLeaderSegments: Segment[] = [];
 
       const visibleCandidates = resorts.filter(resort =>
-        labelCandidateBounds.contains([
-          resort.latitude,
-          resort.longitude,
-        ] as L.LatLngTuple),
+        isInsideLabelViewport(map.project(resort.latitude, resort.longitude)),
       );
       const labelCandidates = visibleCandidates.filter(resort => {
         if (currentZoom < labelShowZoom) {
@@ -174,13 +172,10 @@ export const useJapanMapLabelLayout = ({
         return b.numberOfCourses - a.numberOfCourses;
       });
 
-      const pointById = new Map<string, L.Point>(
+      const pointById = new Map<string, MapPoint>(
         sortedCandidates.map(resort => [
           resort.id,
-          map.latLngToContainerPoint([
-            resort.latitude,
-            resort.longitude,
-          ] as L.LatLngTuple),
+          map.project(resort.latitude, resort.longitude),
         ]),
       );
 
@@ -245,8 +240,9 @@ export const useJapanMapLabelLayout = ({
           placedCollisionRects.push(acceptedCollisionRect);
           placedActualRects.push(acceptedRect);
 
-          const labelTopLeftLatLng = map.containerPointToLatLng(
-            L.point(acceptedRect.left, acceptedRect.top),
+          const labelTopLeftLatLng = map.unproject(
+            acceptedRect.left,
+            acceptedRect.top,
           );
 
           nextLayouts[resort.id] = {
@@ -258,6 +254,7 @@ export const useJapanMapLabelLayout = ({
               x: acceptedRect.left - point.x,
               y: acceptedRect.top - point.y,
             },
+            leaderEndOffsetPx: { x: 0, y: 0 },
           };
         }
 
@@ -433,11 +430,13 @@ export const useJapanMapLabelLayout = ({
           placedLeaderSegments.push(accepted.leaderSegment);
         }
 
-        const labelTopLeftLatLng = map.containerPointToLatLng(
-          L.point(accepted.rect.left, accepted.rect.top),
+        const labelTopLeftLatLng = map.unproject(
+          accepted.rect.left,
+          accepted.rect.top,
         );
-        const leaderEndLatLng = map.containerPointToLatLng(
-          L.point(accepted.leaderSegment.x2, accepted.leaderSegment.y2),
+        const leaderEndLatLng = map.unproject(
+          accepted.leaderSegment.x2,
+          accepted.leaderSegment.y2,
         );
 
         nextLayouts[resort.id] = {
@@ -448,6 +447,10 @@ export const useJapanMapLabelLayout = ({
           labelOffsetPx: {
             x: accepted.rect.left - point.x,
             y: accepted.rect.top - point.y,
+          },
+          leaderEndOffsetPx: {
+            x: accepted.leaderSegment.x2 - point.x,
+            y: accepted.leaderSegment.y2 - point.y,
           },
         };
       }

@@ -1,6 +1,9 @@
 import type L from "leaflet";
 import type { MapTileVariant } from "./types";
 
+/** next.config.ts の basePath。public/ 配下の実ファイルを指すのに使う */
+export const BASE_PATH = "/rusutsu";
+
 export const INITIAL_CENTER: L.LatLngTuple = [38.25, 138.0];
 export const MOBILE_INITIAL_ZOOM = 5;
 export const DESKTOP_INITIAL_ZOOM = 6;

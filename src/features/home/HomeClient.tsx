@@ -27,7 +27,7 @@ import {
 import type {
   ElevationProfileMapPoint,
   SelectedMapFeature,
-} from "@/features/map/JapanResortMap";
+} from "@/features/map/types";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
 import type {
@@ -72,8 +72,8 @@ export function HomeClient({ initialResorts }: Props) {
     () =>
       dynamic(
         () =>
-          import("@/features/map/JapanResortMap").then(
-            mod => mod.JapanResortMap,
+          import("@/features/map/MapLibreResortMap").then(
+            mod => mod.MapLibreResortMap,
           ),
         {
           loading: () => <LoadingSpinner text="地図を読み込んでいます..." />,

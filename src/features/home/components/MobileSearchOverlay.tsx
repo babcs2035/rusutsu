@@ -108,7 +108,7 @@ export const MobileSearchOverlay = ({
           }
         >
           <div className="relative min-w-0 h-12 rounded-full bg-white border border-gray-200 shadow-[0_10px_30px_rgba(15,23,42,0.12)] overflow-hidden outline-none">
-            <div className="absolute left-[8.5px] top-1/2 -translate-y-1/2 text-gray-500 tap-highlight-transparent pointer-events-none">
+            <div className="absolute left-[14px] top-1/2 -translate-y-1/2 text-gray-500 tap-highlight-transparent pointer-events-none">
               <Search size={18} />
             </div>
             <Input
@@ -117,7 +117,9 @@ export const MobileSearchOverlay = ({
               type="text"
               value={filters.keyword}
               placeholder="スキー場名を入力"
-              className="h-12 w-full rounded-full border-0 bg-transparent text-gray-800 text-base font-medium outline-none shadow-none appearance-none"
+              className={`h-12 w-full rounded-full border-0 bg-transparent pl-10 text-gray-800 text-base font-medium outline-none shadow-none appearance-none ${
+                filters.keyword ? "pr-11" : "pr-3"
+              }`}
               style={{ MozAppearance: "textfield" }}
               autoComplete="off"
               onFocus={onInputFocus}

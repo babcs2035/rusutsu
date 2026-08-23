@@ -272,7 +272,24 @@ html body .resort-point-marker.is-dimmed:hover {
   opacity: 0.95;
 }
 
+/* ラベルと引き出し線の入れ物。大きさを持たせず、点の真上に重ねる。
+   中身は点からの px のずれで置くので、ズームしてもラベルが点から離れない。 */
+html body .resort-label-anchor {
+  position: relative;
+  width: 0;
+  height: 0;
+}
+
+html body .resort-leader-line {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
 html body .resort-name-label {
+  position: absolute;
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(15, 23, 42, 0.28);
   border-radius: 8px;
@@ -287,8 +304,6 @@ html body .resort-name-label {
   line-height: 1.2;
   padding: 4px 8px;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.85);
-  display: inline-block;
-  width: fit-content;
   white-space: nowrap;
   transition:
     background-color 0.15s ease,
@@ -555,6 +570,103 @@ html body .finalized-line-label-hit {
   stroke: none;
   cursor: pointer;
   pointer-events: auto;
+}
+
+/* MapLibre の Marker に載せる DOM ラベル。
+   SVG の paint-order が使えないので、白い影を四方に重ねてハローを作る。
+   線に沿わせた角度は Marker の rotation 側で当てている。 */
+html body .finalized-line-label {
+  font-family:
+    "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo,
+    sans-serif;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1;
+  white-space: nowrap;
+  color: #0f172a;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  text-shadow:
+    -1.6px -1.6px 0 #ffffff,
+    1.6px -1.6px 0 #ffffff,
+    -1.6px 1.6px 0 #ffffff,
+    1.6px 1.6px 0 #ffffff,
+    0 -2px 0 #ffffff,
+    0 2px 0 #ffffff,
+    -2px 0 0 #ffffff,
+    2px 0 0 #ffffff;
+}
+
+/* 「営業中のみ」で沈ませたラベル。線と同じくらいまで薄くして、
+   営業中のコースだけがはっきり読める状態にする。 */
+html body .finalized-line-label.is-muted {
+  color: #64748b;
+  opacity: 0.42;
+}
+
+html body .finalized-line-label-course.is-selected {
+  color: #7c2d12;
+}
+
+html body .finalized-line-label-lift.is-selected {
+  color: #1d4ed8;
+}
+
+/* 断面図と連動する地図上の点。丸と吹き出しをひとつの要素にまとめる。 */
+html body .course-profile-marker {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  cursor: grab;
+}
+
+html body .course-profile-marker:active {
+  cursor: grabbing;
+}
+
+html body .course-profile-marker-ring {
+  position: absolute;
+  inset: 0;
+  border: 2.5px solid #111827;
+  border-radius: 999px;
+  background: transparent;
+}
+
+html body .course-profile-marker .course-profile-label {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+html body .course-profile-marker[data-placement="top"] .course-profile-label {
+  bottom: calc(100% + 10px);
+}
+
+html body .course-profile-marker[data-placement="bottom"] .course-profile-label {
+  top: calc(100% + 10px);
+}
+
+/* 比較モードでマーカーから開く吹き出し。 */
+html body .resort-action-popup {
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.16),
+    0 8px 24px rgba(15, 23, 42, 0.24);
+  padding: 10px 12px;
+}
+
+html body .resort-action-popup::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 12px;
+  height: 12px;
+  background: #ffffff;
+  transform: translate(-50%, -60%) rotate(45deg);
+  box-shadow: 2px 2px 4px rgba(15, 23, 42, 0.12);
 }
 
 /* Allow scrolling through hidden tab content in shadcn Tabs */

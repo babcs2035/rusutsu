@@ -31,7 +31,7 @@ export const MobileSearchTopBarShell = ({
           onSubmit(e as unknown as FormEvent<HTMLElement>);
         }}
       >
-        <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2.5">
+        <div className="grid w-full grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-center gap-2.5">
           <div className="min-w-0">{children}</div>
           {action}
         </div>
@@ -41,7 +41,7 @@ export const MobileSearchTopBarShell = ({
 
   return (
     <div className={baseClasses}>
-      <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2.5">
+      <div className="grid w-full grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-center gap-2.5">
         <div className="min-w-0">{children}</div>
         {action}
       </div>

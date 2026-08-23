@@ -260,7 +260,7 @@ export const HomeLayout = ({
     >
       <div className="h-full w-full relative flex flex-col bg-white">
         {shouldShowMobileTopChrome && (
-          <div className="fixed top-0 right-0 left-0 z-[150] hide-desktop flex-col gap-2 px-4 pb-2 bg-white border-b border-gray-100">
+          <div className="fixed top-0 right-0 left-0 z-[150] hide-desktop flex-col gap-2 pb-2 bg-white border-b border-gray-100">
             {shouldShowMobileSearchButton && (
               <MobileSearchHeader
                 activeTab={mobileContentTab}

@@ -1,4 +1,3 @@
-import L from "leaflet";
 import {
   DENSE_LABEL_SEARCH_MAX_RADIUS_PX,
   LABEL_MARGIN,
@@ -6,7 +5,7 @@ import {
   LABEL_PREFETCH_PADDING_RATIO,
   PRIMARY_LABEL_SEARCH_MAX_RADIUS_PX,
 } from "../constants";
-import type { CandidatePlacement, Rect, Segment } from "../types";
+import type { CandidatePlacement, MapPoint, Rect, Segment } from "../types";
 
 const pointInRect = (x: number, y: number, rect: Rect) =>
   x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
@@ -26,14 +25,14 @@ export const expandRect = (rect: Rect, padding: number): Rect => ({
 
 export const rectContainsPoint = (
   rect: Rect,
-  point: L.Point,
+  point: MapPoint,
   padding = 0,
 ): boolean => {
   const expanded = expandRect(rect, padding);
   return pointInRect(point.x, point.y, expanded);
 };
 
-export const distancePointToRect = (point: L.Point, rect: Rect): number => {
+export const distancePointToRect = (point: MapPoint, rect: Rect): number => {
   const dx =
     point.x < rect.left
       ? rect.left - point.x
@@ -111,7 +110,7 @@ export const segmentIntersectsRect = (segment: Segment, rect: Rect) => {
 };
 
 export const distancePointToSegment = (
-  point: L.Point,
+  point: MapPoint,
   segment: Segment,
 ): number => {
   const dx = segment.x2 - segment.x1;
@@ -132,14 +131,14 @@ export const distancePointToSegment = (
   return Math.hypot(point.x - projX, point.y - projY);
 };
 
-export const getLeaderEndPoint = (point: L.Point, rect: Rect): L.Point => {
+export const getLeaderEndPoint = (point: MapPoint, rect: Rect): MapPoint => {
   const centerX = (rect.left + rect.right) / 2;
   const centerY = (rect.top + rect.bottom) / 2;
   const dx = centerX - point.x;
   const dy = centerY - point.y;
 
   if (Math.abs(dx) < 1e-7 && Math.abs(dy) < 1e-7) {
-    return L.point(centerX, centerY);
+    return { x: centerX, y: centerY };
   }
 
   const candidates: Array<{ t: number; x: number; y: number }> = [];
@@ -170,13 +169,13 @@ export const getLeaderEndPoint = (point: L.Point, rect: Rect): L.Point => {
     const best = candidates.reduce((prev, current) =>
       current.t < prev.t ? current : prev,
     );
-    return L.point(best.x, best.y);
+    return { x: best.x, y: best.y };
   }
 
-  return L.point(
-    Math.max(rect.left, Math.min(point.x, rect.right)),
-    Math.max(rect.top, Math.min(point.y, rect.bottom)),
-  );
+  return {
+    x: Math.max(rect.left, Math.min(point.x, rect.right)),
+    y: Math.max(rect.top, Math.min(point.y, rect.bottom)),
+  };
 };
 
 export const createSimpleVerticalCandidates = ({
@@ -185,7 +184,7 @@ export const createSimpleVerticalCandidates = ({
   labelHeight,
   pointGap,
 }: {
-  point: L.Point;
+  point: MapPoint;
   labelWidth: number;
   labelHeight: number;
   pointGap: number;
@@ -209,10 +208,10 @@ export const createPrimaryCandidates = ({
   shouldForceLeaderLine,
   pointGap,
 }: {
-  point: L.Point;
+  point: MapPoint;
   labelWidth: number;
   labelHeight: number;
-  mapSize: L.Point;
+  mapSize: MapPoint;
   useAdvancedLayout: boolean;
   shouldForceLeaderLine: boolean;
   pointGap: number;
@@ -278,10 +277,10 @@ export const createDenseFallbackCandidates = ({
   labelHeight,
   mapSize,
 }: {
-  point: L.Point;
+  point: MapPoint;
   labelWidth: number;
   labelHeight: number;
-  mapSize: L.Point;
+  mapSize: MapPoint;
 }): CandidatePlacement[] => {
   const candidates: CandidatePlacement[] = [];
   const maxRadius = Math.min(
@@ -307,7 +306,7 @@ export const createDenseFallbackCandidates = ({
   return candidates;
 };
 
-export const createExpandedLabelViewport = (mapSize: L.Point): Rect => {
+export const createExpandedLabelViewport = (mapSize: MapPoint): Rect => {
   const paddingX = Math.max(
     mapSize.x * LABEL_PREFETCH_PADDING_RATIO,
     LABEL_PREFETCH_MIN_PADDING_PX,
@@ -324,17 +323,6 @@ export const createExpandedLabelViewport = (mapSize: L.Point): Rect => {
     bottom: mapSize.y + paddingY,
   };
 };
-
-export const createLabelCandidateBounds = (
-  map: L.Map,
-  labelViewport: Rect,
-): L.LatLngBounds =>
-  L.latLngBounds(
-    map.containerPointToLatLng(L.point(labelViewport.left, labelViewport.top)),
-    map.containerPointToLatLng(
-      L.point(labelViewport.right, labelViewport.bottom),
-    ),
-  );
 
 export const isRectInsideLabelViewport = (
   rect: Rect,

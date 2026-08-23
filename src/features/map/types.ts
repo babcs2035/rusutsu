@@ -5,6 +5,33 @@ import type {
 } from "@/lib/finalizedResortGeojsonShared";
 import type { MapSkiResort } from "@/types/skiResorts";
 
+/** 画面上の座標（px）。地図ライブラリの Point 型に依存しないための最小の形 */
+export type MapPoint = {
+  x: number;
+  y: number;
+};
+
+/**
+ * 地図の投影だけを取り出したもの。
+ * ラベル配置のロジックを地図ライブラリから切り離すために使う。
+ */
+export type MapProjection = {
+  getZoom: () => number;
+  getSize: () => MapPoint;
+  /** 緯度経度 → 画面座標（px） */
+  project: (latitude: number, longitude: number) => MapPoint;
+  /** 画面座標（px） → 緯度経度 */
+  unproject: (x: number, y: number) => { lat: number; lng: number };
+};
+
+/** 地図の表示範囲。地図ライブラリの Bounds 型に依存しないための最小の形 */
+export type MapBounds = {
+  south: number;
+  west: number;
+  north: number;
+  east: number;
+};
+
 export type Rect = {
   left: number;
   right: number;
@@ -24,7 +51,13 @@ export type LabelLayout = {
   leaderEndPosition: L.LatLngTuple;
   showLeaderLine: boolean;
   labelWidth: number;
+  /** 点からラベル左上までのずれ（px）。ラベルは点に貼り付けて置く */
   labelOffsetPx: {
+    x: number;
+    y: number;
+  };
+  /** 点から引き出し線の先端までのずれ（px） */
+  leaderEndOffsetPx: {
     x: number;
     y: number;
   };
@@ -120,7 +153,7 @@ export type JapanResortMapProps = {
   interactionMode?: "default" | "detail" | "compare";
   selectedCompareIdSet?: Set<string>;
   onToggleCompare?: (id: string, selected: boolean) => void;
-  onBoundsChange: (bounds: L.LatLngBounds) => void;
+  onBoundsChange?: (bounds: MapBounds) => void;
   onViewChange?: (view: MapViewSnapshot) => void;
   onUserMapInteraction?: () => void;
   onUserMapZoomInteraction?: () => void;

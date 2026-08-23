@@ -15,6 +15,7 @@ import { createConnectedCourseElevationProfile } from "@/features/resort-detail/
 import type { FinalizedCourseFeature } from "@/lib/finalizedResortGeojsonShared";
 import { FinalizedGeoJsonLayer } from "./components/DetailMapLayers";
 import { FinalizedLineOverlay } from "./components/DetailMapLineOverlay";
+import { FinalizedMapToolbar } from "./components/FinalizedMapToolbar";
 import {
   FinalizedSelectionInteractionController,
   LabelLayoutWatcher,
@@ -25,7 +26,7 @@ import {
   SearchViewportController,
   SelectedFinalizedFeatureViewportController,
 } from "./components/MapControllers";
-import { FinalizedMapToolbar, MapControls } from "./components/MapControls";
+import { MapControls } from "./components/MapControls";
 import { ResortActionPopup } from "./components/ResortActionPopup";
 import { ResortMarkersLayer } from "./components/ResortMarkersLayer";
 import { SmoothWheelZoomController } from "./components/SmoothWheelZoomController";
@@ -70,6 +71,7 @@ import type {
 } from "./types";
 import { toLatLngTuple } from "./utils/finalizedMapData";
 import { createNameLabelIcon, measureLabelHeight } from "./utils/leafletIcons";
+import { createLeafletProjection } from "./utils/leafletProjection";
 import { getResortDisplayName } from "./utils/resortLabels";
 import {
   getResortPriority,
@@ -539,10 +541,21 @@ export const JapanResortMap = memo(function JapanResortMap({
       }),
     [filteredResortIdSet, isFilterActive, selectedResortIdSet, visibleResorts],
   );
+  const handleViewportChange = useCallback(
+    (map: L.Map) => {
+      updateLabelLayout(createLeafletProjection(map));
+    },
+    [updateLabelLayout],
+  );
   const handleBoundsChange = useCallback(
     (bounds: L.LatLngBounds) => {
       setMarkerBounds(bounds);
-      onBoundsChange(bounds);
+      onBoundsChange?.({
+        south: bounds.getSouth(),
+        west: bounds.getWest(),
+        north: bounds.getNorth(),
+        east: bounds.getEast(),
+      });
     },
     [onBoundsChange],
   );
@@ -747,7 +760,7 @@ export const JapanResortMap = memo(function JapanResortMap({
             selectedViewportBottomPaddingRatio
           }
           labelShowZoom={labelShowZoom}
-          onViewportChange={updateLabelLayout}
+          onViewportChange={handleViewportChange}
           skipCompareRecenterRef={skipCompareRecenterRef}
         />
         <SearchViewportController
@@ -757,13 +770,13 @@ export const JapanResortMap = memo(function JapanResortMap({
           searchViewportRequestKey={searchViewportRequestKey}
           searchViewportBottomPaddingRatio={searchViewportBottomPaddingRatio}
           labelShowZoom={labelShowZoom}
-          onViewportChange={updateLabelLayout}
+          onViewportChange={handleViewportChange}
         />
         <RestoreViewportController
           restoreViewRequest={restoreViewRequest}
-          onViewportChange={updateLabelLayout}
+          onViewportChange={handleViewportChange}
         />
-        <LabelLayoutWatcher onLayout={updateLabelLayout} />
+        <LabelLayoutWatcher onLayout={handleViewportChange} />
         <MapEventsHandler
           onBoundsChange={handleBoundsChange}
           onViewChange={onViewChange}

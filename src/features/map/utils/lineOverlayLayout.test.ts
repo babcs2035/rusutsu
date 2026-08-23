@@ -165,7 +165,7 @@ test("shouldSkipCourseLabel は無名と空だけを除外する", () => {
   assert.equal(shouldSkipCourseLabel("ホワイトラバー"), false);
 });
 
-test("ラベルは線の向きそのままに沿う（画面基準で折り返さない）", () => {
+test("ラベルは線の向きに沿い、天地が逆になるときだけ折り返す", () => {
   // 右下がりの線（画面上は右下方向）
   const downRight = collectLabelCandidates({
     sources: [
@@ -183,7 +183,7 @@ test("ラベルは線の向きそのままに沿う（画面基準で折り返�
   });
   assert.equal(Math.round(downRight[0]?.placement.angle ?? 0), 45);
 
-  // 逆向き（左上方向）は折り返さずそのまま -135 度になる
+  // 逆向き（左上方向）は文字が逆さになるので 180 度折り返して 45 度になる
   const upLeft = collectLabelCandidates({
     sources: [
       createSource({
@@ -198,7 +198,42 @@ test("ラベルは線の向きそのままに沿う（画面基準で折り返�
     twoLabelMinLength: 640,
     measureWidth,
   });
-  assert.equal(Math.round(upLeft[0]?.placement.angle ?? 0), -135);
+  assert.equal(Math.round(upLeft[0]?.placement.angle ?? 0), 45);
+});
+
+test("真下向きは残し、真上向きだけ下向きへ折り返す", () => {
+  // 上から下へ読ませたいので 90 度はそのまま
+  const down = collectLabelCandidates({
+    sources: [
+      createSource({
+        name: "テスト",
+        points: [
+          { x: 0, y: 0 },
+          { x: 0, y: 400 },
+        ],
+      }),
+    ],
+    zoom: 16,
+    twoLabelMinLength: 640,
+    measureWidth,
+  });
+  assert.equal(Math.round(down[0]?.placement.angle ?? 0), 90);
+
+  const up = collectLabelCandidates({
+    sources: [
+      createSource({
+        name: "テスト",
+        points: [
+          { x: 0, y: 400 },
+          { x: 0, y: 0 },
+        ],
+      }),
+    ],
+    zoom: 16,
+    twoLabelMinLength: 640,
+    measureWidth,
+  });
+  assert.equal(Math.round(up[0]?.placement.angle ?? 0), 90);
 });
 
 test("getLabelFontSize は 2 段だけ変える", () => {

@@ -41,3 +41,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# MapLibre のワーカーは scripts/copyMaplibreWorker.mjs が node_modules から複製する
+/public/maplibre/
