@@ -50,7 +50,8 @@ const SegmentedControl = <T extends string>({
   </div>
 );
 
-const DirectionMarkSample = () => (
+/** コースの滑走方向。地図上と同じ塗りつぶしの矢羽 */
+const CourseDirectionSample = () => (
   <svg
     aria-hidden="true"
     className="h-3 w-6 shrink-0"
@@ -73,6 +74,53 @@ const DirectionMarkSample = () => (
         fill="#FFFFFF"
         stroke="rgba(15,23,42,0.55)"
         strokeWidth="0.7"
+        strokeLinejoin="round"
+      />
+    ))}
+  </svg>
+);
+
+/** リフトの上り方向。地図上と同じ二重山形（≫） */
+const LIFT_CHEVRON_PATHS = [12.5, 17].map(
+  x => `M ${x - 3.4} 2.4 L ${x} 6 L ${x - 3.4} 9.6`,
+);
+
+const LiftDirectionSample = () => (
+  <svg
+    aria-hidden="true"
+    className="h-3 w-6 shrink-0"
+    viewBox="0 0 24 12"
+    role="presentation"
+  >
+    <line
+      x1="1"
+      y1="6"
+      x2="23"
+      y2="6"
+      stroke="#94A3B8"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+    />
+    {/* 白だけだと明るい背景で消えるので、暗い縁を先に敷いてから白を重ねる */}
+    {LIFT_CHEVRON_PATHS.map(d => (
+      <path
+        key={`halo-${d}`}
+        d={d}
+        fill="none"
+        stroke="rgba(15,23,42,0.55)"
+        strokeWidth="3.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    ))}
+    {LIFT_CHEVRON_PATHS.map(d => (
+      <path
+        key={`fill-${d}`}
+        d={d}
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth="1.7"
+        strokeLinecap="round"
         strokeLinejoin="round"
       />
     ))}
@@ -239,9 +287,16 @@ export const FinalizedMapToolbar = ({
                   非圧雪
                 </LegendItem>
               )}
-              <LegendItem sample={<DirectionMarkSample />}>
-                滑走・上り方向
-              </LegendItem>
+              {hasCourses && (
+                <LegendItem sample={<CourseDirectionSample />}>
+                  滑走方向
+                </LegendItem>
+              )}
+              {hasLifts && (
+                <LegendItem sample={<LiftDirectionSample />}>
+                  上り方向
+                </LegendItem>
+              )}
               {hasLifts && (
                 <>
                   <LegendItem

@@ -1,11 +1,37 @@
 import type { Map as MapLibreMap } from "maplibre-gl";
-import { ARROW_ICON_ID } from "./finalizedLayers";
+import { ARROW_ICON_ID, LIFT_ARROW_ICON_ID } from "./finalizedLayers";
 
 const ICON_SIZE = 48;
 const PIXEL_RATIO = 2;
 
+const createIconCanvas = () => {
+  const size = ICON_SIZE * PIXEL_RATIO;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const context = canvas.getContext("2d");
+  if (!context) return null;
+
+  context.scale(PIXEL_RATIO, PIXEL_RATIO);
+  return { context, size };
+};
+
+const addCanvasImage = (
+  map: MapLibreMap,
+  id: string,
+  context: CanvasRenderingContext2D,
+  size: number,
+) => {
+  const imageData = context.getImageData(0, 0, size, size);
+  map.addImage(
+    id,
+    { width: size, height: size, data: new Uint8Array(imageData.data.buffer) },
+    { pixelRatio: PIXEL_RATIO },
+  );
+};
+
 /**
- * 進行方向の矢羽。
+ * コースの滑走方向を示す矢羽。
  *
  * 線色に依存しない白い矢に薄い暗色の縁を付ける。細い線の上でも向きが読め、
  * 難易度色・斜度色のどちらにも干渉しない。
@@ -14,14 +40,10 @@ const PIXEL_RATIO = 2;
 export const registerArrowIcon = (map: MapLibreMap) => {
   if (map.hasImage(ARROW_ICON_ID)) return;
 
-  const size = ICON_SIZE * PIXEL_RATIO;
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-  const context = canvas.getContext("2d");
-  if (!context) return;
+  const canvas = createIconCanvas();
+  if (!canvas) return;
 
-  context.scale(PIXEL_RATIO, PIXEL_RATIO);
+  const { context, size } = canvas;
   const center = ICON_SIZE / 2;
   const length = ICON_SIZE * 0.72;
   const halfWidth = ICON_SIZE * 0.38;
@@ -43,10 +65,49 @@ export const registerArrowIcon = (map: MapLibreMap) => {
   context.fill();
   context.stroke();
 
-  const imageData = context.getImageData(0, 0, size, size);
-  map.addImage(
-    ARROW_ICON_ID,
-    { width: size, height: size, data: new Uint8Array(imageData.data.buffer) },
-    { pixelRatio: PIXEL_RATIO },
-  );
+  addCanvasImage(map, ARROW_ICON_ID, context, size);
+};
+
+/**
+ * リフトの上り方向を示す二重山形（≫）。
+ *
+ * 塗りつぶした矢羽だとリフトの細い線の上では塊に見えてしまうので、
+ * 線を重ねただけの開いた形にする。大きさはコースの矢羽と揃えてある。
+ */
+export const registerLiftArrowIcon = (map: MapLibreMap) => {
+  if (map.hasImage(LIFT_ARROW_ICON_ID)) return;
+
+  const canvas = createIconCanvas();
+  if (!canvas) return;
+
+  const { context, size } = canvas;
+  const center = ICON_SIZE / 2;
+  const depth = ICON_SIZE * 0.34;
+  const halfHeight = ICON_SIZE * 0.34;
+  const spacing = ICON_SIZE * 0.3;
+  const tips = [center + spacing / 2, center - spacing / 2];
+  // 2 本まとめた見た目の重心をアイコンの中央へ寄せる
+  const shift = center - (Math.max(...tips) + (Math.min(...tips) - depth)) / 2;
+
+  const strokeChevrons = () => {
+    for (const tip of tips) {
+      context.beginPath();
+      context.moveTo(tip - depth + shift, center - halfHeight);
+      context.lineTo(tip + shift, center);
+      context.lineTo(tip - depth + shift, center + halfHeight);
+      context.stroke();
+    }
+  };
+
+  context.lineCap = "round";
+  context.lineJoin = "round";
+  // 先に暗い縁を敷いてから白を重ねる。どの線色の上でも形が残る
+  context.strokeStyle = "rgba(15, 23, 42, 0.55)";
+  context.lineWidth = 9;
+  strokeChevrons();
+  context.strokeStyle = "rgba(255, 255, 255, 0.97)";
+  context.lineWidth = 5;
+  strokeChevrons();
+
+  addCanvasImage(map, LIFT_ARROW_ICON_ID, context, size);
 };

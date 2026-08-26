@@ -178,9 +178,6 @@ export async function getSkiResortById(id: string) {
       },
       latestReports: true,
       yukiMagi: true,
-      snowDepths: {
-        orderBy: { date: "asc" },
-      },
     },
   });
 
@@ -208,15 +205,6 @@ export async function getSkiResortWeather(id: string) {
     where: { skiResortId: id },
     orderBy: { date: "desc" },
     take: 7,
-  });
-}
-
-// スキーリゾートの積雪データを取得
-export async function getSkiResortSnowDepths(id: string) {
-  return prisma.snowDepthRecord.findMany({
-    where: { skiResortId: id },
-    orderBy: { date: "desc" },
-    take: 30,
   });
 }
 

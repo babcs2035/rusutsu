@@ -10,8 +10,3 @@ export interface WeathersT {
   mid: WeatherData;
   bot: WeatherData;
 }
-
-export interface SnowDepthsT {
-  firstYear: number;
-  data: (number | null)[][][];
-}

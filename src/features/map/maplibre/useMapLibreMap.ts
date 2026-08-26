@@ -9,8 +9,8 @@ import {
   INITIAL_CENTER,
 } from "../constants";
 import type { MapTileVariant } from "../types";
-import { registerArrowIcon } from "./arrowIcon";
-import { createBaseStyle } from "./baseStyle";
+import { registerArrowIcon, registerLiftArrowIcon } from "./arrowIcon";
+import { createBaseStyle, type RasterTone } from "./baseStyle";
 import {
   createFinalizedLayers,
   EMPTY_STYLE_STATE,
@@ -45,27 +45,39 @@ export const useMapLibreMap = ({
   containerRef,
   initialZoom,
   tileVariant,
+  initialTone,
   hitWidth,
   isInteractive,
 }: {
   containerRef: React.RefObject<HTMLDivElement | null>;
   initialZoom: number;
   tileVariant: MapTileVariant;
+  /** 1 フレーム目から正しい色味で描くために、生成時の色味を受け取る */
+  initialTone: RasterTone;
   hitWidth: number;
   isInteractive: boolean;
 }) => {
   const mapRef = useRef<MapLibreMap | null>(null);
   const [isReady, setIsReady] = useState(false);
-  const initialStateRef = useRef({ initialZoom, tileVariant, hitWidth });
+  const initialStateRef = useRef({
+    initialZoom,
+    tileVariant,
+    initialTone,
+    hitWidth,
+  });
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container || mapRef.current) return;
 
-    const { initialZoom: zoom, tileVariant: variant } = initialStateRef.current;
+    const {
+      initialZoom: zoom,
+      tileVariant: variant,
+      initialTone: tone,
+    } = initialStateRef.current;
     const map = new MapLibreMap({
       container,
-      style: createBaseStyle(variant),
+      style: createBaseStyle(variant, tone),
       center: [INITIAL_CENTER[1], INITIAL_CENTER[0]],
       zoom,
       minZoom: GSI_TILE_MIN_ZOOM,
@@ -82,6 +94,7 @@ export const useMapLibreMap = ({
 
     map.on("load", () => {
       registerArrowIcon(map);
+      registerLiftArrowIcon(map);
       map.addSource(RESORT_POINT_SOURCE, {
         type: "geojson",
         data: EMPTY_RESORT_POINTS,
@@ -91,6 +104,10 @@ export const useMapLibreMap = ({
         map.addSource(sourceId, {
           type: "geojson",
           data: EMPTY_LINE_COLLECTION,
+          // 斜度モードのコースは頂点ごとの細片に分かれている。既定の簡略化
+          // （tolerance 0.375）だと、縮小したときに細片がタイル化の段階で
+          // 丸ごと捨てられ、色が消えて白いケーシングだけが残る。
+          tolerance: 0,
         });
       }
       const layers = [

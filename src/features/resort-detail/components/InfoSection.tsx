@@ -4,6 +4,7 @@ import { Check, Plus, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { CopyResortNameButton } from "@/shared/components/CopyResortNameButton";
 import { RubyText } from "@/shared/components/RubyText";
 import type { Resort } from "../types";
 import { StatCard } from "./StatCard";
@@ -68,6 +69,7 @@ export const InfoSection = ({
         <h2 className="flex-1 min-w-0 text-gray-900 text-xl md:text-2xl leading-snug font-bold font-[var(--font-heading)]">
           <RubyText segments={resort.nameRuby} fallback={resort.nameJa} />
         </h2>
+        <CopyResortNameButton name={resort.nameJa} />
         <Button
           type="button"
           variant="ghost"

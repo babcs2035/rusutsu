@@ -52,6 +52,11 @@ start = { description = "プロダクションサーバー起動", run = "pnpm s
   "pnpm tsx src/private/scripts/crawlAmedas.ts"
 ]}
 
+# --- データ検証 ---
+"validate:map-data" = { description = "コース・リフトの結合データを検証（結合は表示時に行うため、中間ファイルは作らない）", run = "pnpm tsx scripts/validateResortMapData.ts" }
+"report:sheet-links" = { description = "resorts の Excel と地図の線の突き合わせ結果を CSV に書き出す", run = "pnpm tsx scripts/reportResortSheetLinks.ts" }
+"validate:map-data:strict" = { description = "同上。❌ が 1 件でもあれば異常終了する", run = "pnpm tsx scripts/validateResortMapData.ts --strict" }
+
 # --- Docker ---
 "docker:logs" = { description = "コンテナログ表示", run = "docker compose logs -f" }
 "docker:build" = { description = "コンテナ再構築", run = "docker compose up -d --build" }

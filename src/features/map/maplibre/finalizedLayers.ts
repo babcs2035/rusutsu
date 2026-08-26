@@ -20,7 +20,7 @@ export const FINALIZED_SOURCE = {
 export const FINALIZED_LAYER = {
   courseCasing: "finalized-course-casing",
   courseLine: "finalized-course-line",
-  courseUngroomed: "finalized-course-ungroomed",
+  courseUngroomedMask: "finalized-course-ungroomed-mask",
   courseArrow: "finalized-course-arrow",
   liftCasing: "finalized-lift-casing",
   liftLine: "finalized-lift-line",
@@ -34,6 +34,7 @@ export const FINALIZED_LAYER = {
 export const DIMMED_LINE_COLOR = "#94A3B8";
 export const MUTED_LINE_OPACITY = 0.2;
 export const ARROW_ICON_ID = "finalized-direction-arrow";
+export const LIFT_ARROW_ICON_ID = "finalized-lift-direction-arrow";
 
 export const EMPTY_STYLE_STATE: FinalizedStyleState = {
   courseColorMode: "difficulty",
@@ -200,40 +201,45 @@ export const getCasingOpacity = (
 /**
  * 非圧雪コースの破線。
  *
- * line-dasharray の単位は「線幅」なので、そのまま固定値にすると
- * 縮小したときに破線が線幅ごと縮んで、実線と見分けが付かなくなる。
- * ズームごとに線幅で割り戻して、画面上ではどの倍率でも
+ * 色付きの線そのものを破線にはしない。斜度モードではコースを頂点ごとに
+ * 分割して色を変えており、line-dasharray は地物ごとに先頭から描き直されるため、
+ * 縮小して 1 片が破線 1 周期より短くなると「線が途切れる前に地物が終わる」状態に
+ * なって実線に見えてしまう。
+ *
+ * そこで、分割していないコース 1 本ぶんの線（courseOutlines）を白で重ねて
+ * 「隙間」の側を描く。破線の周期はコース全長に対して連なるので、
+ * どこまで縮小しても点線のまま、色は分割した線のグラデーションが残る。
+ *
+ * dasharray の単位は「線幅」なので、そのまま固定値にすると縮小したときに
+ * 破線が線幅ごと縮む。ズームごとに線幅で割り戻して、画面上ではどの倍率でも
  * だいたい 6px 描いて 4.5px 空ける形に揃える。
+ *
+ * 先頭の 0 は「塗らない区間」から始める指定。[0, 描く, 空ける] の並びで、
+ * 元の破線とちょうど裏返しの位置（＝隙間になるところ）だけを白く塗る。
  */
-const UNGROOMED_DASH: DataDrivenPropertyValueSpecification<number[]> = [
+const UNGROOMED_MASK_DASH: DataDrivenPropertyValueSpecification<number[]> = [
   "step",
   ["zoom"],
   // 配列そのものを式の戻り値にするので literal で包む。
   // 素の配列は式の呼び出しとして読まれ、レイヤーごと弾かれてしまう。
-  ["literal", [3, 2.2]],
+  ["literal", [0, 3, 2.2]],
   13,
-  ["literal", [2.4, 1.8]],
+  ["literal", [0, 2.4, 1.8]],
   14,
-  ["literal", [2, 1.5]],
+  ["literal", [0, 2, 1.5]],
   15,
-  ["literal", [1.7, 1.25]],
+  ["literal", [0, 1.7, 1.25]],
   16,
-  ["literal", [1.5, 1.1]],
+  ["literal", [0, 1.5, 1.1]],
   17,
-  ["literal", [1.3, 0.95]],
+  ["literal", [0, 1.3, 0.95]],
 ] as unknown as DataDrivenPropertyValueSpecification<number[]>;
 
 /**
- * 圧雪コース側のフィルタ。
- * 選択中の非圧雪コースはここに含めて実線で描く（点線のままだと形が読みにくい）。
+ * 隙間を空ける対象。
+ * 選択中のコースは実線で見せる（点線のままだと形が読みにくい）。
  */
-const getGroomedFilter = (state: FinalizedStyleState): FilterSpecification => [
-  "any",
-  ["!=", ["get", "ungroomed"], true],
-  isSelectedExpression(state.selectedFeature, "course"),
-];
-
-const getUngroomedFilter = (
+const getUngroomedMaskFilter = (
   state: FinalizedStyleState,
 ): FilterSpecification => [
   "all",
@@ -309,13 +315,12 @@ export const createFinalizedLayers = (
       "line-opacity": getCasingOpacity(state, "lift"),
     },
   },
-  // 圧雪コース（実線）と非圧雪コース（破線）はレイヤーを分ける。
-  // line-dasharray はデータ駆動にできないため。
+  // 圧雪・非圧雪をまとめて実線で描く。斜度モードでは 1 コースが
+  // 頂点ごとの細片に分かれていて、そのグラデーションをそのまま出す。
   {
     id: FINALIZED_LAYER.courseLine,
     type: "line",
     source: FINALIZED_SOURCE.courses,
-    filter: getGroomedFilter(state),
     layout: { "line-cap": "round", "line-join": "round" },
     paint: {
       "line-color": getLineColor(state, "course"),
@@ -323,17 +328,19 @@ export const createFinalizedLayers = (
       "line-opacity": getLineOpacity(state, "course"),
     },
   },
+  // 非圧雪コースの隙間。分割していない 1 本の線から破線の裏返しを白で重ねて、
+  // 上の色付きの線を点線に見せる。
   {
-    id: FINALIZED_LAYER.courseUngroomed,
+    id: FINALIZED_LAYER.courseUngroomedMask,
     type: "line",
-    source: FINALIZED_SOURCE.courses,
-    filter: getUngroomedFilter(state),
+    source: FINALIZED_SOURCE.courseOutlines,
+    filter: getUngroomedMaskFilter(state),
     layout: { "line-cap": "butt", "line-join": "round" },
     paint: {
-      "line-color": getLineColor(state, "course"),
+      "line-color": "#FFFFFF",
       "line-width": getLineWidth(state, "course"),
       "line-opacity": getLineOpacity(state, "course"),
-      "line-dasharray": UNGROOMED_DASH,
+      "line-dasharray": UNGROOMED_MASK_DASH,
     },
   },
   {
@@ -416,7 +423,7 @@ export const createFinalizedLayers = (
     layout: {
       "symbol-placement": "line",
       "symbol-spacing": ARROW_SPACING,
-      "icon-image": ARROW_ICON_ID,
+      "icon-image": LIFT_ARROW_ICON_ID,
       "icon-size": ARROW_SIZE,
       "icon-rotation-alignment": "map",
       "icon-allow-overlap": true,
@@ -449,16 +456,15 @@ export const applyFinalizedStyleState = (
     );
   };
 
-  if (map.getLayer(FINALIZED_LAYER.courseLine)) {
-    map.setFilter(FINALIZED_LAYER.courseLine, getGroomedFilter(state));
-  }
-  if (map.getLayer(FINALIZED_LAYER.courseUngroomed)) {
-    map.setFilter(FINALIZED_LAYER.courseUngroomed, getUngroomedFilter(state));
+  if (map.getLayer(FINALIZED_LAYER.courseUngroomedMask)) {
+    map.setFilter(
+      FINALIZED_LAYER.courseUngroomedMask,
+      getUngroomedMaskFilter(state),
+    );
   }
 
   for (const [layerId, kind] of [
     [FINALIZED_LAYER.courseLine, "course"],
-    [FINALIZED_LAYER.courseUngroomed, "course"],
     [FINALIZED_LAYER.liftLine, "lift"],
     [FINALIZED_LAYER.liftBlink, "lift"],
   ] as const) {
@@ -466,6 +472,18 @@ export const applyFinalizedStyleState = (
     set(layerId, "line-width", getLineWidth(state, kind));
     set(layerId, "line-opacity", getLineOpacity(state, kind));
   }
+
+  // 隙間の線は白のままで、太さと濃さだけ色付きの線に追従させる
+  set(
+    FINALIZED_LAYER.courseUngroomedMask,
+    "line-width",
+    getLineWidth(state, "course"),
+  );
+  set(
+    FINALIZED_LAYER.courseUngroomedMask,
+    "line-opacity",
+    getLineOpacity(state, "course"),
+  );
 
   set(
     FINALIZED_LAYER.courseCasing,

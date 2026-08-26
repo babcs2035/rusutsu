@@ -48,6 +48,11 @@ const toLineFeature = (
  * 斜度モードは 1 コースを最大 24 片に分けて色を変える。
  * MapLibre の line-gradient は特徴量ごとの色を取れないため、
  * 分割した線を並べる方式にしている（WebGL 描画なので本数は問題にならない）。
+ *
+ * 非圧雪コースもここでは同じように分割して色を付ける。破線は
+ * この色付きの線の上から白い「隙間」を重ねて作る（finalizedLayers の
+ * courseUngroomedMask）。分割した線に直接 line-dasharray を掛けると、
+ * 縮小時に 1 片が破線 1 周期より短くなって実線に見えてしまう。
  */
 export const buildCourseCollection = (
   courses: FinalizedCourseFeature[],

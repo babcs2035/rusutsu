@@ -1,5 +1,12 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import {
+  type MergeIssue,
+  mergeCourseFeatures,
+  mergeLiftFeatures,
+  type RawGeoFeature,
+} from "./resortMapMerge";
+import { readXlsxSheets } from "./xlsxReader";
 
 export type GeoCoordinate = [number, number] | [number, number, number];
 
@@ -31,6 +38,9 @@ export type FinalizedCourseFeature = {
     minWidth: number | null;
     note: string | null;
     image: string | null;
+    searchWord: string | null;
+    morning: string | null;
+    night: string | null;
   };
 };
 
@@ -91,20 +101,33 @@ export type FinalizedLiftFeature = {
     horizontalDistMap: number | null;
     slopeDistMap: number | null;
     elevationDiffMap: number | null;
+    searchWord: string | null;
+    link: string | null;
+    morning: string | null;
+    night: string | null;
   };
 };
 
+export type ResortMapSection<TFeature> = {
+  /** 線を取ってきた場所 */
+  source: "slope_10m" | "slope_before" | "lift_20m" | "lift_before";
+  /** 基本情報を取ってきた場所 */
+  baseSource:
+    | "slope_before"
+    | "slope_detail"
+    | "lift_before"
+    | "lift_detail"
+    | "resorts.xlsx"
+    | null;
+  fileName: string;
+  /** 公式サイトの出典（latest_data の courseUrl / liftUrl） */
+  sourceUrls: string[];
+  features: TFeature[];
+};
+
 export type FinalizedResortMapData = {
-  courses: {
-    source: "resorts-finalized" | "slope_10m" | "slope_before";
-    fileName: string;
-    features: FinalizedCourseFeature[];
-  } | null;
-  lifts: {
-    source: "resorts-finalized" | "lift_20m" | "lift_before";
-    fileName: string;
-    features: FinalizedLiftFeature[];
-  } | null;
+  courses: ResortMapSection<FinalizedCourseFeature> | null;
+  lifts: ResortMapSection<FinalizedLiftFeature> | null;
 };
 
 type GeoJsonFeatureCollection = {
@@ -129,6 +152,12 @@ type TimestampedFile = {
 export const FINALIZED_RESORTS_ROOT = path.join(
   /* turbopackIgnore: true */ process.cwd(),
   "src/private/data/resorts-finalized",
+);
+
+/** スキー場ごとの基本情報（Excel）の置き場 */
+export const RESORT_SHEETS_ROOT = path.join(
+  /* turbopackIgnore: true */ process.cwd(),
+  "src/private/data/resorts",
 );
 
 export const TEMPORARY_RESORTS_ROOT = path.join(
@@ -290,6 +319,9 @@ const normalizeCourseFeature = (
       minWidth: normalizeNumber(properties.minWidth),
       note: normalizeString(properties.note),
       image: normalizeString(properties.image),
+      searchWord: normalizeString(properties.searchWord),
+      morning: normalizeString(properties.morning),
+      night: normalizeString(properties.night),
     },
   };
 };
@@ -338,6 +370,10 @@ const normalizeLiftFeature = (
       horizontalDistMap: normalizeNumber(properties.horizontal_dist_map),
       slopeDistMap: normalizeNumber(properties.slope_dist_map),
       elevationDiffMap: normalizeNumber(properties.elevation_diff_map),
+      searchWord: normalizeString(properties.searchWord),
+      link: normalizeString(properties.link),
+      morning: normalizeString(properties.morning),
+      night: normalizeString(properties.night),
     },
   };
 };
@@ -356,192 +392,448 @@ const parseFeatureCollection = (value: unknown): GeoJsonFeatureCollection => {
 const isSafeResortId = (resortId: string) =>
   /^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(resortId);
 
-const resolveFinalizedDataPath = (
-  kind: "courses" | "lifts",
-  resortId: string,
-  finalizedRoot: string,
-) => {
-  if (!isSafeResortId(resortId)) return null;
-
-  const resolved = path.resolve(finalizedRoot, kind, resortId);
-  const root = path.resolve(finalizedRoot);
-  if (resolved !== root && !resolved.startsWith(`${root}${path.sep}`)) {
-    return null;
-  }
-
-  return resolved;
-};
-
-const resolveTemporaryDataPath = (
-  kind: "slope_10m" | "slope_before" | "lift_20m" | "lift_before",
-  resortId: string,
+const resolveTemporaryFile = (
+  kind: string,
+  fileName: string,
   temporaryRoot: string,
 ) => {
-  if (!isSafeResortId(resortId)) return null;
-
   const directory = path.resolve(temporaryRoot, kind);
-  const resolved = path.resolve(directory, `${resortId}.geojson`);
+  const resolved = path.resolve(directory, fileName);
   if (!resolved.startsWith(`${directory}${path.sep}`)) return null;
-
   return resolved;
 };
 
-const loadLatestKindData = async <TFeature>(
-  resortId: string,
-  kind: "courses" | "lifts",
-  normalizeFeature: (feature: unknown, index: number) => TFeature | null,
-  finalizedRoot: string,
-): Promise<{
-  source: "resorts-finalized";
-  fileName: string;
-  features: TFeature[];
-} | null> => {
-  const directory = resolveFinalizedDataPath(kind, resortId, finalizedRoot);
-  if (!directory) return null;
+const readJsonFile = async <T>(filePath: string): Promise<T | null> => {
+  try {
+    return JSON.parse(await fs.readFile(filePath, "utf8")) as T;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      console.warn("Failed to read resort data file", { filePath, error });
+    }
+    return null;
+  }
+};
 
+const readGeoJsonFeatures = async (
+  filePath: string,
+): Promise<RawGeoFeature[] | null> => {
+  const parsed = await readJsonFile<unknown>(filePath);
+  if (parsed === null) return null;
+
+  try {
+    const collection = parseFeatureCollection(parsed);
+    const features = collection.features.filter(isRecord).map(feature => ({
+      type: "Feature" as const,
+      geometry: (feature.geometry ?? null) as RawGeoFeature["geometry"],
+      properties: isRecord(feature.properties) ? feature.properties : {},
+    }));
+    return features.length > 0 ? features : null;
+  } catch (error) {
+    console.warn("Failed to parse resort GeoJSON", { filePath, error });
+    return null;
+  }
+};
+
+const TIMESTAMPED_JSON_RE =
+  /^(\d{4})_(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})\.json$/;
+
+/**
+ * latest_data の最新ファイル。
+ *
+ * Python 側は mtime で選んでいるが、git clone すると mtime は揃ってしまう。
+ * ファイル名が時刻そのものなので、そちらから選ぶ。
+ */
+export const selectLatestStatusFile = (fileNames: string[]): string | null => {
+  const candidates = fileNames
+    .filter(fileName => TIMESTAMPED_JSON_RE.test(fileName))
+    .sort();
+  return candidates[candidates.length - 1] ?? null;
+};
+
+type LatestStatusData = {
+  fileName: string;
+  time: string | null;
+  courses: Record<string, unknown>[];
+  lifts: Record<string, unknown>[];
+  courseUrls: string[];
+  liftUrls: string[];
+};
+
+const toRecordArray = (value: unknown): Record<string, unknown>[] =>
+  Array.isArray(value) ? value.filter(isRecord) : [];
+
+const toStringArray = (value: unknown): string[] => {
+  if (typeof value === "string") return value.length > 0 ? [value] : [];
+  if (!Array.isArray(value)) return [];
+  // 同じ URL が並ぶことがあるので畳む
+  return [
+    ...new Set(
+      value.filter(
+        (item): item is string => typeof item === "string" && item.length > 0,
+      ),
+    ),
+  ];
+};
+
+const loadLatestStatus = async (
+  resortId: string,
+  temporaryRoot: string,
+): Promise<LatestStatusData | null> => {
+  const directory = path.resolve(temporaryRoot, "latest_data", resortId);
   let fileNames: string[];
   try {
     fileNames = await fs.readdir(directory);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-      console.warn(`Failed to read finalized ${kind} directory`, error);
-    }
+  } catch {
     return null;
   }
 
-  for (const candidate of getTimestampedGeojsonFiles(fileNames)) {
-    const filePath = path.join(directory, candidate.fileName);
+  const fileName = selectLatestStatusFile(fileNames);
+  if (!fileName) return null;
 
-    try {
-      const raw = await fs.readFile(filePath, "utf8");
-      const collection = parseFeatureCollection(JSON.parse(raw));
-      const features = collection.features
-        .map(normalizeFeature)
-        .filter((feature): feature is TFeature => feature !== null);
+  const parsed = await readJsonFile<Record<string, unknown>>(
+    path.join(directory, fileName),
+  );
+  if (!parsed) return null;
 
-      if (features.length > 0) {
-        return {
-          source: "resorts-finalized",
-          fileName: candidate.fileName,
-          features,
-        };
-      }
-    } catch (error) {
-      console.warn(`Failed to load finalized ${kind} GeoJSON`, {
-        resortId,
-        fileName: candidate.fileName,
-        error,
-      });
-    }
-  }
-
-  return null;
+  return {
+    fileName,
+    time: normalizeString(parsed.time),
+    courses: toRecordArray(parsed.courses),
+    lifts: toRecordArray(parsed.lifts),
+    courseUrls: toStringArray(parsed.courseUrl),
+    liftUrls: toStringArray(parsed.liftUrl),
+  };
 };
 
-const loadTemporaryKindData = async <
-  TFeature,
-  TSource extends "slope_10m" | "slope_before" | "lift_20m" | "lift_before",
->(
+/**
+ * スキー場ごとの Excel から基本情報を読む。
+ * slope_detail / lift_detail が無いスキー場はこちらが本体になる。
+ */
+const readResortSheet = async (
   resortId: string,
-  source: TSource,
-  normalizeFeature: (feature: unknown, index: number) => TFeature | null,
-  temporaryRoot: string,
-): Promise<{
-  source: TSource;
-  fileName: string;
-  features: TFeature[];
-} | null> => {
-  const filePath = resolveTemporaryDataPath(source, resortId, temporaryRoot);
-  if (!filePath) return null;
+  sheetName: "Courses" | "Lifts",
+  sheetsRoot: string,
+): Promise<Record<string, unknown>[]> => {
+  const directory = path.resolve(sheetsRoot);
+  const filePath = path.resolve(directory, `${resortId}.xlsx`);
+  if (!filePath.startsWith(`${directory}${path.sep}`)) return [];
 
   try {
-    const raw = await fs.readFile(filePath, "utf8");
-    const collection = parseFeatureCollection(JSON.parse(raw));
-    const features = collection.features
-      .map(normalizeFeature)
-      .filter((feature): feature is TFeature => feature !== null);
-
-    if (features.length === 0) return null;
-
-    return {
-      source,
-      fileName: path.basename(filePath),
-      features,
-    };
+    const sheets = readXlsxSheets(await fs.readFile(filePath));
+    // 名前が入っていない行は中身が無い。空のブックも多いので落としておく
+    return (sheets.get(sheetName) ?? []).filter(
+      row => (row.name ?? "").trim().length > 0,
+    ) as Record<string, unknown>[];
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-      console.warn(`Failed to load temporary ${source} GeoJSON`, {
-        resortId,
-        fileName: path.basename(filePath),
-        error,
-      });
+      console.warn("Failed to read resort sheet", { resortId, error });
     }
-    return null;
+    return [];
   }
+};
+
+/**
+ * Excel の中身が名前だけのときは結び付けない。
+ *
+ * piste も searchWord も入っていないシートは、繋いでも画面に出せるものが増えず、
+ * 名前が近いだけの別物を拾ってしまう危険の方が大きい。
+ */
+const hasLinkableSheetContent = (items: Record<string, unknown>[]) =>
+  items.some(item =>
+    ["piste", "searchWord"].some(
+      key => String(item[key] ?? "").trim().length > 0,
+    ),
+  );
+
+/** *_before に基本情報まで入っているかどうかで、基本情報の出どころを決める */
+const hasAnyKey = (items: Record<string, unknown>[], keys: readonly string[]) =>
+  items.some(item => keys.some(key => item[key] !== undefined));
+
+const COURSE_BASE_KEYS = [
+  "level",
+  "piste",
+  "snowboard",
+  "avg",
+  "max",
+  "distance",
+  "image",
+  "searchWord",
+] as const;
+
+const LIFT_BASE_KEYS = [
+  "type",
+  "speed",
+  "capacity",
+  "hood",
+  "distance",
+  "vertical",
+  "searchWord",
+] as const;
+
+type BaseSourceResult<TLabel> = {
+  items: Record<string, unknown>[];
+  label: TLabel;
+  /** 人手で整備済みの基本情報か（欠損チェックを走らせるかの判断に使う） */
+  isCurated: boolean;
+} | null;
+
+const loadCourseBase = async (
+  resortId: string,
+  temporaryRoot: string,
+  sheetsRoot: string,
+  beforeFeatures: RawGeoFeature[] | null,
+): Promise<
+  BaseSourceResult<"slope_before" | "slope_detail" | "resorts.xlsx">
+> => {
+  const beforeItems = (beforeFeatures ?? []).map(feature => feature.properties);
+  if (hasAnyKey(beforeItems, COURSE_BASE_KEYS)) {
+    return { items: beforeItems, label: "slope_before", isCurated: true };
+  }
+
+  const detailPath = resolveTemporaryFile(
+    "slope_detail",
+    `${resortId}.json`,
+    temporaryRoot,
+  );
+  const detail = detailPath ? await readJsonFile<unknown>(detailPath) : null;
+  const detailItems = toRecordArray(detail);
+  if (detailItems.length > 0) {
+    return { items: detailItems, label: "slope_detail", isCurated: true };
+  }
+
+  const sheetItems = await readResortSheet(resortId, "Courses", sheetsRoot);
+  if (hasLinkableSheetContent(sheetItems)) {
+    return { items: sheetItems, label: "resorts.xlsx", isCurated: true };
+  }
+
+  return beforeItems.length > 0
+    ? { items: beforeItems, label: "slope_before", isCurated: false }
+    : null;
+};
+
+const loadLiftBase = async (
+  resortId: string,
+  temporaryRoot: string,
+  sheetsRoot: string,
+  beforeFeatures: RawGeoFeature[] | null,
+): Promise<
+  BaseSourceResult<"lift_before" | "lift_detail" | "resorts.xlsx">
+> => {
+  const beforeItems = (beforeFeatures ?? []).map(feature => feature.properties);
+  if (hasAnyKey(beforeItems, LIFT_BASE_KEYS)) {
+    return { items: beforeItems, label: "lift_before", isCurated: true };
+  }
+
+  const detailPath = resolveTemporaryFile(
+    "lift_detail",
+    `${resortId}.json`,
+    temporaryRoot,
+  );
+  const detail = detailPath ? await readJsonFile<unknown>(detailPath) : null;
+  const detailItems = toRecordArray(detail);
+  if (detailItems.length > 0) {
+    return { items: detailItems, label: "lift_detail", isCurated: true };
+  }
+
+  const sheetItems = await readResortSheet(resortId, "Lifts", sheetsRoot);
+  if (hasLinkableSheetContent(sheetItems)) {
+    return { items: sheetItems, label: "resorts.xlsx", isCurated: true };
+  }
+
+  return beforeItems.length > 0
+    ? { items: beforeItems, label: "lift_before", isCurated: false }
+    : null;
 };
 
 export type ResortMapDataRoots = {
-  finalizedRoot: string;
   temporaryRoot: string;
+  /** スキー場ごとの Excel。省略すると既定の置き場を見る */
+  sheetsRoot?: string;
 };
 
-const loadCourseData = async (resortId: string, roots: ResortMapDataRoots) =>
-  (await loadLatestKindData(
-    resortId,
-    "courses",
-    normalizeCourseFeature,
-    roots.finalizedRoot,
-  )) ??
-  (await loadTemporaryKindData(
-    resortId,
-    "slope_10m",
-    normalizeCourseFeature,
-    roots.temporaryRoot,
-  )) ??
-  loadTemporaryKindData(
-    resortId,
-    "slope_before",
-    normalizeCourseFeature,
-    roots.temporaryRoot,
-  );
+export type ResortMergeReport = {
+  resortId: string;
+  courses: MergeIssue[];
+  lifts: MergeIssue[];
+};
 
-const loadLiftData = async (resortId: string, roots: ResortMapDataRoots) =>
-  (await loadLatestKindData(
-    resortId,
-    "lifts",
-    normalizeLiftFeature,
-    roots.finalizedRoot,
-  )) ??
-  (await loadTemporaryKindData(
-    resortId,
-    "lift_20m",
-    normalizeLiftFeature,
-    roots.temporaryRoot,
-  )) ??
-  loadTemporaryKindData(
-    resortId,
-    "lift_before",
-    normalizeLiftFeature,
-    roots.temporaryRoot,
+const readKindGeometry = async (
+  resortId: string,
+  temporaryRoot: string,
+  primary: "slope_10m" | "lift_20m",
+  fallback: "slope_before" | "lift_before",
+) => {
+  const primaryPath = resolveTemporaryFile(
+    primary,
+    `${resortId}.geojson`,
+    temporaryRoot,
   );
+  const fallbackPath = resolveTemporaryFile(
+    fallback,
+    `${resortId}.geojson`,
+    temporaryRoot,
+  );
+  const beforeFeatures = fallbackPath
+    ? await readGeoJsonFeatures(fallbackPath)
+    : null;
+  const primaryFeatures = primaryPath
+    ? await readGeoJsonFeatures(primaryPath)
+    : null;
+
+  if (primaryFeatures) {
+    return {
+      source: primary,
+      fileName: `${resortId}.geojson`,
+      features: primaryFeatures,
+      beforeFeatures,
+    };
+  }
+  if (beforeFeatures) {
+    return {
+      source: fallback,
+      fileName: `${resortId}.geojson`,
+      features: beforeFeatures,
+      beforeFeatures,
+    };
+  }
+  return null;
+};
+
+const buildCourseSection = async (
+  resortId: string,
+  roots: Required<ResortMapDataRoots>,
+  status: LatestStatusData | null,
+) => {
+  const { temporaryRoot, sheetsRoot } = roots;
+  const geometry = await readKindGeometry(
+    resortId,
+    temporaryRoot,
+    "slope_10m",
+    "slope_before",
+  );
+  if (!geometry) return { section: null, issues: [] as MergeIssue[] };
+
+  const base = await loadCourseBase(
+    resortId,
+    temporaryRoot,
+    sheetsRoot,
+    geometry.beforeFeatures,
+  );
+  const merged = mergeCourseFeatures({
+    geometryFeatures: geometry.features,
+    baseItems: base?.items ?? [],
+    statusItems: status?.courses ?? [],
+    baseSourceLabel: base?.label ?? "slope_detail",
+    hasStatusSource: (status?.courses.length ?? 0) > 0,
+    validateBaseFields: base?.isCurated === true,
+  });
+
+  const features = merged.features
+    .map(normalizeCourseFeature)
+    .filter((feature): feature is FinalizedCourseFeature => feature !== null);
+  if (features.length === 0) return { section: null, issues: merged.issues };
+
+  return {
+    section: {
+      source: geometry.source,
+      baseSource: base?.label ?? null,
+      fileName: status?.fileName ?? geometry.fileName,
+      sourceUrls: status?.courseUrls ?? [],
+      features,
+    } satisfies ResortMapSection<FinalizedCourseFeature>,
+    issues: merged.issues,
+  };
+};
+
+const buildLiftSection = async (
+  resortId: string,
+  roots: Required<ResortMapDataRoots>,
+  status: LatestStatusData | null,
+) => {
+  const { temporaryRoot, sheetsRoot } = roots;
+  const geometry = await readKindGeometry(
+    resortId,
+    temporaryRoot,
+    "lift_20m",
+    "lift_before",
+  );
+  if (!geometry) return { section: null, issues: [] as MergeIssue[] };
+
+  const base = await loadLiftBase(
+    resortId,
+    temporaryRoot,
+    sheetsRoot,
+    geometry.beforeFeatures,
+  );
+  const merged = mergeLiftFeatures({
+    geometryFeatures: geometry.features,
+    baseItems: base?.items ?? [],
+    statusItems: status?.lifts ?? [],
+    baseSourceLabel: base?.label ?? "lift_detail",
+    hasStatusSource: (status?.lifts.length ?? 0) > 0,
+    validateBaseFields: base?.isCurated === true,
+  });
+
+  const features = merged.features
+    .map(normalizeLiftFeature)
+    .filter((feature): feature is FinalizedLiftFeature => feature !== null);
+  if (features.length === 0) return { section: null, issues: merged.issues };
+
+  return {
+    section: {
+      source: geometry.source,
+      baseSource: base?.label ?? null,
+      fileName: status?.fileName ?? geometry.fileName,
+      sourceUrls: status?.liftUrls ?? [],
+      features,
+    } satisfies ResortMapSection<FinalizedLiftFeature>,
+    issues: merged.issues,
+  };
+};
+
+/**
+ * 表示用データと、突き合わせで見つかった問題を一緒に返す。
+ * 画面側は data だけ使い、report は検証スクリプトが使う。
+ */
+export const buildResortMapData = async (
+  resortId: string,
+  roots: ResortMapDataRoots,
+): Promise<{
+  data: FinalizedResortMapData | null;
+  report: ResortMergeReport;
+}> => {
+  const report: ResortMergeReport = { resortId, courses: [], lifts: [] };
+  if (!isSafeResortId(resortId)) return { data: null, report };
+
+  const resolvedRoots = {
+    temporaryRoot: roots.temporaryRoot,
+    sheetsRoot: roots.sheetsRoot ?? RESORT_SHEETS_ROOT,
+  };
+  const status = await loadLatestStatus(resortId, roots.temporaryRoot);
+  const [courses, lifts] = await Promise.all([
+    buildCourseSection(resortId, resolvedRoots, status),
+    buildLiftSection(resortId, resolvedRoots, status),
+  ]);
+
+  report.courses = courses.issues;
+  report.lifts = lifts.issues;
+
+  if (!courses.section && !lifts.section) return { data: null, report };
+
+  return {
+    data: { courses: courses.section, lifts: lifts.section },
+    report,
+  };
+};
 
 export const getResortMapDataFromRoots = async (
   resortId: string,
   roots: ResortMapDataRoots,
-): Promise<FinalizedResortMapData | null> => {
-  const [courses, lifts] = await Promise.all([
-    loadCourseData(resortId, roots),
-    loadLiftData(resortId, roots),
-  ]);
-
-  if (!courses && !lifts) return null;
-
-  return { courses, lifts };
-};
+): Promise<FinalizedResortMapData | null> =>
+  (await buildResortMapData(resortId, roots)).data;
 
 export const getFinalizedResortMapData = (resortId: string) =>
   getResortMapDataFromRoots(resortId, {
-    finalizedRoot: FINALIZED_RESORTS_ROOT,
     temporaryRoot: TEMPORARY_RESORTS_ROOT,
   });
 

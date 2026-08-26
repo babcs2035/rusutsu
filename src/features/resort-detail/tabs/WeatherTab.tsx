@@ -1,54 +1,12 @@
 "use client";
 
 import { useMemo } from "react";
-import {
-  SnowDepthLineChart,
-  SnowForecastEmbed,
-} from "@/features/weather/WeatherChart";
+import { SnowForecastEmbed } from "@/features/weather/WeatherChart";
 import { cn } from "@/lib/utils";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
-import type { SnowDepthsT } from "@/types/weathers";
 import type { Resort } from "../types";
 
 export const WeatherTab = ({ resort }: { resort: Resort }) => {
-  const snowDepthsFormatted: SnowDepthsT | undefined = useMemo(() => {
-    const records = resort.snowDepths;
-    if (!records || records.length === 0) return undefined;
-
-    const seasons: Record<number, (number | null)[][]> = {};
-
-    records.forEach(r => {
-      const d = new Date(r.date);
-      const m = d.getMonth() + 1;
-      const day = d.getDate();
-      let seasonYear = d.getFullYear();
-      if (m === 12) seasonYear += 1;
-
-      if (!seasons[seasonYear]) {
-        seasons[seasonYear] = Array(5)
-          .fill(null)
-          .map(() => Array(32).fill(null));
-      }
-
-      let mIdx = -1;
-      if (m === 1) mIdx = 0;
-      else if (m === 2) mIdx = 1;
-      else if (m === 3) mIdx = 2;
-      else if (m === 4) mIdx = 3;
-      else if (m === 12) mIdx = 4;
-
-      if (mIdx !== -1) {
-        seasons[seasonYear][mIdx][day - 1] = r.depth;
-      }
-    });
-
-    const years = Object.keys(seasons).map(Number);
-    return {
-      firstYear: Math.min(...years) || new Date().getFullYear(),
-      data: Object.values(seasons),
-    };
-  }, [resort.snowDepths]);
-
   const snowForecastLinks = useMemo(() => {
     const links: Array<{
       id: string;
@@ -216,15 +174,6 @@ export const WeatherTab = ({ resort }: { resort: Resort }) => {
             </div>
           ))}
       </section>
-
-      {snowDepthsFormatted && (
-        <section>
-          <h2 className="text-lg text-gray-900 font-bold mb-4 font-[var(--font-heading)]">
-            積雪量データ
-          </h2>
-          <SnowDepthLineChart snowDepths={snowDepthsFormatted} />
-        </section>
-      )}
     </div>
   );
 };

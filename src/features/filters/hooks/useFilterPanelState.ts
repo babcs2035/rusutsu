@@ -59,6 +59,10 @@ export const useFilterPanelState = ({
     onFilterChange({ ...filters, [name]: value });
   };
 
+  const handleKeywordClear = () => {
+    onFilterChange({ ...filters, keyword: "" });
+  };
+
   const handleNumericInputChange = (name: NumericFilterName, value: string) => {
     const digitsOnly = value.replace(/\D/g, "");
     onFilterChange({
@@ -109,6 +113,7 @@ export const useFilterPanelState = ({
   return {
     collapsedDetailLabels,
     handleCheckboxChange,
+    handleKeywordClear,
     handleNumericInputChange,
     handlePrefectureChange,
     handleRegionPrefecturesChange,

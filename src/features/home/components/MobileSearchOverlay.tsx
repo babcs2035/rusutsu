@@ -132,7 +132,7 @@ export const MobileSearchOverlay = ({
                 type="button"
                 variant="ghost"
                 aria-label="検索キーワードをクリア"
-                className="absolute top-1/2 -translate-y-1/2 right-2.5 z-10 flex items-center justify-center w-7 h-7 min-w-7 p-0 rounded-full bg-transparent text-gray-600 shadow-none hover:bg-gray-50 hover:text-gray-700 active:bg-gray-50 active:text-gray-700"
+                className="absolute inset-y-0 right-2.5 z-10 my-auto flex items-center justify-center w-7 h-7 min-w-7 p-0 rounded-full bg-transparent text-gray-600 shadow-none hover:bg-gray-50 hover:text-gray-700 active:bg-gray-50 active:text-gray-700 active:not-aria-[haspopup]:translate-y-0"
                 onClick={onKeywordClear}
               >
                 <X size={15} strokeWidth={2.5} />

@@ -11,27 +11,42 @@ import { getExternalImageUrl } from "@/shared/utils/externalImage";
 import type { FinalizedCourseGroup } from "../types";
 import {
   averageNullable,
+  COURSE_STATUS_DESCRIPTION,
   createConnectedCourseElevationProfile,
   formatDegree,
   formatMeters,
   getCourseGroupNotes,
   getCourseGroupPisteSymbol,
   getCourseGroupStatus,
+  getElevationRange,
   maxNullable,
+  PISTE_STATUS_DESCRIPTION,
+  type StatusSymbol,
 } from "../utils/detailMetrics";
+import { getFeatureSearchWord } from "../utils/featureLinks";
 import { ElevationProfile } from "./ElevationProfile";
-import { StatusSummary } from "./StatusRow";
+import { FeatureHeadline, FeatureMetric } from "./FeatureHeadline";
 
 type Props = {
   courseGroup: FinalizedCourseGroup;
+  resortLabelName: string;
+  sourceUrls: string[];
   selectedElevationProfilePoint: ElevationProfileMapPoint | null;
   onSelectedElevationProfilePointChange: (
     point: ElevationProfileMapPoint | null,
   ) => void;
 };
 
+const SYMBOL_TONE: Record<StatusSymbol, "open" | "limited" | "closed"> = {
+  "○": "open",
+  "△": "limited",
+  "×": "closed",
+};
+
 export const SelectedCourseDetail = ({
   courseGroup,
+  resortLabelName,
+  sourceUrls,
   selectedElevationProfilePoint,
   onSelectedElevationProfilePointChange,
 }: Props) => {
@@ -74,17 +89,48 @@ export const SelectedCourseDetail = ({
   const profilePoints = createConnectedCourseElevationProfile(
     courseGroup.courses,
   );
-  const profileElevations = profilePoints.map(point => point.elevation);
-  const elevationDiff =
-    profileElevations.length > 0
-      ? Math.max(...profileElevations) - Math.min(...profileElevations)
-      : null;
+  const elevationRange = getElevationRange(
+    courseGroup.courses.map(course => course.coordinates),
+  );
+  const elevationDiff = elevationRange
+    ? elevationRange.max - elevationRange.min
+    : null;
   const notes = getCourseGroupNotes(courseGroup);
   // 一部だけオープンしている場合の「下部のみオープン」も当日の状況として扱う
   const comments = [...(status.note ? [status.note] : []), ...notes.latest];
+  const searchWord = getFeatureSearchWord({
+    searchWord: selectedCourse.properties.searchWord,
+    resortLabelName,
+    featureName: courseGroup.displayName,
+  });
 
   return (
     <div className="flex flex-col gap-5">
+      <FeatureHeadline
+        difficulty={difficulty}
+        items={[
+          {
+            label: "営業状況",
+            text: status.symbol
+              ? COURSE_STATUS_DESCRIPTION[status.symbol]
+              : "不明",
+            tone: status.symbol ? SYMBOL_TONE[status.symbol] : null,
+          },
+          ...(pisteSymbol
+            ? [
+                {
+                  label: "圧雪",
+                  text: PISTE_STATUS_DESCRIPTION[pisteSymbol],
+                  tone: SYMBOL_TONE[pisteSymbol],
+                },
+              ]
+            : []),
+        ]}
+        update={selectedCourse.properties.update}
+        searchWord={searchWord}
+        sourceUrls={sourceUrls}
+      />
+
       {courseImageUrl && (
         <ExternalLinkComponent className="w-full">
           <div className="relative h-[180px] w-full overflow-hidden rounded-xl">
@@ -102,13 +148,6 @@ export const SelectedCourseDetail = ({
           </div>
         </ExternalLinkComponent>
       )}
-
-      <StatusSummary
-        statusSymbol={status.symbol}
-        pisteSymbol={pisteSymbol}
-        difficultyLabel={difficulty.label}
-        difficultyColor={difficulty.color}
-      />
 
       {comments.length > 0 && (
         <div>
@@ -155,23 +194,24 @@ export const SelectedCourseDetail = ({
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-        <CourseMetric
+      <div className="grid grid-cols-5 gap-2">
+        <FeatureMetric
           title="水平距離"
           value={formatMeters(horizontalDistance)}
         />
-        <CourseMetric title="斜面距離" value={formatMeters(distance)} />
-        <CourseMetric title="標高差" value={formatMeters(elevationDiff)} />
-        <CourseMetric title="平均斜度" value={formatDegree(averageSlope)} />
-        <CourseMetric title="最大斜度" value={formatDegree(maxSlope)} />
+        <FeatureMetric title="斜面距離" value={formatMeters(distance)} />
+        <FeatureMetric
+          title="標高差"
+          value={formatMeters(elevationDiff)}
+          detail={
+            elevationRange
+              ? `${Math.round(elevationRange.max)} - ${Math.round(elevationRange.min)}m`
+              : null
+          }
+        />
+        <FeatureMetric title="平均斜度" value={formatDegree(averageSlope)} />
+        <FeatureMetric title="最大斜度" value={formatDegree(maxSlope)} />
       </div>
     </div>
   );
 };
-
-const CourseMetric = ({ title, value }: { title: string; value: string }) => (
-  <div className="border-b border-gray-200 pb-2">
-    <p className="text-gray-500 text-xs font-medium">{title}</p>
-    <p className="text-gray-900 text-lg font-semibold">{value}</p>
-  </div>
-);

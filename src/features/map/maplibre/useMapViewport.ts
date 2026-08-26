@@ -69,7 +69,9 @@ export const useResortViewport = ({
       const resort = resorts.find(resort => resort.id === selectedResortId);
       if (!resort) return;
 
-      const rightPanelWidth = getDetailPanelOverlapRightWidth(map);
+      // 右パネルを避けて左へずらすと、選んだスキー場が画面中央からずれて
+      // 見えてしまう。素直に選んだ場所へズームするため、水平方向は詰めない。
+      const rightPanelWidth = 0;
       const bottomPanelHeight =
         getMapSize(map).y * selectedViewportBottomPaddingRatio;
 

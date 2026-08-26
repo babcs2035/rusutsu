@@ -23,47 +23,58 @@ export const BASE_RASTER_LAYER_ID = {
  * Leaflet 版では CSS filter を掛けていたが、MapLibre はラスタレイヤーの
  * paint プロパティとして持っているので、タイルの継ぎ目を作らずに同じ調整ができる。
  */
-type RasterTone = {
+export type RasterTone = {
   saturation: number;
   contrast: number;
   brightnessMin: number;
 };
 
-const TONE: Record<
-  MapTileVariant,
-  { normal: RasterTone; focus: RasterTone; slope: RasterTone }
-> = {
+const TONE: Record<MapTileVariant, { normal: RasterTone; mono: RasterTone }> = {
   pale: {
     normal: { saturation: -0.08, contrast: -0.02, brightnessMin: 0.02 },
-    focus: { saturation: -0.42, contrast: -0.18, brightnessMin: 0.1 },
-    slope: { saturation: -1, contrast: -0.1, brightnessMin: 0.06 },
+    mono: { saturation: -1, contrast: -0.1, brightnessMin: 0.06 },
   },
   photo: {
     normal: { saturation: -0.22, contrast: -0.1, brightnessMin: 0.04 },
-    focus: { saturation: -0.38, contrast: -0.18, brightnessMin: 0.08 },
-    slope: { saturation: -1, contrast: -0.08, brightnessMin: 0.04 },
+    mono: { saturation: -1, contrast: -0.08, brightnessMin: 0.04 },
   },
 };
 
+/**
+ * 地図の色味。
+ *
+ * スキー場を選んでいる間は必ず白黒にする。判断の材料は interactionMode だけで、
+ * コースデータの到着を待たない。待つと「選んだ直後はカラー写真 → データが届いて
+ * 白黒」と一段遅れて色が抜け、ちらついて見える。
+ */
 export const getRasterTone = ({
   variant,
-  isFocusMode,
+  isDetailView,
   courseColorMode,
   hasCourses,
 }: {
   variant: MapTileVariant;
-  isFocusMode: boolean;
+  isDetailView: boolean;
   courseColorMode: CourseColorMode;
   hasCourses: boolean;
 }): RasterTone => {
   const tone = TONE[variant];
+  if (isDetailView) return tone.mono;
   // 斜度モードでは地図を白黒にして、斜度の色だけが目に入るようにする
-  if (hasCourses && courseColorMode === "slope") return tone.slope;
-  return isFocusMode ? tone.focus : tone.normal;
+  if (hasCourses && courseColorMode === "slope") return tone.mono;
+  return tone.normal;
 };
 
+/**
+ * 初期スタイル。
+ *
+ * 色味は生成時点で焼き込む。paint を後から useEffect で当てると、
+ * 1 フレームだけ元の色のタイルが見えてから色が変わる。
+ * 詳細画面用に作り直される地図（スマホのプレビュー・全画面）で目に付く。
+ */
 export const createBaseStyle = (
   variant: MapTileVariant,
+  tone: RasterTone,
 ): StyleSpecification => ({
   version: 8,
   // 文字は DOM のオーバーレイで描くので glyphs（フォント PBF）は要らない。
@@ -92,14 +103,24 @@ export const createBaseStyle = (
       type: "raster",
       source: BASE_RASTER_SOURCE_ID.pale,
       layout: { visibility: variant === "pale" ? "visible" : "none" },
-      paint: { "raster-fade-duration": 120 },
+      paint: {
+        "raster-fade-duration": 120,
+        "raster-saturation": tone.saturation,
+        "raster-contrast": tone.contrast,
+        "raster-brightness-min": tone.brightnessMin,
+      },
     },
     {
       id: BASE_RASTER_LAYER_ID.photo,
       type: "raster",
       source: BASE_RASTER_SOURCE_ID.photo,
       layout: { visibility: variant === "photo" ? "visible" : "none" },
-      paint: { "raster-fade-duration": 120 },
+      paint: {
+        "raster-fade-duration": 120,
+        "raster-saturation": tone.saturation,
+        "raster-contrast": tone.contrast,
+        "raster-brightness-min": tone.brightnessMin,
+      },
     },
   ],
 });

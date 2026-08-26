@@ -5,7 +5,15 @@ import type {
   MapLayerMouseEvent,
   MapMouseEvent,
 } from "maplibre-gl";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { FinalizedMapToolbar } from "./components/FinalizedMapToolbar";
 import {
@@ -147,6 +155,29 @@ export const MapLibreResortMap = memo(function MapLibreResortMap({
   );
   const initialZoom = isMobile ? MOBILE_INITIAL_ZOOM : DESKTOP_INITIAL_ZOOM;
 
+  // 詳細画面に入るときは写真＋斜度、選択画面に戻るときは地図を既定にする。
+  // ref の初期値を interactionMode 自体ではなく null にしておくことで、
+  // 詳細画面としてマウントされるインスタンス（モバイルのプレビュー地図など）
+  // でもマウント直後に既定値を適用できるようにする。
+  const previousInteractionModeRef = useRef<
+    "default" | "detail" | "compare" | null
+  >(null);
+  // 色味と同じ理由で描画前に確定させる（useEffect だと 1 フレーム遅れる）
+  useLayoutEffect(() => {
+    const previousInteractionMode = previousInteractionModeRef.current;
+    previousInteractionModeRef.current = interactionMode;
+    if (previousInteractionMode === interactionMode) return;
+
+    if (interactionMode === "detail") {
+      setMapTileVariant("photo");
+      setCourseColorMode("slope");
+      return;
+    }
+    if (previousInteractionMode === "detail") {
+      setMapTileVariant("pale");
+    }
+  }, [interactionMode, setMapTileVariant]);
+
   useEffect(() => {
     const queries = [
       [MOBILE_MAP_MEDIA_QUERY, setIsMobile],
@@ -169,6 +200,13 @@ export const MapLibreResortMap = memo(function MapLibreResortMap({
     containerRef,
     initialZoom,
     tileVariant: mapTileVariant,
+    // 詳細画面として作られる地図は 1 フレーム目から白黒にする
+    initialTone: getRasterTone({
+      variant: mapTileVariant,
+      isDetailView: isDetailMap,
+      courseColorMode,
+      hasCourses: (finalizedMapData?.courses?.features.length ?? 0) > 0,
+    }),
     hitWidth: isCoarsePointer ? 24 : 14,
     isInteractive: !isPreviewMap,
   });
@@ -240,13 +278,18 @@ export const MapLibreResortMap = memo(function MapLibreResortMap({
     applyFinalizedStyleState(map, styleState);
   }, [isReady, map, styleState]);
 
-  // タイル種別と色味
-  useEffect(() => {
+  // タイル種別と色味。
+  //
+  // useEffect ではなく useLayoutEffect にする。通常の useEffect はブラウザが
+  // 描いたあとに走るので、スキー場を選んだ直後の 1〜2 フレームだけ
+  // 切り替え前の色味（カラーのまま）が見えてしまう。
+  useLayoutEffect(() => {
     if (!map || !isReady) return;
 
     const tone = getRasterTone({
       variant: mapTileVariant,
-      isFocusMode: isFinalizedFocusMode,
+      // コースデータの到着を待たない。待つと一段遅れて色が抜けてちらつく
+      isDetailView: isDetailMap,
       courseColorMode,
       hasCourses: hasFinalizedCourses,
     });
@@ -271,7 +314,7 @@ export const MapLibreResortMap = memo(function MapLibreResortMap({
   }, [
     courseColorMode,
     hasFinalizedCourses,
-    isFinalizedFocusMode,
+    isDetailMap,
     isReady,
     map,
     mapTileVariant,

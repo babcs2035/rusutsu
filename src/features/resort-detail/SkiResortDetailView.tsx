@@ -11,6 +11,7 @@ import type {
   SelectedMapFeature,
 } from "@/features/map/types";
 import { useBreakpointValue } from "@/hooks/use-breakpoint-value";
+import { getResortSearchName } from "@/lib/resortAliases";
 import { AnimatedPanel } from "@/shared/components/AnimatedPanel";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
 import type {
@@ -289,6 +290,9 @@ export const SkiResortDetailView = ({
       <FinalizedFeatureDetail
         courseGroup={selectedCourseGroup}
         lift={selectedLift}
+        resortLabelName={getResortSearchName(resort.id, resort.nameJa)}
+        courseSourceUrls={resort.finalizedMapData?.courses?.sourceUrls ?? []}
+        liftSourceUrls={resort.finalizedMapData?.lifts?.sourceUrls ?? []}
         selectedElevationProfilePoint={selectedElevationProfilePoint}
         onSelectedElevationProfilePointChange={
           onSelectedElevationProfilePointChange

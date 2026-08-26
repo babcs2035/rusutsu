@@ -17,6 +17,9 @@ import { SelectedLiftDetail } from "./SelectedLiftDetail";
 export const FinalizedFeatureDetail = ({
   courseGroup,
   lift,
+  resortLabelName,
+  courseSourceUrls,
+  liftSourceUrls,
   selectedElevationProfilePoint,
   onSelectedElevationProfilePointChange,
   onClose,
@@ -24,6 +27,10 @@ export const FinalizedFeatureDetail = ({
 }: {
   courseGroup: FinalizedCourseGroup | null;
   lift: FinalizedLiftFeature | null;
+  /** 地図のラベルに出している省略名。検索語の組み立てに使う */
+  resortLabelName: string;
+  courseSourceUrls: string[];
+  liftSourceUrls: string[];
   selectedElevationProfilePoint: ElevationProfileMapPoint | null;
   onSelectedElevationProfilePointChange: (
     point: ElevationProfileMapPoint | null,
@@ -77,13 +84,19 @@ export const FinalizedFeatureDetail = ({
         {courseGroup ? (
           <SelectedCourseDetail
             courseGroup={courseGroup}
+            resortLabelName={resortLabelName}
+            sourceUrls={courseSourceUrls}
             selectedElevationProfilePoint={selectedElevationProfilePoint}
             onSelectedElevationProfilePointChange={
               onSelectedElevationProfilePointChange
             }
           />
         ) : lift ? (
-          <SelectedLiftDetail lift={lift} />
+          <SelectedLiftDetail
+            lift={lift}
+            resortLabelName={resortLabelName}
+            sourceUrls={liftSourceUrls}
+          />
         ) : null}
       </div>
     </div>

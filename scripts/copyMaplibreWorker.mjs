@@ -19,5 +19,7 @@ const to = join(root, "public", "maplibre");
 const FILES = ["maplibre-gl-worker.mjs", "maplibre-gl-shared.mjs"];
 
 await mkdir(to, { recursive: true });
-await Promise.all(FILES.map(file => copyFile(join(from, file), join(to, file))));
+await Promise.all(
+  FILES.map(file => copyFile(join(from, file), join(to, file))),
+);
 console.log(`copied ${FILES.length} maplibre worker files to public/maplibre`);

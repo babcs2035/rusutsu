@@ -1,6 +1,6 @@
 "use client";
 
-import { Filter, RotateCcw, Search, SlidersHorizontal } from "lucide-react";
+import { Filter, RotateCcw, Search, SlidersHorizontal, X } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -66,6 +66,7 @@ export const FilterPanel = ({
   const {
     collapsedDetailLabels,
     handleCheckboxChange,
+    handleKeywordClear,
     handleNumericInputChange,
     handlePrefectureChange,
     handleRegionPrefecturesChange,
@@ -151,17 +152,33 @@ export const FilterPanel = ({
             onSearch();
           }}
         >
-          <Input
-            className="flex-1 min-w-0 h-10 bg-gray-50 border border-gray-200 text-gray-800 placeholder:text-gray-400 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10"
-            id={keywordId}
-            type="text"
-            name="keyword"
-            placeholder="スキー場名を入力"
-            value={filters.keyword}
-            onChange={handleTextInputChange}
-            onBlur={onKeyboardInputBlur}
-            onFocus={onKeyboardInputFocus}
-          />
+          <div className="relative min-w-0 flex-1">
+            <Input
+              className={cn(
+                "h-10 w-full bg-gray-50 border border-gray-200 text-gray-800 placeholder:text-gray-400 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10",
+                filters.keyword ? "pr-9" : "pr-3",
+              )}
+              id={keywordId}
+              type="text"
+              name="keyword"
+              placeholder="スキー場名を入力"
+              value={filters.keyword}
+              onChange={handleTextInputChange}
+              onBlur={onKeyboardInputBlur}
+              onFocus={onKeyboardInputFocus}
+            />
+            {filters.keyword && (
+              <Button
+                type="button"
+                variant="ghost"
+                aria-label="検索キーワードをクリア"
+                className="absolute inset-y-0 right-1.5 my-auto flex h-7 w-7 min-w-7 items-center justify-center rounded-full p-0 text-gray-600 shadow-none hover:bg-gray-100 hover:text-gray-700 active:not-aria-[haspopup]:translate-y-0"
+                onClick={handleKeywordClear}
+              >
+                <X size={15} strokeWidth={2.5} />
+              </Button>
+            )}
+          </div>
           <Button
             type="submit"
             variant="default"

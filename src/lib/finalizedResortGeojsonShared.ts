@@ -28,6 +28,9 @@ export type FinalizedCourseFeature = {
     minWidth: number | null;
     note: string | null;
     image: string | null;
+    searchWord: string | null;
+    morning: string | null;
+    night: string | null;
   };
 };
 
@@ -94,20 +97,33 @@ export type FinalizedLiftFeature = {
     horizontalDistMap: number | null;
     slopeDistMap: number | null;
     elevationDiffMap: number | null;
+    searchWord: string | null;
+    link: string | null;
+    morning: string | null;
+    night: string | null;
   };
 };
 
+export type ResortMapSection<TFeature> = {
+  /** 線を取ってきた場所 */
+  source: "slope_10m" | "slope_before" | "lift_20m" | "lift_before";
+  /** 基本情報を取ってきた場所 */
+  baseSource:
+    | "slope_before"
+    | "slope_detail"
+    | "lift_before"
+    | "lift_detail"
+    | "resorts.xlsx"
+    | null;
+  fileName: string;
+  /** 公式サイトの出典（latest_data の courseUrl / liftUrl） */
+  sourceUrls: string[];
+  features: TFeature[];
+};
+
 export type FinalizedResortMapData = {
-  courses: {
-    source: "resorts-finalized" | "slope_10m" | "slope_before";
-    fileName: string;
-    features: FinalizedCourseFeature[];
-  } | null;
-  lifts: {
-    source: "resorts-finalized" | "lift_20m" | "lift_before";
-    fileName: string;
-    features: FinalizedLiftFeature[];
-  } | null;
+  courses: ResortMapSection<FinalizedCourseFeature> | null;
+  lifts: ResortMapSection<FinalizedLiftFeature> | null;
 };
 
 export const normalizeNumber = (value: unknown): number | null => {
@@ -292,9 +308,15 @@ export const createCourseSlopeSegments = (
  * 斜度モードの色分割数の上限。
  * ズームに応じて分割数を変えると、ズーム段ごとにパスを作り直すことになり
  * 描画がカクつくため、分割数はズームに依存させない（FR-1.4）。
- * 24 は「幅 390px の画面で 1 区間 16px 以上」を確保できる値。
+ *
+ * 上限が低いと、拡大しても色の段が粗いままになる（24 だと 1 コース 24 色まで）。
+ * 元データは頂点ごとに slope_deg を持っているので、実質「頂点ごと」に色を
+ * 分けられるところまで上げる。現データの最長コースは約 280 頂点、
+ * 1 スキー場あたり全コース合計でも約 4,100 頂点しかない。
+ * 分割の作り直しはデータか表示モードが変わったときだけで、ズームでは走らない。
+ * WebGL 描画にとって数千本の線は負荷にならないため、上限は余裕を持たせる。
  */
-export const COURSE_COLOR_SEGMENT_LIMIT = 24;
+export const COURSE_COLOR_SEGMENT_LIMIT = 512;
 
 /**
  * 1 コースあたりのセグメント数に上限を設けた色分割。

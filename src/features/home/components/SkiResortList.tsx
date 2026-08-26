@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { TicketCalculationCard } from "@/features/lift-ticket/components/TicketCalculationCard";
 import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
 import { calculateLiftTicketForSeasons } from "@/features/lift-ticket/utils/calculateLiftTicket";
+import { CopyResortNameButton } from "@/shared/components/CopyResortNameButton";
 import { RubyText } from "@/shared/components/RubyText";
 import type { MapSkiResort } from "@/types/skiResorts";
 
@@ -168,9 +169,19 @@ const SkiResortListItem = memo(
         >
           <div className="flex min-h-[48px] md:min-h-auto items-center justify-between gap-2">
             <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <p className="overflow-hidden text-ellipsis whitespace-nowrap font-bold text-base md:text-lg leading-tight text-gray-900 font-[var(--font-heading)]">
-                <RubyText segments={resort.nameRuby} fallback={resort.nameJa} />
-              </p>
+              <div className="flex min-w-0 items-center gap-1">
+                <p className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-bold text-base md:text-lg leading-tight text-gray-900 font-[var(--font-heading)]">
+                  <RubyText
+                    segments={resort.nameRuby}
+                    fallback={resort.nameJa}
+                  />
+                </p>
+                <CopyResortNameButton
+                  name={resort.nameJa}
+                  className="-my-1"
+                  onInteract={clearHighlight}
+                />
+              </div>
               <p className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-xs md:text-sm font-medium leading-snug text-gray-500">
                 {resort.prefecture} · {resort.town}
               </p>

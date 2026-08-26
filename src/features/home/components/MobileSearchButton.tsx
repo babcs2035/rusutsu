@@ -43,7 +43,7 @@ export const MobileSearchButton = ({
         type="button"
         aria-label="検索キーワードをクリア"
         variant="ghost"
-        className="absolute top-1/2 right-[6px] z-20 -translate-y-1/2 w-8 h-8 min-w-8 p-0 rounded-full border border-gray-200 bg-transparent text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+        className="absolute inset-y-0 right-[6px] z-20 my-auto w-8 h-8 min-w-8 p-0 rounded-full border border-gray-200 bg-transparent text-gray-500 hover:bg-gray-50 hover:text-gray-900 active:not-aria-[haspopup]:translate-y-0"
         onPointerDown={event => event.stopPropagation()}
         onClick={event => {
           event.stopPropagation();

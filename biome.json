@@ -14,6 +14,7 @@
       "!**/out",
       "!**/build",
       "!**/coverage",
+      "!**/.venv-*",
       "!**/src/private/data",
       "!src/app/globals.css"
     ]

@@ -52,6 +52,9 @@ const createTestCourse = (
     minWidth: null,
     note: null,
     image: null,
+    searchWord: null,
+    morning: null,
+    night: null,
   },
 });
 
@@ -178,10 +181,7 @@ test("map data follows finalized, measured, then before priority", async () => {
   const fixtureRoot = await fs.mkdtemp(
     path.join(os.tmpdir(), "resort-map-data-"),
   );
-  const roots = {
-    finalizedRoot: path.join(fixtureRoot, "finalized"),
-    temporaryRoot: path.join(fixtureRoot, "temporary"),
-  };
+  const roots = { temporaryRoot: path.join(fixtureRoot, "temporary") };
   const writeGeojson = async (
     filePath: string,
     name: string,
@@ -204,38 +204,79 @@ test("map data follows finalized, measured, then before priority", async () => {
     );
   };
 
+  const writeJson = async (filePath: string, value: unknown) => {
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.writeFile(filePath, JSON.stringify(value));
+  };
+
   try {
-    const finalizedId = "finalized-priority";
-    for (const kind of ["courses", "lifts"] as const) {
-      await writeGeojson(
-        path.join(
-          roots.finalizedRoot,
-          kind,
-          finalizedId,
-          "2026_0101_000000.geojson",
-        ),
-        `finalized-${kind}`,
-        [
-          [140, 40, 1000],
-          [140.01, 40.01, 900],
-        ],
-      );
-    }
+    // slope_10m の線に、基本情報（*_detail）と当日の状況（latest_data）を重ねる
+    const mergedId = "merged-resort";
     await writeGeojson(
-      path.join(roots.temporaryRoot, "slope_10m", `${finalizedId}.geojson`),
-      "temporary-course",
+      path.join(roots.temporaryRoot, "slope_10m", `${mergedId}.geojson`),
+      "白樺ゲレンデ_#上部",
       [
         [140, 40, 1000],
         [140.01, 40.01, 900],
       ],
+      { avg_slope_deg_map: "12.3" },
+    );
+    await writeJson(
+      path.join(roots.temporaryRoot, "slope_detail", `${mergedId}.json`),
+      [
+        {
+          name: "白樺ゲレンデ",
+          level: "中級",
+          piste: "○",
+          snowboard: "○",
+          searchWord: "テスト　白樺ゲレンデ",
+        },
+      ],
     );
     await writeGeojson(
-      path.join(roots.temporaryRoot, "lift_20m", `${finalizedId}.geojson`),
-      "temporary-lift",
+      path.join(roots.temporaryRoot, "lift_20m", `${mergedId}.geojson`),
+      "第1ペア",
       [
         [140, 40, 900],
         [140.01, 40.01, 1000],
       ],
+    );
+    await writeJson(
+      path.join(roots.temporaryRoot, "lift_detail", `${mergedId}.json`),
+      [
+        {
+          name: "第1ペア",
+          type: "ペアリフト",
+          speed: "低速",
+          capacity: 2,
+          hood: "×",
+          footrest: "○",
+          oilShield: "×",
+          searchWord: "テスト　第1ペア",
+        },
+      ],
+    );
+    await writeJson(
+      path.join(
+        roots.temporaryRoot,
+        "latest_data",
+        mergedId,
+        "2026_0101_000000.json",
+      ),
+      {
+        time: "2026/1/1 0:00:00",
+        courses: [
+          {
+            name: "白樺ゲレンデ上部",
+            status: "○",
+            update: "2026-01-01 07:00 更新",
+            note: "圧雪",
+          },
+        ],
+        lifts: [{ name: "第1ペア", status: "×", note: "運休" }],
+        courseUrl: ["https://example.com/course"],
+        liftUrl: ["https://example.com/lift"],
+      },
     );
 
     const measuredId = "measured-fallback";
@@ -276,14 +317,29 @@ test("map data follows finalized, measured, then before priority", async () => {
       { aerialway: "chair_lift" },
     );
 
-    const finalizedData = await getResortMapDataFromRoots(finalizedId, roots);
-    assert.equal(finalizedData?.courses?.source, "resorts-finalized");
-    assert.equal(
-      finalizedData?.courses?.features[0]?.name,
-      "finalized-courses",
-    );
-    assert.equal(finalizedData?.lifts?.source, "resorts-finalized");
-    assert.equal(finalizedData?.lifts?.features[0]?.name, "finalized-lifts");
+    const mergedData = await getResortMapDataFromRoots(mergedId, roots);
+    const mergedCourse = mergedData?.courses?.features[0];
+    assert.equal(mergedData?.courses?.source, "slope_10m");
+    assert.equal(mergedData?.courses?.baseSource, "slope_detail");
+    assert.deepEqual(mergedData?.courses?.sourceUrls, [
+      "https://example.com/course",
+    ]);
+    assert.equal(mergedCourse?.displayName, "白樺ゲレンデ");
+    assert.equal(mergedCourse?.sectionName, "上部");
+    assert.equal(mergedCourse?.properties.level, "中級");
+    assert.equal(mergedCourse?.properties.searchWord, "テスト　白樺ゲレンデ");
+    // latest_data の note は latestNote に移し、基本情報の note と混ぜない
+    assert.equal(mergedCourse?.properties.latestNote, "圧雪");
+    assert.equal(mergedCourse?.properties.status, "○");
+    assert.equal(mergedCourse?.properties.update, "2026-01-01 07:00 更新");
+
+    const mergedLift = mergedData?.lifts?.features[0];
+    assert.equal(mergedData?.lifts?.baseSource, "lift_detail");
+    assert.equal(mergedLift?.properties.type, "ペアリフト");
+    assert.equal(mergedLift?.properties.status, "×");
+    assert.deepEqual(mergedData?.lifts?.sourceUrls, [
+      "https://example.com/lift",
+    ]);
 
     const measuredData = await getResortMapDataFromRoots(measuredId, roots);
     assert.equal(measuredData?.courses?.source, "slope_10m");

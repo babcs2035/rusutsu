@@ -125,8 +125,22 @@ export const formatPisteStatus = (piste: string | null | undefined) => {
 export const formatMeters = (value: number | null | undefined) =>
   value == null ? "--" : `${Math.round(value).toLocaleString()}m`;
 
+/** 斜度は小数第一位まで出しても読み分けられないので整数にする */
 export const formatDegree = (value: number | null | undefined) =>
-  value == null ? "--" : `${value.toFixed(1)}°`;
+  value == null ? "--" : `${Math.round(value)}°`;
+
+/** 線の標高の最小・最大。GeoJSON の 3 番目の値から拾う */
+export const getElevationRange = (
+  coordinateLists: Array<Array<readonly number[]>>,
+): { min: number; max: number } | null => {
+  const elevations = coordinateLists
+    .flat()
+    .map(coordinate => coordinate[2])
+    .filter((value): value is number => typeof value === "number");
+  if (elevations.length === 0) return null;
+
+  return { min: Math.min(...elevations), max: Math.max(...elevations) };
+};
 
 export const getLiftElevationDiff = (lift: FinalizedLiftFeature) => {
   if (lift.properties.elevationDiffMap != null) {
