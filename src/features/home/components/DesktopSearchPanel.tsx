@@ -51,7 +51,7 @@ export const DesktopSearchPanel = ({
 }: Props) => (
   <div
     className={cn(
-      "hidden md:block h-full w-[min(400px,50vw)] flex-shrink-0 relative z-10",
+      "hidden md:block h-full w-[var(--desktop-search-panel-width)] flex-shrink-0 relative z-10",
       "border-l border-gray-200 bg-white",
       "shadow-[4px_0_20px_rgba(0,0,0,0.06)]",
     )}

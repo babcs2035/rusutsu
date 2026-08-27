@@ -96,9 +96,12 @@ export const MapLibreResortMap = memo(function MapLibreResortMap({
   restoreViewRequest = null,
   finalizedMapData = null,
   mapPresentation = "default",
+  initialViewport = null,
+  showMapToolbar = true,
   mapTileVariant: controlledMapTileVariant,
   onMapTileVariantChange,
   detailViewportMode = "finalized",
+  detailViewportResetKey = 0,
   selectedFinalizedFeature: controlledSelectedFinalizedFeature,
   onSelectedFinalizedFeatureChange,
   selectedElevationProfilePoint = null,
@@ -123,10 +126,14 @@ export const MapLibreResortMap = memo(function MapLibreResortMap({
   );
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [isInteracting, setIsInteracting] = useState(false);
+  // 詳細地図は最初のフレームから写真＋斜度で作る。
+  // 既定（地図タイル）で作ってから切り替えると、白い淡色地図のタイルを
+  // 読み込んでから写真の読み込みが始まり、切り替わるまで白い地図が見えてしまう。
   const [uncontrolledTileVariant, setUncontrolledTileVariant] =
-    useState<MapTileVariant>("pale");
-  const [courseColorMode, setCourseColorMode] =
-    useState<CourseColorMode>("difficulty");
+    useState<MapTileVariant>(isDetailMap ? "photo" : "pale");
+  const [courseColorMode, setCourseColorMode] = useState<CourseColorMode>(
+    isDetailMap ? "slope" : "difficulty",
+  );
   const [showOpenOnly, setShowOpenOnly] = useState(false);
   const [uncontrolledSelected, setUncontrolledSelected] =
     useState<SelectedMapFeature | null>(null);
@@ -209,6 +216,7 @@ export const MapLibreResortMap = memo(function MapLibreResortMap({
     }),
     hitWidth: isCoarsePointer ? 24 : 14,
     isInteractive: !isPreviewMap,
+    initialViewport,
   });
 
   const {
@@ -702,6 +710,7 @@ export const MapLibreResortMap = memo(function MapLibreResortMap({
     // モバイルは動かす様子を見せない。開いた時点でスキー場が出ている方が速い
     animate: !isMobile,
     skipCompareRecenterRef,
+    viewportResetKey: detailViewportResetKey,
   });
   useSearchViewport({
     map,
@@ -775,7 +784,7 @@ export const MapLibreResortMap = memo(function MapLibreResortMap({
           onUserMapZoomInteraction={onUserMapZoomInteraction}
         />
       )}
-      {!isPreviewMap && hasFinalizedFeatures && (
+      {!isPreviewMap && hasFinalizedFeatures && showMapToolbar && (
         <div
           className="pointer-events-none absolute inset-x-0 bottom-0 z-[750] flex justify-end pb-[calc(env(safe-area-inset-bottom,0px)+1.5rem)] pl-2"
           style={{ paddingRight: `${toolbarRightOverlap + 8}px` }}

@@ -12,6 +12,8 @@ export const BASE_RASTER_SOURCE_ID = {
   photo: "gsi-photo",
 } as const satisfies Record<MapTileVariant, string>;
 
+export const BASE_BACKGROUND_LAYER_ID = "base-background";
+
 export const BASE_RASTER_LAYER_ID = {
   pale: "gsi-pale-layer",
   photo: "gsi-photo-layer",
@@ -98,6 +100,13 @@ export const createBaseStyle = (
     },
   },
   layers: [
+    // タイルが届くまでの下地。透明のままだと真っ白に見えて、
+    // 「白地図が出てから写真に変わった」ように見えてしまう
+    {
+      id: BASE_BACKGROUND_LAYER_ID,
+      type: "background",
+      paint: { "background-color": "#c9ced4" },
+    },
     {
       id: BASE_RASTER_LAYER_ID.pale,
       type: "raster",

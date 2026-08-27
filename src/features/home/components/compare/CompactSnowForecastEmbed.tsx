@@ -1,5 +1,6 @@
 "use client";
 
+import { ExternalLink } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -206,49 +207,43 @@ export const CompactSnowForecastEmbed = ({
                   </TooltipContent>
                 </Tooltip>
               </div>
+            </div>
 
-              {/* §15: 表示制御は CompareWeatherTab.css のコンテナクエリが単一情報源。
-                  Tailwind の hidden クラスを付けない（.scrollable-tabs .hidden の
-                  display: contents !important 上書きでコンテナクエリが勝てなくなる） */}
-              {/* §15: 最小幅 320px で収まるよう padding は px-4 / gap-4 に抑制。
-                  幅不足時は flex-wrap で出典行を 2 行目に折り返す（min-w-[12rem] が折り返し条件） */}
-              <div className="snow-forecast-mobile-footer flex-wrap items-center gap-4 p-4 bg-gray-50 border-t border-gray-200">
-                <div className="flex flex-shrink-0">
-                  {ELEVATION_OPTIONS.map(option => (
-                    <Button
-                      type="button"
-                      key={option.value}
-                      variant="ghost"
-                      onClick={() => {
-                        onElevationChange(option.value);
-                        resetFeedScroll();
-                      }}
-                      className={cn(
-                        "min-w-max h-auto min-h-0 px-4 py-2 rounded-md text-xs font-semibold transition-colors",
-                        elevation === option.value
-                          ? "bg-white text-blue-600 border border-gray-200 shadow-sm"
-                          : "bg-transparent text-gray-500 border-transparent shadow-none hover:bg-white hover:text-gray-700",
-                      )}
-                    >
-                      {option.label}
-                    </Button>
-                  ))}
-                </div>
-
-                {/* flex-1 にすると flex-basis: 0% が優先され w-px が無視されて灰色バーになるため flex-shrink-0 */}
-                <div className="flex-shrink-0 self-stretch w-px bg-gray-200" />
-
-                <p className="flex-1 min-w-[12rem] text-xs text-gray-500 font-medium text-right leading-snug">
-                  この詳細は{" "}
-                  <ExternalLinkComponent
-                    href={detailUrl}
-                    className="text-blue-600 underline hover:text-blue-700"
+            {/* §15: 表示制御は CompareWeatherTab.css のコンテナクエリが単一情報源。
+                Tailwind の hidden クラスを付けない（.scrollable-tabs .hidden の
+                display: contents !important 上書きでコンテナクエリが勝てなくなる）。
+                高さを固定した .snow-forecast-viewport の中に置くと、その外枠の
+                overflow: hidden で切り落とされるので、必ず外に出しておく */}
+            <div className="snow-forecast-mobile-footer flex-wrap items-center justify-between gap-2 px-3 py-2 bg-gray-50 border-t border-gray-200">
+              <div className="flex flex-shrink-0">
+                {ELEVATION_OPTIONS.map(option => (
+                  <Button
+                    type="button"
+                    key={option.value}
+                    variant="ghost"
+                    onClick={() => {
+                      onElevationChange(option.value);
+                      resetFeedScroll();
+                    }}
+                    className={cn(
+                      "min-w-max h-8 min-h-0 px-3 rounded-md text-xs font-semibold transition-colors",
+                      elevation === option.value
+                        ? "bg-white text-blue-600 border border-gray-200 shadow-sm"
+                        : "bg-transparent text-gray-500 border-transparent shadow-none hover:bg-white hover:text-gray-700",
+                    )}
                   >
-                    Snow Forecast
-                  </ExternalLinkComponent>
-                  から
-                </p>
+                    {option.label}
+                  </Button>
+                ))}
               </div>
+
+              <ExternalLinkComponent
+                href={detailUrl}
+                className="h-8 flex-shrink-0 gap-1 rounded-md border border-blue-200 bg-white px-3 text-xs font-bold text-blue-700 hover:bg-blue-50"
+              >
+                詳細はこちら
+                <ExternalLink size={12} />
+              </ExternalLinkComponent>
             </div>
 
             {/* §15: 表示制御はコンテナクエリ（CompareWeatherTab.css）のみに集約。

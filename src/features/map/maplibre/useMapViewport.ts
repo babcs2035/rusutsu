@@ -41,6 +41,7 @@ export const useResortViewport = ({
   labelShowZoom,
   animate,
   skipCompareRecenterRef,
+  viewportResetKey = 0,
 }: {
   map: MapLibreMap | null;
   isReady: boolean;
@@ -56,12 +57,15 @@ export const useResortViewport = ({
   /** モバイルでは動かす様子を見せずに、開いた時点でその場所を出す */
   animate: boolean;
   skipCompareRecenterRef?: React.RefObject<boolean>;
+  /** 値が変わるたびに詳細の表示範囲を組み直す（コース選択の解除など） */
+  viewportResetKey?: number;
 }) => {
   useEffect(() => {
     if (!map || !isReady) return;
     map.setMinZoom(initialZoom);
   }, [initialZoom, isReady, map]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: viewportResetKey は「もう一度合わせ直す」合図なので、本文では読まずに依存にだけ置く
   useEffect(() => {
     if (!map || !isReady) return;
 
@@ -127,6 +131,7 @@ export const useResortViewport = ({
     selectedResortId,
     selectedViewportBottomPaddingRatio,
     skipCompareRecenterRef,
+    viewportResetKey,
   ]);
 };
 

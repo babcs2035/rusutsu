@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { removeSkiResortWord } from "@/lib/resortAliases";
 import type { MapSkiResort } from "@/types/skiResorts";
 
 type ResortNameAliasesData = {
@@ -11,9 +12,6 @@ type ResortNameAliasesData = {
 };
 
 let aliasByIdPromise: Promise<Map<string, string>> | null = null;
-
-export const removeSkiResortWord = (name: string): string =>
-  name.replaceAll("スキー場", "").trim();
 
 const loadAliasById = async (): Promise<Map<string, string>> => {
   if (aliasByIdPromise) {

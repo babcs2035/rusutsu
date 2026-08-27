@@ -70,22 +70,6 @@ export const SelectedLiftDetail = ({
         sourceUrls={sourceUrls}
       />
 
-      {comments.length > 0 && (
-        <div>
-          <p className="text-xs font-semibold text-gray-500">コメント</p>
-          <ul className="mt-1 flex flex-col gap-1">
-            {comments.map(comment => (
-              <li
-                key={comment}
-                className="text-sm leading-relaxed text-gray-800"
-              >
-                {comment}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
       <ElevationProfile points={profilePoints} />
 
       <div className="grid grid-cols-4 gap-2">
@@ -113,6 +97,22 @@ export const SelectedLiftDetail = ({
         />
         <FeatureMetric title="フード" value={lift.properties.hood ?? "--"} />
       </div>
+
+      {comments.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-gray-500">コメント</p>
+          <ul className="mt-1 flex flex-col gap-1">
+            {comments.map(comment => (
+              <li
+                key={comment}
+                className="text-sm leading-relaxed text-gray-800"
+              >
+                {comment}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 };

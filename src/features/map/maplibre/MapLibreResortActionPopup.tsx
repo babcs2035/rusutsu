@@ -1,11 +1,16 @@
 "use client";
 
-import { Check, Plus } from "lucide-react";
+import { Check, MapPin, Navigation, Plus } from "lucide-react";
 import { type Map as MapLibreMap, Marker } from "maplibre-gl";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
+import {
+  getGoogleMapsDirectionsUrl,
+  getGoogleMapsUrl,
+} from "@/shared/utils/mapLinks";
 import type { MapSkiResort } from "@/types/skiResorts";
 
 /**
@@ -63,11 +68,36 @@ export const MapLibreResortActionPopup = ({
 
   if (!container) return null;
 
+  const googleMapsUrl = getGoogleMapsUrl(resort);
+  const directionsUrl = getGoogleMapsDirectionsUrl(resort);
+
   return createPortal(
     <div className="flex min-w-[190px] flex-col gap-2">
       <p className="font-[var(--font-heading)] text-sm font-bold leading-snug text-gray-900">
         {resort.nameJa}
       </p>
+      {(googleMapsUrl || directionsUrl) && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          {directionsUrl && (
+            <ExternalLinkComponent
+              href={directionsUrl}
+              className="gap-1 text-xs font-semibold text-green-700 hover:underline"
+            >
+              <Navigation size={13} strokeWidth={2.5} />
+              経路を調べる
+            </ExternalLinkComponent>
+          )}
+          {googleMapsUrl && (
+            <ExternalLinkComponent
+              href={googleMapsUrl}
+              className="gap-1 text-xs font-semibold text-blue-700 hover:underline"
+            >
+              <MapPin size={13} strokeWidth={2.5} />
+              Google マップ
+            </ExternalLinkComponent>
+          )}
+        </div>
+      )}
       <div className="flex gap-2">
         <Button
           size="xs"

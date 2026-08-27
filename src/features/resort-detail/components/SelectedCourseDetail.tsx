@@ -1,13 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import type { ElevationProfileMapPoint } from "@/features/map/types";
 import {
   COURSE_DIFFICULTY_META,
   getCourseDifficulty,
 } from "@/lib/finalizedResortGeojsonShared";
-import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
-import { getExternalImageUrl } from "@/shared/utils/externalImage";
 import type { FinalizedCourseGroup } from "../types";
 import {
   averageNullable,
@@ -54,7 +51,6 @@ export const SelectedCourseDetail = ({
 
   if (!selectedCourse) return null;
 
-  const courseImageUrl = getExternalImageUrl(selectedCourse.properties.image);
   const difficulty =
     COURSE_DIFFICULTY_META[
       getCourseDifficulty(selectedCourse.properties.level)
@@ -131,50 +127,6 @@ export const SelectedCourseDetail = ({
         sourceUrls={sourceUrls}
       />
 
-      {courseImageUrl && (
-        <ExternalLinkComponent className="w-full">
-          <div className="relative h-[180px] w-full overflow-hidden rounded-xl">
-            <Image
-              src={courseImageUrl}
-              alt={courseGroup.displayName}
-              fill
-              sizes="(min-width: 768px) 1000px, 100vw"
-              className="object-contain"
-              // コース画像は各スキー場の公式サイト上にあり、ホスト名は
-              // スキー場が増えるたびに増える。remotePatterns で列挙しきれないので
-              // 最適化を切って直接読み込む（getExternalImageUrl の説明を参照）。
-              unoptimized
-            />
-          </div>
-        </ExternalLinkComponent>
-      )}
-
-      {comments.length > 0 && (
-        <div>
-          <p className="text-xs font-semibold text-gray-500">コメント</p>
-          <ul className="mt-1 flex flex-col gap-1">
-            {comments.map(comment => (
-              <li
-                key={comment}
-                className="text-sm leading-relaxed text-gray-800"
-              >
-                {comment}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {notes.description.length > 0 && (
-        <div className="flex flex-col gap-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
-          {notes.description.map(note => (
-            <p key={note} className="text-sm leading-relaxed text-gray-700">
-              {note}
-            </p>
-          ))}
-        </div>
-      )}
-
       <ElevationProfile
         points={profilePoints}
         activeDistance={
@@ -212,6 +164,32 @@ export const SelectedCourseDetail = ({
         <FeatureMetric title="平均斜度" value={formatDegree(averageSlope)} />
         <FeatureMetric title="最大斜度" value={formatDegree(maxSlope)} />
       </div>
+
+      {comments.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-gray-500">コメント</p>
+          <ul className="mt-1 flex flex-col gap-1">
+            {comments.map(comment => (
+              <li
+                key={comment}
+                className="text-sm leading-relaxed text-gray-800"
+              >
+                {comment}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {notes.description.length > 0 && (
+        <div className="flex flex-col gap-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
+          {notes.description.map(note => (
+            <p key={note} className="text-sm leading-relaxed text-gray-700">
+              {note}
+            </p>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

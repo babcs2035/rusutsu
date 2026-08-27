@@ -667,11 +667,12 @@ export function HomeClient({ initialResorts }: Props) {
       ? mobileSearchViewport.keyboardInset
       : 0;
   const mobileSearchFilterBottomPadding = `calc(env(safe-area-inset-bottom, 0px) + ${mobileSearchKeyboardInset}px + 1rem)`;
+  // 比較はモバイル専用画面として常に出す（地図タブに切り替える導線を持たない）
   const shouldRenderMobileListSheet =
     !isSidePanelLayout &&
-    mobileContentTab === "info" &&
     !selectedResortId &&
-    (isListSheetOpen || hasSearched || isCompareOpen);
+    (isCompareOpen ||
+      (mobileContentTab === "info" && (isListSheetOpen || hasSearched)));
 
   return (
     <>

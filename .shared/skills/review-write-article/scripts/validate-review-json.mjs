@@ -123,6 +123,12 @@ const STYLE_RULES = [
     hint: "何が優れているのかを具体的に書く",
   },
   {
+    id: "編集語",
+    pattern:
+      /(一系統|主力|段階的|代替|選び分け|反復|物量|現行性|判断材料|候補|成立|周回|確実な|具体的に挙げられる|対象は)/,
+    hint: "分析を名詞で圧縮せず、斜面・リフト・雪を主語にして文全体を書き直す",
+  },
+  {
     id: "同義語並列",
     pattern:
       /(非圧雪やパウダー|パウダーや非圧雪|コブやモーグル|モーグルやコブ|ツリーランや林間|急斜面やスティープ)/,
@@ -141,6 +147,64 @@ const CONCRETE_NOUN =
 // 判断材料の少なさに触れる表現（warn: true のカテゴリだけ許可）
 const THIN_EVIDENCE =
   /(まだ多くありません|まだ少なめ|まだ少なく|はっきりしません|見えていません)/;
+
+// カテゴリ名から当然に導ける可能動作だけを記事へ書いていないか。
+// 例: 「圧雪中斜面でカービングを反復できます」。
+const GENERIC_CATEGORY_EXPERIENCE =
+  /(?:圧雪|整地)[^。]{0,18}(?:緩斜面|中斜面|急斜面|バーン|コース)[^。]{0,18}(?:カービング|高速ターン|ショートターン|大回り|小回り|ターン|滑走|練習)[^。]{0,10}(?:できます|楽しめます)|(?:コブ斜面|コブライン|モーグルバーン)[^。]{0,18}(?:滑走|練習|反復)[^。]{0,8}(?:できます|楽しめます)|(?:非圧雪斜面|非圧雪コース)[^。]{0,18}(?:新雪|パウダー)[^。]{0,8}(?:狙えます|楽しめます)|(?:ツリーラン|樹林帯)[^。]{0,18}(?:樹林滑走|深雪|パウダー)[^。]{0,8}(?:練習できます|楽しめます)|パーク[^。]{0,18}(?:アイテム|キッカー|ジブ)[^。]{0,10}(?:利用できます|練習できます)/;
+
+// 一般的な可能動作を、そのスキー場固有の差へ変える比較軸。
+// 「幅広い」「圧雪が丁寧」だけでは平均的な同カテゴリとの差にならない。
+const DECISION_DELTA =
+  /一系統|実質一|一本|一つ|一か所|複数|選択肢|選び分け|集中|限ら|主力|中心|代替|長く続|上から下|山頂から麓|(?:斜面|コース|ライン)(?:が|は)?[^。]{0,4}長|短(?:い|く|め)|狭|全山|範囲|エリア間|横移動|歩き|スケーティング|乗り継ぎ|受付|申請|営業時間|午前|午後|朝一|朝だけ|終日|混雑|競争|待ち|開放|閉鎖|運休|圧雪頻度|圧雪運用|非圧雪(?:になる|へ変わ)|造成|積雪状況|降雪状況|日によ|シーズン|残り|荒れ|同じ斜面|別ルート|周回|物量|ライン数|規模/;
+
+// 「長く丁寧に圧雪」は、斜面が長いのか圧雪期間が長いのか曖昧。
+const AMBIGUOUS_LENGTH = /長く(?:丁寧|きれい|しっかり)に圧雪/;
+const isGenericCategoryClaim = value =>
+  GENERIC_CATEGORY_EXPERIENCE.test(value) && !DECISION_DELTA.test(value);
+
+if (process.argv[2] === "--self-test") {
+  const rejected = [
+    "圧雪中斜面ではルートを変えてショートターンを練習できます。",
+    "丁寧に圧雪された中斜面でカービングを反復できます。",
+    "長く丁寧に圧雪された急斜面で高速ターンを反復できます。",
+    "締まった圧雪バーンでカービングを楽しめます。",
+  ];
+  const accepted = [
+    "圧雪された中斜面は一つだけで、ほかに選べる整地はありません。",
+    "圧雪急斜面は山頂側から長く続きます。",
+    "ほかの上級斜面はコブ・非圧雪が中心です。",
+    "別エリアへ移るには歩きやスケーティングを挟みます。",
+  ];
+
+  for (const value of rejected) {
+    if (!isGenericCategoryClaim(value)) {
+      throw new Error(`カテゴリ同義文を検出できません: ${value}`);
+    }
+  }
+  for (const value of accepted) {
+    if (isGenericCategoryClaim(value)) {
+      throw new Error(`比較差のある文を誤検出しました: ${value}`);
+    }
+  }
+  if (!AMBIGUOUS_LENGTH.test(rejected[2])) {
+    throw new Error("曖昧な長さを検出できません");
+  }
+  const editorialJargon = [
+    "中級の高評価は一系統に集中します。",
+    "主力バーンは山頂側から長く続きます。",
+    "初級斜面から段階的に進めます。",
+    "混雑時の代替周回があります。",
+  ];
+  const editorialRule = STYLE_RULES.find(rule => rule.id === "編集語");
+  for (const value of editorialJargon) {
+    if (!editorialRule?.pattern.test(value)) {
+      throw new Error(`編集語を検出できません: ${value}`);
+    }
+  }
+  process.stdout.write("validator self-test: OK\n");
+  process.exit(0);
+}
 
 // 反復チェックから除外する語（このドメインでは繰り返して当然）
 const REPEAT_STOPWORDS = new Set([
@@ -366,6 +430,16 @@ const validateBulletList = (
     }
     if (!CONCRETE_NOUN.test(text)) {
       warnings.push(`${textAt} に具体物または具体的な利用条件がありません`);
+    }
+    if (isGenericCategoryClaim(text)) {
+      warnings.push(
+        `${textAt} [カテゴリ同義文] 可能動作ではなく、量・長さ・選択肢・運用・移動の差を書く`,
+      );
+    }
+    if (AMBIGUOUS_LENGTH.test(text)) {
+      warnings.push(
+        `${textAt} [曖昧な長さ] コース長か運用期間かを明示する`,
+      );
     }
     if (THIN_EVIDENCE.test(text) && !allowThinEvidence) {
       warnings.push(
@@ -602,6 +676,16 @@ for (const category of categories) {
       lintStyle(course.description, `${courseAt}.description`, {
         maxSentence: 40,
       });
+      if (isGenericCategoryClaim(course.description)) {
+        warnings.push(
+          `${courseAt}.description [カテゴリ同義文] 可能動作ではなく、コース固有の規模・形・運用を書く`,
+        );
+      }
+      if (AMBIGUOUS_LENGTH.test(course.description)) {
+        warnings.push(
+          `${courseAt}.description [曖昧な長さ] コース長か運用期間かを明示する`,
+        );
+      }
     });
   }
 

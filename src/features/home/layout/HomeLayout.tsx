@@ -9,7 +9,7 @@ import type {
   TouchEvent as ReactTouchEvent,
   RefObject,
 } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { REGION_PREFECTURES } from "@/features/filters/constants";
@@ -30,6 +30,7 @@ import type {
   NullableSkiResortDetail,
   SkiResortDetail,
 } from "@/types/skiResorts";
+import { CompareSlopeMapBoard } from "../components/compare/CompareSlopeMapBoard";
 import { DesktopSearchPanel } from "../components/DesktopSearchPanel";
 import { MobileResultsSheet } from "../components/MobileResultsSheet";
 import { MobileSearchButton } from "../components/MobileSearchButton";
@@ -201,30 +202,35 @@ export const HomeLayout = ({
   onUserMapZoomInteraction,
 }: Props) => {
   const [mapTileVariant, setMapTileVariant] = useState<MapTileVariant>("pale");
+  // デスクトップの比較では、左の地図エリアを「アクセス（位置の地図）」と
+  // 「ゲレンデ（コースマップ一覧）」で切り替える
+  const [compareLeftPane, setCompareLeftPane] = useState<"access" | "slope">(
+    "access",
+  );
+  const isDesktopCompare = isSidePanelLayout && isCompareOpen;
+
+  useEffect(() => {
+    if (isCompareOpen) return;
+    setCompareLeftPane("access");
+  }, [isCompareOpen]);
   const liftTicketInput =
     filters.liftTicket ?? DEFAULT_LIFT_TICKET_SEARCH_INPUT;
-  const isMobileCompareMapFocus = !isSidePanelLayout && isCompareOpen;
-  const mapFilteredResortIdSet = isMobileCompareMapFocus
-    ? selectedCompareIdSet
-    : filteredResortIdSet;
-  const mapSearchResultResortIds = isMobileCompareMapFocus
-    ? selectedCompareIds
-    : hasActiveFilters
-      ? filteredResortIds
-      : [];
+  // 比較中の地図はデスクトップの背景地図だけ。モバイルは比較タブの中で完結する
+  const mapSearchResultResortIds = hasActiveFilters ? filteredResortIds : [];
   const shouldShowMobileSearchScreen =
     !isSidePanelLayout && isMobileFilterOverlayOpen;
   // 未検索状態で比較セットを構築した場合（詳細シート/リストから追加）も
   // 「N 件を比較」ボタンを表示できる必要があり，compareCount > 0 でも表示する。
   // デスクトップ（DesktopSearchPanel）は compareCount > 0 で常時表示するため，
   // モバイルとの挙動を揃える。
+  // モバイルの比較は専用画面（比較タブ）で完結させるので、
+  // 上部のコンテキストヘッダーも背景地図も出さない
+  const isMobileCompare = !isSidePanelLayout && isCompareOpen;
   const shouldShowMobileContextHeader =
     !isSidePanelLayout &&
     !isMobileFilterOverlayOpen &&
-    (isCompareOpen ||
-      Boolean(selectedResortId) ||
-      hasSearched ||
-      selectedCompareIds.length > 0);
+    !isCompareOpen &&
+    (Boolean(selectedResortId) || hasSearched || selectedCompareIds.length > 0);
   const shouldShowMobileSearchButton =
     !isCompareOpen && !isMobileFilterOverlayOpen && !selectedResortId;
   const shouldShowMobileTopChrome =
@@ -233,8 +239,9 @@ export const HomeLayout = ({
     (shouldShowMobileSearchButton || shouldShowMobileContextHeader);
   const shouldRenderMap =
     isSidePanelLayout ||
-    mobileContentTab === "map" ||
-    (!shouldShowMobileTopChrome && !shouldShowMobileSearchScreen);
+    (!isMobileCompare &&
+      (mobileContentTab === "map" ||
+        (!shouldShowMobileTopChrome && !shouldShowMobileSearchScreen)));
 
   const availablePrefectureSet = new Set(
     initialResorts.map(resort => resort.prefecture).filter(Boolean),
@@ -259,18 +266,20 @@ export const HomeLayout = ({
       className="fixed inset-0 min-h-0 w-screen overflow-hidden flex flex-col md:flex-row bg-gray-100"
     >
       <div className="h-full w-full relative flex flex-col bg-white">
-        {shouldShowMobileTopChrome && (
+        {/*
+          中身が検索ヘッダだけなので、検索ヘッダを出さないとき（詳細・比較）は
+          帯ごと描かない。空の帯でも pb-2 + border-b の分だけ画面上部を食う。
+        */}
+        {shouldShowMobileTopChrome && shouldShowMobileSearchButton && (
           <div className="fixed top-0 right-0 left-0 z-[150] hide-desktop flex-col gap-2 pb-2 bg-white border-b border-gray-100">
-            {shouldShowMobileSearchButton && (
-              <MobileSearchHeader
-                activeTab={mobileContentTab}
-                keyword={filters.keyword}
-                onKeywordClear={onMobileSearchButtonKeywordClear}
-                onOpenSearch={onOpenMobileFilterOverlay}
-                onPointerDown={onMobileSearchButtonPointerDown}
-                onTabChange={onMobileContentTabChange}
-              />
-            )}
+            <MobileSearchHeader
+              activeTab={mobileContentTab}
+              keyword={filters.keyword}
+              onKeywordClear={onMobileSearchButtonKeywordClear}
+              onOpenSearch={onOpenMobileFilterOverlay}
+              onPointerDown={onMobileSearchButtonPointerDown}
+              onTabChange={onMobileContentTabChange}
+            />
           </div>
         )}
         {/*
@@ -292,13 +301,7 @@ export const HomeLayout = ({
         >
           {shouldShowMobileContextHeader && (
             <MobileContextHeader
-              mode={
-                isCompareOpen
-                  ? "compare"
-                  : selectedResortId
-                    ? "detail"
-                    : "results"
-              }
+              mode={selectedResortId ? "detail" : "results"}
               activeTab={mobileContentTab}
               resultCount={filteredResorts.length}
               compareCount={selectedCompareIds.length}
@@ -313,8 +316,6 @@ export const HomeLayout = ({
               }
               activeFilterLabels={mobileActiveFilterLabels}
               mapTileVariant={mapTileVariant}
-              onTabChange={onMobileContentTabChange}
-              onAddCompare={onCloseCompare}
               onCloseDetail={onCloseDetail}
               onClearCompare={onClearCompare}
               onMapTileVariantChange={setMapTileVariant}
@@ -323,13 +324,58 @@ export const HomeLayout = ({
             />
           )}
           <div className="flex-1 min-h-0 relative">
+            {isDesktopCompare && (
+              <div className="absolute top-3 left-3 z-[90] flex overflow-hidden rounded-full border border-gray-200 bg-white shadow-sm">
+                {(
+                  [
+                    ["access", "アクセス"],
+                    ["slope", "ゲレンデ"],
+                  ] as const
+                ).map(([pane, label]) => {
+                  const isActive = compareLeftPane === pane;
+                  return (
+                    <Button
+                      key={pane}
+                      type="button"
+                      variant={isActive ? "default" : "ghost"}
+                      aria-pressed={isActive}
+                      onClick={() => setCompareLeftPane(pane)}
+                      className={cn(
+                        "h-9 min-w-0 rounded-none px-4 text-sm font-semibold",
+                        !isActive &&
+                          "bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                      )}
+                    >
+                      {label}
+                    </Button>
+                  );
+                })}
+              </div>
+            )}
+            {/*
+              ゲレンデは地図の上に重ねる。地図を unmount すると戻ったときに
+              タイルの読み直しと表示位置のリセットが起きるため。
+            */}
+            {isDesktopCompare && compareLeftPane === "slope" && (
+              <CompareSlopeMapBoard
+                resorts={compareResortData}
+                DynamicMap={DynamicMap}
+                mapResorts={initialResorts}
+                // 右端は比較パネルの手前で止める。全幅にするとカードもスクロールバーも
+                // パネルの下に潜ってしまう。地図エリアは検索パネルのぶんだけ
+                // 既に狭いので、その差だけを詰める
+                className="absolute top-0 bottom-0 left-0 z-[80] px-6 pt-16 pb-10"
+                style={{
+                  right:
+                    "max(0px, calc(var(--compare-panel-width) - var(--desktop-search-panel-width)))",
+                }}
+              />
+            )}
             {shouldRenderMap && (
               <DynamicMap
                 resorts={initialResorts}
-                filteredResortIdSet={mapFilteredResortIdSet}
-                isFilterActive={
-                  isMobileCompareMapFocus ? true : hasActiveFilters
-                }
+                filteredResortIdSet={filteredResortIdSet}
+                isFilterActive={hasActiveFilters}
                 // 条件なしで検索結果を閉じる時に、全スキー場へ fit して地図位置が動くのを防ぐ。
                 searchResultResortIds={mapSearchResultResortIds}
                 searchViewportRequestKey={searchViewportRequestKey}
@@ -365,6 +411,8 @@ export const HomeLayout = ({
               !selectedResortId &&
               shouldRenderMobileListSheet && (
                 <MobileResultsSheet
+                  DynamicMap={DynamicMap}
+                  mapResorts={initialResorts}
                   compareResorts={compareResortData}
                   filteredResorts={filteredResorts}
                   isCompareLoading={isCompareLoading}
@@ -487,19 +535,18 @@ export const HomeLayout = ({
         )}
       </AnimatedPanel>
 
-      <AnimatedPanel
-        visible={isCompareOpen && isSidePanelLayout}
-        rootClassName="fixed inset-0 z-[100] flex items-center justify-center p-0 pointer-events-none"
-      >
-        {isCompareOpen && isSidePanelLayout && (
-          <SkiResortCompareView
-            resorts={compareResortData}
-            isLoading={isCompareLoading}
-            initialLiftTicketInput={liftTicketInput}
-            onClose={onCloseCompare}
-          />
-        )}
-      </AnimatedPanel>
+      {isCompareOpen && isSidePanelLayout && (
+        <SkiResortCompareView
+          resorts={compareResortData}
+          isLoading={isCompareLoading}
+          initialLiftTicketInput={liftTicketInput}
+          onClose={onCloseCompare}
+          DynamicMap={DynamicMap}
+          mapResorts={initialResorts}
+          onSelectResort={onSelectResort}
+          showSlopeTab={false}
+        />
+      )}
     </main>
   );
 };
@@ -560,7 +607,7 @@ const MobileSearchHeader = ({
 );
 
 type MobileContextHeaderProps = {
-  mode: "results" | "compare" | "detail";
+  mode: "results" | "detail";
   activeTab: "info" | "map";
   resultCount: number;
   compareCount: number;
@@ -571,8 +618,6 @@ type MobileContextHeaderProps = {
   isDetailCompareSelected: boolean;
   activeFilterLabels: string[];
   mapTileVariant: MapTileVariant;
-  onTabChange: (tab: "info" | "map") => void;
-  onAddCompare: () => void;
   onCloseDetail: () => void;
   onClearCompare: () => void;
   onMapTileVariantChange: (variant: MapTileVariant) => void;
@@ -592,8 +637,6 @@ const MobileContextHeader = ({
   isDetailCompareSelected,
   activeFilterLabels,
   mapTileVariant,
-  onTabChange,
-  onAddCompare,
   onCloseDetail,
   onClearCompare,
   onMapTileVariantChange,
@@ -601,12 +644,6 @@ const MobileContextHeader = ({
   onToggleCompare,
 }: MobileContextHeaderProps) => {
   const isResults = mode === "results";
-  const tabs =
-    mode === "compare"
-      ? { info: "情報で比較", map: "地図で比較" }
-      : mode === "detail"
-        ? { info: "詳細", map: "地図" }
-        : { info: "リストで探す", map: "地図で探す" };
   const filterLabels = activeFilterLabels;
   const shouldShowMapTileControl = isResults && activeTab === "map";
 
@@ -655,29 +692,15 @@ const MobileContextHeader = ({
         </div>
       )}
 
-      {mode === "compare" && (
-        <div className="px-4 py-3">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-gray-900 text-base font-bold font-[var(--font-heading)]">
-              比較中：{compareCount}件
-            </h2>
-            <Button
-              type="button"
-              size="sm"
-              variant="default"
-              onClick={onAddCompare}
-            >
-              <Plus size={16} strokeWidth={2.5} />
-              追加
-            </Button>
-          </div>
-        </div>
-      )}
-
+      {/*
+        スキー場名と所在地の 2 行。左右が揃うよう、各行を
+        「左: テキスト（伸びる） / 右: 操作（固定幅）」の 2 カラムで組む。
+        地図をすぐ始めたいので、行間・上下の余白は最小限にする。
+      */}
       {mode === "detail" && (
-        <div className="px-4 py-3">
-          <div className="flex items-start justify-between gap-2">
-            <h2 className="flex-1 text-gray-900 text-xl font-bold leading-tight min-w-0 break-words truncate font-[var(--font-heading)]">
+        <div className="px-4 pt-1.5 pb-2">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="flex-1 min-w-0 text-gray-900 text-base font-bold leading-tight truncate font-[var(--font-heading)]">
               {detailTitle}
             </h2>
             <Button
@@ -685,29 +708,28 @@ const MobileContextHeader = ({
               aria-label="詳細を閉じる"
               variant="ghost"
               onClick={onCloseDetail}
-              className="flex-shrink-0 h-9 w-9 min-w-9 p-0 rounded-full text-gray-500 border border-gray-200 flex items-center justify-center hover:bg-gray-50 hover:text-gray-900"
+              className="flex h-9 w-9 min-w-9 shrink-0 items-center justify-center rounded-full border border-gray-200 p-0 text-gray-500 hover:bg-gray-50 hover:text-gray-900"
             >
               <X size={18} strokeWidth={2.5} />
             </Button>
           </div>
-          <div className="mt-2 flex items-start justify-between gap-2">
-            <p className="flex-1 min-w-0 text-gray-600 text-sm font-semibold leading-snug break-words truncate">
+          <div className="mt-1 flex items-center justify-between gap-2">
+            <p className="flex-1 min-w-0 truncate text-gray-600 text-xs font-semibold leading-snug">
               {detailPrefecture} · {detailTown}
             </p>
             {detailResortId && (
               <Button
                 type="button"
-                size="sm"
                 variant={isDetailCompareSelected ? "default" : "outline"}
                 onClick={() =>
                   onToggleCompare(detailResortId, !isDetailCompareSelected)
                 }
-                className="flex-shrink-0 h-8 px-3 rounded-lg text-xs font-semibold gap-1.5 flex items-center justify-center"
+                className="flex h-8 shrink-0 items-center justify-center gap-1 rounded-lg px-2.5 text-xs font-semibold"
               >
                 {isDetailCompareSelected ? (
-                  <Check size={16} strokeWidth={2} />
+                  <Check size={14} strokeWidth={2.5} />
                 ) : (
-                  <Plus size={16} strokeWidth={2} />
+                  <Plus size={14} strokeWidth={2.5} />
                 )}
                 {isDetailCompareSelected ? "比較から外す" : "比較に追加"}
               </Button>
@@ -732,29 +754,6 @@ const MobileContextHeader = ({
           >
             比較をクリア
           </Button>
-        </div>
-      )}
-
-      {mode === "compare" && (
-        <div className="w-full border-t border-gray-200 flex">
-          {(["info", "map"] as const).map(tab => {
-            const isActive = activeTab === tab;
-            return (
-              <Button
-                key={tab}
-                type="button"
-                variant="ghost"
-                onClick={() => onTabChange(tab)}
-                className={`flex-1 h-12 rounded-none transition-smooth font-semibold ${
-                  isActive
-                    ? "bg-blue-600 text-white"
-                    : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
-                }`}
-              >
-                {tabs[tab]}
-              </Button>
-            );
-          })}
         </div>
       )}
     </div>

@@ -1,10 +1,8 @@
 "use client";
 
 import { Portal } from "@radix-ui/react-portal";
-import { Maximize2, X } from "lucide-react";
 import type { ComponentType } from "react";
-import { useEffect, useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useCallback, useEffect, useState } from "react";
 import type {
   ElevationProfileMapPoint,
   JapanResortMapProps,
@@ -14,13 +12,10 @@ import { useBreakpointValue } from "@/hooks/use-breakpoint-value";
 import { getResortSearchName } from "@/lib/resortAliases";
 import { AnimatedPanel } from "@/shared/components/AnimatedPanel";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
-import type {
-  MapSkiResort,
-  NullableSkiResortDetail,
-  SkiResortDetail,
-} from "@/types/skiResorts";
+import type { MapSkiResort, NullableSkiResortDetail } from "@/types/skiResorts";
 import { DetailTabs } from "./components/DetailTabs";
 import { FinalizedFeatureDetail } from "./components/FinalizedFeatureDetail";
+import { ResortMapSection } from "./components/ResortMapSection";
 import { useBodyScrollLock } from "./hooks/useBodyScrollLock";
 import {
   CoursesTab,
@@ -55,118 +50,6 @@ type Props = {
 };
 
 const TABS = ["概要", "コース", "リフト", "チケット", "気候"];
-const MobileResortMapPreview = ({
-  DynamicMap,
-  resort,
-  mapResorts,
-  selectedFinalizedFeature,
-  selectedElevationProfilePoint,
-  onSelectedFinalizedFeatureChange,
-  onSelectedElevationProfilePointChange,
-}: {
-  DynamicMap: ComponentType<JapanResortMapProps>;
-  resort: SkiResortDetail;
-  mapResorts: MapSkiResort[];
-  selectedFinalizedFeature: SelectedMapFeature | null;
-  selectedElevationProfilePoint: ElevationProfileMapPoint | null;
-  onSelectedFinalizedFeatureChange: (
-    feature: SelectedMapFeature | null,
-  ) => void;
-  onSelectedElevationProfilePointChange: (
-    point: ElevationProfileMapPoint | null,
-  ) => void;
-}) => {
-  const hasFinalizedMap =
-    (resort.finalizedMapData?.courses?.features.length ?? 0) > 0 ||
-    (resort.finalizedMapData?.lifts?.features.length ?? 0) > 0;
-  const [isExpanded, setIsExpanded] = useState(false);
-  const selectedResortIdSet = useMemo(() => new Set([resort.id]), [resort.id]);
-  const emptyCompareIdSet = useMemo(() => new Set<string>(), []);
-
-  // コースマップと周辺位置は分けない。縮小すればスキー場名のラベルが出るので、
-  // 1 枚の地図で両方の役割を兼ねられる。
-  const mapFinalizedData = hasFinalizedMap
-    ? (resort.finalizedMapData ?? null)
-    : null;
-  const detailViewportMode = hasFinalizedMap ? "finalized" : "resort";
-
-  const renderMap = (presentation: "preview" | "expanded") => (
-    <DynamicMap
-      resorts={mapResorts}
-      filteredResortIdSet={selectedResortIdSet}
-      isFilterActive={false}
-      selectedResortId={resort.id}
-      selectedCompareIdSet={emptyCompareIdSet}
-      interactionMode="detail"
-      finalizedMapData={mapFinalizedData}
-      mapPresentation={presentation}
-      detailViewportMode={detailViewportMode}
-      selectedFinalizedFeature={selectedFinalizedFeature}
-      selectedElevationProfilePoint={selectedElevationProfilePoint}
-      selectedViewportBottomPaddingRatio={0}
-      mapControlBottomPaddingRatio={0}
-      onBoundsChange={() => undefined}
-      onSelectResort={() => undefined}
-      onSelectedFinalizedFeatureChange={onSelectedFinalizedFeatureChange}
-      onSelectedElevationProfilePointChange={
-        onSelectedElevationProfilePointChange
-      }
-    />
-  );
-
-  return (
-    <>
-      <div className="relative h-[210px] w-full shrink-0 overflow-hidden border-y border-gray-200 bg-gray-100">
-        {renderMap("preview")}
-        <div className="absolute top-2 left-2 right-2 z-30 flex items-start justify-end gap-2 pointer-events-none">
-          <Button
-            type="button"
-            aria-label="地図を拡大"
-            onClick={() => setIsExpanded(true)}
-            className="h-8 w-8 min-w-8 p-0 rounded-md bg-white text-gray-700 border border-gray-200 shadow-sm hover:bg-gray-50 hover:text-gray-900 pointer-events-auto focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10"
-          >
-            <Maximize2 size={15} strokeWidth={2.5} />
-          </Button>
-        </div>
-      </div>
-
-      {isExpanded && (
-        <Portal>
-          <div className="fixed inset-0 z-[300] bg-white">
-            <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between gap-2 px-3 pt-[calc(env(safe-area-inset-top,0px)+0.625rem)] pb-2 bg-white/94 border-b border-gray-100 backdrop-blur-md">
-              <div className="min-w-0">
-                <p className="text-gray-900 text-base font-bold leading-tight overflow-hidden text-ellipsis whitespace-nowrap font-[var(--font-heading)]">
-                  {resort.nameJa}
-                </p>
-                <p className="mt-0.5 text-blue-600 text-xs font-semibold leading-none">
-                  {hasFinalizedMap ? "コースマップ" : "周辺位置"}
-                </p>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <Button
-                  type="button"
-                  aria-label="地図を閉じる"
-                  onClick={() => setIsExpanded(false)}
-                  className="h-8 w-8 min-w-8 p-0 rounded-full bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:text-gray-900 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10"
-                >
-                  <X size={15} strokeWidth={2.5} />
-                </Button>
-              </div>
-            </div>
-            <div
-              className="h-full w-full"
-              style={{
-                paddingTop: "calc(env(safe-area-inset-top, 0px) + 3.75rem)",
-              }}
-            >
-              {renderMap("expanded")}
-            </div>
-          </div>
-        </Portal>
-      )}
-    </>
-  );
-};
 
 /**
  * スキー場の詳細情報を表示するレスポンシブ対応モーダル
@@ -189,6 +72,33 @@ export const SkiResortDetailView = ({
 }: Props) => {
   const [activeTab, setActiveTab] = useState(TABS[0]);
   const isSidePanel = useBreakpointValue({ base: false, md: true }) ?? false;
+  // 選択を解除したときの戻り先を決めるために、どこから選んだかを覚えておく。
+  // 一覧から選んだときは元の一覧と初期表示の地図へ、
+  // 地図から選んだときは今の地図の見え方のまま戻す。
+  const [selectionOrigin, setSelectionOrigin] = useState<"map" | "list">("map");
+  const [detailViewportResetKey, setDetailViewportResetKey] = useState(0);
+
+  const selectFeatureFromMap = useCallback(
+    (feature: SelectedMapFeature | null) => {
+      if (feature) setSelectionOrigin("map");
+      onSelectedFinalizedFeatureChange(feature);
+    },
+    [onSelectedFinalizedFeatureChange],
+  );
+  const selectFeatureFromList = useCallback(
+    (feature: SelectedMapFeature | null) => {
+      if (feature) setSelectionOrigin("list");
+      onSelectedFinalizedFeatureChange(feature);
+    },
+    [onSelectedFinalizedFeatureChange],
+  );
+
+  // 選択が消えたら「地図から選んだ」に戻す。次にどこから選ばれても、
+  // 選んだ側のハンドラが上書きするので取り違えが起きない。
+  useEffect(() => {
+    if (selectedFinalizedFeature) return;
+    setSelectionOrigin("map");
+  }, [selectedFinalizedFeature]);
 
   useEffect(() => {
     if (selectedFinalizedFeature?.kind === "course") {
@@ -282,10 +192,16 @@ export const SkiResortDetailView = ({
         ) ?? null)
       : null;
   const closeFeatureDetail = () => {
+    const shouldReturnToList = selectionOrigin === "list";
     onSelectedFinalizedFeatureChange(null);
     onSelectedElevationProfilePointChange(null);
+    if (!shouldReturnToList) return;
+
+    // 一覧から選んだ場合は、一覧と初期表示（スキー場全体）の地図へ戻す
+    setActiveTab(selectedCourseGroup ? "コース" : "リフト");
+    setDetailViewportResetKey(key => key + 1);
   };
-  const featureDetail =
+  const renderFeatureDetail = (options?: { withOpenList?: boolean }) =>
     selectedCourseGroup || selectedLift ? (
       <FinalizedFeatureDetail
         courseGroup={selectedCourseGroup}
@@ -298,18 +214,49 @@ export const SkiResortDetailView = ({
           onSelectedElevationProfilePointChange
         }
         onClose={closeFeatureDetail}
-        onOpenList={() => {
-          setActiveTab(selectedCourseGroup ? "コース" : "リフト");
-          closeFeatureDetail();
-        }}
+        onOpenList={
+          options?.withOpenList
+            ? () => {
+                setActiveTab(selectedCourseGroup ? "コース" : "リフト");
+                onSelectedFinalizedFeatureChange(null);
+                onSelectedElevationProfilePointChange(null);
+              }
+            : undefined
+        }
       />
     ) : null;
 
-  // スマホは地図プレビューを常に同じ位置に置いたまま、その下だけを詳細に差し替える。
+  const renderTabPanels = () => (
+    <>
+      {activeTab === "概要" && <OverviewTab resort={resort} />}
+      {activeTab === "コース" && (
+        <CoursesTab
+          resort={resort}
+          finalizedMapData={resortData?.finalizedMapData ?? null}
+          selectedFinalizedFeature={selectedFinalizedFeature}
+          onSelectedFinalizedFeatureChange={selectFeatureFromList}
+        />
+      )}
+      {activeTab === "リフト" && (
+        <LiftsTab
+          resort={resort}
+          finalizedMapData={resortData?.finalizedMapData ?? null}
+          selectedFinalizedFeature={selectedFinalizedFeature}
+          onSelectedFinalizedFeatureChange={selectFeatureFromList}
+        />
+      )}
+      {activeTab === "チケット" && <TicketsTab resort={resort} />}
+      {activeTab === "気候" && <WeatherTab resort={resort} />}
+    </>
+  );
+
+  const mobileFeatureDetail = renderFeatureDetail();
+
+  // スマホは地図を常に同じ位置に置いたまま、その下だけを詳細に差し替える。
   // 位置が変わると地図が作り直され、選択状態が失われる。
   // デスクトップはパネル全体を詳細に切り替える。
   const detailPanelContent = isSidePanel ? (
-    (featureDetail ?? (
+    (renderFeatureDetail({ withOpenList: true }) ?? (
       <div className="flex-1 overflow-y-auto">
         {desktopDetailHeader}
         <DetailTabs
@@ -317,31 +264,7 @@ export const SkiResortDetailView = ({
           activeTab={activeTab}
           onTabChange={setActiveTab}
         />
-        <div className="p-4 md:p-8 text-gray-700">
-          {activeTab === "概要" && <OverviewTab resort={resort} />}
-          {activeTab === "コース" && (
-            <CoursesTab
-              resort={resort}
-              finalizedMapData={resortData?.finalizedMapData ?? null}
-              selectedFinalizedFeature={selectedFinalizedFeature}
-              onSelectedFinalizedFeatureChange={
-                onSelectedFinalizedFeatureChange
-              }
-            />
-          )}
-          {activeTab === "リフト" && (
-            <LiftsTab
-              resort={resort}
-              finalizedMapData={resortData?.finalizedMapData ?? null}
-              selectedFinalizedFeature={selectedFinalizedFeature}
-              onSelectedFinalizedFeatureChange={
-                onSelectedFinalizedFeatureChange
-              }
-            />
-          )}
-          {activeTab === "チケット" && <TicketsTab resort={resort} />}
-          {activeTab === "気候" && <WeatherTab resort={resort} />}
-        </div>
+        <div className="p-4 md:p-8 text-gray-700">{renderTabPanels()}</div>
       </div>
     ))
   ) : (
@@ -355,51 +278,28 @@ export const SkiResortDetailView = ({
           onClose={onClose}
         />
       )}
-      <MobileResortMapPreview
+      <ResortMapSection
         DynamicMap={DynamicMap}
-        resort={resort}
+        resortId={resort.id}
+        finalizedMapData={resort.finalizedMapData ?? null}
         mapResorts={mapResorts}
         selectedFinalizedFeature={selectedFinalizedFeature}
         selectedElevationProfilePoint={selectedElevationProfilePoint}
-        onSelectedFinalizedFeatureChange={onSelectedFinalizedFeatureChange}
+        onSelectedFinalizedFeatureChange={selectFeatureFromMap}
         onSelectedElevationProfilePointChange={
           onSelectedElevationProfilePointChange
         }
+        featureDetail={mobileFeatureDetail}
+        detailViewportResetKey={detailViewportResetKey}
       />
-      {featureDetail ? (
-        <div className="min-h-0 flex-1">{featureDetail}</div>
-      ) : (
+      {!mobileFeatureDetail && (
         <div className="min-h-0 flex-1 overflow-y-auto">
           <DetailTabs
             tabs={TABS}
             activeTab={activeTab}
             onTabChange={setActiveTab}
           />
-          <div className="p-4 text-gray-700">
-            {activeTab === "概要" && <OverviewTab resort={resort} />}
-            {activeTab === "コース" && (
-              <CoursesTab
-                resort={resort}
-                finalizedMapData={resortData?.finalizedMapData ?? null}
-                selectedFinalizedFeature={selectedFinalizedFeature}
-                onSelectedFinalizedFeatureChange={
-                  onSelectedFinalizedFeatureChange
-                }
-              />
-            )}
-            {activeTab === "リフト" && (
-              <LiftsTab
-                resort={resort}
-                finalizedMapData={resortData?.finalizedMapData ?? null}
-                selectedFinalizedFeature={selectedFinalizedFeature}
-                onSelectedFinalizedFeatureChange={
-                  onSelectedFinalizedFeatureChange
-                }
-              />
-            )}
-            {activeTab === "チケット" && <TicketsTab resort={resort} />}
-            {activeTab === "気候" && <WeatherTab resort={resort} />}
-          </div>
+          <div className="p-4 text-gray-700">{renderTabPanels()}</div>
         </div>
       )}
     </div>

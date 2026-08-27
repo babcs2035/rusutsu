@@ -1,13 +1,16 @@
 "use client";
 
-import type { RefObject } from "react";
+import type { ComponentType, RefObject } from "react";
 import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
+import type { JapanResortMapProps } from "@/features/map/types";
 import { cn } from "@/lib/utils";
 import type { MapSkiResort, SkiResortDetail } from "@/types/skiResorts";
 import { SkiResortCompareView } from "./SkiResortCompareView";
 import { SkiResortList } from "./SkiResortList";
 
 type Props = {
+  DynamicMap: ComponentType<JapanResortMapProps>;
+  mapResorts: MapSkiResort[];
   compareResorts: SkiResortDetail[];
   filteredResorts: MapSkiResort[];
   isCompareLoading: boolean;
@@ -27,6 +30,8 @@ type Props = {
 };
 
 export const MobileResultsSheet = ({
+  DynamicMap,
+  mapResorts,
   compareResorts,
   filteredResorts,
   isCompareLoading,
@@ -45,7 +50,7 @@ export const MobileResultsSheet = ({
     data-mobile-results-panel="true"
     className={cn(
       "relative h-full min-h-0 flex flex-col bg-white overflow-hidden",
-      !isListSheetOpen && "hidden",
+      !isListSheetOpen && !isCompareOpen && "hidden",
     )}
   >
     {isCompareOpen ? (
@@ -56,6 +61,9 @@ export const MobileResultsSheet = ({
         onClose={onCloseCompare}
         presentation="inline"
         canScrollContent
+        DynamicMap={DynamicMap}
+        mapResorts={mapResorts}
+        onSelectResort={onSelectResort}
       />
     ) : (
       <div

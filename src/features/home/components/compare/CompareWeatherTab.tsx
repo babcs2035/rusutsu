@@ -3,6 +3,7 @@
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { getResortLabelName } from "@/lib/resortAliases";
 import { cn } from "@/lib/utils";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import { CompactSnowForecastEmbed } from "./CompactSnowForecastEmbed";
@@ -34,7 +35,7 @@ export const CompareWeatherTab = ({
 
     let maxNameWidth = 0;
     for (const resort of resorts) {
-      probe.textContent = resort.nameJa;
+      probe.textContent = getResortLabelName(resort.id, resort.nameJa);
       maxNameWidth = Math.max(
         maxNameWidth,
         Math.ceil(probe.getBoundingClientRect().width),
@@ -60,7 +61,7 @@ export const CompareWeatherTab = ({
     <div
       className={cn(
         "grid min-w-0 grid-cols-1 overflow-x-auto pb-0",
-        isSidePanel ? "gap-12" : "gap-4",
+        isSidePanel ? "gap-12" : "gap-3",
       )}
     >
       <span
@@ -121,9 +122,10 @@ const ResortWeatherPanel = ({
     <div
       className={cn(
         "weather-panel-container",
-        "border border-gray-200 rounded-xl bg-white overflow-hidden shadow-sm px-8 pt-8",
+        "border border-gray-200 rounded-xl bg-white overflow-hidden shadow-sm",
         // md:pb-8 は md: 発火時（≥768px）に isSidePanel=true となるため到達不能だった
-        isSidePanel ? "pb-4" : "pb-2",
+        // モバイルは Snow Forecast 本体を早く見せたいので外側の余白も詰める
+        isSidePanel ? "px-8 pt-8 pb-4" : "px-3 pt-2.5 pb-2",
         // gap は flex/grid でのみ有効。この要素は block であるため gap-8 は dead class だった
         "w-full",
       )}
@@ -136,10 +138,15 @@ const ResortWeatherPanel = ({
           : undefined
       }
     >
-      <div className="weather-panel-content flex gap-8 items-stretch w-full min-w-0">
+      <div
+        className={cn(
+          "weather-panel-content flex items-stretch w-full min-w-0",
+          isSidePanel ? "gap-8" : "gap-1.5",
+        )}
+      >
         <div className="weather-info flex-shrink-0">
-          <h3 className="text-sm text-gray-900 font-semibold leading-tight mb-8 font-[var(--font-heading)]">
-            {resort.nameJa}
+          <h3 className="weather-info-name text-sm text-gray-900 font-semibold leading-tight font-[var(--font-heading)]">
+            {getResortLabelName(resort.id, resort.nameJa)}
           </h3>
 
           {availableLinks.length > 0 && (
@@ -188,6 +195,7 @@ const WeatherLinkButton = ({
     href={link.url}
     className={cn(
       "weather-link",
+      // 幅の狭いパネルでの高さ・余白は CompareWeatherTab.css のコンテナクエリ側で詰める
       "flex flex-shrink-0 items-center justify-center min-h-28 px-8 rounded-md text-xs font-extrabold text-center",
       "transition-colors duration-150",
       link.bg,

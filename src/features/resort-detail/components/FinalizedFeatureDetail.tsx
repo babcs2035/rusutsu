@@ -11,8 +11,9 @@ import { SelectedLiftDetail } from "./SelectedLiftDetail";
 /**
  * 選択中のコース・リフトの詳細。
  *
- * タブの中で切り替えるのではなく、スキー場説明パネル全体の上に重ねる。
- * 「×」で元の画面に戻り、「一覧へ」でコース／リフトタブの一覧に移動する。
+ * 地図の下（モバイル・比較）と、スキー場説明パネルの上（デスクトップ）で
+ * 同じ見た目・同じ情報順にする。
+ * 「×」は選択だけを解除して、選ぶ前の画面（全画面地図・一覧）へ戻す。
  */
 export const FinalizedFeatureDetail = ({
   courseGroup,
@@ -36,18 +37,19 @@ export const FinalizedFeatureDetail = ({
     point: ElevationProfileMapPoint | null,
   ) => void;
   onClose: () => void;
-  onOpenList: () => void;
+  /** 一覧へ戻る導線。地図の下に出す形（× で一覧へ戻る）では渡さない */
+  onOpenList?: () => void;
 }) => {
   if (!courseGroup && !lift) return null;
 
   const isCourse = Boolean(courseGroup);
   const title = courseGroup?.displayName ?? lift?.name ?? "";
-  // 難易度は下の一覧に出るので、ヘッダーには出さない
+  // 難易度は下の見出しに出るので、ヘッダーには出さない
   const subtitle = courseGroup ? null : (lift?.properties.type ?? "リフト");
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-white">
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-gray-200 px-4 py-2.5 md:px-6">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-gray-200 px-4 py-2 md:px-6">
         <div className="min-w-0">
           <p className="truncate text-base font-bold text-gray-900 font-[var(--font-heading)] md:text-lg">
             {title}
@@ -59,23 +61,25 @@ export const FinalizedFeatureDetail = ({
           )}
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
+          {onOpenList && (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-8 gap-1 px-2.5 text-xs font-semibold text-gray-700"
+              onClick={onOpenList}
+            >
+              <List size={14} />
+              {isCourse ? "コース一覧へ" : "リフト一覧へ"}
+            </Button>
+          )}
           <Button
             type="button"
-            variant="outline"
-            className="h-8 gap-1 px-2.5 text-xs font-semibold text-gray-700"
-            onClick={onOpenList}
-          >
-            <List size={14} />
-            {isCourse ? "コース一覧へ" : "リフト一覧へ"}
-          </Button>
-          <Button
-            type="button"
-            aria-label="詳細を閉じる"
+            aria-label="選択を解除する"
             variant="ghost"
-            className="h-8 w-8 min-w-8 rounded-full p-0 text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+            className="h-9 w-9 min-w-9 rounded-full border border-gray-200 p-0 text-gray-600 hover:bg-gray-100 hover:text-gray-900"
             onClick={onClose}
           >
-            <X size={16} strokeWidth={2.5} />
+            <X size={18} strokeWidth={2.5} />
           </Button>
         </div>
       </div>

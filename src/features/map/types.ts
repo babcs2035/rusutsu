@@ -160,9 +160,25 @@ export type JapanResortMapProps = {
   restoreViewRequest?: MapViewRestoreRequest | null;
   finalizedMapData?: FinalizedResortMapData | null;
   mapPresentation?: "default" | "preview" | "expanded";
+  /**
+   * 生成直後に描く位置。
+   * 指定しないと日本全体から始まるので、1 スキー場だけを出す地図では
+   * 白地図が一瞬見えてしまう。
+   */
+  initialViewport?: { center: [number, number]; zoom: number } | null;
+  /**
+   * コースマップ用ツールバー（色分け・タイル・営業中のみ・凡例）を出すか。
+   * 高さの限られた地図では場所を取りすぎるので、呼び出し側で落とせるようにする。
+   */
+  showMapToolbar?: boolean;
   mapTileVariant?: MapTileVariant;
   onMapTileVariantChange?: (variant: MapTileVariant) => void;
   detailViewportMode?: "finalized" | "resort";
+  /**
+   * 値を変えるたびに詳細地図の表示範囲を初期状態（スキー場全体）へ戻す。
+   * コース選択を解除して一覧へ戻るときに使う。
+   */
+  detailViewportResetKey?: number;
   selectedFinalizedFeature?: SelectedMapFeature | null;
   onSelectedFinalizedFeatureChange?: (
     feature: SelectedMapFeature | null,

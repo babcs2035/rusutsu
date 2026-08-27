@@ -48,6 +48,7 @@ export const useMapLibreMap = ({
   initialTone,
   hitWidth,
   isInteractive,
+  initialViewport,
 }: {
   containerRef: React.RefObject<HTMLDivElement | null>;
   initialZoom: number;
@@ -56,6 +57,8 @@ export const useMapLibreMap = ({
   initialTone: RasterTone;
   hitWidth: number;
   isInteractive: boolean;
+  /** 生成直後に描く位置。日本全体から寄っていく動きを見せないために使う */
+  initialViewport?: { center: [number, number]; zoom: number } | null;
 }) => {
   const mapRef = useRef<MapLibreMap | null>(null);
   const [isReady, setIsReady] = useState(false);
@@ -64,6 +67,7 @@ export const useMapLibreMap = ({
     tileVariant,
     initialTone,
     hitWidth,
+    initialViewport,
   });
 
   useEffect(() => {
@@ -74,12 +78,13 @@ export const useMapLibreMap = ({
       initialZoom: zoom,
       tileVariant: variant,
       initialTone: tone,
+      initialViewport: viewport,
     } = initialStateRef.current;
     const map = new MapLibreMap({
       container,
       style: createBaseStyle(variant, tone),
-      center: [INITIAL_CENTER[1], INITIAL_CENTER[0]],
-      zoom,
+      center: viewport?.center ?? [INITIAL_CENTER[1], INITIAL_CENTER[0]],
+      zoom: viewport?.zoom ?? zoom,
       minZoom: GSI_TILE_MIN_ZOOM,
       maxZoom: GSI_TILE_MAX_ZOOM,
       attributionControl: { compact: true },
