@@ -147,6 +147,7 @@ export function HomeClient({ initialResorts }: Props) {
   useMobileSearchOverlayEffects({
     isOpen: isMobileFilterOverlayOpen,
     isSidePanelLayout,
+    overlayRef: mobileFilterOverlayRef,
     viewportBaseHeightRef: mobileSearchViewportBaseHeightRef,
     setIsKeyboardActive: setIsMobileSearchKeyboardActive,
     setViewport: setMobileSearchViewport,

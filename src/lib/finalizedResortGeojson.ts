@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { calculateCoordinateSlopes } from "./finalizedResortGeojsonShared";
 import {
   type MergeIssue,
   mergeCourseFeatures,
@@ -17,7 +18,6 @@ export type FinalizedCourseFeature = {
   groupId: string;
   sectionName: string | null;
   coordinates: GeoCoordinate[];
-  slopeDeg: number[] | null;
   properties: {
     name: string;
     level: string | null;
@@ -256,13 +256,6 @@ const normalizeCoordinates = (coordinates: unknown): GeoCoordinate[] | null => {
   return normalized.length >= 2 ? normalized : null;
 };
 
-const normalizeSlopeDeg = (value: unknown): number[] | null => {
-  if (!Array.isArray(value)) return null;
-  const slopes = value.map(normalizeNumber);
-  if (slopes.some(slope => slope === null)) return null;
-  return slopes as number[];
-};
-
 const createFeatureId = (
   kind: "course" | "lift",
   properties: Record<string, unknown>,
@@ -298,7 +291,6 @@ const normalizeCourseFeature = (
         : `course-group-${parsedName.groupName}`,
     sectionName: parsedName.sectionName,
     coordinates,
-    slopeDeg: normalizeSlopeDeg(properties.slope_deg),
     properties: {
       name,
       level: normalizeString(properties.level),
@@ -957,19 +949,20 @@ export type CourseSlopeSegment = {
 export const createCourseSlopeSegments = (
   course: FinalizedCourseFeature,
 ): CourseSlopeSegment[] => {
-  const { coordinates, slopeDeg } = course;
+  const { coordinates } = course;
   if (coordinates.length < 2) return [];
-
-  const canUsePointSlopes =
-    slopeDeg != null &&
-    slopeDeg.length === coordinates.length &&
-    slopeDeg.every(slope => Number.isFinite(slope));
+  const pointSlopes = calculateCoordinateSlopes(coordinates);
 
   return coordinates.slice(0, -1).map((coordinate, index) => {
     const fallbackSlope = course.properties.avgSlopeDegMap;
-    const slope = canUsePointSlopes
-      ? ((slopeDeg[index] as number) + (slopeDeg[index + 1] as number)) / 2
-      : fallbackSlope;
+    const segmentSlopes = [pointSlopes[index], pointSlopes[index + 1]].filter(
+      (slope): slope is number => slope !== null,
+    );
+    const slope =
+      segmentSlopes.length > 0
+        ? segmentSlopes.reduce((sum, value) => sum + value, 0) /
+          segmentSlopes.length
+        : fallbackSlope;
 
     return {
       courseId: course.id,

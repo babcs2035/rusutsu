@@ -7,7 +7,6 @@ export type FinalizedCourseFeature = {
   groupId: string;
   sectionName: string | null;
   coordinates: GeoCoordinate[];
-  slopeDeg: number[] | null;
   properties: {
     name: string;
     level: string | null;
@@ -268,30 +267,109 @@ export type CourseSlopeSegment = {
   slope: number | null;
 };
 
+/**
+ * slope_10m の標高点を前後 2 点（約 40m）の窓で平滑化する。
+ * 端点付近では窓を先頭・末尾側へずらし、同じ幅を保つ。
+ */
+export const calculateCoordinateSlopes = (
+  coordinates: GeoCoordinate[],
+  windowPointRadius = 2,
+): Array<number | null> => {
+  if (coordinates.length === 0) return [];
+  if (
+    !coordinates.every(
+      coordinate =>
+        coordinate.length >= 3 &&
+        typeof coordinate[2] === "number" &&
+        Number.isFinite(coordinate[2]),
+    )
+  ) {
+    return coordinates.map(() => null);
+  }
+
+  const radius = Math.max(1, Math.floor(windowPointRadius));
+  const fullWindowPointCount = radius * 2;
+  const lastIndex = coordinates.length - 1;
+  const cumulativeDistances = coordinates.reduce<number[]>(
+    (distances, coordinate, index) => {
+      if (index === 0) return [0];
+      const previous = coordinates[index - 1];
+      distances.push(
+        (distances[index - 1] ?? 0) +
+          (previous ? getHorizontalDistanceMeters(previous, coordinate) : 0),
+      );
+      return distances;
+    },
+    [],
+  );
+
+  return coordinates.map((_, index) => {
+    const windowPointCount = Math.min(fullWindowPointCount, lastIndex);
+    const startIndex = Math.min(
+      Math.max(0, index - radius),
+      lastIndex - windowPointCount,
+    );
+    const endIndex = startIndex + windowPointCount;
+    const start = coordinates[startIndex];
+    const end = coordinates[endIndex];
+    if (!start || !end || startIndex === endIndex) return 0;
+
+    const horizontalDistance =
+      (cumulativeDistances[endIndex] ?? 0) -
+      (cumulativeDistances[startIndex] ?? 0);
+    if (horizontalDistance <= 0) return 0;
+
+    return (
+      (Math.atan2(
+        (start[2] as number) - (end[2] as number),
+        horizontalDistance,
+      ) *
+        180) /
+      Math.PI
+    );
+  });
+};
+
+const getHorizontalDistanceMeters = (
+  start: GeoCoordinate,
+  end: GeoCoordinate,
+) => {
+  const radius = 6_371_000;
+  const startLat = (start[1] * Math.PI) / 180;
+  const endLat = (end[1] * Math.PI) / 180;
+  const latitudeDelta = ((end[1] - start[1]) * Math.PI) / 180;
+  const longitudeDelta = ((end[0] - start[0]) * Math.PI) / 180;
+  const haversine =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos(startLat) * Math.cos(endLat) * Math.sin(longitudeDelta / 2) ** 2;
+
+  return (
+    radius *
+    2 *
+    Math.atan2(Math.sqrt(haversine), Math.sqrt(Math.max(0, 1 - haversine)))
+  );
+};
+
 export const createCourseSlopeSegments = (
   course: FinalizedCourseFeature,
   pointStride = 1,
 ): CourseSlopeSegment[] => {
-  const { coordinates, slopeDeg } = course;
+  const { coordinates } = course;
   if (coordinates.length < 2) return [];
   const stride = Math.max(1, Math.floor(pointStride));
-
-  const canUsePointSlopes =
-    slopeDeg != null &&
-    slopeDeg.length === coordinates.length &&
-    slopeDeg.every(slope => Number.isFinite(slope));
+  const pointSlopes = calculateCoordinateSlopes(coordinates);
 
   const segments: CourseSlopeSegment[] = [];
   for (let index = 0; index < coordinates.length - 1; index += stride) {
     const endIndex = Math.min(index + stride, coordinates.length - 1);
-    const fallbackSlope = course.properties.avgSlopeDegMap;
+    const segmentSlopes = pointSlopes
+      .slice(index, endIndex + 1)
+      .filter((slope): slope is number => slope !== null);
     const slope =
-      canUsePointSlopes && slopeDeg
-        ? slopeDeg
-            .slice(index, endIndex + 1)
-            .reduce((sum, value) => sum + value, 0) /
-          (endIndex - index + 1)
-        : fallbackSlope;
+      segmentSlopes.length > 0
+        ? segmentSlopes.reduce((sum, value) => sum + value, 0) /
+          segmentSlopes.length
+        : course.properties.avgSlopeDegMap;
 
     segments.push({
       courseId: course.id,
@@ -310,7 +388,7 @@ export const createCourseSlopeSegments = (
  * 描画がカクつくため、分割数はズームに依存させない（FR-1.4）。
  *
  * 上限が低いと、拡大しても色の段が粗いままになる（24 だと 1 コース 24 色まで）。
- * 元データは頂点ごとに slope_deg を持っているので、実質「頂点ごと」に色を
+ * 元データは約 10m 間隔の標高点を持っているので、実質「頂点ごと」に色を
  * 分けられるところまで上げる。現データの最長コースは約 280 頂点、
  * 1 スキー場あたり全コース合計でも約 4,100 頂点しかない。
  * 分割の作り直しはデータか表示モードが変わったときだけで、ズームでは走らない。

@@ -2,7 +2,7 @@
 
 import { Portal } from "@radix-ui/react-portal";
 import { X } from "lucide-react";
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
@@ -36,6 +36,16 @@ type Props = {
    * デスクトップではゲレンデを左側の地図エリアに出すので false。
    */
   showSlopeTab?: boolean;
+  /**
+   * アクセスタブをこのパネルに出すか。
+   * デスクトップではアクセスも左側の地図エリアに出すので false。
+   */
+  showAccessTab?: boolean;
+  /**
+   * 左のゲレンデ一覧で選んだコース・リフトの詳細。
+   * 渡された間はタブの内容の上に重ねて出す。
+   */
+  featureDetailOverlay?: ReactNode;
 };
 
 const TABS = [
@@ -46,7 +56,6 @@ const TABS = [
   "天候",
   "アクセス",
 ] as const;
-const TABS_WITHOUT_SLOPE = TABS.filter(tab => tab !== "ゲレンデ");
 
 type CompareTab = (typeof TABS)[number];
 
@@ -61,11 +70,17 @@ export const SkiResortCompareView = ({
   mapResorts,
   onSelectResort,
   showSlopeTab = true,
+  showAccessTab = true,
+  featureDetailOverlay = null,
 }: Props) => {
   const [activeTab, setActiveTab] = useState<CompareTab>("概要");
   const isSidePanel = useBreakpointValue({ base: false, md: true }) ?? false;
   const isSheetContentScrollable = canScrollContent ?? isSidePanel;
-  const tabs: readonly CompareTab[] = showSlopeTab ? TABS : TABS_WITHOUT_SLOPE;
+  const tabs: readonly CompareTab[] = TABS.filter(
+    tab =>
+      (showSlopeTab || tab !== "ゲレンデ") &&
+      (showAccessTab || tab !== "アクセス"),
+  );
   const currentTab = tabs.includes(activeTab) ? activeTab : "概要";
 
   useEffect(() => {
@@ -152,27 +167,39 @@ export const SkiResortCompareView = ({
         </Button>
       </div>
 
-      <UnderlineTabs
-        tabs={tabs}
-        activeTab={currentTab}
-        onTabChange={setActiveTab}
-        className="shrink-0"
-      />
+      {/*
+        タブと中身はひとまとまり。選択中のコースはこの上に重ねるので、
+        見出し（比較 N 件・閉じる）だけは隠れずに残る。
+      */}
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <UnderlineTabs
+          tabs={tabs}
+          activeTab={currentTab}
+          onTabChange={setActiveTab}
+          className="shrink-0"
+        />
 
-      <div
-        className={cn(
-          "min-h-0 flex-1",
-          isFullHeightTab
-            ? "overflow-hidden p-2"
-            : cn(
-                "p-3 md:p-6",
-                isSheetContentScrollable
-                  ? "overflow-y-auto"
-                  : "overflow-y-hidden",
-              ),
+        <div
+          className={cn(
+            "min-h-0 flex-1",
+            isFullHeightTab
+              ? "overflow-hidden p-2"
+              : cn(
+                  "p-3 md:p-6",
+                  isSheetContentScrollable
+                    ? "overflow-y-auto"
+                    : "overflow-y-hidden",
+                ),
+          )}
+        >
+          {renderTabContent()}
+        </div>
+
+        {featureDetailOverlay && (
+          <div className="absolute inset-0 z-20 flex flex-col overflow-hidden border-t border-gray-200 bg-white">
+            {featureDetailOverlay}
+          </div>
         )}
-      >
-        {renderTabContent()}
       </div>
     </div>
   );

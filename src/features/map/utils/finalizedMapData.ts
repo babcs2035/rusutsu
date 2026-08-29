@@ -77,7 +77,7 @@ const getLiftStatusPalette = (status: string | null | undefined) =>
   LIFT_STATUS_PALETTE[getFeatureStatusKind(status)];
 
 /**
- * 滑走方向（標高が下がる向き）に座標と点ごとの斜度を揃えたコースを返す。
+ * 滑走方向（標高が下がる向き）に座標を揃えたコースを返す。
  * 描画・ラベル・方向記号のすべてがこの向きを前提にする（FR-4.1）。
  */
 export const toDownhillCourse = (
@@ -88,16 +88,9 @@ export const toDownhillCourse = (
   if (typeof first !== "number" || typeof last !== "number") return course;
   if (first >= last) return course;
 
-  const canReverseSlopes =
-    course.slopeDeg != null &&
-    course.slopeDeg.length === course.coordinates.length;
-
   return {
     ...course,
     coordinates: [...course.coordinates].reverse(),
-    slopeDeg: canReverseSlopes
-      ? [...(course.slopeDeg ?? [])].reverse()
-      : course.slopeDeg,
   };
 };
 

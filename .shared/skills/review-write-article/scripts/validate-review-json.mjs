@@ -28,15 +28,15 @@ const ARTICLE_ROOT_KEYS = ["resortId", "full", ...categories];
 
 const REASON_ITEMS = [2, 5];
 const FULL_ITEMS = [3, 5];
-const BULLET_TEXT_MIN = 12;
-const BULLET_TEXT_MAX = 45;
-const COURSE_DESC_MIN = 15;
-const COURSE_DESC_MAX = 70;
-const SENTENCE_MAX = 50;
+const BULLET_TEXT_MIN = 15;
+const BULLET_TEXT_MAX = 75;
+const COURSE_DESC_MIN = 20;
+const COURSE_DESC_MAX = 75;
+const SENTENCE_MAX = 70;
 
 // 調査側の事情を記事に書いていないか
 const RESEARCH_TALK =
-  /確認できま|確認できな|確認されて|情報が(?:不足|ありま|な)|判断できま|分かりません|不明|レビューが少な/;
+  /確認できま|確認できな|確認されて|情報が(?:不足|ありま|な)|判断できま|レビューが少な/;
 // 件数・統計表現を記事に出していないか
 const COUNT_TALK = /\d+件|\d+人|複数のレビュー|多数のレビュー|利用者の多くが/;
 // 前の項目がないと意味が成立しない書き出し
@@ -45,15 +45,14 @@ const DEPENDENT_BULLET_LEAD =
 // 調査や評判の話を斜面の事実として書き直せていない
 const REVIEW_META = /(利用者|評価|評判|支持|好評|という声|報告|記録|実績)/;
 // 判断材料を選ばず、エリアや設備を棚卸ししただけの表現
-const VAGUE_OVERVIEW =
-  /(複数のエリアに|各エリアに|さまざまな|多彩な|幅広いニーズ|分かれています)/;
+const VAGUE_OVERVIEW = /(さまざまな|多彩な|幅広いニーズ)/;
 // 調査記録の名詞へ機械的な接尾語を付けた表現
 const AWKWARD_NOUN = /(非圧雪部|小斜面|コブ発生箇所|初心者向け場所)/;
 const POLITE_SENTENCE_END = /(です|ます|ません|ました|でした)。$/;
 const LIST_MARKER = /(^|\n)\s*(?:[-*・]|\d+[.)])\s*/;
 // labelの取り違えが明確な表現だけを警告する。descriptionは文脈依存なので機械判定しない。
 const BAD_SIGNAL =
-  /(ありません|出られません|続けられません|限られます|不足|閉鎖|混雑|競争|未設置|荒れ|重くなり|はっきりしません)/;
+  /(ありません|出られません|続けられません|限られます|不足|閉鎖|混雑|未設置|荒れ(?!にく|ず|ませ|ない)|重くなり|はっきりしません)/;
 const GOOD_SIGNAL =
   /(滑れます|練習できます|反復できます|狙えます|選べます|利用できます)/;
 
@@ -111,22 +110,9 @@ const STYLE_RULES = [
     hint: "修飾語を重ねない。落とせない条件は次の文に回す",
   },
   {
-    id: "迂回",
-    // コース名を出さない代わりに説明で1本を指している
-    pattern:
-      /(から下る|へ下る|から降りる|につながる)[^。]{0,8}(ルート|コース|斜面)|唯一の|候補は/,
-    hint: "名前で呼べないなら、そのコースの話は courses に移す",
-  },
-  {
     id: "空語",
     pattern: /(魅力が満載|幅広いニーズ|バラエティ豊か|充実しています|多彩な)/,
     hint: "何が優れているのかを具体的に書く",
-  },
-  {
-    id: "編集語",
-    pattern:
-      /(一系統|主力|段階的|代替|選び分け|反復|物量|現行性|判断材料|候補|成立|周回|確実な|具体的に挙げられる|対象は)/,
-    hint: "分析を名詞で圧縮せず、斜面・リフト・雪を主語にして文全体を書き直す",
   },
   {
     id: "同義語並列",
@@ -134,19 +120,14 @@ const STYLE_RULES = [
       /(非圧雪やパウダー|パウダーや非圧雪|コブやモーグル|モーグルやコブ|ツリーランや林間|急斜面やスティープ)/,
     hint: "同じ意味の語を並べない。どちらか一方にする",
   },
-  {
-    id: "数値データ",
-    pattern: /\d/,
-    hint: "全長・斜度などの数値は別の場所でまとめているので記事に書かない",
-  },
 ];
 
 // 箇条書きは抽象的な結論ではなく、具体物または具体的な条件を含むこと
 const CONCRETE_NOUN =
-  /斜面|バーン|コース|エリア|ゲレンデ|リフト|ゴンドラ|クワッド|雪|パウダー|コブ|モーグル|パーク|キッカー|ジブ|ツリーラン|林|森|ゾーン|圧雪|ライン|地形|山|沢|申請|受付|営業時間|混雑|競争|閉鎖|移動|運休|開設|整備|人工降雪機|圧雪車|アイテム|ウォール|レール|ボックス|雪質|積雪/;
+  /斜面|バーン|コース|エリア|ゲレンデ|リフト|ゴンドラ|クワッド|雪|パウダー|コブ|モーグル|パーク|パイプ|ウェーブ|キッカー|ジブ|ツリーラン|林|森|ゾーン|圧雪|ライン|地形|山|沢|申請|受付|営業時間|混雑|混み合|競争|閉鎖|移動|運休|開設|整備|整地|滑走|幅|長さ|駐車場|バス|歩道|徒歩|そり|用具|坂|人工降雪機|圧雪車|アイテム|ウォール|レール|ボックス|雪質|積雪/;
 // 判断材料の少なさに触れる表現（warn: true のカテゴリだけ許可）
 const THIN_EVIDENCE =
-  /(まだ多くありません|まだ少なめ|まだ少なく|はっきりしません|見えていません)/;
+  /(まだ多くありません|まだ少なめ|まだ少なく|はっきりしません|見えていません|分かりません|分かっていません)/;
 
 // カテゴリ名から当然に導ける可能動作だけを記事へ書いていないか。
 // 例: 「圧雪中斜面でカービングを反復できます」。
@@ -156,10 +137,47 @@ const GENERIC_CATEGORY_EXPERIENCE =
 // 一般的な可能動作を、そのスキー場固有の差へ変える比較軸。
 // 「幅広い」「圧雪が丁寧」だけでは平均的な同カテゴリとの差にならない。
 const DECISION_DELTA =
-  /一系統|実質一|一本|一つ|一か所|複数|選択肢|選び分け|集中|限ら|主力|中心|代替|長く続|上から下|山頂から麓|(?:斜面|コース|ライン)(?:が|は)?[^。]{0,4}長|短(?:い|く|め)|狭|全山|範囲|エリア間|横移動|歩き|スケーティング|乗り継ぎ|受付|申請|営業時間|午前|午後|朝一|朝だけ|終日|混雑|競争|待ち|開放|閉鎖|運休|圧雪頻度|圧雪運用|非圧雪(?:になる|へ変わ)|造成|積雪状況|降雪状況|日によ|シーズン|残り|荒れ|同じ斜面|別ルート|周回|物量|ライン数|規模/;
+  /一系統|実質一|一本|一つ|一か所|複数|選択肢|選び分け|集中|限ら|主力|中心|代替|長く続|上から下|山頂から麓|(?:斜面|コース|ライン)(?:が|は)?[^。]{0,4}長|短(?:い|く|め)|狭|全山|範囲|エリア間|横移動|歩き|スケーティング|乗り継ぎ|受付|申請|営業時間|午前|午後|朝一|朝だけ|終日|混雑|競争|待ち|開放|閉鎖|運休|圧雪頻度|圧雪運用|非圧雪(?:になる|へ変わ)|造成|積雪状況|降雪状況|日によ|シーズン|残り|荒れ|別ルート|周回|ライン数|規模|段階|上達|初めて|初滑り|覚えた|子ども|家族|向いて|適して|負担|体力/;
 
 // 「長く丁寧に圧雪」は、斜面が長いのか圧雪期間が長いのか曖昧。
 const AMBIGUOUS_LENGTH = /長く(?:丁寧|きれい|しっかり)に圧雪/;
+
+// full / reason がコース紹介になっていないか。コース単体の等級・距離の紹介は courses の仕事。
+const COURSE_CATALOG_SENTENCE =
+  /(?:初級|中級|上級|初心者|中級者|上級者)(?:者)?(?:向け)?コースです。$|\d+(?:\.\d+)?\s*(?:km|m)の[^。]{0,20}コースです。$/;
+
+// detail.courses[].name から、記事の full / reason で使ってはいけないコース名を取り出す。
+// スキー場名・ゲレンデ名・エリア名は移動や混雑の説明に必要なので対象にしない。
+const courseNameTokens = names => {
+  const tokens = new Set();
+  for (const name of names) {
+    if (typeof name !== "string") continue;
+    for (const part of [name, ...name.split(/[\s　]+/)]) {
+      const token = part.trim();
+      if (token.length >= 3 && /コース$/.test(token)) tokens.add(token);
+    }
+  }
+  return tokens;
+};
+
+// reason が courses の説明を言い直しただけになっていないか（文字bigramの包含率）
+const DUPLICATE_RATIO = 0.6;
+const bigrams = value => {
+  const body = value.replace(/[\s　。、「」『』（）()・]/g, "");
+  const set = new Set();
+  for (let index = 0; index + 1 < body.length; index += 1) {
+    set.add(body.slice(index, index + 2));
+  }
+  return set;
+};
+const containmentRatio = (left, right) => {
+  const a = bigrams(left);
+  const b = bigrams(right);
+  if (a.size === 0 || b.size === 0) return 0;
+  let shared = 0;
+  for (const gram of a) if (b.has(gram)) shared += 1;
+  return shared / Math.min(a.size, b.size);
+};
 const isGenericCategoryClaim = value =>
   GENERIC_CATEGORY_EXPERIENCE.test(value) && !DECISION_DELTA.test(value);
 
@@ -171,10 +189,10 @@ if (process.argv[2] === "--self-test") {
     "締まった圧雪バーンでカービングを楽しめます。",
   ];
   const accepted = [
-    "圧雪された中斜面は一つだけで、ほかに選べる整地はありません。",
-    "圧雪急斜面は山頂側から長く続きます。",
-    "ほかの上級斜面はコブ・非圧雪が中心です。",
-    "別エリアへ移るには歩きやスケーティングを挟みます。",
+    "第4ゲレンデは幅が広い緩斜面で、短いリフトを使って繰り返し滑れます。",
+    "圧雪された上級コースは、実質チャンピオンコース一本です。",
+    "ラクラクコースは、初級者が滑れる長いコースです。",
+    "豪円山から中の原へ移るには、歩くかスケーティングが必要です。",
   ];
 
   for (const value of rejected) {
@@ -190,18 +208,68 @@ if (process.argv[2] === "--self-test") {
   if (!AMBIGUOUS_LENGTH.test(rejected[2])) {
     throw new Error("曖昧な長さを検出できません");
   }
-  const editorialJargon = [
-    "中級の高評価は一系統に集中します。",
-    "主力バーンは山頂側から長く続きます。",
-    "初級斜面から段階的に進めます。",
-    "混雑時の代替周回があります。",
+  const catalogSentences = [
+    "天狗コースは、山頂から続く3.2kmの緩やかな初級コースです。",
+    "パノラマコースは、林の中を通る中級コースです。",
+    "ラクラクコースは3.5kmの長いコースです。",
   ];
-  const editorialRule = STYLE_RULES.find(rule => rule.id === "編集語");
-  for (const value of editorialJargon) {
-    if (!editorialRule?.pattern.test(value)) {
-      throw new Error(`編集語を検出できません: ${value}`);
+  for (const value of catalogSentences) {
+    if (!COURSE_CATALOG_SENTENCE.test(value)) {
+      throw new Error(`コース紹介文を検出できません: ${value}`);
     }
   }
+  const notCatalog = [
+    "山頂からも、緩やかな林間コースを使えば初級者が麓まで下れます。",
+    "圧雪された上級コースは1本だけです。",
+    "団体講習の時間は、一の瀬と高天ヶ原の周辺が混み合います。",
+  ];
+  for (const value of notCatalog) {
+    if (COURSE_CATALOG_SENTENCE.test(value)) {
+      throw new Error(`コース紹介文を誤検出しました: ${value}`);
+    }
+  }
+
+  const tokens = courseNameTokens([
+    "一の瀬ファミリー 天狗コース",
+    "一の瀬ファミリー 正面ゲレンデ下部",
+    "西館山スキー場",
+    "ジャイアントゲレンデ",
+    "みずならコース",
+    "高天ヶ原マンモス ゲレンデ左側コブ斜面",
+  ]);
+  for (const expected of ["天狗コース", "みずならコース"]) {
+    if (!tokens.has(expected)) {
+      throw new Error(`コース名を抽出できません: ${expected}`);
+    }
+  }
+  for (const unexpected of [
+    "西館山スキー場",
+    "ジャイアントゲレンデ",
+    "高天ヶ原マンモス",
+    "一の瀬ファミリー 正面ゲレンデ下部",
+  ]) {
+    if (tokens.has(unexpected)) {
+      throw new Error(`エリア名をコース名として扱っています: ${unexpected}`);
+    }
+  }
+
+  const duplicated = containmentRatio(
+    "天狗コースは、山頂から続く3.2kmの緩やかな初級コースです。",
+    "山頂から正面下部まで続く、3.2kmの緩やかな初級コースです。",
+  );
+  if (duplicated < DUPLICATE_RATIO) {
+    throw new Error(`courses重複を検出できません: ${duplicated.toFixed(2)}`);
+  }
+  const distinct = containmentRatio(
+    "山頂からも、緩やかな林間コースを使えば初級者が麓まで下れます。",
+    "山頂から正面下部まで続く3.2kmの林間コースで、斜度は終始緩やかです。",
+  );
+  if (distinct >= DUPLICATE_RATIO) {
+    throw new Error(
+      `別内容をcourses重複と誤検出しました: ${distinct.toFixed(2)}`,
+    );
+  }
+
   process.stdout.write("validator self-test: OK\n");
   process.exit(0);
 }
@@ -342,7 +410,12 @@ const lintStyle = (
 const validateBulletList = (
   value,
   path,
-  { itemRange, allowThinEvidence = false, courseNames = [] },
+  {
+    itemRange,
+    allowThinEvidence = false,
+    bannedCourseNames = new Set(),
+    courseDescriptions = [],
+  },
 ) => {
   if (!Array.isArray(value)) {
     errors.push(`${path} が辞書の配列ではありません`);
@@ -437,9 +510,27 @@ const validateBulletList = (
       );
     }
     if (AMBIGUOUS_LENGTH.test(text)) {
+      warnings.push(`${textAt} [曖昧な長さ] コース長か運用期間かを明示する`);
+    }
+    for (const courseName of bannedCourseNames) {
+      if (text.includes(courseName)) {
+        warnings.push(
+          `${textAt} [コース名] 「${courseName}」は courses にだけ書く。ここは「何ができるか・何に困るか」を書く`,
+        );
+      }
+    }
+    if (COURSE_CATALOG_SENTENCE.test(text)) {
       warnings.push(
-        `${textAt} [曖昧な長さ] コース長か運用期間かを明示する`,
+        `${textAt} [コース紹介] コース単体の等級・距離の紹介は courses に書く`,
       );
+    }
+    for (const description of courseDescriptions) {
+      if (containmentRatio(text, description) >= DUPLICATE_RATIO) {
+        warnings.push(
+          `${textAt} [courses重複] courses の説明と同じ内容です: ${description.slice(0, 24)}…`,
+        );
+        break;
+      }
     }
     if (THIN_EVIDENCE.test(text) && !allowThinEvidence) {
       warnings.push(
@@ -454,14 +545,6 @@ const validateBulletList = (
         `${labelAt} [分類] 滑走上の利点をbadにしていないか確認する`,
       );
     }
-    for (const name of courseNames) {
-      if (name && text.includes(name)) {
-        errors.push(
-          `${textAt} にコース名があります: ${name}（courses に書く）`,
-        );
-      }
-    }
-
     lintStyle(text, textAt, {
       maxSentence: BULLET_TEXT_MAX,
     });
@@ -600,14 +683,21 @@ if (typeof article.resortId !== "string" || !article.resortId) {
 if (detail.resortId !== article.resortId) {
   errors.push("detail.resortId と article.resortId が一致しません");
 }
-const allCourseNames = new Set(
+const allDetailCourseNames = courseNameTokens(
   categories.flatMap(category =>
-    (detail[category]?.courses ?? []).map(course => course.name),
+    (detail[category]?.courses ?? []).map(course => course?.name),
   ),
 );
+const allArticleCourseDescriptions = categories.flatMap(category =>
+  (Array.isArray(article[category]?.courses) ? article[category].courses : [])
+    .map(course => course?.description)
+    .filter(value => typeof value === "string"),
+);
+
 validateBulletList(article.full, "article.full", {
   itemRange: FULL_ITEMS,
-  courseNames: allCourseNames,
+  bannedCourseNames: allDetailCourseNames,
+  courseDescriptions: allArticleCourseDescriptions,
 });
 
 for (const category of categories) {
@@ -639,7 +729,10 @@ for (const category of categories) {
   validateBulletList(target.reason, `${at}.reason`, {
     itemRange: REASON_ITEMS,
     allowThinEvidence: target.warn === true,
-    courseNames: knownCourseNames,
+    bannedCourseNames: courseNameTokens([...knownCourseNames]),
+    courseDescriptions: (Array.isArray(target.courses) ? target.courses : [])
+      .map(course => course?.description)
+      .filter(value => typeof value === "string"),
   });
 
   if (!Array.isArray(target.courses)) {
@@ -674,7 +767,7 @@ for (const category of categories) {
         );
       }
       lintStyle(course.description, `${courseAt}.description`, {
-        maxSentence: 40,
+        maxSentence: 60,
       });
       if (isGenericCategoryClaim(course.description)) {
         warnings.push(

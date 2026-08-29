@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Plus, X } from "lucide-react";
+import { Check, Maximize2, Minimize2, Plus, X } from "lucide-react";
 import type {
   ComponentType,
   ChangeEvent as ReactChangeEvent,
@@ -17,6 +17,7 @@ import type { Filters } from "@/features/filters/types";
 import { getActiveFilterLabels } from "@/features/filters/utils/filterLabels";
 import { DEFAULT_LIFT_TICKET_SEARCH_INPUT } from "@/features/lift-ticket/utils/calculateLiftTicket";
 import type {
+  CourseColorMode,
   ElevationProfileMapPoint,
   JapanResortMapProps,
   MapTileVariant,
@@ -25,12 +26,19 @@ import type {
 import { SkiResortDetailView } from "@/features/resort-detail/SkiResortDetailView";
 import { cn } from "@/lib/utils";
 import { AnimatedPanel } from "@/shared/components/AnimatedPanel";
+import { SegmentedControl } from "@/shared/components/SegmentedControl";
 import type {
   MapSkiResort,
   NullableSkiResortDetail,
   SkiResortDetail,
 } from "@/types/skiResorts";
-import { CompareSlopeMapBoard } from "../components/compare/CompareSlopeMapBoard";
+import { CompareMapHeaderBar } from "../components/compare/CompareMapHeaderBar";
+import type { CompareSlopeSelection } from "../components/compare/CompareSlopeMapBoard";
+import {
+  CompareSlopeFeatureDetail,
+  CompareSlopeMapBoard,
+} from "../components/compare/CompareSlopeMapBoard";
+import type { CompareLeftPane } from "../components/compare/types";
 import { DesktopSearchPanel } from "../components/DesktopSearchPanel";
 import { MobileResultsSheet } from "../components/MobileResultsSheet";
 import { MobileSearchButton } from "../components/MobileSearchButton";
@@ -39,10 +47,17 @@ import { MobileSearchTopBarShell } from "../components/MobileSearchTopBarShell";
 import { SkiResortCompareView } from "../components/SkiResortCompareView";
 import type { MapViewRestoreRequest } from "../types";
 
-const MAP_TILE_OPTIONS: Array<{ label: string; value: MapTileVariant }> = [
-  { label: "地図", value: "pale" },
-  { label: "衛星", value: "photo" },
-];
+/**
+ * 比較の左エリアの右端。比較パネルの手前で止める。
+ * 地図エリアは検索パネルのぶんだけ既に狭いので、その差だけを詰める。
+ */
+const COMPARE_LEFT_PANE_RIGHT =
+  "max(0px, calc(var(--compare-panel-width) - var(--desktop-search-panel-width)))";
+
+const MOBILE_CONTENT_TAB_OPTIONS = [
+  { value: "map", label: "地図" },
+  { value: "info", label: "リスト" },
+] as const satisfies readonly { value: "info" | "map"; label: string }[];
 
 type Props = {
   DynamicMap: ComponentType<JapanResortMapProps>;
@@ -202,17 +217,67 @@ export const HomeLayout = ({
   onUserMapZoomInteraction,
 }: Props) => {
   const [mapTileVariant, setMapTileVariant] = useState<MapTileVariant>("pale");
-  // デスクトップの比較では、左の地図エリアを「アクセス（位置の地図）」と
-  // 「ゲレンデ（コースマップ一覧）」で切り替える
-  const [compareLeftPane, setCompareLeftPane] = useState<"access" | "slope">(
-    "access",
-  );
+  // デスクトップの比較では、左の地図エリアを「ゲレンデ（コースマップ一覧）」と
+  // 「アクセス（位置の地図）」で切り替える。既定はゲレンデ
+  const [compareLeftPane, setCompareLeftPane] =
+    useState<CompareLeftPane>("slope");
+  // ゲレンデ一覧の表示設定。比較中のスキー場すべてに同じものを効かせるため、
+  // 地図ごとではなくここで持つ
+  const [compareCourseColorMode, setCompareCourseColorMode] =
+    useState<CourseColorMode>("slope");
+  const [compareShowOpenOnly, setCompareShowOpenOnly] = useState(false);
+  const [compareSlopeTileVariant, setCompareSlopeTileVariant] =
+    useState<MapTileVariant>("photo");
+  // 選んだコース・リフトは右の比較パネルに重ねて出すので、
+  // カードごとではなく比較全体で 1 つだけ持つ
+  const [compareSlopeSelection, setCompareSlopeSelection] =
+    useState<CompareSlopeSelection | null>(null);
+  // デスクトップの詳細で、左の地図を画面いっぱいに広げているか
+  const [isDesktopMapExpanded, setIsDesktopMapExpanded] = useState(false);
   const isDesktopCompare = isSidePanelLayout && isCompareOpen;
+  const isDesktopDetailMapExpanded =
+    isSidePanelLayout &&
+    Boolean(selectedResortId) &&
+    !isCompareOpen &&
+    isDesktopMapExpanded;
 
   useEffect(() => {
     if (isCompareOpen) return;
-    setCompareLeftPane("access");
+    setCompareLeftPane("slope");
   }, [isCompareOpen]);
+
+  // 地図を切り替えたり比較を閉じたら、選択も外す
+  useEffect(() => {
+    if (isCompareOpen && compareLeftPane === "slope") return;
+    setCompareSlopeSelection(null);
+  }, [compareLeftPane, isCompareOpen]);
+
+  // 詳細を閉じたら全画面も畳む。比較を開いたときも同じ
+  useEffect(() => {
+    if (selectedResortId && !isCompareOpen) return;
+    setIsDesktopMapExpanded(false);
+  }, [isCompareOpen, selectedResortId]);
+
+  useEffect(() => {
+    if (!isDesktopDetailMapExpanded) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // 選択中の Escape はコース選択の解除が先（地図側で処理する）
+      if (event.key !== "Escape" || selectedFinalizedFeature) return;
+      setIsDesktopMapExpanded(false);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isDesktopDetailMapExpanded, selectedFinalizedFeature]);
+
+  // 比較中のスキー場にコース・リフトが 1 つもなければ、
+  // 帯のコース設定（色分け・凡例）は出しても意味がない
+  const compareHasCourses = compareResortData.some(
+    resort => (resort.finalizedMapData?.courses?.features.length ?? 0) > 0,
+  );
+  const compareHasLifts = compareResortData.some(
+    resort => (resort.finalizedMapData?.lifts?.features.length ?? 0) > 0,
+  );
   const liftTicketInput =
     filters.liftTicket ?? DEFAULT_LIFT_TICKET_SEARCH_INPUT;
   // 比較中の地図はデスクトップの背景地図だけ。モバイルは比較タブの中で完結する
@@ -243,6 +308,20 @@ export const HomeLayout = ({
       (mobileContentTab === "map" ||
         (!shouldShowMobileTopChrome && !shouldShowMobileSearchScreen)));
 
+  const compareSelectedSlopeResort = compareSlopeSelection
+    ? (compareResortData.find(
+        resort => resort.id === compareSlopeSelection.resortId,
+      ) ?? null)
+    : null;
+  const compareSlopeFeatureDetail =
+    compareSlopeSelection && compareSelectedSlopeResort ? (
+      <CompareSlopeFeatureDetail
+        resort={compareSelectedSlopeResort}
+        selection={compareSlopeSelection}
+        onSelectionChange={setCompareSlopeSelection}
+      />
+    ) : null;
+
   const availablePrefectureSet = new Set(
     initialResorts.map(resort => resort.prefecture).filter(Boolean),
   );
@@ -265,7 +344,13 @@ export const HomeLayout = ({
       onPointerDownCapture={onMainPointerDownCapture}
       className="fixed inset-0 min-h-0 w-screen overflow-hidden flex flex-col md:flex-row bg-gray-100"
     >
-      <div className="h-full w-full relative flex flex-col bg-white">
+      <div
+        className={cn(
+          "relative flex h-full w-full flex-col bg-white",
+          // 詳細で地図を広げているときは、検索パネルと詳細パネルの上に出す
+          isDesktopDetailMapExpanded && "md:fixed md:inset-0 md:z-[400]",
+        )}
+      >
         {/*
           中身が検索ヘッダだけなので、検索ヘッダを出さないとき（詳細・比較）は
           帯ごと描かない。空の帯でも pb-2 + border-b の分だけ画面上部を食う。
@@ -302,7 +387,6 @@ export const HomeLayout = ({
           {shouldShowMobileContextHeader && (
             <MobileContextHeader
               mode={selectedResortId ? "detail" : "results"}
-              activeTab={mobileContentTab}
               resultCount={filteredResorts.length}
               compareCount={selectedCompareIds.length}
               detailTitle={selectedResortData?.nameJa ?? "読み込み中"}
@@ -315,62 +399,75 @@ export const HomeLayout = ({
                   : false
               }
               activeFilterLabels={mobileActiveFilterLabels}
-              mapTileVariant={mapTileVariant}
               onCloseDetail={onCloseDetail}
               onClearCompare={onClearCompare}
-              onMapTileVariantChange={setMapTileVariant}
               onOpenCompare={onOpenCompare}
               onToggleCompare={onToggleCompare}
             />
           )}
           <div className="flex-1 min-h-0 relative">
+            {/*
+              比較の左エリア。上に白い帯（切替と表示設定）を固定し、
+              その下だけがスクロールする。ゲレンデ一覧は地図の上に重ねる。
+              地図を unmount すると、戻ったときにタイルの読み直しと
+              表示位置のリセットが起きるため。
+              右端は比較パネルの手前で止める。全幅にするとカードもスクロールバーも
+              パネルの下に潜ってしまう。地図エリアは検索パネルのぶんだけ
+              既に狭いので、その差だけを詰める。
+            */}
             {isDesktopCompare && (
-              <div className="absolute top-3 left-3 z-[90] flex overflow-hidden rounded-full border border-gray-200 bg-white shadow-sm">
-                {(
-                  [
-                    ["access", "アクセス"],
-                    ["slope", "ゲレンデ"],
-                  ] as const
-                ).map(([pane, label]) => {
-                  const isActive = compareLeftPane === pane;
-                  return (
-                    <Button
-                      key={pane}
-                      type="button"
-                      variant={isActive ? "default" : "ghost"}
-                      aria-pressed={isActive}
-                      onClick={() => setCompareLeftPane(pane)}
-                      className={cn(
-                        "h-9 min-w-0 rounded-none px-4 text-sm font-semibold",
-                        !isActive &&
-                          "bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900",
-                      )}
-                    >
-                      {label}
-                    </Button>
-                  );
-                })}
+              <div
+                className="pointer-events-none absolute top-0 bottom-0 left-0 z-[80] flex flex-col"
+                style={{ right: COMPARE_LEFT_PANE_RIGHT }}
+              >
+                <CompareMapHeaderBar
+                  pane={compareLeftPane}
+                  onPaneChange={setCompareLeftPane}
+                  courseColorMode={compareCourseColorMode}
+                  onCourseColorModeChange={setCompareCourseColorMode}
+                  showOpenOnly={compareShowOpenOnly}
+                  onShowOpenOnlyChange={setCompareShowOpenOnly}
+                  mapTileVariant={compareSlopeTileVariant}
+                  onMapTileVariantChange={setCompareSlopeTileVariant}
+                  hasCourses={compareHasCourses}
+                  hasLifts={compareHasLifts}
+                />
+                {compareLeftPane === "slope" && (
+                  <CompareSlopeMapBoard
+                    resorts={compareResortData}
+                    DynamicMap={DynamicMap}
+                    mapResorts={initialResorts}
+                    courseColorMode={compareCourseColorMode}
+                    onCourseColorModeChange={setCompareCourseColorMode}
+                    showOpenOnly={compareShowOpenOnly}
+                    onShowOpenOnlyChange={setCompareShowOpenOnly}
+                    mapTileVariant={compareSlopeTileVariant}
+                    onMapTileVariantChange={setCompareSlopeTileVariant}
+                    selection={compareSlopeSelection}
+                    onSelectionChange={setCompareSlopeSelection}
+                    className="pointer-events-auto min-h-0 flex-1 px-6 pt-6 pb-10"
+                  />
+                )}
               </div>
             )}
-            {/*
-              ゲレンデは地図の上に重ねる。地図を unmount すると戻ったときに
-              タイルの読み直しと表示位置のリセットが起きるため。
-            */}
-            {isDesktopCompare && compareLeftPane === "slope" && (
-              <CompareSlopeMapBoard
-                resorts={compareResortData}
-                DynamicMap={DynamicMap}
-                mapResorts={initialResorts}
-                // 右端は比較パネルの手前で止める。全幅にするとカードもスクロールバーも
-                // パネルの下に潜ってしまう。地図エリアは検索パネルのぶんだけ
-                // 既に狭いので、その差だけを詰める
-                className="absolute top-0 bottom-0 left-0 z-[80] px-6 pt-16 pb-10"
-                style={{
-                  right:
-                    "max(0px, calc(var(--compare-panel-width) - var(--desktop-search-panel-width)))",
-                }}
-              />
-            )}
+            {isSidePanelLayout &&
+              Boolean(selectedResortId) &&
+              !isCompareOpen && (
+                <Button
+                  type="button"
+                  aria-label={
+                    isDesktopMapExpanded ? "地図を元に戻す" : "地図を拡大"
+                  }
+                  onClick={() => setIsDesktopMapExpanded(current => !current)}
+                  className="absolute top-3 left-3 z-[90] h-10 w-10 min-w-10 rounded-md border border-gray-200 bg-white p-0 text-gray-700 shadow-sm hover:bg-gray-50 hover:text-gray-900 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10"
+                >
+                  {isDesktopMapExpanded ? (
+                    <Minimize2 size={17} strokeWidth={2.5} />
+                  ) : (
+                    <Maximize2 size={17} strokeWidth={2.5} />
+                  )}
+                </Button>
+              )}
             {shouldRenderMap && (
               <DynamicMap
                 resorts={initialResorts}
@@ -382,7 +479,6 @@ export const HomeLayout = ({
                 searchViewportBottomPaddingRatio={
                   searchViewportBottomPaddingRatio
                 }
-                mapControlBottomPaddingRatio={searchViewportBottomPaddingRatio}
                 selectedResortId={selectedResortId}
                 hoveredResortId={hoveredResortId}
                 onSelectResort={onSelectResort}
@@ -512,7 +608,11 @@ export const HomeLayout = ({
         visible={Boolean(
           selectedResortId && (isSidePanelLayout || shouldRenderMap),
         )}
-        rootClassName="fixed inset-0 z-[60] md:flex pointer-events-none"
+        rootClassName={cn(
+          "fixed inset-0 md:flex pointer-events-none",
+          // 全画面地図のときは、その上に選択中のコースを重ねる
+          isDesktopDetailMapExpanded ? "z-[420]" : "z-[60]",
+        )}
       >
         {selectedResortId && (isSidePanelLayout || shouldRenderMap) && (
           <SkiResortDetailView
@@ -531,6 +631,7 @@ export const HomeLayout = ({
             onClose={onCloseDetail}
             mobileContentTab="info"
             hideMobileInfoSection
+            isDesktopMapExpanded={isDesktopDetailMapExpanded}
           />
         )}
       </AnimatedPanel>
@@ -545,6 +646,8 @@ export const HomeLayout = ({
           mapResorts={initialResorts}
           onSelectResort={onSelectResort}
           showSlopeTab={false}
+          showAccessTab={false}
+          featureDetailOverlay={compareSlopeFeatureDetail}
         />
       )}
     </main>
@@ -570,31 +673,16 @@ const MobileSearchHeader = ({
 }: MobileSearchHeaderProps) => (
   <MobileSearchTopBarShell
     action={
-      <div className="flex h-10 rounded-full bg-gray-100 border border-gray-200 overflow-hidden shadow-sm">
-        {[
-          ["map", "地図"],
-          ["info", "リスト"],
-        ].map(([tab, label]) => {
-          const isActive = activeTab === tab;
-          return (
-            <Button
-              key={tab}
-              type="button"
-              variant={isActive ? "default" : "ghost"}
-              aria-pressed={isActive}
-              onClick={() => onTabChange(tab as "info" | "map")}
-              // §13: 塗りつぶしセグメントタブはウェイト font-semibold（比較タブと同一）
-              className={`flex-1 min-w-0 h-full px-4 whitespace-nowrap transition-smooth rounded-none font-semibold ${
-                isActive
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-              }`}
-            >
-              {label}
-            </Button>
-          );
-        })}
-      </div>
+      // §13: 塗りつぶしセグメントタブはウェイト font-semibold（比較タブと同一）
+      <SegmentedControl
+        options={MOBILE_CONTENT_TAB_OPTIONS}
+        value={activeTab}
+        onChange={onTabChange}
+        radius="full"
+        className="h-10 shadow-sm"
+        itemClassName="h-full flex-1 px-4"
+        ariaLabel={option => `${option.label}を表示`}
+      />
     }
   >
     <MobileSearchButton
@@ -608,7 +696,6 @@ const MobileSearchHeader = ({
 
 type MobileContextHeaderProps = {
   mode: "results" | "detail";
-  activeTab: "info" | "map";
   resultCount: number;
   compareCount: number;
   detailTitle: string;
@@ -617,17 +704,14 @@ type MobileContextHeaderProps = {
   detailResortId: string | null;
   isDetailCompareSelected: boolean;
   activeFilterLabels: string[];
-  mapTileVariant: MapTileVariant;
   onCloseDetail: () => void;
   onClearCompare: () => void;
-  onMapTileVariantChange: (variant: MapTileVariant) => void;
   onOpenCompare: () => void;
   onToggleCompare: (id: string, selected: boolean) => void;
 };
 
 const MobileContextHeader = ({
   mode,
-  activeTab,
   resultCount,
   compareCount,
   detailTitle,
@@ -636,16 +720,13 @@ const MobileContextHeader = ({
   detailResortId,
   isDetailCompareSelected,
   activeFilterLabels,
-  mapTileVariant,
   onCloseDetail,
   onClearCompare,
-  onMapTileVariantChange,
   onOpenCompare,
   onToggleCompare,
 }: MobileContextHeaderProps) => {
   const isResults = mode === "results";
   const filterLabels = activeFilterLabels;
-  const shouldShowMapTileControl = isResults && activeTab === "map";
 
   return (
     <div className="relative z-10 pointer-events-auto md:hidden">
@@ -667,27 +748,6 @@ const MobileContextHeader = ({
             >
               {resultCount.toLocaleString()}件
             </Badge>
-            {shouldShowMapTileControl && (
-              <div className="ml-auto h-[28px] min-w-fit px-1 rounded-lg bg-gray-100 border border-gray-200 gap-0.5 flex">
-                {MAP_TILE_OPTIONS.map(option => {
-                  const isActive = mapTileVariant === option.value;
-
-                  return (
-                    <Button
-                      key={option.value}
-                      type="button"
-                      variant={isActive ? "default" : "ghost"}
-                      aria-label={`${option.label}に切り替え`}
-                      aria-pressed={isActive}
-                      onClick={() => onMapTileVariantChange(option.value)}
-                      className="h-full min-w-0 px-3 rounded-md text-xs font-semibold leading-none"
-                    >
-                      {option.label}
-                    </Button>
-                  );
-                })}
-              </div>
-            )}
           </div>
         </div>
       )}

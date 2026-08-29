@@ -655,7 +655,7 @@ export function ReviewEditWorkspace({
   const articleCategory = data?.article[selectedCategory];
 
   return (
-    <div className="h-[100dvh] bg-gray-100 text-gray-900 overflow-hidden flex">
+    <div className="h-[calc(100dvh-4rem)] bg-gray-100 text-gray-900 overflow-hidden flex">
       {/* §15: lg 未満では 40vw 上限でサイドバーを縮小し，メイン（エディタ）に幅を回す */}
       <aside className="w-[min(230px,40vw)] lg:w-[280px] flex-shrink-0 bg-[var(--sidebar-dark)] text-white overflow-y-auto border-r border-white/20">
         <div className="p-5 sticky top-0 z-10 bg-[var(--sidebar-dark)]">

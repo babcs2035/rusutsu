@@ -10,6 +10,7 @@ import type {
 } from "@/features/map/types";
 import { useBreakpointValue } from "@/hooks/use-breakpoint-value";
 import { getResortSearchName } from "@/lib/resortAliases";
+import { cn } from "@/lib/utils";
 import { AnimatedPanel } from "@/shared/components/AnimatedPanel";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
 import type { MapSkiResort, NullableSkiResortDetail } from "@/types/skiResorts";
@@ -47,6 +48,12 @@ type Props = {
   mobileContentTab?: "info" | "map";
   mobilePresentation?: "overlay" | "inline";
   hideMobileInfoSection?: boolean;
+  /**
+   * デスクトップで左の地図を全画面にしているか。
+   * そのときは説明パネルを畳んで地図を見せ、コースを選んだときだけ
+   * 右側に小さく重ねて出す。
+   */
+  isDesktopMapExpanded?: boolean;
 };
 
 const TABS = ["概要", "コース", "リフト", "チケット", "気候"];
@@ -69,6 +76,7 @@ export const SkiResortDetailView = ({
   mobileContentTab = "info",
   mobilePresentation = "overlay",
   hideMobileInfoSection = false,
+  isDesktopMapExpanded = false,
 }: Props) => {
   const [activeTab, setActiveTab] = useState(TABS[0]);
   const isSidePanel = useBreakpointValue({ base: false, md: true }) ?? false;
@@ -305,11 +313,25 @@ export const SkiResortDetailView = ({
     </div>
   );
 
+  // 全画面地図では一覧が見えていないので、「一覧へ」の導線は出さない
+  const desktopFeatureDetail = renderFeatureDetail({
+    withOpenList: !isDesktopMapExpanded,
+  });
+  // 全画面地図では、選択中のコースだけを右に重ねる。
+  // 何も選んでいなければパネルごと畳んで地図を邪魔しない。
+  const shouldRenderDesktopPanel =
+    isSidePanel && (!isDesktopMapExpanded || Boolean(desktopFeatureDetail));
+
   return (
     <>
-      {isSidePanel && (
+      {shouldRenderDesktopPanel && (
         <Portal>
-          <div className="fixed inset-0 z-[60] hidden md:flex md:justify-end pointer-events-none">
+          <div
+            className={cn(
+              "fixed inset-0 hidden md:flex md:justify-end pointer-events-none",
+              isDesktopMapExpanded ? "z-[420] p-3" : "z-[60]",
+            )}
+          >
             <div
               className="absolute inset-0 bg-transparent pointer-events-none"
               aria-hidden="true"
@@ -317,9 +339,14 @@ export const SkiResortDetailView = ({
             <AnimatedPanel
               data-ski-resort-detail-panel="true"
               visible={isSidePanel}
-              contentClassName="relative z-10 flex h-full max-h-none w-[min(560px,50vw)] max-w-none flex-col overflow-hidden bg-white border border-gray-200 pointer-events-auto shadow-2xl"
+              contentClassName={cn(
+                "relative z-10 flex h-full max-h-none max-w-none flex-col overflow-hidden bg-white border border-gray-200 pointer-events-auto shadow-2xl",
+                isDesktopMapExpanded
+                  ? "w-[min(460px,40vw)] rounded-xl"
+                  : "w-[min(560px,50vw)]",
+              )}
             >
-              {detailPanelContent}
+              {isDesktopMapExpanded ? desktopFeatureDetail : detailPanelContent}
             </AnimatedPanel>
           </div>
         </Portal>

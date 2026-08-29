@@ -68,7 +68,7 @@
   "full": [
     {
       "label": "good",
-      "text": "幅の広い圧雪中斜面が、山頂側から麓まで続きます。"
+      "text": "幅の広い圧雪急斜面が、山頂側から麓まで続きます。"
     },
     {
       "label": "description",
@@ -76,7 +76,7 @@
     },
     {
       "label": "bad",
-      "text": "圧雪された急斜面は一つだけです。"
+      "text": "圧雪された上級コースは1本だけです。"
     }
   ],
   "advanced": {
@@ -84,11 +84,11 @@
     "reason": [
       {
         "label": "good",
-        "text": "幅の広い圧雪急斜面が、山頂側から長く続きます。"
+        "text": "上級向けの圧雪バーンは幅が広く、麓側まで長く続きます。"
       },
       {
         "label": "bad",
-        "text": "ほかの上級斜面はコブ・非圧雪が中心です。"
+        "text": "上級コースのうち1本は非圧雪のままで、圧雪の急斜面は選べません。"
       }
     ],
     "courses": [
@@ -111,8 +111,10 @@
 - `reason` は辞書配列。2〜5項目
 - 各辞書は `label` / `text` の2キーのみ
 - `label` は `good` / `bad` / `description` のいずれか
-- `text` は独立した敬体の1文。12〜45字で句点を付ける
+- `text` は独立した敬体の1文。12〜60字で句点を付ける
 - `text` にMarkdownの箇条書き記号を含めない
+- `full` と `reason` に `courses` のコース名を書かない。コース名は `courses` にだけ置く
+- `reason` に `courses` の `description` と同じ内容を書かない
 - `courses` は `name` / `description` の2キーのみ。`sources` を持たない
 - `warn` / `warnReason` は `detail.json` からそのまま引き継ぐ
 - `resortId` は `detail.json` と一致

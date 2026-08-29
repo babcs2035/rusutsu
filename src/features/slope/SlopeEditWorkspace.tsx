@@ -311,7 +311,7 @@ export function SlopeEditWorkspace({
         : "view";
 
   return (
-    <div className="flex flex-col h-[100dvh] min-h-0">
+    <div className="flex flex-col h-[calc(100dvh-4rem)] min-h-0">
       <header className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2 border-b border-gray-200 bg-white">
         <h1 className="text-sm font-bold font-[var(--font-heading)]">
           スキー場コース編集

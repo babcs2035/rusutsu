@@ -16,12 +16,12 @@ export const GSI_TILE_LAYERS: Record<
   }
 > = {
   pale: {
-    label: "地図",
+    label: "標準",
     opacity: 0.9,
     url: "https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png",
   },
   photo: {
-    label: "写真",
+    label: "航空写真",
     opacity: 0.76,
     url: "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
   },
@@ -61,6 +61,10 @@ export const FINALIZED_COURSE_PANE = "resort-finalized-courses";
 export const FINALIZED_SELECTED_PANE = "resort-finalized-selected";
 export const FINALIZED_LABEL_PANE = "resort-finalized-labels";
 export const COMPARE_PANEL_ATTRIBUTE = "data-ski-resort-compare-panel";
+export const COMPARE_MAP_HEADER_ATTRIBUTE = "data-compare-map-header";
+/** 地図に重ねて出す「選択中のコース・リフト」パネル。値は left / right */
+export const FEATURE_DETAIL_OVERLAY_ATTRIBUTE =
+  "data-map-feature-detail-overlay";
 export const DETAIL_PANEL_ATTRIBUTE = "data-ski-resort-detail-panel";
 export const MOBILE_ZOOM_SETTINGS = {
   zoomSnap: 0,

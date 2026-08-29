@@ -81,7 +81,6 @@ export const MapLibreResortMap = memo(function MapLibreResortMap({
   searchResultResortIds = [],
   searchViewportRequestKey = 0,
   searchViewportBottomPaddingRatio = 0,
-  mapControlBottomPaddingRatio = 0,
   selectedResortId,
   selectedViewportBottomPaddingRatio = 0,
   hoveredResortId = null,
@@ -100,6 +99,10 @@ export const MapLibreResortMap = memo(function MapLibreResortMap({
   showMapToolbar = true,
   mapTileVariant: controlledMapTileVariant,
   onMapTileVariantChange,
+  courseColorMode: controlledCourseColorMode,
+  onCourseColorModeChange,
+  showOpenOnly: controlledShowOpenOnly,
+  onShowOpenOnlyChange,
   detailViewportMode = "finalized",
   detailViewportResetKey = 0,
   selectedFinalizedFeature: controlledSelectedFinalizedFeature,
@@ -131,10 +134,10 @@ export const MapLibreResortMap = memo(function MapLibreResortMap({
   // 読み込んでから写真の読み込みが始まり、切り替わるまで白い地図が見えてしまう。
   const [uncontrolledTileVariant, setUncontrolledTileVariant] =
     useState<MapTileVariant>(isDetailMap ? "photo" : "pale");
-  const [courseColorMode, setCourseColorMode] = useState<CourseColorMode>(
-    isDetailMap ? "slope" : "difficulty",
-  );
-  const [showOpenOnly, setShowOpenOnly] = useState(false);
+  const [uncontrolledCourseColorMode, setUncontrolledCourseColorMode] =
+    useState<CourseColorMode>(isDetailMap ? "slope" : "difficulty");
+  const [uncontrolledShowOpenOnly, setUncontrolledShowOpenOnly] =
+    useState(false);
   const [uncontrolledSelected, setUncontrolledSelected] =
     useState<SelectedMapFeature | null>(null);
   const [openActionPopupResortId, setOpenActionPopupResortId] = useState<
@@ -149,6 +152,29 @@ export const MapLibreResortMap = memo(function MapLibreResortMap({
     },
     [onMapTileVariantChange],
   );
+  const courseColorMode =
+    controlledCourseColorMode ?? uncontrolledCourseColorMode;
+  const setCourseColorMode = useCallback(
+    (mode: CourseColorMode) => {
+      setUncontrolledCourseColorMode(mode);
+      onCourseColorModeChange?.(mode);
+    },
+    [onCourseColorModeChange],
+  );
+  const showOpenOnly = controlledShowOpenOnly ?? uncontrolledShowOpenOnly;
+  const setShowOpenOnly = useCallback(
+    (next: boolean) => {
+      setUncontrolledShowOpenOnly(next);
+      onShowOpenOnlyChange?.(next);
+    },
+    [onShowOpenOnlyChange],
+  );
+  // 呼び出し側が値を持っているときは、地図側の既定（詳細なら写真＋斜度）で
+  // 上書きしない。複数の地図で 1 つの設定を共有しているときに、
+  // 地図が 1 枚増えるたびに設定が戻ってしまうため。
+  const hasControlledStyleState =
+    controlledCourseColorMode !== undefined ||
+    controlledShowOpenOnly !== undefined;
   const selectedFinalizedFeature =
     controlledSelectedFinalizedFeature === undefined
       ? uncontrolledSelected
@@ -174,6 +200,7 @@ export const MapLibreResortMap = memo(function MapLibreResortMap({
     const previousInteractionMode = previousInteractionModeRef.current;
     previousInteractionModeRef.current = interactionMode;
     if (previousInteractionMode === interactionMode) return;
+    if (hasControlledStyleState) return;
 
     if (interactionMode === "detail") {
       setMapTileVariant("photo");
@@ -183,7 +210,12 @@ export const MapLibreResortMap = memo(function MapLibreResortMap({
     if (previousInteractionMode === "detail") {
       setMapTileVariant("pale");
     }
-  }, [interactionMode, setMapTileVariant]);
+  }, [
+    hasControlledStyleState,
+    interactionMode,
+    setCourseColorMode,
+    setMapTileVariant,
+  ]);
 
   useEffect(() => {
     const queries = [
@@ -773,10 +805,13 @@ export const MapLibreResortMap = memo(function MapLibreResortMap({
         <MapLibreControls
           map={map}
           initialZoom={initialZoom}
-          bottomPaddingRatio={mapControlBottomPaddingRatio}
           mapTileVariant={mapTileVariant}
           onMapTileVariantChange={setMapTileVariant}
-          showTileVariantControl={!hasFinalizedFeatures}
+          // 表示設定を外に出しているとき（比較のゲレンデ一覧）は、
+          // 同じ切替を地図の中にも出さない
+          showTileVariantControl={
+            !hasFinalizedFeatures && !hasControlledStyleState
+          }
           showHomeButton={!isDetailMap}
           canRotate={canRotate}
           isMobile={isMobile}

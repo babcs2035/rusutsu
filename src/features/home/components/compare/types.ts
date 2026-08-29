@@ -1,6 +1,8 @@
 import type { SkiResortDetail } from "@/types/skiResorts";
 
 export type Resort = SkiResortDetail;
+/** 比較（デスクトップ）で左の地図エリアに何を出すか */
+export type CompareLeftPane = "slope" | "access";
 export type Elevation = "top" | "mid" | "bot";
 export type WeatherLink = {
   kind: "snowForecast" | "tenkiJp" | "weathernews" | "windy";

@@ -6,12 +6,22 @@ import {
 import type { GeoCoordinate } from "@/lib/finalizedResortGeojsonShared";
 import type { MapSkiResort } from "@/types/skiResorts";
 import {
+  COMPARE_MAP_HEADER_ATTRIBUTE,
   COMPARE_PANEL_ATTRIBUTE,
   DESKTOP_LABEL_SHOW_ZOOM,
   DETAIL_PANEL_ATTRIBUTE,
+  FEATURE_DETAIL_OVERLAY_ATTRIBUTE,
+  GSI_TILE_MIN_ZOOM,
 } from "../constants";
 
 const BASE_PADDING = 32;
+/**
+ * スキー場の点に合わせるときの余白。
+ * 名前のラベルは点の左右に出るので、点を画面の縁ぎりぎりに置くと
+ * 名前だけが画面外へ出てしまう。ラベル 1 個ぶんの幅を見込んでおく。
+ */
+const RESORT_FIT_PADDING_X = 108;
+const RESORT_FIT_PADDING_Y = 56;
 
 export const getCoordinateBounds = (
   coordinates: GeoCoordinate[],
@@ -70,6 +80,60 @@ const getPanelOverlapRightWidth = (
 export const getComparePanelOverlapRightWidth = (map: MapLibreMap): number =>
   getPanelOverlapRightWidth(map, COMPARE_PANEL_ATTRIBUTE);
 
+/**
+ * 地図に重ねている「選択中のコース」パネルが、左右それぞれ何 px 隠しているか。
+ * 選んだコースがそのパネルの下に潜らないよう、寄せるときの余白に足す。
+ */
+export const getFeatureDetailOverlayPadding = (
+  map: MapLibreMap,
+): { left: number; right: number } => {
+  if (typeof document === "undefined") return { left: 0, right: 0 };
+
+  const mapRect = map.getContainer().getBoundingClientRect();
+  let left = 0;
+  let right = 0;
+  const overlays = document.querySelectorAll<HTMLElement>(
+    `[${FEATURE_DETAIL_OVERLAY_ATTRIBUTE}]`,
+  );
+  for (const overlay of overlays) {
+    const rect = overlay.getBoundingClientRect();
+    const overlapsVertically =
+      rect.bottom > mapRect.top && rect.top < mapRect.bottom;
+    if (!overlapsVertically || rect.width >= mapRect.width) continue;
+
+    if (overlay.dataset.mapFeatureDetailOverlay === "right") {
+      right = Math.max(
+        right,
+        mapRect.right - Math.max(mapRect.left, rect.left),
+      );
+      continue;
+    }
+    left = Math.max(left, Math.min(mapRect.right, rect.right) - mapRect.left);
+  }
+  return {
+    left: Math.max(0, Math.min(mapRect.width, left)),
+    right: Math.max(0, Math.min(mapRect.width, right)),
+  };
+};
+
+/** 地図の上にかぶさっている帯の高さ。比較の切替・表示設定の帯で使う */
+export const getCompareHeaderOverlapTopHeight = (map: MapLibreMap): number => {
+  if (typeof document === "undefined") return 0;
+
+  const header = document.querySelector<HTMLElement>(
+    `[${COMPARE_MAP_HEADER_ATTRIBUTE}="true"]`,
+  );
+  if (!header) return 0;
+
+  const mapRect = map.getContainer().getBoundingClientRect();
+  const headerRect = header.getBoundingClientRect();
+  const overlapsHorizontally =
+    headerRect.right > mapRect.left && headerRect.left < mapRect.right;
+  if (!overlapsHorizontally || headerRect.height >= mapRect.height) return 0;
+
+  return Math.max(0, headerRect.bottom - mapRect.top);
+};
+
 export const getDetailPanelOverlapRightWidth = (map: MapLibreMap): number =>
   getPanelOverlapRightWidth(map, DETAIL_PANEL_ATTRIBUTE);
 
@@ -92,17 +156,39 @@ export const getSafeFitPadding = (
   map: MapLibreMap,
   rightPanelWidth: number,
   bottomPanelHeight: number,
+  basePadding: { x: number; y: number } = { x: BASE_PADDING, y: BASE_PADDING },
+  topPanelHeight = 0,
+  leftPanelWidth = 0,
 ): PaddingOptions => {
   const size = getMapSize(map);
-  const maxRightPadding = Math.max(BASE_PADDING, size.x - BASE_PADDING * 3);
-  const maxBottomPadding = Math.max(BASE_PADDING, size.y - BASE_PADDING * 3);
+  // 地図より余白の方が大きくなると MapLibre 側の計算が壊れるので、
+  // 上下左右あわせて地図の半分までに収める
+  const paddingX = Math.min(basePadding.x, Math.max(0, size.x / 4));
+  const paddingY = Math.min(basePadding.y, Math.max(0, size.y / 4));
+  const maxHorizontalPadding = Math.max(paddingX, size.x - paddingX * 3);
+  const maxRightPadding = maxHorizontalPadding;
+  const maxVerticalPadding = Math.max(paddingY, size.y - paddingY * 3);
 
   return {
-    top: BASE_PADDING,
-    left: BASE_PADDING,
-    right: Math.min(rightPanelWidth + BASE_PADDING, maxRightPadding),
-    bottom: Math.min(bottomPanelHeight + BASE_PADDING, maxBottomPadding),
+    top: Math.min(topPanelHeight + paddingY, maxVerticalPadding),
+    left: Math.min(leftPanelWidth + paddingX, maxHorizontalPadding),
+    right: Math.min(rightPanelWidth + paddingX, maxRightPadding),
+    bottom: Math.min(bottomPanelHeight + paddingY, maxVerticalPadding),
   };
+};
+
+/**
+ * 収めたい範囲がいまの最小ズームに収まらないときだけ、最小ズームを下げる。
+ *
+ * 最小ズームは「日本から離れすぎない」ための下限だが、そのままだと
+ * 北海道と九州のように離れたスキー場を検索・比較したときに
+ * fitBounds が下限で頭打ちになり、一部が画面の外に出てしまう。
+ * 上げ直すと今の表示が飛ぶので、下げるだけにする。
+ */
+const relaxMinZoomForFit = (map: MapLibreMap, requiredZoom: number) => {
+  const required = Math.max(GSI_TILE_MIN_ZOOM, requiredZoom);
+  if (map.getMinZoom() <= required) return;
+  map.setMinZoom(required);
 };
 
 /**
@@ -120,6 +206,7 @@ export const fitResortsInViewport = ({
   resorts,
   rightPanelWidth = 0,
   bottomPanelHeight = 0,
+  topPanelHeight = 0,
   labelShowZoom = DESKTOP_LABEL_SHOW_ZOOM,
   animate = true,
 }: {
@@ -127,6 +214,7 @@ export const fitResortsInViewport = ({
   resorts: MapSkiResort[];
   rightPanelWidth?: number;
   bottomPanelHeight?: number;
+  topPanelHeight?: number;
   labelShowZoom?: number;
   animate?: boolean;
 }) => {
@@ -138,7 +226,7 @@ export const fitResortsInViewport = ({
     map.easeTo({
       center: [first.longitude, first.latitude],
       zoom: targetZoom,
-      offset: getPanelOffset(rightPanelWidth, bottomPanelHeight),
+      offset: [-rightPanelWidth / 2, (topPanelHeight - bottomPanelHeight) / 2],
       ...getMoveOptions(animate),
     });
     return;
@@ -147,10 +235,21 @@ export const fitResortsInViewport = ({
   const bounds = getResortBounds(resorts);
   if (!bounds) return;
 
+  const padding = getSafeFitPadding(
+    map,
+    rightPanelWidth,
+    bottomPanelHeight,
+    { x: RESORT_FIT_PADDING_X, y: RESORT_FIT_PADDING_Y },
+    topPanelHeight,
+  );
+  // 指定しないと北向きに戻ってしまう。今見ている向きのままにする
+  const bearing = map.getBearing();
+  const camera = map.cameraForBounds(bounds, { padding, bearing });
+  if (camera?.zoom !== undefined) relaxMinZoomForFit(map, camera.zoom);
+
   map.fitBounds(bounds, {
-    padding: getSafeFitPadding(map, rightPanelWidth, bottomPanelHeight),
-    // 指定しないと北向きに戻ってしまう。今見ている向きのままにする
-    bearing: map.getBearing(),
+    padding,
+    bearing,
     ...getMoveOptions(animate),
   });
 };

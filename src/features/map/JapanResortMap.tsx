@@ -268,7 +268,6 @@ export const JapanResortMap = memo(function JapanResortMap({
   searchResultResortIds = [],
   searchViewportRequestKey = 0,
   searchViewportBottomPaddingRatio = 0,
-  mapControlBottomPaddingRatio = 0,
   selectedResortId,
   selectedViewportBottomPaddingRatio = 0,
   hoveredResortId = null,
@@ -739,7 +738,6 @@ export const JapanResortMap = memo(function JapanResortMap({
         {!isPreviewMap && (
           <MapControls
             initialZoom={initialZoom}
-            bottomPaddingRatio={mapControlBottomPaddingRatio}
             mapTileVariant={mapTileVariant}
             onMapTileVariantChange={setMapTileVariant}
             showTileVariantControl={!hasFinalizedFeatures}

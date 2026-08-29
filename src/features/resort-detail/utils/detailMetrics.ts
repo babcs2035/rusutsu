@@ -4,6 +4,7 @@ import type {
   FinalizedResortMapData,
   GeoCoordinate,
 } from "@/lib/finalizedResortGeojsonShared";
+import { calculateCoordinateSlopes } from "@/lib/finalizedResortGeojsonShared";
 import type { ElevationProfilePoint, FinalizedCourseGroup } from "../types";
 
 export const normalizeIconSymbol = (value: string | null | undefined) => {
@@ -206,7 +207,6 @@ export const haversineMeters = (a: GeoCoordinate, b: GeoCoordinate) => {
 
 export const createElevationProfile = (
   coordinates: GeoCoordinate[],
-  slopeDeg: number[] | null = null,
 ): ElevationProfilePoint[] => {
   if (!coordinates.every(coordinate => coordinate.length >= 3)) return [];
 
@@ -215,11 +215,6 @@ export const createElevationProfile = (
   const displayCoordinates = shouldReverse
     ? [...coordinates].reverse()
     : coordinates;
-  const displaySlopes =
-    shouldReverse && slopeDeg?.length === coordinates.length
-      ? [...slopeDeg].reverse()
-      : slopeDeg;
-
   let distance = 0;
   return displayCoordinates.map((coordinate, index) => {
     if (index > 0) {
@@ -229,10 +224,7 @@ export const createElevationProfile = (
     return {
       distance,
       elevation: coordinate[2] as number,
-      slope:
-        displaySlopes && displaySlopes.length === displayCoordinates.length
-          ? displaySlopes[index]
-          : null,
+      slope: null,
       coordinate,
     };
   });
@@ -244,20 +236,11 @@ const COURSE_SECTION_ORDER: Record<string, number> = {
   下部: 2,
 };
 
-const getProfileCoordinates = (
-  coordinates: GeoCoordinate[],
-  slopeDeg: number[] | null,
-) => {
+const getProfileCoordinates = (coordinates: GeoCoordinate[]) => {
   const shouldReverse =
     (coordinates[0]?.[2] ?? 0) <
     (coordinates[coordinates.length - 1]?.[2] ?? 0);
-  return {
-    coordinates: shouldReverse ? [...coordinates].reverse() : coordinates,
-    slopes:
-      shouldReverse && slopeDeg?.length === coordinates.length
-        ? [...slopeDeg].reverse()
-        : slopeDeg,
-  };
+  return shouldReverse ? [...coordinates].reverse() : coordinates;
 };
 
 export const createConnectedCourseElevationProfile = (
@@ -289,10 +272,8 @@ export const createConnectedCourseElevationProfile = (
       continue;
     }
 
-    const { coordinates, slopes } = getProfileCoordinates(
-      course.coordinates,
-      course.slopeDeg,
-    );
+    const coordinates = getProfileCoordinates(course.coordinates);
+    const slopes = calculateCoordinateSlopes(coordinates);
 
     for (const [index, coordinate] of coordinates.entries()) {
       const previousCoordinate =
@@ -306,8 +287,7 @@ export const createConnectedCourseElevationProfile = (
       points.push({
         distance,
         elevation: coordinate[2] as number,
-        slope:
-          slopes && slopes.length === coordinates.length ? slopes[index] : null,
+        slope: slopes[index] ?? null,
         coordinate,
         status: normalizeIconSymbol(course.properties.status),
       });

@@ -11,9 +11,11 @@ import { VIEWPORT_PADDING_RATIO_CHANGE_THRESHOLD } from "../constants";
 import type { MapViewRestoreRequest, SelectedMapFeature } from "../types";
 import {
   fitResortsInViewport,
+  getCompareHeaderOverlapTopHeight,
   getComparePanelOverlapRightWidth,
   getCoordinateBounds,
   getDetailPanelOverlapRightWidth,
+  getFeatureDetailOverlayPadding,
   getMapSize,
   getMoveOptions,
   getPanelOffset,
@@ -114,6 +116,8 @@ export const useResortViewport = ({
         map,
         resorts: selectedResorts,
         rightPanelWidth: getComparePanelOverlapRightWidth(map),
+        // 上の帯（切替と表示設定）に隠れないよう、そのぶん下へ寄せる
+        topPanelHeight: getCompareHeaderOverlapTopHeight(map),
         labelShowZoom,
         animate,
       });
@@ -274,11 +278,16 @@ export const useSelectedFeatureViewport = ({
     const bounds = getCoordinateBounds(coordinates);
     if (!bounds) return;
 
+    // 右の詳細パネルにも、地図に重ねた詳細パネルにも潜らせない
+    const overlay = getFeatureDetailOverlayPadding(map);
     map.fitBounds(bounds, {
       padding: getSafeFitPadding(
         map,
-        getDetailPanelOverlapRightWidth(map),
+        Math.max(getDetailPanelOverlapRightWidth(map), overlay.right),
         getMapSize(map).y * bottomPaddingRatio,
+        undefined,
+        0,
+        overlay.left,
       ),
       // 回したまま選んでも向きを変えない
       bearing: map.getBearing(),

@@ -145,7 +145,6 @@ export type JapanResortMapProps = {
   searchResultResortIds?: string[];
   searchViewportRequestKey?: number;
   searchViewportBottomPaddingRatio?: number;
-  mapControlBottomPaddingRatio?: number;
   selectedResortId: string | null;
   selectedViewportBottomPaddingRatio?: number;
   hoveredResortId?: string | null;
@@ -173,6 +172,15 @@ export type JapanResortMapProps = {
   showMapToolbar?: boolean;
   mapTileVariant?: MapTileVariant;
   onMapTileVariantChange?: (variant: MapTileVariant) => void;
+  /**
+   * コースの色分け・営業中のみ絞り込み。
+   * 渡すと地図側の状態ではなく呼び出し側の状態を使う。
+   * 比較のゲレンデ一覧のように、複数の地図へ同じ設定を効かせるときに渡す。
+   */
+  courseColorMode?: CourseColorMode;
+  onCourseColorModeChange?: (mode: CourseColorMode) => void;
+  showOpenOnly?: boolean;
+  onShowOpenOnlyChange?: (showOpenOnly: boolean) => void;
   detailViewportMode?: "finalized" | "resort";
   /**
    * 値を変えるたびに詳細地図の表示範囲を初期状態（スキー場全体）へ戻す。

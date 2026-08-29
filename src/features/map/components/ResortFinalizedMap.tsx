@@ -9,8 +9,10 @@ import type {
 import { cn } from "@/lib/utils";
 import type { MapSkiResort } from "@/types/skiResorts";
 import type {
+  CourseColorMode,
   ElevationProfileMapPoint,
   JapanResortMapProps,
+  MapTileVariant,
   SelectedMapFeature,
 } from "../types";
 
@@ -48,6 +50,16 @@ type Props = {
   presentation: "preview" | "expanded";
   /** コースマップ用ツールバーを出すか。狭い地図では畳む */
   showToolbar?: boolean;
+  /**
+   * 表示設定を呼び出し側で持つ場合に渡す。
+   * 比較のゲレンデ一覧のように、複数の地図へ同じ設定を効かせるときに使う。
+   */
+  courseColorMode?: CourseColorMode;
+  onCourseColorModeChange?: (mode: CourseColorMode) => void;
+  showOpenOnly?: boolean;
+  onShowOpenOnlyChange?: (showOpenOnly: boolean) => void;
+  mapTileVariant?: MapTileVariant;
+  onMapTileVariantChange?: (variant: MapTileVariant) => void;
   selectedFinalizedFeature: SelectedMapFeature | null;
   selectedElevationProfilePoint: ElevationProfileMapPoint | null;
   onSelectedFinalizedFeatureChange: (
@@ -76,6 +88,12 @@ export const ResortFinalizedMap = ({
   mapResorts,
   presentation,
   showToolbar = true,
+  courseColorMode,
+  onCourseColorModeChange,
+  showOpenOnly,
+  onShowOpenOnlyChange,
+  mapTileVariant,
+  onMapTileVariantChange,
   selectedFinalizedFeature,
   selectedElevationProfilePoint,
   onSelectedFinalizedFeatureChange,
@@ -128,12 +146,17 @@ export const ResortFinalizedMap = ({
         mapPresentation={presentation}
         initialViewport={initialViewport}
         showMapToolbar={showToolbar}
+        courseColorMode={courseColorMode}
+        onCourseColorModeChange={onCourseColorModeChange}
+        showOpenOnly={showOpenOnly}
+        onShowOpenOnlyChange={onShowOpenOnlyChange}
+        mapTileVariant={mapTileVariant}
+        onMapTileVariantChange={onMapTileVariantChange}
         detailViewportMode={hasFinalizedMap ? "finalized" : "resort"}
         detailViewportResetKey={detailViewportResetKey}
         selectedFinalizedFeature={selectedFinalizedFeature}
         selectedElevationProfilePoint={selectedElevationProfilePoint}
         selectedViewportBottomPaddingRatio={bottomPaddingRatio}
-        mapControlBottomPaddingRatio={bottomPaddingRatio}
         onBoundsChange={() => undefined}
         onSelectResort={() => undefined}
         onSelectedFinalizedFeatureChange={onSelectedFinalizedFeatureChange}

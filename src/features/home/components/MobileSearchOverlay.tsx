@@ -79,7 +79,12 @@ export const MobileSearchOverlay = ({
     <div
       ref={overlayRef}
       data-mobile-search-panel="true"
-      className="hide-desktop h-screen min-h-0 flex-col bg-gray-50 overflow-hidden"
+      // h-screen（100vh）は iOS Safari では「ブラウザ UI が隠れたときの高さ」で、
+      // 親（position: fixed の <main>）より数十 px 高くなる。はみ出した分だけ
+      // 祖先がスクロール可能になり、入力へフォーカスしたときにブラウザが
+      // そこをスクロールして、キーボードを閉じても戻らない（トップバーが画面外へ）。
+      // 親を満たす h-full なら、はみ出し自体が発生しない。
+      className="hide-desktop h-full min-h-0 flex-col bg-gray-50 overflow-hidden"
     >
       <div className="flex-shrink-0 flex-grow-0">
         <MobileSearchTopBarShell

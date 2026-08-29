@@ -9,8 +9,10 @@ import {
   selectLatestTimestampedGeojsonFile,
 } from "./finalizedResortGeojson";
 import {
+  calculateCoordinateSlopes,
   createCourseSlopeSegments,
   type FinalizedCourseFeature,
+  type GeoCoordinate,
   getCourseDifficulty,
   getPisteStyle,
   getStatusOpacity,
@@ -18,20 +20,23 @@ import {
   parseFinalizedCourseName,
 } from "./finalizedResortGeojsonShared";
 
+const SLOPE_TEST_COORDINATES: GeoCoordinate[] = [
+  [0, 0, 100],
+  [0.00009, 0, 99],
+  [0.00018, 0, 98],
+  [0.00027, 0, 97],
+  [0.00036, 0, 96],
+];
+
 const createTestCourse = (
-  slopeDeg: number[] | null,
+  coordinates: GeoCoordinate[] = SLOPE_TEST_COORDINATES,
 ): FinalizedCourseFeature => ({
   id: "course-1",
   name: "Test Course",
   displayName: "Test Course",
   groupId: "course-1",
   sectionName: null,
-  coordinates: [
-    [137, 36, 1000],
-    [137.001, 36.001, 950],
-    [137.002, 36.002, 900],
-  ],
-  slopeDeg,
+  coordinates,
   properties: {
     name: "Test Course",
     level: "中級",
@@ -143,24 +148,40 @@ test("status opacity is mapped from operation status", () => {
   assert.equal(getStatusOpacity(undefined), 0.75);
 });
 
-test("slope_deg produces n - 1 averaged segments", () => {
-  const segments = createCourseSlopeSegments(createTestCourse([10, 20, 40]));
+test("coordinate elevations produce smoothed point slopes", () => {
+  const slopes = calculateCoordinateSlopes(SLOPE_TEST_COORDINATES);
 
-  assert.equal(segments.length, 2);
-  assert.equal(segments[0].slope, 15);
-  assert.equal(segments[1].slope, 30);
+  assert.equal(slopes.length, SLOPE_TEST_COORDINATES.length);
+  for (const slope of slopes) {
+    assert.ok(slope !== null);
+    assert.ok(Math.abs(slope - 5.71) < 0.05);
+  }
+});
+
+test("coordinate elevations produce colored slope segments", () => {
+  const segments = createCourseSlopeSegments(createTestCourse());
+
+  assert.equal(segments.length, SLOPE_TEST_COORDINATES.length - 1);
+  assert.ok(Math.abs((segments[0]?.slope ?? 0) - 5.71) < 0.05);
+  assert.notEqual(segments[0]?.slope, 12);
 });
 
 test("slope segments can be widened while preserving intermediate coordinates", () => {
-  const segments = createCourseSlopeSegments(createTestCourse([10, 20, 40]), 2);
+  const segments = createCourseSlopeSegments(createTestCourse(), 2);
 
-  assert.equal(segments.length, 1);
+  assert.equal(segments.length, 2);
   assert.equal(segments[0].coordinates.length, 3);
-  assert.equal(segments[0].slope, (10 + 20 + 40) / 3);
+  assert.ok(Math.abs((segments[0]?.slope ?? 0) - 5.71) < 0.05);
 });
 
-test("mismatched slope_deg falls back without crashing", () => {
-  const segments = createCourseSlopeSegments(createTestCourse([10, 20]));
+test("courses without elevations fall back to their saved average slope", () => {
+  const segments = createCourseSlopeSegments(
+    createTestCourse([
+      [137, 36],
+      [137.001, 36.001],
+      [137.002, 36.002],
+    ]),
+  );
 
   assert.equal(segments.length, 2);
   assert.equal(segments[0].slope, 12);
@@ -344,7 +365,9 @@ test("map data follows finalized, measured, then before priority", async () => {
     const measuredData = await getResortMapDataFromRoots(measuredId, roots);
     assert.equal(measuredData?.courses?.source, "slope_10m");
     assert.equal(measuredData?.lifts?.source, "lift_20m");
-    assert.deepEqual(measuredData?.courses?.features[0]?.slopeDeg, [10, 20]);
+    const measuredCourse = measuredData?.courses?.features[0];
+    assert.ok(measuredCourse);
+    assert.equal("slopeDeg" in measuredCourse, false);
 
     const beforeData = await getResortMapDataFromRoots(beforeId, roots);
     assert.equal(beforeData?.courses?.source, "slope_before");
@@ -353,7 +376,6 @@ test("map data follows finalized, measured, then before priority", async () => {
     const lift = beforeData?.lifts?.features[0];
     assert.ok(course);
     assert.ok(lift);
-    assert.equal(course.slopeDeg, null);
     assert.equal(
       course.coordinates.every(coordinate => coordinate.length === 2),
       true,

@@ -301,7 +301,7 @@ export function TicketEditWorkspace({
   };
 
   return (
-    <div className="flex h-[100dvh] bg-gray-100 text-gray-900 overflow-hidden">
+    <div className="flex h-[calc(100dvh-4rem)] bg-gray-100 text-gray-900 overflow-hidden">
       <div
         // §15: lg 未満では 40vw 上限でサイドバーを縮小し，メイン（エディタ）に幅を回す
         className="w-[min(250px,40vw)] lg:w-[300px] flex-shrink-0 bg-[var(--sidebar-dark)] text-white overflow-y-auto border-r border-white/20"

@@ -5,6 +5,7 @@ import type { VisualViewportState } from "../types";
 type Options = {
   isOpen: boolean;
   isSidePanelLayout: boolean;
+  overlayRef: RefObject<HTMLDivElement | null>;
   viewportBaseHeightRef: RefObject<number | null>;
   setIsKeyboardActive: Dispatch<SetStateAction<boolean>>;
   setViewport: Dispatch<SetStateAction<VisualViewportState>>;
@@ -13,6 +14,7 @@ type Options = {
 export const useMobileSearchOverlayEffects = ({
   isOpen,
   isSidePanelLayout,
+  overlayRef,
   viewportBaseHeightRef,
   setIsKeyboardActive,
   setViewport,
@@ -72,4 +74,32 @@ export const useMobileSearchOverlayEffects = ({
     setViewport,
     viewportBaseHeightRef,
   ]);
+  // キーボードを開いた端末は、フォーカスした入力を見せるために
+  // 「スクロールしないはずの祖先」まで勝手にスクロールする。
+  // その位置はキーボードを閉じても戻らず、オーバーレイ全体がずれたままになる
+  // （トップバーが画面外に消える）。祖先がスクロールされたら即座に戻す。
+  useEffect(() => {
+    if (!isOpen || isSidePanelLayout) return;
+
+    const overlay = overlayRef.current;
+    if (!overlay) return;
+
+    const resetAncestorScroll = (event: Event) => {
+      const { target } = event;
+      const element =
+        target instanceof Element ? target : document.scrollingElement;
+      // オーバーレイ内部（フィルタ一覧）のスクロールは正当なので触らない
+      if (!element || (element !== overlay && !element.contains(overlay))) {
+        return;
+      }
+
+      if (element.scrollTop !== 0) element.scrollTop = 0;
+      if (element.scrollLeft !== 0) element.scrollLeft = 0;
+    };
+
+    document.addEventListener("scroll", resetAncestorScroll, true);
+    return () => {
+      document.removeEventListener("scroll", resetAncestorScroll, true);
+    };
+  }, [isOpen, isSidePanelLayout, overlayRef]);
 };
