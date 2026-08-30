@@ -4,9 +4,23 @@ import type { MapTileVariant } from "./types";
 /** next.config.ts の basePath。public/ 配下の実ファイルを指すのに使う */
 export const BASE_PATH = "/rusutsu";
 
-export const INITIAL_CENTER: L.LatLngTuple = [38.25, 138.0];
-export const MOBILE_INITIAL_ZOOM = 5;
-export const DESKTOP_INITIAL_ZOOM = 6;
+// 緯度は、最北のスキー場（稚内こまどり山スキー場, 約 45.39°N）と
+// 最南のスキー場（五ヶ瀬ハイランドスキー場, 約 32.58°N）の中間になるよう
+// 選んである。単純な緯度の平均（約 38.98°N）ではなく、メルカトル図法で
+// 画面上の上下の余白が均等になる中間点（約 39.28°N）を採用している
+// （メルカトルは高緯度ほど間延びするため、単純平均だと北側が余りやすい）。
+export const INITIAL_CENTER: L.LatLngTuple = [39.28, 138.0];
+// これ以降のズーム値は MapLibre のスタイルズーム基準（内部的にタイル 512px 換算）。
+// GSI タイルは 256px なので、MapLibre は実際には
+// スタイルズーム + 1 の生のタイル ({z}/{x}/{y}) を取りに行く
+// （tileSize: 256 を指定したときの仕様）。Leaflet はタイル 256px を
+// そのままズームとして扱っていたため、Leaflet 版で決めていたズーム値を
+// そのまま流用すると、実際には 1 段階分ズームインした状態になる。
+// 日本全体が入らない・スキー場名ラベルが出るタイミングが遅れる、
+// という 2 つの不具合はどちらもこのずれが原因なので、
+// Leaflet 時代の値から一律 1 引いてある。
+export const MOBILE_INITIAL_ZOOM = 4;
+export const DESKTOP_INITIAL_ZOOM = 5;
 export const GSI_TILE_LAYERS: Record<
   MapTileVariant,
   {
@@ -28,14 +42,20 @@ export const GSI_TILE_LAYERS: Record<
 };
 export const GSI_TILE_ATTRIBUTION =
   '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener noreferrer">地理院タイル</a>';
-export const GSI_TILE_MIN_ZOOM = 5;
-export const GSI_TILE_MAX_ZOOM = 18;
+// 同上の理由で 1 引いてある（元は 5 / 18）
+export const GSI_TILE_MIN_ZOOM = 4;
+export const GSI_TILE_MAX_ZOOM = 17;
 export const MOBILE_MAP_MEDIA_QUERY = "(max-width: 47.999em)";
 export const COARSE_POINTER_MEDIA_QUERY = "(pointer: coarse)";
-export const MOBILE_LABEL_SHOW_ZOOM = 7;
-export const DESKTOP_LABEL_SHOW_ZOOM = 8;
-export const MOBILE_LABEL_ADVANCED_LAYOUT_ZOOM = 11;
-export const DESKTOP_LABEL_ADVANCED_LAYOUT_ZOOM = 11;
+// 同上の理由で 1 引いてある（元は 7 / 8）
+export const MOBILE_LABEL_SHOW_ZOOM = 6;
+export const DESKTOP_LABEL_SHOW_ZOOM = 7;
+// 管理画面のスキー場選択は「全国を見渡しながら名前で探す」ための地図なので、
+// 初期ズームからラベルを出す。一覧地図の 7 は「寄ってから名前を出す」前提の値。
+export const RESORT_PICKER_LABEL_SHOW_ZOOM = DESKTOP_INITIAL_ZOOM;
+// 同上の理由で 1 引いてある（元はどちらも 11）
+export const MOBILE_LABEL_ADVANCED_LAYOUT_ZOOM = 10;
+export const DESKTOP_LABEL_ADVANCED_LAYOUT_ZOOM = 10;
 export const LABEL_PREFETCH_PADDING_RATIO = 0.2;
 export const LABEL_PREFETCH_MIN_PADDING_PX = 150;
 export const VIEWPORT_PADDING_RATIO_CHANGE_THRESHOLD = 0.001;
@@ -100,7 +120,8 @@ export const LIFT_LABEL_MIN_ZOOM_BY_CLASS = {
   other: 14,
 } as const;
 export const LIFT_LABEL_MIN_ZOOM = 12;
-export const FINALIZED_RESORT_LABEL_HIDE_MIN_ZOOM = 12;
+// 同上の理由で 1 引いてある（元は 12）
+export const FINALIZED_RESORT_LABEL_HIDE_MIN_ZOOM = 11;
 
 // ラベルは基本 1 箇所（線の中央）。これ以上長い線だけ 1/4 と 3/4 の
 // 2 箇所に出す。名前が並びすぎると地図が読みにくくなる。

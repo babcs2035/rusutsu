@@ -707,6 +707,7 @@ export const MapLibreResortMap = memo(function MapLibreResortMap({
     isReady,
     isInteracting,
     prefersReducedMotion,
+    styleState,
   });
 
   useElevationProfileMarker({
@@ -814,7 +815,6 @@ export const MapLibreResortMap = memo(function MapLibreResortMap({
           }
           showHomeButton={!isDetailMap}
           canRotate={canRotate}
-          isMobile={isMobile}
           onUserMapInteraction={onUserMapInteraction}
           onUserMapZoomInteraction={onUserMapZoomInteraction}
         />

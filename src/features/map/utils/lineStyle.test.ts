@@ -156,7 +156,7 @@ test("営業中のみ ON で、営業中を濃く太く・それ以外をはっ�
   assert.equal(closedCasing.weight, 0);
 });
 
-test("一部運休のリフトは流れる破線ではなく赤い点滅にする", () => {
+test("待機中のリフトは流れる破線ではなく赤い点滅にする", () => {
   const limitedLift = createFeature({
     kind: "lift",
     sourceId: "lift-3",

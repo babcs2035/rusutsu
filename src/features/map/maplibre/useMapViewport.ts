@@ -264,11 +264,6 @@ export const useSelectedFeatureViewport = ({
       return;
     }
 
-    // 同じものを選び直したときに動かさないよう、キーで覚えておく
-    const key = `${selectedFeature.kind}:${selectedFeature.id}`;
-    if (lastSelectedRef.current === key) return;
-    lastSelectedRef.current = key;
-
     const coordinates =
       selectedFeature.kind === "course"
         ? selectedCourses.flatMap(course => course.coordinates)
@@ -278,21 +273,38 @@ export const useSelectedFeatureViewport = ({
     const bounds = getCoordinateBounds(coordinates);
     if (!bounds) return;
 
-    // 右の詳細パネルにも、地図に重ねた詳細パネルにも潜らせない
-    const overlay = getFeatureDetailOverlayPadding(map);
-    map.fitBounds(bounds, {
-      padding: getSafeFitPadding(
-        map,
-        Math.max(getDetailPanelOverlapRightWidth(map), overlay.right),
-        getMapSize(map).y * bottomPaddingRatio,
-        undefined,
-        0,
-        overlay.left,
-      ),
-      // 回したまま選んでも向きを変えない
-      bearing: map.getBearing(),
-      ...getMoveOptions(animate),
-    });
+    const fitToFeature = (withAnimation: boolean) => {
+      // 右の詳細パネルにも、地図に重ねた詳細パネルにも潜らせない
+      const overlay = getFeatureDetailOverlayPadding(map);
+      map.fitBounds(bounds, {
+        padding: getSafeFitPadding(
+          map,
+          Math.max(getDetailPanelOverlapRightWidth(map), overlay.right),
+          getMapSize(map).y * bottomPaddingRatio,
+          undefined,
+          0,
+          overlay.left,
+        ),
+        // 回したまま選んでも向きを変えない
+        bearing: map.getBearing(),
+        ...getMoveOptions(withAnimation),
+      });
+    };
+
+    // 同じものを選び直したときに動かさないよう、キーで覚えておく
+    const key = `${selectedFeature.kind}:${selectedFeature.id}`;
+    if (lastSelectedRef.current !== key) {
+      lastSelectedRef.current = key;
+      fitToFeature(animate);
+    }
+
+    // 選ぶと地図の高さが変わる（下や横に詳細が出る）。縮んだあとに
+    // 合わせ直さないと、選んだコースが見えている範囲からはみ出す。
+    const handleResize = () => fitToFeature(false);
+    map.on("resize", handleResize);
+    return () => {
+      map.off("resize", handleResize);
+    };
   }, [
     animate,
     bottomPaddingRatio,

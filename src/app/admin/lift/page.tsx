@@ -7,7 +7,7 @@ import {
   readLiftConfirmedMap,
 } from "@/features/lift/server/liftFiles";
 import type { ResortOption } from "@/features/lift/types";
-import { getResortSearchName } from "@/lib/resortAliases";
+import { getResortLabelName, getResortSearchName } from "@/lib/resortAliases";
 
 export const dynamic = "force-dynamic";
 
@@ -28,10 +28,12 @@ export default async function LiftEditPage() {
     id: resort.id,
     nameJa: resort.nameJa,
     searchName: getResortSearchName(resort.id, resort.nameJa),
+    labelName: getResortLabelName(resort.id, resort.nameJa),
     nameEn: resort.nameEn,
     prefecture: resort.prefecture,
     latitude: resort.latitude,
     longitude: resort.longitude,
+    numberOfCourses: resort.numberOfCourses,
     hasLiftBefore: liftBeforeIdSet.has(resort.id),
     confirmedAt: confirmedMap[resort.id] ?? null,
     isKnownResort: true,
@@ -47,10 +49,13 @@ export default async function LiftEditPage() {
       id,
       nameJa: "",
       searchName: getResortSearchName(id, id),
+      // DB に名前が無いので ID をそのままラベルに出す
+      labelName: getResortLabelName(id, id),
       nameEn: "",
       prefecture: "",
       latitude: centroid?.latitude ?? 0,
       longitude: centroid?.longitude ?? 0,
+      numberOfCourses: 0,
       hasLiftBefore: true,
       confirmedAt: confirmedMap[id] ?? null,
       isKnownResort: false,

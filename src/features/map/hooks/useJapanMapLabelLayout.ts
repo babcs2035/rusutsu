@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import type { MapSkiResort } from "@/types/skiResorts";
 import {
   ADVANCED_NEAR_POINT_DISTANCE,
   DESKTOP_INITIAL_ZOOM,
@@ -13,6 +12,7 @@ import {
 import type {
   CandidateEvaluation,
   CandidatePlacement,
+  LabelableResort,
   LabelLayout,
   MapPoint,
   MapPointEntry,
@@ -35,7 +35,7 @@ import {
   segmentIntersectsRect,
   segmentsIntersect,
 } from "../utils/labelCollision";
-import { measureLabelHeight } from "../utils/leafletIcons";
+import { measureLabelHeight } from "../utils/labelMeasure";
 import {
   detectCrowdedPointIds,
   getResortLabelWidth,
@@ -47,7 +47,7 @@ import {
 } from "../utils/resortMarkerPriority";
 
 type UseJapanMapLabelLayoutParams = {
-  resorts: MapSkiResort[];
+  resorts: LabelableResort[];
   displayNameById: Map<string, string>;
   filteredResortIdSet?: Set<string>;
   hoveredResortId: string | null;

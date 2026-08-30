@@ -26,7 +26,7 @@ export const COURSE_STATUS_DESCRIPTION: Record<StatusSymbol, string> = {
 
 export const LIFT_STATUS_DESCRIPTION: Record<StatusSymbol, string> = {
   "○": "運行中",
-  "△": "一部運休",
+  "△": "待機中",
   "×": "運休",
 };
 

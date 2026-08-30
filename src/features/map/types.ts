@@ -12,6 +12,23 @@ export type MapPoint = {
 };
 
 /**
+ * 名前ラベルを地図に置くために要る最小の形。
+ *
+ * ラベル配置と点の描画は一覧地図のためのものだが、管理画面のスキー場選択でも
+ * 同じ見せ方をしたい。あちらが持つのは MapSkiResort ではなく編集用の別の型
+ * （ID だけで DB に無いスキー場も混ざる）なので、フック側はこの形だけを要求する。
+ * MapSkiResort は構造的にこれを満たすので、一覧地図の呼び出し側は変わらない。
+ */
+export type LabelableResort = {
+  id: string;
+  nameJa: string;
+  latitude: number;
+  longitude: number;
+  /** ラベルを置く優先度。多いほど先に置き場所を取る */
+  numberOfCourses: number;
+};
+
+/**
  * 地図の投影だけを取り出したもの。
  * ラベル配置のロジックを地図ライブラリから切り離すために使う。
  */

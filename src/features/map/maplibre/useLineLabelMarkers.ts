@@ -19,7 +19,7 @@ import {
   getFeatureStatusKind,
   getLiftDisplayCoordinates,
 } from "../utils/finalizedMapData";
-import { measureCanvasTextWidth } from "../utils/leafletIcons";
+import { measureCanvasTextWidth } from "../utils/labelMeasure";
 import type { LayoutPoint, OrientedRect } from "../utils/lineLayout";
 import {
   collectLabelCandidates,

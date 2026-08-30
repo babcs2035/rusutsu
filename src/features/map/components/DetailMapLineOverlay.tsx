@@ -27,7 +27,7 @@ import {
   getLiftDisplayCoordinates,
   toLatLngTuple,
 } from "../utils/finalizedMapData";
-import { measureCanvasTextWidth } from "../utils/leafletIcons";
+import { measureCanvasTextWidth } from "../utils/labelMeasure";
 import { getMapInternals } from "../utils/leafletInternals";
 import type { LayoutPoint, OrientedRect } from "../utils/lineLayout";
 import {

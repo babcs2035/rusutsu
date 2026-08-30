@@ -13,6 +13,8 @@ import type {
   ElevationProfileMapPoint,
   JapanResortMapProps,
   MapTileVariant,
+  MapViewRestoreRequest,
+  MapViewSnapshot,
   SelectedMapFeature,
 } from "../types";
 
@@ -68,6 +70,10 @@ type Props = {
   onSelectedElevationProfilePointChange: (
     point: ElevationProfileMapPoint | null,
   ) => void;
+  /** 見えている範囲が変わるたびに呼ぶ。全画面から戻すときの復元に使う */
+  onViewChange?: (view: MapViewSnapshot) => void;
+  /** 値を変えるたびに、その見え方へ戻す */
+  restoreViewRequest?: MapViewRestoreRequest | null;
   /** 下に重なるパネルの高さ比。選択したコースがその下に潜らないようにする */
   bottomPaddingRatio?: number;
   detailViewportResetKey?: number;
@@ -98,6 +104,8 @@ export const ResortFinalizedMap = ({
   selectedElevationProfilePoint,
   onSelectedFinalizedFeatureChange,
   onSelectedElevationProfilePointChange,
+  onViewChange,
+  restoreViewRequest = null,
   bottomPaddingRatio = 0,
   detailViewportResetKey = 0,
   className,
@@ -157,6 +165,8 @@ export const ResortFinalizedMap = ({
         selectedFinalizedFeature={selectedFinalizedFeature}
         selectedElevationProfilePoint={selectedElevationProfilePoint}
         selectedViewportBottomPaddingRatio={bottomPaddingRatio}
+        onViewChange={onViewChange}
+        restoreViewRequest={restoreViewRequest}
         onBoundsChange={() => undefined}
         onSelectResort={() => undefined}
         onSelectedFinalizedFeatureChange={onSelectedFinalizedFeatureChange}

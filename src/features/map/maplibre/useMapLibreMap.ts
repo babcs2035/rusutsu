@@ -1,15 +1,14 @@
 "use client";
 
-import { Map as MapLibreMap, setWorkerUrl } from "maplibre-gl";
+import { Map as MapLibreMap } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 import {
-  BASE_PATH,
   GSI_TILE_MAX_ZOOM,
   GSI_TILE_MIN_ZOOM,
   INITIAL_CENTER,
 } from "../constants";
 import type { MapTileVariant } from "../types";
-import { registerArrowIcon, registerLiftArrowIcon } from "./arrowIcon";
+import { registerArrowIcon } from "./arrowIcon";
 import { createBaseStyle, type RasterTone } from "./baseStyle";
 import {
   createFinalizedLayers,
@@ -22,17 +21,8 @@ import {
   RESORT_POINT_SOURCE,
 } from "./resortPointLayers";
 import { EMPTY_LINE_COLLECTION } from "./sources";
-
-/**
- * ワーカーの場所を教える。
- *
- * MapLibre は import.meta.url からワーカーの URL を組み立てるが、
- * Next.js のバンドル後はそれが http(s) にならず空文字になる。そのまま動かすと
- * HTML をワーカーとして読み込もうとして GeoJSON のタイル化が始まらず、
- * コースもリフトも一本も描かれない。実体は scripts/copyMaplibreWorker.mjs が
- * public/maplibre へ複製している。
- */
-setWorkerUrl(`${BASE_PATH}/maplibre/maplibre-gl-worker.mjs`);
+// ワーカー URL の設定。import した時点で副作用として走る
+import "./mapWorker";
 
 /**
  * 地図インスタンスを 1 つ作って使い回す。
@@ -99,7 +89,6 @@ export const useMapLibreMap = ({
 
     map.on("load", () => {
       registerArrowIcon(map);
-      registerLiftArrowIcon(map);
       map.addSource(RESORT_POINT_SOURCE, {
         type: "geojson",
         data: EMPTY_RESORT_POINTS,
@@ -113,6 +102,15 @@ export const useMapLibreMap = ({
           // （tolerance 0.375）だと、縮小したときに細片がタイル化の段階で
           // 丸ごと捨てられ、色が消えて白いケーシングだけが残る。
           tolerance: 0,
+          // リフトの流れる破線は「線に沿った距離」で位置が決まるが、その距離は
+          // タイルごとに 0 から数え直される。既定（maxzoom 18）だと拡大時の
+          // タイルは 1 枚 600m ほどしかなく、1 本のリフトが何度も切られて、
+          // 継ぎ目の塗りだけが伸び縮みして見える。粗くタイル化して継ぎ目を
+          // 減らす。これはデータの刻み方の設定で、地図の拡大上限
+          // （maxZoom）とは別物。日本の緯度なら z14 は 1 枚およそ 2km、
+          // タイル内の座標は 8192 分割なので丸めは約 0.25m。
+          // 最大ズームでも 0.5px ほどなので、見た目には出ない。
+          ...(sourceId === FINALIZED_SOURCE.lifts ? { maxzoom: 14 } : {}),
         });
       }
       const layers = [

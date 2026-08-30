@@ -1,5 +1,5 @@
 import type { Map as MapLibreMap } from "maplibre-gl";
-import { ARROW_ICON_ID, LIFT_ARROW_ICON_ID } from "./finalizedLayers";
+import { ARROW_ICON_ID } from "./finalizedLayers";
 
 const ICON_SIZE = 48;
 const PIXEL_RATIO = 2;
@@ -74,40 +74,3 @@ export const registerArrowIcon = (map: MapLibreMap) => {
  * 塗りつぶした矢羽だとリフトの細い線の上では塊に見えてしまうので、
  * 線を重ねただけの開いた形にする。大きさはコースの矢羽と揃えてある。
  */
-export const registerLiftArrowIcon = (map: MapLibreMap) => {
-  if (map.hasImage(LIFT_ARROW_ICON_ID)) return;
-
-  const canvas = createIconCanvas();
-  if (!canvas) return;
-
-  const { context, size } = canvas;
-  const center = ICON_SIZE / 2;
-  const depth = ICON_SIZE * 0.34;
-  const halfHeight = ICON_SIZE * 0.34;
-  const spacing = ICON_SIZE * 0.3;
-  const tips = [center + spacing / 2, center - spacing / 2];
-  // 2 本まとめた見た目の重心をアイコンの中央へ寄せる
-  const shift = center - (Math.max(...tips) + (Math.min(...tips) - depth)) / 2;
-
-  const strokeChevrons = () => {
-    for (const tip of tips) {
-      context.beginPath();
-      context.moveTo(tip - depth + shift, center - halfHeight);
-      context.lineTo(tip + shift, center);
-      context.lineTo(tip - depth + shift, center + halfHeight);
-      context.stroke();
-    }
-  };
-
-  context.lineCap = "round";
-  context.lineJoin = "round";
-  // 先に暗い縁を敷いてから白を重ねる。どの線色の上でも形が残る
-  context.strokeStyle = "rgba(15, 23, 42, 0.55)";
-  context.lineWidth = 9;
-  strokeChevrons();
-  context.strokeStyle = "rgba(255, 255, 255, 0.97)";
-  context.lineWidth = 5;
-  strokeChevrons();
-
-  addCanvasImage(map, LIFT_ARROW_ICON_ID, context, size);
-};

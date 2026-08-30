@@ -25,8 +25,9 @@ export const FINALIZED_LAYER = {
   liftCasing: "finalized-lift-casing",
   liftLine: "finalized-lift-line",
   liftBlink: "finalized-lift-blink",
-  liftFlow: "finalized-lift-flow",
-  liftArrow: "finalized-lift-arrow",
+  liftFlowSlow: "finalized-lift-flow-slow",
+  liftFlowNormal: "finalized-lift-flow-normal",
+  liftFlowFast: "finalized-lift-flow-fast",
   courseHit: "finalized-course-hit",
   liftHit: "finalized-lift-hit",
 } as const;
@@ -34,7 +35,6 @@ export const FINALIZED_LAYER = {
 export const DIMMED_LINE_COLOR = "#94A3B8";
 export const MUTED_LINE_OPACITY = 0.2;
 export const ARROW_ICON_ID = "finalized-direction-arrow";
-export const LIFT_ARROW_ICON_ID = "finalized-lift-direction-arrow";
 
 export const EMPTY_STYLE_STATE: FinalizedStyleState = {
   courseColorMode: "difficulty",
@@ -69,11 +69,92 @@ const COURSE_WIDTH: [number, number][] = [
   [16, 4.4],
   [18, 6],
 ];
+// コースに埋もれないよう、リフトはコースと同じくらいの太さにする
 const LIFT_WIDTH: [number, number][] = [
-  [12, 1.8],
-  [14, 2.4],
-  [16, 3.2],
-  [18, 4],
+  [12, 2.2],
+  [14, 3.1],
+  [16, 4.4],
+  [18, 5.8],
+];
+
+/** 流れる破線の太さ。細すぎると動きが読めないので、線幅の 3/4 で描く */
+const LIFT_FLOW_WIDTH_FACTOR = 0.74;
+
+/**
+ * 流れる破線のコマ。単位は線幅なので、線幅を変えても見え方が揃う。
+ *
+ * MapLibre の line-dasharray は要素数が奇数だとパターンを 2 回繰り返して
+ * 偶数に直す（塗りと隙間が入れ替わった 2 周期になる）。そのため
+ * コマごとに要素数が変わると周期そのものが変わり、リフトによって
+ * 色の並びが崩れて見える。どのコマも必ず [塗り, 隙間, 塗り, 隙間] の
+ * 4 要素・同じ周期になるように組み立てる。
+ */
+const FLOW_PERIOD = 14;
+/** 2 色が同じ長さになるように、周期のちょうど半分を塗る */
+const FLOW_DASH = FLOW_PERIOD / 2;
+/**
+ * 1 周期を何コマで送るか。
+ *
+ * MapLibre は破線の 1 周期を「line-dasharray の合計 × floor(線幅)」px として
+ * 描く。floor が効くので、縮小して線が細いときは 1 周期が 14px しかない。
+ * そこへ 0.5 単位ずつずらすと 1 コマの移動量が 0.5px になり、
+ * 端のまるめがコマごとに変わって塗りが伸び縮みして見える（尺取り虫）。
+ * 1 単位＝整数 px ちょうどずつ送れば、どの縮尺でも形を保ったまま流れる。
+ */
+const FLOW_STEPS = FLOW_PERIOD;
+
+export const FLOW_DASH_FRAMES: number[][] = Array.from(
+  { length: FLOW_STEPS },
+  (_, index) => {
+    const phase = (FLOW_PERIOD * index) / FLOW_STEPS;
+    if (phase + FLOW_DASH <= FLOW_PERIOD) {
+      return [0, phase, FLOW_DASH, FLOW_PERIOD - phase - FLOW_DASH];
+    }
+    // 周期をまたぐぶんは先頭に回す。末尾の隙間 0 で次の周期の頭とつながる
+    const head = phase + FLOW_DASH - FLOW_PERIOD;
+    return [head, FLOW_PERIOD - FLOW_DASH, FLOW_DASH - head, 0];
+  },
+);
+
+/**
+ * 速さごとの流れるレイヤー。line-dasharray は式にできないので分ける。
+ *
+ * frameMs は 1 コマぶんの間隔で、1 周期（FLOW_PERIOD コマ）を流し終えるまでの
+ * 時間はその 14 倍になる。高速リフトと低速リフトの差が読み取りにくかったため、
+ * fast:normal:slow をおよそ 1:2.5:5 まで広げている（以前は 1:1.7:2.5 程度）。
+ */
+export const LIFT_FLOW_LAYERS = [
+  { id: FINALIZED_LAYER.liftFlowSlow, speed: "slow", frameMs: 200 },
+  { id: FINALIZED_LAYER.liftFlowNormal, speed: "normal", frameMs: 100 },
+  { id: FINALIZED_LAYER.liftFlowFast, speed: "fast", frameMs: 40 },
+] as const;
+
+/**
+ * 流れる破線の濃さ。
+ * 二色の差が読めないと動きが見えないので、どの状態でも濃いまま出す。
+ * 「薄さ」は流れる色そのものと、下の地の線の濃さ（LINE_STATUS_OPACITY）で作る。
+ */
+const FLOW_STATUS_OPACITY: ExpressionSpecification = [
+  "match",
+  ["get", "status"],
+  "open",
+  0.95,
+  "limited",
+  0.95,
+  "closed",
+  0.9,
+  0.95,
+];
+
+/** リフトの地の線の濃さ。運休・不明はここで沈める */
+const LINE_STATUS_OPACITY: ExpressionSpecification = [
+  "match",
+  ["get", "status"],
+  "closed",
+  0.72,
+  "unknown",
+  0.88,
+  1,
 ];
 
 const scaleWidth = (
@@ -126,7 +207,7 @@ export const getLineOpacity = (
   MUTED_LINE_OPACITY,
   isDimmedExpression(state, kind),
   0.4,
-  1,
+  kind === "lift" ? LINE_STATUS_OPACITY : 1,
 ];
 
 export const getLineColor = (
@@ -174,6 +255,35 @@ export const getLineWidth = (
     width + base,
   ]);
 };
+
+/** 流れる破線の濃さ。状態ごとの濃さに、選択・営業中のみの効果を掛ける */
+export const getFlowOpacity = (
+  state: FinalizedStyleState,
+): DataDrivenPropertyValueSpecification<number> => [
+  "case",
+  isMutedExpression(state, "lift"),
+  0,
+  isDimmedExpression(state, "lift"),
+  ["*", FLOW_STATUS_OPACITY, 0.4],
+  FLOW_STATUS_OPACITY,
+];
+
+/**
+ * 点滅中のリフトの濃さ。
+ * 生の数値で上書きすると「営業中のみ」や選択中の沈み込みが消えてしまうので、
+ * 同じ case を通してから点滅の値を入れる。
+ */
+export const getBlinkOpacity = (
+  state: FinalizedStyleState,
+  blink: number,
+): DataDrivenPropertyValueSpecification<number> => [
+  "case",
+  isMutedExpression(state, "lift"),
+  MUTED_LINE_OPACITY,
+  isDimmedExpression(state, "lift"),
+  0.4,
+  blink,
+];
 
 export const getCasingWidth = (
   state: FinalizedStyleState,
@@ -355,7 +465,7 @@ export const createFinalizedLayers = (
       "line-opacity": getLineOpacity(state, "lift"),
     },
   },
-  // 一部運休のリフトは赤く点滅させる。opacity は useLiftAnimation が動かす
+  // 待機中のリフトは赤く点滅させる。opacity は useLiftAnimation が動かす
   {
     id: FINALIZED_LAYER.liftBlink,
     type: "line",
@@ -368,20 +478,30 @@ export const createFinalizedLayers = (
       "line-opacity": getLineOpacity(state, "lift"),
     },
   },
-  // 運行中のリフトだけ、流れる破線を重ねる
-  {
-    id: FINALIZED_LAYER.liftFlow,
-    type: "line",
-    source: FINALIZED_SOURCE.lifts,
-    filter: ["==", ["get", "status"], "open"],
-    layout: { "line-cap": "butt", "line-join": "round" },
-    paint: {
-      "line-color": ["get", "flowColor"],
-      "line-width": scaleWidth(LIFT_WIDTH, 0.6),
-      "line-opacity": getLineOpacity(state, "lift"),
-      "line-dasharray": [0, 2, 2],
-    },
-  },
+  // すべてのリフトに流れる破線を重ねる。速さで流す間隔を変えたいので、
+  // line-dasharray を式にできない都合上、速さごとにレイヤーを分ける
+  ...LIFT_FLOW_LAYERS.map(
+    (layer): LayerSpecification => ({
+      id: layer.id,
+      type: "line",
+      source: FINALIZED_SOURCE.lifts,
+      filter: ["==", ["coalesce", ["get", "flowSpeed"], "normal"], layer.speed],
+      // キャップは butt のまま。round にすると MapLibre が周期をまたぐ
+      // 塗り（先頭の切れ端と末尾）をつなげてくれず、コマによって
+      // 短い点が余分に描かれてしまう。
+      layout: { "line-cap": "butt", "line-join": "round" },
+      paint: {
+        "line-color": ["get", "flowColor"],
+        "line-width": scaleWidth(LIFT_WIDTH, LIFT_FLOW_WIDTH_FACTOR),
+        "line-opacity": getFlowOpacity(state),
+        "line-dasharray": FLOW_DASH_FRAMES[0],
+        // MapLibre は line-dasharray を「前の柄と次の柄のクロスフェード」で
+        // 補間する。既定の 300ms のままコマ送りすると、常に 2 つの柄が
+        // 重なって見え、塗りの長さが伸び縮みしているように見える。
+        "line-dasharray-transition": { duration: 0, delay: 0 },
+      },
+    }),
+  ),
   createHitLayer(
     FINALIZED_LAYER.courseHit,
     FINALIZED_SOURCE.courseOutlines,
@@ -408,33 +528,6 @@ export const createFinalizedLayers = (
         isMutedExpression(state, "course"),
         0,
         isDimmedExpression(state, "course"),
-        0.45,
-        1,
-      ],
-    },
-  },
-  {
-    id: FINALIZED_LAYER.liftArrow,
-    type: "symbol",
-    source: FINALIZED_SOURCE.lifts,
-    minzoom: 13,
-    // 運行中は流れる破線が向きを示すので矢羽は出さない
-    filter: ["!=", ["get", "status"], "open"],
-    layout: {
-      "symbol-placement": "line",
-      "symbol-spacing": ARROW_SPACING,
-      "icon-image": LIFT_ARROW_ICON_ID,
-      "icon-size": ARROW_SIZE,
-      "icon-rotation-alignment": "map",
-      "icon-allow-overlap": true,
-      "icon-ignore-placement": true,
-    },
-    paint: {
-      "icon-opacity": [
-        "case",
-        isMutedExpression(state, "lift"),
-        0,
-        isDimmedExpression(state, "lift"),
         0.45,
         1,
       ],
@@ -501,21 +594,15 @@ export const applyFinalizedStyleState = (
     "line-opacity",
     getCasingOpacity(state, "lift"),
   );
-  set(FINALIZED_LAYER.liftFlow, "line-opacity", getLineOpacity(state, "lift"));
+  for (const layer of LIFT_FLOW_LAYERS) {
+    set(layer.id, "line-opacity", getFlowOpacity(state));
+  }
 
   set(FINALIZED_LAYER.courseArrow, "icon-opacity", [
     "case",
     isMutedExpression(state, "course"),
     0,
     isDimmedExpression(state, "course"),
-    0.45,
-    1,
-  ]);
-  set(FINALIZED_LAYER.liftArrow, "icon-opacity", [
-    "case",
-    isMutedExpression(state, "lift"),
-    0,
-    isDimmedExpression(state, "lift"),
     0.45,
     1,
   ]);

@@ -1,15 +1,14 @@
-import type { MapSkiResort } from "@/types/skiResorts";
 import { RESORT_POINT_RADIUS, SELECTED_MARKER_RING_WIDTH } from "../constants";
-import type { MapPointEntry } from "../types";
-import { measureTextWidth } from "./leafletIcons";
+import type { LabelableResort, MapPointEntry } from "../types";
+import { measureTextWidth } from "./labelMeasure";
 
 export const getResortDisplayName = (
-  resort: MapSkiResort,
+  resort: LabelableResort,
   displayNameById: Map<string, string>,
 ): string => displayNameById.get(resort.id) ?? resort.nameJa;
 
 export const getResortLabelWidth = (
-  resort: MapSkiResort,
+  resort: LabelableResort,
   displayNameById: Map<string, string>,
 ): number =>
   Math.max(measureTextWidth(getResortDisplayName(resort, displayNameById)), 1);

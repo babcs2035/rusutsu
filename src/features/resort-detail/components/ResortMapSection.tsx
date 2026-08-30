@@ -3,7 +3,7 @@
 import { Portal } from "@radix-ui/react-portal";
 import { Maximize2, X } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ResortFinalizedMap } from "@/features/map/components/ResortFinalizedMap";
 import type {
@@ -11,6 +11,8 @@ import type {
   ElevationProfileMapPoint,
   JapanResortMapProps,
   MapTileVariant,
+  MapViewRestoreRequest,
+  MapViewSnapshot,
   SelectedMapFeature,
 } from "@/features/map/types";
 import type { FinalizedResortMapData } from "@/lib/finalizedResortGeojsonShared";
@@ -117,6 +119,11 @@ export const ResortMapSection = ({
   onMapTileVariantChange,
 }: Props) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  // 全画面で動かした位置を、畳んだあとの小さい地図へ引き継ぐ。
+  // 別インスタンスなので、そのままだと拡大する前の見え方に戻ってしまう。
+  const expandedViewRef = useRef<MapViewSnapshot | null>(null);
+  const [inlineRestoreRequest, setInlineRestoreRequest] =
+    useState<MapViewRestoreRequest | null>(null);
   const hasSelection = Boolean(featureDetail);
   const isBelowDetail = featureDetailPlacement === "below";
   // 全画面では呼び出し側の置き場所（比較の右パネル）が隠れるので、右に重ねる
@@ -127,17 +134,31 @@ export const ResortMapSection = ({
   const isOverlayDetail =
     placement === "overlay-left" || placement === "overlay-right";
 
+  const handleExpandedViewChange = useCallback((view: MapViewSnapshot) => {
+    expandedViewRef.current = view;
+  }, []);
+
+  const collapse = useCallback(() => {
+    const view = expandedViewRef.current;
+    setIsExpanded(false);
+    if (!view) return;
+    setInlineRestoreRequest(current => ({
+      ...view,
+      key: (current?.key ?? 0) + 1,
+    }));
+  }, []);
+
   useEffect(() => {
     if (!isExpanded) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       // 選択中の Escape はコース選択の解除が先（地図側で処理する）
       if (event.key !== "Escape" || hasSelection) return;
-      setIsExpanded(false);
+      collapse();
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [hasSelection, isExpanded]);
+  }, [collapse, hasSelection, isExpanded]);
 
   const renderMap = (
     presentation: "preview" | "expanded",
@@ -161,6 +182,14 @@ export const ResortMapSection = ({
       onSelectedFinalizedFeatureChange={onSelectedFinalizedFeatureChange}
       onSelectedElevationProfilePointChange={
         onSelectedElevationProfilePointChange
+      }
+      onViewChange={
+        presentation === "expanded" && isExpanded
+          ? handleExpandedViewChange
+          : undefined
+      }
+      restoreViewRequest={
+        presentation === "expanded" ? null : inlineRestoreRequest
       }
       detailViewportResetKey={detailViewportResetKey}
     />
@@ -252,7 +281,7 @@ export const ResortMapSection = ({
                 <Button
                   type="button"
                   aria-label="地図を閉じる"
-                  onClick={() => setIsExpanded(false)}
+                  onClick={collapse}
                   className="absolute z-[780] h-11 w-11 min-w-11 rounded-full border border-gray-200 bg-white/95 p-0 text-gray-700 shadow-md backdrop-blur-sm hover:bg-white hover:text-gray-900 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10"
                   style={{
                     top: "calc(env(safe-area-inset-top, 0px) + 0.75rem)",

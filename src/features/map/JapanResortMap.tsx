@@ -70,7 +70,8 @@ import type {
   SelectedMapFeature,
 } from "./types";
 import { toLatLngTuple } from "./utils/finalizedMapData";
-import { createNameLabelIcon, measureLabelHeight } from "./utils/leafletIcons";
+import { measureLabelHeight } from "./utils/labelMeasure";
+import { createNameLabelIcon } from "./utils/leafletIcons";
 import { createLeafletProjection } from "./utils/leafletProjection";
 import { getResortDisplayName } from "./utils/resortLabels";
 import {

@@ -3,7 +3,7 @@ import { getSkiResortsForMap } from "@/actions/skiResorts";
 import { SlopeEditClient } from "@/features/slope/SlopeEditClient";
 import { listSlopeBeforeResortIds } from "@/features/slope/server/slopeFiles";
 import type { ResortOption } from "@/features/slope/types";
-import { getResortSearchName } from "@/lib/resortAliases";
+import { getResortLabelName, getResortSearchName } from "@/lib/resortAliases";
 
 export const dynamic = "force-dynamic";
 
@@ -22,10 +22,12 @@ export default async function SlopeEditPage() {
     id: resort.id,
     nameJa: resort.nameJa,
     searchName: getResortSearchName(resort.id, resort.nameJa),
+    labelName: getResortLabelName(resort.id, resort.nameJa),
     nameEn: resort.nameEn,
     prefecture: resort.prefecture,
     latitude: resort.latitude,
     longitude: resort.longitude,
+    numberOfCourses: resort.numberOfCourses,
     hasSlopeBefore: slopeBeforeIdSet.has(resort.id),
   }));
 

@@ -6,8 +6,7 @@ import {
   Marker,
 } from "maplibre-gl";
 import { useEffect, useRef } from "react";
-import type { MapSkiResort } from "@/types/skiResorts";
-import type { LabelLayout, MapTileVariant } from "../types";
+import type { LabelableResort, LabelLayout, MapTileVariant } from "../types";
 import { getResortPriority } from "../utils/resortMarkerPriority";
 import {
   EMPTY_RESORT_POINTS,
@@ -17,7 +16,7 @@ import {
 } from "./resortPointLayers";
 
 type ResortMarkerState = {
-  resorts: MapSkiResort[];
+  resorts: LabelableResort[];
   labelLayouts: Record<string, LabelLayout>;
   displayNameById: Map<string, string>;
   selectedResortIdSet: Set<string>;
@@ -28,10 +27,18 @@ type ResortMarkerState = {
   mapZoom: number;
   labelShowZoom: number;
   shouldHideLabels: boolean;
-  shouldShowCompareActions: boolean;
-  openActionPopupResortId: string | null;
   onSelectResort: (id: string) => void;
-  onOpenActionPopup: (id: string) => void;
+  /**
+   * 点の色を ID ごとに差し替える。
+   * 管理画面は「絞り込みに一致したか」ではなく「入力済みか」で塗り分けたい。
+   */
+  pointColorById?: ReadonlyMap<string, string>;
+  /** ラベルが出ていない点もタップできるようにする */
+  alwaysInteractive?: boolean;
+  /** 以下は比較モードだけが使う */
+  shouldShowCompareActions?: boolean;
+  openActionPopupResortId?: string | null;
+  onOpenActionPopup?: (id: string) => void;
 };
 
 const getLeaderColor = (tileVariant: MapTileVariant, isSelected: boolean) => {
@@ -72,8 +79,11 @@ const createLabelElement = ({
     );
     leader.setAttribute("class", "resort-leader-line");
     leader.setAttribute("overflow", "visible");
-    leader.setAttribute("width", "0");
-    leader.setAttribute("height", "0");
+    // width/height を 0 にすると、overflow: visible を付けていても
+    // Chromium は <svg> の中身を一切描画しない（仕様上、0 は描画を無効にする値）。
+    // 引き出し線が生えなくなっていたのはこれが原因なので、1px にして描画を保つ。
+    leader.setAttribute("width", "1");
+    leader.setAttribute("height", "1");
 
     const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
     line.setAttribute("x1", "0");
@@ -155,7 +165,7 @@ export const useResortMarkers = ({
       const hasLabel =
         !state.shouldHideLabels &&
         Boolean(layout) &&
-        !(state.shouldShowCompareActions && hasOpenActionPopup);
+        !(state.shouldShowCompareActions === true && hasOpenActionPopup);
       const isDimmedByFilter =
         state.isFilterActive &&
         priority === "normal" &&
@@ -175,10 +185,12 @@ export const useResortMarkers = ({
         },
         properties: {
           resortId: resort.id,
-          color: isFilterMatch ? palette.filterMatch : palette.normal,
+          color:
+            state.pointColorById?.get(resort.id) ??
+            (isFilterMatch ? palette.filterMatch : palette.normal),
           opacity: isDimmedPoint ? 0.48 : 0.95,
           selected: isSelected,
-          interactive: hasLabel,
+          interactive: state.alwaysInteractive === true || hasLabel,
         },
       });
 
@@ -193,8 +205,8 @@ export const useResortMarkers = ({
         isDimmed: isDimmedByFilter,
         tileVariant: state.tileVariant,
         onSelect: () => {
-          if (state.shouldShowCompareActions) {
-            state.onOpenActionPopup(resort.id);
+          if (state.shouldShowCompareActions === true) {
+            state.onOpenActionPopup?.(resort.id);
             return;
           }
           state.onSelectResort(resort.id);

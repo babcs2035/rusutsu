@@ -52,10 +52,14 @@ export type ResortOption = {
   nameJa: string;
   // 検索ワードの先頭に使う名前（地図表示用の省略名を優先）
   searchName: string;
+  // 地図のラベルに出す名前。一覧地図と同じ省略名にそろえる
+  labelName: string;
   nameEn: string;
   prefecture: string;
   latitude: number;
   longitude: number;
+  // ラベルの置き場所を取る優先度。一覧地図と同じ基準にそろえる
+  numberOfCourses: number;
   hasSlopeBefore: boolean;
 };
 

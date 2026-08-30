@@ -421,15 +421,17 @@ html body .finalized-lift-flow {
   animation: finalized-lift-flow 1.6s linear infinite;
 }
 
+/* 高速リフトと低速リフトの差が読み取りにくかったため、
+   fast:normal:slow をおよそ 1:2.5:5 まで広げている（MapLibre 側の frameMs と揃える） */
 html body .finalized-lift-flow-fast {
-  animation-duration: 0.9s;
+  animation-duration: 0.65s;
 }
 
 html body .finalized-lift-flow-slow {
-  animation-duration: 2.4s;
+  animation-duration: 3.2s;
 }
 
-/* 一部運休のリフトは流れる破線ではなく赤い点滅で示す。
+/* 待機中のリフトは流れる破線ではなく赤い点滅で示す。
    動き = 運行中 という符号を守りつつ、注意を引く。 */
 html body .finalized-lift-blink {
   animation: finalized-lift-blink 1.2s ease-in-out infinite;

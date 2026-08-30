@@ -16,9 +16,8 @@ const CONTROL_BUTTON_CLASS =
 /**
  * ズーム・回転・ホーム・地図種別のボタン。
  *
- * 回転はスキー場詳細の地図だけに出す。PC はドラッグ回転が気づかれにくいので
- * +/- の隣に方位ダイヤルを置き、スマホは 2 本指で回せるぶん、
- * 北からずれているときだけダイヤル（押せば北に戻る）を出す。
+ * 回転はスキー場詳細の地図だけに出す。スマホは 2 本指で簡単に回せるため
+ * 方位ダイヤルは出さず、ドラッグ回転が気づかれにくい PC だけ +/- の隣に置く。
  */
 export const MapLibreControls = ({
   map,
@@ -28,7 +27,6 @@ export const MapLibreControls = ({
   showTileVariantControl,
   showHomeButton,
   canRotate,
-  isMobile,
   onUserMapInteraction,
   onUserMapZoomInteraction,
 }: {
@@ -40,7 +38,6 @@ export const MapLibreControls = ({
   showTileVariantControl: boolean;
   showHomeButton: boolean;
   canRotate: boolean;
-  isMobile: boolean;
   onUserMapInteraction?: () => void;
   onUserMapZoomInteraction?: () => void;
 }) => {
@@ -56,9 +53,6 @@ export const MapLibreControls = ({
       map.off("rotate", syncBearing);
     };
   }, [map]);
-
-  const isFacingNorth = Math.abs(bearing) < 0.5;
-  const showMobileCompass = canRotate && isMobile && !isFacingNorth;
 
   const compassDial = (
     <Card className="gap-0 overflow-hidden rounded-full p-0">
@@ -99,7 +93,6 @@ export const MapLibreControls = ({
           </CardContent>
         </Card>
         {canRotate && <div className="hidden md:block">{compassDial}</div>}
-        {showMobileCompass && <div className="md:hidden">{compassDial}</div>}
       </div>
       <div className="flex flex-row items-end gap-2 md:flex-col md:items-start">
         {showHomeButton && (

@@ -77,7 +77,7 @@ export const getLiftFlowWidth = (liftLineWidth: number) =>
 export const hasLiftFlow = (status: FinalizedFeatureStatus) =>
   status === "open";
 
-/** 一部運休のリフトは赤く点滅させて、運行中とはっきり区別する */
+/** 待機中のリフトは赤く点滅させて、運行中とはっきり区別する */
 export const hasLiftBlink = (status: FinalizedFeatureStatus) =>
   status === "limited";
 

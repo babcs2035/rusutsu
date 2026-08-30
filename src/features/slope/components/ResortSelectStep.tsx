@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { CircleMarker, MapContainer, TileLayer, Tooltip } from "react-leaflet";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  ResortPickerLegend,
+  ResortPickerMap,
+} from "@/features/map/ResortPickerMap";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
-import { TILE_LAYERS } from "../constants";
 import { discardDraft, listDraftSummaries } from "../hooks/useDraftStorage";
 import type { DraftSummary, ResortOption, StartSource } from "../types";
 
@@ -53,6 +55,28 @@ export function ResortSelectStep({ resorts, onStart }: ResortSelectStepProps) {
 
   const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
 
+  const isFilterActive = query.trim() !== "";
+  const filteredResortIdSet = useMemo(
+    () => new Set(filteredResorts.map(resort => resort.id)),
+    [filteredResorts],
+  );
+  const pickerResorts = useMemo(
+    () =>
+      resorts.map(resort => ({
+        id: resort.id,
+        labelName: resort.labelName,
+        latitude: resort.latitude,
+        longitude: resort.longitude,
+        numberOfCourses: resort.numberOfCourses,
+        hasExistingData: resort.hasSlopeBefore,
+      })),
+    [resorts],
+  );
+  const handleSelectResort = useCallback(
+    (id: string) => setPendingResortId(id),
+    [],
+  );
+
   const handleDiscardDraft = () => {
     if (!pendingResort || !pendingDraft) return;
     discardDraft(pendingResort.id);
@@ -63,8 +87,6 @@ export function ResortSelectStep({ resorts, onStart }: ResortSelectStepProps) {
     });
     setDiscardDialogOpen(false);
   };
-
-  const gsiPale = TILE_LAYERS.gsiPale;
 
   return (
     <div className="flex h-full min-h-0">
@@ -81,6 +103,7 @@ export function ResortSelectStep({ resorts, onStart }: ResortSelectStepProps) {
           value={query}
           onChange={event => setQuery(event.target.value)}
         />
+        <ResortPickerLegend />
 
         {pendingResort && (
           <Card className="border-2 border-blue-600 rounded-md bg-blue-50">
@@ -195,40 +218,13 @@ export function ResortSelectStep({ resorts, onStart }: ResortSelectStepProps) {
       </div>
 
       <div className="flex-1 min-w-0">
-        <MapContainer
-          center={[38.25, 138.0]}
-          zoom={6}
-          className="w-full h-full"
-        >
-          <TileLayer
-            url={gsiPale.url}
-            attribution={gsiPale.attribution}
-            maxZoom={gsiPale.maxZoom}
-          />
-          {resorts.map(resort => (
-            <CircleMarker
-              key={resort.id}
-              center={[resort.latitude, resort.longitude]}
-              radius={resort.id === pendingResortId ? 9 : 6}
-              pathOptions={{
-                color: "#fff",
-                weight: 1.5,
-                fillColor:
-                  resort.id === pendingResortId
-                    ? "#dd6b20"
-                    : resort.hasSlopeBefore
-                      ? "#3182ce"
-                      : "#718096",
-                fillOpacity: 0.9,
-              }}
-              eventHandlers={{
-                click: () => setPendingResortId(resort.id),
-              }}
-            >
-              <Tooltip>{resort.nameJa}</Tooltip>
-            </CircleMarker>
-          ))}
-        </MapContainer>
+        <ResortPickerMap
+          resorts={pickerResorts}
+          selectedResortId={pendingResortId}
+          onSelectResort={handleSelectResort}
+          filteredResortIdSet={filteredResortIdSet}
+          isFilterActive={isFilterActive}
+        />
       </div>
     </div>
   );
