@@ -220,11 +220,57 @@ html
   filter: grayscale(1) contrast(0.92) brightness(1.06);
 }
 
-/* EditorMap: reduce leaflet z-index so portal ed tooltips stay on top */
-html body [data-editor-map="true"] .leaflet-pane,
-html body [data-editor-map="true"] .leaflet-control {
-  /* biome-ignore lint/complexity/noImportantStyles: Leaflet のインライン z-index を上書きする必要がある */
-  z-index: 10 !important;
+/* EditorMap: 地図の重なり順を下げて、左パネルの portal Tooltip を上に出す */
+html body [data-editor-map="true"] .maplibregl-control-container,
+html body [data-editor-map="true"] .maplibregl-popup {
+  z-index: 10;
+}
+
+/* 編集地図のホバー吹き出し。Leaflet の Tooltip に見た目を寄せる */
+html body .editor-map-tooltip {
+  pointer-events: none;
+}
+
+html body .editor-map-tooltip .maplibregl-popup-content {
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(15, 23, 42, 0.28);
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.24);
+  color: #111827;
+  font-size: 12px;
+  line-height: 1.2;
+  padding: 3px 7px;
+  white-space: nowrap;
+}
+
+html body .editor-map-tooltip .maplibregl-popup-tip {
+  display: none;
+}
+
+/* 線の名前ラベル。スタイルに glyphs が無いので DOM マーカーで描く */
+html body .editor-map-label {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(15, 23, 42, 0.24);
+  border-radius: 999px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.2);
+  color: #1f2937;
+  cursor: default;
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+  max-width: 168px;
+  overflow: hidden;
+  padding: 1px 7px;
+  pointer-events: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html body .editor-map-label[data-active="true"] {
+  background: #e53e3e;
+  border-color: #9b2c2c;
+  color: #ffffff;
 }
 
 html body .resort-name-label-icon {

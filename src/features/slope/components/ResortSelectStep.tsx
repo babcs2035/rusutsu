@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,6 +10,10 @@ import {
 } from "@/features/map/ResortPickerMap";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
+import {
+  ResortStatusBadge,
+  ResortStatusLegend,
+} from "@/shared/components/ResortStatusBadges";
 import { discardDraft, listDraftSummaries } from "../hooks/useDraftStorage";
 import type { DraftSummary, ResortOption, StartSource } from "../types";
 
@@ -24,36 +27,61 @@ const formatDateTime = (iso: string): string => {
   return Number.isNaN(date.getTime()) ? iso : date.toLocaleString("ja-JP");
 };
 
+const draftMapKey = (resortId: string, sourceKind: "curated" | "osm") =>
+  `${sourceKind}:${resortId}`;
+
+type CrawlerFilter = "all" | "with" | "without";
+
+const CRAWLER_FILTERS: Array<{ id: CrawlerFilter; label: string }> = [
+  { id: "all", label: "すべて" },
+  { id: "with", label: "クローラーあり" },
+  { id: "without", label: "クローラーなし" },
+];
+
 export function ResortSelectStep({ resorts, onStart }: ResortSelectStepProps) {
   const [query, setQuery] = useState("");
+  const [crawlerFilter, setCrawlerFilter] = useState<CrawlerFilter>("all");
   const [pendingResortId, setPendingResortId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Map<string, DraftSummary>>(new Map());
 
   useEffect(() => {
     setDrafts(
-      new Map(listDraftSummaries().map(summary => [summary.resortId, summary])),
+      new Map(
+        listDraftSummaries().map(summary => [
+          draftMapKey(summary.resortId, summary.sourceKind),
+          summary,
+        ]),
+      ),
     );
   }, []);
 
   const filteredResorts = useMemo(() => {
     const keyword = query.trim().toLowerCase();
-    if (keyword === "") return resorts;
-    return resorts.filter(
-      resort =>
+    return resorts.filter(resort => {
+      if (crawlerFilter === "with" && !resort.hasCrawlerCourses) return false;
+      if (crawlerFilter === "without" && resort.hasCrawlerCourses) return false;
+      if (keyword === "") return true;
+      return (
         resort.nameJa.toLowerCase().includes(keyword) ||
         resort.nameEn.toLowerCase().includes(keyword) ||
         resort.prefecture.toLowerCase().includes(keyword) ||
-        resort.id.toLowerCase().includes(keyword),
-    );
-  }, [resorts, query]);
+        resort.id.toLowerCase().includes(keyword)
+      );
+    });
+  }, [crawlerFilter, resorts, query]);
 
   const pendingResort =
     resorts.find(resort => resort.id === pendingResortId) ?? null;
-  const pendingDraft = pendingResort
-    ? (drafts.get(pendingResort.id) ?? null)
+  const pendingCuratedDraft = pendingResort
+    ? (drafts.get(draftMapKey(pendingResort.id, "curated")) ?? null)
+    : null;
+  const pendingOsmDraft = pendingResort
+    ? (drafts.get(draftMapKey(pendingResort.id, "osm")) ?? null)
     : null;
 
-  const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
+  const [discardSourceKind, setDiscardSourceKind] = useState<
+    "curated" | "osm" | null
+  >(null);
 
   const isFilterActive = query.trim() !== "";
   const filteredResortIdSet = useMemo(
@@ -68,7 +96,7 @@ export function ResortSelectStep({ resorts, onStart }: ResortSelectStepProps) {
         latitude: resort.latitude,
         longitude: resort.longitude,
         numberOfCourses: resort.numberOfCourses,
-        hasExistingData: resort.hasSlopeBefore,
+        hasExistingData: resort.hasSlopeBefore || resort.hasSlopeBeforeOsm,
       })),
     [resorts],
   );
@@ -78,30 +106,60 @@ export function ResortSelectStep({ resorts, onStart }: ResortSelectStepProps) {
   );
 
   const handleDiscardDraft = () => {
-    if (!pendingResort || !pendingDraft) return;
-    discardDraft(pendingResort.id);
+    if (!pendingResort || !discardSourceKind) return;
+    discardDraft(pendingResort.id, discardSourceKind);
     setDrafts(previous => {
       const next = new Map(previous);
-      next.delete(pendingResort.id);
+      next.delete(draftMapKey(pendingResort.id, discardSourceKind));
       return next;
     });
-    setDiscardDialogOpen(false);
+    setDiscardSourceKind(null);
   };
+
+  const pendingDiscardDraft =
+    discardSourceKind === "osm" ? pendingOsmDraft : pendingCuratedDraft;
 
   return (
     <div className="flex h-full min-h-0">
-      <div className="flex w-[min(420px,60vw)] lg:w-[420px] min-w-0 lg:min-w-[420px] flex-col border-r border-gray-200 p-4 gap-3 overflow-hidden">
-        <h2 className="text-lg font-bold font-[var(--font-heading)]">
+      <div className="flex-1 min-w-0">
+        <ResortPickerMap
+          resorts={pickerResorts}
+          selectedResortId={pendingResortId}
+          onSelectResort={handleSelectResort}
+          filteredResortIdSet={filteredResortIdSet}
+          isFilterActive={isFilterActive}
+        />
+      </div>
+      <div className="flex w-[min(460px,60vw)] min-w-0 flex-col gap-2 overflow-hidden border-l border-gray-200 bg-white p-3 lg:w-[460px] lg:min-w-[460px]">
+        <h2 className="font-bold font-[var(--font-heading)] text-base">
           スキー場を選ぶ
         </h2>
-        <p className="text-sm text-gray-600">
-          リストから選ぶか、右の地図上のマーカーをクリックしてください。
+        <p className="text-xs text-gray-600">
+          リストから選ぶか、右の地図のマーカーをクリックしてください。
         </p>
         <Input
           className="h-9 w-full rounded-md border border-input bg-white px-3 py-1 text-sm shadow-sm"
           placeholder="スキー場名・都道府県で検索"
           value={query}
           onChange={event => setQuery(event.target.value)}
+        />
+        <div className="flex flex-wrap items-center gap-1">
+          {CRAWLER_FILTERS.map(filter => (
+            <Button
+              key={filter.id}
+              size="xs"
+              variant={crawlerFilter === filter.id ? "default" : "outline"}
+              onClick={() => setCrawlerFilter(filter.id)}
+            >
+              {filter.label}
+            </Button>
+          ))}
+          <span className="text-[11px] text-gray-500">
+            {filteredResorts.length} 件
+          </span>
+        </div>
+        <ResortStatusLegend
+          kinds={["confirmed", "osm", "crawler", "noCrawler"]}
         />
         <ResortPickerLegend />
 
@@ -111,52 +169,100 @@ export function ResortSelectStep({ resorts, onStart }: ResortSelectStepProps) {
               <p className="font-bold font-[var(--font-heading)]">
                 {pendingResort.nameJa}
               </p>
-              <p className="text-xs text-gray-600 mb-2">
+              <p className="text-xs text-gray-600">
                 {pendingResort.prefecture} / {pendingResort.id}
               </p>
+              <div className="mt-1 mb-2 flex flex-wrap gap-1">
+                {pendingResort.hasSlopeBefore && (
+                  <ResortStatusBadge kind="confirmed" />
+                )}
+                {pendingResort.hasSlopeBeforeOsm && (
+                  <ResortStatusBadge kind="osm" />
+                )}
+                <ResortStatusBadge
+                  kind={
+                    pendingResort.hasCrawlerCourses ? "crawler" : "noCrawler"
+                  }
+                />
+              </div>
               <div className="flex flex-col gap-2">
-                {pendingDraft && (
+                {pendingCuratedDraft && (
                   <>
                     <Button
                       size="sm"
                       variant="default"
-                      onClick={() => onStart(pendingResort, "draft")}
+                      onClick={() => onStart(pendingResort, "draft-curated")}
                     >
-                      下書きを復元して編集（
-                      {formatDateTime(pendingDraft.updatedAt)} 保存・
-                      {pendingDraft.courseCount} コース）
+                      確認済みデータの下書きを復元（
+                      {formatDateTime(pendingCuratedDraft.updatedAt)} 保存・
+                      {pendingCuratedDraft.courseCount} コース）
                     </Button>
-                    <ConfirmDialog
-                      open={discardDialogOpen}
-                      onOpenChange={setDiscardDialogOpen}
-                      title="下書きの破棄"
-                      description={`「${pendingResort.nameJa}」の下書き（${formatDateTime(pendingDraft.updatedAt)} 保存）を破棄します。よろしいですか？`}
-                      onConfirm={handleDiscardDraft}
-                      confirmLabel="破棄する"
-                    />
                     <Button
                       size="sm"
                       variant="outline"
                       className="text-red-700 hover:text-red-800 hover:bg-red-50"
-                      onClick={() => setDiscardDialogOpen(true)}
+                      onClick={() => setDiscardSourceKind("curated")}
                     >
-                      下書きを破棄
+                      確認済みデータの下書きを破棄
                     </Button>
                   </>
                 )}
+                {pendingOsmDraft && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onStart(pendingResort, "draft-osm")}
+                    >
+                      OSMデータの下書きを復元（
+                      {formatDateTime(pendingOsmDraft.updatedAt)} 保存・
+                      {pendingOsmDraft.courseCount} コース）
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-red-700 hover:text-red-800 hover:bg-red-50"
+                      onClick={() => setDiscardSourceKind("osm")}
+                    >
+                      OSMデータの下書きを破棄
+                    </Button>
+                  </>
+                )}
+                <ConfirmDialog
+                  open={discardSourceKind !== null}
+                  onOpenChange={open => {
+                    if (!open) setDiscardSourceKind(null);
+                  }}
+                  title="下書きの破棄"
+                  description={`「${pendingResort.nameJa}」の${discardSourceKind === "osm" ? "OSMデータ" : "確認済みデータ"}の下書き${pendingDiscardDraft ? `（${formatDateTime(pendingDiscardDraft.updatedAt)} 保存）` : ""}を破棄します。よろしいですか？`}
+                  onConfirm={handleDiscardDraft}
+                  confirmLabel="破棄する"
+                />
                 {pendingResort.hasSlopeBefore && (
                   <Button
                     size="sm"
                     variant="default"
-                    onClick={() => onStart(pendingResort, "existing")}
+                    onClick={() => onStart(pendingResort, "curated")}
                   >
-                    既存の slope_before を読み込んで編集
+                    確認済みの slope_before を読み込んで編集
+                  </Button>
+                )}
+                {pendingResort.hasSlopeBeforeOsm && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onStart(pendingResort, "osm")}
+                  >
+                    OpenStreetMapデータを読み込んで所属確認
                   </Button>
                 )}
                 <Button
                   size="sm"
                   variant={
-                    pendingResort.hasSlopeBefore || pendingDraft
+                    pendingResort.hasSlopeBefore ||
+                    pendingResort.hasSlopeBeforeOsm ||
+                    pendingCuratedDraft ||
+                    pendingOsmDraft
                       ? "outline"
                       : "default"
                   }
@@ -191,22 +297,19 @@ export function ResortSelectStep({ resorts, onStart }: ResortSelectStepProps) {
                 <p className="text-sm font-medium truncate">{resort.nameJa}</p>
                 <p className="text-xs text-gray-500">{resort.prefecture}</p>
               </div>
-              {drafts.has(resort.id) && (
-                <Badge
-                  variant="secondary"
-                  className="bg-orange-50 text-orange-900 text-xs"
-                >
-                  下書きあり
-                </Badge>
-              )}
-              {resort.hasSlopeBefore && (
-                <Badge
-                  variant="secondary"
-                  className="bg-blue-50 text-blue-900 text-xs"
-                >
-                  既存データあり
-                </Badge>
-              )}
+              <div className="flex shrink-0 flex-wrap justify-end gap-1">
+                {(drafts.has(draftMapKey(resort.id, "curated")) ||
+                  drafts.has(draftMapKey(resort.id, "osm"))) && (
+                  <ResortStatusBadge kind="draft" />
+                )}
+                {resort.hasSlopeBefore && (
+                  <ResortStatusBadge kind="confirmed" />
+                )}
+                {resort.hasSlopeBeforeOsm && <ResortStatusBadge kind="osm" />}
+                <ResortStatusBadge
+                  kind={resort.hasCrawlerCourses ? "crawler" : "noCrawler"}
+                />
+              </div>
             </div>
           ))}
           {filteredResorts.length === 0 && (
@@ -215,16 +318,6 @@ export function ResortSelectStep({ resorts, onStart }: ResortSelectStepProps) {
             </p>
           )}
         </div>
-      </div>
-
-      <div className="flex-1 min-w-0">
-        <ResortPickerMap
-          resorts={pickerResorts}
-          selectedResortId={pendingResortId}
-          onSelectResort={handleSelectResort}
-          filteredResortIdSet={filteredResortIdSet}
-          isFilterActive={isFilterActive}
-        />
       </div>
     </div>
   );

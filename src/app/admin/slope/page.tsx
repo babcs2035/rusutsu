@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getSkiResortsForMap } from "@/actions/skiResorts";
+import { listCrawlerCoveredResortIds } from "@/features/latest-status-mapping/server/crawlerAvailability";
 import { SlopeEditClient } from "@/features/slope/SlopeEditClient";
 import { listSlopeBeforeResortIds } from "@/features/slope/server/slopeFiles";
 import type { ResortOption } from "@/features/slope/types";
@@ -12,11 +13,15 @@ export const metadata: Metadata = {
 };
 
 export default async function SlopeEditPage() {
-  const [resorts, slopeBeforeIds] = await Promise.all([
-    getSkiResortsForMap(),
-    listSlopeBeforeResortIds(),
-  ]);
+  const [resorts, slopeBeforeIds, slopeBeforeOsmIds, crawlerCourseIds] =
+    await Promise.all([
+      getSkiResortsForMap(),
+      listSlopeBeforeResortIds(),
+      listSlopeBeforeResortIds("osm"),
+      listCrawlerCoveredResortIds("courses"),
+    ]);
   const slopeBeforeIdSet = new Set(slopeBeforeIds);
+  const slopeBeforeOsmIdSet = new Set(slopeBeforeOsmIds);
 
   const resortOptions: ResortOption[] = resorts.map(resort => ({
     id: resort.id,
@@ -29,6 +34,8 @@ export default async function SlopeEditPage() {
     longitude: resort.longitude,
     numberOfCourses: resort.numberOfCourses,
     hasSlopeBefore: slopeBeforeIdSet.has(resort.id),
+    hasSlopeBeforeOsm: slopeBeforeOsmIdSet.has(resort.id),
+    hasCrawlerCourses: crawlerCourseIds.has(resort.id),
   }));
 
   return (

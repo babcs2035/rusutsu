@@ -12,16 +12,16 @@
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import {
-  RESORT_SHEETS_ROOT,
-  TEMPORARY_RESORTS_ROOT,
-} from "../src/lib/finalizedResortGeojson";
+import { TEMPORARY_RESORTS_ROOT } from "../src/lib/finalizedResortGeojson";
 import {
   canonicalBase,
   createBaseNameIndex,
   matchBaseName,
 } from "../src/lib/resortMapMerge";
-import { readXlsxSheets, type SheetRow } from "../src/lib/xlsxReader";
+import { isLinkableSheetRow } from "./lib/resortSheetGeojsonMerge";
+import { readXlsxSheets, type SheetRow } from "./lib/xlsxReader";
+
+const RESORT_SHEETS_ROOT = path.join(process.cwd(), "src/private/data/resorts");
 
 type Kind = "course" | "lift";
 
@@ -107,7 +107,7 @@ const main = async () => {
   let emptyBooks = 0;
   let filledBooks = 0;
   let noGeometryRows = 0;
-  let skippedSheets = 0;
+  let skippedRows = 0;
   let linkedCourses = 0;
   let linkedLifts = 0;
 
@@ -149,17 +149,13 @@ const main = async () => {
     for (const entry of kinds) {
       if (entry.sheetRows.length === 0) continue;
 
-      // piste も searchWord も入っていないシートは結び付けない
-      const hasLinkableContent = entry.sheetRows.some(
-        row => trimmed(row, "piste") || trimmed(row, "searchWord"),
-      );
-      if (!hasLinkableContent) {
-        skippedSheets += 1;
-        continue;
-      }
+      // piste も searchWord も空の行は、他の列に値があっても結び付けない。
+      const linkableRows = entry.sheetRows.filter(isLinkableSheetRow);
+      skippedRows += entry.sheetRows.length - linkableRows.length;
+      if (linkableRows.length === 0) continue;
 
       const rowByName = new Map<string, SheetRow>();
-      for (const row of entry.sheetRows) {
+      for (const row of linkableRows) {
         rowByName.set(trimmed(row, "name"), row);
       }
       // 表示側とまったく同じ規則で突き合わせる
@@ -247,9 +243,7 @@ const main = async () => {
     `Excel: ${sheetFiles.length} 冊（中身あり ${filledBooks} / 空 ${emptyBooks}）`,
   );
   console.log(`結び付いた線: コース ${linkedCourses} / リフト ${linkedLifts}`);
-  console.log(
-    `\npiste も searchWord も無いので対象外: ${skippedSheets} シート`,
-  );
+  console.log(`\npiste も searchWord も無いので対象外: ${skippedRows} 行`);
   console.log(
     `線がまだ無いので対象外: ${noGeometryRows} 行（別途、線の用意が必要）`,
   );

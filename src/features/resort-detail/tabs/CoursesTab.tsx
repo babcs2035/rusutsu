@@ -268,9 +268,27 @@ export const CoursesTab = ({
 
         <section>
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <h2 className="text-lg font-bold text-gray-900 font-[var(--font-heading)]">
-              コース一覧
-            </h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-lg font-bold text-gray-900 font-[var(--font-heading)]">
+                コース一覧
+              </h2>
+              <Badge
+                variant="secondary"
+                className={
+                  finalizedMapData?.courses?.verificationStatus === "verified"
+                    ? "bg-green-50 text-green-900"
+                    : finalizedMapData?.courses?.verificationStatus === "mixed"
+                      ? "bg-blue-50 text-blue-900"
+                      : "bg-orange-50 text-orange-900"
+                }
+              >
+                {finalizedMapData?.courses?.verificationStatus === "verified"
+                  ? "✓ 確認済み"
+                  : finalizedMapData?.courses?.verificationStatus === "mixed"
+                    ? "確認済み / OpenStreetMap・未確認"
+                    : "OpenStreetMap・未確認"}
+              </Badge>
+            </div>
             <Select
               value={difficultyFilter}
               onValueChange={v => v && setDifficultyFilter(v)}
@@ -346,7 +364,21 @@ export const CoursesTab = ({
                         }
                       >
                         <TableCell className="px-4 py-3 font-semibold whitespace-nowrap">
-                          {group.displayName}
+                          <span className="inline-flex items-center gap-2">
+                            {group.displayName}
+                            <Badge
+                              variant="secondary"
+                              className={
+                                primaryCourse?.verificationStatus === "verified"
+                                  ? "bg-green-50 text-green-900 text-[10px]"
+                                  : "bg-orange-50 text-orange-900 text-[10px]"
+                              }
+                            >
+                              {primaryCourse?.verificationStatus === "verified"
+                                ? "✓ 確認済み"
+                                : "OSM・未確認"}
+                            </Badge>
+                          </span>
                         </TableCell>
                         <TableCell className="px-4 py-3 whitespace-nowrap">
                           <Badge

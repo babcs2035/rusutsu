@@ -111,6 +111,9 @@ export type ResortOption = {
   // ラベルの置き場所を取る優先度。一覧地図と同じ基準にそろえる
   numberOfCourses: number;
   hasLiftBefore: boolean;
+  // クローラーがこのスキー場のリフト営業情報を実際に取得できているか。
+  // クローラー自体があっても、リフトを取れていなければ false。
+  hasCrawlerLifts: boolean;
   // lift_confirmed.json 由来。確認済みにした日時（未確認なら null）
   confirmedAt: string | null;
   // false の場合、id が DB の SkiResort に存在しない

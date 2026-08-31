@@ -150,6 +150,7 @@ const mergeDetail = (
 
 // サーバーから読み込んだ既存データを編集用のコース配列へ変換する
 export const sourceDataToCourses = (
+  resortId: string,
   source: SlopeSourceData,
 ): {
   courses: EditorCourse[];
@@ -240,6 +241,8 @@ export const sourceDataToCourses = (
 
     courses.push({
       ...createEmptyCourse(),
+      skiId: resortId,
+      originalSkiId: resortId,
       name,
       coordinates,
       detail: mergedDetail.detail,
@@ -255,4 +258,56 @@ export const sourceDataToCourses = (
     (_, index) => !matchedDetailIndexes.has(index),
   );
   return { courses, preservedFeatures, preservedDetails, warnings };
+};
+
+/**
+ * 下書きの空欄を、いまの slope_before / slope_detail の値で埋める。
+ *
+ * 下書きは「その時の編集画面が持っていた値」しか覚えていない。読み込みが
+ * 不十分だった頃の下書きを開くと、ファイルには level や distance があるのに
+ * 画面は空、という食い違いが起きる。名前が一致するコースについてだけ、
+ * 空いている項目を埋め直す（入っている値は書き換えない）。
+ */
+export const fillDraftDetailFromSource = (
+  courses: EditorCourse[],
+  source: SlopeSourceData,
+): { courses: EditorCourse[]; filledCourseNames: string[] } => {
+  const sourceCourses = sourceDataToCourses("", source).courses;
+  const byName = new Map<string, EditorCourse>();
+  const duplicated = new Set<string>();
+  for (const course of sourceCourses) {
+    if (course.name === "") continue;
+    if (byName.has(course.name)) duplicated.add(course.name);
+    byName.set(course.name, course);
+  }
+
+  const filledCourseNames: string[] = [];
+  const nextCourses = courses.map(course => {
+    const origin = byName.get(course.name);
+    // 同じ名前が複数あると、どれの値か決められないので触らない
+    if (!origin || duplicated.has(course.name)) return course;
+
+    const detail = { ...course.detail };
+    let filled = false;
+    for (const key of Object.keys(detail) as Array<keyof CourseDetail>) {
+      if (detail[key] !== "" || origin.detail[key] === "") continue;
+      // biome-ignore lint/suspicious/noExplicitAny: CourseDetail の値はすべて文字列
+      (detail as any)[key] = origin.detail[key];
+      filled = true;
+    }
+    if (!filled) return course;
+    filledCourseNames.push(course.name);
+    return {
+      ...course,
+      detail,
+      // 元 properties も、下書きが持っていなければ拾い直す
+      beforeExtras:
+        Object.keys(course.beforeExtras).length === 0
+          ? origin.beforeExtras
+          : course.beforeExtras,
+      detailExtras: course.detailExtras ?? origin.detailExtras,
+    };
+  });
+
+  return { courses: nextCourses, filledCourseNames };
 };

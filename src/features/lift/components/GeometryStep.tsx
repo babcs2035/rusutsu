@@ -1,23 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { ArrowLeft, ListOrdered, Maximize2, Plus, Tag } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { OrderOrganizerDialog } from "@/features/latest-status-mapping/components/OrderOrganizerDialog";
+import { useLatestStatusMapping } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
+import { PanelSection } from "@/shared/components/PanelSection";
+import { moveItem, useSortableList } from "@/shared/hooks/useSortableList";
 import type { EditorLift, LngLat, ResortOption } from "../types";
 import {
   createEmptyLift,
   distanceM,
   formatDistanceM,
-  hasGeometryChange,
   hasLineChange,
   hasMidstationChange,
   liftDisplayName,
 } from "../utils/liftOps";
+import { LiftMappingList } from "./LiftMappingList";
 
 type GeometryStepProps = {
   resort: ResortOption;
@@ -34,6 +36,8 @@ type GeometryStepProps = {
   onFitBounds: () => void;
   onProceed: () => void;
   onBack: () => void;
+  showLabels: boolean;
+  onShowLabelsChange: (showLabels: boolean) => void;
 };
 
 const formatDateTime = (iso: string): string => {
@@ -83,15 +87,40 @@ export function GeometryStep({
   onFitBounds,
   onProceed,
   onBack,
+  showLabels,
+  onShowLabelsChange,
 }: GeometryStepProps) {
-  const [draggedLiftId, setDraggedLiftId] = useState<string | null>(null);
-  const [dropTarget, setDropTarget] = useState<{
-    liftId: string;
-    position: "before" | "after";
-  } | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [isOrganizerOpen, setIsOrganizerOpen] = useState(false);
   const selectedLift = lifts.find(lift => lift.id === selectedLiftId) ?? null;
+
+  const geojsonNames = useMemo(
+    () => lifts.map(lift => lift.name.trim()).filter(Boolean),
+    [lifts],
+  );
+  const mapping = useLatestStatusMapping({
+    resortId: resort.id,
+    kind: "lifts",
+    geojsonNames,
+  });
+
+  const sortable = useSortableList({
+    ids: lifts.map(lift => lift.id),
+    onReorder: (from, to) =>
+      // 削除予定のリフトも配列には残っているので、表示している並びだけを入れ替える
+      setLifts(previous => {
+        const visibleIds = lifts.map(lift => lift.id);
+        const reorderedIds = moveItem(visibleIds, from, to);
+        let cursor = 0;
+        const byId = new Map(previous.map(lift => [lift.id, lift]));
+        return previous.map(lift =>
+          visibleIds.includes(lift.id)
+            ? (byId.get(reorderedIds[cursor++]) ?? lift)
+            : lift,
+        );
+      }),
+  });
 
   // Escape キーで描画・中間駅モードを終了する
   useEffect(() => {
@@ -174,81 +203,62 @@ export function GeometryStep({
     onMidstationModeChange(false);
   };
 
-  const reorderLift = (
-    sourceLiftId: string,
-    targetLiftId: string,
-    position: "before" | "after",
-  ): void => {
-    if (sourceLiftId === targetLiftId) return;
-    setLifts(previous => {
-      const sourceIndex = previous.findIndex(lift => lift.id === sourceLiftId);
-      if (sourceIndex < 0) return previous;
-
-      const reordered = [...previous];
-      const [draggedLift] = reordered.splice(sourceIndex, 1);
-      const targetIndex = reordered.findIndex(lift => lift.id === targetLiftId);
-      if (targetIndex < 0) return previous;
-
-      reordered.splice(
-        position === "after" ? targetIndex + 1 : targetIndex,
-        0,
-        draggedLift,
-      );
-      return reordered;
-    });
-  };
-
-  const clearDragState = (): void => {
-    setDraggedLiftId(null);
-    setDropTarget(null);
-  };
-
   return (
-    <div className="flex h-full min-h-0 w-[min(480px,60vw)] lg:w-[480px] min-w-0 lg:min-w-[480px] flex-col border-r border-gray-200 p-4 gap-3 overflow-hidden">
-      <div className="flex justify-between items-center">
-        <div>
+    <div className="flex h-full min-h-0 w-full min-w-0 flex-col gap-2 border-l border-gray-200 bg-white p-3">
+      <div className="flex min-w-0 items-start justify-between gap-2">
+        <div className="min-w-0">
           <h2
-            className={`text-base font-bold ${resort.nameJa ? "font-[var(--font-heading)]" : "font-mono"}`}
+            className={cn(
+              "truncate font-bold text-base",
+              resort.nameJa ? "font-[var(--font-heading)]" : "font-mono",
+            )}
           >
             {resort.nameJa || resort.id}
           </h2>
-          <p className="text-xs text-gray-500">
+          <p className="truncate text-[11px] text-gray-500">
             {savedAt
-              ? `最終保存: ${formatDateTime(savedAt)}（下書き自動保存）`
-              : "未保存"}
+              ? `自動保存: ${formatDateTime(savedAt)}`
+              : "まだ自動保存されていません"}
           </p>
         </div>
-        <Button size="xs" variant="outline" onClick={onBack}>
-          所属確認へ戻る
+        <Button
+          size="sm"
+          variant="outline"
+          className="shrink-0"
+          onClick={onBack}
+        >
+          <ArrowLeft className="size-3.5" />
+          所属確認へ
         </Button>
       </div>
 
-      <Card className="flex-shrink-0">
-        <CardContent className="p-2">
-          <p className="mb-1 font-medium text-xs text-gray-600">地図の操作</p>
-          <p className="text-xs text-gray-600">
-            ・一覧または地図上の線をクリックしてリフトを選択
-          </p>
-          <p className="text-xs text-gray-600">
-            ・赤い点（始点・終点・中間点）: ドラッグで移動
-          </p>
-          <p className="text-xs text-gray-600">
-            ・青い点: クリックで中間に点を追加
-          </p>
-          <p className="text-xs text-gray-600">・赤い点を右クリックで削除</p>
-          <p className="text-xs text-gray-600">
-            ・緑の点は中間駅（ドラッグで移動）
-          </p>
-          <p className="text-xs text-gray-600">・破線は編集前の位置</p>
-          <p className="text-xs text-gray-600">
-            ・「リフトを追加」中は地図クリックで点を打つ（Esc で終了）
-          </p>
-        </CardContent>
-      </Card>
-
-      <div className="flex gap-2 flex-shrink-0 flex-wrap">
-        <Button size="sm" variant="default" onClick={handleAddLift}>
-          ＋ リフトを追加
+      <div className="flex flex-wrap gap-1.5">
+        <Button
+          size="sm"
+          variant="default"
+          className="min-w-[130px] flex-1"
+          onClick={handleAddLift}
+        >
+          <Plus className="size-3.5" />
+          リフトを追加
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={lifts.length < 2}
+          onClick={() => setIsOrganizerOpen(true)}
+        >
+          <ListOrdered className="size-3.5" />
+          並び替え画面
+        </Button>
+        <Button
+          size="sm"
+          variant={showLabels ? "default" : "outline"}
+          aria-pressed={showLabels}
+          onClick={() => onShowLabelsChange(!showLabels)}
+        >
+          <Tag className="size-3.5" />
+          名前を地図に表示
         </Button>
         <Button
           size="sm"
@@ -256,111 +266,78 @@ export function GeometryStep({
           onClick={onFitBounds}
           disabled={lifts.every(lift => lift.coordinates.length === 0)}
         >
+          <Maximize2 className="size-3.5" />
           全体表示
         </Button>
       </div>
 
-      {selectedLift && (
-        <div className="flex gap-2 flex-shrink-0 flex-wrap">
-          {selectedLift.isNew && (
-            <Button
-              size="xs"
-              variant={isDrawing ? "orange" : "outline"}
-              className={isDrawing ? "" : "text-orange-500"}
-              onClick={() => {
-                onMidstationModeChange(false);
-                onDrawingChange(!isDrawing);
-              }}
-            >
-              {isDrawing ? "描画終了" : "点を追加"}
-            </Button>
-          )}
-          <Button
-            size="xs"
-            variant={isMidstationMode ? "green" : "outline"}
-            className={isMidstationMode ? "" : "text-green-500"}
-            onClick={() => {
-              onDrawingChange(false);
-              onMidstationModeChange(!isMidstationMode);
-            }}
-          >
-            {isMidstationMode
-              ? "中間駅の配置を終了"
-              : selectedLift.midstation
-                ? "中間駅を置き直す（地図をクリック）"
-                : "中間駅を追加（地図をクリック）"}
-          </Button>
-          {selectedLift.midstation && (
-            <Button
-              size="xs"
-              variant="outline"
-              className="text-red-500"
-              onClick={handleDeleteMidstation}
-            >
-              中間駅を削除
-            </Button>
-          )}
-          {hasGeometryChange(selectedLift) && !selectedLift.isNew && (
-            <ConfirmDialog
-              open={resetDialogOpen}
-              onOpenChange={setResetDialogOpen}
-              title="位置変更の解除"
-              description={`「${liftDisplayName(selectedLift)}」の位置・中間駅の変更を取り消して、読み込み時の状態へ戻します。よろしいですか？`}
-              onConfirm={handleResetSelectedConfirm}
-              confirmLabel="取り消す"
-            />
-          )}
-          <ConfirmDialog
-            open={deleteDialogOpen}
-            onOpenChange={setDeleteDialogOpen}
-            title={selectedLift.isNew ? "新規リフトの削除" : "リフトの削除"}
-            description={
-              selectedLift.isNew
-                ? `新規リフト「${liftDisplayName(selectedLift)}」を削除します。よろしいですか？`
-                : `「${liftDisplayName(selectedLift)}」を削除予定にします。保存すると lift_before から削除されます。よろしいですか？`
-            }
-            onConfirm={handleDeleteLiftConfirm}
-            confirmLabel="削除する"
-          />
-          {hasGeometryChange(selectedLift) && !selectedLift.isNew && (
-            <Button
-              size="xs"
-              variant="outline"
-              className="text-red-500"
-              onClick={() => setResetDialogOpen(true)}
-            >
-              位置変更を取り消す
-            </Button>
-          )}
-          <Button
-            size="xs"
-            variant="ghost"
-            className="text-red-700 hover:text-red-800 hover:bg-red-50"
-            onClick={() => setDeleteDialogOpen(true)}
-          >
-            {selectedLift.isNew ? "この新規リフトを削除" : "このリフトを削除"}
-          </Button>
-        </div>
-      )}
+      <PanelSection
+        title="地図の操作を見る"
+        storageKey="rusutsu-lift-help-open"
+        defaultOpen={false}
+      >
+        <ul className="flex flex-col gap-1 text-[11px] leading-relaxed text-gray-700">
+          <li>
+            <span className="font-bold">リフトを選ぶ:</span>{" "}
+            地図の線か左の一覧をクリック。線は少し離れていても反応します。
+          </li>
+          <li>
+            <span className="font-bold">点を足す:</span>{" "}
+            選んでいる赤い線の上をクリックすると、その場所に点が入ります。
+          </li>
+          <li>
+            <span className="font-bold">点を動かす・消す:</span>{" "}
+            赤い点をドラッグで移動、右クリックまたは Delete で削除。
+          </li>
+          <li>
+            <span className="font-bold">中間駅:</span>{" "}
+            緑の点。「中間駅を追加」を押してから線の途中をクリックして置きます。
+          </li>
+          <li>
+            <span className="font-bold">破線:</span> 編集前の位置です。
+          </li>
+        </ul>
+      </PanelSection>
+
+      <ConfirmDialog
+        open={resetDialogOpen}
+        onOpenChange={setResetDialogOpen}
+        title="位置変更の解除"
+        description={`「${selectedLift ? liftDisplayName(selectedLift) : ""}」の位置・中間駅の変更を取り消して、読み込み時の状態へ戻します。よろしいですか？`}
+        onConfirm={handleResetSelectedConfirm}
+        confirmLabel="取り消す"
+      />
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title={selectedLift?.isNew ? "新規リフトの削除" : "リフトの削除"}
+        description={
+          selectedLift?.isNew
+            ? `新規リフト「${liftDisplayName(selectedLift)}」を削除します。よろしいですか？`
+            : `「${selectedLift ? liftDisplayName(selectedLift) : ""}」を削除予定にします。保存すると lift_before から削除されます。よろしいですか？`
+        }
+        onConfirm={handleDeleteLiftConfirm}
+        confirmLabel="削除する"
+      />
 
       {deletedLifts.length > 0 && (
-        <Alert className="border-red-300 bg-red-50 flex-shrink-0">
-          <AlertTitle className="px-3 py-2 text-xs font-bold text-red-700">
+        <Alert className="max-h-[140px] shrink-0 overflow-y-auto border-red-300 bg-red-50 p-2">
+          <AlertTitle className="text-xs font-bold text-red-700">
             削除予定（{deletedLifts.length} 件）
           </AlertTitle>
-          <AlertDescription className="max-h-[120px] overflow-y-auto">
+          <AlertDescription>
             {deletedLifts.map(lift => (
               <div
                 key={lift.id}
-                className="flex px-3 py-2 gap-2 items-center border-t border-red-100"
+                className="flex items-center gap-2 border-t border-red-100 py-1"
               >
-                <p className="text-sm flex-1 truncate">
+                <p className="min-w-0 flex-1 truncate text-xs">
                   {liftDisplayName(lift)}
                 </p>
                 <Button
                   size="xs"
                   variant="outline"
-                  className="text-red-500"
+                  className="shrink-0"
                   onClick={() => handleRestoreLift(lift.id)}
                 >
                   元に戻す
@@ -371,119 +348,59 @@ export function GeometryStep({
         </Alert>
       )}
 
-      <ScrollArea className="flex-1 min-h-[200px] border border-gray-200 rounded-md">
-        {lifts.map((lift, index) => {
-          const isActive = lift.id === selectedLiftId;
-          const change = describeChange(lift);
-          return (
-            <div
-              key={lift.id}
-              role="button"
-              tabIndex={0}
-              className={cn(
-                "p-2 border-b border-gray-100 cursor-pointer",
-                isActive && "bg-blue-50",
-                lift.id === draggedLiftId && "opacity-45",
-              )}
-              style={{
-                boxShadow:
-                  dropTarget?.liftId === lift.id
-                    ? dropTarget.position === "before"
-                      ? "inset 0 3px 0 rgb(59 130 246)"
-                      : "inset 0 -3px 0 rgb(59 130 246)"
-                    : undefined,
-              }}
-              onDragOver={event => {
-                if (draggedLiftId === null || draggedLiftId === lift.id) return;
-                event.preventDefault();
-                event.dataTransfer.dropEffect = "move";
-                const bounds = event.currentTarget.getBoundingClientRect();
-                setDropTarget({
-                  liftId: lift.id,
-                  position:
-                    event.clientY < bounds.top + bounds.height / 2
-                      ? "before"
-                      : "after",
-                });
-              }}
-              onDrop={event => {
-                event.preventDefault();
-                const sourceLiftId =
-                  draggedLiftId || event.dataTransfer.getData("text/plain");
-                const bounds = event.currentTarget.getBoundingClientRect();
-                reorderLift(
-                  sourceLiftId,
-                  lift.id,
-                  event.clientY < bounds.top + bounds.height / 2
-                    ? "before"
-                    : "after",
-                );
-                clearDragState();
-              }}
-              onClick={() => handleSelectLift(lift.id)}
-              onKeyDown={e => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  handleSelectLift(lift.id);
-                }
-              }}
-            >
-              <div className="flex gap-2 items-center">
-                <span
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`${liftDisplayName(lift, index)}を並び替え`}
-                  className="text-gray-400 text-lg leading-none cursor-grab select-none"
-                  draggable
-                  onDragStart={event => {
-                    setDraggedLiftId(lift.id);
-                    event.dataTransfer.effectAllowed = "move";
-                    event.dataTransfer.setData("text/plain", lift.id);
-                  }}
-                  onDragEnd={clearDragState}
-                  onClick={event => event.stopPropagation()}
-                  onKeyDown={event => event.stopPropagation()}
-                >
-                  ⠿
-                </span>
-                <p className="text-xs text-gray-500 w-6">{index + 1}</p>
-                <p className="text-sm font-medium flex-1 truncate">
-                  {liftDisplayName(lift, index)}
-                </p>
-                <p className="text-xs text-gray-500">
-                  {lift.coordinates.length} 点
-                </p>
-                {lift.midstation && (
-                  <p className="text-xs text-green-900">中間駅</p>
-                )}
-                {change && (
-                  <Badge
-                    variant="secondary"
-                    className="bg-orange-100 text-orange-900 text-xs whitespace-nowrap"
-                  >
-                    {change}
-                  </Badge>
-                )}
-              </div>
-            </div>
-          );
-        })}
-        {lifts.length === 0 && (
-          <p className="p-3 text-sm font-semibold text-gray-500">
-            「＋
-            リフトを追加」を押して、地図上で始点から終点へ順に点を打ってください。
-          </p>
-        )}
-      </ScrollArea>
-      {lifts.length > 1 && (
-        <p className="text-xs text-gray-500 -mt-0.5">
-          ⠿をドラッグして並び替えられます。変更した順番が保存後の GeoJSON
-          のリフト順になります。
-        </p>
-      )}
-      <Button variant="default" className="flex-shrink-0" onClick={onProceed}>
+      <LiftMappingList
+        lifts={lifts}
+        sortable={sortable}
+        mapping={mapping}
+        selectedLiftId={selectedLiftId}
+        onSelectLift={handleSelectLift}
+        onDeleteLift={liftId => {
+          onSelectLift(liftId);
+          setDeleteDialogOpen(true);
+        }}
+        onResetLift={liftId => {
+          onSelectLift(liftId);
+          setResetDialogOpen(true);
+        }}
+        isDrawing={isDrawing}
+        onDrawingChange={onDrawingChange}
+        isMidstationMode={isMidstationMode}
+        onMidstationModeChange={onMidstationModeChange}
+        onDeleteMidstation={handleDeleteMidstation}
+        describeChange={describeChange}
+      />
+
+      <Button variant="default" className="shrink-0" onClick={onProceed}>
         次へ（リフト詳細情報の入力）
       </Button>
+
+      <OrderOrganizerDialog
+        open={isOrganizerOpen}
+        onOpenChange={setIsOrganizerOpen}
+        resortId={resort.id}
+        resortName={resort.nameJa || resort.id}
+        kind="lifts"
+        items={lifts.map((lift, index) => ({
+          id: lift.id,
+          name: liftDisplayName(lift, index),
+          detail: `${lift.coordinates.length} 点`,
+        }))}
+        selectedItemId={selectedLiftId}
+        onSelectItem={handleSelectLift}
+        onReorder={(from, to) =>
+          setLifts(previous => {
+            const visibleIds = lifts.map(lift => lift.id);
+            const reorderedIds = moveItem(visibleIds, from, to);
+            let cursor = 0;
+            const byId = new Map(previous.map(lift => [lift.id, lift]));
+            return previous.map(lift =>
+              visibleIds.includes(lift.id)
+                ? (byId.get(reorderedIds[cursor++]) ?? lift)
+                : lift,
+            );
+          })
+        }
+      />
     </div>
   );
 }

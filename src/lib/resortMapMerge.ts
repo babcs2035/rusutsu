@@ -11,6 +11,8 @@
  * これまでと同じ問題を拾える。
  */
 
+import type { ResolvedLatestStatusMapping } from "@/features/latest-status-mapping/types";
+
 export type MergeIssue = {
   level: "error" | "warn";
   message: string;
@@ -267,6 +269,7 @@ export const mergeCourseFeatures = ({
   geometryFeatures,
   baseItems,
   statusItems,
+  statusMapping,
   baseSourceLabel,
   hasStatusSource,
   validateBaseFields,
@@ -276,6 +279,8 @@ export const mergeCourseFeatures = ({
   baseItems: Record<string, unknown>[];
   /** latest_data の courses */
   statusItems: Record<string, unknown>[];
+  /** 管理画面で保存した明示的な GeoJSON 名 → クロール名の対応 */
+  statusMapping?: ResolvedLatestStatusMapping;
   baseSourceLabel: string;
   hasStatusSource: boolean;
   /**
@@ -313,17 +318,38 @@ export const mergeCourseFeatures = ({
       });
     }
 
-    const statusName = removeSuffixIndexIfMultiPart(normName);
-    const status =
-      statusLookup.get(statusName) ??
-      statusLookup.get(canonicalBase(normName)) ??
-      statusLookup.get(addSectionMarker(statusName)) ??
-      null;
-    if (!status && canonicalBase(normName) !== "無名" && hasStatusSource) {
-      issues.push({
-        level: "warn",
-        message: `⚠️ Crawled data not found: ${normName}`,
-      });
+    let status: Record<string, unknown> | null = null;
+    if (statusMapping?.configured) {
+      if (!statusMapping.byGeojsonName.has(normName)) {
+        issues.push({
+          level: "warn",
+          message: `⚠️ Latest status mapping not found: ${normName}`,
+        });
+      } else {
+        const crawledName = statusMapping.byGeojsonName.get(normName);
+        if (crawledName) {
+          status = statusLookup.get(normalizeCrawledName(crawledName)) ?? null;
+          if (!status) {
+            issues.push({
+              level: "warn",
+              message: `⚠️ Mapped crawled data not found: ${normName} → ${crawledName}`,
+            });
+          }
+        }
+      }
+    } else {
+      const statusName = removeSuffixIndexIfMultiPart(normName);
+      status =
+        statusLookup.get(statusName) ??
+        statusLookup.get(canonicalBase(normName)) ??
+        statusLookup.get(addSectionMarker(statusName)) ??
+        null;
+      if (!status && canonicalBase(normName) !== "無名" && hasStatusSource) {
+        issues.push({
+          level: "warn",
+          message: `⚠️ Crawled data not found: ${normName}`,
+        });
+      }
     }
 
     const properties: Record<string, unknown> = { ...feature.properties };
@@ -367,6 +393,7 @@ export const mergeLiftFeatures = ({
   geometryFeatures,
   baseItems,
   statusItems,
+  statusMapping,
   baseSourceLabel,
   hasStatusSource,
   validateBaseFields,
@@ -374,6 +401,7 @@ export const mergeLiftFeatures = ({
   geometryFeatures: RawGeoFeature[];
   baseItems: Record<string, unknown>[];
   statusItems: Record<string, unknown>[];
+  statusMapping?: ResolvedLatestStatusMapping;
   baseSourceLabel: string;
   hasStatusSource: boolean;
   validateBaseFields: boolean;
@@ -406,12 +434,33 @@ export const mergeLiftFeatures = ({
       });
     }
 
-    const status = statusLookup.get(name) ?? null;
-    if (!status && hasStatusSource) {
-      issues.push({
-        level: "warn",
-        message: `⚠️ Crawled data not found: ${name}`,
-      });
+    let status: Record<string, unknown> | null = null;
+    if (statusMapping?.configured) {
+      if (!statusMapping.byGeojsonName.has(name)) {
+        issues.push({
+          level: "warn",
+          message: `⚠️ Latest status mapping not found: ${name}`,
+        });
+      } else {
+        const crawledName = statusMapping.byGeojsonName.get(name);
+        if (crawledName) {
+          status = statusLookup.get(crawledName) ?? null;
+          if (!status) {
+            issues.push({
+              level: "warn",
+              message: `⚠️ Mapped crawled data not found: ${name} → ${crawledName}`,
+            });
+          }
+        }
+      }
+    } else {
+      status = statusLookup.get(name) ?? null;
+      if (!status && hasStatusSource) {
+        issues.push({
+          level: "warn",
+          message: `⚠️ Crawled data not found: ${name}`,
+        });
+      }
     }
 
     if (base && validateBaseFields) {

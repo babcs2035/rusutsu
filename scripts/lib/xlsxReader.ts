@@ -1,11 +1,10 @@
 import { inflateRawSync } from "node:zlib";
 
 /**
- * xlsx から表を読むための最小限の実装。
+ * データ生成スクリプトが xlsx から表を読むための最小限の実装。
  *
- * スキー場ごとの基本情報は Excel で管理されていて、それを表示のたびに読む。
- * 中間の JSON を挟むと更新のたびに変換を忘れる余地が生まれるので、
- * 直接読む。xlsx は XML を固めた ZIP なので、必要なところだけ取り出す。
+ * xlsx は XML を固めた ZIP なので、必要なところだけ取り出す。
+ * アプリ実行時には使わず、GeoJSON へ統合する処理だけから呼び出す。
  */
 
 type ZipEntries = Map<string, Buffer>;

@@ -62,7 +62,10 @@ export const JAPAN_BOUNDS = {
 
 export const UNNAMED_PREFIX = "無名";
 
-export const RESORT_INITIAL_ZOOM = 14;
+// MapLibre のスタイルズーム基準。256px のタイルを tileSize:256 で使うと、
+// MapLibre は「スタイルズーム + 1」の生タイルを取りに行くので、Leaflet 時代の
+// 値（14）から 1 引いてある。詳しい事情は src/features/map/constants.ts:13-21。
+export const RESORT_INITIAL_ZOOM = 13;
 
 export const TILE_LAYERS: Record<
   Exclude<TileLayerId, "googleSatellite" | "googleHybrid">,

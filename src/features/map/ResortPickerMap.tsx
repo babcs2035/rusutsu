@@ -257,7 +257,12 @@ export function ResortPickerMap({
   }, [isReady, map, selectedLat, selectedLng]);
 
   return (
-    <div className="relative h-full w-full" data-map-tile-variant="pale">
+    // isolate で重なりの文脈を閉じる。中の地図コントロールは z-[750] を持つので、
+    // 閉じておかないとダイアログ（z-50）より前に出てしまう
+    <div
+      className="relative isolate h-full w-full"
+      data-map-tile-variant="pale"
+    >
       <div ref={containerRef} className="h-full w-full" />
       <MapLibreControls
         map={map}

@@ -32,17 +32,20 @@ const buildCourseBeforeProperties = (
   course: EditorCourse,
 ): Record<string, unknown> => ({
   ...course.beforeExtras,
+  ...(course.skiId !== course.originalSkiId
+    ? { assignment_method: "manual" }
+    : {}),
   ...buildCourseDetailProperties(resortId, course),
 });
 
 export const courseToSavePayload = (
-  resortId: string,
   course: EditorCourse,
 ): SaveCoursePayload => ({
-  properties: buildCourseBeforeProperties(resortId, course),
+  targetSkiId: course.skiId,
+  properties: buildCourseBeforeProperties(course.skiId, course),
   coordinates: course.coordinates,
   // slope_detail 形式のダウンロードにも同じ詳細を出力する。
-  detail: buildCourseDetailProperties(resortId, course),
+  detail: buildCourseDetailProperties(course.skiId, course),
 });
 
 // slope_before と同じ形式（詳細情報を properties に含む）の GeoJSON
@@ -55,7 +58,10 @@ export const buildRusutsuGeojson = (
       type: "FeatureCollection",
       features: courses.map(course => ({
         type: "Feature",
-        properties: buildCourseBeforeProperties(resortId, course),
+        properties: buildCourseBeforeProperties(
+          course.skiId || resortId,
+          course,
+        ),
         geometry: {
           type: "LineString",
           coordinates: course.coordinates,
@@ -72,7 +78,9 @@ export const buildSlopeDetailJson = (
   courses: EditorCourse[],
 ): string =>
   JSON.stringify(
-    courses.map(course => courseToSavePayload(resortId, course).detail),
+    courses.map(course =>
+      buildCourseDetailProperties(course.skiId || resortId, course),
+    ),
     null,
     2,
   );

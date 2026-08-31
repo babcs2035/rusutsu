@@ -1,8 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { CircleMarker, MapContainer, TileLayer, Tooltip } from "react-leaflet";
-import { Badge } from "@/components/ui/badge";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,13 +10,28 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { TILE_LAYERS } from "@/features/slope/constants";
+import {
+  ResortPickerLegend,
+  ResortPickerMap,
+} from "@/features/map/ResortPickerMap";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
+import {
+  ResortStatusBadge,
+  ResortStatusLegend,
+} from "@/shared/components/ResortStatusBadges";
 import { discardDraft, listDraftSummaries } from "../hooks/useDraftStorage";
 import type { DraftSummary, ResortOption } from "../types";
 
 export type StartSource = "draft" | "existing" | "new";
+
+type CrawlerFilter = "all" | "with" | "without";
+
+const CRAWLER_FILTERS: Array<{ id: CrawlerFilter; label: string }> = [
+  { id: "all", label: "すべて" },
+  { id: "with", label: "クローラーあり" },
+  { id: "without", label: "クローラーなし" },
+];
 
 type ResortSelectStepProps = {
   resorts: ResortOption[];
@@ -37,6 +50,7 @@ export function ResortSelectStep({
   onToggleConfirmed,
 }: ResortSelectStepProps) {
   const [query, setQuery] = useState("");
+  const [crawlerFilter, setCrawlerFilter] = useState<CrawlerFilter>("all");
   const [pendingResortId, setPendingResortId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Map<string, DraftSummary>>(new Map());
 
@@ -48,15 +62,18 @@ export function ResortSelectStep({
 
   const filteredResorts = useMemo(() => {
     const keyword = query.trim().toLowerCase();
-    if (keyword === "") return resorts;
-    return resorts.filter(
-      resort =>
+    return resorts.filter(resort => {
+      if (crawlerFilter === "with" && !resort.hasCrawlerLifts) return false;
+      if (crawlerFilter === "without" && resort.hasCrawlerLifts) return false;
+      if (keyword === "") return true;
+      return (
         resort.nameJa.toLowerCase().includes(keyword) ||
         resort.nameEn.toLowerCase().includes(keyword) ||
         resort.prefecture.toLowerCase().includes(keyword) ||
-        resort.id.toLowerCase().includes(keyword),
-    );
-  }, [resorts, query]);
+        resort.id.toLowerCase().includes(keyword)
+      );
+    });
+  }, [crawlerFilter, resorts, query]);
 
   const pendingResort =
     resorts.find(resort => resort.id === pendingResortId) ?? null;
@@ -65,6 +82,31 @@ export function ResortSelectStep({
     : null;
 
   const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
+
+  const isFilterActive = query.trim() !== "";
+  const filteredResortIdSet = useMemo(
+    () => new Set(filteredResorts.map(resort => resort.id)),
+    [filteredResorts],
+  );
+  const pickerResorts = useMemo(
+    () =>
+      resorts
+        // centroid を出せなかった仮 ID は座標が 0,0 になる。地図には出さない
+        .filter(resort => resort.latitude !== 0 || resort.longitude !== 0)
+        .map(resort => ({
+          id: resort.id,
+          labelName: resort.labelName,
+          latitude: resort.latitude,
+          longitude: resort.longitude,
+          numberOfCourses: resort.numberOfCourses,
+          hasExistingData: resort.hasLiftBefore,
+        })),
+    [resorts],
+  );
+  const handleSelectResort = useCallback(
+    (id: string) => setPendingResortId(id),
+    [],
+  );
 
   const handleDiscardDraft = () => {
     if (!pendingResort || !pendingDraft) return;
@@ -77,11 +119,18 @@ export function ResortSelectStep({
     setDiscardDialogOpen(false);
   };
 
-  const gsiPale = TILE_LAYERS.gsiPale;
-
   return (
     <div className="flex h-full min-h-0">
-      <div className="flex w-[min(420px,60vw)] lg:w-[420px] min-w-0 lg:min-w-[420px] flex-col border-r border-gray-200 p-4 gap-3 overflow-hidden">
+      <div className="flex-1 min-w-0">
+        <ResortPickerMap
+          resorts={pickerResorts}
+          selectedResortId={pendingResortId}
+          onSelectResort={handleSelectResort}
+          filteredResortIdSet={filteredResortIdSet}
+          isFilterActive={isFilterActive}
+        />
+      </div>
+      <div className="flex w-[min(460px,60vw)] min-w-0 flex-col gap-2 overflow-hidden border-l border-gray-200 bg-white p-3 lg:w-[460px] lg:min-w-[460px]">
         <h2 className="text-lg font-bold font-[var(--font-heading)]">
           スキー場を選ぶ
         </h2>
@@ -95,6 +144,25 @@ export function ResortSelectStep({
           value={query}
           onChange={event => setQuery(event.target.value)}
         />
+        <div className="flex flex-wrap items-center gap-1">
+          {CRAWLER_FILTERS.map(filter => (
+            <Button
+              key={filter.id}
+              size="xs"
+              variant={crawlerFilter === filter.id ? "default" : "outline"}
+              onClick={() => setCrawlerFilter(filter.id)}
+            >
+              {filter.label}
+            </Button>
+          ))}
+          <span className="text-[11px] text-gray-500">
+            {filteredResorts.length} 件
+          </span>
+        </div>
+        <ResortStatusLegend
+          kinds={["confirmed", "liftData", "crawler", "noCrawler"]}
+        />
+        <ResortPickerLegend />
 
         {pendingResort && (
           <Card className="rounded-md border-2 border-blue-600 bg-blue-50">
@@ -104,19 +172,30 @@ export function ResortSelectStep({
                   <p className="font-bold font-[var(--font-heading)]">
                     {pendingResort.nameJa}
                   </p>
-                  <p className="text-xs text-gray-600 mb-2">
+                  <p className="text-xs text-gray-600">
                     {pendingResort.prefecture} / {pendingResort.id}
                   </p>
                 </>
               ) : (
                 <>
                   <p className="font-bold font-mono">{pendingResort.id}</p>
-                  <p className="text-xs text-gray-600 mb-2">
+                  <p className="text-xs text-gray-600">
                     DB のスキー場一覧には無い ID です（lift_before
                     のみ存在する意図的な仮 ID の可能性があります）
                   </p>
                 </>
               )}
+              <div className="mt-1 mb-2 flex flex-wrap gap-1">
+                {pendingResort.hasLiftBefore && (
+                  <ResortStatusBadge kind="liftData" />
+                )}
+                {pendingResort.confirmedAt && (
+                  <ResortStatusBadge kind="confirmed" />
+                )}
+                <ResortStatusBadge
+                  kind={pendingResort.hasCrawlerLifts ? "crawler" : "noCrawler"}
+                />
+              </div>
               <div className="flex flex-col gap-2">
                 {pendingDraft && (
                   <>
@@ -226,38 +305,28 @@ export function ResortSelectStep({
                   </p>
                 )}
               </div>
-              {!resort.isKnownResort && (
-                <Badge variant="secondary" className="text-xs">
-                  未登録ID
-                </Badge>
-              )}
-              {resort.confirmedAt && (
-                <TooltipProvider delay={0}>
-                  <ShadcnTooltip>
-                    <TooltipTrigger>
-                      <Badge
-                        variant="secondary"
-                        className="text-xs text-green-900"
-                      >
-                        ✓ 確認済み
-                      </Badge>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-xs text-xs">
-                      確認済み: {formatDateTime(resort.confirmedAt)}
-                    </TooltipContent>
-                  </ShadcnTooltip>
-                </TooltipProvider>
-              )}
-              {drafts.has(resort.id) && (
-                <Badge variant="secondary" className="text-xs text-orange-900">
-                  下書きあり
-                </Badge>
-              )}
-              {resort.hasLiftBefore && (
-                <Badge variant="secondary" className="text-xs text-blue-600">
-                  リフトデータあり
-                </Badge>
-              )}
+              <div className="flex shrink-0 flex-wrap justify-end gap-1">
+                {!resort.isKnownResort && (
+                  <ResortStatusBadge kind="unknownId" />
+                )}
+                {resort.confirmedAt && (
+                  <TooltipProvider delay={0}>
+                    <ShadcnTooltip>
+                      <TooltipTrigger>
+                        <ResortStatusBadge kind="confirmed" />
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs text-xs">
+                        確認済み: {formatDateTime(resort.confirmedAt)}
+                      </TooltipContent>
+                    </ShadcnTooltip>
+                  </TooltipProvider>
+                )}
+                {drafts.has(resort.id) && <ResortStatusBadge kind="draft" />}
+                {resort.hasLiftBefore && <ResortStatusBadge kind="liftData" />}
+                <ResortStatusBadge
+                  kind={resort.hasCrawlerLifts ? "crawler" : "noCrawler"}
+                />
+              </div>
             </div>
           ))}
           {filteredResorts.length === 0 && (
@@ -266,43 +335,6 @@ export function ResortSelectStep({
             </p>
           )}
         </div>
-      </div>
-
-      <div className="flex-1 min-w-0">
-        <MapContainer
-          center={[38.25, 138.0]}
-          zoom={6}
-          className="w-full h-full"
-        >
-          <TileLayer
-            url={gsiPale.url}
-            attribution={gsiPale.attribution}
-            maxZoom={gsiPale.maxZoom}
-          />
-          {resorts.map(resort => (
-            <CircleMarker
-              key={resort.id}
-              center={[resort.latitude, resort.longitude]}
-              radius={resort.id === pendingResortId ? 9 : 6}
-              pathOptions={{
-                color: "#fff",
-                weight: 1.5,
-                fillColor:
-                  resort.id === pendingResortId
-                    ? "#dd6b20"
-                    : resort.hasLiftBefore
-                      ? "#3182ce"
-                      : "#718096",
-                fillOpacity: 0.9,
-              }}
-              eventHandlers={{
-                click: () => setPendingResortId(resort.id),
-              }}
-            >
-              <Tooltip>{resort.nameJa || resort.id}</Tooltip>
-            </CircleMarker>
-          ))}
-        </MapContainer>
       </div>
     </div>
   );

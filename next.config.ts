@@ -28,14 +28,6 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "surfsnow.jp",
-      },
-      {
-        protocol: "https",
-        hostname: "www.snowjapan.com",
-      },
-      {
-        protocol: "https",
         hostname: "*.googleusercontent.com",
       },
     ],

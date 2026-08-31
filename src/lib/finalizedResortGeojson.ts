@@ -1,13 +1,19 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { readResolvedLatestStatusMapping } from "@/features/latest-status-mapping/server/mappingFiles";
+import type { ResolvedLatestStatusMapping } from "@/features/latest-status-mapping/types";
 import { calculateCoordinateSlopes } from "./finalizedResortGeojsonShared";
+import {
+  type LatestSuccessfulStatus,
+  loadLatestSuccessfulStatus,
+  selectLatestStatusFile as selectLatestTimestampedStatusFile,
+} from "./latestStatusFiles";
 import {
   type MergeIssue,
   mergeCourseFeatures,
   mergeLiftFeatures,
   type RawGeoFeature,
 } from "./resortMapMerge";
-import { readXlsxSheets } from "./xlsxReader";
 
 export type GeoCoordinate = [number, number] | [number, number, number];
 
@@ -17,6 +23,9 @@ export type FinalizedCourseFeature = {
   displayName: string;
   groupId: string;
   sectionName: string | null;
+  /** 人手確認済みの既存データか、未確認のOSM由来か。 */
+  verificationStatus?: "verified" | "unverified";
+  sourceUrls?: string[];
   coordinates: GeoCoordinate[];
   properties: {
     name: string;
@@ -110,18 +119,27 @@ export type FinalizedLiftFeature = {
 
 export type ResortMapSection<TFeature> = {
   /** 線を取ってきた場所 */
-  source: "slope_10m" | "slope_before" | "lift_20m" | "lift_before";
+  source:
+    | "slope_10m"
+    | "slope_before"
+    | "slope_10m_osm"
+    | "slope_before_osm"
+    | "mixed"
+    | "lift_20m"
+    | "lift_before";
   /** 基本情報を取ってきた場所 */
   baseSource:
     | "slope_before"
+    | "slope_before_osm"
     | "slope_detail"
     | "lift_before"
     | "lift_detail"
-    | "resorts.xlsx"
+    | "mixed"
     | null;
   fileName: string;
   /** 公式サイトの出典（latest_data の courseUrl / liftUrl） */
   sourceUrls: string[];
+  verificationStatus?: "verified" | "unverified" | "mixed";
   features: TFeature[];
 };
 
@@ -152,12 +170,6 @@ type TimestampedFile = {
 export const FINALIZED_RESORTS_ROOT = path.join(
   /* turbopackIgnore: true */ process.cwd(),
   "src/private/data/resorts-finalized",
-);
-
-/** スキー場ごとの基本情報（Excel）の置き場 */
-export const RESORT_SHEETS_ROOT = path.join(
-  /* turbopackIgnore: true */ process.cwd(),
-  "src/private/data/resorts",
 );
 
 export const TEMPORARY_RESORTS_ROOT = path.join(
@@ -268,6 +280,8 @@ const createFeatureId = (
 const normalizeCourseFeature = (
   feature: unknown,
   index: number,
+  verificationStatus: "verified" | "unverified" = "verified",
+  sourceUrls: string[] = [],
 ): FinalizedCourseFeature | null => {
   if (!isRecord(feature)) return null;
   const candidate = feature as GeoJsonFeature;
@@ -280,16 +294,20 @@ const normalizeCourseFeature = (
   const properties = candidate.properties ?? {};
   const name = normalizeString(properties.name) ?? `コース ${index + 1}`;
   const parsedName = parseFinalizedCourseName(name);
+  const baseId = createFeatureId("course", properties, index);
+  const sourcePrefix = verificationStatus === "unverified" ? "osm-" : "";
 
   return {
-    id: createFeatureId("course", properties, index),
+    id: `${sourcePrefix}${baseId}`,
     name,
     displayName: parsedName.displayName,
     groupId:
       parsedName.sectionName === null
-        ? createFeatureId("course", properties, index)
-        : `course-group-${parsedName.groupName}`,
+        ? `${sourcePrefix}${baseId}`
+        : `${sourcePrefix}course-group-${parsedName.groupName}`,
     sectionName: parsedName.sectionName,
+    verificationStatus,
+    sourceUrls,
     coordinates,
     properties: {
       name,
@@ -426,9 +444,6 @@ const readGeoJsonFeatures = async (
   }
 };
 
-const TIMESTAMPED_JSON_RE =
-  /^(\d{4})_(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})\.json$/;
-
 /**
  * latest_data の最新ファイル。
  *
@@ -436,106 +451,11 @@ const TIMESTAMPED_JSON_RE =
  * ファイル名が時刻そのものなので、そちらから選ぶ。
  */
 export const selectLatestStatusFile = (fileNames: string[]): string | null => {
-  const candidates = fileNames
-    .filter(fileName => TIMESTAMPED_JSON_RE.test(fileName))
-    .sort();
-  return candidates[candidates.length - 1] ?? null;
-};
-
-type LatestStatusData = {
-  fileName: string;
-  time: string | null;
-  courses: Record<string, unknown>[];
-  lifts: Record<string, unknown>[];
-  courseUrls: string[];
-  liftUrls: string[];
+  return selectLatestTimestampedStatusFile(fileNames);
 };
 
 const toRecordArray = (value: unknown): Record<string, unknown>[] =>
   Array.isArray(value) ? value.filter(isRecord) : [];
-
-const toStringArray = (value: unknown): string[] => {
-  if (typeof value === "string") return value.length > 0 ? [value] : [];
-  if (!Array.isArray(value)) return [];
-  // 同じ URL が並ぶことがあるので畳む
-  return [
-    ...new Set(
-      value.filter(
-        (item): item is string => typeof item === "string" && item.length > 0,
-      ),
-    ),
-  ];
-};
-
-const loadLatestStatus = async (
-  resortId: string,
-  temporaryRoot: string,
-): Promise<LatestStatusData | null> => {
-  const directory = path.resolve(temporaryRoot, "latest_data", resortId);
-  let fileNames: string[];
-  try {
-    fileNames = await fs.readdir(directory);
-  } catch {
-    return null;
-  }
-
-  const fileName = selectLatestStatusFile(fileNames);
-  if (!fileName) return null;
-
-  const parsed = await readJsonFile<Record<string, unknown>>(
-    path.join(directory, fileName),
-  );
-  if (!parsed) return null;
-
-  return {
-    fileName,
-    time: normalizeString(parsed.time),
-    courses: toRecordArray(parsed.courses),
-    lifts: toRecordArray(parsed.lifts),
-    courseUrls: toStringArray(parsed.courseUrl),
-    liftUrls: toStringArray(parsed.liftUrl),
-  };
-};
-
-/**
- * スキー場ごとの Excel から基本情報を読む。
- * slope_detail / lift_detail が無いスキー場はこちらが本体になる。
- */
-const readResortSheet = async (
-  resortId: string,
-  sheetName: "Courses" | "Lifts",
-  sheetsRoot: string,
-): Promise<Record<string, unknown>[]> => {
-  const directory = path.resolve(sheetsRoot);
-  const filePath = path.resolve(directory, `${resortId}.xlsx`);
-  if (!filePath.startsWith(`${directory}${path.sep}`)) return [];
-
-  try {
-    const sheets = readXlsxSheets(await fs.readFile(filePath));
-    // 名前が入っていない行は中身が無い。空のブックも多いので落としておく
-    return (sheets.get(sheetName) ?? []).filter(
-      row => (row.name ?? "").trim().length > 0,
-    ) as Record<string, unknown>[];
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-      console.warn("Failed to read resort sheet", { resortId, error });
-    }
-    return [];
-  }
-};
-
-/**
- * Excel の中身が名前だけのときは結び付けない。
- *
- * piste も searchWord も入っていないシートは、繋いでも画面に出せるものが増えず、
- * 名前が近いだけの別物を拾ってしまう危険の方が大きい。
- */
-const hasLinkableSheetContent = (items: Record<string, unknown>[]) =>
-  items.some(item =>
-    ["piste", "searchWord"].some(
-      key => String(item[key] ?? "").trim().length > 0,
-    ),
-  );
 
 /** *_before に基本情報まで入っているかどうかで、基本情報の出どころを決める */
 const hasAnyKey = (items: Record<string, unknown>[], keys: readonly string[]) =>
@@ -572,11 +492,8 @@ type BaseSourceResult<TLabel> = {
 const loadCourseBase = async (
   resortId: string,
   temporaryRoot: string,
-  sheetsRoot: string,
   beforeFeatures: RawGeoFeature[] | null,
-): Promise<
-  BaseSourceResult<"slope_before" | "slope_detail" | "resorts.xlsx">
-> => {
+): Promise<BaseSourceResult<"slope_before" | "slope_detail">> => {
   const beforeItems = (beforeFeatures ?? []).map(feature => feature.properties);
   if (hasAnyKey(beforeItems, COURSE_BASE_KEYS)) {
     return { items: beforeItems, label: "slope_before", isCurated: true };
@@ -593,11 +510,6 @@ const loadCourseBase = async (
     return { items: detailItems, label: "slope_detail", isCurated: true };
   }
 
-  const sheetItems = await readResortSheet(resortId, "Courses", sheetsRoot);
-  if (hasLinkableSheetContent(sheetItems)) {
-    return { items: sheetItems, label: "resorts.xlsx", isCurated: true };
-  }
-
   return beforeItems.length > 0
     ? { items: beforeItems, label: "slope_before", isCurated: false }
     : null;
@@ -606,11 +518,8 @@ const loadCourseBase = async (
 const loadLiftBase = async (
   resortId: string,
   temporaryRoot: string,
-  sheetsRoot: string,
   beforeFeatures: RawGeoFeature[] | null,
-): Promise<
-  BaseSourceResult<"lift_before" | "lift_detail" | "resorts.xlsx">
-> => {
+): Promise<BaseSourceResult<"lift_before" | "lift_detail">> => {
   const beforeItems = (beforeFeatures ?? []).map(feature => feature.properties);
   if (hasAnyKey(beforeItems, LIFT_BASE_KEYS)) {
     return { items: beforeItems, label: "lift_before", isCurated: true };
@@ -627,11 +536,6 @@ const loadLiftBase = async (
     return { items: detailItems, label: "lift_detail", isCurated: true };
   }
 
-  const sheetItems = await readResortSheet(resortId, "Lifts", sheetsRoot);
-  if (hasLinkableSheetContent(sheetItems)) {
-    return { items: sheetItems, label: "resorts.xlsx", isCurated: true };
-  }
-
   return beforeItems.length > 0
     ? { items: beforeItems, label: "lift_before", isCurated: false }
     : null;
@@ -639,8 +543,6 @@ const loadLiftBase = async (
 
 export type ResortMapDataRoots = {
   temporaryRoot: string;
-  /** スキー場ごとの Excel。省略すると既定の置き場を見る */
-  sheetsRoot?: string;
 };
 
 export type ResortMergeReport = {
@@ -652,8 +554,8 @@ export type ResortMergeReport = {
 const readKindGeometry = async (
   resortId: string,
   temporaryRoot: string,
-  primary: "slope_10m" | "lift_20m",
-  fallback: "slope_before" | "lift_before",
+  primary: "slope_10m" | "slope_10m_osm" | "lift_20m",
+  fallback: "slope_before" | "slope_before_osm" | "lift_before",
 ) => {
   const primaryPath = resolveTemporaryFile(
     primary,
@@ -691,37 +593,58 @@ const readKindGeometry = async (
   return null;
 };
 
-const buildCourseSection = async (
+const buildCourseSourceSection = async (
   resortId: string,
   roots: Required<ResortMapDataRoots>,
-  status: LatestStatusData | null,
+  status: LatestSuccessfulStatus | null,
+  statusMapping: ResolvedLatestStatusMapping,
+  sourceKind: "curated" | "osm",
 ) => {
-  const { temporaryRoot, sheetsRoot } = roots;
-  const geometry = await readKindGeometry(
-    resortId,
-    temporaryRoot,
-    "slope_10m",
-    "slope_before",
-  );
-  if (!geometry) return { section: null, issues: [] as MergeIssue[] };
+  const { temporaryRoot } = roots;
+  const geometry =
+    sourceKind === "curated"
+      ? await readKindGeometry(
+          resortId,
+          temporaryRoot,
+          "slope_10m",
+          "slope_before",
+        )
+      : await readKindGeometry(
+          resortId,
+          temporaryRoot,
+          "slope_10m_osm",
+          "slope_before_osm",
+        );
+  if (!geometry) return null;
 
-  const base = await loadCourseBase(
-    resortId,
-    temporaryRoot,
-    sheetsRoot,
-    geometry.beforeFeatures,
-  );
+  const isOsm = sourceKind === "osm";
+  const base = isOsm
+    ? ({
+        items: (geometry.beforeFeatures ?? []).map(
+          feature => feature.properties,
+        ),
+        label: "slope_before_osm" as const,
+        isCurated: false,
+      } satisfies NonNullable<BaseSourceResult<"slope_before_osm">>)
+    : await loadCourseBase(resortId, temporaryRoot, geometry.beforeFeatures);
+  const sourceUrls = isOsm
+    ? ["https://www.openstreetmap.org/copyright"]
+    : (status?.sourceUrls ?? []);
+  const verificationStatus = isOsm ? "unverified" : "verified";
   const merged = mergeCourseFeatures({
     geometryFeatures: geometry.features,
     baseItems: base?.items ?? [],
-    statusItems: status?.courses ?? [],
+    statusItems: status?.items ?? [],
+    statusMapping,
     baseSourceLabel: base?.label ?? "slope_detail",
-    hasStatusSource: (status?.courses.length ?? 0) > 0,
+    hasStatusSource: (status?.items.length ?? 0) > 0,
     validateBaseFields: base?.isCurated === true,
   });
 
   const features = merged.features
-    .map(normalizeCourseFeature)
+    .map((feature, index) =>
+      normalizeCourseFeature(feature, index, verificationStatus, sourceUrls),
+    )
     .filter((feature): feature is FinalizedCourseFeature => feature !== null);
   if (features.length === 0) return { section: null, issues: merged.issues };
 
@@ -730,19 +653,57 @@ const buildCourseSection = async (
       source: geometry.source,
       baseSource: base?.label ?? null,
       fileName: status?.fileName ?? geometry.fileName,
-      sourceUrls: status?.courseUrls ?? [],
+      sourceUrls,
+      verificationStatus,
       features,
     } satisfies ResortMapSection<FinalizedCourseFeature>,
     issues: merged.issues,
   };
 };
 
+const buildCourseSection = async (
+  resortId: string,
+  roots: Required<ResortMapDataRoots>,
+  status: LatestSuccessfulStatus | null,
+  statusMapping: ResolvedLatestStatusMapping,
+) => {
+  const [curated, osm] = await Promise.all([
+    buildCourseSourceSection(resortId, roots, status, statusMapping, "curated"),
+    buildCourseSourceSection(resortId, roots, status, statusMapping, "osm"),
+  ]);
+
+  if (!curated && !osm) {
+    return { section: null, issues: [] as MergeIssue[] };
+  }
+  if (!curated) {
+    return osm ?? { section: null, issues: [] as MergeIssue[] };
+  }
+  if (!osm) return curated;
+  if (!curated.section) return osm;
+  if (!osm.section) return curated;
+
+  return {
+    section: {
+      source: "mixed",
+      baseSource: "mixed",
+      fileName: status?.fileName ?? curated.section.fileName,
+      sourceUrls: [
+        ...new Set([...curated.section.sourceUrls, ...osm.section.sourceUrls]),
+      ],
+      verificationStatus: "mixed",
+      features: [...curated.section.features, ...osm.section.features],
+    } satisfies ResortMapSection<FinalizedCourseFeature>,
+    issues: [...curated.issues, ...osm.issues],
+  };
+};
+
 const buildLiftSection = async (
   resortId: string,
   roots: Required<ResortMapDataRoots>,
-  status: LatestStatusData | null,
+  status: LatestSuccessfulStatus | null,
+  statusMapping: ResolvedLatestStatusMapping,
 ) => {
-  const { temporaryRoot, sheetsRoot } = roots;
+  const { temporaryRoot } = roots;
   const geometry = await readKindGeometry(
     resortId,
     temporaryRoot,
@@ -754,15 +715,15 @@ const buildLiftSection = async (
   const base = await loadLiftBase(
     resortId,
     temporaryRoot,
-    sheetsRoot,
     geometry.beforeFeatures,
   );
   const merged = mergeLiftFeatures({
     geometryFeatures: geometry.features,
     baseItems: base?.items ?? [],
-    statusItems: status?.lifts ?? [],
+    statusItems: status?.items ?? [],
+    statusMapping,
     baseSourceLabel: base?.label ?? "lift_detail",
-    hasStatusSource: (status?.lifts.length ?? 0) > 0,
+    hasStatusSource: (status?.items.length ?? 0) > 0,
     validateBaseFields: base?.isCurated === true,
   });
 
@@ -776,7 +737,7 @@ const buildLiftSection = async (
       source: geometry.source,
       baseSource: base?.label ?? null,
       fileName: status?.fileName ?? geometry.fileName,
-      sourceUrls: status?.liftUrls ?? [],
+      sourceUrls: status?.sourceUrls ?? [],
       features,
     } satisfies ResortMapSection<FinalizedLiftFeature>,
     issues: merged.issues,
@@ -797,14 +758,22 @@ export const buildResortMapData = async (
   const report: ResortMergeReport = { resortId, courses: [], lifts: [] };
   if (!isSafeResortId(resortId)) return { data: null, report };
 
-  const resolvedRoots = {
-    temporaryRoot: roots.temporaryRoot,
-    sheetsRoot: roots.sheetsRoot ?? RESORT_SHEETS_ROOT,
-  };
-  const status = await loadLatestStatus(resortId, roots.temporaryRoot);
+  const resolvedRoots = { temporaryRoot: roots.temporaryRoot };
+  const [courseStatus, liftStatus, courseStatusMapping, liftStatusMapping] =
+    await Promise.all([
+      loadLatestSuccessfulStatus(roots.temporaryRoot, resortId, "courses"),
+      loadLatestSuccessfulStatus(roots.temporaryRoot, resortId, "lifts"),
+      readResolvedLatestStatusMapping(roots.temporaryRoot, resortId, "courses"),
+      readResolvedLatestStatusMapping(roots.temporaryRoot, resortId, "lifts"),
+    ]);
   const [courses, lifts] = await Promise.all([
-    buildCourseSection(resortId, resolvedRoots, status),
-    buildLiftSection(resortId, resolvedRoots, status),
+    buildCourseSection(
+      resortId,
+      resolvedRoots,
+      courseStatus,
+      courseStatusMapping,
+    ),
+    buildLiftSection(resortId, resolvedRoots, liftStatus, liftStatusMapping),
   ]);
 
   report.courses = courses.issues;

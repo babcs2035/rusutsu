@@ -216,7 +216,7 @@ export function DetailStep({
   };
 
   return (
-    <div className="flex h-full min-h-0 w-[min(480px,60vw)] lg:w-[480px] min-w-0 lg:min-w-[480px] flex-col gap-3 overflow-y-auto border-r border-gray-200 p-4">
+    <div className="flex h-full min-h-0 w-full min-w-0 flex-col gap-2 overflow-y-auto border-l border-gray-200 bg-white p-3">
       <div className="flex items-center justify-between">
         <div>
           <h2

@@ -393,6 +393,9 @@ export const CompareSlopeFeatureDetail = ({
           lift={selectedLift}
           resortLabelName={getResortSearchName(resort.id, resort.nameJa)}
           courseSourceUrls={resort.finalizedMapData?.courses?.sourceUrls ?? []}
+          courseVerificationStatus={
+            resort.finalizedMapData?.courses?.verificationStatus
+          }
           liftSourceUrls={resort.finalizedMapData?.lifts?.sourceUrls ?? []}
           selectedElevationProfilePoint={selection.elevationPoint}
           onSelectedElevationProfilePointChange={point =>
@@ -518,6 +521,9 @@ const ResortSlopeMapCard = ({
         lift={selectedLift}
         resortLabelName={getResortSearchName(resort.id, resort.nameJa)}
         courseSourceUrls={resort.finalizedMapData?.courses?.sourceUrls ?? []}
+        courseVerificationStatus={
+          resort.finalizedMapData?.courses?.verificationStatus
+        }
         liftSourceUrls={resort.finalizedMapData?.lifts?.sourceUrls ?? []}
         selectedElevationProfilePoint={selection.elevationPoint}
         onSelectedElevationProfilePointChange={point =>

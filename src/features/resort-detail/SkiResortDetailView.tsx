@@ -20,7 +20,6 @@ import { ResortMapSection } from "./components/ResortMapSection";
 import { useBodyScrollLock } from "./hooks/useBodyScrollLock";
 import {
   CoursesTab,
-  ImageCarousel,
   InfoSection,
   LiftsTab,
   OverviewTab,
@@ -158,10 +157,6 @@ export const SkiResortDetailView = ({
   }
 
   const resort = resortData;
-  const images = [
-    ...(resort.outlineImages || []),
-    ...(resort.courseImages || []),
-  ];
   const resortInfo = {
     id: resort.id,
     nameJa: resort.nameJa,
@@ -173,16 +168,13 @@ export const SkiResortDetailView = ({
     yukiMagi: resort.yukiMagi,
   };
   const desktopDetailHeader = (
-    <>
-      <InfoSection
-        resort={resortInfo}
-        finalizedOperationSummary={resort.finalizedOperationSummary}
-        isCompareSelected={isCompareSelected}
-        onToggleCompare={onToggleCompare}
-        onClose={onClose}
-      />
-      <ImageCarousel images={images} alt={resort.nameJa} />
-    </>
+    <InfoSection
+      resort={resortInfo}
+      finalizedOperationSummary={resort.finalizedOperationSummary}
+      isCompareSelected={isCompareSelected}
+      onToggleCompare={onToggleCompare}
+      onClose={onClose}
+    />
   );
   const finalizedCourseGroups = createFinalizedCourseGroups(
     resort.finalizedMapData?.courses?.features ?? [],
@@ -216,6 +208,9 @@ export const SkiResortDetailView = ({
         lift={selectedLift}
         resortLabelName={getResortSearchName(resort.id, resort.nameJa)}
         courseSourceUrls={resort.finalizedMapData?.courses?.sourceUrls ?? []}
+        courseVerificationStatus={
+          resort.finalizedMapData?.courses?.verificationStatus
+        }
         liftSourceUrls={resort.finalizedMapData?.lifts?.sourceUrls ?? []}
         selectedElevationProfilePoint={selectedElevationProfilePoint}
         onSelectedElevationProfilePointChange={

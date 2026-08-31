@@ -50,6 +50,7 @@ test("normalizeLevel leaves conflicts and unrecognized text blank", () => {
 
 test("sourceDataToCourses warns and does not fall back from invalid detail level", () => {
   const source: SlopeSourceData = {
+    sourceKind: "curated",
     geojson: {
       type: "FeatureCollection",
       features: [
@@ -76,7 +77,7 @@ test("sourceDataToCourses warns and does not fall back from invalid detail level
     detailFileHash: null,
   };
 
-  const result = sourceDataToCourses(source);
+  const result = sourceDataToCourses("test-resort", source);
 
   assert.equal(result.courses[0].detail.level, "");
   assert.equal(result.warnings.length, 1);

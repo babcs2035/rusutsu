@@ -20,6 +20,7 @@ export const FinalizedFeatureDetail = ({
   lift,
   resortLabelName,
   courseSourceUrls,
+  courseVerificationStatus,
   liftSourceUrls,
   selectedElevationProfilePoint,
   onSelectedElevationProfilePointChange,
@@ -31,6 +32,7 @@ export const FinalizedFeatureDetail = ({
   /** 地図のラベルに出している省略名。検索語の組み立てに使う */
   resortLabelName: string;
   courseSourceUrls: string[];
+  courseVerificationStatus?: "verified" | "unverified" | "mixed";
   liftSourceUrls: string[];
   selectedElevationProfilePoint: ElevationProfileMapPoint | null;
   onSelectedElevationProfilePointChange: (
@@ -90,6 +92,7 @@ export const FinalizedFeatureDetail = ({
             courseGroup={courseGroup}
             resortLabelName={resortLabelName}
             sourceUrls={courseSourceUrls}
+            verificationStatus={courseVerificationStatus}
             selectedElevationProfilePoint={selectedElevationProfilePoint}
             onSelectedElevationProfilePointChange={
               onSelectedElevationProfilePointChange

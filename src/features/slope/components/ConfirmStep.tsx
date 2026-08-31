@@ -13,13 +13,16 @@ import type {
   ResortOption,
   SlopeBeforeFeature,
   SlopeDetailEntry,
+  SlopeSourceKind,
 } from "../types";
 import { courseToSavePayload } from "../utils/exportFiles";
 import { validateCourses } from "../utils/validation";
 
 type ConfirmStepProps = {
   resort: ResortOption;
+  resorts: ResortOption[];
   courses: EditorCourse[];
+  sourceKind: SlopeSourceKind;
   fileHash: string | null;
   detailFileHash: string | null;
   preservedFeatures: SlopeBeforeFeature[];
@@ -33,7 +36,9 @@ const displayValue = (value: string): string =>
 
 export function ConfirmStep({
   resort,
+  resorts,
   courses,
+  sourceKind,
   fileHash,
   detailFileHash,
   preservedFeatures,
@@ -45,6 +50,12 @@ export function ConfirmStep({
   const [serverErrors, setServerErrors] = useState<string[]>([]);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const validation = useMemo(() => validateCourses(courses, true), [courses]);
+  const movedCourses = courses.filter(
+    course => course.skiId !== course.originalSkiId,
+  );
+  const resortById = new Map(resorts.map(option => [option.id, option]));
+  const directoryName =
+    sourceKind === "osm" ? "slope_before_osm" : "slope_before";
 
   const handleSaveConfirm = async () => {
     if (validation.errors.length > 0 || isSaving) return;
@@ -54,9 +65,10 @@ export function ConfirmStep({
     try {
       const result = await saveSlopeEdits({
         resortId: resort.id,
+        sourceKind,
         fileHash,
         detailFileHash,
-        courses: courses.map(course => courseToSavePayload(resort.id, course)),
+        courses: courses.map(courseToSavePayload),
         preservedFeatures,
         preservedDetails,
       });
@@ -85,6 +97,17 @@ export function ConfirmStep({
             <p className="text-sm text-gray-600">
               {resort.nameJa}（{resort.id}） / 全 {courses.length} コース
             </p>
+            <p
+              className={
+                sourceKind === "curated"
+                  ? "text-xs text-green-900"
+                  : "text-xs text-orange-900"
+              }
+            >
+              {sourceKind === "curated"
+                ? "✓ 確認済みデータ"
+                : "OpenStreetMap由来・未確認データ"}
+            </p>
           </div>
           <Button size="sm" variant="outline" onClick={onBack}>
             分割・詳細編集へ戻る
@@ -97,7 +120,7 @@ export function ConfirmStep({
               保存後のコース順（{courses.length} 件）
             </h3>
             <p className="text-xs text-gray-500 mb-3">
-              この順番で slope_before の features に保存されます。
+              この順番で {directoryName} の features に保存されます。
             </p>
             <div className="flex flex-col gap-3">
               {courses.map((course, index) => (
@@ -127,6 +150,25 @@ export function ConfirmStep({
           </CardContent>
         </Card>
 
+        {movedCourses.length > 0 && (
+          <Card>
+            <CardContent className="p-4">
+              <h3 className="mb-2 text-sm font-semibold font-[var(--font-heading)]">
+                所属スキー場の変更（{movedCourses.length}件）
+              </h3>
+              {movedCourses.map(course => (
+                <p key={course.id} className="text-sm">
+                  ・{displayValue(course.name)}: {course.originalSkiId} →{" "}
+                  {course.skiId}
+                  {resortById.get(course.skiId)?.nameJa
+                    ? `（${resortById.get(course.skiId)?.nameJa}）`
+                    : ""}
+                </p>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
         {preservedFeatures.length > 0 && (
           <Card>
             <CardContent className="p-4">
@@ -135,7 +177,7 @@ export function ConfirmStep({
               </h3>
               <p className="text-xs text-gray-600">
                 LineString 以外、または座標を編集できない feature
-                は内容を変えずに slope_before の末尾へ保持します。
+                は内容を変えずに {directoryName} の末尾へ保持します。
               </p>
             </CardContent>
           </Card>
@@ -197,7 +239,7 @@ export function ConfirmStep({
             open={saveDialogOpen}
             onOpenChange={setSaveDialogOpen}
             title="保存確認"
-            description="編集結果で slope_before を書き換えます。よろしいですか？"
+            description={`編集結果を ${directoryName} に保存します。よろしいですか？`}
             onConfirm={handleSaveConfirm}
             confirmLabel="保存する"
           />
@@ -205,7 +247,7 @@ export function ConfirmStep({
             disabled={validation.errors.length > 0 || isSaving}
             onClick={() => setSaveDialogOpen(true)}
           >
-            {isSaving ? "保存中…" : "保存（slope_before を書き換える）"}
+            {isSaving ? "保存中…" : `保存（${directoryName}を書き換える）`}
           </Button>
           <Button variant="outline" onClick={onBack} disabled={isSaving}>
             戻る

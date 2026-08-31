@@ -4,6 +4,8 @@ import {
 } from "@/shared/utils/searchWord";
 import { UNNAMED_PREFIX } from "../constants";
 import type { CourseDetail, EditorCourse, LngLat } from "../types";
+import type { LinePosition, LineSide } from "./lineGeometry";
+import { joinLines } from "./lineGeometry";
 
 export const createEmptyDetail = (): CourseDetail => ({
   level: "",
@@ -24,6 +26,8 @@ export const createCourseId = (): string =>
 
 export const createEmptyCourse = (): EditorCourse => ({
   id: createCourseId(),
+  skiId: "",
+  originalSkiId: "",
   name: "",
   unnamed: false,
   coordinates: [],
@@ -36,7 +40,7 @@ export const createEmptyCourse = (): EditorCourse => ({
 
 export const fillEmptyCourseSearchWords = (
   courses: EditorCourse[],
-  resortName: string,
+  resortName: string | ((course: EditorCourse) => string),
 ): EditorCourse[] =>
   courses.map(course =>
     course.detail.searchWord.trim() === ""
@@ -44,7 +48,12 @@ export const fillEmptyCourseSearchWords = (
           ...course,
           detail: {
             ...course.detail,
-            searchWord: buildDefaultSearchWord(resortName, course.name),
+            searchWord: buildDefaultSearchWord(
+              typeof resortName === "function"
+                ? resortName(course)
+                : resortName,
+              course.name,
+            ),
           },
         }
       : course,
@@ -209,4 +218,111 @@ export const mergeSplitGroup = (
     inserted = true;
     return [merged];
   });
+};
+
+// 結合で残す側と、結合後にどちらの詳細情報を引き継ぐか
+export type MergeAnchor = {
+  courseId: string;
+  position: LinePosition;
+  keep: LineSide;
+};
+
+export type MergeCoursesOptions = {
+  name: string;
+  // 詳細情報（難易度・斜度など）をどちらのコースから引き継ぐか
+  detailFrom: "first" | "second";
+};
+
+const stripSplitSuffixForMerge = (name: string): string =>
+  name.replace(/_#.*$/, "");
+
+/**
+ * 分割グループから 1 本抜けたあとの後始末。
+ * 残り 1 本になったグループは、グループとして扱う意味がないので解除する。
+ */
+const dissolveEmptySplitGroups = (courses: EditorCourse[]): EditorCourse[] => {
+  const counts = new Map<string, number>();
+  for (const course of courses) {
+    if (!course.splitGroupId) continue;
+    counts.set(course.splitGroupId, (counts.get(course.splitGroupId) ?? 0) + 1);
+  }
+  return courses.map(course =>
+    course.splitGroupId && (counts.get(course.splitGroupId) ?? 0) < 2
+      ? { ...course, splitGroupId: null, splitBaseName: null }
+      : course,
+  );
+};
+
+/**
+ * 2 本のコースを、それぞれの指定位置でつないで 1 本にする。
+ *
+ * 端どうしだけでなく、コースの途中どうしもつなげる。1 本目の枠（id・所属・
+ * 元 properties）をそのまま使い、2 本目は一覧から取り除く。
+ * 分割グループに属していたコースを結合した場合はグループから外す
+ * （名前の付け直しはしない。勝手に改名すると追跡できなくなるため）。
+ */
+export const mergeCourses = (
+  courses: EditorCourse[],
+  first: MergeAnchor,
+  second: MergeAnchor,
+  options: MergeCoursesOptions,
+  resortName = "",
+): EditorCourse[] => {
+  if (first.courseId === second.courseId) return courses;
+  const firstCourse = courses.find(course => course.id === first.courseId);
+  const secondCourse = courses.find(course => course.id === second.courseId);
+  if (!firstCourse || !secondCourse) return courses;
+
+  const coordinates = joinLines(
+    {
+      coordinates: firstCourse.coordinates,
+      position: first.position,
+      keep: first.keep,
+    },
+    {
+      coordinates: secondCourse.coordinates,
+      position: second.position,
+      keep: second.keep,
+    },
+  );
+  if (coordinates.length < 2) return courses;
+
+  const detailSource =
+    options.detailFrom === "second" ? secondCourse : firstCourse;
+  const nextName = options.name.trim();
+  const merged: EditorCourse = {
+    ...firstCourse,
+    name: nextName,
+    unnamed: nextName === "" ? firstCourse.unnamed : false,
+    coordinates,
+    detail: {
+      ...detailSource.detail,
+      searchWord: updateDefaultSearchWord(
+        detailSource.detail.searchWord,
+        resortName,
+        detailSource.name,
+        nextName,
+      ),
+    },
+    detailExtras: detailSource.detailExtras,
+    splitGroupId: null,
+    splitBaseName: null,
+  };
+
+  return dissolveEmptySplitGroups(
+    courses.flatMap(course => {
+      if (course.id === second.courseId) return [];
+      return [course.id === first.courseId ? merged : course];
+    }),
+  );
+};
+
+/** 結合後の既定のコース名。分割サフィックスは落として素の名前へ戻す */
+export const suggestMergedName = (
+  first: EditorCourse,
+  second: EditorCourse,
+): string => {
+  const firstName = stripSplitSuffixForMerge(first.name).trim();
+  if (firstName !== "") return firstName;
+  return stripSplitSuffixForMerge(second.name).trim();
 };

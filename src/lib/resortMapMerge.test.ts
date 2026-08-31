@@ -89,6 +89,48 @@ test("コースは基本情報と当日の状況を重ねる", () => {
   assert.deepEqual(result.issues, []);
 });
 
+test("コースは管理画面の明示対応を自動対応より優先する", () => {
+  const result = mergeCourseFeatures({
+    geometryFeatures: [line("白樺ゲレンデ_#上部")],
+    baseItems: [],
+    statusItems: [
+      { name: "白樺ゲレンデ上部", status: "○" },
+      { name: "公式表記の別名", status: "×", note: "明示対応" },
+    ],
+    statusMapping: {
+      configured: true,
+      sourceFile: "2026_0101_000000.json",
+      byGeojsonName: new Map([["白樺ゲレンデ_#上部", "公式表記の別名"]]),
+    },
+    baseSourceLabel: "slope_before",
+    hasStatusSource: true,
+    validateBaseFields: false,
+  });
+
+  assert.equal(result.features[0]?.properties.status, "×");
+  assert.equal(result.features[0]?.properties.latest_note, "明示対応");
+  assert.deepEqual(result.issues, []);
+});
+
+test("明示的に対応なしにしたコースへ営業情報を自動結合しない", () => {
+  const result = mergeCourseFeatures({
+    geometryFeatures: [line("白樺ゲレンデ_#上部")],
+    baseItems: [],
+    statusItems: [{ name: "白樺ゲレンデ上部", status: "○" }],
+    statusMapping: {
+      configured: true,
+      sourceFile: "2026_0101_000000.json",
+      byGeojsonName: new Map([["白樺ゲレンデ_#上部", null]]),
+    },
+    baseSourceLabel: "slope_before",
+    hasStatusSource: true,
+    validateBaseFields: false,
+  });
+
+  assert.equal(result.features[0]?.properties.status, undefined);
+  assert.deepEqual(result.issues, []);
+});
+
 test("コースは足りない情報を Python と同じ文言で報告する", () => {
   const result = mergeCourseFeatures({
     geometryFeatures: [line("ダウンヒル")],
@@ -153,4 +195,23 @@ test("リフトは公表値と地図の測定値のずれを報告する", () =>
     ["⚠️ Distance mismatch for '第1ペア': official: 1000.0, map: 1200.0"],
   );
   assert.equal(result.features[0]?.properties.status, "×");
+});
+
+test("リフトは別名の明示対応を使う", () => {
+  const result = mergeLiftFeatures({
+    geometryFeatures: [line("第1ペアリフト")],
+    baseItems: [],
+    statusItems: [{ name: "第1ペア", status: "○" }],
+    statusMapping: {
+      configured: true,
+      sourceFile: "2026_0101_000000.json",
+      byGeojsonName: new Map([["第1ペアリフト", "第1ペア"]]),
+    },
+    baseSourceLabel: "lift_before",
+    hasStatusSource: true,
+    validateBaseFields: false,
+  });
+
+  assert.equal(result.features[0]?.properties.status, "○");
+  assert.deepEqual(result.issues, []);
 });

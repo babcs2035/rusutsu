@@ -6,6 +6,9 @@ export type FinalizedCourseFeature = {
   displayName: string;
   groupId: string;
   sectionName: string | null;
+  /** 人手確認済みの既存データか、未確認のOSM由来か。 */
+  verificationStatus?: "verified" | "unverified";
+  sourceUrls?: string[];
   coordinates: GeoCoordinate[];
   properties: {
     name: string;
@@ -105,18 +108,28 @@ export type FinalizedLiftFeature = {
 
 export type ResortMapSection<TFeature> = {
   /** 線を取ってきた場所 */
-  source: "slope_10m" | "slope_before" | "lift_20m" | "lift_before";
+  source:
+    | "slope_10m"
+    | "slope_before"
+    | "slope_10m_osm"
+    | "slope_before_osm"
+    | "mixed"
+    | "lift_20m"
+    | "lift_before";
   /** 基本情報を取ってきた場所 */
   baseSource:
     | "slope_before"
+    | "slope_before_osm"
     | "slope_detail"
     | "lift_before"
     | "lift_detail"
-    | "resorts.xlsx"
+    | "mixed"
     | null;
   fileName: string;
   /** 公式サイトの出典（latest_data の courseUrl / liftUrl） */
   sourceUrls: string[];
+  /** 人手で検査した既存コースか、未確認のOSM由来か。 */
+  verificationStatus?: "verified" | "unverified" | "mixed";
   features: TFeature[];
 };
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { ExternalLink, Play } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
   formatUpdatedAt,
@@ -33,6 +34,7 @@ export const FeatureHeadline = ({
   update,
   searchWord,
   sourceUrls,
+  verificationStatus,
 }: {
   difficulty?: { label: string; color: string } | null;
   items: HeadlineItem[];
@@ -41,12 +43,31 @@ export const FeatureHeadline = ({
   searchWord?: string | null;
   /** 公式サイトの出典 */
   sourceUrls?: string[];
+  verificationStatus?: "verified" | "unverified" | "mixed";
 }) => {
   const updatedAt = formatUpdatedAt(update);
 
   return (
     <div className="flex flex-col gap-2.5">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        {verificationStatus && (
+          <Badge
+            variant="secondary"
+            className={
+              verificationStatus === "verified"
+                ? "bg-green-50 text-green-900"
+                : verificationStatus === "mixed"
+                  ? "bg-blue-50 text-blue-900"
+                  : "bg-orange-50 text-orange-900"
+            }
+          >
+            {verificationStatus === "verified"
+              ? "✓ 確認済み"
+              : verificationStatus === "mixed"
+                ? "確認済み / OpenStreetMap・未確認"
+                : "OpenStreetMap・未確認"}
+          </Badge>
+        )}
         {difficulty && (
           <span
             className="rounded-md px-2.5 py-1 text-base font-bold leading-none text-white"

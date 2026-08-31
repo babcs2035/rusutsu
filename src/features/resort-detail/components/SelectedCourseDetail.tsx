@@ -28,6 +28,7 @@ type Props = {
   courseGroup: FinalizedCourseGroup;
   resortLabelName: string;
   sourceUrls: string[];
+  verificationStatus?: "verified" | "unverified" | "mixed";
   selectedElevationProfilePoint: ElevationProfileMapPoint | null;
   onSelectedElevationProfilePointChange: (
     point: ElevationProfileMapPoint | null,
@@ -44,6 +45,7 @@ export const SelectedCourseDetail = ({
   courseGroup,
   resortLabelName,
   sourceUrls,
+  verificationStatus,
   selectedElevationProfilePoint,
   onSelectedElevationProfilePointChange,
 }: Props) => {
@@ -124,7 +126,10 @@ export const SelectedCourseDetail = ({
         ]}
         update={selectedCourse.properties.update}
         searchWord={searchWord}
-        sourceUrls={sourceUrls}
+        sourceUrls={selectedCourse.sourceUrls ?? sourceUrls}
+        verificationStatus={
+          selectedCourse.verificationStatus ?? verificationStatus
+        }
       />
 
       <ElevationProfile

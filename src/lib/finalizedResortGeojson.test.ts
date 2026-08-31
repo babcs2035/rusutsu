@@ -300,6 +300,51 @@ test("map data follows finalized, measured, then before priority", async () => {
       },
     );
 
+    const explicitMappingId = "explicit-mapping";
+    await writeGeojson(
+      path.join(
+        roots.temporaryRoot,
+        "slope_10m",
+        `${explicitMappingId}.geojson`,
+      ),
+      "地図側コース名",
+      [
+        [140, 40, 1000],
+        [140.01, 40.01, 900],
+      ],
+    );
+    await writeJson(
+      path.join(
+        roots.temporaryRoot,
+        "latest_data",
+        explicitMappingId,
+        "2026_0101_000000.json",
+      ),
+      {
+        courses: [{ name: "公式サイト側コース名", status: "×", note: "運休" }],
+      },
+    );
+    await writeJson(
+      path.join(
+        roots.temporaryRoot,
+        "latest_status_mapping",
+        `${explicitMappingId}.json`,
+      ),
+      {
+        version: 1,
+        courses: {
+          sourceFile: "2026_0101_000000.json",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+          rows: [
+            {
+              crawledName: "公式サイト側コース名",
+              geojsonName: "地図側コース名",
+            },
+          ],
+        },
+      },
+    );
+
     const measuredId = "measured-fallback";
     await writeGeojson(
       path.join(roots.temporaryRoot, "slope_10m", `${measuredId}.geojson`),
@@ -338,10 +383,107 @@ test("map data follows finalized, measured, then before priority", async () => {
       { aerialway: "chair_lift" },
     );
 
+    const osmId = "osm-fallback";
+    await writeGeojson(
+      path.join(roots.temporaryRoot, "slope_10m_osm", `${osmId}.geojson`),
+      "OSMコース",
+      [
+        [140, 40],
+        [140.01, 40.01],
+      ],
+    );
+    await writeGeojson(
+      path.join(roots.temporaryRoot, "slope_before_osm", `${osmId}.geojson`),
+      "OSMコース",
+      [
+        [140, 40],
+        [140.01, 40.01],
+      ],
+      { level: "初級", osm_source: "OpenStreetMap" },
+    );
+    // 同名の curated 詳細があっても、OSMコースへ混ぜない。
+    await writeJson(
+      path.join(roots.temporaryRoot, "slope_detail", `${osmId}.json`),
+      [{ name: "OSMコース", level: "上級" }],
+    );
+
+    const mixedId = "mixed-sources";
+    await writeGeojson(
+      path.join(roots.temporaryRoot, "slope_before", `${mixedId}.geojson`),
+      "確認済みコース",
+      [
+        [140, 40],
+        [140.01, 40.01],
+      ],
+      { level: "中級" },
+    );
+    await writeGeojson(
+      path.join(roots.temporaryRoot, "slope_before_osm", `${mixedId}.geojson`),
+      "OSM追加コース",
+      [
+        [140.02, 40.02],
+        [140.03, 40.03],
+      ],
+      { level: "初級", osm_source: "OpenStreetMap" },
+    );
+
+    const perKindLatestId = "per-kind-latest";
+    await writeGeojson(
+      path.join(roots.temporaryRoot, "slope_10m", `${perKindLatestId}.geojson`),
+      "旧コース取得",
+      [
+        [140, 40],
+        [140.01, 40.01],
+      ],
+    );
+    await writeGeojson(
+      path.join(roots.temporaryRoot, "lift_20m", `${perKindLatestId}.geojson`),
+      "新リフト取得",
+      [
+        [140, 40],
+        [140.01, 40.01],
+      ],
+    );
+    await writeJson(
+      path.join(
+        roots.temporaryRoot,
+        "latest_data",
+        perKindLatestId,
+        "2026_0101_000000.json",
+      ),
+      {
+        courses: [{ name: "旧コース取得", status: "△" }],
+        courseUrl: "https://example.com/older-course",
+      },
+    );
+    await writeJson(
+      path.join(
+        roots.temporaryRoot,
+        "latest_data",
+        perKindLatestId,
+        "2026_0101_000100.json",
+      ),
+      {
+        lifts: [{ name: "新リフト取得", status: "○" }],
+        liftUrl: "https://example.com/newer-lift",
+      },
+    );
+    await writeJson(
+      path.join(
+        roots.temporaryRoot,
+        "latest_data",
+        perKindLatestId,
+        "2026_0101_000200.json",
+      ),
+      { weather: { status: "取得成功" } },
+    );
+
     const mergedData = await getResortMapDataFromRoots(mergedId, roots);
     const mergedCourse = mergedData?.courses?.features[0];
     assert.equal(mergedData?.courses?.source, "slope_10m");
     assert.equal(mergedData?.courses?.baseSource, "slope_detail");
+    assert.equal(mergedData?.courses?.verificationStatus, "verified");
+    assert.equal(mergedCourse?.verificationStatus, "verified");
     assert.deepEqual(mergedData?.courses?.sourceUrls, [
       "https://example.com/course",
     ]);
@@ -361,6 +503,19 @@ test("map data follows finalized, measured, then before priority", async () => {
     assert.deepEqual(mergedData?.lifts?.sourceUrls, [
       "https://example.com/lift",
     ]);
+
+    const explicitMappingData = await getResortMapDataFromRoots(
+      explicitMappingId,
+      roots,
+    );
+    assert.equal(
+      explicitMappingData?.courses?.features[0]?.properties.status,
+      "×",
+    );
+    assert.equal(
+      explicitMappingData?.courses?.features[0]?.properties.latestNote,
+      "運休",
+    );
 
     const measuredData = await getResortMapDataFromRoots(measuredId, roots);
     assert.equal(measuredData?.courses?.source, "slope_10m");
@@ -386,6 +541,52 @@ test("map data follows finalized, measured, then before priority", async () => {
     );
     assert.equal(lift.properties.type, "chair_lift");
     assert.doesNotThrow(() => createCourseSlopeSegments(course));
+
+    const osmData = await getResortMapDataFromRoots(osmId, roots);
+    assert.equal(osmData?.courses?.source, "slope_10m_osm");
+    assert.equal(osmData?.courses?.baseSource, "slope_before_osm");
+    assert.equal(osmData?.courses?.verificationStatus, "unverified");
+    assert.deepEqual(osmData?.courses?.sourceUrls, [
+      "https://www.openstreetmap.org/copyright",
+    ]);
+    assert.equal(osmData?.courses?.features[0]?.properties.level, "初級");
+    assert.equal(
+      osmData?.courses?.features[0]?.verificationStatus,
+      "unverified",
+    );
+
+    const mixedData = await getResortMapDataFromRoots(mixedId, roots);
+    assert.equal(mixedData?.courses?.source, "mixed");
+    assert.equal(mixedData?.courses?.baseSource, "mixed");
+    assert.equal(mixedData?.courses?.verificationStatus, "mixed");
+    assert.deepEqual(
+      mixedData?.courses?.features.map(feature => [
+        feature.name,
+        feature.verificationStatus,
+      ]),
+      [
+        ["確認済みコース", "verified"],
+        ["OSM追加コース", "unverified"],
+      ],
+    );
+
+    const perKindLatestData = await getResortMapDataFromRoots(
+      perKindLatestId,
+      roots,
+    );
+    assert.equal(perKindLatestData?.courses?.fileName, "2026_0101_000000.json");
+    assert.equal(
+      perKindLatestData?.courses?.features[0]?.properties.status,
+      "△",
+    );
+    assert.deepEqual(perKindLatestData?.courses?.sourceUrls, [
+      "https://example.com/older-course",
+    ]);
+    assert.equal(perKindLatestData?.lifts?.fileName, "2026_0101_000100.json");
+    assert.equal(perKindLatestData?.lifts?.features[0]?.properties.status, "○");
+    assert.deepEqual(perKindLatestData?.lifts?.sourceUrls, [
+      "https://example.com/newer-lift",
+    ]);
   } finally {
     await fs.rm(fixtureRoot, { recursive: true, force: true });
   }

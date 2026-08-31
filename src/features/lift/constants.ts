@@ -1,5 +1,7 @@
 import type { LiftDetailKey, ResortLinks } from "./types";
 
+export const LIFT_TUTORIAL_SEEN_STORAGE_KEY = "rusutsu-lift-tutorial-seen";
+
 export const DRAFT_STORAGE_PREFIX = "rusutsu-lift-draft:";
 
 export const SPEED_OPTIONS = ["高速", "低速", ""] as const;
@@ -91,7 +93,8 @@ export const REQUIRED_DETAIL_KEYS = [
   "searchWord",
 ] as const satisfies readonly LiftDetailKey[];
 
-export const RESORT_INITIAL_ZOOM = 14;
+// コース入力と同じ地図・同じズーム基準なので、値はあちらを正とする
+export { RESORT_INITIAL_ZOOM } from "@/features/slope/constants";
 
 // 表示・入力順。読み込み・保存側もこの一覧を正とする
 export const RESORT_LINK_KEYS: Array<keyof ResortLinks> = [
