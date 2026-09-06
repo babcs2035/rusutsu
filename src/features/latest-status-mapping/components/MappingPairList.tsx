@@ -82,7 +82,7 @@ export function MappingPairList<T extends MappingPairItem>({
         <span>
           {hasCrawler
             ? `クローラー取得結果（${crawledItems.length} 件）`
-            : "クローラーなし"}
+            : "取得結果なし"}
         </span>
       </div>
 

@@ -34,8 +34,8 @@ type CrawlerFilter = "all" | "with" | "without";
 
 const CRAWLER_FILTERS: Array<{ id: CrawlerFilter; label: string }> = [
   { id: "all", label: "すべて" },
-  { id: "with", label: "クローラーあり" },
-  { id: "without", label: "クローラーなし" },
+  { id: "with", label: "取得結果あり" },
+  { id: "without", label: "取得結果なし" },
 ];
 
 export function ResortSelectStep({ resorts, onStart }: ResortSelectStepProps) {

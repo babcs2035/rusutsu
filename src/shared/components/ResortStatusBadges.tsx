@@ -32,15 +32,15 @@ const STYLES: Record<
     title: "lift_before があります",
   },
   crawler: {
-    label: "クローラーあり",
+    label: "取得結果あり",
     className: "bg-sky-50 text-sky-900",
-    title: "公式サイトから営業情報を取得できています",
+    title: "対応付けに使える取得結果があります（過去の取得結果を含みます）",
   },
   noCrawler: {
-    label: "クローラーなし",
+    label: "取得結果なし",
     className: "bg-gray-100 text-gray-600",
     title:
-      "営業情報を取得できていません（クローラー自体が無い場合と、あっても取得できていない場合の両方を含みます）",
+      "対応付けに使える取得結果がありません。クローラーの有無を示すものではありません",
   },
   draft: {
     label: "下書きあり",

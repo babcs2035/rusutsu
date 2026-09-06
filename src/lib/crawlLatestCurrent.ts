@@ -9,9 +9,9 @@ import type {
   LatestSuccessfulStatus,
 } from "@/lib/latestStatusFiles";
 import {
-  findCurrentCrawlLatestStatusDirect,
-  listCurrentCrawlLatestResortIdsDirect,
-} from "@/server/crawl-latest/current";
+  findAvailableCrawlLatestStatusDirect,
+  listAvailableCrawlLatestResortIdsDirect,
+} from "@/server/crawl-latest/availableStatus";
 
 const parseObjectEnvelope = async <T>(
   response: Response,
@@ -33,7 +33,7 @@ export async function readCurrentCrawlLatestStatus(
   kind: LatestStatusKind,
 ): Promise<LatestSuccessfulStatus | null> {
   if (!usesRemoteDataApi()) {
-    return findCurrentCrawlLatestStatusDirect(resortId, kind);
+    return findAvailableCrawlLatestStatusDirect(resortId, kind);
   }
   const search = new URLSearchParams({ resortId, kind, view: "status" });
   const response = await fetchInternalDataApi(
@@ -46,7 +46,7 @@ export async function listCurrentCrawlLatestResortIds(
   kind: LatestStatusKind,
 ): Promise<string[]> {
   if (!usesRemoteDataApi()) {
-    return listCurrentCrawlLatestResortIdsDirect(kind);
+    return listAvailableCrawlLatestResortIdsDirect(kind);
   }
   const search = new URLSearchParams({ kind, view: "resortIds" });
   const response = await fetchInternalDataApi(

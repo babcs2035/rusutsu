@@ -1,13 +1,8 @@
-import path from "node:path";
 import { z } from "zod";
 import {
-  listResortIdsWithLatestStatus,
-  loadLatestSuccessfulStatus,
-} from "@/lib/latestStatusFiles";
-import {
-  findCurrentCrawlLatestStatusDirect,
-  listCurrentCrawlLatestResortIdsDirect,
-} from "@/server/crawl-latest/current";
+  findAvailableCrawlLatestStatusDirect,
+  listAvailableCrawlLatestResortIdsDirect,
+} from "@/server/crawl-latest/availableStatus";
 import {
   internalApiError,
   internalApiJson,
@@ -17,14 +12,6 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const TEMPORARY_ROOT = path.join(
-  process.cwd(),
-  "src",
-  "private",
-  "data",
-  "resorts-temporary",
-);
 
 const resortIdSchema = z
   .string()
@@ -61,14 +48,8 @@ export async function GET(request: Request) {
           "resortId is not allowed for this view",
         );
       }
-      const [databaseIds, bundledIds] = await Promise.all([
-        listCurrentCrawlLatestResortIdsDirect(kind.data),
-        listResortIdsWithLatestStatus(TEMPORARY_ROOT),
-      ]);
       return internalApiJson({
-        resortIds: [
-          ...new Set([...databaseIds, ...bundledIds[kind.data]]),
-        ].sort(),
+        resortIds: await listAvailableCrawlLatestResortIdsDirect(kind.data),
       });
     }
 
@@ -76,18 +57,11 @@ export async function GET(request: Request) {
     if (!resortId.success) {
       return internalApiError(400, "INVALID_QUERY", "resortId is required");
     }
-    const databaseStatus = await findCurrentCrawlLatestStatusDirect(
-      resortId.data,
-      kind.data,
-    );
     return internalApiJson({
-      status:
-        databaseStatus ??
-        (await loadLatestSuccessfulStatus(
-          TEMPORARY_ROOT,
-          resortId.data,
-          kind.data,
-        )),
+      status: await findAvailableCrawlLatestStatusDirect(
+        resortId.data,
+        kind.data,
+      ),
     });
   } catch (error) {
     logInternalApiFailure("Failed to read current crawl data", error);

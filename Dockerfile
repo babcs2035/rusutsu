@@ -83,7 +83,7 @@ COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/SkiResortLin
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/lift-ticket ./src/private/data/lift-ticket
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/reviews ./src/private/data/reviews
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/resorts-temporary/latest_status_mapping ./src/private/data/resorts-temporary/latest_status_mapping
-# Historical fixture for explicit recovery tools; no runtime fallback.
+# Historical crawl results also support status-name mapping before the first DB result.
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/resorts-temporary/latest_data ./src/private/data/resorts-temporary/latest_data
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/resorts-temporary/lift_20m ./src/private/data/resorts-temporary/lift_20m
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/resorts-temporary/lift_before ./src/private/data/resorts-temporary/lift_before
