@@ -4,7 +4,6 @@ import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import {
-  getFinalizedResortMapData,
   getResortMapDataFromRoots,
   selectLatestTimestampedGeojsonFile,
 } from "./finalizedResortGeojson";
@@ -195,7 +194,12 @@ test("empty strings are treated as missing numeric values", () => {
 });
 
 test("unknown resort ids return no finalized map data", async () => {
-  assert.equal(await getFinalizedResortMapData("missing-resort-id"), null);
+  assert.equal(
+    await getResortMapDataFromRoots("missing-resort-id", {
+      temporaryRoot: path.join(os.tmpdir(), "missing-resort-data"),
+    }),
+    null,
+  );
 });
 
 test("map data follows finalized, measured, then before priority", async () => {

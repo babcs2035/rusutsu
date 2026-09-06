@@ -15,6 +15,8 @@ model SkiResort {
   id        String   @id // e.g., "able-hakuba-goryu"
   nameJa    String
   nameEn    String
+  shortName String?
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -79,14 +81,16 @@ model SkiResort {
   yukiMagi   YukiMagi? @relation(fields: [yukiMagiId], references: [id])
 
   // Relations
-  courses       Course[]
-  lifts         Lift[]
-  tickets       Ticket[]
-  weathers      Weather[]
-  forecasts     Forecast[]
-  snowDepths    SnowDepthRecord[]
-  snowFalls     SnowFallRecord[]
-  latestReports LatestReport[]
+  courses             Course[]
+  lifts               Lift[]
+  tickets             Ticket[]
+  weathers            Weather[]
+  forecasts           Forecast[]
+  snowDepths          SnowDepthRecord[]
+  snowFalls           SnowFallRecord[]
+  latestReports       LatestReport[]
+  crawlLatestRuns     CrawlLatestRun[]
+  crawlLatestCurrents CrawlLatestCurrent[]
 
   @@map("ski_resorts")
 }
@@ -228,10 +232,10 @@ model AmedasData {
 }
 
 model YukiMagi {
-  id            String   @id @default(cuid())
-  name          String   @unique
-  url           String?
-  tag           String?
+  id   String  @id @default(cuid())
+  name String  @unique
+  url  String?
+  tag  String?
 
   benefit       String?
   period        String?
@@ -239,7 +243,7 @@ model YukiMagi {
 
   updatedAt DateTime @updatedAt
 
-  skiResorts   SkiResort[]
+  skiResorts SkiResort[]
 
   @@map("yuki_magi")
 }
@@ -249,36 +253,35 @@ model YukiMagi {
 // =====================================
 
 model User {
-  id        String   @id @default(cuid())
-  name      String?
-  email     String?  @unique
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
   emailVerified DateTime?
-  image   String?
-  role      String   @default("viewer") // "viewer" | "admin"
-  accounts Account[]
-  sessions Session[]
+  image         String?
+  role          String    @default("viewer") // "viewer" | "admin"
+  accounts      Account[]
+  sessions      Session[]
 
   @@map("users")
 }
 
 model Account {
-  id                 String  @id @default(cuid())
-  userId             String
-  type               String
-  provider           String
-  providerAccountId  String
-  refresh_token      String? @db.Text
-  access_token       String? @db.Text
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String? @db.Text
-  session_state      String?
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
 
-  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
-
   @@map("accounts")
 }
 
@@ -305,4 +308,199 @@ model CrawlLog {
   message     String?
 
   @@map("crawl_logs")
+}
+
+// =====================================
+// 公式サイトの最新営業状況
+// =====================================
+
+enum CrawlLatestSourceMode {
+  LIVE
+  WAYBACK_VALIDATION
+  LEGACY_IMPORT
+}
+
+enum CrawlLatestRunOutcome {
+  SUCCESS
+  PARTIAL
+  FAILED
+}
+
+enum CrawlLatestCategoryKind {
+  COMMENT
+  WEATHER
+  COURSES
+  LIFTS
+}
+
+enum CrawlLatestCategoryState {
+  SUCCESS
+  EMPTY
+  NOT_SUPPORTED
+  FAILED
+}
+
+enum CrawlLatestValidationState {
+  VALID
+  WARNING
+  INVALID
+}
+
+enum CrawlLatestIssueSeverity {
+  WARNING
+  ERROR
+}
+
+enum CrawlLatestArtifactKind {
+  RENDERED_DOM
+}
+
+enum CrawlLatestArtifactState {
+  AVAILABLE
+  FAILED
+}
+
+model CrawlLatestRun {
+  id                String                @id @default(cuid())
+  producerId        String                @db.VarChar(100)
+  idempotencyKey    String                @db.VarChar(128)
+  skiResortId       String?
+  skiResort         SkiResort?            @relation(fields: [skiResortId], references: [id], onDelete: Restrict)
+  observedAt        DateTime              @db.Timestamptz(3)
+  completedAt       DateTime              @db.Timestamptz(3)
+  sourceMode        CrawlLatestSourceMode @default(LIVE)
+  archiveTimestamp  String?               @db.VarChar(14)
+  schemaVersion     Int
+  crawlerFile       String?               @db.VarChar(500)
+  crawlerRevision   String?               @db.VarChar(128)
+  crawlerSourceHash String?               @db.Char(64)
+  rawPayload        Json
+  requestHash       String                @db.Char(64)
+  outcome           CrawlLatestRunOutcome
+  createdAt         DateTime              @default(now()) @db.Timestamptz(3)
+
+  categories CrawlLatestCategorySnapshot[]
+  issues     CrawlLatestIssue[]
+  artifacts  CrawlLatestArtifact[]
+
+  @@unique([producerId, idempotencyKey])
+  @@unique([id, skiResortId])
+  @@index([skiResortId, observedAt])
+  @@index([sourceMode, observedAt])
+  @@map("crawl_latest_runs")
+}
+
+model CrawlLatestCategorySnapshot {
+  id                 String                     @id @default(cuid())
+  runId              String
+  skiResortId        String
+  run                CrawlLatestRun             @relation(fields: [runId, skiResortId], references: [id, skiResortId], onDelete: Cascade)
+  kind               CrawlLatestCategoryKind
+  state              CrawlLatestCategoryState
+  validationState    CrawlLatestValidationState
+  eligibleForCurrent Boolean
+  data               Json?
+  sourceUrls         String[]
+  itemCount          Int
+  usableItemCount    Int
+  contentHash        String?                    @db.Char(64)
+  nameSetHash        String?                    @db.Char(64)
+  createdAt          DateTime                   @default(now()) @db.Timestamptz(3)
+
+  current CrawlLatestCurrent?
+
+  @@unique([runId, kind])
+  @@unique([id, skiResortId, kind])
+  @@index([skiResortId, kind, eligibleForCurrent, createdAt])
+  @@map("crawl_latest_category_snapshots")
+}
+
+model CrawlLatestCurrent {
+  skiResortId String
+  skiResort   SkiResort                   @relation(fields: [skiResortId], references: [id], onDelete: Cascade)
+  kind        CrawlLatestCategoryKind
+  snapshotId  String                      @unique
+  snapshot    CrawlLatestCategorySnapshot @relation(fields: [snapshotId, skiResortId, kind], references: [id, skiResortId, kind], onDelete: NoAction)
+  updatedAt   DateTime                    @updatedAt @db.Timestamptz(3)
+
+  @@id([skiResortId, kind])
+  @@unique([snapshotId, skiResortId, kind])
+  @@map("crawl_latest_currents")
+}
+
+model CrawlLatestIssue {
+  id              String                   @id @default(cuid())
+  runId           String
+  run             CrawlLatestRun           @relation(fields: [runId], references: [id], onDelete: Cascade)
+  externalId      String?                  @db.VarChar(128)
+  categoryKind    CrawlLatestCategoryKind?
+  severity        CrawlLatestIssueSeverity
+  code            String                   @db.VarChar(100)
+  message         String                   @db.Text
+  occurrences     Int                      @default(1)
+  firstOccurredAt DateTime?                @db.Timestamptz(3)
+  lastOccurredAt  DateTime?                @db.Timestamptz(3)
+  blocksPromotion Boolean                  @default(false)
+  details         Json?
+  createdAt       DateTime                 @default(now()) @db.Timestamptz(3)
+
+  @@unique([runId, externalId])
+  @@index([runId, severity])
+  @@map("crawl_latest_issues")
+}
+
+model CrawlLatestArtifact {
+  id               String                   @id @default(cuid())
+  runId            String
+  run              CrawlLatestRun           @relation(fields: [runId], references: [id], onDelete: Cascade)
+  categoryKind     CrawlLatestCategoryKind?
+  kind             CrawlLatestArtifactKind
+  state            CrawlLatestArtifactState
+  pageKey          String                   @db.VarChar(255)
+  title            String?                  @db.Text
+  requestedUrl     String?                  @db.Text
+  finalUrl         String?                  @db.Text
+  httpStatus       Int?
+  storageKey       String?                  @db.Text
+  sha256           String?                  @db.Char(64)
+  sizeBytes        BigInt?
+  contentType      String?                  @db.VarChar(255)
+  contentEncoding  String?                  @db.VarChar(100)
+  captureError     String?                  @db.Text
+  redactionVersion Int
+  issueExternalIds String[]
+  capturedAt       DateTime                 @db.Timestamptz(3)
+  createdAt        DateTime                 @default(now()) @db.Timestamptz(3)
+
+  @@unique([runId, pageKey])
+  @@unique([runId, storageKey])
+  @@index([runId, kind])
+  @@map("crawl_latest_artifacts")
+}
+
+// =====================================
+// 管理画面で編集するJSON / GeoJSON
+// =====================================
+
+model DataDocument {
+  key       String   @id @db.VarChar(1024)
+  content   String   @db.Text
+  mediaType String   @db.VarChar(255)
+  hash      String   @db.Char(64)
+  version   Int      @default(1)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+
+  @@map("data_documents")
+}
+
+// Explicit, transactional one-time imports. Keep these markers when documents
+// are edited/deleted; a later deployment must never recreate fixture data.
+model CanonicalDataMigration {
+  key         String   @id @db.VarChar(200)
+  sourceHash  String   @db.Char(64)
+  details     Json
+  completedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@map("canonical_data_migrations")
 }

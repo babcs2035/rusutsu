@@ -15,9 +15,11 @@ setup = { description = "プロジェクトの初期セットアップ（依存�
 ]}
 
 # --- Development ---
-dev = { description = "開発サーバー起動", run = "pnpm dev" }
+dev = { description = "開発サーバー起動（このMacからだけ接続可能）", run = "pnpm dev" }
+"dev:lan" = { description = "開発サーバー起動（LANへ明示的に公開）", run = "pnpm dev:lan" }
 format = { description = "Format (Biome)", run = "pnpm format" }
 lint = { description = "Lint (Biome)", run = "pnpm lint" }
+test = { description = "全テスト（本番接続なし）", run = "pnpm test" }
 typecheck = { description = "型チェック", run = "pnpm typecheck" }
 check = { description = "コード品質チェック (Format, Lint, TypeCheck)", run = ["mise run format", "mise run lint", "mise run typecheck"] }
 
@@ -27,11 +29,13 @@ start = { description = "プロダクションサーバー起動", run = "pnpm s
 
 # --- Database (Prisma) ---
 "db:up" = { description = "DBコンテナ起動", run = "docker compose up -d --wait db" }
-"db:down" = { description = "DBコンテナ停止", run = "docker compose down" }
+"db:down" = { description = "app/DBコンテナとnetworkを停止（volumeは保持）", run = "docker compose down" }
 "db:studio" = { description = "Prisma Studio 起動", run = "pnpm prisma studio" }
 "db:migrate" = { description = "マイグレーション実行", run = "pnpm prisma migrate dev" }
 "db:generate" = { description = "Prisma Client 生成", run = "pnpm prisma generate" }
-"db:seed" = { description = "DB シード実行（型のみ）", run = "pnpm prisma db seed" }
+"db:seed" = { description = "DB シード実行（接続確認のみ）", run = "pnpm prisma db seed" }
+"db:import-documents" = { description = "初回文書移行（--dry-run / --initialize を明示）", run = "node --import tsx scripts/importCanonicalDataDocuments.ts" }
+"db:import-short-names" = { description = "短縮名の初回移行（--dry-run / --initialize を明示）", run = "node --import tsx scripts/importSkiResortShortNames.ts" }
 "db:reset" = { description = "DB リセット（全データ削除 & シード）", run = "pnpm prisma migrate reset --force" }
 
 # --- Crawling ---
@@ -39,6 +43,7 @@ start = { description = "プロダクションサーバー起動", run = "pnpm s
 "crawl:gelendes" = { description = "詳細情報 (Gelendes) の更新", run = "pnpm tsx src/private/scripts/crawlGelendes.ts" }
 "crawl:weathers" = { description = "天気 (Weathers) の更新", run = "pnpm tsx src/private/scripts/crawlWeathers.ts" }
 "crawl:forecasts" = { description = "予報 (Forecasts) の更新", run = "pnpm tsx src/private/scripts/crawlForecasts.ts" }
+"crawl:latest" = { description = "スキー場別crawl_latestを一括または個別実行", run = "node --import tsx scripts/runCrawlLatestBatch.ts" }
 
 "crawl:all" = { description = "全データのクローリング実行", run = [
   "mise run crawl:ski-areas",
@@ -51,6 +56,7 @@ start = { description = "プロダクションサーバー起動", run = "pnpm s
   "pnpm tsx src/private/scripts/crawlYukiMagi.ts",
   "pnpm tsx src/private/scripts/crawlAmedas.ts"
 ]}
+"crawl:diagnostics:pull" = { description = "本番APIから警告・失敗DOMをVS Code用に取得", run = "pnpm tsx scripts/pullCrawlerDiagnostics.ts" }
 
 # --- データ検証 ---
 "merge:resort-sheets" = { description = "resorts の Excel を before と既存の 10m/20m GeoJSON へ統合", run = "node --import tsx scripts/mergeResortSheetsIntoGeojson.ts" }

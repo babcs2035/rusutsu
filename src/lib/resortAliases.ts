@@ -1,14 +1,9 @@
-import resortNameAliases from "@/private/data/SkiResortNameAliases.json";
-
-const shortNameById = new Map(
-  resortNameAliases.resorts.map(resort => [resort.id, resort.shortName.trim()]),
-);
-
 // 検索ワードには、地図表示用の省略名があればそれを優先して使う。
 export const getResortSearchName = (
   resortId: string,
   fallbackName: string,
-): string => shortNameById.get(resortId) || fallbackName.trim() || resortId;
+  shortName?: string | null,
+): string => shortName?.trim() || fallbackName.trim() || resortId;
 
 /** 地図のラベルでは「スキー場」は落とす。どこも付いていて区別に使えないため */
 export const removeSkiResortWord = (name: string): string =>
@@ -21,8 +16,9 @@ export const removeSkiResortWord = (name: string): string =>
 export const getResortLabelName = (
   resortId: string,
   fallbackName: string,
+  shortName?: string | null,
 ): string => {
-  const baseName = getResortSearchName(resortId, fallbackName);
+  const baseName = getResortSearchName(resortId, fallbackName, shortName);
   const labelName = removeSkiResortWord(baseName);
   return labelName.length > 0 ? labelName : baseName;
 };

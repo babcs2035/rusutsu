@@ -8,6 +8,7 @@ import { Card, CardContent, CardTitle } from "@/components/ui/card";
 export const dynamic = "force-dynamic";
 
 const TOOL_LINKS: Array<{ href: string; label: string }> = [
+  { href: "/admin/resort", label: "スキー場マスター編集" },
   { href: "/admin/lift", label: "リフト入力" },
   { href: "/admin/slope", label: "コース入力" },
   { href: "/admin/ticket", label: "リフトチケット入力" },

@@ -1,23 +1,67 @@
 services:
   app:
-    image: ghcr.io/babcs2035/rusutsu:latest
+    image: ${APP_IMAGE:-ghcr.io/babcs2035/rusutsu:latest}
     container_name: rusutsu-app
     ports:
       - "127.0.0.1:${APP_PORT:-3000}:3000"
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-rusutsu}:${POSTGRES_PASSWORD:-rusutsu}@db:5432/${POSTGRES_DB:-rusutsu}
+      - DATABASE_URL=${PRODUCTION_DATABASE_URL:?PRODUCTION_DATABASE_URL must be recovered from the existing app}
       - TZ=Asia/Tokyo
       - APP_PORT=${APP_PORT:-3000}
-      - AUTH_SECRET=${AUTH_SECRET}
-      - AUTH_URL=${AUTH_URL}
+      - AUTH_SECRET=${AUTH_SECRET:?AUTH_SECRET is required}
+      - AUTH_URL=${AUTH_URL:?AUTH_URL is required}
       - AUTH_TRUST_HOST=${AUTH_TRUST_HOST}
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-      - ADMIN_EMAILS=${ADMIN_EMAILS}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:?GOOGLE_CLIENT_ID is required}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:?GOOGLE_CLIENT_SECRET is required}
+      - ADMIN_EMAILS=${ADMIN_EMAILS:?ADMIN_EMAILS is required}
+      - INTERNAL_DATA_API_ADMIN_TOKEN=${INTERNAL_DATA_API_ADMIN_TOKEN:?INTERNAL_DATA_API_ADMIN_TOKEN is required}
+      - INTERNAL_DATA_API_CRAWLER_TOKEN=${INTERNAL_DATA_API_CRAWLER_TOKEN:?INTERNAL_DATA_API_CRAWLER_TOKEN is required}
+      - INTERNAL_DATA_API_DIAGNOSTICS_TOKEN=${INTERNAL_DATA_API_DIAGNOSTICS_TOKEN:?INTERNAL_DATA_API_DIAGNOSTICS_TOKEN is required}
+      - CRAWLER_ARTIFACT_ROOT=/app/var/crawler-artifacts
+      - CRAWLER_ARTIFACT_RETENTION_DAYS=${CRAWLER_ARTIFACT_RETENTION_DAYS:-30}
+      - PUBLIC_READINESS_URL=${DATA_API_BASE_URL:?DATA_API_BASE_URL must be the public HTTPS URL including /rusutsu}
+    volumes:
+      - crawler_artifacts:/app/var/crawler-artifacts
     restart: unless-stopped
+    init: true
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "node", "scripts/ops/check-readiness.mjs"]
+      interval: 15s
+      timeout: 20s
+      start_period: 30s
+      retries: 6
     depends_on:
       db:
+        condition: service_healthy
+
+  # アプリとは別の専用scheduler。起動時にはクロールせず、
+  # 次の07:00 (JST)まで待機する。
+  crawl-latest-scheduler:
+    profiles: ["crawlers"]
+    image: ${APP_IMAGE:-ghcr.io/babcs2035/rusutsu:latest}
+    init: true
+    environment:
+      - NODE_ENV=production
+      - TZ=Asia/Tokyo
+      - DATA_API_BASE_URL=${DATA_API_BASE_URL:?DATA_API_BASE_URL is required for crawl_latest scheduler}
+      - INTERNAL_DATA_API_CRAWLER_TOKEN=${INTERNAL_DATA_API_CRAWLER_TOKEN:?INTERNAL_DATA_API_CRAWLER_TOKEN is required}
+      - CRAWL_LATEST_CRON=${CRAWL_LATEST_CRON:-0 7 * * *}
+      - CRAWL_LATEST_CONCURRENCY=${CRAWL_LATEST_CONCURRENCY:-1}
+      - CRAWL_LATEST_TIMEOUT_MS=${CRAWL_LATEST_TIMEOUT_MS:-1200000}
+      - CRAWLER_ARTIFACT_ROOT=/app/var/crawler-worker-artifacts
+    command:
+      - node
+      - --import
+      - tsx
+      - scripts/scheduleCrawlLatest.ts
+    volumes:
+      - crawler_worker_artifacts:/app/var/crawler-worker-artifacts
+    restart: unless-stopped
+    stop_grace_period: 30s
+    depends_on:
+      app:
         condition: service_healthy
 
   db:
@@ -25,7 +69,7 @@ services:
     container_name: rusutsu-db
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-rusutsu}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rusutsu}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must match the existing database}
       POSTGRES_DB: ${POSTGRES_DB:-rusutsu}
       TZ: Asia/Tokyo
       DB_PORT: ${DB_PORT:-5432}
@@ -42,3 +86,7 @@ services:
 
 volumes:
   postgres_data:
+    external: true
+    name: ${POSTGRES_VOLUME:?POSTGRES_VOLUME must identify the existing database volume}
+  crawler_artifacts:
+  crawler_worker_artifacts:

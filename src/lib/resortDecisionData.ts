@@ -1,5 +1,3 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
 import type { LiftTicketData } from "@/features/lift-ticket/types";
 import {
   REVIEW_CATEGORY_IDS,
@@ -10,12 +8,16 @@ import {
   type ReviewCategoryId,
   type ReviewDetailFile,
 } from "@/features/reviews/types";
+import type {
+  DataDocument,
+  DataDocumentSummary,
+} from "@/server/data-documents/contract";
+import { toClientLiftTicketData } from "./publicLiftTicketData";
 
-const DATA_ROOT = path.join(process.cwd(), "src/private/data");
-// スキー場1件のデータは1ディレクトリにまとまっている:
-//   lift-ticket/{resort-id}/{sources,tickets,audits}/
-const LIFT_TICKET_ROOT = path.join(DATA_ROOT, "lift-ticket");
-const REVIEWS_ROOT = path.join(DATA_ROOT, "reviews");
+const RESORT_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
+const PUBLIC_TICKET_KEY_PATTERN =
+  /^lift-ticket\/([a-z0-9]+(?:-[a-z0-9]+)*)\/tickets\/(\d{4}-\d{4}\.json)$/u;
+const TICKET_READ_BATCH_SIZE = 16;
 
 const SHIGA_KOGEN_CENTRAL_RESORT_IDS = [
   "shiga-kogen-giant",
@@ -46,21 +48,26 @@ type ResortDecisionData = {
   reviewData: ResortReviewData | null;
 };
 
-const readTextIfExists = async (filePath: string) => {
-  try {
-    return await fs.readFile(filePath, "utf8");
-  } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-      return null;
-    }
-    throw error;
-  }
+export type ResortDecisionDataDocumentReader = {
+  get(key: string): Promise<DataDocument | null>;
+  list(prefix: string): Promise<DataDocumentSummary[]>;
 };
 
-const readJsonIfExists = async <T>(filePath: string): Promise<T | null> => {
-  const raw = await readTextIfExists(filePath);
-  return raw ? (JSON.parse(raw) as T) : null;
+const dataDocumentReader: ResortDecisionDataDocumentReader = {
+  async get(key) {
+    const { getDataDocument } = await import("@/server/data-documents/client");
+    return getDataDocument(key);
+  },
+  async list(prefix) {
+    const { listDataDocuments } = await import(
+      "@/server/data-documents/client"
+    );
+    return listDataDocuments(prefix);
+  },
 };
+
+const parseJsonDocument = <T>(document: DataDocument | null): T | null =>
+  document === null ? null : (JSON.parse(document.content) as T);
 
 const stripMarkdown = (value: string) =>
   value
@@ -106,17 +113,18 @@ const parseReviewCategory = (
 };
 
 const loadReviewDirectory = async (
+  reader: ResortDecisionDataDocumentReader,
   sourceSlug: string,
-): Promise<ResortReviewData> => {
-  const resortDirectory = path.join(REVIEWS_ROOT, sourceSlug);
-  const [detail, article] = await Promise.all([
-    readJsonIfExists<ReviewDetailFile>(
-      path.join(resortDirectory, "detail.json"),
-    ),
-    readJsonIfExists<ReviewArticleFile>(
-      path.join(resortDirectory, "article.json"),
-    ),
+): Promise<ResortReviewData | null> => {
+  const prefix = `reviews/${sourceSlug}/`;
+  const [detailDocument, articleDocument] = await Promise.all([
+    reader.get(`${prefix}detail.json`),
+    reader.get(`${prefix}article.json`),
   ]);
+  if (!detailDocument && !articleDocument) return null;
+
+  const detail = parseJsonDocument<ReviewDetailFile>(detailDocument);
+  const article = parseJsonDocument<ReviewArticleFile>(articleDocument);
   const categories = REVIEW_CATEGORY_IDS.map(categoryId =>
     parseReviewCategory(categoryId, detail, article),
   );
@@ -162,164 +170,102 @@ const loadReviewDirectory = async (
   };
 };
 
-const loadLiftTicketData = async () => {
-  const byResortId = new Map<string, LiftTicketData[]>();
-  let resortDirectories: Array<{ name: string; isDirectory: () => boolean }>;
+const loadLiftTicketDataMap = async (
+  reader: ResortDecisionDataDocumentReader,
+  resortIds: readonly string[],
+): Promise<Map<string, LiftTicketData[]>> => {
+  const requestedResortIds = new Set(
+    resortIds.filter(resortId => RESORT_ID_PATTERN.test(resortId)),
+  );
+  const byResortId = new Map(
+    resortIds.map(resortId => [resortId, [] as LiftTicketData[]]),
+  );
+  if (requestedResortIds.size === 0) return byResortId;
 
-  try {
-    resortDirectories = await fs.readdir(LIFT_TICKET_ROOT, {
-      withFileTypes: true,
-    });
-  } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-      return byResortId;
-    }
-    throw error;
-  }
-
-  for (const directory of resortDirectories) {
-    if (!directory.isDirectory()) continue;
-    const directoryPath = path.join(
-      LIFT_TICKET_ROOT,
-      directory.name,
-      "tickets",
+  // 一覧画面では数百件を一度に読むため、一覧取得は1回にまとめる。
+  const summaries = await reader.list("lift-ticket/");
+  const candidates = summaries.flatMap(document => {
+    const match = PUBLIC_TICKET_KEY_PATTERN.exec(document.key);
+    if (!match || !requestedResortIds.has(match[1])) return [];
+    return [{ key: document.key, resortId: match[1] }];
+  });
+  for (
+    let index = 0;
+    index < candidates.length;
+    index += TICKET_READ_BATCH_SIZE
+  ) {
+    const batch = candidates.slice(index, index + TICKET_READ_BATCH_SIZE);
+    const documents = await Promise.all(
+      batch.map(candidate => reader.get(candidate.key)),
     );
-    let fileNames: string[];
-    try {
-      fileNames = await fs.readdir(directoryPath);
-    } catch (error) {
-      // tickets/ を持たないディレクトリはスキー場データではない
-      if (
-        error instanceof Error &&
-        "code" in error &&
-        error.code === "ENOENT"
-      ) {
-        continue;
-      }
-      throw error;
-    }
-    const seasonFileNames = fileNames.filter(fileName =>
-      /^\d{4}-\d{4}\.json$/.test(fileName),
-    );
-
-    for (const fileName of seasonFileNames) {
-      const parsed = JSON.parse(
-        await fs.readFile(path.join(directoryPath, fileName), "utf8"),
-      ) as LiftTicketData;
-      const compactData = toClientLiftTicketData(parsed);
-      // リフト券データの resort.id は SkiResort.id と同じ値を使う
-      const resortId = parsed.resort.id;
-      const seasons = byResortId.get(resortId) ?? [];
-      seasons.push(compactData);
-      seasons.sort((left, right) =>
-        right.season.id.localeCompare(left.season.id),
-      );
-      byResortId.set(resortId, seasons);
+    for (const [batchIndex, document] of documents.entries()) {
+      if (!document) continue;
+      const parsed = JSON.parse(document.content) as LiftTicketData;
+      const resortId = batch[batchIndex]?.resortId;
+      if (!resortId || parsed.resort.id !== resortId) continue;
+      byResortId.get(resortId)?.push(toClientLiftTicketData(parsed));
     }
   }
 
+  for (const seasons of byResortId.values()) {
+    seasons.sort((left, right) =>
+      right.season.id.localeCompare(left.season.id),
+    );
+  }
   return byResortId;
+};
+
+const reviewSourceSlugFor = (resortId: string): string =>
+  Object.entries(REVIEW_RESORT_ID_ALIASES).find(([, destinationIds]) =>
+    destinationIds.includes(resortId),
+  )?.[0] ?? resortId;
+
+const loadReviewData = async (
+  reader: ResortDecisionDataDocumentReader,
+  resortId: string,
+): Promise<ResortReviewData | null> => {
+  if (!RESORT_ID_PATTERN.test(resortId)) return null;
+  const sourceSlug = reviewSourceSlugFor(resortId);
+  try {
+    return await loadReviewDirectory(reader, sourceSlug);
+  } catch (error) {
+    // 1件の不整合でページ全体を落とさず、そのスキー場だけレビューなしにする。
+    console.warn(
+      `レビューデータの読み込みに失敗しました（${sourceSlug}）:`,
+      error,
+    );
+    return null;
+  }
 };
 
 /**
- * リフト券データをクライアントへ渡す形にする。
- *
- * ★**必要なフィールドを列挙するのではなく、渡さないものだけを落とす。**
- * 列挙する形にしていたため `sources`（出典）と `operating_hours`（営業時間）を
- * 渡し忘れ、料金表の出典番号が常に空・「1日」の指定が解決できない状態になっていた。
- * フィールドを足すたびに渡し忘れる構造だったのをやめる。
+ * 永続キャッシュを持たない読み込み口。管理画面でDB文書を更新した後の次の
+ * リクエストから、新しい内容がそのまま公開表示へ反映される。
  */
-const toClientLiftTicketData = (parsed: LiftTicketData): LiftTicketData => {
-  const { sources, data_quality, ...rest } = parsed;
-  return {
-    ...rest,
-    // 保存資料のパスは画面から辿れないので落とす（URLとタイトルだけ渡す）
-    sources: (sources ?? [])
-      .filter(source => Boolean(source.url))
-      .map(source => ({
-        id: source.id,
-        url: source.url,
-        page_title: source.page_title ?? null,
-      })),
-    // unresolved_questions / human_review_required / illegible_items は
-    // 収集担当への申し送りなので画面に出さない＝クライアントへも送らない
-    data_quality: { status: data_quality.status },
+export const createResortDecisionDataLoader = (
+  reader: ResortDecisionDataDocumentReader,
+) => {
+  const getResortDecisionData = async (
+    resortId: string,
+  ): Promise<ResortDecisionData> => {
+    const [liftTicketByResortId, reviewData] = await Promise.all([
+      loadLiftTicketDataMap(reader, [resortId]),
+      loadReviewData(reader, resortId),
+    ]);
+    return {
+      liftTickets: liftTicketByResortId.get(resortId) ?? [],
+      reviewData,
+    };
   };
+
+  const getLiftTicketDataMap = (resortIds: string[]) =>
+    loadLiftTicketDataMap(reader, resortIds);
+
+  return { getLiftTicketDataMap, getResortDecisionData };
 };
 
-const loadReviewData = async () => {
-  const byResortId = new Map<string, ResortReviewData>();
-  let resortDirectories: Array<{ name: string; isDirectory: () => boolean }>;
+const resortDecisionDataLoader =
+  createResortDecisionDataLoader(dataDocumentReader);
 
-  try {
-    resortDirectories = await fs.readdir(REVIEWS_ROOT, {
-      withFileTypes: true,
-    });
-  } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-      return byResortId;
-    }
-    throw error;
-  }
-
-  for (const directory of resortDirectories) {
-    if (!directory.isDirectory()) continue;
-    let reviewData: ResortReviewData;
-    try {
-      reviewData = await loadReviewDirectory(directory.name);
-    } catch (error) {
-      // detail.json / article.json が想定形式と食い違うスキー場が混在している。
-      // 1件の不整合で全スキー場のレビュー表示が落ちないよう、その1件だけ
-      // reviewData なしとして読み飛ばす（要因調査は別途）。
-      console.warn(
-        `レビューデータの読み込みに失敗しました（${directory.name}）:`,
-        error,
-      );
-      continue;
-    }
-    const destinationIds = REVIEW_RESORT_ID_ALIASES[directory.name] ?? [
-      directory.name,
-    ];
-    destinationIds.forEach(resortId => {
-      byResortId.set(resortId, reviewData);
-    });
-  }
-
-  return byResortId;
-};
-
-let liftTicketDataPromise: ReturnType<typeof loadLiftTicketData> | undefined;
-let reviewDataPromise: ReturnType<typeof loadReviewData> | undefined;
-
-const getLiftTicketData = () => {
-  liftTicketDataPromise ??= loadLiftTicketData();
-  return liftTicketDataPromise;
-};
-
-const getReviewData = () => {
-  reviewDataPromise ??= loadReviewData();
-  return reviewDataPromise;
-};
-
-export const getResortDecisionData = async (
-  resortId: string,
-): Promise<ResortDecisionData> => {
-  const [liftTicketByResortId, reviewByResortId] = await Promise.all([
-    getLiftTicketData(),
-    getReviewData(),
-  ]);
-  return {
-    liftTickets: liftTicketByResortId.get(resortId) ?? [],
-    reviewData: reviewByResortId.get(resortId) ?? null,
-  };
-};
-
-export const getLiftTicketDataMap = async (resortIds: string[]) => {
-  const liftTicketByResortId = await getLiftTicketData();
-  return new Map(
-    resortIds.map(resortId => [
-      resortId,
-      liftTicketByResortId.get(resortId) ?? [],
-    ]),
-  );
-};
+export const { getLiftTicketDataMap, getResortDecisionData } =
+  resortDecisionDataLoader;

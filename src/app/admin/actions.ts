@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/requireAdmin";
 
 function isEnvAdmin(email: string | null): boolean {
   if (!email) return false;
@@ -22,6 +23,7 @@ export interface AdminUser {
 }
 
 export async function getAdminDashboardData() {
+  await requireAdmin();
   const users = await prisma.user.findMany({
     select: {
       id: true,
@@ -44,6 +46,7 @@ export async function getAdminDashboardData() {
 }
 
 export async function updateUserRole(userId: string, role: string) {
+  const actor = await requireAdmin();
   if (role !== "admin" && role !== "viewer") {
     throw new Error("無効なロールです");
   }
@@ -51,6 +54,9 @@ export async function updateUserRole(userId: string, role: string) {
     where: { id: userId },
     select: { email: true },
   });
+  if (actor.id === userId) {
+    throw new Error("自分自身の管理者権限は変更できません");
+  }
   if (isEnvAdmin(user?.email ?? null)) {
     throw new Error("環境変数で定義された管理者アカウントは変更できません");
   }
@@ -61,6 +67,10 @@ export async function updateUserRole(userId: string, role: string) {
 }
 
 export async function deleteUser(userId: string) {
+  const actor = await requireAdmin();
+  if (actor.id === userId) {
+    throw new Error("自分自身のアカウントは削除できません");
+  }
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { email: true },

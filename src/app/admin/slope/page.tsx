@@ -26,8 +26,8 @@ export default async function SlopeEditPage() {
   const resortOptions: ResortOption[] = resorts.map(resort => ({
     id: resort.id,
     nameJa: resort.nameJa,
-    searchName: getResortSearchName(resort.id, resort.nameJa),
-    labelName: getResortLabelName(resort.id, resort.nameJa),
+    searchName: getResortSearchName(resort.id, resort.nameJa, resort.shortName),
+    labelName: getResortLabelName(resort.id, resort.nameJa, resort.shortName),
     nameEn: resort.nameEn,
     prefecture: resort.prefecture,
     latitude: resort.latitude,

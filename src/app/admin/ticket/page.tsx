@@ -9,7 +9,7 @@ import {
 } from "@/features/ticket/server/ticketFiles";
 import { TicketEditClient } from "@/features/ticket/TicketEditClient";
 import type { TicketFileOption } from "@/features/ticket/types";
-import { prisma } from "@/lib/prisma";
+import { readSkiResortNames } from "@/lib/skiResortData";
 
 export const dynamic = "force-dynamic";
 
@@ -22,10 +22,7 @@ export default async function TicketEditPage() {
     listTicketFiles(),
     readTicketSchemaSpec(),
     readEnumLabels(),
-    prisma.skiResort.findMany({
-      select: { id: true, nameJa: true },
-      orderBy: { id: "asc" },
-    }),
+    readSkiResortNames(),
   ]);
 
   const nameById = new Map(resorts.map(resort => [resort.id, resort.nameJa]));

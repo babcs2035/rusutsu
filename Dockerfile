@@ -68,21 +68,57 @@ RUN mkdir -p "$PNPM_HOME/bin" \
 COPY --from=build-cache --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=build-cache --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=build-cache --chown=nextjs:nodejs /app/prisma.config.ts ./
+COPY --from=build-cache --chown=nextjs:nodejs /app/tsconfig.json ./
+# Runtime CLI entry points need source files that Next's route tracer cannot
+# discover (scheduler, YukiMagi, migrations, and explicit recovery importers).
+COPY --from=build-cache --chown=nextjs:nodejs /app/scripts ./scripts
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/lib ./src/lib
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/server ./src/server
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/shared ./src/shared
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/scripts ./src/private/scripts
+# Frozen sources for EXPLICIT one-time import/recovery. App startup never imports.
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/SkiAreaNameDict.json ./src/private/data/SkiAreaNameDict.json
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/SkiResortNameAliases.json ./src/private/data/SkiResortNameAliases.json
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/SkiResortLinks.json ./src/private/data/SkiResortLinks.json
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/lift-ticket ./src/private/data/lift-ticket
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/reviews ./src/private/data/reviews
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/resorts-temporary/latest_status_mapping ./src/private/data/resorts-temporary/latest_status_mapping
+# Historical fixture for explicit recovery tools; no runtime fallback.
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/resorts-temporary/latest_data ./src/private/data/resorts-temporary/latest_data
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/resorts-temporary/lift_20m ./src/private/data/resorts-temporary/lift_20m
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/resorts-temporary/lift_before ./src/private/data/resorts-temporary/lift_before
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/resorts-temporary/lift_confirmed.json ./src/private/data/resorts-temporary/lift_confirmed.json
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/resorts-temporary/lift_detail ./src/private/data/resorts-temporary/lift_detail
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/resorts-temporary/slope_10m ./src/private/data/resorts-temporary/slope_10m
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/resorts-temporary/slope_10m_osm ./src/private/data/resorts-temporary/slope_10m_osm
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/resorts-temporary/slope_before ./src/private/data/resorts-temporary/slope_before
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/resorts-temporary/slope_before_osm ./src/private/data/resorts-temporary/slope_before_osm
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/resorts-temporary/slope_detail ./src/private/data/resorts-temporary/slope_detail
+# Ticket validation uses the same Skill locally and in production.
+COPY --from=build-cache --chown=nextjs:nodejs /app/.shared/skills/collect-ski-lift-ticket-pricing ./.shared/skills/collect-ski-lift-ticket-pricing
 # Copy Playwright binaries
 COPY --from=build-cache --chown=nextjs:nodejs /root/.cache/ms-playwright /home/nextjs/.cache/ms-playwright
 # Copy full node_modules for Prisma CLI module resolution
 # Prisma CLI needs @prisma/config and its transitive dependencies (c12, effect, etc.)
 # Copy to temp location first, then merge to avoid Docker overlay file-to-dir conflict
 COPY --from=build-cache /app/node_modules /tmp/node_modules
-RUN cp -a -n /tmp/node_modules/* ./node_modules/ && \
-    cp -a -n /tmp/node_modules/.??* ./node_modules/ 2>/dev/null || true
+RUN cp -an /tmp/node_modules/. ./node_modules/ && rm -rf /tmp/node_modules
 
-# Setup permissions
-RUN mkdir -p .cache /pnpm && chown -R nextjs:nodejs /app /home/nextjs/.cache /pnpm
+# Setup permissions. The crawler artifact directory is mounted as a persistent
+# volume in production, so warning/failure DOMs survive container replacement.
+RUN mkdir -p .cache /pnpm /app/var/crawler-artifacts \
+    /app/var/crawler-worker-artifacts && \
+    chown -R nextjs:nodejs /app /home/nextjs/.cache /pnpm
 
 # Switch to non-root user
 USER nextjs
 
+# Verify the final image, including files not discoverable by Next's tracer.
+# These commands do not connect to a DB or crawl any external website.
+RUN node scripts/ops/check-runtime-files.mjs && \
+    node --import tsx scripts/importCanonicalDataDocuments.ts --dry-run && \
+    node --import tsx scripts/importSkiResortShortNames.ts --dry-run
+
 EXPOSE 3000
 
-CMD ["/bin/sh", "-c", "prisma migrate deploy && tsx prisma/seed.ts && node server.js"]
+CMD ["node", "scripts/ops/start-app.mjs"]

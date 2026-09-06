@@ -1,20 +1,15 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
 import type {
   LngLat,
   SlopeBeforeFeature,
   SlopeBeforeGeojson,
 } from "@/features/slope/types";
 import { distanceM } from "@/features/slope/utils/geo";
-import { parseSlopeBeforeGeojson, readSlopeBeforeRaw } from "./slopeFiles";
-
-const DATA_ROOT = path.join(
-  process.cwd(),
-  "src",
-  "private",
-  "data",
-  "resorts-temporary",
-);
+import {
+  osmSlope10mDocumentKey,
+  parseSlopeBeforeGeojson,
+  readSlopeBeforeDocument,
+  serializeSlopeGeojson,
+} from "./slopeFiles";
 
 export const sampleLineEvery = (
   coordinates: LngLat[],
@@ -101,19 +96,22 @@ export const buildOsmSlope10m = (
 });
 
 export async function syncOsmSlope10m(resortId: string): Promise<void> {
-  const raw = await readSlopeBeforeRaw(resortId, "osm");
-  if (raw === null) return;
-  const before = parseSlopeBeforeGeojson(raw);
+  const beforeDocument = await readSlopeBeforeDocument(resortId, "osm");
+  if (beforeDocument === null) return;
+  const before = parseSlopeBeforeGeojson(beforeDocument.content);
   if (!before) throw new Error(`${resortId} の slope_before_osm が不正です。`);
 
-  const outputPath = path.join(
-    DATA_ROOT,
-    "slope_10m_osm",
-    `${resortId}.geojson`,
+  const { getDataDocument, writeDataDocuments } = await import(
+    "@/server/data-documents/client"
   );
-  await fs.mkdir(path.dirname(outputPath), { recursive: true });
-  await fs.writeFile(
-    outputPath,
-    `${JSON.stringify(buildOsmSlope10m(before), null, 2)}\n`,
-  );
+  const key = osmSlope10mDocumentKey(resortId);
+  const current = await getDataDocument(key);
+  await writeDataDocuments([
+    {
+      key,
+      content: serializeSlopeGeojson(buildOsmSlope10m(before)),
+      mediaType: "application/geo+json",
+      expectedHash: current?.hash ?? null,
+    },
+  ]);
 }

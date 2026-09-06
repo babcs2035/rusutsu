@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import type { LatestSuccessfulStatus } from "@/lib/latestStatusFiles";
 import { loadLatestSuccessfulStatus } from "@/lib/latestStatusFiles";
 import type {
   LatestStatusMappingFile,
@@ -28,6 +29,49 @@ const normalizeString = (value: unknown): string | null => {
 
 const hashContent = (content: string): string =>
   createHash("sha256").update(content).digest("hex");
+
+type DataDocumentLoader = (absoluteFilePath: string) => Promise<string | null>;
+
+const dataRoot = (): string => path.resolve(process.cwd(), "src/private/data");
+
+const defaultTemporaryRoot = (): string =>
+  path.join(dataRoot(), "resorts-temporary");
+
+const usesCanonicalDocuments = (temporaryRoot: string): boolean =>
+  path.resolve(temporaryRoot) === defaultTemporaryRoot();
+
+const dataDocumentKeyForPath = (absoluteFilePath: string): string | null => {
+  const relativePath = path.relative(dataRoot(), absoluteFilePath);
+  if (
+    relativePath === "" ||
+    relativePath === ".." ||
+    relativePath.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relativePath)
+  ) {
+    return null;
+  }
+  return relativePath.split(path.sep).join("/");
+};
+
+const readDataFile = async (
+  temporaryRoot: string,
+  filePath: string,
+  documentLoader?: DataDocumentLoader,
+): Promise<string | null> => {
+  if (documentLoader) return documentLoader(filePath);
+  if (usesCanonicalDocuments(temporaryRoot)) {
+    const key = dataDocumentKeyForPath(filePath);
+    if (!key) return null;
+    const { getDataDocument } = await import("@/server/data-documents/client");
+    return (await getDataDocument(key))?.content ?? null;
+  }
+
+  try {
+    return await fs.readFile(filePath, "utf8");
+  } catch {
+    return null;
+  }
+};
 
 const mappingPath = (temporaryRoot: string, resortId: string): string =>
   path.join(temporaryRoot, "latest_status_mapping", `${resortId}.json`);
@@ -91,17 +135,20 @@ const parseMappingFile = (raw: string): LatestStatusMappingFile => {
 const readMappingFile = async (
   temporaryRoot: string,
   resortId: string,
+  documentLoader?: DataDocumentLoader,
 ): Promise<{
   data: LatestStatusMappingFile;
   raw: string | null;
   hash: string | null;
 }> => {
-  try {
-    const raw = await fs.readFile(mappingPath(temporaryRoot, resortId), "utf8");
-    return { data: parseMappingFile(raw), raw, hash: hashContent(raw) };
-  } catch {
-    return { data: { version: 1 }, raw: null, hash: null };
-  }
+  const raw = await readDataFile(
+    temporaryRoot,
+    mappingPath(temporaryRoot, resortId),
+    documentLoader,
+  );
+  return raw === null
+    ? { data: { version: 1 }, raw: null, hash: null }
+    : { data: parseMappingFile(raw), raw, hash: hashContent(raw) };
 };
 
 const toStatusItem = (value: unknown): LatestStatusMappingItem | null => {
@@ -120,16 +167,18 @@ const readLatestStatus = async (
   temporaryRoot: string,
   resortId: string,
   kind: LatestStatusMappingKind,
+  latestStatusLoader?: (
+    resortId: string,
+    kind: LatestStatusMappingKind,
+  ) => Promise<LatestSuccessfulStatus | null>,
 ): Promise<{
   fileName: string | null;
   time: string | null;
   items: LatestStatusMappingItem[];
 }> => {
-  const latest = await loadLatestSuccessfulStatus(
-    temporaryRoot,
-    resortId,
-    kind,
-  );
+  const latest = latestStatusLoader
+    ? await latestStatusLoader(resortId, kind)
+    : await loadLatestSuccessfulStatus(temporaryRoot, resortId, kind);
   if (!latest) return { fileName: null, time: null, items: [] };
 
   const itemsByName = new Map<string, LatestStatusMappingItem>();
@@ -156,12 +205,14 @@ const readGeometryNames = async (
   temporaryRoot: string,
   resortId: string,
   kind: LatestStatusMappingKind,
+  documentLoader?: DataDocumentLoader,
 ): Promise<string[]> => {
   const names = new Set<string>();
   for (const sourcePaths of geometryPaths(temporaryRoot, resortId, kind)) {
     for (const filePath of sourcePaths) {
       try {
-        const raw = await fs.readFile(filePath, "utf8");
+        const raw = await readDataFile(temporaryRoot, filePath, documentLoader);
+        if (raw === null) continue;
         const parsed = JSON.parse(raw) as unknown;
         if (!isRecord(parsed) || !Array.isArray(parsed.features)) continue;
         for (const feature of parsed.features) {
@@ -184,13 +235,17 @@ export const loadLatestStatusMappingWorkspace = async (
   resortId: string,
   kind: LatestStatusMappingKind,
   geojsonNamesOverride?: string[],
+  latestStatusLoader?: (
+    resortId: string,
+    kind: LatestStatusMappingKind,
+  ) => Promise<LatestSuccessfulStatus | null>,
 ): Promise<LatestStatusMappingWorkspace> => {
   if (!RESORT_ID_PATTERN.test(resortId)) {
     throw new Error(`不正なスキー場IDです: ${resortId}`);
   }
 
   const [latest, fileGeojsonNames, mapping] = await Promise.all([
-    readLatestStatus(temporaryRoot, resortId, kind),
+    readLatestStatus(temporaryRoot, resortId, kind, latestStatusLoader),
     readGeometryNames(temporaryRoot, resortId, kind),
     readMappingFile(temporaryRoot, resortId),
   ]);
@@ -260,6 +315,10 @@ export const loadLatestStatusMappingWorkspace = async (
 const validateRows = async (
   temporaryRoot: string,
   request: SaveLatestStatusMappingRequest,
+  latestStatusLoader?: (
+    resortId: string,
+    kind: LatestStatusMappingKind,
+  ) => Promise<LatestSuccessfulStatus | null>,
 ): Promise<string[]> => {
   const errors: string[] = [];
   if (!RESORT_ID_PATTERN.test(request.resortId)) {
@@ -272,7 +331,12 @@ const validateRows = async (
   }
 
   const [latest, fileGeojsonNames] = await Promise.all([
-    readLatestStatus(temporaryRoot, request.resortId, request.kind),
+    readLatestStatus(
+      temporaryRoot,
+      request.resortId,
+      request.kind,
+      latestStatusLoader,
+    ),
     readGeometryNames(temporaryRoot, request.resortId, request.kind),
   ]);
   const geojsonNames = request.geojsonNames
@@ -329,8 +393,12 @@ const validateRows = async (
 export const saveLatestStatusMappingFile = async (
   temporaryRoot: string,
   request: SaveLatestStatusMappingRequest,
+  latestStatusLoader?: (
+    resortId: string,
+    kind: LatestStatusMappingKind,
+  ) => Promise<LatestSuccessfulStatus | null>,
 ): Promise<SaveLatestStatusMappingResult> => {
-  const errors = await validateRows(temporaryRoot, request);
+  const errors = await validateRows(temporaryRoot, request, latestStatusLoader);
   if (errors.length > 0) return { ok: false, errors };
 
   const current = await readMappingFile(temporaryRoot, request.resortId);
@@ -358,8 +426,41 @@ export const saveLatestStatusMappingFile = async (
   };
   const raw = `${JSON.stringify(data, null, 2)}\n`;
   const filePath = mappingPath(temporaryRoot, request.resortId);
-  await fs.mkdir(path.dirname(filePath), { recursive: true });
-  await fs.writeFile(filePath, raw, "utf8");
+  if (usesCanonicalDocuments(temporaryRoot)) {
+    const key = dataDocumentKeyForPath(filePath);
+    if (!key) {
+      return { ok: false, errors: ["対応表の保存先が不正です。"] };
+    }
+    try {
+      const { writeDataDocuments } = await import(
+        "@/server/data-documents/client"
+      );
+      await writeDataDocuments([
+        {
+          key,
+          content: raw,
+          mediaType: "application/json",
+          expectedHash: request.mappingFileHash,
+        },
+      ]);
+    } catch (error) {
+      const { DataDocumentConflictError } = await import(
+        "@/server/data-documents/contract"
+      );
+      if (error instanceof DataDocumentConflictError) {
+        return {
+          ok: false,
+          errors: [
+            "画面を開いた後に対応表が更新されました。最新データを読み直してください。",
+          ],
+        };
+      }
+      throw error;
+    }
+  } else {
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.writeFile(filePath, raw, "utf8");
+  }
   return {
     ok: true,
     savedAt,
@@ -372,6 +473,7 @@ export const readResolvedLatestStatusMapping = async (
   temporaryRoot: string,
   resortId: string,
   kind: LatestStatusMappingKind,
+  documentLoader?: DataDocumentLoader,
 ): Promise<ResolvedLatestStatusMapping> => {
   if (!RESORT_ID_PATTERN.test(resortId)) {
     return {
@@ -380,7 +482,9 @@ export const readResolvedLatestStatusMapping = async (
       byGeojsonName: new Map(),
     };
   }
-  const section = (await readMappingFile(temporaryRoot, resortId)).data[kind];
+  const section = (
+    await readMappingFile(temporaryRoot, resortId, documentLoader)
+  ).data[kind];
   if (!section) {
     return {
       configured: false,

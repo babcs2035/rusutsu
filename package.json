@@ -3,13 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "pnpm maplibre:worker && next dev",
+    "dev": "pnpm maplibre:worker && next dev --hostname 127.0.0.1",
+    "dev:lan": "pnpm maplibre:worker && next dev --hostname 0.0.0.0",
     "build": "pnpm maplibre:worker && next build",
     "postbuild": "mkdir -p .next/standalone/public && cp -r public/. .next/standalone/public/ && cp -r .next/static/. .next/standalone/.next/static/",
     "start": "next start",
     "format": "biome format --write src scripts",
     "lint": "biome check --write src scripts",
     "typecheck": "pnpm tsc --noEmit",
+    "test": "node scripts/runTests.mjs",
     "prepare": "husky",
     "maplibre:worker": "node scripts/copyMaplibreWorker.mjs"
   },

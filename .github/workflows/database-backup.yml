@@ -1,0 +1,50 @@
+name: Daily database backup
+
+on:
+  schedule:
+    # Every day at 01:15 JST, regardless of repository pushes.
+    - cron: "15 16 * * *"
+  workflow_dispatch:
+    inputs:
+      test_restore:
+        description: "Also verify restoration into a temporary DB on the VPS"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: rusutsu-production-operations
+      cancel-in-progress: false
+    env:
+      DEPLOY_TARGET: ${{ secrets.DEPLOY_TARGET }}
+      TEST_RESTORE: ${{ inputs.test_restore == true }}
+    steps:
+      - name: Setup Tailscale
+        uses: tailscale/github-action@main
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
+      # Use the CI-validated operations package installed by the deployment workflow.
+      - name: Back up and verify VPS-local copy
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          port: ${{ secrets.DEPLOY_PORT }}
+          envs: DEPLOY_TARGET,TEST_RESTORE
+          command_timeout: 30m
+          script: |
+            set -eu
+            cd "$DEPLOY_TARGET"
+            bash scripts/ops/backup-database.sh
+            if [ "$TEST_RESTORE" = true ]; then
+              bash scripts/ops/restore-backup-test.sh
+            fi

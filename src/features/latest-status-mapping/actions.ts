@@ -1,7 +1,8 @@
 "use server";
 
 import path from "node:path";
-import { auth } from "@/auth";
+import { readCurrentCrawlLatestStatus } from "@/lib/crawlLatestCurrent";
+import { requireAdmin } from "@/lib/requireAdmin";
 import {
   loadLatestStatusMappingWorkspace,
   saveLatestStatusMappingFile,
@@ -21,13 +22,7 @@ const TEMPORARY_ROOT = path.join(
   "resorts-temporary",
 );
 
-const requireAdmin = async (): Promise<void> => {
-  const session = await auth();
-  const role = (session?.user as { role?: string } | undefined)?.role;
-  if (role !== "admin") {
-    throw new Error("管理者権限が必要です。");
-  }
-};
+const loadCanonicalLatestStatus = readCurrentCrawlLatestStatus;
 
 export const loadLatestStatusMapping = async (
   resortId: string,
@@ -40,6 +35,7 @@ export const loadLatestStatusMapping = async (
     resortId,
     kind,
     geojsonNames,
+    loadCanonicalLatestStatus,
   );
 };
 
@@ -47,5 +43,9 @@ export const saveLatestStatusMapping = async (
   request: SaveLatestStatusMappingRequest,
 ): Promise<SaveLatestStatusMappingResult> => {
   await requireAdmin();
-  return saveLatestStatusMappingFile(TEMPORARY_ROOT, request);
+  return saveLatestStatusMappingFile(
+    TEMPORARY_ROOT,
+    request,
+    loadCanonicalLatestStatus,
+  );
 };

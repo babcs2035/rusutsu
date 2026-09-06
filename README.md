@@ -2,6 +2,8 @@
 
 **Rusutsu** は，日本全国のスキー場情報を複数の外部サイトから収集・名寄せし，一元的に可視化する Next.js アプリケーションである．基本情報，コース／リフトの稼働状況，気象予報，積雪履歴，リフト券料金，レビューを組み合わせ，スキー場の「今」と「これから」を把握する．一般利用向けの公開サイト（地図・検索・詳細・比較）と，データの入力・修正を行う管理画面（`/admin`）から構成される．
 
+バックエンド移行の資料は、[初心者向けの操作手順書](docs/backend-migration-beginner-guide.md)と[サーバー・DB・Docker・APIの解説書](docs/backend-migration-explained.md)に分けています。外部バックアップを使わず、GitHubの設定から配備する構成です。
+
 ## 機能
 
 ### 公開サイト
@@ -47,6 +49,7 @@
 *   Google OAuth（Auth.js v5）でログインする．ロールは `viewer` / `admin` があり，`ADMIN_EMAILS` 環境変数に列挙されたメールアドレスが `admin` として扱われる．
 *   `/admin` ルートは `src/proxy.ts` が保護する．クッキーの JWT を直接検証するため DB アクセスを必要とせず，未認証はログインページへ，非 admin は権限なしページへリダイレクトする．
 *   **ダッシュボード**: ユーザー管理と編集ツールへのリンク．
+*   **スキー場マスター編集** (`/admin/resort`): 基本情報と地図・比較用の短縮名を編集し，閉業等の施設をデータ削除せず公開停止・再有効化できる．
 *   **リフト入力** (`/admin/lift`): スキー場選択 → 所属確認・変更 → 位置補正 → 詳細情報 → 全体情報リンク → 確認・保存 の 6 ステップで編集する．
 *   **コース入力** (`/admin/slope`): マップエディタでのライン描画・補正と詳細情報の編集，確認・保存を行う．
 *   **リフトチケット入力** (`/admin/ticket`): JSON Schema からフォームを生成して編集する（スキーマは Skill 側が正本）．保存前に Skill 自身の検証スクリプトを実行する．
@@ -105,7 +108,12 @@ mise run setup
 4.  PostgreSQL コンテナ起動（ヘルスチェック待機付き）
 5.  Prisma マイグレーション実行
 6.  Prisma Client 生成
-7.  データベースシード（DB 接続確認のみ．データ投入はクローリングが担う）
+7.  データベースシード（DB 接続確認）
+
+setupは運用データを自動投入しない．完全に空のDBではスキー場マスターも作らず，
+古いクローラーで再構築しない．本番APIの利用またはDBバックアップの復元を選ぶ．
+既存環境の安全な再起動，本番APIへの切り替え，fresh DBの扱いは
+[`docs/backend-migration-runbook.md`](docs/backend-migration-runbook.md) を参照する．
 
 ### 4. 開発サーバー起動
 
@@ -121,12 +129,28 @@ mise run dev
 | :------------------------------------------ | :----------------------------------------------------------- |
 | `DATABASE_URL`                              | PostgreSQL 接続文字列                                        |
 | `AUTH_SECRET`                               | Auth.js のシークレット                                       |
-| `AUTH_URL`                                  | アプリの URL（Cookie の secure 設定を左右する）              |
+| `AUTH_URL`                                  | アプリのorigin（`/rusutsu`なし。Cookieのsecure設定を左右する） |
 | `AUTH_TRUST_HOST`                           | Auth.js の host 信頼設定                                     |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth の認証情報                                      |
 | `ADMIN_EMAILS`                              | 管理者のメールアドレス（カンマ区切り）．`admin` ロールを付与 |
+| `INTERNAL_DATA_API_ADMIN_TOKEN`             | ローカルNext.jsから正本データを読み書きする管理用トークン（クローラーには渡さない） |
+| `INTERNAL_DATA_API_CRAWLER_TOKEN`           | `crawl_latest` の結果と警告・失敗DOMを投入する専用トークン |
+| `INTERNAL_DATA_API_DIAGNOSTICS_TOKEN`       | 警告・失敗runとDOMを取得する専用トークン                 |
+| `DATA_API_BASE_URL`                         | ローカルNext.jsと本番のcrawl_latest専用schedulerが接続する正本API URL（本番appコンテナには渡さない） |
+| `CRAWLER_ARTIFACT_ROOT`                     | 警告・失敗時だけ保存する診断DOMの永続化ディレクトリ       |
+| `CRAWLER_ARTIFACT_RETENTION_DAYS`           | 診断DOMの保持期間（既定30日） |
+| `DATA_DOCUMENT_ALLOW_BUNDLED_FIXTURES`      | 開発DBへの初回移行前だけ，同梱fixtureを読む明示設定．通常は未設定 |
+| `CRAWL_LATEST_CRON`                         | `crawl_latest`専用schedulerのcron（既定`0 7 * * *`、Asia/Tokyo） |
+| `CRAWL_LATEST_CONCURRENCY`                  | `crawl_latest`の同時実行数（既定1、最大4）                |
+| `CRAWL_LATEST_TIMEOUT_MS`                   | 1スキー場あたりの制限時間（既定1,200,000ms＝20分）        |
 | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`           | 編集画面の Google Maps 用 API キー                           |
-| `PORT` / `APP_PORT` / `DB_PORT`             | ポート番号                                                   |
+| `APP_PORT` / `DB_PORT`                      | Dockerで公開するアプリ / DBのポート番号                      |
+
+Next.jsをホストで直接起動する際の `PORT` は `.env` から読み込まれない。通常は3000番を使い、
+変更時は `PORT=4000 mise run dev` のようにコマンドへ渡す。`DATA_API_BASE_URL` は本番では
+`https://host/rusutsu` のようにbase pathまで含める．本番appには接続先として渡さず，
+schedulerとローカルNext.jsで使う．3種類の内部APIトークンには異なる値を設定し，
+`NEXT_PUBLIC_*` に置かない．旧共通トークン `INTERNAL_DATA_API_TOKEN` は廃止しており使えない．
 
 ---
 
@@ -134,19 +158,44 @@ mise run dev
 
 ### Docker ビルド
 
-`Dockerfile` により multi-stage build で本番イメージを構築する．コンテナ起動時の CMD は `prisma migrate deploy` とシードを実行してからサーバーを起動する．
+`Dockerfile` により multi-stage build で本番イメージを構築する．通常のコンテナ起動は
+サーバーを起動するだけで，migrationやJSONの投入は行わない．DB migrationはバックアップ後に
+`scripts/ops/deploy.sh` が `prisma migrate deploy` で実行する．既存migrationを保持し，
+各DBで未適用のmigrationだけを一度適用する．
 
-```bash
-docker compose up -d --build
-```
+本番appの交換で消さないデータは別のDocker volumeに保存する．
+
+- PostgreSQL: `postgres_data`
+- 警告・失敗DOM: `crawler_artifacts`
+- schedulerのレポート・日次lock: `crawler_worker_artifacts`
+
+`crawl-latest-scheduler` は段階試験後に `crawlers` profileを有効にすると常駐し，現在の93本を
+毎日07:00 JSTに実行する．appのreadinessを待ち，起動直後にはクロールしない．
+本番コンテナ内だけに存在するJSON/GeoJSONはなく，旧コンテナからJSONを退避・比較する作業は不要である．
 
 ### CI/CD (GitHub Actions)
 
-`.github/workflows/ci-cd.yml` により，main ブランチへの push で以下のフローが自動的に実行される:
+以下は実装済みの移行後フローであり，今回の変更はまだ本番へ導入していない．
+`.github/workflows/ci-cd.yml` はmainへのpushまたは手動実行で次を行う．
 
-1.  **CI Check**: Biome（format / lint）と型チェック
-2.  **Docker Build**: arm64 向けビルド → GHCR に push
-3.  **Deploy**: Tailscale 経由でデプロイ先へ接続，イメージ pull & 再起動
+1. Biome，TypeScript，単体・契約テストと，使い捨てDBでmigrationを検証する．schemaだけ変更してmigrationを忘れた場合も検出する．
+2. Docker imageをbuildし，検証したcommit SHAのtagでGHCRへpushする．
+3. GitHub SecretsのAPIキーと既存コンテナのDB・ログイン設定を合成する．既存projectとDB volumeを確認し，同じDBへ接続できるか検証する．
+4. DB変更用pathの変更や明示フラグがある場合は，同じVPS内にDB全体をコピーする．dump形式とchecksumの確認を終えてからmigrationへ進み，コピー失敗時は停止する．
+5. `initialize_data=true` の初回移行時だけ文書と短縮名を投入し，appを起動する．初回pushではRepository variable `INITIALIZE_CANONICAL_DATA=true` でも指定でき，成功確認後に外す．
+6. DB接続と公開HTTPSの `/rusutsu` のreadinessが成功した場合だけdeploy完了とする．
+
+DB変更の対象はmigration・schema・初回import・明示backfill等のpathで判定する．UI変更や
+クローラーファイル追加だけではdeploy前バックアップを要求しない．一括更新等では
+`force_database_backup=true` を指定できる．
+`.github/workflows/database-backup.yml` はpushと無関係に毎日01:15 JSTのバックアップを要求する．
+既定で30世代と7日以内のデータを残す．保存先はSSHユーザーの `~/.local/state/rusutsu/<project>/backups/` に自動作成し，Gitの外へ置く．
+外部転送と暗号鍵の準備は不要で，VPS自体のディスク故障は対象外である．手動実行の `test_restore` で別の一時DBへの復元を確認できる．
+APIキー3つはGitHub Secretsへ登録し，既存のDB・OAuth・ポート設定はコンテナから引き継ぐ．元の `.env` は上書きしない．
+DOMはDBコピーに含まれず，古い日次lockは復元しない．
+
+初回deployと復元試験の手順は
+[`docs/backend-migration-runbook.md`](docs/backend-migration-runbook.md) を参照する．
 
 ---
 
@@ -154,23 +203,26 @@ docker compose up -d --build
 
 ### Frontend (Next.js App Router)
 
-*   **Server Actions**: クライアントとサーバー間のデータ通信には Server Actions（`src/actions`）を採用する．
+*   **Server Actions**: 管理UIの呼び出し口として使い、Action内でも毎回管理者権限を再確認する．ローカルから正本データへの接続は、ブラウザーではなくNext.jsサーバーからトークン付き内部APIへ送る．
 *   **UI/UX**: shadcn/ui (Base UI) + Tailwind CSS v4 によるコンポーネント指向 UI．
 *   **Client State**: Zustand によるフィルタリング状態や比較対象などのクライアント状態管理．
 *   **Visualization**: React Leaflet による動的地図コンポーネント（ブラウザ専用のため dynamic import で SSR を無効化），Recharts による気象トレンド・積雪データの可視化．
 *   **ルート保護**: `src/proxy.ts` が `/admin` ルートをガードする．
-*   **Instrumentation**: `src/instrumentation.ts` が本番環境の起動時にクローラースケジューラを開始する（開発環境では無効）．
+*   **Instrumentation**: `src/instrumentation.ts` が本番環境の起動時に雪マジ用スケジューラを開始する（開発環境では無効）．`crawl_latest` は別コンテナの専用schedulerで動かす．
 
 ### Backend & Database (PostgreSQL + Prisma 7)
 
 *   **Prisma 7 のアーキテクチャ**: driver adapter（`@prisma/adapter-pg`）方式を採用し，接続設定を `prisma.config.ts` で一元管理する．`schema.prisma` 上の静的な `url` 定義は持たない．
-*   **スケジューラ**: `src/lib/scheduler.ts` が node-cron で全クローラーを起動時 1 回と毎日 03:00 (JST) に実行する．実行結果は `CrawlLog` テーブルに記録される．
+*   **正本データ**: 本番PostgreSQLに運用データを集約する．本番Next.jsはDBを直接使い，`DATA_API_BASE_URL` があるローカルNext.jsはサーバーから内部APIを使う．admin編集をGit版JSONで上書きしない．
+*   **初回投入**: `CanonicalDataMigration` に完了を記録し，文書追加と完了記録を同じtransactionで確定する．完了後は再実行しても書き込まず，DBから削除した文書もGit版で復活させない．通常運用は実行時のGit fallbackなし．開発用fixtureの例外は明示設定がある初回移行前だけである．
+*   **公開データ**: スキー場と料金は公開項目を明示し，元JSONの未知の管理フィールドや不要な旧weather JSONを送らない．地図の座標・短縮名など，表示に必要な公開データはDevToolsから確認できる．旧weather取得のServer Actionは管理者専用である．
+*   **スケジューラ**: `src/lib/scheduler.ts` が毎日 03:00 (JST) に雪マジのみを実行する．別の `scripts/scheduleCrawlLatest.ts` は毎日07:00 (JST) に現在の `crawl_latest` 93本を実行する．どちらも起動直後には実行しない．他の従来クローラー本体と手動実行コマンドは保守用に残す．
 
 ### データモデル
 
 | モデル                         | 内容                                                                       |
 | :----------------------------- | :------------------------------------------------------------------------- |
-| `SkiResort`                    | スキー場マスター（名称，所在地，標高，コース・リフト概要，営業時間，概況） |
+| `SkiResort`                    | スキー場マスター（名称，短縮名`shortName`，所在地，標高，コース・リフト概要，営業時間，概況，公開状態） |
 | `Course`                       | コース（名称，難易度，距離，斜度，備考）                                   |
 | `Lift`                         | リフト（名称，種別，距離，フード）                                         |
 | `Ticket`                       | チケット（名称，年齢別の料金）                                             |
@@ -181,6 +233,9 @@ docker compose up -d --build
 | `LatestReport`                 | 最新ゲレンデレポート（スキー場ごとに 1 件）                                |
 | `AmedasData`                   | アメダス観測値（スキー場に紐付かない）                                     |
 | `YukiMagi`                     | 雪マジ情報（スキー場と関連）                                               |
+| `DataDocument`                 | 管理画面で編集するJSON/GeoJSONの正本（hashとversionを保持）                  |
+| `CanonicalDataMigration`       | 一度限りの文書・短縮名投入の完了記録と元データhash                         |
+| `CrawlLatestRun` ほか          | `crawl_latest` の実行履歴、カテゴリ別正常値、警告、診断DOMのメタデータ       |
 | `User` / `Account` / `Session` | Auth.js v5 用（ロール: `viewer` / `admin`）                                |
 | `CrawlLog`                     | クローラー実行ログ（名称，最終実行時刻，状態，メッセージ）                 |
 
@@ -189,6 +244,9 @@ docker compose up -d --build
 ## データ処理パイプライン (Crawling & Data Normalization)
 
 ### 1. データ収集ソース
+
+以下は既存クローラーの役割の一覧であり，自動実行対象の一覧ではない．定期実行は雪マジと
+`crawl_latest/resorts`だけとし，構築済みの基本情報を古いクローラーで再構築しない．
 
 | データソース                                    | 取得データ                                                      | 対応スクリプト                                                                               | 役割                                                                       |
 | :---------------------------------------------- | :-------------------------------------------------------------- | :------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------- |
@@ -201,29 +259,43 @@ docker compose up -d --build
 
 上記に加え，クローリングで取得しないデータがある．
 
-*   **リフト券料金**: `.shared/skills/collect-ski-lift-ticket-pricing` の Skill を用いて各スキー場の公式サイトから収集し，`src/private/data/lift-ticket/{resort-id}/` に格納する．構造の正本は Skill 側の JSON Schema である．
-*   **レビュー**: 編集されたレビューデータを `src/private/data/reviews/{resort-id}/` に格納する．管理画面のレビュー入力で編集できる．
-*   **コース・リフトのジオメトリ**: 確定済みラインの GeoJSON を `src/private/data/resorts-finalized/` に格納する．管理画面のコース入力・リフト入力で編集できる．
+*   **リフト券料金**: `.shared/skills/collect-ski-lift-ticket-pricing` の Skill を用いて各スキー場の公式サイトから収集する．構造の正本は Skill 側の JSON Schema である．Git同梱の `src/private/data/lift-ticket/{resort-id}/` は初回投入元で，運用開始後の正本はPostgreSQLである．
+*   **レビュー**: Git同梱の `src/private/data/reviews/{resort-id}/` を初回投入し，以後は管理画面からPostgreSQL上の文書を編集する．
+*   **コース・リフトのジオメトリ**: Git同梱GeoJSONを初回投入し，以後は管理画面からPostgreSQL上の元線と公開用派生線を同時に編集する．
 
 ### 2. 名寄せ (Normalization)
 
-ウェブ上の情報にはスキー場名に強い「表記揺れ」や ID リテラルの差異が存在するため，`src/private/data/` 以下の辞書ファイルで正確な突合を実現している．
+`SkiResortReadings.json` と `SkiResortWeatherIds.json` は静的な表示・外部リンク補助設定として
+Gitに残す．`src/private` はprivate crawler code，対応辞書，初回fixtureの保管場所として継続する．
 
-*   **`SkiAreaNameDict.json`**: ベースとなる和名を正規化し，アプリケーション内で一意となる Master Name を解決．
+ウェブ上では、同じ物でも提供元ごとに名前が違う。この違いを吸収する「名前の対応表」が
+名寄せ辞書である。用途の異なる対応表を区別している．
+
+*   **`SkiAreaNameDict.json`**: DB上のスキー場名と雪マジ側の施設名を対応させる．例えば「ピリカスキー場」と「今金町ピリカスキー場」を同じ施設として扱う．
 *   **`SnowJapanToSnowForecastDict.json`**: 外部サイト間の ID 同士の直接マッピング．
 *   **`SnowForecastDict.json` / `SurfSnowDict.json`**: 各提供元での固有名称と内部 DB 上の正規化名を動的にリンク．
-*   **`SkiResortNameAliases.json`**: 地図ラベル用の短縮表示名．
+*   **各`crawl_latest/resorts/*.ts`の`courseNameMap` / `liftNameMap`**: 公式ページ上のコース・リフト名をアプリ内の統一名へ変換する．例えば「バンビ - 上部」を「バンビ上部」にする．
+*   **`latest_status_mapping`**: クロールした名前とGeoJSON上のコース・リフト線を対応させる．adminで調整する運用データで、移行後の正本はPostgreSQLである．
+*   **`SkiResortNameAliases.json`**: `SkiResort.shortName` への一度限りの投入元（113件）．実行時はDB値を参照し，adminで編集する．短縮名は公開情報であり，外部データの名寄せ辞書ではない．将来の複数別名は別の `SkiResortAlias` 等で管理する．
 *   **`SkiResortReadings.json`**: ふりがな（ルビ）と旧名称．検索（ひらがな・カタカナ・旧名称でのヒット）と表示（`<ruby>` によるふりがな，旧称の併記）に利用．
-*   **`SkiResortLinks.json`**: スキー場ごとの参考 URL（スキースクール，スノーボードスクール，公式 LINE）．
+*   **`SkiResortLinks.json`**: スキー場ごとの参考 URL（スキースクール，スノーボードスクール，公式 LINE）の初回投入元．admin編集後の正本はDBのDataDocumentである．
 *   **`SkiResortWeatherIds.json`**: 各気象サービスのスポット ID．詳細・比較画面の気象リンク生成に利用．
 *   **`SnowForecastSlugBySkiResortId.json` / `SnowForecastSpots.json` / `TenkijpSpots.json` / `WeathernewsSpots.json`**: スポット ID 同期の中間データ．
 
 ※ 辞書のキー→値の向き（正式名→別名か別名→正式名か）はファイルごとに異なるため，利用時は個別に確認する．
 
+クローラーの検証ルールは、取得結果を最新値に採用してよいか判断する警報条件である。名前・
+状態の欠落、`○`・`△`・`×`以外の未知状態、重複、想定件数との差、取得元URLがあるのに
+空になったカテゴリ、不正URL、天気値の欠落や異常範囲などを検査する。警告時には原因DOMと
+生結果を保存し、そのカテゴリは最新値へ昇格させない．
+
 ### 3. 実行と冪等性
 
-*   個別実行は `mise run crawl:ski-areas` などのタスク，一括実行は `mise run crawl:all` で行う．
-*   自動実行は上記のスケジューラ（本番環境のみ）が担う．
+*   従来のクローラー本体は削除していない．個別実行は `mise run crawl:ski-areas` などのタスク，一括実行は `mise run crawl:all` で引き続き行える．
+*   従来系で自動実行するのは雪マジだけで，本番スケジューラが毎日03:00 (JST) に実行する．それ以外の従来クローラーは自動実行しない．
+*   スキー場別 `crawl_latest` は本番の専用schedulerが毎日07:00 (JST) に現在の93本を実行し，正常値を内部APIへ送る．実行対象は`resorts/*.ts`から自動列挙し，`template.ts`、`*_before.ts`、テストファイルを除外する．
+*   ローカル確認は `mise run crawl:latest -- --local-files --resort <id>` を使う．正常結果は`src/private/data/resorts-temporary/latest_data/<id>/<日時>.json`、警告時の生結果とDOMは通常`var/crawler-artifacts/crawl_latest_dom/<id>/`以下に残るため、VS Codeで確認できる．このモードは本番API設定を明示的に無効化し、生成JSONをGitHub経由で本番値にする運用には使わない．
+*   本番の警告・失敗DOMは `mise run crawl:diagnostics:pull -- --resort <id>` でVS Code用に取得できる．本番schedulerの導入は、ローカル1件、本番APIへ1件、少数件、全93件の順で確認する．
 *   書き込み戦略はモデルごとに upsert や削除→再作成など異なる．履歴系テーブルはスキー場 + 日付の一意制約で重複行を防ぐ．
 
 ---
@@ -242,9 +314,9 @@ docker compose up -d --build
 │   └── seed.ts                    # シード（DB 接続確認のみ）
 ├── public/                        # 静的アセット
 ├── src/
-│   ├── actions/                   # Server Actions．DB 取得・更新，クローリング呼び出しの入口
+│   ├── actions/                   # Server Actions．管理画面からの取得・更新の入口
 │   │   ├── auth.ts                # 認証関連の Server Action
-│   │   ├── crawl.ts               # クローラー実行と CrawlLog 記録
+│   │   ├── crawl.ts               # 既存コード向けのserver-only互換export
 │   │   └── skiResorts.ts          # スキー場一覧・詳細データ取得 (料金・レビュー・GeoJSON 含む)
 │   ├── app/                       # Next.js App Router．ルーティングと初期データ取得の入口
 │   │   ├── globals.css            # グローバル CSS (Tailwind)
@@ -271,6 +343,11 @@ docker compose up -d --build
 ├── package.json                   # 依存ライブラリ構成
 └── prisma.config.ts               # Prisma 7 の DB 接続設定
 ~~~
+
+正本DB、内部API、Docker volume、GitHubの役割と本番設定は
+[`docs/backend-data-architecture.md`](docs/backend-data-architecture.md) を参照する．
+ローカル復旧から本番移行までの具体的な順序は
+[`docs/backend-migration-runbook.md`](docs/backend-migration-runbook.md) を参照する．
 
 ## features のディレクトリ構造
 
@@ -415,8 +492,8 @@ features/lift/
 | components/LinksStep.tsx        | ステップ 5．スキー場の全体情報リンクを編集する．                                                                                                                                                          |
 | components/ConfirmStep.tsx      | ステップ 6．変更内容の要約を表示し，保存を実行する．                                                                                                                                                      |
 | hooks/useDraftStorage.ts        | 編集内容を localStorage に永続化し，再訪問時に復元する hook．                                                                                                                                             |
-| server/liftFiles.ts             | リフトデータファイル（before GeoJSON，確認済みエントリ，resort links）の読み書き．                                                                                                                        |
-| actions.ts                      | ファイルの読み書き，内容ハッシュ，検証を行う Server Actions．                                                                                                                                             |
+| server/liftFiles.ts             | DataDocument上のリフト元線・確認済み情報・resort linksをDB/API経由で読み書きする．                                                                                                                        |
+| actions.ts                      | 権限を確認し，DB/API経由で文書の読み書きと競合検証を行う Server Actions．                                                                                                                                             |
 | utils/detailMerge.ts            | 既存の詳細情報と編集内容をマージする処理．                                                                                                                                                                |
 | utils/diff.ts                   | ソースデータと編集内容の変更点検出．                                                                                                                                                                      |
 | utils/liftOps.ts                | リフト表示名，ライン変更判定，検索語補完などの補助関数．                                                                                                                                                  |
@@ -506,7 +583,7 @@ features/map/
 | hooks/useFinalizedMapFeatures.ts      | FinalizedResortMapData から描画用 collection，bounds，選択中コース/リフト，focus mode 判定などを派生させる hook．                                                                                                     |
 | hooks/useJapanMapLabelLayout.ts       | 日本地図上のスキー場名ラベル配置を計算する hook．ズームレベル，選択状態，フィルタ状態，衝突回避，leader line の要否を見て LabelLayout を生成する．                                                                    |
 | hooks/useMapZoomInteractionSurface.ts | wrapper 要素上の wheel / double click / touch によるズーム操作を検知し，親へユーザー操作として通知する hook．                                                                                                         |
-| hooks/useResortAliases.ts             | SkiResortNameAliases.json を読み込み，地図ラベル用の短縮表示名を生成する hook．                                                                                                                                       |
+| hooks/useResortAliases.ts             | DB/APIから渡されたshortNameを使い，未設定時は正式名から地図ラベルを生成する hook．                                                                                                                                       |
 | types.ts                              | 地図 feature の型定義．ラベル矩形，線分，候補配置，地図表示復元 request，選択中コース/リフト，JapanResortMapProps などを持つ．                                                                                        |
 | utils/finalizedMapData.ts             | DB/GeoJSON 由来の完成済みコース・リフトデータを Leaflet / GeoJSON 描画用に変換する．bounds 計算，コース色，リフト flow，非圧雪 dash などを扱う．                                                                      |
 | utils/labelCollision.ts               | ラベル衝突判定の純粋関数群．矩形 overlap，点と矩形/線分の距離，leader line 交差，候補矩形生成，viewport 拡張を担当する．                                                                                              |
@@ -578,7 +655,7 @@ features/review/
 | ファイル                | 役割                                                                                                         |
 | :---------------------- | :----------------------------------------------------------------------------------------------------------- |
 | ReviewEditWorkspace.tsx | レビュー編集画面の親コンポーネント．スキー場ごとのレビュー記事（カテゴリ，スコア，本文）の管理と保存を扱う． |
-| server/reviewFiles.ts   | `src/private/data/reviews/` 配下のレビューデータファイルの読み書き．                                         |
+| server/reviewFiles.ts   | `reviews/`キーのDataDocumentをDB/API経由で読み書きする．                                         |
 | actions.ts              | レビューデータの読み書きを行う Server Actions．                                                              |
 | types.ts                | レビュー編集用の型定義．                                                                                     |
 
@@ -602,7 +679,7 @@ features/reviews/
 
 ### features/slope
 
-管理画面のコース入力（`/admin/slope`）を担当する．地図エディタでコースのラインを描画・補正し，詳細情報を編集してファイルとして保存する．
+管理画面のコース入力（`/admin/slope`）を担当する．地図エディタでコースのラインを描画・補正し，詳細情報を編集してDBのDataDocumentへ保存する．
 
 ~~~text
 features/slope/
@@ -642,7 +719,7 @@ features/slope/
 | components/EditorMap.tsx              | Leaflet による地図エディタ．ライン描画，マーカー操作，タイルレイヤーを扱う．         |
 | components/TutorialOverlay.tsx        | 初回利用時のチュートリアルオーバーレイ．                                             |
 | hooks/useDraftStorage.ts              | 編集内容を localStorage に永続化し，再訪問時に復元する hook．                        |
-| server/slopeFiles.ts                  | コースデータファイル（GeoJSON など）の読み書き．                                     |
+| server/slopeFiles.ts                  | コースのGeoJSON等をDataDocumentとしてDB/API経由で読み書きする．                                     |
 | actions.ts                            | コースデータの読み書きを行う Server Actions．                                        |
 | utils/courseOps.ts                    | コースデータ操作の補助関数．                                                         |
 | utils/exportFiles.ts / importFiles.ts | コースデータファイルのエクスポート・インポート．                                     |
@@ -685,7 +762,7 @@ features/ticket/
 | hooks/useDraftStorage.ts         | 編集内容を localStorage に永続化し，再訪問時に復元する hook．                                                                                |
 | presentation.ts                  | 日本語の見出しやタブ配置など，表示上の都合のみを保持する．構造・必須・enum の中身は schema と taxonomy.json が正本であるためここに書かない． |
 | server/schemaSpec.ts             | Skill の JSON Schema と taxonomy.json を読み込み，フォーム spec を生成する．schema が更新されるとフォームも自動的に追従する．                |
-| server/ticketFiles.ts            | `src/private/data/lift-ticket/` 配下の料金データファイルの読み書き．                                                                         |
+| server/ticketFiles.ts            | `lift-ticket/`キーの料金DataDocumentをDB/API経由で読み書きする．                                                                         |
 | server/validateTicket.ts         | 保存前に Skill 自身の検証スクリプトを実行し，検証レポートを返す．画面側に検証ロジックを再実装しないためである．                              |
 | utils/nodeOps.ts                 | JSON ノードツリー操作の補助関数．                                                                                                            |
 | utils/references.ts              | コレクション間の ID 参照を解決する．                                                                                                         |
@@ -716,6 +793,7 @@ features/weather/
 
 *   **開発とチェック**:
     *   `mise run dev` - Next.js 開発サーバー起動 ( http://localhost:3000/rusutsu )
+    *   `mise run dev:lan` - 明示的にLANへ公開して開発サーバー起動（通常は使用しない）
     *   `mise run check` - 一括チェック ( format → lint → typecheck )
     *   `mise run format` / `mise run lint` - Biome によるフォーマット / リント
     *   `mise run typecheck` - TypeScript 型チェック
@@ -724,9 +802,12 @@ features/weather/
     *   `mise run clean` - 一時ファイル削除 ( node_modules, .next )
 *   **インフラ・データベース**:
     *   `mise run db:up` - PostgreSQL (Docker) 起動・ヘルスチェック待機
-    *   `mise run db:down` - コンテナ・ネットワークの破棄
+    *   `mise run db:down` - app/DBコンテナとnetworkを停止（volumeは保持）
     *   `mise run db:migrate` - Prisma マイグレーション実行
     *   `mise run db:generate` - Prisma Client 生成
+    *   `mise run db:import-documents -- --dry-run` - 初回文書投入元の検証（DB接続なし）
+    *   `mise run db:import-short-names -- --dry-run` - 短縮名投入元の検証（DB接続なし）
+    *   上記importの `--initialize` はバックアップ後の初回移行だけで明示する．通常起動では実行しない
     *   `mise run db:seed` - DB シード実行（DB 接続確認のみ）
     *   `mise run db:reset` - データベースリセット（全データ削除 & シード）
     *   `mise run db:studio` - Prisma Studio による DB GUI サーバ起動
@@ -736,4 +817,5 @@ features/weather/
     *   `mise run crawl:all` - パイプライン全体実行（ski-areas → gelendes → weathers → forecasts → snowDepths → snowFalls → latestReports → yukiMagi → amedas の順）
     *   `mise run crawl:ski-areas` / `crawl:gelendes` / `crawl:weathers` / `crawl:forecasts` - 個別タスク実行
 *   **テスト**:
+    *   `pnpm test` - 全単体・契約テストを実行する．
     *   単体テストは `node:test` を使用し，`pnpm tsx --test <テストファイル>` で実行する（例: `pnpm tsx --test src/features/lift-ticket/utils/priceTable.test.ts`）

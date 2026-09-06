@@ -1,6 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
-import { promises as fs } from "node:fs";
-import path from "node:path";
+import { createHash } from "node:crypto";
 import {
   REVIEW_CATEGORY_IDS,
   type ReviewArticleFile,
@@ -9,6 +7,12 @@ import {
   type ReviewDetailFile,
   type ReviewSource,
 } from "@/features/reviews/types";
+import {
+  type DataDocument,
+  DataDocumentConflictError,
+  type DataDocumentSummary,
+  type DataDocumentWrite,
+} from "@/server/data-documents/contract";
 import type {
   ReviewActionResult,
   ReviewEditData,
@@ -16,24 +20,55 @@ import type {
   SaveReviewRequest,
 } from "../types";
 
-const REVIEWS_ROOT = path.join(
-  process.cwd(),
-  "src",
-  "private",
-  "data",
-  "reviews",
-);
+const REVIEWS_PREFIX = "reviews/";
+const DETAIL_FILE_NAME = "detail.json";
+const ARTICLE_FILE_NAME = "article.json";
+const REVIEW_READ_BATCH_SIZE = 16;
+const CONFLICT_ERROR =
+  "読み込み後にファイルが変更されています。再読み込みしてから編集してください。";
 
 const isValidResortId = (value: string) =>
   /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
 
-const reviewPaths = (resortId: string) => {
+const reviewKeys = (resortId: string) => {
   if (!isValidResortId(resortId)) throw new Error("不正なスキー場IDです。");
-  const directory = path.join(REVIEWS_ROOT, resortId);
+  const prefix = `${REVIEWS_PREFIX}${resortId}/`;
   return {
-    detail: path.join(directory, "detail.json"),
-    article: path.join(directory, "article.json"),
+    detail: `${prefix}${DETAIL_FILE_NAME}`,
+    article: `${prefix}${ARTICLE_FILE_NAME}`,
   };
+};
+
+export type ReviewDataDocumentClient = {
+  getDataDocument(key: string): Promise<DataDocument | null>;
+  listDataDocuments(prefix: string): Promise<DataDocumentSummary[]>;
+  writeDataDocuments(
+    documents: readonly DataDocumentWrite[],
+  ): Promise<DataDocument[]>;
+};
+
+type ReviewDocuments = {
+  detail: DataDocument;
+  article: DataDocument;
+};
+
+const canonicalDataDocumentClient: ReviewDataDocumentClient = {
+  async getDataDocument(key) {
+    const { getDataDocument } = await import("@/server/data-documents/client");
+    return getDataDocument(key);
+  },
+  async listDataDocuments(prefix) {
+    const { listDataDocuments } = await import(
+      "@/server/data-documents/client"
+    );
+    return listDataDocuments(prefix);
+  },
+  async writeDataDocuments(documents) {
+    const { writeDataDocuments } = await import(
+      "@/server/data-documents/client"
+    );
+    return writeDataDocuments(documents);
+  },
 };
 
 const hashFiles = (detailRaw: string, articleRaw: string) =>
@@ -42,15 +77,6 @@ const hashFiles = (detailRaw: string, articleRaw: string) =>
     .update("\0")
     .update(articleRaw)
     .digest("hex");
-
-const readRawFiles = async (resortId: string) => {
-  const paths = reviewPaths(resortId);
-  const [detailRaw, articleRaw] = await Promise.all([
-    fs.readFile(paths.detail, "utf8"),
-    fs.readFile(paths.article, "utf8"),
-  ]);
-  return { paths, detailRaw, articleRaw };
-};
 
 const warningCount = (detail: ReviewDetailFile) =>
   REVIEW_CATEGORY_IDS.reduce((count, categoryId) => {
@@ -63,41 +89,90 @@ const warningCount = (detail: ReviewDetailFile) =>
     );
   }, 0);
 
-export const listReviewResorts = async (): Promise<ReviewResortSummary[]> => {
-  const entries = await fs.readdir(REVIEWS_ROOT, { withFileTypes: true });
-  const summaries: ReviewResortSummary[] = [];
-  for (const entry of entries) {
-    if (!entry.isDirectory() || !isValidResortId(entry.name)) continue;
-    try {
-      const { detailRaw, articleRaw } = await readRawFiles(entry.name);
-      const detail = JSON.parse(detailRaw) as ReviewDetailFile;
-      const article = JSON.parse(articleRaw) as ReviewArticleFile;
-      summaries.push({
-        resortId: entry.name,
-        warningCount: warningCount(detail),
-        hasArticle: Boolean(article.full),
-      });
-    } catch (error) {
-      if (
-        !(error instanceof Error && "code" in error && error.code === "ENOENT")
-      ) {
-        throw error;
-      }
-    }
-  }
-  return summaries.sort((left, right) =>
-    left.resortId.localeCompare(right.resortId),
-  );
+const readReviewDocuments = async (
+  client: ReviewDataDocumentClient,
+  resortId: string,
+): Promise<ReviewDocuments | null> => {
+  const keys = reviewKeys(resortId);
+  const [detail, article] = await Promise.all([
+    client.getDataDocument(keys.detail),
+    client.getDataDocument(keys.article),
+  ]);
+  return detail && article ? { detail, article } : null;
 };
 
-export const readReviewForEdit = async (
+const requireReviewDocuments = async (
+  client: ReviewDataDocumentClient,
+  resortId: string,
+): Promise<ReviewDocuments> => {
+  const documents = await readReviewDocuments(client, resortId);
+  if (!documents) throw new Error("レビューデータが見つかりません。");
+  return documents;
+};
+
+const listReviewResortsWithClient = async (
+  client: ReviewDataDocumentClient,
+): Promise<ReviewResortSummary[]> => {
+  const listed = await client.listDataDocuments(REVIEWS_PREFIX);
+  const fileKindsByResort = new Map<string, Set<string>>();
+  for (const document of listed) {
+    const match = document.key.match(
+      /^reviews\/([a-z0-9]+(?:-[a-z0-9]+)*)\/(detail|article)\.json$/u,
+    );
+    if (!match) continue;
+    const [, resortId, fileKind] = match;
+    if (!resortId || !fileKind) continue;
+    const fileKinds = fileKindsByResort.get(resortId) ?? new Set<string>();
+    fileKinds.add(fileKind);
+    fileKindsByResort.set(resortId, fileKinds);
+  }
+
+  const resortIds = [...fileKindsByResort]
+    .filter(
+      ([, fileKinds]) => fileKinds.has("detail") && fileKinds.has("article"),
+    )
+    .map(([resortId]) => resortId);
+  const summaries: Array<ReviewResortSummary | null> = [];
+  for (
+    let index = 0;
+    index < resortIds.length;
+    index += REVIEW_READ_BATCH_SIZE
+  ) {
+    const batch = resortIds.slice(index, index + REVIEW_READ_BATCH_SIZE);
+    summaries.push(
+      ...(await Promise.all(
+        batch.map(async resortId => {
+          const documents = await readReviewDocuments(client, resortId);
+          if (!documents) return null;
+          const detail = JSON.parse(
+            documents.detail.content,
+          ) as ReviewDetailFile;
+          const article = JSON.parse(
+            documents.article.content,
+          ) as ReviewArticleFile;
+          return {
+            resortId,
+            warningCount: warningCount(detail),
+            hasArticle: Boolean(article.full),
+          } satisfies ReviewResortSummary;
+        }),
+      )),
+    );
+  }
+  return summaries
+    .filter((summary): summary is ReviewResortSummary => summary !== null)
+    .sort((left, right) => left.resortId.localeCompare(right.resortId));
+};
+
+const readReviewForEditWithClient = async (
+  client: ReviewDataDocumentClient,
   resortId: string,
 ): Promise<ReviewEditData> => {
-  const { detailRaw, articleRaw } = await readRawFiles(resortId);
+  const { detail, article } = await requireReviewDocuments(client, resortId);
   return {
-    detail: JSON.parse(detailRaw) as ReviewDetailFile,
-    article: JSON.parse(articleRaw) as ReviewArticleFile,
-    fileHash: hashFiles(detailRaw, articleRaw),
+    detail: JSON.parse(detail.content) as ReviewDetailFile,
+    article: JSON.parse(article.content) as ReviewArticleFile,
+    fileHash: hashFiles(detail.content, article.content),
   };
 };
 
@@ -204,7 +279,8 @@ const validateRequest = (request: SaveReviewRequest) => {
   return errors;
 };
 
-export const writeReviewFiles = async (
+const writeReviewFilesWithClient = async (
+  client: ReviewDataDocumentClient,
   request: SaveReviewRequest,
 ): Promise<ReviewActionResult> => {
   const errors = validateRequest(request);
@@ -215,28 +291,41 @@ export const writeReviewFiles = async (
     };
   }
 
-  const current = await readRawFiles(request.resortId);
-  if (hashFiles(current.detailRaw, current.articleRaw) !== request.fileHash) {
+  const current = await requireReviewDocuments(client, request.resortId);
+  if (
+    hashFiles(current.detail.content, current.article.content) !==
+    request.fileHash
+  ) {
     return {
       ok: false,
-      errors: [
-        "読み込み後にファイルが変更されています。再読み込みしてから編集してください。",
-      ],
+      errors: [CONFLICT_ERROR],
     };
   }
 
   const detailRaw = `${JSON.stringify(request.detail, null, 2)}\n`;
   const articleRaw = `${JSON.stringify(request.article, null, 2)}\n`;
-  const suffix = randomUUID();
-  const detailTemporary = `${current.paths.detail}.${suffix}.tmp`;
-  const articleTemporary = `${current.paths.article}.${suffix}.tmp`;
-
-  await Promise.all([
-    fs.writeFile(detailTemporary, detailRaw, "utf8"),
-    fs.writeFile(articleTemporary, articleRaw, "utf8"),
-  ]);
-  await fs.rename(detailTemporary, current.paths.detail);
-  await fs.rename(articleTemporary, current.paths.article);
+  const keys = reviewKeys(request.resortId);
+  try {
+    await client.writeDataDocuments([
+      {
+        key: keys.detail,
+        content: detailRaw,
+        mediaType: "application/json",
+        expectedHash: current.detail.hash,
+      },
+      {
+        key: keys.article,
+        content: articleRaw,
+        mediaType: "application/json",
+        expectedHash: current.article.hash,
+      },
+    ]);
+  } catch (error) {
+    if (error instanceof DataDocumentConflictError) {
+      return { ok: false, errors: [CONFLICT_ERROR] };
+    }
+    throw error;
+  }
 
   return {
     ok: true,
@@ -247,3 +336,19 @@ export const writeReviewFiles = async (
     },
   };
 };
+
+export const createReviewFileService = (client: ReviewDataDocumentClient) => ({
+  listReviewResorts: () => listReviewResortsWithClient(client),
+  readReviewForEdit: (resortId: string) =>
+    readReviewForEditWithClient(client, resortId),
+  writeReviewFiles: (request: SaveReviewRequest) =>
+    writeReviewFilesWithClient(client, request),
+});
+
+const canonicalReviewFileService = createReviewFileService(
+  canonicalDataDocumentClient,
+);
+
+export const listReviewResorts = canonicalReviewFileService.listReviewResorts;
+export const readReviewForEdit = canonicalReviewFileService.readReviewForEdit;
+export const writeReviewFiles = canonicalReviewFileService.writeReviewFiles;

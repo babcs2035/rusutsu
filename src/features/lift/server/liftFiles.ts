@@ -1,45 +1,66 @@
 import { createHash } from "node:crypto";
-import { promises as fs } from "node:fs";
-import path from "node:path";
 import type {
   LiftBeforeGeojson,
   LiftDetailEntry,
   ResortLink,
   ResortLinks,
 } from "@/features/lift/types";
+import {
+  type DataDocument,
+  DataDocumentConflictError,
+} from "@/server/data-documents/contract";
 
-const PRIVATE_DATA_ROOT = path.join(process.cwd(), "src", "private", "data");
-
-const DATA_ROOT = path.join(PRIVATE_DATA_ROOT, "resorts-temporary");
-
+const TEMPORARY_DATA_PREFIX = "resorts-temporary";
 const RESORT_ID_PATTERN = /^[a-z0-9-]+$/;
+const WRITE_ATTEMPTS = 3;
+
+const loadDataDocumentClient = () => import("@/server/data-documents/client");
 
 export const isValidResortId = (resortId: string): boolean =>
   RESORT_ID_PATTERN.test(resortId);
 
-const liftBeforePath = (resortId: string): string =>
-  path.join(DATA_ROOT, "lift_before", `${resortId}.geojson`);
+export const liftBeforeDocumentKey = (resortId: string): string =>
+  `${TEMPORARY_DATA_PREFIX}/lift_before/${resortId}.geojson`;
+
+export const liftDetailDocumentKey = (resortId: string): string =>
+  `${TEMPORARY_DATA_PREFIX}/lift_detail/${resortId}.json`;
+
+export const lift20mDocumentKey = (resortId: string): string =>
+  `${TEMPORARY_DATA_PREFIX}/lift_20m/${resortId}.geojson`;
+
+const LIFT_BEFORE_PREFIX = `${TEMPORARY_DATA_PREFIX}/lift_before/`;
+export const LIFT_CONFIRMED_DOCUMENT_KEY = `${TEMPORARY_DATA_PREFIX}/lift_confirmed.json`;
+export const SKI_RESORT_LINKS_DOCUMENT_KEY = "SkiResortLinks.json";
+
+const resortIdFromLiftBeforeKey = (key: string): string | null => {
+  if (!key.startsWith(LIFT_BEFORE_PREFIX) || !key.endsWith(".geojson")) {
+    return null;
+  }
+  const resortId = key.slice(LIFT_BEFORE_PREFIX.length, -".geojson".length);
+  return isValidResortId(resortId) ? resortId : null;
+};
 
 export async function listLiftBeforeResortIds(): Promise<string[]> {
-  try {
-    const files = await fs.readdir(path.join(DATA_ROOT, "lift_before"));
-    return files
-      .filter(file => file.endsWith(".geojson"))
-      .map(file => file.replace(/\.geojson$/, ""));
-  } catch {
-    return [];
-  }
+  const { listDataDocuments } = await loadDataDocumentClient();
+  const documents = await listDataDocuments(LIFT_BEFORE_PREFIX);
+  return documents.flatMap(document => {
+    const resortId = resortIdFromLiftBeforeKey(document.key);
+    return resortId === null ? [] : [resortId];
+  });
+}
+
+export async function readLiftBeforeDocument(
+  resortId: string,
+): Promise<DataDocument | null> {
+  if (!isValidResortId(resortId)) return null;
+  const { getDataDocument } = await loadDataDocumentClient();
+  return getDataDocument(liftBeforeDocumentKey(resortId));
 }
 
 export async function readLiftBeforeRaw(
   resortId: string,
 ): Promise<string | null> {
-  if (!isValidResortId(resortId)) return null;
-  try {
-    return await fs.readFile(liftBeforePath(resortId), "utf-8");
-  } catch {
-    return null;
-  }
+  return (await readLiftBeforeDocument(resortId))?.content ?? null;
 }
 
 export const hashContent = (content: string): string =>
@@ -95,24 +116,20 @@ export async function readLiftDetailEntries(
   resortId: string,
 ): Promise<LiftDetailEntry[] | null> {
   if (!isValidResortId(resortId)) return null;
+  const { getDataDocument } = await loadDataDocumentClient();
+  const document = await getDataDocument(liftDetailDocumentKey(resortId));
+  if (!document) return null;
   try {
-    const raw = await fs.readFile(
-      path.join(DATA_ROOT, "lift_detail", `${resortId}.json`),
-      "utf-8",
-    );
-    const parsed = JSON.parse(raw);
+    const parsed = JSON.parse(document.content);
     return Array.isArray(parsed) ? (parsed as LiftDetailEntry[]) : null;
   } catch {
     return null;
   }
 }
 
-// リフトデータの人手確認状況。スキー場ID → 確認日時（ISO 文字列）
-const CONFIRMED_PATH = path.join(DATA_ROOT, "lift_confirmed.json");
-
-export async function readLiftConfirmedMap(): Promise<Record<string, string>> {
+const parseLiftConfirmedMap = (raw: string | null): Record<string, string> => {
+  if (raw === null) return {};
   try {
-    const raw = await fs.readFile(CONFIRMED_PATH, "utf-8");
     const parsed = JSON.parse(raw);
     if (
       parsed === null ||
@@ -129,6 +146,12 @@ export async function readLiftConfirmedMap(): Promise<Record<string, string>> {
   } catch {
     return {};
   }
+};
+
+export async function readLiftConfirmedMap(): Promise<Record<string, string>> {
+  const { getDataDocument } = await loadDataDocumentClient();
+  const document = await getDataDocument(LIFT_CONFIRMED_DOCUMENT_KEY);
+  return parseLiftConfirmedMap(document?.content ?? null);
 }
 
 export async function writeLiftConfirmed(
@@ -138,32 +161,68 @@ export async function writeLiftConfirmed(
   if (!isValidResortId(resortId)) {
     throw new Error(`不正なスキー場IDです: ${resortId}`);
   }
-  const map = await readLiftConfirmedMap();
-  if (confirmed) {
-    map[resortId] = new Date().toISOString();
-  } else {
-    delete map[resortId];
+  const { getDataDocument, writeDataDocuments } =
+    await loadDataDocumentClient();
+
+  for (let attempt = 1; attempt <= WRITE_ATTEMPTS; attempt += 1) {
+    const current = await getDataDocument(LIFT_CONFIRMED_DOCUMENT_KEY);
+    const map = parseLiftConfirmedMap(current?.content ?? null);
+    if (confirmed) {
+      map[resortId] = new Date().toISOString();
+    } else {
+      delete map[resortId];
+    }
+    const sorted = Object.fromEntries(
+      Object.entries(map).sort(([a], [b]) => a.localeCompare(b)),
+    );
+    try {
+      await writeDataDocuments([
+        {
+          key: LIFT_CONFIRMED_DOCUMENT_KEY,
+          content: `${JSON.stringify(sorted, null, 2)}\n`,
+          mediaType: "application/json",
+          expectedHash: current?.hash ?? null,
+        },
+      ]);
+      return sorted;
+    } catch (error) {
+      if (
+        error instanceof DataDocumentConflictError &&
+        attempt < WRITE_ATTEMPTS
+      ) {
+        continue;
+      }
+      throw error;
+    }
   }
-  const sorted = Object.fromEntries(
-    Object.entries(map).sort(([a], [b]) => a.localeCompare(b)),
-  );
-  await fs.writeFile(CONFIRMED_PATH, `${JSON.stringify(sorted, null, 2)}\n`);
-  return sorted;
+  throw new Error("lift_confirmed.json の保存を再試行できませんでした。");
 }
 
-// 既存の lift_before と同じ 1 行の compact JSON で書き込む
+export const serializeLiftBeforeGeojson = (
+  geojson: LiftBeforeGeojson,
+): string => JSON.stringify(geojson);
+
+// 既存の lift_before と同じ 1 行の compact JSON でDBへ書き込む。
 export async function writeLiftBeforeGeojson(
   resortId: string,
   geojson: LiftBeforeGeojson,
-): Promise<void> {
+  expectedHash: string | null,
+): Promise<DataDocument> {
   if (!isValidResortId(resortId)) {
     throw new Error(`不正なスキー場IDです: ${resortId}`);
   }
-  await fs.writeFile(liftBeforePath(resortId), JSON.stringify(geojson));
+  const { writeDataDocuments } = await loadDataDocumentClient();
+  const [written] = await writeDataDocuments([
+    {
+      key: liftBeforeDocumentKey(resortId),
+      content: serializeLiftBeforeGeojson(geojson),
+      mediaType: "application/geo+json",
+      expectedHash,
+    },
+  ]);
+  if (!written) throw new Error("lift_before の保存結果がありません。");
+  return written;
 }
-
-// スキー場全体の参考リンク（公式サイト・マップ・SNS等）。スキー場ID → リンク一覧
-const RESORT_LINKS_PATH = path.join(PRIVATE_DATA_ROOT, "SkiResortLinks.json");
 
 const EMPTY_RESORT_LINKS: ResortLinks = {
   officialSiteUrls: [],
@@ -223,11 +282,11 @@ const normalizeResortLinks = (value: unknown): ResortLinks => {
   };
 };
 
-export async function readResortLinksMap(): Promise<
-  Record<string, ResortLinks>
-> {
+const parseResortLinksMap = (
+  raw: string | null,
+): Record<string, ResortLinks> => {
+  if (raw === null) return {};
   try {
-    const raw = await fs.readFile(RESORT_LINKS_PATH, "utf-8");
     const parsed = JSON.parse(raw);
     if (
       parsed === null ||
@@ -244,6 +303,14 @@ export async function readResortLinksMap(): Promise<
   } catch {
     return {};
   }
+};
+
+export async function readResortLinksMap(): Promise<
+  Record<string, ResortLinks>
+> {
+  const { getDataDocument } = await loadDataDocumentClient();
+  const document = await getDataDocument(SKI_RESORT_LINKS_DOCUMENT_KEY);
+  return parseResortLinksMap(document?.content ?? null);
 }
 
 export async function readResortLinks(resortId: string): Promise<ResortLinks> {
@@ -260,15 +327,40 @@ export async function writeResortLinks(
     throw new Error(`不正なスキー場IDです: ${resortId}`);
   }
   const sanitized = normalizeResortLinks(links);
-  const map = await readResortLinksMap();
-  const hasAnyLink = Object.values(sanitized).some(list => list.length > 0);
-  if (hasAnyLink) {
-    map[resortId] = sanitized;
-  } else {
-    delete map[resortId];
+  const { getDataDocument, writeDataDocuments } =
+    await loadDataDocumentClient();
+
+  for (let attempt = 1; attempt <= WRITE_ATTEMPTS; attempt += 1) {
+    const current = await getDataDocument(SKI_RESORT_LINKS_DOCUMENT_KEY);
+    const map = parseResortLinksMap(current?.content ?? null);
+    const hasAnyLink = Object.values(sanitized).some(list => list.length > 0);
+    if (hasAnyLink) {
+      map[resortId] = sanitized;
+    } else {
+      delete map[resortId];
+    }
+    const sorted = Object.fromEntries(
+      Object.entries(map).sort(([a], [b]) => a.localeCompare(b)),
+    );
+    try {
+      await writeDataDocuments([
+        {
+          key: SKI_RESORT_LINKS_DOCUMENT_KEY,
+          content: `${JSON.stringify(sorted, null, 2)}\n`,
+          mediaType: "application/json",
+          expectedHash: current?.hash ?? null,
+        },
+      ]);
+      return;
+    } catch (error) {
+      if (
+        error instanceof DataDocumentConflictError &&
+        attempt < WRITE_ATTEMPTS
+      ) {
+        continue;
+      }
+      throw error;
+    }
   }
-  const sorted = Object.fromEntries(
-    Object.entries(map).sort(([a], [b]) => a.localeCompare(b)),
-  );
-  await fs.writeFile(RESORT_LINKS_PATH, `${JSON.stringify(sorted, null, 2)}\n`);
+  throw new Error("SkiResortLinks.json の保存を再試行できませんでした。");
 }

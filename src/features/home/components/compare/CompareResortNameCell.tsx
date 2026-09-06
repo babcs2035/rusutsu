@@ -20,7 +20,11 @@ export const CompareResortNameCell = ({
   onSelectResort?: (id: string) => void;
   className?: string;
 }) => {
-  const labelName = getResortLabelName(resort.id, resort.nameJa);
+  const labelName = getResortLabelName(
+    resort.id,
+    resort.nameJa,
+    resort.shortName,
+  );
   const lines = getResortLabelLines(labelName, 6, resort.id);
 
   return (

@@ -413,9 +413,20 @@ const resolveTemporaryFile = (
   return resolved;
 };
 
-const readJsonFile = async <T>(filePath: string): Promise<T | null> => {
+type ResortDataDocumentLoader = (
+  absoluteFilePath: string,
+) => Promise<string | null>;
+
+const readJsonFile = async <T>(
+  filePath: string,
+  documentLoader?: ResortDataDocumentLoader,
+): Promise<T | null> => {
   try {
-    return JSON.parse(await fs.readFile(filePath, "utf8")) as T;
+    const raw = documentLoader
+      ? await documentLoader(filePath)
+      : await fs.readFile(filePath, "utf8");
+    if (raw === null) return null;
+    return JSON.parse(raw) as T;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
       console.warn("Failed to read resort data file", { filePath, error });
@@ -426,8 +437,9 @@ const readJsonFile = async <T>(filePath: string): Promise<T | null> => {
 
 const readGeoJsonFeatures = async (
   filePath: string,
+  documentLoader?: ResortDataDocumentLoader,
 ): Promise<RawGeoFeature[] | null> => {
-  const parsed = await readJsonFile<unknown>(filePath);
+  const parsed = await readJsonFile<unknown>(filePath, documentLoader);
   if (parsed === null) return null;
 
   try {
@@ -493,6 +505,7 @@ const loadCourseBase = async (
   resortId: string,
   temporaryRoot: string,
   beforeFeatures: RawGeoFeature[] | null,
+  documentLoader?: ResortDataDocumentLoader,
 ): Promise<BaseSourceResult<"slope_before" | "slope_detail">> => {
   const beforeItems = (beforeFeatures ?? []).map(feature => feature.properties);
   if (hasAnyKey(beforeItems, COURSE_BASE_KEYS)) {
@@ -504,7 +517,9 @@ const loadCourseBase = async (
     `${resortId}.json`,
     temporaryRoot,
   );
-  const detail = detailPath ? await readJsonFile<unknown>(detailPath) : null;
+  const detail = detailPath
+    ? await readJsonFile<unknown>(detailPath, documentLoader)
+    : null;
   const detailItems = toRecordArray(detail);
   if (detailItems.length > 0) {
     return { items: detailItems, label: "slope_detail", isCurated: true };
@@ -519,6 +534,7 @@ const loadLiftBase = async (
   resortId: string,
   temporaryRoot: string,
   beforeFeatures: RawGeoFeature[] | null,
+  documentLoader?: ResortDataDocumentLoader,
 ): Promise<BaseSourceResult<"lift_before" | "lift_detail">> => {
   const beforeItems = (beforeFeatures ?? []).map(feature => feature.properties);
   if (hasAnyKey(beforeItems, LIFT_BASE_KEYS)) {
@@ -530,7 +546,9 @@ const loadLiftBase = async (
     `${resortId}.json`,
     temporaryRoot,
   );
-  const detail = detailPath ? await readJsonFile<unknown>(detailPath) : null;
+  const detail = detailPath
+    ? await readJsonFile<unknown>(detailPath, documentLoader)
+    : null;
   const detailItems = toRecordArray(detail);
   if (detailItems.length > 0) {
     return { items: detailItems, label: "lift_detail", isCurated: true };
@@ -543,6 +561,16 @@ const loadLiftBase = async (
 
 export type ResortMapDataRoots = {
   temporaryRoot: string;
+  documentLoader?: ResortDataDocumentLoader;
+  latestStatusLoader?: (
+    resortId: string,
+    kind: "courses" | "lifts",
+  ) => Promise<LatestSuccessfulStatus | null>;
+};
+
+type ResolvedResortMapDataRoots = {
+  temporaryRoot: string;
+  documentLoader?: ResortDataDocumentLoader;
 };
 
 export type ResortMergeReport = {
@@ -556,6 +584,7 @@ const readKindGeometry = async (
   temporaryRoot: string,
   primary: "slope_10m" | "slope_10m_osm" | "lift_20m",
   fallback: "slope_before" | "slope_before_osm" | "lift_before",
+  documentLoader?: ResortDataDocumentLoader,
 ) => {
   const primaryPath = resolveTemporaryFile(
     primary,
@@ -568,10 +597,10 @@ const readKindGeometry = async (
     temporaryRoot,
   );
   const beforeFeatures = fallbackPath
-    ? await readGeoJsonFeatures(fallbackPath)
+    ? await readGeoJsonFeatures(fallbackPath, documentLoader)
     : null;
   const primaryFeatures = primaryPath
-    ? await readGeoJsonFeatures(primaryPath)
+    ? await readGeoJsonFeatures(primaryPath, documentLoader)
     : null;
 
   if (primaryFeatures) {
@@ -595,12 +624,12 @@ const readKindGeometry = async (
 
 const buildCourseSourceSection = async (
   resortId: string,
-  roots: Required<ResortMapDataRoots>,
+  roots: ResolvedResortMapDataRoots,
   status: LatestSuccessfulStatus | null,
   statusMapping: ResolvedLatestStatusMapping,
   sourceKind: "curated" | "osm",
 ) => {
-  const { temporaryRoot } = roots;
+  const { documentLoader, temporaryRoot } = roots;
   const geometry =
     sourceKind === "curated"
       ? await readKindGeometry(
@@ -608,12 +637,14 @@ const buildCourseSourceSection = async (
           temporaryRoot,
           "slope_10m",
           "slope_before",
+          documentLoader,
         )
       : await readKindGeometry(
           resortId,
           temporaryRoot,
           "slope_10m_osm",
           "slope_before_osm",
+          documentLoader,
         );
   if (!geometry) return null;
 
@@ -626,7 +657,12 @@ const buildCourseSourceSection = async (
         label: "slope_before_osm" as const,
         isCurated: false,
       } satisfies NonNullable<BaseSourceResult<"slope_before_osm">>)
-    : await loadCourseBase(resortId, temporaryRoot, geometry.beforeFeatures);
+    : await loadCourseBase(
+        resortId,
+        temporaryRoot,
+        geometry.beforeFeatures,
+        documentLoader,
+      );
   const sourceUrls = isOsm
     ? ["https://www.openstreetmap.org/copyright"]
     : (status?.sourceUrls ?? []);
@@ -663,7 +699,7 @@ const buildCourseSourceSection = async (
 
 const buildCourseSection = async (
   resortId: string,
-  roots: Required<ResortMapDataRoots>,
+  roots: ResolvedResortMapDataRoots,
   status: LatestSuccessfulStatus | null,
   statusMapping: ResolvedLatestStatusMapping,
 ) => {
@@ -699,16 +735,17 @@ const buildCourseSection = async (
 
 const buildLiftSection = async (
   resortId: string,
-  roots: Required<ResortMapDataRoots>,
+  roots: ResolvedResortMapDataRoots,
   status: LatestSuccessfulStatus | null,
   statusMapping: ResolvedLatestStatusMapping,
 ) => {
-  const { temporaryRoot } = roots;
+  const { documentLoader, temporaryRoot } = roots;
   const geometry = await readKindGeometry(
     resortId,
     temporaryRoot,
     "lift_20m",
     "lift_before",
+    documentLoader,
   );
   if (!geometry) return { section: null, issues: [] as MergeIssue[] };
 
@@ -716,6 +753,7 @@ const buildLiftSection = async (
     resortId,
     temporaryRoot,
     geometry.beforeFeatures,
+    documentLoader,
   );
   const merged = mergeLiftFeatures({
     geometryFeatures: geometry.features,
@@ -758,13 +796,30 @@ export const buildResortMapData = async (
   const report: ResortMergeReport = { resortId, courses: [], lifts: [] };
   if (!isSafeResortId(resortId)) return { data: null, report };
 
-  const resolvedRoots = { temporaryRoot: roots.temporaryRoot };
+  const resolvedRoots = {
+    temporaryRoot: roots.temporaryRoot,
+    documentLoader: roots.documentLoader,
+  };
+  const latestStatusLoader =
+    roots.latestStatusLoader ??
+    ((id: string, kind: "courses" | "lifts") =>
+      loadLatestSuccessfulStatus(roots.temporaryRoot, id, kind));
   const [courseStatus, liftStatus, courseStatusMapping, liftStatusMapping] =
     await Promise.all([
-      loadLatestSuccessfulStatus(roots.temporaryRoot, resortId, "courses"),
-      loadLatestSuccessfulStatus(roots.temporaryRoot, resortId, "lifts"),
-      readResolvedLatestStatusMapping(roots.temporaryRoot, resortId, "courses"),
-      readResolvedLatestStatusMapping(roots.temporaryRoot, resortId, "lifts"),
+      latestStatusLoader(resortId, "courses"),
+      latestStatusLoader(resortId, "lifts"),
+      readResolvedLatestStatusMapping(
+        roots.temporaryRoot,
+        resortId,
+        "courses",
+        roots.documentLoader,
+      ),
+      readResolvedLatestStatusMapping(
+        roots.temporaryRoot,
+        resortId,
+        "lifts",
+        roots.documentLoader,
+      ),
     ]);
   const [courses, lifts] = await Promise.all([
     buildCourseSection(
@@ -793,10 +848,37 @@ export const getResortMapDataFromRoots = async (
 ): Promise<FinalizedResortMapData | null> =>
   (await buildResortMapData(resortId, roots)).data;
 
-export const getFinalizedResortMapData = (resortId: string) =>
-  getResortMapDataFromRoots(resortId, {
+export const getFinalizedResortMapData = (resortId: string) => {
+  return getResortMapDataFromRoots(resortId, {
     temporaryRoot: TEMPORARY_RESORTS_ROOT,
+    documentLoader: async absoluteFilePath => {
+      const dataRoot = path.resolve(
+        /* turbopackIgnore: true */ process.cwd(),
+        "src/private/data",
+      );
+      const relativePath = path.relative(dataRoot, absoluteFilePath);
+      if (
+        relativePath === "" ||
+        relativePath === ".." ||
+        relativePath.startsWith(`..${path.sep}`) ||
+        path.isAbsolute(relativePath)
+      ) {
+        return null;
+      }
+      const key = relativePath.split(path.sep).join("/");
+      const { getDataDocument } = await import(
+        "@/server/data-documents/client"
+      );
+      return (await getDataDocument(key))?.content ?? null;
+    },
+    latestStatusLoader: async (id, kind) => {
+      const { readCurrentCrawlLatestStatus } = await import(
+        "./crawlLatestCurrent"
+      );
+      return readCurrentCrawlLatestStatus(id, kind);
+    },
   });
+};
 
 export type CourseDifficulty =
   | "beginner"

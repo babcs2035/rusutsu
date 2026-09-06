@@ -5,7 +5,7 @@ import {
   readReviewForEdit,
 } from "@/features/review/server/reviewFiles";
 import { getReviewResortName } from "@/features/reviews/resortName";
-import { prisma } from "@/lib/prisma";
+import { readSkiResortNames } from "@/lib/skiResortData";
 
 export const dynamic = "force-dynamic";
 
@@ -15,12 +15,9 @@ export const metadata: Metadata = {
 
 export default async function ReviewEditPage() {
   const reviewResorts = await listReviewResorts();
-  const databaseResorts = await prisma.skiResort.findMany({
-    where: {
-      id: { in: reviewResorts.map(resort => resort.resortId) },
-    },
-    select: { id: true, nameJa: true },
-  });
+  const databaseResorts = await readSkiResortNames(
+    reviewResorts.map(resort => resort.resortId),
+  );
   const databaseNameById = new Map(
     databaseResorts.map(resort => [resort.id, resort.nameJa]),
   );

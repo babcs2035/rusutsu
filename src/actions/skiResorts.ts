@@ -6,12 +6,19 @@ import type {
   FinalizedLiftFeature,
   FinalizedResortMapData,
 } from "@/lib/finalizedResortGeojsonShared";
-import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/requireAdmin";
 import {
   getLiftTicketDataMap,
   getResortDecisionData,
 } from "@/lib/resortDecisionData";
 import { getResortReadingInfo } from "@/lib/resortReadings";
+import {
+  readSkiResortById,
+  readSkiResorts,
+  readSkiResortsForMap,
+  readSkiResortWeather,
+  readYukiMagiList,
+} from "@/lib/skiResortData";
 import SkiResortWeatherIds from "@/private/data/SkiResortWeatherIds.json";
 import type { SkiResortWithRelations } from "@/types";
 
@@ -120,39 +127,12 @@ function getWeatherIdsBySkiResortId(id: string) {
 
 // スキーリゾート一覧を取得（リレーション込み）
 export async function getSkiResorts(): Promise<SkiResortWithRelations[]> {
-  return prisma.skiResort.findMany({
-    include: {
-      courses: true,
-      lifts: true,
-      tickets: true,
-      yukiMagi: true,
-    },
-    orderBy: { nameJa: "asc" },
-  });
+  return readSkiResorts();
 }
 
 // スキーリゾート一覧を地図表示用に軽量取得
 export async function getSkiResortsForMap() {
-  const resorts = await prisma.skiResort.findMany({
-    select: {
-      id: true,
-      nameJa: true,
-      nameEn: true,
-      prefecture: true,
-      town: true,
-      latitude: true,
-      longitude: true,
-      topElevation: true,
-      baseElevation: true,
-      verticalDrop: true,
-      numberOfCourses: true,
-      numberOfLifts: true,
-      beginnersCoursesPercent: true,
-      status: true,
-      yukiMagiId: true,
-    },
-    orderBy: { nameJa: "asc" },
-  });
+  const resorts = await readSkiResortsForMap();
   const liftTicketsByResortId = await getLiftTicketDataMap(
     resorts.map(resort => resort.id),
   );
@@ -166,20 +146,7 @@ export async function getSkiResortsForMap() {
 
 // スキーリゾート詳細を取得
 export async function getSkiResortById(id: string) {
-  const resort = await prisma.skiResort.findUnique({
-    where: { id },
-    include: {
-      courses: true,
-      lifts: true,
-      tickets: true,
-      weathers: {
-        orderBy: { date: "desc" },
-        take: 1,
-      },
-      latestReports: true,
-      yukiMagi: true,
-    },
-  });
+  const resort = await readSkiResortById(id);
 
   if (!resort) return null;
 
@@ -199,18 +166,14 @@ export async function getSkiResortById(id: string) {
   };
 }
 
-// スキーリゾートの天気データを取得
+// 旧形式の天気JSONは管理用の読取に限定する。
+// 公開画面で必要になった場合は、表示項目を絞る専用projectionを追加する。
 export async function getSkiResortWeather(id: string) {
-  return prisma.weather.findMany({
-    where: { skiResortId: id },
-    orderBy: { date: "desc" },
-    take: 7,
-  });
+  await requireAdmin();
+  return readSkiResortWeather(id);
 }
 
 // 雪マジ一覧を取得
 export async function getYukiMagiList() {
-  return prisma.yukiMagi.findMany({
-    orderBy: { name: "asc" },
-  });
+  return readYukiMagiList();
 }

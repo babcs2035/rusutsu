@@ -1,22 +1,23 @@
-import { createHash, randomUUID } from "node:crypto";
-import { promises as fs } from "node:fs";
-import path from "node:path";
+import type {
+  DataDocument,
+  DataDocumentSummary,
+  DataDocumentWrite,
+} from "@/server/data-documents/contract";
+import { DataDocumentConflictError } from "@/server/data-documents/contract";
 import type {
   SaveTicketRequest,
   TicketActionResult,
   TicketDocument,
   TicketEditData,
   TicketFileSummary,
+  ValidationReport,
 } from "../types";
 import { validateTicketContent } from "./validateTicket";
 
-const TICKET_ROOT = path.join(
-  process.cwd(),
-  "src",
-  "private",
-  "data",
-  "lift-ticket",
-);
+const TICKET_PREFIX = "lift-ticket/";
+const TICKET_DIRECTORY = "tickets";
+const JSON_MEDIA_TYPE = "application/json";
+const TICKET_READ_BATCH_SIZE = 16;
 
 const RESORT_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -28,14 +29,29 @@ const isValidResortId = (value: string) => RESORT_ID_PATTERN.test(value);
 const isValidFileName = (value: string) =>
   FILE_NAME_PATTERN.test(value) && !value.includes("..");
 
-const ticketFilePath = (resortId: string, fileName: string) => {
+const ticketDocumentKey = (resortId: string, fileName: string) => {
   if (!isValidResortId(resortId)) throw new Error("不正なスキー場IDです。");
   if (!isValidFileName(fileName)) throw new Error("不正なファイル名です。");
-  return path.join(TICKET_ROOT, resortId, "tickets", fileName);
+  return `${TICKET_PREFIX}${resortId}/${TICKET_DIRECTORY}/${fileName}`;
 };
 
-const hashContent = (content: string) =>
-  createHash("sha256").update(content).digest("hex");
+const ticketIdentityFromKey = (
+  key: string,
+): { resortId: string; fileName: string } | null => {
+  const [root, resortId, directory, fileName, ...extra] = key.split("/");
+  if (
+    root !== "lift-ticket" ||
+    directory !== TICKET_DIRECTORY ||
+    extra.length > 0 ||
+    !resortId ||
+    !fileName ||
+    !isValidResortId(resortId) ||
+    !isValidFileName(fileName)
+  ) {
+    return null;
+  }
+  return { resortId, fileName };
+};
 
 /**
  * ★書き出し形式は既存ファイルと完全に同じ `JSON.stringify(data, null, 2)` ＋
@@ -75,61 +91,116 @@ const summarize = (
   };
 };
 
+export type TicketFileDataDocumentClient = {
+  getDataDocument(key: string): Promise<DataDocument | null>;
+  listDataDocuments(prefix?: string): Promise<DataDocumentSummary[]>;
+  writeDataDocuments(
+    documents: readonly DataDocumentWrite[],
+  ): Promise<DataDocument[]>;
+};
+
+type TicketContentValidator = (content: string) => Promise<ValidationReport>;
+
+// DataDocument 自体は module scope に保持しない。管理画面の各操作で正本を
+// 読み直すため、DBへの切り替えや別プロセスによる更新が直ちに反映される。
+const defaultDataDocumentClient: TicketFileDataDocumentClient = {
+  async getDataDocument(key) {
+    const { getDataDocument } = await import("@/server/data-documents/client");
+    return getDataDocument(key);
+  },
+  async listDataDocuments(prefix) {
+    const { listDataDocuments } = await import(
+      "@/server/data-documents/client"
+    );
+    return listDataDocuments(prefix);
+  },
+  async writeDataDocuments(documents) {
+    const { writeDataDocuments } = await import(
+      "@/server/data-documents/client"
+    );
+    return writeDataDocuments(documents);
+  },
+};
+
 /**
  * 編集できるファイルを列挙する。
  * `tickets/{season}.json`（確定）と `{season}.draft.json`（草案）の両方を
  * 対象にする — 人間が確認するのは草案の段階であることが多い。
  */
-export const listTicketFiles = async (): Promise<TicketFileSummary[]> => {
-  let resortEntries: string[];
+export const listTicketFiles = async (
+  dataDocuments: TicketFileDataDocumentClient = defaultDataDocumentClient,
+): Promise<TicketFileSummary[]> => {
+  let documents: DataDocumentSummary[];
   try {
-    resortEntries = (await fs.readdir(TICKET_ROOT, { withFileTypes: true }))
-      .filter(entry => entry.isDirectory() && isValidResortId(entry.name))
-      .map(entry => entry.name);
+    documents = await dataDocuments.listDataDocuments(TICKET_PREFIX);
   } catch {
     return [];
   }
 
-  const summaries: TicketFileSummary[] = [];
-  for (const resortId of resortEntries) {
-    const directory = path.join(TICKET_ROOT, resortId, "tickets");
-    let fileNames: string[];
-    try {
-      fileNames = await fs.readdir(directory);
-    } catch {
-      continue;
-    }
-    for (const fileName of fileNames.sort()) {
-      if (!isValidFileName(fileName)) continue;
-      try {
-        const raw = await fs.readFile(path.join(directory, fileName), "utf8");
-        const parsed = asRecord(JSON.parse(raw));
-        if (!parsed) continue;
-        summaries.push(summarize(resortId, fileName, parsed));
-      } catch {
-        // 壊れたJSONは一覧に出さない（開いても編集できない）
-      }
-    }
+  const summaries: Array<TicketFileSummary | null> = [];
+  for (
+    let index = 0;
+    index < documents.length;
+    index += TICKET_READ_BATCH_SIZE
+  ) {
+    const batch = documents.slice(index, index + TICKET_READ_BATCH_SIZE);
+    summaries.push(
+      ...(await Promise.all(
+        batch.map(async document => {
+          const identity = ticketIdentityFromKey(document.key);
+          if (!identity) return null;
+          try {
+            // list は内容を返さないため、DB優先＋bundled fallback が解決された
+            // 現時点の文書を get し直す。
+            const current = await dataDocuments.getDataDocument(document.key);
+            if (!current) return null;
+            const parsed = asRecord(JSON.parse(current.content));
+            return parsed
+              ? summarize(identity.resortId, identity.fileName, parsed)
+              : null;
+          } catch {
+            // 壊れたJSONは一覧に出さない（開いても編集できない）
+            return null;
+          }
+        }),
+      )),
+    );
   }
-  return summaries;
+  return summaries.filter(
+    (summary): summary is TicketFileSummary => summary !== null,
+  );
 };
 
 export const readTicketForEdit = async (
   resortId: string,
   fileName: string,
+  dataDocuments: TicketFileDataDocumentClient = defaultDataDocumentClient,
 ): Promise<TicketEditData> => {
-  const raw = await fs.readFile(ticketFilePath(resortId, fileName), "utf8");
-  const parsed = asRecord(JSON.parse(raw));
+  const document = await dataDocuments.getDataDocument(
+    ticketDocumentKey(resortId, fileName),
+  );
+  if (!document) throw new Error("リフト券JSONが見つかりません。");
+  const parsed = asRecord(JSON.parse(document.content));
   if (!parsed) throw new Error("リフト券JSONの形式が不正です。");
-  return { resortId, fileName, data: parsed, fileHash: hashContent(raw) };
+  return { resortId, fileName, data: parsed, fileHash: document.hash };
 };
+
+const conflictResult = (): TicketActionResult => ({
+  ok: false,
+  errors: [
+    "読み込み後にファイルが変更されています。再読み込みしてから編集してください。",
+  ],
+  report: null,
+});
 
 export const writeTicketFile = async (
   request: SaveTicketRequest,
+  dataDocuments: TicketFileDataDocumentClient = defaultDataDocumentClient,
+  validateContent: TicketContentValidator = validateTicketContent,
 ): Promise<TicketActionResult> => {
-  let filePath: string;
+  let key: string;
   try {
-    filePath = ticketFilePath(request.resortId, request.fileName);
+    key = ticketDocumentKey(request.resortId, request.fileName);
   } catch (error) {
     return { ok: false, errors: [String(error)], report: null };
   }
@@ -143,31 +214,30 @@ export const writeTicketFile = async (
     };
   }
 
-  let currentRaw: string;
+  let current: DataDocument | null;
   try {
-    currentRaw = await fs.readFile(filePath, "utf8");
-  } catch {
+    current = await dataDocuments.getDataDocument(key);
+  } catch (error) {
+    return {
+      ok: false,
+      errors: [`保存に失敗しました: ${String(error)}`],
+      report: null,
+    };
+  }
+  if (!current) {
     return {
       ok: false,
       errors: ["保存先のファイルが見つかりません。"],
       report: null,
     };
   }
-  if (hashContent(currentRaw) !== request.fileHash) {
-    return {
-      ok: false,
-      errors: [
-        "読み込み後にファイルが変更されています。再読み込みしてから編集してください。",
-      ],
-      report: null,
-    };
-  }
+  if (current.hash !== request.fileHash) return conflictResult();
 
   const content = serialize(record);
 
   // ★Skill の検証3本を通らないJSONは保存しない。
   // 構造とラベル体系の正本は Skill 側にあり、画面から壊せてはいけない。
-  const report = await validateTicketContent(content);
+  const report = await validateContent(content);
   if (report.failedToRun !== null) {
     return { ok: false, errors: [report.failedToRun], report };
   }
@@ -181,29 +251,39 @@ export const writeTicketFile = async (
     };
   }
 
-  const temporary = `${filePath}.${randomUUID()}.tmp`;
   try {
-    await fs.writeFile(temporary, content, "utf8");
-    await fs.rename(temporary, filePath);
+    // 競合確認と更新は DataDocument 側の同一トランザクションで行われる。
+    // 将来複数文書へ拡張しても、このAPIの1回のbatchが原子的な単位になる。
+    const [written] = await dataDocuments.writeDataDocuments([
+      {
+        key,
+        content,
+        mediaType: JSON_MEDIA_TYPE,
+        expectedHash: request.fileHash,
+      },
+    ]);
+    if (!written || written.key !== key) {
+      throw new Error("保存結果に対象のリフト券JSONがありません。");
+    }
+
+    return {
+      ok: true,
+      data: {
+        resortId: request.resortId,
+        fileName: request.fileName,
+        data: record,
+        fileHash: written.hash,
+      },
+      report,
+    };
   } catch (error) {
-    await fs.rm(temporary, { force: true });
+    if (error instanceof DataDocumentConflictError) return conflictResult();
     return {
       ok: false,
       errors: [`保存に失敗しました: ${String(error)}`],
       report,
     };
   }
-
-  return {
-    ok: true,
-    data: {
-      resortId: request.resortId,
-      fileName: request.fileName,
-      data: record,
-      fileHash: hashContent(content),
-    },
-    report,
-  };
 };
 
 /** 保存せずに検証だけ実行する（編集中の確認用） */

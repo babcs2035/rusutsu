@@ -391,7 +391,11 @@ export const CompareSlopeFeatureDetail = ({
         <FinalizedFeatureDetail
           courseGroup={selectedCourseGroup}
           lift={selectedLift}
-          resortLabelName={getResortSearchName(resort.id, resort.nameJa)}
+          resortLabelName={getResortSearchName(
+            resort.id,
+            resort.nameJa,
+            resort.shortName,
+          )}
           courseSourceUrls={resort.finalizedMapData?.courses?.sourceUrls ?? []}
           courseVerificationStatus={
             resort.finalizedMapData?.courses?.verificationStatus
@@ -519,7 +523,11 @@ const ResortSlopeMapCard = ({
       <FinalizedFeatureDetail
         courseGroup={selectedCourseGroup}
         lift={selectedLift}
-        resortLabelName={getResortSearchName(resort.id, resort.nameJa)}
+        resortLabelName={getResortSearchName(
+          resort.id,
+          resort.nameJa,
+          resort.shortName,
+        )}
         courseSourceUrls={resort.finalizedMapData?.courses?.sourceUrls ?? []}
         courseVerificationStatus={
           resort.finalizedMapData?.courses?.verificationStatus

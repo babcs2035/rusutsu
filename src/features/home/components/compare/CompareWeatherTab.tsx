@@ -35,7 +35,11 @@ export const CompareWeatherTab = ({
 
     let maxNameWidth = 0;
     for (const resort of resorts) {
-      probe.textContent = getResortLabelName(resort.id, resort.nameJa);
+      probe.textContent = getResortLabelName(
+        resort.id,
+        resort.nameJa,
+        resort.shortName,
+      );
       maxNameWidth = Math.max(
         maxNameWidth,
         Math.ceil(probe.getBoundingClientRect().width),
@@ -146,7 +150,7 @@ const ResortWeatherPanel = ({
       >
         <div className="weather-info flex-shrink-0">
           <h3 className="weather-info-name text-sm text-gray-900 font-semibold leading-tight font-[var(--font-heading)]">
-            {getResortLabelName(resort.id, resort.nameJa)}
+            {getResortLabelName(resort.id, resort.nameJa, resort.shortName)}
           </h3>
 
           {availableLinks.length > 0 && (

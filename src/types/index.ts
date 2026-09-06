@@ -16,14 +16,7 @@ export type {
 // リレーションを含むスキーリゾート型
 import type { Prisma } from "@prisma/client";
 
-export type SkiResortWithRelations = Prisma.SkiResortGetPayload<{
-  include: {
-    courses: true;
-    lifts: true;
-    tickets: true;
-    yukiMagi: true;
-  };
-}>;
+export type { PublicSkiResortRecord as SkiResortWithRelations } from "@/server/ski-resorts/publicProjection";
 
 export type SkiResortWithWeather = Prisma.SkiResortGetPayload<{
   include: {

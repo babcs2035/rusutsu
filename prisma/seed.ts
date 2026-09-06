@@ -1,12 +1,12 @@
-// シードスクリプト - 型のみを定義するためのプレースホルダー
-// 実際のデータ投入はクローリングスクリプトで行う
+// シードスクリプト - DB接続確認用のプレースホルダー。
+// Git同梱JSON/GeoJSONの初回投入は importCanonicalDataDocuments.ts が担う。
 
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 import dotenv from "dotenv";
 import { Pool } from "pg";
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
@@ -20,7 +20,7 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   console.log("🌱 Seed script executed.");
   console.log("📝 This seed only ensures the schema is in place.");
-  console.log("📦 Actual data will be populated by crawling scripts.");
+  console.log("📦 Canonical documents are imported by the separate import task.");
 
   // DB 接続確認のみ
   const count = await prisma.skiResort.count();

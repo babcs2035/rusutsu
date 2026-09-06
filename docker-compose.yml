@@ -17,7 +17,21 @@ services:
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - ADMIN_EMAILS=${ADMIN_EMAILS}
+      - INTERNAL_DATA_API_ADMIN_TOKEN=${INTERNAL_DATA_API_ADMIN_TOKEN}
+      - INTERNAL_DATA_API_CRAWLER_TOKEN=${INTERNAL_DATA_API_CRAWLER_TOKEN}
+      - INTERNAL_DATA_API_DIAGNOSTICS_TOKEN=${INTERNAL_DATA_API_DIAGNOSTICS_TOKEN}
+      - CRAWLER_ARTIFACT_ROOT=/app/var/crawler-artifacts
+      - CRAWLER_ARTIFACT_RETENTION_DAYS=${CRAWLER_ARTIFACT_RETENTION_DAYS:-30}
+    volumes:
+      - crawler_artifacts:/app/var/crawler-artifacts
     restart: unless-stopped
+    init: true
+    healthcheck:
+      test: ["CMD", "node", "scripts/ops/check-readiness.mjs"]
+      interval: 15s
+      timeout: 20s
+      start_period: 30s
+      retries: 6
     depends_on:
       db:
         condition: service_healthy
@@ -44,3 +58,4 @@ services:
 
 volumes:
   postgres_data:
+  crawler_artifacts:

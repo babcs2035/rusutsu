@@ -107,7 +107,7 @@ const ResortReviewBlock = ({
     <div className="rounded-xl border border-gray-200 bg-white px-3 py-3">
       <div className="flex items-center gap-2">
         <h3 className="min-w-0 flex-1 truncate text-sm font-bold text-gray-900 font-[var(--font-heading)]">
-          {getResortLabelName(resort.id, resort.nameJa)}
+          {getResortLabelName(resort.id, resort.nameJa, resort.shortName)}
         </h3>
         <span
           className={cn(

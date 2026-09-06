@@ -1,15 +1,22 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
-import { queueElevationSync } from "./server/elevationSync";
-import { syncOsmSlope10m } from "./server/osmSlopeSampling";
+import { requireAdmin } from "@/lib/requireAdmin";
+import { readExistingSkiResortIds } from "@/lib/skiResortData";
 import {
-  hashContent,
+  getDataDocument,
+  writeDataDocuments,
+} from "@/server/data-documents/client";
+import { DataDocumentConflictError } from "@/server/data-documents/contract";
+import { synchronizeDerivedGeometry } from "@/server/derivedGeometry";
+import {
+  osmSlope10mDocumentKey,
   parseSlopeBeforeGeojson,
   parseSlopeDetailEntries,
-  readSlopeBeforeRaw,
-  readSlopeDetailRaw,
-  writeSlopeBeforeGeojson,
+  readSlopeBeforeDocument,
+  readSlopeDetailDocument,
+  serializeSlopeGeojson,
+  slope10mDocumentKey,
+  slopeBeforeDocumentKey,
 } from "./server/slopeFiles";
 import { validateSaveRequest } from "./server/validateSaveRequest";
 import type {
@@ -26,6 +33,7 @@ import { reorderItemsByNameOrder } from "./utils/courseOrder";
 export async function applySlopeFeatureOrder(
   request: ApplySlopeFeatureOrderRequest,
 ): Promise<ApplySlopeFeatureOrderResult> {
+  await requireAdmin();
   if (request.sourceKind !== "curated" && request.sourceKind !== "osm") {
     return { ok: false, errors: ["不正なコース線の種別です。"] };
   }
@@ -39,19 +47,19 @@ export async function applySlopeFeatureOrder(
     return { ok: false, errors: ["並べ替えるコース線がありません。"] };
   }
 
-  const currentRaw = await readSlopeBeforeRaw(
+  const currentDocument = await readSlopeBeforeDocument(
     request.resortId,
     request.sourceKind,
   );
   const directoryName =
     request.sourceKind === "osm" ? "slope_before_osm" : "slope_before";
-  if (currentRaw === null) {
+  if (currentDocument === null) {
     return {
       ok: false,
       errors: [`${directoryName}/${request.resortId}.geojson がありません。`],
     };
   }
-  if (hashContent(currentRaw) !== request.fileHash) {
+  if (currentDocument.hash !== request.fileHash) {
     return {
       ok: false,
       errors: [
@@ -60,6 +68,7 @@ export async function applySlopeFeatureOrder(
     };
   }
 
+  const currentRaw = currentDocument.content;
   const geojson = parseSlopeBeforeGeojson(currentRaw);
   if (!geojson) {
     return { ok: false, errors: ["コース線GeoJSONを解析できませんでした。"] };
@@ -72,22 +81,61 @@ export async function applySlopeFeatureOrder(
       feature => feature.properties?.name,
     ),
   };
-  await writeSlopeBeforeGeojson(
-    request.resortId,
-    reordered,
-    request.sourceKind,
-  );
-  const writtenRaw = await readSlopeBeforeRaw(
-    request.resortId,
-    request.sourceKind,
-  );
-  if (writtenRaw === null) {
-    return { ok: false, errors: ["並べ替え結果を読み直せませんでした。"] };
+  const derivedKey =
+    request.sourceKind === "osm"
+      ? osmSlope10mDocumentKey(request.resortId)
+      : slope10mDocumentKey(request.resortId);
+  const derivedDocument = await getDataDocument(derivedKey);
+  const existingDerived = derivedDocument
+    ? parseSlopeBeforeGeojson(derivedDocument.content)
+    : null;
+  const synchronizedDerived = synchronizeDerivedGeometry({
+    previousBefore: geojson,
+    nextBefore: reordered,
+    existingDerived,
+    intervalM: 10,
+    kind: "slope",
+  });
+  let writtenHash: string;
+  try {
+    const beforeKey = slopeBeforeDocumentKey(
+      request.resortId,
+      request.sourceKind,
+    );
+    const written = await writeDataDocuments([
+      {
+        key: beforeKey,
+        content: serializeSlopeGeojson(reordered),
+        mediaType: "application/geo+json",
+        expectedHash: request.fileHash,
+      },
+      {
+        key: derivedKey,
+        content: serializeSlopeGeojson(synchronizedDerived),
+        mediaType: "application/geo+json",
+        expectedHash: derivedDocument?.hash ?? null,
+      },
+    ]);
+    const writtenBefore = written.find(document => document.key === beforeKey);
+    if (!writtenBefore) {
+      throw new Error("slope_before の並べ替え結果がありません。");
+    }
+    writtenHash = writtenBefore.hash;
+  } catch (error) {
+    if (error instanceof DataDocumentConflictError) {
+      return {
+        ok: false,
+        errors: [
+          `読み込み後に ${directoryName} または公開用GeoJSONが変更されています。ページを再読み込みして、最新のデータから並べ替えてください。`,
+        ],
+      };
+    }
+    throw error;
   }
 
   return {
     ok: true,
-    fileHash: hashContent(writtenRaw),
+    fileHash: writtenHash,
     writtenFile: `${directoryName}/${request.resortId}.geojson`,
   };
 }
@@ -96,53 +144,26 @@ export async function loadSlopeSourceData(
   resortId: string,
   sourceKind: SaveRequest["sourceKind"] = "curated",
 ): Promise<SlopeSourceData> {
-  const [beforeRaw, detailRaw] = await Promise.all([
-    readSlopeBeforeRaw(resortId, sourceKind),
-    sourceKind === "curated" ? readSlopeDetailRaw(resortId) : null,
+  await requireAdmin();
+  const [beforeDocument, detailDocument] = await Promise.all([
+    readSlopeBeforeDocument(resortId, sourceKind),
+    sourceKind === "curated" ? readSlopeDetailDocument(resortId) : null,
   ]);
+  const beforeRaw = beforeDocument?.content ?? null;
+  const detailRaw = detailDocument?.content ?? null;
   return {
     sourceKind,
     geojson: beforeRaw === null ? null : parseSlopeBeforeGeojson(beforeRaw),
     details: detailRaw === null ? null : parseSlopeDetailEntries(detailRaw),
-    fileHash: beforeRaw === null ? null : hashContent(beforeRaw),
-    detailFileHash: detailRaw === null ? null : hashContent(detailRaw),
+    fileHash: beforeDocument?.hash ?? null,
+    detailFileHash: detailDocument?.hash ?? null,
   };
 }
-
-// 保存前の slope_before から、コース名ごとの座標をスナップショットしておく。
-// 保存後の座標と突き合わせて、実際に線が変わったコースだけを特定するため。
-const buildCoordinatesByName = (
-  geojson: SlopeSourceData["geojson"],
-): Map<string, string> => {
-  const coordinatesByName = new Map<string, string>();
-  for (const feature of geojson?.features ?? []) {
-    const name = feature.properties?.name;
-    if (typeof name !== "string" || name === "") continue;
-    if (feature.geometry?.type !== "LineString") continue;
-    coordinatesByName.set(name, JSON.stringify(feature.geometry.coordinates));
-  }
-  return coordinatesByName;
-};
-
-// 新規追加、または座標が変化したコース名のみを返す（プロパティのみの変更は対象外）。
-const findChangedCourseNames = (
-  courses: SaveCoursePayload[],
-  previousCoordinatesByName: Map<string, string>,
-): string[] => {
-  const changed = new Set<string>();
-  for (const course of courses) {
-    const name = course.properties.name;
-    if (typeof name !== "string" || name === "") continue;
-    const previous = previousCoordinatesByName.get(name);
-    const current = JSON.stringify(course.coordinates);
-    if (previous !== current) changed.add(name);
-  }
-  return [...changed];
-};
 
 export async function saveSlopeEdits(
   request: SaveRequest,
 ): Promise<SaveResult> {
+  await requireAdmin();
   const errors = validateSaveRequest(request);
   if (errors.length > 0) return { ok: false, errors };
 
@@ -152,11 +173,9 @@ export async function saveSlopeEdits(
       ...request.courses.map(course => course.targetSkiId),
     ]),
   ];
-  const existingResorts = await prisma.skiResort.findMany({
-    where: { id: { in: requestedResortIds } },
-    select: { id: true },
-  });
-  const existingResortIds = new Set(existingResorts.map(resort => resort.id));
+  const existingResortIds = new Set(
+    await readExistingSkiResortIds(requestedResortIds),
+  );
   const missingResortIds = requestedResortIds.filter(
     resortId => !existingResortIds.has(resortId),
   );
@@ -169,16 +188,14 @@ export async function saveSlopeEdits(
     };
   }
 
-  const [currentBeforeRaw, currentDetailRaw] = await Promise.all([
-    readSlopeBeforeRaw(request.resortId, request.sourceKind),
+  const [currentBeforeDocument, currentDetailDocument] = await Promise.all([
+    readSlopeBeforeDocument(request.resortId, request.sourceKind),
     request.sourceKind === "curated"
-      ? readSlopeDetailRaw(request.resortId)
+      ? readSlopeDetailDocument(request.resortId)
       : null,
   ]);
-  const currentBeforeHash =
-    currentBeforeRaw === null ? null : hashContent(currentBeforeRaw);
-  const currentDetailHash =
-    currentDetailRaw === null ? null : hashContent(currentDetailRaw);
+  const currentBeforeHash = currentBeforeDocument?.hash ?? null;
+  const currentDetailHash = currentDetailDocument?.hash ?? null;
   if (
     currentBeforeHash !== request.fileHash ||
     currentDetailHash !== request.detailFileHash
@@ -190,13 +207,6 @@ export async function saveSlopeEdits(
       ],
     };
   }
-
-  // 標高再計算をそのコースだけに絞り込むため、書き換え前の座標を控えておく。
-  const previousCoordinatesByName = buildCoordinatesByName(
-    currentBeforeRaw === null
-      ? null
-      : parseSlopeBeforeGeojson(currentBeforeRaw),
-  );
 
   const toFeature = (course: SaveCoursePayload): SlopeBeforeFeature => ({
     type: "Feature",
@@ -224,10 +234,25 @@ export async function saveSlopeEdits(
   const writes: Array<{
     resortId: string;
     features: SlopeBeforeFeature[];
-  }> = [{ resortId: request.resortId, features: sourceFeatures }];
+    expectedHash: string | null;
+    previousGeojson: ReturnType<typeof parseSlopeBeforeGeojson>;
+  }> = [
+    {
+      resortId: request.resortId,
+      features: sourceFeatures,
+      expectedHash: currentBeforeHash,
+      previousGeojson: currentBeforeDocument
+        ? parseSlopeBeforeGeojson(currentBeforeDocument.content)
+        : null,
+    },
+  ];
 
   for (const [targetId, movedFeatures] of movedByTarget) {
-    const targetRaw = await readSlopeBeforeRaw(targetId, request.sourceKind);
+    const targetDocument = await readSlopeBeforeDocument(
+      targetId,
+      request.sourceKind,
+    );
+    const targetRaw = targetDocument?.content ?? null;
     const targetGeojson =
       targetRaw === null ? null : parseSlopeBeforeGeojson(targetRaw);
     if (targetRaw !== null && targetGeojson === null) {
@@ -251,35 +276,73 @@ export async function saveSlopeEdits(
     writes.push({
       resortId: targetId,
       features: [...targetFeatures, ...movedFeatures],
+      expectedHash: targetDocument?.hash ?? null,
+      previousGeojson: targetGeojson,
     });
   }
 
-  for (const write of writes) {
-    await writeSlopeBeforeGeojson(
-      write.resortId,
-      { type: "FeatureCollection", features: write.features },
-      request.sourceKind,
-    );
-  }
+  const proposedGeojson = writes.map(write => ({
+    ...write,
+    geojson: {
+      type: "FeatureCollection" as const,
+      features: write.features,
+    },
+  }));
+  const derivedDocuments = await Promise.all(
+    proposedGeojson.map(async write => {
+      const key =
+        request.sourceKind === "osm"
+          ? osmSlope10mDocumentKey(write.resortId)
+          : slope10mDocumentKey(write.resortId);
+      const current = await getDataDocument(key);
+      return {
+        key,
+        current,
+        geojson: synchronizeDerivedGeometry({
+          previousBefore: write.previousGeojson,
+          nextBefore: write.geojson,
+          existingDerived: current
+            ? parseSlopeBeforeGeojson(current.content)
+            : null,
+          intervalM: 10,
+          kind: "slope",
+        }),
+      };
+    }),
+  );
 
-  // 保存自体の完了は待たせず、新規追加・線を編集したコースだけを対象に
-  // 国土地理院APIでの標高計算（distance_10m_update.py）を裏で走らせる。
-  if (request.sourceKind === "osm") {
-    await Promise.all(writes.map(write => syncOsmSlope10m(write.resortId)));
-  } else {
-    queueElevationSync(
-      request.resortId,
-      findChangedCourseNames(request.courses, previousCoordinatesByName),
-    );
+  try {
+    await writeDataDocuments([
+      ...proposedGeojson.map(write => ({
+        key: slopeBeforeDocumentKey(write.resortId, request.sourceKind),
+        content: serializeSlopeGeojson(write.geojson),
+        mediaType: "application/geo+json",
+        expectedHash: write.expectedHash,
+      })),
+      ...derivedDocuments.map(document => ({
+        key: document.key,
+        content: serializeSlopeGeojson(document.geojson),
+        mediaType: "application/geo+json",
+        expectedHash: document.current?.hash ?? null,
+      })),
+    ]);
+  } catch (error) {
+    if (error instanceof DataDocumentConflictError) {
+      return {
+        ok: false,
+        errors: [
+          `読み込み後に ${request.sourceKind === "osm" ? "slope_before_osm" : "slope_before または slope_detail"} か公開用GeoJSONが変更されています。ページを再読み込みして、最新のデータから編集し直してください。`,
+        ],
+      };
+    }
+    throw error;
   }
 
   return {
     ok: true,
     writtenFiles: writes.flatMap(write => [
       `${request.sourceKind === "osm" ? "slope_before_osm" : "slope_before"}/${write.resortId}.geojson`,
-      ...(request.sourceKind === "osm"
-        ? [`slope_10m_osm/${write.resortId}.geojson`]
-        : []),
+      `${request.sourceKind === "osm" ? "slope_10m_osm" : "slope_10m"}/${write.resortId}.geojson`,
     ]),
   };
 }
