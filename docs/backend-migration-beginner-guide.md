@@ -79,6 +79,12 @@ openssl rand -hex 32
 | `GHCR_DEPLOY_TOKEN` | 実行用パッケージをVPSへ取得するための鍵 |
 | `SUBMODULES_TOKEN` | `src/private`も取得するための鍵 |
 
+`DEPLOY_TARGET`はURLではなく、VPS内のフォルダーの場所です。
+例えば`~/rusutsu`の`~`は、VPSに接続するユーザーのホームフォルダーを表します。
+今回の修正版はこの書き方にも対応しています。実際の場所が分かっている場合は、
+`/home/ユーザー名/rusutsu`のように`/`から始まる絶対パスでも指定できます。
+Mac上のパスや、この例をそのまま貼るのではなく、従来の配置先を使ってください。
+
 **完了の目印：新しい3つの名前がSecrets一覧にあり、既存の接続設定も残っている。**
 
 ## 3. 初回のスイッチと、本番URLを登録する
@@ -233,6 +239,7 @@ Deployment completed; database and /rusutsu readiness checks passed.
 | Prepare production settingsで失敗 | APIキー3つが64文字で、すべて違う値か |
 | 本番URLのエラー | DATA_API_BASE_URLがHTTPSで、末尾が/rusutsuか |
 | 既存のログイン設定がない | エラーに示された同名Secretを登録する。分からない場合は開発担当と確認 |
+| `Login Succeeded`の後に`cd: ... no such file or directory` | `DEPLOY_TARGET`への移動失敗。下の説明を参照 |
 | SSH接続やDockerの権限で失敗 | 従来の公開用Secretsと接続状況。VPS側の対応が必要と判明した場合だけ、その内容を友人に依頼 |
 | 既存DB・volume・接続の確認で失敗 | 開発担当に実行URLとエラーを渡す。空DBで代用しない |
 | VPS内バックアップで失敗 | 開発担当がディスク容量やDBの状態を調べる。外部保存先を設定する必要はない |
@@ -241,6 +248,26 @@ Deployment completed; database and /rusutsu readiness checks passed.
 エラーを伝えるときは「この手順書の何番か」「Actionsの実行URL」「秘密を含まないエラー文」があれば十分です。
 APIキー、パスワード、設定ファイルの全文は貼り付けません。
 DBを消す`db:reset`や`docker compose down -v`を実行せず、原因を確認してから再実行します。
+
+### `Login Succeeded`の後、配置先への移動で止まる場合
+
+SSH接続とイメージ保管場所へのログインは成功しています。
+`cd`は「フォルダーへ移動する」命令で、ここで止まった場合は、
+その実行では`deploy.sh`によるアプリの起動し直しやDB移行はまだ始まっていません。
+
+以前の実装には、`DEPLOY_TARGET`が`~/...`だと、ファイル転送は成功しても
+その後の移動では`~`をホームフォルダーとして扱えない不具合がありました。
+画面では値が`***`に隠れるため、この原因か別のパス間違いかはログだけでは断定できません。
+
+1. 修正版のワークフローをGitHubの`main`へ反映します。pushでCI/CDが始まった場合は、その実行を確認します。
+2. 手動で実行する場合は、ActionsのCI/CDで`main`を選び、**Run workflow**を押します。
+   古い失敗実行の**Re-run jobs**では、修正前のコードが使われるため直りません。
+3. 修正後も`DEPLOY_TARGET directory is unavailable`で止まる場合は、
+   GitHub Secretsの`DEPLOY_TARGET`が実際のVPSの配置先を指しているか確認します。
+   分からない場合は、直前の`Deploy package via SCP`のログも開発担当に渡してください。
+
+APIキーの作り直しは不要です。`INITIALIZE_CANONICAL_DATA`などの初回設定は、
+初回デプロイが成功するまで元の手順どおりに保ちます。
 
 仕組みを理解したい場合は[解説書](backend-migration-explained.md)、
 開発担当向けの具体的な操作は[運用手順書](backend-migration-runbook.md)を参照してください。

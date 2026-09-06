@@ -197,7 +197,22 @@ jobs:
           command_timeout: 30m
           script: |
             set -eu
+            # A quoted variable does not expand ~/ like the SCP target does.
+            case "${DEPLOY_TARGET:-}" in
+              '') echo 'DEPLOY_TARGET is empty. Set the deployment directory in GitHub Secrets.' >&2; exit 1 ;;
+              '~') DEPLOY_TARGET="$HOME" ;;
+              '~/'*) DEPLOY_TARGET="$HOME/${DEPLOY_TARGET#\~/}" ;;
+              '$HOME/'*) DEPLOY_TARGET="$HOME/${DEPLOY_TARGET#\$HOME/}" ;;
+              '${HOME}/'*) DEPLOY_TARGET="$HOME/${DEPLOY_TARGET#\$\{HOME\}/}" ;;
+            esac
+            if ! cd -- "$DEPLOY_TARGET" 2>/dev/null; then
+              echo 'DEPLOY_TARGET directory is unavailable. Check the VPS deployment path in GitHub Secrets; use an absolute path or ~/directory.' >&2
+              exit 1
+            fi
+            if [ ! -f scripts/ops/deploy.sh ] || [ ! -f docker-compose.production.yml ] || [ ! -f db-change-manifest.sha256 ]; then
+              echo 'Deployment package is missing from DEPLOY_TARGET. Check the SCP step and deployment path.' >&2
+              exit 1
+            fi
             printf '%s' "$GHCR_DEPLOY_TOKEN" | docker login ghcr.io -u "$GHCR_DEPLOY_USER" --password-stdin
             unset GHCR_DEPLOY_TOKEN
-            cd "$DEPLOY_TARGET"
             bash scripts/ops/deploy.sh

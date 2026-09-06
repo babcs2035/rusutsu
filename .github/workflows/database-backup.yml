@@ -43,7 +43,22 @@ jobs:
           command_timeout: 30m
           script: |
             set -eu
-            cd "$DEPLOY_TARGET"
+            # Keep path handling consistent with the deployment workflow.
+            case "${DEPLOY_TARGET:-}" in
+              '') echo 'DEPLOY_TARGET is empty. Set the deployment directory in GitHub Secrets.' >&2; exit 1 ;;
+              '~') DEPLOY_TARGET="$HOME" ;;
+              '~/'*) DEPLOY_TARGET="$HOME/${DEPLOY_TARGET#\~/}" ;;
+              '$HOME/'*) DEPLOY_TARGET="$HOME/${DEPLOY_TARGET#\$HOME/}" ;;
+              '${HOME}/'*) DEPLOY_TARGET="$HOME/${DEPLOY_TARGET#\$\{HOME\}/}" ;;
+            esac
+            if ! cd -- "$DEPLOY_TARGET" 2>/dev/null; then
+              echo 'DEPLOY_TARGET directory is unavailable. Check the VPS deployment path in GitHub Secrets; use an absolute path or ~/directory.' >&2
+              exit 1
+            fi
+            if [ ! -f scripts/ops/backup-database.sh ] || [ ! -f scripts/ops/restore-backup-test.sh ]; then
+              echo 'Backup scripts are missing from DEPLOY_TARGET. Complete the CI/CD deployment first.' >&2
+              exit 1
+            fi
             bash scripts/ops/backup-database.sh
             if [ "$TEST_RESTORE" = true ]; then
               bash scripts/ops/restore-backup-test.sh
