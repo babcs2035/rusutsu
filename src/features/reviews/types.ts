@@ -59,6 +59,8 @@ export type ReviewDetailFile = {
 } & Record<ReviewCategoryId, ReviewDetailCategory>;
 
 export type ReviewArticleCategory = {
+  /** 箇条書き形式のdescription項目を表示するときに使用。 */
+  description?: string;
   score: ReviewArticleScore;
   good: string;
   bad: string;

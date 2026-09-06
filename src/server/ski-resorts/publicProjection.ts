@@ -1,5 +1,10 @@
 import type { Prisma } from "@prisma/client";
 import { z } from "zod";
+import {
+  formerNamesSchema,
+  nameRubySchema,
+  readingRelationsSelect,
+} from "./readingContract";
 
 const text = z.string();
 const optionalText = text.nullable();
@@ -13,6 +18,8 @@ const publicResortScalars = z.object({
   nameJa: text,
   nameEn: text,
   shortName: optionalText,
+  nameRuby: nameRubySchema,
+  formerNames: formerNamesSchema,
   prefecture: text,
   town: text,
   latitude: number,
@@ -109,6 +116,7 @@ const selectShape = <T extends z.ZodRawShape>(shape: T) =>
 /** The same allowlist shapes both the DB query and the remote API response. */
 export const publicSkiResortSelect = {
   ...selectShape(publicResortScalars.shape),
+  ...readingRelationsSelect,
   courses: { select: selectShape(course.shape) },
   lifts: { select: selectShape(lift.shape) },
   tickets: { select: selectShape(ticket.shape) },

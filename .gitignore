@@ -40,6 +40,7 @@ yarn-error.log*
 
 # Private deployment settings and local DB copies must never be committed.
 /production-settings.json
+.review-publication-plan.json
 **/pending.env.sh
 **/runtime.env.sh
 **/rusutsu-db-*/

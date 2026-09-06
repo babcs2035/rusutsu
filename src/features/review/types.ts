@@ -7,6 +7,7 @@ export type ReviewResortSummary = {
   resortId: string;
   warningCount: number;
   hasArticle: boolean;
+  jsonOnly?: boolean;
 };
 
 export type ReviewResortOption = ReviewResortSummary & {

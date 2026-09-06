@@ -1,4 +1,5 @@
 import type { LiftTicketData } from "@/features/lift-ticket/types";
+import { normalizeReviewArticle } from "@/features/reviews/normalizeArticle";
 import {
   REVIEW_CATEGORY_IDS,
   REVIEW_CATEGORY_LABELS,
@@ -91,6 +92,7 @@ const parseReviewCategory = (
       course => `${course.name}：${course.description}`,
     ) ?? [];
   const articleText = [
+    articleCategory?.description,
     good,
     concern,
     ...(articleCategory?.courses?.map(
@@ -124,7 +126,9 @@ const loadReviewDirectory = async (
   if (!detailDocument && !articleDocument) return null;
 
   const detail = parseJsonDocument<ReviewDetailFile>(detailDocument);
-  const article = parseJsonDocument<ReviewArticleFile>(articleDocument);
+  const article = articleDocument
+    ? normalizeReviewArticle(JSON.parse(articleDocument.content))
+    : null;
   const categories = REVIEW_CATEGORY_IDS.map(categoryId =>
     parseReviewCategory(categoryId, detail, article),
   );
@@ -149,6 +153,10 @@ const loadReviewDirectory = async (
         const category = detail[categoryId];
         return (
           count +
+          ("warn" in (category ?? {}) &&
+          (category as unknown as { warn?: boolean }).warn
+            ? 1
+            : 0) +
           [
             ...(category?.good ?? []),
             ...(category?.bad ?? []),

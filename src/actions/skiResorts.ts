@@ -139,7 +139,7 @@ export async function getSkiResortsForMap() {
 
   return resorts.map(resort => ({
     ...resort,
-    ...getResortReadingInfo(resort.id),
+    ...getResortReadingInfo(resort),
     liftTickets: liftTicketsByResortId.get(resort.id) ?? [],
   }));
 }
@@ -157,7 +157,7 @@ export async function getSkiResortById(id: string) {
 
   return {
     ...resort,
-    ...getResortReadingInfo(resort.id),
+    ...getResortReadingInfo(resort),
     ...decisionData,
     weatherIds: getWeatherIdsBySkiResortId(resort.id),
     finalizedMapData,

@@ -1,5 +1,17 @@
 # バックエンドとクローラーのデータ管理
 
+旧称・ふりがなは`SkiResortRubySegment` / `SkiResortFormerName`の専用テーブルに保存する。
+スキー場IDと表示順を複合主キーとし、文字・読みを個別の文字列列に格納する。旧称とその読みには検索用indexを持つ。
+読みの確認状態だけは`SkiResort.readingNeedsReview`に保存する。
+`20260906120000_add_resort_readings`で506件の辞書スナップショットを既存IDへ一度だけ移行する。
+公開・検索・管理画面はDB/APIの値を使用し、空欄にしても元のJSONへ戻らない。
+
+レビュー公開は`PUT /api/internal/v1/review-publications`（admin-data権限）で受け付ける。
+管理画面の取り込みとCLIは共通の構造検証を通し、detail/articleの両方をexpectedHash付きで一括保存する。
+CLIは接続先・入力内容・確認時の本番hashをプランに保持し、変更を検出したら再確認を求める。
+操作方法は[日常のデータ編集・レビュー公開手順](content-publishing-guide.md)を参照。
+
+
 ## まず結論
 
 この資料は実装済みの移行仕様を説明する。本番への導入・本番DBへの適用は未実施であり、
@@ -235,8 +247,8 @@ Cookie、Authorization、API key、フォーム値等はDOM保存前に除去し
 - `latest_status_mapping` はクロール名とGeoJSON上の線を結ぶ運用データであり、移行後は
   PostgreSQLの `DataDocument` が正本になる。
 - `SkiResortNameAliases.json` は `SkiResort.shortName` への一度限りの投入元である。
-- `SkiResortReadings.json` と `SkiResortWeatherIds.json` は、ふりがな・旧称表示や外部の
-  天気サービスへのリンク生成に使う静的補助設定として残す。admin編集する運用文書とは別扱いにする。
+- `SkiResortReadings.json` の旧称・ふりがなは専用テーブルへ移行済み。実行時の参照はDBへ統一し、管理画面で編集する。
+- `SkiResortWeatherIds.json` は外部の天気サービスへのリンク生成に使う静的補助設定として残す。
 - `src/private` はprivate crawler code、対応辞書、初回fixtureを保管するsubmoduleとして残す。
   commitする際はsubmodule側の必要な変更を先にcommit・pushし、親のgitlinkを更新する。
 

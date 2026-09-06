@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   experimental: {
     serverActions: {
+      bodySizeLimit: "6mb",
       allowedOrigins: ["ktak.dev", "*.trycloudflare.com"],
     },
   },

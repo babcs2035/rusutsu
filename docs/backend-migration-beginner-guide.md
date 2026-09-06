@@ -234,6 +234,8 @@ Deployment completed; database and /rusutsu readiness checks passed.
 
 ## 困ったとき
 
+旧称・ふりがなの編集と、AIで作ったレビューの公開は、[日常のデータ編集・レビュー公開手順](content-publishing-guide.md)を参照してください。
+
 ### 管理画面の「取得結果あり／なし」について
 
 コース・リフトの管理画面では、対応付けに使える取得結果があるかを表示します。

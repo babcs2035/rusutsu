@@ -10,6 +10,8 @@ const resort = {
   nameJa: "ルスツリゾート",
   nameEn: "Rusutsu Resort",
   shortName: "ルスツ",
+  nameRuby: [],
+  formerNames: [],
   prefecture: "北海道",
   town: "留寿都村",
   latitude: 42.74,

@@ -8,7 +8,13 @@ import {
   RefreshCw,
   Save,
 } from "lucide-react";
-import { startTransition, useActionState, useEffect, useRef } from "react";
+import {
+  startTransition,
+  useActionState,
+  useCallback,
+  useEffect,
+  useRef,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +24,7 @@ import {
   type ResortAdminActionState,
   updateSkiResortFromAdmin,
 } from "./actions";
+import { ResortReadingFields } from "./ResortReadingFields";
 
 type ResortNumberField =
   | "latitude"
@@ -235,6 +242,14 @@ export function ResortEditForm({
     }
   }, []);
 
+  const reportDirty = useCallback(() => {
+    if (!formRef.current) return;
+    onDirtyChange(
+      JSON.stringify([...new FormData(formRef.current)]) !==
+        initialValues.current,
+    );
+  }, [onDirtyChange]);
+
   useEffect(() => {
     onPendingChange(isPending);
   }, [isPending, onPendingChange]);
@@ -247,12 +262,7 @@ export function ResortEditForm({
     <form
       ref={formRef}
       className="flex min-h-0 flex-1 flex-col"
-      onChange={event => {
-        onDirtyChange(
-          JSON.stringify([...new FormData(event.currentTarget)]) !==
-            initialValues.current,
-        );
-      }}
+      onChange={reportDirty}
       onSubmit={event => {
         event.preventDefault();
         if (isPending || !hasChanges) return;
@@ -399,6 +409,11 @@ export function ResortEditForm({
             </div>
           </section>
 
+          <ResortReadingFields
+            key={`${resort.id}-${resort.updatedAt}`}
+            resort={resort}
+            onRowsChanged={reportDirty}
+          />
           <FormSection
             title="基本情報"
             description="短縮名は地図や比較表に表示されます。空欄の場合は名称（日本語）を使います。"

@@ -2,12 +2,18 @@ import "server-only";
 
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import type {
-  AdminSkiResortRecord,
-  AdminSkiResortUpdate,
-  AdminSkiResortUpdateResult,
+import {
+  type AdminSkiResortRecord,
+  type AdminSkiResortUpdate,
+  type AdminSkiResortUpdateResult,
+  adminSkiResortRecordSchema,
 } from "@/server/ski-resorts/adminContract";
-import { publicSkiResortSelect } from "./publicProjection";
+import {
+  type PublicSkiResortRecord,
+  publicSkiResortSchema,
+  publicSkiResortSelect,
+} from "./publicProjection";
+import { readingRelationsSelect } from "./readingContract";
 
 export const fullResortQuery = {
   where: { isActive: true },
@@ -21,13 +27,9 @@ export const resortDetailQuery = {
   select: publicSkiResortSelect,
 } satisfies Prisma.SkiResortDefaultArgs;
 
-export type FullSkiResortRecord = Prisma.SkiResortGetPayload<
-  typeof fullResortQuery
->;
+export type FullSkiResortRecord = PublicSkiResortRecord;
 
-export type SkiResortDetailRecord = Prisma.SkiResortGetPayload<
-  typeof resortDetailQuery
->;
+export type SkiResortDetailRecord = PublicSkiResortRecord;
 
 export type SkiResortMapRecord = Awaited<
   ReturnType<typeof findSkiResortsForMapDirect>
@@ -39,6 +41,8 @@ const adminSkiResortSelect = {
   nameJa: true,
   nameEn: true,
   shortName: true,
+  ...readingRelationsSelect,
+  readingNeedsReview: true,
   isActive: true,
   prefecture: true,
   town: true,
@@ -91,13 +95,16 @@ type AdminSkiResortRow = Prisma.SkiResortGetPayload<{
 
 const serializeAdminSkiResort = (
   resort: AdminSkiResortRow,
-): AdminSkiResortRecord => ({
-  ...resort,
-  updatedAt: resort.updatedAt.toISOString(),
-});
+): AdminSkiResortRecord =>
+  adminSkiResortRecordSchema.parse({
+    ...resort,
+    updatedAt: resort.updatedAt.toISOString(),
+  });
 
 export async function findSkiResortsDirect(): Promise<FullSkiResortRecord[]> {
-  return prisma.skiResort.findMany(fullResortQuery);
+  return (await prisma.skiResort.findMany(fullResortQuery)).map(row =>
+    publicSkiResortSchema.parse(row),
+  );
 }
 
 export async function findSkiResortsForMapDirect() {
@@ -108,6 +115,7 @@ export async function findSkiResortsForMapDirect() {
       nameJa: true,
       nameEn: true,
       shortName: true,
+      ...readingRelationsSelect,
       prefecture: true,
       town: true,
       latitude: true,
@@ -128,10 +136,12 @@ export async function findSkiResortsForMapDirect() {
 export async function findSkiResortByIdDirect(
   id: string,
 ): Promise<SkiResortDetailRecord | null> {
-  return prisma.skiResort.findFirst({
-    where: { id, isActive: true },
-    ...resortDetailQuery,
-  });
+  return publicSkiResortSchema.nullable().parse(
+    await prisma.skiResort.findFirst({
+      where: { id, isActive: true },
+      ...resortDetailQuery,
+    }),
+  );
 }
 
 export async function findSkiResortWeatherDirect(id: string) {
@@ -186,10 +196,11 @@ export async function updateAdminSkiResortDirect(
     Math.max(Date.now(), expectedDate.getTime() + 1),
   );
 
+  const { nameRuby, formerNames, ...scalars } = data;
   return prisma.$transaction(async transaction => {
     const update = await transaction.skiResort.updateMany({
       where: { id, updatedAt: expectedDate },
-      data: { ...data, updatedAt: nextUpdatedAt },
+      data: { ...scalars, updatedAt: nextUpdatedAt },
     });
 
     if (update.count === 0) {
@@ -205,6 +216,30 @@ export async function updateAdminSkiResortDirect(
         : { status: "not_found" as const };
     }
 
+    await transaction.skiResortRubySegment.deleteMany({
+      where: { skiResortId: id },
+    });
+    await transaction.skiResortFormerName.deleteMany({
+      where: { skiResortId: id },
+    });
+    if (nameRuby.length)
+      await transaction.skiResortRubySegment.createMany({
+        data: nameRuby.map((segment, position) => ({
+          skiResortId: id,
+          position,
+          text: segment.text,
+          ruby: segment.ruby ?? null,
+        })),
+      });
+    if (formerNames.length)
+      await transaction.skiResortFormerName.createMany({
+        data: formerNames.map((entry, position) => ({
+          skiResortId: id,
+          position,
+          name: entry.name,
+          reading: entry.reading ?? null,
+        })),
+      });
     const resort = await transaction.skiResort.findUniqueOrThrow({
       where: { id },
       select: adminSkiResortSelect,

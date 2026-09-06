@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { supportsReviewForm } from "@/features/reviews/normalizeArticle";
 import {
   REVIEW_CATEGORY_IDS,
   type ReviewArticleFile,
@@ -83,9 +84,12 @@ const warningCount = (detail: ReviewDetailFile) =>
     const category = detail[categoryId];
     return (
       count +
-      [...category.good, ...category.bad, ...category.courses].filter(
-        item => item.warn,
-      ).length
+      ((category as unknown as { warn?: boolean }).warn ? 1 : 0) +
+      [
+        ...(category.good ?? []),
+        ...(category.bad ?? []),
+        ...(category.courses ?? []),
+      ].filter(item => item.warn).length
     );
   }, 0);
 
@@ -154,6 +158,7 @@ const listReviewResortsWithClient = async (
             resortId,
             warningCount: warningCount(detail),
             hasArticle: Boolean(article.full),
+            ...(!supportsReviewForm(detail, article) ? { jsonOnly: true } : {}),
           } satisfies ReviewResortSummary;
         }),
       )),
@@ -169,6 +174,10 @@ const readReviewForEditWithClient = async (
   resortId: string,
 ): Promise<ReviewEditData> => {
   const { detail, article } = await requireReviewDocuments(client, resortId);
+  if (
+    !supportsReviewForm(JSON.parse(detail.content), JSON.parse(article.content))
+  )
+    throw new Error("このレビューはJSON取り込み画面で確認・更新してください。");
   return {
     detail: JSON.parse(detail.content) as ReviewDetailFile,
     article: JSON.parse(article.content) as ReviewArticleFile,

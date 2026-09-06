@@ -16,6 +16,9 @@ model SkiResort {
   nameJa    String
   nameEn    String
   shortName String?
+  nameRuby SkiResortRubySegment[]
+  formerNames SkiResortFormerName[]
+  readingNeedsReview Boolean @default(false)
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -503,4 +506,29 @@ model CanonicalDataMigration {
   completedAt DateTime @default(now()) @db.Timestamptz(3)
 
   @@map("canonical_data_migrations")
+}
+
+// Ordered name segments retain per-word ruby without storing a JSON document.
+model SkiResortRubySegment {
+  skiResortId String
+  position Int
+  text String @db.VarChar(300)
+  ruby String? @db.VarChar(300)
+  skiResort SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([skiResortId, position])
+  @@map("ski_resort_ruby_segments")
+}
+
+model SkiResortFormerName {
+  skiResortId String
+  position Int
+  name String @db.VarChar(300)
+  reading String? @db.VarChar(300)
+  skiResort SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([skiResortId, position])
+  @@index([name])
+  @@index([reading])
+  @@map("ski_resort_former_names")
 }

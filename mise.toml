@@ -3,6 +3,7 @@ node = "24.19.0"
 "npm:pnpm" = "11.20.0"
 
 [tasks]
+"reviews:publish" = { description = "レビューJSONの本番差分を確認（--applyで反映）", run = "node --import tsx scripts/publishReview.ts" }
 # --- Project Setup ---
 setup = { description = "プロジェクトの初期セットアップ（依存関係、DB、シード）", run = [
   "cp -n .env.example .env || true",

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { readingFieldsSchema } from "./readingContract";
 
 export const skiResortIdSchema = z
   .string()
@@ -25,6 +26,7 @@ const stringList = z
  */
 export const adminSkiResortUpdateSchema = z
   .object({
+    ...readingFieldsSchema.shape,
     nameJa: requiredText(300),
     nameEn: requiredText(300),
     shortName: nullableText(100),
@@ -92,7 +94,20 @@ export const adminSkiResortUpdateRequestSchema = z
     expectedUpdatedAt: z.iso.datetime({ offset: true }),
     data: adminSkiResortUpdateSchema,
   })
-  .strict();
+  .strict()
+  .superRefine(({ data }, context) => {
+    if (
+      data.nameRuby.length &&
+      data.nameRuby.map(segment => segment.text).join("") !== data.nameJa
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["data", "nameRuby"],
+        message:
+          "ふりがなの対象文字をつなげると名称（日本語）と一致する必要があります。",
+      });
+    }
+  });
 
 export type AdminSkiResortUpdate = z.infer<typeof adminSkiResortUpdateSchema>;
 export type AdminSkiResortRecord = z.infer<typeof adminSkiResortRecordSchema>;

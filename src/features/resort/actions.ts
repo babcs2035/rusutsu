@@ -65,6 +65,19 @@ export async function updateSkiResortFromAdmin(
   const request = adminSkiResortUpdateRequestSchema.safeParse({
     expectedUpdatedAt: textValue(formData, "expectedUpdatedAt"),
     data: {
+      nameRuby: formData.getAll("rubyText").map((text, index) => ({
+        text,
+        ...(formData.getAll("rubyReading")[index]
+          ? { ruby: formData.getAll("rubyReading")[index] }
+          : {}),
+      })),
+      formerNames: formData.getAll("formerName").map((name, index) => ({
+        name,
+        ...(formData.getAll("formerReading")[index]
+          ? { reading: formData.getAll("formerReading")[index] }
+          : {}),
+      })),
+      readingNeedsReview: formData.get("readingNeedsReview") === "on",
       nameJa: textValue(formData, "nameJa"),
       nameEn: textValue(formData, "nameEn"),
       shortName: nullableTextValue(formData, "shortName"),
