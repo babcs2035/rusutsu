@@ -122,6 +122,28 @@ export function ResortSelectStep({
               <p className="break-all text-xs text-gray-600">
                 {selectedResort.prefecture} / {selectedResort.id}
               </p>
+              {selectedResort.mergedIntoId && (
+                <p className="break-all text-xs text-blue-700">
+                  結合先：
+                  {
+                    resorts.find(
+                      resort => resort.id === selectedResort.mergedIntoId,
+                    )?.nameJa
+                  }
+                  （{selectedResort.mergedIntoId}）
+                </p>
+              )}
+              {!!selectedResort.sourceResortIds.length && (
+                <p className="text-xs text-blue-700">
+                  結合元：
+                  {selectedResort.sourceResortIds
+                    .map(
+                      id =>
+                        resorts.find(resort => resort.id === id)?.nameJa ?? id,
+                    )
+                    .join("、")}
+                </p>
+              )}
               <Button
                 type="button"
                 size="sm"
@@ -156,7 +178,16 @@ export function ResortSelectStep({
                   {resort.prefecture} / {resort.id}
                 </span>
               </span>
-              <PublicationBadge isActive={resort.isActive} />
+              {resort.mergedIntoId ? (
+                <span className="text-xs text-blue-700">結合元</span>
+              ) : resort.sourceResortIds.length ? (
+                <span className="text-xs text-blue-700">
+                  {resort.sourceResortIds.length}件を結合
+                </span>
+              ) : null}
+              <PublicationBadge
+                isActive={resort.isActive && !resort.mergedIntoId}
+              />
             </button>
           ))}
           {filteredResorts.length === 0 && (

@@ -6,6 +6,7 @@ import type {
   FinalizedLiftFeature,
   FinalizedResortMapData,
 } from "@/lib/finalizedResortGeojsonShared";
+import { mergeResortMaps } from "@/lib/mergedResortMap";
 import { requireAdmin } from "@/lib/requireAdmin";
 import {
   getLiftTicketDataMap,
@@ -134,13 +135,19 @@ export async function getSkiResorts(): Promise<SkiResortWithRelations[]> {
 export async function getSkiResortsForMap() {
   const resorts = await readSkiResortsForMap();
   const liftTicketsByResortId = await getLiftTicketDataMap(
-    resorts.map(resort => resort.id),
+    resorts.flatMap(resort => [
+      resort.id,
+      ...(resort.sourceResortIds ?? []).slice(0, 1),
+    ]),
   );
 
   return resorts.map(resort => ({
     ...resort,
     ...getResortReadingInfo(resort),
-    liftTickets: liftTicketsByResortId.get(resort.id) ?? [],
+    liftTickets: liftTicketsByResortId.get(resort.id)?.length
+      ? (liftTicketsByResortId.get(resort.id) ?? [])
+      : (liftTicketsByResortId.get(resort.sourceResortIds?.[0] ?? resort.id) ??
+        []),
   }));
 }
 
@@ -150,16 +157,59 @@ export async function getSkiResortById(id: string) {
 
   if (!resort) return null;
 
-  const [finalizedMapData, decisionData] = await Promise.all([
-    getFinalizedResortMapData(resort.id),
+  const sourceIds = resort.sourceResortIds?.length
+    ? resort.sourceResortIds
+    : [resort.id];
+  const [maps, decisionData, primaryDecisionData] = await Promise.all([
+    Promise.all(
+      sourceIds.map(async sourceId => ({
+        id: sourceId,
+        data: await getFinalizedResortMapData(sourceId),
+      })),
+    ),
     getResortDecisionData(resort.id),
+    sourceIds[0] !== resort.id ? getResortDecisionData(sourceIds[0]) : null,
   ]);
+  const finalizedMapData =
+    sourceIds[0] === resort.id
+      ? (maps[0]?.data ?? null)
+      : mergeResortMaps(maps);
+  const weatherEntries = sourceIds.flatMap(sourceId => {
+    const entry = getWeatherIdsBySkiResortId(sourceId);
+    return entry ? [entry] : [];
+  });
+  const weatherIds =
+    getWeatherIdsBySkiResortId(resort.id) ??
+    (weatherEntries.length
+      ? {
+          ...weatherEntries[0],
+          tenkijp: weatherEntries.flatMap(entry => entry.tenkijp),
+          snowForecast: weatherEntries.flatMap(entry => [
+            ...entry.snowForecast,
+            ...(entry.SnowForecastId
+              ? [
+                  {
+                    snowForecastId: entry.SnowForecastId,
+                    snowForecastName: entry.SnowForecastName,
+                  },
+                ]
+              : []),
+          ]),
+          SnowForecastId: null,
+          SnowForecastName: null,
+        }
+      : null);
 
   return {
     ...resort,
     ...getResortReadingInfo(resort),
     ...decisionData,
-    weatherIds: getWeatherIdsBySkiResortId(resort.id),
+    liftTickets: decisionData.liftTickets.length
+      ? decisionData.liftTickets
+      : (primaryDecisionData?.liftTickets ?? []),
+    reviewData:
+      decisionData.reviewData ?? primaryDecisionData?.reviewData ?? null,
+    weatherIds,
     finalizedMapData,
     finalizedOperationSummary:
       createFinalizedOperationSummary(finalizedMapData),

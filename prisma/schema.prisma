@@ -20,6 +20,10 @@ model SkiResort {
   formerNames SkiResortFormerName[]
   readingNeedsReview Boolean @default(false)
   isActive  Boolean  @default(true)
+  mergedIntoId String?
+  mergedInto SkiResort? @relation("ResortMerge", fields: [mergedIntoId], references: [id], onDelete: Restrict)
+  mergedMembers SkiResort[] @relation("ResortMerge")
+  sourceResortIds String[] @default([])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -96,6 +100,7 @@ model SkiResort {
   crawlLatestCurrents CrawlLatestCurrent[]
 
   @@map("ski_resorts")
+  @@index([mergedIntoId])
 }
 
 model Course {

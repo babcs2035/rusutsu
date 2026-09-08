@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { adminToaster } from "@/app/admin/AdminToaster";
+import { Button } from "@/components/ui/button";
 import type { AdminSkiResortRecord } from "@/server/ski-resorts/adminContract";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { StepIndicator } from "@/shared/components/StepIndicator";
 import { ResortEditForm } from "./ResortEditForm";
+import { ResortMergeForm } from "./ResortMergeForm";
 import { ResortSelectStep } from "./ResortSelectStep";
 
 const STEPS = [
@@ -26,6 +28,7 @@ export function ResortAdminClient({
   const [resorts, setResorts] = useState(initialResorts);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isMerging, setIsMerging] = useState(false);
   const [query, setQuery] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -48,7 +51,10 @@ export function ResortAdminClient({
     setHasChanges(false);
     setLeaveDestination(null);
     if (destination === "admin") router.push("/admin");
-    else setIsEditing(false);
+    else {
+      setIsEditing(false);
+      setIsMerging(false);
+    }
   };
 
   const requestLeave = (destination: LeaveDestination) => {
@@ -79,7 +85,7 @@ export function ResortAdminClient({
         <div className="admin-editor-steps min-w-0 flex-1">
           <StepIndicator
             steps={STEPS}
-            currentStepId={isEditing ? "detail" : "select"}
+            currentStepId={isEditing || isMerging ? "detail" : "select"}
             onSelectStep={() => requestLeave("select")}
             canSelectStep={step => step === "select" && !isSaving}
           />
@@ -88,6 +94,11 @@ export function ResortAdminClient({
           <span className="hidden max-w-[240px] truncate text-sm text-gray-700 md:block">
             {selectedResort.nameJa}
           </span>
+        )}
+        {!isEditing && !isMerging && (
+          <Button type="button" size="sm" onClick={() => setIsMerging(true)}>
+            複数のスキー場を結合
+          </Button>
         )}
         <Link
           href="/admin"
@@ -103,7 +114,34 @@ export function ResortAdminClient({
           管理画面
         </Link>
       </header>
-      {isEditing && selectedResort ? (
+      {isMerging ? (
+        <ResortMergeForm
+          resorts={resorts}
+          initialId={selectedId}
+          onBack={() => requestLeave("select")}
+          onDirtyChange={setHasChanges}
+          onPendingChange={setIsSaving}
+          onCreated={result => {
+            setResorts(current => [
+              ...current.map(
+                resort =>
+                  result.sources.find(source => source.id === resort.id) ??
+                  resort,
+              ),
+              result.resort,
+            ]);
+            setSelectedId(result.resort.id);
+            setSavedResortId(result.resort.id);
+            setHasChanges(false);
+            setIsMerging(false);
+            setIsEditing(true);
+            adminToaster.create({
+              title: "スキー場を結合しました。詳細設定を確認してください。",
+              type: "success",
+            });
+          }}
+        />
+      ) : isEditing && selectedResort ? (
         <ResortEditForm
           key={`${selectedResort.id}:${selectedResort.updatedAt}`}
           resort={selectedResort}

@@ -14,6 +14,12 @@ import {
   adminSkiResortUpdateRequestSchema,
   skiResortIdSchema,
 } from "@/server/ski-resorts/adminContract";
+import {
+  type ResortMergeRequest,
+  type ResortMergeResult,
+  resortMergeRequestSchema,
+  resortMergeResultSchema,
+} from "@/server/ski-resorts/mergeContract";
 import { publicSkiResortSchema } from "@/server/ski-resorts/publicProjection";
 import {
   type FullSkiResortRecord,
@@ -25,12 +31,29 @@ import {
   findSkiResortsForMapDirect,
   findSkiResortWeatherDirect,
   findYukiMagiListDirect,
+  mergeAdminSkiResortsDirect,
   type SkiResortDetailRecord,
   type SkiResortMapRecord,
   updateAdminSkiResortDirect,
 } from "@/server/ski-resorts/repository";
 
 type ResortName = { id: string; nameJa: string; shortName: string | null };
+
+export async function mergeAdminSkiResorts(
+  rawRequest: ResortMergeRequest,
+): Promise<ResortMergeResult> {
+  const request = resortMergeRequestSchema.parse(rawRequest);
+  if (!usesRemoteDataApi()) return mergeAdminSkiResortsDirect(request);
+  const response = await fetchInternalDataApi(
+    "/api/internal/v1/ski-resorts/merge",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+    },
+  );
+  return resortMergeResultSchema.parse(await response.json());
+}
 
 const parseEnvelope = async <T>(
   response: Response,

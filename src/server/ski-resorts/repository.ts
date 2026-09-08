@@ -1,13 +1,20 @@
 import "server-only";
 
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   type AdminSkiResortRecord,
   type AdminSkiResortUpdate,
   type AdminSkiResortUpdateResult,
   adminSkiResortRecordSchema,
+  adminSkiResortUpdateSchema,
 } from "@/server/ski-resorts/adminContract";
+import {
+  mergeResortSummary,
+  type ResortMergeRequest,
+  type ResortMergeResult,
+  resortMergeRequestSchema,
+} from "./mergeContract";
 import {
   type PublicSkiResortRecord,
   publicSkiResortSchema,
@@ -16,7 +23,7 @@ import {
 import { readingRelationsSelect } from "./readingContract";
 
 export const fullResortQuery = {
-  where: { isActive: true },
+  where: { isActive: true, mergedIntoId: null },
   select: publicSkiResortSelect,
   orderBy: { nameJa: "asc" },
 } satisfies Prisma.SkiResortFindManyArgs;
@@ -37,6 +44,8 @@ export type SkiResortMapRecord = Awaited<
 
 const adminSkiResortSelect = {
   id: true,
+  mergedIntoId: true,
+  sourceResortIds: true,
   updatedAt: true,
   nameJa: true,
   nameEn: true,
@@ -102,16 +111,15 @@ const serializeAdminSkiResort = (
   });
 
 export async function findSkiResortsDirect(): Promise<FullSkiResortRecord[]> {
-  return (await prisma.skiResort.findMany(fullResortQuery)).map(row =>
-    publicSkiResortSchema.parse(row),
-  );
+  return (await prisma.skiResort.findMany(fullResortQuery)).map(projectResort);
 }
 
 export async function findSkiResortsForMapDirect() {
   return prisma.skiResort.findMany({
-    where: { isActive: true },
+    where: { isActive: true, mergedIntoId: null },
     select: {
       id: true,
+      sourceResortIds: true,
       nameJa: true,
       nameEn: true,
       shortName: true,
@@ -136,12 +144,19 @@ export async function findSkiResortsForMapDirect() {
 export async function findSkiResortByIdDirect(
   id: string,
 ): Promise<SkiResortDetailRecord | null> {
-  return publicSkiResortSchema.nullable().parse(
-    await prisma.skiResort.findFirst({
-      where: { id, isActive: true },
-      ...resortDetailQuery,
-    }),
-  );
+  const source = await prisma.skiResort.findUnique({
+    where: { id },
+    select: { mergedIntoId: true },
+  });
+  const row = await prisma.skiResort.findFirst({
+    where: {
+      id: source?.mergedIntoId ?? id,
+      isActive: true,
+      mergedIntoId: null,
+    },
+    ...resortDetailQuery,
+  });
+  return row ? projectResort(row) : null;
 }
 
 export async function findSkiResortWeatherDirect(id: string) {
@@ -160,6 +175,7 @@ export async function findSkiResortNamesDirect(ids?: string[]) {
   return prisma.skiResort.findMany({
     where: {
       isActive: true,
+      mergedIntoId: null,
       ...(ids ? { id: { in: ids } } : {}),
     },
     select: { id: true, nameJa: true, shortName: true },
@@ -257,4 +273,143 @@ export async function updateAdminSkiResortDirect(
     });
     return { status: "updated", resort: serializeAdminSkiResort(resort) };
   });
+}
+
+const projectResort = (
+  row: Prisma.SkiResortGetPayload<{ select: typeof publicSkiResortSelect }>,
+): PublicSkiResortRecord =>
+  publicSkiResortSchema.parse({
+    ...row,
+    courses: [
+      ...row.courses,
+      ...row.mergedMembers.flatMap(member => member.courses),
+    ],
+    lifts: [...row.lifts, ...row.mergedMembers.flatMap(member => member.lifts)],
+    tickets: [
+      ...row.tickets,
+      ...row.mergedMembers.flatMap(member => member.tickets),
+    ],
+  });
+
+class MergeConflict extends Error {}
+
+export async function mergeAdminSkiResortsDirect(
+  rawRequest: ResortMergeRequest,
+): Promise<ResortMergeResult> {
+  const request = resortMergeRequestSchema.parse(rawRequest);
+  try {
+    return await prisma.$transaction(
+      async transaction => {
+        if (
+          await transaction.skiResort.findUnique({
+            where: { id: request.id },
+            select: { id: true },
+          })
+        )
+          return { status: "id_exists" as const };
+        const rows = await transaction.skiResort.findMany({
+          where: { id: { in: request.sources.map(source => source.id) } },
+          select: { ...adminSkiResortSelect, yukiMagiId: true },
+        });
+        if (
+          rows.length !== request.sources.length ||
+          rows.some(row => row.mergedIntoId || row.sourceResortIds.length)
+        )
+          return { status: "invalid_sources" as const };
+        if (
+          rows.some(
+            row =>
+              row.updatedAt.getTime() !==
+              new Date(
+                request.sources.find(source => source.id === row.id)
+                  ?.expectedUpdatedAt ?? "",
+              ).getTime(),
+          )
+        )
+          return { status: "conflict" as const };
+        const primary = rows.find(row => row.id === request.primaryId);
+        if (!primary) return { status: "invalid_sources" as const };
+        const members = rows.map(({ yukiMagiId: _yukiMagiId, ...row }) =>
+          serializeAdminSkiResort(row),
+        );
+        const primaryMember = members.find(member => member.id === primary.id);
+        if (!primaryMember) return { status: "invalid_sources" as const };
+        const summary = mergeResortSummary(primaryMember, members);
+        const {
+          id: _id,
+          updatedAt: _updated,
+          mergedIntoId: _parent,
+          sourceResortIds: _sources,
+          ...editable
+        } = summary;
+        const {
+          nameRuby: _ruby,
+          formerNames: _former,
+          ...scalars
+        } = adminSkiResortUpdateSchema.parse(editable);
+        const sourceResortIds = [
+          request.primaryId,
+          ...request.sources
+            .map(source => source.id)
+            .filter(id => id !== request.primaryId),
+        ];
+        const created = await transaction.skiResort.create({
+          data: {
+            ...scalars,
+            id: request.id,
+            nameJa: request.nameJa,
+            nameEn: request.nameEn,
+            shortName: null,
+            readingNeedsReview: true,
+            isActive: true,
+            yukiMagiId: primary.yukiMagiId,
+            sourceResortIds,
+          },
+          select: adminSkiResortSelect,
+        });
+        for (const source of request.sources) {
+          const result = await transaction.skiResort.updateMany({
+            where: {
+              id: source.id,
+              updatedAt: new Date(source.expectedUpdatedAt),
+              mergedIntoId: null,
+            },
+            data: {
+              mergedIntoId: request.id,
+              updatedAt: new Date(
+                Math.max(
+                  Date.now(),
+                  new Date(source.expectedUpdatedAt).getTime() + 1,
+                ),
+              ),
+            },
+          });
+          if (result.count !== 1) throw new MergeConflict();
+        }
+        const sources = await transaction.skiResort.findMany({
+          where: { mergedIntoId: request.id },
+          select: adminSkiResortSelect,
+        });
+        return {
+          status: "created" as const,
+          resort: serializeAdminSkiResort(created),
+          sources: sources.map(serializeAdminSkiResort),
+        };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+  } catch (error) {
+    if (
+      error instanceof MergeConflict ||
+      (error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2034")
+    )
+      return { status: "conflict" };
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    )
+      return { status: "id_exists" };
+    throw error;
+  }
 }

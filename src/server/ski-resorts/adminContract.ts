@@ -86,6 +86,8 @@ export const adminSkiResortUpdateSchema = z
 
 export const adminSkiResortRecordSchema = adminSkiResortUpdateSchema.extend({
   id: skiResortIdSchema,
+  mergedIntoId: skiResortIdSchema.nullable().default(null),
+  sourceResortIds: z.array(skiResortIdSchema).default([]),
   updatedAt: z.iso.datetime({ offset: true }),
 });
 

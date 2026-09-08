@@ -102,6 +102,7 @@ const yukiMagi = z.object({
   exclusionDate: optionalText,
 });
 export const publicSkiResortSchema = publicResortScalars.extend({
+  sourceResortIds: z.array(text).default([]),
   courses: z.array(course),
   lifts: z.array(lift),
   tickets: z.array(ticket),
@@ -116,6 +117,14 @@ const selectShape = <T extends z.ZodRawShape>(shape: T) =>
 /** The same allowlist shapes both the DB query and the remote API response. */
 export const publicSkiResortSelect = {
   ...selectShape(publicResortScalars.shape),
+  sourceResortIds: true,
+  mergedMembers: {
+    select: {
+      courses: { select: selectShape(course.shape) },
+      lifts: { select: selectShape(lift.shape) },
+      tickets: { select: selectShape(ticket.shape) },
+    },
+  },
   ...readingRelationsSelect,
   courses: { select: selectShape(course.shape) },
   lifts: { select: selectShape(lift.shape) },
