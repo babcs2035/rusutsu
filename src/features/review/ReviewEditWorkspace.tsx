@@ -10,6 +10,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
+import { AdminWorkspaceSidebar } from "@/components/AdminWorkspaceSidebar";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -655,10 +656,14 @@ export function ReviewEditWorkspace({
   const articleCategory = data?.article[selectedCategory];
 
   return (
-    <div className="h-[calc(100dvh-4rem)] bg-gray-100 text-gray-900 overflow-hidden flex">
+    <div className="h-[calc(100dvh-4rem)] max-md:h-auto max-md:min-h-0 max-md:flex-1 bg-gray-100 text-gray-900 overflow-hidden flex flex-col md:flex-row">
       {/* §15: lg 未満では 40vw 上限でサイドバーを縮小し，メイン（エディタ）に幅を回す */}
-      <aside className="w-[min(230px,40vw)] lg:w-[280px] flex-shrink-0 bg-[var(--sidebar-dark)] text-white overflow-y-auto border-r border-white/20">
-        <div className="p-5 sticky top-0 z-10 bg-[var(--sidebar-dark)]">
+      <AdminWorkspaceSidebar
+        label="スキー場を選ぶ"
+        selectionKey={selectedResortId}
+        className="md:w-[min(230px,40vw)] lg:w-[280px] border-r border-white/20"
+      >
+        <div className="p-3 md:p-5 sticky top-0 z-10 bg-[var(--sidebar-dark)]">
           <p className="text-blue-200 text-xs font-bold">RUSUTSU DATA TOOLS</p>
           <h1 className="mt-1 text-xl font-bold font-[var(--font-heading)]">
             レビュー編集
@@ -710,13 +715,13 @@ export function ReviewEditWorkspace({
             );
           })}
         </div>
-      </aside>
+      </AdminWorkspaceSidebar>
 
-      <div className="min-w-0 flex-1 flex flex-col">
+      <div className="min-h-0 min-w-0 flex-1 flex flex-col">
         {/* §18 共通: 狭い幅で折り返す */}
         <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 lg:px-7 py-3 bg-white border-b border-gray-200">
           <div className="min-w-0">
-            <p className="text-gray-500 text-xs font-bold">
+            <p className="break-all text-gray-500 text-xs font-bold">
               {selectedResortId ?? "スキー場未選択"}
             </p>
             <h2 className="text-lg font-bold truncate font-[var(--font-heading)]">
@@ -740,8 +745,8 @@ export function ReviewEditWorkspace({
         </header>
 
         <div className="px-4 lg:px-7 pt-4 bg-white">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex gap-1">
+          <div className="flex flex-wrap items-center justify-between gap-2 md:gap-4">
+            <div className="flex min-w-0 max-w-full gap-1 overflow-x-auto">
               <ModeButton
                 active={mode === "warnings"}
                 icon={<AlertTriangle size={17} />}

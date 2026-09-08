@@ -204,7 +204,7 @@ export function GeometryStep({
   };
 
   return (
-    <div className="flex h-full min-h-0 w-full min-w-0 flex-col gap-2 border-l border-gray-200 bg-white p-3">
+    <div className="flex h-full min-h-0 w-full min-w-0 flex-col gap-2 max-md:overflow-y-auto border-l border-gray-200 bg-white p-3">
       <div className="flex min-w-0 items-start justify-between gap-2">
         <div className="min-w-0">
           <h2

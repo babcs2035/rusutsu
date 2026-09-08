@@ -502,7 +502,7 @@ const ScalarListField = ({
           <div
             // biome-ignore lint/suspicious/noArrayIndexKey: 値の並び順自体が意味を持つ配列で、IDを持たない。
             key={index}
-            className="flex items-center gap-6"
+            className="flex items-center gap-2 md:gap-6"
           >
             {items.kind === "number" ? (
               <Input
@@ -581,7 +581,7 @@ const ObjectListField = ({
   const items = spec.items;
   return (
     <div>
-      <div className="flex items-center justify-between gap-8 mb-2">
+      <div className="flex items-center justify-between gap-2 md:gap-8 mb-2">
         <div className="flex flex-wrap items-baseline gap-1.5">
           <span className="text-xs text-gray-700 font-medium">
             {labelOf(fieldKey)}

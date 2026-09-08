@@ -9,6 +9,7 @@ import {
   Undo2,
 } from "lucide-react";
 import { useCallback, useMemo, useState, useTransition } from "react";
+import { AdminWorkspaceSidebar } from "@/components/AdminWorkspaceSidebar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -301,13 +302,15 @@ export function TicketEditWorkspace({
   };
 
   return (
-    <div className="flex h-[calc(100dvh-4rem)] bg-gray-100 text-gray-900 overflow-hidden">
-      <div
-        // §15: lg 未満では 40vw 上限でサイドバーを縮小し，メイン（エディタ）に幅を回す
-        className="w-[min(250px,40vw)] lg:w-[300px] flex-shrink-0 bg-[var(--sidebar-dark)] text-white overflow-y-auto border-r border-white/20"
-        role="complementary"
+    <div className="flex flex-col md:flex-row h-[calc(100dvh-4rem)] bg-gray-100 text-gray-900 overflow-hidden">
+      <AdminWorkspaceSidebar
+        label="スキー場・シーズンを選ぶ"
+        selectionKey={
+          selected ? `${selected.resortId}/${selected.fileName}` : null
+        }
+        className="md:w-[min(250px,40vw)] lg:w-[300px] border-r border-white/20"
       >
-        <div className="p-5 sticky top-0 z-10 bg-[var(--sidebar-dark)]">
+        <div className="p-3 md:p-5 sticky top-0 z-10 bg-[var(--sidebar-dark)]">
           <p className="text-blue-200 text-xs font-bold">RUSUTSU DATA TOOLS</p>
           <h2 className="mt-4 text-2xl font-bold font-[var(--font-heading)]">
             リフト券編集
@@ -320,7 +323,7 @@ export function TicketEditWorkspace({
             onChange={event => setFilter(event.target.value)}
           />
         </div>
-        <div className="flex flex-col gap-8 px-3 pb-24">
+        <div className="flex flex-col gap-3 md:gap-8 px-3 pb-6 md:pb-24">
           {filteredFiles.length === 0 ? (
             <p className="px-4 text-gray-400 text-xs">
               編集できるリフト券JSONがありません。
@@ -344,7 +347,7 @@ export function TicketEditWorkspace({
                   onClick={() => openFile(file.resortId, file.fileName)}
                 >
                   <div className="w-full">
-                    <div className="flex items-center justify-between gap-8">
+                    <div className="flex items-center justify-between gap-2 md:gap-8">
                       <p className="text-sm font-bold font-[var(--font-heading)]">
                         {file.resortName}
                       </p>
@@ -402,13 +405,13 @@ export function TicketEditWorkspace({
             })
           )}
         </div>
-      </div>
+      </AdminWorkspaceSidebar>
 
-      <div className="min-w-0 flex-1 flex flex-col">
+      <div className="min-h-0 min-w-0 flex-1 flex flex-col">
         {/* §18 共通: 狭い幅で折り返す（gap-y を抑制して折り返し時の縦間隔を縮小） */}
-        <div className="flex flex-wrap items-center justify-between gap-x-12 gap-y-2 px-4 lg:px-7 py-3 bg-white border-b border-gray-200">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 md:gap-x-12 gap-y-2 px-4 lg:px-7 py-3 bg-white border-b border-gray-200">
           <div className="min-w-0">
-            <p className="text-gray-500 text-xs font-bold">
+            <p className="break-all text-gray-500 text-xs font-bold">
               {selected === null
                 ? "ファイル未選択"
                 : `${selected.resortId} / tickets/${selected.fileName}`}
@@ -450,7 +453,7 @@ export function TicketEditWorkspace({
           </div>
         </div>
 
-        <div className="px-4 lg:px-7 pt-12 bg-white">
+        <div className="px-4 lg:px-7 pt-3 md:pt-12 bg-white">
           {message && (
             <div
               className={cn(
@@ -520,7 +523,7 @@ export function TicketEditWorkspace({
         <div className="flex-1 overflow-y-auto px-4 lg:px-7 py-4 lg:p-7">
           {data === null ? (
             <p className="text-gray-500">
-              左の一覧から編集するリフト券JSONを選択してください。
+              スキー場・シーズンの一覧から編集するリフト券JSONを選択してください。
             </p>
           ) : (
             <EditorProvider value={editorValue}>
@@ -568,7 +571,7 @@ export function TicketEditWorkspace({
                   );
                 })()
               ) : (
-                <div className="flex flex-col gap-20 max-w-[1100px] mx-auto">
+                <div className="flex flex-col gap-4 md:gap-20 max-w-[1100px] mx-auto">
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-lg font-semibold">
@@ -576,7 +579,7 @@ export function TicketEditWorkspace({
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="mt-8 text-gray-600 text-xs leading-relaxed">
+                      <p className="mt-3 md:mt-8 text-gray-600 text-xs leading-relaxed">
                         {section.description}
                       </p>
                     </CardContent>

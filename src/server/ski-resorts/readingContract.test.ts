@@ -41,3 +41,60 @@ test("frozen migration includes valid readings and old names for every original 
     assert.equal(typeof entry.needsReview, "boolean");
   }
 });
+
+test("former names support partial ruby and derive the searchable reading", () => {
+  const nameRuby = [
+    { text: "奥伊吹", ruby: "おくいぶき" },
+    { text: "スキー" },
+    { text: "場", ruby: "じょう" },
+  ];
+  const [former] = formerNamesSchema.parse([
+    {
+      name: "奥伊吹スキー場",
+      reading: "古い読み",
+      nameRuby,
+    },
+  ]);
+  assert.deepEqual(former.nameRuby, nameRuby);
+  assert.equal(former.reading, "おくいぶきスキーじょう");
+  assert.deepEqual(
+    getResortReadingInfo({ nameRuby: [], formerNames: [former] }).formerNames,
+    [former],
+  );
+});
+
+test("former names reject mismatched text and overlong combined readings", () => {
+  assert.equal(
+    formerNamesSchema.safeParse([
+      {
+        name: "奥伊吹スキー場",
+        nameRuby: [{ text: "奥伊吹", ruby: "おくいぶき" }],
+      },
+    ]).success,
+    false,
+  );
+  assert.equal(
+    formerNamesSchema.safeParse([
+      {
+        name: "山里",
+        nameRuby: [
+          { text: "山", ruby: "や".repeat(300) },
+          { text: "里", ruby: "さと" },
+        ],
+      },
+    ]).success,
+    false,
+  );
+});
+
+test("explicitly clearing ruby removes the old searchable reading", () => {
+  const [former] = formerNamesSchema.parse([
+    {
+      name: "奥伊吹スキー場",
+      reading: "おくいぶきすきーじょう",
+      nameRuby: [],
+    },
+  ]);
+  assert.deepEqual(former.nameRuby, []);
+  assert.equal(former.reading, undefined);
+});

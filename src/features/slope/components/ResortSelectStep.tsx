@@ -120,8 +120,8 @@ export function ResortSelectStep({ resorts, onStart }: ResortSelectStepProps) {
     discardSourceKind === "osm" ? pendingOsmDraft : pendingCuratedDraft;
 
   return (
-    <div className="flex h-full min-h-0">
-      <div className="flex-1 min-w-0">
+    <div className="flex h-full min-h-0 flex-col md:flex-row">
+      <div className="flex-1 min-h-0 min-w-0 max-md:min-h-[20dvh]">
         <ResortPickerMap
           resorts={pickerResorts}
           selectedResortId={pendingResortId}
@@ -130,12 +130,12 @@ export function ResortSelectStep({ resorts, onStart }: ResortSelectStepProps) {
           isFilterActive={isFilterActive}
         />
       </div>
-      <div className="flex w-[min(460px,60vw)] min-w-0 flex-col gap-2 overflow-hidden border-l border-gray-200 bg-white p-3 lg:w-[460px] lg:min-w-[460px]">
+      <div className="flex max-md:h-[65%] max-md:w-full md:w-[min(460px,60vw)] min-w-0 flex-col gap-2 overflow-hidden max-md:overflow-y-auto max-md:[&>*]:shrink-0 border-l border-gray-200 bg-white p-3 lg:w-[460px] lg:min-w-[460px]">
         <h2 className="font-bold font-[var(--font-heading)] text-base">
           スキー場を選ぶ
         </h2>
         <p className="text-xs text-gray-600">
-          リストから選ぶか、右の地図のマーカーをクリックしてください。
+          一覧または地図からスキー場を選んでください。
         </p>
         <Input
           className="h-9 w-full rounded-md border border-input bg-white px-3 py-1 text-sm shadow-sm"
@@ -275,7 +275,7 @@ export function ResortSelectStep({ resorts, onStart }: ResortSelectStepProps) {
           </Card>
         )}
 
-        <div className="flex-1 overflow-y-auto border border-gray-200 rounded-md">
+        <div className="min-h-0 max-md:min-h-40 flex-1 overflow-y-auto border border-gray-200 rounded-md">
           {filteredResorts.map(resort => (
             <div
               key={resort.id}

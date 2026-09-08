@@ -99,7 +99,7 @@ export const ValidationPanel = ({
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-[240px] flex-1">
+            <div className="min-w-0 md:min-w-[240px] flex-1">
               <p className="mt-2 text-xs leading-relaxed text-gray-600">
                 collect-ski-lift-ticket-pricing Skill が持つ検証3本
                 （validate-lift-ticket / check-taxonomy /

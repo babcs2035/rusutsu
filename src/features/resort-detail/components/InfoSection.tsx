@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CopyResortNameButton } from "@/shared/components/CopyResortNameButton";
+import { FormerResortNames } from "@/shared/components/FormerResortNames";
 import { RubyText } from "@/shared/components/RubyText";
 import type { Resort } from "../types";
 import { StatCard } from "./StatCard";
@@ -81,15 +82,8 @@ export const InfoSection = ({
         </Button>
       </div>
       {resort.formerNames.length > 0 && (
-        <p className="mt-0.5 text-xs text-gray-500">
-          旧称:{" "}
-          {resort.formerNames
-            .map(formerName =>
-              formerName.reading
-                ? `${formerName.name}（${formerName.reading}）`
-                : formerName.name,
-            )
-            .join("、")}
+        <p className="mt-1 text-xs leading-loose text-gray-500">
+          旧称: <FormerResortNames names={resort.formerNames} />
         </p>
       )}
       <div className="mt-0.5 md:mt-2.5 flex items-center gap-2">

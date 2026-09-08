@@ -120,8 +120,8 @@ export function ResortSelectStep({
   };
 
   return (
-    <div className="flex h-full min-h-0">
-      <div className="flex-1 min-w-0">
+    <div className="flex h-full min-h-0 flex-col md:flex-row">
+      <div className="flex-1 min-h-0 min-w-0 max-md:min-h-[20dvh]">
         <ResortPickerMap
           resorts={pickerResorts}
           selectedResortId={pendingResortId}
@@ -130,7 +130,7 @@ export function ResortSelectStep({
           isFilterActive={isFilterActive}
         />
       </div>
-      <div className="flex w-[min(460px,60vw)] min-w-0 flex-col gap-2 overflow-hidden border-l border-gray-200 bg-white p-3 lg:w-[460px] lg:min-w-[460px]">
+      <div className="flex max-md:h-[65%] max-md:w-full md:w-[min(460px,60vw)] min-w-0 flex-col gap-2 overflow-hidden max-md:overflow-y-auto max-md:[&>*]:shrink-0 border-l border-gray-200 bg-white p-3 lg:w-[460px] lg:min-w-[460px]">
         <h2 className="text-lg font-bold font-[var(--font-heading)]">
           スキー場を選ぶ
         </h2>
@@ -271,7 +271,7 @@ export function ResortSelectStep({
           </Card>
         )}
 
-        <div className="flex-1 overflow-y-auto rounded-md border border-gray-200">
+        <div className="min-h-0 max-md:min-h-40 flex-1 overflow-y-auto rounded-md border border-gray-200">
           {filteredResorts.map(resort => (
             <div
               key={resort.id}

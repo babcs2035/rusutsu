@@ -19,7 +19,7 @@ export default async function AdminDashboardPage() {
   const dashboardData = await getAdminDashboardData();
 
   return (
-    <div className="p-6 md:p-8 max-w-[1200px] mx-auto min-h-[calc(100vh-64px)]">
+    <div className="p-4 md:p-8 max-w-[1200px] mx-auto min-h-[calc(100vh-64px)]">
       <h1 className="mb-6 text-2xl md:text-3xl font-bold text-gray-900 font-[var(--font-heading)]">
         管理ダッシュボード
       </h1>

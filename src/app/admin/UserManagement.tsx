@@ -80,7 +80,7 @@ export function UserManagement({ users }: { users: AdminUser[] }) {
     <>
       <Card className="overflow-hidden shadow-lg border-gray-200">
         <CardContent className="p-0">
-          <Table>
+          <Table className="admin-user-table">
             <TableHeader>
               <TableRow className="bg-gray-50">
                 <TableHead className="table-header-cell">名前</TableHead>
@@ -124,7 +124,10 @@ export function UserManagement({ users }: { users: AdminUser[] }) {
                       }}
                       disabled={user.isEnvAdmin}
                     >
-                      <SelectTrigger className="w-[120px]">
+                      <SelectTrigger
+                        aria-label={`${user.name || user.email}のロール`}
+                        className="w-full md:w-[120px]"
+                      >
                         {/* 生の role 値（admin/viewer）ではなく日本語ラベルを表示する */}
                         <SelectValue>
                           {(value: string) => ROLE_LABELS[value] ?? value}

@@ -40,9 +40,9 @@ export default async function ReviewEditPage() {
     : null;
 
   return (
-    <>
+    <div className="max-md:flex max-md:h-[calc(100dvh-4rem)] max-md:flex-col">
       {resorts.some(resort => resort.jsonOnly) && (
-        <details className="mx-6 my-2 rounded border p-3">
+        <details className="mx-3 md:mx-6 my-2 shrink-0 rounded border p-3 max-md:max-h-[25dvh] max-md:overflow-y-auto">
           <summary>AIで作成した形式のレビュー（JSONで確認・更新）</summary>
           <ul className="mt-2 flex flex-wrap gap-3">
             {resorts
@@ -60,7 +60,7 @@ export default async function ReviewEditPage() {
           </ul>
         </details>
       )}
-      <div className="px-6 py-2 text-right">
+      <div className="px-3 md:px-6 py-2 text-right shrink-0">
         <Link href="/admin/review/import" className="text-sm underline">
           作成したJSONを取り込む（新規・更新）
         </Link>
@@ -70,6 +70,6 @@ export default async function ReviewEditPage() {
         initialResortId={initialResortId ?? null}
         initialData={initialData}
       />
-    </>
+    </div>
   );
 }

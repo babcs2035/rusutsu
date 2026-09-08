@@ -11,7 +11,7 @@ export async function AdminHeader() {
     | undefined;
 
   return (
-    <header className="flex h-16 items-center justify-between gap-4 border-b border-white/10 bg-[var(--admin-dark)] px-4 md:px-8 shadow-md">
+    <header className="flex h-16 items-center justify-between gap-2 md:gap-4 border-b border-white/10 bg-[var(--admin-dark)] px-4 md:px-8 shadow-md">
       <Link
         href="/admin"
         className="flex min-w-0 items-center gap-2 transition-opacity hover:opacity-80"
@@ -20,9 +20,9 @@ export async function AdminHeader() {
         <span className="hidden text-lg text-white/80 md:inline">管理画面</span>
       </Link>
 
-      <div className="flex min-w-0 items-center gap-4">
+      <div className="flex min-w-0 items-center gap-2 md:gap-4">
         {user && (
-          <div className="flex min-w-0 items-center gap-2">
+          <div className="hidden min-w-0 items-center gap-2 md:flex">
             {user.image && (
               <Avatar className="h-8 w-8 shrink-0 border-2 border-white/30">
                 <Image
@@ -57,7 +57,8 @@ export async function AdminHeader() {
             variant="outline"
             className="border-white/20 bg-white/10 text-white/90 hover:bg-white/20 hover:text-white"
           >
-            トップページ
+            <span className="md:hidden">トップ</span>
+            <span className="hidden md:inline">トップページ</span>
           </Button>
         </Link>
 

@@ -91,7 +91,7 @@ export function ResortSelectStep({
           isFilterActive={query.trim() !== ""}
         />
       </div>
-      <div className="flex min-h-0 min-w-0 flex-col gap-2 overflow-hidden border-t border-gray-200 bg-white p-3 max-md:h-[60%] md:w-[min(460px,60vw)] md:border-t-0 md:border-l lg:w-[460px] lg:min-w-[460px]">
+      <div className="flex min-h-0 min-w-0 flex-col gap-2 overflow-hidden max-md:overflow-y-auto max-md:[&>*]:shrink-0 border-t border-gray-200 bg-white p-3 max-md:h-[60%] md:w-[min(460px,60vw)] md:border-t-0 md:border-l lg:w-[460px] lg:min-w-[460px]">
         <h2 className="text-lg font-bold font-[var(--font-heading)]">
           スキー場を選ぶ
         </h2>
@@ -134,7 +134,7 @@ export function ResortSelectStep({
           </Card>
         )}
         <section
-          className="min-h-0 flex-1 overflow-y-auto rounded-md border border-gray-200"
+          className="min-h-0 max-md:min-h-40 flex-1 overflow-y-auto rounded-md border border-gray-200"
           aria-label="スキー場一覧"
         >
           {filteredResorts.map(resort => (

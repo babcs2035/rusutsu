@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { InternalDataApiError } from "@/lib/internalDataApiClient";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { updateAdminSkiResort } from "@/lib/skiResortData";
 import {
@@ -8,6 +9,8 @@ import {
   adminSkiResortUpdateRequestSchema,
   skiResortIdSchema,
 } from "@/server/ski-resorts/adminContract";
+
+import { resortReadingFieldsFromFormData } from "./readingFormData";
 
 export type ResortAdminActionState =
   | { status: "idle" }
@@ -65,19 +68,7 @@ export async function updateSkiResortFromAdmin(
   const request = adminSkiResortUpdateRequestSchema.safeParse({
     expectedUpdatedAt: textValue(formData, "expectedUpdatedAt"),
     data: {
-      nameRuby: formData.getAll("rubyText").map((text, index) => ({
-        text,
-        ...(formData.getAll("rubyReading")[index]
-          ? { ruby: formData.getAll("rubyReading")[index] }
-          : {}),
-      })),
-      formerNames: formData.getAll("formerName").map((name, index) => ({
-        name,
-        ...(formData.getAll("formerReading")[index]
-          ? { reading: formData.getAll("formerReading")[index] }
-          : {}),
-      })),
-      readingNeedsReview: formData.get("readingNeedsReview") === "on",
+      ...resortReadingFieldsFromFormData(formData),
       nameJa: textValue(formData, "nameJa"),
       nameEn: textValue(formData, "nameEn"),
       shortName: nullableTextValue(formData, "shortName"),
@@ -173,7 +164,16 @@ export async function updateSkiResortFromAdmin(
   } catch (error) {
     console.error("Failed to update ski resort from admin", {
       name: error instanceof Error ? error.name : "UnknownError",
+      status: error instanceof InternalDataApiError ? error.status : null,
     });
+    if (error instanceof InternalDataApiError && error.status === 422) {
+      return {
+        status: "error",
+        reason: "validation",
+        message:
+          "保存先サーバーが現在の入力形式に対応していません。サーバーの更新とDBマイグレーションを適用してから保存してください。入力内容はこの画面に残っています。",
+      };
+    }
     return {
       status: "error",
       reason: "unexpected",

@@ -16,8 +16,9 @@ export class InternalDataApiError extends Error {
   constructor(
     message: string,
     readonly status: number | null,
+    options?: ErrorOptions,
   ) {
-    super(message);
+    super(message, options);
     this.name = "InternalDataApiError";
   }
 }
@@ -88,11 +89,13 @@ export async function fetchInternalDataApi(
       throw new InternalDataApiError(
         "正本データAPIへの接続がタイムアウトしました。",
         null,
+        { cause: error },
       );
     }
     throw new InternalDataApiError(
       "正本データAPIへ接続できませんでした。",
       null,
+      { cause: error },
     );
   } finally {
     clearTimeout(timeout);

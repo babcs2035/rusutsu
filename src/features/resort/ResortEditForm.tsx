@@ -271,17 +271,19 @@ export function ResortEditForm({
         startTransition(() => formAction(data));
       }}
     >
-      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-gray-200 bg-white px-4 py-3 md:px-6">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 md:gap-3 border-b border-gray-200 bg-white px-4 py-3 md:px-6">
         <Button
           type="button"
           variant="outline"
           disabled={isPending}
           onClick={onBack}
+          aria-label="スキー場を選び直す"
         >
           <ArrowLeft aria-hidden="true" />
-          スキー場を選び直す
+          <span className="md:hidden">選び直す</span>
+          <span className="hidden md:inline">スキー場を選び直す</span>
         </Button>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 max-md:order-3 max-md:basis-full">
           <p
             role="status"
             className={`flex items-center gap-1.5 text-sm font-medium ${
@@ -311,7 +313,7 @@ export function ResortEditForm({
               </>
             )}
           </p>
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 hidden md:block text-xs text-gray-500">
             編集後は「変更を保存」を押してください。
           </p>
         </div>
@@ -360,7 +362,7 @@ export function ResortEditForm({
         </div>
       )}
 
-      <div className="min-h-0 flex-1 overflow-y-auto bg-gray-50 p-4 md:p-6">
+      <div className="min-h-0 flex-1 overflow-y-auto bg-gray-50 p-3 md:p-6">
         <fieldset
           disabled={isPending}
           className="mx-auto min-w-0 max-w-[1200px] space-y-5 disabled:opacity-70"
@@ -383,7 +385,7 @@ export function ResortEditForm({
                     {resort.isActive ? "公開中" : "公開停止中"}
                   </span>
                 </div>
-                <p className="mt-1 font-mono text-xs text-gray-500">
+                <p className="mt-1 break-all font-mono text-xs text-gray-500">
                   ID: {resort.id}（変更不可）
                 </p>
                 <p className="mt-1 text-xs text-gray-500">

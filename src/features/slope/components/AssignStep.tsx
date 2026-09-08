@@ -110,7 +110,7 @@ export function AssignStep({
   ).length;
 
   return (
-    <div className="flex h-full min-h-0 w-full min-w-0 flex-col gap-3 overflow-hidden border-l border-gray-200 bg-white p-3">
+    <div className="flex h-full min-h-0 w-full min-w-0 flex-col gap-3 overflow-hidden max-md:overflow-y-auto border-l border-gray-200 bg-white p-3">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="font-bold font-[var(--font-heading)]">
@@ -133,7 +133,7 @@ export function AssignStep({
           )}
         </CardContent>
       </Card>
-      <div className="min-h-[200px] flex-1 overflow-y-auto rounded-md border border-gray-200">
+      <div className="min-h-[120px] md:min-h-[200px] flex-1 overflow-y-auto rounded-md border border-gray-200">
         {courses.map((course, index) => {
           const changed = course.skiId !== course.originalSkiId;
           return (

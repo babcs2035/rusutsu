@@ -252,7 +252,7 @@ export const CollectionSection = ({
       <div className="flex flex-col gap-4 max-w-[400px] md:max-w-[1200px] mx-auto">
         <div className="rounded-2xl bg-white border border-gray-200 p-4 md:p-5">
           <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div className="flex-1 min-w-[260px]">
+            <div className="flex-1 min-w-0 md:min-w-[260px]">
               <div className="flex items-baseline gap-2 flex-wrap">
                 <h2 className="text-base font-bold font-[var(--font-heading)]">
                   {title}
@@ -268,7 +268,7 @@ export const CollectionSection = ({
                 {description}
               </p>
             </div>
-            <div className="flex gap-2 items-center">
+            <div className="flex min-w-0 max-w-full flex-wrap gap-2 items-center">
               <Input
                 className="h-7 w-[200px] bg-white"
                 value={filter}

@@ -358,15 +358,15 @@ export function LiftEditWorkspace({
   );
 
   const header = (
-    <header className="flex min-w-0 shrink-0 items-center gap-3 border-b border-gray-200 bg-white px-3 py-1.5">
+    <header className="admin-editor-header flex min-w-0 shrink-0 items-center gap-3 border-b border-gray-200 bg-white px-3 py-1.5">
       <h2 className="shrink-0 font-bold font-[var(--font-heading)] text-sm">
         リフト編集
       </h2>
-      <div className="min-w-0 flex-1">
+      <div className="admin-editor-steps min-w-0 flex-1">
         <StepIndicator steps={STEPS} currentStepId={step} />
       </div>
       {resort && step !== "select" && (
-        <span className="max-w-[240px] shrink-0 truncate text-sm text-gray-700">
+        <span className="hidden md:block max-w-[240px] shrink-0 truncate text-sm text-gray-700">
           {resort.nameJa || resort.id}
           {selectedLift && (
             <span className="text-gray-500">
@@ -398,7 +398,7 @@ export function LiftEditWorkspace({
   );
 
   return (
-    <div className="flex h-[100dvh] min-h-0">
+    <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden md:flex-row">
       {step === "select" ? (
         <div className="flex min-w-0 flex-1 flex-col">
           {header}
@@ -413,12 +413,16 @@ export function LiftEditWorkspace({
         </div>
       ) : (
         <>
-          {/* 左は地図。ヘッダーは地図の上だけに置き、右のパネルは上まで使う */}
-          <div className="flex min-w-0 flex-1 flex-col">
+          {/* スマホは地図と入力欄を上下に配置する。 */}
+          <div
+            className={`flex min-h-0 min-w-0 flex-1 flex-col ${!mapIsVisible ? "max-md:flex-none" : ""}`}
+          >
             {header}
             <div
               className={`relative min-h-0 flex-1 ${
-                mapIsVisible ? "visible" : "invisible pointer-events-none"
+                mapIsVisible
+                  ? "visible"
+                  : "invisible pointer-events-none max-md:hidden"
               }`}
             >
               {resort && (
@@ -517,6 +521,7 @@ export function LiftEditWorkspace({
           </div>
 
           <ResizablePanel
+            className={`max-md:w-full! max-md:border-t max-md:[&>button]:hidden ${mapIsVisible ? "max-md:h-[55%]" : "max-md:h-auto max-md:flex-1"}`}
             side="right"
             storageKey={PANEL_WIDTH_KEY}
             defaultWidth={480}

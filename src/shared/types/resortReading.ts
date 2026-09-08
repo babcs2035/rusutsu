@@ -12,6 +12,7 @@ export type ResortRubySegment = {
 export type ResortFormerName = {
   name: string;
   reading?: string;
+  nameRuby?: ResortRubySegment[];
 };
 
 /** src/private/data/SkiResortReadings.json の1エントリ */

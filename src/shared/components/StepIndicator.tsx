@@ -1,6 +1,7 @@
 "use client";
 
 import { Check } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
 type Step = { id: string; label: string };
@@ -27,9 +28,26 @@ export function StepIndicator({
   canSelectStep,
 }: StepIndicatorProps) {
   const currentIndex = steps.findIndex(step => step.id === currentStepId);
+  const listRef = useRef<HTMLOListElement>(null);
+  useEffect(() => {
+    const list = listRef.current;
+    const current = list?.children[currentIndex]?.querySelector("button");
+    if (!list || !current || list.scrollWidth <= list.clientWidth) return;
+    const listBounds = list.getBoundingClientRect();
+    const currentBounds = current.getBoundingClientRect();
+    if (
+      currentBounds.left < listBounds.left ||
+      currentBounds.right > listBounds.right
+    ) {
+      list.scrollLeft += currentBounds.left - listBounds.left;
+    }
+  }, [currentIndex]);
 
   return (
-    <ol className="flex min-w-0 items-center gap-0.5 overflow-x-auto">
+    <ol
+      ref={listRef}
+      className="flex min-w-0 items-center gap-0.5 overflow-x-auto"
+    >
       {steps.map((step, index) => {
         const isCurrent = step.id === currentStepId;
         const isDone = index < currentIndex;

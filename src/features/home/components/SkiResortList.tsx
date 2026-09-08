@@ -8,6 +8,7 @@ import { TicketCalculationCard } from "@/features/lift-ticket/components/TicketC
 import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
 import { calculateLiftTicketForSeasons } from "@/features/lift-ticket/utils/calculateLiftTicket";
 import { CopyResortNameButton } from "@/shared/components/CopyResortNameButton";
+import { FormerResortNames } from "@/shared/components/FormerResortNames";
 import { RubyText } from "@/shared/components/RubyText";
 import type { MapSkiResort } from "@/types/skiResorts";
 
@@ -186,11 +187,8 @@ const SkiResortListItem = memo(
                 {resort.prefecture} · {resort.town}
               </p>
               {resort.formerNames.length > 0 && (
-                <p className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[0.6875rem] md:text-xs font-medium leading-snug text-gray-400">
-                  旧称:{" "}
-                  {resort.formerNames
-                    .map(formerName => formerName.name)
-                    .join("、")}
+                <p className="min-w-0 break-words text-[0.6875rem] md:text-xs font-medium leading-loose text-gray-400">
+                  旧称: <FormerResortNames names={resort.formerNames} />
                 </p>
               )}
               {resort.liftTickets.length > 0 &&

@@ -525,10 +525,23 @@ model SkiResortFormerName {
   position Int
   name String @db.VarChar(300)
   reading String? @db.VarChar(300)
+  nameRuby SkiResortFormerNameRubySegment[]
   skiResort SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   @@id([skiResortId, position])
   @@index([name])
   @@index([reading])
   @@map("ski_resort_former_names")
+}
+
+model SkiResortFormerNameRubySegment {
+  skiResortId String
+  formerNamePosition Int
+  position Int
+  text String @db.VarChar(300)
+  ruby String? @db.VarChar(300)
+  formerName SkiResortFormerName @relation(fields: [skiResortId, formerNamePosition], references: [skiResortId, position], onDelete: Cascade, onUpdate: Cascade, map: "ski_resort_former_name_ruby_segments_former_name_fkey")
+
+  @@id([skiResortId, formerNamePosition, position])
+  @@map("ski_resort_former_name_ruby_segments")
 }

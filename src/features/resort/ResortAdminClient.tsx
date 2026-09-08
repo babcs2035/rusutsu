@@ -72,11 +72,11 @@ export function ResortAdminClient({
 
   return (
     <main className="flex h-[100dvh] min-h-0 flex-col overflow-hidden">
-      <header className="flex min-w-0 shrink-0 flex-wrap items-center gap-3 border-b border-gray-200 bg-white px-3 py-1.5">
+      <header className="admin-editor-header flex min-w-0 shrink-0 flex-wrap items-center gap-3 border-b border-gray-200 bg-white px-3 py-1.5">
         <h1 className="shrink-0 font-bold font-[var(--font-heading)] text-sm">
           スキー場マスター編集
         </h1>
-        <div className="min-w-0 flex-1">
+        <div className="admin-editor-steps min-w-0 flex-1">
           <StepIndicator
             steps={STEPS}
             currentStepId={isEditing ? "detail" : "select"}

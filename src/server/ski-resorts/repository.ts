@@ -231,15 +231,26 @@ export async function updateAdminSkiResortDirect(
           ruby: segment.ruby ?? null,
         })),
       });
-    if (formerNames.length)
-      await transaction.skiResortFormerName.createMany({
-        data: formerNames.map((entry, position) => ({
+    for (const [position, entry] of formerNames.entries()) {
+      await transaction.skiResortFormerName.create({
+        data: {
           skiResortId: id,
           position,
           name: entry.name,
           reading: entry.reading ?? null,
-        })),
+          nameRuby: {
+            create: (
+              entry.nameRuby ??
+              (entry.reading ? [{ text: entry.name, ruby: entry.reading }] : [])
+            ).map((segment, segmentPosition) => ({
+              position: segmentPosition,
+              text: segment.text,
+              ruby: segment.ruby ?? null,
+            })),
+          },
+        },
       });
+    }
     const resort = await transaction.skiResort.findUniqueOrThrow({
       where: { id },
       select: adminSkiResortSelect,
