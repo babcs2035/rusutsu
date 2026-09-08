@@ -48,7 +48,11 @@ export const useMapLibreMap = ({
   hitWidth: number;
   isInteractive: boolean;
   /** 生成直後に描く位置。日本全体から寄っていく動きを見せないために使う */
-  initialViewport?: { center: [number, number]; zoom: number } | null;
+  initialViewport?: {
+    center: [number, number];
+    zoom: number;
+    bearing?: number;
+  } | null;
 }) => {
   const mapRef = useRef<MapLibreMap | null>(null);
   const [isReady, setIsReady] = useState(false);
@@ -75,6 +79,7 @@ export const useMapLibreMap = ({
       style: createBaseStyle(variant, tone),
       center: viewport?.center ?? [INITIAL_CENTER[1], INITIAL_CENTER[0]],
       zoom: viewport?.zoom ?? zoom,
+      bearing: viewport?.bearing ?? 0,
       minZoom: GSI_TILE_MIN_ZOOM,
       maxZoom: GSI_TILE_MAX_ZOOM,
       attributionControl: { compact: true },

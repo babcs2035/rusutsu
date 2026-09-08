@@ -44,6 +44,7 @@ export const useResortViewport = ({
   animate,
   skipCompareRecenterRef,
   viewportResetKey = 0,
+  preserveViewport = false,
 }: {
   map: MapLibreMap | null;
   isReady: boolean;
@@ -61,19 +62,26 @@ export const useResortViewport = ({
   skipCompareRecenterRef?: React.RefObject<boolean>;
   /** 値が変わるたびに詳細の表示範囲を組み直す（コース選択の解除など） */
   viewportResetKey?: number;
+  preserveViewport?: boolean;
 }) => {
+  const lastDetailFit = useRef<string | null>(null);
   useEffect(() => {
     if (!map || !isReady) return;
     map.setMinZoom(initialZoom);
   }, [initialZoom, isReady, map]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: viewportResetKey は「もう一度合わせ直す」合図なので、本文では読まずに依存にだけ置く
   useEffect(() => {
     if (!map || !isReady) return;
+
+    if (preserveViewport) return;
 
     if (interactionMode === "detail" && selectedResortId) {
       const resort = resorts.find(resort => resort.id === selectedResortId);
       if (!resort) return;
+      // 復帰時の営業情報の再取得ではカメラを動かさない。
+      const fitKey = `${selectedResortId}:${detailViewportMode}:${Boolean(finalizedBounds)}:${viewportResetKey}:${selectedViewportBottomPaddingRatio}`;
+      if (lastDetailFit.current === fitKey) return;
+      lastDetailFit.current = fitKey;
 
       // 右パネルを避けて左へずらすと、選んだスキー場が画面中央からずれて
       // 見えてしまう。素直に選んだ場所へズームするため、水平方向は詰めない。
@@ -136,6 +144,7 @@ export const useResortViewport = ({
     selectedViewportBottomPaddingRatio,
     skipCompareRecenterRef,
     viewportResetKey,
+    preserveViewport,
   ]);
 };
 
@@ -232,6 +241,7 @@ export const useRestoreViewport = ({
     map.easeTo({
       center: [restoreViewRequest.center.lng, restoreViewRequest.center.lat],
       zoom: restoreViewRequest.zoom,
+      bearing: restoreViewRequest.bearing ?? 0,
       ...getMoveOptions(animate),
     });
   }, [animate, isReady, map, restoreViewRequest]);
@@ -246,6 +256,7 @@ export const useSelectedFeatureViewport = ({
   selectedLift,
   bottomPaddingRatio,
   animate,
+  preserveViewport = false,
 }: {
   map: MapLibreMap | null;
   isReady: boolean;
@@ -254,11 +265,12 @@ export const useSelectedFeatureViewport = ({
   selectedLift: FinalizedLiftFeature | null;
   bottomPaddingRatio: number;
   animate: boolean;
+  preserveViewport?: boolean;
 }) => {
   const lastSelectedRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!map || !isReady) return;
+    if (!map || !isReady || preserveViewport) return;
     if (!selectedFeature) {
       lastSelectedRef.current = null;
       return;
@@ -307,6 +319,7 @@ export const useSelectedFeatureViewport = ({
     };
   }, [
     animate,
+    preserveViewport,
     bottomPaddingRatio,
     isReady,
     map,

@@ -7,6 +7,7 @@ import {
 } from "@/server/data-documents/client";
 import { DataDocumentConflictError } from "@/server/data-documents/contract";
 import { synchronizeDerivedGeometry } from "@/server/derivedGeometry";
+import { enrichLiftElevations } from "./server/elevation";
 import {
   isValidResortId,
   lift20mDocumentKey,
@@ -192,28 +193,30 @@ export async function saveLiftEdits(request: SaveRequest): Promise<SaveResult> {
     });
   }
 
-  const derivedDocuments = await Promise.all(
-    writes.map(async write => {
-      const key = lift20mDocumentKey(write.resortId);
-      const current = await getDataDocument(key);
-      return {
-        key,
-        current,
-        geojson: synchronizeDerivedGeometry({
-          previousBefore: write.previousGeojson,
-          nextBefore: write.geojson,
-          existingDerived: current
-            ? parseLiftBeforeGeojson(current.content)
-            : null,
-          intervalM: 20,
-          kind: "lift",
-        }),
-      };
-    }),
-  );
-
-  // 元・移動先の before と、公開画面が読む 20m 線を1トランザクションで更新する。
   try {
+    const derivedDocuments = await Promise.all(
+      writes.map(async write => {
+        const key = lift20mDocumentKey(write.resortId);
+        const current = await getDataDocument(key);
+        return {
+          key,
+          current,
+          geojson: await enrichLiftElevations(
+            synchronizeDerivedGeometry({
+              previousBefore: write.previousGeojson,
+              nextBefore: write.geojson,
+              existingDerived: current
+                ? parseLiftBeforeGeojson(current.content)
+                : null,
+              intervalM: 20,
+              kind: "lift",
+            }),
+          ),
+        };
+      }),
+    );
+
+    // 元・移動先の before と、公開画面が読む 20m 線を1トランザクションで更新する。
     await writeDataDocuments([
       ...writes.map(write => ({
         key: liftBeforeDocumentKey(write.resortId),
@@ -237,7 +240,12 @@ export async function saveLiftEdits(request: SaveRequest): Promise<SaveResult> {
         ],
       };
     }
-    throw error;
+    return {
+      ok: false,
+      errors: [
+        `リフト情報は保存されませんでした: ${error instanceof Error ? error.message : String(error)}`,
+      ],
+    };
   }
   return {
     ok: true,
@@ -246,6 +254,59 @@ export async function saveLiftEdits(request: SaveRequest): Promise<SaveResult> {
       `lift_20m/${write.resortId}.geojson`,
     ]),
   };
+}
+
+// 保存済みの線から全リフトの標高を取り直す。下書きは対象にしない。
+export async function refreshLiftElevations(
+  resortId: string,
+): Promise<SaveResult> {
+  await requireAdmin();
+  if (!isValidResortId(resortId))
+    return { ok: false, errors: ["不正なスキー場IDです。"] };
+  try {
+    const before = await readLiftBeforeDocument(resortId);
+    const source = before ? parseLiftBeforeGeojson(before.content) : null;
+    if (!before || !source || source.features.length === 0) {
+      return { ok: false, errors: ["保存済みのリフトデータがありません。"] };
+    }
+    const key = lift20mDocumentKey(resortId);
+    const existing = await getDataDocument(key);
+    const sampled = synchronizeDerivedGeometry({
+      previousBefore: null,
+      nextBefore: source,
+      existingDerived: null,
+      intervalM: 20,
+      kind: "lift",
+    });
+    if (sampled.features.length !== source.features.length)
+      throw new Error("不正なリフト座標が含まれています。");
+    const enriched = await enrichLiftElevations(sampled, { force: true });
+    await writeDataDocuments([
+      // 元の線も同じトランザクションで照合し、取得中の編集を上書きしない。
+      {
+        key: liftBeforeDocumentKey(resortId),
+        content: before.content,
+        mediaType: "application/geo+json",
+        expectedHash: before.hash,
+      },
+      {
+        key,
+        content: serializeLiftBeforeGeojson(enriched),
+        mediaType: "application/geo+json",
+        expectedHash: existing?.hash ?? null,
+      },
+    ]);
+    return { ok: true, writtenFiles: [`lift_20m/${resortId}.geojson`] };
+  } catch (error) {
+    return {
+      ok: false,
+      errors: [
+        error instanceof DataDocumentConflictError
+          ? "標高取得中にリフトデータが変更されました。再実行してください。"
+          : `標高を更新できませんでした: ${error instanceof Error ? error.message : String(error)}`,
+      ],
+    };
+  }
 }
 
 // スキー場一覧に lift_before の有無を付与するためのIDリスト

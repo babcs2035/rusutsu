@@ -115,6 +115,9 @@ TODOはimportより前に置き、再調査URL、対象カテゴリ、今回確�
 
 ## Source URLと保存
 
+- 現行URLの実装検証は `mise run crawl:latest -- --remote-api --resort <resort-id>` を使い、設定済みAPIへの保存とadmin用現在値への反映まで確認する。バッチCLIの既定は `--local-files` なので、現行検証では `--remote-api` を明示する。API保存失敗をローカルJSON保存で代替して完了扱いにしない。
+- 冬季アーカイブ・保存DOM再生・異常注入だけはAPI設定を無効化し、現行値と別の `src/private/data/resorts-temporary/tmp/<resort-id>-audit/` を使う。検証JSON・GeoJSON・ログ・補助スクリプト・`--report` 出力もこの配下に置き、親rusutsuの `tmp/` へ出力しない。検証JSONは比較資料であり、現行データのAPI保存とは別の成果物として扱う。
+
 - `weatherUrl`、`commentUrl`、`courseUrl`、`liftUrl` は実際の根拠ページへ向ける。入力URLを無条件にコピーしない。
 - 利用可能な `#id` やタブのクエリを含め、対象へ直接移動できる最も具体的なURLにする。実在しないフラグメントは作らない。
 - URL配列の欠損は `""` ではなく `[]`。カテゴリ非掲載なら空、不安定でも参照価値がある場合だけURLを残す。
@@ -127,7 +130,7 @@ TODOはimportより前に置き、再調査URL、対象カテゴリ、今回確�
 
 ## 検証チェック
 
-- 現行URLでクローラーを実行し、出力先、スキー場ID、カテゴリ、名前、状態、件数、URL、`note`、`update`、コメント、警告を根拠DOMと照合する。
+- 現行URLでクローラーをremote-apiモードで実行し、APIのrun・カテゴリ保存結果とadminが参照する現在値を読み戻す。スキー場ID、カテゴリ、名前、状態、件数、URL、`note`、`update`、コメント、警告を根拠DOMと照合する。
 - `resortName`、空の名前、重複、想定外件数を確認する。期待件数は固定在庫にだけ使い、季節で増減する項目へ強制しない。
 - 正常・無警告で診断DOMが増えないことに加え、未知状態、必須selector消失、空名・重複・件数異常で、警告とDOMが同じ診断実行として残ることをテストする。
 - 掲載カテゴリに応じて `checkAllWeatherData`、`checkCourseLiftCount`、`checkUrl` を使い、構造的に存在しないカテゴリの検証だけを省く。

@@ -149,6 +149,7 @@ export type FinalizedLineFeatureCollection = {
 export type MapViewSnapshot = {
   center: { lat: number; lng: number };
   zoom: number;
+  bearing?: number;
 };
 
 export type MapViewRestoreRequest = MapViewSnapshot & {

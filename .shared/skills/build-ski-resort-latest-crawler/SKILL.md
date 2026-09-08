@@ -13,6 +13,14 @@ description: 指定されたスキー場公式URLをPlaywrightと冬季Wayback�
 - 別サイトや別スキー場のURLは探索しない。同じURLのWaybackアーカイブと、ページが直接参照するAPI・CSS・JavaScript・画像は調査してよい。
 - 提供URLに掲載され、既存型で正確に表現できるカテゴリは省略しない。一方、掲載のない情報や意味を確認できない値は作らない。
 
+## ローカル作業ファイルの保存先
+
+- 調査・検証の成果物はすべて `src/private`（rusutsu-library）配下へ保存する。親rusutsuの `tmp/`、`logs/`、ルートやOSの `/tmp` を作業資料の保存先にしない。
+- HTMLは既存の `src/private/data/resorts-temporary/crawl_latest_dom/<resort-id>/`、検証JSON・GeoJSON・監査メモ・再生スクリプト・実行ログは `src/private/data/resorts-temporary/tmp/<resort-id>-audit/` を使う。通常の実行ログは `src/private/data/resorts-temporary/logs/` に置く。
+- 上記 `tmp/`・`logs/` はlibrary側でもGit管理対象外とし、ローカルに保持する。継続管理するデータや再利用する検証スクリプトは、用途別データディレクトリや `src/private/scripts/` に移して管理する。
+- `--out`、`--report`、`CRAWLER_ARTIFACT_ROOT`、検証用JSON保存先、リダイレクト、`tee` のすべてに上記保存先を指定する。補助スクリプト内のパスも確認する。診断HTMLはlibrary側でもGit管理対象外にする。
+- 本番remote実行の診断DOMは既存のAPI側非公開volumeへ保存し、workerへ二重保存しない。ローカルへの診断取得先だけをlibrary配下にする。
+
 ## 着手前に読むもの
 
 1. `src/private/scripts/crawl_latest/resorts/template.ts`
@@ -69,12 +77,12 @@ node .shared/skills/build-ski-resort-latest-crawler/scripts/capture-rendered-pag
 
 ### 4. 検証する
 
-1. 現行URLで実行し、保存JSONのスキー場ID、名前、状態、件数、URL、`note`、`update`、警告をDOMと照合する。
+1. 現行URLの検証は `mise run crawl:latest -- --remote-api --resort <resort-id>` で実行し、設定済みAPIへ保存する。スキー場ID、名前、状態、件数、URL、`note`、`update`、警告をDOMと照合し、APIのrun・カテゴリ保存結果とadminが参照する現在値への反映まで確認する。検証目的という理由だけでAPI設定を空にしたり、ローカルJSON保存だけで完了したりしない。API設定不足・通信失敗は未完了として報告する。
 2. オフシーズンまたは状態の意味が現行DOMだけで確定しない場合は、`CRAWL_LATEST_ARCHIVE_TIMESTAMP=YYYYMMDD` を使うなどして、同じクローラー経路を冬季アーカイブでも検証する。
 3. 正常・無警告で診断DOMが増えないことと、未知状態・必須DOM消失・件数異常の各テストで警告、DOM、診断メタデータが同じ実行IDで残ることを確認する。
 4. 対象ファイルをBiomeで検査し、`mise run typecheck` を実行する。
 
-正常に保存された現行・Waybackの検証JSONは残す。不完全な失敗結果だけを削除してよい。
+冬季アーカイブ・保存DOMの再生・異常注入は `--local-files` 等でAPI送信を無効化し、現行値と別の検証用保存先で実行する。ユーザーがローカル検証のみを指定した場合を除き、最後に現行URLのAPI保存と反映確認を行う。正常に保存された検証JSONは比較資料として残してよいが、API保存の代わりにはしない。不完全な失敗結果だけを削除してよい。
 
 ## 完了報告
 
@@ -86,6 +94,6 @@ node .shared/skills/build-ski-resort-latest-crawler/scripts/capture-rendered-pag
 - 天気、気温、積雪、降雪、雪質、風速、コメント、各 `update` の取得可否と根拠
 - 画像天気を使う場合は、調査した識別子と未知値警告のテスト結果
 - 未確認の状態・カテゴリ、残したTODO、対応URLを残した／空にした理由、推測しなかった範囲
-- 現行・Waybackの検証JSONパスと、Biome・型チェックの結果
+- 現行データのAPI保存結果（run ID・カテゴリ別の反映結果）、残した検証JSONパス、Biome・型チェックの結果
 
 単に「確認済み」とせず、何をどのDOM・凡例・アーカイブで確認し、何が未確認かを区別する。

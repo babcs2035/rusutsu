@@ -4,8 +4,11 @@ import { Portal } from "@radix-ui/react-portal";
 import { Maximize2, X } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { ResortFinalizedMap } from "@/features/map/components/ResortFinalizedMap";
+import { useMapSession } from "@/features/map/session/MapSessionProvider";
+import { readStorage, writeStorage } from "@/features/map/session/storage";
 import type {
   CourseColorMode,
   ElevationProfileMapPoint,
@@ -118,7 +121,20 @@ export const ResortMapSection = ({
   mapTileVariant,
   onMapTileVariantChange,
 }: Props) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const sessionEnabled = useMapSession() !== null;
+  const expandedKey = `rusutsu:expanded:v1:${resortId}`;
+  const [isExpanded, setExpanded] = useState(false);
+  useEffect(() => {
+    if (sessionEnabled)
+      setExpanded(readStorage(expandedKey, z.boolean()) ?? false);
+  }, [expandedKey, sessionEnabled]);
+  const setIsExpanded = useCallback(
+    (expanded: boolean) => {
+      setExpanded(expanded);
+      if (sessionEnabled) writeStorage(expandedKey, expanded);
+    },
+    [expandedKey, sessionEnabled],
+  );
   // 全画面で動かした位置を、畳んだあとの小さい地図へ引き継ぐ。
   // 別インスタンスなので、そのままだと拡大する前の見え方に戻ってしまう。
   const expandedViewRef = useRef<MapViewSnapshot | null>(null);
@@ -146,7 +162,7 @@ export const ResortMapSection = ({
       ...view,
       key: (current?.key ?? 0) + 1,
     }));
-  }, []);
+  }, [setIsExpanded]);
 
   useEffect(() => {
     if (!isExpanded) return;
@@ -239,10 +255,11 @@ export const ResortMapSection = ({
           )}
         >
           {/* 選択中は地図が縮むので、ツールバーは畳んで地図を広く使う */}
-          {renderMap(
-            inlinePresentation,
-            showInlineMapToolbar && allowPreviewInteraction && !hasSelection,
-          )}
+          {!isExpanded &&
+            renderMap(
+              inlinePresentation,
+              showInlineMapToolbar && allowPreviewInteraction && !hasSelection,
+            )}
         </div>
         {!isExpanded && renderOverlayDetail()}
         {expandable && !isExpanded && (

@@ -5,6 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import type { LatestStatusMappingState } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { saveSlopeEdits } from "../actions";
 import { COURSE_DETAIL_LABELS } from "../constants";
@@ -19,6 +20,7 @@ import { courseToSavePayload } from "../utils/exportFiles";
 import { validateCourses } from "../utils/validation";
 
 type ConfirmStepProps = {
+  mapping: LatestStatusMappingState;
   resort: ResortOption;
   resorts: ResortOption[];
   courses: EditorCourse[];
@@ -35,6 +37,7 @@ const displayValue = (value: string): string =>
   value.trim() === "" ? "（未入力）" : value;
 
 export function ConfirmStep({
+  mapping,
   resort,
   resorts,
   courses,
@@ -63,6 +66,12 @@ export function ConfirmStep({
     setIsSaving(true);
     setServerErrors([]);
     try {
+      if (!(await mapping.save())) {
+        setServerErrors([
+          "営業情報の対応表を保存できませんでした。表示されたエラーを確認してください。",
+        ]);
+        return;
+      }
       const result = await saveSlopeEdits({
         resortId: resort.id,
         sourceKind,
@@ -73,7 +82,12 @@ export function ConfirmStep({
         preservedDetails,
       });
       if (result.ok) {
-        onSaved(result.writtenFiles);
+        onSaved([
+          ...result.writtenFiles,
+          ...(mapping.workspace?.latestFile
+            ? [`latest_status_mapping/${resort.id}.json`]
+            : []),
+        ]);
       } else {
         setServerErrors(result.errors);
       }
@@ -88,8 +102,8 @@ export function ConfirmStep({
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-y-auto bg-gray-50">
-      <div className="mx-auto flex w-[900px] max-w-full flex-col gap-4 p-6">
-        <div className="flex items-center justify-between">
+      <div className="mx-auto flex w-[900px] max-w-full flex-col gap-4 p-4 sm:p-6 min-w-0 [overflow-wrap:anywhere] [&>*]:shrink-0">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold font-[var(--font-heading)]">
               保存内容の確認
@@ -234,20 +248,35 @@ export function ConfirmStep({
           </Alert>
         )}
 
-        <div className="flex gap-3 pb-6">
+        {mapping.error && (
+          <p role="alert" className="text-sm text-red-700">
+            {mapping.error}
+          </p>
+        )}
+        <p className="text-sm text-gray-600">
+          営業情報の対応: {mapping.crawledNameByGeojsonName.size}{" "}
+          件（最後の保存に含まれます）
+        </p>
+        <div className="sticky bottom-0 z-10 flex shrink-0 flex-wrap gap-3 border-t bg-white p-4 shadow-sm">
           <ConfirmDialog
             open={saveDialogOpen}
             onOpenChange={setSaveDialogOpen}
             title="保存確認"
-            description={`編集結果を ${directoryName} に保存します。よろしいですか？`}
+            description={`コース情報と営業情報の対応表を保存します。よろしいですか？`}
             onConfirm={handleSaveConfirm}
             confirmLabel="保存する"
           />
           <Button
-            disabled={validation.errors.length > 0 || isSaving}
+            disabled={
+              validation.errors.length > 0 ||
+              isSaving ||
+              mapping.isLoading ||
+              mapping.isSaving ||
+              !mapping.workspace
+            }
             onClick={() => setSaveDialogOpen(true)}
           >
-            {isSaving ? "保存中…" : `保存（${directoryName}を書き換える）`}
+            {isSaving ? "保存中…" : "すべて保存"}
           </Button>
           <Button variant="outline" onClick={onBack} disabled={isSaving}>
             戻る

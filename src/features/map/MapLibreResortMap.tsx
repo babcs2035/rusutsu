@@ -16,6 +16,7 @@ import {
 } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { FinalizedMapToolbar } from "./components/FinalizedMapToolbar";
+import { MapErrorBoundary } from "./components/MapErrorBoundary";
 import {
   COARSE_POINTER_MEDIA_QUERY,
   DESKTOP_INITIAL_ZOOM,
@@ -40,6 +41,7 @@ import {
 } from "./maplibre/finalizedLayers";
 import { MapLibreControls } from "./maplibre/MapLibreControls";
 import { MapLibreResortActionPopup } from "./maplibre/MapLibreResortActionPopup";
+import { MapLocationControl } from "./maplibre/MapLocationControl";
 import {
   applyResortPointTileVariant,
   RESORT_POINT_LAYER,
@@ -53,6 +55,7 @@ import { useElevationProfileMarker } from "./maplibre/useElevationProfileMarker"
 import { useLiftAnimation } from "./maplibre/useLiftAnimation";
 import { useLineLabelMarkers } from "./maplibre/useLineLabelMarkers";
 import { useMapLibreMap } from "./maplibre/useMapLibreMap";
+import { useMapRecovery } from "./maplibre/useMapRecovery";
 import {
   useResortViewport,
   useRestoreViewport,
@@ -61,6 +64,13 @@ import {
 } from "./maplibre/useMapViewport";
 import { useResortMarkers } from "./maplibre/useResortMarkers";
 import { getCoordinateBounds } from "./maplibre/viewport";
+import { useMapSession } from "./session/MapSessionProvider";
+import {
+  mapSessionKey,
+  mapSessionSchema,
+  readStorage,
+  writeStorage,
+} from "./session/storage";
 import type {
   CourseColorMode,
   JapanResortMapProps,
@@ -74,7 +84,36 @@ import {
   getResortPriorityRank,
 } from "./utils/resortMarkerPriority";
 
-export const MapLibreResortMap = memo(function MapLibreResortMap({
+export const MapLibreResortMap = memo(function MapLibreResortMap(
+  props: JapanResortMapProps,
+) {
+  const [generation, setGeneration] = useState(0);
+  const automaticRecoveries = useRef(0);
+  const autoRecover = useCallback(() => {
+    if (automaticRecoveries.current >= 1) return false;
+    automaticRecoveries.current++;
+    setGeneration(value => value + 1);
+    return true;
+  }, []);
+  const recover = useCallback(() => setGeneration(value => value + 1), []);
+  return (
+    <MapErrorBoundary
+      key={`${props.interactionMode}:${props.selectedResortId}`}
+      onRetry={recover}
+    >
+      <MapLibreResortMapContent
+        key={`${props.interactionMode}:${props.selectedResortId}:${generation}`}
+        {...props}
+        onRecover={recover}
+        onAutoRecover={autoRecover}
+      />
+    </MapErrorBoundary>
+  );
+});
+
+function MapLibreResortMapContent({
+  onRecover,
+  onAutoRecover,
   resorts,
   filteredResortIdSet,
   isFilterActive = false,
@@ -109,7 +148,26 @@ export const MapLibreResortMap = memo(function MapLibreResortMap({
   onSelectedFinalizedFeatureChange,
   selectedElevationProfilePoint = null,
   onSelectedElevationProfilePointChange,
-}: JapanResortMapProps) {
+}: JapanResortMapProps & {
+  onRecover: () => void;
+  onAutoRecover: () => boolean;
+}) {
+  const sessionEnabled = useMapSession() !== null;
+  const storageKey = mapSessionKey(selectedResortId);
+  const [savedMap] = useState(() =>
+    sessionEnabled && interactionMode !== "compare"
+      ? readStorage(storageKey, mapSessionSchema)
+      : null,
+  );
+  const initialSelectionKey = useRef(
+    JSON.stringify(controlledSelectedFinalizedFeature ?? null),
+  );
+  const initialResetKey = useRef(detailViewportResetKey);
+  const preserveViewport =
+    Boolean(savedMap?.viewport) &&
+    initialSelectionKey.current ===
+      JSON.stringify(controlledSelectedFinalizedFeature ?? null) &&
+    initialResetKey.current === detailViewportResetKey;
   const surfaceRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const skipCompareRecenterRef = useRef(false);
@@ -133,11 +191,16 @@ export const MapLibreResortMap = memo(function MapLibreResortMap({
   // 既定（地図タイル）で作ってから切り替えると、白い淡色地図のタイルを
   // 読み込んでから写真の読み込みが始まり、切り替わるまで白い地図が見えてしまう。
   const [uncontrolledTileVariant, setUncontrolledTileVariant] =
-    useState<MapTileVariant>(isDetailMap ? "photo" : "pale");
+    useState<MapTileVariant>(
+      savedMap?.tileVariant ?? (isDetailMap ? "photo" : "pale"),
+    );
   const [uncontrolledCourseColorMode, setUncontrolledCourseColorMode] =
-    useState<CourseColorMode>(isDetailMap ? "slope" : "difficulty");
-  const [uncontrolledShowOpenOnly, setUncontrolledShowOpenOnly] =
-    useState(false);
+    useState<CourseColorMode>(
+      savedMap?.courseColorMode ?? (isDetailMap ? "slope" : "difficulty"),
+    );
+  const [uncontrolledShowOpenOnly, setUncontrolledShowOpenOnly] = useState(
+    savedMap?.showOpenOnly ?? false,
+  );
   const [uncontrolledSelected, setUncontrolledSelected] =
     useState<SelectedMapFeature | null>(null);
   const [openActionPopupResortId, setOpenActionPopupResortId] = useState<
@@ -200,7 +263,7 @@ export const MapLibreResortMap = memo(function MapLibreResortMap({
     const previousInteractionMode = previousInteractionModeRef.current;
     previousInteractionModeRef.current = interactionMode;
     if (previousInteractionMode === interactionMode) return;
-    if (hasControlledStyleState) return;
+    if (hasControlledStyleState || savedMap) return;
 
     if (interactionMode === "detail") {
       setMapTileVariant("photo");
@@ -212,6 +275,7 @@ export const MapLibreResortMap = memo(function MapLibreResortMap({
     }
   }, [
     hasControlledStyleState,
+    savedMap,
     interactionMode,
     setCourseColorMode,
     setMapTileVariant,
@@ -248,8 +312,59 @@ export const MapLibreResortMap = memo(function MapLibreResortMap({
     }),
     hitWidth: isCoarsePointer ? 24 : 14,
     isInteractive: !isPreviewMap,
-    initialViewport,
+    initialViewport: savedMap?.viewport
+      ? {
+          center: [savedMap.viewport.center.lng, savedMap.viewport.center.lat],
+          zoom: savedMap.viewport.zoom,
+          bearing: savedMap.viewport.bearing,
+        }
+      : initialViewport,
   });
+  const { failed, retry } = useMapRecovery(map, onRecover, onAutoRecover);
+
+  useEffect(() => {
+    if (
+      !map ||
+      !isReady ||
+      !sessionEnabled ||
+      isPreviewMap ||
+      interactionMode === "compare"
+    )
+      return;
+    const save = () => {
+      const center = map.getCenter().wrap();
+      writeStorage(storageKey, {
+        version: 1,
+        viewport: {
+          center: { lat: center.lat, lng: center.lng },
+          zoom: map.getZoom(),
+          bearing: map.getBearing(),
+        },
+        tileVariant: mapTileVariant,
+        courseColorMode,
+        showOpenOnly,
+      });
+    };
+    save();
+    map.on("moveend", save);
+    document.addEventListener("visibilitychange", save);
+    window.addEventListener("pagehide", save);
+    return () => {
+      map.off("moveend", save);
+      document.removeEventListener("visibilitychange", save);
+      window.removeEventListener("pagehide", save);
+    };
+  }, [
+    map,
+    isReady,
+    sessionEnabled,
+    isPreviewMap,
+    interactionMode,
+    storageKey,
+    mapTileVariant,
+    courseColorMode,
+    showOpenOnly,
+  ]);
 
   const {
     finalizedCourses,
@@ -375,8 +490,8 @@ export const MapLibreResortMap = memo(function MapLibreResortMap({
     map.dragRotate.disable();
     map.touchZoomRotate.disableRotation();
     map.keyboard.disableRotation();
-    if (map.getBearing() !== 0) map.setBearing(0);
-  }, [canRotate, isReady, map]);
+    if (!isDetailMap && map.getBearing() !== 0) map.setBearing(0);
+  }, [canRotate, isDetailMap, isReady, map]);
 
   // --- 操作の通知 ---------------------------------------------------------
   useEffect(() => {
@@ -396,6 +511,7 @@ export const MapLibreResortMap = memo(function MapLibreResortMap({
       onViewChange?.({
         center: { lat: center.lat, lng: center.lng },
         zoom: map.getZoom(),
+        bearing: map.getBearing(),
       });
     };
     const handleDragStart = () => onUserMapInteraction?.();
@@ -520,18 +636,6 @@ export const MapLibreResortMap = memo(function MapLibreResortMap({
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isDetailMap, selectedFinalizedFeature, setSelectedFinalizedFeature]);
-
-  // スキー場が切り替わったときだけ選択を解除する。
-  // マウントのたびに解除すると、地図インスタンスが複数ある画面
-  // （スマホのプレビュー + 全画面）で、選択した直後に別インスタンスの
-  // マウントが選択を消してしまう。
-  const previousFinalizedMapDataRef = useRef(finalizedMapData);
-  useEffect(() => {
-    if (previousFinalizedMapDataRef.current === finalizedMapData) return;
-
-    previousFinalizedMapDataRef.current = finalizedMapData;
-    setSelectedFinalizedFeature(null);
-  }, [finalizedMapData, setSelectedFinalizedFeature]);
 
   // --- スキー場名ラベルの配置 ---------------------------------------------
   const labelShowZoom = isMobile
@@ -744,6 +848,7 @@ export const MapLibreResortMap = memo(function MapLibreResortMap({
     animate: !isMobile,
     skipCompareRecenterRef,
     viewportResetKey: detailViewportResetKey,
+    preserveViewport,
   });
   useSearchViewport({
     map,
@@ -763,6 +868,7 @@ export const MapLibreResortMap = memo(function MapLibreResortMap({
     selectedFeature: selectedFinalizedFeature,
     selectedCourses: selectedCourses ?? [],
     selectedLift: selectedLift ?? null,
+    preserveViewport,
     bottomPaddingRatio: selectedViewportBottomPaddingRatio,
     animate: !isMobile,
   });
@@ -782,6 +888,28 @@ export const MapLibreResortMap = memo(function MapLibreResortMap({
       className="relative z-0 h-full w-full"
     >
       <div ref={containerRef} className="h-full w-full" />
+      {isReady && (
+        <MapLocationControl
+          map={map}
+          resorts={resorts}
+          interactive={!isPreviewMap}
+          expanded={mapPresentation === "expanded"}
+        />
+      )}
+      {failed && (
+        <div
+          role="status"
+          className="absolute inset-0 z-[800] flex items-center justify-center bg-white/70"
+        >
+          <button
+            type="button"
+            onClick={retry}
+            className="rounded-md border bg-white px-5 py-3 shadow"
+          >
+            地図を再表示
+          </button>
+        </div>
+      )}
       {shouldShowCompareActions && openActionPopupResort && (
         <MapLibreResortActionPopup
           key={openActionPopupResort.id}
@@ -840,4 +968,4 @@ export const MapLibreResortMap = memo(function MapLibreResortMap({
       )}
     </div>
   );
-});
+}

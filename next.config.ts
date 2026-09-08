@@ -2,6 +2,20 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   basePath: "/rusutsu",
+  async headers() {
+    return [
+      {
+        source: "/map-sw.js",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
+          { key: "Service-Worker-Allowed", value: "/rusutsu" },
+        ],
+      },
+    ];
+  },
   devIndicators: {
     position: "bottom-right",
   },

@@ -208,13 +208,19 @@ export const haversineMeters = (a: GeoCoordinate, b: GeoCoordinate) => {
 export const createElevationProfile = (
   coordinates: GeoCoordinate[],
 ): ElevationProfilePoint[] => {
-  if (!coordinates.every(coordinate => coordinate.length >= 3)) return [];
+  if (
+    coordinates.length < 2 ||
+    !coordinates.every(coordinate => Number.isFinite(coordinate[2]))
+  ) {
+    return [];
+  }
 
   const shouldReverse =
     (coordinates[0][2] ?? 0) < (coordinates[coordinates.length - 1][2] ?? 0);
   const displayCoordinates = shouldReverse
     ? [...coordinates].reverse()
     : coordinates;
+  const slopes = calculateCoordinateSlopes(displayCoordinates);
   let distance = 0;
   return displayCoordinates.map((coordinate, index) => {
     if (index > 0) {
@@ -224,7 +230,7 @@ export const createElevationProfile = (
     return {
       distance,
       elevation: coordinate[2] as number,
-      slope: null,
+      slope: slopes[index] ?? null,
       coordinate,
     };
   });

@@ -9,7 +9,9 @@ import {
   selectLatestStatusFile as selectLatestTimestampedStatusFile,
 } from "./latestStatusFiles";
 import {
+  createBaseNameIndex,
   type MergeIssue,
+  matchBaseName,
   mergeCourseFeatures,
   mergeLiftFeatures,
   type RawGeoFeature,
@@ -621,6 +623,62 @@ const readKindGeometry = async (
   }
   return null;
 };
+
+/** 統合保存用。元の線と標高付きの線を分け、基本情報だけを埋め込む。 */
+export async function loadResortGeometryForMerge(
+  resortId: string,
+  roots: ResolvedResortMapDataRoots,
+) {
+  const collections: Record<string, RawGeoFeature[]> = {};
+  for (const [primary, fallback, kind] of [
+    ["slope_10m", "slope_before", "course"],
+    ["slope_10m_osm", "slope_before_osm", "course"],
+    ["lift_20m", "lift_before", "lift"],
+  ] as const) {
+    const geometry = await readKindGeometry(
+      resortId,
+      roots.temporaryRoot,
+      primary,
+      fallback,
+      roots.documentLoader,
+    );
+    if (!geometry) continue;
+    const base =
+      fallback === "slope_before_osm"
+        ? null
+        : await (kind === "course" ? loadCourseBase : loadLiftBase)(
+            resortId,
+            roots.temporaryRoot,
+            geometry.beforeFeatures,
+            roots.documentLoader,
+          );
+    const baseByName = new Map(
+      (base?.items ?? []).map(item => [String(item.name), item]),
+    );
+    const index = createBaseNameIndex(baseByName.keys());
+    const enrich = (features: RawGeoFeature[]) =>
+      features.map(feature => {
+        const name = feature.properties.name;
+        const matched =
+          typeof name === "string" ? matchBaseName(index, name, kind) : null;
+        const properties = {
+          ...feature.properties,
+          ...(matched ? baseByName.get(matched) : undefined),
+          name,
+        };
+        // 営業状況は統合先のクローラーで更新する。保存時の状態を固定しない。
+        for (const key of ["status", "update", "latest_note", "source_name"])
+          delete (properties as Record<string, unknown>)[key];
+        return { ...feature, properties };
+      });
+    collections[fallback] = enrich(
+      geometry.beforeFeatures ?? geometry.features,
+    );
+    if (geometry.source === primary)
+      collections[primary] = enrich(geometry.features);
+  }
+  return collections;
+}
 
 const buildCourseSourceSection = async (
   resortId: string,

@@ -216,7 +216,6 @@ export const HomeLayout = ({
   onUserMapInteraction,
   onUserMapZoomInteraction,
 }: Props) => {
-  const [mapTileVariant, setMapTileVariant] = useState<MapTileVariant>("pale");
   // デスクトップの比較では、左の地図エリアを「ゲレンデ（コースマップ一覧）」と
   // 「アクセス（位置の地図）」で切り替える。既定はゲレンデ
   const [compareLeftPane, setCompareLeftPane] =
@@ -491,8 +490,6 @@ export const HomeLayout = ({
                 onUserMapZoomInteraction={onUserMapZoomInteraction}
                 restoreViewRequest={restoreViewRequest}
                 finalizedMapData={selectedResortData?.finalizedMapData ?? null}
-                mapTileVariant={mapTileVariant}
-                onMapTileVariantChange={setMapTileVariant}
                 selectedFinalizedFeature={selectedFinalizedFeature}
                 onSelectedFinalizedFeatureChange={
                   onSelectedFinalizedFeatureChange

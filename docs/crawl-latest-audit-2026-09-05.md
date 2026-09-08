@@ -67,14 +67,14 @@
 ```bash
 mise run crawl:latest -- --local-files \
   --resort rusutsu-resort \
-  --report var/crawler-artifacts/local-reports/rusutsu-resort.json
+  --report src/private/data/resorts-temporary/local-reports/rusutsu-resort.json
 ```
 
 全件をローカルで再確認する例:
 
 ```bash
 mise run crawl:latest -- --local-files \
-  --report var/crawler-artifacts/local-reports/latest.json
+  --report src/private/data/resorts-temporary/local-reports/latest.json
 ```
 
 本番DBへ送信する`--remote-api`は、本番APIの段階導入試験と専用schedulerだけで使用する。

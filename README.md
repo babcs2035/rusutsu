@@ -294,7 +294,7 @@ Gitに残す．`src/private` はprivate crawler code，対応辞書，初回fixt
 *   従来のクローラー本体は削除していない．個別実行は `mise run crawl:ski-areas` などのタスク，一括実行は `mise run crawl:all` で引き続き行える．
 *   従来系で自動実行するのは雪マジだけで，本番スケジューラが毎日03:00 (JST) に実行する．それ以外の従来クローラーは自動実行しない．
 *   スキー場別 `crawl_latest` は本番の専用schedulerが毎日07:00 (JST) に現在の93本を実行し，正常値を内部APIへ送る．実行対象は`resorts/*.ts`から自動列挙し，`template.ts`、`*_before.ts`、テストファイルを除外する．
-*   ローカル確認は `mise run crawl:latest -- --local-files --resort <id>` を使う．正常結果は`src/private/data/resorts-temporary/latest_data/<id>/<日時>.json`、警告時の生結果とDOMは通常`var/crawler-artifacts/crawl_latest_dom/<id>/`以下に残るため、VS Codeで確認できる．このモードは本番API設定を明示的に無効化し、生成JSONをGitHub経由で本番値にする運用には使わない．
+*   ローカル確認は `mise run crawl:latest -- --local-files --resort <id>` を使う．正常結果は`src/private/data/resorts-temporary/latest_data/<id>/<日時>.json`、警告時の生結果とDOMは通常`src/private/data/resorts-temporary/crawl_latest_dom/<id>/`以下に残るため、VS Codeで確認できる．このモードは本番API設定を明示的に無効化し、生成JSONをGitHub経由で本番値にする運用には使わない．
 *   本番の警告・失敗DOMは `mise run crawl:diagnostics:pull -- --resort <id>` でVS Code用に取得できる．本番schedulerの導入は、ローカル1件、本番APIへ1件、少数件、全93件の順で確認する．
 *   書き込み戦略はモデルごとに upsert や削除→再作成など異なる．履歴系テーブルはスキー場 + 日付の一意制約で重複行を防ぐ．
 

@@ -11,6 +11,12 @@
 !.yarn/releases
 !.yarn/versions
 
+# Local research artifacts belong in rusutsu-library (src/private).
+/tmp/
+/logs/
+/*.log
+/*.geojson
+
 # testing
 /coverage
 

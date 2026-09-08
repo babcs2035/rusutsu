@@ -91,8 +91,17 @@ export const useLiftAnimation = ({
       }
     };
 
-    raf = window.requestAnimationFrame(step);
+    const syncVisibility = () => {
+      if (raf !== null) window.cancelAnimationFrame(raf);
+      raf =
+        document.visibilityState === "visible"
+          ? window.requestAnimationFrame(step)
+          : null;
+    };
+    syncVisibility();
+    document.addEventListener("visibilitychange", syncVisibility);
     return () => {
+      document.removeEventListener("visibilitychange", syncVisibility);
       if (raf !== null) window.cancelAnimationFrame(raf);
     };
   }, [isInteracting, isReady, map, prefersReducedMotion, styleState]);

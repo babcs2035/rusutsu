@@ -1,9 +1,11 @@
 "use client";
 
+import { ListOrdered } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -14,8 +16,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { OrderOrganizerDialog } from "@/features/latest-status-mapping/components/OrderOrganizerDialog";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
+import { PanelSection } from "@/shared/components/PanelSection";
+import { moveItem } from "@/shared/hooks/useSortableList";
 import { updateDefaultSearchWord } from "@/shared/utils/searchWord";
 import {
   BUSINESS_HOURS_MARK_OPTIONS,
@@ -34,6 +39,11 @@ import type {
 } from "../types";
 import { mergeDetailEntry, unmergeDetailEntry } from "../utils/detailMerge";
 import { liftDisplayName } from "../utils/liftOps";
+
+import {
+  reorderLiftsByCrawlerOrder,
+  reorderVisibleLifts,
+} from "../utils/liftOrder";
 
 type DetailStepProps = {
   resort: ResortOption;
@@ -105,6 +115,9 @@ export function DetailStep({
   onProceed,
   onBack,
 }: DetailStepProps) {
+  const [isOrganizerOpen, setIsOrganizerOpen] = useState(false);
+  const [bulkOnlyEmpty, setBulkOnlyEmpty] = useState(false);
+  const [bulkMessage, setBulkMessage] = useState<string | null>(null);
   const [manualEntryIndex, setManualEntryIndex] = useState<string>("");
   const [showProceedWarning, setShowProceedWarning] = useState(false);
   const [draggedLiftId, setDraggedLiftId] = useState<string | null>(null);
@@ -160,6 +173,30 @@ export function DetailStep({
       ...lift,
       detail: { ...lift.detail, ...patch },
     }));
+  };
+
+  const applyToAll = (key: "morning" | "night", value: string) => {
+    const targetIds = new Set(
+      lifts
+        .filter(
+          lift =>
+            (!bulkOnlyEmpty || lift.detail[key] === "") &&
+            lift.detail[key] !== value,
+        )
+        .map(lift => lift.id),
+    );
+    setLifts(previous =>
+      previous.map(lift =>
+        targetIds.has(lift.id)
+          ? { ...lift, detail: { ...lift.detail, [key]: value } }
+          : lift,
+      ),
+    );
+    setBulkMessage(
+      targetIds.size === 0
+        ? `${DETAIL_LABELS[key]}を変更するリフトはありませんでした。`
+        : `${DETAIL_LABELS[key]}を ${targetIds.size} 本のリフトへ「${value === "" ? "未設定" : value}」で入れました。`,
+    );
   };
 
   const handleManualMerge = () => {
@@ -238,6 +275,17 @@ export function DetailStep({
           位置補正へ戻る
         </Button>
       </div>
+
+      <Button
+        size="sm"
+        variant="outline"
+        className="shrink-0 self-start"
+        disabled={lifts.length < 2}
+        onClick={() => setIsOrganizerOpen(true)}
+      >
+        <ListOrdered className="size-3.5" />
+        並び替え画面
+      </Button>
 
       <ScrollArea className="flex min-h-[80px] max-h-[180px] flex-col border border-gray-200">
         {lifts.map((lift, index) => (
@@ -318,6 +366,89 @@ export function DetailStep({
         リフトをドラッグして並び替えられます。変更した順番が、保存後の GeoJSON
         のリフト順になります。
       </p>
+      <PanelSection
+        title="早朝・ナイターをまとめて設定"
+        storageKey="rusutsu-lift-bulk-open"
+        defaultOpen={false}
+        summary={`${lifts.length} 本`}
+      >
+        <p className="mb-1.5 text-[11px] leading-relaxed text-gray-700">
+          全リフトへ同じ値を一度に入れます。設定したあとで、1
+          本ずつ変更できます。
+        </p>
+        <div className="flex flex-col gap-1.5">
+          {(["morning", "night"] as const).map(key => (
+            <div key={key} className="flex items-center gap-1">
+              <span className="w-20 shrink-0 text-[11px] font-bold text-gray-600">
+                {DETAIL_LABELS[key]}
+              </span>
+              <div className="flex min-w-0 flex-1 flex-wrap gap-1">
+                {BUSINESS_HOURS_MARK_OPTIONS.map(value => (
+                  <Button
+                    key={value || "empty"}
+                    size="xs"
+                    variant="outline"
+                    className="min-w-9"
+                    disabled={lifts.length === 0}
+                    title={`${DETAIL_LABELS[key]}を全リフト「${value || "未設定"}」にします`}
+                    onClick={() => applyToAll(key, value)}
+                  >
+                    {value || "未設定"}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <label className="mt-2 flex cursor-pointer items-center gap-1.5 text-[11px] text-gray-600">
+          <Checkbox
+            checked={bulkOnlyEmpty}
+            onCheckedChange={checked => setBulkOnlyEmpty(checked === true)}
+          />
+          未入力のリフトだけに入れる（入力済みは変えない）
+        </label>
+        {bulkMessage && (
+          <p role="status" className="mt-1 text-[11px] text-green-800">
+            {bulkMessage}
+          </p>
+        )}
+      </PanelSection>
+      <OrderOrganizerDialog
+        open={isOrganizerOpen}
+        onOpenChange={setIsOrganizerOpen}
+        resortId={resort.id}
+        resortName={resort.nameJa || resort.id}
+        kind="lifts"
+        items={lifts.map(lift => ({ id: lift.id, name: lift.name }))}
+        selectedItemId={selectedLiftId}
+        onSelectItem={onSelectLift}
+        onReorder={(from, to) =>
+          setLifts(previous =>
+            reorderVisibleLifts(
+              previous,
+              moveItem(
+                lifts.map(lift => lift.id),
+                from,
+                to,
+              ),
+            ),
+          )
+        }
+        onApplyCrawlerOrder={async orderedNames => {
+          setLifts(previous =>
+            reorderLiftsByCrawlerOrder(
+              previous,
+              lifts.map(lift => lift.id),
+              orderedNames,
+            ),
+          );
+          return {
+            ok: true,
+            message:
+              "クローラー取得順に並べました。確認画面から保存してください。",
+          };
+        }}
+      />
       {selectedLift ? (
         <>
           <div

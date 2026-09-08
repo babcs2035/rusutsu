@@ -354,7 +354,10 @@ const propertiesForPreservedLine = (
       previousBefore.properties?.midstation,
       nextBefore.properties?.midstation,
     ) &&
-    Object.hasOwn(existingDerived.properties ?? {}, "midstation")
+    samePosition2d(
+      existingDerived.properties?.midstation,
+      nextBefore.properties?.midstation,
+    )
   ) {
     properties.midstation = existingDerived.properties?.midstation;
   }

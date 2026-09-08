@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { LatestStatusMappingState } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
 import type { ValidationResult } from "@/features/slope/types";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { saveLiftEdits, saveResortLinks } from "../actions";
@@ -17,6 +18,7 @@ import { validateLifts } from "../utils/validation";
 import { LinkListField } from "./LinksStep";
 
 type ConfirmStepProps = {
+  mapping: LatestStatusMappingState;
   resort: ResortOption;
   resorts: ResortOption[];
   lifts: EditorLift[];
@@ -50,6 +52,7 @@ const ChangeValue = ({ before, after }: { before: string; after: string }) => (
 );
 
 export function ConfirmStep({
+  mapping,
   resort,
   resorts,
   lifts,
@@ -109,6 +112,12 @@ export function ConfirmStep({
     setIsSaving(true);
     setServerErrors([]);
     try {
+      if (!(await mapping.save())) {
+        setServerErrors([
+          "営業情報の対応表を保存できませんでした。表示されたエラーを確認してください。",
+        ]);
+        return;
+      }
       // 手順6でリンクを追加・修正した場合も、リフトと同じ保存操作で反映する。
       await saveResortLinks(resort.id, links);
       const result = await saveLiftEdits({
@@ -117,7 +126,13 @@ export function ConfirmStep({
         lifts: lifts.map(liftToSavePayload),
       });
       if (result.ok) {
-        onSaved([...result.writtenFiles, "SkiResortLinks.json"]);
+        onSaved([
+          ...result.writtenFiles,
+          "SkiResortLinks.json",
+          ...(mapping.workspace?.latestFile
+            ? [`latest_status_mapping/${resort.id}.json`]
+            : []),
+        ]);
       } else {
         setServerErrors(result.errors);
       }
@@ -141,8 +156,8 @@ export function ConfirmStep({
 
   return (
     <div className="flex h-full min-h-0 justify-center overflow-y-auto bg-gray-50">
-      <div className="flex w-full max-w-[820px] flex-col gap-4 p-6">
-        <div className="flex items-center justify-between">
+      <div className="flex w-full max-w-[820px] flex-col gap-4 p-4 sm:p-6 min-w-0 [overflow-wrap:anywhere] [&>*]:shrink-0">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold font-[var(--font-heading)]">
               変更内容の確認
@@ -157,7 +172,7 @@ export function ConfirmStep({
               </p>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
               variant="outline"
@@ -390,25 +405,40 @@ export function ConfirmStep({
           </Alert>
         )}
 
-        <div className="flex gap-3 pb-6">
+        {mapping.error && (
+          <p role="alert" className="text-sm text-red-700">
+            {mapping.error}
+          </p>
+        )}
+        <p className="text-sm text-gray-600">
+          営業情報の対応: {mapping.crawledNameByGeojsonName.size}{" "}
+          件（最後の保存に含まれます）
+        </p>
+        <div className="sticky bottom-0 z-10 flex shrink-0 flex-wrap gap-3 border-t bg-white p-4 shadow-sm">
           <ConfirmDialog
             open={saveDialogOpen}
             onOpenChange={setSaveDialogOpen}
             title="保存確認"
             description={
               deletedLifts.length > 0
-                ? `編集結果で lift_before とスキー場全体リンクを書き換え、${deletedLifts.length} 件のリフトを削除します。よろしいですか？`
-                : "編集結果で lift_before とスキー場全体リンクを書き換えます。よろしいですか？"
+                ? `編集結果で リフト情報・営業情報の対応表・スキー場全体リンクを書き換え、${deletedLifts.length} 件のリフトを削除します。よろしいですか？`
+                : "編集結果で リフト情報・営業情報の対応表・スキー場全体リンクを書き換えます。よろしいですか？"
             }
             onConfirm={handleSaveConfirm}
             confirmLabel="保存する"
           />
           <Button
             variant="default"
-            disabled={validation.errors.length > 0 || isSaving}
+            disabled={
+              validation.errors.length > 0 ||
+              isSaving ||
+              mapping.isLoading ||
+              mapping.isSaving ||
+              !mapping.workspace
+            }
             onClick={() => setSaveDialogOpen(true)}
           >
-            {isSaving ? "保存中…" : "保存（リフト・リンクを書き換える）"}
+            {isSaving ? "保存・標高取得中…" : "すべて保存"}
           </Button>
           <Button variant="outline" onClick={onBack} disabled={isSaving}>
             戻る

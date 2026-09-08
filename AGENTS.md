@@ -1,5 +1,11 @@
 # Project Notes
 
+## 作業データの保存先
+- 調査・検証用の一時ファイル、GeoJSON、JSON、スクリーンショット、ログ、補助スクリプトは `src/private`（rusutsu-library）配下に保存する。親リポジトリ直下の `tmp/`、`logs/` やルートには出力しない。
+- 一時作業は `src/private/data/resorts-temporary/tmp/<task>/`、実行ログは `src/private/data/resorts-temporary/logs/` を使う。既存の用途別データディレクトリがある場合はそちらを使う。リダイレクト・`tee`・`--out`・`--report` の指定も同様。
+- ローカル診断DOMは `src/private/data/resorts-temporary/crawl_latest_dom/` に保存し、Git管理対象外にする。本番APIの診断DOMは従来どおり非公開volumeに保存する。
+- 一時作業用の `tmp/` と実行ログ用の `logs/` はlibrary側でもGit管理対象外にする。継続管理するデータや再利用するスクリプトは、用途別のデータディレクトリや `src/private/scripts/` に置く。
+
 ## ベースパスに関する注意 (既存)
 - アプリは Next.js のベースパス `/rusutsu` 配下で配信される。
 - ローカルアプリをブラウザや Playwright で開く際は `http://localhost:3000/rusutsu` を使用すること。

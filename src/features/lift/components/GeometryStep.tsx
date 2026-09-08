@@ -1,11 +1,11 @@
 "use client";
 
 import { ArrowLeft, ListOrdered, Maximize2, Plus, Tag } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { OrderOrganizerDialog } from "@/features/latest-status-mapping/components/OrderOrganizerDialog";
-import { useLatestStatusMapping } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
+import type { LatestStatusMappingState } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { PanelSection } from "@/shared/components/PanelSection";
@@ -19,9 +19,11 @@ import {
   hasMidstationChange,
   liftDisplayName,
 } from "../utils/liftOps";
+import { reorderLiftsByCrawlerOrder } from "../utils/liftOrder";
 import { LiftMappingList } from "./LiftMappingList";
 
 type GeometryStepProps = {
+  mapping: LatestStatusMappingState;
   resort: ResortOption;
   lifts: EditorLift[];
   deletedLifts: EditorLift[];
@@ -73,6 +75,7 @@ const describeChange = (lift: EditorLift): string | null => {
 };
 
 export function GeometryStep({
+  mapping,
   resort,
   lifts,
   deletedLifts,
@@ -94,16 +97,6 @@ export function GeometryStep({
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [isOrganizerOpen, setIsOrganizerOpen] = useState(false);
   const selectedLift = lifts.find(lift => lift.id === selectedLiftId) ?? null;
-
-  const geojsonNames = useMemo(
-    () => lifts.map(lift => lift.name.trim()).filter(Boolean),
-    [lifts],
-  );
-  const mapping = useLatestStatusMapping({
-    resortId: resort.id,
-    kind: "lifts",
-    geojsonNames,
-  });
 
   const sortable = useSortableList({
     ids: lifts.map(lift => lift.id),
@@ -380,11 +373,25 @@ export function GeometryStep({
         resortId={resort.id}
         resortName={resort.nameJa || resort.id}
         kind="lifts"
-        items={lifts.map((lift, index) => ({
+        items={lifts.map(lift => ({
           id: lift.id,
-          name: liftDisplayName(lift, index),
+          name: lift.name,
           detail: `${lift.coordinates.length} 点`,
         }))}
+        onApplyCrawlerOrder={async orderedNames => {
+          setLifts(previous =>
+            reorderLiftsByCrawlerOrder(
+              previous,
+              lifts.map(lift => lift.id),
+              orderedNames,
+            ),
+          );
+          return {
+            ok: true,
+            message:
+              "クローラー取得順に並べました。確認画面から保存してください。",
+          };
+        }}
         selectedItemId={selectedLiftId}
         onSelectItem={handleSelectLift}
         onReorder={(from, to) =>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useLatestStatusMapping } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { ResizablePanel } from "@/shared/components/ResizablePanel";
 import { StepIndicator } from "@/shared/components/StepIndicator";
@@ -577,6 +578,19 @@ export function SlopeEditWorkspace({
 
   const selectedCourse =
     courses.find(course => course.id === activeCourseId) ?? null;
+  const mapping = useLatestStatusMapping({
+    resortId: resort?.id ?? "",
+    kind: "courses",
+    geometries: courses
+      .filter(item => item.skiId === resort?.id)
+      .map(({ id, name }) => ({ id, name })),
+    geojsonNames: courses
+      .filter(course => course.skiId === resort?.id)
+      .map(item => item.name.trim())
+      .filter(Boolean),
+    enabled: resort !== null,
+  });
+
   const mapIsVisible =
     step === "assign" || step === "lines" || step === "details";
   // 分割はコース線編集（工程 3）で行う。結合・描画とは同時に使わない
@@ -685,9 +699,11 @@ export function SlopeEditWorkspace({
   );
 
   return (
-    <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden md:flex-row">
+    <div
+      className={`flex h-[100dvh] min-h-0 flex-col overflow-hidden ${mapIsVisible ? "md:flex-row" : ""}`}
+    >
       {step === "select" ? (
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {header}
           <div className="relative min-h-0 flex-1">
             <ResortSelectStep resorts={resorts} onStart={handleStart} />
@@ -698,14 +714,12 @@ export function SlopeEditWorkspace({
         <>
           {/* スマホは地図と入力欄を上下に配置する。 */}
           <div
-            className={`flex min-h-0 min-w-0 flex-1 flex-col ${!mapIsVisible ? "max-md:flex-none" : ""}`}
+            className={`flex min-h-0 min-w-0 flex-1 flex-col ${!mapIsVisible ? "flex-none" : ""}`}
           >
             {header}
             <div
               className={`relative min-h-0 flex-1 ${
-                mapIsVisible
-                  ? "visible"
-                  : "invisible pointer-events-none max-md:hidden"
+                mapIsVisible ? "visible" : "hidden"
               }`}
             >
               {resort && (
@@ -768,7 +782,7 @@ export function SlopeEditWorkspace({
           </div>
 
           <ResizablePanel
-            className={`max-md:w-full! max-md:border-t max-md:[&>button]:hidden ${mapIsVisible ? "max-md:h-[55%]" : "max-md:h-auto max-md:flex-1"}`}
+            className={`max-md:w-full! max-md:border-t max-md:[&>button]:hidden ${mapIsVisible ? "max-md:h-[55%]" : "h-auto! w-full! flex-1 [&>button]:hidden"}`}
             side="right"
             storageKey={PANEL_WIDTH_KEY}
             defaultWidth={470}
@@ -789,6 +803,7 @@ export function SlopeEditWorkspace({
             )}
             {step === "lines" && resort && (
               <LineEditStep
+                mapping={mapping}
                 resort={resort}
                 courses={courses}
                 setCourses={setCourses}
@@ -857,6 +872,7 @@ export function SlopeEditWorkspace({
             )}
             {step === "confirm" && resort && (
               <ConfirmStep
+                mapping={mapping}
                 resort={resort}
                 resorts={resorts}
                 courses={courses}

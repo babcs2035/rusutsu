@@ -23,6 +23,8 @@ import {
 import { discardDraft, listDraftSummaries } from "../hooks/useDraftStorage";
 import type { DraftSummary, ResortOption } from "../types";
 
+import { ElevationRefreshButton } from "./ElevationRefreshButton";
+
 export type StartSource = "draft" | "existing" | "new";
 
 type CrawlerFilter = "all" | "with" | "without";
@@ -267,6 +269,12 @@ export function ResortSelectStep({
                     : "✓ 確認済みにする"}
                 </Button>
               </div>
+              {pendingResort.hasLiftBefore && (
+                <ElevationRefreshButton
+                  key={pendingResort.id}
+                  resortId={pendingResort.id}
+                />
+              )}
             </CardContent>
           </Card>
         )}

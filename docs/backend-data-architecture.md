@@ -103,7 +103,7 @@ mise run crawl:latest -- --remote-api --resort rusutsu-resort
 ローカルファイルモードの正常結果は
 `src/private/data/resorts-temporary/latest_data/<resort-id>/<日時>.json` に残る。警告があれば
 正常結果と混ぜず、通常は
-`var/crawler-artifacts/crawl_latest_dom/<resort-id>/` 以下に生結果、警告理由、
+`src/private/data/resorts-temporary/crawl_latest_dom/<resort-id>/` 以下に生結果、警告理由、
 レンダリング済みDOMを隔離する。このため、コード変更時はVS Code上で結果と公式DOMを並べて
 確認できる。このJSONは
 ローカル検証用であり、GitHub経由で本番値にするものではない。本番への反映はremote API経由に

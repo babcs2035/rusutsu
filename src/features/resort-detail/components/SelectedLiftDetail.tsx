@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { FinalizedLiftFeature } from "@/lib/finalizedResortGeojsonShared";
 import {
   createElevationProfile,
@@ -28,6 +29,10 @@ export const SelectedLiftDetail = ({
   resortLabelName: string;
   sourceUrls: string[];
 }) => {
+  const [selectedPoint, setSelectedPoint] = useState<{
+    liftId: string;
+    distance: number;
+  } | null>(null);
   const profilePoints = createElevationProfile(lift.coordinates);
   const statusSymbol = normalizeIconSymbol(lift.properties.status);
   const comments = [
@@ -70,7 +75,15 @@ export const SelectedLiftDetail = ({
         sourceUrls={sourceUrls}
       />
 
-      <ElevationProfile points={profilePoints} />
+      <ElevationProfile
+        points={profilePoints}
+        activeDistance={
+          selectedPoint?.liftId === lift.id ? selectedPoint.distance : 0
+        }
+        onPointSelect={point =>
+          setSelectedPoint({ liftId: lift.id, distance: point.distance })
+        }
+      />
 
       <div className="grid grid-cols-4 gap-2">
         {/* 距離は地図から算出した値ではなく、公表されている distance を使う */}

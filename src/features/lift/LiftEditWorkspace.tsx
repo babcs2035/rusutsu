@@ -4,6 +4,7 @@ import { HelpCircle, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useLatestStatusMapping } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
 import {
   EditorMap,
   type EditorMapMode,
@@ -58,7 +59,7 @@ const STEPS: Array<{ id: EditStep; label: string }> = [
   { id: "geometry", label: "位置補正" },
   { id: "details", label: "詳細情報" },
   { id: "links", label: "リンク" },
-  { id: "confirm", label: "保存" },
+  { id: "confirm", label: "確認・保存" },
 ];
 
 const PANEL_WIDTH_KEY = "rusutsu-lift-panel-width";
@@ -168,6 +169,19 @@ export function LiftEditWorkspace({
 
   const activeLifts = lifts.filter(lift => !lift.isDeleted);
   const deletedLifts = lifts.filter(lift => lift.isDeleted);
+  const mapping = useLatestStatusMapping({
+    resortId: resort?.id ?? "",
+    kind: "lifts",
+    geometries: activeLifts
+      .filter(item => item.skiId === resort?.id)
+      .map(({ id, name }) => ({ id, name })),
+    geojsonNames: activeLifts
+      .filter(item => item.skiId === resort?.id)
+      .map(item => item.name.trim())
+      .filter(Boolean),
+    enabled: resort !== null,
+  });
+
   const selectedLift =
     activeLifts.find(lift => lift.id === selectedLiftId) ?? null;
   // resort state に確認済みフラグの最新値を反映する（ConfirmStep でのトグル直後に表示へ反映するため）
@@ -398,9 +412,11 @@ export function LiftEditWorkspace({
   );
 
   return (
-    <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden md:flex-row">
+    <div
+      className={`flex h-[100dvh] min-h-0 flex-col overflow-hidden ${mapIsVisible ? "md:flex-row" : ""}`}
+    >
       {step === "select" ? (
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {header}
           <div className="relative min-h-0 flex-1">
             <ResortSelectStep
@@ -415,14 +431,12 @@ export function LiftEditWorkspace({
         <>
           {/* スマホは地図と入力欄を上下に配置する。 */}
           <div
-            className={`flex min-h-0 min-w-0 flex-1 flex-col ${!mapIsVisible ? "max-md:flex-none" : ""}`}
+            className={`flex min-h-0 min-w-0 flex-1 flex-col ${!mapIsVisible ? "flex-none" : ""}`}
           >
             {header}
             <div
               className={`relative min-h-0 flex-1 ${
-                mapIsVisible
-                  ? "visible"
-                  : "invisible pointer-events-none max-md:hidden"
+                mapIsVisible ? "visible" : "hidden"
               }`}
             >
               {resort && (
@@ -521,7 +535,7 @@ export function LiftEditWorkspace({
           </div>
 
           <ResizablePanel
-            className={`max-md:w-full! max-md:border-t max-md:[&>button]:hidden ${mapIsVisible ? "max-md:h-[55%]" : "max-md:h-auto max-md:flex-1"}`}
+            className={`max-md:w-full! max-md:border-t max-md:[&>button]:hidden ${mapIsVisible ? "max-md:h-[55%]" : "h-auto! w-full! flex-1 [&>button]:hidden"}`}
             side="right"
             storageKey={PANEL_WIDTH_KEY}
             defaultWidth={480}
@@ -549,6 +563,7 @@ export function LiftEditWorkspace({
             )}
             {step === "geometry" && resort && (
               <GeometryStep
+                mapping={mapping}
                 resort={resort}
                 lifts={activeLifts}
                 deletedLifts={deletedLifts}
@@ -612,6 +627,7 @@ export function LiftEditWorkspace({
             )}
             {step === "confirm" && effectiveResort && (
               <ConfirmStep
+                mapping={mapping}
                 resort={effectiveResort}
                 resorts={effectiveResorts}
                 lifts={activeLifts}

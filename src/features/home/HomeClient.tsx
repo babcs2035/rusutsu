@@ -24,6 +24,19 @@ import {
   isFilterActive,
   matchesFilters,
 } from "@/features/filters/utils/filterResorts";
+import {
+  readDetailCache,
+  writeDetailCache,
+} from "@/features/map/session/detailCache";
+import { MapSessionProvider } from "@/features/map/session/MapSessionProvider";
+import {
+  HOME_SESSION_KEY,
+  type HomeSession,
+  homeSessionSchema,
+  readStorage,
+  resolveHomeSession,
+  writeStorage,
+} from "@/features/map/session/storage";
 import type {
   ElevationProfileMapPoint,
   SelectedMapFeature,
@@ -67,6 +80,40 @@ type Props = {
 };
 
 export function HomeClient({ initialResorts }: Props) {
+  const [boot, setBoot] = useState<{ session: HomeSession | null } | null>(
+    null,
+  );
+  useEffect(() => {
+    const stored = readStorage(HOME_SESSION_KEY, homeSessionSchema);
+    const defaults: HomeSession = {
+      version: 1,
+      selectedResortId: null,
+      selectedFeature: null,
+      mobileContentTab: "map",
+      filters: DEFAULT_FILTERS,
+      hasSearched: false,
+      isFilterEditorOpen: true,
+      isListSheetOpen: false,
+      listSheetSnapPoint: BOTTOM_SHEET_INITIAL_SNAP_POINT,
+    };
+    setBoot({
+      session: resolveHomeSession(
+        stored ?? defaults,
+        new URL(window.location.href),
+        new Set(initialResorts.map(resort => resort.id)),
+      ),
+    });
+  }, [initialResorts]);
+  if (!boot) return <LoadingSpinner text="地図を準備しています..." />;
+  return (
+    <HomeClientContent initialResorts={initialResorts} session={boot.session} />
+  );
+}
+
+function HomeClientContent({
+  initialResorts,
+  session,
+}: Props & { session: HomeSession | null }) {
   // マップコンポーネントを SSR 無効で動的インポート
   const DynamicMap = useMemo(
     () =>
@@ -84,16 +131,23 @@ export function HomeClient({ initialResorts }: Props) {
   );
 
   // --- State管理 ---
-  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
-  const [mobileDraftFilters, setMobileDraftFilters] =
-    useState<Filters>(DEFAULT_FILTERS);
-  const [isFilterEditorOpen, setIsFilterEditorOpen] = useState(true);
-  const [hasSearched, setHasSearched] = useState(false);
-  const [selectedResortId, setSelectedResortId] = useState<string | null>(null);
+  const [filters, setFilters] = useState<Filters>(
+    session?.filters ?? DEFAULT_FILTERS,
+  );
+  const [mobileDraftFilters, setMobileDraftFilters] = useState<Filters>(
+    session?.filters ?? DEFAULT_FILTERS,
+  );
+  const [isFilterEditorOpen, setIsFilterEditorOpen] = useState(
+    session?.isFilterEditorOpen ?? true,
+  );
+  const [hasSearched, setHasSearched] = useState(session?.hasSearched ?? false);
+  const [selectedResortId, setSelectedResortId] = useState<string | null>(
+    session?.selectedResortId ?? null,
+  );
   const [selectedResortData, setSelectedResortData] =
     useState<NullableSkiResortDetail | null>(null);
   const [selectedFinalizedFeature, setSelectedFinalizedFeature] =
-    useState<SelectedMapFeature | null>(null);
+    useState<SelectedMapFeature | null>(session?.selectedFeature ?? null);
   const [selectedElevationProfilePoint, setSelectedElevationProfilePoint] =
     useState<ElevationProfileMapPoint | null>(null);
   const [selectedCompareIds, setSelectedCompareIds] = useState<string[]>([]);
@@ -104,10 +158,12 @@ export function HomeClient({ initialResorts }: Props) {
   const [isCompareLoading, setIsCompareLoading] = useState(false);
   const [isMobileFilterOverlayOpen, setIsMobileFilterOverlayOpen] =
     useState(false);
-  const [isListSheetOpen, setIsListSheetOpen] = useState(false);
+  const [isListSheetOpen, setIsListSheetOpen] = useState(
+    session?.isListSheetOpen ?? false,
+  );
   const [listSheetSnapPoint, setListSheetSnapPoint] = useState<
     number | string | null
-  >(BOTTOM_SHEET_INITIAL_SNAP_POINT);
+  >(session?.listSheetSnapPoint ?? BOTTOM_SHEET_INITIAL_SNAP_POINT);
   const [searchViewportRequestKey, setSearchViewportRequestKey] = useState(0);
   const [restoreViewRequest, setRestoreViewRequest] =
     useState<MapViewRestoreRequest | null>(null);
@@ -119,7 +175,7 @@ export function HomeClient({ initialResorts }: Props) {
   const [isMobileSearchKeyboardActive, setIsMobileSearchKeyboardActive] =
     useState(false);
   const [mobileContentTab, setMobileContentTab] = useState<"info" | "map">(
-    "map",
+    session?.mobileContentTab ?? "map",
   );
   const [isPending, startTransition] = useTransition();
   const [discardFilterChangesDialogOpen, setDiscardFilterChangesDialogOpen] =
@@ -152,6 +208,122 @@ export function HomeClient({ initialResorts }: Props) {
     setIsKeyboardActive: setIsMobileSearchKeyboardActive,
     setViewport: setMobileSearchViewport,
   });
+
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState(false);
+  const [detailRetry, setDetailRetry] = useState(0);
+  useEffect(() => {
+    void detailRetry;
+    if (!selectedResortId) {
+      setSelectedResortData(null);
+      setDetailLoading(false);
+      setDetailError(false);
+      return;
+    }
+    let disposed = false;
+    let generation = 0;
+    const timers = new Set<ReturnType<typeof setTimeout>>();
+    const refresh = async () => {
+      const current = ++generation;
+      setDetailLoading(true);
+      setDetailError(false);
+      // キャッシュは先に表示。ネットワークの応答待ちで地図を塞がない。
+      void readDetailCache(selectedResortId).then(cached => {
+        if (!disposed && current === generation && cached)
+          setSelectedResortData(previous =>
+            previous?.id === selectedResortId ? previous : cached,
+          );
+      });
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        const data = await Promise.race([
+          getSkiResortById(selectedResortId),
+          new Promise<never>((_, reject) => {
+            timer = setTimeout(() => reject(new Error("timeout")), 12000);
+            timers.add(timer);
+          }),
+        ]);
+        if (disposed || current !== generation) return;
+        if (!data) {
+          setDetailError(true);
+          return;
+        }
+        setSelectedResortData(data);
+        void writeDetailCache(data);
+      } catch {
+        if (!disposed && current === generation) setDetailError(true);
+      } finally {
+        if (timer) {
+          clearTimeout(timer);
+          timers.delete(timer);
+        }
+        if (!disposed && current === generation) setDetailLoading(false);
+      }
+    };
+    const resume = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    void refresh();
+    window.addEventListener("online", resume);
+    document.addEventListener("visibilitychange", resume);
+    return () => {
+      disposed = true;
+      for (const timer of timers) clearTimeout(timer);
+      window.removeEventListener("online", resume);
+      document.removeEventListener("visibilitychange", resume);
+    };
+  }, [selectedResortId, detailRetry]);
+
+  useEffect(() => {
+    if (
+      !selectedFinalizedFeature ||
+      !selectedResortData ||
+      selectedResortData.id !== selectedResortId
+    )
+      return;
+    const geometry = selectedResortData.finalizedMapData;
+    const selected = selectedFinalizedFeature;
+    const exists =
+      selected.kind === "course"
+        ? geometry?.courses?.features.some(
+            course =>
+              course.id === selected.id || course.groupId === selected.id,
+          )
+        : geometry?.lifts?.features.some(lift => lift.id === selected.id);
+    if (!exists) setSelectedFinalizedFeature(null);
+  }, [selectedFinalizedFeature, selectedResortData, selectedResortId]);
+
+  useEffect(() => {
+    if (isMobileFilterOverlayOpen) return;
+    const value: HomeSession = {
+      version: 1,
+      selectedResortId,
+      selectedFeature: selectedFinalizedFeature,
+      mobileContentTab,
+      filters,
+      hasSearched,
+      isFilterEditorOpen,
+      isListSheetOpen,
+      listSheetSnapPoint,
+    };
+    writeStorage(HOME_SESSION_KEY, value);
+    // 地図移動は URL 履歴を増やさない。スキー場への直接リンクだけ保持する。
+    const url = new URL(window.location.href);
+    if (selectedResortId) url.searchParams.set("resort", selectedResortId);
+    else url.searchParams.delete("resort");
+    if (url.href !== window.location.href)
+      window.history.replaceState(window.history.state, "", url);
+  }, [
+    selectedResortId,
+    selectedFinalizedFeature,
+    mobileContentTab,
+    filters,
+    hasSearched,
+    isFilterEditorOpen,
+    isListSheetOpen,
+    listSheetSnapPoint,
+    isMobileFilterOverlayOpen,
+  ]);
 
   // --- データ絞り込みロジック ---
 
@@ -518,6 +690,7 @@ export function HomeClient({ initialResorts }: Props) {
 
   const handleSelectResort = useCallback(
     (id: string) => {
+      if (id === selectedResortId) return;
       setMobileContentTab("info");
       setHoveredResortId(null);
       saveReturnViewState();
@@ -527,12 +700,9 @@ export function HomeClient({ initialResorts }: Props) {
       setSelectedElevationProfilePoint(null);
       setSelectedResortId(id);
       setIsListSheetOpen(false); // モーダルを開くときにボトムシートを閉じる
-      startTransition(async () => {
-        const data = await getSkiResortById(id);
-        setSelectedResortData(data);
-      });
+      setSelectedResortData(null);
     },
-    [saveReturnViewState],
+    [saveReturnViewState, selectedResortId],
   );
 
   // 詳細・比較を閉じる際，タブを開く前の状態へ戻す。
@@ -676,7 +846,22 @@ export function HomeClient({ initialResorts }: Props) {
       (mobileContentTab === "info" && (isListSheetOpen || hasSearched)));
 
   return (
-    <>
+    <MapSessionProvider onSelectResort={handleSelectResort}>
+      {detailError && !selectedResortData && (
+        <div
+          role="status"
+          className="fixed left-1/2 top-24 z-[1000] w-72 -translate-x-1/2 rounded-md border bg-white p-3 text-sm shadow-lg"
+        >
+          スキー場を読み込めませんでした。
+          <button
+            type="button"
+            onClick={() => setDetailRetry(value => value + 1)}
+            className="ml-2 min-h-11 text-blue-600"
+          >
+            再試行
+          </button>
+        </div>
+      )}
       <HomeLayout
         DynamicMap={DynamicMap}
         compareResortData={compareResortData}
@@ -693,7 +878,7 @@ export function HomeClient({ initialResorts }: Props) {
         isFilterEditorOpen={isFilterEditorOpen}
         isListSheetOpen={isListSheetOpen}
         isMobileFilterOverlayOpen={isMobileFilterOverlayOpen}
-        isPending={isPending}
+        isPending={isPending || (detailLoading && !selectedResortData)}
         isSidePanelLayout={isSidePanelLayout}
         listSheetContentRef={listSheetContentRef}
         listSheetSnapPoint={listSheetSnapPoint}
@@ -759,6 +944,6 @@ export function HomeClient({ initialResorts }: Props) {
         onConfirm={handleConfirmCloseMobileFilterOverlay}
         confirmLabel="破棄する"
       />
-    </>
+    </MapSessionProvider>
   );
 }

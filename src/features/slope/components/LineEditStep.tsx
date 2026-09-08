@@ -10,11 +10,11 @@ import {
   TriangleAlert as TriangleAlertIcon,
   Upload,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { OrderOrganizerDialog } from "@/features/latest-status-mapping/components/OrderOrganizerDialog";
-import { useLatestStatusMapping } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
+import type { LatestStatusMappingState } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
 import type { ApplyGeojsonOrderResult } from "@/features/latest-status-mapping/types";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { PanelSection } from "@/shared/components/PanelSection";
@@ -27,6 +27,7 @@ import { CourseMappingList } from "./CourseMappingList";
 import { MergeCoursesPanel, type MergeDraft } from "./MergeCoursesPanel";
 
 type LineEditStepProps = {
+  mapping: LatestStatusMappingState;
   resort: ResortOption;
   courses: EditorCourse[];
   setCourses: (updater: (courses: EditorCourse[]) => EditorCourse[]) => void;
@@ -69,6 +70,7 @@ const formatDateTime = (iso: string): string => {
 };
 
 export function LineEditStep({
+  mapping,
   resort,
   courses,
   setCourses,
@@ -102,21 +104,7 @@ export function LineEditStep({
   const [deletingCourseId, setDeletingCourseId] = useState<string | null>(null);
   const [isOrganizerOpen, setIsOrganizerOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const geojsonNames = useMemo(
-    () =>
-      courses
-        .filter(course => course.skiId === resort.id)
-        .map(course => course.name.trim())
-        .filter(Boolean),
-    [courses, resort.id],
-  );
   const isMerging = mergeDraft !== null;
-
-  const mapping = useLatestStatusMapping({
-    resortId: resort.id,
-    kind: "courses",
-    geojsonNames,
-  });
 
   const sortable = useSortableList({
     ids: courses.map(course => course.id),

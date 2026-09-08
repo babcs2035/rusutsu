@@ -15,6 +15,7 @@ import {
   type ResortMergeResult,
   resortMergeRequestSchema,
 } from "./mergeContract";
+import { ensureMergedGeometryDocuments } from "./mergeGeometry";
 import {
   type PublicSkiResortRecord,
   publicSkiResortSchema,
@@ -367,6 +368,14 @@ export async function mergeAdminSkiResortsDirect(
           },
           select: adminSkiResortSelect,
         });
+        await ensureMergedGeometryDocuments(
+          transaction,
+          request.id,
+          sourceResortIds.map(id => ({
+            id,
+            nameJa: members.find(member => member.id === id)?.nameJa ?? id,
+          })),
+        );
         for (const source of request.sources) {
           const result = await transaction.skiResort.updateMany({
             where: {
@@ -396,7 +405,10 @@ export async function mergeAdminSkiResortsDirect(
           sources: sources.map(serializeAdminSkiResort),
         };
       },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        timeout: 30_000,
+      },
     );
   } catch (error) {
     if (

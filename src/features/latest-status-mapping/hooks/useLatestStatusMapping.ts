@@ -7,6 +7,7 @@ import type {
   LatestStatusMappingRow,
   LatestStatusMappingWorkspace,
 } from "../types";
+import { type NamedGeometry, reconcileEditedRows } from "../utils/editedRows";
 import {
   assignGeojsonName,
   createSuggestedRows,
@@ -18,6 +19,7 @@ type Options = {
   kind: LatestStatusMappingKind;
   /** いま編集中の線の名前。保存前の状態で突き合わせるために渡す */
   geojsonNames: string[];
+  geometries?: NamedGeometry[];
   enabled?: boolean;
 };
 
@@ -39,7 +41,7 @@ export type LatestStatusMappingState = {
   autoAssign: () => void;
   /** コース名を変えたときに、対応表側の名前も追従させる */
   renameGeojsonName: (from: string, to: string) => void;
-  save: () => Promise<void>;
+  save: () => Promise<boolean>;
 };
 
 /**
@@ -53,6 +55,7 @@ export const useLatestStatusMapping = ({
   resortId,
   kind,
   geojsonNames,
+  geometries,
   enabled = true,
 }: Options): LatestStatusMappingState => {
   const [workspace, setWorkspace] =
@@ -67,8 +70,36 @@ export const useLatestStatusMapping = ({
   const geojsonNamesRef = useRef(geojsonNames);
   geojsonNamesRef.current = geojsonNames;
 
+  const geometrySnapshot = JSON.stringify(geometries ?? []);
+  const previousGeometry = useRef({ resortId, snapshot: geometrySnapshot });
+  useEffect(() => {
+    const previous = previousGeometry.current;
+    previousGeometry.current = { resortId, snapshot: geometrySnapshot };
+    if (
+      previous.resortId !== resortId ||
+      previous.snapshot === geometrySnapshot ||
+      !workspace ||
+      !geometries
+    )
+      return;
+    const next = reconcileEditedRows(
+      rows,
+      JSON.parse(previous.snapshot),
+      JSON.parse(geometrySnapshot),
+    );
+    if (JSON.stringify(next) === JSON.stringify(rows)) return;
+    setRows(next);
+    setIsDirty(true);
+    setSaveMessage(null);
+  }, [geometrySnapshot, geometries, resortId, rows, workspace]);
+
   const load = useCallback(async () => {
-    if (!enabled) return;
+    if (!enabled) {
+      setWorkspace(null);
+      setRows([]);
+      setIsDirty(false);
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
@@ -156,7 +187,8 @@ export const useLatestStatusMapping = ({
   }, []);
 
   const save = useCallback(async () => {
-    if (!workspace?.latestFile || isSaving) return;
+    if (!workspace || isLoading || isSaving) return false;
+    if (!workspace.latestFile || !isDirty) return true;
     setIsSaving(true);
     setError(null);
     try {
@@ -170,7 +202,7 @@ export const useLatestStatusMapping = ({
       });
       if (!result.ok) {
         setError(result.errors.join("\n"));
-        return;
+        return false;
       }
       setWorkspace(previous =>
         previous
@@ -185,16 +217,18 @@ export const useLatestStatusMapping = ({
       );
       setIsDirty(false);
       setSaveMessage(`${result.writtenFile} に保存しました。`);
+      return true;
     } catch (saveError) {
       setError(
         `保存に失敗しました: ${
           saveError instanceof Error ? saveError.message : String(saveError)
         }`,
       );
+      return false;
     } finally {
       setIsSaving(false);
     }
-  }, [isSaving, kind, resortId, rows, workspace]);
+  }, [isDirty, isLoading, isSaving, kind, resortId, rows, workspace]);
 
   return {
     workspace,

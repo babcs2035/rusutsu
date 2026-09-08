@@ -16,7 +16,7 @@ const batchScript = path.resolve(
 );
 
 const artifactRoot = path.resolve(
-  process.env.CRAWLER_ARTIFACT_ROOT || "var/crawler-worker-artifacts",
+  process.env.CRAWLER_ARTIFACT_ROOT || "src/private/data/resorts-temporary",
 );
 const scheduleDirectory = path.join(artifactRoot, "schedule");
 const reportDirectory = path.join(artifactRoot, "reports");

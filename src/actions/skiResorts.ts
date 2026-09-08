@@ -6,7 +6,6 @@ import type {
   FinalizedLiftFeature,
   FinalizedResortMapData,
 } from "@/lib/finalizedResortGeojsonShared";
-import { mergeResortMaps } from "@/lib/mergedResortMap";
 import { requireAdmin } from "@/lib/requireAdmin";
 import {
   getLiftTicketDataMap,
@@ -160,20 +159,12 @@ export async function getSkiResortById(id: string) {
   const sourceIds = resort.sourceResortIds?.length
     ? resort.sourceResortIds
     : [resort.id];
-  const [maps, decisionData, primaryDecisionData] = await Promise.all([
-    Promise.all(
-      sourceIds.map(async sourceId => ({
-        id: sourceId,
-        data: await getFinalizedResortMapData(sourceId),
-      })),
-    ),
-    getResortDecisionData(resort.id),
-    sourceIds[0] !== resort.id ? getResortDecisionData(sourceIds[0]) : null,
-  ]);
-  const finalizedMapData =
-    sourceIds[0] === resort.id
-      ? (maps[0]?.data ?? null)
-      : mergeResortMaps(maps);
+  const [finalizedMapData, decisionData, primaryDecisionData] =
+    await Promise.all([
+      getFinalizedResortMapData(resort.id),
+      getResortDecisionData(resort.id),
+      sourceIds[0] !== resort.id ? getResortDecisionData(sourceIds[0]) : null,
+    ]);
   const weatherEntries = sourceIds.flatMap(sourceId => {
     const entry = getWeatherIdsBySkiResortId(sourceId);
     return entry ? [entry] : [];
