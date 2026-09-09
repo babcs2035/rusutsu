@@ -302,7 +302,7 @@ export function TicketEditWorkspace({
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-[calc(100dvh-4rem)] bg-gray-100 text-gray-900 overflow-hidden">
+    <div className="admin-form-workspace flex flex-col md:flex-row h-[calc(100dvh-4rem)] bg-gray-100 text-gray-900 overflow-hidden">
       <AdminWorkspaceSidebar
         label="スキー場・シーズンを選ぶ"
         selectionKey={
@@ -520,7 +520,7 @@ export function TicketEditWorkspace({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 lg:px-7 py-4 lg:p-7">
+        <div className="admin-form-content min-h-0 flex-1 overflow-y-auto px-4 lg:px-7 py-4 lg:p-7">
           {data === null ? (
             <p className="text-gray-500">
               スキー場・シーズンの一覧から編集するリフト券JSONを選択してください。

@@ -656,7 +656,7 @@ export function ReviewEditWorkspace({
   const articleCategory = data?.article[selectedCategory];
 
   return (
-    <div className="h-[calc(100dvh-4rem)] max-md:h-auto max-md:min-h-0 max-md:flex-1 bg-gray-100 text-gray-900 overflow-hidden flex flex-col md:flex-row">
+    <div className="admin-form-workspace h-[calc(100dvh-4rem)] bg-gray-100 text-gray-900 overflow-hidden flex flex-col md:flex-row">
       {/* §15: lg 未満では 40vw 上限でサイドバーを縮小し，メイン（エディタ）に幅を回す */}
       <AdminWorkspaceSidebar
         label="スキー場を選ぶ"
@@ -824,7 +824,7 @@ export function ReviewEditWorkspace({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 lg:p-7">
+        <div className="admin-form-content min-h-0 flex-1 overflow-y-auto p-4 lg:p-7">
           {!data || !detailCategory || !articleCategory ? (
             <p className="text-gray-500">
               編集するスキー場を選択してください。

@@ -40,9 +40,9 @@ export default async function ReviewEditPage() {
     : null;
 
   return (
-    <div className="max-md:flex max-md:h-[calc(100dvh-4rem)] max-md:flex-col">
+    <div>
       {resorts.some(resort => resort.jsonOnly) && (
-        <details className="mx-3 md:mx-6 my-2 shrink-0 rounded border p-3 max-md:max-h-[25dvh] max-md:overflow-y-auto">
+        <details className="mx-3 md:mx-6 my-2 rounded border p-3">
           <summary>AIで作成した形式のレビュー（JSONで確認・更新）</summary>
           <ul className="mt-2 flex flex-wrap gap-3">
             {resorts

@@ -72,7 +72,7 @@ export function ReviewJsonUpload({
   }
 
   return (
-    <div className="space-y-5">
+    <div className="min-w-0 space-y-5 [overflow-wrap:anywhere]">
       {currentFiles.map(file => (
         <details key={file.key} className="rounded border p-3">
           <summary>現在の内容: {file.key}</summary>
@@ -95,7 +95,7 @@ export function ReviewJsonUpload({
             void readFiles(event.target.files);
             event.target.value = "";
           }}
-          className="block"
+          className="block min-h-11 w-full min-w-0"
         />
       </label>
       {busy && <p role="status">処理中…</p>}
@@ -115,13 +115,13 @@ export function ReviewJsonUpload({
                 {file.kind}.json — {file.status}（クリックで保存前後を確認）
               </summary>
               <div className="grid gap-4 md:grid-cols-2">
-                <div>
+                <div className="min-w-0">
                   <h3>現在の内容</h3>
                   <pre className="max-h-96 overflow-auto whitespace-pre-wrap text-xs">
                     {file.previousContent ?? "未登録"}
                   </pre>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h3>保存する内容</h3>
                   <pre className="max-h-96 overflow-auto whitespace-pre-wrap text-xs">
                     {file.content}

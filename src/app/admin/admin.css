@@ -1,6 +1,47 @@
+/* 公開地図用のスクロール禁止を、管理画面がある間だけ解除する。
+   DOM に追従するため、クライアント遷移で地図に戻ると元の設定に戻る。 */
+html:has(.admin-shell) {
+  overflow: auto;
+  overscroll-behavior: auto;
+}
+
+body:has(.admin-shell) {
+  overflow: visible;
+  overscroll-behavior: auto;
+}
+
+/* スマホの横向き表示など、幅が広くても高さが足りない場合を含む。 */
+@media (width < 48rem), (height < 40rem) {
+  .admin-map-workspace {
+    min-height: 40rem;
+  }
+}
+
 /* 管理画面だけで、スマホのタップ領域と入力時の文字サイズを確保する。 */
 @media (width < 48rem) {
-  .admin-shell
+  /* フォームはページと一緒にスクロールし、キーボード表示時も
+     ヘッダーやタブで入力欄の高さがなくならないようにする。 */
+  .admin-form-workspace {
+    height: auto;
+    min-height: calc(100dvh - 4rem);
+    overflow: visible;
+  }
+
+  .admin-form-content {
+    flex: none;
+    overflow: visible;
+  }
+
+  /* ダイアログは body に portal されるため .admin-shell の外も対象。 */
+  body:has(.admin-shell)
+  :is([data-slot="dialog-content"], [data-slot="alert-dialog-content"]) {
+    width: calc(100% - 2rem);
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    overflow-wrap: anywhere;
+  }
+
+  body:has(.admin-shell)
     :is(
       input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
       textarea,
@@ -9,7 +50,7 @@
     font-size: 16px;
   }
 
-  .admin-shell
+  body:has(.admin-shell)
     :is(
       [data-slot="button"],
       [data-slot="input"],
@@ -35,7 +76,7 @@
   }
 
   .admin-editor-steps button {
-    min-height: 36px;
+    min-height: 44px;
   }
 
   .admin-editor-header > a {

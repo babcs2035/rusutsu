@@ -75,7 +75,7 @@ export function MappingPairList<T extends MappingPairItem>({
   }, [activeItemId, sortable.draggingId]);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-1">
+    <div className="flex min-h-0 flex-1 flex-col gap-1 max-md:flex-none">
       <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_18px_minmax(0,0.8fr)] items-center gap-1 px-1 text-[10px] font-semibold text-gray-500">
         <span>{leftHeading}</span>
         <span />
@@ -88,7 +88,7 @@ export function MappingPairList<T extends MappingPairItem>({
 
       <div
         ref={sortable.containerRef}
-        className="relative min-h-[140px] flex-1 overflow-y-auto rounded-md border"
+        className="relative min-h-[140px] flex-1 overflow-y-auto rounded-md border max-md:max-h-64"
       >
         {items.map((item, index) => {
           const isActive = item.id === activeItemId;
