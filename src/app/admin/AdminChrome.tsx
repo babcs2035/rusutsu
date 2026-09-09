@@ -7,7 +7,12 @@ import type { ReactNode } from "react";
  * 画面いっぱいを使う編集画面のパス。
  * ここでは共通ヘッダーを出さず、地図と作業パネルに縦幅を全部渡す。
  */
-const FULL_HEIGHT_PATHS = ["/admin/slope", "/admin/lift", "/admin/resort"];
+const FULL_HEIGHT_PATHS = [
+  "/admin/slope",
+  "/admin/lift",
+  "/admin/resort",
+  "/admin/social",
+];
 
 export const isFullHeightAdminPath = (pathname: string): boolean =>
   FULL_HEIGHT_PATHS.some(
