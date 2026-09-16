@@ -61,6 +61,8 @@ export function CourseMappingList({
   return (
     <MappingPairList
       items={courses}
+      onRenameItem={onRenameCourse}
+      nameLabel="コース名"
       sortable={sortable}
       mapping={mapping}
       activeItemId={activeCourseId}
@@ -97,7 +99,7 @@ export function CourseMappingList({
             className="h-8 min-w-0 flex-1 rounded-md border border-input bg-white px-2 text-sm shadow-sm"
             placeholder="コース名"
             value={course.name}
-            disabled={course.unnamed}
+            aria-label={`${index + 1}番目のコース名`}
             onFocus={() => onSelectCourse(course.id)}
             onChange={event => onRenameCourse(course.id, event.target.value)}
           />

@@ -33,6 +33,7 @@ export type LatestStatusMappingWorkspace = {
   kind: LatestStatusMappingKind;
   latestFile: string | null;
   latestTime: string | null;
+  sourceUrls: string[];
   crawledItems: LatestStatusMappingItem[];
   geojsonNames: string[];
   rows: LatestStatusMappingRow[];

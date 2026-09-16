@@ -51,12 +51,15 @@ const trimmed = (row: SheetRow, key: string): string => (row[key] ?? "").trim();
 /**
  * Excel の行を使う条件。
  *
- * コースは piste、リフトは主に searchWord で対象になる。どちらも空なら、
- * 名前などが入っていても GeoJSON へ混ぜない。
+ * 検索語・圧雪情報の有無で詳細情報を除外しない。
+ * 名前と所属だけの空行を除き、詳細が一つでもあれば照合する。
  */
 export const isLinkableSheetRow = (row: SheetRow): boolean =>
   trimmed(row, "name").length > 0 &&
-  (trimmed(row, "piste").length > 0 || trimmed(row, "searchWord").length > 0);
+  Object.entries(row).some(
+    ([key, value]) =>
+      key !== "name" && key !== "resort" && value.trim().length > 0,
+  );
 
 const hasStoredValue = (value: unknown): boolean => {
   if (value === undefined || value === null) return false;
@@ -130,7 +133,12 @@ export const mergeSheetRowsIntoBefore = (
   const namedRows = rows.filter(row => trimmed(row, "name").length > 0);
   const eligibleRows = namedRows.filter(isLinkableSheetRow);
   const rowByName = new Map<string, SheetRow>();
-  for (const row of eligibleRows) rowByName.set(trimmed(row, "name"), row);
+  const duplicateNames = new Set<string>();
+  for (const row of eligibleRows) {
+    const name = trimmed(row, "name");
+    if (rowByName.has(name)) duplicateNames.add(name);
+    rowByName.set(name, row);
+  }
 
   const nameIndex = createBaseNameIndex(rowByName.keys());
   const usedRowNames = new Set<string>();
@@ -150,7 +158,7 @@ export const mergeSheetRowsIntoBefore = (
       featureName,
       kind,
     );
-    if (!matchedName) return feature;
+    if (!matchedName || duplicateNames.has(matchedName)) return feature;
 
     const row = rowByName.get(matchedName);
     if (!row) return feature;
@@ -160,6 +168,7 @@ export const mergeSheetRowsIntoBefore = (
     const nextProperties = { ...properties };
     for (const [key, value] of Object.entries(normalizeSheetRow(row))) {
       if (key === "name") continue;
+      if (!hasStoredValue(value)) continue;
       if (hasStoredValue(nextProperties[key])) continue;
       nextProperties[key] = value;
     }

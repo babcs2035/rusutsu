@@ -21,6 +21,7 @@ export type MappingPairItem = {
   id: string;
   /** 対応表で使う名前。GeoJSON の name と同じもの */
   name: string;
+  unnamed?: boolean;
 };
 
 type MappingPairListProps<T extends MappingPairItem> = {
@@ -39,6 +40,8 @@ type MappingPairListProps<T extends MappingPairItem> = {
   emptyMessage: string;
   /** 未対応の名前を押したときに対応させる相手 */
   activeItemName: string | null;
+  onRenameItem: (id: string, name: string) => void;
+  nameLabel: string;
 };
 
 /**
@@ -59,10 +62,19 @@ export function MappingPairList<T extends MappingPairItem>({
   rowClassName,
   emptyMessage,
   activeItemName,
+  onRenameItem,
+  nameLabel,
 }: MappingPairListProps<T>) {
   const rowRefs = useRef(new Map<string, HTMLElement>());
   const crawledItems = mapping.workspace?.crawledItems ?? [];
   const hasCrawler = crawledItems.length > 0;
+  const assignItem = (item: T, crawledName: string | null) => {
+    const needsName = item.unnamed || !item.name.trim();
+    const name = needsName ? crawledName : item.name.trim();
+    if (!name) return;
+    if (needsName) onRenameItem(item.id, name);
+    mapping.assign(name, crawledName);
+  };
 
   useEffect(() => {
     if (!activeItemId || sortable.draggingId) return;
@@ -136,8 +148,8 @@ export function MappingPairList<T extends MappingPairItem>({
                   <Select
                     value={crawledName ?? NO_CRAWLED_NAME}
                     onValueChange={value =>
-                      mapping.assign(
-                        item.name.trim(),
+                      assignItem(
+                        item,
                         value === NO_CRAWLED_NAME ? null : (value ?? null),
                       )
                     }
@@ -148,9 +160,8 @@ export function MappingPairList<T extends MappingPairItem>({
                         !crawledName && "border-dashed text-gray-500",
                       )}
                       title={crawledName ?? "未対応"}
-                      disabled={item.name.trim() === ""}
                     >
-                      <SelectValue />
+                      <SelectValue>{crawledName ?? "未対応"}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={NO_CRAWLED_NAME}>未対応</SelectItem>
@@ -166,6 +177,17 @@ export function MappingPairList<T extends MappingPairItem>({
                 )}
               </div>
 
+              {crawledName && (
+                <Button
+                  size="xs"
+                  variant="outline"
+                  className="mt-1 ml-6"
+                  disabled={item.name === crawledName}
+                  onClick={() => onRenameItem(item.id, crawledName)}
+                >
+                  クローラの名前を{nameLabel}に反映
+                </Button>
+              )}
               {renderBelow?.(item, index, isActive)}
             </div>
           );
@@ -189,15 +211,18 @@ export function MappingPairList<T extends MappingPairItem>({
                 size="xs"
                 variant="outline"
                 className="max-w-full bg-white"
-                disabled={!activeItemName}
+                disabled={!activeItemId}
                 title={
                   activeItemName
                     ? `「${activeItemName}」に対応させる`
-                    : "先に一覧で選んでください"
+                    : activeItemId
+                      ? "選択中の線に対応させ、名前に反映する"
+                      : "先に一覧で選んでください"
                 }
-                onClick={() =>
-                  activeItemName && mapping.assign(activeItemName, name)
-                }
+                onClick={() => {
+                  const item = items.find(item => item.id === activeItemId);
+                  if (item) assignItem(item, name);
+                }}
               >
                 <span className="truncate">{name}</span>
               </Button>

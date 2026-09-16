@@ -8,17 +8,15 @@ import {
 } from "@/server/data-documents/client";
 import { DataDocumentConflictError } from "@/server/data-documents/contract";
 import {
-  normalizeSocialLinks,
-  patchSocialDocument,
-  type SocialSaveResult,
-  socialSaveSchema,
+  type LinkSaveResult,
+  linkSaveSchema,
+  normalizeLinkList,
+  patchLinksDocument,
 } from "./model";
 
-export async function saveSocialLinks(
-  input: unknown,
-): Promise<SocialSaveResult> {
+export async function saveResortLink(input: unknown): Promise<LinkSaveResult> {
   await requireAdmin();
-  const parsed = socialSaveSchema.safeParse(input);
+  const parsed = linkSaveSchema.safeParse(input);
   if (!parsed.success)
     return {
       ok: false,
@@ -39,7 +37,7 @@ export async function saveSocialLinks(
       };
     for (let attempt = 0; attempt < 3; attempt++) {
       const document = await getDataDocument("SkiResortLinks.json");
-      const content = patchSocialDocument(document?.content ?? null, request);
+      const content = patchLinksDocument(document?.content ?? null, request);
       try {
         await writeDataDocuments([
           {
@@ -49,16 +47,16 @@ export async function saveSocialLinks(
             expectedHash: document?.hash ?? null,
           },
         ]);
-        return { ok: true, links: normalizeSocialLinks(request.links) };
+        return { ok: true, links: normalizeLinkList(request.links) };
       } catch (error) {
         if (error instanceof DataDocumentConflictError && attempt < 2) continue;
         throw error;
       }
     }
   } catch (error) {
-    if (error instanceof Error && error.message.startsWith("このSNS欄"))
+    if (error instanceof Error && error.message.startsWith("この項目は"))
       return { ok: false, message: error.message };
-    console.error("Failed to save social links", {
+    console.error("Failed to save resort link", {
       name: error instanceof Error ? error.name : "UnknownError",
     });
   }

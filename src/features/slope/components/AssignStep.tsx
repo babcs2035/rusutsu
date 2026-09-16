@@ -116,7 +116,15 @@ export function AssignStep({
           <h2 className="font-bold font-[var(--font-heading)]">
             {resort.nameJa}
           </h2>
-          <p className="text-xs text-orange-900">OpenStreetMap由来・未確認</p>
+          <p
+            className={
+              resort.osmConfirmedAt
+                ? "text-xs text-green-900"
+                : "text-xs text-orange-900"
+            }
+          >
+            {resort.osmConfirmedAt ? "✓ 確認済み" : "OpenStreetMap由来・未確認"}
+          </p>
         </div>
         <Button size="sm" variant="outline" onClick={onBackToSelect}>
           スキー場選択へ戻る
@@ -204,7 +212,7 @@ export function AssignStep({
         })}
       </div>
       <Button onClick={onProceed} disabled={courses.length === 0}>
-        次へ（コース線編集）
+        次へ（位置補正）
       </Button>
     </div>
   );

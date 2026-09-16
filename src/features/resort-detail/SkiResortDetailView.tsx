@@ -234,8 +234,18 @@ export const SkiResortDetailView = ({
     ) : null;
 
   const renderTabPanels = () => (
-    <>
-      {activeTab === "概要" && <OverviewTab resort={resort} />}
+    <div className="relative">
+      <div
+        className={
+          activeTab !== "概要"
+            ? "invisible absolute inset-x-0 top-0 pointer-events-none"
+            : undefined
+        }
+        aria-hidden={activeTab !== "概要"}
+        inert={activeTab !== "概要"}
+      >
+        <OverviewTab resort={resort} />
+      </div>
       {activeTab === "コース" && (
         <CoursesTab
           resort={resort}
@@ -254,7 +264,7 @@ export const SkiResortDetailView = ({
       )}
       {activeTab === "チケット" && <TicketsTab resort={resort} />}
       {activeTab === "気候" && <WeatherTab resort={resort} />}
-    </>
+    </div>
   );
 
   const mobileFeatureDetail = renderFeatureDetail();

@@ -14,6 +14,7 @@ import {
   ResortStatusBadge,
   ResortStatusLegend,
 } from "@/shared/components/ResortStatusBadges";
+import { ElevationRefreshButton } from "@/shared/components/resort-editor/ElevationRefreshButton";
 import { discardDraft, listDraftSummaries } from "../hooks/useDraftStorage";
 import type { DraftSummary, ResortOption, StartSource } from "../types";
 
@@ -173,12 +174,14 @@ export function ResortSelectStep({ resorts, onStart }: ResortSelectStepProps) {
                 {pendingResort.prefecture} / {pendingResort.id}
               </p>
               <div className="mt-1 mb-2 flex flex-wrap gap-1">
-                {pendingResort.hasSlopeBefore && (
+                {(pendingResort.hasSlopeBefore ||
+                  pendingResort.osmConfirmedAt) && (
                   <ResortStatusBadge kind="confirmed" />
                 )}
-                {pendingResort.hasSlopeBeforeOsm && (
-                  <ResortStatusBadge kind="osm" />
-                )}
+                {pendingResort.hasSlopeBeforeOsm &&
+                  !pendingResort.osmConfirmedAt && (
+                    <ResortStatusBadge kind="osm" />
+                  )}
                 <ResortStatusBadge
                   kind={
                     pendingResort.hasCrawlerCourses ? "crawler" : "noCrawler"
@@ -271,6 +274,24 @@ export function ResortSelectStep({ resorts, onStart }: ResortSelectStepProps) {
                   新規作成
                 </Button>
               </div>
+              <div className="mt-3 flex flex-col gap-2">
+                {pendingResort.hasSlopeBefore && (
+                  <ElevationRefreshButton
+                    key={`${pendingResort.id}:curated`}
+                    resortId={pendingResort.id}
+                    kind="slope"
+                    sourceKind="curated"
+                  />
+                )}
+                {pendingResort.hasSlopeBeforeOsm && (
+                  <ElevationRefreshButton
+                    key={`${pendingResort.id}:osm`}
+                    resortId={pendingResort.id}
+                    kind="slope"
+                    sourceKind="osm"
+                  />
+                )}
+              </div>
             </CardContent>
           </Card>
         )}
@@ -302,10 +323,12 @@ export function ResortSelectStep({ resorts, onStart }: ResortSelectStepProps) {
                   drafts.has(draftMapKey(resort.id, "osm"))) && (
                   <ResortStatusBadge kind="draft" />
                 )}
-                {resort.hasSlopeBefore && (
+                {(resort.hasSlopeBefore || resort.osmConfirmedAt) && (
                   <ResortStatusBadge kind="confirmed" />
                 )}
-                {resort.hasSlopeBeforeOsm && <ResortStatusBadge kind="osm" />}
+                {resort.hasSlopeBeforeOsm && !resort.osmConfirmedAt && (
+                  <ResortStatusBadge kind="osm" />
+                )}
                 <ResortStatusBadge
                   kind={resort.hasCrawlerCourses ? "crawler" : "noCrawler"}
                 />

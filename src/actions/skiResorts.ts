@@ -1,5 +1,7 @@
 "use server";
 
+import { readResortLinksMap } from "@/features/lift/server/liftFiles";
+import { collectSocialAccounts } from "@/features/resort-detail/utils/socialAccounts";
 import { getFinalizedResortMapData } from "@/lib/finalizedResortGeojson";
 import type {
   FinalizedCourseFeature,
@@ -159,11 +161,12 @@ export async function getSkiResortById(id: string) {
   const sourceIds = resort.sourceResortIds?.length
     ? resort.sourceResortIds
     : [resort.id];
-  const [finalizedMapData, decisionData, primaryDecisionData] =
+  const [finalizedMapData, decisionData, primaryDecisionData, linksMap] =
     await Promise.all([
       getFinalizedResortMapData(resort.id),
       getResortDecisionData(resort.id),
       sourceIds[0] !== resort.id ? getResortDecisionData(sourceIds[0]) : null,
+      readResortLinksMap(),
     ]);
   const weatherEntries = sourceIds.flatMap(sourceId => {
     const entry = getWeatherIdsBySkiResortId(sourceId);
@@ -200,6 +203,7 @@ export async function getSkiResortById(id: string) {
       : (primaryDecisionData?.liftTickets ?? []),
     reviewData:
       decisionData.reviewData ?? primaryDecisionData?.reviewData ?? null,
+    socialAccounts: collectSocialAccounts(linksMap, [resort.id, ...sourceIds]),
     weatherIds,
     finalizedMapData,
     finalizedOperationSummary:

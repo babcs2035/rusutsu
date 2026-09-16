@@ -11,7 +11,7 @@ const FULL_HEIGHT_PATHS = [
   "/admin/slope",
   "/admin/lift",
   "/admin/resort",
-  "/admin/social",
+  "/admin/links",
 ];
 
 export const isFullHeightAdminPath = (pathname: string): boolean =>

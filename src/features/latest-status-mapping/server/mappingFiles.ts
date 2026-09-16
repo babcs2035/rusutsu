@@ -175,11 +175,12 @@ const readLatestStatus = async (
   fileName: string | null;
   time: string | null;
   items: LatestStatusMappingItem[];
+  sourceUrls: string[];
 }> => {
   const latest = latestStatusLoader
     ? await latestStatusLoader(resortId, kind)
     : await loadLatestSuccessfulStatus(temporaryRoot, resortId, kind);
-  if (!latest) return { fileName: null, time: null, items: [] };
+  if (!latest) return { fileName: null, time: null, items: [], sourceUrls: [] };
 
   const itemsByName = new Map<string, LatestStatusMappingItem>();
   for (const sourceItem of latest.items) {
@@ -190,6 +191,7 @@ const readLatestStatus = async (
     fileName: latest.fileName,
     time: latest.time,
     items: [...itemsByName.values()],
+    sourceUrls: latest.sourceUrls,
   };
 };
 
@@ -298,6 +300,7 @@ export const loadLatestStatusMappingWorkspace = async (
     kind,
     latestFile: latest.fileName,
     latestTime: latest.time,
+    sourceUrls: latest.sourceUrls,
     crawledItems: latest.items,
     geojsonNames,
     rows,

@@ -30,7 +30,7 @@ import { OrderOrganizerDialog } from "@/features/latest-status-mapping/component
 import { cn } from "@/lib/utils";
 import { PanelSection } from "@/shared/components/PanelSection";
 import { moveItem, useSortableList } from "@/shared/hooks/useSortableList";
-import { updateDefaultSearchWord } from "@/shared/utils/searchWord";
+import { buildDefaultSearchWord } from "@/shared/utils/searchWord";
 import {
   BINARY_OPTIONS,
   LEVEL_OPTIONS,
@@ -404,10 +404,8 @@ export function DetailEditStep({
                       name: nextName,
                       detail: {
                         ...course.detail,
-                        searchWord: updateDefaultSearchWord(
-                          course.detail.searchWord,
+                        searchWord: buildDefaultSearchWord(
                           selectedResortSearchName,
-                          course.name,
                           nextName,
                         ),
                       },

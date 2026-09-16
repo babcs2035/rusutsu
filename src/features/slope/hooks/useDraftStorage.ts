@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { ResortEditorLinkDraft } from "@/shared/components/resort-editor/useResortEditorLinks";
 import { DRAFT_STORAGE_PREFIX } from "../constants";
 import type {
   DraftSummary,
@@ -111,6 +112,7 @@ export const useDraftStorage = (
   preservedFeatures: SlopeBeforeFeature[],
   preservedDetails: SlopeDetailEntry[],
   enabled: boolean,
+  linkDraft?: ResortEditorLinkDraft,
 ): DraftStorageState => {
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [exportedAt, setExportedAt] = useState<string | null>(null);
@@ -138,6 +140,7 @@ export const useDraftStorage = (
     const timer = window.setTimeout(() => {
       const updatedAt = new Date().toISOString();
       const draft: SlopeEditDraft = {
+        linkDraft,
         version: 1,
         resortId,
         sourceKind,
@@ -171,6 +174,7 @@ export const useDraftStorage = (
     preservedFeatures,
     preservedDetails,
     exportedAt,
+    linkDraft,
   ]);
 
   const isDirty =

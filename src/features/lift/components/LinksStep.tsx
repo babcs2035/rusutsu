@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
+import { EditorStepContent } from "@/shared/components/resort-editor/EditorStepContent";
+import { SortableLinkList } from "@/shared/components/resort-editor/SortableLinkList";
 import { RESORT_LINK_KEYS, RESORT_LINK_LABELS } from "../constants";
 import type { ResortLink, ResortLinks, ResortOption } from "../types";
 
@@ -43,45 +44,50 @@ export const LinkListField = ({
     <div>
       <Label>{label}</Label>
       <div className="flex flex-col gap-2">
-        {values.map((value, index) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: 並び替えがなく末尾追加・任意削除のみのため
-          <div key={index} className="flex gap-2 items-start">
-            <div
-              className={cn(
-                "flex flex-col gap-2 flex-1",
-                index > 0 && "md:flex-row",
-              )}
-            >
-              <Input
-                className="h-9 w-full rounded-md border border-input bg-white px-3 py-1 text-sm shadow-sm"
-                placeholder="https://..."
-                value={value.url}
-                onChange={event =>
-                  handleChangeAt(index, { url: event.target.value })
-                }
-              />
-              <Input
-                className="h-9 w-full rounded-md border border-input bg-white px-3 py-1 text-sm shadow-sm"
-                placeholder="補足"
-                value={value.description ?? ""}
-                onChange={event =>
-                  handleChangeAt(index, {
-                    description: event.target.value || undefined,
-                  })
-                }
-              />
+        <SortableLinkList label={label} values={values} onChange={onChange}>
+          {(value, index, handle) => (
+            <div className="flex min-w-0 flex-wrap gap-2 items-start">
+              <div className="grid min-w-0 flex-1 basis-full grid-cols-2 gap-2 md:basis-0">
+                <Input
+                  className="h-11 sm:h-9 min-w-0 w-full rounded-md border border-input bg-white px-3 py-1 text-sm shadow-sm"
+                  type="url"
+                  inputMode="url"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  aria-label={`${label} URL ${index + 1}`}
+                  placeholder="https://..."
+                  value={value.url}
+                  onChange={event =>
+                    handleChangeAt(index, { url: event.target.value })
+                  }
+                />
+                <Input
+                  className="h-11 sm:h-9 min-w-0 w-full rounded-md border border-input bg-white px-3 py-1 text-sm shadow-sm"
+                  aria-label={`${label} 補足 ${index + 1}`}
+                  placeholder="補足"
+                  value={value.description ?? ""}
+                  onChange={event =>
+                    handleChangeAt(index, {
+                      description: event.target.value || undefined,
+                    })
+                  }
+                />
+              </div>
+              {handle}
+              <Button
+                type="button"
+                size="sm"
+                variant="destructive"
+                className="h-9 flex-shrink-0"
+                onClick={() => handleRemoveAt(index)}
+              >
+                削除
+              </Button>
             </div>
-            <Button
-              size="sm"
-              variant="destructive"
-              className="flex-shrink-0 mt-2 md:mt-0"
-              onClick={() => handleRemoveAt(index)}
-            >
-              削除
-            </Button>
-          </div>
-        ))}
+          )}
+        </SortableLinkList>
         <Button
+          type="button"
           size="xs"
           variant="outline"
           className="self-start"
@@ -102,46 +108,44 @@ export function LinksStep({
   onBack,
 }: LinksStepProps) {
   return (
-    <div className="h-full min-h-0 flex justify-center overflow-y-auto bg-gray-50">
-      <div className="flex flex-col w-[820px] max-w-full p-6 gap-4">
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-lg font-bold font-[var(--font-heading)]">
-              スキー場全体のリンク
-            </h2>
-            <p className="text-sm text-gray-600">
-              {resort.nameJa ? `${resort.nameJa}（${resort.id}）` : resort.id}
-            </p>
-          </div>
-          <Button size="sm" variant="outline" onClick={onBack}>
-            詳細情報へ戻る
-          </Button>
+    <EditorStepContent>
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+        <div>
+          <h2 className="text-lg font-bold font-[var(--font-heading)]">
+            スキー場全体のリンク
+          </h2>
+          <p className="break-words text-sm text-gray-600">
+            {resort.nameJa ? `${resort.nameJa}（${resort.id}）` : resort.id}
+          </p>
         </div>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex flex-col gap-4">
-              {RESORT_LINK_KEYS.map(key => (
-                <LinkListField
-                  key={key}
-                  label={RESORT_LINK_LABELS[key]}
-                  values={links[key] ?? []}
-                  onChange={values => setLinks({ ...links, [key]: values })}
-                />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="flex gap-3 pb-6">
-          <Button variant="default" onClick={onProceed}>
-            次へ（確認・保存）
-          </Button>
-          <Button variant="outline" onClick={onBack}>
-            戻る
-          </Button>
-        </div>
+        <Button size="sm" variant="outline" onClick={onBack}>
+          詳細情報へ戻る
+        </Button>
       </div>
-    </div>
+
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-col gap-4">
+            {RESORT_LINK_KEYS.map(key => (
+              <LinkListField
+                key={key}
+                label={RESORT_LINK_LABELS[key]}
+                values={links[key] ?? []}
+                onChange={values => setLinks({ ...links, [key]: values })}
+              />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex gap-3 pb-6">
+        <Button variant="default" onClick={onProceed}>
+          次へ（確認・保存）
+        </Button>
+        <Button variant="outline" onClick={onBack}>
+          戻る
+        </Button>
+      </div>
+    </EditorStepContent>
   );
 }

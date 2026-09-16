@@ -265,9 +265,10 @@ const findSafeMatch = <TFeature extends LineGeojsonFeature>(
   return nameMatches.length === 1 ? (nameMatches[0] ?? null) : null;
 };
 
-const resampleLineEvery = (
+export const resampleLineEvery = (
   coordinates: readonly Position2d[],
   intervalM: number,
+  measureDistance: (a: Position2d, b: Position2d) => number = distanceM,
 ): { coordinates: Position2d[]; horizontalDistanceM: number } => {
   if (!Number.isFinite(intervalM) || intervalM <= 0) {
     throw new Error("サンプリング間隔は0より大きい有限値が必要です。");
@@ -287,7 +288,7 @@ const resampleLineEvery = (
     const start = coordinates[index - 1];
     const end = coordinates[index];
     if (!start || !end) continue;
-    const segmentM = distanceM(start, end);
+    const segmentM = measureDistance(start, end);
     if (segmentM === 0) continue;
 
     while (traversedM + segmentM >= nextTargetM) {

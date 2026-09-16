@@ -12,6 +12,8 @@ import {
 import type { TileLayerId } from "@/features/slope/types";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { ResizablePanel } from "@/shared/components/ResizablePanel";
+import { ResortEditorTools } from "@/shared/components/resort-editor/ResortEditorTools";
+import { useResortEditorLinks } from "@/shared/components/resort-editor/useResortEditorLinks";
 import { StepIndicator } from "@/shared/components/StepIndicator";
 import {
   loadLiftSourceData,
@@ -29,7 +31,6 @@ import {
   type StartSource,
 } from "./components/ResortSelectStep";
 import {
-  EMPTY_RESORT_LINKS,
   LIFT_TUTORIAL_SEEN_STORAGE_KEY,
   RESORT_INITIAL_ZOOM,
 } from "./constants";
@@ -38,7 +39,6 @@ import type {
   EditorLift,
   EditStep,
   LiftDetailEntry,
-  ResortLinks,
   ResortOption,
 } from "./types";
 import {
@@ -72,8 +72,8 @@ export function LiftEditWorkspace({
   const [resort, setResort] = useState<ResortOption | null>(null);
   const [lifts, setLiftsState] = useState<EditorLift[]>([]);
   const [details, setDetails] = useState<LiftDetailEntry[]>([]);
-  const [resortLinks, setResortLinks] =
-    useState<ResortLinks>(EMPTY_RESORT_LINKS);
+  const linkEditor = useResortEditorLinks();
+  const { links: resortLinks, setLinks: setResortLinks } = linkEditor;
   const [fileHash, setFileHash] = useState<string | null>(null);
   const [selectedLiftId, setSelectedLiftId] = useState<string | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -122,6 +122,7 @@ export function LiftEditWorkspace({
     fileHash,
     lifts,
     step !== "select",
+    linkEditor.draft,
   );
 
   useEffect(() => {
@@ -210,7 +211,11 @@ export function LiftEditWorkspace({
         loadLiftSourceData(selected.id),
         loadResortLinks(selected.id),
       ]);
-      setResortLinks(links);
+      linkEditor.initialize(
+        selected.id,
+        links,
+        source === "draft" ? loadDraft(selected.id)?.linkDraft : undefined,
+      );
 
       if (source === "draft") {
         const draft = loadDraft(selected.id);
@@ -287,7 +292,6 @@ export function LiftEditWorkspace({
     setResort(null);
     setLiftsState([]);
     setDetails([]);
-    setResortLinks(EMPTY_RESORT_LINKS);
     setFileHash(null);
     setSelectedLiftId(null);
     resetMapModes();
@@ -311,7 +315,9 @@ export function LiftEditWorkspace({
 
   const handleSaved = (writtenFiles: string[]) => {
     markSavedToServer();
-    setSaveMessage(`保存しました: ${writtenFiles.join(", ")}`);
+    setSaveMessage(
+      `保存しました。標高はバックグラウンドで更新します: ${writtenFiles.join(", ")}`,
+    );
     handleBackToSelect();
   };
 
@@ -542,6 +548,16 @@ export function LiftEditWorkspace({
             minWidth={360}
             maxWidth={900}
           >
+            {resort && (
+              <ResortEditorTools
+                key={resort.id}
+                resortId={resort.id}
+                resortName={resort.nameJa || resort.id}
+                kind="lift"
+                linkEditor={linkEditor}
+                crawlerSourceUrls={mapping.workspace?.sourceUrls}
+              />
+            )}
             {step === "assign" && resort && (
               <AssignStep
                 resort={resort}
@@ -563,6 +579,7 @@ export function LiftEditWorkspace({
             )}
             {step === "geometry" && resort && (
               <GeometryStep
+                resorts={effectiveResorts}
                 mapping={mapping}
                 resort={resort}
                 lifts={activeLifts}
@@ -627,6 +644,7 @@ export function LiftEditWorkspace({
             )}
             {step === "confirm" && effectiveResort && (
               <ConfirmStep
+                saveLinks={() => linkEditor.save()}
                 mapping={mapping}
                 resort={effectiveResort}
                 resorts={effectiveResorts}

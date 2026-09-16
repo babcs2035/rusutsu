@@ -1,4 +1,5 @@
 import type { LngLat } from "@/features/slope/types";
+import type { ResortEditorLinkDraft } from "@/shared/components/resort-editor/useResortEditorLinks";
 
 export type { LngLat };
 
@@ -140,6 +141,8 @@ export type ResortLink = {
 export type ResortLinks = {
   officialSiteUrls: ResortLink[];
   mapUrls: ResortLink[];
+  mapPageUrls: ResortLink[];
+  googleMapsUrls: ResortLink[];
   skiSchoolUrls: ResortLink[];
   snowboardSchoolUrls: ResortLink[];
   skiResortInfoUrls: ResortLink[];
@@ -172,6 +175,7 @@ export type SaveResult =
   | { ok: false; errors: string[] };
 
 export type LiftEditDraft = {
+  linkDraft?: ResortEditorLinkDraft;
   version: 1;
   resortId: string;
   fileHash: string | null;

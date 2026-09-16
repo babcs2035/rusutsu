@@ -7,7 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { LatestStatusMappingState } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
 import type { ValidationResult } from "@/features/slope/types";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
-import { saveLiftEdits, saveResortLinks } from "../actions";
+import { EditorStepContent } from "@/shared/components/resort-editor/EditorStepContent";
+import { saveEditorChanges } from "@/shared/components/resort-editor/saveEditorChanges";
+import { saveLiftEdits } from "../actions";
 import { RESORT_LINK_KEYS, RESORT_LINK_LABELS } from "../constants";
 import type { EditorLift, ResortLinks, ResortOption } from "../types";
 import { collectLiftChanges, hasAnyChange } from "../utils/diff";
@@ -18,6 +20,7 @@ import { validateLifts } from "../utils/validation";
 import { LinkListField } from "./LinksStep";
 
 type ConfirmStepProps = {
+  saveLinks: () => Promise<string[]>;
   mapping: LatestStatusMappingState;
   resort: ResortOption;
   resorts: ResortOption[];
@@ -52,6 +55,7 @@ const ChangeValue = ({ before, after }: { before: string; after: string }) => (
 );
 
 export function ConfirmStep({
+  saveLinks,
   mapping,
   resort,
   resorts,
@@ -112,27 +116,21 @@ export function ConfirmStep({
     setIsSaving(true);
     setServerErrors([]);
     try {
-      if (!(await mapping.save())) {
-        setServerErrors([
-          "営業情報の対応表を保存できませんでした。表示されたエラーを確認してください。",
-        ]);
-        return;
-      }
-      // 手順6でリンクを追加・修正した場合も、リフトと同じ保存操作で反映する。
-      await saveResortLinks(resort.id, links);
-      const result = await saveLiftEdits({
-        resortId: resort.id,
-        fileHash,
-        lifts: lifts.map(liftToSavePayload),
+      const result = await saveEditorChanges({
+        saveMapping: mapping.save,
+        saveLinks,
+        mappingFile: mapping.workspace?.latestFile
+          ? `latest_status_mapping/${resort.id}.json`
+          : undefined,
+        saveGeometry: () =>
+          saveLiftEdits({
+            resortId: resort.id,
+            fileHash,
+            lifts: lifts.map(liftToSavePayload),
+          }),
       });
       if (result.ok) {
-        onSaved([
-          ...result.writtenFiles,
-          "SkiResortLinks.json",
-          ...(mapping.workspace?.latestFile
-            ? [`latest_status_mapping/${resort.id}.json`]
-            : []),
-        ]);
+        onSaved(result.writtenFiles);
       } else {
         setServerErrors(result.errors);
       }
@@ -155,296 +153,294 @@ export function ConfirmStep({
   );
 
   return (
-    <div className="flex h-full min-h-0 justify-center overflow-y-auto bg-gray-50">
-      <div className="flex w-full max-w-[820px] flex-col gap-4 p-4 sm:p-6 min-w-0 [overflow-wrap:anywhere] [&>*]:shrink-0">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-bold font-[var(--font-heading)]">
-              変更内容の確認
-            </h2>
-            <p className="text-sm text-gray-600">
-              {resort.nameJa ? `${resort.nameJa}（${resort.id}）` : resort.id} /
-              全 {lifts.length} リフト
-            </p>
-            {resort.confirmedAt && (
-              <p className="text-xs text-green-900">
-                ✓ 確認済み（{formatDateTime(resort.confirmedAt)}）
-              </p>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={isTogglingConfirmed}
-              onClick={handleToggleConfirmed}
-              className={
-                resort.confirmedAt
-                  ? "border-orange-300 text-orange-900 hover:bg-orange-50 hover:text-orange-700"
-                  : "border-green-300 text-green-900 hover:bg-green-50"
-              }
-            >
-              {resort.confirmedAt ? "確認済みを解除" : "✓ 確認済みにする"}
-            </Button>
-            <Button size="sm" variant="outline" onClick={onBack}>
-              全体情報リンクへ戻る
-            </Button>
-          </div>
-        </div>
-
-        {allChanges.length === 0 && deletedLifts.length === 0 && (
-          <Card>
-            <CardContent>
-              <p className="text-sm text-gray-600">
-                リフトの変更はありません。このまま保存すると、lift_detail
-                から自動結合された情報も含めて現在の内容で lift_before
-                を書き換えます。
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-        {deletedLifts.length > 0 && (
-          <Alert variant="destructive" className="border-red-300 bg-red-50">
-            <AlertTitle className="text-sm text-red-700">
-              削除するリフト（{deletedLifts.length} 件）
-            </AlertTitle>
-            <AlertDescription className="text-xs text-red-700">
-              <p className="mb-2">保存すると lift_before から削除されます。</p>
-              {deletedLifts.map(lift => (
-                <p key={lift.id} className="text-sm">
-                  ・{liftDisplayName(lift)}
-                </p>
-              ))}
-            </AlertDescription>
-          </Alert>
-        )}
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold">
-              保存後のリフト順（{lifts.length} 件）
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-2 text-xs text-gray-500">
-              この順番で GeoJSON の features に保存されます。
-            </p>
-            {lifts.map((lift, index) => (
-              <p key={lift.id} className="text-sm">
-                {index + 1}. {liftDisplayName(lift, index)}
-              </p>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold">
-              スキー場全体のリンク
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-4 text-xs text-gray-500">
-              手順5で追加した内容を確認できます。この画面でも追加・修正できます。
-            </p>
-            <div className="flex flex-col gap-4">
-              {RESORT_LINK_KEYS.map(key => (
-                <LinkListField
-                  key={key}
-                  label={RESORT_LINK_LABELS[key]}
-                  values={links[key] ?? []}
-                  onChange={values => setLinks({ ...links, [key]: values })}
-                />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold">
-              スキー場IDの変更（{skiIdChanges.length} 件）
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {skiIdChanges.length === 0 ? (
-              <p className="text-sm font-semibold text-gray-500">なし</p>
-            ) : (
-              skiIdChanges.map(change => (
-                <p key={change.lift.id} className="mb-1 text-sm">
-                  ・{liftDisplayName(change.lift)}:{" "}
-                  {change.skiIdChange && (
-                    <ChangeValue
-                      before={resortLabel(change.skiIdChange.before)}
-                      after={resortLabel(change.skiIdChange.after)}
-                    />
-                  )}
-                  （保存時に移動先の lift_before へ追記されます）
-                </p>
-              ))
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold">
-              位置情報の変更（{geometryChanges.length} 件）
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {geometryChanges.length === 0 ? (
-              <p className="text-sm font-semibold text-gray-500">なし</p>
-            ) : (
-              geometryChanges.map(change => (
-                <p key={change.lift.id} className="mb-1 text-sm">
-                  ・{liftDisplayName(change.lift)}: {change.geometryChange}
-                </p>
-              ))
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold">
-              詳細情報の追加・変更（{fieldChanges.length} 件）
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {fieldChanges.length === 0 ? (
-              <p className="text-sm font-semibold text-gray-500">なし</p>
-            ) : (
-              fieldChanges.map(change => (
-                <div key={change.lift.id} className="mb-2">
-                  <p className="text-sm font-bold">
-                    ・{liftDisplayName(change.lift)}
-                  </p>
-                  {change.fieldChanges.map(field => (
-                    <p key={field.key} className="pl-4 text-sm">
-                      {field.label}:{" "}
-                      <ChangeValue before={field.before} after={field.after} />
-                    </p>
-                  ))}
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold">
-              lift_detail から結合された情報（{mergedChanges.length} 件）
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {mergedChanges.length === 0 ? (
-              <p className="text-sm font-semibold text-gray-500">なし</p>
-            ) : (
-              mergedChanges.map(change => (
-                <div key={change.lift.id} className="mb-2">
-                  <p className="text-sm font-bold">
-                    ・{liftDisplayName(change.lift)} ← lift_detail「
-                    {change.lift.detailMatch?.detailName}」（
-                    {change.lift.detailMatch?.method === "name"
-                      ? "名前一致で自動結合"
-                      : "手動で結合"}
-                    ）
-                  </p>
-                  {change.mergedFields.map(field => (
-                    <p key={field.key} className="pl-4 text-sm">
-                      {field.label}:{" "}
-                      {field.after === "" ? "（空欄）" : field.after}
-                      {field.before !== "" && field.before !== field.after && (
-                        <span className="text-gray-500">
-                          （元の値: {field.before}）
-                        </span>
-                      )}
-                    </p>
-                  ))}
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-
-        {validation.errors.length > 0 && (
-          <Alert variant="destructive" className="border-red-300 bg-red-50">
-            <AlertTitle className="text-sm text-red-700">
-              エラーがあるため保存できません
-            </AlertTitle>
-            <AlertDescription className="text-xs text-red-700">
-              {validation.errors.map(error => (
-                <p key={error}>・{error}</p>
-              ))}
-            </AlertDescription>
-          </Alert>
-        )}
-        {validation.warnings.length > 0 && (
-          <Alert className="border-orange-300 bg-orange-50">
-            <AlertTitle className="text-sm text-orange-900">警告</AlertTitle>
-            <AlertDescription className="text-xs text-orange-900">
-              {validation.warnings.map(warning => (
-                <p key={warning}>・{warning}</p>
-              ))}
-            </AlertDescription>
-          </Alert>
-        )}
-        {serverErrors.length > 0 && (
-          <Alert variant="destructive" className="border-red-300 bg-red-50">
-            <AlertTitle className="text-sm text-red-700">
-              保存時にエラーが発生しました
-            </AlertTitle>
-            <AlertDescription className="text-xs text-red-700">
-              {serverErrors.map(error => (
-                <p key={error}>・{error}</p>
-              ))}
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {mapping.error && (
-          <p role="alert" className="text-sm text-red-700">
-            {mapping.error}
+    <EditorStepContent>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-bold font-[var(--font-heading)]">
+            変更内容の確認
+          </h2>
+          <p className="text-sm text-gray-600">
+            {resort.nameJa ? `${resort.nameJa}（${resort.id}）` : resort.id} /
+            全 {lifts.length} リフト
           </p>
-        )}
-        <p className="text-sm text-gray-600">
-          営業情報の対応: {mapping.crawledNameByGeojsonName.size}{" "}
-          件（最後の保存に含まれます）
-        </p>
-        <div className="sticky bottom-0 z-10 flex shrink-0 flex-wrap gap-3 border-t bg-white p-4 shadow-sm">
-          <ConfirmDialog
-            open={saveDialogOpen}
-            onOpenChange={setSaveDialogOpen}
-            title="保存確認"
-            description={
-              deletedLifts.length > 0
-                ? `編集結果で リフト情報・営業情報の対応表・スキー場全体リンクを書き換え、${deletedLifts.length} 件のリフトを削除します。よろしいですか？`
-                : "編集結果で リフト情報・営業情報の対応表・スキー場全体リンクを書き換えます。よろしいですか？"
-            }
-            onConfirm={handleSaveConfirm}
-            confirmLabel="保存する"
-          />
+          {resort.confirmedAt && (
+            <p className="text-xs text-green-900">
+              ✓ 確認済み（{formatDateTime(resort.confirmedAt)}）
+            </p>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
           <Button
-            variant="default"
-            disabled={
-              validation.errors.length > 0 ||
-              isSaving ||
-              mapping.isLoading ||
-              mapping.isSaving ||
-              !mapping.workspace
+            size="sm"
+            variant="outline"
+            disabled={isTogglingConfirmed}
+            onClick={handleToggleConfirmed}
+            className={
+              resort.confirmedAt
+                ? "border-orange-300 text-orange-900 hover:bg-orange-50 hover:text-orange-700"
+                : "border-green-300 text-green-900 hover:bg-green-50"
             }
-            onClick={() => setSaveDialogOpen(true)}
           >
-            {isSaving ? "保存・標高取得中…" : "すべて保存"}
+            {resort.confirmedAt ? "確認済みを解除" : "✓ 確認済みにする"}
           </Button>
-          <Button variant="outline" onClick={onBack} disabled={isSaving}>
-            戻る
+          <Button size="sm" variant="outline" onClick={onBack}>
+            全体情報リンクへ戻る
           </Button>
         </div>
       </div>
-    </div>
+
+      {allChanges.length === 0 && deletedLifts.length === 0 && (
+        <Card>
+          <CardContent>
+            <p className="text-sm text-gray-600">
+              リフトの変更はありません。このまま保存すると、lift_detail
+              から自動結合された情報も含めて現在の内容で lift_before
+              を書き換えます。
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {deletedLifts.length > 0 && (
+        <Alert variant="destructive" className="border-red-300 bg-red-50">
+          <AlertTitle className="text-sm text-red-700">
+            削除するリフト（{deletedLifts.length} 件）
+          </AlertTitle>
+          <AlertDescription className="text-xs text-red-700">
+            <p className="mb-2">保存すると lift_before から削除されます。</p>
+            {deletedLifts.map(lift => (
+              <p key={lift.id} className="text-sm">
+                ・{liftDisplayName(lift)}
+              </p>
+            ))}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-semibold">
+            保存後のリフト順（{lifts.length} 件）
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="mb-2 text-xs text-gray-500">
+            この順番で GeoJSON の features に保存されます。
+          </p>
+          {lifts.map((lift, index) => (
+            <p key={lift.id} className="text-sm">
+              {index + 1}. {liftDisplayName(lift, index)}
+            </p>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-semibold">
+            スキー場全体のリンク
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="mb-4 text-xs text-gray-500">
+            手順5で追加した内容を確認できます。この画面でも追加・修正できます。
+          </p>
+          <div className="flex flex-col gap-4">
+            {RESORT_LINK_KEYS.map(key => (
+              <LinkListField
+                key={key}
+                label={RESORT_LINK_LABELS[key]}
+                values={links[key] ?? []}
+                onChange={values => setLinks({ ...links, [key]: values })}
+              />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-semibold">
+            スキー場IDの変更（{skiIdChanges.length} 件）
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {skiIdChanges.length === 0 ? (
+            <p className="text-sm font-semibold text-gray-500">なし</p>
+          ) : (
+            skiIdChanges.map(change => (
+              <p key={change.lift.id} className="mb-1 text-sm">
+                ・{liftDisplayName(change.lift)}:{" "}
+                {change.skiIdChange && (
+                  <ChangeValue
+                    before={resortLabel(change.skiIdChange.before)}
+                    after={resortLabel(change.skiIdChange.after)}
+                  />
+                )}
+                （保存時に移動先の lift_before へ追記されます）
+              </p>
+            ))
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-semibold">
+            位置情報の変更（{geometryChanges.length} 件）
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {geometryChanges.length === 0 ? (
+            <p className="text-sm font-semibold text-gray-500">なし</p>
+          ) : (
+            geometryChanges.map(change => (
+              <p key={change.lift.id} className="mb-1 text-sm">
+                ・{liftDisplayName(change.lift)}: {change.geometryChange}
+              </p>
+            ))
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-semibold">
+            詳細情報の追加・変更（{fieldChanges.length} 件）
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {fieldChanges.length === 0 ? (
+            <p className="text-sm font-semibold text-gray-500">なし</p>
+          ) : (
+            fieldChanges.map(change => (
+              <div key={change.lift.id} className="mb-2">
+                <p className="text-sm font-bold">
+                  ・{liftDisplayName(change.lift)}
+                </p>
+                {change.fieldChanges.map(field => (
+                  <p key={field.key} className="pl-4 text-sm">
+                    {field.label}:{" "}
+                    <ChangeValue before={field.before} after={field.after} />
+                  </p>
+                ))}
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-semibold">
+            lift_detail から結合された情報（{mergedChanges.length} 件）
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {mergedChanges.length === 0 ? (
+            <p className="text-sm font-semibold text-gray-500">なし</p>
+          ) : (
+            mergedChanges.map(change => (
+              <div key={change.lift.id} className="mb-2">
+                <p className="text-sm font-bold">
+                  ・{liftDisplayName(change.lift)} ← lift_detail「
+                  {change.lift.detailMatch?.detailName}」（
+                  {change.lift.detailMatch?.method === "name"
+                    ? "名前一致で自動結合"
+                    : "手動で結合"}
+                  ）
+                </p>
+                {change.mergedFields.map(field => (
+                  <p key={field.key} className="pl-4 text-sm">
+                    {field.label}:{" "}
+                    {field.after === "" ? "（空欄）" : field.after}
+                    {field.before !== "" && field.before !== field.after && (
+                      <span className="text-gray-500">
+                        （元の値: {field.before}）
+                      </span>
+                    )}
+                  </p>
+                ))}
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+
+      {validation.errors.length > 0 && (
+        <Alert variant="destructive" className="border-red-300 bg-red-50">
+          <AlertTitle className="text-sm text-red-700">
+            エラーがあるため保存できません
+          </AlertTitle>
+          <AlertDescription className="text-xs text-red-700">
+            {validation.errors.map(error => (
+              <p key={error}>・{error}</p>
+            ))}
+          </AlertDescription>
+        </Alert>
+      )}
+      {validation.warnings.length > 0 && (
+        <Alert className="border-orange-300 bg-orange-50">
+          <AlertTitle className="text-sm text-orange-900">警告</AlertTitle>
+          <AlertDescription className="text-xs text-orange-900">
+            {validation.warnings.map(warning => (
+              <p key={warning}>・{warning}</p>
+            ))}
+          </AlertDescription>
+        </Alert>
+      )}
+      {serverErrors.length > 0 && (
+        <Alert variant="destructive" className="border-red-300 bg-red-50">
+          <AlertTitle className="text-sm text-red-700">
+            保存時にエラーが発生しました
+          </AlertTitle>
+          <AlertDescription className="text-xs text-red-700">
+            {serverErrors.map(error => (
+              <p key={error}>・{error}</p>
+            ))}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {mapping.error && (
+        <p role="alert" className="text-sm text-red-700">
+          {mapping.error}
+        </p>
+      )}
+      <p className="text-sm text-gray-600">
+        営業情報の対応: {mapping.crawledNameByGeojsonName.size}{" "}
+        件（最後の保存に含まれます）
+      </p>
+      <div className="sticky bottom-0 z-10 flex shrink-0 flex-wrap gap-3 border-t bg-white p-4 shadow-sm">
+        <ConfirmDialog
+          open={saveDialogOpen}
+          onOpenChange={setSaveDialogOpen}
+          title="保存確認"
+          description={
+            deletedLifts.length > 0
+              ? `編集結果で リフト情報・営業情報の対応表・スキー場全体リンクを書き換え、${deletedLifts.length} 件のリフトを削除します。よろしいですか？`
+              : "編集結果で リフト情報・営業情報の対応表・スキー場全体リンクを書き換えます。よろしいですか？"
+          }
+          onConfirm={handleSaveConfirm}
+          confirmLabel="保存する"
+        />
+        <Button
+          variant="default"
+          disabled={
+            validation.errors.length > 0 ||
+            isSaving ||
+            mapping.isLoading ||
+            mapping.isSaving ||
+            !mapping.workspace
+          }
+          onClick={() => setSaveDialogOpen(true)}
+        >
+          {isSaving ? "保存中…" : "すべて保存"}
+        </Button>
+        <Button variant="outline" onClick={onBack} disabled={isSaving}>
+          戻る
+        </Button>
+      </div>
+    </EditorStepContent>
   );
 }

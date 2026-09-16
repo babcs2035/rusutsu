@@ -28,6 +28,7 @@ test("対応表を読み込み、保存し、地図用lookupへ戻せる", async
       path.join(temporaryRoot, "latest_data", resortId, latestFile),
       JSON.stringify({
         time: "2026/1/1 7:00",
+        courseUrl: ["https://example.com/course", "https://example.com/status"],
         courses: [{ name: "白樺ゲレンデ上部", status: "○" }],
       }),
     );
@@ -40,6 +41,7 @@ test("対応表を読み込み、保存し、地図用lookupへ戻せる", async
       ),
       JSON.stringify({
         time: "2026/1/1 7:01",
+        liftUrl: "https://example.com/lift",
         lifts: [{ name: "第1リフト", status: "○" }],
       }),
     );
@@ -69,6 +71,16 @@ test("対応表を読み込み、保存し、地図用lookupへ戻せる", async
       "courses",
     );
     assert.equal(workspace.latestFile, latestFile);
+    assert.deepEqual(workspace.sourceUrls, [
+      "https://example.com/course",
+      "https://example.com/status",
+    ]);
+    const liftWorkspace = await loadLatestStatusMappingWorkspace(
+      temporaryRoot,
+      resortId,
+      "lifts",
+    );
+    assert.deepEqual(liftWorkspace.sourceUrls, ["https://example.com/lift"]);
     assert.equal(workspace.needsSave, true);
     assert.deepEqual(workspace.rows, [
       {

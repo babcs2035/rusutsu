@@ -45,3 +45,20 @@ test("コースの線編集で追従済みの改名を二重に変更しない",
     [{ geojsonName: "新コース名", crawledName: "公式コース" }],
   );
 });
+
+test("複数の空名のうち選んだ線だけにクローラ名を入れて対応を保持する", () => {
+  assert.deepEqual(
+    reconcileEditedRows(
+      [{ geojsonName: "第1ペア", crawledName: "第1ペア" }],
+      [
+        { id: "one", name: "" },
+        { id: "two", name: "" },
+      ],
+      [
+        { id: "one", name: "第1ペア" },
+        { id: "two", name: "" },
+      ],
+    ),
+    [{ geojsonName: "第1ペア", crawledName: "第1ペア" }],
+  );
+});

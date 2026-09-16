@@ -1,13 +1,13 @@
 "use server";
 
 import { requireAdmin } from "@/lib/requireAdmin";
+import { scheduleSavedElevations } from "@/server/backgroundElevation";
 import {
   getDataDocument,
   writeDataDocuments,
 } from "@/server/data-documents/client";
 import { DataDocumentConflictError } from "@/server/data-documents/contract";
 import { synchronizeDerivedGeometry } from "@/server/derivedGeometry";
-import { enrichLiftElevations } from "./server/elevation";
 import {
   isValidResortId,
   lift20mDocumentKey,
@@ -201,23 +201,21 @@ export async function saveLiftEdits(request: SaveRequest): Promise<SaveResult> {
         return {
           key,
           current,
-          geojson: await enrichLiftElevations(
-            synchronizeDerivedGeometry({
-              previousBefore: write.previousGeojson,
-              nextBefore: write.geojson,
-              existingDerived: current
-                ? parseLiftBeforeGeojson(current.content)
-                : null,
-              intervalM: 20,
-              kind: "lift",
-            }),
-          ),
+          geojson: synchronizeDerivedGeometry({
+            previousBefore: write.previousGeojson,
+            nextBefore: write.geojson,
+            existingDerived: current
+              ? parseLiftBeforeGeojson(current.content)
+              : null,
+            intervalM: 20,
+            kind: "lift",
+          }),
         };
       }),
     );
 
     // 元・移動先の before と、公開画面が読む 20m 線を1トランザクションで更新する。
-    await writeDataDocuments([
+    const savedDocuments = await writeDataDocuments([
       ...writes.map(write => ({
         key: liftBeforeDocumentKey(write.resortId),
         content: serializeLiftBeforeGeojson(write.geojson),
@@ -231,6 +229,12 @@ export async function saveLiftEdits(request: SaveRequest): Promise<SaveResult> {
         expectedHash: document.current?.hash ?? null,
       })),
     ]);
+    for (const [index, derived] of derivedDocuments.entries()) {
+      const saved = savedDocuments.find(
+        document => document.key === derived.key,
+      );
+      if (saved) scheduleSavedElevations(saved, "lift", writes[index].geojson);
+    }
   } catch (error) {
     if (error instanceof DataDocumentConflictError) {
       return {
@@ -280,8 +284,7 @@ export async function refreshLiftElevations(
     });
     if (sampled.features.length !== source.features.length)
       throw new Error("不正なリフト座標が含まれています。");
-    const enriched = await enrichLiftElevations(sampled, { force: true });
-    await writeDataDocuments([
+    const written = await writeDataDocuments([
       // 元の線も同じトランザクションで照合し、取得中の編集を上書きしない。
       {
         key: liftBeforeDocumentKey(resortId),
@@ -291,11 +294,13 @@ export async function refreshLiftElevations(
       },
       {
         key,
-        content: serializeLiftBeforeGeojson(enriched),
+        content: existing?.content ?? serializeLiftBeforeGeojson(sampled),
         mediaType: "application/geo+json",
         expectedHash: existing?.hash ?? null,
       },
     ]);
+    const saved = written.find(document => document.key === key);
+    if (saved) scheduleSavedElevations(saved, "lift", source, { force: true });
     return { ok: true, writtenFiles: [`lift_20m/${resortId}.geojson`] };
   } catch (error) {
     return {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { ResortEditorLinkDraft } from "@/shared/components/resort-editor/useResortEditorLinks";
 import { DRAFT_STORAGE_PREFIX } from "../constants";
 import type { DraftSummary, EditorLift, LiftEditDraft } from "../types";
 
@@ -56,6 +57,7 @@ export const useDraftStorage = (
   fileHash: string | null,
   lifts: EditorLift[],
   enabled: boolean,
+  linkDraft?: ResortEditorLinkDraft,
 ): DraftStorageState => {
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const skipNextSaveRef = useRef(true);
@@ -78,6 +80,7 @@ export const useDraftStorage = (
     const timer = window.setTimeout(() => {
       const updatedAt = new Date().toISOString();
       const draft: LiftEditDraft = {
+        linkDraft,
         version: 1,
         resortId,
         fileHash,
@@ -93,7 +96,7 @@ export const useDraftStorage = (
       }
     }, 400);
     return () => window.clearTimeout(timer);
-  }, [enabled, resortId, fileHash, lifts]);
+  }, [enabled, resortId, fileHash, lifts, linkDraft]);
 
   const markSavedToServer = useCallback(() => {
     // サーバーへ保存できたら下書きは不要になるため破棄する

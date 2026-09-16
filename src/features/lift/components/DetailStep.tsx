@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { PanelSection } from "@/shared/components/PanelSection";
 import { moveItem } from "@/shared/hooks/useSortableList";
-import { updateDefaultSearchWord } from "@/shared/utils/searchWord";
+import { buildDefaultSearchWord } from "@/shared/utils/searchWord";
 import {
   BUSINESS_HOURS_MARK_OPTIONS,
   DETAIL_LABELS,
@@ -556,10 +556,8 @@ export function DetailStep({
                         name: nextName,
                         detail: {
                           ...lift.detail,
-                          searchWord: updateDefaultSearchWord(
-                            lift.detail.searchWord,
+                          searchWord: buildDefaultSearchWord(
                             resortSearchNameById.get(lift.skiId) ?? lift.skiId,
-                            lift.name,
                             nextName,
                           ),
                         },

@@ -4,6 +4,7 @@ node = "24.19.0"
 
 [tasks]
 "reviews:publish" = { description = "レビューJSONの本番差分を確認（--applyで反映）", run = "node --import tsx scripts/publishReview.ts" }
+"links:strip-tracking-params" = { description = "SNSリンクの?stkn=等トラッキングトークンを除去（--applyで反映）", run = "pnpm tsx src/private/scripts/stripLinkTrackingParams.ts" }
 # --- Project Setup ---
 setup = { description = "プロジェクトの初期セットアップ（依存関係、DB、シード）", run = [
   "cp -n .env.example .env || true",
@@ -61,6 +62,7 @@ start = { description = "プロダクションサーバー起動", run = "pnpm s
 
 # --- データ検証 ---
 "merge:resort-sheets" = { description = "resorts の Excel を before と既存の 10m/20m GeoJSON へ統合", run = "node --import tsx scripts/mergeResortSheetsIntoGeojson.ts" }
+"sync:resort-sheets" = { description = "Excel の詳細を正本APIの空欄へ補完（既定は確認のみ、--apply で反映）", run = "node --import tsx scripts/syncResortSheetsToApi.ts" }
 "validate:map-data" = { description = "自己完結したコース・リフト GeoJSON と営業状況の結合データを検証", run = "pnpm tsx scripts/validateResortMapData.ts" }
 "report:sheet-links" = { description = "resorts の Excel と地図の線の突き合わせ結果を CSV に書き出す", run = "pnpm tsx scripts/reportResortSheetLinks.ts" }
 "validate:map-data:strict" = { description = "同上。❌ が 1 件でもあれば異常終了する", run = "pnpm tsx scripts/validateResortMapData.ts --strict" }

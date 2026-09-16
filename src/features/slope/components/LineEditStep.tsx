@@ -19,6 +19,7 @@ import type { ApplyGeojsonOrderResult } from "@/features/latest-status-mapping/t
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { PanelSection } from "@/shared/components/PanelSection";
 import { moveItem, useSortableList } from "@/shared/hooks/useSortableList";
+import { buildDefaultSearchWord } from "@/shared/utils/searchWord";
 import type { EditorCourse, ResortOption, ValidationResult } from "../types";
 import { createEmptyCourse, mergeSplitGroup } from "../utils/courseOps";
 import { importCoursesFromFile } from "../utils/importFiles";
@@ -29,6 +30,7 @@ import { MergeCoursesPanel, type MergeDraft } from "./MergeCoursesPanel";
 type LineEditStepProps = {
   mapping: LatestStatusMappingState;
   resort: ResortOption;
+  resorts: ResortOption[];
   courses: EditorCourse[];
   setCourses: (updater: (courses: EditorCourse[]) => EditorCourse[]) => void;
   savedAt: string | null;
@@ -72,6 +74,7 @@ const formatDateTime = (iso: string): string => {
 export function LineEditStep({
   mapping,
   resort,
+  resorts,
   courses,
   setCourses,
   savedAt,
@@ -360,13 +363,23 @@ export function LineEditStep({
           onSplitModeChange(false);
         }}
         onRenameCourse={(courseId, name) => {
-          const previousName = courses.find(item => item.id === courseId)?.name;
-          if (previousName !== undefined) {
-            mapping.renameGeojsonName(previousName, name);
-          }
           setCourses(previous =>
             previous.map(item =>
-              item.id === courseId ? { ...item, name } : item,
+              item.id === courseId
+                ? {
+                    ...item,
+                    name,
+                    unnamed: false,
+                    detail: {
+                      ...item.detail,
+                      searchWord: buildDefaultSearchWord(
+                        resorts.find(option => option.id === item.skiId)
+                          ?.searchName ?? resort.searchName,
+                        name,
+                      ),
+                    },
+                  }
+                : item,
             ),
           );
         }}
@@ -378,6 +391,14 @@ export function LineEditStep({
                     ...item,
                     unnamed: !item.unnamed,
                     name: item.unnamed ? item.name : "",
+                    detail: {
+                      ...item.detail,
+                      searchWord: buildDefaultSearchWord(
+                        resorts.find(option => option.id === item.skiId)
+                          ?.searchName ?? resort.searchName,
+                        item.unnamed ? item.name : "",
+                      ),
+                    },
                   }
                 : item,
             ),
@@ -465,7 +486,7 @@ export function LineEditStep({
         onClick={() => handleProceed(false)}
         disabled={courses.length === 0 || isMerging}
       >
-        次へ（詳細編集）
+        次へ（詳細情報）
       </Button>
 
       <OrderOrganizerDialog

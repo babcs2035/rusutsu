@@ -1,3 +1,4 @@
+import type { ResortEditorLinkDraft } from "@/shared/components/resort-editor/useResortEditorLinks";
 export type LngLat = [number, number];
 
 export type SlopeSourceKind = "curated" | "osm";
@@ -36,6 +37,7 @@ export type EditorCourse = {
 };
 
 export type SlopeEditDraft = {
+  linkDraft?: ResortEditorLinkDraft;
   version: 1;
   resortId: string;
   sourceKind?: SlopeSourceKind;
@@ -70,6 +72,7 @@ export type ResortOption = {
   numberOfCourses: number;
   hasSlopeBefore: boolean;
   hasSlopeBeforeOsm: boolean;
+  osmConfirmedAt?: string | null;
   // クローラーがこのスキー場のコース営業情報を実際に取得できているか。
   // クローラー自体があっても、コースを取れていなければ false。
   hasCrawlerCourses: boolean;

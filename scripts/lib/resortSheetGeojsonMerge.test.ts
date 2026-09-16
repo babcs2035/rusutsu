@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import {
   type GeoJsonFeatureCollection,
@@ -7,6 +8,7 @@ import {
   syncBeforePropertiesToMeasured,
 } from "./resortSheetGeojsonMerge";
 import type { SheetRow } from "./xlsxReader";
+import { readXlsxSheets } from "./xlsxReader";
 
 const collection = (
   properties: Record<string, unknown>,
@@ -27,7 +29,12 @@ const collection = (
   ],
 });
 
-test("rows require a name and either piste or searchWord", () => {
+test("rows require a name and at least one detail field", () => {
+  assert.equal(
+    isLinkableSheetRow({ name: "リフト", capacity: "4", searchWord: "" }),
+    true,
+  );
+  assert.equal(isLinkableSheetRow({ name: "リフト", resort: "test" }), false);
   assert.equal(
     isLinkableSheetRow({ name: "コース", piste: "○", searchWord: "" }),
     true,
@@ -44,6 +51,53 @@ test("rows require a name and either piste or searchWord", () => {
     isLinkableSheetRow({ name: "", piste: "○", searchWord: "検索" }),
     false,
   );
+});
+
+test("Nozawa workbook links every identically named lift without search words", () => {
+  const rows =
+    readXlsxSheets(
+      readFileSync("src/private/data/resorts/nozawa-onsen.xlsx"),
+    ).get("Lifts") ?? [];
+  assert.equal(rows.length, 15);
+  const before = JSON.parse(
+    readFileSync(
+      "src/private/data/resorts-temporary/lift_before/nozawa-onsen.geojson",
+      "utf8",
+    ),
+  ) as GeoJsonFeatureCollection;
+  const geometry = {
+    ...before,
+    features: before.features.map(feature => ({
+      ...feature,
+      properties: { name: feature.properties?.name },
+    })),
+  };
+  const result = mergeSheetRowsIntoBefore(geometry, rows, "lift");
+  assert.equal(result.eligibleRows, 15);
+  assert.equal(result.matchedRows, 12);
+  const gondola = result.collection.features.find(
+    feature => feature.properties?.name === "長坂ゴンドラ",
+  );
+  assert.equal(gondola?.properties?.capacity, 10);
+  assert.equal(gondola?.properties?.distance, 3129);
+  assert.equal(gondola?.properties?.maker, "日本ケーブル");
+  assert.equal(
+    mergeSheetRowsIntoBefore(result.collection, rows, "lift").changedFeatures,
+    0,
+  );
+});
+
+test("duplicate sheet names are left unmatched instead of choosing the last row", () => {
+  const result = mergeSheetRowsIntoBefore(
+    collection({ name: "ペア" }),
+    [
+      { name: "ペア", capacity: "2" },
+      { name: "ペア", capacity: "4" },
+    ],
+    "lift",
+  );
+  assert.equal(result.changedFeatures, 0);
+  assert.deepEqual(result.unmatchedRowNames, ["ペア"]);
 });
 
 test("Excel fills empty before fields without replacing curated values", () => {
@@ -75,7 +129,7 @@ test("Excel fills empty before fields without replacing curated values", () => {
   });
 });
 
-test("rows with empty piste and searchWord are not merged", () => {
+test("course details are merged even without piste and searchWord", () => {
   const result = mergeSheetRowsIntoBefore(
     collection({ name: "連絡コース" }),
     [
@@ -89,11 +143,12 @@ test("rows with empty piste and searchWord are not merged", () => {
     "course",
   );
 
-  assert.equal(result.eligibleRows, 0);
-  assert.equal(result.skippedRows, 1);
-  assert.equal(result.changedFeatures, 0);
+  assert.equal(result.eligibleRows, 1);
+  assert.equal(result.skippedRows, 0);
+  assert.equal(result.changedFeatures, 1);
   assert.deepEqual(result.collection.features[0]?.properties, {
     name: "連絡コース",
+    level: "初級",
   });
 });
 

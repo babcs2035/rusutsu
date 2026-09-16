@@ -227,6 +227,8 @@ export async function writeLiftBeforeGeojson(
 const EMPTY_RESORT_LINKS: ResortLinks = {
   officialSiteUrls: [],
   mapUrls: [],
+  mapPageUrls: [],
+  googleMapsUrls: [],
   skiSchoolUrls: [],
   snowboardSchoolUrls: [],
   skiResortInfoUrls: [],
@@ -267,6 +269,8 @@ const normalizeResortLinks = (value: unknown): ResortLinks => {
   return {
     officialSiteUrls: toLinkList(raw.officialSiteUrls),
     mapUrls: toLinkList(raw.mapUrls),
+    mapPageUrls: toLinkList(raw.mapPageUrls),
+    googleMapsUrls: toLinkList(raw.googleMapsUrls),
     // 旧 schoolUrls はすべてスキースクールとして扱う。
     skiSchoolUrls: toLinkList(raw.skiSchoolUrls ?? raw.schoolUrls),
     snowboardSchoolUrls: toLinkList(raw.snowboardSchoolUrls),
@@ -282,7 +286,7 @@ const normalizeResortLinks = (value: unknown): ResortLinks => {
   };
 };
 
-const parseResortLinksMap = (
+export const parseResortLinksMap = (
   raw: string | null,
 ): Record<string, ResortLinks> => {
   if (raw === null) return {};

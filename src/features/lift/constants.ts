@@ -21,8 +21,10 @@ export const MAKER_OPTIONS = [
   "日本ケーブル",
   "安全索道",
   "東京索道",
+  "太平索道",
   "JFE",
   "三菱重工業",
+  "POMA",
   "",
 ] as const;
 
@@ -100,6 +102,8 @@ export { RESORT_INITIAL_ZOOM } from "@/features/slope/constants";
 export const RESORT_LINK_KEYS: Array<keyof ResortLinks> = [
   "officialSiteUrls",
   "mapUrls",
+  "mapPageUrls",
+  "googleMapsUrls",
   "skiSchoolUrls",
   "snowboardSchoolUrls",
   "skiResortInfoUrls",
@@ -116,6 +120,8 @@ export const RESORT_LINK_KEYS: Array<keyof ResortLinks> = [
 export const EMPTY_RESORT_LINKS: ResortLinks = {
   officialSiteUrls: [],
   mapUrls: [],
+  mapPageUrls: [],
+  googleMapsUrls: [],
   skiSchoolUrls: [],
   snowboardSchoolUrls: [],
   skiResortInfoUrls: [],
@@ -131,7 +137,9 @@ export const EMPTY_RESORT_LINKS: ResortLinks = {
 
 export const RESORT_LINK_LABELS: Record<keyof ResortLinks, string> = {
   officialSiteUrls: "公式サイト",
-  mapUrls: "マップ",
+  mapUrls: "ゲレンデマップ（画像・PDF）",
+  mapPageUrls: "ゲレンデマップ掲載ページ",
+  googleMapsUrls: "Google Maps（所在地）",
   skiSchoolUrls: "スキースクール",
   snowboardSchoolUrls: "スノーボードスクール",
   skiResortInfoUrls: "スキー場情報局",

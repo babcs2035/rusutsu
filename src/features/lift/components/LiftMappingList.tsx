@@ -3,6 +3,7 @@
 import { GripVertical, MapPin, RotateCcw, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { MappingPairList } from "@/features/latest-status-mapping/components/MappingPairList";
 import type { LatestStatusMappingState } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
 import { cn } from "@/lib/utils";
@@ -16,6 +17,7 @@ type LiftMappingListProps = {
   mapping: LatestStatusMappingState;
   selectedLiftId: string | null;
   onSelectLift: (liftId: string) => void;
+  onRenameLift: (liftId: string, name: string) => void;
   onDeleteLift: (liftId: string) => void;
   onResetLift: (liftId: string) => void;
   isDrawing: boolean;
@@ -30,8 +32,7 @@ type LiftMappingListProps = {
 /**
  * リフトの一覧と、クロール結果との対応を横並びで見る表。
  *
- * コース側と同じ形にそろえてある。リフト名は詳細情報の工程で編集するので、
- * ここでは表示だけにして、位置と中間駅の操作を行に置く。
+ * 名前の編集・対応付けと、位置・中間駅の操作を行に置く。
  */
 export function LiftMappingList({
   lifts,
@@ -39,6 +40,7 @@ export function LiftMappingList({
   mapping,
   selectedLiftId,
   onSelectLift,
+  onRenameLift,
   onDeleteLift,
   onResetLift,
   isDrawing,
@@ -53,6 +55,8 @@ export function LiftMappingList({
   return (
     <MappingPairList
       items={lifts}
+      onRenameItem={onRenameLift}
+      nameLabel="リフト名"
       sortable={sortable}
       mapping={mapping}
       activeItemId={selectedLiftId}
@@ -84,14 +88,14 @@ export function LiftMappingList({
           >
             {index + 1}
           </button>
-          <button
-            type="button"
-            className="min-w-0 flex-1 truncate text-left text-sm font-medium"
-            title={liftDisplayName(lift, index)}
-            onClick={() => onSelectLift(lift.id)}
-          >
-            {liftDisplayName(lift, index)}
-          </button>
+          <Input
+            className="h-8 min-w-0 flex-1 bg-white text-sm"
+            aria-label={`${index + 1}番目のリフト名`}
+            placeholder="リフト名"
+            value={lift.name}
+            onFocus={() => onSelectLift(lift.id)}
+            onChange={event => onRenameLift(lift.id, event.target.value)}
+          />
         </div>
       )}
       renderBelow={(lift, _index, isActive) => {

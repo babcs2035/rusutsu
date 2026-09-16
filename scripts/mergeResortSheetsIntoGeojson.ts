@@ -12,6 +12,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import {
   type GeoJsonFeatureCollection,
+  isLinkableSheetRow,
   mergeSheetRowsIntoBefore,
   type ResortSheetKind,
   syncBeforePropertiesToMeasured,
@@ -171,11 +172,7 @@ const main = async () => {
         );
         const before = await readCollectionIfExists(beforePath);
         if (!before) {
-          const eligibleRows = namedRows.filter(
-            row =>
-              (row.piste ?? "").trim().length > 0 ||
-              (row.searchWord ?? "").trim().length > 0,
-          ).length;
+          const eligibleRows = namedRows.filter(isLinkableSheetRow).length;
           summary.eligibleSheetRows += eligibleRows;
           summary.skippedSheetRows += namedRows.length - eligibleRows;
           summary.rowsWithoutBefore += eligibleRows;

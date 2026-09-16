@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { PanelSection } from "@/shared/components/PanelSection";
 import { moveItem, useSortableList } from "@/shared/hooks/useSortableList";
+import { buildDefaultSearchWord } from "@/shared/utils/searchWord";
 import type { EditorLift, LngLat, ResortOption } from "../types";
 import {
   createEmptyLift,
@@ -25,6 +26,7 @@ import { LiftMappingList } from "./LiftMappingList";
 type GeometryStepProps = {
   mapping: LatestStatusMappingState;
   resort: ResortOption;
+  resorts: ResortOption[];
   lifts: EditorLift[];
   deletedLifts: EditorLift[];
   setLifts: (updater: (lifts: EditorLift[]) => EditorLift[]) => void;
@@ -77,6 +79,7 @@ const describeChange = (lift: EditorLift): string | null => {
 export function GeometryStep({
   mapping,
   resort,
+  resorts,
   lifts,
   deletedLifts,
   setLifts,
@@ -343,6 +346,26 @@ export function GeometryStep({
 
       <LiftMappingList
         lifts={lifts}
+        onRenameLift={(id, name) => {
+          setLifts(previous =>
+            previous.map(lift =>
+              lift.id === id
+                ? {
+                    ...lift,
+                    name,
+                    detail: {
+                      ...lift.detail,
+                      searchWord: buildDefaultSearchWord(
+                        resorts.find(option => option.id === lift.skiId)
+                          ?.searchName ?? lift.skiId,
+                        name,
+                      ),
+                    },
+                  }
+                : lift,
+            ),
+          );
+        }}
         sortable={sortable}
         mapping={mapping}
         selectedLiftId={selectedLiftId}
@@ -364,7 +387,7 @@ export function GeometryStep({
       />
 
       <Button variant="default" className="shrink-0" onClick={onProceed}>
-        次へ（リフト詳細情報の入力）
+        次へ（詳細情報）
       </Button>
 
       <OrderOrganizerDialog

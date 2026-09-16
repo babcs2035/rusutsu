@@ -7,6 +7,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import type { LatestStatusMappingState } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
+import { EditorStepContent } from "@/shared/components/resort-editor/EditorStepContent";
+import { saveEditorChanges } from "@/shared/components/resort-editor/saveEditorChanges";
 import { saveSlopeEdits } from "../actions";
 import { COURSE_DETAIL_LABELS } from "../constants";
 import type {
@@ -20,6 +22,7 @@ import { courseToSavePayload } from "../utils/exportFiles";
 import { validateCourses } from "../utils/validation";
 
 type ConfirmStepProps = {
+  saveLinks: () => Promise<string[]>;
   mapping: LatestStatusMappingState;
   resort: ResortOption;
   resorts: ResortOption[];
@@ -37,6 +40,7 @@ const displayValue = (value: string): string =>
   value.trim() === "" ? "（未入力）" : value;
 
 export function ConfirmStep({
+  saveLinks,
   mapping,
   resort,
   resorts,
@@ -66,28 +70,25 @@ export function ConfirmStep({
     setIsSaving(true);
     setServerErrors([]);
     try {
-      if (!(await mapping.save())) {
-        setServerErrors([
-          "営業情報の対応表を保存できませんでした。表示されたエラーを確認してください。",
-        ]);
-        return;
-      }
-      const result = await saveSlopeEdits({
-        resortId: resort.id,
-        sourceKind,
-        fileHash,
-        detailFileHash,
-        courses: courses.map(courseToSavePayload),
-        preservedFeatures,
-        preservedDetails,
+      const result = await saveEditorChanges({
+        saveMapping: mapping.save,
+        saveLinks,
+        mappingFile: mapping.workspace?.latestFile
+          ? `latest_status_mapping/${resort.id}.json`
+          : undefined,
+        saveGeometry: () =>
+          saveSlopeEdits({
+            resortId: resort.id,
+            sourceKind,
+            fileHash,
+            detailFileHash,
+            courses: courses.map(courseToSavePayload),
+            preservedFeatures,
+            preservedDetails,
+          }),
       });
       if (result.ok) {
-        onSaved([
-          ...result.writtenFiles,
-          ...(mapping.workspace?.latestFile
-            ? [`latest_status_mapping/${resort.id}.json`]
-            : []),
-        ]);
+        onSaved(result.writtenFiles);
       } else {
         setServerErrors(result.errors);
       }
@@ -101,188 +102,186 @@ export function ConfirmStep({
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-y-auto bg-gray-50">
-      <div className="mx-auto flex w-[900px] max-w-full flex-col gap-4 p-4 sm:p-6 min-w-0 [overflow-wrap:anywhere] [&>*]:shrink-0">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-bold font-[var(--font-heading)]">
-              保存内容の確認
-            </h2>
-            <p className="text-sm text-gray-600">
-              {resort.nameJa}（{resort.id}） / 全 {courses.length} コース
-            </p>
-            <p
-              className={
-                sourceKind === "curated"
-                  ? "text-xs text-green-900"
-                  : "text-xs text-orange-900"
-              }
-            >
-              {sourceKind === "curated"
-                ? "✓ 確認済みデータ"
-                : "OpenStreetMap由来・未確認データ"}
-            </p>
-          </div>
-          <Button size="sm" variant="outline" onClick={onBack}>
-            分割・詳細編集へ戻る
-          </Button>
+    <EditorStepContent>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-bold font-[var(--font-heading)]">
+            保存内容の確認
+          </h2>
+          <p className="text-sm text-gray-600">
+            {resort.nameJa}（{resort.id}） / 全 {courses.length} コース
+          </p>
+          <p
+            className={
+              sourceKind === "curated" || resort.osmConfirmedAt
+                ? "text-xs text-green-900"
+                : "text-xs text-orange-900"
+            }
+          >
+            {sourceKind === "curated" || resort.osmConfirmedAt
+              ? "✓ 確認済みデータ"
+              : "OpenStreetMap由来・未確認データ"}
+          </p>
         </div>
+        <Button size="sm" variant="outline" onClick={onBack}>
+          分割・詳細編集へ戻る
+        </Button>
+      </div>
 
+      <Card>
+        <CardContent className="p-4">
+          <h3 className="text-sm font-semibold mb-1 font-[var(--font-heading)]">
+            保存後のコース順（{courses.length} 件）
+          </h3>
+          <p className="text-xs text-gray-500 mb-3">
+            この順番で {directoryName} の features に保存されます。
+          </p>
+          <div className="flex flex-col gap-3">
+            {courses.map((course, index) => (
+              <Fragment key={course.id}>
+                {index > 0 && <Separator className="border-gray-100" />}
+                <div className={index === 0 ? "" : "pt-3"}>
+                  <p className="text-sm font-bold">
+                    {index + 1}. {displayValue(course.name)}（
+                    {course.coordinates.length} 点）
+                  </p>
+                  <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                    {(
+                      Object.keys(COURSE_DETAIL_LABELS) as Array<
+                        keyof typeof COURSE_DETAIL_LABELS
+                      >
+                    ).map(key => (
+                      <span key={key} className="text-xs text-gray-700">
+                        {COURSE_DETAIL_LABELS[key]}:{" "}
+                        {displayValue(course.detail[key])}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </Fragment>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {movedCourses.length > 0 && (
+        <Card>
+          <CardContent className="p-4">
+            <h3 className="mb-2 text-sm font-semibold font-[var(--font-heading)]">
+              所属スキー場の変更（{movedCourses.length}件）
+            </h3>
+            {movedCourses.map(course => (
+              <p key={course.id} className="text-sm">
+                ・{displayValue(course.name)}: {course.originalSkiId} →{" "}
+                {course.skiId}
+                {resortById.get(course.skiId)?.nameJa
+                  ? `（${resortById.get(course.skiId)?.nameJa}）`
+                  : ""}
+              </p>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {preservedFeatures.length > 0 && (
         <Card>
           <CardContent className="p-4">
             <h3 className="text-sm font-semibold mb-1 font-[var(--font-heading)]">
-              保存後のコース順（{courses.length} 件）
+              編集対象外の feature（{preservedFeatures.length} 件）
             </h3>
-            <p className="text-xs text-gray-500 mb-3">
-              この順番で {directoryName} の features に保存されます。
+            <p className="text-xs text-gray-600">
+              LineString 以外、または座標を編集できない feature は内容を変えずに{" "}
+              {directoryName} の末尾へ保持します。
             </p>
-            <div className="flex flex-col gap-3">
-              {courses.map((course, index) => (
-                <Fragment key={course.id}>
-                  {index > 0 && <Separator className="border-gray-100" />}
-                  <div className={index === 0 ? "" : "pt-3"}>
-                    <p className="text-sm font-bold">
-                      {index + 1}. {displayValue(course.name)}（
-                      {course.coordinates.length} 点）
-                    </p>
-                    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
-                      {(
-                        Object.keys(COURSE_DETAIL_LABELS) as Array<
-                          keyof typeof COURSE_DETAIL_LABELS
-                        >
-                      ).map(key => (
-                        <span key={key} className="text-xs text-gray-700">
-                          {COURSE_DETAIL_LABELS[key]}:{" "}
-                          {displayValue(course.detail[key])}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </Fragment>
-              ))}
-            </div>
           </CardContent>
         </Card>
+      )}
 
-        {movedCourses.length > 0 && (
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="mb-2 text-sm font-semibold font-[var(--font-heading)]">
-                所属スキー場の変更（{movedCourses.length}件）
-              </h3>
-              {movedCourses.map(course => (
-                <p key={course.id} className="text-sm">
-                  ・{displayValue(course.name)}: {course.originalSkiId} →{" "}
-                  {course.skiId}
-                  {resortById.get(course.skiId)?.nameJa
-                    ? `（${resortById.get(course.skiId)?.nameJa}）`
-                    : ""}
-                </p>
-              ))}
-            </CardContent>
-          </Card>
-        )}
+      {preservedDetails.length > 0 && (
+        <Card>
+          <CardContent className="p-4">
+            <h3 className="text-sm font-semibold mb-1 font-[var(--font-heading)]">
+              コース線と未対応の slope_detail（{preservedDetails.length} 件）
+            </h3>
+            <p className="text-xs text-gray-600">
+              コース線と名前が一致しない既存の詳細情報は読み込みません。
+              slope_detail ファイル自体は変更しません。
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
-        {preservedFeatures.length > 0 && (
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="text-sm font-semibold mb-1 font-[var(--font-heading)]">
-                編集対象外の feature（{preservedFeatures.length} 件）
-              </h3>
-              <p className="text-xs text-gray-600">
-                LineString 以外、または座標を編集できない feature
-                は内容を変えずに {directoryName} の末尾へ保持します。
-              </p>
-            </CardContent>
-          </Card>
-        )}
+      {validation.errors.length > 0 && (
+        <Alert variant="destructive" className="border-red-300 bg-red-50">
+          <AlertTitle className="text-sm text-red-700">
+            エラーがあるため保存できません
+          </AlertTitle>
+          <AlertDescription className="text-xs text-red-700">
+            {validation.errors.map(error => (
+              <p key={error}>・{error}</p>
+            ))}
+          </AlertDescription>
+        </Alert>
+      )}
 
-        {preservedDetails.length > 0 && (
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="text-sm font-semibold mb-1 font-[var(--font-heading)]">
-                コース線と未対応の slope_detail（{preservedDetails.length} 件）
-              </h3>
-              <p className="text-xs text-gray-600">
-                コース線と名前が一致しない既存の詳細情報は読み込みません。
-                slope_detail ファイル自体は変更しません。
-              </p>
-            </CardContent>
-          </Card>
-        )}
+      {validation.warnings.length > 0 && (
+        <Alert className="border-orange-300 bg-orange-50">
+          <AlertTitle className="text-sm text-orange-900">警告</AlertTitle>
+          <AlertDescription className="text-xs text-orange-900">
+            {validation.warnings.map(warning => (
+              <p key={warning}>・{warning}</p>
+            ))}
+          </AlertDescription>
+        </Alert>
+      )}
 
-        {validation.errors.length > 0 && (
-          <Alert variant="destructive" className="border-red-300 bg-red-50">
-            <AlertTitle className="text-sm text-red-700">
-              エラーがあるため保存できません
-            </AlertTitle>
-            <AlertDescription className="text-xs text-red-700">
-              {validation.errors.map(error => (
-                <p key={error}>・{error}</p>
-              ))}
-            </AlertDescription>
-          </Alert>
-        )}
+      {serverErrors.length > 0 && (
+        <Alert variant="destructive" className="border-red-300 bg-red-50">
+          <AlertTitle className="text-sm text-red-700">
+            保存時にエラーが発生しました
+          </AlertTitle>
+          <AlertDescription className="text-xs text-red-700">
+            {serverErrors.map(error => (
+              <p key={error}>・{error}</p>
+            ))}
+          </AlertDescription>
+        </Alert>
+      )}
 
-        {validation.warnings.length > 0 && (
-          <Alert className="border-orange-300 bg-orange-50">
-            <AlertTitle className="text-sm text-orange-900">警告</AlertTitle>
-            <AlertDescription className="text-xs text-orange-900">
-              {validation.warnings.map(warning => (
-                <p key={warning}>・{warning}</p>
-              ))}
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {serverErrors.length > 0 && (
-          <Alert variant="destructive" className="border-red-300 bg-red-50">
-            <AlertTitle className="text-sm text-red-700">
-              保存時にエラーが発生しました
-            </AlertTitle>
-            <AlertDescription className="text-xs text-red-700">
-              {serverErrors.map(error => (
-                <p key={error}>・{error}</p>
-              ))}
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {mapping.error && (
-          <p role="alert" className="text-sm text-red-700">
-            {mapping.error}
-          </p>
-        )}
-        <p className="text-sm text-gray-600">
-          営業情報の対応: {mapping.crawledNameByGeojsonName.size}{" "}
-          件（最後の保存に含まれます）
+      {mapping.error && (
+        <p role="alert" className="text-sm text-red-700">
+          {mapping.error}
         </p>
-        <div className="sticky bottom-0 z-10 flex shrink-0 flex-wrap gap-3 border-t bg-white p-4 shadow-sm">
-          <ConfirmDialog
-            open={saveDialogOpen}
-            onOpenChange={setSaveDialogOpen}
-            title="保存確認"
-            description={`コース情報と営業情報の対応表を保存します。よろしいですか？`}
-            onConfirm={handleSaveConfirm}
-            confirmLabel="保存する"
-          />
-          <Button
-            disabled={
-              validation.errors.length > 0 ||
-              isSaving ||
-              mapping.isLoading ||
-              mapping.isSaving ||
-              !mapping.workspace
-            }
-            onClick={() => setSaveDialogOpen(true)}
-          >
-            {isSaving ? "保存中…" : "すべて保存"}
-          </Button>
-          <Button variant="outline" onClick={onBack} disabled={isSaving}>
-            戻る
-          </Button>
-        </div>
+      )}
+      <p className="text-sm text-gray-600">
+        営業情報の対応: {mapping.crawledNameByGeojsonName.size}{" "}
+        件（最後の保存に含まれます）
+      </p>
+      <div className="sticky bottom-0 z-10 flex shrink-0 flex-wrap gap-3 border-t bg-white p-4 shadow-sm">
+        <ConfirmDialog
+          open={saveDialogOpen}
+          onOpenChange={setSaveDialogOpen}
+          title="保存確認"
+          description={`コース情報・営業情報の対応表・ゲレンデマップURLを保存します。よろしいですか？`}
+          onConfirm={handleSaveConfirm}
+          confirmLabel="保存する"
+        />
+        <Button
+          disabled={
+            validation.errors.length > 0 ||
+            isSaving ||
+            mapping.isLoading ||
+            mapping.isSaving ||
+            !mapping.workspace
+          }
+          onClick={() => setSaveDialogOpen(true)}
+        >
+          {isSaving ? "保存中…" : "すべて保存"}
+        </Button>
+        <Button variant="outline" onClick={onBack} disabled={isSaving}>
+          戻る
+        </Button>
       </div>
-    </div>
+    </EditorStepContent>
   );
 }

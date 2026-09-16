@@ -68,6 +68,7 @@ type EditorMapProps = {
   courses: EditorMapLine[];
   // 参照用に薄く表示する編集対象外の線（編集前の位置など）
   backgroundLines?: EditorMapLine[];
+  backgroundLineAppearance?: "muted" | "lift";
   activeCourseId: string | null;
   mode: EditorMapMode;
   googleMapsApiKey: string | null;
@@ -121,6 +122,7 @@ export function EditorMap({
   zoom,
   courses,
   backgroundLines = [],
+  backgroundLineAppearance = "muted",
   activeCourseId,
   mode,
   googleMapsApiKey,
@@ -254,6 +256,26 @@ export function EditorMap({
   }, []);
 
   const map = mapRef.current;
+
+  useEffect(() => {
+    if (!map || !isReady) return;
+    const isLift = backgroundLineAppearance === "lift";
+    map.setPaintProperty(
+      EDITOR_LAYER.backgroundLine,
+      "line-color",
+      isLift ? "#C026D3" : "#4A5568",
+    );
+    map.setPaintProperty(
+      EDITOR_LAYER.backgroundLine,
+      "line-width",
+      isLift ? 4.5 : 3,
+    );
+    map.setPaintProperty(
+      EDITOR_LAYER.backgroundLine,
+      "line-opacity",
+      isLift ? 1 : 0.55,
+    );
+  }, [backgroundLineAppearance, isReady, map]);
 
   // --- 描くものを地図へ流し込む -------------------------------------------
   const lineCollection = useMemo(
@@ -409,6 +431,12 @@ export function EditorMap({
       const current = latest.current;
       const lngLat: LngLat = [event.lngLat.lng, event.lngLat.lat];
 
+      // 中間駅の配置中は、線や頂点の選択よりクリック位置への配置を優先する。
+      if (current.mode === "midstation") {
+        current.onPlaceMidstation?.(lngLat);
+        return;
+      }
+
       const vertex = pickFeature(map, event.point, [EDITOR_LAYER.vertexHit]);
       if (vertex) {
         const index = Number(vertex.properties?.index);
@@ -454,8 +482,6 @@ export function EditorMap({
       }
 
       if (current.mode === "draw") current.onAppendVertex?.(lngLat);
-      else if (current.mode === "midstation")
-        current.onPlaceMidstation?.(lngLat);
     };
 
     const handleContextMenu = (event: MapMouseEvent) => {
@@ -572,6 +598,15 @@ export function EditorMap({
         popup.setLngLat(event.lngLat).setText(text).addTo(map);
       };
 
+      if (current.mode === "midstation") {
+        popup.remove();
+        canvas.style.cursor = "crosshair";
+        setHovered(null);
+        setInsertHint(null);
+        hoveredVertexRef.current = null;
+        return;
+      }
+
       if (pickFeature(map, event.point, [EDITOR_LAYER.midstationHit])) {
         show("中間駅");
         canvas.style.cursor = "pointer";
@@ -623,10 +658,7 @@ export function EditorMap({
       popup.remove();
       setHovered(null);
       setInsertHint(null);
-      canvas.style.cursor =
-        current.mode === "draw" || current.mode === "midstation"
-          ? "crosshair"
-          : "";
+      canvas.style.cursor = current.mode === "draw" ? "crosshair" : "";
     };
 
     const handleOut = () => {

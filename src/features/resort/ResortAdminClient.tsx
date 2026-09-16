@@ -97,10 +97,10 @@ export function ResortAdminClient({
         )}
         {!isEditing && !isMerging && (
           <Link
-            href="/admin/social"
+            href="/admin/links"
             className="rounded-lg px-2 py-2 text-sm text-gray-600 hover:bg-gray-100"
           >
-            SNSリンク編集
+            リンク編集
           </Link>
         )}
         {!isEditing && !isMerging && (

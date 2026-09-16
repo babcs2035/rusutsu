@@ -6,16 +6,25 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useLatestStatusMapping } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
+import { loadLiftSourceData, loadResortLinks } from "@/features/lift/actions";
+import { sourceDataToLifts } from "@/features/lift/utils/loadSource";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { ResizablePanel } from "@/shared/components/ResizablePanel";
+import { ResortEditorTools } from "@/shared/components/resort-editor/ResortEditorTools";
+import { useResortEditorLinks } from "@/shared/components/resort-editor/useResortEditorLinks";
 import { StepIndicator } from "@/shared/components/StepIndicator";
-import { applySlopeFeatureOrder, loadSlopeSourceData } from "./actions";
+import {
+  applySlopeFeatureOrder,
+  loadSlopeSourceData,
+  setOsmSlopeConfirmed,
+} from "./actions";
 import { AssignStep } from "./components/AssignStep";
 import { ConfirmStep } from "./components/ConfirmStep";
 import { DetailEditStep } from "./components/DetailEditStep";
 import {
   type EditorLinePick,
   EditorMap,
+  type EditorMapLine,
   type EditorMapMode,
   type EditorMergePreview,
 } from "./components/EditorMap";
@@ -68,9 +77,9 @@ type SlopeEditWorkspaceProps = {
 const STEPS: Array<{ id: EditStep; label: string }> = [
   { id: "select", label: "スキー場選択" },
   { id: "assign", label: "所属確認" },
-  { id: "lines", label: "線・分割・結合" },
-  { id: "details", label: "詳細編集" },
-  { id: "confirm", label: "保存" },
+  { id: "lines", label: "位置補正" },
+  { id: "details", label: "詳細情報" },
+  { id: "confirm", label: "確認・保存" },
 ];
 
 /** 結合のつなぎ目を既存の頂点へ吸い付かせる距離 */
@@ -93,13 +102,28 @@ const normalizeDraftCourse = (
 });
 
 export function SlopeEditWorkspace({
-  resorts,
+  resorts: initialResorts,
   googleMapsApiKey,
 }: SlopeEditWorkspaceProps) {
+  const [confirmedOverrides, setConfirmedOverrides] = useState<
+    Record<string, string | null>
+  >({});
+  const [isConfirming, setIsConfirming] = useState(false);
+  const resorts = useMemo(
+    () =>
+      initialResorts.map(option =>
+        option.id in confirmedOverrides
+          ? { ...option, osmConfirmedAt: confirmedOverrides[option.id] }
+          : option,
+      ),
+    [initialResorts, confirmedOverrides],
+  );
+  const linkEditor = useResortEditorLinks();
   const [step, setStep] = useState<EditStep>("select");
   const [resort, setResort] = useState<ResortOption | null>(null);
   const [sourceKind, setSourceKind] = useState<SlopeSourceKind>("curated");
   const [courses, setCoursesState] = useState<EditorCourse[]>([]);
+  const [referenceLifts, setReferenceLifts] = useState<EditorMapLine[]>([]);
   const [preservedFeatures, setPreservedFeatures] = useState<
     SlopeBeforeFeature[]
   >([]);
@@ -132,6 +156,7 @@ export function SlopeEditWorkspace({
     preservedFeatures,
     preservedDetails,
     step !== "select",
+    linkEditor.draft,
   );
 
   useEffect(() => {
@@ -208,13 +233,27 @@ export function SlopeEditWorkspace({
         ? loadDraft(selected.id, requestedSourceKind)
         : null;
       const nextSourceKind = requestedSourceKind;
-      const data = await loadSlopeSourceData(selected.id, nextSourceKind);
+      const [data, links, liftResult] = await Promise.all([
+        loadSlopeSourceData(selected.id, nextSourceKind),
+        loadResortLinks(selected.id),
+        loadLiftSourceData(selected.id)
+          .then(data => sourceDataToLifts(selected.id, data))
+          .catch(() => null),
+      ]);
+      linkEditor.initialize(selected.id, links, draft?.linkDraft);
       let nextCourses: EditorCourse[];
       let nextPreservedFeatures: SlopeBeforeFeature[] = [];
       let nextPreservedDetails: SlopeDetailEntry[] = [];
       let nextFileHash = data.fileHash;
       let nextDetailFileHash = data.detailFileHash;
       const nextLoadWarnings: string[] = [];
+      if (liftResult === null) {
+        nextLoadWarnings.push("参照用リフトの読み込みに失敗しました。");
+      } else if (liftResult.skipped > 0) {
+        nextLoadWarnings.push(
+          `参照用リフト ${liftResult.skipped} 件は形状が不正なため表示できませんでした。`,
+        );
+      }
 
       if (isDraftSource) {
         if (!draft) {
@@ -289,6 +328,7 @@ export function SlopeEditWorkspace({
       setResort(selected);
       setSourceKind(nextSourceKind);
       setCoursesState(nextCourses);
+      setReferenceLifts(liftResult?.lifts ?? []);
       setPreservedFeatures(nextPreservedFeatures);
       setPreservedDetails(nextPreservedDetails);
       setFileHash(nextFileHash);
@@ -351,9 +391,38 @@ export function SlopeEditWorkspace({
     setLoadWarning(null);
   };
 
+  const handleToggleConfirmed = async () => {
+    if (!resort || isConfirming) return;
+    setIsConfirming(true);
+    setLoadError(null);
+    try {
+      const result = await setOsmSlopeConfirmed(
+        resort.id,
+        !resort.osmConfirmedAt,
+      );
+      setConfirmedOverrides(previous => ({
+        ...previous,
+        [resort.id]: result.confirmedAt,
+      }));
+      setResort(previous =>
+        previous?.id === resort.id
+          ? { ...previous, osmConfirmedAt: result.confirmedAt }
+          : previous,
+      );
+    } catch {
+      setLoadError(
+        "確認済み状態を保存できませんでした。もう一度お試しください。",
+      );
+    } finally {
+      setIsConfirming(false);
+    }
+  };
+
   const handleSaved = (writtenFiles: string[]) => {
     markSavedToServer();
-    setSaveMessage(`保存しました: ${writtenFiles.join(", ")}`);
+    setSaveMessage(
+      `保存しました。標高はバックグラウンドで更新します: ${writtenFiles.join(", ")}`,
+    );
     handleBackToSelect();
   };
 
@@ -668,14 +737,30 @@ export function SlopeEditWorkspace({
           <Badge
             variant="secondary"
             className={
-              sourceKind === "curated"
+              sourceKind === "curated" || resort.osmConfirmedAt
                 ? "bg-green-50 text-green-900"
                 : "bg-orange-50 text-orange-900"
             }
           >
-            {sourceKind === "curated" ? "✓ 確認済み" : "OSM・未確認"}
+            {sourceKind === "curated" || resort.osmConfirmedAt
+              ? "✓ 確認済み"
+              : "OSM・未確認"}
           </Badge>
         </div>
+      )}
+      {resort && step !== "select" && sourceKind === "osm" && (
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={isConfirming}
+          onClick={handleToggleConfirmed}
+        >
+          {isConfirming
+            ? "更新中…"
+            : resort.osmConfirmedAt
+              ? "確認済みを解除"
+              : "✓ 確認済みにする"}
+        </Button>
       )}
       {isLoadingSource && (
         <span className="shrink-0 text-xs text-gray-500">読み込み中…</span>
@@ -727,6 +812,8 @@ export function SlopeEditWorkspace({
                   center={[resort.longitude, resort.latitude]}
                   zoom={RESORT_INITIAL_ZOOM}
                   courses={courses}
+                  backgroundLines={referenceLifts}
+                  backgroundLineAppearance="lift"
                   activeCourseId={activeCourseId}
                   mode={mapMode}
                   googleMapsApiKey={googleMapsApiKey}
@@ -789,6 +876,17 @@ export function SlopeEditWorkspace({
             minWidth={360}
             maxWidth={900}
           >
+            {resort && (
+              <ResortEditorTools
+                key={resort.id}
+                resortId={resort.id}
+                resortName={resort.nameJa || resort.id}
+                kind="slope"
+                sourceKind={sourceKind}
+                linkEditor={linkEditor}
+                crawlerSourceUrls={mapping.workspace?.sourceUrls}
+              />
+            )}
             {step === "assign" && resort && (
               <AssignStep
                 resort={resort}
@@ -803,6 +901,7 @@ export function SlopeEditWorkspace({
             )}
             {step === "lines" && resort && (
               <LineEditStep
+                resorts={resorts}
                 mapping={mapping}
                 resort={resort}
                 courses={courses}
@@ -872,6 +971,7 @@ export function SlopeEditWorkspace({
             )}
             {step === "confirm" && resort && (
               <ConfirmStep
+                saveLinks={() => linkEditor.save()}
                 mapping={mapping}
                 resort={resort}
                 resorts={resorts}
