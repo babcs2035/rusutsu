@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { reorderItemsByNameOrder } from "@/features/slope/utils/courseOrder";
 import type { LatestStatusMappingRow } from "../types";
+import { reconcileEditedRows } from "./editedRows";
 import {
   assignGeojsonName,
   buildGeojsonOrderByCrawledItems,
@@ -201,4 +203,34 @@ test("listUnmappedCrawledNames は割り当て済みを除く", () => {
     ),
     ["第2ゲレンデ", "第3ゲレンデ"],
   );
+});
+
+test("保存前に同じ取得コースへ追加対応しても並べ替え後まで全対応を保持する", () => {
+  const crawledName = "高天ヶ原マンモスゲレンデ上部";
+  const main = "高天ヶ原マンモスゲレンデ_上部";
+  const second = "高天ヶ原マンモスゲレンデ_上部_2";
+  const savedRows = [{ crawledName, geojsonName: main }];
+  const rows = assignGeojsonName(savedRows, second, crawledName);
+  const items = [
+    { id: "second", name: second },
+    { id: "other", name: "未対応" },
+    { id: "main", name: main },
+  ];
+  const order = buildGeojsonOrderByCrawledItems(
+    [crawledName],
+    rows,
+    items.map(item => item.name),
+  );
+  assert.deepEqual(order, [main, second, "未対応"]);
+  const sorted = reorderItemsByNameOrder(items, order, item => item.name);
+  assert.deepEqual(
+    sorted.map(item => item.id),
+    ["main", "second", "other"],
+  );
+  assert.deepEqual(reconcileEditedRows(rows, items, sorted), [
+    { crawledName, geojsonName: main },
+    { crawledName, geojsonName: second },
+    { crawledName: null, geojsonName: "未対応" },
+  ]);
+  assert.deepEqual(savedRows, [{ crawledName, geojsonName: main }]);
 });

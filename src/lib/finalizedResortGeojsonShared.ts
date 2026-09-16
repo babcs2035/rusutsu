@@ -126,6 +126,7 @@ export type ResortMapSection<TFeature> = {
     | "mixed"
     | null;
   fileName: string;
+  observedAt?: string | null;
   /** 公式サイトの出典（latest_data の courseUrl / liftUrl） */
   sourceUrls: string[];
   /** 人手で検査した既存コースか、未確認のOSM由来か。 */

@@ -51,6 +51,8 @@ export const getCourseGroupStatus = (
     (symbol): symbol is StatusSymbol => symbol !== null,
   );
   if (known.length === 0) return { symbol: null, note: null };
+  if (known.length !== symbols.length)
+    return { symbol: null, note: "営業状況が不明な区間があります" };
 
   const openCount = known.filter(symbol => symbol === "○").length;
   if (openCount === known.length) return { symbol: "○", note: null };

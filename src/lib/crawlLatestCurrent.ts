@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   fetchInternalDataApi,
+  InternalDataApiError,
   usesRemoteDataApi,
 } from "@/lib/internalDataApiClient";
 import type {
@@ -53,4 +54,40 @@ export async function listCurrentCrawlLatestResortIds(
     `/api/internal/v1/crawl-latest-current?${search.toString()}`,
   );
   return parseObjectEnvelope<string[]>(response, "resortIds");
+}
+
+export async function readCurrentResortConditions(
+  resortId: string,
+): Promise<
+  import("@/features/resort-detail/utils/currentConditions").ResortConditions
+> {
+  if (!usesRemoteDataApi()) {
+    const { readAvailableConditions } = await import(
+      "@/server/crawl-latest/conditions"
+    );
+    return readAvailableConditions(resortId);
+  }
+  const search = new URLSearchParams({
+    resortId,
+    kind: "courses",
+    view: "conditions",
+  });
+  try {
+    const response = await fetchInternalDataApi(
+      `/api/internal/v1/crawl-latest-current?${search}`,
+    );
+    return parseObjectEnvelope(response, "conditions");
+  } catch (error) {
+    // Allow the web app and data API to be deployed separately. Historical
+    // captures retain their original source URLs, timestamp and archive label.
+    if (
+      !(error instanceof InternalDataApiError) ||
+      ![400, 404].includes(error.status ?? 0)
+    )
+      throw error;
+    const { readBundledResortConditions } = await import(
+      "./bundledResortConditions"
+    );
+    return readBundledResortConditions(resortId);
+  }
 }

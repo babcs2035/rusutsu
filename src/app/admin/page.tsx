@@ -14,6 +14,7 @@ const TOOL_LINKS: Array<{ href: string; label: string }> = [
   { href: "/admin/slope", label: "コース入力" },
   { href: "/admin/ticket", label: "リフトチケット入力" },
   { href: "/admin/review", label: "レビュー入力" },
+  { href: "/admin/crawl", label: "クローラー監視" },
 ];
 
 export default async function AdminDashboardPage() {

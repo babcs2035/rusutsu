@@ -1,80 +1,38 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { useState } from "react";
 import type { SelectedMapFeature } from "@/features/map/types";
-import type { FinalizedResortMapData } from "@/lib/finalizedResortGeojsonShared";
 import {
   COURSE_DIFFICULTY_META,
+  type FinalizedResortMapData,
   getCourseDifficulty,
 } from "@/lib/finalizedResortGeojsonShared";
-import { cn } from "@/lib/utils";
-import { StatCard } from "../components/StatCard";
-import type { FinalizedCourseGroup, Resort } from "../types";
+import {
+  CompactMetric,
+  operationText,
+  SourceLine,
+  StatusMark,
+} from "../components/CompactInfo";
+import type { Resort } from "../types";
+import { slopeDistribution, sumKnown } from "../utils/courseDistribution";
 import {
   createFinalizedCourseGroups,
-  formatCourseStatus,
+  formatDegree,
   formatMeters,
-  formatPisteStatus,
+  getCourseGroupPisteSymbol,
+  getCourseGroupStatus,
   maxNullable,
 } from "../utils/detailMetrics";
 
-const getCourseGroupDistance = (group: FinalizedCourseGroup) => {
-  const distances = group.courses
-    .map(
-      course =>
-        course.properties.slopeDistMap ?? course.properties.distance ?? null,
-    )
-    .filter((distance): distance is number => distance !== null);
-
-  return distances.length > 0
-    ? distances.reduce((sum, distance) => sum + distance, 0)
-    : null;
+const colors = {
+  beginner: "#15803d",
+  beginnerIntermediate: "#854d0e",
+  intermediate: "#b91c1c",
+  intermediateAdvanced: "#9a3412",
+  advanced: "#1e293b",
+  unknown: "#64748b",
 };
-
-const getCourseGroupDifficulty = (group: FinalizedCourseGroup) => {
-  const primaryCourse = group.courses[0];
-  const difficulty = getCourseDifficulty(primaryCourse?.properties.level);
-  return COURSE_DIFFICULTY_META[difficulty].label;
-};
-
-const getCourseGroupLevelBucket = (group: FinalizedCourseGroup) => {
-  const primaryCourse = group.courses[0];
-  const difficulty = getCourseDifficulty(primaryCourse?.properties.level);
-  if (difficulty === "advanced" || difficulty === "intermediateAdvanced") {
-    return "advanced";
-  }
-  if (difficulty === "intermediate") return "intermediate";
-  return "beginner";
-};
-
-const getCourseGroupMaxSlope = (group: FinalizedCourseGroup) =>
-  maxNullable(
-    group.courses.map(
-      course => course.properties.maxSlopeDegMap ?? course.properties.max,
-    ),
-  );
-
-const getCourseGroupElevationDiff = (group: FinalizedCourseGroup) =>
-  maxNullable(group.courses.map(course => course.properties.elevationDiffMap));
-
+const backgrounds = { "○": "#ffffff", "△": "#fef3c7", "×": "#e0f2fe" };
 export const CoursesTab = ({
   resort,
   finalizedMapData,
@@ -88,468 +46,290 @@ export const CoursesTab = ({
     feature: SelectedMapFeature | null,
   ) => void;
 }) => {
-  const finalizedCourses = finalizedMapData?.courses?.features ?? [];
-  const finalizedCourseGroups = useMemo(
-    () => createFinalizedCourseGroups(finalizedCourses),
-    [finalizedCourses],
-  );
-  const courses = resort.courses;
-  const hasFinalizedCourses = finalizedCourseGroups.length > 0;
-  const [difficultyFilter, setDifficultyFilter] = useState("全て");
-  const [sortConfig, setSortConfig] = useState<{
-    key: "distance";
-    direction: "asc" | "desc";
-  } | null>(null);
-
-  const difficultyOptions = useMemo(
-    () =>
-      hasFinalizedCourses
-        ? [
-            "全て",
-            ...Array.from(
-              new Set(finalizedCourseGroups.map(getCourseGroupDifficulty)),
+  const [filter, setFilter] = useState("all");
+  const [sort, setSort] = useState(false);
+  const section = finalizedMapData?.courses;
+  const features = section?.features ?? [];
+  const groups = createFinalizedCourseGroups(features);
+  const rows = groups.length
+    ? groups.map(group => {
+        const distance = sumKnown(
+          group.courses.map(
+            c => c.properties.slopeDistMap ?? c.properties.distance,
+          ),
+        );
+        const slopes = group.courses.map(c => ({
+          value: c.properties.avgSlopeDegMap ?? c.properties.avg,
+          distance: c.properties.slopeDistMap ?? c.properties.distance,
+        }));
+        const known = slopes.filter(
+          s => s.value != null && s.distance != null && s.distance > 0,
+        );
+        const weight = known.reduce((sum, s) => sum + (s.distance ?? 0), 0);
+        return {
+          id: group.id,
+          name: group.displayName,
+          difficulty: getCourseDifficulty(group.courses[0]?.properties.level),
+          distance: distance.total,
+          avg: weight
+            ? known.reduce(
+                (sum, s) => sum + (s.value ?? 0) * (s.distance ?? 0),
+                0,
+              ) / weight
+            : group.courses.length === 1
+              ? slopes[0].value
+              : null,
+          max: maxNullable(
+            group.courses.map(
+              c => c.properties.maxSlopeDegMap ?? c.properties.max,
             ),
-          ]
-        : [
-            "全て",
-            ...Array.from(
-              new Set(
-                courses.map(c => c.difficulty).filter(Boolean) as string[],
-              ),
-            ),
-          ],
-    [courses, finalizedCourseGroups, hasFinalizedCourses],
+          ),
+          status: getCourseGroupStatus(group).symbol,
+          piste: getCourseGroupPisteSymbol(group),
+          mapped: true,
+        };
+      })
+    : resort.courses.map(c => ({
+        id: c.id,
+        name: c.name,
+        difficulty: getCourseDifficulty(c.difficulty),
+        distance: c.distance,
+        avg: null,
+        max: c.angle,
+        status: null,
+        piste: null,
+        mapped: false,
+      }));
+  const distance = sumKnown(
+    features.length
+      ? features.map(c => c.properties.slopeDistMap ?? c.properties.distance)
+      : rows.map(r => r.distance),
   );
-
-  const processedCourses = useMemo(() => {
-    let filtered = [...courses];
-    if (difficultyFilter !== "全て") {
-      filtered = filtered.filter(c => c.difficulty === difficultyFilter);
-    }
-    if (sortConfig !== null) {
-      filtered.sort((a, b) => {
-        const aVal = a[sortConfig.key] || 0;
-        const bVal = b[sortConfig.key] || 0;
-        if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1;
-        if (aVal > bVal) return sortConfig.direction === "asc" ? 1 : -1;
-        return 0;
-      });
-    }
-    return filtered;
-  }, [courses, difficultyFilter, sortConfig]);
-
-  const processedFinalizedCourseGroups = useMemo(() => {
-    let filtered = [...finalizedCourseGroups];
-    if (difficultyFilter !== "全て") {
-      filtered = filtered.filter(
-        group => getCourseGroupDifficulty(group) === difficultyFilter,
-      );
-    }
-    if (sortConfig !== null) {
-      filtered.sort((a, b) => {
-        const aVal = getCourseGroupDistance(a) ?? 0;
-        const bVal = getCourseGroupDistance(b) ?? 0;
-        if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1;
-        if (aVal > bVal) return sortConfig.direction === "asc" ? 1 : -1;
-        return 0;
-      });
-    }
-    return filtered;
-  }, [difficultyFilter, finalizedCourseGroups, sortConfig]);
-
-  const finalizedStats = useMemo(() => {
-    const total = finalizedCourseGroups.length;
-    const beginner = finalizedCourseGroups.filter(
-      group => getCourseGroupLevelBucket(group) === "beginner",
-    ).length;
-    const intermediate = finalizedCourseGroups.filter(
-      group => getCourseGroupLevelBucket(group) === "intermediate",
-    ).length;
-    const advanced = finalizedCourseGroups.filter(
-      group => getCourseGroupLevelBucket(group) === "advanced",
-    ).length;
-
-    return {
-      total,
-      longestDistance: maxNullable(
-        finalizedCourseGroups.map(getCourseGroupDistance),
-      ),
-      maxSlope: maxNullable(finalizedCourseGroups.map(getCourseGroupMaxSlope)),
-      maxElevationDiff: maxNullable(
-        finalizedCourseGroups.map(getCourseGroupElevationDiff),
-      ),
-      beginnerPercent: total > 0 ? Math.round((beginner / total) * 100) : 0,
-      intermediatePercent:
-        total > 0 ? Math.round((intermediate / total) * 100) : 0,
-      advancedPercent: total > 0 ? Math.round((advanced / total) * 100) : 0,
-    };
-  }, [finalizedCourseGroups]);
-
-  const handleSort = (key: "distance") => {
-    setSortConfig(prev => ({
-      key,
-      direction: prev?.direction === "asc" ? "desc" : "asc",
-    }));
-  };
-
-  if (hasFinalizedCourses) {
-    return (
-      <div className="flex flex-col gap-6">
-        <section>
-          <div className="grid grid-cols-2 gap-4">
-            <StatCard title="総コース数" value={`${finalizedStats.total}`} />
-            <StatCard
-              title="最長滑走距離"
-              value={formatMeters(finalizedStats.longestDistance)}
-            />
-            <StatCard
-              title="最大斜度"
-              value={
-                finalizedStats.maxSlope == null
-                  ? "--"
-                  : `${Math.round(finalizedStats.maxSlope)}°`
-              }
-            />
-            <StatCard
-              title="標高差"
-              value={formatMeters(finalizedStats.maxElevationDiff)}
-            />
-          </div>
-        </section>
-
-        <section>
-          <h2 className="text-lg font-bold text-gray-900 font-[var(--font-heading)]">
-            レベル別割合
-          </h2>
-          <div className="mt-4 h-6 w-full overflow-hidden rounded-full bg-gray-100 border border-gray-200 text-xs font-bold text-white flex">
+  const distribution = slopeDistribution(features);
+  const levels = Object.entries(colors).map(([key, color]) => ({
+    key,
+    color,
+    label: COURSE_DIFFICULTY_META[key as keyof typeof colors].label,
+    count: rows.filter(row => row.difficulty === key).length,
+  }));
+  const displayed = rows
+    .filter(row => filter === "all" || row.difficulty === filter)
+    .sort((a, b) => (sort ? (b.distance ?? -1) - (a.distance ?? -1) : 0));
+  return (
+    <div className="space-y-4">
+      <section>
+        <dl className="grid grid-cols-2 gap-3 rounded-lg bg-slate-50 p-3">
+          <CompactMetric label="総滑走距離">
+            {formatMeters(distance.total)}
+          </CompactMetric>
+          <CompactMetric label="全面滑走 / 全コース">
+            {operationText(rows.map(row => row.status))}
+          </CompactMetric>
+        </dl>
+        <p className="mt-1 text-[11px] text-slate-500">
+          斜面に沿った距離の合計（地形データ優先・公表値で補完）
+          {distance.missing > 0 && ` · 距離不明${distance.missing}区間を除く`}
+        </p>
+        <SourceLine
+          label="コース状況"
+          time={section?.observedAt}
+          urls={section?.sourceUrls}
+          updates={features.map(c => c.properties.update ?? "")}
+        />
+      </section>
+      <section className="space-y-2">
+        <h2 className="text-sm font-bold">
+          レベル別割合{" "}
+          <span className="text-xs font-normal text-slate-500">
+            コース数ベース
+          </span>
+        </h2>
+        {rows.length ? (
+          <>
             <div
-              className="bg-green-500 flex items-center justify-center px-1"
-              style={{
-                width: `${Math.max(finalizedStats.beginnerPercent, 5)}%`,
-              }}
+              className="flex h-5 overflow-hidden rounded"
+              role="img"
+              aria-label={levels
+                .map(
+                  l =>
+                    `${l.label} ${Math.round((l.count / rows.length) * 100)}%`,
+                )
+                .join("、")}
             >
-              {finalizedStats.beginnerPercent >= 15 &&
-                `${finalizedStats.beginnerPercent}%`}
-            </div>
-            <div
-              className="bg-blue-500 flex items-center justify-center px-1"
-              style={{
-                width: `${Math.max(finalizedStats.intermediatePercent, 5)}%`,
-              }}
-            >
-              {finalizedStats.intermediatePercent >= 15 &&
-                `${finalizedStats.intermediatePercent}%`}
-            </div>
-            <div
-              className="bg-red-500 flex items-center justify-center px-1"
-              style={{
-                width: `${Math.max(finalizedStats.advancedPercent, 5)}%`,
-              }}
-            >
-              {finalizedStats.advancedPercent >= 15 &&
-                `${finalizedStats.advancedPercent}%`}
-            </div>
-          </div>
-          <div className="mt-3 flex justify-center gap-6 text-sm text-gray-600">
-            <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-green-500 flex-shrink-0" />{" "}
-              初級
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-blue-500 flex-shrink-0" />{" "}
-              中級
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0" />{" "}
-              上級
-            </div>
-          </div>
-        </section>
-
-        <section>
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-lg font-bold text-gray-900 font-[var(--font-heading)]">
-                コース一覧
-              </h2>
-              <Badge
-                variant="secondary"
-                className={
-                  finalizedMapData?.courses?.verificationStatus === "verified"
-                    ? "bg-green-50 text-green-900"
-                    : finalizedMapData?.courses?.verificationStatus === "mixed"
-                      ? "bg-blue-50 text-blue-900"
-                      : "bg-orange-50 text-orange-900"
-                }
-              >
-                {finalizedMapData?.courses?.verificationStatus === "verified"
-                  ? "✓ 確認済み"
-                  : finalizedMapData?.courses?.verificationStatus === "mixed"
-                    ? "確認済み / OpenStreetMap・未確認"
-                    : "OpenStreetMap・未確認"}
-              </Badge>
-            </div>
-            <Select
-              value={difficultyFilter}
-              onValueChange={v => v && setDifficultyFilter(v)}
-            >
-              <SelectTrigger className="w-full md:w-[200px] h-10">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {difficultyOptions.map(opt => (
-                  <SelectItem key={opt} value={opt}>
-                    {opt === "全て" ? "すべての難易度" : opt}
-                  </SelectItem>
+              {levels
+                .filter(l => l.count)
+                .map(l => (
+                  <div
+                    key={l.key}
+                    style={{
+                      width: `${(l.count / rows.length) * 100}%`,
+                      background: l.color,
+                    }}
+                  />
                 ))}
-              </SelectContent>
-            </Select>
+            </div>
+            <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+              {levels
+                .filter(l => l.count)
+                .map(l => (
+                  <span key={l.key} style={{ color: l.color }}>
+                    ● {l.label} {Math.round((l.count / rows.length) * 100)}%
+                  </span>
+                ))}
+            </div>
+          </>
+        ) : (
+          <p className="text-xs text-slate-500">難易度データなし</p>
+        )}
+        <h3 className="pt-2 text-sm font-bold">
+          斜度別割合{" "}
+          <span className="text-xs font-normal text-slate-500">
+            滑走距離ベース・5°刻み
+          </span>
+        </h3>
+        {distribution.total > 0 ? (
+          <div className="grid grid-cols-3 gap-x-3 gap-y-2">
+            {distribution.bins
+              .filter((b, i) => i < 9 || b.distance > 0)
+              .map(bin => (
+                <div key={bin.label} className="text-[11px]">
+                  <div className="flex justify-between gap-1">
+                    <span>{bin.label}</span>
+                    <span className="tabular-nums">
+                      {bin.percent.toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="mt-1 h-1.5 rounded bg-slate-100">
+                    <div
+                      className="h-full rounded bg-blue-600"
+                      style={{ width: `${bin.percent}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
           </div>
-          <Card className="mt-4 w-full overflow-x-auto py-0">
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-gray-50">
-                    <TableHead className="table-header-cell">
-                      コース名
-                    </TableHead>
-                    <TableHead className="table-header-cell">難易度</TableHead>
-                    <TableHead className="table-header-cell">
-                      <Button
-                        onClick={() => handleSort("distance")}
-                        variant="ghost"
-                        className="px-0 py-0 h-auto min-w-0 text-gray-600 hover:text-blue-700"
-                      >
-                        距離{" "}
-                        {sortConfig?.key === "distance" &&
-                          (sortConfig.direction === "asc" ? "▲" : "▼")}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="table-header-cell">状況</TableHead>
-                    <TableHead className="table-header-cell">圧雪</TableHead>
-                    <TableHead className="table-header-cell">スノボ</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {processedFinalizedCourseGroups.length === 0 && (
-                    <TableRow>
-                      <TableCell
-                        colSpan={6}
-                        className="px-4 py-8 text-center text-sm font-semibold text-gray-500"
-                      >
-                        条件に合うコースがありません
-                      </TableCell>
-                    </TableRow>
-                  )}
-                  {processedFinalizedCourseGroups.map(group => {
-                    const primaryCourse = group.courses[0];
-                    const isSelected =
-                      selectedFinalizedFeature?.kind === "course" &&
-                      selectedFinalizedFeature.id === group.id;
-                    return (
-                      <TableRow
-                        key={group.id}
-                        className={cn(
-                          "cursor-pointer",
-                          isSelected
-                            ? "bg-blue-50 hover:bg-blue-100 hover:text-blue-700"
-                            : "bg-white hover:bg-gray-50 hover:text-gray-900",
-                          "border-b border-gray-200",
-                        )}
+        ) : (
+          <p className="text-xs text-slate-500">
+            標高付きのコースデータがないため集計できません。
+          </p>
+        )}
+        <p className="text-[11px] text-slate-500">
+          地形の各区間から算出。
+          {distribution.omitted > 0
+            ? `標高不明の${distribution.omitted}区間は集計対象外。`
+            : ""}
+          端数処理により合計が100%にならない場合があります。
+        </p>
+      </section>
+      <section>
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-sm font-bold">
+            コース一覧{" "}
+            {section?.verificationStatus === "verified" && (
+              <span className="text-[11px] font-normal text-slate-500">
+                確認済み
+              </span>
+            )}
+          </h2>
+          <select
+            aria-label="難易度で絞り込み"
+            value={filter}
+            onChange={e => setFilter(e.target.value)}
+            className="h-8 max-w-36 rounded border px-2 text-xs"
+          >
+            <option value="all">すべての難易度</option>
+            {levels
+              .filter(l => l.count)
+              .map(l => (
+                <option key={l.key} value={l.key}>
+                  {l.label}
+                </option>
+              ))}
+          </select>
+        </div>
+        <div className="my-2 flex flex-wrap gap-2 text-[11px] text-slate-600">
+          <span>○ 全面 △ 一部 × 閉鎖 — 不明</span>
+          <span className="border px-1">圧雪</span>
+          <span className="bg-amber-100 px-1">一部圧雪</span>
+          <span className="bg-sky-100 px-1">非圧雪</span>
+          <span className="bg-slate-100 px-1">圧雪不明</span>
+        </div>
+        <div className="overflow-x-auto rounded-lg border">
+          <table className="w-full text-xs">
+            <thead className="bg-slate-50 text-slate-600">
+              <tr>
+                {["状況", "コース名", "距離", "平均", "最大"].map(label => (
+                  <th
+                    key={label}
+                    scope="col"
+                    className="px-2 py-2 text-left whitespace-nowrap"
+                  >
+                    {label === "距離" ? (
+                      <button type="button" onClick={() => setSort(!sort)}>
+                        距離 {sort ? "↓" : "↕"}
+                      </button>
+                    ) : label === "平均" || label === "最大" ? (
+                      `${label}斜度`
+                    ) : (
+                      label
+                    )}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {displayed.map(row => (
+                <tr
+                  key={row.id}
+                  className={`border-t ${selectedFinalizedFeature?.id === row.id ? "outline outline-2 -outline-offset-2 outline-blue-600" : ""}`}
+                  style={{
+                    background: row.piste ? backgrounds[row.piste] : "#f1f5f9",
+                  }}
+                >
+                  <td className="px-2 py-2 text-center">
+                    <StatusMark symbol={row.status} />
+                  </td>
+                  <td
+                    className="min-w-24 px-2 py-2 font-semibold"
+                    style={{ color: colors[row.difficulty] }}
+                  >
+                    {row.mapped ? (
+                      <button
+                        type="button"
+                        className="min-h-8 text-left underline-offset-2 hover:underline"
+                        aria-label={`${row.name}・${COURSE_DIFFICULTY_META[row.difficulty].label}の詳細`}
                         onClick={() =>
                           onSelectedFinalizedFeatureChange({
                             kind: "course",
-                            id: group.id,
+                            id: row.id,
                           })
                         }
                       >
-                        <TableCell className="px-4 py-3 font-semibold whitespace-nowrap">
-                          <span className="inline-flex items-center gap-2">
-                            {group.displayName}
-                            <Badge
-                              variant="secondary"
-                              className={
-                                primaryCourse?.verificationStatus === "verified"
-                                  ? "bg-green-50 text-green-900 text-[10px]"
-                                  : "bg-orange-50 text-orange-900 text-[10px]"
-                              }
-                            >
-                              {primaryCourse?.verificationStatus === "verified"
-                                ? "✓ 確認済み"
-                                : "OSM・未確認"}
-                            </Badge>
-                          </span>
-                        </TableCell>
-                        <TableCell className="px-4 py-3 whitespace-nowrap">
-                          <Badge
-                            variant="secondary"
-                            className="text-xs whitespace-nowrap"
-                          >
-                            {getCourseGroupDifficulty(group)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="px-4 py-3 whitespace-nowrap">
-                          {formatMeters(getCourseGroupDistance(group))}
-                        </TableCell>
-                        <TableCell className="px-4 py-3 whitespace-nowrap">
-                          {formatCourseStatus(primaryCourse?.properties.status)}
-                        </TableCell>
-                        <TableCell className="px-4 py-3 whitespace-nowrap">
-                          {formatPisteStatus(primaryCourse?.properties.piste)}
-                        </TableCell>
-                        <TableCell className="px-4 py-3 whitespace-nowrap">
-                          {primaryCourse?.properties.snowboard ?? "--"}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </section>
-      </div>
-    );
-  }
-
-  const maxSlope = resort.steepestSlope ?? resort.angleMax;
-  // 3 セグメントの合計を 100% に正規化する（最低幅クランプによる合計超過・末尾クリップを防止）
-  const levelCounts = [
-    resort.beginnersCoursesPercent,
-    resort.intermediateCoursesPercent,
-    resort.advancedCoursesPercent,
-  ];
-  const levelCountTotal = levelCounts.reduce((sum, value) => sum + value, 0);
-  const levelWidths = levelCounts.map(value =>
-    levelCountTotal > 0 ? (value / levelCountTotal) * 100 : 0,
-  );
-
-  return (
-    <div className="flex flex-col gap-6">
-      <section>
-        <div className="grid grid-cols-2 gap-4">
-          <StatCard title="総コース数" value={`${resort.numberOfCourses}`} />
-          <StatCard
-            title="最長滑走距離"
-            value={formatMeters(resort.longestCourse)}
-          />
-          <StatCard
-            title="最大斜度"
-            value={maxSlope == null ? "--" : `${maxSlope}°`}
-          />
-          <StatCard title="標高差" value={`${resort.verticalDrop}m`} />
-        </div>
-      </section>
-      <section>
-        <h2 className="text-lg font-bold text-gray-900 font-[var(--font-heading)]">
-          レベル別割合
-        </h2>
-        <div className="mt-4 h-6 w-full overflow-hidden rounded-full bg-gray-100 border border-gray-200 text-xs font-bold text-white flex">
-          <div
-            className="bg-green-500 flex items-center justify-center px-1"
-            style={{ width: `${levelWidths[0]}%` }}
-          >
-            {resort.beginnersCoursesPercent >= 15 &&
-              `${resort.beginnersCoursesPercent}%`}
-          </div>
-          <div
-            className="bg-blue-500 flex items-center justify-center px-1"
-            style={{ width: `${levelWidths[1]}%` }}
-          >
-            {resort.intermediateCoursesPercent >= 15 &&
-              `${resort.intermediateCoursesPercent}%`}
-          </div>
-          <div
-            className="bg-red-500 flex items-center justify-center px-1"
-            style={{ width: `${levelWidths[2]}%` }}
-          >
-            {resort.advancedCoursesPercent >= 15 &&
-              `${resort.advancedCoursesPercent}%`}
-          </div>
-        </div>
-        <div className="mt-3 flex justify-center gap-6 text-sm text-gray-600">
-          <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-green-500 flex-shrink-0" />{" "}
-            初級
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-blue-500 flex-shrink-0" />{" "}
-            中級
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0" />{" "}
-            上級
-          </div>
-        </div>
-      </section>
-      <section>
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          <h2 className="text-lg font-bold text-gray-900 font-[var(--font-heading)]">
-            コース一覧
-          </h2>
-          <Select
-            value={difficultyFilter}
-            onValueChange={v => v && setDifficultyFilter(v)}
-          >
-            <SelectTrigger className="w-full md:w-[200px] h-10">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {difficultyOptions.map(opt => (
-                <SelectItem key={opt} value={opt}>
-                  {opt === "全て" ? "すべての難易度" : opt}
-                </SelectItem>
+                        {row.name}
+                      </button>
+                    ) : (
+                      row.name
+                    )}
+                  </td>
+                  <td className="px-2 py-2 whitespace-nowrap tabular-nums">
+                    {formatMeters(row.distance)}
+                  </td>
+                  <td className="px-2 py-2 tabular-nums">
+                    {formatDegree(row.avg)}
+                  </td>
+                  <td className="px-2 py-2 tabular-nums">
+                    {formatDegree(row.max)}
+                  </td>
+                </tr>
               ))}
-            </SelectContent>
-          </Select>
+            </tbody>
+          </table>
+          {!displayed.length && (
+            <p className="p-4 text-center text-xs text-slate-500">
+              コースデータがありません
+            </p>
+          )}
         </div>
-        <Card className="mt-4 w-full overflow-x-auto py-0">
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-gray-50">
-                  <TableHead className="table-header-cell">コース名</TableHead>
-                  <TableHead className="table-header-cell">難易度</TableHead>
-                  <TableHead className="table-header-cell">
-                    <Button
-                      onClick={() => handleSort("distance")}
-                      variant="ghost"
-                      className="px-0 py-0 h-auto min-w-0 text-gray-600 hover:text-blue-700"
-                    >
-                      距離 (m){" "}
-                      {sortConfig?.key === "distance" &&
-                        (sortConfig.direction === "asc" ? "▲" : "▼")}
-                    </Button>
-                  </TableHead>
-                  <TableHead className="table-header-cell">スノボ</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {processedCourses.map(c => (
-                  <TableRow
-                    key={c.id}
-                    className="border-gray-200 hover:bg-gray-50 hover:text-gray-900"
-                  >
-                    <TableCell className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">
-                      {c.name}
-                    </TableCell>
-                    <TableCell className="px-4 py-3 whitespace-nowrap">
-                      <Badge variant="secondary" className="text-xs">
-                        {c.difficulty}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="px-4 py-3 text-gray-700 font-mono whitespace-nowrap">
-                      {c.distance?.toLocaleString() || "--"}
-                    </TableCell>
-                    <TableCell className="px-4 py-3 text-gray-700 whitespace-nowrap">
-                      {c.snowboard}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
       </section>
     </div>
   );

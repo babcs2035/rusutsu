@@ -3,6 +3,7 @@ import {
   findAvailableCrawlLatestStatusDirect,
   listAvailableCrawlLatestResortIdsDirect,
 } from "@/server/crawl-latest/availableStatus";
+import { readAvailableConditions } from "@/server/crawl-latest/conditions";
 import {
   internalApiError,
   internalApiJson,
@@ -19,7 +20,7 @@ const resortIdSchema = z
   .max(200)
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/u);
 const kindSchema = z.enum(["courses", "lifts"]);
-const viewSchema = z.enum(["status", "resortIds"]);
+const viewSchema = z.enum(["status", "resortIds", "conditions"]);
 
 export async function GET(request: Request) {
   const authorizationError = requireInternalApiRequest(request, "admin-data");
@@ -56,6 +57,11 @@ export async function GET(request: Request) {
     const resortId = resortIdSchema.safeParse(searchParams.get("resortId"));
     if (!resortId.success) {
       return internalApiError(400, "INVALID_QUERY", "resortId is required");
+    }
+    if (view.data === "conditions") {
+      return internalApiJson({
+        conditions: await readAvailableConditions(resortId.data),
+      });
     }
     return internalApiJson({
       status: await findAvailableCrawlLatestStatusDirect(

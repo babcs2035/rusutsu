@@ -2,6 +2,7 @@
 
 import { readResortLinksMap } from "@/features/lift/server/liftFiles";
 import { collectSocialAccounts } from "@/features/resort-detail/utils/socialAccounts";
+import { readCurrentResortConditions } from "@/lib/crawlLatestCurrent";
 import { getFinalizedResortMapData } from "@/lib/finalizedResortGeojson";
 import type {
   FinalizedCourseFeature,
@@ -203,6 +204,12 @@ export async function getSkiResortById(id: string) {
       : (primaryDecisionData?.liftTickets ?? []),
     reviewData:
       decisionData.reviewData ?? primaryDecisionData?.reviewData ?? null,
+    currentConditions: await Promise.all(
+      [...new Set([resort.id, ...sourceIds])].map(async id => ({
+        id,
+        ...(await readCurrentResortConditions(id)),
+      })),
+    ),
     socialAccounts: collectSocialAccounts(linksMap, [resort.id, ...sourceIds]),
     weatherIds,
     finalizedMapData,

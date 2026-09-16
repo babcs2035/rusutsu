@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { OrderOrganizerDialog } from "@/features/latest-status-mapping/components/OrderOrganizerDialog";
+import type { LatestStatusMappingState } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { PanelSection } from "@/shared/components/PanelSection";
@@ -46,6 +47,7 @@ import {
 } from "../utils/liftOrder";
 
 type DetailStepProps = {
+  mapping: LatestStatusMappingState;
   resort: ResortOption;
   resorts: ResortOption[];
   lifts: EditorLift[];
@@ -104,6 +106,7 @@ const MarkSelect = ({
 };
 
 export function DetailStep({
+  mapping,
   resort,
   resorts,
   lifts,
@@ -416,7 +419,7 @@ export function DetailStep({
       <OrderOrganizerDialog
         open={isOrganizerOpen}
         onOpenChange={setIsOrganizerOpen}
-        resortId={resort.id}
+        mapping={mapping}
         resortName={resort.nameJa || resort.id}
         kind="lifts"
         items={lifts.map(lift => ({ id: lift.id, name: lift.name }))}

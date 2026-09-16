@@ -492,7 +492,7 @@ export function LineEditStep({
       <OrderOrganizerDialog
         open={isOrganizerOpen}
         onOpenChange={setIsOrganizerOpen}
-        resortId={resort.id}
+        mapping={mapping}
         resortName={resort.nameJa}
         kind="courses"
         items={courses.map(course => ({

@@ -139,6 +139,7 @@ export type ResortMapSection<TFeature> = {
     | "mixed"
     | null;
   fileName: string;
+  observedAt?: string | null;
   /** 公式サイトの出典（latest_data の courseUrl / liftUrl） */
   sourceUrls: string[];
   verificationStatus?: "verified" | "unverified" | "mixed";
@@ -747,6 +748,7 @@ const buildCourseSourceSection = async (
       source: geometry.source,
       baseSource: base?.label ?? null,
       fileName: status?.fileName ?? geometry.fileName,
+      observedAt: status?.time ?? null,
       sourceUrls,
       verificationStatus,
       features,
@@ -781,6 +783,7 @@ const buildCourseSection = async (
       source: "mixed",
       baseSource: "mixed",
       fileName: status?.fileName ?? curated.section.fileName,
+      observedAt: status?.time ?? null,
       sourceUrls: [
         ...new Set([...curated.section.sourceUrls, ...osm.section.sourceUrls]),
       ],
@@ -833,6 +836,7 @@ const buildLiftSection = async (
       source: geometry.source,
       baseSource: base?.label ?? null,
       fileName: status?.fileName ?? geometry.fileName,
+      observedAt: status?.time ?? null,
       sourceUrls: status?.sourceUrls ?? [],
       features,
     } satisfies ResortMapSection<FinalizedLiftFeature>,

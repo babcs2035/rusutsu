@@ -948,6 +948,7 @@ export function SlopeEditWorkspace({
             )}
             {step === "details" && resort && (
               <DetailEditStep
+                mapping={mapping}
                 resort={resort}
                 resorts={resorts}
                 sourceKind={sourceKind}

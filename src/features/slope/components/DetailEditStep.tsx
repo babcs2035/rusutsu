@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { OrderOrganizerDialog } from "@/features/latest-status-mapping/components/OrderOrganizerDialog";
+import type { LatestStatusMappingState } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
 import { cn } from "@/lib/utils";
 import { PanelSection } from "@/shared/components/PanelSection";
 import { moveItem, useSortableList } from "@/shared/hooks/useSortableList";
@@ -57,6 +58,7 @@ import {
 import { getEmptyRequiredCourseFields } from "../utils/validation";
 
 type DetailEditStepProps = {
+  mapping: LatestStatusMappingState;
   resort: ResortOption;
   resorts: ResortOption[];
   sourceKind: "curated" | "osm";
@@ -112,6 +114,7 @@ const formatDateTime = (iso: string): string => {
 };
 
 export function DetailEditStep({
+  mapping,
   resort,
   resorts,
   sourceKind,
@@ -742,7 +745,7 @@ export function DetailEditStep({
       <OrderOrganizerDialog
         open={isOrganizerOpen}
         onOpenChange={setIsOrganizerOpen}
-        resortId={resort.id}
+        mapping={mapping}
         resortName={resort.nameJa}
         kind="courses"
         items={courses.map(course => ({

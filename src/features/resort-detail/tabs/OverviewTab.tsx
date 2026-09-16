@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
+import { CurrentOverview } from "../components/CurrentOverview";
 import type { XProfile } from "../server/xProfile";
 import type { Resort } from "../types";
 import {
@@ -113,14 +114,24 @@ function AccountEmbed({
     href: account.url,
     tabs: "timeline",
     width: String(width),
-    height: "670",
-    small_header: "true",
+    height: "600",
+    small_header: "false",
     adapt_container_width: "false",
-    hide_cover: "true",
+    hide_cover: "false",
     show_facepile: "false",
   });
   return (
-    <div className="min-w-0 space-y-3">
+    <div className="min-w-0">
+      <div className="flex items-center justify-between gap-2 border-b px-3 py-2 text-xs">
+        <span className="truncate font-medium">{account.label}</span>
+        <ExternalLinkComponent
+          href={account.url}
+          className="shrink-0 text-blue-700 underline"
+          icon={<ExternalLink className="size-3" />}
+        >
+          {platform}で開く
+        </ExternalLinkComponent>
+      </div>
       <div
         className={
           platform === "Facebook"
@@ -136,28 +147,11 @@ function AccountEmbed({
                 ? `${account.url}embed/`
                 : `https://www.facebook.com/plugins/page.php?${params}`
             }
-            // The compact Facebook page header is 70px tall and currently
-            // renders with overlapping text. Keep the timeline visible below it.
-            className={
-              platform === "Facebook"
-                ? "block h-[670px] w-full -translate-y-[70px] border-0"
-                : "block h-[600px] w-full border-0"
-            }
+            className="block h-[600px] w-full border-0"
             loading="eager"
             allow="encrypted-media; clipboard-write; picture-in-picture; web-share"
           />
         ) : null}
-      </div>
-      <div className="space-y-1 px-3 pb-3 text-center">
-        <ExternalLinkComponent
-          href={account.url}
-          className="text-sm text-blue-600 hover:underline"
-        >
-          {account.label} を{platform}で見る ↗
-        </ExternalLinkComponent>
-        <p className="text-xs text-muted-foreground">
-          表示されない場合は、公式アカウントをご覧ください。
-        </p>
       </div>
     </div>
   );
@@ -214,7 +208,15 @@ function PlatformAccounts({
 }
 
 export function OverviewTab({ resort }: { resort: Resort }) {
-  return <SocialTabs key={resort.id} accounts={resort.socialAccounts} />;
+  return (
+    <div className="space-y-3">
+      <CurrentOverview resort={resort} />
+      <section aria-label="SNS">
+        <h2 className="mb-2 text-sm font-bold text-slate-900">SNS</h2>
+        <SocialTabs key={resort.id} accounts={resort.socialAccounts} />
+      </section>
+    </div>
+  );
 }
 
 function SocialTabs({ accounts }: { accounts: Resort["socialAccounts"] }) {
@@ -258,7 +260,7 @@ function SocialTabs({ accounts }: { accounts: Resort["socialAccounts"] }) {
           <TabsTrigger
             key={platform}
             value={platform}
-            className={`min-h-12 gap-2.5 rounded-none border-0 border-b-2 border-b-transparent px-2 py-3 hover:bg-muted data-active:bg-background group-data-[variant=default]/tabs-list:data-active:shadow-none ${PLATFORM_STYLE[platform].tab}`}
+            className={`min-h-10 gap-2 rounded-none border-0 border-b-2 border-b-transparent px-2 py-2 hover:bg-muted data-active:bg-background group-data-[variant=default]/tabs-list:data-active:shadow-none ${PLATFORM_STYLE[platform].tab}`}
           >
             <Image
               src={`/rusutsu/social/${PLATFORM_STYLE[platform].icon}`}

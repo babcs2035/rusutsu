@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import type { ElevationProfileMapPoint } from "@/features/map/types";
 import type { FinalizedLiftFeature } from "@/lib/finalizedResortGeojsonShared";
 import type { FinalizedCourseGroup } from "../types";
+import { SourceLine } from "./CompactInfo";
 import { SelectedCourseDetail } from "./SelectedCourseDetail";
 import { SelectedLiftDetail } from "./SelectedLiftDetail";
 
@@ -21,6 +22,8 @@ export const FinalizedFeatureDetail = ({
   resortLabelName,
   courseSourceUrls,
   courseVerificationStatus,
+  courseObservedAt,
+  liftObservedAt,
   liftSourceUrls,
   selectedElevationProfilePoint,
   onSelectedElevationProfilePointChange,
@@ -32,6 +35,8 @@ export const FinalizedFeatureDetail = ({
   /** 地図のラベルに出している省略名。検索語の組み立てに使う */
   resortLabelName: string;
   courseSourceUrls: string[];
+  courseObservedAt?: string | null;
+  liftObservedAt?: string | null;
   courseVerificationStatus?: "verified" | "unverified" | "mixed";
   liftSourceUrls: string[];
   selectedElevationProfilePoint: ElevationProfileMapPoint | null;
@@ -87,6 +92,13 @@ export const FinalizedFeatureDetail = ({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
+        <div className="mb-3">
+          <SourceLine
+            label={isCourse ? "コース状況" : "リフト状況"}
+            time={isCourse ? courseObservedAt : liftObservedAt}
+            urls={isCourse ? courseSourceUrls : liftSourceUrls}
+          />
+        </div>
         {courseGroup ? (
           <SelectedCourseDetail
             courseGroup={courseGroup}

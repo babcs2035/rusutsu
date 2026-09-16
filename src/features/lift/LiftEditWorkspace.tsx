@@ -618,6 +618,7 @@ export function LiftEditWorkspace({
             )}
             {step === "details" && resort && (
               <DetailStep
+                mapping={mapping}
                 resort={resort}
                 resorts={effectiveResorts}
                 lifts={activeLifts}

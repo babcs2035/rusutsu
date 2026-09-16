@@ -8,7 +8,6 @@ import { CopyResortNameButton } from "@/shared/components/CopyResortNameButton";
 import { FormerResortNames } from "@/shared/components/FormerResortNames";
 import { RubyText } from "@/shared/components/RubyText";
 import type { Resort } from "../types";
-import { StatCard } from "./StatCard";
 
 type ResortInfo = Pick<
   Resort,
@@ -22,39 +21,13 @@ type ResortInfo = Pick<
   | "yukiMagi"
 >;
 
-type OperationSummary = Resort["finalizedOperationSummary"];
-
-const formatOperationSummary = (
-  summary: OperationSummary["courses"],
-  labels: { open: string; partial: string },
-) => {
-  if (!summary || summary.total === 0) return "--";
-
-  if (!summary.hasPartial) {
-    return `${summary.open}/${summary.total}`;
-  }
-
-  return (
-    <div>
-      <div>
-        {labels.open} {summary.open}/{summary.total}
-      </div>
-      <div>
-        {labels.partial} {summary.partial}/{summary.total}
-      </div>
-    </div>
-  );
-};
-
 export const InfoSection = ({
   resort,
-  finalizedOperationSummary,
   isCompareSelected,
   onToggleCompare,
   onClose,
 }: {
   resort: ResortInfo;
-  finalizedOperationSummary: OperationSummary;
   isCompareSelected: boolean;
   onToggleCompare: (id: string, selected: boolean) => void;
   onClose: () => void;
@@ -65,7 +38,7 @@ export const InfoSection = ({
   );
 
   return (
-    <div className="w-full px-4 md:px-8 pb-4 md:pb-8 border-b border-gray-200">
+    <div className="w-full px-4 py-3 border-b border-gray-200">
       <div className="flex items-center justify-between gap-2">
         <h2 className="flex-1 min-w-0 text-gray-900 text-xl md:text-2xl leading-snug font-bold font-[var(--font-heading)]">
           <RubyText segments={resort.nameRuby} fallback={resort.nameJa} />
@@ -119,28 +92,9 @@ export const InfoSection = ({
           <span>{isCompareSelected ? "比較から外す" : "比較に追加"}</span>
         </Button>
       </div>
-      <p className="mt-3 md:mt-4 text-gray-700 text-sm leading-snug">
+      <p className="mt-2 text-gray-700 text-sm leading-snug">
         {resort.descriptionShort}
       </p>
-      <div className="grid grid-cols-3 gap-2 md:gap-3 text-center">
-        <StatCard
-          title="コース"
-          value={formatOperationSummary(finalizedOperationSummary.courses, {
-            open: "全面",
-            partial: "一部",
-          })}
-        />
-        <StatCard
-          title="リフト"
-          value={formatOperationSummary(finalizedOperationSummary.lifts, {
-            open: "運行",
-            partial: "待機",
-          })}
-        />
-        <StatCard title="積雪量" value="--" />
-        <StatCard title="天候" value="--" />
-        <StatCard title="気温" value="--" />
-      </div>
     </div>
   );
 };

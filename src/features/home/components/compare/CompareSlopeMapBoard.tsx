@@ -396,6 +396,8 @@ export const CompareSlopeFeatureDetail = ({
             resort.nameJa,
             resort.shortName,
           )}
+          courseObservedAt={resort.finalizedMapData?.courses?.observedAt}
+          liftObservedAt={resort.finalizedMapData?.lifts?.observedAt}
           courseSourceUrls={resort.finalizedMapData?.courses?.sourceUrls ?? []}
           courseVerificationStatus={
             resort.finalizedMapData?.courses?.verificationStatus
@@ -528,6 +530,8 @@ const ResortSlopeMapCard = ({
           resort.nameJa,
           resort.shortName,
         )}
+        courseObservedAt={resort.finalizedMapData?.courses?.observedAt}
+        liftObservedAt={resort.finalizedMapData?.lifts?.observedAt}
         courseSourceUrls={resort.finalizedMapData?.courses?.sourceUrls ?? []}
         courseVerificationStatus={
           resort.finalizedMapData?.courses?.verificationStatus

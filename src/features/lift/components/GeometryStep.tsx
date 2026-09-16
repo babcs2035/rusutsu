@@ -393,7 +393,7 @@ export function GeometryStep({
       <OrderOrganizerDialog
         open={isOrganizerOpen}
         onOpenChange={setIsOrganizerOpen}
-        resortId={resort.id}
+        mapping={mapping}
         resortName={resort.nameJa || resort.id}
         kind="lifts"
         items={lifts.map(lift => ({

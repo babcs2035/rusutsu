@@ -395,6 +395,7 @@ model CrawlLatestRun {
   @@unique([id, skiResortId])
   @@index([skiResortId, observedAt])
   @@index([sourceMode, observedAt])
+  @@index([outcome, observedAt])
   @@map("crawl_latest_runs")
 }
 
@@ -454,6 +455,8 @@ model CrawlLatestIssue {
 
   @@unique([runId, externalId])
   @@index([runId, severity])
+  @@index([severity, createdAt])
+  @@index([createdAt])
   @@map("crawl_latest_issues")
 }
 

@@ -170,7 +170,6 @@ export const SkiResortDetailView = ({
   const desktopDetailHeader = (
     <InfoSection
       resort={resortInfo}
-      finalizedOperationSummary={resort.finalizedOperationSummary}
       isCompareSelected={isCompareSelected}
       onToggleCompare={onToggleCompare}
       onClose={onClose}
@@ -211,6 +210,8 @@ export const SkiResortDetailView = ({
           resort.nameJa,
           resort.shortName,
         )}
+        courseObservedAt={resort.finalizedMapData?.courses?.observedAt}
+        liftObservedAt={resort.finalizedMapData?.lifts?.observedAt}
         courseSourceUrls={resort.finalizedMapData?.courses?.sourceUrls ?? []}
         courseVerificationStatus={
           resort.finalizedMapData?.courses?.verificationStatus
@@ -281,7 +282,7 @@ export const SkiResortDetailView = ({
           activeTab={activeTab}
           onTabChange={setActiveTab}
         />
-        <div className="p-4 md:p-8 text-gray-700">{renderTabPanels()}</div>
+        <div className="p-3 md:p-4 text-gray-700">{renderTabPanels()}</div>
       </div>
     ))
   ) : (
@@ -289,7 +290,6 @@ export const SkiResortDetailView = ({
       {hideMobileInfoSection ? null : (
         <InfoSection
           resort={resortInfo}
-          finalizedOperationSummary={resort.finalizedOperationSummary}
           isCompareSelected={isCompareSelected}
           onToggleCompare={onToggleCompare}
           onClose={onClose}
@@ -298,6 +298,7 @@ export const SkiResortDetailView = ({
       <ResortMapSection
         DynamicMap={DynamicMap}
         resortId={resort.id}
+        previewHeightClassName="h-[clamp(100px,19dvh,160px)] shrink-0"
         finalizedMapData={resort.finalizedMapData ?? null}
         mapResorts={mapResorts}
         selectedFinalizedFeature={selectedFinalizedFeature}
@@ -316,7 +317,7 @@ export const SkiResortDetailView = ({
             activeTab={activeTab}
             onTabChange={setActiveTab}
           />
-          <div className="p-4 text-gray-700">{renderTabPanels()}</div>
+          <div className="p-3 text-gray-700">{renderTabPanels()}</div>
         </div>
       )}
     </div>

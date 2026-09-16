@@ -1,6 +1,7 @@
 import "server-only";
 
 import { normalizeInternalDataApiBaseUrl } from "@/lib/internalDataApiBaseUrl";
+import type { InternalDataApiScope } from "@/lib/internalDataApiScopes";
 
 const INTERNAL_PATH_PREFIX = "/api/internal/v1/";
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -26,7 +27,17 @@ export class InternalDataApiError extends Error {
 export type InternalDataApiFetchOptions = {
   /** 呼び出し側が本文を検証して専用エラーへ変換するHTTPステータス。 */
   acceptedErrorStatuses?: readonly number[];
+  /**
+   * 送るトークンのスコープ。診断系エンドポイントは `diagnostics-read` を要求するため、
+   * admin用トークンでは通らない。既定は従来どおり `admin-data`。
+   */
+  scope?: Extract<InternalDataApiScope, "admin-data" | "diagnostics-read">;
 };
+
+const TOKEN_ENV_BY_CLIENT_SCOPE = {
+  "admin-data": "INTERNAL_DATA_API_ADMIN_TOKEN",
+  "diagnostics-read": "INTERNAL_DATA_API_DIAGNOSTICS_TOKEN",
+} as const;
 
 /**
  * ローカルNext.jsサーバーから正本データAPIを呼ぶための共通関数。
@@ -52,9 +63,10 @@ export async function fetchInternalDataApi(
     throw new Error("DATA_API_BASE_URL is not configured");
   }
 
-  const token = process.env.INTERNAL_DATA_API_ADMIN_TOKEN?.trim();
+  const tokenName = TOKEN_ENV_BY_CLIENT_SCOPE[options.scope ?? "admin-data"];
+  const token = process.env[tokenName]?.trim();
   if (!token) {
-    throw new Error("INTERNAL_DATA_API_ADMIN_TOKEN is not configured");
+    throw new Error(`${tokenName} is not configured`);
   }
 
   const controller = new AbortController();

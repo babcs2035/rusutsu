@@ -1,7 +1,7 @@
 "use client";
 
 import { GripVertical, ListOrdered, RefreshCw } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,11 +14,10 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import { useSortableList } from "@/shared/hooks/useSortableList";
-import { loadLatestStatusMapping } from "../actions";
+import type { LatestStatusMappingState } from "../hooks/useLatestStatusMapping";
 import type {
   ApplyGeojsonOrderResult,
   LatestStatusMappingKind,
-  LatestStatusMappingWorkspace,
 } from "../types";
 import { buildGeojsonOrderByCrawledItems } from "../utils/rows";
 
@@ -32,7 +31,7 @@ export type OrganizerItem = {
 type OrderOrganizerDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  resortId: string;
+  mapping: LatestStatusMappingState;
   resortName: string;
   kind: LatestStatusMappingKind;
   items: OrganizerItem[];
@@ -63,7 +62,7 @@ const KIND_LABELS: Record<
 export function OrderOrganizerDialog({
   open,
   onOpenChange,
-  resortId,
+  mapping,
   resortName,
   kind,
   items,
@@ -74,10 +73,7 @@ export function OrderOrganizerDialog({
   onEditMapping,
 }: OrderOrganizerDialogProps) {
   const labels = KIND_LABELS[kind];
-  const [workspace, setWorkspace] =
-    useState<LatestStatusMappingWorkspace | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { workspace, rows, isLoading, error } = mapping;
   const [isApplyingOrder, setIsApplyingOrder] = useState(false);
   const [orderMessage, setOrderMessage] =
     useState<ApplyGeojsonOrderResult | null>(null);
@@ -86,49 +82,19 @@ export function OrderOrganizerDialog({
     () => items.map(item => item.name.trim()).filter(Boolean),
     [items],
   );
-  const itemNamesKey = useMemo(
-    () => JSON.stringify([...itemNames].sort()),
-    [itemNames],
-  );
-
-  const load = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      setWorkspace(
-        await loadLatestStatusMapping(resortId, kind, [...new Set(itemNames)]),
-      );
-    } catch (loadError) {
-      setError(
-        loadError instanceof Error
-          ? loadError.message
-          : "クロール結果を読み込めませんでした。",
-      );
-    } finally {
-      setIsLoading(false);
-    }
-    // itemNamesKey は itemNames の中身が変わったときだけ読み直すための鍵
-  }, [itemNames, kind, resortId]);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 開いたときと名前の集合が変わったときだけ読み直す
-  useEffect(() => {
-    if (!open) return;
-    void load();
-  }, [itemNamesKey, open]);
-
   const geojsonNameToCrawled = useMemo(() => {
     const result = new Map<string, string>();
-    for (const row of workspace?.rows ?? []) {
+    for (const row of rows) {
       if (row.crawledName && row.geojsonName) {
         result.set(row.geojsonName, row.crawledName);
       }
     }
     return result;
-  }, [workspace]);
+  }, [rows]);
 
   const crawledNameToGeojson = useMemo(() => {
     const result = new Map<string, string[]>();
-    for (const row of workspace?.rows ?? []) {
+    for (const row of rows) {
       if (!row.crawledName || !row.geojsonName) continue;
       result.set(row.crawledName, [
         ...(result.get(row.crawledName) ?? []),
@@ -136,18 +102,18 @@ export function OrderOrganizerDialog({
       ]);
     }
     return result;
-  }, [workspace]);
+  }, [rows]);
 
   const crawlerOrderedNames = useMemo(
     () =>
       workspace
         ? buildGeojsonOrderByCrawledItems(
             workspace.crawledItems.map(item => item.name),
-            workspace.rows,
-            workspace.geojsonNames,
+            rows,
+            itemNames,
           )
         : [],
-    [workspace],
+    [itemNames, rows, workspace],
   );
 
   const sortable = useSortableList({
@@ -188,8 +154,8 @@ export function OrderOrganizerDialog({
           <Button
             size="sm"
             variant="outline"
-            disabled={isLoading}
-            onClick={() => void load()}
+            disabled={isLoading || mapping.isDirty}
+            onClick={mapping.reload}
           >
             <RefreshCw
               className={cn("size-3.5", isLoading && "animate-spin")}
@@ -212,7 +178,9 @@ export function OrderOrganizerDialog({
             <Button
               size="sm"
               variant="outline"
-              disabled={crawlerOrderedNames.length === 0 || isApplyingOrder}
+              disabled={
+                isLoading || crawlerOrderedNames.length === 0 || isApplyingOrder
+              }
               title={
                 crawlerOrderedNames.length === 0
                   ? "対応済みの取得結果がありません"
