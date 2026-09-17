@@ -172,6 +172,7 @@ const readLatestStatus = async (
     kind: LatestStatusMappingKind,
   ) => Promise<LatestSuccessfulStatus | null>,
 ): Promise<{
+  archiveTimestamp?: string | null;
   fileName: string | null;
   time: string | null;
   items: LatestStatusMappingItem[];
@@ -188,6 +189,7 @@ const readLatestStatus = async (
     if (item) itemsByName.set(item.name, item);
   }
   return {
+    archiveTimestamp: latest.archiveTimestamp,
     fileName: latest.fileName,
     time: latest.time,
     items: [...itemsByName.values()],
@@ -300,6 +302,9 @@ export const loadLatestStatusMappingWorkspace = async (
     kind,
     latestFile: latest.fileName,
     latestTime: latest.time,
+    ...(latest.archiveTimestamp
+      ? { archiveTimestamp: latest.archiveTimestamp }
+      : {}),
     sourceUrls: latest.sourceUrls,
     crawledItems: latest.items,
     geojsonNames,

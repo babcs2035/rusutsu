@@ -31,12 +31,13 @@ const formatDateTime = (iso: string): string => {
 const draftMapKey = (resortId: string, sourceKind: "curated" | "osm") =>
   `${sourceKind}:${resortId}`;
 
-type CrawlerFilter = "all" | "with" | "without";
+type CrawlerFilter = "all" | "with" | "without" | "withoutMapping";
 
 const CRAWLER_FILTERS: Array<{ id: CrawlerFilter; label: string }> = [
   { id: "all", label: "すべて" },
   { id: "with", label: "取得結果あり" },
   { id: "without", label: "取得結果なし" },
+  { id: "withoutMapping", label: "対応表なし" },
 ];
 
 export function ResortSelectStep({ resorts, onStart }: ResortSelectStepProps) {
@@ -61,6 +62,12 @@ export function ResortSelectStep({ resorts, onStart }: ResortSelectStepProps) {
     return resorts.filter(resort => {
       if (crawlerFilter === "with" && !resort.hasCrawlerCourses) return false;
       if (crawlerFilter === "without" && resort.hasCrawlerCourses) return false;
+      // 取得結果はあるのに対応表が無い＝これから対応付けするスキー場。
+      if (
+        crawlerFilter === "withoutMapping" &&
+        (!resort.hasCrawlerCourses || resort.hasCourseMapping)
+      )
+        return false;
       if (keyword === "") return true;
       return (
         resort.nameJa.toLowerCase().includes(keyword) ||
@@ -160,7 +167,7 @@ export function ResortSelectStep({ resorts, onStart }: ResortSelectStepProps) {
           </span>
         </div>
         <ResortStatusLegend
-          kinds={["confirmed", "osm", "crawler", "noCrawler"]}
+          kinds={["confirmed", "osm", "crawler", "noMapping", "noCrawler"]}
         />
         <ResortPickerLegend />
 
@@ -187,6 +194,10 @@ export function ResortSelectStep({ resorts, onStart }: ResortSelectStepProps) {
                     pendingResort.hasCrawlerCourses ? "crawler" : "noCrawler"
                   }
                 />
+                {pendingResort.hasCrawlerCourses &&
+                  !pendingResort.hasCourseMapping && (
+                    <ResortStatusBadge kind="noMapping" />
+                  )}
               </div>
               <div className="flex flex-col gap-2">
                 {pendingCuratedDraft && (
@@ -332,6 +343,9 @@ export function ResortSelectStep({ resorts, onStart }: ResortSelectStepProps) {
                 <ResortStatusBadge
                   kind={resort.hasCrawlerCourses ? "crawler" : "noCrawler"}
                 />
+                {resort.hasCrawlerCourses && !resort.hasCourseMapping && (
+                  <ResortStatusBadge kind="noMapping" />
+                )}
               </div>
             </div>
           ))}

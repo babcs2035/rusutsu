@@ -4,6 +4,7 @@ import path from "node:path";
 export type LatestStatusKind = "courses" | "lifts";
 
 export type LatestSuccessfulStatus = {
+  archiveTimestamp?: string | null;
   fileName: string;
   time: string | null;
   items: Record<string, unknown>[];

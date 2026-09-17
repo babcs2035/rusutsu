@@ -1,3 +1,4 @@
+import type { CourseStatusSummary } from "./courseStatusSummary";
 export type GeoCoordinate = [number, number] | [number, number, number];
 
 export type FinalizedCourseFeature = {
@@ -6,6 +7,7 @@ export type FinalizedCourseFeature = {
   displayName: string;
   groupId: string;
   sectionName: string | null;
+  latestStatusName?: string | null;
   /** 人手確認済みの既存データか、未確認のOSM由来か。 */
   verificationStatus?: "verified" | "unverified";
   sourceUrls?: string[];
@@ -135,6 +137,7 @@ export type ResortMapSection<TFeature> = {
 };
 
 export type FinalizedResortMapData = {
+  courseStatusSummary?: CourseStatusSummary | null;
   courses: ResortMapSection<FinalizedCourseFeature> | null;
   lifts: ResortMapSection<FinalizedLiftFeature> | null;
 };

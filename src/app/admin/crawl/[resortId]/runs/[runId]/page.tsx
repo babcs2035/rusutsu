@@ -17,8 +17,8 @@ export default async function CrawlMonitorRunPage({
 }) {
   await requireAdmin();
   const { resortId, runId } = await params;
-  const detail = await fetchCrawlMonitorRunDetail(runId);
-  if (!detail || detail.run.resortId !== resortId) notFound();
+  const detail = await fetchCrawlMonitorRunDetail(resortId, runId);
+  if (!detail) notFound();
 
   const names = await readSkiResortNames([resortId]);
   const resortName =

@@ -15,8 +15,11 @@ export type RawSearchParams = Record<string, string | string[] | undefined>;
 export const OVERVIEW_STATUS_FILTERS = [
   "all",
   "attention",
+  "ok",
+  "partial",
   "failed",
   "warning",
+  "mapping",
   "missing",
   "stale",
 ] as const;
@@ -25,8 +28,11 @@ export type OverviewStatusFilter = (typeof OVERVIEW_STATUS_FILTERS)[number];
 export const OVERVIEW_STATUS_LABELS: Record<OverviewStatusFilter, string> = {
   all: "すべて",
   attention: "要確認のみ",
+  ok: "正常",
+  partial: "一部警告",
   failed: "失敗",
   warning: "警告あり",
+  mapping: "対応表に取りこぼし",
   missing: "未取得",
   stale: "24時間以上更新なし",
 };
@@ -71,6 +77,20 @@ export const parseSourceModes = (
     requested.includes(mode),
   );
   return modes.length > 0 ? [...modes] : ["LIVE"];
+};
+
+export const ORIGIN_LABELS = {
+  DATABASE: "サーバーの実行記録",
+  FILE: "ファイルに残る記録",
+} as const;
+export type MonitorOrigin = keyof typeof ORIGIN_LABELS;
+
+/** 明示されていなければnull。記録のある方を画面側で選ぶ。 */
+export const parseOrigin = (
+  value: string | string[] | undefined,
+): MonitorOrigin | null => {
+  const requested = single(value);
+  return requested === "DATABASE" || requested === "FILE" ? requested : null;
 };
 
 export const parseOverviewQuery = (params: RawSearchParams): OverviewQuery => {

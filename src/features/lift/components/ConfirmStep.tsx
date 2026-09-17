@@ -411,6 +411,11 @@ export function ConfirmStep({
         営業情報の対応: {mapping.crawledNameByGeojsonName.size}{" "}
         件（最後の保存に含まれます）
       </p>
+      {mapping.workspace && !mapping.workspace.latestFile && (
+        <p className="text-sm text-amber-800">
+          クロール結果がないため、対応表は作成されません。
+        </p>
+      )}
       <div className="sticky bottom-0 z-10 flex shrink-0 flex-wrap gap-3 border-t bg-white p-4 shadow-sm">
         <ConfirmDialog
           open={saveDialogOpen}

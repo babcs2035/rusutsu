@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { CrawlMonitorIssueCodeSummary } from "@/server/crawl-latest/adminContract";
+import { withBasePath } from "@/shared/utils/basePath";
 import {
   CATEGORY_KINDS,
   CATEGORY_LABELS,
@@ -36,7 +37,7 @@ export function IssueFilters({
     <div className="flex flex-col gap-3">
       <form
         method="get"
-        action="/admin/crawl/issues"
+        action={withBasePath("/admin/crawl/issues")}
         className="flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-white p-3"
       >
         <label className="flex flex-col gap-1 text-xs text-gray-600">

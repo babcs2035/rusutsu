@@ -98,6 +98,15 @@ export function MappingPairList<T extends MappingPairItem>({
         </span>
       </div>
 
+      {mapping.workspace?.archiveTimestamp && (
+        <p className="shrink-0 rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-900">
+          Waybackの過去の取得結果（
+          {mapping.workspace.archiveTimestamp.slice(0, 4)}/
+          {mapping.workspace.archiveTimestamp.slice(4, 6)}/
+          {mapping.workspace.archiveTimestamp.slice(6, 8)}
+          保存）を対応付けに使用しています。現在の営業状況ではありません。
+        </p>
+      )}
       <div
         ref={sortable.containerRef}
         className="relative min-h-[140px] flex-1 overflow-y-auto rounded-md border max-md:max-h-64"

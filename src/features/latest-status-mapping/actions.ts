@@ -1,7 +1,7 @@
 "use server";
 
 import path from "node:path";
-import { readCurrentCrawlLatestStatus } from "@/lib/crawlLatestCurrent";
+import { readMappingCrawlLatestStatus } from "@/lib/crawlLatestCurrent";
 import { requireAdmin } from "@/lib/requireAdmin";
 import {
   loadLatestStatusMappingWorkspace,
@@ -22,7 +22,7 @@ const TEMPORARY_ROOT = path.join(
   "resorts-temporary",
 );
 
-const loadCanonicalLatestStatus = readCurrentCrawlLatestStatus;
+const loadCanonicalLatestStatus = readMappingCrawlLatestStatus;
 
 export const loadLatestStatusMapping = async (
   resortId: string,

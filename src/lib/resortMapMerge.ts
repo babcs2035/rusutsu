@@ -378,6 +378,7 @@ export const mergeCourseFeatures = ({
       Object.assign(properties, withoutName(base));
     }
     if (status) Object.assign(properties, renameStatusKeys(status));
+    properties.latest_status_name = status ? getName(status) : null;
 
     features.push({
       type: "Feature",

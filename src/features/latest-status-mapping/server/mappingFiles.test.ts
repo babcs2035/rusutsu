@@ -165,3 +165,46 @@ test("確認済みとOSMが共存すると両方のコース名を読み込む",
     await fs.rm(temporaryRoot, { recursive: true, force: true });
   }
 });
+
+test("Waybackの保存日時を表示へ渡し、同じ取得結果で対応表を保存できる", async () => {
+  const temporaryRoot = await fs.mkdtemp(
+    path.join(os.tmpdir(), "wayback-mapping-"),
+  );
+  try {
+    for (const kind of ["courses", "lifts"] as const) {
+      const name = kind === "courses" ? "サザンクロスA" : "第1";
+      const loader = async () => ({
+        fileName: `wayback-20260214095743-${kind}.json`,
+        time: "2026-09-14T13:09:03Z",
+        archiveTimestamp: "20260214095743",
+        items: [{ name, status: "○" }],
+        sourceUrls: ["https://new-greenpia.com/"],
+      });
+      const workspace = await loadLatestStatusMappingWorkspace(
+        temporaryRoot,
+        "new-greenpia-tsunan",
+        kind,
+        [name],
+        loader,
+      );
+      assert.equal(workspace.archiveTimestamp, "20260214095743");
+      assert.equal(workspace.crawledItems.length, 1);
+      assert(workspace.latestFile);
+      const saved = await saveLatestStatusMappingFile(
+        temporaryRoot,
+        {
+          resortId: "new-greenpia-tsunan",
+          kind,
+          latestFile: workspace.latestFile,
+          mappingFileHash: workspace.mappingFileHash,
+          rows: workspace.rows,
+          geojsonNames: [name],
+        },
+        loader,
+      );
+      assert.equal(saved.ok, true);
+    }
+  } finally {
+    await fs.rm(temporaryRoot, { recursive: true, force: true });
+  }
+});

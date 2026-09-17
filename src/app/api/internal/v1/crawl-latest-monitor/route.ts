@@ -10,6 +10,7 @@ import {
 import {
   fetchCrawlMonitorCurrentsDirect,
   fetchCrawlMonitorIssuesDirect,
+  fetchCrawlMonitorMappingDirect,
   fetchCrawlMonitorOverviewDirect,
   fetchCrawlMonitorRunDetailDirect,
   fetchCrawlMonitorRunsDirect,
@@ -34,6 +35,7 @@ export const dynamic = "force-dynamic";
 
 const QUERY_KEYS = new Set([
   "view",
+  "origin",
   "resortId",
   "runId",
   "sourceModes",
@@ -46,8 +48,19 @@ const QUERY_KEYS = new Set([
   "since",
 ]);
 
-const viewSchema = z.enum(["overview", "runs", "run", "currents", "issues"]);
-const runIdSchema = z.string().cuid();
+const viewSchema = z.enum([
+  "overview",
+  "runs",
+  "run",
+  "currents",
+  "issues",
+  "mapping",
+]);
+// DBのrunはcuid、latest_data由来のrunは `file-2025_1123_202120` 形式。
+const runIdSchema = z
+  .string()
+  .regex(/^(?:[a-z0-9]{20,40}|file-\d{4}_\d{4}_\d{6})$/u);
+const originSchema = z.enum(["DATABASE", "FILE"]);
 const pageSchema = z.coerce.number().int().min(1).max(200);
 const pageSizeSchema = z.coerce
   .number()
@@ -94,13 +107,31 @@ export async function GET(request: Request) {
 
     if (view.data === "run") {
       const runId = runIdSchema.safeParse(searchParams.get("runId"));
-      if (!runId.success) {
-        return internalApiError(400, "INVALID_QUERY", "Invalid runId");
+      const resortId = crawlMonitorResortIdSchema.safeParse(
+        searchParams.get("resortId"),
+      );
+      if (!runId.success || !resortId.success) {
+        return internalApiError(400, "INVALID_QUERY", "Invalid run reference");
       }
-      const detail = await fetchCrawlMonitorRunDetailDirect(runId.data);
+      const detail = await fetchCrawlMonitorRunDetailDirect(
+        resortId.data,
+        runId.data,
+      );
       return detail
         ? internalApiJson(detail)
         : internalApiError(404, "RUN_NOT_FOUND", "Crawl run was not found");
+    }
+
+    if (view.data === "mapping") {
+      const resortId = crawlMonitorResortIdSchema.safeParse(
+        searchParams.get("resortId"),
+      );
+      if (!resortId.success) {
+        return internalApiError(400, "INVALID_QUERY", "Invalid resortId");
+      }
+      return internalApiJson(
+        await fetchCrawlMonitorMappingDirect(resortId.data),
+      );
     }
 
     if (view.data === "currents") {
@@ -118,6 +149,8 @@ export async function GET(request: Request) {
     if (view.data === "runs") {
       const query = crawlMonitorRunListQuerySchema.safeParse({
         resortId: searchParams.get("resortId"),
+        origin: originSchema.safeParse(searchParams.get("origin") ?? "DATABASE")
+          .data,
         sourceModes,
         page: pageSchema.safeParse(searchParams.get("page") ?? 1).data,
         pageSize: pageSizeSchema.safeParse(

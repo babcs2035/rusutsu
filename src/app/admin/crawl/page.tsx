@@ -58,10 +58,10 @@ export default async function CrawlMonitorPage({
       </div>
 
       <p className="mb-4 text-sm text-gray-600">
-        要確認 {counts.failed + counts.warning + counts.missing + counts.stale}
-        件（失敗 {counts.failed} / 警告 {counts.warning} / 未取得{" "}
-        {counts.missing} / 更新停止 {counts.stale}）。スキー場名を押すと、その
-        スキー場の取得内容と履歴を確認できます。
+        正常 {counts.ok} 件 / 失敗 {counts.failed} / 警告 {counts.warning} /
+        対応表に取りこぼし {counts.mappingGap} / 未取得 {counts.missing} /
+        更新停止 {counts.stale}。スキー場名を押すと、そのスキー場の取得内容と
+        履歴を確認できます。
       </p>
 
       <div className="mb-4">

@@ -71,6 +71,12 @@ export const MobileSearchOverlay = ({
   ) => {
     if (event.key !== "Enter") return;
 
+    // 変換確定の Enter で blur すると、IME の確定文字列が重複する。
+    // compositionend が先に発火する環境も keyCode で判定する。
+    if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) {
+      return;
+    }
+
     event.preventDefault();
     event.currentTarget.blur();
   };

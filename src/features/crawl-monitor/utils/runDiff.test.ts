@@ -27,6 +27,7 @@ const run = (
 ): CrawlMonitorRunSummary => ({
   id,
   resortId: "resort-a",
+  origin: "DATABASE",
   observedAt,
   completedAt: observedAt,
   sourceMode: "LIVE",

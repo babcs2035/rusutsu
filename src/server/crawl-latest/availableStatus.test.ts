@@ -147,3 +147,87 @@ test("DB failures propagate instead of silently serving historical data", async 
     /DB unavailable/,
   );
 });
+
+test("mapping uses archived results only when current is absent; public readers do not", async () => {
+  const archived: LatestSuccessfulStatus = {
+    fileName: "wayback-20260214095743-snapshot.json",
+    time: "2026-09-14T13:09:03Z",
+    archiveTimestamp: "20260214095743",
+    items: [{ name: "サザンクロスA", status: "○" }],
+    sourceUrls: ["https://new-greenpia.com/"],
+  };
+  let archiveReads = 0;
+  const database = {
+    ...emptyDatabase,
+    async findArchivedCrawlLatestStatusDirect() {
+      archiveReads += 1;
+      return archived;
+    },
+    async listArchivedCrawlLatestResortIdsDirect(kind: string) {
+      return kind === "courses" ? ["archive-only", "courses-only"] : [];
+    },
+  };
+  assert.equal(
+    await findAvailableCrawlLatestStatusDirect(
+      "archive-only",
+      "courses",
+      database,
+      root,
+    ),
+    null,
+  );
+  assert.equal(archiveReads, 0);
+  assert.deepEqual(
+    await findAvailableCrawlLatestStatusDirect(
+      "courses-only",
+      "courses",
+      database,
+      root,
+      true,
+    ),
+    archived,
+  );
+  const current = {
+    ...archived,
+    fileName: "live.json",
+    archiveTimestamp: null,
+  };
+  assert.deepEqual(
+    await findAvailableCrawlLatestStatusDirect(
+      "archive-only",
+      "courses",
+      {
+        ...database,
+        async findCurrentCrawlLatestStatusDirect() {
+          return current;
+        },
+      },
+      root,
+      true,
+    ),
+    current,
+  );
+  assert.equal(archiveReads, 1);
+  assert.deepEqual(
+    await listAvailableCrawlLatestResortIdsDirect(
+      "courses",
+      database,
+      root,
+      true,
+    ),
+    ["archive-only", "courses-only"],
+  );
+  assert.deepEqual(
+    await listAvailableCrawlLatestResortIdsDirect("courses", database, root),
+    ["courses-only"],
+  );
+  assert.deepEqual(
+    await listAvailableCrawlLatestResortIdsDirect(
+      "lifts",
+      database,
+      root,
+      true,
+    ),
+    ["lifts-only"],
+  );
+});

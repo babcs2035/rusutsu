@@ -2,6 +2,7 @@
 
 import { HelpCircle, X } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useLatestStatusMapping } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
@@ -168,6 +169,7 @@ export function LiftEditWorkspace({
     setIsMidstationMode(false);
   };
 
+  const router = useRouter();
   const activeLifts = lifts.filter(lift => !lift.isDeleted);
   const deletedLifts = lifts.filter(lift => lift.isDeleted);
   const mapping = useLatestStatusMapping({
@@ -315,6 +317,9 @@ export function LiftEditWorkspace({
 
   const handleSaved = (writtenFiles: string[]) => {
     markSavedToServer();
+    // 対応表や確認済みの有無はサーバーで組み立てているので、選択画面の
+    // バッジを保存後の状態に合わせるために読み直す。
+    router.refresh();
     setSaveMessage(
       `保存しました。標高はバックグラウンドで更新します: ${writtenFiles.join(", ")}`,
     );

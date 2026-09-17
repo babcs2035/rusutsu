@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { getSkiResortsForMap } from "@/actions/skiResorts";
-import { listCrawlerCoveredResortIds } from "@/features/latest-status-mapping/server/crawlerAvailability";
+import {
+  listCrawlerCoveredResortIds,
+  listMappedResortIds,
+} from "@/features/latest-status-mapping/server/crawlerAvailability";
 import { LiftEditClient } from "@/features/lift/LiftEditClient";
 import {
   computeLiftBeforeCentroid,
@@ -17,12 +20,13 @@ export const metadata: Metadata = {
 };
 
 export default async function LiftEditPage() {
-  const [resorts, liftBeforeIds, confirmedMap, crawlerLiftIds] =
+  const [resorts, liftBeforeIds, confirmedMap, crawlerLiftIds, mappedLiftIds] =
     await Promise.all([
       getSkiResortsForMap(),
       listLiftBeforeResortIds(),
       readLiftConfirmedMap(),
       listCrawlerCoveredResortIds("lifts"),
+      listMappedResortIds("lifts"),
     ]);
   const liftBeforeIdSet = new Set(liftBeforeIds);
   const resortIdSet = new Set(resorts.map(resort => resort.id));
@@ -39,6 +43,7 @@ export default async function LiftEditPage() {
     numberOfCourses: resort.numberOfCourses,
     hasLiftBefore: liftBeforeIdSet.has(resort.id),
     hasCrawlerLifts: crawlerLiftIds.has(resort.id),
+    hasLiftMapping: mappedLiftIds.has(resort.id),
     confirmedAt: confirmedMap[resort.id] ?? null,
     isKnownResort: true,
   }));
@@ -62,6 +67,7 @@ export default async function LiftEditPage() {
       numberOfCourses: 0,
       hasLiftBefore: true,
       hasCrawlerLifts: crawlerLiftIds.has(id),
+      hasLiftMapping: mappedLiftIds.has(id),
       confirmedAt: confirmedMap[id] ?? null,
       isKnownResort: false,
     });

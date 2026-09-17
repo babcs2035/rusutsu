@@ -6,12 +6,18 @@ import {
   Prisma,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import {
+  getDataDocumentDirect,
+  listDataDocumentsDirect,
+} from "@/server/data-documents/repository";
 import type {
   CrawlMonitorCategorySummary,
   CrawlMonitorCurrent,
   CrawlMonitorIssueCounts,
   CrawlMonitorIssueListQuery,
   CrawlMonitorIssuePage,
+  CrawlMonitorMapping,
+  CrawlMonitorMappingGap,
   CrawlMonitorOverview,
   CrawlMonitorRunDetail,
   CrawlMonitorRunListQuery,
@@ -19,6 +25,23 @@ import type {
   CrawlMonitorRunSummary,
   CrawlMonitorSourceMode,
 } from "./adminContract";
+import {
+  bundledFileNameFromRunId,
+  isBundledRunId,
+  listBundledFileNames,
+  listBundledResortIds,
+  listBundledRunSummaries,
+  readBundledCurrents,
+  readBundledRunDetail,
+  readLatestBundledRunSummary,
+} from "./bundledRuns";
+import {
+  buildMappingGaps,
+  extractCrawledNames,
+  LATEST_STATUS_MAPPING_PREFIX,
+  mappingResortIdFromKey,
+  parseMappingExpectedNames,
+} from "./mappingCoverage";
 
 /**
  * 監視画面のDB直読み実装。
@@ -146,6 +169,7 @@ const toRunSummary = (
 ): CrawlMonitorRunSummary => ({
   id: run.id,
   resortId: run.skiResortId ?? "",
+  origin: "DATABASE",
   observedAt: run.observedAt.toISOString(),
   completedAt: run.completedAt.toISOString(),
   sourceMode: run.sourceMode as CrawlMonitorSourceMode,
@@ -156,6 +180,43 @@ const toRunSummary = (
   categories: sortCategories(categoriesByRun.get(run.id) ?? []),
   issueCounts: issueCountsByRun.get(run.id) ?? { ...EMPTY_ISSUE_COUNTS },
 });
+
+const listMappedResortIds = async (): Promise<string[]> =>
+  (await listDataDocumentsDirect(LATEST_STATUS_MAPPING_PREFIX)).flatMap(
+    document => {
+      const resortId = mappingResortIdFromKey(document.key);
+      return resortId ? [resortId] : [];
+    },
+  );
+
+const readMappingExpectedNames = async (resortId: string) =>
+  parseMappingExpectedNames(
+    (
+      await getDataDocumentDirect(
+        `${LATEST_STATUS_MAPPING_PREFIX}${resortId}.json`,
+      )
+    )?.content ?? null,
+  );
+
+/** runが実際に拾った名前を、コース・リフトの2カテゴリ分だけ読む。 */
+const crawledNamesByRun = async (
+  runIds: readonly string[],
+): Promise<Map<string, { COURSES: string[]; LIFTS: string[] }>> => {
+  const names = new Map<string, { COURSES: string[]; LIFTS: string[] }>();
+  if (runIds.length === 0) return names;
+  const snapshots = await prisma.crawlLatestCategorySnapshot.findMany({
+    where: { runId: { in: [...runIds] }, kind: { in: ["COURSES", "LIFTS"] } },
+    select: { runId: true, kind: true, data: true },
+  });
+  for (const snapshot of snapshots) {
+    const entry = names.get(snapshot.runId) ?? { COURSES: [], LIFTS: [] };
+    if (snapshot.kind === "COURSES" || snapshot.kind === "LIFTS") {
+      entry[snapshot.kind] = extractCrawledNames(snapshot.data);
+    }
+    names.set(snapshot.runId, entry);
+  }
+  return names;
+};
 
 export async function fetchCrawlMonitorOverviewDirect(
   sourceModes: readonly CrawlMonitorSourceMode[],
@@ -186,29 +247,95 @@ export async function fetchCrawlMonitorOverviewDirect(
     ),
   );
 
-  return {
-    rows: resorts.map(resort => {
-      const run = runByResort.get(resort.id);
-      return {
-        resortId: resort.id,
-        resortName: resort.nameJa,
-        prefecture: resort.prefecture,
-        latestRun: run
-          ? toRunSummary(
-              run,
-              decorations.categoriesByRun,
-              decorations.issueCountsByRun,
-            )
-          : null,
-      };
+  const rows = resorts.map(resort => {
+    const run = runByResort.get(resort.id);
+    return {
+      resortId: resort.id,
+      resortName: resort.nameJa,
+      prefecture: resort.prefecture,
+      mappingGaps: [] as CrawlMonitorMappingGap[],
+      latestRun: run
+        ? toRunSummary(
+            run,
+            decorations.categoriesByRun,
+            decorations.issueCountsByRun,
+          )
+        : null,
+    };
+  });
+
+  // APIへ送る運用は段階導入中なので、DBに実行記録が無いスキー場はファイルを見る。
+  const bundledIds = new Set(await listBundledResortIds());
+  await Promise.all(
+    rows.map(async row => {
+      if (row.latestRun || !bundledIds.has(row.resortId)) return;
+      row.latestRun = await readLatestBundledRunSummary(row.resortId);
     }),
-    generatedAt: new Date().toISOString(),
+  );
+
+  // 対応表があるスキー場だけ、取れるはずの名前と突き合わせる。
+  const mappedIds = new Set(await listMappedResortIds());
+  const mappedRows = rows.filter(
+    row => mappedIds.has(row.resortId) && row.latestRun?.origin === "DATABASE",
+  );
+  const namesByRun = await crawledNamesByRun(
+    mappedRows.flatMap(row => (row.latestRun ? [row.latestRun.id] : [])),
+  );
+  await Promise.all(
+    mappedRows.map(async row => {
+      const expected = await readMappingExpectedNames(row.resortId);
+      if (!expected || !row.latestRun) return;
+      row.mappingGaps = buildMappingGaps(
+        expected,
+        namesByRun.get(row.latestRun.id) ?? { COURSES: [], LIFTS: [] },
+      );
+    }),
+  );
+
+  return { rows, generatedAt: new Date().toISOString() };
+}
+
+export async function fetchCrawlMonitorMappingDirect(
+  resortId: string,
+): Promise<CrawlMonitorMapping> {
+  const expected = await readMappingExpectedNames(resortId);
+  if (!expected) return { gaps: [], observedAt: null };
+
+  const run = await prisma.crawlLatestRun.findFirst({
+    where: { skiResortId: resortId, sourceMode: "LIVE" },
+    orderBy: [{ observedAt: "desc" }, { id: "desc" }],
+    select: { id: true, observedAt: true },
+  });
+  if (!run) return { gaps: [], observedAt: null };
+
+  const names = await crawledNamesByRun([run.id]);
+  return {
+    gaps: buildMappingGaps(
+      expected,
+      names.get(run.id) ?? { COURSES: [], LIFTS: [] },
+    ),
+    observedAt: run.observedAt.toISOString(),
   };
 }
 
 export async function fetchCrawlMonitorRunsDirect(
   query: CrawlMonitorRunListQuery,
 ): Promise<CrawlMonitorRunPage> {
+  if (query.origin === "FILE") {
+    const fileNames = await listBundledFileNames(query.resortId);
+    const runs = await listBundledRunSummaries(
+      query.resortId,
+      query.page * query.pageSize,
+    );
+    return {
+      total: fileNames.length,
+      runs: runs.slice(
+        (query.page - 1) * query.pageSize,
+        query.page * query.pageSize,
+      ),
+    };
+  }
+
   const where = {
     ...runScopeFilter(query.sourceModes),
     skiResortId: query.resortId,
@@ -262,8 +389,9 @@ export async function fetchCrawlMonitorCurrentsDirect(
     },
   });
 
-  const currents = rows.map(row => ({
+  const currents: CrawlMonitorCurrent[] = rows.map(row => ({
     kind: row.kind,
+    origin: "DATABASE" as const,
     runId: row.snapshot.runId,
     snapshotId: row.snapshot.id,
     observedAt: row.snapshot.run.observedAt.toISOString(),
@@ -275,6 +403,12 @@ export async function fetchCrawlMonitorCurrentsDirect(
     sourceUrls: row.snapshot.sourceUrls,
     data: row.snapshot.data ?? null,
   }));
+  const missing = (["COMMENT", "WEATHER", "COURSES", "LIFTS"] as const).filter(
+    kind => !currents.some(current => current.kind === kind),
+  );
+  if (missing.length > 0) {
+    currents.push(...(await readBundledCurrents(resortId, missing)));
+  }
   currents.sort(
     (left, right) => CATEGORY_ORDER[left.kind] - CATEGORY_ORDER[right.kind],
   );
@@ -282,8 +416,14 @@ export async function fetchCrawlMonitorCurrentsDirect(
 }
 
 export async function fetchCrawlMonitorRunDetailDirect(
+  resortId: string,
   runId: string,
 ): Promise<CrawlMonitorRunDetail | null> {
+  if (isBundledRunId(runId)) {
+    const fileName = bundledFileNameFromRunId(runId);
+    return fileName ? readBundledRunDetail(resortId, fileName) : null;
+  }
+
   const run = await prisma.crawlLatestRun.findUnique({
     where: { id: runId },
     select: {
@@ -294,7 +434,7 @@ export async function fetchCrawlMonitorRunDetailDirect(
       rawPayload: true,
     },
   });
-  if (!run || run.skiResortId === null) return null;
+  if (!run || run.skiResortId !== resortId) return null;
   if (run.sourceMode === "LEGACY_IMPORT") return null;
 
   const [categories, issues, artifacts, decorations] = await Promise.all([

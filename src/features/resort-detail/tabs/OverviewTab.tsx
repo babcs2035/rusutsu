@@ -57,7 +57,7 @@ function XAccountCard({ account }: { account: SocialAccount }) {
     <div className="flex min-w-0 items-center gap-3 rounded-lg border border-border bg-background px-3 py-2.5">
       <div className="min-w-0 flex-1">
         {note && (
-          <span className="mb-1 inline-block max-w-full rounded border border-border bg-muted px-1.5 py-0.5 text-xs leading-tight break-words text-muted-foreground">
+          <span className="mb-1 inline-block max-w-full rounded border border-border bg-muted px-1.5 py-0.5 text-sm leading-tight break-words text-muted-foreground">
             {note}
           </span>
         )}
@@ -65,7 +65,7 @@ function XAccountCard({ account }: { account: SocialAccount }) {
           {name}
         </p>
         {name !== `@${account.handle}` && (
-          <p className="mt-0.5 break-all text-xs text-muted-foreground">
+          <p className="mt-0.5 break-all text-sm text-muted-foreground">
             @{account.handle}
           </p>
         )}
@@ -122,7 +122,7 @@ function AccountEmbed({
   });
   return (
     <div className="min-w-0">
-      <div className="flex items-center justify-between gap-2 border-b px-3 py-2 text-xs">
+      <div className="flex items-center justify-between gap-2 border-b px-3 py-2 text-sm">
         <span className="truncate font-medium">{account.label}</span>
         <ExternalLinkComponent
           href={account.url}
@@ -208,18 +208,22 @@ function PlatformAccounts({
 }
 
 export function OverviewTab({ resort }: { resort: Resort }) {
+  return <CurrentOverview resort={resort} />;
+}
+
+export function SnsTab({ resort }: { resort: Resort }) {
   return (
-    <div className="space-y-3">
-      <CurrentOverview resort={resort} />
-      <section aria-label="SNS">
-        <h2 className="mb-2 text-sm font-bold text-slate-900">SNS</h2>
-        <SocialTabs key={resort.id} accounts={resort.socialAccounts} />
-      </section>
-    </div>
+    <section aria-label="SNS">
+      <SocialTabs key={resort.id} accounts={resort.socialAccounts} />
+    </section>
   );
 }
 
-function SocialTabs({ accounts }: { accounts: Resort["socialAccounts"] }) {
+function SocialTabs({
+  accounts,
+}: {
+  accounts?: Partial<Resort["socialAccounts"]> | null;
+}) {
   const container = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   useEffect(() => {
@@ -237,7 +241,7 @@ function SocialTabs({ accounts }: { accounts: Resort["socialAccounts"] }) {
     return () => observer.disconnect();
   }, []);
   const platforms = SOCIAL_PLATFORMS.filter(
-    platform => accounts[platform].length > 0,
+    platform => (accounts?.[platform]?.length ?? 0) > 0,
   );
   if (!platforms.length) {
     return (
@@ -285,7 +289,7 @@ function SocialTabs({ accounts }: { accounts: Resort["socialAccounts"] }) {
           <PlatformAccounts
             key={platform}
             platform={platform}
-            accounts={accounts[platform]}
+            accounts={accounts?.[platform] ?? []}
             width={width}
           />
         </TabsContent>

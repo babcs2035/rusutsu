@@ -1,5 +1,8 @@
 import type { SkiResortDetail } from "@/types/skiResorts";
 
+// 詳細の必須フィールドを変更したら更新する。旧データを現行の型として復元しない。
+const DETAIL_CACHE_VERSION = 2;
+
 // IndexedDB の structured clone を使い、詳細内の Date を文字列に変えない。
 async function openCache(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -20,7 +23,12 @@ export async function readDetailCache(
       const tx = db.transaction("details", "readonly");
       const request = tx.objectStore("details").get(id);
       request.onsuccess = () =>
-        resolve(request.result?.data?.id === id ? request.result.data : null);
+        resolve(
+          request.result?.version === DETAIL_CACHE_VERSION &&
+            request.result?.data?.id === id
+            ? request.result.data
+            : null,
+        );
       request.onerror = () => reject(request.error);
       tx.oncomplete = () => db.close();
       tx.onabort = () => {
@@ -38,7 +46,12 @@ export async function writeDetailCache(data: SkiResortDetail) {
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction("details", "readwrite");
       const store = tx.objectStore("details");
-      store.put({ id: data.id, data, savedAt: Date.now() });
+      store.put({
+        id: data.id,
+        version: DETAIL_CACHE_VERSION,
+        data,
+        savedAt: Date.now(),
+      });
       const all = store.getAll();
       all.onsuccess = () => {
         const entries = all.result.sort((a, b) => b.savedAt - a.savedAt);

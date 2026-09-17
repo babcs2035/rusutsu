@@ -7,6 +7,13 @@ import {
 } from "@/lib/latestStatusFiles";
 
 type CurrentStatusReader = {
+  findArchivedCrawlLatestStatusDirect?(
+    resortId: string,
+    kind: LatestStatusKind,
+  ): Promise<LatestSuccessfulStatus | null>;
+  listArchivedCrawlLatestResortIdsDirect?(
+    kind: LatestStatusKind,
+  ): Promise<string[]>;
   findCurrentCrawlLatestStatusDirect(
     resortId: string,
     kind: LatestStatusKind,
@@ -31,24 +38,39 @@ export async function findAvailableCrawlLatestStatusDirect(
   kind: LatestStatusKind,
   reader?: CurrentStatusReader,
   root = temporaryRoot,
+  includeArchives = false,
 ): Promise<LatestSuccessfulStatus | null> {
   const database = reader ?? (await import("./current"));
   const current = await database.findCurrentCrawlLatestStatusDirect(
     resortId,
     kind,
   );
-  return current ?? loadLatestSuccessfulStatus(root, resortId, kind);
+  if (current) return current;
+  if (includeArchives) {
+    const archived = await database.findArchivedCrawlLatestStatusDirect?.(
+      resortId,
+      kind,
+    );
+    if (archived) return archived;
+  }
+  return loadLatestSuccessfulStatus(root, resortId, kind);
 }
 
 export async function listAvailableCrawlLatestResortIdsDirect(
   kind: LatestStatusKind,
   reader?: CurrentStatusReader,
   root = temporaryRoot,
+  includeArchives = false,
 ): Promise<string[]> {
   const database = reader ?? (await import("./current"));
-  const [databaseIds, bundledIds] = await Promise.all([
+  const [databaseIds, bundledIds, archiveIds] = await Promise.all([
     database.listCurrentCrawlLatestResortIdsDirect(kind),
     listResortIdsWithLatestStatus(root),
+    includeArchives
+      ? (database.listArchivedCrawlLatestResortIdsDirect?.(kind) ?? [])
+      : [],
   ]);
-  return [...new Set([...databaseIds, ...bundledIds[kind]])].sort();
+  return [
+    ...new Set([...databaseIds, ...archiveIds, ...bundledIds[kind]]),
+  ].sort();
 }

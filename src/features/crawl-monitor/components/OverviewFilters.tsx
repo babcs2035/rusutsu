@@ -1,3 +1,4 @@
+import { withBasePath } from "@/shared/utils/basePath";
 import {
   OVERVIEW_STATUS_FILTERS,
   OVERVIEW_STATUS_LABELS,
@@ -18,7 +19,7 @@ export function OverviewFilters({
   return (
     <form
       method="get"
-      action="/admin/crawl"
+      action={withBasePath("/admin/crawl")}
       className="flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-white p-3"
     >
       <label className="flex flex-col gap-1 text-xs text-gray-600">

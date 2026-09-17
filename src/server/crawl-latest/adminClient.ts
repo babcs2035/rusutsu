@@ -2,19 +2,22 @@ import "server-only";
 
 import {
   fetchInternalDataApi,
+  InternalDataApiError,
   usesRemoteDataApi,
 } from "@/lib/internalDataApiClient";
 import {
   type CrawlMonitorCurrent,
   type CrawlMonitorIssueListQuery,
   type CrawlMonitorIssuePage,
+  type CrawlMonitorMapping,
   type CrawlMonitorOverview,
   type CrawlMonitorRunDetail,
   type CrawlMonitorRunListQuery,
-  type CrawlMonitorRunPage,
+  type CrawlMonitorRunResult,
   type CrawlMonitorSourceMode,
   crawlMonitorCurrentsSchema,
   crawlMonitorIssuePageSchema,
+  crawlMonitorMappingSchema,
   crawlMonitorOverviewSchema,
   crawlMonitorRunDetailSchema,
   crawlMonitorRunPageSchema,
@@ -22,6 +25,7 @@ import {
 import {
   fetchCrawlMonitorCurrentsDirect,
   fetchCrawlMonitorIssuesDirect,
+  fetchCrawlMonitorMappingDirect,
   fetchCrawlMonitorOverviewDirect,
   fetchCrawlMonitorRunDetailDirect,
   fetchCrawlMonitorRunsDirect,
@@ -35,6 +39,22 @@ import {
  */
 
 const RESOURCE_PATH = "/api/internal/v1/crawl-latest-monitor";
+
+/**
+ * 接続先のAPIがこの画面より古く、`origin` を知らないときの応答。
+ *
+ * ファイルの記録はサーバー側のファイルを読む処理なので、接続先を更新するまでは
+ * 提供できない。エラーで落とさず「読めない」と分かる形にするためだけに使う。
+ */
+const rejectsUnknownQuery = (body: unknown): boolean =>
+  typeof body === "object" &&
+  body !== null &&
+  "error" in body &&
+  typeof (body as { error: unknown }).error === "object" &&
+  (body as { error: { code?: unknown; message?: unknown } }).error?.code ===
+    "INVALID_QUERY" &&
+  (body as { error: { message?: unknown } }).error?.message ===
+    "Unknown query parameter";
 
 const readRemote = async <T>(
   query: URLSearchParams,
@@ -65,18 +85,42 @@ export async function fetchCrawlMonitorOverview(
 
 export async function fetchCrawlMonitorRuns(
   query: CrawlMonitorRunListQuery,
-): Promise<CrawlMonitorRunPage> {
-  if (!usesRemoteDataApi()) return fetchCrawlMonitorRunsDirect(query);
-  return readRemote(
-    new URLSearchParams({
-      view: "runs",
-      resortId: query.resortId,
-      sourceModes: query.sourceModes.join(","),
-      page: String(query.page),
-      pageSize: String(query.pageSize),
-    }),
-    crawlMonitorRunPageSchema,
+): Promise<CrawlMonitorRunResult> {
+  if (!usesRemoteDataApi()) {
+    return { ...(await fetchCrawlMonitorRunsDirect(query)), legacyApi: false };
+  }
+  const params = new URLSearchParams({
+    view: "runs",
+    resortId: query.resortId,
+    sourceModes: query.sourceModes.join(","),
+    page: String(query.page),
+    pageSize: String(query.pageSize),
+  });
+  // DATABASEはAPIの既定なので送らない。送る必要があるのはファイルを見るときだけ。
+  if (query.origin === "DATABASE") {
+    return {
+      ...(await readRemote(params, crawlMonitorRunPageSchema)),
+      legacyApi: false,
+    };
+  }
+
+  params.set("origin", "FILE");
+  const response = await fetchInternalDataApi(
+    `${RESOURCE_PATH}?${params.toString()}`,
+    {},
+    { scope: "diagnostics-read", acceptedErrorStatuses: [400] },
   );
+  const body = (await response.json()) as unknown;
+  if (response.status !== 400) {
+    return { ...crawlMonitorRunPageSchema.parse(body), legacyApi: false };
+  }
+  if (!rejectsUnknownQuery(body)) {
+    throw new InternalDataApiError(
+      "正本データAPIが要求を受け付けませんでした。",
+      400,
+    );
+  }
+  return { total: 0, runs: [], legacyApi: true };
 }
 
 export async function fetchCrawlMonitorCurrents(
@@ -93,16 +137,46 @@ export async function fetchCrawlMonitorCurrents(
 }
 
 export async function fetchCrawlMonitorRunDetail(
+  resortId: string,
   runId: string,
 ): Promise<CrawlMonitorRunDetail | null> {
-  if (!usesRemoteDataApi()) return fetchCrawlMonitorRunDetailDirect(runId);
+  if (!usesRemoteDataApi()) {
+    return fetchCrawlMonitorRunDetailDirect(resortId, runId);
+  }
   const response = await fetchInternalDataApi(
-    `${RESOURCE_PATH}?${new URLSearchParams({ view: "run", runId })}`,
+    `${RESOURCE_PATH}?${new URLSearchParams({ view: "run", resortId, runId })}`,
     {},
     { scope: "diagnostics-read", acceptedErrorStatuses: [404] },
   );
   if (response.status === 404) return null;
-  return crawlMonitorRunDetailSchema.parse(await response.json());
+  const detail = crawlMonitorRunDetailSchema.parse(await response.json());
+  // 別のスキー場のrunを、このスキー場のURLで開かせない。
+  return detail.run.resortId === resortId ? detail : null;
+}
+
+/**
+ * 対応表との照合。接続先が古くこのviewを知らない場合は、照合なしとして扱う
+ * （画面ではその旨を出す）。
+ */
+export async function fetchCrawlMonitorMapping(
+  resortId: string,
+): Promise<CrawlMonitorMapping & { legacyApi: boolean }> {
+  if (!usesRemoteDataApi()) {
+    return {
+      ...(await fetchCrawlMonitorMappingDirect(resortId)),
+      legacyApi: false,
+    };
+  }
+  const response = await fetchInternalDataApi(
+    `${RESOURCE_PATH}?${new URLSearchParams({ view: "mapping", resortId })}`,
+    {},
+    { scope: "diagnostics-read", acceptedErrorStatuses: [400] },
+  );
+  const body = (await response.json()) as unknown;
+  if (response.status !== 400) {
+    return { ...crawlMonitorMappingSchema.parse(body), legacyApi: false };
+  }
+  return { gaps: [], observedAt: null, legacyApi: true };
 }
 
 export async function fetchCrawlMonitorIssues(

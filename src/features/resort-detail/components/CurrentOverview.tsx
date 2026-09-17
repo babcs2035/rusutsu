@@ -1,160 +1,132 @@
+import { Clock3 } from "lucide-react";
 import type { Resort } from "../types";
-import { conditionText, record } from "../utils/currentConditions";
-import {
-  createFinalizedCourseGroups,
-  getCourseGroupStatus,
-} from "../utils/detailMetrics";
-import { CompactMetric, operationText, SourceLine } from "./CompactInfo";
+import { removeGeneratedCommentLinks } from "../utils/commentContent";
+import { conditionText, record, sourceUrls } from "../utils/currentConditions";
+import { createLiftStatusSummary } from "../utils/liftStatusSummary";
+import { SourceLine } from "./CompactInfo";
+import { ConditionTable } from "./ConditionTable";
+import { CourseStatusTable } from "./CourseStatusTable";
+import { ObservationTimes } from "./ObservationTimes";
+import { ResortComment } from "./ResortComment";
 
-const unit = (value: unknown, suffix: string) => {
-  const text = conditionText(value);
-  return text == null
-    ? "—"
-    : /^[+-]?\d+(?:\.\d+)?$/u.test(text)
-      ? `${text}${suffix}`
-      : text;
-};
-export function CurrentOverview({ resort }: { resort: Resort }) {
+export function CurrentOverview({
+  resort,
+  summaryOnly = false,
+}: {
+  resort: Resort;
+  summaryOnly?: boolean;
+}) {
   const courses = resort.finalizedMapData?.courses;
   const lifts = resort.finalizedMapData?.lifts;
+  const courseStatus = resort.finalizedMapData?.courseStatusSummary;
+  const liftStatus = createLiftStatusSummary(lifts);
   const conditions = resort.currentConditions ?? [];
   return (
     <section aria-label="営業・気象情報" className="space-y-2">
-      <dl className="grid grid-cols-2 gap-2 rounded-lg bg-slate-50 px-3 py-2">
-        <CompactMetric label="コース · 全面滑走 / 全数">
-          {operationText(
-            courses?.features.length
-              ? createFinalizedCourseGroups(courses.features).map(
-                  group => getCourseGroupStatus(group).symbol,
-                )
-              : resort.courses.map(() => null),
-          )}
-        </CompactMetric>
-        <CompactMetric label="リフト · 運行 / 全数">
-          {operationText(
-            lifts?.features.length
-              ? lifts.features.map(lift => lift.properties.status)
-              : resort.lifts.map(() => null),
-            "待機",
-          )}
-        </CompactMetric>
-      </dl>
-      <div>
-        <SourceLine
-          label="コース"
-          time={courses?.observedAt}
-          urls={courses?.sourceUrls}
-          updates={courses?.features.map(c => c.properties.update ?? "")}
-        />
-        <SourceLine
-          label="リフト"
-          time={lifts?.observedAt}
-          urls={lifts?.sourceUrls}
-          updates={lifts?.features.map(l => l.properties.update ?? "")}
+      <div className="flex items-start gap-1.5 text-slate-500">
+        <Clock3 aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+        <ObservationTimes
+          align="left"
+          entries={[
+            {
+              label: "コース",
+              time: courseStatus?.observedAt ?? courses?.observedAt,
+            },
+            { label: "リフト", time: lifts?.observedAt },
+            ...(summaryOnly ? [] : conditions)
+              .filter(item => item.weather)
+              .map(item => ({ label: "天候", time: item.weather?.time })),
+          ]}
         />
       </div>
-      {conditions.some(
-        item => Object.keys(record(item.weather?.data)).length,
-      ) ? (
-        conditions.map(
-          item =>
-            Object.keys(record(item.weather?.data)).length > 0 && (
-              <div key={item.id}>
-                <table className="w-full rounded-lg bg-slate-50 text-xs">
-                  <thead>
-                    <tr className="text-left text-slate-500">
-                      {["観測地点", "積雪", "天候", "気温"].map(label => (
-                        <th key={label} className="px-2 py-1 font-normal">
-                          {label}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Object.entries(record(item.weather?.data)).map(
-                      ([name, raw]) => {
-                        const point = record(raw);
-                        return (
-                          <tr
-                            key={name}
-                            className="border-t border-slate-200/60"
-                          >
-                            <th
-                              scope="row"
-                              className="max-w-28 px-2 py-1.5 text-left font-medium break-words"
-                            >
-                              {name}
-                            </th>
-                            <td className="px-2 py-1.5 font-semibold tabular-nums">
-                              {unit(point.snowDepth, "cm")}
-                            </td>
-                            <td className="px-2 py-1.5">
-                              {conditionText(point.weather) ?? "—"}
-                            </td>
-                            <td className="px-2 py-1.5 font-semibold tabular-nums">
-                              {unit(point.temperature, "℃")}
-                            </td>
-                          </tr>
-                        );
-                      },
-                    )}
-                  </tbody>
-                </table>
-                <SourceLine
-                  label={item.weather?.archived ? "気象（保存データ）" : "気象"}
-                  time={item.weather?.time}
-                  urls={item.weather?.sourceUrls}
-                  updates={Object.values(record(item.weather?.data)).map(
-                    point => conditionText(record(point).update) ?? "",
-                  )}
-                />
-              </div>
-            ),
-        )
-      ) : (
-        <div>
-          <dl className="grid grid-cols-3 rounded-lg bg-slate-50 px-3 py-2">
-            {["積雪", "天候", "気温"].map(label => (
-              <CompactMetric key={label} label={label}>
-                —
-              </CompactMetric>
-            ))}
-          </dl>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="min-w-0 space-y-1 border-r border-slate-200 pr-3">
+          <CourseStatusTable summary={courseStatus} />
           <SourceLine
-            label={
-              conditions[0]?.weather?.archived ? "気象（保存データ）" : "気象"
+            label="コース"
+            showLabel={false}
+            showFetched={false}
+            urls={courseStatus?.sourceUrls ?? courses?.sourceUrls}
+            updates={
+              courseStatus?.updates ??
+              courses?.features.map(c => c.properties.update ?? "")
             }
-            time={conditions[0]?.weather?.time}
-            urls={conditions[0]?.weather?.sourceUrls}
           />
         </div>
-      )}
-      {conditions.map(item => {
-        const comment = conditionText(record(item.comment?.data).value);
-        if (!comment && !item.comment?.sourceUrls.length) return null;
-        return (
-          <div key={item.id} className="border-l-2 border-slate-300 pl-2">
-            <details>
-              <summary className="cursor-pointer text-xs font-medium text-slate-800">
-                <span className="inline-block max-w-[90%] truncate align-bottom">
-                  {comment ?? "スキー場からのお知らせ"}
-                </span>
-                <span className="ml-1 text-blue-700">全文</span>
-              </summary>
-              <p className="mt-1 whitespace-pre-line break-words text-sm">
-                {comment ?? "コメント未取得"}
+        <div className="min-w-0 space-y-1">
+          <CourseStatusTable summary={liftStatus} kind="lift" />
+          <SourceLine
+            label="リフト"
+            showLabel={false}
+            showFetched={false}
+            urls={lifts?.sourceUrls}
+            updates={liftStatus?.updates}
+          />
+        </div>
+      </div>
+      {!summaryOnly && (
+        <>
+          <section
+            aria-label="コンディション"
+            className="space-y-1.5 border-t border-slate-200 pt-2"
+          >
+            <h3 className="text-base font-semibold text-slate-800 sm:text-lg">
+              コンディション
+            </h3>
+            {conditions.some(item => item.weather) ? (
+              conditions.map(
+                item =>
+                  item.weather && (
+                    <div key={item.id} className="space-y-1">
+                      <ConditionTable data={item.weather.data} />
+                      <SourceLine
+                        label="コンディション"
+                        showFetched={false}
+                        showLabel={false}
+                        urls={item.weather.sourceUrls}
+                        updates={Object.values(record(item.weather.data)).map(
+                          point => conditionText(record(point).update) ?? "",
+                        )}
+                      />
+                    </div>
+                  ),
+              )
+            ) : (
+              <p className="text-sm text-slate-500">
+                コンディションの情報はありません。
               </p>
-            </details>
-            <SourceLine
-              label={
-                item.comment?.archived ? "お知らせ（保存データ）" : "お知らせ"
-              }
-              time={item.comment?.time}
-              urls={item.comment?.sourceUrls}
-            />
-          </div>
-        );
-      })}
+            )}
+          </section>
+          {conditions.some(item => {
+            const value = record(item.comment?.data).value;
+            return (
+              (typeof value === "string" &&
+                conditionText(removeGeneratedCommentLinks(value, item.id))) ||
+              sourceUrls(item.comment?.sourceUrls).length > 0
+            );
+          }) && (
+            <section
+              className="space-y-1.5 border-t border-slate-200 pt-2"
+              aria-label="コメント"
+            >
+              <h3 className="text-base font-semibold text-slate-800 sm:text-lg">
+                コメント
+              </h3>
+              {conditions.map(item => {
+                const value = record(item.comment?.data).value;
+                return item.comment ? (
+                  <ResortComment
+                    key={item.id}
+                    html={typeof value === "string" ? value : ""}
+                    resortId={item.id}
+                    urls={item.comment?.sourceUrls ?? []}
+                  />
+                ) : null;
+              })}
+            </section>
+          )}
+        </>
+      )}
     </section>
   );
 }

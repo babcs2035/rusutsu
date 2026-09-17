@@ -19,13 +19,13 @@ import { FinalizedFeatureDetail } from "./components/FinalizedFeatureDetail";
 import { ResortMapSection } from "./components/ResortMapSection";
 import { useBodyScrollLock } from "./hooks/useBodyScrollLock";
 import {
-  CoursesTab,
   InfoSection,
-  LiftsTab,
   OverviewTab,
   TicketsTab,
   WeatherTab,
 } from "./tabs/DetailTabContent";
+import { SnsTab } from "./tabs/OverviewTab";
+import { TerrainTab } from "./tabs/TerrainTab";
 import { createFinalizedCourseGroups } from "./utils/detailMetrics";
 
 type Props = {
@@ -55,7 +55,7 @@ type Props = {
   isDesktopMapExpanded?: boolean;
 };
 
-const TABS = ["概要", "コース", "リフト", "チケット", "気候"];
+const TABS = ["営業状況", "ゲレンデ", "SNS", "チケット", "気候"];
 
 /**
  * スキー場の詳細情報を表示するレスポンシブ対応モーダル
@@ -78,6 +78,7 @@ export const SkiResortDetailView = ({
   isDesktopMapExpanded = false,
 }: Props) => {
   const [activeTab, setActiveTab] = useState(TABS[0]);
+  const [terrainTab, setTerrainTab] = useState<"コース" | "リフト">("コース");
   const isSidePanel = useBreakpointValue({ base: false, md: true }) ?? false;
   // 選択を解除したときの戻り先を決めるために、どこから選んだかを覚えておく。
   // 一覧から選んだときは元の一覧と初期表示の地図へ、
@@ -109,10 +110,12 @@ export const SkiResortDetailView = ({
 
   useEffect(() => {
     if (selectedFinalizedFeature?.kind === "course") {
-      setActiveTab("コース");
+      setActiveTab("ゲレンデ");
+      setTerrainTab("コース");
     }
     if (selectedFinalizedFeature?.kind === "lift") {
-      setActiveTab("リフト");
+      setActiveTab("ゲレンデ");
+      setTerrainTab("リフト");
     }
   }, [selectedFinalizedFeature]);
 
@@ -197,7 +200,8 @@ export const SkiResortDetailView = ({
     if (!shouldReturnToList) return;
 
     // 一覧から選んだ場合は、一覧と初期表示（スキー場全体）の地図へ戻す
-    setActiveTab(selectedCourseGroup ? "コース" : "リフト");
+    setActiveTab("ゲレンデ");
+    setTerrainTab(selectedCourseGroup ? "コース" : "リフト");
     setDetailViewportResetKey(key => key + 1);
   };
   const renderFeatureDetail = (options?: { withOpenList?: boolean }) =>
@@ -225,7 +229,8 @@ export const SkiResortDetailView = ({
         onOpenList={
           options?.withOpenList
             ? () => {
-                setActiveTab(selectedCourseGroup ? "コース" : "リフト");
+                setActiveTab("ゲレンデ");
+                setTerrainTab(selectedCourseGroup ? "コース" : "リフト");
                 onSelectedFinalizedFeatureChange(null);
                 onSelectedElevationProfilePointChange(null);
               }
@@ -236,29 +241,23 @@ export const SkiResortDetailView = ({
 
   const renderTabPanels = () => (
     <div className="relative">
+      {activeTab === "営業状況" && <OverviewTab resort={resort} />}
       <div
         className={
-          activeTab !== "概要"
+          activeTab !== "SNS"
             ? "invisible absolute inset-x-0 top-0 pointer-events-none"
             : undefined
         }
-        aria-hidden={activeTab !== "概要"}
-        inert={activeTab !== "概要"}
+        aria-hidden={activeTab !== "SNS"}
+        inert={activeTab !== "SNS"}
       >
-        <OverviewTab resort={resort} />
+        <SnsTab resort={resort} />
       </div>
-      {activeTab === "コース" && (
-        <CoursesTab
+      {activeTab === "ゲレンデ" && (
+        <TerrainTab
           resort={resort}
-          finalizedMapData={resortData?.finalizedMapData ?? null}
-          selectedFinalizedFeature={selectedFinalizedFeature}
-          onSelectedFinalizedFeatureChange={selectFeatureFromList}
-        />
-      )}
-      {activeTab === "リフト" && (
-        <LiftsTab
-          resort={resort}
-          finalizedMapData={resortData?.finalizedMapData ?? null}
+          activeTab={terrainTab}
+          onTabChange={setTerrainTab}
           selectedFinalizedFeature={selectedFinalizedFeature}
           onSelectedFinalizedFeatureChange={selectFeatureFromList}
         />

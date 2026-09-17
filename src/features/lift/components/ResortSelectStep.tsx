@@ -27,12 +27,13 @@ import { ElevationRefreshButton } from "./ElevationRefreshButton";
 
 export type StartSource = "draft" | "existing" | "new";
 
-type CrawlerFilter = "all" | "with" | "without";
+type CrawlerFilter = "all" | "with" | "without" | "withoutMapping";
 
 const CRAWLER_FILTERS: Array<{ id: CrawlerFilter; label: string }> = [
   { id: "all", label: "すべて" },
   { id: "with", label: "取得結果あり" },
   { id: "without", label: "取得結果なし" },
+  { id: "withoutMapping", label: "対応表なし" },
 ];
 
 type ResortSelectStepProps = {
@@ -67,6 +68,12 @@ export function ResortSelectStep({
     return resorts.filter(resort => {
       if (crawlerFilter === "with" && !resort.hasCrawlerLifts) return false;
       if (crawlerFilter === "without" && resort.hasCrawlerLifts) return false;
+      // 取得結果はあるのに対応表が無い＝これから対応付けするスキー場。
+      if (
+        crawlerFilter === "withoutMapping" &&
+        (!resort.hasCrawlerLifts || resort.hasLiftMapping)
+      )
+        return false;
       if (keyword === "") return true;
       return (
         resort.nameJa.toLowerCase().includes(keyword) ||
@@ -162,7 +169,7 @@ export function ResortSelectStep({
           </span>
         </div>
         <ResortStatusLegend
-          kinds={["confirmed", "liftData", "crawler", "noCrawler"]}
+          kinds={["confirmed", "liftData", "crawler", "noMapping", "noCrawler"]}
         />
         <ResortPickerLegend />
 
@@ -197,6 +204,10 @@ export function ResortSelectStep({
                 <ResortStatusBadge
                   kind={pendingResort.hasCrawlerLifts ? "crawler" : "noCrawler"}
                 />
+                {pendingResort.hasCrawlerLifts &&
+                  !pendingResort.hasLiftMapping && (
+                    <ResortStatusBadge kind="noMapping" />
+                  )}
               </div>
               <div className="flex flex-col gap-2">
                 {pendingDraft && (
@@ -334,6 +345,9 @@ export function ResortSelectStep({
                 <ResortStatusBadge
                   kind={resort.hasCrawlerLifts ? "crawler" : "noCrawler"}
                 />
+                {resort.hasCrawlerLifts && !resort.hasLiftMapping && (
+                  <ResortStatusBadge kind="noMapping" />
+                )}
               </div>
             </div>
           ))}

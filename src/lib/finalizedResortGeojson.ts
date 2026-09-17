@@ -2,6 +2,8 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { readResolvedLatestStatusMapping } from "@/features/latest-status-mapping/server/mappingFiles";
 import type { ResolvedLatestStatusMapping } from "@/features/latest-status-mapping/types";
+import type { CourseStatusSummary } from "./courseStatusSummary";
+import { createCourseStatusSummary } from "./courseStatusSummary";
 import { calculateCoordinateSlopes } from "./finalizedResortGeojsonShared";
 import {
   type LatestSuccessfulStatus,
@@ -25,6 +27,7 @@ export type FinalizedCourseFeature = {
   displayName: string;
   groupId: string;
   sectionName: string | null;
+  latestStatusName?: string | null;
   /** 人手確認済みの既存データか、未確認のOSM由来か。 */
   verificationStatus?: "verified" | "unverified";
   sourceUrls?: string[];
@@ -147,6 +150,7 @@ export type ResortMapSection<TFeature> = {
 };
 
 export type FinalizedResortMapData = {
+  courseStatusSummary?: CourseStatusSummary | null;
   courses: ResortMapSection<FinalizedCourseFeature> | null;
   lifts: ResortMapSection<FinalizedLiftFeature> | null;
 };
@@ -309,6 +313,7 @@ const normalizeCourseFeature = (
         ? `${sourcePrefix}${baseId}`
         : `${sourcePrefix}course-group-${parsedName.groupName}`,
     sectionName: parsedName.sectionName,
+    latestStatusName: normalizeString(properties.latest_status_name),
     verificationStatus,
     sourceUrls,
     coordinates,
@@ -896,10 +901,20 @@ export const buildResortMapData = async (
   report.courses = courses.issues;
   report.lifts = lifts.issues;
 
-  if (!courses.section && !lifts.section) return { data: null, report };
+  const courseStatusSummary = createCourseStatusSummary(
+    courseStatus,
+    courses.section?.features.map(feature => feature.latestStatusName) ?? [],
+    [...courseStatusMapping.byGeojsonName.values()].some(Boolean),
+  );
+  if (!courses.section && !lifts.section && !courseStatusSummary)
+    return { data: null, report };
 
   return {
-    data: { courses: courses.section, lifts: lifts.section },
+    data: {
+      courses: courses.section,
+      lifts: lifts.section,
+      courseStatusSummary,
+    },
     report,
   };
 };

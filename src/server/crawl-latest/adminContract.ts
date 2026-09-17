@@ -54,9 +54,16 @@ export type CrawlMonitorCategorySummary = z.infer<
   typeof crawlMonitorCategorySummarySchema
 >;
 
+/** DBの実行記録か、latest_dataに残っているファイルか。 */
+export const crawlMonitorOriginSchema = z
+  .enum(["DATABASE", "FILE"])
+  .default("DATABASE");
+export type CrawlMonitorOrigin = z.infer<typeof crawlMonitorOriginSchema>;
+
 export const crawlMonitorRunSummarySchema = z.object({
   id: z.string(),
   resortId: z.string(),
+  origin: crawlMonitorOriginSchema,
   observedAt: isoDateTimeSchema,
   completedAt: isoDateTimeSchema,
   sourceMode: crawlMonitorSourceModeSchema,
@@ -71,11 +78,25 @@ export type CrawlMonitorRunSummary = z.infer<
   typeof crawlMonitorRunSummarySchema
 >;
 
+/** 対応表との照合結果。missingが「取れるはずなのに取れていない」名前。 */
+export const crawlMonitorMappingGapSchema = z.object({
+  kind: z.enum(["COURSES", "LIFTS"]),
+  expected: z.number().int().nonnegative(),
+  crawled: z.number().int().nonnegative(),
+  missing: z.array(z.string()),
+  unexpected: z.array(z.string()),
+});
+export type CrawlMonitorMappingGap = z.infer<
+  typeof crawlMonitorMappingGapSchema
+>;
+
 export const crawlMonitorOverviewRowSchema = z.object({
   resortId: z.string(),
   resortName: z.string(),
   prefecture: z.string(),
   latestRun: crawlMonitorRunSummarySchema.nullable(),
+  /** 対応表が無いスキー場では空。 */
+  mappingGaps: z.array(crawlMonitorMappingGapSchema).default([]),
 });
 export type CrawlMonitorOverviewRow = z.infer<
   typeof crawlMonitorOverviewRowSchema
@@ -93,8 +114,17 @@ export const crawlMonitorRunPageSchema = z.object({
 });
 export type CrawlMonitorRunPage = z.infer<typeof crawlMonitorRunPageSchema>;
 
+/**
+ * 画面が受け取る実行履歴。`legacyApi` は、接続先のAPIがこの画面より古く、
+ * ファイルの記録を返せなかったことを示す（画面はその旨を出す）。
+ */
+export type CrawlMonitorRunResult = CrawlMonitorRunPage & {
+  legacyApi: boolean;
+};
+
 export const crawlMonitorCurrentSchema = z.object({
   kind: categoryKindSchema,
+  origin: crawlMonitorOriginSchema,
   runId: z.string(),
   snapshotId: z.string(),
   observedAt: isoDateTimeSchema,
@@ -192,6 +222,12 @@ export const crawlMonitorRunDetailSchema = z.object({
 });
 export type CrawlMonitorRunDetail = z.infer<typeof crawlMonitorRunDetailSchema>;
 
+export const crawlMonitorMappingSchema = z.object({
+  gaps: z.array(crawlMonitorMappingGapSchema),
+  observedAt: z.string().nullable(),
+});
+export type CrawlMonitorMapping = z.infer<typeof crawlMonitorMappingSchema>;
+
 export const crawlMonitorResortIdSchema = z
   .string()
   .min(1)
@@ -200,6 +236,8 @@ export const crawlMonitorResortIdSchema = z
 
 export const crawlMonitorRunListQuerySchema = z.object({
   resortId: crawlMonitorResortIdSchema,
+  /** DBの実行記録と、latest_dataのファイル記録のどちらを見るか。 */
+  origin: crawlMonitorOriginSchema,
   sourceModes: z.array(crawlMonitorSourceModeSchema).min(1),
   page: z.number().int().min(1).max(CRAWL_MONITOR_MAX_PAGE),
   pageSize: z.number().int().min(1).max(CRAWL_MONITOR_PAGE_SIZE),

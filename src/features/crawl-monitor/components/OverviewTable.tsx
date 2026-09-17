@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  CATEGORY_LABELS,
   formatElapsed,
   formatJst,
   OUTCOME_LABELS,
@@ -35,6 +36,7 @@ export function OverviewTable({
             <th className="px-3 py-2 font-medium">結果</th>
             <th className="px-3 py-2 font-medium">カテゴリ</th>
             <th className="px-3 py-2 font-medium">警告</th>
+            <th className="px-3 py-2 font-medium">対応表</th>
           </tr>
         </thead>
         <tbody>
@@ -61,6 +63,9 @@ export function OverviewTable({
                       {formatElapsed(row.latestRun.observedAt, now)}
                       {status.isStale ? " · 更新が止まっています" : ""}
                     </p>
+                    {row.latestRun.origin === "FILE" ? (
+                      <p className="text-xs text-gray-500">ファイルの記録</p>
+                    ) : null}
                     {row.latestRun.sourceMode !== "LIVE" ? (
                       <p className="text-xs text-gray-500">
                         {SOURCE_MODE_LABELS[row.latestRun.sourceMode]}
@@ -103,6 +108,24 @@ export function OverviewTable({
                   </Link>
                 ) : (
                   <span className="text-xs text-gray-500">-</span>
+                )}
+              </td>
+              <td className="px-3 py-2 align-top text-xs">
+                {row.mappingGaps.length === 0 ? (
+                  <span className="text-gray-500">-</span>
+                ) : status.hasMappingGap ? (
+                  <div className="flex flex-col gap-1">
+                    {row.mappingGaps
+                      .filter(gap => gap.missing.length > 0)
+                      .map(gap => (
+                        <StatusPill key={gap.kind} tone="warn">
+                          {CATEGORY_LABELS[gap.kind]} {gap.missing.length}件
+                          未取得
+                        </StatusPill>
+                      ))}
+                  </div>
+                ) : (
+                  <StatusPill tone="ok">一致</StatusPill>
                 )}
               </td>
             </tr>

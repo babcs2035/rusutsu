@@ -35,6 +35,7 @@ const run = (
 ): CrawlMonitorRunSummary => ({
   id: "run-1",
   resortId: "resort-a",
+  origin: "DATABASE",
   observedAt: new Date(NOW - 60_000).toISOString(),
   completedAt: new Date(NOW - 30_000).toISOString(),
   sourceMode: "LIVE",
@@ -58,6 +59,7 @@ const row = (
   resortId: "resort-a",
   resortName: "テストスキー場",
   prefecture: "北海道",
+  mappingGaps: [],
   latestRun: run(),
   ...overrides,
 });
@@ -75,6 +77,9 @@ test("a healthy recent run needs no attention", () => {
     isFailed: false,
     hasWarning: false,
     isStale: false,
+    hasMappingGap: false,
+    isPartial: false,
+    isOk: true,
     needsAttention: false,
   });
 });
@@ -164,11 +169,74 @@ test("entries are filtered by text and sorted with problems first", () => {
   );
 
   assert.deepEqual(countAttention(entries), {
+    ok: 1,
+    mappingGap: 0,
     failed: 0,
     warning: 1,
     missing: 1,
     stale: 0,
   });
+});
+
+test("a mapped course that was not crawled needs attention", () => {
+  const status = overviewRowStatus(
+    row({
+      mappingGaps: [
+        {
+          kind: "COURSES",
+          expected: 3,
+          crawled: 2,
+          missing: ["パノラマ"],
+          unexpected: [],
+        },
+      ],
+    }),
+    NOW,
+  );
+  assert.equal(status.hasMappingGap, true);
+  assert.equal(status.needsAttention, true);
+  assert.equal(status.isOk, false);
+
+  const matched = overviewRowStatus(
+    row({
+      mappingGaps: [
+        {
+          kind: "COURSES",
+          expected: 3,
+          crawled: 3,
+          missing: [],
+          unexpected: ["新コース"],
+        },
+      ],
+    }),
+    NOW,
+  );
+  assert.equal(matched.hasMappingGap, false);
+  assert.equal(matched.isOk, true);
+});
+
+test("the status filter can pick healthy and partly-warned resorts", () => {
+  const rows = [
+    row({ resortId: "healthy" }),
+    row({
+      resortId: "partial",
+      latestRun: run({ outcome: "PARTIAL" }),
+    }),
+  ];
+  assert.deepEqual(
+    buildOverviewEntries(rows, parseOverviewQuery({ status: "ok" }), NOW).map(
+      entry => entry.row.resortId,
+    ),
+    ["healthy"],
+  );
+  assert.deepEqual(
+    buildOverviewEntries(
+      rows,
+      parseOverviewQuery({ status: "partial" }),
+      NOW,
+    ).map(entry => entry.row.resortId),
+    ["partial"],
+  );
 });
 
 test("pagination clamps out-of-range pages", () => {

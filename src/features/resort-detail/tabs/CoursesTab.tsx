@@ -9,10 +9,11 @@ import {
 } from "@/lib/finalizedResortGeojsonShared";
 import {
   CompactMetric,
-  operationText,
   SourceLine,
   StatusMark,
 } from "../components/CompactInfo";
+import { CourseStatusTable } from "../components/CourseStatusTable";
+import { ObservationTimes } from "../components/ObservationTimes";
 import type { Resort } from "../types";
 import { slopeDistribution, sumKnown } from "../utils/courseDistribution";
 import {
@@ -35,11 +36,13 @@ const colors = {
 const backgrounds = { "○": "#ffffff", "△": "#fef3c7", "×": "#e0f2fe" };
 export const CoursesTab = ({
   resort,
+  hideSummary = false,
   finalizedMapData,
   selectedFinalizedFeature,
   onSelectedFinalizedFeatureChange,
 }: {
   resort: Resort;
+  hideSummary?: boolean;
   finalizedMapData: FinalizedResortMapData | null;
   selectedFinalizedFeature: SelectedMapFeature | null;
   onSelectedFinalizedFeatureChange: (
@@ -48,6 +51,7 @@ export const CoursesTab = ({
 }) => {
   const [filter, setFilter] = useState("all");
   const [sort, setSort] = useState(false);
+  const courseStatus = finalizedMapData?.courseStatusSummary;
   const section = finalizedMapData?.courses;
   const features = section?.features ?? [];
   const groups = createFinalizedCourseGroups(features);
@@ -117,30 +121,50 @@ export const CoursesTab = ({
     .sort((a, b) => (sort ? (b.distance ?? -1) - (a.distance ?? -1) : 0));
   return (
     <div className="space-y-4">
-      <section>
-        <dl className="grid grid-cols-2 gap-3 rounded-lg bg-slate-50 p-3">
-          <CompactMetric label="総滑走距離">
-            {formatMeters(distance.total)}
-          </CompactMetric>
-          <CompactMetric label="全面滑走 / 全コース">
-            {operationText(rows.map(row => row.status))}
-          </CompactMetric>
-        </dl>
-        <p className="mt-1 text-[11px] text-slate-500">
-          斜面に沿った距離の合計（地形データ優先・公表値で補完）
-          {distance.missing > 0 && ` · 距離不明${distance.missing}区間を除く`}
-        </p>
-        <SourceLine
-          label="コース状況"
-          time={section?.observedAt}
-          urls={section?.sourceUrls}
-          updates={features.map(c => c.properties.update ?? "")}
-        />
-      </section>
+      {!hideSummary && (
+        <section>
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="shrink-0 text-lg font-bold text-slate-900">
+              営業状況
+            </h2>
+            <ObservationTimes
+              entries={[
+                {
+                  label: "コース",
+                  time: courseStatus?.observedAt ?? section?.observedAt,
+                },
+              ]}
+            />
+          </div>
+          <div className="mt-2 grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] items-center gap-3 rounded-lg bg-slate-50 p-3">
+            <dl>
+              <CompactMetric label="総滑走距離">
+                {formatMeters(distance.total)}
+              </CompactMetric>
+            </dl>
+            <CourseStatusTable summary={courseStatus} />
+          </div>
+          <SourceLine
+            label="コース"
+            showLabel={false}
+            showFetched={false}
+            time={courseStatus?.observedAt ?? section?.observedAt}
+            urls={courseStatus?.sourceUrls ?? section?.sourceUrls}
+            updates={
+              courseStatus?.updates ??
+              features.map(c => c.properties.update ?? "")
+            }
+          />
+          <p className="mt-1 text-sm text-slate-500">
+            斜面に沿った距離の合計（地形データ優先・公表値で補完）
+            {distance.missing > 0 && ` · 距離不明${distance.missing}区間を除く`}
+          </p>
+        </section>
+      )}
       <section className="space-y-2">
         <h2 className="text-sm font-bold">
           レベル別割合{" "}
-          <span className="text-xs font-normal text-slate-500">
+          <span className="text-sm font-normal text-slate-500">
             コース数ベース
           </span>
         </h2>
@@ -168,7 +192,7 @@ export const CoursesTab = ({
                   />
                 ))}
             </div>
-            <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+            <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
               {levels
                 .filter(l => l.count)
                 .map(l => (
@@ -179,11 +203,11 @@ export const CoursesTab = ({
             </div>
           </>
         ) : (
-          <p className="text-xs text-slate-500">難易度データなし</p>
+          <p className="text-sm text-slate-500">難易度データなし</p>
         )}
         <h3 className="pt-2 text-sm font-bold">
           斜度別割合{" "}
-          <span className="text-xs font-normal text-slate-500">
+          <span className="text-sm font-normal text-slate-500">
             滑走距離ベース・5°刻み
           </span>
         </h3>
@@ -192,7 +216,7 @@ export const CoursesTab = ({
             {distribution.bins
               .filter((b, i) => i < 9 || b.distance > 0)
               .map(bin => (
-                <div key={bin.label} className="text-[11px]">
+                <div key={bin.label} className="text-sm">
                   <div className="flex justify-between gap-1">
                     <span>{bin.label}</span>
                     <span className="tabular-nums">
@@ -209,11 +233,11 @@ export const CoursesTab = ({
               ))}
           </div>
         ) : (
-          <p className="text-xs text-slate-500">
+          <p className="text-sm text-slate-500">
             標高付きのコースデータがないため集計できません。
           </p>
         )}
-        <p className="text-[11px] text-slate-500">
+        <p className="text-sm text-slate-500">
           地形の各区間から算出。
           {distribution.omitted > 0
             ? `標高不明の${distribution.omitted}区間は集計対象外。`
@@ -226,7 +250,7 @@ export const CoursesTab = ({
           <h2 className="text-sm font-bold">
             コース一覧{" "}
             {section?.verificationStatus === "verified" && (
-              <span className="text-[11px] font-normal text-slate-500">
+              <span className="text-sm font-normal text-slate-500">
                 確認済み
               </span>
             )}
@@ -235,7 +259,7 @@ export const CoursesTab = ({
             aria-label="難易度で絞り込み"
             value={filter}
             onChange={e => setFilter(e.target.value)}
-            className="h-8 max-w-36 rounded border px-2 text-xs"
+            className="h-8 max-w-36 rounded border px-2 text-sm"
           >
             <option value="all">すべての難易度</option>
             {levels
@@ -247,15 +271,18 @@ export const CoursesTab = ({
               ))}
           </select>
         </div>
-        <div className="my-2 flex flex-wrap gap-2 text-[11px] text-slate-600">
-          <span>○ 全面 △ 一部 × 閉鎖 — 不明</span>
+        <div className="my-2 flex flex-wrap gap-2 text-sm text-slate-600">
+          <span>
+            <StatusMark symbol="○" /> 全面 <StatusMark symbol="△" /> 一部{" "}
+            <StatusMark symbol="×" /> 閉鎖 — 不明
+          </span>
           <span className="border px-1">圧雪</span>
           <span className="bg-amber-100 px-1">一部圧雪</span>
           <span className="bg-sky-100 px-1">非圧雪</span>
           <span className="bg-slate-100 px-1">圧雪不明</span>
         </div>
         <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full text-xs">
+          <table className="w-full text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
                 {["状況", "コース名", "距離", "平均", "最大"].map(label => (
@@ -325,7 +352,7 @@ export const CoursesTab = ({
             </tbody>
           </table>
           {!displayed.length && (
-            <p className="p-4 text-center text-xs text-slate-500">
+            <p className="p-4 text-center text-sm text-slate-500">
               コースデータがありません
             </p>
           )}

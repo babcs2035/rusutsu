@@ -20,7 +20,13 @@ const resortIdSchema = z
   .max(200)
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/u);
 const kindSchema = z.enum(["courses", "lifts"]);
-const viewSchema = z.enum(["status", "resortIds", "conditions"]);
+const viewSchema = z.enum([
+  "status",
+  "resortIds",
+  "conditions",
+  "mappingStatus",
+  "mappingResortIds",
+]);
 
 export async function GET(request: Request) {
   const authorizationError = requireInternalApiRequest(request, "admin-data");
@@ -41,7 +47,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    if (view.data === "resortIds") {
+    if (view.data === "resortIds" || view.data === "mappingResortIds") {
       if (searchParams.has("resortId")) {
         return internalApiError(
           400,
@@ -50,7 +56,12 @@ export async function GET(request: Request) {
         );
       }
       return internalApiJson({
-        resortIds: await listAvailableCrawlLatestResortIdsDirect(kind.data),
+        resortIds: await listAvailableCrawlLatestResortIdsDirect(
+          kind.data,
+          undefined,
+          undefined,
+          view.data === "mappingResortIds",
+        ),
       });
     }
 
@@ -67,6 +78,9 @@ export async function GET(request: Request) {
       status: await findAvailableCrawlLatestStatusDirect(
         resortId.data,
         kind.data,
+        undefined,
+        undefined,
+        view.data === "mappingStatus",
       ),
     });
   } catch (error) {

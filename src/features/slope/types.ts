@@ -76,6 +76,8 @@ export type ResortOption = {
   // クローラーがこのスキー場のコース営業情報を実際に取得できているか。
   // クローラー自体があっても、コースを取れていなければ false。
   hasCrawlerCourses: boolean;
+  /** 対応表（latest_status_mapping）にコースの行があるか */
+  hasCourseMapping: boolean;
 };
 
 export type EditStep = "select" | "assign" | "lines" | "details" | "confirm";

@@ -8,6 +8,12 @@ export type OverviewRowStatus = {
   isFailed: boolean;
   hasWarning: boolean;
   isStale: boolean;
+  /** 対応表にあるのに取れていないコース・リフトがある。 */
+  hasMappingGap: boolean;
+  /** 結果が「一部警告」。 */
+  isPartial: boolean;
+  /** 警告も失敗も鮮度の問題もない。 */
+  isOk: boolean;
   needsAttention: boolean;
 };
 
@@ -22,6 +28,9 @@ export const overviewRowStatus = (
       isFailed: false,
       hasWarning: false,
       isStale: false,
+      hasMappingGap: false,
+      isPartial: false,
+      isOk: false,
       needsAttention: true,
     };
   }
@@ -41,12 +50,17 @@ export const overviewRowStatus = (
         (category.state === "EMPTY" && category.kind !== "COMMENT"),
     );
   const isStale = now - new Date(run.observedAt).getTime() > STALE_THRESHOLD_MS;
+  const hasMappingGap = row.mappingGaps.some(gap => gap.missing.length > 0);
+  const needsAttention = isFailed || hasWarning || isStale || hasMappingGap;
   return {
     isMissing: false,
     isFailed,
     hasWarning,
     isStale,
-    needsAttention: isFailed || hasWarning || isStale,
+    hasMappingGap,
+    isPartial: run.outcome === "PARTIAL",
+    isOk: !needsAttention,
+    needsAttention,
   };
 };
 
@@ -59,6 +73,12 @@ const matchesStatus = (
       return true;
     case "attention":
       return rowStatus.needsAttention;
+    case "ok":
+      return rowStatus.isOk;
+    case "partial":
+      return rowStatus.isPartial;
+    case "mapping":
+      return rowStatus.hasMappingGap;
     case "failed":
       return rowStatus.isFailed;
     case "warning":
@@ -126,6 +146,8 @@ export const buildOverviewEntries = (
     .sort(compareRows);
 
 export const countAttention = (entries: readonly OverviewEntry[]) => ({
+  ok: entries.filter(entry => entry.status.isOk).length,
+  mappingGap: entries.filter(entry => entry.status.hasMappingGap).length,
   failed: entries.filter(entry => entry.status.isFailed).length,
   warning: entries.filter(
     entry => entry.status.hasWarning && !entry.status.isFailed,

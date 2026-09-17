@@ -1,4 +1,5 @@
 import type { CrawlMonitorRunDetail } from "@/server/crawl-latest/adminContract";
+import { withBasePath } from "@/shared/utils/basePath";
 import {
   CATEGORY_LABELS,
   categoryTone,
@@ -48,6 +49,9 @@ export function RunDetailView({ detail }: { detail: CrawlMonitorRunDetail }) {
             {SOURCE_MODE_LABELS[run.sourceMode]}
             {run.archiveTimestamp ? ` ${run.archiveTimestamp}` : ""}
           </StatusPill>
+          {run.origin === "FILE" ? (
+            <StatusPill tone="muted">ファイルの記録</StatusPill>
+          ) : null}
           {run.sourceMode !== "LIVE" ? (
             <span className="text-xs text-gray-500">
               この実行は公開値には反映されません。
@@ -89,11 +93,13 @@ export function RunDetailView({ detail }: { detail: CrawlMonitorRunDetail }) {
                 <StatusPill tone={categoryTone(category)}>
                   {STATE_LABELS[category.state]}
                 </StatusPill>
-                {category.eligibleForCurrent ? (
-                  <StatusPill tone="ok">公開値に採用</StatusPill>
-                ) : (
-                  <StatusPill tone="muted">公開値には未採用</StatusPill>
-                )}
+                {run.origin === "DATABASE" ? (
+                  category.eligibleForCurrent ? (
+                    <StatusPill tone="ok">公開値に採用</StatusPill>
+                  ) : (
+                    <StatusPill tone="muted">公開値には未採用</StatusPill>
+                  )
+                ) : null}
               </div>
             </header>
             {category.itemCount > 0 ? (
@@ -210,7 +216,9 @@ export function RunDetailView({ detail }: { detail: CrawlMonitorRunDetail }) {
                     <td className="px-3 py-2 align-top text-xs">
                       {artifact.hasContent ? (
                         <a
-                          href={`/admin/crawl/artifacts/${artifact.id}`}
+                          href={withBasePath(
+                            `/admin/crawl/artifacts/${artifact.id}`,
+                          )}
                           className="text-gray-800 underline underline-offset-2"
                         >
                           ダウンロード

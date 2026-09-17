@@ -9,6 +9,7 @@ export type ResortStatusKind =
   | "liftData"
   | "crawler"
   | "noCrawler"
+  | "noMapping"
   | "draft"
   | "unknownId";
 
@@ -35,6 +36,11 @@ const STYLES: Record<
     label: "取得結果あり",
     className: "bg-sky-50 text-sky-900",
     title: "対応付けに使える取得結果があります（過去の取得結果を含みます）",
+  },
+  noMapping: {
+    label: "対応表なし",
+    className: "bg-amber-50 text-amber-900",
+    title: "取得結果はありますが、コース・リフトの対応表がまだ作られていません",
   },
   noCrawler: {
     label: "取得結果なし",

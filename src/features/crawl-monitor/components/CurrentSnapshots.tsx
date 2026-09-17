@@ -44,8 +44,10 @@ export function CurrentSnapshots({
             {current ? (
               <>
                 <p className="mb-2 text-xs text-gray-500">
-                  取得 {formatJst(current.observedAt)} / 反映{" "}
-                  {formatJst(current.updatedAt)}
+                  取得 {formatJst(current.observedAt)}
+                  {current.origin === "FILE"
+                    ? "（ファイルの記録）"
+                    : ` / 反映 ${formatJst(current.updatedAt)}`}
                   {current.itemCount > 0
                     ? ` / ${current.usableItemCount}件が有効（全${current.itemCount}件）`
                     : ""}
@@ -70,7 +72,7 @@ export function CurrentSnapshots({
               </>
             ) : (
               <p className="text-sm text-gray-500">
-                このカテゴリはまだ公開値に昇格していません。
+                このカテゴリは取得できた記録がありません。
               </p>
             )}
           </section>

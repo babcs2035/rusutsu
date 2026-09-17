@@ -56,6 +56,43 @@ export async function listCurrentCrawlLatestResortIds(
   return parseObjectEnvelope<string[]>(response, "resortIds");
 }
 
+/** 名称対応付け専用。Wayback検証結果へのフォールバックを許可する。 */
+export async function readMappingCrawlLatestStatus(
+  resortId: string,
+  kind: LatestStatusKind,
+): Promise<LatestSuccessfulStatus | null> {
+  if (!usesRemoteDataApi())
+    return findAvailableCrawlLatestStatusDirect(
+      resortId,
+      kind,
+      undefined,
+      undefined,
+      true,
+    );
+  const search = new URLSearchParams({ resortId, kind, view: "mappingStatus" });
+  const response = await fetchInternalDataApi(
+    `/api/internal/v1/crawl-latest-current?${search}`,
+  );
+  return parseObjectEnvelope(response, "status");
+}
+
+export async function listMappingCrawlLatestResortIds(
+  kind: LatestStatusKind,
+): Promise<string[]> {
+  if (!usesRemoteDataApi())
+    return listAvailableCrawlLatestResortIdsDirect(
+      kind,
+      undefined,
+      undefined,
+      true,
+    );
+  const search = new URLSearchParams({ kind, view: "mappingResortIds" });
+  const response = await fetchInternalDataApi(
+    `/api/internal/v1/crawl-latest-current?${search}`,
+  );
+  return parseObjectEnvelope(response, "resortIds");
+}
+
 export async function readCurrentResortConditions(
   resortId: string,
 ): Promise<

@@ -2,6 +2,7 @@
 
 import { HelpCircle, X } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -420,6 +421,9 @@ export function SlopeEditWorkspace({
 
   const handleSaved = (writtenFiles: string[]) => {
     markSavedToServer();
+    // 対応表や確認済みの有無はサーバーで組み立てているので、選択画面の
+    // バッジを保存後の状態に合わせるために読み直す。
+    router.refresh();
     setSaveMessage(
       `保存しました。標高はバックグラウンドで更新します: ${writtenFiles.join(", ")}`,
     );
@@ -645,6 +649,7 @@ export function SlopeEditWorkspace({
     [fileHash, resort?.id, sourceKind],
   );
 
+  const router = useRouter();
   const selectedCourse =
     courses.find(course => course.id === activeCourseId) ?? null;
   const mapping = useLatestStatusMapping({

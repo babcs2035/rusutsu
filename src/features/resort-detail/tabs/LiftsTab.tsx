@@ -6,11 +6,12 @@ import type { FinalizedResortMapData } from "@/lib/finalizedResortGeojsonShared"
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import {
   CompactMetric,
-  operationText,
   SourceLine,
   StatusMark,
 } from "../components/CompactInfo";
+import { CourseStatusTable } from "../components/CourseStatusTable";
 import { LiftTypeIcon } from "../components/LiftTypeIcon";
+import { ObservationTimes } from "../components/ObservationTimes";
 import type { Resort } from "../types";
 import { sumKnown } from "../utils/courseDistribution";
 import { sourceUrls } from "../utils/currentConditions";
@@ -19,14 +20,17 @@ import {
   getLiftElevationDiff,
   normalizeIconSymbol,
 } from "../utils/detailMetrics";
+import { createLiftStatusSummary } from "../utils/liftStatusSummary";
 
 export const LiftsTab = ({
   resort,
+  hideSummary = false,
   finalizedMapData,
   selectedFinalizedFeature,
   onSelectedFinalizedFeatureChange,
 }: {
   resort: Resort;
+  hideSummary?: boolean;
   finalizedMapData: FinalizedResortMapData | null;
   selectedFinalizedFeature: SelectedMapFeature | null;
   onSelectedFinalizedFeatureChange: (
@@ -35,6 +39,7 @@ export const LiftsTab = ({
 }) => {
   const [filter, setFilter] = useState("all");
   const section = finalizedMapData?.lifts;
+  const liftStatus = createLiftStatusSummary(section);
   const features = section?.features ?? [];
   const rows = features.length
     ? features.map(lift => ({
@@ -122,41 +127,79 @@ export const LiftsTab = ({
   ];
   return (
     <div className="space-y-3">
-      <section>
-        <dl className="grid grid-cols-2 gap-x-3 gap-y-2 rounded-lg bg-slate-50 p-3">
-          <CompactMetric label="リフト総延長">
-            {formatMeters(distance.total)}
-          </CompactMetric>
-          <CompactMetric label="運行 / 全リフト">
-            {operationText(
-              rows.map(row => row.properties.status),
-              "待機",
-            )}
-          </CompactMetric>
+      {!hideSummary && (
+        <section>
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="shrink-0 text-lg font-bold text-slate-900">
+              営業状況
+            </h2>
+            <ObservationTimes
+              entries={[{ label: "リフト", time: section?.observedAt }]}
+            />
+          </div>
+          <div className="mt-2 rounded-lg bg-slate-50 p-3">
+            <CourseStatusTable summary={liftStatus} kind="lift" />
+            <SourceLine
+              label="リフト"
+              showLabel={false}
+              showFetched={false}
+              urls={section?.sourceUrls}
+              updates={liftStatus?.updates}
+            />
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              {["高速", "低速"].map(speed => (
+                <CourseStatusTable
+                  key={speed}
+                  kind="lift"
+                  title={speed}
+                  summary={
+                    section
+                      ? createLiftStatusSummary({
+                          ...section,
+                          features: features.filter(
+                            lift => speedGroup(lift.properties.speed) === speed,
+                          ),
+                        })
+                      : null
+                  }
+                />
+              ))}
+            </div>
+            <dl className="mt-3">
+              <CompactMetric label="リフト総延長">
+                {formatMeters(distance.total)}
+              </CompactMetric>
+            </dl>
+          </div>
+          <p className="mt-1 text-sm text-slate-500">
+            距離は地形データ優先・公表値で補完
+            {distance.missing > 0 && ` · 距離不明${distance.missing}本を除く`}
+            {rows.some(row => speedGroup(row.properties.speed) === "不明") &&
+              ` · 速度区分不明${rows.filter(row => speedGroup(row.properties.speed) === "不明").length}本`}
+          </p>
+        </section>
+      )}
+      {hideSummary && (
+        <div className="mt-3 grid grid-cols-2 gap-3">
           {["高速", "低速"].map(speed => (
-            <CompactMetric key={speed} label={`${speed} · 運行 / 全数`}>
-              {operationText(
-                rows
-                  .filter(row => speedGroup(row.properties.speed) === speed)
-                  .map(row => row.properties.status),
-                "待機",
-              )}
-            </CompactMetric>
+            <CourseStatusTable
+              key={speed}
+              kind="lift"
+              title={speed}
+              summary={
+                section
+                  ? createLiftStatusSummary({
+                      ...section,
+                      features: features.filter(
+                        lift => speedGroup(lift.properties.speed) === speed,
+                      ),
+                    })
+                  : null
+              }
+            />
           ))}
-        </dl>
-        <p className="mt-1 text-[11px] text-slate-500">
-          距離は地形データ優先・公表値で補完
-          {distance.missing > 0 && ` · 距離不明${distance.missing}本を除く`}
-          {rows.some(row => speedGroup(row.properties.speed) === "不明") &&
-            ` · 速度区分不明${rows.filter(row => speedGroup(row.properties.speed) === "不明").length}本`}
-        </p>
-        <SourceLine
-          label="リフト状況"
-          time={section?.observedAt}
-          urls={section?.sourceUrls}
-          updates={features.map(l => l.properties.update ?? "")}
-        />
-      </section>
+        </div>
+      )}
       <section>
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-bold">リフト一覧</h2>
@@ -164,7 +207,7 @@ export const LiftsTab = ({
             aria-label="リフトタイプで絞り込み"
             value={filter}
             onChange={event => setFilter(event.target.value)}
-            className="h-8 max-w-40 rounded border px-2 text-xs"
+            className="h-8 max-w-40 rounded border px-2 text-sm"
           >
             <option value="all">すべてのタイプ</option>
             {types.map(type => (
@@ -172,8 +215,9 @@ export const LiftsTab = ({
             ))}
           </select>
         </div>
-        <p className="my-2 text-[11px] text-slate-600">
-          ○ 運行 △ 待機 × 運休 — 不明 · 横スクロールで設備情報 →
+        <p className="my-2 text-sm text-slate-600">
+          <StatusMark symbol="○" lift /> 運行 <StatusMark symbol="△" lift />{" "}
+          待機 <StatusMark symbol="×" lift /> 運休 · 横スクロールで設備情報 →
         </p>
         <div
           className="isolate overflow-x-auto rounded-lg border"
@@ -182,7 +226,7 @@ export const LiftsTab = ({
           // biome-ignore lint/a11y/noNoninteractiveTabindex: Keyboard users need to scroll the wide table.
           tabIndex={0}
         >
-          <table className="w-max min-w-full border-separate border-spacing-0 text-xs">
+          <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
             <thead>
               <tr>
                 {headers.map((label, index) => (
@@ -284,7 +328,7 @@ export const LiftsTab = ({
             </tbody>
           </table>
           {!displayed.length && (
-            <p className="p-4 text-xs text-slate-500">
+            <p className="p-4 text-sm text-slate-500">
               リフトデータがありません
             </p>
           )}

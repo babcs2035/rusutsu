@@ -58,6 +58,9 @@ export function RunHistoryTable({
                   >
                     {formatJst(run.observedAt)}
                   </Link>
+                  {run.origin === "FILE" ? (
+                    <p className="text-xs text-gray-500">ファイルの記録</p>
+                  ) : null}
                   {run.sourceMode !== "LIVE" ? (
                     <p className="text-xs text-gray-500">
                       {SOURCE_MODE_LABELS[run.sourceMode]}
