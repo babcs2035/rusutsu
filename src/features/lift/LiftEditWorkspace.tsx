@@ -42,6 +42,7 @@ import type {
   LiftDetailEntry,
   ResortOption,
 } from "./types";
+import { liftDraftContentKey } from "./utils/draftContent";
 import {
   fillEmptyLiftSearchWords,
   hasLineChange,
@@ -118,11 +119,14 @@ export function LiftEditWorkspace({
     }
   };
 
+  const [draftBaseline, setDraftBaseline] = useState("");
+
   const { savedAt, markSavedToServer } = useDraftStorage(
     resort?.id ?? null,
     fileHash,
     lifts,
     step !== "select",
+    draftBaseline,
     linkEditor.draft,
   );
 
@@ -213,6 +217,9 @@ export function LiftEditWorkspace({
         loadLiftSourceData(selected.id),
         loadResortLinks(selected.id),
       ]);
+      setDraftBaseline(
+        liftDraftContentKey(sourceDataToLifts(selected.id, data).lifts),
+      );
       linkEditor.initialize(
         selected.id,
         links,
@@ -321,7 +328,7 @@ export function LiftEditWorkspace({
     // バッジを保存後の状態に合わせるために読み直す。
     router.refresh();
     setSaveMessage(
-      `保存しました。標高はバックグラウンドで更新します: ${writtenFiles.join(", ")}`,
+      `保存しました。位置変更・標高未取得のデータはバックグラウンドで標高を取得します: ${writtenFiles.join(", ")}`,
     );
     handleBackToSelect();
   };

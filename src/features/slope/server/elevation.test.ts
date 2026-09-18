@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { synchronizeDerivedGeometry } from "@/server/derivedGeometry";
 import type { SlopeBeforeGeojson } from "../types";
 import { enrichSlopeElevations } from "./elevation";
 
@@ -47,7 +48,7 @@ test("低所始点でも高所から10m間隔の3D線と距離・斜度を生成
   assert.deepEqual(input, original);
 });
 
-test("短い平坦線は斜度0になり、毎回標高を取得する", async () => {
+test("明示的な全件再取得では既存標高を置換し、平坦線は斜度0になる", async () => {
   const input = source();
   input.features[0].geometry = {
     type: "LineString",
@@ -105,5 +106,104 @@ test("屈曲線でもdistance_10m.pyの計算値と一致する", async () => {
   assert.equal(
     (result.features[0].geometry.coordinates as number[][]).length,
     16,
+  );
+});
+
+for (const legacy of [false, true]) {
+  test(`保存済みの逆向きコースも再取得せず、属性・並び順を更新する（旧形式=${legacy}）`, async () => {
+    const before = source();
+    const existing = await enrichSlopeElevations(
+      before,
+      async lon => (lon - 139) * 100_000,
+    );
+    if (legacy) delete existing.features[0].properties?._source_line_sha256;
+    const next = structuredClone(before);
+    assert.ok(next.features[0].properties);
+    next.features[0].properties.difficulty = "hard";
+    next.features[0].properties.name = "改名コース";
+    const synced = synchronizeDerivedGeometry({
+      previousBefore: before,
+      nextBefore: next,
+      existingDerived: existing,
+      intervalM: 10,
+      kind: "slope",
+    });
+    const result = await enrichSlopeElevations(
+      next,
+      async () => {
+        throw new Error("再取得禁止");
+      },
+      synced,
+    );
+    assert.deepEqual(
+      result.features[0].geometry,
+      existing.features[0].geometry,
+    );
+    assert.equal(result.features[0].properties?.difficulty, "hard");
+    assert.equal(
+      result.features[0].properties?.slope_dist_map,
+      existing.features[0].properties?.slope_dist_map,
+    );
+  });
+}
+
+test("複数コースの保存は位置変更・新規・標高欠損のみ取得し、標高データがなければ全件取得する", async () => {
+  const before = source();
+  before.features = [0, 1, 2].map(index => ({
+    ...structuredClone(before.features[0]),
+    properties: { name: `コース${index}` },
+    geometry: {
+      type: "LineString",
+      coordinates: [
+        [139, 35 + index],
+        [139.001, 35 + index],
+      ],
+    },
+  }));
+  const existing = await enrichSlopeElevations(before, async () => 0);
+  assert.ok(existing.features[2].geometry);
+  (existing.features[2].geometry.coordinates as number[][])[0].pop();
+  const next = structuredClone(before);
+  assert.ok(next.features[1].geometry);
+  (next.features[1].geometry.coordinates as number[][])[1][0] += 0.001;
+  next.features.push({
+    ...structuredClone(next.features[0]),
+    properties: { name: "新規" },
+    geometry: {
+      type: "LineString",
+      coordinates: [
+        [139, 38],
+        [139.001, 38],
+      ],
+    },
+  });
+  next.features.reverse();
+  const synced = synchronizeDerivedGeometry({
+    previousBefore: before,
+    nextBefore: next,
+    existingDerived: existing,
+    intervalM: 10,
+    kind: "slope",
+  });
+  const latitudes = new Set<number>();
+  const lookup = async (_lon: number, lat: number) => {
+    latitudes.add(lat);
+    return 500;
+  };
+  const result = await enrichSlopeElevations(next, lookup, synced);
+  assert.deepEqual([...latitudes].sort(), [36, 37, 38]);
+  assert.deepEqual(
+    result.features.at(-1)?.geometry,
+    existing.features[0].geometry,
+  );
+  latitudes.clear();
+  await enrichSlopeElevations(next, lookup);
+  assert.deepEqual([...latitudes].sort(), [35, 36, 37, 38]);
+  await enrichSlopeElevations(
+    next,
+    async () => {
+      throw new Error("再保存で再取得禁止");
+    },
+    result,
   );
 });

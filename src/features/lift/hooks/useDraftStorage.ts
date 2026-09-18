@@ -1,9 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { ResortEditorLinkDraft } from "@/shared/components/resort-editor/useResortEditorLinks";
+import { hasLinkDraftChanges } from "@/shared/utils/editorDraft";
+import { loadLiftSourceData } from "../actions";
 import { DRAFT_STORAGE_PREFIX } from "../constants";
 import type { DraftSummary, EditorLift, LiftEditDraft } from "../types";
+import { liftDraftContentKey } from "../utils/draftContent";
+import { sourceDataToLifts } from "../utils/loadSource";
 
 const draftKey = (resortId: string): string =>
   `${DRAFT_STORAGE_PREFIX}${resortId}`;
@@ -26,7 +30,7 @@ export const discardDraft = (resortId: string): void => {
   window.localStorage.removeItem(draftKey(resortId));
 };
 
-export const listDraftSummaries = (): DraftSummary[] => {
+export const listDraftSummaries = async (): Promise<DraftSummary[]> => {
   if (typeof window === "undefined") return [];
   const summaries: DraftSummary[] = [];
   for (let index = 0; index < window.localStorage.length; index += 1) {
@@ -42,7 +46,32 @@ export const listDraftSummaries = (): DraftSummary[] => {
       });
     }
   }
-  return summaries;
+  const changed: DraftSummary[] = [];
+  for (const summary of summaries) {
+    const draft = loadDraft(summary.resortId);
+    if (!draft) continue;
+    try {
+      const source = await loadLiftSourceData(summary.resortId);
+      const baseline = sourceDataToLifts(summary.resortId, source);
+      if (
+        liftDraftContentKey(draft.lifts) ===
+          liftDraftContentKey(baseline.lifts) &&
+        !hasLinkDraftChanges(draft.linkDraft)
+      ) {
+        // 読み込み中に別タブで更新された下書きは削除しない。
+        if (
+          JSON.stringify(loadDraft(summary.resortId)) === JSON.stringify(draft)
+        ) {
+          discardDraft(summary.resortId);
+          continue;
+        }
+      }
+    } catch {
+      // 正本を確認できない場合は編集内容を残す。
+    }
+    changed.push(summary);
+  }
+  return changed;
 };
 
 type DraftStorageState = {
@@ -57,13 +86,14 @@ export const useDraftStorage = (
   fileHash: string | null,
   lifts: EditorLift[],
   enabled: boolean,
+  baseline: string,
   linkDraft?: ResortEditorLinkDraft,
 ): DraftStorageState => {
   const [savedAt, setSavedAt] = useState<string | null>(null);
-  const skipNextSaveRef = useRef(true);
+  const contentKey = liftDraftContentKey(lifts);
+  const hasChanges = contentKey !== baseline || hasLinkDraftChanges(linkDraft);
 
   useEffect(() => {
-    skipNextSaveRef.current = true;
     if (!resortId) {
       setSavedAt(null);
       return;
@@ -73,45 +103,41 @@ export const useDraftStorage = (
 
   useEffect(() => {
     if (!enabled || !resortId) return;
-    if (skipNextSaveRef.current) {
-      skipNextSaveRef.current = false;
+    if (!hasChanges) {
+      discardDraft(resortId);
+      setSavedAt(null);
       return;
     }
-    const timer = window.setTimeout(() => {
-      const updatedAt = new Date().toISOString();
-      const draft: LiftEditDraft = {
-        linkDraft,
-        version: 1,
-        resortId,
-        fileHash,
-        lifts,
-        updatedAt,
-        savedToServerAt: null,
-      };
-      try {
-        window.localStorage.setItem(draftKey(resortId), JSON.stringify(draft));
-        setSavedAt(updatedAt);
-      } catch {
-        // 容量超過などで保存できない場合は最終保存時刻を更新しない
-      }
-    }, 400);
-    return () => window.clearTimeout(timer);
-  }, [enabled, resortId, fileHash, lifts, linkDraft]);
+    const updatedAt = new Date().toISOString();
+    const draft: LiftEditDraft = {
+      linkDraft,
+      version: 1,
+      resortId,
+      fileHash,
+      lifts,
+      updatedAt,
+      savedToServerAt: null,
+    };
+    try {
+      window.localStorage.setItem(draftKey(resortId), JSON.stringify(draft));
+      setSavedAt(updatedAt);
+    } catch {
+      // 容量超過などで保存できない場合は最終保存時刻を更新しない
+    }
+  }, [enabled, hasChanges, resortId, fileHash, lifts, linkDraft]);
 
   const markSavedToServer = useCallback(() => {
     // サーバーへ保存できたら下書きは不要になるため破棄する
     if (!resortId) return;
     discardDraft(resortId);
     setSavedAt(null);
-    skipNextSaveRef.current = true;
   }, [resortId]);
 
   const discard = useCallback(() => {
     if (!resortId) return;
     discardDraft(resortId);
     setSavedAt(null);
-    skipNextSaveRef.current = true;
   }, [resortId]);
 
-  return { savedAt, markSavedToServer, discard };
+  return { savedAt: hasChanges ? savedAt : null, markSavedToServer, discard };
 };

@@ -397,7 +397,7 @@ export async function refreshSlopeElevations(
       },
     ]);
     const saved = written.find(document => document.key === key);
-    if (saved) scheduleSavedElevations(saved, "slope", source);
+    if (saved) scheduleSavedElevations(saved, "slope", source, { force: true });
     return { ok: true, writtenFiles: [key] };
   } catch (error) {
     return {

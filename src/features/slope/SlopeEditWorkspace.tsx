@@ -54,6 +54,7 @@ import {
   suggestMergedName,
 } from "./utils/courseOps";
 import { reorderItemsByNameOrder } from "./utils/courseOrder";
+import { slopeDraftContentKey } from "./utils/draftContent";
 import {
   defaultSideToKeep,
   joinLines,
@@ -148,6 +149,8 @@ export function SlopeEditWorkspace({
   const [pendingResort, setPendingResort] = useState<ResortOption | null>(null);
   const [pendingSource, setPendingSource] = useState<StartSource | null>(null);
 
+  const [draftBaseline, setDraftBaseline] = useState("");
+
   const { savedAt, markExported, markSavedToServer } = useDraftStorage(
     resort?.id ?? null,
     sourceKind,
@@ -157,6 +160,7 @@ export function SlopeEditWorkspace({
     preservedFeatures,
     preservedDetails,
     step !== "select",
+    draftBaseline,
     linkEditor.draft,
   );
 
@@ -241,6 +245,14 @@ export function SlopeEditWorkspace({
           .then(data => sourceDataToLifts(selected.id, data))
           .catch(() => null),
       ]);
+      const baseline = sourceDataToCourses(selected.id, data);
+      setDraftBaseline(
+        slopeDraftContentKey(
+          baseline.courses,
+          baseline.preservedFeatures,
+          baseline.preservedDetails,
+        ),
+      );
       linkEditor.initialize(selected.id, links, draft?.linkDraft);
       let nextCourses: EditorCourse[];
       let nextPreservedFeatures: SlopeBeforeFeature[] = [];
@@ -425,7 +437,7 @@ export function SlopeEditWorkspace({
     // バッジを保存後の状態に合わせるために読み直す。
     router.refresh();
     setSaveMessage(
-      `保存しました。標高はバックグラウンドで更新します: ${writtenFiles.join(", ")}`,
+      `保存しました。位置変更・標高未取得のデータはバックグラウンドで標高を取得します: ${writtenFiles.join(", ")}`,
     );
     handleBackToSelect();
   };

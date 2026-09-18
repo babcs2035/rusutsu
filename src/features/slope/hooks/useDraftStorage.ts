@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { ResortEditorLinkDraft } from "@/shared/components/resort-editor/useResortEditorLinks";
+import { hasLinkDraftChanges } from "@/shared/utils/editorDraft";
+import { loadSlopeSourceData } from "../actions";
 import { DRAFT_STORAGE_PREFIX } from "../constants";
 import type {
   DraftSummary,
@@ -11,6 +13,8 @@ import type {
   SlopeEditDraft,
   SlopeSourceKind,
 } from "../types";
+import { slopeDraftContentKey } from "../utils/draftContent";
+import { sourceDataToCourses } from "../utils/loadSource";
 
 const draftKey = (resortId: string, sourceKind: SlopeSourceKind): string =>
   `${DRAFT_STORAGE_PREFIX}${sourceKind}:${resortId}`;
@@ -68,7 +72,7 @@ export const discardDraft = (
   removeMatchingLegacyDraft(resortId, sourceKind);
 };
 
-export const listDraftSummaries = (): DraftSummary[] => {
+export const listDraftSummaries = async (): Promise<DraftSummary[]> => {
   if (typeof window === "undefined") return [];
   const summariesByKey = new Map<string, DraftSummary>();
   for (let index = 0; index < window.localStorage.length; index += 1) {
@@ -91,7 +95,44 @@ export const listDraftSummaries = (): DraftSummary[] => {
       // 壊れた下書きは一覧へ出さない
     }
   }
-  return [...summariesByKey.values()];
+  const changed: DraftSummary[] = [];
+  for (const summary of [...summariesByKey.values()]) {
+    const draft = loadDraft(summary.resortId, summary.sourceKind);
+    if (!draft) continue;
+    try {
+      const source = await loadSlopeSourceData(
+        summary.resortId,
+        summary.sourceKind,
+      );
+      const baseline = sourceDataToCourses(summary.resortId, source);
+      if (
+        slopeDraftContentKey(
+          draft.courses,
+          draft.preservedFeatures ?? [],
+          draft.preservedDetails ?? [],
+        ) ===
+          slopeDraftContentKey(
+            baseline.courses,
+            baseline.preservedFeatures,
+            baseline.preservedDetails,
+          ) &&
+        !hasLinkDraftChanges(draft.linkDraft)
+      ) {
+        // 読み込み中に別タブで更新された下書きは削除しない。
+        if (
+          JSON.stringify(loadDraft(summary.resortId, summary.sourceKind)) ===
+          JSON.stringify(draft)
+        ) {
+          discardDraft(summary.resortId, summary.sourceKind);
+          continue;
+        }
+      }
+    } catch {
+      // 正本を確認できない場合は編集内容を残す。
+    }
+    changed.push(summary);
+  }
+  return changed;
 };
 
 type DraftStorageState = {
@@ -112,15 +153,20 @@ export const useDraftStorage = (
   preservedFeatures: SlopeBeforeFeature[],
   preservedDetails: SlopeDetailEntry[],
   enabled: boolean,
+  baseline: string,
   linkDraft?: ResortEditorLinkDraft,
 ): DraftStorageState => {
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [exportedAt, setExportedAt] = useState<string | null>(null);
-  const skipNextSaveRef = useRef(true);
+  const contentKey = slopeDraftContentKey(
+    courses,
+    preservedFeatures,
+    preservedDetails,
+  );
+  const hasChanges = contentKey !== baseline || hasLinkDraftChanges(linkDraft);
 
-  // 編集対象の切り替え時は、直後の保存を 1 回スキップして復元直後の上書きを防ぐ
+  // 編集対象の切り替え時に下書きの保存時刻を復元する
   useEffect(() => {
-    skipNextSaveRef.current = true;
     if (!resortId) {
       setSavedAt(null);
       setExportedAt(null);
@@ -133,39 +179,38 @@ export const useDraftStorage = (
 
   useEffect(() => {
     if (!enabled || !resortId) return;
-    if (skipNextSaveRef.current) {
-      skipNextSaveRef.current = false;
+    if (!hasChanges) {
+      discardDraft(resortId, sourceKind);
+      setSavedAt(null);
       return;
     }
-    const timer = window.setTimeout(() => {
-      const updatedAt = new Date().toISOString();
-      const draft: SlopeEditDraft = {
-        linkDraft,
-        version: 1,
-        resortId,
-        sourceKind,
-        fileHash,
-        detailFileHash,
-        courses,
-        preservedFeatures,
-        preservedDetails,
-        updatedAt,
-        exportedAt,
-      };
-      try {
-        window.localStorage.setItem(
-          draftKey(resortId, sourceKind),
-          JSON.stringify(draft),
-        );
-        removeMatchingLegacyDraft(resortId, sourceKind);
-        setSavedAt(updatedAt);
-      } catch {
-        // 容量超過などで保存できない場合は最終保存時刻を更新しない
-      }
-    }, 400);
-    return () => window.clearTimeout(timer);
+    const updatedAt = new Date().toISOString();
+    const draft: SlopeEditDraft = {
+      linkDraft,
+      version: 1,
+      resortId,
+      sourceKind,
+      fileHash,
+      detailFileHash,
+      courses,
+      preservedFeatures,
+      preservedDetails,
+      updatedAt,
+      exportedAt,
+    };
+    try {
+      window.localStorage.setItem(
+        draftKey(resortId, sourceKind),
+        JSON.stringify(draft),
+      );
+      removeMatchingLegacyDraft(resortId, sourceKind);
+      setSavedAt(updatedAt);
+    } catch {
+      // 容量超過などで保存できない場合は最終保存時刻を更新しない
+    }
   }, [
     enabled,
+    hasChanges,
     resortId,
     sourceKind,
     fileHash,
@@ -177,10 +222,9 @@ export const useDraftStorage = (
     linkDraft,
   ]);
 
-  const isDirty =
-    savedAt !== null && (exportedAt === null || savedAt > exportedAt);
+  const isDirty = hasChanges;
 
-  // 未エクスポートの変更がある間はページ離脱時に警告する
+  // 保存済みの内容との差分がある間はページ離脱時に警告する
   useEffect(() => {
     if (!enabled || !isDirty) return;
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -213,7 +257,6 @@ export const useDraftStorage = (
     discardDraft(resortId, sourceKind);
     setSavedAt(null);
     setExportedAt(null);
-    skipNextSaveRef.current = true;
   }, [resortId, sourceKind]);
 
   const discard = useCallback(() => {
@@ -221,8 +264,13 @@ export const useDraftStorage = (
     discardDraft(resortId, sourceKind);
     setSavedAt(null);
     setExportedAt(null);
-    skipNextSaveRef.current = true;
   }, [resortId, sourceKind]);
 
-  return { savedAt, isDirty, markExported, markSavedToServer, discard };
+  return {
+    savedAt: hasChanges ? savedAt : null,
+    isDirty,
+    markExported,
+    markSavedToServer,
+    discard,
+  };
 };

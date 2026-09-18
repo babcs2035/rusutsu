@@ -185,8 +185,12 @@ const derivedGeometryRepresentsSource = (
   if (!firstSource || !lastSource || !firstDerived || !lastDerived)
     return false;
   if (
-    distanceM(firstSource, firstDerived) > 0.5 ||
-    distanceM(lastSource, lastDerived) > 0.5 ||
+    !(
+      (distanceM(firstSource, firstDerived) <= 0.5 &&
+        distanceM(lastSource, lastDerived) <= 0.5) ||
+      (distanceM(firstSource, lastDerived) <= 0.5 &&
+        distanceM(lastSource, firstDerived) <= 0.5)
+    ) ||
     derivedCoordinates.some(
       coordinate => pointToLineDistanceM(coordinate, sourceCoordinates) > 0.5,
     ) ||
@@ -389,9 +393,19 @@ export const synchronizeDerivedGeometry = <
   const previousLookup = createFeatureLookup(previousFeatures);
   const derivedLookup = createFeatureLookup(derivedFeatures);
 
-  const candidatePrevious = nextBefore.features.map(feature =>
-    findSafeMatch(feature, previousLookup),
-  );
+  const candidatePrevious = nextBefore.features.map(feature => {
+    const matched = findSafeMatch(feature, previousLookup);
+    if (matched) return matched;
+    const name = normalizeIdentity(feature.properties?.name);
+    if (name && previousLookup.byName.has(name)) return null;
+    // 名前だけの変更や名前のない線は、同一形状が一意の場合に照合する。
+    const id = normalizeIdentity(feature.properties?.["@id"]);
+    const sameGeometry = previousFeatures.filter(previous => {
+      const previousId = normalizeIdentity(previous.properties?.["@id"]);
+      return !id && !previousId && sameLineCoordinates(previous, feature);
+    });
+    return sameGeometry.length === 1 ? sameGeometry[0] : null;
+  });
   const previousClaimCount = new Map<TFeature, number>();
   for (const candidate of candidatePrevious) {
     if (candidate) {

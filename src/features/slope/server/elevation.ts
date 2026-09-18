@@ -2,7 +2,10 @@ import {
   type ElevationLookup,
   fetchGsiElevation,
 } from "@/features/lift/server/elevation";
-import { resampleLineEvery } from "@/server/derivedGeometry";
+import {
+  resampleLineEvery,
+  synchronizeDerivedGeometry,
+} from "@/server/derivedGeometry";
 import type { SlopeBeforeGeojson } from "../types";
 import { geodesicDistance as distance } from "./geodesicDistance";
 
@@ -12,7 +15,16 @@ type Point = [number, number, number];
 export async function enrichSlopeElevations(
   source: SlopeBeforeGeojson,
   lookup: ElevationLookup = fetchGsiElevation,
+  existingDerived: SlopeBeforeGeojson | null = null,
 ): Promise<SlopeBeforeGeojson> {
+  // 保存時に同期した線を再照合し、位置が同じで標高が揃うコースを維持する。
+  const synchronized = synchronizeDerivedGeometry({
+    previousBefore: source,
+    nextBefore: source,
+    existingDerived,
+    intervalM: 10,
+    kind: "slope",
+  });
   const cache = new Map<string, number>();
   const cachedLookup: ElevationLookup = async (lon, lat) => {
     const key = `${lon},${lat}`;
@@ -26,6 +38,7 @@ export async function enrichSlopeElevations(
     return value;
   };
   const features: SlopeBeforeGeojson["features"] = [];
+  let lineIndex = 0;
   for (const feature of source.features) {
     if (feature.geometry?.type !== "LineString") {
       continue;
@@ -33,6 +46,20 @@ export async function enrichSlopeElevations(
     const raw = feature.geometry.coordinates as number[][];
     if (!Array.isArray(raw) || raw.length < 2)
       throw new Error("コース座標が不正です");
+    const saved = synchronized.features[lineIndex++];
+    const sourceHash = saved?.properties?._source_line_sha256;
+    const savedPoints = saved?.geometry?.coordinates;
+    if (
+      saved &&
+      Array.isArray(savedPoints) &&
+      savedPoints.length >= 2 &&
+      savedPoints.every(
+        point => Array.isArray(point) && Number.isFinite(point[2]),
+      )
+    ) {
+      features.push(saved);
+      continue;
+    }
     const first = raw[0];
     const last = raw[raw.length - 1];
     const start = await cachedLookup(first[0], first[1]);
@@ -70,7 +97,7 @@ export async function enrichSlopeElevations(
       maxSlope = Math.max(maxSlope, slope);
     }
     const properties = { ...feature.properties };
-    delete properties._source_line_sha256;
+    properties._source_line_sha256 = sourceHash;
     delete properties.slope_deg;
     features.push({
       ...feature,

@@ -169,3 +169,47 @@ test("GSIの欠測値は再試行後にエラーになり、次の要求は実�
   assert.equal(calls, 3);
   assert.equal(await fetchGsiElevation(139, 35), 42);
 });
+
+test("保存時の同期後も未変更リフトは再取得せず、位置変更したリフトだけ取得する", async () => {
+  const before = source();
+  before.features.push({
+    ...structuredClone(before.features[0]),
+    properties: { name: "別リフト" },
+    geometry: {
+      type: "LineString",
+      coordinates: [
+        [139, 36],
+        [139.001, 36],
+      ],
+    },
+  });
+  const sync = (next: LiftBeforeGeojson, existing: LiftBeforeGeojson | null) =>
+    synchronizeDerivedGeometry({
+      previousBefore: before,
+      nextBefore: next,
+      existingDerived: existing,
+      intervalM: 20,
+      kind: "lift",
+    });
+  const existing = await enrichLiftElevations(sync(before, null), {
+    lookup: async () => 0,
+  });
+  await enrichLiftElevations(sync(before, existing), {
+    lookup: async () => {
+      throw new Error("再取得禁止");
+    },
+  });
+  const next = structuredClone(before);
+  assert.ok(next.features[1].geometry);
+  (next.features[1].geometry.coordinates as number[][])[1][0] += 0.001;
+  const calls: number[] = [];
+  const result = await enrichLiftElevations(sync(next, existing), {
+    lookup: async (_lon, lat) => {
+      calls.push(lat);
+      return 500;
+    },
+  });
+  assert.ok(calls.length > 0);
+  assert.ok(calls.every(lat => lat === 36));
+  assert.deepEqual(result.features[0], existing.features[0]);
+});

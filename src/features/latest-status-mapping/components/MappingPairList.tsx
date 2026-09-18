@@ -73,7 +73,7 @@ export function MappingPairList<T extends MappingPairItem>({
     const name = needsName ? crawledName : item.name.trim();
     if (!name) return;
     if (needsName) onRenameItem(item.id, name);
-    mapping.assign(name, crawledName);
+    mapping.assignGeometry(item.id, crawledName);
   };
 
   useEffect(() => {
@@ -98,6 +98,15 @@ export function MappingPairList<T extends MappingPairItem>({
         </span>
       </div>
 
+      {mapping.duplicateNames.length > 0 && (
+        <p
+          role="alert"
+          className="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-900"
+        >
+          同じ名前の線があります（{mapping.duplicateNames.join("、")}
+          ）。選択と名前の反映は各行だけに適用します。各行の名前を分けてから対応表を保存してください。
+        </p>
+      )}
       {mapping.workspace?.archiveTimestamp && (
         <p className="shrink-0 rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-900">
           Waybackの過去の取得結果（
@@ -113,9 +122,9 @@ export function MappingPairList<T extends MappingPairItem>({
       >
         {items.map((item, index) => {
           const isActive = item.id === activeItemId;
-          const crawledName = mapping.crawledNameByGeojsonName.get(
-            item.name.trim(),
-          );
+          const crawledName = mapping.crawledNameByGeometryId.has(item.id)
+            ? mapping.crawledNameByGeometryId.get(item.id)
+            : mapping.crawledNameByGeojsonName.get(item.name.trim());
           const options = [
             ...new Set([
               ...crawledItems.map(crawled => crawled.name),
@@ -246,8 +255,8 @@ export function MappingPairList<T extends MappingPairItem>({
       {hasCrawler && (
         <div className="flex shrink-0 flex-wrap items-center gap-1.5">
           <Badge variant="secondary" className="text-[10px]">
-            対応 {mapping.crawledNameByGeojsonName.size} / 取得{" "}
-            {crawledItems.length}
+            対応 {crawledItems.length - mapping.unmappedCrawledNames.length} /
+            取得 {crawledItems.length}
           </Badge>
           {mapping.saveMessage && (
             <span className="truncate text-[11px] text-green-800">

@@ -30,7 +30,11 @@ export function scheduleSavedElevations(
           write: writeDataDocuments,
           enrich: () =>
             kind === "slope"
-              ? enrichSlopeElevations(source)
+              ? enrichSlopeElevations(
+                  source,
+                  undefined,
+                  force ? null : JSON.parse(document.content),
+                )
               : enrichLiftElevations(
                   force
                     ? synchronizeDerivedGeometry({

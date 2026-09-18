@@ -9,6 +9,12 @@ import type {
 } from "../types";
 import { type NamedGeometry, reconcileEditedRows } from "../utils/editedRows";
 import {
+  applyGeometryAssignments,
+  duplicateGeometryNames,
+  type GeometryAssignments,
+  geometryAssignmentsFromRows,
+} from "../utils/geometryAssignments";
+import {
   assignGeojsonName,
   createSuggestedRows,
   listUnmappedCrawledNames,
@@ -33,6 +39,9 @@ export type LatestStatusMappingState = {
   saveMessage: string | null;
   /** GeoJSON 名 → 対応するクロール名 */
   crawledNameByGeojsonName: Map<string, string>;
+  crawledNameByGeometryId: Map<string, string | null>;
+  duplicateNames: string[];
+  assignGeometry: (id: string, crawledName: string | null) => void;
   /** どの線にも割り当てられていないクロール名 */
   unmappedCrawledNames: string[];
   reload: () => void;
@@ -70,33 +79,54 @@ export const useLatestStatusMapping = ({
   const geojsonNamesRef = useRef(geojsonNames);
   geojsonNamesRef.current = geojsonNames;
 
+  const [geometryAssignments, setGeometryAssignments] =
+    useState<GeometryAssignments>({});
+  const geometriesRef = useRef(geometries);
+  geometriesRef.current = geometries;
+  const duplicateNames = duplicateGeometryNames(geometries ?? []);
+  const crawledNameByGeometryId = new Map(Object.entries(geometryAssignments));
+  const assignGeometry = useCallback(
+    (id: string, crawledName: string | null) => {
+      setGeometryAssignments(previous => ({ ...previous, [id]: crawledName }));
+      setIsDirty(true);
+      setSaveMessage(null);
+    },
+    [],
+  );
+
   const geometrySnapshot = JSON.stringify(geometries ?? []);
   const previousGeometry = useRef({ resortId, snapshot: geometrySnapshot });
   useEffect(() => {
     const previous = previousGeometry.current;
     previousGeometry.current = { resortId, snapshot: geometrySnapshot };
-    if (
-      previous.resortId !== resortId ||
-      previous.snapshot === geometrySnapshot ||
-      !workspace ||
-      !geometries
-    )
-      return;
-    const next = reconcileEditedRows(
-      rows,
-      JSON.parse(previous.snapshot),
-      JSON.parse(geometrySnapshot),
+    if (previous.resortId !== resortId || !workspace || !geometries) return;
+    const next = applyGeometryAssignments(
+      reconcileEditedRows(
+        rows,
+        JSON.parse(previous.snapshot),
+        JSON.parse(geometrySnapshot),
+      ),
+      geometries,
+      geometryAssignments,
     );
     if (JSON.stringify(next) === JSON.stringify(rows)) return;
     setRows(next);
     setIsDirty(true);
     setSaveMessage(null);
-  }, [geometrySnapshot, geometries, resortId, rows, workspace]);
+  }, [
+    geometrySnapshot,
+    geometries,
+    geometryAssignments,
+    resortId,
+    rows,
+    workspace,
+  ]);
 
   const load = useCallback(async () => {
     if (!enabled) {
       setWorkspace(null);
       setRows([]);
+      setGeometryAssignments({});
       setIsDirty(false);
       return;
     }
@@ -108,6 +138,9 @@ export const useLatestStatusMapping = ({
       ]);
       setWorkspace(data);
       setRows(data.rows);
+      setGeometryAssignments(
+        geometryAssignmentsFromRows(data.rows, geometriesRef.current ?? []),
+      );
       setIsDirty(data.needsSave);
       setSaveMessage(null);
     } catch (loadError) {
@@ -137,14 +170,16 @@ export const useLatestStatusMapping = ({
     return result;
   }, [rows]);
 
-  const unmappedCrawledNames = useMemo(
-    () =>
-      listUnmappedCrawledNames(
-        (workspace?.crawledItems ?? []).map(item => item.name),
-        rows,
-      ),
-    [rows, workspace],
-  );
+  const unmappedCrawledNames = useMemo(() => {
+    const crawledNames = (workspace?.crawledItems ?? []).map(item => item.name);
+    if (!geometries) return listUnmappedCrawledNames(crawledNames, rows);
+    const assignments = {
+      ...geometryAssignmentsFromRows(rows, geometries),
+      ...geometryAssignments,
+    };
+    const assigned = new Set(geometries.map(item => assignments[item.id]));
+    return crawledNames.filter(name => !assigned.has(name));
+  }, [rows, workspace, geometries, geometryAssignments]);
 
   const assign = useCallback(
     (geojsonName: string, crawledName: string | null) => {
@@ -160,12 +195,14 @@ export const useLatestStatusMapping = ({
   /** 名前の一致から対応付けをやり直す。手で直したものも作り直される */
   const autoAssign = useCallback(() => {
     if (!workspace) return;
-    setRows(
-      createSuggestedRows(
-        kind,
-        workspace.crawledItems.map(item => item.name),
-        [...new Set(geojsonNamesRef.current)],
-      ),
+    const suggested = createSuggestedRows(
+      kind,
+      workspace.crawledItems.map(item => item.name),
+      [...new Set(geojsonNamesRef.current)],
+    );
+    setRows(suggested);
+    setGeometryAssignments(
+      geometryAssignmentsFromRows(suggested, geometriesRef.current ?? []),
     );
     setIsDirty(true);
     setSaveMessage(null);
@@ -188,7 +225,15 @@ export const useLatestStatusMapping = ({
 
   const save = useCallback(async () => {
     if (!workspace || isLoading || isSaving) return false;
-    if (!workspace.latestFile || !isDirty) return true;
+    if (!workspace.latestFile) return true;
+    const duplicates = duplicateGeometryNames(geometriesRef.current ?? []);
+    if (duplicates.length > 0) {
+      setError(
+        `同じ名前の線があります（${duplicates.join("、")}）。各行の名前を分けてから対応表を保存してください。`,
+      );
+      return false;
+    }
+    if (!isDirty) return true;
     setIsSaving(true);
     setError(null);
     try {
@@ -197,7 +242,11 @@ export const useLatestStatusMapping = ({
         kind,
         latestFile: workspace.latestFile,
         mappingFileHash: workspace.mappingFileHash,
-        rows,
+        rows: applyGeometryAssignments(
+          rows,
+          geometriesRef.current ?? [],
+          geometryAssignments,
+        ),
         geojsonNames: [...new Set(geojsonNamesRef.current)],
       });
       if (!result.ok) {
@@ -228,7 +277,16 @@ export const useLatestStatusMapping = ({
     } finally {
       setIsSaving(false);
     }
-  }, [isDirty, isLoading, isSaving, kind, resortId, rows, workspace]);
+  }, [
+    isDirty,
+    isLoading,
+    isSaving,
+    kind,
+    resortId,
+    rows,
+    workspace,
+    geometryAssignments,
+  ]);
 
   return {
     workspace,
@@ -239,6 +297,9 @@ export const useLatestStatusMapping = ({
     error,
     saveMessage,
     crawledNameByGeojsonName,
+    crawledNameByGeometryId,
+    duplicateNames,
+    assignGeometry,
     unmappedCrawledNames,
     reload: () => void load(),
     assign,

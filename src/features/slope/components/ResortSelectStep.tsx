@@ -47,14 +47,21 @@ export function ResortSelectStep({ resorts, onStart }: ResortSelectStepProps) {
   const [drafts, setDrafts] = useState<Map<string, DraftSummary>>(new Map());
 
   useEffect(() => {
-    setDrafts(
-      new Map(
-        listDraftSummaries().map(summary => [
-          draftMapKey(summary.resortId, summary.sourceKind),
-          summary,
-        ]),
-      ),
-    );
+    let cancelled = false;
+    void listDraftSummaries().then(summaries => {
+      if (!cancelled)
+        setDrafts(
+          new Map(
+            summaries.map(summary => [
+              draftMapKey(summary.resortId, summary.sourceKind),
+              summary,
+            ]),
+          ),
+        );
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const filteredResorts = useMemo(() => {
