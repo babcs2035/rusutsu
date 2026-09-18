@@ -171,7 +171,9 @@ TODOはimportより前に置き、再調査URL、対象カテゴリ、今回確�
 ## Source URLと保存
 
 - 現行URLの実装検証は `mise run crawl:latest -- --remote-api --resort <resort-id>` を使い、設定済みAPIへの保存とadmin用現在値への反映まで確認する。バッチCLIの既定は `--local-files` なので、現行検証では `--remote-api` を明示する。API保存失敗をローカルJSON保存で代替して完了扱いにしない。
-- 冬季アーカイブ・保存DOM再生・異常注入だけはAPI設定を無効化し、現行値と別の `src/private/data/resorts-temporary/tmp/<resort-id>-audit/` を使う。検証JSON・GeoJSON・ログ・補助スクリプト・`--report` 出力もこの配下に置き、親rusutsuの `tmp/` へ出力しない。検証JSONは比較資料であり、現行データのAPI保存とは別の成果物として扱う。
+- 冬季アーカイブの再生は `CRAWL_LATEST_ARCHIVE_TIMESTAMP=YYYYMMDD` と `--remote-api` を併用し、APIへ保存する。`sourceMode: WAYBACK_VALIDATION` として記録され、現在値には昇格しない。
+- 保存DOM再生と異常注入だけはAPI設定を無効化する。検証JSON・GeoJSON・ログ・補助スクリプト・`--report` 出力は `src/private/data/resorts-temporary/tmp/<resort-id>-audit/` に置き、親rusutsuの `tmp/` へ出力しない。
+- ローカル保存でのアーカイブ実行は `tmp/wayback/<timestamp>/` に落ちる。`latest_data/` はGit管理下で本番の現在値フォールバックに読まれるため、アーカイブ結果を置かない。
 
 - `weatherUrl`、`commentUrl`、`newsUrl`、`courseUrl`、`liftUrl` は実際の根拠ページへ向ける。入力URLを無条件にコピーしない。
 - 利用可能な `#id` やタブのクエリを含め、対象へ直接移動できる最も具体的なURLにする。実在しないフラグメントは作らない。

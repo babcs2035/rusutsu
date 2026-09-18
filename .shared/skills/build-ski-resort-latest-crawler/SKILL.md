@@ -95,7 +95,13 @@ node .shared/skills/build-ski-resort-latest-crawler/scripts/capture-rendered-pag
 3. 正常・無警告で診断DOMが増えないことと、未知状態・必須DOM消失・件数異常の各テストで警告、DOM、診断メタデータが同じ実行IDで残ることを確認する。
 4. 対象ファイルをBiomeで検査し、`mise run typecheck` を実行する。
 
-冬季アーカイブ・保存DOMの再生・異常注入は `--local-files` 等でAPI送信を無効化し、現行値と別の検証用保存先で実行する。ユーザーがローカル検証のみを指定した場合を除き、最後に現行URLのAPI保存と反映確認を行う。正常に保存された検証JSONは比較資料として残してよいが、API保存の代わりにはしない。不完全な失敗結果だけを削除してよい。
+冬季アーカイブの再生は `--remote-api` でAPIへ保存する。`CRAWL_LATEST_ARCHIVE_TIMESTAMP` があるrunは `sourceMode: WAYBACK_VALIDATION` として記録され、`eligibleForCurrent` が `LIVE` を要求するので現在値には入らない。冬に何が掲載されるかは再取得しづらい情報なので、ローカルファイルに留めずサーバーに残す。
+
+保存DOMの再生と異常注入だけは `--local-files` でAPI送信を無効化する。意図的に壊した結果を本番へ入れない。
+
+ローカル保存を使う場合、アーカイブ結果を `latest_data/` へ書かない。`latest_data/` はGit管理下にあり、本番の `bundledResortConditions` が現在値のフォールバックとして読むため、過去のスナップショットが「今の状況」として表示される。アーカイブ実行の保存先は `tmp/wayback/<timestamp>/` に分かれている。
+
+ユーザーがローカル検証のみを指定した場合を除き、最後に現行URLのAPI保存と反映確認を行う。正常に保存された検証JSONは比較資料として残してよいが、API保存の代わりにはしない。不完全な失敗結果だけを削除してよい。
 
 ## 完了報告
 
