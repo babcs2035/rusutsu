@@ -28,6 +28,7 @@ import type {
 import { SkiResortDetailView } from "@/features/resort-detail/SkiResortDetailView";
 import { cn } from "@/lib/utils";
 import { AnimatedPanel } from "@/shared/components/AnimatedPanel";
+import { CopyResortNameButton } from "@/shared/components/CopyResortNameButton";
 import { FormerResortNames } from "@/shared/components/FormerResortNames";
 import { RubyText } from "@/shared/components/RubyText";
 import { SegmentedControl } from "@/shared/components/SegmentedControl";
@@ -814,8 +815,13 @@ const MobileContextHeader = ({
       {mode === "detail" && (
         <div className="px-4 pt-1.5 pb-2 flex items-center gap-2">
           <div className="min-w-0 flex-1">
-            <h2 className="truncate-2 text-gray-900 text-base font-bold leading-snug font-[var(--font-heading)]">
+            <h2 className="truncate-2 text-gray-900 text-base font-bold font-[var(--font-heading)]">
               <RubyText segments={detailNameRuby} fallback={detailTitle} />
+              {/* 名前のすぐ後ろに置く。行ボックスを広げないよう行送りより小さくする */}
+              <CopyResortNameButton
+                name={detailTitle}
+                className="ml-1 size-5 align-middle"
+              />
             </h2>
             {detailFormerNames.length > 0 && (
               <p className="mt-0.5 truncate text-[11px] leading-snug text-gray-500">

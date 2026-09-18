@@ -491,12 +491,13 @@ function HomeClientContent({
   }, []);
   const saveReturnViewState = useCallback(() => {
     returnViewStateRef.current = {
+      mobileContentTab,
       isListSheetOpen,
       listSheetSnapPoint,
       listScrollTop: getSearchResultListScrollElement()?.scrollTop ?? 0,
       mapView: latestMapViewRef.current,
     };
-  }, [isListSheetOpen, listSheetSnapPoint]);
+  }, [isListSheetOpen, listSheetSnapPoint, mobileContentTab]);
   const restoreReturnViewState = useCallback((restoreMap = true) => {
     const returnViewState = returnViewStateRef.current;
     returnViewStateRef.current = null;
@@ -809,18 +810,27 @@ function HomeClientContent({
     [saveReturnViewState, selectedResortId],
   );
 
-  // 詳細・比較を閉じる際，タブを開く前の状態へ戻す。
-  // 開く前にリストシートが開いていれば restoreReturnViewState がリストを再開する
-  // （タブは "info" を維持）。開いていなければ（マップから開いた場合）マップタブへ
-  // 戻す。戻さないとリストもマップも描画されず，コンテンツエリアが白抜きになる。
+  // 詳細・比較を閉じる際，開く前のタブへ戻す。地図タブから開いたなら地図タブ，
+  // リストタブから開いたならリストタブ。戻り状態がない（リロード後に復元した詳細を
+  // 閉じた場合など）ときだけ，検索済みならリスト・未検索なら地図へフォールバックする。
+  // 白抜きを避けるため，タブは必ずどちらかを指定する。
   const closeMobileContentTab = useCallback(() => {
     const returnState = returnViewStateRef.current;
-    const shouldReturnToMap =
-      !isSidePanelLayout && !hasSearched && !returnState?.isListSheetOpen;
-    setMobileContentTab(shouldReturnToMap ? "map" : "info");
+    if (isSidePanelLayout) {
+      setMobileContentTab("info");
+      return;
+    }
+    if (returnState) {
+      setMobileContentTab(returnState.mobileContentTab);
+      return;
+    }
+    setMobileContentTab(hasSearched ? "info" : "map");
   }, [hasSearched, isSidePanelLayout]);
 
   const handleCloseDetail = () => {
+    // 戻り状態の有無で復帰方法が変わるため、閉じる前に確認しておく
+    // （closeMobileContentTab / restoreReturnViewState が参照・破棄する）。
+    const hasReturnViewState = returnViewStateRef.current !== null;
     closeMobileContentTab();
     const shouldRestoreMap = !hasUserInteractedWithMapInDetailRef.current;
     setSelectedResortId(null);
@@ -829,16 +839,14 @@ function HomeClientContent({
     setSelectedElevationProfilePoint(null);
     setHoveredResortId(null);
     hasUserInteractedWithMapInDetailRef.current = false;
-    if (!isSidePanelLayout && hasSearched) {
+    // 戻り状態がある場合はそれがシートの開閉・スナップを復元するので触らない。
+    // ない場合だけ、検索済みならリストを開いた状態にフォールバックする。
+    if (!hasReturnViewState && !isSidePanelLayout && hasSearched) {
       setIsListSheetOpen(true);
       setListSheetSnapPoint(BOTTOM_SHEET_SEARCH_SNAP_POINT);
     }
     window.requestAnimationFrame(() => {
       restoreReturnViewState(shouldRestoreMap);
-      if (!isSidePanelLayout && hasSearched) {
-        setIsListSheetOpen(true);
-        setListSheetSnapPoint(BOTTOM_SHEET_SEARCH_SNAP_POINT);
-      }
     });
   };
 

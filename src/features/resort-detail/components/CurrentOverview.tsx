@@ -1,4 +1,3 @@
-import { Clock3 } from "lucide-react";
 import type { CourseStatusSummary } from "@/lib/courseStatusSummary";
 import type { Resort } from "../types";
 import { removeGeneratedCommentLinks } from "../utils/commentContent";
@@ -76,7 +75,7 @@ export function CurrentOverview({
     ...(hasLiftSource ? [{ label: "リフト", time: lifts?.observedAt }] : []),
     ...(summaryOnly ? [] : conditions)
       .filter(item => item.weather && hasSourceUrl(item.weather.sourceUrls))
-      .map(item => ({ label: "天候", time: item.weather?.time })),
+      .map(item => ({ label: "コンディション", time: item.weather?.time })),
   ];
   return (
     <section aria-label="営業・気象情報" className="space-y-2">
@@ -87,10 +86,7 @@ export function CurrentOverview({
           </h2>
         )}
         {observationEntries.length > 0 ? (
-          <div
-            className={`flex min-w-0 items-start gap-1.5 text-slate-600 ${summaryOnly ? "ml-auto" : ""}`}
-          >
-            <Clock3 aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+          <div className={`min-w-0 ${summaryOnly ? "ml-auto" : ""}`}>
             <ObservationTimes align="left" entries={observationEntries} />
           </div>
         ) : (

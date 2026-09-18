@@ -1,4 +1,4 @@
-import { ExternalLink, Map as MapIcon } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import type { TrailMapLinks } from "../utils/trailMapLinks";
 
@@ -6,16 +6,13 @@ const isPdf = (url: string) => /\.pdf($|\?)/i.test(url);
 
 /**
  * 公式のゲレンデマップ画像（またはPDF）と、その出典をそのまま見せるパネル。
- * 地図タブに並ぶ「ゲレンデマップ」タブの中身。
+ * スマホは地図の「ゲレンデマップ」タブの中身、PCは「ゲレンデ」タブの先頭に置く。
  */
 export function TrailMapPanel({
   links,
-  onShowMap,
   className,
 }: {
   links: TrailMapLinks;
-  /** 押すとインタラクティブな地図タブへ戻す */
-  onShowMap: () => void;
   className?: string;
 }) {
   return (
@@ -23,19 +20,13 @@ export function TrailMapPanel({
       <div className="min-h-0 flex-1 overflow-y-auto bg-slate-100">
         {links.mapUrls.map(link =>
           isPdf(link.url) ? (
-            <div
+            // PDFもその場で見せる。開けないブラウザだけ、中のリンクが出る
+            <iframe
               key={link.url}
-              className="flex flex-col items-center justify-center gap-2 p-6 text-center text-sm text-slate-600"
-            >
-              <p>このゲレンデマップはPDF形式です。</p>
-              <ExternalLinkComponent
-                href={link.url}
-                className="font-medium text-blue-700 underline underline-offset-2"
-                icon={<ExternalLink className="size-3.5" />}
-              >
-                PDFを開く
-              </ExternalLinkComponent>
-            </div>
+              src={`${link.url}#toolbar=0&navpanes=0&view=Fit`}
+              title="ゲレンデマップ"
+              className="h-full w-full border-0 bg-white"
+            />
           ) : (
             // biome-ignore lint/performance/noImgElement: 外部サイトが公開する画像をそのまま表示するため next/image の最適化は使わない
             <img
@@ -54,7 +45,9 @@ export function TrailMapPanel({
             className="text-blue-700 underline underline-offset-2"
             icon={<ExternalLink className="size-3.5" />}
           >
-            マップ画像を開く{" "}
+            {isPdf(links.mapUrls[0].url)
+              ? "マップPDFを開く"
+              : "マップ画像を開く"}
           </ExternalLinkComponent>
         )}
         {links.mapPageUrls[0] && (

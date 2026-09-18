@@ -11,6 +11,7 @@ export type MapViewRestoreRequest = MapViewSnapshot & {
 };
 
 export type ReturnViewState = {
+  mobileContentTab: "info" | "map";
   isListSheetOpen: boolean;
   listSheetSnapPoint: number | string | null;
   listScrollTop: number;

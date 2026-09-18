@@ -37,9 +37,13 @@ export const InfoSection = ({
       <div className="flex items-start justify-between gap-1.5">
         <h2 className="flex-1 min-w-0 pt-0.5 text-gray-900 text-lg md:text-xl leading-snug font-bold font-[var(--font-heading)]">
           <RubyText segments={resort.nameRuby} fallback={resort.nameJa} />
+          {/* 名前のすぐ後ろに置く。行ボックスを広げないよう行送りより小さくする */}
+          <CopyResortNameButton
+            name={resort.nameJa}
+            className="ml-1 size-5 align-middle"
+          />
         </h2>
         <div className="flex shrink-0 items-center gap-1">
-          <CopyResortNameButton name={resort.nameJa} />
           <Button
             type="button"
             variant="ghost"

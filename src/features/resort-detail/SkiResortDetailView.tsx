@@ -358,8 +358,23 @@ export const SkiResortDetailView = ({
       />
     ) : null;
 
+  // PCは左の地図とは別に、公式のゲレンデマップ（画像・PDF）を
+  // 「ゲレンデ」タブの先頭に置く。スマホの地図切り替えと同じ中身。
+  const desktopTrailMapSection =
+    hasTrailMap && !showTerrainDetail ? (
+      <section aria-label="ゲレンデマップ" className="mb-4 space-y-1.5">
+        <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
+          ゲレンデマップ
+        </h2>
+        <div className="h-[clamp(220px,38vh,440px)] overflow-hidden rounded-xl border border-slate-200">
+          <TrailMapPanel links={trailMapLinks} className="h-full" />
+        </div>
+      </section>
+    ) : null;
+
   const renderTabPanels = () => (
     <div className="relative">
+      {activeTab === "ゲレンデ" && isSidePanel && desktopTrailMapSection}
       {activeTab === "ゲレンデ" && (
         <OverviewTab
           resort={resort}
@@ -469,17 +484,16 @@ export const SkiResortDetailView = ({
               />
             </div>
             <div className="min-h-0 flex-1">
-              <TrailMapPanel
-                links={trailMapLinks}
-                onShowMap={() => setMapAreaView("地図")}
-                className="h-full"
-              />
+              <TrailMapPanel links={trailMapLinks} className="h-full" />
             </div>
           </div>
         ) : (
           // 地図（航空写真）はボタンの下まで敷いたまま、コース・リフトだけが
           // ボタンの下に潜らないようにする。帯の高さは地図側が余白として読み取る。
-          <div className="relative h-[clamp(200px,41dvh,396px)] shrink-0">
+          // isolate: 地図に重ねたボタン類（z-20/z-30 や地図ライブラリ内部の
+          // 高い z-index）をこの箱の中に閉じ込める。スクロールで上に貼り付く
+          // タブ（sticky z-20）の上に出てしまうのを防ぐ。
+          <div className="relative isolate h-[clamp(200px,41dvh,396px)] shrink-0">
             {/* 「拡大」ボタン（top-2 / h-9）と同じ中心線にそろえる */}
             <div
               {...{ [MAP_TOP_CONTROLS_ATTRIBUTE]: "true" }}

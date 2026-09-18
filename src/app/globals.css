@@ -816,11 +816,17 @@ html body .resort-action-popup::after {
 }
 
 /* Text truncation utility - two lines */
+/*
+  中身に <ruby>（スキー場名のふりがな）が入る。-webkit-line-clamp は打ち切り
+  高さを行ボックスだけで決めてルビの高さを数えないため、iOS WebKit では
+  ベース文字が枠の外へ押し出され overflow:hidden に切り取られて、ふりがな
+  だけが残る（macOS の WebKit では再現しない）。行数ではなく、ルビの高さを
+  含めた実測値で打ち切ることで、この差を避ける。省略記号は出なくなる。
+*/
 .truncate-2 {
   overflow: hidden;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  line-height: 1.375; /* Tailwind leading-snug 相当 */
+  max-height: 4.5em; /* ルビ込み 2 行は実測 3.31em、3 行目は約 4.95em */
 }
 
 /* Smooth transition for interactive elements */
@@ -984,4 +990,17 @@ html body .resort-action-popup::after {
   font-size: 0.45em;
   font-weight: 600;
   color: #6b7280;
+  /* ルビと親文字の距離。WebKit ではルビの位置は line-height や position/top
+     では動かせず、margin-bottom だけが効く。値は iOS 実機で決めたもので、
+     macOS の WebKit はメトリクスが違うぶんここより詰まって見える。 */
+  margin-bottom: -0.8em;
+}
+
+/* PC は画面が広く見出しも大きいので、ルビを少し大きく、少し離す。
+   48em はサイドパネル表示に切り替わる幅（SIDE_PANEL_MEDIA_QUERY）と同じ。 */
+@media (min-width: 48em) {
+  .ruby-text rt {
+    font-size: 0.45em;
+    margin-bottom: 0.1em;
+  }
 }
