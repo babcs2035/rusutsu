@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import type { LatestStatusCapabilityFile } from "@/features/latest-status-mapping/types.capability";
 import {
+  buildCapabilityGapIssues,
   buildCrawlLatestPersistenceValidation,
   type CrawlLatestPersistenceValidation,
 } from "./contentValidation";
@@ -271,4 +273,73 @@ test("an EMPTY NEWS category with no sourceUrls is never eligible for current", 
   assert.equal(result.eligibleForCurrent, false);
   assert.equal(result.itemCount, 0);
   assert.equal(result.usableItemCount, 0);
+});
+
+const coursesOnlyCapability: LatestStatusCapabilityFile = {
+  version: 1,
+  resortId: "sample-resort",
+  source: { mode: "LIVE", archiveTimestamp: null, urls: [] },
+  observedAt: "2025-01-01T00:00:00.000Z",
+  crawlerSourceHash: null,
+  courses: {
+    available: true,
+    count: 1,
+    fields: { name: true, status: true, update: false, note: false },
+    names: ["Aコース"],
+    statuses: ["○"],
+  },
+  lifts: {
+    available: false,
+    count: 0,
+    fields: { name: false, status: false, update: false, note: false },
+    names: [],
+    statuses: [],
+  },
+  conditions: {
+    comment: false,
+    news: false,
+    points: [],
+    fields: {
+      update: false,
+      weather: false,
+      temperature: false,
+      snowDepth: false,
+      snowfall: false,
+      condition: false,
+      windSpeed: false,
+    },
+  },
+};
+
+test("WAYBACK_VALIDATIONの実行は台帳と差分があっても差分は出ない", () => {
+  const input = validInput();
+  input.sourceMode = "WAYBACK_VALIDATION";
+  input.archiveTimestamp = "20260115";
+  input.rawPayload = { resortName: "sample-resort" };
+
+  const issues = buildCapabilityGapIssues(input, coursesOnlyCapability);
+  assert.deepEqual(issues, []);
+});
+
+test("7月に観測したLIVE実行はシーズン外なので差分が出ない", () => {
+  const input = validInput();
+  input.sourceMode = "LIVE";
+  input.observedAt = "2026-07-15T00:00:00.000Z";
+  input.rawPayload = { resortName: "sample-resort" };
+
+  const issues = buildCapabilityGapIssues(input, coursesOnlyCapability);
+  assert.deepEqual(issues, []);
+});
+
+test("1月に観測したLIVE実行は差分が出て、severityはWARNINGでblocksPromotionはfalse", () => {
+  const input = validInput();
+  input.sourceMode = "LIVE";
+  input.observedAt = "2026-01-15T00:00:00.000Z";
+  input.rawPayload = { resortName: "sample-resort" };
+
+  const issues = buildCapabilityGapIssues(input, coursesOnlyCapability);
+  assert.equal(issues.length, 1);
+  assert.equal(issues[0].code, "CAPABILITY.MISSING_COURSES");
+  assert.equal(issues[0].severity, "WARNING");
+  assert.equal(issues[0].blocksPromotion, false);
 });
