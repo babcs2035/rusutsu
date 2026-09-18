@@ -10,6 +10,7 @@ export const CATEGORY_KINDS = CRAWL_LATEST_CATEGORY_KINDS;
 
 export const CATEGORY_LABELS: Record<CategoryKind, string> = {
   COMMENT: "コメント",
+  NEWS: "お知らせ",
   WEATHER: "天気",
   COURSES: "コース",
   LIFTS: "リフト",

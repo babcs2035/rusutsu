@@ -128,6 +128,14 @@ export const buildBundledCategories = (parsed: unknown): BundledCategory[] => {
       comment !== null,
     ),
     summarize(
+      "NEWS",
+      null,
+      urls(record.newsUrl),
+      0,
+      0,
+      urls(record.newsUrl).length > 0,
+    ),
+    summarize(
       "WEATHER",
       weather,
       urls(record.weatherUrl),
@@ -159,9 +167,12 @@ const runOutcome = (
 ): CrawlMonitorRunSummary["outcome"] => {
   if (categories.every(category => category.state !== "SUCCESS"))
     return "FAILED";
-  // コメントは営業期間外だと空のことがあるので、欠けても失敗扱いにしない。
+  // コメントとお知らせは営業期間外だと空のことがあるので、欠けても失敗扱いにしない。
   return categories.some(
-    category => category.kind !== "COMMENT" && category.state !== "SUCCESS",
+    category =>
+      category.kind !== "COMMENT" &&
+      category.kind !== "NEWS" &&
+      category.state !== "SUCCESS",
   )
     ? "PARTIAL"
     : "SUCCESS";

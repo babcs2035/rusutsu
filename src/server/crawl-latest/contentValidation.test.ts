@@ -27,6 +27,12 @@ const validInput = () =>
         sourceUrls: [],
       },
       {
+        kind: "NEWS",
+        state: "SUCCESS",
+        data: null,
+        sourceUrls: ["https://example.com/news"],
+      },
+      {
         kind: "WEATHER",
         state: "SUCCESS",
         data: {
@@ -231,4 +237,38 @@ test("keeps server validation category-scoped for partial success", () => {
   assert.equal(category(validation, "COMMENT").eligibleForCurrent, true);
   assert.equal(category(validation, "WEATHER").eligibleForCurrent, true);
   assert.equal(category(validation, "COURSES").eligibleForCurrent, true);
+});
+
+test("a successful NEWS category is driven entirely by sourceUrls, with no data", () => {
+  const input = validInput();
+  const news = input.categories.find(candidate => candidate.kind === "NEWS");
+  assert.ok(news);
+  news.sourceUrls = ["https://example.com/news", "https://example.com/news2"];
+
+  const validation = buildCrawlLatestPersistenceValidation(input);
+  const result = category(validation, "NEWS");
+
+  assert.equal(result.state, "SUCCESS");
+  assert.equal(result.validationState, "VALID");
+  assert.equal(result.eligibleForCurrent, true);
+  assert.equal(result.itemCount, 2);
+  assert.equal(result.usableItemCount, 2);
+  assert.deepEqual(result.names, []);
+});
+
+test("an EMPTY NEWS category with no sourceUrls is never eligible for current", () => {
+  const input = validInput();
+  const news = input.categories.find(candidate => candidate.kind === "NEWS");
+  assert.ok(news);
+  news.state = "EMPTY";
+  news.sourceUrls = [];
+  news.data = null;
+
+  const validation = buildCrawlLatestPersistenceValidation(input);
+  const result = category(validation, "NEWS");
+
+  assert.equal(result.state, "EMPTY");
+  assert.equal(result.eligibleForCurrent, false);
+  assert.equal(result.itemCount, 0);
+  assert.equal(result.usableItemCount, 0);
 });

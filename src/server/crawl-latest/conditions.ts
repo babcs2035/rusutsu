@@ -9,9 +9,16 @@ import { prisma } from "@/lib/prisma";
 export async function readAvailableConditions(
   resortId: string,
 ): Promise<ResortConditions> {
-  const result: ResortConditions = { weather: null, comment: null };
+  const result: ResortConditions = {
+    weather: null,
+    comment: null,
+    news: null,
+  };
   const rows = await prisma.crawlLatestCurrent.findMany({
-    where: { skiResortId: resortId, kind: { in: ["WEATHER", "COMMENT"] } },
+    where: {
+      skiResortId: resortId,
+      kind: { in: ["WEATHER", "COMMENT", "NEWS"] },
+    },
     select: {
       kind: true,
       snapshot: {
@@ -24,15 +31,22 @@ export async function readAvailableConditions(
     },
   });
   for (const row of rows) {
-    result[row.kind === "WEATHER" ? "weather" : "comment"] = {
+    const key =
+      row.kind === "WEATHER"
+        ? "weather"
+        : row.kind === "NEWS"
+          ? "news"
+          : "comment";
+    result[key] = {
       data: row.snapshot.data,
       sourceUrls: sourceUrls(row.snapshot.sourceUrls),
       time: row.snapshot.run.observedAt.toISOString(),
     };
   }
-  if (result.weather && result.comment) return result;
+  if (result.weather && result.comment && result.news) return result;
   const captured = await readBundledResortConditions(resortId);
   result.weather ??= captured.weather;
   result.comment ??= captured.comment;
+  result.news ??= captured.news;
   return result;
 }

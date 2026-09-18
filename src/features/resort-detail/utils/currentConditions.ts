@@ -7,6 +7,8 @@ export type ConditionSnapshot = {
 export type ResortConditions = {
   weather: ConditionSnapshot | null;
   comment: ConditionSnapshot | null;
+  /** 本文を取得しない、お知らせ一覧などへの参照リンク。 */
+  news: ConditionSnapshot | null;
 };
 export const record = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" && !Array.isArray(value)
@@ -42,7 +44,7 @@ export const sourceUrls = (value: unknown): string[] => [
   ),
 ];
 
-/** ファイルの weatherUrl/commentUrl を別カテゴリに混ぜず、そのまま引き継ぐ。 */
+/** ファイルの weatherUrl/commentUrl/newsUrl を別カテゴリに混ぜず、そのまま引き継ぐ。 */
 export function conditionsFromCapture(value: unknown): ResortConditions {
   const data = record(value);
   const time = typeof data.time === "string" ? data.time : null;
@@ -56,6 +58,11 @@ export function conditionsFromCapture(value: unknown): ResortConditions {
       data: { value: data.comment ?? null },
       time,
       sourceUrls: sourceUrls(data.commentUrl),
+    },
+    news: {
+      data: null,
+      time,
+      sourceUrls: sourceUrls(data.newsUrl),
     },
   };
 }

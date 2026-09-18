@@ -336,6 +336,7 @@ enum CrawlLatestRunOutcome {
 
 enum CrawlLatestCategoryKind {
   COMMENT
+  NEWS
   WEATHER
   COURSES
   LIFTS

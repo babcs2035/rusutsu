@@ -27,12 +27,13 @@ test("the timestamp in a file name is read as JST", () => {
   assert.equal(bundledObservedAt("broken.json"), null);
 });
 
-test("a saved crawl result becomes the same four categories as a database run", () => {
+test("a saved crawl result becomes the same five categories as a database run", () => {
   const categories = buildBundledCategories({
     resortName: "dynaland",
     time: "2025/11/23 20:21:20",
     comment: "本日営業中",
     commentUrl: ["https://example.com/condition/#comment"],
+    newsUrl: ["https://example.com/news/#topics"],
     weather: { 中腹: { weather: "曇り", temperature: 12 } },
     weatherUrl: "https://example.com/condition/#gelande",
     courses: [
@@ -52,6 +53,7 @@ test("a saved crawl result becomes the same four categories as a database run", 
     ]),
     [
       ["COMMENT", "SUCCESS", 1, 1],
+      ["NEWS", "SUCCESS", 0, 0],
       ["WEATHER", "SUCCESS", 1, 1],
       ["COURSES", "SUCCESS", 2, 1],
       ["LIFTS", "SUCCESS", 1, 1],
@@ -61,9 +63,31 @@ test("a saved crawl result becomes the same four categories as a database run", 
     "https://example.com/condition/#comment",
   ]);
   assert.deepEqual(categories[1]?.sourceUrls, [
+    "https://example.com/news/#topics",
+  ]);
+  assert.equal(categories[1]?.data, null);
+  assert.deepEqual(categories[2]?.sourceUrls, [
     "https://example.com/condition/#gelande",
   ]);
-  assert.notEqual(categories[2]?.nameSetHash, null);
+  assert.notEqual(categories[3]?.nameSetHash, null);
+});
+
+test("news and comment reference links stay in separate categories", () => {
+  const categories = buildBundledCategories({
+    comment: "本日営業中",
+    commentUrl: ["https://example.com/condition/#comment"],
+    newsUrl: ["https://example.com/news/#topics"],
+  });
+
+  const comment = categories.find(category => category.kind === "COMMENT");
+  const news = categories.find(category => category.kind === "NEWS");
+  assert.ok(comment);
+  assert.ok(news);
+  assert.deepEqual(comment.sourceUrls, [
+    "https://example.com/condition/#comment",
+  ]);
+  assert.deepEqual(news.sourceUrls, ["https://example.com/news/#topics"]);
+  assert.notDeepEqual(comment.sourceUrls, news.sourceUrls);
 });
 
 test("missing or empty sections are reported as empty, not as values", () => {
@@ -76,6 +100,7 @@ test("missing or empty sections are reported as empty, not as values", () => {
     categories.map(category => [category.kind, category.state]),
     [
       ["COMMENT", "EMPTY"],
+      ["NEWS", "EMPTY"],
       ["WEATHER", "EMPTY"],
       ["COURSES", "EMPTY"],
       ["LIFTS", "EMPTY"],
@@ -86,5 +111,5 @@ test("missing or empty sections are reported as empty, not as values", () => {
     assert.equal(category.contentHash, null);
     assert.equal(category.nameSetHash, null);
   }
-  assert.deepEqual(buildBundledCategories("壊れたJSON").length, 4);
+  assert.deepEqual(buildBundledCategories("壊れたJSON").length, 5);
 });

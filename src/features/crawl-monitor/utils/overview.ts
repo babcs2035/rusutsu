@@ -47,7 +47,9 @@ export const overviewRowStatus = (
     run.categories.some(
       category =>
         category.validationState === "WARNING" ||
-        (category.state === "EMPTY" && category.kind !== "COMMENT"),
+        (category.state === "EMPTY" &&
+          category.kind !== "COMMENT" &&
+          category.kind !== "NEWS"),
     );
   const isStale = now - new Date(run.observedAt).getTime() > STALE_THRESHOLD_MS;
   const hasMappingGap = row.mappingGaps.some(gap => gap.missing.length > 0);

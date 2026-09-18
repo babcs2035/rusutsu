@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { crawlLatestRunInputSchema } from "./contract";
 
 type TestCategory = {
-  kind: "COMMENT" | "WEATHER" | "COURSES" | "LIFTS";
+  kind: "COMMENT" | "NEWS" | "WEATHER" | "COURSES" | "LIFTS";
   state: "SUCCESS" | "EMPTY" | "NOT_SUPPORTED" | "FAILED";
   data: unknown;
   sourceUrls: string[];
@@ -47,6 +47,12 @@ const validPayload = (): TestPayload => ({
       sourceUrls: ["https://example.com/status"],
     },
     {
+      kind: "NEWS",
+      state: "EMPTY",
+      data: null,
+      sourceUrls: [],
+    },
+    {
       kind: "WEATHER",
       state: "SUCCESS",
       data: {
@@ -84,7 +90,7 @@ test("accepts a complete LIVE run and applies safe defaults", () => {
 
   assert.equal(result.success, true);
   if (!result.success) return;
-  assert.equal(result.data.categories.length, 4);
+  assert.equal(result.data.categories.length, 5);
   assert.deepEqual(result.data.issues, []);
   assert.deepEqual(result.data.artifacts, []);
 });
@@ -107,7 +113,7 @@ test("accepts a FAILED run with a minimal diagnostic raw payload", () => {
   payload.categories = payload.categories.map(category => ({
     ...category,
     state: "FAILED",
-    data: { reason: "navigation failed" },
+    data: category.kind === "NEWS" ? null : { reason: "navigation failed" },
   }));
   payload.issues = [
     {
@@ -138,7 +144,7 @@ test("rejects duplicate or missing category kinds", () => {
 
 test("rejects an empty SUCCESS operation category", () => {
   const payload = validPayload();
-  payload.categories[2] = {
+  payload.categories[3] = {
     kind: "COURSES",
     state: "SUCCESS",
     data: [],
@@ -146,6 +152,36 @@ test("rejects an empty SUCCESS operation category", () => {
   };
 
   assert.equal(crawlLatestRunInputSchema.safeParse(payload).success, false);
+});
+
+test("rejects a NEWS category that carries data", () => {
+  const payload = validPayload();
+  payload.categories[1] = {
+    kind: "NEWS",
+    state: "SUCCESS",
+    data: { value: "something" },
+    sourceUrls: ["https://example.com/news"],
+  };
+
+  const result = crawlLatestRunInputSchema.safeParse(payload);
+  assert.equal(result.success, false);
+  if (result.success) return;
+  assert.match(
+    result.error.issues.map(issue => issue.message).join("\n"),
+    /news category must not carry data/u,
+  );
+});
+
+test("accepts a successful NEWS category backed only by sourceUrls", () => {
+  const payload = validPayload();
+  payload.categories[1] = {
+    kind: "NEWS",
+    state: "SUCCESS",
+    data: null,
+    sourceUrls: ["https://example.com/news"],
+  };
+
+  assert.equal(crawlLatestRunInputSchema.safeParse(payload).success, true);
 });
 
 test("requires archiveTimestamp only for a Wayback validation run", () => {

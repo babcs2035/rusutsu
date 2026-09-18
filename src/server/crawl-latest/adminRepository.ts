@@ -70,9 +70,10 @@ const categorySummarySelect = {
 
 const CATEGORY_ORDER: Record<CrawlLatestCategoryKind, number> = {
   COMMENT: 0,
-  WEATHER: 1,
-  COURSES: 2,
-  LIFTS: 3,
+  NEWS: 1,
+  WEATHER: 2,
+  COURSES: 3,
+  LIFTS: 4,
 };
 
 const sortCategories = (
@@ -403,9 +404,9 @@ export async function fetchCrawlMonitorCurrentsDirect(
     sourceUrls: row.snapshot.sourceUrls,
     data: row.snapshot.data ?? null,
   }));
-  const missing = (["COMMENT", "WEATHER", "COURSES", "LIFTS"] as const).filter(
-    kind => !currents.some(current => current.kind === kind),
-  );
+  const missing = (
+    ["COMMENT", "NEWS", "WEATHER", "COURSES", "LIFTS"] as const
+  ).filter(kind => !currents.some(current => current.kind === kind));
   if (missing.length > 0) {
     currents.push(...(await readBundledCurrents(resortId, missing)));
   }

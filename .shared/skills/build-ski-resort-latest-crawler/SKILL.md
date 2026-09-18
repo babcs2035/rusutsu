@@ -28,6 +28,7 @@ description: 指定されたスキー場公式URLをPlaywrightと冬季Wayback�
 3. `src/private/scripts/crawl_latest/shared/utils.ts`
 4. `shared` を使う完成度の高い既存クローラー
 5. [implementation-guidelines.md](references/implementation-guidelines.md)
+6. 対象スキー場のcapability台帳（`resorts-temporary/latest_status_capability/<resort-id>.json`）。あれば冬季に何が取得できるかの基準になる
 
 既存ファイルは参考例であり、URL・セレクター・保存処理が完成していることを確認してから使う。抽出ロジックを変更しない単純な整形・型修正では、ガイドの関連節だけ読めばよい。
 
@@ -51,12 +52,22 @@ node .shared/skills/build-ski-resort-latest-crawler/scripts/capture-rendered-pag
 ### 2. 取得範囲を決める
 
 - 公式表示、公式凡例、または営業中アーカイブで意味を確認できた値だけを変換する。
-- コース・リフトの状態欄を正常に取得でき、値が空欄（空文字・空白・ハイフン等の欠損記号）なら、スキー場共通の既定ルールとしてクローズ `×` とする。シーズン終了表示や空欄の意味の個別確認は不要。詳細は実装ガイドの「空欄の状態はクローズ」を参照する。
-- 空欄以外の不明な状態は推測せず `null` とし、公式の生値を項目の `note` に残す。
+- コース・リフトの状態欄を正常に取得でき、値が空欄（空文字・空白・ハイフン等の欠損記号）なら `status: null` とする。**空欄をクローズ `×` に変換しない。**「掲載がない」と「閉鎖している」は別の事実なので、不明は不明のまま保存する。公式凡例が「空欄＝閉鎖」と明示している場合だけ `×` にしてよい。詳細は実装ガイドの「空欄の状態は不明」を参照する。
+- 空欄以外の不明な状態も推測せず `null` とし、公式の生値を項目の `note` に残す。
 - DOM取得失敗、セレクター不一致、行・状態要素の消失は空欄と区別し、クローズへ変換しない。
 - 安定した抽出経路を検証できないカテゴリは空にし、ファイル先頭へ再調査TODOを残す。確認済みのカテゴリは通常どおり実装する。
 
-冬季監査、空欄のクローズ判定、画像天気、欠損カテゴリの判断基準は[実装ガイド](references/implementation-guidelines.md)に従う。
+冬季監査、空欄の不明判定、capability台帳、画像天気、欠損カテゴリの判断基準は[実装ガイド](references/implementation-guidelines.md)に従う。
+
+### 2.5 capability台帳を更新する
+
+冬季アーカイブを調査したら、そこで取得できた内容をcapability台帳へ記録する。台帳はオフシーズンの実装・監査と、営業期間中の欠損警告の基準になる。
+
+- コース・リフト：件数、名称一覧、実際に現れた状態記号、`name` / `status` / `update` / `note` のどれが埋まるか
+- コンディション：観測地点名、`update` / `weather` / `temperature` / `snowDepth` / `snowfall` / `condition` / `windSpeed` の可否、`comment` 専用欄の有無
+- 出典（`archiveTimestamp`、URL）と、その時点のクローラーのソースハッシュ
+
+既存の台帳があり、抽出ロジックを変更していないなら作り直さない。抽出ロジックを変えたら作り直す。スキーマと保存先は実装ガイドの「capability台帳」に従う。
 
 ### 3. 実装する
 
@@ -67,6 +78,7 @@ node .shared/skills/build-ski-resort-latest-crawler/scripts/capture-rendered-pag
 - 抽出中の例外はページを閉じる前に `console.error` へ渡し、`process.exitCode = 1` にしてから `finally` でbrowserを閉じる。これにより例外時のレンダリング済みDOMとremote API結果を確定してからプロセスを終える。
 - `courseNameMap` と `liftNameMap` は空でも残す。全コース・リフトを `checkCourse` / `checkLift` に渡し、`status: null` の警告も隠さない。
 - `comment` は現在の営業・ゲレンデ情報にある専用コメント欄だけから取得する。ニュースやブログで補完しない。
+- `commentUrl` は `comment` 本文を実際に取得したページだけに使う。本文を取らないお知らせ・ニュース一覧へのリンクは `newsUrl` に入れる。両者に同じURLを重複させない。
 - 各 `update` は、そのカテゴリについて公式が掲載する更新日時だけを使う。クロール時刻や別カテゴリの日時で補完しない。
 - `note`、名前の正規化、source URL、欠損値、保存処理は実装ガイドの出力規則に従う。
 - 保存は必ず `await Utils.saveLatestResult(...)` とする。個別クローラーから `fs.writeFile` で最新JSONを直接書かない。
@@ -91,8 +103,10 @@ node .shared/skills/build-ski-resort-latest-crawler/scripts/capture-rendered-pag
 
 - 現行ページと冬季アーカイブの対象URL・日時、カテゴリ別・状態別件数、警告
 - コース／リフトの各状態について、根拠と実際に変換経路へ通した結果
-- 空欄をクローズにした対象・件数とDOM取得成功の判定。空の営業項目一覧から固定在庫を補った場合は、その名称・件数の根拠
+- 空欄を `status: null` にした対象・件数とDOM取得成功の判定。空の営業項目一覧から固定在庫を補った場合は、その名称・件数の根拠
 - 天気、気温、積雪、降雪、雪質、風速、コメント、各 `update` の取得可否と根拠
+- `commentUrl` と `newsUrl` の振り分けと、その判断根拠
+- capability台帳の作成・更新結果（コース／リフトの件数・名称・出現した状態記号、コンディション各項目の可否、出典アーカイブ日時）
 - 画像天気を使う場合は、調査した識別子と未知値警告のテスト結果
 - 未確認の状態・カテゴリ、残したTODO、対応URLを残した／空にした理由、推測しなかった範囲
 - 現行データのAPI保存結果（run ID・カテゴリ別の反映結果）、残した検証JSONパス、Biome・型チェックの結果

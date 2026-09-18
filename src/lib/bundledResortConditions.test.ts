@@ -35,10 +35,12 @@ test("保存結果は最新の有効JSONから日時・カテゴリ別出典を�
     assert.deepEqual(await readBundledResortConditions("../sample", root), {
       weather: null,
       comment: null,
+      news: null,
     });
     assert.deepEqual(await readBundledResortConditions("missing", root), {
       weather: null,
       comment: null,
+      news: null,
     });
   } finally {
     await fs.rm(root, { recursive: true, force: true });

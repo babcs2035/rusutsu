@@ -361,9 +361,19 @@ const inspectOperations = (
   };
 };
 
+/** NEWS only records reference links; sourceUrls is the entire payload. */
+const inspectNews = (category: CrawlLatestCategory): ContentInspection => ({
+  state: category.sourceUrls.length > 0 ? "SUCCESS" : "EMPTY",
+  itemCount: category.sourceUrls.length,
+  usableItemCount: category.sourceUrls.length,
+  names: [],
+  issues: [],
+});
+
 const inspectSuccessfulCategory = (
   category: CrawlLatestCategory,
 ): ContentInspection => {
+  if (category.kind === "NEWS") return inspectNews(category);
   if (category.kind === "COMMENT") return inspectComment(category);
   if (category.kind === "WEATHER") return inspectWeather(category);
   return inspectOperations(category);
@@ -372,6 +382,13 @@ const inspectSuccessfulCategory = (
 const metricsWithoutPromotionValidation = (
   category: CrawlLatestCategory,
 ): CategoryMetrics => {
+  if (category.kind === "NEWS") {
+    return {
+      itemCount: category.sourceUrls.length,
+      usableItemCount: category.sourceUrls.length,
+      names: [],
+    };
+  }
   const data = category.data;
   if (data === undefined || data === null) {
     return { itemCount: 0, usableItemCount: 0, names: [] };

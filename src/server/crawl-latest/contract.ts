@@ -5,6 +5,7 @@ export const CRAWL_LATEST_MAX_BODY_BYTES = 2 * 1024 * 1024;
 
 export const CRAWL_LATEST_CATEGORY_KINDS = [
   "COMMENT",
+  "NEWS",
   "WEATHER",
   "COURSES",
   "LIFTS",
@@ -169,6 +170,8 @@ const isEmptyCategoryData = (
   data: unknown,
 ) => {
   if (data === undefined || data === null) return true;
+  // NEWS only records reference links; sourceUrls carries them, data stays null.
+  if (kind === "NEWS") return false;
   if (kind === "COMMENT") {
     const parsed = commentDataSchema.safeParse(data);
     return parsed.success && parsed.data.value === null;
@@ -208,7 +211,9 @@ export const crawlLatestRunInputSchema = z
       })
       .default({}),
     rawPayload: z.record(z.string().max(200), z.json()),
-    categories: z.array(categoryInputSchema).length(4),
+    categories: z
+      .array(categoryInputSchema)
+      .length(CRAWL_LATEST_CATEGORY_KINDS.length),
     issues: z.array(issueInputSchema).max(1_000).default([]),
     artifacts: z.array(artifactInputSchema).max(100).default([]),
   })
@@ -266,6 +271,24 @@ export const crawlLatestRunInputSchema = z
         });
       }
       seenKinds.add(category.kind);
+
+      if (category.kind === "NEWS") {
+        if (category.data !== undefined && category.data !== null) {
+          context.addIssue({
+            code: "custom",
+            message: "news category must not carry data",
+            path: ["categories", index, "data"],
+          });
+        }
+        if (category.state === "SUCCESS" && category.sourceUrls.length === 0) {
+          context.addIssue({
+            code: "custom",
+            message: "successful news category requires a source URL",
+            path: ["categories", index, "sourceUrls"],
+          });
+        }
+        continue;
+      }
 
       if (category.state === "SUCCESS") {
         if (category.data === undefined) {
