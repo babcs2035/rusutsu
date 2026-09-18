@@ -132,7 +132,7 @@ const parseMappingFile = (raw: string): LatestStatusMappingFile => {
   }
 };
 
-export const readMappingFile = async (
+const readMappingFile = async (
   temporaryRoot: string,
   resortId: string,
   documentLoader?: DataDocumentLoader,
@@ -205,7 +205,7 @@ const normalizeGeometryNames = (names: string[]): string[] => [
   ),
 ];
 
-export const readGeometryNames = async (
+const readGeometryNames = async (
   temporaryRoot: string,
   resortId: string,
   kind: LatestStatusMappingKind,
