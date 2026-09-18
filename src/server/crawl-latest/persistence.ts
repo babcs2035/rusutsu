@@ -1,9 +1,11 @@
 import { createHash } from "node:crypto";
+import path from "node:path";
 import {
   type CrawlLatestSourceMode,
   Prisma,
   type CrawlLatestCategoryKind as PrismaCategoryKind,
 } from "@prisma/client";
+import type { LatestStatusCapabilityFile } from "@/features/latest-status-mapping/types.capability";
 import { prisma } from "@/lib/prisma";
 import {
   buildCrawlLatestPersistenceValidation,
@@ -82,12 +84,13 @@ const toPrismaJsonOrDbNull = (
 
 const buildCategoryPersistenceData = (
   input: CrawlLatestRunInput,
+  capability: LatestStatusCapabilityFile | null,
 ): {
   categories: CategoryPersistenceData[];
   serverIssues: CrawlLatestServerValidationIssue[];
   outcome: PersistResult["outcome"];
 } => {
-  const validation = buildCrawlLatestPersistenceValidation(input);
+  const validation = buildCrawlLatestPersistenceValidation(input, capability);
   const categoryByKind = new Map(
     input.categories.map(category => [category.kind, category]),
   );
@@ -147,6 +150,27 @@ const shouldReplaceCurrent = (
   incomingObservedAt: Date,
 ) => existingObservedAt === null || existingObservedAt < incomingObservedAt;
 
+/**
+ * 台帳の読み込みに失敗しても、取得できた結果の保存は止めない。台帳は欠損警告の
+ * 判断材料であって、結果そのものの正しさとは別の話になる。
+ */
+const readCapabilityForRun = async (
+  input: CrawlLatestRunInput,
+): Promise<LatestStatusCapabilityFile | null> => {
+  if (input.sourceMode !== "LIVE") return null;
+  try {
+    const { readCapabilityFile } = await import(
+      "@/features/latest-status-mapping/server/capabilityFiles"
+    );
+    return await readCapabilityFile(
+      path.join(process.cwd(), "src/private/data/resorts-temporary"),
+      input.resortId,
+    );
+  } catch {
+    return null;
+  }
+};
+
 export async function persistCrawlLatestRun(
   input: CrawlLatestRunInput,
   idempotencyKey: string,
@@ -159,7 +183,10 @@ export async function persistCrawlLatestRun(
   );
   if (duplicate) return duplicate;
 
-  const validation = buildCategoryPersistenceData(input);
+  const validation = buildCategoryPersistenceData(
+    input,
+    await readCapabilityForRun(input),
+  );
   const { categories, serverIssues } = validation;
   const isYukiMagi =
     input.producerId === "yuki_magi" && input.resortId === "yuki-magi";

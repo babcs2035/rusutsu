@@ -204,39 +204,52 @@ export const createSuggestedRows = (
   return compactMappingRows(rows);
 };
 
+/**
+ * 保存済みの対応表を、いまのクロール結果とGeoJSONに合わせ直す。
+ *
+ * 対応済みの行は人が決めた結果なので動かさない。片側しかない行と新しく現れた名前
+ * だけを、初期提案と同じ突き合わせへ通す。ここを並び順の総当たりで埋めてしまうと、
+ * クロール名だけを流し込んだ対応表を開いたときに、無関係な組み合わせが既定値として
+ * 並んでしまう。
+ *
+ * 地図名だけの行（`crawledName` が null）は「この線は対応させない」という明示の
+ * 指定なので、突き合わせの対象から外してそのまま残す。
+ */
 export const reconcileSavedRows = (
+  kind: LatestStatusMappingKind,
   savedRows: LatestStatusMappingRow[],
   crawledNames: string[],
   geojsonNames: string[],
 ): LatestStatusMappingRow[] => {
-  const uniqueCrawledNames = unique(crawledNames);
-  const uniqueGeojsonNames = unique(geojsonNames);
-  const usedCrawledNames = new Set(
+  const savedCrawledNames = new Set(
     savedRows.flatMap(row => (row.crawledName ? [row.crawledName] : [])),
   );
-  const usedGeojsonNames = new Set(
+  const savedGeojsonNames = new Set(
     savedRows.flatMap(row => (row.geojsonName ? [row.geojsonName] : [])),
   );
-  const rows = compactMappingRows(savedRows);
 
-  const remainingCrawled = uniqueCrawledNames.filter(
-    name => !usedCrawledNames.has(name),
-  );
-  const remainingGeojson = uniqueGeojsonNames.filter(
-    name => !usedGeojsonNames.has(name),
-  );
-  const remainingCount = Math.max(
-    remainingCrawled.length,
-    remainingGeojson.length,
-  );
-
-  for (let index = 0; index < remainingCount; index += 1) {
-    rows.push({
-      crawledName: remainingCrawled[index] ?? null,
-      geojsonName: remainingGeojson[index] ?? null,
-    });
+  const kept: LatestStatusMappingRow[] = [];
+  const unmatchedCrawled: string[] = [];
+  for (const row of savedRows) {
+    if (row.geojsonName !== null) {
+      kept.push({ ...row });
+      continue;
+    }
+    if (row.crawledName !== null) unmatchedCrawled.push(row.crawledName);
   }
-  return compactMappingRows(rows);
+  for (const name of unique(crawledNames)) {
+    if (!savedCrawledNames.has(name)) unmatchedCrawled.push(name);
+  }
+  const freeGeojsonNames = unique(geojsonNames).filter(
+    name => !savedGeojsonNames.has(name),
+  );
+
+  // 残した行は人の指定なので、ここで詰め直さない。詰めると「対応させない」と
+  // 決めた地図名が、相手のいないクロール名と勝手につながってしまう。
+  return [
+    ...kept,
+    ...createSuggestedRows(kind, unique(unmatchedCrawled), freeGeojsonNames),
+  ];
 };
 
 /**

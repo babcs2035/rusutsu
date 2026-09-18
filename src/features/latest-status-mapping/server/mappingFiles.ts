@@ -259,7 +259,7 @@ export const loadLatestStatusMappingWorkspace = async (
   const section = mapping.data[kind];
   const crawledNames = latest.items.map(item => item.name);
   const rows = section
-    ? reconcileSavedRows(section.rows, crawledNames, geojsonNames)
+    ? reconcileSavedRows(kind, section.rows, crawledNames, geojsonNames)
     : createSuggestedRows(kind, crawledNames, geojsonNames);
   const warnings: string[] = [];
 

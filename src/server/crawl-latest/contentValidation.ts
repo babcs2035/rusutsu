@@ -1,3 +1,5 @@
+import type { LatestStatusCapabilityFile } from "@/features/latest-status-mapping/types.capability";
+import { findCapabilityGaps } from "@/features/latest-status-mapping/utils/capability";
 import {
   CRAWL_LATEST_OPERATION_STATUSES,
   type CrawlLatestCategoryKind,
@@ -21,10 +23,14 @@ export type CrawlLatestCategoryValidation = CategoryMetrics & {
   eligibleForCurrent: boolean;
 };
 
+/**
+ * サーバー側で足す検査結果。内容不正は昇格を止めるERROR、capability台帳との
+ * 差分は人が見直すためのWARNINGで、後者は昇格を止めない。
+ */
 export type CrawlLatestServerValidationIssue = CrawlLatestIssue & {
   categoryKind: CrawlLatestCategoryKind;
-  severity: "ERROR";
-  blocksPromotion: true;
+  severity: "ERROR" | "WARNING";
+  blocksPromotion: boolean;
 };
 
 export type CrawlLatestPersistenceValidation = {
@@ -440,11 +446,39 @@ const getRunOutcome = (
   return "SUCCESS";
 };
 
+/**
+ * 冬季に取得できると台帳が記録している項目が、今回の結果に無い場合の警告。
+ *
+ * オフシーズンには掲載自体が消えるので、営業期間の実行だけを対象にする。台帳が
+ * ないスキー場では何も出ないため、警告がないことを正常と読み替えてはいけない。
+ * 現在値の昇格は止めない。人が台帳を見直すための手がかりとして残す。
+ */
+export const buildCapabilityGapIssues = (
+  input: CrawlLatestRunInput,
+  capability: LatestStatusCapabilityFile | null,
+): CrawlLatestServerValidationIssue[] => {
+  if (!capability || input.sourceMode !== "LIVE") return [];
+  const month = new Date(input.observedAt).getUTCMonth() + 1;
+  // JSTの12〜3月。春営業だけのスキー場は台帳側が false になるので対象外になる。
+  if (month > 3 && month < 12) return [];
+  return findCapabilityGaps(capability, input.rawPayload).map(gap => ({
+    categoryKind: gap.category,
+    severity: "WARNING" as const,
+    code: gap.code,
+    message: gap.message,
+    occurrences: 1,
+    blocksPromotion: false,
+  }));
+};
+
 export const buildCrawlLatestPersistenceValidation = (
   input: CrawlLatestRunInput,
+  capability: LatestStatusCapabilityFile | null = null,
 ): CrawlLatestPersistenceValidation => {
   const inspections = new Map<CrawlLatestCategoryKind, ContentInspection>();
-  const serverIssues: CrawlLatestServerValidationIssue[] = [];
+  const serverIssues: CrawlLatestServerValidationIssue[] = [
+    ...buildCapabilityGapIssues(input, capability),
+  ];
 
   for (const category of input.categories) {
     const inspection =

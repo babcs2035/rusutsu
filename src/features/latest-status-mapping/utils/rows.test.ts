@@ -84,6 +84,7 @@ test("保存済みで無名と結ばれていても読み込み時に分離す�
 test("保存済みの並びを維持して新しい名前を末尾へ足す", () => {
   assert.deepEqual(
     reconcileSavedRows(
+      "courses",
       [{ crawledName: "A", geojsonName: "甲" }],
       ["A", "B"],
       ["甲", "乙"],
@@ -91,6 +92,44 @@ test("保存済みの並びを維持して新しい名前を末尾へ足す", ()
     [
       { crawledName: "A", geojsonName: "甲" },
       { crawledName: "B", geojsonName: "乙" },
+    ],
+  );
+});
+
+test("クローラー名だけの対応表でも、初期提案と同じ突き合わせが効く", () => {
+  // 一括投入した対応表を開いた場面。並び順の総当たりだと
+  // ダイナミック→ファミリーゲレンデのような無関係な組み合わせになる。
+  assert.deepEqual(
+    reconcileSavedRows(
+      "courses",
+      [
+        { crawledName: "ダイナミックコース", geojsonName: null },
+        { crawledName: "ファミリーコース", geojsonName: null },
+      ],
+      ["ダイナミックコース", "ファミリーコース"],
+      ["ファミリーゲレンデ", "ダイナミック_上部"],
+    ),
+    [
+      { crawledName: "ダイナミックコース", geojsonName: "ダイナミック_上部" },
+      { crawledName: "ファミリーコース", geojsonName: "ファミリーゲレンデ" },
+    ],
+  );
+});
+
+test("地図名だけの行は「対応させない」指定なので突き合わせ直さない", () => {
+  assert.deepEqual(
+    reconcileSavedRows(
+      "courses",
+      [
+        { crawledName: null, geojsonName: "対応させない線" },
+        { crawledName: "Aコース", geojsonName: null },
+      ],
+      ["Aコース"],
+      ["対応させない線"],
+    ),
+    [
+      { crawledName: null, geojsonName: "対応させない線" },
+      { crawledName: "Aコース", geojsonName: null },
     ],
   );
 });
