@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { SkiResortDetail } from "@/types/skiResorts";
-import { readDetailCache, writeDetailCache } from "./detailCache";
+import type { MapSkiResort, SkiResortDetail } from "@/types/skiResorts";
+import {
+  readDetailCache,
+  readOverviewCache,
+  writeDetailCache,
+  writeOverviewCache,
+} from "./detailCache";
 
 test("旧キャッシュは復元せず、再取得して保存した詳細を次回復元する", async t => {
   const data = {
@@ -69,4 +74,10 @@ test("旧キャッシュは復元せず、再取得して保存した詳細を�
   assert.equal(await readDetailCache("missing"), null);
   entries.set("test", { ...entries.get("test"), version: -1 });
   assert.equal(await readDetailCache("test"), null);
+  const first = [{ id: "a" }] as MapSkiResort[];
+  const second = [{ id: "b" }] as MapSkiResort[];
+  await writeOverviewCache("tab-a", first);
+  await writeOverviewCache("tab-b", second);
+  assert.deepEqual(await readOverviewCache("tab-a"), first);
+  assert.deepEqual(await readOverviewCache("tab-b"), second);
 });

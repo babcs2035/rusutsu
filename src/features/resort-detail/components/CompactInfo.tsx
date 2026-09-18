@@ -28,8 +28,17 @@ export function SourceLine({
     ...new Set(updates.map(formatPublishedDate).filter(Boolean)),
   ];
   const links = sourceUrls(urls);
+  // 出典リンクと「〜現在」は対応する組として、同じ色の枠でまとめて囲う。
+  const rowCount = Math.max(links.length, published.length);
+  const rows =
+    rowCount > 0
+      ? Array.from({ length: rowCount }, (_, index) => ({
+          url: links[index],
+          publishedDate: published[index],
+        }))
+      : [{ url: undefined, publishedDate: undefined }];
   return (
-    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 break-words text-sm leading-5 text-slate-600">
+    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 break-words text-sm leading-5 text-slate-700">
       {showLabel && <span>{label}</span>}
       {showFetched && (
         <span>
@@ -37,32 +46,44 @@ export function SourceLine({
           {date ? "（日本時間）" : ""}
         </span>
       )}
-      {links.length ? (
-        links.map((url, index) => (
-          <ExternalLinkComponent
-            key={url}
-            href={url}
-            title={url}
-            className="inline-flex min-h-8 shrink-0 font-medium text-blue-700 underline underline-offset-2"
-            aria-label={`${label}の出典を開く${links.length > 1 ? `（${index + 1}）` : ""}`}
-          >
-            出典{links.length > 1 ? index + 1 : ""}
-            <ExternalLink className="size-3.5" />
-          </ExternalLinkComponent>
-        ))
-      ) : (
-        <span>出典未登録</span>
-      )}
-      {published.length ? (
-        published.map(update => (
-          <span key={update} className="min-w-0 max-w-full">
-            {update}
+      {rows.map((row, index) => (
+        <span
+          key={row.url ?? row.publishedDate ?? index}
+          className="inline-flex min-h-7 min-w-0 max-w-full shrink-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 rounded-md border border-blue-100 bg-blue-50 px-2 py-0.5"
+        >
+          {row.url ? (
+            <ExternalLinkComponent
+              href={row.url}
+              title={row.url}
+              className="inline-flex shrink-0 items-center gap-0.5 font-medium text-blue-700 underline underline-offset-2 hover:text-blue-800"
+              aria-label={`${label}の出典を開く${rows.length > 1 ? `（${index + 1}）` : ""}`}
+            >
+              出典{rows.length > 1 ? index + 1 : ""}
+              <ExternalLink className="size-3.5" />
+            </ExternalLinkComponent>
+          ) : (
+            <span className="font-medium text-blue-700">出典未登録</span>
+          )}
+          <span className="min-w-0 max-w-full text-blue-800">
+            {row.publishedDate ?? "日時不明"}
           </span>
-        ))
-      ) : (
-        <span>日時不明</span>
-      )}
+        </span>
+      ))}
     </div>
+  );
+}
+/**
+ * まだ一度も取得できていない情報だと分かるようにする。
+ * 「0件」や「取得日時不明」と読み違えられないよう、色と文言を他と変える。
+ */
+export function NotFetchedBadge({ title }: { title?: string }) {
+  return (
+    <span
+      title={title ?? "この情報はまだ取得できていません"}
+      className="inline-flex shrink-0 items-center rounded-md border border-amber-300 bg-amber-100 px-1.5 py-0.5 text-sm font-semibold text-amber-800"
+    >
+      未取得
+    </span>
   );
 }
 export function CompactMetric({
@@ -74,7 +95,7 @@ export function CompactMetric({
 }) {
   return (
     <div className="min-w-0">
-      <dt className="text-sm text-slate-600">{label}</dt>
+      <dt className="text-sm text-slate-700">{label}</dt>
       <dd className="mt-0.5 text-base font-semibold tabular-nums text-slate-900">
         {children}
       </dd>
@@ -128,7 +149,7 @@ export function StatusMark({
       role="img"
       title={label}
       aria-label={label}
-      className={`inline-flex size-5 shrink-0 items-center justify-center align-middle leading-none ${symbol === "○" ? "text-emerald-700" : symbol === "△" ? "text-amber-800" : "text-slate-600"}`}
+      className={`inline-flex size-5 shrink-0 items-center justify-center align-middle leading-none ${symbol === "○" ? "text-emerald-700" : symbol === "△" ? "text-amber-800" : "text-slate-700"}`}
     >
       {Icon ? (
         <Icon aria-hidden="true" className="size-5" strokeWidth={3.25} />

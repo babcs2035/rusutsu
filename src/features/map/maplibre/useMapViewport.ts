@@ -16,7 +16,9 @@ import {
   getCoordinateBounds,
   getDetailPanelOverlapRightWidth,
   getFeatureDetailOverlayPadding,
+  getMapBottomToolbarOverlapHeight,
   getMapSize,
+  getMapTopControlsOverlapHeight,
   getMoveOptions,
   getPanelOffset,
   getSafeFitPadding,
@@ -83,16 +85,30 @@ export const useResortViewport = ({
       if (lastDetailFit.current === fitKey) return;
       lastDetailFit.current = fitKey;
 
-      // 右パネルを避けて左へずらすと、選んだスキー場が画面中央からずれて
-      // 見えてしまう。素直に選んだ場所へズームするため、水平方向は詰めない。
+      // 点（スキー場そのもの）に寄るときは、右パネルを避けて左へずらすと
+      // 選んだスキー場が画面中央からずれて見えてしまうので水平方向は詰めない。
+      // コース全体に合わせるときは、右端のコースがパネルに隠れてしまうため、
+      // かぶっている幅ぶんだけ詰める。
       const rightPanelWidth = 0;
-      const bottomPanelHeight =
-        getMapSize(map).y * selectedViewportBottomPaddingRatio;
+      const boundsRightPanelWidth = getDetailPanelOverlapRightWidth(map);
+      // 地図の下端に浮かせた凡例カードにもコース・リフトを潜らせない
+      const bottomPanelHeight = Math.max(
+        getMapSize(map).y * selectedViewportBottomPaddingRatio,
+        getMapBottomToolbarOverlapHeight(map),
+      );
+      // 地図の上端に浮かせたボタン類の下にコース・リフトが潜らないようにする
+      const topPanelHeight = getMapTopControlsOverlapHeight(map);
 
       if (detailViewportMode === "finalized" && finalizedBounds) {
         map.fitBounds(finalizedBounds, {
           maxZoom: DETAIL_FIT_MAX_ZOOM,
-          padding: getSafeFitPadding(map, rightPanelWidth, bottomPanelHeight),
+          padding: getSafeFitPadding(
+            map,
+            boundsRightPanelWidth,
+            bottomPanelHeight,
+            undefined,
+            topPanelHeight,
+          ),
           bearing: map.getBearing(),
           ...getMoveOptions(animate),
         });
@@ -102,7 +118,11 @@ export const useResortViewport = ({
       map.easeTo({
         center: [resort.longitude, resort.latitude],
         zoom: Math.max(map.getZoom(), labelShowZoom),
-        offset: getPanelOffset(rightPanelWidth, bottomPanelHeight),
+        offset: getPanelOffset(
+          rightPanelWidth,
+          bottomPanelHeight,
+          topPanelHeight,
+        ),
         ...getMoveOptions(animate),
       });
       return;
@@ -292,9 +312,12 @@ export const useSelectedFeatureViewport = ({
         padding: getSafeFitPadding(
           map,
           Math.max(getDetailPanelOverlapRightWidth(map), overlay.right),
-          getMapSize(map).y * bottomPaddingRatio,
+          Math.max(
+            getMapSize(map).y * bottomPaddingRatio,
+            getMapBottomToolbarOverlapHeight(map),
+          ),
           undefined,
-          0,
+          getMapTopControlsOverlapHeight(map),
           overlay.left,
         ),
         // 回したまま選んでも向きを変えない

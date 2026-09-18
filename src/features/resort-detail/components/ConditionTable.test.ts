@@ -30,14 +30,14 @@ test("中腹だけの場合は地点を省き、値のある全項目を表示�
     "粉雪",
   ])
     assert.ok(html.includes(value));
-  assert.doesNotMatch(html, /観測地点|中腹|今日/);
+  assert.doesNotMatch(html, /中腹|今日/);
 });
 test("全地点で空の項目は列を作らず、地点ごとの欠測はダッシュで表示する", () => {
   const html = render({
     山頂: { snowDepth: 100, windSpeed: null },
     山麓: { snowDepth: null, windSpeed: "—" },
   });
-  assert.match(html, /観測地点/);
+  assert.match(html, /地点/);
   assert.match(html, /山頂/);
   assert.match(html, /山麓/);
   assert.doesNotMatch(html, /新雪|天候|気温|風速|雪質・状態/);

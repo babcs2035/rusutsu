@@ -727,9 +727,9 @@ const buildCourseSourceSection = async (
         geometry.beforeFeatures,
         documentLoader,
       );
-  const sourceUrls = isOsm
-    ? ["https://www.openstreetmap.org/copyright"]
-    : (status?.sourceUrls ?? []);
+  // OSM 由来のコースは、営業状況の出典ではなく形だけの取り込み元なので、
+  // 画面の「出典」に混ぜない。未確認であることは verificationStatus が持つ。
+  const sourceUrls = isOsm ? [] : (status?.sourceUrls ?? []);
   const verificationStatus = isOsm ? "unverified" : "verified";
   const merged = mergeCourseFeatures({
     geometryFeatures: geometry.features,

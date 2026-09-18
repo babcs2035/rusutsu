@@ -1,5 +1,6 @@
 "use client";
 
+import { ExternalLink } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -12,7 +13,51 @@ import {
 } from "@/components/ui/table";
 import { LiftTicketCalculator } from "@/features/lift-ticket/components/LiftTicketCalculator";
 import { LiftTicketPriceTable } from "@/features/lift-ticket/components/LiftTicketPriceTable";
+import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import type { Resort } from "../types";
+
+const YukiMagiCard = ({ yukiMagi }: { yukiMagi: Resort["yukiMagi"] }) => {
+  if (!yukiMagi) return null;
+  const details = [
+    { label: "特典", value: yukiMagi.benefit },
+    { label: "適用期間", value: yukiMagi.period },
+    { label: "除外日", value: yukiMagi.exclusionDate },
+  ].filter(detail => detail.value);
+  return (
+    <section
+      aria-label="雪マジ"
+      className="rounded-xl border border-pink-200 bg-pink-50 p-4"
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded-full bg-pink-600 px-2.5 py-1 text-xs font-semibold text-white">
+          雪マジ{yukiMagi.tag ? `・${yukiMagi.tag}` : ""}
+        </span>
+        <h2 className="text-base font-bold text-pink-900">{yukiMagi.name}</h2>
+      </div>
+      {details.length > 0 && (
+        <dl className="mt-3 space-y-1.5 text-sm">
+          {details.map(detail => (
+            <div key={detail.label} className="flex gap-2">
+              <dt className="w-16 shrink-0 font-semibold text-pink-800">
+                {detail.label}
+              </dt>
+              <dd className="min-w-0 text-pink-900">{detail.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {yukiMagi.url && (
+        <ExternalLinkComponent
+          href={yukiMagi.url}
+          className="mt-3 inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-sm font-medium text-pink-700 hover:bg-pink-100"
+        >
+          詳しく見る
+          <ExternalLink className="size-3.5" aria-hidden="true" />
+        </ExternalLinkComponent>
+      )}
+    </section>
+  );
+};
 
 export const TicketsTab = ({ resort }: { resort: Resort }) => {
   const tickets = resort.tickets;
@@ -21,7 +66,11 @@ export const TicketsTab = ({ resort }: { resort: Resort }) => {
   if (liftTicketData) {
     return (
       <div className="flex flex-col gap-6">
-        <LiftTicketCalculator seasons={resort.liftTickets} />
+        <YukiMagiCard yukiMagi={resort.yukiMagi} />
+        <LiftTicketCalculator
+          seasons={resort.liftTickets}
+          sessionKey={`rusutsu:detail:v1:${resort.id}:ticketInput`}
+        />
         <section>
           <h2 className="text-lg font-bold text-gray-900 font-[var(--font-heading)]">
             公式リフト料金表
@@ -60,6 +109,7 @@ export const TicketsTab = ({ resort }: { resort: Resort }) => {
 
   return (
     <div className="flex flex-col gap-6">
+      <YukiMagiCard yukiMagi={resort.yukiMagi} />
       <section>
         <h2 className="text-lg font-bold text-gray-900 font-[var(--font-heading)]">
           リフト券

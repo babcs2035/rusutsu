@@ -15,7 +15,17 @@ test("営業状況とSNSを分離し、旧データでもそれぞれ描画で�
       finalizedMapData: null,
       socialAccounts,
     } as unknown as Resort;
-    const html = renderToStaticMarkup(createElement(OverviewTab, { resort }));
+    const html = renderToStaticMarkup(
+      createElement(OverviewTab, {
+        resort,
+        showTerrainDetail: false,
+        terrainTab: "コース",
+        onShowTerrainDetail: () => {},
+        onCloseTerrainDetail: () => {},
+        selectedFinalizedFeature: null,
+        onSelectedFinalizedFeatureChange: () => {},
+      }),
+    );
     assert.match(html, /営業・気象情報/);
     assert.doesNotMatch(html, /SNSアカウント/);
     const sns = renderToStaticMarkup(createElement(SnsTab, { resort }));

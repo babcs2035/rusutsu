@@ -21,7 +21,7 @@ type Options = {
 type Measured = { id: string; top: number; height: number };
 
 export type SortableList = {
-  /** スクロールする外枠に付ける。position: relative が要る */
+  /** 一覧の外枠に付ける。position: relative が要る */
   containerRef: (element: HTMLElement | null) => void;
   /** 行に付ける ref。並び順の判定に使う */
   itemRef: (id: string) => (element: HTMLElement | null) => void;
@@ -40,6 +40,29 @@ export type SortableList = {
 /** 端に近づいたら自動でスクロールする幅と速さ */
 const EDGE_ZONE_PX = 56;
 const MAX_SCROLL_SPEED = 18;
+
+/**
+ * 実際に縦スクロールする親を探す。
+ *
+ * 一覧そのものがスクロールするとは限らず、編集画面のように
+ * パネル全体が1つのスクロール領域になっていることもある。
+ */
+const findScroller = (element: HTMLElement): HTMLElement => {
+  for (
+    let current: HTMLElement | null = element;
+    current;
+    current = current.parentElement
+  ) {
+    const overflowY = window.getComputedStyle(current).overflowY;
+    if (
+      (overflowY === "auto" || overflowY === "scroll") &&
+      current.scrollHeight > current.clientHeight
+    ) {
+      return current;
+    }
+  }
+  return element;
+};
 
 /**
  * ポインタ操作の並び替え。
@@ -121,7 +144,8 @@ export const useSortableList = ({
   const runAutoScroll = useCallback(() => {
     const container = containerElementRef.current;
     if (!container) return;
-    const bounds = container.getBoundingClientRect();
+    const scroller = findScroller(container);
+    const bounds = scroller.getBoundingClientRect();
     const y = pointerYRef.current;
     const fromTop = y - bounds.top;
     const fromBottom = bounds.bottom - y;
@@ -139,7 +163,7 @@ export const useSortableList = ({
       );
     }
     if (delta !== 0) {
-      container.scrollTop += delta;
+      scroller.scrollTop += delta;
       updateDropIndex(y);
     }
     scrollFrameRef.current = requestAnimationFrame(runAutoScroll);

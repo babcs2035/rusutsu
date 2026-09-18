@@ -1,4 +1,6 @@
+import type { CourseStatusSummary } from "@/lib/courseStatusSummary";
 import type {
+  CourseDifficulty,
   FinalizedCourseFeature,
   FinalizedLiftFeature,
   FinalizedResortMapData,
@@ -128,6 +130,10 @@ export const formatPisteStatus = (piste: string | null | undefined) => {
 export const formatMeters = (value: number | null | undefined) =>
   value == null ? "--" : `${Math.round(value).toLocaleString()}m`;
 
+/** 合計距離は m だと桁が多くて読み取りづらいので km（小数第2位）で出す */
+export const formatKilometers = (value: number | null | undefined) =>
+  value == null ? "--" : `${(value / 1000).toFixed(2)}km`;
+
 /** 斜度は小数第一位まで出しても読み分けられないので整数にする */
 export const formatDegree = (value: number | null | undefined) =>
   value == null ? "--" : `${Math.round(value)}°`;
@@ -157,6 +163,57 @@ export const getLiftElevationDiff = (lift: FinalizedLiftFeature) => {
   }
 
   return lift.properties.vertical;
+};
+
+export const summarizeCourseStatuses = (
+  statuses: Array<StatusSymbol | null>,
+): CourseStatusSummary => {
+  const summary: CourseStatusSummary = {
+    total: statuses.length,
+    open: 0,
+    partial: 0,
+    closed: 0,
+    unknown: 0,
+    observedAt: null,
+    sourceUrls: [],
+    updates: [],
+  };
+  for (const symbol of statuses) {
+    summary[
+      symbol === "○"
+        ? "open"
+        : symbol === "△"
+          ? "partial"
+          : symbol === "×"
+            ? "closed"
+            : "unknown"
+    ]++;
+  }
+  return summary;
+};
+
+/** 難易度ごとの営業状況。コースがある難易度だけを易しい順に返す。 */
+export const createCourseLevelSummaries = (
+  rows: Array<{ difficulty: CourseDifficulty; status: StatusSymbol | null }>,
+) => {
+  const order: CourseDifficulty[] = [
+    "beginner",
+    "beginnerIntermediate",
+    "intermediate",
+    "intermediateAdvanced",
+    "advanced",
+    "unknown",
+  ];
+  return order
+    .filter(difficulty => rows.some(row => row.difficulty === difficulty))
+    .map(difficulty => ({
+      difficulty,
+      summary: summarizeCourseStatuses(
+        rows
+          .filter(row => row.difficulty === difficulty)
+          .map(row => row.status),
+      ),
+    }));
 };
 
 export const maxNullable = (values: Array<number | null | undefined>) => {

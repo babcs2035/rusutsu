@@ -59,3 +59,7 @@ export function conditionsFromCapture(value: unknown): ResortConditions {
     },
   };
 }
+
+/** 出典URLが1つでも登録されているか。未登録＝まだ取得できていない情報。 */
+export const hasSourceUrl = (value: unknown): boolean =>
+  sourceUrls(value).length > 0;

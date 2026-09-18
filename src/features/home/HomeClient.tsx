@@ -16,6 +16,7 @@ import {
   useTransition,
 } from "react";
 import { flushSync } from "react-dom";
+import { z } from "zod";
 import { getSkiResortById } from "@/actions/skiResorts";
 import { DEFAULT_FILTERS } from "@/features/filters/constants";
 import type { Filters } from "@/features/filters/types";
@@ -26,15 +27,21 @@ import {
 } from "@/features/filters/utils/filterResorts";
 import {
   readDetailCache,
+  readOverviewCache,
+  retainDetailCaches,
   writeDetailCache,
+  writeOverviewCache,
 } from "@/features/map/session/detailCache";
 import { MapSessionProvider } from "@/features/map/session/MapSessionProvider";
+import { prepareDetail } from "@/features/map/session/prepareDetail";
 import {
   HOME_SESSION_KEY,
   type HomeSession,
   homeSessionSchema,
+  initializeTabSession,
   readStorage,
   resolveHomeSession,
+  retainResortSession,
   writeStorage,
 } from "@/features/map/session/storage";
 import type {
@@ -80,10 +87,12 @@ type Props = {
 };
 
 export function HomeClient({ initialResorts }: Props) {
-  const [boot, setBoot] = useState<{ session: HomeSession | null } | null>(
-    null,
-  );
+  const [boot, setBoot] = useState<{
+    session: HomeSession | null;
+    resorts: MapSkiResort[];
+  } | null>(null);
   useEffect(() => {
+    initializeTabSession();
     const stored = readStorage(HOME_SESSION_KEY, homeSessionSchema);
     const defaults: HomeSession = {
       version: 1,
@@ -96,17 +105,36 @@ export function HomeClient({ initialResorts }: Props) {
       isListSheetOpen: false,
       listSheetSnapPoint: BOTTOM_SHEET_INITIAL_SNAP_POINT,
     };
-    setBoot({
-      session: resolveHomeSession(
-        stored ?? defaults,
-        new URL(window.location.href),
-        new Set(initialResorts.map(resort => resort.id)),
-      ),
+    const tokenKey = `${HOME_SESSION_KEY}:data`;
+    const token =
+      readStorage(tokenKey, z.string()) ??
+      crypto.randomUUID?.() ??
+      `${Date.now()}-${Math.random()}`;
+    writeStorage(tokenKey, token);
+    let disposed = false;
+    void readOverviewCache(token).then(cached => {
+      if (disposed) return;
+      const resorts = cached ?? initialResorts;
+      if (!cached) void writeOverviewCache(token, initialResorts);
+      setBoot({
+        resorts,
+        session: resolveHomeSession(
+          stored ?? defaults,
+          new URL(window.location.href),
+          new Set(resorts.map(resort => resort.id)),
+        ),
+      });
     });
+    return () => {
+      disposed = true;
+    };
   }, [initialResorts]);
-  if (!boot) return <LoadingSpinner text="地図を準備しています..." />;
+  // 親（body直下）に確定した高さがないので、ここで画面いっぱいの高さを渡す。
+  // 渡さないと h-full が潰れて、スピナーが画面の上端に貼り付く。
+  if (!boot)
+    return <LoadingSpinner className="h-dvh" text="地図を準備しています..." />;
   return (
-    <HomeClientContent initialResorts={initialResorts} session={boot.session} />
+    <HomeClientContent initialResorts={boot.resorts} session={boot.session} />
   );
 }
 
@@ -135,7 +163,7 @@ function HomeClientContent({
     session?.filters ?? DEFAULT_FILTERS,
   );
   const [mobileDraftFilters, setMobileDraftFilters] = useState<Filters>(
-    session?.filters ?? DEFAULT_FILTERS,
+    session?.mobileDraftFilters ?? session?.filters ?? DEFAULT_FILTERS,
   );
   const [isFilterEditorOpen, setIsFilterEditorOpen] = useState(
     session?.isFilterEditorOpen ?? true,
@@ -149,15 +177,22 @@ function HomeClientContent({
   const [selectedFinalizedFeature, setSelectedFinalizedFeature] =
     useState<SelectedMapFeature | null>(session?.selectedFeature ?? null);
   const [selectedElevationProfilePoint, setSelectedElevationProfilePoint] =
-    useState<ElevationProfileMapPoint | null>(null);
-  const [selectedCompareIds, setSelectedCompareIds] = useState<string[]>([]);
+    useState<ElevationProfileMapPoint | null>(
+      session?.selectedElevationProfilePoint ?? null,
+    );
+  const [selectedCompareIds, setSelectedCompareIds] = useState<string[]>(
+    session?.selectedCompareIds ?? [],
+  );
   const [compareResortData, setCompareResortData] = useState<SkiResortDetail[]>(
     [],
   );
-  const [isCompareOpen, setIsCompareOpen] = useState(false);
+  const [isCompareOpen, setIsCompareOpen] = useState(
+    session?.isCompareOpen ?? false,
+  );
   const [isCompareLoading, setIsCompareLoading] = useState(false);
-  const [isMobileFilterOverlayOpen, setIsMobileFilterOverlayOpen] =
-    useState(false);
+  const [isMobileFilterOverlayOpen, setIsMobileFilterOverlayOpen] = useState(
+    session?.isMobileFilterOverlayOpen ?? false,
+  );
   const [isListSheetOpen, setIsListSheetOpen] = useState(
     session?.isListSheetOpen ?? false,
   );
@@ -188,7 +223,9 @@ function HomeClientContent({
   const mobileSearchViewportBaseHeightRef = useRef<number | null>(null);
   const returnViewStateRef = useRef<ReturnViewState | null>(null);
   const mobileSearchReturnStateRef = useRef<MobileSearchReturnState | null>(
-    null,
+    session?.mobileSearchReturn
+      ? { ...session.mobileSearchReturn, selectedResortData: null }
+      : null,
   );
   const hasUserInteractedWithMapInDetailRef = useRef(false);
   const keyboardReturnSnapPointRef = useRef<number | string | null>(null);
@@ -208,6 +245,26 @@ function HomeClientContent({
     setIsKeyboardActive: setIsMobileSearchKeyboardActive,
     setViewport: setMobileSearchViewport,
   });
+
+  useEffect(() => {
+    const retainedIds = retainResortSession(selectedResortId);
+    const tabId = readStorage(`${HOME_SESSION_KEY}:data`, z.string());
+    if (tabId) void retainDetailCaches(tabId, retainedIds);
+    if (!("serviceWorker" in navigator)) return;
+    let disposed = false;
+    void navigator.serviceWorker.ready.then(registration => {
+      if (!disposed)
+        registration.active?.postMessage({
+          type: "SET_VIEW",
+          id: selectedResortId,
+          tabId,
+          retainedIds,
+        });
+    });
+    return () => {
+      disposed = true;
+    };
+  }, [selectedResortId]);
 
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState(false);
@@ -229,11 +286,17 @@ function HomeClientContent({
       setDetailError(false);
       // キャッシュは先に表示。ネットワークの応答待ちで地図を塞がない。
       void readDetailCache(selectedResortId).then(cached => {
-        if (!disposed && current === generation && cached)
+        if (!disposed && current === generation && cached) {
           setSelectedResortData(previous =>
             previous?.id === selectedResortId ? previous : cached,
           );
+          void prepareDetail(cached, true);
+        }
       });
+      if (!navigator.onLine) {
+        setDetailLoading(false);
+        return;
+      }
       let timer: ReturnType<typeof setTimeout> | undefined;
       try {
         const data = await Promise.race([
@@ -249,7 +312,10 @@ function HomeClientContent({
           return;
         }
         setSelectedResortData(data);
-        void writeDetailCache(data);
+        void writeDetailCache(
+          data,
+          readStorage(`${HOME_SESSION_KEY}:data`, z.string()) ?? undefined,
+        ).then(saved => prepareDetail(data, saved));
       } catch {
         if (!disposed && current === generation) setDetailError(true);
       } finally {
@@ -294,9 +360,19 @@ function HomeClientContent({
   }, [selectedFinalizedFeature, selectedResortData, selectedResortId]);
 
   useEffect(() => {
-    if (isMobileFilterOverlayOpen) return;
     const value: HomeSession = {
       version: 1,
+      mobileDraftFilters,
+      isMobileFilterOverlayOpen,
+      selectedCompareIds,
+      isCompareOpen,
+      selectedElevationProfilePoint,
+      mobileSearchReturn: mobileSearchReturnStateRef.current
+        ? ({
+            ...mobileSearchReturnStateRef.current,
+            selectedResortData: undefined,
+          } as HomeSession["mobileSearchReturn"])
+        : null,
       selectedResortId,
       selectedFeature: selectedFinalizedFeature,
       mobileContentTab,
@@ -323,7 +399,24 @@ function HomeClientContent({
     isListSheetOpen,
     listSheetSnapPoint,
     isMobileFilterOverlayOpen,
+    mobileDraftFilters,
+    selectedCompareIds,
+    isCompareOpen,
+    selectedElevationProfilePoint,
   ]);
+
+  useEffect(() => {
+    if (!session?.isCompareOpen) return;
+    let disposed = false;
+    void Promise.all(
+      (session.selectedCompareIds ?? []).map(getCachedResort),
+    ).then(data => {
+      if (!disposed) setCompareResortData(data.filter(item => item !== null));
+    });
+    return () => {
+      disposed = true;
+    };
+  }, [session]);
 
   // --- データ絞り込みロジック ---
 
@@ -356,6 +449,17 @@ function HomeClientContent({
   const selectedCompareIdSet = useMemo(
     () => new Set(selectedCompareIds),
     [selectedCompareIds],
+  );
+  // 詳細データの取得を待たずに名前と所在地を出すための素材。
+  // 一覧（地図用データ）はページのSSRに含まれるので、リストや地図から選んだ
+  // ときはもちろん、URL直打ちでも初回描画の時点で手元にある。
+  const selectedResortSummary = useMemo(
+    () =>
+      selectedResortId
+        ? (initialResorts.find(resort => resort.id === selectedResortId) ??
+          null)
+        : null,
+    [initialResorts, selectedResortId],
   );
   const mapInteractionMode = isCompareOpen
     ? "compare"
@@ -755,7 +859,7 @@ function HomeClientContent({
 
       setIsCompareLoading(true);
       startTransition(async () => {
-        const data = await getSkiResortById(id);
+        const data = await getCachedResort(id);
         if (data) {
           setCompareResortData(prev =>
             prev.some(resort => resort.id === data.id) ? prev : [...prev, data],
@@ -784,7 +888,7 @@ function HomeClientContent({
     setCompareResortData([]);
 
     const data = await Promise.all(
-      selectedCompareIds.map(id => getSkiResortById(id)),
+      selectedCompareIds.map(id => getCachedResort(id)),
     );
 
     setCompareResortData(data.filter(resort => resort !== null));
@@ -901,6 +1005,7 @@ function HomeClientContent({
         selectedFinalizedFeature={selectedFinalizedFeature}
         selectedResortData={selectedResortData}
         selectedResortId={selectedResortId}
+        selectedResortSummary={selectedResortSummary}
         shouldRenderMobileListSheet={shouldRenderMobileListSheet}
         onCloseCompare={handleCloseCompare}
         onClearCompare={handleClearCompare}
@@ -946,4 +1051,15 @@ function HomeClientContent({
       />
     </MapSessionProvider>
   );
+}
+
+async function getCachedResort(id: string): Promise<SkiResortDetail | null> {
+  const cached = await readDetailCache(id);
+  if (!navigator.onLine) return cached;
+  try {
+    const data = await getSkiResortById(id);
+    return data ?? cached;
+  } catch {
+    return cached;
+  }
 }

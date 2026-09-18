@@ -550,9 +550,7 @@ test("map data follows finalized, measured, then before priority", async () => {
     assert.equal(osmData?.courses?.source, "slope_10m_osm");
     assert.equal(osmData?.courses?.baseSource, "slope_before_osm");
     assert.equal(osmData?.courses?.verificationStatus, "unverified");
-    assert.deepEqual(osmData?.courses?.sourceUrls, [
-      "https://www.openstreetmap.org/copyright",
-    ]);
+    assert.deepEqual(osmData?.courses?.sourceUrls, []);
     assert.equal(osmData?.courses?.features[0]?.properties.level, "初級");
     assert.equal(
       osmData?.courses?.features[0]?.verificationStatus,

@@ -48,7 +48,7 @@ export const UnderlineTabs = <TTab extends string>({
             fill ? "min-w-0 flex-1 md:min-w-[6rem]" : "min-w-0",
             isActive
               ? "border-blue-600 font-bold text-blue-600"
-              : "border-transparent font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900",
+              : "border-transparent font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900",
           )}
         >
           {tab}

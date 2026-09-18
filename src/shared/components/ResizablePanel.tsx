@@ -123,7 +123,7 @@ export function ResizablePanel({
       className={cn("relative flex h-full min-h-0 shrink-0", className)}
       style={{ width }}
     >
-      <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
+      <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-y-auto">
         {children}
       </div>
       <button

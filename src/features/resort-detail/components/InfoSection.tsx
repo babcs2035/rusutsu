@@ -11,15 +11,10 @@ import type { Resort } from "../types";
 
 type ResortInfo = Pick<
   Resort,
-  | "id"
-  | "nameJa"
-  | "nameRuby"
-  | "formerNames"
-  | "prefecture"
-  | "town"
-  | "descriptionShort"
-  | "yukiMagi"
->;
+  "id" | "nameJa" | "nameRuby" | "formerNames" | "prefecture" | "town"
+> & {
+  yukiMagi: boolean;
+};
 
 export const InfoSection = ({
   resort,
@@ -38,30 +33,32 @@ export const InfoSection = ({
   );
 
   return (
-    <div className="w-full px-4 py-3 border-b border-gray-200">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="flex-1 min-w-0 text-gray-900 text-xl md:text-2xl leading-snug font-bold font-[var(--font-heading)]">
+    <div className="w-full px-3.5 py-2.5 border-b border-gray-200">
+      <div className="flex items-start justify-between gap-1.5">
+        <h2 className="flex-1 min-w-0 pt-0.5 text-gray-900 text-lg md:text-xl leading-snug font-bold font-[var(--font-heading)]">
           <RubyText segments={resort.nameRuby} fallback={resort.nameJa} />
         </h2>
-        <CopyResortNameButton name={resort.nameJa} />
-        <Button
-          type="button"
-          variant="ghost"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-gray-200 shadow-sm hover:bg-gray-50 hover:text-gray-900 text-lg p-0 min-h-8 text-gray-500 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10"
-          onClick={onClose}
-          aria-label="詳細を閉じる"
-        >
-          <X size={18} strokeWidth={2.5} />
-        </Button>
+        <div className="flex shrink-0 items-center gap-1">
+          <CopyResortNameButton name={resort.nameJa} />
+          <Button
+            type="button"
+            variant="ghost"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-gray-200 shadow-sm hover:bg-gray-50 hover:text-gray-900 text-lg p-0 min-h-8 text-gray-500 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10"
+            onClick={onClose}
+            aria-label="詳細を閉じる"
+          >
+            <X size={18} strokeWidth={2.5} />
+          </Button>
+        </div>
       </div>
       {resort.formerNames.length > 0 && (
         <p className="mt-1 text-xs leading-loose text-gray-500">
           旧称: <FormerResortNames names={resort.formerNames} />
         </p>
       )}
-      <div className="mt-0.5 md:mt-2.5 flex items-center gap-2">
-        <p className="flex-1 min-w-0 text-sm text-blue-600 font-medium">
-          {resort.prefecture} • {resort.town}
+      <div className="mt-1 md:mt-2 flex items-center gap-2">
+        <p className="flex-1 min-w-0 text-xs md:text-sm text-blue-600 font-medium">
+          {resort.prefecture}・{resort.town}
           {resort.yukiMagi && (
             <Badge
               variant="secondary"
@@ -92,9 +89,6 @@ export const InfoSection = ({
           <span>{isCompareSelected ? "比較から外す" : "比較に追加"}</span>
         </Button>
       </div>
-      <p className="mt-2 text-gray-700 text-sm leading-snug">
-        {resort.descriptionShort}
-      </p>
     </div>
   );
 };

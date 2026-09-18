@@ -23,27 +23,36 @@ const resort = {
     },
   ],
 } as unknown as Resort;
-test("ゲレンデは共通集計・距離の後にコースとリフトを切り替える", () => {
+test("ゲレンデはコース／リフトそれぞれの内容だけを切り替えて表示する", () => {
   for (const activeTab of ["コース", "リフト"] as const) {
     const html = renderToStaticMarkup(
       createElement(TerrainTab, {
         resort,
         activeTab,
-        onTabChange: () => {},
         selectedFinalizedFeature: null,
         onSelectedFinalizedFeatureChange: () => {},
       }),
     );
-    assert.ok(
-      html.indexOf("コース総滑走距離") < html.indexOf('role="tablist"'),
-    );
-    assert.ok(html.indexOf("リフト総延長") < html.indexOf('role="tablist"'));
     assert.match(html, activeTab === "コース" ? /コース一覧/ : /リフト一覧/);
+    assert.doesNotMatch(
+      html,
+      activeTab === "コース" ? /リフト一覧/ : /コース一覧/,
+    );
     assert.doesNotMatch(html, /本文の一行目/);
   }
 });
 test("コメントは見出しと全文を表示し、折り畳み・取得日時を付けない", () => {
-  const html = renderToStaticMarkup(createElement(OverviewTab, { resort }));
+  const html = renderToStaticMarkup(
+    createElement(OverviewTab, {
+      resort,
+      showTerrainDetail: false,
+      terrainTab: "コース",
+      onShowTerrainDetail: () => {},
+      onCloseTerrainDetail: () => {},
+      selectedFinalizedFeature: null,
+      onSelectedFinalizedFeatureChange: () => {},
+    }),
+  );
   assert.match(html, /aria-label="コメント"/);
   assert.match(html, /本文の一行目\n本文の二行目/);
   assert.doesNotMatch(html, /<details|<summary|2026\/1\/1 08:00/);
@@ -70,7 +79,15 @@ test("コメント本文がなくてもcommentUrlを表示し、取得日時は�
     ],
   } as unknown as Resort;
   const html = renderToStaticMarkup(
-    createElement(OverviewTab, { resort: withLinks }),
+    createElement(OverviewTab, {
+      resort: withLinks,
+      showTerrainDetail: false,
+      terrainTab: "コース",
+      onShowTerrainDetail: () => {},
+      onCloseTerrainDetail: () => {},
+      selectedFinalizedFeature: null,
+      onSelectedFinalizedFeatureChange: () => {},
+    }),
   );
   assert.match(html, /aria-label="コメント"/);
   assert.match(html, /href="https:\/\/example.com\/news"/);

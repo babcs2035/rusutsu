@@ -2,6 +2,7 @@
 
 import { readResortLinksMap } from "@/features/lift/server/liftFiles";
 import { collectSocialAccounts } from "@/features/resort-detail/utils/socialAccounts";
+import { collectTrailMapLinks } from "@/features/resort-detail/utils/trailMapLinks";
 import { readCurrentResortConditions } from "@/lib/crawlLatestCurrent";
 import { getFinalizedResortMapData } from "@/lib/finalizedResortGeojson";
 import type {
@@ -211,6 +212,7 @@ export async function getSkiResortById(id: string) {
       })),
     ),
     socialAccounts: collectSocialAccounts(linksMap, [resort.id, ...sourceIds]),
+    trailMapLinks: collectTrailMapLinks(linksMap, [resort.id, ...sourceIds]),
     weatherIds,
     finalizedMapData,
     finalizedOperationSummary:

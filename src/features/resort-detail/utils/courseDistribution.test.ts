@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { FinalizedCourseFeature } from "@/lib/finalizedResortGeojsonShared";
-import { slopeDistribution, sumKnown } from "./courseDistribution";
+import {
+  groupSlopeBins,
+  slopeDistribution,
+  sumKnown,
+} from "./courseDistribution";
 import {
   conditionsFromCapture,
   conditionText,
@@ -96,4 +100,20 @@ test("気象はweatherUrl、コメントはcommentUrlと取得日時を保持す
   ]);
   assert.equal(conditions.weather?.time, "2026/9/17 10:00:00");
   assert.equal(conditions.comment?.time, "2026/9/17 10:00:00");
+});
+
+test("帯グラフの斜度区分は両端をまとめ、合計100%を保つ", () => {
+  const bins = Array.from({ length: 18 }, (_, index) => ({
+    percent: index === 0 || index >= 6 ? 100 / 13 : 0,
+  }));
+  const grouped = groupSlopeBins(bins);
+  assert.deepEqual(
+    grouped.map(bin => bin.label),
+    ["5°以下", "5–10°", "10–15°", "15–20°", "20–25°", "25–30°", "30°以上"],
+  );
+  assert.ok(Math.abs(grouped[0].percent - 100 / 13) < 1e-9);
+  assert.ok(Math.abs(grouped[6].percent - (100 / 13) * 12) < 1e-9);
+  assert.ok(
+    Math.abs(grouped.reduce((sum, bin) => sum + bin.percent, 0) - 100) < 1e-9,
+  );
 });

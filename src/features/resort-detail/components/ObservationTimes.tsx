@@ -14,7 +14,7 @@ export function ObservationTimes({
   }
   return (
     <div
-      className={`min-w-0 space-y-0.5 text-sm leading-5 text-slate-600 ${align === "right" ? "ml-auto text-right" : "text-left"}`}
+      className={`min-w-0 space-y-0.5 text-sm leading-5 text-slate-700 ${align === "right" ? "ml-auto text-right" : "text-left"}`}
       role="group"
       aria-label="情報取得日時"
     >

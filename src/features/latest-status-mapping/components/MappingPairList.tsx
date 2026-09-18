@@ -87,7 +87,7 @@ export function MappingPairList<T extends MappingPairItem>({
   }, [activeItemId, sortable.draggingId]);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-1 max-md:flex-none">
+    <div className="flex flex-col gap-1">
       <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_18px_minmax(0,0.8fr)] items-center gap-1 px-1 text-[10px] font-semibold text-gray-500">
         <span>{leftHeading}</span>
         <span />
@@ -109,7 +109,7 @@ export function MappingPairList<T extends MappingPairItem>({
       )}
       <div
         ref={sortable.containerRef}
-        className="relative min-h-[140px] flex-1 overflow-y-auto rounded-md border max-md:max-h-64"
+        className="relative min-h-[140px] rounded-md border"
       >
         {items.map((item, index) => {
           const isActive = item.id === activeItemId;
@@ -213,7 +213,7 @@ export function MappingPairList<T extends MappingPairItem>({
           <p className="mb-1 text-[11px] font-bold text-orange-900">
             未対応のクロール結果（{mapping.unmappedCrawledNames.length} 件）
           </p>
-          <div className="flex max-h-24 flex-wrap gap-1 overflow-y-auto">
+          <div className="flex flex-wrap gap-1">
             {mapping.unmappedCrawledNames.map(name => (
               <Button
                 key={name}

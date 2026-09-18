@@ -1,28 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { z } from "zod";
+import { useScreenState } from "@/features/map/session/useScreenState";
 import type { SelectedMapFeature } from "@/features/map/types";
 import {
   COURSE_DIFFICULTY_META,
   type FinalizedResortMapData,
   getCourseDifficulty,
+  getSlopeColor,
 } from "@/lib/finalizedResortGeojsonShared";
-import {
-  CompactMetric,
-  SourceLine,
-  StatusMark,
-} from "../components/CompactInfo";
-import { CourseStatusTable } from "../components/CourseStatusTable";
-import { ObservationTimes } from "../components/ObservationTimes";
+import { SourceLine, StatusMark } from "../components/CompactInfo";
+import { ProportionBar } from "../components/ProportionBar";
+import { StatusBreakdownTable } from "../components/StatusBreakdownTable";
 import type { Resort } from "../types";
-import { slopeDistribution, sumKnown } from "../utils/courseDistribution";
 import {
+  groupSlopeBins,
+  slopeDistribution,
+  sumKnown,
+} from "../utils/courseDistribution";
+import { hasSourceUrl } from "../utils/currentConditions";
+import {
+  createCourseLevelSummaries,
   createFinalizedCourseGroups,
   formatDegree,
   formatMeters,
   getCourseGroupPisteSymbol,
   getCourseGroupStatus,
   maxNullable,
+  summarizeCourseStatuses,
 } from "../utils/detailMetrics";
 
 const colors = {
@@ -34,25 +39,40 @@ const colors = {
   unknown: "#64748b",
 };
 const backgrounds = { "○": "#ffffff", "△": "#fef3c7", "×": "#e0f2fe" };
+/** 「不明」は状況不明の列と紛らわしいので、レベル側は明示する */
+const levelLabel = (key: string) =>
+  key === "unknown"
+    ? "レベル不明"
+    : COURSE_DIFFICULTY_META[key as keyof typeof colors].label;
 export const CoursesTab = ({
   resort,
-  hideSummary = false,
   finalizedMapData,
   selectedFinalizedFeature,
   onSelectedFinalizedFeatureChange,
 }: {
   resort: Resort;
-  hideSummary?: boolean;
   finalizedMapData: FinalizedResortMapData | null;
   selectedFinalizedFeature: SelectedMapFeature | null;
   onSelectedFinalizedFeatureChange: (
     feature: SelectedMapFeature | null,
   ) => void;
 }) => {
-  const [filter, setFilter] = useState("all");
-  const [sort, setSort] = useState(false);
+  const [filter, setFilter] = useScreenState(
+    `rusutsu:detail:v1:${resort.id}:CoursesTab:filter`,
+    z.string().max(100),
+    "all",
+  );
+  const [sort, setSort] = useScreenState(
+    `rusutsu:detail:v1:${resort.id}:CoursesTab:sort`,
+    z.boolean(),
+    false,
+  );
   const courseStatus = finalizedMapData?.courseStatusSummary;
   const section = finalizedMapData?.courses;
+  // 出典が未登録なら営業状況そのものが取れていない。区間数は地図のコースで数える。
+  const hasSource = hasSourceUrl(
+    courseStatus?.sourceUrls ?? section?.sourceUrls,
+  );
   const features = section?.features ?? [];
   const groups = createFinalizedCourseGroups(features);
   const rows = groups.length
@@ -110,147 +130,90 @@ export const CoursesTab = ({
       : rows.map(r => r.distance),
   );
   const distribution = slopeDistribution(features);
-  const levels = Object.entries(colors).map(([key, color]) => ({
-    key,
-    color,
-    label: COURSE_DIFFICULTY_META[key as keyof typeof colors].label,
-    count: rows.filter(row => row.difficulty === key).length,
+  const levelDistance = sumKnown(rows.map(row => row.distance)).total ?? 0;
+  const levels = Object.keys(colors).map(key => {
+    const levelRows = rows.filter(row => row.difficulty === key);
+    const rowDistance = sumKnown(levelRows.map(row => row.distance)).total;
+    return {
+      key,
+      // 帯は地図と同じ配色にして、地図で見た印象とそのまま結び付くようにする
+      color: COURSE_DIFFICULTY_META[key as keyof typeof colors].color,
+      label: levelLabel(key),
+      count: levelRows.length,
+      // 距離が1本も分からない区分は 0km ではなく「不明」として扱う
+      distance: rowDistance,
+      percent: levelDistance ? ((rowDistance ?? 0) / levelDistance) * 100 : 0,
+    };
+  });
+  // 全体行と各レベル行は同じ数え方（地図のコース単位）でそろえ、足して合うようにする
+  const levelSummaries = createCourseLevelSummaries(
+    rows.map(row => ({ difficulty: row.difficulty, status: row.status })),
+  );
+  const breakdownRows = [
+    {
+      label: "全体",
+      summary: summarizeCourseStatuses(rows.map(row => row.status)),
+      distance: distance.total,
+    },
+    // レベルが1種類しかないときの内訳は全体行と同じ内容になるので出さない
+    ...(levelSummaries.length > 1
+      ? levelSummaries.map(({ difficulty, summary }) => ({
+          label: levelLabel(difficulty),
+          summary,
+          distance:
+            levels.find(level => level.key === difficulty)?.distance ?? null,
+        }))
+      : []),
+  ];
+  // 帯は地図と同じ配色にして、地図で見た斜度の印象とそのまま結び付くようにする
+  const slopeSegments = groupSlopeBins(distribution.bins).map(bin => ({
+    key: bin.label,
+    label: bin.label,
+    color: getSlopeColor(bin.sample),
+    percent: bin.percent,
   }));
   const displayed = rows
     .filter(row => filter === "all" || row.difficulty === filter)
     .sort((a, b) => (sort ? (b.distance ?? -1) - (a.distance ?? -1) : 0));
   return (
     <div className="space-y-4">
-      {!hideSummary && (
-        <section>
-          <div className="flex items-baseline justify-between gap-3">
-            <h2 className="shrink-0 text-lg font-bold text-slate-900">
-              営業状況
-            </h2>
-            <ObservationTimes
-              entries={[
-                {
-                  label: "コース",
-                  time: courseStatus?.observedAt ?? section?.observedAt,
-                },
-              ]}
+      <StatusBreakdownTable
+        rows={breakdownRows}
+        countLabel="区間"
+        unavailable={!hasSource}
+        source={
+          hasSource ? (
+            <SourceLine
+              label="コース"
+              showLabel={false}
+              showFetched={false}
+              urls={courseStatus?.sourceUrls ?? section?.sourceUrls}
+              updates={
+                courseStatus?.updates ??
+                features.map(c => c.properties.update ?? "")
+              }
             />
-          </div>
-          <div className="mt-2 grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] items-center gap-3 rounded-lg bg-slate-50 p-3">
-            <dl>
-              <CompactMetric label="総滑走距離">
-                {formatMeters(distance.total)}
-              </CompactMetric>
-            </dl>
-            <CourseStatusTable summary={courseStatus} />
-          </div>
-          <SourceLine
-            label="コース"
-            showLabel={false}
-            showFetched={false}
-            time={courseStatus?.observedAt ?? section?.observedAt}
-            urls={courseStatus?.sourceUrls ?? section?.sourceUrls}
-            updates={
-              courseStatus?.updates ??
-              features.map(c => c.properties.update ?? "")
-            }
-          />
-          <p className="mt-1 text-sm text-slate-500">
-            斜面に沿った距離の合計（地形データ優先・公表値で補完）
-            {distance.missing > 0 && ` · 距離不明${distance.missing}区間を除く`}
-          </p>
-        </section>
-      )}
-      <section className="space-y-2">
-        <h2 className="text-sm font-bold">
-          レベル別割合{" "}
-          <span className="text-sm font-normal text-slate-500">
-            コース数ベース
-          </span>
-        </h2>
-        {rows.length ? (
-          <>
-            <div
-              className="flex h-5 overflow-hidden rounded"
-              role="img"
-              aria-label={levels
-                .map(
-                  l =>
-                    `${l.label} ${Math.round((l.count / rows.length) * 100)}%`,
-                )
-                .join("、")}
-            >
-              {levels
-                .filter(l => l.count)
-                .map(l => (
-                  <div
-                    key={l.key}
-                    style={{
-                      width: `${(l.count / rows.length) * 100}%`,
-                      background: l.color,
-                    }}
-                  />
-                ))}
-            </div>
-            <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
-              {levels
-                .filter(l => l.count)
-                .map(l => (
-                  <span key={l.key} style={{ color: l.color }}>
-                    ● {l.label} {Math.round((l.count / rows.length) * 100)}%
-                  </span>
-                ))}
-            </div>
-          </>
-        ) : (
-          <p className="text-sm text-slate-500">難易度データなし</p>
-        )}
-        <h3 className="pt-2 text-sm font-bold">
-          斜度別割合{" "}
-          <span className="text-sm font-normal text-slate-500">
-            滑走距離ベース・5°刻み
-          </span>
-        </h3>
-        {distribution.total > 0 ? (
-          <div className="grid grid-cols-3 gap-x-3 gap-y-2">
-            {distribution.bins
-              .filter((b, i) => i < 9 || b.distance > 0)
-              .map(bin => (
-                <div key={bin.label} className="text-sm">
-                  <div className="flex justify-between gap-1">
-                    <span>{bin.label}</span>
-                    <span className="tabular-nums">
-                      {bin.percent.toFixed(1)}%
-                    </span>
-                  </div>
-                  <div className="mt-1 h-1.5 rounded bg-slate-100">
-                    <div
-                      className="h-full rounded bg-blue-600"
-                      style={{ width: `${bin.percent}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-          </div>
-        ) : (
-          <p className="text-sm text-slate-500">
-            標高付きのコースデータがないため集計できません。
-          </p>
-        )}
-        <p className="text-sm text-slate-500">
-          地形の各区間から算出。
-          {distribution.omitted > 0
-            ? `標高不明の${distribution.omitted}区間は集計対象外。`
-            : ""}
-          端数処理により合計が100%にならない場合があります。
-        </p>
-      </section>
+          ) : undefined
+        }
+      />
+      <ProportionBar
+        title="レベル別割合"
+        note="滑走距離ベース"
+        segments={levels}
+        emptyText="難易度データなし"
+      />
+      <ProportionBar
+        title="斜度別割合"
+        note={`滑走距離ベース${distribution.omitted > 0 ? `・標高不明の${distribution.omitted}区間を除く` : ""}`}
+        segments={slopeSegments}
+        emptyText="標高付きのコースデータがないため集計できません。"
+      />
       <section>
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-bold">
             コース一覧{" "}
             {section?.verificationStatus === "verified" && (
-              <span className="text-sm font-normal text-slate-500">
+              <span className="text-sm font-normal text-slate-700">
                 確認済み
               </span>
             )}
@@ -352,7 +315,7 @@ export const CoursesTab = ({
             </tbody>
           </table>
           {!displayed.length && (
-            <p className="p-4 text-center text-sm text-slate-500">
+            <p className="p-4 text-center text-sm text-slate-700">
               コースデータがありません
             </p>
           )}

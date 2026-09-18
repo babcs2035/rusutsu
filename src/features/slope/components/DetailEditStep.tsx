@@ -237,7 +237,7 @@ export function DetailEditStep({
   };
 
   return (
-    <div className="flex h-full min-h-0 w-full min-w-0 flex-col gap-2 overflow-y-auto border-l border-gray-200 bg-white p-3">
+    <div className="flex w-full min-w-0 shrink-0 flex-col gap-2 border-l border-gray-200 bg-white p-3">
       <div className="flex min-w-0 items-start justify-between gap-2">
         <div className="min-w-0">
           <h2 className="truncate font-bold font-[var(--font-heading)] text-base">
@@ -294,7 +294,7 @@ export function DetailEditStep({
 
       <div
         ref={sortable.containerRef}
-        className="relative max-h-[34%] min-h-[110px] shrink-0 overflow-y-auto rounded-md border border-gray-200"
+        className="relative max-h-[220px] min-h-[110px] shrink-0 overflow-y-auto rounded-md border border-gray-200"
       >
         {courses.map((course, index) => (
           <div

@@ -13,6 +13,11 @@ export function useOfflineMap() {
       return;
     let disposed = false;
     let observer: PerformanceObserver | undefined;
+    let refresh = () => {};
+    const resume = () => {
+      if (navigator.onLine) refresh();
+    };
+    window.addEventListener("online", resume);
     void navigator.serviceWorker
       .register("/rusutsu/map-sw.js", {
         scope: "/rusutsu",
@@ -29,7 +34,11 @@ export function useOfflineMap() {
         warm(performance.getEntriesByType("resource"));
         observer = new PerformanceObserver(list => warm(list.getEntries()));
         observer.observe({ type: "resource" });
-        registration.active?.postMessage({ type: "SAVE_HOME" });
+        refresh = () => {
+          warm(performance.getEntriesByType("resource"));
+          registration.active?.postMessage({ type: "SAVE_HOME" });
+        };
+        refresh();
       })
       .catch(() => {
         /* Safari の保存制限下でもオンライン表示は継続する。 */
@@ -37,6 +46,7 @@ export function useOfflineMap() {
     return () => {
       disposed = true;
       observer?.disconnect();
+      window.removeEventListener("online", resume);
     };
   }, []);
 }

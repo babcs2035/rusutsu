@@ -200,7 +200,7 @@ export function GeometryStep({
   };
 
   return (
-    <div className="flex h-full min-h-0 w-full min-w-0 flex-col gap-2 max-md:overflow-y-auto border-l border-gray-200 bg-white p-3">
+    <div className="flex w-full min-w-0 shrink-0 flex-col gap-2 border-l border-gray-200 bg-white p-3">
       <div className="flex min-w-0 items-start justify-between gap-2">
         <div className="min-w-0">
           <h2
@@ -317,7 +317,7 @@ export function GeometryStep({
       />
 
       {deletedLifts.length > 0 && (
-        <Alert className="max-h-[140px] shrink-0 overflow-y-auto border-red-300 bg-red-50 p-2">
+        <Alert className="shrink-0 border-red-300 bg-red-50 p-2">
           <AlertTitle className="text-xs font-bold text-red-700">
             削除予定（{deletedLifts.length} 件）
           </AlertTitle>

@@ -82,6 +82,16 @@ export const FINALIZED_SELECTED_PANE = "resort-finalized-selected";
 export const FINALIZED_LABEL_PANE = "resort-finalized-labels";
 export const COMPARE_PANEL_ATTRIBUTE = "data-ski-resort-compare-panel";
 export const COMPARE_MAP_HEADER_ATTRIBUTE = "data-compare-map-header";
+/**
+ * 地図の上端に浮かせているボタン類（表示切り替え・出典・拡大）。
+ * コースやリフトがこの下に潜らないよう、寄せるときの余白に足す。
+ */
+export const MAP_TOP_CONTROLS_ATTRIBUTE = "data-map-top-controls";
+/**
+ * 地図の下端に浮かせている凡例・表示切り替えのカード。
+ * コースやリフトがこの下に潜らないよう、寄せるときの余白に足す。
+ */
+export const MAP_BOTTOM_TOOLBAR_ATTRIBUTE = "data-map-bottom-toolbar";
 /** 地図に重ねて出す「選択中のコース・リフト」パネル。値は left / right */
 export const FEATURE_DETAIL_OVERLAY_ATTRIBUTE =
   "data-map-feature-detail-overlay";

@@ -10,12 +10,14 @@ import type {
   RefObject,
 } from "react";
 import { useEffect, useState } from "react";
+import { z } from "zod";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { REGION_PREFECTURES } from "@/features/filters/constants";
 import type { Filters } from "@/features/filters/types";
 import { getActiveFilterLabels } from "@/features/filters/utils/filterLabels";
 import { DEFAULT_LIFT_TICKET_SEARCH_INPUT } from "@/features/lift-ticket/utils/calculateLiftTicket";
+import { useScreenState } from "@/features/map/session/useScreenState";
 import type {
   CourseColorMode,
   ElevationProfileMapPoint,
@@ -26,7 +28,13 @@ import type {
 import { SkiResortDetailView } from "@/features/resort-detail/SkiResortDetailView";
 import { cn } from "@/lib/utils";
 import { AnimatedPanel } from "@/shared/components/AnimatedPanel";
+import { FormerResortNames } from "@/shared/components/FormerResortNames";
+import { RubyText } from "@/shared/components/RubyText";
 import { SegmentedControl } from "@/shared/components/SegmentedControl";
+import type {
+  ResortFormerName,
+  ResortRubySegment,
+} from "@/shared/types/resortReading";
 import type {
   MapSkiResort,
   NullableSkiResortDetail,
@@ -58,6 +66,8 @@ const MOBILE_CONTENT_TAB_OPTIONS = [
   { value: "map", label: "地図" },
   { value: "info", label: "リスト" },
 ] as const satisfies readonly { value: "info" | "map"; label: string }[];
+
+const expandedSchema = z.boolean();
 
 type Props = {
   DynamicMap: ComponentType<JapanResortMapProps>;
@@ -98,6 +108,8 @@ type Props = {
   selectedFinalizedFeature: SelectedMapFeature | null;
   selectedResortData: NullableSkiResortDetail | null;
   selectedResortId: string | null;
+  /** 詳細の取得待ちでも名前と所在地を出すための一覧側データ */
+  selectedResortSummary: MapSkiResort | null;
   shouldRenderMobileListSheet: boolean;
   onCloseCompare: () => void;
   onClearCompare: () => void;
@@ -181,6 +193,7 @@ export const HomeLayout = ({
   selectedFinalizedFeature,
   selectedResortData,
   selectedResortId,
+  selectedResortSummary,
   shouldRenderMobileListSheet,
   onCloseCompare,
   onClearCompare,
@@ -232,7 +245,11 @@ export const HomeLayout = ({
   const [compareSlopeSelection, setCompareSlopeSelection] =
     useState<CompareSlopeSelection | null>(null);
   // デスクトップの詳細で、左の地図を画面いっぱいに広げているか
-  const [isDesktopMapExpanded, setIsDesktopMapExpanded] = useState(false);
+  const [isDesktopMapExpanded, setIsDesktopMapExpanded] = useScreenState(
+    `rusutsu:panel:v1:${selectedResortId}:desktopExpanded`,
+    expandedSchema,
+    false,
+  );
   const isDesktopCompare = isSidePanelLayout && isCompareOpen;
   const isDesktopDetailMapExpanded =
     isSidePanelLayout &&
@@ -255,7 +272,7 @@ export const HomeLayout = ({
   useEffect(() => {
     if (selectedResortId && !isCompareOpen) return;
     setIsDesktopMapExpanded(false);
-  }, [isCompareOpen, selectedResortId]);
+  }, [isCompareOpen, selectedResortId, setIsDesktopMapExpanded]);
 
   useEffect(() => {
     if (!isDesktopDetailMapExpanded) return;
@@ -267,7 +284,11 @@ export const HomeLayout = ({
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isDesktopDetailMapExpanded, selectedFinalizedFeature]);
+  }, [
+    isDesktopDetailMapExpanded,
+    selectedFinalizedFeature,
+    setIsDesktopMapExpanded,
+  ]);
 
   // 比較中のスキー場にコース・リフトが 1 つもなければ、
   // 帯のコース設定（色分け・凡例）は出しても意味がない
@@ -388,9 +409,33 @@ export const HomeLayout = ({
               mode={selectedResortId ? "detail" : "results"}
               resultCount={filteredResorts.length}
               compareCount={selectedCompareIds.length}
-              detailTitle={selectedResortData?.nameJa ?? "読み込み中"}
-              detailPrefecture={selectedResortData?.prefecture ?? ""}
-              detailTown={selectedResortData?.town ?? ""}
+              detailTitle={
+                selectedResortData?.nameJa ??
+                selectedResortSummary?.nameJa ??
+                "読み込み中"
+              }
+              detailNameRuby={
+                selectedResortData?.nameRuby ??
+                selectedResortSummary?.nameRuby ??
+                null
+              }
+              detailFormerNames={
+                selectedResortData?.formerNames ??
+                selectedResortSummary?.formerNames ??
+                []
+              }
+              detailPrefecture={
+                selectedResortData?.prefecture ??
+                selectedResortSummary?.prefecture ??
+                ""
+              }
+              detailTown={
+                selectedResortData?.town ?? selectedResortSummary?.town ?? ""
+              }
+              detailYukiMagi={Boolean(
+                selectedResortData?.yukiMagi ??
+                  selectedResortSummary?.yukiMagiId,
+              )}
               detailResortId={selectedResortId}
               isDetailCompareSelected={
                 selectedResortId
@@ -534,6 +579,7 @@ export const HomeLayout = ({
                 DynamicMap={DynamicMap}
                 mapResorts={initialResorts}
                 resortData={selectedResortData}
+                resortSummary={selectedResortSummary}
                 isLoading={isPending}
                 isCompareSelected={selectedCompareIdSet.has(selectedResortId)}
                 onToggleCompare={onToggleCompare}
@@ -616,6 +662,7 @@ export const HomeLayout = ({
             DynamicMap={DynamicMap}
             mapResorts={initialResorts}
             resortData={selectedResortData}
+            resortSummary={selectedResortSummary}
             isLoading={isPending}
             isCompareSelected={selectedCompareIdSet.has(selectedResortId)}
             onToggleCompare={onToggleCompare}
@@ -696,8 +743,11 @@ type MobileContextHeaderProps = {
   resultCount: number;
   compareCount: number;
   detailTitle: string;
+  detailNameRuby: ResortRubySegment[] | null;
+  detailFormerNames: ResortFormerName[];
   detailPrefecture: string;
   detailTown: string;
+  detailYukiMagi: boolean;
   detailResortId: string | null;
   isDetailCompareSelected: boolean;
   activeFilterLabels: string[];
@@ -712,8 +762,11 @@ const MobileContextHeader = ({
   resultCount,
   compareCount,
   detailTitle,
+  detailNameRuby,
+  detailFormerNames,
   detailPrefecture,
   detailTown,
+  detailYukiMagi,
   detailResortId,
   isDetailCompareSelected,
   activeFilterLabels,
@@ -724,6 +777,9 @@ const MobileContextHeader = ({
 }: MobileContextHeaderProps) => {
   const isResults = mode === "results";
   const filterLabels = activeFilterLabels;
+  const detailLocation = [detailPrefecture, detailTown]
+    .filter(Boolean)
+    .join("・");
 
   return (
     <div className="relative z-10 pointer-events-auto md:hidden">
@@ -750,30 +806,47 @@ const MobileContextHeader = ({
       )}
 
       {/*
-        スキー場名と所在地の 2 行。左右が揃うよう、各行を
-        「左: テキスト（伸びる） / 右: 操作（固定幅）」の 2 カラムで組む。
-        地図をすぐ始めたいので、行間・上下の余白は最小限にする。
+        close/比較に追加の2つのボタンは縦に並べて1カラムに収め、
+        名前側のカラムを横に広く取れるようにする（長い名前ほど1行に収まりやすい）。
+        テキスト側（名前・旧称・所在地）は隙間なく積み、
+        地図をすぐ始めたいので上下の余白は最小限にする。
       */}
       {mode === "detail" && (
-        <div className="px-4 pt-1.5 pb-2">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="flex-1 min-w-0 text-gray-900 text-base font-bold leading-tight truncate font-[var(--font-heading)]">
-              {detailTitle}
+        <div className="px-4 pt-1.5 pb-2 flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <h2 className="truncate-2 text-gray-900 text-base font-bold leading-snug font-[var(--font-heading)]">
+              <RubyText segments={detailNameRuby} fallback={detailTitle} />
             </h2>
+            {detailFormerNames.length > 0 && (
+              <p className="mt-0.5 truncate text-[11px] leading-snug text-gray-500">
+                旧称: <FormerResortNames names={detailFormerNames} />
+              </p>
+            )}
+            <p className="mt-0.5 flex items-center gap-1.5 text-gray-600 text-xs font-semibold leading-snug">
+              {/* 県・市町村のどちらかが未取得のときに区切り文字だけが残らないようにする */}
+              {detailLocation && (
+                <span className="truncate">{detailLocation}</span>
+              )}
+              {detailYukiMagi && (
+                <Badge
+                  variant="secondary"
+                  className="shrink-0 rounded-full bg-pink-50 text-pink-700 text-[0.625rem] font-semibold whitespace-nowrap"
+                >
+                  雪マジ
+                </Badge>
+              )}
+            </p>
+          </div>
+          <div className="flex shrink-0 flex-col items-end gap-1">
             <Button
               type="button"
               aria-label="詳細を閉じる"
               variant="ghost"
               onClick={onCloseDetail}
-              className="flex h-9 w-9 min-w-9 shrink-0 items-center justify-center rounded-full border border-gray-200 p-0 text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+              className="flex h-8 w-8 min-w-8 shrink-0 items-center justify-center rounded-full border border-gray-200 p-0 text-gray-500 hover:bg-gray-50 hover:text-gray-900"
             >
               <X size={18} strokeWidth={2.5} />
             </Button>
-          </div>
-          <div className="mt-1 flex items-center justify-between gap-2">
-            <p className="flex-1 min-w-0 truncate text-gray-600 text-xs font-semibold leading-snug">
-              {detailPrefecture} · {detailTown}
-            </p>
             {detailResortId && (
               <Button
                 type="button"

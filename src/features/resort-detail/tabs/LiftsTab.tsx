@@ -1,43 +1,48 @@
 "use client";
 
-import { useState } from "react";
+import { z } from "zod";
+import { useScreenState } from "@/features/map/session/useScreenState";
 import type { SelectedMapFeature } from "@/features/map/types";
 import type { FinalizedResortMapData } from "@/lib/finalizedResortGeojsonShared";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
-import {
-  CompactMetric,
-  SourceLine,
-  StatusMark,
-} from "../components/CompactInfo";
-import { CourseStatusTable } from "../components/CourseStatusTable";
+import { SourceLine, StatusMark } from "../components/CompactInfo";
 import { LiftTypeIcon } from "../components/LiftTypeIcon";
-import { ObservationTimes } from "../components/ObservationTimes";
+import { StatusBreakdownTable } from "../components/StatusBreakdownTable";
 import type { Resort } from "../types";
 import { sumKnown } from "../utils/courseDistribution";
-import { sourceUrls } from "../utils/currentConditions";
+import { hasSourceUrl, sourceUrls } from "../utils/currentConditions";
 import {
   formatMeters,
   getLiftElevationDiff,
   normalizeIconSymbol,
+  type StatusSymbol,
+  summarizeCourseStatuses,
 } from "../utils/detailMetrics";
 import { createLiftStatusSummary } from "../utils/liftStatusSummary";
+import {
+  getLiftTypeLabel,
+  groupByLiftType,
+  type LiftTypeLabel,
+} from "../utils/liftTypes";
 
 export const LiftsTab = ({
   resort,
-  hideSummary = false,
   finalizedMapData,
   selectedFinalizedFeature,
   onSelectedFinalizedFeatureChange,
 }: {
   resort: Resort;
-  hideSummary?: boolean;
   finalizedMapData: FinalizedResortMapData | null;
   selectedFinalizedFeature: SelectedMapFeature | null;
   onSelectedFinalizedFeatureChange: (
     feature: SelectedMapFeature | null,
   ) => void;
 }) => {
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = useScreenState(
+    `rusutsu:detail:v1:${resort.id}:LiftsTab:filter`,
+    z.string().max(100),
+    "all",
+  );
   const section = finalizedMapData?.lifts;
   const liftStatus = createLiftStatusSummary(section);
   const features = section?.features ?? [];
@@ -83,12 +88,39 @@ export const LiftsTab = ({
         },
       }));
   const distance = sumKnown(rows.map(row => row.properties.distance));
-  const speedGroup = (speed: string | null) =>
-    speed?.includes("高速")
-      ? "高速"
-      : speed?.includes("低速")
-        ? "低速"
-        : "不明";
+  const hasSource = hasSourceUrl(section?.sourceUrls);
+  // 全体行と種別ごとの行は同じリフト集合を数えるので、足すと全体に一致する。
+  // 種別が1つしかないときは全体行と同じ内容になるので、内訳は出さない。
+  const typeRows: Array<{
+    label: LiftTypeLabel;
+    status: StatusSymbol | null;
+    distance: number | null;
+  }> = rows.map(row => ({
+    label: getLiftTypeLabel({
+      type: row.properties.type,
+      speed: row.properties.speed,
+      name: row.name,
+    }),
+    status: normalizeIconSymbol(row.properties.status),
+    distance: row.properties.distance,
+  }));
+  const typeGroups = groupByLiftType(typeRows, row => row.label);
+  const breakdownRows = [
+    {
+      label: "全体",
+      summary: summarizeCourseStatuses(
+        rows.map(row => normalizeIconSymbol(row.properties.status)),
+      ),
+      distance: distance.total,
+    },
+    ...(typeGroups.length > 1
+      ? typeGroups.map(group => ({
+          label: group.label,
+          summary: summarizeCourseStatuses(group.rows.map(row => row.status)),
+          distance: sumKnown(group.rows.map(row => row.distance)).total,
+        }))
+      : []),
+  ];
   const types = [
     ...new Set(
       rows
@@ -127,18 +159,13 @@ export const LiftsTab = ({
   ];
   return (
     <div className="space-y-3">
-      {!hideSummary && (
-        <section>
-          <div className="flex items-baseline justify-between gap-3">
-            <h2 className="shrink-0 text-lg font-bold text-slate-900">
-              営業状況
-            </h2>
-            <ObservationTimes
-              entries={[{ label: "リフト", time: section?.observedAt }]}
-            />
-          </div>
-          <div className="mt-2 rounded-lg bg-slate-50 p-3">
-            <CourseStatusTable summary={liftStatus} kind="lift" />
+      <StatusBreakdownTable
+        kind="lift"
+        rows={breakdownRows}
+        countLabel="本数"
+        unavailable={!hasSource}
+        source={
+          hasSource ? (
             <SourceLine
               label="リフト"
               showLabel={false}
@@ -146,60 +173,13 @@ export const LiftsTab = ({
               urls={section?.sourceUrls}
               updates={liftStatus?.updates}
             />
-            <div className="mt-3 grid grid-cols-2 gap-3">
-              {["高速", "低速"].map(speed => (
-                <CourseStatusTable
-                  key={speed}
-                  kind="lift"
-                  title={speed}
-                  summary={
-                    section
-                      ? createLiftStatusSummary({
-                          ...section,
-                          features: features.filter(
-                            lift => speedGroup(lift.properties.speed) === speed,
-                          ),
-                        })
-                      : null
-                  }
-                />
-              ))}
-            </div>
-            <dl className="mt-3">
-              <CompactMetric label="リフト総延長">
-                {formatMeters(distance.total)}
-              </CompactMetric>
-            </dl>
-          </div>
-          <p className="mt-1 text-sm text-slate-500">
-            距離は地形データ優先・公表値で補完
-            {distance.missing > 0 && ` · 距離不明${distance.missing}本を除く`}
-            {rows.some(row => speedGroup(row.properties.speed) === "不明") &&
-              ` · 速度区分不明${rows.filter(row => speedGroup(row.properties.speed) === "不明").length}本`}
-          </p>
-        </section>
-      )}
-      {hideSummary && (
-        <div className="mt-3 grid grid-cols-2 gap-3">
-          {["高速", "低速"].map(speed => (
-            <CourseStatusTable
-              key={speed}
-              kind="lift"
-              title={speed}
-              summary={
-                section
-                  ? createLiftStatusSummary({
-                      ...section,
-                      features: features.filter(
-                        lift => speedGroup(lift.properties.speed) === speed,
-                      ),
-                    })
-                  : null
-              }
-            />
-          ))}
-        </div>
-      )}
+          ) : undefined
+        }
+      />
+      <p className="text-sm text-slate-700">
+        距離は地形データ優先・公表値で補完
+        {distance.missing > 0 && ` · 距離不明${distance.missing}本を除く`}
+      </p>
       <section>
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-bold">リフト一覧</h2>
@@ -328,7 +308,7 @@ export const LiftsTab = ({
             </tbody>
           </table>
           {!displayed.length && (
-            <p className="p-4 text-sm text-slate-500">
+            <p className="p-4 text-sm text-slate-700">
               リフトデータがありません
             </p>
           )}

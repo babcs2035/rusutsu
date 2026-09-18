@@ -12,6 +12,8 @@ import {
   DETAIL_PANEL_ATTRIBUTE,
   FEATURE_DETAIL_OVERLAY_ATTRIBUTE,
   GSI_TILE_MIN_ZOOM,
+  MAP_BOTTOM_TOOLBAR_ATTRIBUTE,
+  MAP_TOP_CONTROLS_ATTRIBUTE,
 } from "../constants";
 
 const BASE_PADDING = 32;
@@ -22,6 +24,8 @@ const BASE_PADDING = 32;
  */
 const RESORT_FIT_PADDING_X = 108;
 const RESORT_FIT_PADDING_Y = 56;
+/** 下端のカードぶんの余白は、地図の高さのこの割合までに抑える */
+const MAX_BOTTOM_TOOLBAR_PADDING_RATIO = 0.3;
 
 export const getCoordinateBounds = (
   coordinates: GeoCoordinate[],
@@ -116,23 +120,67 @@ export const getFeatureDetailOverlayPadding = (
   };
 };
 
-/** 地図の上にかぶさっている帯の高さ。比較の切替・表示設定の帯で使う */
-export const getCompareHeaderOverlapTopHeight = (map: MapLibreMap): number => {
+/** 地図の上にかぶさっている帯の高さ */
+const getOverlapTopHeight = (map: MapLibreMap, attribute: string): number => {
   if (typeof document === "undefined") return 0;
 
-  const header = document.querySelector<HTMLElement>(
-    `[${COMPARE_MAP_HEADER_ATTRIBUTE}="true"]`,
-  );
-  if (!header) return 0;
+  const mapRect = map.getContainer().getBoundingClientRect();
+  let bottom = 0;
+  for (const element of document.querySelectorAll<HTMLElement>(
+    `[${attribute}="true"]`,
+  )) {
+    const rect = element.getBoundingClientRect();
+    const overlapsHorizontally =
+      rect.right > mapRect.left && rect.left < mapRect.right;
+    if (!overlapsHorizontally || rect.height >= mapRect.height) continue;
+    bottom = Math.max(bottom, rect.bottom - mapRect.top);
+  }
+  return Math.max(0, Math.min(mapRect.height, bottom));
+};
+
+/** 比較の切替・表示設定の帯 */
+export const getCompareHeaderOverlapTopHeight = (map: MapLibreMap): number =>
+  getOverlapTopHeight(map, COMPARE_MAP_HEADER_ATTRIBUTE);
+
+/**
+ * 地図の上端に浮かせたボタン類（表示切り替え・出典・拡大）の高さ。
+ * コース・リフトがボタンの下に潜らないよう、寄せるときの余白に足す。
+ */
+export const getMapTopControlsOverlapHeight = (map: MapLibreMap): number =>
+  getOverlapTopHeight(map, MAP_TOP_CONTROLS_ATTRIBUTE);
+
+/** 地図の下にかぶさっているカードの高さ */
+const getOverlapBottomHeight = (
+  map: MapLibreMap,
+  attribute: string,
+): number => {
+  if (typeof document === "undefined") return 0;
 
   const mapRect = map.getContainer().getBoundingClientRect();
-  const headerRect = header.getBoundingClientRect();
-  const overlapsHorizontally =
-    headerRect.right > mapRect.left && headerRect.left < mapRect.right;
-  if (!overlapsHorizontally || headerRect.height >= mapRect.height) return 0;
-
-  return Math.max(0, headerRect.bottom - mapRect.top);
+  let top = 0;
+  for (const element of document.querySelectorAll<HTMLElement>(
+    `[${attribute}="true"]`,
+  )) {
+    const rect = element.getBoundingClientRect();
+    const overlapsHorizontally =
+      rect.right > mapRect.left && rect.left < mapRect.right;
+    if (!overlapsHorizontally || rect.height >= mapRect.height) continue;
+    top = Math.max(top, mapRect.bottom - Math.max(mapRect.top, rect.top));
+  }
+  // 背の低い地図（スマホの詳細など）でカードが高いと、余白だけで
+  // 地図が埋まって極端に引きの絵になる。高さの一定割合で頭打ちにする。
+  return Math.max(
+    0,
+    Math.min(mapRect.height * MAX_BOTTOM_TOOLBAR_PADDING_RATIO, top),
+  );
 };
+
+/**
+ * 地図の下端に浮かせた凡例・表示切り替えカードの高さ。
+ * コース・リフトがカードの下に潜らないよう、寄せるときの余白に足す。
+ */
+export const getMapBottomToolbarOverlapHeight = (map: MapLibreMap): number =>
+  getOverlapBottomHeight(map, MAP_BOTTOM_TOOLBAR_ATTRIBUTE);
 
 export const getDetailPanelOverlapRightWidth = (map: MapLibreMap): number =>
   getPanelOverlapRightWidth(map, DETAIL_PANEL_ATTRIBUTE);
@@ -145,7 +193,11 @@ export const getDetailPanelOverlapRightWidth = (map: MapLibreMap): number =>
 export const getPanelOffset = (
   rightPanelWidth: number,
   bottomPanelHeight: number,
-): [number, number] => [-rightPanelWidth / 2, -bottomPanelHeight / 2];
+  topPanelHeight = 0,
+): [number, number] => [
+  -rightPanelWidth / 2,
+  (topPanelHeight - bottomPanelHeight) / 2,
+];
 
 /**
  * fitBounds のパディング。

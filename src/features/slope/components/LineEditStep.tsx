@@ -200,7 +200,7 @@ export function LineEditStep({
   const deletingCourse = courses.find(course => course.id === deletingCourseId);
 
   return (
-    <div className="flex h-full min-h-0 w-full min-w-0 flex-col gap-2 max-md:overflow-y-auto border-l border-gray-200 bg-white p-3">
+    <div className="flex w-full min-w-0 shrink-0 flex-col gap-2 border-l border-gray-200 bg-white p-3">
       <div className="flex min-w-0 items-start justify-between gap-2">
         <div className="min-w-0">
           <h2 className="truncate font-bold font-[var(--font-heading)] text-base">
@@ -443,7 +443,7 @@ export function LineEditStep({
       {validation && validation.errors.length > 0 && (
         <Alert
           variant="destructive"
-          className="max-h-[160px] shrink-0 overflow-y-auto border-red-300 bg-red-50"
+          className="shrink-0 border-red-300 bg-red-50"
         >
           <TriangleAlertIcon className="size-4 text-red-700" />
           <AlertTitle>エラー</AlertTitle>
@@ -459,7 +459,7 @@ export function LineEditStep({
       {validation &&
         validation.errors.length === 0 &&
         validation.warnings.length > 0 && (
-          <Alert className="max-h-[180px] shrink-0 overflow-y-auto border-orange-300 bg-orange-50">
+          <Alert className="shrink-0 border-orange-300 bg-orange-50">
             <TriangleAlertIcon className="size-4 text-orange-900" />
             <AlertTitle className="text-orange-900">警告</AlertTitle>
             <AlertDescription className="flex flex-col gap-1 text-orange-900">

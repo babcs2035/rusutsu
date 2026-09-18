@@ -73,7 +73,7 @@ export function ResortEditorTools({
       <p className="mb-2 text-[11px] text-gray-600">
         最後の「すべて保存」にも含まれます。
       </p>
-      <div className="flex max-h-40 flex-col gap-2 overflow-y-auto">
+      <div className="flex flex-col gap-2">
         {(["mapUrls", "mapPageUrls"] as const).map(key => {
           const links = linkEditor.links[key];
           const displayed = links.length ? links : [{ url: "" }];

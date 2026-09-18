@@ -25,21 +25,24 @@ export function ConditionTable({ data }: { data: unknown }) {
   const showLocation = !(points.length === 1 && points[0].name === "中腹");
   if (!columns.length)
     return (
-      <p className="text-sm text-slate-500">
+      <p className="text-sm text-slate-700">
         コンディションの情報はありません。
       </p>
     );
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-200">
+    // isolate で独立したスタッキングコンテキストにして、観測地点列の sticky が
+    // ページ全体をスクロールするタブバーなど、外側の sticky 要素と
+    // z-index・描画順で干渉しないようにする（高速スクロール時に一瞬重なる不具合の対策）。
+    <div className="isolate overflow-x-auto rounded-lg border border-slate-200">
       <table aria-label="コンディション" className="w-full text-sm">
         <thead>
-          <tr className="bg-slate-100 text-left text-slate-600">
+          <tr className="bg-slate-100 text-left text-slate-700">
             {showLocation && (
               <th
                 scope="col"
-                className="sticky left-0 z-10 whitespace-nowrap bg-slate-100 px-2 py-2 font-medium shadow-[1px_0_0_0_#e2e8f0]"
+                className="sticky left-0 z-10 whitespace-nowrap bg-slate-100 px-2 py-2 font-medium shadow-[1px_0_0_0_#e2e8f0] will-change-transform"
               >
-                観測地点
+                地点
               </th>
             )}
             {columns.map(field => (
@@ -62,7 +65,7 @@ export function ConditionTable({ data }: { data: unknown }) {
               {showLocation && (
                 <th
                   scope="row"
-                  className="sticky left-0 z-10 min-w-20 bg-inherit px-2 py-2 text-left font-medium shadow-[1px_0_0_0_#e2e8f0]"
+                  className="sticky left-0 z-10 min-w-20 bg-inherit px-2 py-2 text-left font-medium shadow-[1px_0_0_0_#e2e8f0] will-change-transform"
                 >
                   {point.name}
                 </th>
@@ -78,7 +81,7 @@ export function ConditionTable({ data }: { data: unknown }) {
                 return (
                   <td
                     key={field.key}
-                    className="min-w-16 px-2 py-2 tabular-nums text-slate-700"
+                    className="min-w-16 px-2 py-2 tabular-nums text-slate-800"
                   >
                     {value}
                   </td>

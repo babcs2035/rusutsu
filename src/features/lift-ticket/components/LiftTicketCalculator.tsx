@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import { filtersSchema } from "@/features/map/session/storage";
+import { useScreenState } from "@/features/map/session/useScreenState";
 import type { LiftTicketData, LiftTicketSearchInput } from "../types";
 import {
   calculateLiftTicketPlan,
@@ -12,12 +14,18 @@ import { TicketPlanCard } from "./TicketPlanCard";
 
 export const LiftTicketCalculator = ({
   seasons,
+  sessionKey,
   initialInput = DEFAULT_LIFT_TICKET_SEARCH_INPUT,
 }: {
   seasons: LiftTicketData[];
+  sessionKey?: string;
   initialInput?: LiftTicketSearchInput;
 }) => {
-  const [input, setInput] = useState<LiftTicketSearchInput>(initialInput);
+  const [input, setInput] = useScreenState<LiftTicketSearchInput>(
+    sessionKey ?? null,
+    filtersSchema.shape.liftTicket,
+    initialInput,
+  );
   const data =
     selectLiftTicketSeason(seasons, input.visitDate) ?? seasons[0] ?? null;
 

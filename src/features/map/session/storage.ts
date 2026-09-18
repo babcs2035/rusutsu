@@ -19,7 +19,7 @@ const duration = z.union([
   z.object({ kind: z.literal("hours"), hours: z.number().positive().max(24) }),
 ]);
 const numeric = z.number().nonnegative().nullable();
-const filtersSchema = z.object({
+export const filtersSchema = z.object({
   keyword: z.string().max(500),
   prefectures: z.array(z.string()).max(47),
   status: z.boolean(),
@@ -57,6 +57,34 @@ export const homeSessionSchema = z.object({
   selectedFeature: featureSchema.nullable(),
   mobileContentTab: z.enum(["info", "map"]),
   filters: filtersSchema,
+  mobileDraftFilters: filtersSchema.optional(),
+  isMobileFilterOverlayOpen: z.boolean().optional(),
+  selectedCompareIds: z.array(id).max(100).optional(),
+  isCompareOpen: z.boolean().optional(),
+  selectedElevationProfilePoint: z
+    .object({
+      courseGroupId: id,
+      courseName: z.string(),
+      coordinate: z.union([
+        z.tuple([z.number(), z.number()]),
+        z.tuple([z.number(), z.number(), z.number()]),
+      ]),
+      distance: z.number(),
+      elevation: z.number(),
+      slope: z.number().nullable(),
+    })
+    .nullable()
+    .optional(),
+  mobileSearchReturn: z
+    .object({
+      mobileContentTab: z.enum(["info", "map"]),
+      isListSheetOpen: z.boolean(),
+      listSheetSnapPoint: z.union([z.number(), z.string(), z.null()]),
+      selectedResortId: id.nullable(),
+      isCompareOpen: z.boolean(),
+    })
+    .nullable()
+    .optional(),
   hasSearched: z.boolean(),
   isFilterEditorOpen: z.boolean(),
   isListSheetOpen: z.boolean(),
@@ -80,7 +108,7 @@ export const mapSessionKey = (resortId: string | null) =>
 
 export function readStorage<T>(key: string, schema: z.ZodType<T>): T | null {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = sessionStorage.getItem(key);
     if (!raw) return null;
     const parsed = schema.safeParse(JSON.parse(raw));
     return parsed.success ? parsed.data : null;
@@ -90,7 +118,7 @@ export function readStorage<T>(key: string, schema: z.ZodType<T>): T | null {
 }
 export function writeStorage(key: string, value: unknown) {
   try {
-    localStorage.setItem(key, JSON.stringify(value));
+    sessionStorage.setItem(key, JSON.stringify(value));
   } catch {
     // 保存が禁止・容量超過でも地図の操作は続けられる。
   }
@@ -111,13 +139,77 @@ export function resolveHomeSession(
   return {
     ...saved,
     selectedResortId: validId,
+    isMobileFilterOverlayOpen:
+      explicit && explicit !== saved.selectedResortId
+        ? false
+        : saved.isMobileFilterOverlayOpen,
     selectedFeature:
       validId && validId === saved.selectedResortId
         ? saved.selectedFeature
         : null,
     mobileContentTab:
       explicit && explicit !== saved.selectedResortId
-        ? "map"
+        ? "info"
         : saved.mobileContentTab,
   };
+}
+
+// opener から複製される sessionStorage も、新規ナビゲーションでは採用しない。
+// reload / 履歴復帰は同じタブのセッションとして扱う。時間制限は設けない。
+let initialized = false;
+const isScreenKey = (key: string) =>
+  /^rusutsu:(home|map|expanded|detail|scroll|panel):v1(?::|$)/.test(key);
+export function initializeTabSession() {
+  if (initialized) return;
+  initialized = true;
+  try {
+    for (const key of Object.keys(localStorage)) {
+      if (isScreenKey(key)) localStorage.removeItem(key);
+    }
+  } catch {
+    /* 他用途の下書きは触らない。 */
+  }
+  try {
+    const navigation = performance.getEntriesByType("navigation")[0] as
+      | PerformanceNavigationTiming
+      | undefined;
+    if (navigation?.type === "navigate") {
+      for (const key of Object.keys(sessionStorage)) {
+        if (isScreenKey(key)) sessionStorage.removeItem(key);
+      }
+    }
+  } catch {
+    /* 保存禁止でも通常表示する。 */
+  }
+}
+
+export const RESORT_HISTORY_KEY = `${HOME_SESSION_KEY}:resorts`;
+const historySchema = z.array(id).max(2);
+
+/** ホームは履歴に数えない。同じスキー場を再訪したら最新へ移す。 */
+export function retainResortSession(resortId: string | null) {
+  const previous = readStorage(RESORT_HISTORY_KEY, historySchema) ?? [];
+  const retained = resortId
+    ? [resortId, ...previous.filter(value => value !== resortId)].slice(0, 2)
+    : previous;
+  writeStorage(RESORT_HISTORY_KEY, retained);
+  try {
+    for (const key of Object.keys(sessionStorage)) {
+      const owner = screenResortId(key);
+      if (owner && !retained.includes(owner)) sessionStorage.removeItem(key);
+    }
+  } catch {
+    /* 保存禁止でも操作は続ける。 */
+  }
+  return retained;
+}
+
+function screenResortId(key: string) {
+  const normalized = key.replace(/^rusutsu:scroll:v1:/, "");
+  const match = /^rusutsu:(?:map|expanded|detail|panel):v1:([^:]+)/.exec(
+    normalized,
+  );
+  return match && !["overview", "null", "loading"].includes(match[1])
+    ? match[1]
+    : null;
 }

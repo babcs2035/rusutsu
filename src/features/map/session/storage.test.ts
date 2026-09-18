@@ -38,7 +38,7 @@ test("別のスキー場への直接リンクを優先し、古いコース選�
   );
   assert.equal(result?.selectedResortId, "niseko");
   assert.equal(result?.selectedFeature, null);
-  assert.equal(result?.mobileContentTab, "map");
+  assert.equal(result?.mobileContentTab, "info");
 });
 test("削除されたスキー場と破損した保存データは復元しない", () => {
   assert.equal(
@@ -85,5 +85,36 @@ test("直線距離は同一点でゼロ、日付変更線と対蹠点でも有�
         { latitude: 0, longitude: 180 },
       ) - 20015.114,
     ) < 0.01,
+  );
+});
+
+test("画面保存はsessionStorageのみを使い、別タブと下書きを変更しない", async t => {
+  const { readStorage, writeStorage } = await import("./storage");
+  const tabs = [new Map<string, string>(), new Map<string, string>()];
+  let active = 0;
+  const descriptor = Object.getOwnPropertyDescriptor(
+    globalThis,
+    "sessionStorage",
+  );
+  Object.defineProperty(globalThis, "sessionStorage", {
+    configurable: true,
+    value: {
+      getItem: (key: string) => tabs[active].get(key) ?? null,
+      setItem: (key: string, value: string) => tabs[active].set(key, value),
+    },
+  });
+  t.after(() => {
+    if (descriptor)
+      Object.defineProperty(globalThis, "sessionStorage", descriptor);
+    else Reflect.deleteProperty(globalThis, "sessionStorage");
+  });
+  writeStorage("test", session);
+  active = 1;
+  assert.equal(readStorage("test", homeSessionSchema), null);
+  writeStorage("test", { ...session, selectedResortId: "niseko" });
+  active = 0;
+  assert.equal(
+    readStorage("test", homeSessionSchema)?.selectedResortId,
+    "rusutsu",
   );
 });

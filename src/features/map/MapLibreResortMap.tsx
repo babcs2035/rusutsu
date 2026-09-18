@@ -23,6 +23,7 @@ import {
   DESKTOP_LABEL_ADVANCED_LAYOUT_ZOOM,
   DESKTOP_LABEL_SHOW_ZOOM,
   FINALIZED_RESORT_LABEL_HIDE_MIN_ZOOM,
+  MAP_BOTTOM_TOOLBAR_ATTRIBUTE,
   MOBILE_INITIAL_ZOOM,
   MOBILE_LABEL_ADVANCED_LAYOUT_ZOOM,
   MOBILE_LABEL_SHOW_ZOOM,
@@ -97,12 +98,14 @@ export const MapLibreResortMap = memo(function MapLibreResortMap(
   }, []);
   const recover = useCallback(() => setGeneration(value => value + 1), []);
   return (
-    <MapErrorBoundary
-      key={`${props.interactionMode}:${props.selectedResortId}`}
-      onRetry={recover}
-    >
+    // スキー場を選び直しても key を変えない。key に選択中のスキー場を混ぜると
+    // 地図インスタンスが作り直され、生成時の既定位置（日本全体）から
+    // 選んだスキー場へ寄り直す動きになってしまう。今見ている位置から
+    // そのまま寄せるため、地図は作り直さず表示範囲の調整だけで動かす。
+    // 作り直すのは地図の再表示（generation の更新）のときだけ。
+    <MapErrorBoundary key={generation} onRetry={recover}>
       <MapLibreResortMapContent
-        key={`${props.interactionMode}:${props.selectedResortId}:${generation}`}
+        key={generation}
         {...props}
         onRecover={recover}
         onAutoRecover={autoRecover}
@@ -153,9 +156,13 @@ function MapLibreResortMapContent({
   onAutoRecover: () => boolean;
 }) {
   const sessionEnabled = useMapSession() !== null;
-  const storageKey = mapSessionKey(selectedResortId);
+  const storageKey = `${mapSessionKey(selectedResortId)}${mapPresentation === "expanded" ? ":expanded" : ""}`;
+  // プレビュー地図（拡大していない小さい地図）は常に同じ見え方（北が上・
+  // スキー場全体が入る大きさ）にしたいので、保存された表示位置は読まない。
   const [savedMap] = useState(() =>
-    sessionEnabled && interactionMode !== "compare"
+    sessionEnabled &&
+    interactionMode !== "compare" &&
+    mapPresentation !== "preview"
       ? readStorage(storageKey, mapSessionSchema)
       : null,
   );
@@ -163,7 +170,16 @@ function MapLibreResortMapContent({
     JSON.stringify(controlledSelectedFinalizedFeature ?? null),
   );
   const initialResetKey = useRef(detailViewportResetKey);
+  // この地図（特にデスクトップの常設地図）は、スキー場を選び直しても
+  // アンマウントされない。savedMap は最初にマウントしたときの
+  // スナップショットのままなので、別のスキー場を選んだのに古い保存位置
+  // （例: 概観地図で見ていた別の場所）を「維持すべき位置」として使ってしまうと、
+  // 選び直したスキー場が真ん中に表示されなくなる。選択中のスキー場が
+  // 変わった直後だけは、保存位置より選び直しの再フィットを優先する。
+  const initialResortId = useRef(selectedResortId);
+  const hasSelectedResortChanged = initialResortId.current !== selectedResortId;
   const preserveViewport =
+    !hasSelectedResortChanged &&
     Boolean(savedMap?.viewport) &&
     initialSelectionKey.current ===
       JSON.stringify(controlledSelectedFinalizedFeature ?? null) &&
@@ -271,7 +287,9 @@ function MapLibreResortMapContent({
       return;
     }
     if (previousInteractionMode === "detail") {
+      // 詳細から戻っても地図は作り直さないので、詳細用の見え方を明示的に戻す
       setMapTileVariant("pale");
+      setCourseColorMode("difficulty");
     }
   }, [
     hasControlledStyleState,
@@ -949,6 +967,8 @@ function MapLibreResortMapContent({
       )}
       {!isPreviewMap && hasFinalizedFeatures && showMapToolbar && (
         <div
+          // 高さは地図側が「コースを潜らせない余白」として読み取る
+          {...{ [MAP_BOTTOM_TOOLBAR_ATTRIBUTE]: "true" }}
           className="pointer-events-none absolute inset-x-0 bottom-0 z-[750] flex justify-end pb-[calc(env(safe-area-inset-bottom,0px)+1.5rem)] pl-2"
           style={{ paddingRight: `${toolbarRightOverlap + 8}px` }}
         >

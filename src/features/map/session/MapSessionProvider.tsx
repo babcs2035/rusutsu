@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import { useOfflineMap } from "./useOfflineMap";
+import { useScrollSession } from "./useScrollSession";
 
 export type UserPosition = {
   latitude: number;
@@ -37,6 +38,7 @@ export function MapSessionProvider({
   onSelectResort: (id: string) => void;
 }) {
   useOfflineMap();
+  useScrollSession();
   const [position, setPosition] = useState<UserPosition | null>(null);
   const [enabled, setEnabled] = useState(false);
   const [loading, setLoading] = useState(false);

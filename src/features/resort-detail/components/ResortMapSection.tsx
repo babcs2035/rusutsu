@@ -3,7 +3,7 @@
 import { Portal } from "@radix-ui/react-portal";
 import { Maximize2, X } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { ResortFinalizedMap } from "@/features/map/components/ResortFinalizedMap";
@@ -14,8 +14,6 @@ import type {
   ElevationProfileMapPoint,
   JapanResortMapProps,
   MapTileVariant,
-  MapViewRestoreRequest,
-  MapViewSnapshot,
   SelectedMapFeature,
 } from "@/features/map/types";
 import type { FinalizedResortMapData } from "@/lib/finalizedResortGeojsonShared";
@@ -135,11 +133,6 @@ export const ResortMapSection = ({
     },
     [expandedKey, sessionEnabled],
   );
-  // 全画面で動かした位置を、畳んだあとの小さい地図へ引き継ぐ。
-  // 別インスタンスなので、そのままだと拡大する前の見え方に戻ってしまう。
-  const expandedViewRef = useRef<MapViewSnapshot | null>(null);
-  const [inlineRestoreRequest, setInlineRestoreRequest] =
-    useState<MapViewRestoreRequest | null>(null);
   const hasSelection = Boolean(featureDetail);
   const isBelowDetail = featureDetailPlacement === "below";
   // 全画面では呼び出し側の置き場所（比較の右パネル）が隠れるので、右に重ねる
@@ -150,18 +143,10 @@ export const ResortMapSection = ({
   const isOverlayDetail =
     placement === "overlay-left" || placement === "overlay-right";
 
-  const handleExpandedViewChange = useCallback((view: MapViewSnapshot) => {
-    expandedViewRef.current = view;
-  }, []);
-
+  // 畳んだ地図は常に同じ見え方（北が上・スキー場全体が入る大きさ）にしたいので、
+  // 全画面で動かした位置は引き継がない。
   const collapse = useCallback(() => {
-    const view = expandedViewRef.current;
     setIsExpanded(false);
-    if (!view) return;
-    setInlineRestoreRequest(current => ({
-      ...view,
-      key: (current?.key ?? 0) + 1,
-    }));
   }, [setIsExpanded]);
 
   useEffect(() => {
@@ -198,14 +183,6 @@ export const ResortMapSection = ({
       onSelectedFinalizedFeatureChange={onSelectedFinalizedFeatureChange}
       onSelectedElevationProfilePointChange={
         onSelectedElevationProfilePointChange
-      }
-      onViewChange={
-        presentation === "expanded" && isExpanded
-          ? handleExpandedViewChange
-          : undefined
-      }
-      restoreViewRequest={
-        presentation === "expanded" ? null : inlineRestoreRequest
       }
       detailViewportResetKey={detailViewportResetKey}
     />

@@ -68,6 +68,7 @@ export const MobileResultsSheet = ({
     ) : (
       <div
         data-ski-resort-list-scroll-container="true"
+        data-session-scroll="results-sheet"
         className="h-full min-h-0 overflow-y-auto"
       >
         <SkiResortList

@@ -88,6 +88,7 @@ export const SkiResortList = ({
       ) : (
         <ul
           data-ski-resort-list-scroll="true"
+          data-session-scroll="results-list"
           className="flex-grow list-none overflow-y-auto px-4 pt-0 pb-[env(safe-area-inset-bottom,0px)] md:gap-3 md:py-4"
           onScroll={() => onHoverResortChange?.(null)}
         >

@@ -1,18 +1,25 @@
 "use client";
 
-import { ExternalLink } from "lucide-react";
+import { ChevronLeft, ExternalLink } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import { z } from "zod";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useScreenState } from "@/features/map/session/useScreenState";
+import type { SelectedMapFeature } from "@/features/map/types";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
+import { NotFetchedBadge } from "../components/CompactInfo";
 import { CurrentOverview } from "../components/CurrentOverview";
+import { ObservationTimes } from "../components/ObservationTimes";
 import type { XProfile } from "../server/xProfile";
 import type { Resort } from "../types";
+import { hasSourceUrl } from "../utils/currentConditions";
 import {
   SOCIAL_PLATFORMS,
   type SocialAccount,
   type SocialPlatform,
 } from "../utils/socialAccounts";
+import { TerrainTab } from "./TerrainTab";
 
 const PLATFORM_STYLE = {
   X: {
@@ -158,14 +165,21 @@ function AccountEmbed({
 }
 
 function PlatformAccounts({
+  resortId,
   platform,
   accounts,
   width,
 }: {
+  resortId: string;
   platform: SocialPlatform;
   accounts: SocialAccount[];
   width: number;
 }) {
+  const [active, setActive] = useScreenState(
+    `rusutsu:detail:v1:${resortId}:sns:${platform}`,
+    z.string(),
+    accounts[0]?.url ?? "",
+  );
   if (!accounts.length)
     return (
       <p className="p-8 text-center text-sm text-muted-foreground">
@@ -178,7 +192,13 @@ function PlatformAccounts({
       <AccountEmbed platform={platform} account={accounts[0]} width={width} />
     );
   return (
-    <Tabs defaultValue={accounts[0].url} className="min-w-0 flex-col gap-0">
+    <Tabs
+      value={active}
+      onValueChange={value => {
+        if (typeof value === "string") setActive(value);
+      }}
+      className="min-w-0 flex-col gap-0"
+    >
       <div className="border-b border-slate-200 bg-slate-50 p-3">
         <TabsList
           aria-label={`${platform}のアカウント`}
@@ -207,21 +227,95 @@ function PlatformAccounts({
   );
 }
 
-export function OverviewTab({ resort }: { resort: Resort }) {
-  return <CurrentOverview resort={resort} />;
+export function OverviewTab({
+  resort,
+  showTerrainDetail,
+  terrainTab,
+  onShowTerrainDetail,
+  onCloseTerrainDetail,
+  selectedFinalizedFeature,
+  onSelectedFinalizedFeatureChange,
+}: {
+  resort: Resort;
+  /** コース／リフトの一覧・詳細を見せているか（false のときは概要） */
+  showTerrainDetail: boolean;
+  terrainTab: "コース" | "リフト";
+  onShowTerrainDetail: (tab: "コース" | "リフト") => void;
+  onCloseTerrainDetail: () => void;
+  selectedFinalizedFeature: SelectedMapFeature | null;
+  onSelectedFinalizedFeatureChange: (
+    feature: SelectedMapFeature | null,
+  ) => void;
+}) {
+  if (showTerrainDetail) {
+    const isCourse = terrainTab === "コース";
+    const section = isCourse
+      ? resort.finalizedMapData?.courses
+      : resort.finalizedMapData?.lifts;
+    const status = isCourse
+      ? resort.finalizedMapData?.courseStatusSummary
+      : null;
+    const hasSource = hasSourceUrl(status?.sourceUrls ?? section?.sourceUrls);
+    const observedAt = isCourse
+      ? (status?.observedAt ?? section?.observedAt)
+      : section?.observedAt;
+    return (
+      <div className="space-y-3">
+        {/* 上の「ゲレンデ／SNS…」タブ（h-11 / md:h-12）の真下で固定する */}
+        <div className="sticky top-11 z-10 -mx-3 -mt-3 flex items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 py-2 md:top-12 md:-mx-4 md:-mt-4 md:px-4">
+          <button
+            type="button"
+            onClick={onCloseTerrainDetail}
+            className="flex min-h-7 shrink-0 items-center gap-0.5 rounded-full border border-blue-200 bg-blue-50 py-1 pr-2 pl-1 text-sm font-semibold text-blue-700 hover:border-blue-300 hover:bg-blue-100 active:bg-blue-200"
+          >
+            <ChevronLeft className="size-4" aria-hidden="true" />
+            戻る
+          </button>
+          {hasSource ? (
+            <ObservationTimes
+              entries={[{ label: terrainTab, time: observedAt }]}
+            />
+          ) : (
+            <NotFetchedBadge
+              title={`${terrainTab}の営業状況はまだ取得できていません`}
+            />
+          )}
+        </div>
+        <TerrainTab
+          resort={resort}
+          activeTab={terrainTab}
+          selectedFinalizedFeature={selectedFinalizedFeature}
+          onSelectedFinalizedFeatureChange={onSelectedFinalizedFeatureChange}
+        />
+      </div>
+    );
+  }
+  return (
+    <CurrentOverview
+      resort={resort}
+      onShowCourseDetail={() => onShowTerrainDetail("コース")}
+      onShowLiftDetail={() => onShowTerrainDetail("リフト")}
+    />
+  );
 }
 
 export function SnsTab({ resort }: { resort: Resort }) {
   return (
     <section aria-label="SNS">
-      <SocialTabs key={resort.id} accounts={resort.socialAccounts} />
+      <SocialTabs
+        key={resort.id}
+        resortId={resort.id}
+        accounts={resort.socialAccounts}
+      />
     </section>
   );
 }
 
 function SocialTabs({
+  resortId,
   accounts,
 }: {
+  resortId: string;
   accounts?: Partial<Resort["socialAccounts"]> | null;
 }) {
   const container = useRef<HTMLDivElement>(null);
@@ -243,6 +337,11 @@ function SocialTabs({
   const platforms = SOCIAL_PLATFORMS.filter(
     platform => (accounts?.[platform]?.length ?? 0) > 0,
   );
+  const [active, setActive] = useScreenState(
+    `rusutsu:detail:v1:${resortId}:sns`,
+    z.string(),
+    platforms[0] ?? "X",
+  );
   if (!platforms.length) {
     return (
       <p className="p-8 text-center text-sm text-muted-foreground">
@@ -253,7 +352,10 @@ function SocialTabs({
   return (
     <Tabs
       ref={container}
-      defaultValue={platforms[0]}
+      value={active}
+      onValueChange={value => {
+        if (typeof value === "string") setActive(value);
+      }}
       className="mx-auto w-full max-w-[500px] min-w-0 flex-col gap-0 overflow-hidden rounded-xl border border-slate-200"
     >
       <TabsList
@@ -287,6 +389,7 @@ function SocialTabs({
           keepMounted
         >
           <PlatformAccounts
+            resortId={resortId}
             key={platform}
             platform={platform}
             accounts={accounts?.[platform] ?? []}

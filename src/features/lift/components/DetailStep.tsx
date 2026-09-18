@@ -256,7 +256,7 @@ export function DetailStep({
   };
 
   return (
-    <div className="flex h-full min-h-0 w-full min-w-0 flex-col gap-2 overflow-y-auto border-l border-gray-200 bg-white p-3">
+    <div className="flex w-full min-w-0 shrink-0 flex-col gap-2 border-l border-gray-200 bg-white p-3">
       <div className="flex items-center justify-between">
         <div>
           <h2
