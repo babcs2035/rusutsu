@@ -161,14 +161,14 @@ const StringField = ({
         description={description}
         error={dangling ? `${current} は存在しないIDです。` : error}
       >
-        <Select value={current} onValueChange={v => v && commit(v)}>
+        <Select value={current} onValueChange={v => v !== null && commit(v)}>
           <SelectTrigger
             className={`h-9 w-full rounded-lg bg-white px-2.5 py-0 text-sm border ${dangling ? "border-red-600" : "border-gray-300"}`}
           >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__empty__">未設定</SelectItem>
+            <SelectItem value="">未設定</SelectItem>
             {dangling && (
               <SelectItem value={current}>{current}（存在しません）</SelectItem>
             )}
@@ -193,12 +193,12 @@ const StringField = ({
         required={required}
         description={description}
       >
-        <Select value={current} onValueChange={v => v && commit(v)}>
+        <Select value={current} onValueChange={v => v !== null && commit(v)}>
           <SelectTrigger className="h-9 w-full rounded-lg bg-white px-2.5 py-0 text-sm border border-gray-300">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__empty__">未設定（マスタに無い）</SelectItem>
+            <SelectItem value="">未設定（マスタに無い）</SelectItem>
             {!known && current !== "" && (
               <SelectItem value={current}>{current}（マスタに無い）</SelectItem>
             )}
@@ -214,7 +214,6 @@ const StringField = ({
   }
 
   if (spec.enumValues && spec.enumValues.length > 0) {
-    const canClear = spec.nullable || !required;
     const labels = resolveEnumLabels(enumLabels, spec.enumValues);
     return (
       <FieldShell
@@ -222,14 +221,12 @@ const StringField = ({
         required={required}
         description={description}
       >
-        <Select value={current} onValueChange={v => v && commit(v)}>
+        <Select value={current} onValueChange={v => v !== null && commit(v)}>
           <SelectTrigger className="h-9 w-full rounded-lg bg-white px-2.5 py-0 text-sm border border-gray-300">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {(canClear || current === "") && (
-              <SelectItem value="__empty__">未設定</SelectItem>
-            )}
+            <SelectItem value="">未設定</SelectItem>
             {spec.enumValues.map(option => (
               <SelectItem key={option} value={option}>
                 {enumOptionLabel(option, labels)}

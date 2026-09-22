@@ -39,6 +39,20 @@ const isInsideRoot = (root: string, candidate: string): boolean => {
 
 const asSummary = (document: DataDocument): DataDocumentSummary => {
   const { content: _content, ...summary } = document;
+  if (document.key.endsWith(".geojson")) {
+    try {
+      const parsed = JSON.parse(document.content);
+      return {
+        ...summary,
+        geoJsonFeatureCount:
+          parsed?.type === "FeatureCollection" && Array.isArray(parsed.features)
+            ? parsed.features.length
+            : 0,
+      };
+    } catch {
+      return { ...summary, geoJsonFeatureCount: 0 };
+    }
+  }
   return summary;
 };
 

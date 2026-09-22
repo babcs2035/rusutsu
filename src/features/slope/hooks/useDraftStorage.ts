@@ -26,6 +26,22 @@ const parseDraft = (raw: string | null): SlopeEditDraft | null => {
   if (!raw) return null;
   const parsed = JSON.parse(raw) as SlopeEditDraft;
   if (parsed?.version !== 1 || !Array.isArray(parsed.courses)) return null;
+  parsed.courses = parsed.courses.map(course => ({
+    ...course,
+    detail: {
+      ...course.detail,
+      youtubeUrl:
+        course.detail.youtubeUrl ??
+        String(
+          course.beforeExtras?.youtubeUrl ??
+            course.detailExtras?.youtubeUrl ??
+            "",
+        ),
+      note:
+        course.detail.note ??
+        String(course.detailExtras?.note ?? course.beforeExtras?.note ?? ""),
+    },
+  }));
   return parsed;
 };
 

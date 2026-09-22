@@ -58,6 +58,20 @@ test("lists JSON and GeoJSON under a prefix without following symlinks", async (
     ["group/map.geojson"],
   );
   assert.equal(documents[0]?.mediaType, "application/geo+json");
+  assert.equal(documents[0]?.geoJsonFeatureCount, 0);
   assert.equal(await source.get("group/escape.json"), null);
   assert.equal(await source.get("group/ignored.txt"), null);
+});
+
+test("bundled GeoJSON summaries include counts without exposing content", async () => {
+  await fs.mkdir(path.join(root, "counts"), { recursive: true });
+  await fs.writeFile(
+    path.join(root, "counts", "map.geojson"),
+    JSON.stringify({ type: "FeatureCollection", features: [{}, {}] }),
+  );
+  const documents = await new BundledFileDataDocumentSource(root).list(
+    "counts/",
+  );
+  assert.equal(documents[0]?.geoJsonFeatureCount, 2);
+  assert.equal("content" in documents[0], false);
 });

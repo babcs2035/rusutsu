@@ -22,7 +22,9 @@ const EDITABLE_DETAIL_KEYS = new Set([
   "morning",
   "night",
   "image",
+  "youtubeUrl",
   "searchWord",
+  "note",
 ]);
 
 const toDetailString = (value: unknown): string => {
@@ -103,7 +105,9 @@ const buildDetail = (entry: SlopeDetailEntry): CourseDetail => ({
   morning: normalizeMark(entry.morning, ["○", "×"]) as BinaryMark,
   night: normalizeMark(entry.night, ["○", "×"]) as BinaryMark,
   image: toDetailString(entry.image),
+  youtubeUrl: toDetailString(entry.youtubeUrl),
   searchWord: toDetailString(entry.searchWord),
+  note: toDetailString(entry.note),
 });
 
 const buildExtras = (entry: SlopeDetailEntry): Record<string, unknown> => {
@@ -142,7 +146,13 @@ const mergeDetail = (
       morning: detail.morning || before.morning,
       night: detail.night || before.night,
       image: detail.image || before.image,
+      // 空文字も管理画面で明示的に削除した値として保持する。
+      youtubeUrl: Object.hasOwn(beforeEntry, "youtubeUrl")
+        ? before.youtubeUrl
+        : detail.youtubeUrl,
       searchWord: detail.searchWord || before.searchWord,
+      // 保存済みの備考を優先する。空文字も明示的な削除として保持する。
+      note: Object.hasOwn(beforeEntry, "note") ? before.note : detail.note,
     },
     levelNormalization,
   };

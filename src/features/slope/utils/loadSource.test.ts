@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { SlopeSourceData } from "../types";
+import { buildSlopeDetailJson, courseToSavePayload } from "./exportFiles";
 import { normalizeLevel, sourceDataToCourses } from "./loadSource";
 
 test("normalizeLevel keeps the five supported levels", () => {
@@ -84,3 +85,45 @@ test("sourceDataToCourses warns and does not fall back from invalid detail level
   assert.match(result.warnings[0], /テストコース/);
   assert.match(result.warnings[0], /空欄にしました/);
 });
+
+for (const note of ["注意事項\n迂回路あり", ""]) {
+  test(`noteを編集・保存・再読込できる: ${JSON.stringify(note)}`, () => {
+    const source: SlopeSourceData = {
+      sourceKind: "curated",
+      geojson: {
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            properties: { name: "テスト" },
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [140, 40],
+                [140.01, 40.01],
+              ],
+            },
+          },
+        ],
+      },
+      details: [{ name: "テスト", note: "詳細の備考" }],
+      fileHash: null,
+      detailFileHash: null,
+    };
+    const { courses } = sourceDataToCourses("test", source);
+    assert.equal(courses[0].detail.note, "詳細の備考");
+    courses[0].detail.note = note;
+    const payload = courseToSavePayload(courses[0]);
+    assert.ok(source.geojson);
+    source.geojson.features[0].properties = payload.properties;
+    assert.equal(
+      JSON.parse(buildSlopeDetailJson("test", courses))[0].note,
+      note,
+    );
+    assert.equal(payload.properties.note, note);
+    assert.equal(
+      sourceDataToCourses("test", source).courses[0].detail.note,
+      note,
+    );
+  });
+}

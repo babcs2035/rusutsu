@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { OrderOrganizerDialog } from "@/features/latest-status-mapping/components/OrderOrganizerDialog";
 import type { LatestStatusMappingState } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
 import { cn } from "@/lib/utils";
@@ -421,7 +422,7 @@ export function DetailEditStep({
             <div>
               <Label>難易度</Label>
               <Select
-                value={selectedCourse.detail.level}
+                value={selectedCourse.detail.level || "__empty__"}
                 onValueChange={v =>
                   updateDetail({ level: v === "__empty__" ? "" : (v ?? "") })
                 }
@@ -477,7 +478,7 @@ export function DetailEditStep({
               <Select
                 value={selectedCourse.detail.piste}
                 onValueChange={v =>
-                  v && updateDetail({ piste: v as PisteMark })
+                  v !== null && updateDetail({ piste: v as PisteMark })
                 }
               >
                 <SelectTrigger className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm">
@@ -501,7 +502,7 @@ export function DetailEditStep({
                 <Select
                   value={selectedCourse.detail.morning}
                   onValueChange={v =>
-                    v && updateDetail({ morning: v as BinaryMark })
+                    v !== null && updateDetail({ morning: v as BinaryMark })
                   }
                 >
                   <SelectTrigger className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm">
@@ -525,7 +526,7 @@ export function DetailEditStep({
                 <Select
                   value={selectedCourse.detail.night}
                   onValueChange={v =>
-                    v && updateDetail({ night: v as BinaryMark })
+                    v !== null && updateDetail({ night: v as BinaryMark })
                   }
                 >
                   <SelectTrigger className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm">
@@ -547,6 +548,16 @@ export function DetailEditStep({
             </div>
 
             <div>
+              <Label htmlFor="course-note">備考（note）</Label>
+              <Textarea
+                id="course-note"
+                value={selectedCourse.detail.note ?? ""}
+                onChange={event => updateDetail({ note: event.target.value })}
+                rows={3}
+              />
+            </div>
+
+            <div>
               <Label>画像URL</Label>
               <Input
                 className="h-7 w-full rounded-md border border-input bg-white px-2.5 text-xs shadow-sm"
@@ -555,6 +566,27 @@ export function DetailEditStep({
                 value={selectedCourse.detail.image}
                 onChange={event => updateDetail({ image: event.target.value })}
               />
+            </div>
+
+            <div>
+              <Label htmlFor="course-youtube-url">YouTube動画URL</Label>
+              <Input
+                id="course-youtube-url"
+                className="h-7 w-full rounded-md border border-input bg-white px-2.5 text-xs shadow-sm"
+                type="url"
+                placeholder="https://www.youtube.com/watch?v=..."
+                value={selectedCourse.detail.youtubeUrl}
+                onChange={event =>
+                  updateDetail({ youtubeUrl: event.target.value })
+                }
+                aria-describedby="course-youtube-url-help"
+              />
+              <p
+                id="course-youtube-url-help"
+                className="mt-1 text-xs text-gray-500"
+              >
+                スキー場公式のコース紹介動画などのURLを貼り付けてください（任意）。
+              </p>
             </div>
 
             <div>

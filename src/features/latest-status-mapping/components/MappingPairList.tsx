@@ -70,9 +70,10 @@ export function MappingPairList<T extends MappingPairItem>({
   const hasCrawler = crawledItems.length > 0;
   const assignItem = (item: T, crawledName: string | null) => {
     const needsName = item.unnamed || !item.name.trim();
-    const name = needsName ? crawledName : item.name.trim();
-    if (!name) return;
-    if (needsName) onRenameItem(item.id, name);
+    // 対応解除には名前が不要。無名・名前編集中の線でも null を反映する。
+    if (needsName && crawledName !== null) {
+      onRenameItem(item.id, crawledName);
+    }
     mapping.assignGeometry(item.id, crawledName);
   };
 

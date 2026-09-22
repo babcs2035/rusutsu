@@ -42,6 +42,8 @@ export const COURSE_DETAIL_LABELS: Record<keyof CourseDetail, string> = {
   morning: "早朝営業",
   night: "ナイター営業",
   image: "画像URL",
+  youtubeUrl: "YouTube動画URL",
+  note: "備考",
   searchWord: "検索ワード",
 };
 

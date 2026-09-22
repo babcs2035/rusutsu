@@ -4,6 +4,25 @@ import { assignGeojsonName } from "./rows";
 
 export type GeometryAssignments = Record<string, string | null>;
 
+/** 分割で新しく作られた線に、分割元の現在の対応（明示的な未対応も含む）を渡す。 */
+export function splitGeometryAssignments(
+  source: NamedGeometry,
+  before: NamedGeometry[],
+  after: NamedGeometry[],
+  byId: Map<string, string | null>,
+  byName: Map<string, string>,
+): GeometryAssignments {
+  const crawledName = byId.has(source.id)
+    ? (byId.get(source.id) ?? null)
+    : (byName.get(source.name.trim()) ?? null);
+  const previousIds = new Set(before.map(item => item.id));
+  return Object.fromEntries(
+    after
+      .filter(item => !previousIds.has(item.id))
+      .map(item => [item.id, crawledName]),
+  );
+}
+
 export function duplicateGeometryNames(geometries: NamedGeometry[]): string[] {
   const counts = new Map<string, number>();
   for (const { name } of geometries) {

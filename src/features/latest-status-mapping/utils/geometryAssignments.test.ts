@@ -1,11 +1,99 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import {
+  createEmptyCourse,
+  splitCourseAtVertex,
+} from "@/features/slope/utils/courseOps";
+import type { LatestStatusMappingRow } from "../types";
 import { reconcileEditedRows } from "./editedRows";
 import {
   applyGeometryAssignments,
   duplicateGeometryNames,
   geometryAssignmentsFromRows,
+  splitGeometryAssignments,
 } from "./geometryAssignments";
+import { reconcileSavedRows } from "./rows";
+
+for (const selected of ["手動で選んだ公式コース", null]) {
+  test(`分割・再分割後の全区間と保存用対応表に選択を引き継ぐ: ${selected}`, () => {
+    let courses = [
+      {
+        ...createEmptyCourse(),
+        id: "original",
+        name: "地図の名前",
+        coordinates: [
+          [140, 43],
+          [140.001, 43],
+          [140.002, 43],
+          [140.003, 43],
+        ] as [number, number][],
+      },
+    ];
+    let rows: LatestStatusMappingRow[] = [
+      { geojsonName: "地図の名前", crawledName: "以前の公式名" },
+    ];
+    let assignments = { original: selected } as Record<string, string | null>;
+    for (let index = 0; index < 2; index += 1) {
+      const source = courses[courses.length - 1];
+      const next = splitCourseAtVertex(courses, source.id, 1);
+      assignments = {
+        ...assignments,
+        ...splitGeometryAssignments(
+          source,
+          courses,
+          next,
+          new Map(Object.entries(assignments)),
+          new Map([[source.name, "以前の公式名"]]),
+        ),
+      };
+      const reconciled = applyGeometryAssignments(
+        reconcileEditedRows(rows, courses, next),
+        next,
+        assignments,
+      );
+      for (const course of next) {
+        assert.equal(assignments[course.id], selected);
+        assert.equal(
+          reconciled.find(row => row.geojsonName === course.name)?.crawledName,
+          selected,
+        );
+      }
+      // 保存後の読み直しでも、一対多の対応と明示的な未対応を維持する。
+      const reloaded = reconcileSavedRows(
+        "courses",
+        reconciled,
+        ["以前の公式名", "手動で選んだ公式コース"],
+        next.map(course => course.name),
+      );
+      assert.deepEqual(
+        geometryAssignmentsFromRows(reloaded, next),
+        assignments,
+      );
+      courses = next;
+      rows = reconciled;
+    }
+    assert.equal(courses.length, 3);
+  });
+}
+
+test("分割元にID対応がなければ名前の対応を引き継ぎ、分割できなければ変更しない", () => {
+  const source = { id: "a", name: " A " };
+  const byName = new Map([["A", "公式A"]]);
+  assert.deepEqual(
+    splitGeometryAssignments(
+      source,
+      [source],
+      [source, { id: "b", name: "下部" }],
+      new Map(),
+      byName,
+    ),
+    { b: "公式A" },
+  );
+  assert.deepEqual(
+    splitGeometryAssignments(source, [source], [source], new Map(), byName),
+    {},
+  );
+});
 
 for (const kind of ["リフト", "コース"]) {
   test(`${kind}: 同名の上段を選択・改名しても下段の対応は変わらない`, () => {

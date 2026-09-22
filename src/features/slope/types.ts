@@ -15,7 +15,9 @@ export type CourseDetail = {
   morning: BinaryMark;
   night: BinaryMark;
   image: string;
+  youtubeUrl: string;
   searchWord: string;
+  note: string;
 };
 
 export type EditorCourse = {

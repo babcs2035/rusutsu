@@ -16,7 +16,9 @@ export const createEmptyDetail = (): CourseDetail => ({
   morning: "",
   night: "",
   image: "",
+  youtubeUrl: "",
   searchWord: "",
+  note: "",
 });
 
 export const createCourseId = (): string =>

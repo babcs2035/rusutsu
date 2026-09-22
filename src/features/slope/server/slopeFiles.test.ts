@@ -2,12 +2,56 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   hashContent,
+  listSlopeBeforeResortIds,
   osmSlope10mDocumentKey,
   serializeSlopeGeojson,
   slope10mDocumentKey,
   slopeBeforeDocumentKey,
   slopeDetailDocumentKey,
 } from "./slopeFiles";
+
+test("resort picker uses counts without downloading any GeoJSON", async () => {
+  for (const sourceKind of ["curated", "osm"] as const) {
+    const ids = await listSlopeBeforeResortIds(sourceKind, {
+      listDataDocuments: async () =>
+        [0, 3].map(count => ({
+          key: slopeBeforeDocumentKey(`resort-${count}`, sourceKind),
+          hash: "a".repeat(64),
+          version: 1,
+          mediaType: "application/geo+json",
+          source: "database" as const,
+          geoJsonFeatureCount: count,
+        })),
+      getDataDocument: async () => {
+        assert.fail("The picker must not fetch GeoJSON bodies");
+      },
+    });
+    assert.deepEqual(ids, ["resort-3"]);
+  }
+});
+
+test("resort picker remains compatible with API summaries lacking counts", async () => {
+  const summary = {
+    key: slopeBeforeDocumentKey("sample-resort", "curated"),
+    hash: "a".repeat(64),
+    version: 1,
+    mediaType: "application/geo+json",
+    source: "database" as const,
+  };
+  let reads = 0;
+  const ids = await listSlopeBeforeResortIds("curated", {
+    listDataDocuments: async () => [summary],
+    getDataDocument: async () => {
+      reads += 1;
+      return {
+        ...summary,
+        content: JSON.stringify({ type: "FeatureCollection", features: [{}] }),
+      };
+    },
+  });
+  assert.equal(reads, 1);
+  assert.deepEqual(ids, ["sample-resort"]);
+});
 
 test("maps slope files to src/private/data-relative DataDocument keys", () => {
   assert.equal(

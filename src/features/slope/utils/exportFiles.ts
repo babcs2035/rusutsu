@@ -24,7 +24,9 @@ const buildCourseDetailProperties = (
   morning: course.detail.morning,
   night: course.detail.night,
   image: course.detail.image,
+  youtubeUrl: course.detail.youtubeUrl.trim(),
   searchWord: course.detail.searchWord,
+  note: course.detail.note,
 });
 
 const buildCourseBeforeProperties = (
@@ -102,7 +104,9 @@ export const buildStandardGeojson = (courses: EditorCourse[]): string =>
           morning: course.detail.morning,
           night: course.detail.night,
           image: course.detail.image,
+          youtubeUrl: course.detail.youtubeUrl.trim(),
           searchWord: course.detail.searchWord,
+          note: course.detail.note,
         },
         geometry: {
           type: "LineString",

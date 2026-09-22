@@ -42,8 +42,8 @@ import {
   ALL_TILE_IDS,
   addGoogleTileLayer,
   createEditorStyle,
+  EDITOR_MAX_ZOOM,
   FALLBACK_TILE_LAYER,
-  getMapMaxZoom,
   isGoogleTileLayer,
   tileLayerId,
 } from "./editorTiles";
@@ -222,7 +222,7 @@ export function EditorMap({
       style: createEditorStyle(initial.layerId),
       center: initial.center,
       zoom: initial.zoom,
-      maxZoom: getMapMaxZoom(initial.layerId),
+      maxZoom: EDITOR_MAX_ZOOM,
       // 描画中のダブルクリックが誤ってズームにならないようにする
       doubleClickZoom: false,
       dragRotate: false,
@@ -371,7 +371,6 @@ export function EditorMap({
         id === effectiveLayerId ? "visible" : "none",
       );
     }
-    map.setMaxZoom(getMapMaxZoom(effectiveLayerId));
   }, [effectiveLayerId, isReady, map]);
 
   // --- 視点 ---------------------------------------------------------------
@@ -446,6 +445,12 @@ export function EditorMap({
         return;
       }
 
+      // 作図中は既存の線を選ばず、クリックした位置に続きを描く。
+      if (current.mode === "draw") {
+        current.onAppendVertex?.(lngLat);
+        return;
+      }
+
       const midpoint = pickFeature(map, event.point, [
         EDITOR_LAYER.midpointHit,
       ]);
@@ -480,8 +485,6 @@ export function EditorMap({
         current.onSelectCourse?.(line.lineId);
         return;
       }
-
-      if (current.mode === "draw") current.onAppendVertex?.(lngLat);
     };
 
     const handleContextMenu = (event: MapMouseEvent) => {
@@ -566,6 +569,8 @@ export function EditorMap({
   // --- ホバーの吹き出しとカーソル -----------------------------------------
   useEffect(() => {
     if (!map || !isReady) return;
+    map.getCanvas().style.cursor =
+      mode === "draw" || mode === "midstation" ? "crosshair" : "";
 
     // Leaflet の sticky ツールチップと同じく、カーソルに付いてくる
     const popup = new Popup({
@@ -607,7 +612,10 @@ export function EditorMap({
         return;
       }
 
-      if (pickFeature(map, event.point, [EDITOR_LAYER.midstationHit])) {
+      if (
+        current.mode !== "draw" &&
+        pickFeature(map, event.point, [EDITOR_LAYER.midstationHit])
+      ) {
         show("中間駅");
         canvas.style.cursor = "pointer";
         setHovered(null);
@@ -626,6 +634,14 @@ export function EditorMap({
       if (vertex || onMidpoint) {
         popup.remove();
         canvas.style.cursor = "pointer";
+        setHovered(null);
+        setInsertHint(null);
+        return;
+      }
+
+      if (current.mode === "draw") {
+        popup.remove();
+        canvas.style.cursor = "crosshair";
         setHovered(null);
         setInsertHint(null);
         return;
@@ -658,7 +674,7 @@ export function EditorMap({
       popup.remove();
       setHovered(null);
       setInsertHint(null);
-      canvas.style.cursor = current.mode === "draw" ? "crosshair" : "";
+      canvas.style.cursor = "";
     };
 
     const handleOut = () => {
@@ -701,9 +717,11 @@ export function EditorMap({
       map.off("mousemove", handleMove);
       map.off("mouseout", handleOut);
       document.removeEventListener("keydown", handleKeyDown);
-      popup.remove();
+      // 地図自体が破棄された後はソースを更新しない。
+      if (mapRef.current === map) handleOut();
+      else popup.remove();
     };
-  }, [isReady, map]);
+  }, [isReady, map, mode]);
 
   return (
     // isolate で重なりの文脈を閉じ、地図の上の要素がダイアログより前へ出ないようにする

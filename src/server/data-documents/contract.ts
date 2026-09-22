@@ -248,9 +248,16 @@ export const storedDataDocumentSchema = z.strictObject({
   version: z.number().int().positive(),
 });
 
-export const storedDataDocumentSummarySchema = storedDataDocumentSchema.omit({
-  content: true,
-});
+const geoJsonSummaryShape = {
+  // Optional for compatibility with older internal API servers.
+  geoJsonFeatureCount: z.number().int().nonnegative().optional(),
+};
+
+export const storedDataDocumentSummarySchema = storedDataDocumentSchema
+  .omit({
+    content: true,
+  })
+  .extend(geoJsonSummaryShape);
 
 export const dataDocumentSourceSchema = z.enum(["database", "bundled"]);
 
@@ -260,9 +267,11 @@ export const dataDocumentSchema = storedDataDocumentSchema.extend({
   version: z.number().int().nonnegative(),
 });
 
-export const dataDocumentSummarySchema = dataDocumentSchema.omit({
-  content: true,
-});
+export const dataDocumentSummarySchema = dataDocumentSchema
+  .omit({
+    content: true,
+  })
+  .extend(geoJsonSummaryShape);
 
 export const dataDocumentWriteSchema = z
   .strictObject({

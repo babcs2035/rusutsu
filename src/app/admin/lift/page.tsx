@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { getSkiResortsForMap } from "@/actions/skiResorts";
 import {
   listCrawlerCoveredResortIds,
   listMappedResortIds,
@@ -12,6 +11,7 @@ import {
 } from "@/features/lift/server/liftFiles";
 import type { ResortOption } from "@/features/lift/types";
 import { getResortLabelName, getResortSearchName } from "@/lib/resortAliases";
+import { readSkiResortsForMap } from "@/lib/skiResortData";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 export default async function LiftEditPage() {
   const [resorts, liftBeforeIds, confirmedMap, crawlerLiftIds, mappedLiftIds] =
     await Promise.all([
-      getSkiResortsForMap(),
+      readSkiResortsForMap(),
       listLiftBeforeResortIds(),
       readLiftConfirmedMap(),
       listCrawlerCoveredResortIds("lifts"),

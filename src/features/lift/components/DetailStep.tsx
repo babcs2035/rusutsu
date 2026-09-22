@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { OrderOrganizerDialog } from "@/features/latest-status-mapping/components/OrderOrganizerDialog";
 import type { LatestStatusMappingState } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
 import { cn } from "@/lib/utils";
@@ -87,7 +88,7 @@ const MarkSelect = ({
           : "?（不明）";
 
   return (
-    <Select value={value} onValueChange={v => v && onChange(v)}>
+    <Select value={value} onValueChange={v => v !== null && onChange(v)}>
       <SelectTrigger className={selectClassName}>
         <SelectValue />
       </SelectTrigger>
@@ -576,7 +577,7 @@ export function DetailStep({
                   <Select
                     value={selectedLift.detail.type}
                     onValueChange={value =>
-                      value && updateDetail({ type: value })
+                      value !== null && updateDetail({ type: value })
                     }
                   >
                     <SelectTrigger className={selectClassName}>
@@ -604,7 +605,7 @@ export function DetailStep({
                   <Select
                     value={selectedLift.detail.speed}
                     onValueChange={value =>
-                      value && updateDetail({ speed: value })
+                      value !== null && updateDetail({ speed: value })
                     }
                   >
                     <SelectTrigger className={selectClassName}>
@@ -747,7 +748,7 @@ export function DetailStep({
                   <Select
                     value={selectedLift.detail.maker}
                     onValueChange={value =>
-                      value && updateDetail({ maker: value })
+                      value !== null && updateDetail({ maker: value })
                     }
                   >
                     <SelectTrigger className={selectClassName}>
@@ -791,9 +792,10 @@ export function DetailStep({
                 />
               </div>
               <div>
-                <Label>{DETAIL_LABELS.note}</Label>
-                <Input
-                  className="h-9 w-full rounded-md border border-input bg-white px-3 py-1 text-sm shadow-sm"
+                <Label htmlFor="lift-note">{DETAIL_LABELS.note}（note）</Label>
+                <Textarea
+                  id="lift-note"
+                  rows={3}
                   value={selectedLift.detail.note}
                   onChange={event => updateDetail({ note: event.target.value })}
                 />

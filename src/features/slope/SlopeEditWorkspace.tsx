@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useLatestStatusMapping } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
+import { splitGeometryAssignments } from "@/features/latest-status-mapping/utils/geometryAssignments";
 import { loadLiftSourceData, loadResortLinks } from "@/features/lift/actions";
 import { sourceDataToLifts } from "@/features/lift/utils/loadSource";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
@@ -453,14 +454,26 @@ export function SlopeEditWorkspace({
   const handleSplitAtVertex = (vertexIndex: number) => {
     if (!activeCourseId) return;
     const activeCourse = courses.find(course => course.id === activeCourseId);
-    setCoursesState(previous =>
-      splitCourseAtVertex(
-        previous,
-        activeCourseId,
-        vertexIndex,
-        resortSearchNameFor(activeCourse),
-      ),
+    if (!activeCourse) return;
+    const next = splitCourseAtVertex(
+      courses,
+      activeCourseId,
+      vertexIndex,
+      resortSearchNameFor(activeCourse),
     );
+    if (next !== courses) {
+      const inherited = splitGeometryAssignments(
+        activeCourse,
+        courses,
+        next,
+        mapping.crawledNameByGeometryId,
+        mapping.crawledNameByGeojsonName,
+      );
+      for (const [id, crawledName] of Object.entries(inherited)) {
+        mapping.assignGeometry(id, crawledName);
+      }
+      setCoursesState(next);
+    }
     setIsSplitMode(false);
   };
 

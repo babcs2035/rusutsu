@@ -74,15 +74,32 @@ const mapWithConcurrency = async <T, U>(
 
 export async function listSlopeBeforeResortIds(
   sourceKind: SlopeSourceKind = "curated",
+  client?: Pick<
+    Awaited<ReturnType<typeof loadDataDocumentClient>>,
+    "getDataDocument" | "listDataDocuments"
+  >,
 ): Promise<string[]> {
   const prefix = `${TEMPORARY_DATA_PREFIX}/${sourceDirectory(sourceKind)}/`;
-  const { getDataDocument, listDataDocuments } = await loadDataDocumentClient();
+  const { getDataDocument, listDataDocuments } =
+    client ?? (await loadDataDocumentClient());
   const summaries = await listDataDocuments(prefix);
   const candidates = summaries.flatMap(summary => {
     const resortId = resortIdFromSlopeBeforeKey(summary.key, sourceKind);
-    return resortId === null ? [] : [{ resortId, key: summary.key }];
+    return resortId === null
+      ? []
+      : [
+          {
+            resortId,
+            key: summary.key,
+            featureCount: summary.geoJsonFeatureCount,
+          },
+        ];
   });
   const entries = await mapWithConcurrency(candidates, async candidate => {
+    if (candidate.featureCount !== undefined) {
+      return candidate.featureCount > 0 ? candidate.resortId : null;
+    }
+    // Older internal API servers do not yet supply the lightweight count.
     const document = await getDataDocument(candidate.key);
     if (!document) return null;
     const parsed = parseSlopeBeforeGeojson(document.content);

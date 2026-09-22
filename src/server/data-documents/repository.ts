@@ -47,6 +47,25 @@ class PrismaDataDocumentDatabase implements DataDocumentDatabase {
   }
 
   async list(prefix: string) {
+    if (
+      prefix === "resorts-temporary/slope_before/" ||
+      prefix === "resorts-temporary/slope_before_osm/"
+    ) {
+      // Return only the count needed by the resort picker, never the geometry.
+      // PostgreSQL 16 IS JSON guards legacy malformed documents before casting.
+      const rows = await prisma.$queryRaw<Array<unknown>>(Prisma.sql`
+        SELECT key, "mediaType", hash, version,
+          CASE WHEN content IS JSON OBJECT THEN
+            CASE WHEN content::json ->> 'type' = 'FeatureCollection'
+              AND json_typeof(content::json -> 'features') = 'array'
+            THEN json_array_length(content::json -> 'features') ELSE 0 END
+          ELSE 0 END AS "geoJsonFeatureCount"
+        FROM data_documents
+        WHERE starts_with(key, ${prefix})
+        ORDER BY key ASC
+      `);
+      return rows.map(row => storedDataDocumentSummarySchema.parse(row));
+    }
     const rows = await prisma.dataDocument.findMany({
       where: prefix === "" ? undefined : { key: { startsWith: prefix } },
       orderBy: { key: "asc" },

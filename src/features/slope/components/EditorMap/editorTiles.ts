@@ -36,14 +36,13 @@ const RAW_MAX_ZOOM: Record<TileLayerId, number> = {
 };
 
 /**
- * 地図に許す最大ズーム。
+ * 編集地図に許す最大ズーム。背景の解像度を超えても拡大し、細かく作図できるようにする。
  *
- * 256px のタイルを tileSize:256 で使うと、MapLibre は「スタイルズーム + 1」の
- * 生タイルを取りに行く。Leaflet はタイルの z をそのままズーム値にしていたので、
- * Leaflet 時代の値から 1 引くと同じ見え方になる。
- * src/features/map/constants.ts:13-21 と同じ事情。
+ * 生タイルの取得上限は RAW_MAX_ZOOM のままにし、それ以上は背景画像を引き伸ばす。
+ * 地理院タイルの等倍表示（MapLibre ズーム17）からさらに5段階、32倍まで拡大できる。
+ * 背景の切り替えで縮小されないよう、すべての背景で同じ上限を使う。
  */
-export const getMapMaxZoom = (id: TileLayerId) => RAW_MAX_ZOOM[id] - 1;
+export const EDITOR_MAX_ZOOM = 22;
 
 const rasterSource = (
   tiles: string,
