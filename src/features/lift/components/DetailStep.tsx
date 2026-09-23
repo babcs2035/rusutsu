@@ -625,6 +625,7 @@ export function DetailStep({
                   <Input
                     className="h-9 w-full rounded-md border border-input bg-white px-3 py-1 text-sm shadow-sm"
                     type="number"
+                    onWheel={event => event.currentTarget.blur()}
                     value={selectedLift.detail.capacity}
                     onChange={event =>
                       updateDetail({ capacity: event.target.value })
@@ -639,6 +640,7 @@ export function DetailStep({
                   <Input
                     className="h-9 w-full rounded-md border border-input bg-white px-3 py-1 text-sm shadow-sm"
                     type="number"
+                    onWheel={event => event.currentTarget.blur()}
                     value={selectedLift.detail.distance}
                     onChange={event =>
                       updateDetail({ distance: event.target.value })
@@ -650,6 +652,7 @@ export function DetailStep({
                   <Input
                     className="h-9 w-full rounded-md border border-input bg-white px-3 py-1 text-sm shadow-sm"
                     type="number"
+                    onWheel={event => event.currentTarget.blur()}
                     value={selectedLift.detail.vertical}
                     onChange={event =>
                       updateDetail({ vertical: event.target.value })
@@ -661,6 +664,7 @@ export function DetailStep({
                   <Input
                     className="h-9 w-full rounded-md border border-input bg-white px-3 py-1 text-sm shadow-sm"
                     type="number"
+                    onWheel={event => event.currentTarget.blur()}
                     value={selectedLift.detail.towers}
                     onChange={event =>
                       updateDetail({ towers: event.target.value })

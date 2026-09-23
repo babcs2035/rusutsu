@@ -447,6 +447,7 @@ export function DetailEditStep({
                 <Input
                   className="h-7 w-full rounded-md border border-input bg-white px-2.5 text-xs shadow-sm"
                   type="number"
+                  onWheel={event => event.currentTarget.blur()}
                   value={selectedCourse.detail.distance}
                   onChange={event =>
                     updateDetail({ distance: event.target.value })
@@ -458,6 +459,7 @@ export function DetailEditStep({
                 <Input
                   className="h-7 w-full rounded-md border border-input bg-white px-2.5 text-xs shadow-sm"
                   type="number"
+                  onWheel={event => event.currentTarget.blur()}
                   value={selectedCourse.detail.avg}
                   onChange={event => updateDetail({ avg: event.target.value })}
                 />
@@ -467,6 +469,7 @@ export function DetailEditStep({
                 <Input
                   className="h-7 w-full rounded-md border border-input bg-white px-2.5 text-xs shadow-sm"
                   type="number"
+                  onWheel={event => event.currentTarget.blur()}
                   value={selectedCourse.detail.max}
                   onChange={event => updateDetail({ max: event.target.value })}
                 />

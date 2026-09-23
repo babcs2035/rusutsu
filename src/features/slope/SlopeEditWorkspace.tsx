@@ -906,7 +906,7 @@ export function SlopeEditWorkspace({
             minWidth={360}
             maxWidth={900}
           >
-            {resort && (
+            {resort && mapIsVisible && (
               <ResortEditorTools
                 key={resort.id}
                 resortId={resort.id}

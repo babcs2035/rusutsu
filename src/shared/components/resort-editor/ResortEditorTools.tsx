@@ -79,9 +79,21 @@ export function ResortEditorTools({
           const displayed = links.length ? links : [{ url: "" }];
           return (
             <div key={key}>
-              <p className="mb-1 text-xs font-semibold">
-                {RESORT_LINK_LABELS[key]}
-              </p>
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <p className="text-xs font-semibold">
+                  {RESORT_LINK_LABELS[key]}
+                </p>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="outline"
+                  aria-label={`${RESORT_LINK_LABELS[key]}のURLを追加`}
+                  disabled={busy || displayed.length >= 50}
+                  onClick={() => change(key, [...displayed, { url: "" }])}
+                >
+                  追加
+                </Button>
+              </div>
               {displayed.map((link, index) => (
                 // biome-ignore lint/suspicious/noArrayIndexKey: URL入力中のフォーカスを保つ。行の並べ替えは行わない。
                 <div key={index} className="flex flex-col gap-1">
@@ -139,6 +151,22 @@ export function ResortEditorTools({
                           : "掲載ページを表示"}
                       </Button>
                     )}
+                    <Button
+                      type="button"
+                      size="xs"
+                      variant="outline"
+                      className="text-destructive"
+                      aria-label={`${RESORT_LINK_LABELS[key]} URL ${index + 1}を削除`}
+                      disabled={busy || links.length === 0}
+                      onClick={() =>
+                        change(
+                          key,
+                          displayed.filter((_, i) => i !== index),
+                        )
+                      }
+                    >
+                      削除
+                    </Button>
                   </div>
                 </div>
               ))}
