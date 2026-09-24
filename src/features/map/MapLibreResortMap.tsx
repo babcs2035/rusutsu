@@ -274,12 +274,22 @@ function MapLibreResortMapContent({
   const previousInteractionModeRef = useRef<
     "default" | "detail" | "compare" | null
   >(null);
+  const previousStyleResortIdRef = useRef(selectedResortId);
   // 色味と同じ理由で描画前に確定させる（useEffect だと 1 フレーム遅れる）
   useLayoutEffect(() => {
     const previousInteractionMode = previousInteractionModeRef.current;
+    const previousResortId = previousStyleResortIdRef.current;
     previousInteractionModeRef.current = interactionMode;
-    if (previousInteractionMode === interactionMode) return;
-    if (hasControlledStyleState || savedMap) return;
+    previousStyleResortIdRef.current = selectedResortId;
+    if (
+      previousInteractionMode === interactionMode &&
+      previousResortId === selectedResortId
+    )
+      return;
+    if (hasControlledStyleState) return;
+    // 保存設定を優先するのは初回の復元だけ。以後のスキー場選択には
+    // 詳細用の既定表示を適用する（同じ詳細モード内での選び直しも含む）。
+    if (previousInteractionMode === null && savedMap) return;
 
     if (interactionMode === "detail") {
       setMapTileVariant("photo");
@@ -295,6 +305,7 @@ function MapLibreResortMapContent({
     hasControlledStyleState,
     savedMap,
     interactionMode,
+    selectedResortId,
     setCourseColorMode,
     setMapTileVariant,
   ]);
@@ -886,7 +897,8 @@ function MapLibreResortMapContent({
     selectedFeature: selectedFinalizedFeature,
     selectedCourses: selectedCourses ?? [],
     selectedLift: selectedLift ?? null,
-    preserveViewport,
+    // モバイルは詳細を開くと表示領域が変わるため、保存位置より全体表示を優先する。
+    preserveViewport: preserveViewport && !isMobile,
     bottomPaddingRatio: selectedViewportBottomPaddingRatio,
     animate: !isMobile,
   });

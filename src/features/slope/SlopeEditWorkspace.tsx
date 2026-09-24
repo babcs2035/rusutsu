@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useLatestStatusMapping } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
+import { useMappingProceedGuard } from "@/features/latest-status-mapping/hooks/useMappingProceedGuard";
 import { splitGeometryAssignments } from "@/features/latest-status-mapping/utils/geometryAssignments";
 import { loadLiftSourceData, loadResortLinks } from "@/features/lift/actions";
 import { sourceDataToLifts } from "@/features/lift/utils/loadSource";
@@ -689,6 +690,10 @@ export function SlopeEditWorkspace({
       .filter(Boolean),
     enabled: resort !== null,
   });
+  const mappingGuard = useMappingProceedGuard(
+    courses.filter(item => item.skiId === resort?.id),
+    mapping,
+  );
 
   const mapIsVisible =
     step === "assign" || step === "lines" || step === "details";
@@ -942,7 +947,7 @@ export function SlopeEditWorkspace({
                 isDrawing={isDrawing}
                 onDrawingChange={setIsDrawing}
                 onFitBounds={() => setFitBoundsKey(key => key + 1)}
-                onProceed={handleProceedToDetails}
+                onProceed={() => mappingGuard.proceed(handleProceedToDetails)}
                 onApplyGeojsonOrder={handleApplyCrawlerOrder}
                 onBackToSelect={
                   sourceKind === "osm"
@@ -993,10 +998,12 @@ export function SlopeEditWorkspace({
                   resetMapModes();
                   setStep("lines");
                 }}
-                onProceed={() => {
-                  resetMapModes();
-                  setStep("confirm");
-                }}
+                onProceed={() =>
+                  mappingGuard.proceed(() => {
+                    resetMapModes();
+                    setStep("confirm");
+                  })
+                }
                 onExported={markExported}
               />
             )}
@@ -1021,6 +1028,7 @@ export function SlopeEditWorkspace({
       )}
 
       <TutorialOverlay open={showTutorial} onClose={closeTutorial} />
+      {mappingGuard.dialog}
       <ConfirmDialog
         open={draftDialogOpen}
         onOpenChange={open => {

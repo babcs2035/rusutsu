@@ -1,6 +1,6 @@
 "use client";
 
-import { type PointerEvent, useState } from "react";
+import { type PointerEvent, useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { ElevationProfilePoint } from "../types";
 
@@ -49,13 +49,25 @@ export const ElevationProfile = ({
 }) => {
   const [isDragging, setIsDragging] = useState(false);
 
+  const chartRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(320);
+  const hasProfile = points.length >= 2;
+  useEffect(() => {
+    if (!hasProfile) return;
+    const element = chartRef.current;
+    if (!element) return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry.contentRect.width > 0) setWidth(entry.contentRect.width);
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [hasProfile]);
+
   if (points.length < 2) return null;
 
-  // 横スクロールなしで収めるため、viewBox を実際の表示幅に近づける。
-  // ここを 900 のように大きく取ると、狭い画面では文字が潰れるほど縮小される。
-  const width = 460;
-  const height = 220;
-  const chartLeft = 44;
+  // 実幅で描くことで、スマホでも目盛りの文字を縮小しない。
+  const height = width < 400 ? 170 : 190;
+  const chartLeft = 48;
   const chartRight = width - 12;
   const chartTop = 14;
   const chartBottom = height - 34;
@@ -70,13 +82,24 @@ export const ElevationProfile = ({
   );
   const bottomAxisElevation = minElevation - axisElevationOffset;
   const elevationRange = Math.max(1, maxElevation - bottomAxisElevation);
-  const minGridElevation = Math.ceil(bottomAxisElevation / 100) * 100;
-  const maxGridElevation = Math.ceil(maxElevation / 100) * 100;
+  const elevationStep = Math.max(10, Math.ceil(elevationRange / 4 / 10) * 10);
+  const minGridElevation =
+    Math.ceil(bottomAxisElevation / elevationStep) * elevationStep;
+  const maxGridElevation =
+    Math.floor(maxElevation / elevationStep) * elevationStep;
   const gridElevations = Array.from(
-    { length: (maxGridElevation - minGridElevation) / 100 + 1 },
-    (_, index) => minGridElevation + index * 100,
+    {
+      length: Math.max(
+        0,
+        Math.round((maxGridElevation - minGridElevation) / elevationStep) + 1,
+      ),
+    },
+    (_, index) => minGridElevation + index * elevationStep,
   ).filter(elevation => elevation >= bottomAxisElevation);
-  const horizontalGridInterval = getDistanceGridInterval(maxDistance);
+  const horizontalGridInterval = getDistanceGridInterval(
+    maxDistance,
+    Math.max(2, Math.floor(chartWidth / 70)),
+  );
   const distanceGridValues = Array.from(
     { length: Math.floor(maxDistance / horizontalGridInterval) + 1 },
     (_, index) => index * horizontalGridInterval,
@@ -100,7 +123,7 @@ export const ElevationProfile = ({
     new Set(points.map(point => point.status ?? "")).size > 1;
   const activePoint =
     activeDistance == null
-      ? null
+      ? points[0]
       : points.reduce((nearest, point) =>
           Math.abs(point.distance - activeDistance) <
           Math.abs(nearest.distance - activeDistance)
@@ -112,6 +135,15 @@ export const ElevationProfile = ({
         (point.slope ?? -Infinity) > (best.slope ?? -Infinity) ? point : best,
       )
     : null;
+  const selectDistance = (distance: number) => {
+    const nearestPoint = points.reduce((nearest, point) =>
+      Math.abs(point.distance - distance) <
+      Math.abs(nearest.distance - distance)
+        ? point
+        : nearest,
+    );
+    onPointSelect?.(nearestPoint);
+  };
   const selectNearestProfilePoint = (event: PointerEvent<SVGSVGElement>) => {
     if (!onPointSelect) return;
 
@@ -124,14 +156,7 @@ export const ElevationProfile = ({
         ((pointerX - chartLeft) / Math.max(1, chartWidth)) * maxDistance,
       ),
     );
-    const nearestPoint = points.reduce((nearest, point) =>
-      Math.abs(point.distance - targetDistance) <
-      Math.abs(nearest.distance - targetDistance)
-        ? point
-        : nearest,
-    );
-
-    onPointSelect(nearestPoint);
+    selectDistance(targetDistance);
   };
   const handleProfilePointerDown = (event: PointerEvent<SVGSVGElement>) => {
     if (!onPointSelect) return;
@@ -145,13 +170,15 @@ export const ElevationProfile = ({
   };
   const handleProfilePointerUp = (event: PointerEvent<SVGSVGElement>) => {
     if (!isDragging) return;
-    event.currentTarget.releasePointerCapture(event.pointerId);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
     setIsDragging(false);
   };
 
   return (
-    <Card>
-      <CardContent className="p-4">
+    <Card className="gap-0 py-0">
+      <CardContent className="p-2.5 sm:p-3">
         <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
           <p className="text-sm font-semibold text-gray-900">
             標高プロファイル
@@ -170,15 +197,36 @@ export const ElevationProfile = ({
             </div>
           )}
         </div>
-        <div>
+        <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1 text-sm tabular-nums text-gray-700">
+          <span>
+            斜度{" "}
+            <strong className="text-xl text-gray-950">
+              {activePoint.slope == null
+                ? "--"
+                : `${Math.round(activePoint.slope)}°`}
+            </strong>
+          </span>
+          <span>
+            標高{" "}
+            <strong className="text-xl text-gray-950">
+              {Math.round(activePoint.elevation).toLocaleString()}m
+            </strong>
+          </span>
+          <span>
+            水平距離 {Math.round(activePoint.distance).toLocaleString()}m
+          </span>
+        </div>
+        <div ref={chartRef}>
           <svg
             aria-label="標高プロファイル上の位置を選択"
             viewBox={`0 0 ${width} ${height}`}
-            role={onPointSelect ? "button" : "img"}
+            role="img"
             onPointerDown={handleProfilePointerDown}
             onPointerMove={handleProfilePointerMove}
             onPointerCancel={handleProfilePointerUp}
             onPointerUp={handleProfilePointerUp}
+            onLostPointerCapture={() => setIsDragging(false)}
+            style={{ touchAction: onPointSelect ? "none" : "auto" }}
             className={`block h-auto w-full ${onPointSelect ? (isDragging ? "cursor-grabbing" : "cursor-grab") : "cursor-default"}`}
           >
             <path
@@ -204,7 +252,7 @@ export const ElevationProfile = ({
                   x={chartLeft - 6}
                   y={toY(elevation) + 3.5}
                   fill="#6B7280"
-                  fontSize={10}
+                  fontSize={12}
                   fontWeight={800}
                   textAnchor="end"
                 >
@@ -228,9 +276,15 @@ export const ElevationProfile = ({
                   x={toX(distance)}
                   y={chartBottom + 15}
                   fill="#6B7280"
-                  fontSize={10}
+                  fontSize={12}
                   fontWeight={800}
-                  textAnchor={distance === 0 ? "start" : "middle"}
+                  textAnchor={
+                    distance === 0
+                      ? "start"
+                      : toX(distance) > chartRight - 20
+                        ? "end"
+                        : "middle"
+                  }
                 >
                   {formatDistanceTick(distance)}
                 </text>
@@ -240,7 +294,7 @@ export const ElevationProfile = ({
               x={chartRight}
               y={chartBottom + 29}
               fill="#6B7280"
-              fontSize={10}
+              fontSize={12}
               fontWeight={800}
               textAnchor="end"
             >
@@ -305,37 +359,60 @@ export const ElevationProfile = ({
                   strokeWidth={1.8}
                   vectorEffect="non-scaling-stroke"
                 />
-                <text
-                  x={Math.min(chartRight - 92, toX(activePoint.distance) + 7)}
-                  y={Math.max(chartTop + 10, toY(activePoint.elevation) - 8)}
-                  fill="#111827"
-                  fontSize={15}
-                  fontWeight={900}
-                  paintOrder="stroke"
-                  stroke="#FFFFFF"
-                  strokeLinejoin="round"
-                  strokeWidth={5}
-                >
-                  {activePoint.slope == null
-                    ? "--"
-                    : `${Math.round(activePoint.slope)}°`}
-                  {" / "}
-                  {Math.round(activePoint.elevation).toLocaleString()}m
-                </text>
               </>
             )}
           </svg>
         </div>
+        {onPointSelect && (
+          <div className="mt-1">
+            {/* つまみの中心が、グラフの始点・終点と同じX座標を通る。 */}
+            <div
+              style={{ marginLeft: chartLeft, marginRight: width - chartRight }}
+            >
+              <input
+                type="range"
+                aria-label="標高プロファイルの位置"
+                aria-valuetext={`水平距離${Math.round(activePoint.distance)}m、標高${Math.round(activePoint.elevation)}m、斜度${activePoint.slope == null ? "不明" : `${Math.round(activePoint.slope)}度`}`}
+                min={0}
+                max={Math.max(1, maxDistance)}
+                step="any"
+                value={activePoint.distance}
+                onChange={event => selectDistance(Number(event.target.value))}
+                onKeyDown={event => {
+                  const index = points.indexOf(activePoint);
+                  const nextIndex = {
+                    ArrowRight: Math.min(points.length - 1, index + 1),
+                    ArrowUp: Math.min(points.length - 1, index + 1),
+                    ArrowLeft: Math.max(0, index - 1),
+                    ArrowDown: Math.max(0, index - 1),
+                    Home: 0,
+                    End: points.length - 1,
+                  }[event.key];
+                  if (nextIndex == null) return;
+                  event.preventDefault();
+                  onPointSelect(points[nextIndex]);
+                }}
+                // ネイティブrangeはつまみの半径ぶん内側までしか動かないため補正する。
+                style={{ width: "calc(100% + 20px)", marginLeft: -10 }}
+                className="block h-8 appearance-none bg-transparent touch-pan-y [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-gray-200 [&::-webkit-slider-thumb]:-mt-2 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-600 [&::-moz-range-track]:h-1 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-gray-200 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-blue-600"
+              />
+            </div>
+            <p className="text-xs text-gray-500">
+              グラフをなぞるか、つまみを動かして斜度を確認
+            </p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
 };
 
-const getDistanceGridInterval = (maxDistance: number) => {
-  if (maxDistance <= 500) return 100;
-  if (maxDistance <= 1500) return 250;
-  if (maxDistance <= 3500) return 500;
-  return 1000;
+const getDistanceGridInterval = (maxDistance: number, count: number) => {
+  const target = Math.max(1, maxDistance / count);
+  const magnitude = 10 ** Math.floor(Math.log10(target));
+  return (
+    ([1, 2, 5, 10].find(step => step * magnitude >= target) ?? 10) * magnitude
+  );
 };
 
 const formatDistanceTick = (value: number) =>

@@ -21,7 +21,6 @@ export const FinalizedFeatureDetail = ({
   lift,
   resortLabelName,
   courseSourceUrls,
-  courseVerificationStatus,
   courseObservedAt,
   liftObservedAt,
   liftSourceUrls,
@@ -92,19 +91,11 @@ export const FinalizedFeatureDetail = ({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
-        <div className="mb-3">
-          <SourceLine
-            label={isCourse ? "コース状況" : "リフト状況"}
-            time={isCourse ? courseObservedAt : liftObservedAt}
-            urls={isCourse ? courseSourceUrls : liftSourceUrls}
-          />
-        </div>
         {courseGroup ? (
           <SelectedCourseDetail
             courseGroup={courseGroup}
             resortLabelName={resortLabelName}
             sourceUrls={courseSourceUrls}
-            verificationStatus={courseVerificationStatus}
             selectedElevationProfilePoint={selectedElevationProfilePoint}
             onSelectedElevationProfilePointChange={
               onSelectedElevationProfilePointChange
@@ -117,6 +108,13 @@ export const FinalizedFeatureDetail = ({
             sourceUrls={liftSourceUrls}
           />
         ) : null}
+        <div className="mt-4">
+          <SourceLine
+            label={isCourse ? "コース状況" : "リフト状況"}
+            time={isCourse ? courseObservedAt : liftObservedAt}
+            urls={isCourse ? courseSourceUrls : liftSourceUrls}
+          />
+        </div>
       </div>
     </div>
   );

@@ -210,14 +210,7 @@ export const CoursesTab = ({
       />
       <section>
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-sm font-bold">
-            コース一覧{" "}
-            {section?.verificationStatus === "verified" && (
-              <span className="text-sm font-normal text-slate-700">
-                確認済み
-              </span>
-            )}
-          </h2>
+          <h2 className="text-sm font-bold">コース一覧</h2>
           <select
             aria-label="難易度で絞り込み"
             value={filter}

@@ -57,7 +57,7 @@ export const SelectedLiftDetail = ({
   });
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-3">
       <FeatureHeadline
         items={[
           {

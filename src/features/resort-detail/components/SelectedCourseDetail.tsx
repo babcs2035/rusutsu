@@ -28,7 +28,6 @@ type Props = {
   courseGroup: FinalizedCourseGroup;
   resortLabelName: string;
   sourceUrls: string[];
-  verificationStatus?: "verified" | "unverified" | "mixed";
   selectedElevationProfilePoint: ElevationProfileMapPoint | null;
   onSelectedElevationProfilePointChange: (
     point: ElevationProfileMapPoint | null,
@@ -45,7 +44,6 @@ export const SelectedCourseDetail = ({
   courseGroup,
   resortLabelName,
   sourceUrls,
-  verificationStatus,
   selectedElevationProfilePoint,
   onSelectedElevationProfilePointChange,
 }: Props) => {
@@ -103,7 +101,7 @@ export const SelectedCourseDetail = ({
   });
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-3">
       <FeatureHeadline
         difficulty={difficulty}
         items={[
@@ -127,9 +125,6 @@ export const SelectedCourseDetail = ({
         update={selectedCourse.properties.update}
         searchWord={searchWord}
         sourceUrls={selectedCourse.sourceUrls ?? sourceUrls}
-        verificationStatus={
-          selectedCourse.verificationStatus ?? verificationStatus
-        }
       />
 
       <ElevationProfile
@@ -151,7 +146,7 @@ export const SelectedCourseDetail = ({
         }
       />
 
-      <div className="grid grid-cols-5 gap-2">
+      <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
         <FeatureMetric
           title="水平距離"
           value={formatMeters(horizontalDistance)}

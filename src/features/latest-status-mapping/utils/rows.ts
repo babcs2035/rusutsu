@@ -130,6 +130,12 @@ const partialMatchScore = (leftName: string, rightName: string): number => {
   return commonLength * 10_000 + Math.round(coverage * 100) + containsBonus;
 };
 
+/** 自動対応付けと同じ正規化で、名前に共通部分があるかを調べる。 */
+export const hasMappingNameOverlap = (left: string, right: string): boolean =>
+  normalizeCrawledName(left).normalize("NFKC").toLowerCase() ===
+    normalizeCrawledName(right).normalize("NFKC").toLowerCase() ||
+  partialMatchScore(left, right) > 0;
+
 export const createSuggestedRows = (
   kind: LatestStatusMappingKind,
   crawledNames: string[],

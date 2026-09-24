@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useLatestStatusMapping } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
+import { useMappingProceedGuard } from "@/features/latest-status-mapping/hooks/useMappingProceedGuard";
 import {
   EditorMap,
   type EditorMapMode,
@@ -188,6 +189,10 @@ export function LiftEditWorkspace({
       .filter(Boolean),
     enabled: resort !== null,
   });
+  const mappingGuard = useMappingProceedGuard(
+    activeLifts.filter(item => item.skiId === resort?.id),
+    mapping,
+  );
 
   const selectedLift =
     activeLifts.find(lift => lift.id === selectedLiftId) ?? null;
@@ -607,21 +612,23 @@ export function LiftEditWorkspace({
                 onFitBounds={() => setFitBoundsKey(key => key + 1)}
                 showLabels={showLabels}
                 onShowLabelsChange={setShowLabels}
-                onProceed={() => {
-                  resetMapModes();
-                  setLiftsState(previous =>
-                    fillEmptyLiftSearchWords(
-                      previous,
-                      new Map(
-                        effectiveResorts.map(option => [
-                          option.id,
-                          option.searchName,
-                        ]),
+                onProceed={() =>
+                  mappingGuard.proceed(() => {
+                    resetMapModes();
+                    setLiftsState(previous =>
+                      fillEmptyLiftSearchWords(
+                        previous,
+                        new Map(
+                          effectiveResorts.map(option => [
+                            option.id,
+                            option.searchName,
+                          ]),
+                        ),
                       ),
-                    ),
-                  );
-                  setStep("details");
-                }}
+                    );
+                    setStep("details");
+                  })
+                }
                 onBack={() => {
                   resetMapModes();
                   setStep("assign");
@@ -639,7 +646,7 @@ export function LiftEditWorkspace({
                 savedAt={savedAt}
                 selectedLiftId={selectedLiftId}
                 onSelectLift={setSelectedLiftId}
-                onProceed={() => setStep("links")}
+                onProceed={() => mappingGuard.proceed(() => setStep("links"))}
                 onBack={() => {
                   resetMapModes();
                   setStep("geometry");
@@ -676,6 +683,7 @@ export function LiftEditWorkspace({
       )}
 
       <LiftTutorialOverlay open={showTutorial} onClose={closeTutorial} />
+      {mappingGuard.dialog}
       <ConfirmDialog
         open={draftDialogOpen}
         onOpenChange={(open: boolean) => {

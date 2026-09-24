@@ -2,7 +2,7 @@
 
 import { Portal } from "@radix-ui/react-portal";
 import type { ComponentType } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { z } from "zod";
 import { MAP_TOP_CONTROLS_ATTRIBUTE } from "@/features/map/constants";
 import { useScreenState } from "@/features/map/session/useScreenState";
@@ -194,31 +194,6 @@ export const SkiResortDetailView = ({
     if (selectedFinalizedFeature) return;
     setSelectionOrigin("map");
   }, [selectedFinalizedFeature, setSelectionOrigin]);
-
-  const previousSelection = useRef(selectedFinalizedFeature);
-  useEffect(() => {
-    if (
-      JSON.stringify(previousSelection.current) ===
-      JSON.stringify(selectedFinalizedFeature)
-    )
-      return;
-    previousSelection.current = selectedFinalizedFeature;
-    if (selectedFinalizedFeature?.kind === "course") {
-      setActiveTab("ゲレンデ");
-      setTerrainTab("コース");
-      setShowTerrainDetail(true);
-    }
-    if (selectedFinalizedFeature?.kind === "lift") {
-      setActiveTab("ゲレンデ");
-      setTerrainTab("リフト");
-      setShowTerrainDetail(true);
-    }
-  }, [
-    selectedFinalizedFeature,
-    setActiveTab,
-    setTerrainTab,
-    setShowTerrainDetail,
-  ]);
 
   useBodyScrollLock();
   const shouldRenderMobilePanel = isSidePanel || mobileContentTab === "info";
@@ -454,26 +429,10 @@ export const SkiResortDetailView = ({
       )}
       {/* 地図は「ゲレンデ」タブ（とそこから選んだコース・リフトの詳細）だけで使う。
           他のタブでは表示領域を無駄にしないよう出さない。 */}
-      {mobileFeatureDetail && (
-        <ResortMapSection
-          DynamicMap={DynamicMap}
-          resortId={resort.id}
-          previewHeightClassName="h-[clamp(200px,41dvh,396px)] shrink-0"
-          finalizedMapData={resort.finalizedMapData ?? null}
-          mapResorts={mapResorts}
-          selectedFinalizedFeature={selectedFinalizedFeature}
-          selectedElevationProfilePoint={selectedElevationProfilePoint}
-          onSelectedFinalizedFeatureChange={selectFeatureFromMap}
-          onSelectedElevationProfilePointChange={
-            onSelectedElevationProfilePointChange
-          }
-          featureDetail={mobileFeatureDetail}
-          detailViewportResetKey={detailViewportResetKey}
-        />
-      )}
-      {!mobileFeatureDetail &&
-        activeTab === "ゲレンデ" &&
-        (hasTrailMap && mapAreaView === "ゲレンデマップ" ? (
+      {(mobileFeatureDetail || activeTab === "ゲレンデ") &&
+        (!mobileFeatureDetail &&
+        hasTrailMap &&
+        mapAreaView === "ゲレンデマップ" ? (
           // 静止画なので、タブとは重ならない専用の帯を上に置く
           <div className="flex h-[clamp(200px,41dvh,396px)] shrink-0 flex-col">
             <div className="flex shrink-0 justify-start border-b border-slate-200 bg-white px-2 py-1.5">
@@ -493,11 +452,21 @@ export const SkiResortDetailView = ({
           // isolate: 地図に重ねたボタン類（z-20/z-30 や地図ライブラリ内部の
           // 高い z-index）をこの箱の中に閉じ込める。スクロールで上に貼り付く
           // タブ（sticky z-20）の上に出てしまうのを防ぐ。
-          <div className="relative isolate h-[clamp(200px,41dvh,396px)] shrink-0">
+          <div
+            className={
+              mobileFeatureDetail
+                ? "relative isolate flex min-h-0 flex-1 flex-col"
+                : "relative isolate h-[clamp(200px,41dvh,396px)] shrink-0"
+            }
+          >
             {/* 「拡大」ボタン（top-2 / h-9）と同じ中心線にそろえる */}
             <div
               {...{ [MAP_TOP_CONTROLS_ATTRIBUTE]: "true" }}
-              className="pointer-events-none absolute inset-x-0 top-2 z-20 flex h-9 items-center gap-2 px-2"
+              className={
+                mobileFeatureDetail
+                  ? "hidden"
+                  : "pointer-events-none absolute inset-x-0 top-2 z-20 flex h-9 items-center gap-2 px-2"
+              }
             >
               {hasTrailMap && (
                 <div className="pointer-events-auto">
@@ -522,15 +491,18 @@ export const SkiResortDetailView = ({
             </div>
             <div
               className={
-                hasTrailMap
-                  ? "h-full [&_.maplibregl-ctrl-bottom-right]:hidden"
-                  : "h-full"
+                mobileFeatureDetail
+                  ? "flex min-h-0 flex-1 flex-col"
+                  : hasTrailMap
+                    ? "h-full [&_.maplibregl-ctrl-bottom-right]:hidden"
+                    : "h-full"
               }
             >
               <ResortMapSection
                 DynamicMap={DynamicMap}
                 resortId={resort.id}
                 previewHeightClassName="h-full shrink-0"
+                selectedHeightClassName="h-[38%] min-h-[180px] shrink-0"
                 finalizedMapData={resort.finalizedMapData ?? null}
                 mapResorts={mapResorts}
                 selectedFinalizedFeature={selectedFinalizedFeature}
@@ -539,7 +511,7 @@ export const SkiResortDetailView = ({
                 onSelectedElevationProfilePointChange={
                   onSelectedElevationProfilePointChange
                 }
-                featureDetail={null}
+                featureDetail={mobileFeatureDetail}
                 detailViewportResetKey={detailViewportResetKey}
               />
             </div>
