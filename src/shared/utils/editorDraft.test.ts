@@ -31,13 +31,15 @@ test("コースは画面用IDを無視し、属性・位置・追加・削除・
   assert.notEqual(key([course, another]), key([another, course]));
 });
 
-test("リフトはUI状態を無視し、位置・中間駅・削除の差分だけを判定する", () => {
+test("リフトはUI状態を無視し、保存ID・位置・中間駅・削除の差分を判定する", () => {
   const lift = createEmptyLift("test");
   const baseline = liftDraftContentKey([lift]);
   assert.equal(
-    liftDraftContentKey([{ ...lift, id: "別ID", isNew: false }]),
+    liftDraftContentKey([{ ...lift, isNew: false, sourceIndex: 10 }]),
     baseline,
   );
+  // id は保存される entityId でもあるため、変更を差分として扱う。
+  assert.notEqual(liftDraftContentKey([{ ...lift, id: "別ID" }]), baseline);
   assert.notEqual(
     liftDraftContentKey([{ ...lift, midstation: [139, 35] }]),
     baseline,

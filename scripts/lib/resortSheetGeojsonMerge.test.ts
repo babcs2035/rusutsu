@@ -74,7 +74,8 @@ test("Nozawa workbook links every identically named lift without search words", 
   };
   const result = mergeSheetRowsIntoBefore(geometry, rows, "lift");
   assert.equal(result.eligibleRows, 15);
-  assert.equal(result.matchedRows, 12);
+  assert.equal(result.matchedRows, rows.length);
+  assert.deepEqual(result.unmatchedRowNames, []);
   const gondola = result.collection.features.find(
     feature => feature.properties?.name === "長坂ゴンドラ",
   );
