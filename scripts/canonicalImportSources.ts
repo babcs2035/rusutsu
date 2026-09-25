@@ -11,7 +11,6 @@ import { skiResortIdSchema } from "../src/server/ski-resorts/adminContract";
 
 export const CANONICAL_SOURCES = [
   "SkiResortLinks.json",
-  "lift-ticket",
   "reviews",
   "resorts-temporary/latest_status_mapping",
   "resorts-temporary/lift_20m",

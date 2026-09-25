@@ -4,6 +4,7 @@ node = "24.19.0"
 
 [tasks]
 "reviews:publish" = { description = "レビューJSONの本番差分を確認（--applyで反映）", run = "node --import tsx scripts/publishReview.ts" }
+"lift-ticket:publish" = { description = "リフト券JSONの本番差分を確認（--applyで反映、--pullで本番→ローカル）", run = "node --import tsx scripts/publishLiftTicket.ts" }
 "links:strip-tracking-params" = { description = "SNSリンクの?stkn=等トラッキングトークンを除去（--applyで反映）", run = "pnpm tsx src/private/scripts/stripLinkTrackingParams.ts" }
 # --- Project Setup ---
 setup = { description = "プロジェクトの初期セットアップ（依存関係、DB、シード）", run = [
@@ -34,6 +35,7 @@ start = { description = "プロダクションサーバー起動", run = "pnpm s
 "db:down" = { description = "app/DBコンテナとnetworkを停止（volumeは保持）", run = "docker compose down" }
 "db:studio" = { description = "Prisma Studio 起動", run = "pnpm prisma studio" }
 "db:migrate" = { description = "マイグレーション実行", run = "pnpm prisma migrate dev" }
+"db:migrate-map-entities" = { description = "コース・リフトの個別行移行（既定dry-run、--applyと検証hashで反映）", run = "node --import tsx scripts/migrateMapEntities.ts" }
 "db:generate" = { description = "Prisma Client 生成", run = "pnpm prisma generate" }
 "db:seed" = { description = "DB シード実行（接続確認のみ）", run = "pnpm prisma db seed" }
 "db:import-documents" = { description = "初回文書移行（--dry-run / --initialize を明示）", run = "node --import tsx scripts/importCanonicalDataDocuments.ts" }

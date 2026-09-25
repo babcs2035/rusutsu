@@ -46,8 +46,8 @@ const STATUS_LABELS: Record<string, string> = {
   failed: "取得失敗",
 };
 
-const fileKeyOf = (resortId: string, fileName: string) =>
-  `${resortId}/${fileName}`;
+const fileKeyOf = (resortId: string, seasonId: string) =>
+  `${resortId}/${seasonId}`;
 
 export function TicketEditWorkspace({
   files,
@@ -64,17 +64,17 @@ export function TicketEditWorkspace({
 }) {
   const [selected, setSelected] = useState<{
     resortId: string;
-    fileName: string;
+    seasonId: string;
   } | null>(
     initialData
-      ? { resortId: initialData.resortId, fileName: initialData.fileName }
+      ? { resortId: initialData.resortId, seasonId: initialData.seasonId }
       : null,
   );
   const [data, setData] = useState<TicketDocument | null>(
     initialData?.data ?? null,
   );
-  const [fileHash, setFileHash] = useState<string | null>(
-    initialData?.fileHash ?? null,
+  const [baseVersion, setBaseVersion] = useState<number | null>(
+    initialData?.baseVersion ?? null,
   );
   const [savedSnapshot, setSavedSnapshot] = useState(
     initialData ? JSON.stringify(initialData.data) : "",
@@ -92,19 +92,19 @@ export function TicketEditWorkspace({
   const [revertDialogOpen, setRevertDialogOpen] = useState(false);
   const [pendingOpenFile, setPendingOpenFile] = useState<{
     resortId: string;
-    fileName: string;
+    seasonId: string;
   } | null>(null);
   const [pendingDraft, setPendingDraft] = useState<{
     data: unknown;
-    fileHash: string;
+    baseVersion: number;
     updatedAt: string;
   } | null>(null);
 
   const dirty = data !== null && JSON.stringify(data) !== savedSnapshot;
   const draft = useDraftStorage(
     selected?.resortId ?? null,
-    selected?.fileName ?? null,
-    fileHash,
+    selected?.seasonId ?? null,
+    baseVersion,
     data,
     dirty,
   );
@@ -113,7 +113,7 @@ export function TicketEditWorkspace({
     const query = filter.trim().toLocaleLowerCase("ja");
     if (query === "") return files;
     return files.filter(file =>
-      [file.resortName, file.resortId, file.fileName, file.seasonLabelJa ?? ""]
+      [file.resortName, file.resortId, file.seasonId, file.seasonLabelJa ?? ""]
         .join(" ")
         .toLocaleLowerCase("ja")
         .includes(query),
@@ -124,7 +124,7 @@ export function TicketEditWorkspace({
     file =>
       selected !== null &&
       file.resortId === selected.resortId &&
-      file.fileName === selected.fileName,
+      file.seasonId === selected.seasonId,
   );
 
   const idIndex = useMemo(() => buildIdIndex(data ?? {}), [data]);
@@ -149,16 +149,16 @@ export function TicketEditWorkspace({
     [idIndex, enumLabels, resortOptions, update],
   );
 
-  const openFile = (resortId: string, fileName: string) => {
-    if (selected?.resortId === resortId && selected?.fileName === fileName) {
+  const openFile = (resortId: string, seasonId: string) => {
+    if (selected?.resortId === resortId && selected?.seasonId === seasonId) {
       return;
     }
     if (dirty) {
-      setPendingOpenFile({ resortId, fileName });
+      setPendingOpenFile({ resortId, seasonId });
       setOpenFileDialogOpen(true);
       return;
     }
-    doOpenFile(resortId, fileName);
+    doOpenFile(resortId, seasonId);
   };
 
   const handleOpenFileConfirm = () => {
@@ -167,7 +167,7 @@ export function TicketEditWorkspace({
       setOpenFileDialogOpen(false);
       return;
     }
-    doOpenFile(file.resortId, file.fileName);
+    doOpenFile(file.resortId, file.seasonId);
     setOpenFileDialogOpen(false);
     setPendingOpenFile(null);
   };
@@ -186,11 +186,11 @@ export function TicketEditWorkspace({
       try {
         const next = await loadTicketForEdit(
           pendingOpenFile.resortId,
-          pendingOpenFile.fileName,
+          pendingOpenFile.seasonId,
         );
         setSelected(pendingOpenFile);
         setData(draft.data as TicketDocument);
-        setFileHash(next.fileHash);
+        setBaseVersion(next.baseVersion);
         setSavedSnapshot(JSON.stringify(next.data));
         setSectionId("overview");
       } catch {
@@ -205,26 +205,26 @@ export function TicketEditWorkspace({
     setPendingOpenFile(null);
   };
 
-  const doOpenFile = (resortId: string, fileName: string) => {
+  const doOpenFile = (resortId: string, seasonId: string) => {
     setMessage(null);
     setReport(null);
     startTransition(async () => {
       try {
-        const next = await loadTicketForEdit(resortId, fileName);
-        const stored = loadDraft(resortId, fileName);
+        const next = await loadTicketForEdit(resortId, seasonId);
+        const stored = loadDraft(resortId, seasonId);
         if (
           stored !== null &&
-          stored.fileHash === next.fileHash &&
+          stored.baseVersion === next.baseVersion &&
           JSON.stringify(stored.data) !== JSON.stringify(next.data)
         ) {
-          setPendingOpenFile({ resortId, fileName });
+          setPendingOpenFile({ resortId, seasonId });
           setPendingDraft(stored);
           setOpenFileDraftDialogOpen(true);
           return;
         }
-        setSelected({ resortId, fileName });
+        setSelected({ resortId, seasonId });
         setData(next.data);
-        setFileHash(next.fileHash);
+        setBaseVersion(next.baseVersion);
         setSavedSnapshot(JSON.stringify(next.data));
         setSectionId("overview");
       } catch {
@@ -245,19 +245,19 @@ export function TicketEditWorkspace({
   };
 
   const save = () => {
-    if (data === null || selected === null || fileHash === null) return;
+    if (data === null || selected === null || baseVersion === null) return;
     setMessage(null);
     startTransition(async () => {
       const result = await saveTicketFile({
         resortId: selected.resortId,
-        fileName: selected.fileName,
+        seasonId: selected.seasonId,
         data,
-        fileHash,
+        baseVersion,
       });
       setReport(result.ok ? result.report : (result.report ?? null));
       if (result.ok) {
         setData(result.data.data);
-        setFileHash(result.data.fileHash);
+        setBaseVersion(result.data.baseVersion);
         setSavedSnapshot(JSON.stringify(result.data.data));
         draft.markSavedToServer();
         const warnings = result.report.issues.filter(
@@ -306,7 +306,7 @@ export function TicketEditWorkspace({
       <AdminWorkspaceSidebar
         label="スキー場・シーズンを選ぶ"
         selectionKey={
-          selected ? `${selected.resortId}/${selected.fileName}` : null
+          selected ? `${selected.resortId}/${selected.seasonId}` : null
         }
         className="md:w-[min(250px,40vw)] lg:w-[300px] border-r border-white/20"
       >
@@ -332,10 +332,10 @@ export function TicketEditWorkspace({
             filteredFiles.map(file => {
               const isSelected =
                 selected?.resortId === file.resortId &&
-                selected?.fileName === file.fileName;
+                selected?.seasonId === file.seasonId;
               return (
                 <Button
-                  key={fileKeyOf(file.resortId, file.fileName)}
+                  key={fileKeyOf(file.resortId, file.seasonId)}
                   type="button"
                   variant={isSelected ? "default" : "ghost"}
                   className={`h-auto min-h-[64px] px-3 py-2.5 justify-start text-left whitespace-normal ${
@@ -344,7 +344,7 @@ export function TicketEditWorkspace({
                       : "bg-transparent hover:bg-white/20"
                   }`}
                   disabled={isPending}
-                  onClick={() => openFile(file.resortId, file.fileName)}
+                  onClick={() => openFile(file.resortId, file.seasonId)}
                 >
                   <div className="w-full">
                     <div className="flex items-center justify-between gap-2 md:gap-8">
@@ -370,15 +370,6 @@ export function TicketEditWorkspace({
                       >
                         {file.seasonId}
                       </span>
-                      {file.isDraft && (
-                        <span
-                          className={cn(
-                            "px-1.5 rounded-full bg-white/30 text-white font-bold text-[0.6875rem]",
-                          )}
-                        >
-                          草案
-                        </span>
-                      )}
                       <span
                         className={cn(
                           isSelected ? "text-blue-100" : "text-gray-500",
@@ -413,8 +404,8 @@ export function TicketEditWorkspace({
           <div className="min-w-0">
             <p className="break-all text-gray-500 text-xs font-bold">
               {selected === null
-                ? "ファイル未選択"
-                : `${selected.resortId} / tickets/${selected.fileName}`}
+                ? "シーズン未選択"
+                : `${selected.resortId} / ${selected.seasonId}`}
             </p>
             <h3 className="text-lg font-semibold line-clamp-1 font-[var(--font-heading)]">
               {selectedFile
@@ -537,7 +528,7 @@ export function TicketEditWorkspace({
               ) : sectionId === "json" ? (
                 <div className="max-w-[1000px] mx-auto">
                   <p className="mb-8 text-gray-600 text-xs">
-                    保存時に書き出される内容です（読み取り専用）。キー順序は元ファイルのまま保たれます。
+                    保存時に書き出される内容です（読み取り専用）。キー順序は保存済みの内容のまま保たれます。
                   </p>
                   <pre className="p-4 rounded-xl bg-slate-900 text-gray-100 text-[0.6875rem] leading-relaxed overflow-x-auto">
                     {JSON.stringify(data, null, 2)}
@@ -654,7 +645,7 @@ export function TicketEditWorkspace({
             }
           }}
           title="下書きからの再開"
-          description={`このファイルには未保存の下書き（${pendingDraft?.updatedAt ?? ""}）があります。下書きから再開しますか？\nいいえを選ぶとファイルの内容を読み込みます。`}
+          description={`このシーズンには未保存の下書き（${pendingDraft?.updatedAt ?? ""}）があります。下書きから再開しますか？\nいいえを選ぶと保存済みの内容を読み込みます。`}
           onConfirm={handleOpenFileDraftConfirm}
           confirmLabel="再開する"
         />
@@ -662,7 +653,7 @@ export function TicketEditWorkspace({
           open={revertDialogOpen}
           onOpenChange={setRevertDialogOpen}
           title="内容の破棄"
-          description="編集内容を破棄してファイルの内容に戻しますか？"
+          description="編集内容を破棄して保存済みの内容に戻しますか？"
           onConfirm={handleRevertConfirm}
           confirmLabel="破棄する"
         />

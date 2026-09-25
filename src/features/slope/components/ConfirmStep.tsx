@@ -18,6 +18,10 @@ import type {
   SlopeDetailEntry,
   SlopeSourceKind,
 } from "../types";
+import {
+  courseEditorLabel,
+  groupingNeedsReview,
+} from "../utils/courseGrouping";
 import { courseToSavePayload } from "../utils/exportFiles";
 import { validateCourses } from "../utils/validation";
 
@@ -66,12 +70,16 @@ export function ConfirmStep({
 
   const handleSaveConfirm = async () => {
     if (validation.errors.length > 0 || isSaving) return;
+    if (groupingNeedsReview(courses)) {
+      setServerErrors(["コースのまとめ方を確認してください。"]);
+      return;
+    }
 
     setIsSaving(true);
     setServerErrors([]);
     try {
       const result = await saveEditorChanges({
-        saveMapping: mapping.save,
+        saveMapping: mapping.getSaveRequest ? async () => true : mapping.save,
         saveLinks,
         mappingFile: mapping.workspace?.latestFile
           ? `latest_status_mapping/${resort.id}.json`
@@ -79,6 +87,7 @@ export function ConfirmStep({
         saveGeometry: () =>
           saveSlopeEdits({
             resortId: resort.id,
+            mapping: mapping.getSaveRequest?.(),
             sourceKind,
             fileHash,
             detailFileHash,
@@ -142,7 +151,7 @@ export function ConfirmStep({
                 {index > 0 && <Separator className="border-gray-100" />}
                 <div className={index === 0 ? "" : "pt-3"}>
                   <p className="text-sm font-bold">
-                    {index + 1}. {displayValue(course.name)}（
+                    {index + 1}. {courseEditorLabel(course)}（
                     {course.coordinates.length} 点）
                   </p>
                   <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
@@ -172,7 +181,7 @@ export function ConfirmStep({
             </h3>
             {movedCourses.map(course => (
               <p key={course.id} className="text-sm">
-                ・{displayValue(course.name)}: {course.originalSkiId} →{" "}
+                ・{courseEditorLabel(course)}: {course.originalSkiId} →{" "}
                 {course.skiId}
                 {resortById.get(course.skiId)?.nameJa
                   ? `（${resortById.get(course.skiId)?.nameJa}）`

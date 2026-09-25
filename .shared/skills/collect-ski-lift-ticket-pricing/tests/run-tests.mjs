@@ -247,7 +247,7 @@ console.log("== 日付の判定（calendar_type 廃止・年末年始の落と�
   const LOOKUP = path.join(SKILL_DIR, "scripts", "lookup-price.mjs");
   const REAL = path.join(
     SKILL_DIR, "..", "..", "..",
-    "src/private/data/lift-ticket/megahira-onsen-megahira/tickets/2025-2026.json",
+    "src/private/data/lift-ticket/megahira-onsen-megahira/2025-2026.json",
   );
   if (fs.existsSync(REAL)) {
     const q = (date, audience = "adult") =>
@@ -1061,7 +1061,7 @@ console.log("== 営業時間・定休日・滑走時間要件（実データ: �
   const LOOKUP = path.join(SKILL_DIR, "scripts", "lookup-price.mjs");
   const REAL = path.join(
     SKILL_DIR, "..", "..", "..",
-    "src/private/data/lift-ticket/megahira-onsen-megahira/tickets/2025-2026.json",
+    "src/private/data/lift-ticket/megahira-onsen-megahira/2025-2026.json",
   );
   if (!fs.existsSync(REAL)) {
     console.log("  SKIP 実データが見つかりません");
@@ -2192,7 +2192,7 @@ console.log("== 1日券・ナイター・複数日券の扱い ==");
   // 1日券が存在しないスキー場（めがひら実データ）
   const REAL = path.join(
     SKILL_DIR, "..", "..", "..",
-    "src/private/data/lift-ticket/megahira-onsen-megahira/tickets/2025-2026.json",
+    "src/private/data/lift-ticket/megahira-onsen-megahira/2025-2026.json",
   );
   if (fs.existsSync(REAL)) {
     const qr = (args) => {

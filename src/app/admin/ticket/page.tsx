@@ -36,12 +36,12 @@ export default async function TicketEditPage() {
     .sort(
       (left, right) =>
         left.resortName.localeCompare(right.resortName, "ja") ||
-        left.fileName.localeCompare(right.fileName),
+        right.seasonId.localeCompare(left.seasonId),
     );
 
   const first = files[0];
   const initialData = first
-    ? await readTicketForEdit(first.resortId, first.fileName)
+    ? await readTicketForEdit(first.resortId, first.seasonId)
     : null;
 
   return (

@@ -311,19 +311,23 @@ const getProfileCoordinates = (coordinates: GeoCoordinate[]) => {
 export const createConnectedCourseElevationProfile = (
   courses: FinalizedCourseFeature[],
 ): ElevationProfilePoint[] => {
+  // Alternative routes do not form one continuous elevation profile.
+  if (courses.some(course => course.groupKind === "routes")) return [];
   const sortedCourses = courses
     .map((course, index) => ({ course, index }))
     .sort((a, b) => {
       const aOrder =
-        a.course.sectionName == null
+        a.course.sectionOrder ??
+        (a.course.sectionName == null
           ? Number.POSITIVE_INFINITY
           : (COURSE_SECTION_ORDER[a.course.sectionName] ??
-            Number.POSITIVE_INFINITY);
+            Number.POSITIVE_INFINITY));
       const bOrder =
-        b.course.sectionName == null
+        b.course.sectionOrder ??
+        (b.course.sectionName == null
           ? Number.POSITIVE_INFINITY
           : (COURSE_SECTION_ORDER[b.course.sectionName] ??
-            Number.POSITIVE_INFINITY);
+            Number.POSITIVE_INFINITY));
       if (aOrder !== bOrder) return aOrder - bOrder;
       return a.index - b.index;
     })
@@ -338,6 +342,14 @@ export const createConnectedCourseElevationProfile = (
     }
 
     const coordinates = getProfileCoordinates(course.coordinates);
+    const lastPoint = points.at(-1);
+    if (
+      course.groupKind === "continuous" &&
+      lastPoint &&
+      coordinates[0] &&
+      haversineMeters(lastPoint.coordinate, coordinates[0]) > 10
+    )
+      return [];
     const slopes = calculateCoordinateSlopes(coordinates);
 
     for (const [index, coordinate] of coordinates.entries()) {

@@ -1,4 +1,5 @@
 import type { LngLat } from "@/features/slope/types";
+import { featureIdentity } from "@/shared/course-lift/identity";
 import { DETAIL_KEYS } from "../constants";
 import type { EditorLift, LiftDetailEntry, LiftSourceData } from "../types";
 import {
@@ -85,7 +86,11 @@ export const sourceDataToLifts = (
     }
 
     lifts.push({
-      id: createLiftId(),
+      id: featureIdentity(
+        feature.properties,
+        `resorts-temporary/lift_before/${resortId}.geojson`,
+        index,
+      ),
       sourceIndex: index,
       name,
       osmId,
@@ -94,6 +99,7 @@ export const sourceDataToLifts = (
       midstation,
       midstationRaw: "midstation" in properties ? properties.midstation : null,
       detail,
+      rawProperties: { ...properties },
       extras,
       detailMatch: null,
       original: {

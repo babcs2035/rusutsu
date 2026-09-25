@@ -84,14 +84,11 @@ export type EnumLabelCatalog = {
   groups: EnumLabelGroup[];
 };
 
-/** 編集対象ファイル1件（1スキー場 × 1シーズン × 1JSON） */
+/** 編集対象1件（1スキー場 × 1シーズン） */
 export type TicketFileSummary = {
   resortId: string;
-  /** tickets/ 配下のファイル名（例: 2025-2026.json / 2025-2026.draft.json） */
-  fileName: string;
-  /** ファイル名から取り出したシーズンID（例: 2025-2026） */
+  /** シーズンID（例: 2025-2026） */
   seasonId: string;
-  isDraft: boolean;
   seasonLabelJa: string | null;
   status: string | null;
   offerCount: number;
@@ -123,16 +120,17 @@ export type ValidationReport = {
 
 export type TicketEditData = {
   resortId: string;
-  fileName: string;
+  seasonId: string;
   data: TicketDocument;
-  fileHash: string;
+  /** 読み込んだ時点のDBの版。保存時にこの版から変わっていれば競合とする */
+  baseVersion: number;
 };
 
 export type SaveTicketRequest = {
   resortId: string;
-  fileName: string;
+  seasonId: string;
   data: TicketDocument;
-  fileHash: string;
+  baseVersion: number;
 };
 
 export type TicketActionResult =
@@ -141,10 +139,10 @@ export type TicketActionResult =
 
 /** localStorage の下書き */
 export type TicketEditDraft = {
-  version: 1;
+  version: 2;
   resortId: string;
-  fileName: string;
-  fileHash: string;
+  seasonId: string;
+  baseVersion: number;
   data: TicketDocument;
   updatedAt: string;
 };

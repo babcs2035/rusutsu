@@ -54,6 +54,7 @@ test("existing destination geometry is preserved without reading source document
           assert.fail("Existing documents must not be overwritten");
         },
       },
+      canonicalDataMigration: { findUnique: async () => null },
     } as unknown as Parameters<typeof ensureMergedGeometryDocuments>[0],
     "merged",
     [{ id: "area-a", nameJa: "Aエリア" }],
@@ -183,6 +184,7 @@ test("new destination documents are saved through the caller's transaction", asy
           return { count: data.length };
         },
       },
+      canonicalDataMigration: { findUnique: async () => null },
     } as unknown as Parameters<typeof ensureMergedGeometryDocuments>[0],
     "merged",
     [{ id: "area-a", nameJa: "Aエリア" }],

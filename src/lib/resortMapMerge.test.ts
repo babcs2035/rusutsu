@@ -26,6 +26,39 @@ const line = (
   properties: { name, ...properties },
 });
 
+test("fixed IDs keep same-name attributes and explicit unmapped status separate", () => {
+  const result = mergeCourseFeatures({
+    geometryFeatures: [
+      line("X", { entityId: "a" }),
+      line("X", { entityId: "b" }),
+      line("", { entityId: "c" }),
+    ],
+    baseItems: [
+      { entityId: "b", name: "X", level: "初級" },
+      { entityId: "a", name: "X", level: "上級" },
+    ],
+    statusItems: [{ name: "上", status: "○" }],
+    statusMapping: {
+      configured: true,
+      sourceFile: "test",
+      byGeojsonName: new Map(),
+      byGeometryId: new Map([
+        ["a", "上"],
+        ["b", null],
+        ["c", "上"],
+      ]),
+    },
+    baseSourceLabel: "before",
+    hasStatusSource: true,
+    validateBaseFields: false,
+  });
+  assert.equal(result.features[0].properties.level, "上級");
+  assert.equal(result.features[1].properties.level, "初級");
+  assert.equal(result.features[0].properties.status, "○");
+  assert.notEqual(result.features[1].properties.status, "○");
+  assert.equal(result.features[2].properties.status, "○");
+});
+
 test("クロール名は GeoJSON 側の区切りに寄せる", () => {
   assert.equal(normalizeCrawledName("白樺ゲレンデ上部"), "白樺ゲレンデ_#上部");
   assert.equal(normalizeCrawledName("白樺ゲレンデ 上部"), "白樺ゲレンデ_#上部");

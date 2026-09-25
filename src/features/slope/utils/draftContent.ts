@@ -14,6 +14,8 @@ export const slopeDraftContentKey = (
     courses: courses.map(course => ({
       skiId: course.skiId,
       name: course.name,
+      grouping: course.grouping ?? null,
+      groupingReviewed: course.groupingReviewed,
       coordinates: course.coordinates,
       detail: course.detail,
       beforeExtras: course.beforeExtras ?? {},

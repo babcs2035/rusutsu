@@ -3,6 +3,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import type { LatestSuccessfulStatus } from "@/lib/latestStatusFiles";
 import { loadLatestSuccessfulStatus } from "@/lib/latestStatusFiles";
+import type { DataDocumentWrite } from "@/server/data-documents/contract";
 import type {
   LatestStatusMappingFile,
   LatestStatusMappingItem,
@@ -96,8 +97,10 @@ const normalizeRow = (value: unknown): LatestStatusMappingRow | null => {
   if (!isRecord(value)) return null;
   const crawledName = normalizeString(value.crawledName);
   const geojsonName = normalizeString(value.geojsonName);
-  if (crawledName === null && geojsonName === null) return null;
-  return { crawledName, geojsonName };
+  const geometryId = normalizeString(value.geometryId);
+  if (crawledName === null && geojsonName === null && geometryId === null)
+    return null;
+  return { crawledName, geojsonName, ...(geometryId ? { geometryId } : {}) };
 };
 
 const normalizeSection = (
@@ -359,18 +362,65 @@ const validateRows = async (
   const crawledNameSet = new Set(latest.items.map(item => item.name));
   const geojsonNameSet = new Set(geojsonNames);
   const mappedGeojsonNames = new Set<string>();
+  const geometryById = new Map(
+    (request.geometries ?? []).map(item => [item.id, item.name.trim()]),
+  );
+  const mappedIds = new Set<string>();
+  const savedRows =
+    (await readMappingFile(temporaryRoot, request.resortId)).data[request.kind]
+      ?.rows ?? [];
+  const unchangedOtherIds = new Map(
+    savedRows
+      .filter(row => row.geometryId && !geometryById.has(row.geometryId))
+      .map(row => [row.geometryId, row]),
+  );
+  if (
+    request.geometries &&
+    (geometryById.size !== request.geometries.length ||
+      request.geometries.some(item => !item.id || item.id.length > 1024))
+  )
+    errors.push("線IDの形式が不正です。");
   for (const [index, row] of request.rows.entries()) {
     const normalized = normalizeRow(row);
     if (!normalized) {
       errors.push(`${index + 1} 行目の対応データが空です。`);
       continue;
     }
+    const unchangedOther = normalized.geometryId
+      ? unchangedOtherIds.get(normalized.geometryId)
+      : undefined;
+    if (
+      unchangedOther &&
+      unchangedOther.geojsonName === normalized.geojsonName &&
+      unchangedOther.crawledName === normalized.crawledName
+    )
+      continue;
     if (
       normalized.crawledName &&
       (!crawledNameSet.has(normalized.crawledName) ||
         normalized.crawledName.length > 300)
     ) {
       errors.push(`${index + 1} 行目のクロール名が現在のデータにありません。`);
+    }
+    if (normalized.geometryId) {
+      const preserved = unchangedOtherIds.get(normalized.geometryId);
+      if (
+        preserved &&
+        preserved.geojsonName === normalized.geojsonName &&
+        preserved.crawledName === normalized.crawledName
+      )
+        continue;
+      if (
+        !geometryById.has(normalized.geometryId) ||
+        (geometryById.get(normalized.geometryId) || null) !==
+          normalized.geojsonName ||
+        mappedIds.has(normalized.geometryId)
+      )
+        errors.push(`${index + 1} 行目の線IDが不正または重複しています。`);
+      mappedIds.add(normalized.geometryId);
+      if (normalized.geojsonName)
+        mappedGeojsonNames.add(normalized.geojsonName);
+      continue;
     }
     if (normalized.geojsonName) {
       if (
@@ -390,6 +440,9 @@ const validateRows = async (
     }
   }
 
+  for (const id of geometryById.keys()) {
+    if (!mappedIds.has(id)) errors.push(`線ID「${id}」が対応表にありません。`);
+  }
   for (const geojsonName of geojsonNames) {
     if (!mappedGeojsonNames.has(geojsonName)) {
       errors.push(`GeoJSON 名「${geojsonName}」が対応表にありません。`);
@@ -398,14 +451,17 @@ const validateRows = async (
   return [...new Set(errors)];
 };
 
-export const saveLatestStatusMappingFile = async (
+export const prepareLatestStatusMappingDocument = async (
   temporaryRoot: string,
   request: SaveLatestStatusMappingRequest,
   latestStatusLoader?: (
     resortId: string,
     kind: LatestStatusMappingKind,
   ) => Promise<LatestSuccessfulStatus | null>,
-): Promise<SaveLatestStatusMappingResult> => {
+): Promise<
+  | { ok: true; document: DataDocumentWrite; savedAt: string }
+  | { ok: false; errors: string[] }
+> => {
   const errors = await validateRows(temporaryRoot, request, latestStatusLoader);
   if (errors.length > 0) return { ok: false, errors };
 
@@ -427,12 +483,41 @@ export const saveLatestStatusMappingFile = async (
       sourceFile: request.latestFile,
       updatedAt: savedAt,
       rows: request.rows.map(row => ({
+        ...(row.geometryId ? { geometryId: row.geometryId } : {}),
         crawledName: normalizeString(row.crawledName),
         geojsonName: normalizeString(row.geojsonName),
       })),
     },
   };
   const raw = `${JSON.stringify(data, null, 2)}\n`;
+  return {
+    ok: true,
+    savedAt,
+    document: {
+      key: `resorts-temporary/latest_status_mapping/${request.resortId}.json`,
+      content: raw,
+      mediaType: "application/json",
+      expectedHash: request.mappingFileHash,
+    },
+  };
+};
+
+export const saveLatestStatusMappingFile = async (
+  temporaryRoot: string,
+  request: SaveLatestStatusMappingRequest,
+  latestStatusLoader?: (
+    resortId: string,
+    kind: LatestStatusMappingKind,
+  ) => Promise<LatestSuccessfulStatus | null>,
+): Promise<SaveLatestStatusMappingResult> => {
+  const prepared = await prepareLatestStatusMappingDocument(
+    temporaryRoot,
+    request,
+    latestStatusLoader,
+  );
+  if (!prepared.ok) return prepared;
+  const raw = prepared.document.content;
+  const savedAt = prepared.savedAt;
   const filePath = mappingPath(temporaryRoot, request.resortId);
   if (usesCanonicalDocuments(temporaryRoot)) {
     const key = dataDocumentKeyForPath(filePath);
@@ -500,12 +585,26 @@ export const readResolvedLatestStatusMapping = async (
       byGeojsonName: new Map(),
     };
   }
+  // Legacy/unassociated derived lines may still have only a name. Use a name
+  // fallback only if every assignment for that name agrees; never pick a sibling.
+  const candidates = new Map<string, Set<string | null>>();
+  for (const row of section.rows) {
+    if (!row.geojsonName) continue;
+    const values = candidates.get(row.geojsonName) ?? new Set<string | null>();
+    values.add(row.crawledName);
+    candidates.set(row.geojsonName, values);
+  }
   return {
     configured: true,
     sourceFile: section.sourceFile,
-    byGeojsonName: new Map(
+    byGeometryId: new Map(
       section.rows.flatMap(row =>
-        row.geojsonName ? [[row.geojsonName, row.crawledName]] : [],
+        row.geometryId ? [[row.geometryId, row.crawledName]] : [],
+      ),
+    ),
+    byGeojsonName: new Map(
+      [...candidates].flatMap(([name, values]) =>
+        values.size === 1 ? [[name, [...values][0]]] : [],
       ),
     ),
   };

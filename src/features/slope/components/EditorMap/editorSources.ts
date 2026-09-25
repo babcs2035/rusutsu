@@ -55,7 +55,7 @@ export const buildBackgroundCollection = (
 
 /** 頂点を出すモードか。view と midstation では触らせない */
 const showsVertices = (mode: EditorMapMode) =>
-  mode === "draw" || mode === "edit" || mode === "split";
+  mode === "draw" || mode === "edit" || mode === "split" || mode === "grouping";
 
 export const buildVertexCollection = (
   activeLine: EditorMapLine | null,
@@ -68,6 +68,7 @@ export const buildVertexCollection = (
     // 分割は「線の途中で切る」操作なので、端の頂点は出さない
     const isInner = index > 0 && index < lastIndex;
     if (mode === "split" && !isInner) return [];
+    if (mode === "grouping" && isInner) return [];
 
     const kind =
       mode === "split"

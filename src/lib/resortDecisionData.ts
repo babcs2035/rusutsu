@@ -16,9 +16,6 @@ import type {
 import { toClientLiftTicketData } from "./publicLiftTicketData";
 
 const RESORT_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
-const PUBLIC_TICKET_KEY_PATTERN =
-  /^lift-ticket\/([a-z0-9]+(?:-[a-z0-9]+)*)\/tickets\/(\d{4}-\d{4}\.json)$/u;
-const TICKET_READ_BATCH_SIZE = 16;
 
 const SHIGA_KOGEN_CENTRAL_RESORT_IDS = [
   "shiga-kogen-giant",
@@ -52,6 +49,22 @@ type ResortDecisionData = {
 export type ResortDecisionDataDocumentReader = {
   get(key: string): Promise<DataDocument | null>;
   list(prefix: string): Promise<DataDocumentSummary[]>;
+};
+
+/** リフト券料金（lift_ticket_seasons）の読み込み口。 */
+export type ResortDecisionLiftTicketReader = {
+  find(
+    resortIds: readonly string[],
+  ): Promise<Array<{ resortId: string; data: Record<string, unknown> }>>;
+};
+
+const liftTicketReader: ResortDecisionLiftTicketReader = {
+  async find(resortIds) {
+    const { findLiftTicketSeasons } = await import(
+      "@/server/lift-tickets/client"
+    );
+    return findLiftTicketSeasons(resortIds);
+  },
 };
 
 const dataDocumentReader: ResortDecisionDataDocumentReader = {
@@ -179,39 +192,29 @@ const loadReviewDirectory = async (
 };
 
 const loadLiftTicketDataMap = async (
-  reader: ResortDecisionDataDocumentReader,
+  reader: ResortDecisionLiftTicketReader,
   resortIds: readonly string[],
 ): Promise<Map<string, LiftTicketData[]>> => {
-  const requestedResortIds = new Set(
-    resortIds.filter(resortId => RESORT_ID_PATTERN.test(resortId)),
-  );
+  const requestedResortIds = [
+    ...new Set(resortIds.filter(resortId => RESORT_ID_PATTERN.test(resortId))),
+  ];
   const byResortId = new Map(
     resortIds.map(resortId => [resortId, [] as LiftTicketData[]]),
   );
-  if (requestedResortIds.size === 0) return byResortId;
+  if (requestedResortIds.length === 0) return byResortId;
 
-  // 一覧画面では数百件を一度に読むため、一覧取得は1回にまとめる。
-  const summaries = await reader.list("lift-ticket/");
-  const candidates = summaries.flatMap(document => {
-    const match = PUBLIC_TICKET_KEY_PATTERN.exec(document.key);
-    if (!match || !requestedResortIds.has(match[1])) return [];
-    return [{ key: document.key, resortId: match[1] }];
-  });
-  for (
-    let index = 0;
-    index < candidates.length;
-    index += TICKET_READ_BATCH_SIZE
-  ) {
-    const batch = candidates.slice(index, index + TICKET_READ_BATCH_SIZE);
-    const documents = await Promise.all(
-      batch.map(candidate => reader.get(candidate.key)),
-    );
-    for (const [batchIndex, document] of documents.entries()) {
-      if (!document) continue;
-      const parsed = JSON.parse(document.content) as LiftTicketData;
-      const resortId = batch[batchIndex]?.resortId;
-      if (!resortId || parsed.resort.id !== resortId) continue;
-      byResortId.get(resortId)?.push(toClientLiftTicketData(parsed));
+  // 一覧画面では数百件を一度に読むため、1回の問い合わせにまとめる。
+  for (const season of await reader.find(requestedResortIds)) {
+    try {
+      byResortId
+        .get(season.resortId)
+        ?.push(toClientLiftTicketData(season.data));
+    } catch (error) {
+      // 1件の不整合でページ全体を落とさず、そのシーズンだけ表示しない。
+      console.warn(
+        `リフト券料金の読み込みに失敗しました（${season.resortId}）:`,
+        error,
+      );
     }
   }
 
@@ -252,12 +255,13 @@ const loadReviewData = async (
  */
 export const createResortDecisionDataLoader = (
   reader: ResortDecisionDataDocumentReader,
+  ticketReader: ResortDecisionLiftTicketReader,
 ) => {
   const getResortDecisionData = async (
     resortId: string,
   ): Promise<ResortDecisionData> => {
     const [liftTicketByResortId, reviewData] = await Promise.all([
-      loadLiftTicketDataMap(reader, [resortId]),
+      loadLiftTicketDataMap(ticketReader, [resortId]),
       loadReviewData(reader, resortId),
     ]);
     return {
@@ -267,13 +271,15 @@ export const createResortDecisionDataLoader = (
   };
 
   const getLiftTicketDataMap = (resortIds: string[]) =>
-    loadLiftTicketDataMap(reader, resortIds);
+    loadLiftTicketDataMap(ticketReader, resortIds);
 
   return { getLiftTicketDataMap, getResortDecisionData };
 };
 
-const resortDecisionDataLoader =
-  createResortDecisionDataLoader(dataDocumentReader);
+const resortDecisionDataLoader = createResortDecisionDataLoader(
+  dataDocumentReader,
+  liftTicketReader,
+);
 
 export const { getLiftTicketDataMap, getResortDecisionData } =
   resortDecisionDataLoader;

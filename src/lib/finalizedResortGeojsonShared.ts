@@ -7,6 +7,8 @@ export type FinalizedCourseFeature = {
   displayName: string;
   groupId: string;
   sectionName: string | null;
+  sectionOrder?: number;
+  groupKind?: "continuous" | "routes";
   latestStatusName?: string | null;
   /** 人手確認済みの既存データか、未確認のOSM由来か。 */
   verificationStatus?: "verified" | "unverified";

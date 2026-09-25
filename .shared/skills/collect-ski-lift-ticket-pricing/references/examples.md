@@ -67,7 +67,7 @@ includeを必ずペアで記録する。暗黙のカレンダー優先順位は�
 明示期間に含まれるため7,000円）:
 
 ```bash
-node scripts/lookup-price.mjs tickets/yukigaoka/2025-2026.json \
+node scripts/lookup-price.mjs src/private/data/lift-ticket/yukigaoka/2025-2026.json \
   --date 2026-01-01 --audience adult --product day-pass
 # 祝日・平日の判定は scripts/jp-holidays.mjs（振替休日・国民の休日込み）
 ```

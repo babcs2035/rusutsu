@@ -237,7 +237,7 @@ export const reconcileSavedRows = (
   const kept: LatestStatusMappingRow[] = [];
   const unmatchedCrawled: string[] = [];
   for (const row of savedRows) {
-    if (row.geojsonName !== null) {
+    if (row.geojsonName !== null || row.geometryId) {
       kept.push({ ...row });
       continue;
     }

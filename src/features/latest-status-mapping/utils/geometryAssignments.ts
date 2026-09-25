@@ -36,9 +36,23 @@ export function geometryAssignmentsFromRows(
   rows: LatestStatusMappingRow[],
   geometries: NamedGeometry[],
 ): GeometryAssignments {
-  const byName = new Map(rows.map(row => [row.geojsonName, row.crawledName]));
+  const byName = new Map(
+    rows
+      .filter(row => !row.geometryId)
+      .map(row => [row.geojsonName, row.crawledName]),
+  );
+  const byId = new Map(
+    rows
+      .filter(row => row.geometryId)
+      .map(row => [row.geometryId, row.crawledName]),
+  );
   return Object.fromEntries(
-    geometries.map(item => [item.id, byName.get(item.name.trim()) ?? null]),
+    geometries.map(item => [
+      item.id,
+      byId.has(item.id)
+        ? (byId.get(item.id) ?? null)
+        : (byName.get(item.name.trim()) ?? null),
+    ]),
   );
 }
 
@@ -47,7 +61,31 @@ export function applyGeometryAssignments(
   rows: LatestStatusMappingRow[],
   geometries: NamedGeometry[],
   assignments: GeometryAssignments,
+  useIds = false,
 ): LatestStatusMappingRow[] {
+  if (useIds) {
+    const currentIds = new Set(geometries.map(item => item.id));
+    const currentNames = new Set(geometries.map(item => item.name.trim()));
+    const prior = geometryAssignmentsFromRows(rows, geometries);
+    const assignedRows = geometries.map(item => ({
+      geometryId: item.id,
+      geojsonName: item.name.trim() || null,
+      crawledName: Object.hasOwn(assignments, item.id)
+        ? assignments[item.id]
+        : prior[item.id],
+    }));
+    const used = new Set(assignedRows.map(row => row.crawledName));
+    return [
+      ...rows.filter(row =>
+        row.geometryId
+          ? !currentIds.has(row.geometryId)
+          : row.geojsonName
+            ? !currentNames.has(row.geojsonName)
+            : !!row.crawledName && !used.has(row.crawledName),
+      ),
+      ...assignedRows,
+    ];
+  }
   const duplicates = new Set(duplicateGeometryNames(geometries));
   return geometries.reduce((result, item) => {
     const name = item.name.trim();

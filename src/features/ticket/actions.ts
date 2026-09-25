@@ -16,10 +16,10 @@ import type {
 
 export async function loadTicketForEdit(
   resortId: string,
-  fileName: string,
+  seasonId: string,
 ): Promise<TicketEditData> {
   await requireAdmin();
-  return readTicketForEdit(resortId, fileName);
+  return readTicketForEdit(resortId, seasonId);
 }
 
 export async function saveTicketFile(

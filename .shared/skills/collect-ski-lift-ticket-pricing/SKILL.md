@@ -1,6 +1,6 @@
 ---
 name: collect-ski-lift-ticket-pricing
-description: ユーザー指定の公式URLから、利用日を指定して購入するリフト券（日券・時間券・回数券・複数日券・セット券等）の料金と適用条件を収集・監査し、1スキー場×1シーズン×1JSONへ整理する。シーズン券とその購入者・保有者向け特典は対象外。「リフト券料金を収集して」「lift-ticket JSONを作成・更新・監査して」「日付・人物区分から料金を照会して」の依頼で使う。URL登録は src/private/data/lift-ticket-source/{ski-resort-id}.json、証拠と出力は src/private/data/lift-ticket/ 配下、照会は scripts/lookup-price.mjs を使う。
+description: ユーザー指定の公式URLから、利用日を指定して購入するリフト券（日券・時間券・回数券・複数日券・セット券等）の料金と適用条件を収集・監査し、1スキー場×1シーズン×1JSONへ整理する。シーズン券とその購入者・保有者向け特典は対象外。「リフト券料金を収集して」「lift-ticket JSONを作成・更新・監査して」「日付・人物区分から料金を照会して」の依頼で使う。URL登録は src/private/data/lift-ticket-source/{ski-resort-id}.json、作業資料は src/private/data/resorts-temporary/tmp/lift-ticket/（反映後に削除）、確定版は src/private/data/lift-ticket/{ski-resort-id}/{season-id}.json、照会は scripts/lookup-price.mjs、本番DBへの反映は mise run lift-ticket:publish を使う。
 ---
 
 # リフト券料金の収集・監査
@@ -23,12 +23,24 @@ description: ユーザー指定の公式URLから、利用日を指定して購�
 主要パス:
 
 ```text
-src/private/data/lift-ticket-source/{resort-id}.json
-src/private/data/lift-ticket/{resort-id}/sources/{season-id}/
-src/private/data/lift-ticket/{resort-id}/tickets/{season-id}.draft.json
-src/private/data/lift-ticket/{resort-id}/tickets/{season-id}.json
-src/private/data/lift-ticket/{resort-id}/audits/{season-id}.audit.json
+# 残すもの（Git管理）
+src/private/data/lift-ticket-source/{resort-id}.json        公式URLの登録
+src/private/data/lift-ticket/{resort-id}/{season-id}.json   確定版（本番DBのバックアップ）
+
+# 作業中だけ使うもの（Git管理外。本番DBへ反映したら削除する）
+src/private/data/resorts-temporary/tmp/lift-ticket/{resort-id}/
+  sources/{season-id}/        公式ページの保存資料
+  {season-id}.draft.json      草案
+  {season-id}.audit.json      独立監査の結果
 ```
+
+公開サイトと管理画面 `/admin/ticket` が読むのは、本番DBの `lift_ticket_seasons`
+テーブル（1スキー場 × 1シーズン = 1行）である。確定版JSONは
+「本番DBへの反映」の手順で保存し、同じ内容をローカルにも残す。
+
+保存資料・草案・監査結果は、抽出と監査で数値の誤りを確かめるための作業資料で、
+反映後は使わない。利用者が料金を確かめる根拠は、確定版の `sources[].url`
+（画面の出典リンク）である。
 
 ## 対象範囲
 
@@ -90,6 +102,14 @@ src/private/data/lift-ticket/{resort-id}/audits/{season-id}.audit.json
    - 対象シーズン
    - 公式URL一覧
    - 新規作成 / 更新 / 監査のみ
+   更新・監査のときは、管理画面での修正を取り込むため本番DBの内容を先に
+   確定版JSONへ取り込み、`git diff` で変更点を確認する。更新は、確定版を
+   作業領域の `{season-id}.draft.json` へ複製して始める:
+
+   ```bash
+   mise run lift-ticket:publish -- --resort <resort-id> --season <season-id> --pull
+   ```
+
 2. URL未登録なら
    `src/private/data/lift-ticket-source/{resort-id}.json` へ登録する。
    URLはシーズンに紐付けず、1スキー場1ファイルで管理する。
@@ -109,7 +129,8 @@ src/private/data/lift-ticket/{resort-id}/audits/{season-id}.audit.json
 6. 必要な公式リンク先は `--url` / `--download` と `--linked-from` で追加取得する。
 7. `manifest.json.season_check.verdict` が `match` でなければ抽出を止める。
    人間が公式資料から確定した場合だけ `--accept-season` を使う。
-8. テンプレートから `{season-id}.draft.json` を作り、資料にある情報だけを記録する。
+8. 新規作成ではテンプレートから作業領域の `{season-id}.draft.json` を作り、
+   資料にある情報だけを記録する。
 9. 機械検証3本を通す:
 
    ```bash
@@ -133,7 +154,7 @@ src/private/data/lift-ticket/{resort-id}/audits/{season-id}.audit.json
 - 動的価格、保証金、手数料、共通券、セット内容
 - シーズン券や保有者限定特典の混入
 
-監査結果を `{season-id}.audit.json` に保存する:
+監査結果を作業領域の `{season-id}.audit.json` に保存する:
 
 ```json
 {
@@ -150,7 +171,8 @@ src/private/data/lift-ticket/{resort-id}/audits/{season-id}.audit.json
 ## 最終統合と照会テスト
 
 1. メイン担当が監査指摘の根拠を確認し、草案を差分修正する。
-2. 機械検証3本を再実行し、通過した草案を本番JSONへ確定する。
+2. 機械検証3本を再実行し、通過した草案を確定版
+   `src/private/data/lift-ticket/{resort-id}/{season-id}.json` として保存する。
 3. `scripts/lookup-price.mjs` で最低5シナリオを確認する:
    - 平日、休日、年末年始、特定日
    - 年齢・学校区分
@@ -160,11 +182,44 @@ src/private/data/lift-ticket/{resort-id}/audits/{season-id}.audit.json
 
    ```bash
    node .shared/skills/collect-ski-lift-ticket-pricing/scripts/lookup-price.mjs \
-     <tickets/.../{season-id}.json> --date YYYY-MM-DD --audience <audience-id> --json
+     src/private/data/lift-ticket/<resort-id>/<season-id>.json \
+     --date YYYY-MM-DD --audience <audience-id> --json
    ```
 
 4. 答えられない事項は、資料にあれば抽出漏れとして修正し、資料になければ
    `unresolved_questions` へ記録する。
+
+## 本番DBへの反映
+
+照会テストまで終えた確定版 `lift-ticket/{resort-id}/{season-id}.json` を
+本番DBへ保存する。
+接続先とトークンは `.env.local` の `DATA_API_BASE_URL` と
+`INTERNAL_DATA_API_ADMIN_TOKEN` を使う。
+
+1. プレビューする（本番へは書き込まない）:
+
+   ```bash
+   mise run lift-ticket:publish -- --resort <resort-id> --season <season-id>
+   ```
+
+   管理画面と同じ検証3本を実行し、エラーがなければ本番の現在の内容との差分を
+   表示して、`src/private/data/resorts-temporary/tmp/lift-ticket-publish/` に
+   プランを保存する。「本番と同じ内容です」なら反映は不要。
+2. 差分が今回の作業で変えた箇所だけであることを確認する。自分が変えていない
+   差分（管理画面での修正など）が出たら、`--pull` で取り込んで作業をやり直す。
+3. 同じコマンドに `--apply` を付けて保存する。プレビュー後にローカルJSONか
+   本番が変わっていれば拒否されるので、プレビューからやり直す。
+
+`data_quality.status` が `needs_review` のJSONも反映できる。公開画面は
+その状態を表示するので、未解決事項は完了報告で伝える。
+
+反映できたら（または「本番と同じ内容です」と表示されたら）、作業領域を削除する:
+
+```bash
+rm -rf src/private/data/resorts-temporary/tmp/lift-ticket/<resort-id>
+```
+
+確定版JSONと公式URLの登録ファイルはコミット対象として残す。
 
 ## human_review_required
 
@@ -190,6 +245,7 @@ src/private/data/lift-ticket/{resort-id}/audits/{season-id}.audit.json
 - 機械検証、独立監査、シナリオテストの結果
 - 判読不能、unknown、未解決事項、human_review_required
 - `data_quality.status`
+- 本番DBへの反映結果（新規作成 / 更新 / 変更なし、反映しなかった場合はその理由）
 
 ## Skill自体の検証
 

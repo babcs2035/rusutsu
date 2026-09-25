@@ -5,7 +5,7 @@
  * ユーザー指定URL（ホワイトリスト）をPlaywrightで開き、料金抽出・監査の
  * 証拠として以下を保存する。
  *
- *   lift-ticket/{resort-id}/sources/{season-id}/
+ *   resorts-temporary/tmp/lift-ticket/{resort-id}/sources/{season-id}/
  *     ├── manifest.json
  *     ├── page-001/
  *     │   ├── visible-text.txt   … 表示テキスト（モデルが最初に読む主資料）
@@ -22,7 +22,7 @@
  *
  * 使い方:
  *   node capture-sources.mjs --resort <id> --season <id> \
- *       [--source-dir <lift-ticket-sourceディレクトリ>] [--out <lift-ticketルートdir>] \
+ *       [--source-dir <lift-ticket-sourceディレクトリ>] [--out <作業ルートdir>] \
  *       [--url <追加URL>]... \
  *       [--download <PDF/画像URL>]... [--linked-from <URL>] [--headed]
  *       [--accept-season] [--follow-links] [--max-followed <件数>]
@@ -65,13 +65,16 @@ import {
 import { detectSeason, formatSeasonReport } from "./seasonDetect.mjs";
 
 const REPO_ROOT = path.resolve(SKILL_DIR, "..", "..", "..");
-// スキー場1件のデータは1ディレクトリにまとめる:
-//   lift-ticket/{resort-id}/{sources,tickets,audits}/
+// 保存資料は抽出・監査の間だけ使う作業ファイルなので、Git管理外の一時領域に置く:
+//   resorts-temporary/tmp/lift-ticket/{resort-id}/sources/{season-id}/
+// 本番DBへ反映した後は {resort-id}/ ごと削除する。
 const DEFAULT_OUT = path.join(
   REPO_ROOT,
   "src",
   "private",
   "data",
+  "resorts-temporary",
+  "tmp",
   "lift-ticket",
 );
 const DEFAULT_SOURCE_DIR = path.join(

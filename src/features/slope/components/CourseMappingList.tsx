@@ -136,7 +136,7 @@ export function CourseMappingList({
                 }
               />
               <TooltipContent side="top" className="max-w-[240px] text-xs">
-                コース名が不明な場合に選びます（保存時に「無名_1」のような名前が付きます）
+                コース名が不明な場合に選びます。名前がなくても線のIDで保存できます。
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

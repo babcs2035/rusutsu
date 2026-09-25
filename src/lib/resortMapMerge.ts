@@ -188,6 +188,16 @@ const findBase = (
   return matched === null ? null : (lookup.get(matched) ?? null);
 };
 
+const legacyBaseWithoutIdentity = (
+  lookup: Map<string, Record<string, unknown>>,
+  index: BaseNameIndex,
+  name: string,
+  kind: "course" | "lift",
+) => {
+  const matched = findBase(lookup, index, name, kind);
+  return matched && !matched.entityId ? matched : null;
+};
+
 /**
  * 同じ画像が別のコースに割り当てられていないか調べる。
  * コースは「上部・下部」で分かれた同一コースなら同じ画像でよい。
@@ -290,6 +300,11 @@ export const mergeCourseFeatures = ({
   validateBaseFields: boolean;
 }): MergeResult => {
   const baseLookup = createBaseLookup(baseItems);
+  const baseById = new Map(
+    baseItems
+      .filter(item => typeof item.entityId === "string")
+      .map(item => [item.entityId, item]),
+  );
   const statusLookup = new Map<string, Record<string, unknown>>();
   for (const item of statusItems) {
     const name = getName(item);
@@ -303,14 +318,24 @@ export const mergeCourseFeatures = ({
   const features: RawGeoFeature[] = [];
 
   for (const feature of geometryFeatures) {
-    const normName = getName(feature.properties);
-    if (!normName) {
+    const normName = getName(feature.properties) ?? "";
+    if (!normName && typeof feature.properties.entityId !== "string") {
       // 名前が無い線は突き合わせようがないので、そのまま通す
       features.push(feature);
       continue;
     }
 
-    const base = findBase(baseLookup, baseNameIndex, normName, "course");
+    const base =
+      typeof feature.properties.entityId === "string"
+        ? (baseById.get(feature.properties.entityId) ??
+          legacyBaseWithoutIdentity(
+            baseLookup,
+            baseNameIndex,
+            normName,
+            "course",
+          ) ??
+          feature.properties)
+        : findBase(baseLookup, baseNameIndex, normName, "course");
     if (!base && validateBaseFields) {
       issues.push({
         level: "warn",
@@ -320,13 +345,21 @@ export const mergeCourseFeatures = ({
 
     let status: Record<string, unknown> | null = null;
     if (statusMapping?.configured) {
-      if (!statusMapping.byGeojsonName.has(normName)) {
+      const entityId = feature.properties.entityId;
+      const lookup =
+        typeof entityId === "string" &&
+        statusMapping.byGeometryId?.has(entityId)
+          ? statusMapping.byGeometryId
+          : statusMapping.byGeojsonName;
+      const lookupKey =
+        lookup === statusMapping.byGeometryId ? String(entityId) : normName;
+      if (!lookup.has(lookupKey)) {
         issues.push({
           level: "warn",
           message: `⚠️ Latest status mapping not found: ${normName}`,
         });
       } else {
-        const crawledName = statusMapping.byGeojsonName.get(normName);
+        const crawledName = lookup.get(lookupKey);
         if (crawledName) {
           status = statusLookup.get(normalizeCrawledName(crawledName)) ?? null;
           if (!status) {
@@ -408,6 +441,11 @@ export const mergeLiftFeatures = ({
   validateBaseFields: boolean;
 }): MergeResult => {
   const baseLookup = createBaseLookup(baseItems);
+  const baseById = new Map(
+    baseItems
+      .filter(item => typeof item.entityId === "string")
+      .map(item => [item.entityId, item]),
+  );
   const statusLookup = new Map<string, Record<string, unknown>>();
   for (const item of statusItems) {
     const name = getName(item);
@@ -421,13 +459,18 @@ export const mergeLiftFeatures = ({
   const features: RawGeoFeature[] = [];
 
   for (const feature of geometryFeatures) {
-    const name = getName(feature.properties);
-    if (!name) {
+    const name = getName(feature.properties) ?? "";
+    if (!name && typeof feature.properties.entityId !== "string") {
       features.push(feature);
       continue;
     }
 
-    const base = findBase(baseLookup, baseNameIndex, name, "lift");
+    const base =
+      typeof feature.properties.entityId === "string"
+        ? (baseById.get(feature.properties.entityId) ??
+          legacyBaseWithoutIdentity(baseLookup, baseNameIndex, name, "lift") ??
+          feature.properties)
+        : findBase(baseLookup, baseNameIndex, name, "lift");
     if (!base && validateBaseFields) {
       issues.push({
         level: "warn",
@@ -437,13 +480,21 @@ export const mergeLiftFeatures = ({
 
     let status: Record<string, unknown> | null = null;
     if (statusMapping?.configured) {
-      if (!statusMapping.byGeojsonName.has(name)) {
+      const entityId = feature.properties.entityId;
+      const lookup =
+        typeof entityId === "string" &&
+        statusMapping.byGeometryId?.has(entityId)
+          ? statusMapping.byGeometryId
+          : statusMapping.byGeojsonName;
+      const lookupKey =
+        lookup === statusMapping.byGeometryId ? String(entityId) : name;
+      if (!lookup.has(lookupKey)) {
         issues.push({
           level: "warn",
           message: `⚠️ Latest status mapping not found: ${name}`,
         });
       } else {
-        const crawledName = statusMapping.byGeojsonName.get(name);
+        const crawledName = lookup.get(lookupKey);
         if (crawledName) {
           status = statusLookup.get(crawledName) ?? null;
           if (!status) {

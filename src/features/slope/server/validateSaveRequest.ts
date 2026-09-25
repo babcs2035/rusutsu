@@ -1,3 +1,4 @@
+import { validateEntityMetadata } from "@/shared/course-lift/validateIdentity";
 import type { SaveCoursePayload, SaveRequest } from "../types";
 import { isValidResortId } from "./slopeFiles";
 
@@ -72,5 +73,6 @@ export const validateSaveRequest = (request: SaveRequest): string[] => {
       errors.push(`${label}: 詳細情報の形式が不正です。`);
     }
   });
+  errors.push(...validateEntityMetadata(request.courses));
   return errors;
 };

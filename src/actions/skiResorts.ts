@@ -1,6 +1,11 @@
 "use server";
 
 import { readResortLinksMap } from "@/features/lift/server/liftFiles";
+import type {
+  LiftTicketSearchInput,
+  TicketCalculationResult,
+} from "@/features/lift-ticket/types";
+import { calculateLiftTicketForSeasons } from "@/features/lift-ticket/utils/calculateLiftTicket";
 import { collectSocialAccounts } from "@/features/resort-detail/utils/socialAccounts";
 import { collectTrailMapLinks } from "@/features/resort-detail/utils/trailMapLinks";
 import { readCurrentResortConditions } from "@/lib/crawlLatestCurrent";
@@ -24,6 +29,7 @@ import {
   readYukiMagiList,
 } from "@/lib/skiResortData";
 import SkiResortWeatherIds from "@/private/data/SkiResortWeatherIds.json";
+import { listLiftTicketSeasons } from "@/server/lift-tickets/client";
 import type { SkiResortWithRelations } from "@/types";
 
 type TenkiJpWeatherId = {
@@ -135,23 +141,70 @@ export async function getSkiResorts(): Promise<SkiResortWithRelations[]> {
 }
 
 // スキーリゾート一覧を地図表示用に軽量取得
+// 料金データ本体は送らず、どのスキー場の料金データを使うかだけを持たせる。
+// 料金は日付を入れたときに calculateLiftTicketsForList でサーバー計算する。
 export async function getSkiResortsForMap() {
-  const resorts = await readSkiResortsForMap();
-  const liftTicketsByResortId = await getLiftTicketDataMap(
-    resorts.flatMap(resort => [
-      resort.id,
-      ...(resort.sourceResortIds ?? []).slice(0, 1),
-    ]),
+  const [resorts, liftTicketSeasons] = await Promise.all([
+    readSkiResortsForMap(),
+    // 料金は付加情報なので、取得できなくても地図と一覧は表示する。
+    listLiftTicketSeasons().catch(error => {
+      console.warn("リフト券料金の一覧を取得できませんでした:", error);
+      return [];
+    }),
+  ]);
+  const resortIdsWithTickets = new Set(
+    liftTicketSeasons.map(season => season.resortId),
   );
+  const liftTicketResortIdOf = (resort: (typeof resorts)[number]) => {
+    const fallback = resort.sourceResortIds?.[0];
+    if (resortIdsWithTickets.has(resort.id)) return resort.id;
+    return fallback && resortIdsWithTickets.has(fallback) ? fallback : null;
+  };
 
   return resorts.map(resort => ({
     ...resort,
     ...getResortReadingInfo(resort),
-    liftTickets: liftTicketsByResortId.get(resort.id)?.length
-      ? (liftTicketsByResortId.get(resort.id) ?? [])
-      : (liftTicketsByResortId.get(resort.sourceResortIds?.[0] ?? resort.id) ??
-        []),
+    liftTicketResortId: liftTicketResortIdOf(resort),
   }));
+}
+
+const RESORT_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
+const MAX_LIST_CALCULATION_RESORTS = 500;
+
+// 一覧の各スキー場について、同じ日程・メンバーでの料金を計算して結果だけ返す。
+export async function calculateLiftTicketsForList(
+  resortIds: string[],
+  input: LiftTicketSearchInput,
+): Promise<Record<string, TicketCalculationResult | null>> {
+  if (
+    !Array.isArray(resortIds) ||
+    resortIds.length > MAX_LIST_CALCULATION_RESORTS ||
+    !resortIds.every(
+      id => typeof id === "string" && RESORT_ID_PATTERN.test(id),
+    ) ||
+    typeof input?.visitDate !== "string" ||
+    !/^\d{4}-\d{2}-\d{2}$/u.test(input.visitDate) ||
+    !Array.isArray(input.party) ||
+    input.party.length > 50 ||
+    (input.days !== undefined &&
+      (!Array.isArray(input.days) || input.days.length > 31))
+  ) {
+    throw new Error("料金計算の条件が不正です。");
+  }
+  const uniqueIds = [...new Set(resortIds)];
+  const seasonsByResortId = await getLiftTicketDataMap(uniqueIds);
+  const results: Record<string, TicketCalculationResult | null> = {};
+  for (const id of uniqueIds) {
+    try {
+      results[id] = calculateLiftTicketForSeasons(
+        seasonsByResortId.get(id) ?? [],
+        input,
+      );
+    } catch {
+      results[id] = null;
+    }
+  }
+  return results;
 }
 
 // スキーリゾート詳細を取得

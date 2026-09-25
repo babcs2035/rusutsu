@@ -29,7 +29,14 @@ export function reconcileEditedRows(
   const names = new Set(after.map(item => item.name.trim()).filter(Boolean));
   const result = rows
     .map(row => {
-      if (!row.geojsonName) return row;
+      if (row.geometryId) {
+        if (!before.some(item => item.id === row.geometryId)) return row;
+        const name = nextById.get(row.geometryId);
+        return name === undefined
+          ? { ...row, geojsonName: null, geometryId: undefined }
+          : { ...row, geojsonName: name || null };
+      }
+      if (!row.geojsonName || !renamed.has(row.geojsonName)) return row;
       const nextName = renamed.has(row.geojsonName)
         ? renamed.get(row.geojsonName)
         : row.geojsonName;
@@ -38,7 +45,7 @@ export function reconcileEditedRows(
         geojsonName: nextName && names.has(nextName) ? nextName : null,
       };
     })
-    .filter(row => row.crawledName || row.geojsonName);
+    .filter(row => row.crawledName || row.geojsonName || row.geometryId);
   const assigned = new Set(result.map(row => row.geojsonName));
   for (const name of names) {
     if (!assigned.has(name))

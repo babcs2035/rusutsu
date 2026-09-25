@@ -5,8 +5,14 @@ import {
   TEMPORARY_RESORTS_ROOT,
 } from "@/lib/finalizedResortGeojson";
 import { canonicalBase, type RawGeoFeature } from "@/lib/resortMapMerge";
+import { MAP_ENTITIES_MIGRATION_KEY } from "@/server/course-lift/migrationPlan";
+import { syncMapEntities } from "@/server/course-lift/repository";
 import { dataDocumentWriteSchema } from "@/server/data-documents/contract";
 import { hashDataDocumentContent } from "@/server/data-documents/repositoryCore";
+import {
+  featureIdentity,
+  readCourseGrouping,
+} from "@/shared/course-lift/identity";
 
 const GEOMETRY_FOLDERS = [
   "slope_before",
@@ -24,7 +30,7 @@ const keyFor = (folder: string, id: string) =>
 
 /** 既存の統合先は一式として保持する。統合元の読み取りも不要。 */
 export async function ensureMergedGeometryDocuments(
-  transaction: Pick<Prisma.TransactionClient, "dataDocument">,
+  transaction: Prisma.TransactionClient,
   resortId: string,
   sources: Source[],
 ) {
@@ -50,8 +56,17 @@ export async function ensureMergedGeometryDocuments(
     sources,
     documents,
   );
-  if (merged.length)
+  if (merged.length) {
     await transaction.dataDocument.createMany({ data: merged });
+    const enabled = await transaction.canonicalDataMigration.findUnique({
+      where: { key: MAP_ENTITIES_MIGRATION_KEY },
+    });
+    if (enabled)
+      await syncMapEntities(
+        transaction,
+        merged.map(document => document.key),
+      );
+  }
 }
 
 export async function buildMergedGeometryDocuments(
@@ -103,7 +118,7 @@ export async function buildMergedGeometryDocuments(
             : folder;
     const features: RawGeoFeature[] = entries.flatMap(entry =>
       (entry.collections[folder] ?? entry.collections[fallback] ?? []).map(
-        feature => {
+        (feature, index) => {
           const name = feature.properties.name;
           const key =
             typeof name === "string"
@@ -113,10 +128,34 @@ export async function buildMergedGeometryDocuments(
             sources.filter(source => source.nameJa === entry.nameJa).length > 1
               ? `${entry.nameJa} (${entry.id})`
               : entry.nameJa;
+          const primaryFolder = folder
+            .replace("slope_10m", "slope_before")
+            .replace("lift_20m", "lift_before");
+          const sourceId = featureIdentity(
+            feature.properties,
+            keyFor(primaryFolder, entry.id),
+            index,
+          );
+          const group = readCourseGrouping(feature.properties.courseGrouping);
           return {
             ...feature,
             properties: {
               ...feature.properties,
+              entityId: `merged:${resortId}:${sourceId}`,
+              sourceEntityId: sourceId,
+              ...(group
+                ? {
+                    courseGrouping: {
+                      ...group,
+                      id: `merged:${resortId}:${group.id}`,
+                      name:
+                        (owners.get(key)?.size ?? 0) > 1
+                          ? `${label} / ${group.name}`
+                          : group.name,
+                    },
+                    groupingReviewed: null,
+                  }
+                : {}),
               ...(typeof name === "string" && (owners.get(key)?.size ?? 0) > 1
                 ? { name: `${label} / ${name}` }
                 : {}),

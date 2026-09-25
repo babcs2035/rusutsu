@@ -23,6 +23,7 @@ import {
 } from "./actions";
 import { AssignStep } from "./components/AssignStep";
 import { ConfirmStep } from "./components/ConfirmStep";
+import { CourseGroupingStep } from "./components/CourseGroupingStep";
 import { DetailEditStep } from "./components/DetailEditStep";
 import {
   type EditorLinePick,
@@ -47,6 +48,7 @@ import type {
   SlopeSourceKind,
   StartSource,
 } from "./types";
+import { groupingNeedsReview } from "./utils/courseGrouping";
 import {
   assignUnnamedCourseNames,
   createEmptyDetail,
@@ -82,6 +84,7 @@ const STEPS: Array<{ id: EditStep; label: string }> = [
   { id: "select", label: "スキー場選択" },
   { id: "assign", label: "所属確認" },
   { id: "lines", label: "位置補正" },
+  { id: "grouping", label: "コースのまとめ方" },
   { id: "details", label: "詳細情報" },
   { id: "confirm", label: "確認・保存" },
 ];
@@ -696,11 +699,16 @@ export function SlopeEditWorkspace({
   );
 
   const mapIsVisible =
-    step === "assign" || step === "lines" || step === "details";
+    step === "assign" ||
+    step === "lines" ||
+    step === "grouping" ||
+    step === "details";
   // 分割はコース線編集（工程 3）で行う。結合・描画とは同時に使わない
   const mapMode: EditorMapMode =
     step !== "lines"
-      ? "view"
+      ? step === "grouping"
+        ? "grouping"
+        : "view"
       : mergeDraft
         ? "merge"
         : isSplitMode
@@ -947,7 +955,10 @@ export function SlopeEditWorkspace({
                 isDrawing={isDrawing}
                 onDrawingChange={setIsDrawing}
                 onFitBounds={() => setFitBoundsKey(key => key + 1)}
-                onProceed={() => mappingGuard.proceed(handleProceedToDetails)}
+                onProceed={() => {
+                  resetMapModes();
+                  setStep("grouping");
+                }}
                 onApplyGeojsonOrder={handleApplyCrawlerOrder}
                 onBackToSelect={
                   sourceKind === "osm"
@@ -981,6 +992,15 @@ export function SlopeEditWorkspace({
                 }
               />
             )}
+            {step === "grouping" && resort && (
+              <CourseGroupingStep
+                courses={courses}
+                setCourses={setCourses}
+                onSelect={setActiveCourseId}
+                onBack={() => setStep("lines")}
+                onProceed={handleProceedToDetails}
+              />
+            )}
             {step === "details" && resort && (
               <DetailEditStep
                 mapping={mapping}
@@ -996,12 +1016,14 @@ export function SlopeEditWorkspace({
                 onShowLabelsChange={setShowLabels}
                 onBackToLines={() => {
                   resetMapModes();
-                  setStep("lines");
+                  setStep("grouping");
                 }}
                 onProceed={() =>
                   mappingGuard.proceed(() => {
                     resetMapModes();
-                    setStep("confirm");
+                    setStep(
+                      groupingNeedsReview(courses) ? "grouping" : "confirm",
+                    );
                   })
                 }
                 onExported={markExported}

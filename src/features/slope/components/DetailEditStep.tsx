@@ -47,6 +47,7 @@ import type {
   PisteMark,
   ResortOption,
 } from "../types";
+import { courseEditorLabel } from "../utils/courseGrouping";
 import {
   buildCsv,
   buildGpx,
@@ -257,7 +258,7 @@ export function DetailEditStep({
           onClick={onBackToLines}
         >
           <ArrowLeft className="size-3.5" />
-          線編集へ戻る
+          まとめ方へ戻る
         </Button>
       </div>
 
@@ -332,7 +333,7 @@ export function DetailEditStep({
               className="min-w-0 flex-1 truncate text-left text-sm"
               onClick={() => onSelectedCourseIdChange(course.id)}
             >
-              {course.name || "（コース名未入力）"}
+              {courseEditorLabel(course)}
             </button>
             {course.splitGroupId && (
               <span className="shrink-0 text-[11px] text-purple-900">分割</span>
@@ -745,7 +746,7 @@ export function DetailEditStep({
                     {index + 1}
                   </span>
                   <span className="min-w-0 flex-1 truncate text-xs font-semibold">
-                    {course.name || "（コース名未入力）"}
+                    {courseEditorLabel(course)}
                   </span>
                   <span className="shrink-0 text-[11px] text-orange-900">
                     {emptyFields

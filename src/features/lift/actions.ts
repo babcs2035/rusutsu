@@ -1,5 +1,8 @@
 "use server";
 
+import path from "node:path";
+import { prepareLatestStatusMappingDocument } from "@/features/latest-status-mapping/server/mappingFiles";
+import { readMappingCrawlLatestStatus } from "@/lib/crawlLatestCurrent";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { scheduleSavedElevations } from "@/server/backgroundElevation";
 import {
@@ -8,6 +11,8 @@ import {
 } from "@/server/data-documents/client";
 import { DataDocumentConflictError } from "@/server/data-documents/contract";
 import { synchronizeDerivedGeometry } from "@/server/derivedGeometry";
+import { preserveFeature } from "@/shared/course-lift/preserveFeature";
+import { validateEntityMetadata } from "@/shared/course-lift/validateIdentity";
 import {
   isValidResortId,
   lift20mDocumentKey,
@@ -29,6 +34,7 @@ import type {
   SaveRequest,
   SaveResult,
 } from "./types";
+import { sourceDataToLifts } from "./utils/loadSource";
 
 // 既存の lift_before / lift_detail をサーバー側で読み込む
 export async function loadLiftSourceData(
@@ -110,6 +116,7 @@ const validateSaveRequest = (request: SaveRequest): string[] => {
     }
   });
 
+  errors.push(...validateEntityMetadata(request.lifts));
   return errors;
 };
 
@@ -127,6 +134,20 @@ const toFeature = (lift: SaveLiftPayload): LiftBeforeFeature => ({
 export async function saveLiftEdits(request: SaveRequest): Promise<SaveResult> {
   await requireAdmin();
   const errors = validateSaveRequest(request);
+  if (
+    request.mapping &&
+    (request.mapping.resortId !== request.resortId ||
+      request.mapping.kind !== "lifts")
+  )
+    return { ok: false, errors: ["対応表の対象が一致しません。"] };
+  const preparedMapping = request.mapping
+    ? await prepareLatestStatusMappingDocument(
+        path.join(process.cwd(), "src/private/data/resorts-temporary"),
+        request.mapping,
+        readMappingCrawlLatestStatus,
+      )
+    : null;
+  if (preparedMapping && !preparedMapping.ok) return preparedMapping;
   if (errors.length > 0) return { ok: false, errors };
 
   // 読み込み時からファイルが変わっていないか確認する（他での編集の上書き防止）
@@ -142,14 +163,32 @@ export async function saveLiftEdits(request: SaveRequest): Promise<SaveResult> {
   }
 
   // 移動先ごとにグループ化し、書き込み内容を先にすべて組み立てる
+  const originalFeatures = currentDocument
+    ? (parseLiftBeforeGeojson(currentDocument.content)?.features ?? [])
+    : [];
+  const toPreservedFeature = (lift: SaveLiftPayload) =>
+    preserveFeature(
+      toFeature(lift),
+      originalFeatures,
+      liftBeforeDocumentKey(request.resortId),
+    );
   const movedByTarget = new Map<string, LiftBeforeFeature[]>();
-  const sourceFeatures: LiftBeforeFeature[] = [];
+  const editableIndices = new Set(
+    sourceDataToLifts(request.resortId, {
+      geojson: { type: "FeatureCollection", features: originalFeatures },
+      details: null,
+      fileHash: currentHash,
+    }).lifts.map(lift => lift.sourceIndex),
+  );
+  const sourceFeatures: LiftBeforeFeature[] = originalFeatures.filter(
+    (_, index) => !editableIndices.has(index),
+  );
   for (const lift of request.lifts) {
     if (lift.targetSkiId === request.resortId) {
-      sourceFeatures.push(toFeature(lift));
+      sourceFeatures.push(toPreservedFeature(lift));
     } else {
       const list = movedByTarget.get(lift.targetSkiId) ?? [];
-      list.push(toFeature(lift));
+      list.push(toPreservedFeature(lift));
       movedByTarget.set(lift.targetSkiId, list);
     }
   }
@@ -162,7 +201,13 @@ export async function saveLiftEdits(request: SaveRequest): Promise<SaveResult> {
   }> = [
     {
       resortId: request.resortId,
-      geojson: { type: "FeatureCollection", features: sourceFeatures },
+      geojson: {
+        ...(currentDocument
+          ? parseLiftBeforeGeojson(currentDocument.content)
+          : {}),
+        type: "FeatureCollection",
+        features: sourceFeatures,
+      },
       expectedHash: currentHash,
       previousGeojson: currentDocument
         ? parseLiftBeforeGeojson(currentDocument.content)
@@ -185,6 +230,7 @@ export async function saveLiftEdits(request: SaveRequest): Promise<SaveResult> {
     writes.push({
       resortId: targetId,
       geojson: {
+        ...targetGeojson,
         type: "FeatureCollection",
         features: [...(targetGeojson?.features ?? []), ...features],
       },
@@ -216,6 +262,7 @@ export async function saveLiftEdits(request: SaveRequest): Promise<SaveResult> {
 
     // 元・移動先の before と、公開画面が読む 20m 線を1トランザクションで更新する。
     const savedDocuments = await writeDataDocuments([
+      ...(preparedMapping?.ok ? [preparedMapping.document] : []),
       ...writes.map(write => ({
         key: liftBeforeDocumentKey(write.resortId),
         content: serializeLiftBeforeGeojson(write.geojson),

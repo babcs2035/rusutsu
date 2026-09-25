@@ -3,6 +3,14 @@ import "server-only";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
+  MAP_ENTITIES_MIGRATION_KEY,
+  primaryMapKey,
+} from "@/server/course-lift/migrationPlan";
+import {
+  syncMapEntities,
+  verifyRelationalDocument,
+} from "@/server/course-lift/repository";
+import {
   BundledFileDataDocumentSource,
   defaultBundledDataDocumentRoot,
 } from "./bundledFileSource";
@@ -33,7 +41,7 @@ const isRetryableTransactionConflict = (error: unknown): boolean =>
 
 class PrismaDataDocumentDatabase implements DataDocumentDatabase {
   async get(key: string) {
-    const row = await prisma.dataDocument.findUnique({
+    let row = await prisma.dataDocument.findUnique({
       where: { key },
       select: {
         key: true,
@@ -43,7 +51,25 @@ class PrismaDataDocumentDatabase implements DataDocumentDatabase {
         version: true,
       },
     });
-    return row === null ? null : storedDataDocumentSchema.parse(row);
+    if (row === null) return null;
+    if (primaryMapKey(key)) {
+      const enabled = await prisma.canonicalDataMigration.findUnique({
+        where: { key: MAP_ENTITIES_MIGRATION_KEY },
+        select: { key: true },
+      });
+      if (enabled)
+        row = await prisma.$transaction(
+          async tx => {
+            const current = await tx.dataDocument.findUniqueOrThrow({
+              where: { key },
+            });
+            await verifyRelationalDocument(tx, current);
+            return current;
+          },
+          { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+        );
+    }
+    return storedDataDocumentSchema.parse(row);
   }
 
   async list(prefix: string) {
@@ -147,6 +173,17 @@ class PrismaDataDocumentDatabase implements DataDocumentDatabase {
               });
               stored.push(storedDataDocumentSchema.parse(row));
             }
+            const enabled = await transaction.canonicalDataMigration.findUnique(
+              {
+                where: { key: MAP_ENTITIES_MIGRATION_KEY },
+                select: { key: true },
+              },
+            );
+            if (enabled)
+              await syncMapEntities(
+                transaction,
+                documents.map(d => d.key),
+              );
             return stored;
           },
           {

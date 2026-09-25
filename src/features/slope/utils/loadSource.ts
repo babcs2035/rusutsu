@@ -1,3 +1,8 @@
+import {
+  featureIdentity,
+  legacyCourseGrouping,
+  readCourseGrouping,
+} from "@/shared/course-lift/identity";
 import { LEVEL_OPTIONS } from "../constants";
 import type {
   BinaryMark,
@@ -202,7 +207,9 @@ export const sourceDataToCourses = (
   const courses: EditorCourse[] = [];
   const preservedFeatures: SlopeBeforeFeature[] = [];
   const warnings: string[] = [];
-  for (const feature of source.geojson?.features ?? []) {
+  for (const [featureIndex, feature] of (
+    source.geojson?.features ?? []
+  ).entries()) {
     if (
       feature.geometry?.type !== "LineString" ||
       !Array.isArray(feature.geometry.coordinates)
@@ -251,11 +258,30 @@ export const sourceDataToCourses = (
 
     courses.push({
       ...createEmptyCourse(),
+      id: featureIdentity(
+        feature.properties,
+        `resorts-temporary/${source.sourceKind === "osm" ? "slope_before_osm" : "slope_before"}/${resortId}.geojson`,
+        featureIndex,
+      ),
+      grouping: Object.hasOwn(feature.properties ?? {}, "courseGrouping")
+        ? readCourseGrouping(feature.properties?.courseGrouping)
+        : legacyCourseGrouping(name, `${resortId}:${source.sourceKind}`),
+      groupingReviewed:
+        typeof feature.properties?.groupingReviewed === "string"
+          ? feature.properties.groupingReviewed
+          : undefined,
       skiId: resortId,
       originalSkiId: resortId,
       name,
+      unnamed: feature.properties?.nameUnknown === true || name === "",
       coordinates,
+      rawEndpoints: [
+        feature.geometry.coordinates[0],
+        feature.geometry.coordinates[feature.geometry.coordinates.length - 1],
+      ] as number[][],
       detail: mergedDetail.detail,
+      loadedDetail: { ...mergedDetail.detail },
+      rawDetail: combinedDetailEntry,
       beforeExtras,
       detailExtras:
         Object.keys(combinedDetailEntry).length > 0

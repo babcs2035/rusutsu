@@ -6,6 +6,7 @@ import {
   dataDocumentPrefixSchema,
   isSafeDataDocumentKey,
   isSafeDataDocumentPrefix,
+  validateDataDocumentContent,
 } from "./contract";
 
 test("accepts canonical src/private/data-relative POSIX keys", () => {
@@ -173,4 +174,15 @@ test("rejects invalid GeoJSON geometry types, coordinate values, and unclosed ri
     });
     assert.equal(result.success, false);
   }
+});
+
+test("rejects lift ticket documents, which live in lift_ticket_seasons", () => {
+  assert.deepEqual(
+    validateDataDocumentContent({
+      key: "lift-ticket/naeba/tickets/2026-2027.json",
+      content: "{}",
+      mediaType: "application/json",
+    }),
+    ["Lift ticket seasons are stored in lift_ticket_seasons"],
+  );
 });

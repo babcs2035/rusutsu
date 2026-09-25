@@ -105,7 +105,7 @@ export function MappingPairList<T extends MappingPairItem>({
           className="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-900"
         >
           同じ名前の線があります（{mapping.duplicateNames.join("、")}
-          ）。選択と名前の反映は各行だけに適用します。各行の名前を分けてから対応表を保存してください。
+          ）。選択と名前の反映は各行だけに適用します。固定IDで区別して保存します。各線の対応を確認してください。
         </p>
       )}
       {mapping.workspace?.archiveTimestamp && (

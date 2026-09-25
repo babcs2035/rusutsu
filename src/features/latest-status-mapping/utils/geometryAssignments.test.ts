@@ -50,11 +50,12 @@ for (const selected of ["手動で選んだ公式コース", null]) {
         reconcileEditedRows(rows, courses, next),
         next,
         assignments,
+        true,
       );
       for (const course of next) {
         assert.equal(assignments[course.id], selected);
         assert.equal(
-          reconciled.find(row => row.geojsonName === course.name)?.crawledName,
+          reconciled.find(row => row.geometryId === course.id)?.crawledName,
           selected,
         );
       }

@@ -106,6 +106,11 @@ export const validateDataDocumentContent = (document: {
   mediaType: string;
 }): string[] => {
   const errors: string[] = [];
+  if (document.key.startsWith("lift-ticket/")) {
+    // リフト券料金は専用テーブル lift_ticket_seasons が正本。
+    errors.push("Lift ticket seasons are stored in lift_ticket_seasons");
+    return errors;
+  }
   const mediaType = baseMediaType(document.mediaType);
   const isJsonKey = document.key.endsWith(".json");
   const isGeoJsonKey = document.key.endsWith(".geojson");
@@ -157,8 +162,7 @@ export const validateDataDocumentContent = (document: {
       /^resorts-temporary\/latest_status_mapping\/.+\.json$/u.test(
         document.key,
       ) ||
-      /^reviews\/.+\/(?:detail|article)\.json$/u.test(document.key) ||
-      /^lift-ticket\/.+\/tickets\/.+\.json$/u.test(document.key)) &&
+      /^reviews\/.+\/(?:detail|article)\.json$/u.test(document.key)) &&
     !isRecord(parsed)
   ) {
     errors.push("This document family requires a JSON object");

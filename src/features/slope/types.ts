@@ -1,4 +1,6 @@
+import type { SaveLatestStatusMappingRequest } from "@/features/latest-status-mapping/types";
 import type { ResortEditorLinkDraft } from "@/shared/components/resort-editor/useResortEditorLinks";
+import type { CourseGrouping } from "@/shared/course-lift/identity";
 export type LngLat = [number, number];
 
 export type SlopeSourceKind = "curated" | "osm";
@@ -28,8 +30,13 @@ export type EditorCourse = {
   originalSkiId: string;
   name: string;
   unnamed: boolean;
+  grouping?: CourseGrouping | null;
+  groupingReviewed?: string;
   coordinates: LngLat[];
+  rawEndpoints?: number[][];
   detail: CourseDetail;
+  loadedDetail?: CourseDetail;
+  rawDetail?: Record<string, unknown>;
   // slope_before 由来の、詳細編集対象以外の properties を保持する
   beforeExtras: Record<string, unknown>;
   // slope_detail 由来の編集対象外フィールド（maxWidth, snowboard 等）を保持する
@@ -82,7 +89,13 @@ export type ResortOption = {
   hasCourseMapping: boolean;
 };
 
-export type EditStep = "select" | "assign" | "lines" | "details" | "confirm";
+export type EditStep =
+  | "select"
+  | "assign"
+  | "lines"
+  | "grouping"
+  | "details"
+  | "confirm";
 
 export type StartSource =
   | "draft-curated"
@@ -133,6 +146,7 @@ export type SaveCoursePayload = {
 };
 
 export type SaveRequest = {
+  mapping?: SaveLatestStatusMappingRequest;
   resortId: string;
   sourceKind: SlopeSourceKind;
   fileHash: string | null;

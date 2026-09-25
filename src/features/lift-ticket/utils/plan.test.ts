@@ -17,7 +17,7 @@ const MULTI = path.join(
 /** 1日券もナイター券も無いスキー場（最長9時間券） */
 const NO_DAY_PASS = path.join(
   process.cwd(),
-  "src/private/data/lift-ticket/megahira-onsen-megahira/tickets/2025-2026.json",
+  "src/private/data/lift-ticket/megahira-onsen-megahira/2025-2026.json",
 );
 
 const load = (file: string) =>

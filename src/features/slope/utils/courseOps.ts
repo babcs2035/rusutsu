@@ -2,7 +2,6 @@ import {
   buildDefaultSearchWord,
   updateDefaultSearchWord,
 } from "@/shared/utils/searchWord";
-import { UNNAMED_PREFIX } from "../constants";
 import type { CourseDetail, EditorCourse, LngLat } from "../types";
 import type { LinePosition, LineSide } from "./lineGeometry";
 import { joinLines } from "./lineGeometry";
@@ -61,27 +60,10 @@ export const fillEmptyCourseSearchWords = (
       : course,
   );
 
-// 無名コースへ既存データと同じ「無名_1」形式の名前を割り当てる
+// Identity is independent of the display name; no synthetic 無名_N is necessary.
 export const assignUnnamedCourseNames = (
   courses: EditorCourse[],
-): EditorCourse[] => {
-  const usedNames = new Set(
-    courses.filter(course => course.name !== "").map(course => course.name),
-  );
-  let sequence = 1;
-
-  return courses.map(course => {
-    if (!course.unnamed || course.name !== "") return course;
-    let candidate = `${UNNAMED_PREFIX}_${sequence}`;
-    while (usedNames.has(candidate)) {
-      sequence += 1;
-      candidate = `${UNNAMED_PREFIX}_${sequence}`;
-    }
-    usedNames.add(candidate);
-    sequence += 1;
-    return { ...course, name: candidate };
-  });
-};
+): EditorCourse[] => courses;
 
 // 分割数に応じたサフィックス（2: 上部/下部, 3: 上部/中部/下部, 4+: 上部/中部1.../下部）
 export const buildSplitSuffixes = (count: number): string[] => {
@@ -103,19 +85,17 @@ const relabelSplitGroup = (
   groupId: string,
   resortName = "",
 ): EditorCourse[] => {
-  const members = courses.filter(course => course.splitGroupId === groupId);
+  const members = courses.filter(
+    course =>
+      course.splitGroupId === groupId || course.grouping?.id === groupId,
+  );
   if (members.length === 0) return courses;
 
   const baseName =
-    members[0].splitBaseName ?? stripSplitSuffix(members[0].name);
-  const suffixes = buildSplitSuffixes(members.length);
-  const nameByCourseId = new Map<string, string>();
-  members.forEach((member, index) => {
-    nameByCourseId.set(
-      member.id,
-      suffixes[index] === "" ? baseName : `${baseName}_#${suffixes[index]}`,
-    );
-  });
+    members[0].grouping?.name ??
+    members[0].splitBaseName ??
+    stripSplitSuffix(members[0].name);
+  const nameByCourseId = new Map(members.map(member => [member.id, baseName]));
 
   return courses.map(course => {
     const nextName = nameByCourseId.get(course.id);
@@ -133,6 +113,13 @@ const relabelSplitGroup = (
         ),
       },
       splitBaseName: baseName,
+      grouping: {
+        id: groupId,
+        name: baseName,
+        kind: members[0].grouping?.kind ?? "continuous",
+        order: members.findIndex(member => member.id === course.id) + 1,
+      },
+      groupingReviewed: undefined,
     };
   });
 };
@@ -150,8 +137,12 @@ export const splitCourseAtVertex = (
     return courses;
   }
 
-  const groupId = target.splitGroupId ?? createCourseId();
-  const baseName = target.splitBaseName ?? stripSplitSuffix(target.name);
+  const groupId =
+    target.grouping?.id ?? target.splitGroupId ?? createCourseId();
+  const baseName =
+    target.grouping?.name ??
+    target.splitBaseName ??
+    stripSplitSuffix(target.name);
   const upper: EditorCourse = {
     ...target,
     coordinates: target.coordinates.slice(0, vertexIndex + 1),
@@ -182,7 +173,10 @@ export const mergeSplitGroup = (
   groupId: string,
   resortName = "",
 ): EditorCourse[] => {
-  const members = courses.filter(course => course.splitGroupId === groupId);
+  const members = courses.filter(
+    course =>
+      course.splitGroupId === groupId || course.grouping?.id === groupId,
+  );
   if (members.length < 2) return courses;
 
   const coordinates: LngLat[] = [];
@@ -211,11 +205,14 @@ export const mergeSplitGroup = (
     coordinates,
     splitGroupId: null,
     splitBaseName: null,
+    grouping: null,
+    groupingReviewed: undefined,
   };
 
   let inserted = false;
   return courses.flatMap(course => {
-    if (course.splitGroupId !== groupId) return [course];
+    if (course.splitGroupId !== groupId && course.grouping?.id !== groupId)
+      return [course];
     if (inserted) return [];
     inserted = true;
     return [merged];
@@ -250,7 +247,13 @@ const dissolveEmptySplitGroups = (courses: EditorCourse[]): EditorCourse[] => {
   }
   return courses.map(course =>
     course.splitGroupId && (counts.get(course.splitGroupId) ?? 0) < 2
-      ? { ...course, splitGroupId: null, splitBaseName: null }
+      ? {
+          ...course,
+          splitGroupId: null,
+          splitBaseName: null,
+          grouping: null,
+          groupingReviewed: undefined,
+        }
       : course,
   );
 };
@@ -309,6 +312,8 @@ export const mergeCourses = (
     detailExtras: detailSource.detailExtras,
     splitGroupId: null,
     splitBaseName: null,
+    grouping: null,
+    groupingReviewed: undefined,
   };
 
   return dissolveEmptySplitGroups(

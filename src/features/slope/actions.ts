@@ -1,6 +1,9 @@
 "use server";
 
+import path from "node:path";
+import { prepareLatestStatusMappingDocument } from "@/features/latest-status-mapping/server/mappingFiles";
 import { isValidResortId } from "@/features/lift/server/liftFiles";
+import { readMappingCrawlLatestStatus } from "@/lib/crawlLatestCurrent";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { readExistingSkiResortIds } from "@/lib/skiResortData";
 import { scheduleSavedElevations } from "@/server/backgroundElevation";
@@ -10,6 +13,8 @@ import {
 } from "@/server/data-documents/client";
 import { DataDocumentConflictError } from "@/server/data-documents/contract";
 import { synchronizeDerivedGeometry } from "@/server/derivedGeometry";
+import { featureIdentity } from "@/shared/course-lift/identity";
+import { preserveFeature } from "@/shared/course-lift/preserveFeature";
 import { writeOsmSlopeConfirmed } from "./server/slopeConfirmation";
 import {
   osmSlope10mDocumentKey,
@@ -79,7 +84,19 @@ export async function applySlopeFeatureOrder(
   const reordered = {
     ...geojson,
     features: reorderItemsByNameOrder(
-      geojson.features,
+      geojson.features.map(
+        (feature, index): SlopeBeforeFeature => ({
+          ...feature,
+          properties: {
+            ...feature.properties,
+            entityId: featureIdentity(
+              feature.properties,
+              slopeBeforeDocumentKey(request.resortId, request.sourceKind),
+              index,
+            ),
+          },
+        }),
+      ),
       orderedNames,
       feature => feature.properties?.name,
     ),
@@ -168,6 +185,20 @@ export async function saveSlopeEdits(
 ): Promise<SaveResult> {
   await requireAdmin();
   const errors = validateSaveRequest(request);
+  if (
+    request.mapping &&
+    (request.mapping.resortId !== request.resortId ||
+      request.mapping.kind !== "courses")
+  )
+    return { ok: false, errors: ["対応表の対象が一致しません。"] };
+  const preparedMapping = request.mapping
+    ? await prepareLatestStatusMappingDocument(
+        path.join(process.cwd(), "src/private/data/resorts-temporary"),
+        request.mapping,
+        readMappingCrawlLatestStatus,
+      )
+    : null;
+  if (preparedMapping && !preparedMapping.ok) return preparedMapping;
   if (errors.length > 0) return { ok: false, errors };
 
   const requestedResortIds = [
@@ -211,14 +242,22 @@ export async function saveSlopeEdits(
     };
   }
 
-  const toFeature = (course: SaveCoursePayload): SlopeBeforeFeature => ({
-    type: "Feature",
-    properties: { ...course.properties, resort: course.targetSkiId },
-    geometry: {
-      type: "LineString",
-      coordinates: course.coordinates,
-    },
-  });
+  const originalFeatures = currentBeforeDocument
+    ? (parseSlopeBeforeGeojson(currentBeforeDocument.content)?.features ?? [])
+    : [];
+  const toFeature = (course: SaveCoursePayload): SlopeBeforeFeature =>
+    preserveFeature(
+      {
+        type: "Feature",
+        properties: { ...course.properties, resort: course.targetSkiId },
+        geometry: {
+          type: "LineString",
+          coordinates: course.coordinates,
+        },
+      },
+      originalFeatures,
+      slopeBeforeDocumentKey(request.resortId, request.sourceKind),
+    );
 
   const sourceFeatures: SlopeBeforeFeature[] = [];
   const movedByTarget = new Map<string, SlopeBeforeFeature[]>();
@@ -272,10 +311,19 @@ export async function saveSlopeEdits(
         return typeof id === "string" && id.startsWith("way/") ? [id] : [];
       }),
     );
-    const targetFeatures = (targetGeojson?.features ?? []).filter(feature => {
-      const id = feature.properties?.["@id"];
-      return !(typeof id === "string" && movedOsmIds.has(id));
-    });
+    const targetFeatures = targetGeojson?.features ?? [];
+    if (
+      targetFeatures.some(feature => {
+        const id = feature.properties?.["@id"];
+        return typeof id === "string" && movedOsmIds.has(id);
+      })
+    )
+      return {
+        ok: false,
+        errors: [
+          `移動先 ${targetId} に同じOSM IDの線があります。既存の線を上書きせず保存を中止しました。移動先を確認してください。`,
+        ],
+      };
     writes.push({
       resortId: targetId,
       features: [...targetFeatures, ...movedFeatures],
@@ -287,6 +335,7 @@ export async function saveSlopeEdits(
   const proposedGeojson = writes.map(write => ({
     ...write,
     geojson: {
+      ...write.previousGeojson,
       type: "FeatureCollection" as const,
       features: write.features,
     },
@@ -316,6 +365,7 @@ export async function saveSlopeEdits(
 
   try {
     const savedDocuments = await writeDataDocuments([
+      ...(preparedMapping?.ok ? [preparedMapping.document] : []),
       ...proposedGeojson.map(write => ({
         key: slopeBeforeDocumentKey(write.resortId, request.sourceKind),
         content: serializeSlopeGeojson(write.geojson),

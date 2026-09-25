@@ -2,6 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { readResolvedLatestStatusMapping } from "@/features/latest-status-mapping/server/mappingFiles";
 import type { ResolvedLatestStatusMapping } from "@/features/latest-status-mapping/types";
+import { readCourseGrouping } from "@/shared/course-lift/identity";
 import type { CourseStatusSummary } from "./courseStatusSummary";
 import { createCourseStatusSummary } from "./courseStatusSummary";
 import { calculateCoordinateSlopes } from "./finalizedResortGeojsonShared";
@@ -27,6 +28,8 @@ export type FinalizedCourseFeature = {
   displayName: string;
   groupId: string;
   sectionName: string | null;
+  sectionOrder?: number;
+  groupKind?: "continuous" | "routes";
   latestStatusName?: string | null;
   /** 人手確認済みの既存データか、未確認のOSM由来か。 */
   verificationStatus?: "verified" | "unverified";
@@ -281,7 +284,9 @@ const createFeatureId = (
   index: number,
 ) => {
   const name = normalizeString(properties.name) ?? `${kind}-${index + 1}`;
-  return `${kind}-${index}-${name}`;
+  return typeof properties.entityId === "string"
+    ? properties.entityId
+    : `${kind}-${index}-${name}`;
 };
 
 const normalizeCourseFeature = (
@@ -301,18 +306,31 @@ const normalizeCourseFeature = (
   const properties = candidate.properties ?? {};
   const name = normalizeString(properties.name) ?? `コース ${index + 1}`;
   const parsedName = parseFinalizedCourseName(name);
+  const grouping = readCourseGrouping(properties.courseGrouping);
+  const explicitGrouping = Object.hasOwn(properties, "courseGrouping");
   const baseId = createFeatureId("course", properties, index);
   const sourcePrefix = verificationStatus === "unverified" ? "osm-" : "";
 
   return {
     id: `${sourcePrefix}${baseId}`,
     name,
-    displayName: parsedName.displayName,
+    displayName:
+      grouping?.name ?? (explicitGrouping ? name : parsedName.displayName),
     groupId:
-      parsedName.sectionName === null
+      grouping?.id ??
+      (explicitGrouping
         ? `${sourcePrefix}${baseId}`
-        : `${sourcePrefix}course-group-${parsedName.groupName}`,
-    sectionName: parsedName.sectionName,
+        : parsedName.sectionName === null
+          ? `${sourcePrefix}${baseId}`
+          : `${sourcePrefix}course-group-${parsedName.groupName}`),
+    sectionName: grouping
+      ? `${grouping.kind === "continuous" ? "区間" : "ルート"}${grouping.order}`
+      : explicitGrouping
+        ? null
+        : parsedName.sectionName,
+    ...(grouping
+      ? { sectionOrder: grouping.order, groupKind: grouping.kind }
+      : {}),
     latestStatusName: normalizeString(properties.latest_status_name),
     verificationStatus,
     sourceUrls,
@@ -658,6 +676,11 @@ export async function loadResortGeometryForMerge(
             geometry.beforeFeatures,
             roots.documentLoader,
           );
+    const baseById = new Map(
+      (base?.items ?? [])
+        .filter(item => typeof item.entityId === "string")
+        .map(item => [item.entityId, item]),
+    );
     const baseByName = new Map(
       (base?.items ?? []).map(item => [String(item.name), item]),
     );
@@ -669,7 +692,11 @@ export async function loadResortGeometryForMerge(
           typeof name === "string" ? matchBaseName(index, name, kind) : null;
         const properties = {
           ...feature.properties,
-          ...(matched ? baseByName.get(matched) : undefined),
+          ...(typeof feature.properties.entityId === "string"
+            ? baseById.get(feature.properties.entityId)
+            : matched
+              ? baseByName.get(matched)
+              : undefined),
           name,
         };
         // 営業状況は統合先のクローラーで更新する。保存時の状態を固定しない。

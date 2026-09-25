@@ -117,7 +117,7 @@ export function ConfirmStep({
     setServerErrors([]);
     try {
       const result = await saveEditorChanges({
-        saveMapping: mapping.save,
+        saveMapping: mapping.getSaveRequest ? async () => true : mapping.save,
         saveLinks,
         mappingFile: mapping.workspace?.latestFile
           ? `latest_status_mapping/${resort.id}.json`
@@ -125,6 +125,7 @@ export function ConfirmStep({
         saveGeometry: () =>
           saveLiftEdits({
             resortId: resort.id,
+            mapping: mapping.getSaveRequest?.(),
             fileHash,
             lifts: lifts.map(liftToSavePayload),
           }),

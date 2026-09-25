@@ -9,31 +9,48 @@ const toNumberOrEmpty = (value: string): number | "" => {
 const buildCourseDetailProperties = (
   resortId: string,
   course: EditorCourse,
-): Record<string, unknown> => ({
-  maxWidth: "",
-  minWidth: "",
-  snowboard: "",
-  ...(course.detailExtras ?? {}),
-  resort: resortId,
-  name: course.name,
-  level: course.detail.level,
-  distance: toNumberOrEmpty(course.detail.distance),
-  avg: toNumberOrEmpty(course.detail.avg),
-  max: toNumberOrEmpty(course.detail.max),
-  piste: course.detail.piste,
-  morning: course.detail.morning,
-  night: course.detail.night,
-  image: course.detail.image,
-  youtubeUrl: course.detail.youtubeUrl.trim(),
-  searchWord: course.detail.searchWord,
-  note: course.detail.note,
-});
+): Record<string, unknown> => {
+  const properties: Record<string, unknown> = {
+    maxWidth: "",
+    minWidth: "",
+    snowboard: "",
+    ...(course.detailExtras ?? {}),
+    resort: resortId,
+    name: course.name,
+    level: course.detail.level,
+    distance: toNumberOrEmpty(course.detail.distance),
+    avg: toNumberOrEmpty(course.detail.avg),
+    max: toNumberOrEmpty(course.detail.max),
+    piste: course.detail.piste,
+    morning: course.detail.morning,
+    night: course.detail.night,
+    image: course.detail.image,
+    youtubeUrl: course.detail.youtubeUrl.trim(),
+    searchWord: course.detail.searchWord,
+    note: course.detail.note,
+  };
+  if (course.loadedDetail && course.rawDetail) {
+    for (const key of Object.keys(course.detail) as Array<
+      keyof typeof course.detail
+    >) {
+      if (course.detail[key] !== course.loadedDetail[key]) continue;
+      if (Object.hasOwn(course.rawDetail, key))
+        properties[key] = course.rawDetail[key];
+      else delete properties[key];
+    }
+  }
+  return properties;
+};
 
 const buildCourseBeforeProperties = (
   resortId: string,
   course: EditorCourse,
 ): Record<string, unknown> => ({
   ...course.beforeExtras,
+  entityId: course.id,
+  nameUnknown: course.unnamed,
+  courseGrouping: course.grouping ?? null,
+  groupingReviewed: course.groupingReviewed ?? null,
   ...(course.skiId !== course.originalSkiId
     ? { assignment_method: "manual" }
     : {}),
@@ -94,20 +111,7 @@ export const buildStandardGeojson = (courses: EditorCourse[]): string =>
       type: "FeatureCollection",
       features: courses.map(course => ({
         type: "Feature",
-        properties: {
-          name: course.name,
-          level: course.detail.level,
-          distance: toNumberOrEmpty(course.detail.distance),
-          avg: toNumberOrEmpty(course.detail.avg),
-          max: toNumberOrEmpty(course.detail.max),
-          piste: course.detail.piste,
-          morning: course.detail.morning,
-          night: course.detail.night,
-          image: course.detail.image,
-          youtubeUrl: course.detail.youtubeUrl.trim(),
-          searchWord: course.detail.searchWord,
-          note: course.detail.note,
-        },
+        properties: buildCourseBeforeProperties(course.skiId, course),
         geometry: {
           type: "LineString",
           coordinates: course.coordinates,

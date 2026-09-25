@@ -16,7 +16,7 @@ const toStoredValue = (key: string, value: string): string | number => {
 // 編集結果を lift_before の feature properties へ組み立てる。
 // @id は読み込んだ値をそのまま維持し、空欄の詳細フィールドは保存しない。
 export const liftToSavePayload = (lift: EditorLift): SaveLiftPayload => {
-  const properties: Record<string, unknown> = {};
+  const properties: Record<string, unknown> = { entityId: lift.id };
   if (lift.osmId !== null) properties["@id"] = lift.osmId;
   if (lift.name !== "") properties.name = lift.name;
   if (isSameMidstation(lift.midstation, lift.original.midstation)) {
@@ -31,6 +31,19 @@ export const liftToSavePayload = (lift: EditorLift): SaveLiftPayload => {
   for (const key of DETAIL_KEYS) {
     const value = lift.detail[key];
     if (value !== "") properties[key] = toStoredValue(key, value);
+  }
+  if (lift.rawProperties) {
+    for (const key of DETAIL_KEYS) {
+      if (lift.detail[key] !== lift.original.detail[key]) continue;
+      if (Object.hasOwn(lift.rawProperties, key))
+        properties[key] = lift.rawProperties[key];
+      else delete properties[key];
+    }
+    if (
+      lift.name === lift.original.name &&
+      Object.hasOwn(lift.rawProperties, "name")
+    )
+      properties.name = lift.rawProperties.name;
   }
   // aerialway / start_date などの未対応フィールドをそのまま引き継ぐ
   for (const [key, value] of Object.entries(lift.extras)) {

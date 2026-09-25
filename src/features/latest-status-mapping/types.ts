@@ -6,6 +6,7 @@ export type ApplyGeojsonOrderResult = {
 };
 
 export type LatestStatusMappingRow = {
+  geometryId?: string;
   crawledName: string | null;
   geojsonName: string | null;
 };
@@ -53,6 +54,7 @@ export type SaveLatestStatusMappingRequest = {
   rows: LatestStatusMappingRow[];
   /** 保存前の編集画面から呼ぶ場合に使う、現在編集中のGeoJSON名 */
   geojsonNames?: string[];
+  geometries?: Array<{ id: string; name: string }>;
 };
 
 export type SaveLatestStatusMappingResult =
@@ -68,4 +70,5 @@ export type ResolvedLatestStatusMapping = {
   configured: boolean;
   sourceFile: string | null;
   byGeojsonName: Map<string, string | null>;
+  byGeometryId?: Map<string, string | null>;
 };

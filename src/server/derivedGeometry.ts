@@ -222,6 +222,7 @@ const normalizeIdentity = (value: unknown): string | null => {
 };
 
 type FeatureLookup<TFeature extends LineGeojsonFeature> = {
+  byEntityId: ReadonlyMap<string, readonly TFeature[]>;
   byId: ReadonlyMap<string, readonly TFeature[]>;
   byName: ReadonlyMap<string, readonly TFeature[]>;
 };
@@ -229,15 +230,19 @@ type FeatureLookup<TFeature extends LineGeojsonFeature> = {
 const createFeatureLookup = <TFeature extends LineGeojsonFeature>(
   features: readonly TFeature[],
 ): FeatureLookup<TFeature> => {
+  const byEntityId = new Map<string, TFeature[]>();
   const byId = new Map<string, TFeature[]>();
   const byName = new Map<string, TFeature[]>();
   for (const feature of features) {
+    const entityId = normalizeIdentity(feature.properties?.entityId);
+    if (entityId)
+      byEntityId.set(entityId, [...(byEntityId.get(entityId) ?? []), feature]);
     const id = normalizeIdentity(feature.properties?.["@id"]);
     const name = normalizeIdentity(feature.properties?.name);
     if (id) byId.set(id, [...(byId.get(id) ?? []), feature]);
     if (name) byName.set(name, [...(byName.get(name) ?? []), feature]);
   }
-  return { byId, byName };
+  return { byEntityId, byId, byName };
 };
 
 /**
@@ -248,11 +253,24 @@ const findSafeMatch = <TFeature extends LineGeojsonFeature>(
   feature: LineGeojsonFeature,
   lookup: FeatureLookup<TFeature>,
 ): TFeature | null => {
+  const entityId = normalizeIdentity(feature.properties?.entityId);
+  if (entityId && lookup.byEntityId.has(entityId)) {
+    const matches = lookup.byEntityId.get(entityId) ?? [];
+    return matches.length === 1 ? matches[0] : null;
+  }
   const id = normalizeIdentity(feature.properties?.["@id"]);
   const name = normalizeIdentity(feature.properties?.name);
   const idMatches = id ? (lookup.byId.get(id) ?? []) : [];
   const nameMatches = name ? (lookup.byName.get(name) ?? []) : [];
 
+  if (
+    entityId &&
+    [...idMatches, ...nameMatches].some(
+      match =>
+        match.properties?.entityId && match.properties.entityId !== entityId,
+    )
+  )
+    return null;
   if (idMatches.length > 1) return null;
   if (idMatches.length === 1) {
     if (nameMatches.length === 1 && nameMatches[0] !== idMatches[0]) {
@@ -485,5 +503,16 @@ export const synchronizeDerivedGeometry = <
     ];
   });
 
-  return { type: "FeatureCollection", features };
+  // Unmatched legacy derived features cannot safely be identified as deleted lines.
+  // Retain them until the source/derived mismatch is explicitly resolved.
+  const orphans = derivedFeatures.filter(
+    feature =>
+      !findSafeMatch(feature, previousLookup) &&
+      !findSafeMatch(feature, createFeatureLookup(nextBefore.features)),
+  );
+  return {
+    ...existingDerived,
+    type: "FeatureCollection",
+    features: [...features, ...orphans],
+  };
 };

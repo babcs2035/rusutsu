@@ -6,6 +6,7 @@ import type {
   LatestStatusMappingKind,
   LatestStatusMappingRow,
   LatestStatusMappingWorkspace,
+  SaveLatestStatusMappingRequest,
 } from "../types";
 import { type NamedGeometry, reconcileEditedRows } from "../utils/editedRows";
 import {
@@ -51,6 +52,7 @@ export type LatestStatusMappingState = {
   /** コース名を変えたときに、対応表側の名前も追従させる */
   renameGeojsonName: (from: string, to: string) => void;
   save: () => Promise<boolean>;
+  getSaveRequest?: () => SaveLatestStatusMappingRequest | undefined;
 };
 
 /**
@@ -108,6 +110,7 @@ export const useLatestStatusMapping = ({
       ),
       geometries,
       geometryAssignments,
+      true,
     );
     if (JSON.stringify(next) === JSON.stringify(rows)) return;
     setRows(next);
@@ -226,14 +229,11 @@ export const useLatestStatusMapping = ({
   const save = useCallback(async () => {
     if (!workspace || isLoading || isSaving) return false;
     if (!workspace.latestFile) return true;
-    const duplicates = duplicateGeometryNames(geometriesRef.current ?? []);
-    if (duplicates.length > 0) {
-      setError(
-        `同じ名前の線があります（${duplicates.join("、")}）。各行の名前を分けてから対応表を保存してください。`,
-      );
-      return false;
-    }
-    if (!isDirty) return true;
+    if (
+      !isDirty &&
+      (!geometriesRef.current || rows.some(row => row.geometryId))
+    )
+      return true;
     setIsSaving(true);
     setError(null);
     try {
@@ -246,8 +246,10 @@ export const useLatestStatusMapping = ({
           rows,
           geometriesRef.current ?? [],
           geometryAssignments,
+          !!geometriesRef.current,
         ),
         geojsonNames: [...new Set(geojsonNamesRef.current)],
+        geometries: geometriesRef.current,
       });
       if (!result.ok) {
         setError(result.errors.join("\n"));
@@ -306,5 +308,24 @@ export const useLatestStatusMapping = ({
     autoAssign,
     renameGeojsonName,
     save,
+    getSaveRequest: () => {
+      if (isLoading || error || !workspace)
+        throw new Error("対応表を読み直してから保存してください。");
+      if (!workspace.latestFile) return undefined;
+      return {
+        resortId,
+        kind,
+        latestFile: workspace.latestFile,
+        mappingFileHash: workspace.mappingFileHash,
+        rows: applyGeometryAssignments(
+          rows,
+          geometriesRef.current ?? [],
+          geometryAssignments,
+          !!geometriesRef.current,
+        ),
+        geojsonNames: [...new Set(geojsonNamesRef.current)],
+        geometries: geometriesRef.current,
+      };
+    },
   };
 };

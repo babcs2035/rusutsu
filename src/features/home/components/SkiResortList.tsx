@@ -2,11 +2,21 @@
 
 import { Check, Plus } from "lucide-react";
 import type { PointerEvent as ReactPointerEvent } from "react";
-import { memo, startTransition, useCallback, useEffect, useState } from "react";
+import {
+  memo,
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { calculateLiftTicketsForList } from "@/actions/skiResorts";
 import { Button } from "@/components/ui/button";
 import { TicketCalculationCard } from "@/features/lift-ticket/components/TicketCalculationCard";
-import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
-import { calculateLiftTicketForSeasons } from "@/features/lift-ticket/utils/calculateLiftTicket";
+import type {
+  LiftTicketSearchInput,
+  TicketCalculationResult,
+} from "@/features/lift-ticket/types";
 import { CopyResortNameButton } from "@/shared/components/CopyResortNameButton";
 import { FormerResortNames } from "@/shared/components/FormerResortNames";
 import { RubyText } from "@/shared/components/RubyText";
@@ -17,6 +27,62 @@ const HOVER_HIGHLIGHT_MEDIA_QUERY = "(min-width: 48em)";
 const canUseHoverHighlight = () =>
   typeof window !== "undefined" &&
   window.matchMedia(HOVER_HIGHLIGHT_MEDIA_QUERY).matches;
+
+type ListLiftTicketResults =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "error" }
+  | { status: "done"; results: Record<string, TicketCalculationResult | null> };
+
+/**
+ * 日付が入ったときだけ、一覧にある料金データ付きスキー場の料金をサーバーで
+ * 計算して受け取る。料金データ本体はブラウザへ送らない。
+ */
+const useListLiftTicketResults = (
+  resorts: MapSkiResort[],
+  input: LiftTicketSearchInput,
+): ListLiftTicketResults => {
+  const requestKey = useMemo(() => {
+    const ids = [
+      ...new Set(
+        resorts.flatMap(resort =>
+          resort.liftTicketResortId ? [resort.liftTicketResortId] : [],
+        ),
+      ),
+    ].sort();
+    return input.visitDate && ids.length > 0
+      ? JSON.stringify({ ids, input })
+      : null;
+  }, [resorts, input]);
+  const [state, setState] = useState<{
+    key: string;
+    value: ListLiftTicketResults;
+  } | null>(null);
+
+  useEffect(() => {
+    if (requestKey === null) return;
+    const { ids, input: requestInput } = JSON.parse(requestKey) as {
+      ids: string[];
+      input: LiftTicketSearchInput;
+    };
+    let cancelled = false;
+    calculateLiftTicketsForList(ids, requestInput)
+      .then(results => {
+        if (!cancelled)
+          setState({ key: requestKey, value: { status: "done", results } });
+      })
+      .catch(() => {
+        if (!cancelled)
+          setState({ key: requestKey, value: { status: "error" } });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [requestKey]);
+
+  if (requestKey === null) return { status: "idle" };
+  return state?.key === requestKey ? state.value : { status: "loading" };
+};
 
 type Props = {
   resorts: MapSkiResort[];
@@ -40,6 +106,7 @@ export const SkiResortList = ({
   showHeader = true,
   liftTicketInput,
 }: Props) => {
+  const liftTicketResults = useListLiftTicketResults(resorts, liftTicketInput);
   const [localSelectedCompareIdSet, setLocalSelectedCompareIdSet] = useState(
     () => new Set(selectedCompareIdSet),
   );
@@ -100,7 +167,7 @@ export const SkiResortList = ({
               onSelectResort={onSelectResort}
               onToggleCompare={handleToggleCompare}
               onHoverResortChange={onHoverResortChange}
-              liftTicketInput={liftTicketInput}
+              liftTicketResults={liftTicketResults}
             />
           ))}
         </ul>
@@ -116,14 +183,14 @@ const SkiResortListItem = memo(
     onSelectResort,
     onToggleCompare,
     onHoverResortChange,
-    liftTicketInput,
+    liftTicketResults,
   }: {
     resort: MapSkiResort;
     isCompareSelected: boolean;
     onSelectResort: (id: string) => void;
     onToggleCompare: (id: string, selected: boolean) => void;
     onHoverResortChange?: (id: string | null) => void;
-    liftTicketInput: LiftTicketSearchInput;
+    liftTicketResults: ListLiftTicketResults;
   }) => {
     const highlightResort = () => {
       if (!canUseHoverHighlight()) return;
@@ -142,10 +209,7 @@ const SkiResortListItem = memo(
       clearHighlight();
       onSelectResort(resort.id);
     };
-    const liftTicketResult =
-      resort.liftTickets.length > 0 && liftTicketInput.visitDate
-        ? calculateLiftTicketForSeasons(resort.liftTickets, liftTicketInput)
-        : null;
+    const liftTicketResortId = resort.liftTicketResortId;
 
     return (
       <li className="block">
@@ -192,17 +256,26 @@ const SkiResortListItem = memo(
                   旧称: <FormerResortNames names={resort.formerNames} />
                 </p>
               )}
-              {resort.liftTickets.length > 0 &&
-                (liftTicketInput.visitDate ? (
+              {liftTicketResortId &&
+                (liftTicketResults.status === "done" ? (
                   <div
                     className="mt-1"
                     onPointerDown={event => event.stopPropagation()}
                   >
-                    <TicketCalculationCard result={liftTicketResult} compact />
+                    <TicketCalculationCard
+                      result={
+                        liftTicketResults.results[liftTicketResortId] ?? null
+                      }
+                      compact
+                    />
                   </div>
                 ) : (
                   <p className="mt-1 text-xs font-semibold text-blue-600">
-                    日付・人数別の料金計算に対応
+                    {liftTicketResults.status === "loading"
+                      ? "料金を計算中…"
+                      : liftTicketResults.status === "error"
+                        ? "料金を計算できませんでした"
+                        : "日付・人数別の料金計算に対応"}
                   </p>
                 ))}
             </div>

@@ -31,6 +31,7 @@ export const getEmptyRequiredCourseFields = (
   course: EditorCourse,
 ): Array<(typeof REQUIRED_COURSE_FIELDS)[number]> =>
   REQUIRED_COURSE_FIELDS.filter(key => {
+    if (key === "name" && course.unnamed) return false;
     const value = key === "name" ? course.name : course.detail[key];
     return value.trim() === "";
   });

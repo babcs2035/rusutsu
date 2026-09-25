@@ -1,3 +1,4 @@
+import type { SaveLatestStatusMappingRequest } from "@/features/latest-status-mapping/types";
 import type { LngLat } from "@/features/slope/types";
 import type { ResortEditorLinkDraft } from "@/shared/components/resort-editor/useResortEditorLinks";
 
@@ -51,6 +52,7 @@ export type EditorLift = {
   // 未変更のまま保存するときは（標高値付き配列などを壊さないよう）これを書き戻す
   midstationRaw: unknown;
   detail: LiftDetail;
+  rawProperties?: Record<string, unknown>;
   // name / @id / 詳細フィールド以外の元 properties（aerialway も含めそのまま保存へ引き継ぐ）
   extras: Record<string, unknown>;
   // lift_detail との結合情報
@@ -166,6 +168,7 @@ export type SaveLiftPayload = {
 };
 
 export type SaveRequest = {
+  mapping?: SaveLatestStatusMappingRequest;
   resortId: string;
   // loadLiftSourceData が返したハッシュ。ファイルが書き換わっていたら保存を中止する
   fileHash: string | null;

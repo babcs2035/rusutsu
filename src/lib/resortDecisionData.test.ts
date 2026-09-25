@@ -14,15 +14,15 @@ import type {
 import {
   createResortDecisionDataLoader,
   type ResortDecisionDataDocumentReader,
+  type ResortDecisionLiftTicketReader,
 } from "./resortDecisionData";
 
 const RESORT = "megahira-onsen-megahira";
-const TICKET_KEY = `lift-ticket/${RESORT}/tickets/2025-2026.json` as const;
 const TICKET_FILE = path.join(
   process.cwd(),
   "src/private/data/lift-ticket",
   RESORT,
-  "tickets/2025-2026.json",
+  "2025-2026.json",
 );
 
 const asSummary = (document: DataDocument): DataDocumentSummary => ({
@@ -72,13 +72,27 @@ class MemoryDocumentReader implements ResortDecisionDataDocumentReader {
   }
 }
 
+class MemoryTicketReader implements ResortDecisionLiftTicketReader {
+  readonly findCalls: string[][] = [];
+  constructor(public data: Record<string, unknown> | null = null) {}
+
+  async find(resortIds: readonly string[]) {
+    this.findCalls.push([...resortIds]);
+    return this.data && resortIds.includes(RESORT)
+      ? [{ resortId: RESORT, data: this.data }]
+      : [];
+  }
+}
+
 const ticketContent = () => readFile(TICKET_FILE, "utf8");
+const ticketData = async () =>
+  JSON.parse(await ticketContent()) as Record<string, unknown>;
 
 const load = async () => {
-  const reader = new MemoryDocumentReader([
-    jsonDocument(TICKET_KEY, await ticketContent()),
-  ]);
-  const { getLiftTicketDataMap } = createResortDecisionDataLoader(reader);
+  const { getLiftTicketDataMap } = createResortDecisionDataLoader(
+    new MemoryDocumentReader(),
+    new MemoryTicketReader(await ticketData()),
+  );
   const map = await getLiftTicketDataMap([RESORT]);
   const data = map.get(RESORT)?.[0];
   assert.ok(data, "リフト券データが読めない");
@@ -142,12 +156,13 @@ test("出典にページタイトルを渡す（ホバー表示に使う）", as
   );
 });
 
-test("DB文書の更新をmodule cacheなしで次の読み込みへ反映する", async () => {
-  const parsed = JSON.parse(await ticketContent()) as LiftTicketData;
-  const reader = new MemoryDocumentReader([
-    jsonDocument(TICKET_KEY, JSON.stringify(parsed)),
-  ]);
-  const { getLiftTicketDataMap } = createResortDecisionDataLoader(reader);
+test("DBの更新をmodule cacheなしで次の読み込みへ反映する", async () => {
+  const parsed = (await ticketData()) as unknown as LiftTicketData;
+  const tickets = new MemoryTicketReader({ ...parsed });
+  const { getLiftTicketDataMap } = createResortDecisionDataLoader(
+    new MemoryDocumentReader(),
+    tickets,
+  );
 
   const before = await getLiftTicketDataMap([RESORT]);
   assert.equal(
@@ -156,20 +171,14 @@ test("DB文書の更新をmodule cacheなしで次の読み込みへ反映する
   );
 
   const updatedLabel = "DB更新後のシーズン";
-  reader.set(
-    jsonDocument(
-      TICKET_KEY,
-      JSON.stringify({
-        ...parsed,
-        season: { ...parsed.season, label_ja: updatedLabel },
-      }),
-      "database",
-    ),
-  );
+  tickets.data = {
+    ...parsed,
+    season: { ...parsed.season, label_ja: updatedLabel },
+  };
   const after = await getLiftTicketDataMap([RESORT]);
 
   assert.equal(after.get(RESORT)?.[0]?.season.label_ja, updatedLabel);
-  assert.deepEqual(reader.listCalls, ["lift-ticket/", "lift-ticket/"]);
+  assert.deepEqual(tickets.findCalls, [[RESORT], [RESORT]]);
 });
 
 test("レビューの統合IDを正本DataDocumentキーへ解決する", async () => {
@@ -193,7 +202,10 @@ test("レビューの統合IDを正本DataDocumentキーへ解決する", async 
       "database",
     ),
   ]);
-  const { getResortDecisionData } = createResortDecisionDataLoader(reader);
+  const { getResortDecisionData } = createResortDecisionDataLoader(
+    reader,
+    new MemoryTicketReader(),
+  );
 
   const result = await getResortDecisionData("shiga-kogen-giant");
 
@@ -214,7 +226,7 @@ test("レビューの統合IDを正本DataDocumentキーへ解決する", async 
 });
 
 test("管理用の未知フィールドは料金文書のどの階層からも公開しない", async () => {
-  const parsed: unknown = JSON.parse(await ticketContent());
+  const parsed: unknown = await ticketData();
   const addPrivateFields = (value: unknown): unknown => {
     if (Array.isArray(value)) return value.map(addPrivateFields);
     if (value !== null && typeof value === "object") {
@@ -228,16 +240,10 @@ test("管理用の未知フィールドは料金文書のどの階層からも�
     }
     return value;
   };
-  const reader = new MemoryDocumentReader([
-    jsonDocument(
-      TICKET_KEY,
-      JSON.stringify(addPrivateFields(parsed)),
-      "database",
-    ),
-  ]);
-  const map = await createResortDecisionDataLoader(reader).getLiftTicketDataMap(
-    [RESORT],
-  );
+  const map = await createResortDecisionDataLoader(
+    new MemoryDocumentReader(),
+    new MemoryTicketReader(addPrivateFields(parsed) as Record<string, unknown>),
+  ).getLiftTicketDataMap([RESORT]);
   const projected = map.get(RESORT)?.[0];
   assert.ok(projected);
   assert.ok((projected.sources ?? []).length > 0);

@@ -91,6 +91,7 @@ model SkiResort {
   courses             Course[]
   lifts               Lift[]
   tickets             Ticket[]
+  liftTicketSeasons   LiftTicketSeason[]
   weathers            Weather[]
   forecasts           Forecast[]
   snowDepths          SnowDepthRecord[]
@@ -140,6 +141,24 @@ model Ticket {
   priceSenior     Int?
 
   @@map("tickets")
+}
+
+// 1スキー場 × 1シーズンのリフト券料金。料金計算は文書全体を一度に使い、
+// 構造の正本は Skill の lift-ticket.schema.json なので、中身は JSON のまま持つ。
+// json（jsonbではない）はキー順を保つため、ローカルのバックアップJSONと差分が揃う。
+model LiftTicketSeason {
+  skiResortId String
+  skiResort   SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade)
+  seasonId    String    @db.VarChar(9) // "2025-2026"
+  status      String    @db.VarChar(20) // data.data_quality.status
+  data        Json      @db.Json
+  version     Int       @default(1)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime  @default(now()) @updatedAt @db.Timestamptz(3)
+
+  @@id([skiResortId, seasonId])
+  @@index([seasonId])
+  @@map("lift_ticket_seasons")
 }
 
 // =====================================
@@ -553,4 +572,84 @@ model SkiResortFormerNameRubySegment {
 
   @@id([skiResortId, formerNamePosition, position])
   @@map("ski_resort_former_name_ruby_segments")
+}
+
+// Individually addressable map entities. Legacy SurfSnow Course/Lift are untouched.
+// resortId deliberately accepts historical/virtual resort IDs kept in map documents.
+model MapCourseGroup {
+  id String @id
+  resortId String
+  sourceKind String
+  name String
+  kind String
+  courses MapCourse[]
+  @@unique([id, resortId, sourceKind])
+  @@map("map_course_groups")
+}
+
+model MapCourse {
+  id String @id
+  resortId String
+  sourceKind String
+  documentKey String
+  sourceIndex Int
+  name String?
+  groupId String?
+  group MapCourseGroup? @relation(fields: [groupId, resortId, sourceKind], references: [id, resortId, sourceKind], onDelete: Restrict)
+  sectionOrder Int?
+  difficulty String?
+  distance Float?
+  angleAvg Float?
+  angleMax Float?
+  properties Json
+  geometry Json?
+  // Complete source Feature keeps unknown top-level fields and null properties.
+  feature Json
+  derivedFeature Json?
+  archivedAt DateTime?
+  updatedAt DateTime @updatedAt
+  @@index([resortId, sourceKind, archivedAt])
+  @@index([documentKey, sourceIndex])
+  @@index([groupId, sectionOrder])
+  @@map("map_courses")
+}
+
+model MapLift {
+  id String @id
+  resortId String
+  documentKey String
+  sourceIndex Int
+  name String?
+  type String?
+  capacity Int?
+  distance Float?
+  properties Json
+  geometry Json?
+  feature Json
+  derivedFeature Json?
+  archivedAt DateTime?
+  updatedAt DateTime @updatedAt
+  @@index([resortId, archivedAt])
+  @@index([documentKey, sourceIndex])
+  @@map("map_lifts")
+}
+
+model MapDocumentState {
+  key String @id
+  hash String @db.Char(64)
+  featureCount Int
+  updatedAt DateTime @updatedAt
+  @@map("map_document_states")
+}
+
+// Immutable pre-migration copies, including detail/mapping documents and derived-only lines.
+model MapDocumentBackup {
+  key String
+  hash String @db.Char(64)
+  content String @db.Text
+  mediaType String
+  version Int
+  createdAt DateTime @default(now())
+  @@id([key, hash])
+  @@map("map_document_backups")
 }

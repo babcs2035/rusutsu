@@ -2,6 +2,7 @@ import type { LngLat } from "../../types";
 
 export type EditorMapMode =
   | "view"
+  | "grouping"
   | "draw"
   | "edit"
   | "split"

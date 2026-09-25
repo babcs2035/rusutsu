@@ -11,7 +11,7 @@ import { calculateLiftTicket } from "./calculateLiftTicket";
 
 const NAEBA = path.join(
   process.cwd(),
-  "src/private/data/lift-ticket/naeba/tickets/2025-2026.json",
+  "src/private/data/lift-ticket/naeba/2025-2026.json",
 );
 
 const data = JSON.parse(fs.readFileSync(NAEBA, "utf8")) as LiftTicketData;

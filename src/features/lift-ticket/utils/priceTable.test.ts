@@ -11,7 +11,7 @@ const FIXTURES = path.join(
 );
 const REAL = path.join(
   process.cwd(),
-  "src/private/data/lift-ticket/megahira-onsen-megahira/tickets/2025-2026.json",
+  "src/private/data/lift-ticket/megahira-onsen-megahira/2025-2026.json",
 );
 
 const load = (file: string) =>

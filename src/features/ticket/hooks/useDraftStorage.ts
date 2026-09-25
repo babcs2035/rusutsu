@@ -5,28 +5,28 @@ import type { TicketDocument, TicketEditDraft } from "../types";
 
 const DRAFT_STORAGE_PREFIX = "rusutsu.ticket.draft.";
 
-const draftKey = (resortId: string, fileName: string): string =>
-  `${DRAFT_STORAGE_PREFIX}${resortId}/${fileName}`;
+const draftKey = (resortId: string, seasonId: string): string =>
+  `${DRAFT_STORAGE_PREFIX}${resortId}/${seasonId}`;
 
 export const loadDraft = (
   resortId: string,
-  fileName: string,
+  seasonId: string,
 ): TicketEditDraft | null => {
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.localStorage.getItem(draftKey(resortId, fileName));
+    const raw = window.localStorage.getItem(draftKey(resortId, seasonId));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as TicketEditDraft;
-    if (parsed?.version !== 1 || typeof parsed.data !== "object") return null;
+    if (parsed?.version !== 2 || typeof parsed.data !== "object") return null;
     return parsed;
   } catch {
     return null;
   }
 };
 
-const discardDraft = (resortId: string, fileName: string): void => {
+const discardDraft = (resortId: string, seasonId: string): void => {
   if (typeof window === "undefined") return;
-  window.localStorage.removeItem(draftKey(resortId, fileName));
+  window.localStorage.removeItem(draftKey(resortId, seasonId));
 };
 
 type DraftStorageState = {
@@ -36,14 +36,14 @@ type DraftStorageState = {
 };
 
 /**
- * 編集内容をファイル単位でローカルストレージへ自動保存する。
+ * 編集内容をスキー場×シーズン単位でローカルストレージへ自動保存する。
  * サーバーへ保存する前にタブを閉じても失われないようにするためで、
- * 検証を通っていない状態を本番ファイルへ書かないという方針とは両立する。
+ * 検証を通っていない状態を本番DBへ書かないという方針とは両立する。
  */
 export const useDraftStorage = (
   resortId: string | null,
-  fileName: string | null,
-  fileHash: string | null,
+  seasonId: string | null,
+  baseVersion: number | null,
   data: TicketDocument | null,
   enabled: boolean,
 ): DraftStorageState => {
@@ -52,15 +52,16 @@ export const useDraftStorage = (
 
   useEffect(() => {
     skipNextSaveRef.current = true;
-    if (!resortId || !fileName) {
+    if (!resortId || !seasonId) {
       setSavedAt(null);
       return;
     }
-    setSavedAt(loadDraft(resortId, fileName)?.updatedAt ?? null);
-  }, [resortId, fileName]);
+    setSavedAt(loadDraft(resortId, seasonId)?.updatedAt ?? null);
+  }, [resortId, seasonId]);
 
   useEffect(() => {
-    if (!enabled || !resortId || !fileName || !data || !fileHash) return;
+    if (!enabled || !resortId || !seasonId || !data || baseVersion === null)
+      return;
     if (skipNextSaveRef.current) {
       skipNextSaveRef.current = false;
       return;
@@ -68,16 +69,16 @@ export const useDraftStorage = (
     const timer = window.setTimeout(() => {
       const updatedAt = new Date().toISOString();
       const draft: TicketEditDraft = {
-        version: 1,
+        version: 2,
         resortId,
-        fileName,
-        fileHash,
+        seasonId,
+        baseVersion,
         data,
         updatedAt,
       };
       try {
         window.localStorage.setItem(
-          draftKey(resortId, fileName),
+          draftKey(resortId, seasonId),
           JSON.stringify(draft),
         );
         setSavedAt(updatedAt);
@@ -86,21 +87,21 @@ export const useDraftStorage = (
       }
     }, 600);
     return () => window.clearTimeout(timer);
-  }, [enabled, resortId, fileName, fileHash, data]);
+  }, [enabled, resortId, seasonId, baseVersion, data]);
 
   const markSavedToServer = useCallback(() => {
-    if (!resortId || !fileName) return;
-    discardDraft(resortId, fileName);
+    if (!resortId || !seasonId) return;
+    discardDraft(resortId, seasonId);
     setSavedAt(null);
     skipNextSaveRef.current = true;
-  }, [resortId, fileName]);
+  }, [resortId, seasonId]);
 
   const discard = useCallback(() => {
-    if (!resortId || !fileName) return;
-    discardDraft(resortId, fileName);
+    if (!resortId || !seasonId) return;
+    discardDraft(resortId, seasonId);
     setSavedAt(null);
     skipNextSaveRef.current = true;
-  }, [resortId, fileName]);
+  }, [resortId, seasonId]);
 
   return { savedAt, markSavedToServer, discard };
 };
