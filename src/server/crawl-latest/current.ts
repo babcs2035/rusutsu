@@ -123,3 +123,40 @@ export async function listArchivedCrawlLatestResortIdsDirect(
   });
   return snapshots.map(snapshot => snapshot.skiResortId);
 }
+
+/** 名称対応専用。運行情報が保留された取得も名称の資料として返す。 */
+export async function listMappingStatusHistoryDirect(
+  resortId: string,
+  kind: LatestStatusKind,
+): Promise<LatestSuccessfulStatus[]> {
+  const snapshots = await prisma.crawlLatestCategorySnapshot.findMany({
+    where: {
+      skiResortId: resortId,
+      kind: categoryKind(kind),
+      state: "SUCCESS",
+      itemCount: { gt: 0 },
+    },
+    orderBy: [{ run: { observedAt: "desc" } }, { id: "desc" }],
+    distinct: ["nameSetHash"],
+    select: {
+      id: true,
+      data: true,
+      sourceUrls: true,
+      run: { select: { observedAt: true, archiveTimestamp: true } },
+    },
+  });
+  return snapshots.flatMap(snapshot => {
+    const items = normalizeItems(snapshot.data);
+    return items.length
+      ? [
+          {
+            fileName: `history-${snapshot.id}.json`,
+            time: snapshot.run.observedAt.toISOString(),
+            archiveTimestamp: snapshot.run.archiveTimestamp,
+            items,
+            sourceUrls: snapshot.sourceUrls,
+          },
+        ]
+      : [];
+  });
+}

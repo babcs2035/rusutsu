@@ -14,6 +14,11 @@ const REAL = path.join(
   "src/private/data/lift-ticket/megahira-onsen-megahira/2025-2026.json",
 );
 
+const RUSUTSU = path.join(
+  process.cwd(),
+  "src/private/data/lift-ticket/rusutsu-resort/2026-2027.json",
+);
+
 const load = (file: string) =>
   JSON.parse(fs.readFileSync(file, "utf8")) as LiftTicketData;
 
@@ -113,13 +118,60 @@ test("基本料金の表には条件付きの料金を混ぜない", () => {
   assert.ok(discount.rows.length > 0, "割引の表が空になっている");
 });
 
+test("Webで誰でも買える料金は通常料金の表で窓口料金と同じセルにまとめる", () => {
+  // 割引の表に回すと、誰でも買えるWeb料金が「条件付き」に見える
+  const { base, discount } = buildLiftTicketPriceTables(load(RUSUTSU), {
+    scope: "single",
+    today: "2026-09-25",
+  });
+  const rows = base.rows.filter(row => row.label === "5時間券");
+  assert.equal(rows.length, 1, "窓口とWebで行が分かれている");
+  const entry = rows[0].cells.get("adult")?.entries[0];
+  assert.equal(entry?.amount, 11600);
+  assert.equal(entry?.purchaseTag, "Web");
+  assert.equal(entry?.counterAmount, 14500);
+  assert.ok(
+    !discount.rows.some(row => row.label.includes("オンライン")),
+    JSON.stringify(discount.rows.map(row => row.label)),
+  );
+});
+
+test("窓口とWebが同額なら窓口の料金として出す", () => {
+  const { base } = buildLiftTicketPriceTables(load(RUSUTSU), {
+    scope: "single",
+    today: "2026-09-25",
+  });
+  const entry = rowOf(base, "1日券")
+    ?.cells.get("adult")
+    ?.entries.find(e => e.calendarLabel?.includes("春スキー"));
+  assert.equal(entry?.amount, 10500);
+  assert.equal(entry?.purchaseTag, null);
+  assert.equal(entry?.counterAmount, null);
+});
+
+test("障がい者料金は専用の列を作らず、元の区分の列に入れる", () => {
+  const { discount } = buildLiftTicketPriceTables(load(RUSUTSU), {
+    scope: "single",
+    today: "2026-09-25",
+  });
+  assert.deepEqual(
+    discount.audiences.map(audience => audience.id),
+    ["adult", "senior", "junior", "child"],
+  );
+  assert.equal(
+    rowOf(discount, "ハンディキャップ1日券")?.cells.get("adult")?.entries[0]
+      ?.amount,
+    11100,
+  );
+});
+
 test("差額指定の割引は確定金額として表示する", () => {
   // 「通常料金から1,000円引き」を「要確認」と出しても利用者には意味が無い
   const data = load(path.join(FIXTURES, "yukigaoka-2025-2026.json"));
   const { discount } = buildLiftTicketPriceTables(data, { scope: "single" });
-  assert.equal(amount(discount, "道民割引", "平日", "おとな"), 5000);
-  assert.equal(amount(discount, "道民割引", "土日祝", "おとな"), 5500);
-  assert.equal(amount(discount, "道民割引", "年末年始", "おとな"), 7000 - 1000);
+  assert.equal(amount(discount, "道民割引", "平日", "大人"), 5000);
+  assert.equal(amount(discount, "道民割引", "土日祝", "大人"), 5500);
+  assert.equal(amount(discount, "道民割引", "年末年始", "大人"), 7000 - 1000);
 });
 
 test("同じ割引理由でも別のキャンペーンは別の行になる", () => {

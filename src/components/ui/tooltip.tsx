@@ -45,7 +45,8 @@ function TooltipContent({
         alignOffset={alignOffset}
         side={side}
         sideOffset={sideOffset}
-        className="isolate z-50"
+        // body直下へ出るので、地図の上に重ねたパネル（z-[60]〜z-[420]）より前に出す
+        className="isolate z-[1100]"
       >
         <TooltipPrimitive.Popup
           data-slot="tooltip-content"

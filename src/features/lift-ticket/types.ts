@@ -59,6 +59,11 @@ export type LiftTicketSearchInput = {
   /** 日ごとの計画。指定があれば複数日の計算に使う */
   days?: TicketDayPlan[];
   party: TicketPartyGroup[];
+  /**
+   * 照会日（今日）。早割などを「今買えるか」の判定に使う。
+   * 省略時は日本時間の今日（テストで日付を固定するときだけ指定する）
+   */
+  today?: string;
 };
 
 export type LiftTicketAudience = {
@@ -108,6 +113,11 @@ export type LiftTicketProduct = {
   area_ids?: string[];
   /** この券の営業区分（1日券・複数日券・fixed_time_window に設定） */
   covers_hours_types?: string[] | null;
+  /**
+   * 単独では買えず、別の券に追加（チャージ）して使う券なら追加先の券のid。
+   * ルスツの「トップアップ5時間」は「25時間券」にだけ追加できる
+   */
+  add_on_to_product_ids?: string[];
   included_items?: Array<{
     type?: string;
     name_ja: string;
@@ -260,6 +270,45 @@ export type LiftTicketOffer = {
   notes_ja?: string | null;
 };
 
+/**
+ * 同行者構成で料金が決まるもの（親子パック・大人同伴の未就学児無料など）。
+ * 1人ずつの最安を足しただけでは正しい合計にならないので、計算時に適用する
+ */
+export type LiftTicketPartyRuleComponent = {
+  role_ja: string;
+  audience_ids?: string[];
+  /** 空ならどの券種にも適用できる */
+  product_ids?: string[];
+  min_count?: number | null;
+  max_count?: number | null;
+  /** 「大人1名につき未就学児2名まで」の2。これより前の component は資格側（消費しない） */
+  per_qualifying_count?: number | null;
+  /** null は「通常料金のまま別に購入する」（資格側）またはセット合計に含まれる */
+  price_effect?: {
+    type: string;
+    amount?: number | null;
+    percent?: number | null;
+    notes_ja?: string | null;
+  } | null;
+  notes_ja?: string | null;
+};
+
+export type LiftTicketPartyRule = {
+  id: string;
+  name_ja: string;
+  official_label_ja?: string | null;
+  description_ja?: string | null;
+  calendar_ids?: string[];
+  channel_ids?: string[];
+  target_genders?: LiftTicketTarget | null;
+  target_qualification?: LiftTicketTarget | null;
+  components?: LiftTicketPartyRuleComponent[];
+  sales_period?: LiftTicketPeriod | null;
+  use_period?: LiftTicketPeriod | null;
+  source_refs?: string[];
+  notes_ja?: string | null;
+};
+
 export type LiftTicketFee = {
   id: string;
   name_ja: string;
@@ -306,12 +355,7 @@ export type LiftTicketData = {
   products: LiftTicketProduct[];
   channels: LiftTicketChannel[];
   offers: LiftTicketOffer[];
-  party_rules: Array<{
-    id: string;
-    name_ja: string;
-    official_label_ja?: string | null;
-    description_ja?: string | null;
-  }>;
+  party_rules: LiftTicketPartyRule[];
   fees: LiftTicketFee[];
   calculation_policy?: {
     currency?: string;
@@ -360,7 +404,14 @@ export type TicketCalculationLine = {
   standardOfferName?: string | null;
   standardUnitAmount?: number | null;
   standardSubtotal?: number | null;
-  /** 自動適用した料金について、利用者が確認すべき条件 */
+  /**
+   * Web・前売で安くなった料金の買い方（「Webで購入（当日購入可）」）。
+   * 窓口でそのまま買える料金なら null
+   */
+  purchaseNote?: string | null;
+  /** 購入ページのURL */
+  purchaseUrl?: string | null;
+  /** 自動適用した料金について、利用者が確認すべき条件（短く・必要なものだけ） */
   warnings?: string[];
   /** 出典番号（画面の [1] 表示用）。料金表と同じ番号を使う */
   sourceNumbers: number[];

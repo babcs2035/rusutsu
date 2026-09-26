@@ -6,6 +6,8 @@ import {
 } from "@/lib/resortMapMerge";
 import type { LatestStatusMappingKind, LatestStatusMappingRow } from "../types";
 
+import { rowCrawledNames } from "./aliases";
+
 const unique = (names: string[]): string[] => [...new Set(names)];
 
 const isNamelessGeojsonName = (name: string): boolean =>
@@ -227,9 +229,7 @@ export const reconcileSavedRows = (
   crawledNames: string[],
   geojsonNames: string[],
 ): LatestStatusMappingRow[] => {
-  const savedCrawledNames = new Set(
-    savedRows.flatMap(row => (row.crawledName ? [row.crawledName] : [])),
-  );
+  const savedCrawledNames = new Set(savedRows.flatMap(rowCrawledNames));
   const savedGeojsonNames = new Set(
     savedRows.flatMap(row => (row.geojsonName ? [row.geojsonName] : [])),
   );
@@ -286,10 +286,12 @@ export const buildGeojsonOrderByCrawledItems = (
 
   const geojsonNamesByCrawledName = new Map<string, string[]>();
   for (const row of rows) {
-    if (!row.crawledName || !row.geojsonName) continue;
-    const names = geojsonNamesByCrawledName.get(row.crawledName) ?? [];
-    if (!names.includes(row.geojsonName)) names.push(row.geojsonName);
-    geojsonNamesByCrawledName.set(row.crawledName, names);
+    if (!row.geojsonName) continue;
+    for (const crawledName of rowCrawledNames(row)) {
+      const names = geojsonNamesByCrawledName.get(crawledName) ?? [];
+      if (!names.includes(row.geojsonName)) names.push(row.geojsonName);
+      geojsonNamesByCrawledName.set(crawledName, names);
+    }
   }
 
   const orderedNames: string[] = [];
@@ -350,7 +352,7 @@ export const listUnmappedCrawledNames = (
   const assigned = new Set(
     rows
       .filter(row => row.geojsonName !== null && row.crawledName !== null)
-      .map(row => row.crawledName),
+      .flatMap(rowCrawledNames),
   );
   return crawledNames.filter(name => !assigned.has(name));
 };

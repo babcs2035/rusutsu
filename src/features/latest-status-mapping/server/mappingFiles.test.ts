@@ -208,3 +208,129 @@ test("Waybackの保存日時を表示へ渡し、同じ取得結果で対応表�
     await fs.rm(temporaryRoot, { recursive: true, force: true });
   }
 });
+
+test("異なる取得履歴の別名を同じ線に保存し、履歴がなくなっても保持する", async () => {
+  const parent = path.resolve(
+    "src/private/data/resorts-temporary/tmp/mapping-tests",
+  );
+  await fs.mkdir(parent, { recursive: true });
+  const root = await fs.mkdtemp(path.join(parent, "aliases-"));
+  const current = async () => ({
+    fileName: "current.json",
+    time: null,
+    items: [{ name: "現在名", status: "○" }],
+    sourceUrls: [],
+  });
+  const history = async () => [
+    {
+      fileName: "old.json",
+      time: null,
+      items: [{ name: "旧名", status: "×" }],
+      sourceUrls: [],
+      archiveTimestamp: "20250201",
+    },
+  ];
+  try {
+    const workspace = await loadLatestStatusMappingWorkspace(
+      root,
+      "sample",
+      "courses",
+      ["地図"],
+      current,
+      history,
+    );
+    assert.equal(workspace.patterns?.length, 2);
+    const request = {
+      resortId: "sample",
+      kind: "courses" as const,
+      latestFile: "old.json",
+      mappingFileHash: null as string | null,
+      geojsonNames: ["地図"],
+      geometries: [{ id: "id", name: "地図" }],
+      rows: [
+        {
+          geometryId: "id",
+          geojsonName: "地図",
+          crawledName: "現在名",
+          crawledNames: ["現在名", "旧名"],
+        },
+      ],
+    };
+    const saved = await saveLatestStatusMappingFile(
+      root,
+      request,
+      current,
+      history,
+    );
+    assert(saved.ok);
+    const resolved = await readResolvedLatestStatusMapping(
+      root,
+      "sample",
+      "courses",
+    );
+    assert.deepEqual(resolved.namesByGeometryId?.get("id"), ["現在名", "旧名"]);
+    const preserved = await saveLatestStatusMappingFile(
+      root,
+      {
+        ...request,
+        latestFile: "current.json",
+        mappingFileHash: saved.mappingFileHash,
+      },
+      current,
+    );
+    assert(preserved.ok);
+    const rejected = await saveLatestStatusMappingFile(
+      root,
+      {
+        ...request,
+        latestFile: "current.json",
+        mappingFileHash: preserved.mappingFileHash,
+        rows: [
+          { ...request.rows[0], crawledNames: ["現在名", "存在しない名前"] },
+        ],
+      },
+      current,
+      history,
+    );
+    assert.equal(rejected.ok, false);
+    const conflict = await saveLatestStatusMappingFile(
+      root,
+      request,
+      current,
+      history,
+    );
+    assert.equal(conflict.ok, false);
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test("採用済み結果がなくても取得履歴から対応を開始できる", async () => {
+  const parent = path.resolve(
+    "src/private/data/resorts-temporary/tmp/mapping-tests",
+  );
+  await fs.mkdir(parent, { recursive: true });
+  const root = await fs.mkdtemp(path.join(parent, "history-only-"));
+  try {
+    const workspace = await loadLatestStatusMappingWorkspace(
+      root,
+      "sample",
+      "lifts",
+      ["第1"],
+      async () => null,
+      async () => [
+        {
+          fileName: "history.json",
+          time: null,
+          items: [{ name: "第1", status: null }],
+          sourceUrls: [],
+        },
+      ],
+    );
+    assert.equal(workspace.latestFile, "history.json");
+    assert.equal(workspace.crawledItems[0].name, "第1");
+    assert.equal(workspace.patterns?.length, 1);
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});

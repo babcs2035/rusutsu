@@ -8,6 +8,7 @@ import type {
   LatestStatusMappingWorkspace,
   SaveLatestStatusMappingRequest,
 } from "../types";
+import { rowCrawledNames, withCrawledNames } from "../utils/aliases";
 import { type NamedGeometry, reconcileEditedRows } from "../utils/editedRows";
 import {
   applyGeometryAssignments,
@@ -42,12 +43,19 @@ export type LatestStatusMappingState = {
   crawledNameByGeojsonName: Map<string, string>;
   crawledNameByGeometryId: Map<string, string | null>;
   duplicateNames: string[];
-  assignGeometry: (id: string, crawledName: string | null) => void;
+  crawledNamesByGeometryId: Map<string, string[]>;
+  removeGeometryName: (id: string, name: string) => void;
+  selectPattern: (id: string) => void;
+  assignGeometry: (
+    id: string,
+    crawledName: string | null,
+    aliases?: string[],
+  ) => void;
   /** どの線にも割り当てられていないクロール名 */
   unmappedCrawledNames: string[];
   reload: () => void;
   assign: (geojsonName: string, crawledName: string | null) => void;
-  /** 名前の一致から対応付けをやり直す */
+  /** 選択中のパターンから対応名を追加する */
   autoAssign: () => void;
   /** コース名を変えたときに、対応表側の名前も追従させる */
   renameGeojsonName: (from: string, to: string) => void;
@@ -88,13 +96,81 @@ export const useLatestStatusMapping = ({
   const duplicateNames = duplicateGeometryNames(geometries ?? []);
   const crawledNameByGeometryId = new Map(Object.entries(geometryAssignments));
   const assignGeometry = useCallback(
-    (id: string, crawledName: string | null) => {
+    (id: string, crawledName: string | null, aliases: string[] = []) => {
       setGeometryAssignments(previous => ({ ...previous, [id]: crawledName }));
+      setRows(previous => {
+        const geometry = geometriesRef.current?.find(
+          item => item.id === id,
+        ) ?? { id, name: "" };
+        const existing =
+          previous.find(row => row.geometryId === id) ??
+          previous.find(
+            row => !row.geometryId && row.geojsonName === geometry.name.trim(),
+          );
+        const next = withCrawledNames(
+          {
+            geometryId: id,
+            geojsonName: geometry.name.trim() || null,
+            crawledName,
+          },
+          crawledName
+            ? [
+                crawledName,
+                ...aliases,
+                ...(existing ? rowCrawledNames(existing) : []),
+              ]
+            : [],
+        );
+        return [...previous.filter(row => row.geometryId !== id), next];
+      });
       setIsDirty(true);
       setSaveMessage(null);
     },
     [],
   );
+
+  const effectiveRows = applyGeometryAssignments(
+    rows,
+    geometries ?? [],
+    geometryAssignments,
+    !!geometries,
+  );
+  const crawledNamesByGeometryId = new Map(
+    effectiveRows.flatMap(row =>
+      row.geometryId ? [[row.geometryId, rowCrawledNames(row)] as const] : [],
+    ),
+  );
+  const removeGeometryName = (id: string, name: string) => {
+    const remaining = (crawledNamesByGeometryId.get(id) ?? []).filter(
+      value => value !== name,
+    );
+    setRows(previous =>
+      previous.map(row =>
+        row.geometryId === id ? withCrawledNames(row, remaining) : row,
+      ),
+    );
+    setGeometryAssignments(previous => ({
+      ...previous,
+      [id]: remaining[0] ?? null,
+    }));
+    setIsDirty(true);
+    setSaveMessage(null);
+  };
+  const selectPattern = (id: string) => {
+    setWorkspace(previous => {
+      const pattern = previous?.patterns?.find(item => item.id === id);
+      return previous && pattern
+        ? {
+            ...previous,
+            latestFile: pattern.fileName,
+            latestTime: pattern.time,
+            archiveTimestamp: pattern.archiveTimestamp ?? null,
+            sourceUrls: pattern.sourceUrls,
+            crawledItems: pattern.items,
+          }
+        : previous;
+    });
+  };
 
   const geometrySnapshot = JSON.stringify(geometries ?? []);
   const previousGeometry = useRef({ resortId, snapshot: geometrySnapshot });
@@ -180,7 +256,11 @@ export const useLatestStatusMapping = ({
       ...geometryAssignmentsFromRows(rows, geometries),
       ...geometryAssignments,
     };
-    const assigned = new Set(geometries.map(item => assignments[item.id]));
+    const assigned = new Set(
+      applyGeometryAssignments(rows, geometries, assignments, true)
+        .filter(row => geometries.some(item => item.id === row.geometryId))
+        .flatMap(rowCrawledNames),
+    );
     return crawledNames.filter(name => !assigned.has(name));
   }, [rows, workspace, geometries, geometryAssignments]);
 
@@ -195,7 +275,7 @@ export const useLatestStatusMapping = ({
     [],
   );
 
-  /** 名前の一致から対応付けをやり直す。手で直したものも作り直される */
+  /** 別パターンで登録した名前を残し、選択中の候補を追加する。 */
   const autoAssign = useCallback(() => {
     if (!workspace) return;
     const suggested = createSuggestedRows(
@@ -203,10 +283,22 @@ export const useLatestStatusMapping = ({
       workspace.crawledItems.map(item => item.name),
       [...new Set(geojsonNamesRef.current)],
     );
-    setRows(suggested);
-    setGeometryAssignments(
-      geometryAssignmentsFromRows(suggested, geometriesRef.current ?? []),
+    const suggestions = geometryAssignmentsFromRows(
+      suggested,
+      geometriesRef.current ?? [],
     );
+    const additions = Object.fromEntries(
+      Object.entries(suggestions).filter(([, name]) => name !== null),
+    );
+    setRows(previous =>
+      applyGeometryAssignments(
+        previous,
+        geometriesRef.current ?? [],
+        additions,
+        !!geometriesRef.current,
+      ),
+    );
+    setGeometryAssignments(previous => ({ ...previous, ...additions }));
     setIsDirty(true);
     setSaveMessage(null);
   }, [kind, workspace]);
@@ -292,7 +384,7 @@ export const useLatestStatusMapping = ({
 
   return {
     workspace,
-    rows,
+    rows: effectiveRows,
     isLoading,
     isSaving,
     isDirty,
@@ -300,6 +392,9 @@ export const useLatestStatusMapping = ({
     saveMessage,
     crawledNameByGeojsonName,
     crawledNameByGeometryId,
+    crawledNamesByGeometryId,
+    removeGeometryName,
+    selectPattern,
     duplicateNames,
     assignGeometry,
     unmappedCrawledNames,

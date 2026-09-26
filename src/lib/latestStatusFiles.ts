@@ -160,3 +160,38 @@ export const listResortIdsWithLatestStatus = async (
 
   return result;
 };
+
+/** 名称対応専用の履歴。営業状態としての採用は行わない。 */
+export async function loadStatusHistory(
+  temporaryRoot: string,
+  resortId: string,
+  kind: LatestStatusKind,
+): Promise<LatestSuccessfulStatus[]> {
+  const directory = path.join(temporaryRoot, "latest_data", resortId);
+  const files = await fs.readdir(directory).catch(() => [] as string[]);
+  const captures: LatestSuccessfulStatus[] = [];
+  for (const fileName of listLatestStatusFiles(files)) {
+    try {
+      const value = JSON.parse(
+        await fs.readFile(path.join(directory, fileName), "utf8"),
+      );
+      if (!isRecord(value) || !Array.isArray(value[kind])) continue;
+      const items = value[kind].filter(
+        (item): item is Record<string, unknown> =>
+          isRecord(item) && normalizeString(item.name) !== null,
+      );
+      if (items.length)
+        captures.push({
+          fileName,
+          time: normalizeString(value.time),
+          items,
+          sourceUrls: toStringArray(
+            value[kind === "courses" ? "courseUrl" : "liftUrl"],
+          ),
+        });
+    } catch {
+      /* 壊れた履歴は候補にしない */
+    }
+  }
+  return captures;
+}

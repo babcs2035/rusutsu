@@ -4,7 +4,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { TicketCalculationResult } from "../types";
-import { SourceList, SourceMarks } from "./SourceMarks";
+import { SourceLinks } from "./SourceLinks";
+import { PurchaseSummary, TicketLineDetail } from "./TicketLineDetail";
 
 export const TicketCalculationCard = ({
   result,
@@ -69,6 +70,10 @@ export const TicketCalculationCard = ({
 
   const displayedTotal =
     result.ticketTotal == null ? result.knownTicketTotal : result.ticketTotal;
+  // 料金行の出典は内訳の上に1回だけ出し、条件付き割引には追加分だけ出す
+  const lineSources = [
+    ...new Set(result.lines.flatMap(line => line.sourceNumbers)),
+  ].sort((left, right) => left - right);
 
   return (
     <Alert
@@ -102,45 +107,16 @@ export const TicketCalculationCard = ({
 
       {!compact && (
         <div className="mt-4 flex flex-col gap-2">
+          <SourceLinks numbers={lineSources} references={result.references} />
           {result.lines.map(line => (
-            <div
-              key={line.groupId}
-              className="flex items-start justify-between gap-3 pb-2 border-b border-gray-100"
-            >
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-gray-900">
-                  {line.groupLabel} × {line.count}
-                </p>
-                <p className="mt-0.5 text-xs text-gray-600">
-                  {line.offerName ?? line.note}
-                </p>
-                {line.standardSubtotal != null && (
-                  <p className="mt-0.5 text-xs text-gray-500">
-                    通常料金{" "}
-                    <span className="line-through">
-                      ¥{line.standardSubtotal.toLocaleString("ja-JP")}
-                    </span>
-                    {" → "}
-                    {line.offerName}
-                  </p>
-                )}
-                {line.warnings?.map(warning => (
-                  <p key={warning} className="mt-0.5 text-xs text-orange-900">
-                    ※ {warning}
-                  </p>
-                ))}
-              </div>
-              <p className="flex-shrink-0 text-sm font-bold text-gray-900 font-mono">
-                {line.subtotal == null
-                  ? "未確定"
-                  : `¥${line.subtotal.toLocaleString("ja-JP")}`}
-                <SourceMarks
-                  numbers={line.sourceNumbers}
-                  references={result.references}
-                />
-              </p>
+            <div key={line.groupId} className="pb-2 border-b border-gray-100">
+              <TicketLineDetail line={line} />
             </div>
           ))}
+          <PurchaseSummary
+            lines={result.lines.map(line => ({ line, multiplier: 1 }))}
+            total={result.ticketTotal}
+          />
         </div>
       )}
 
@@ -167,24 +143,22 @@ export const TicketCalculationCard = ({
                         ? offer.conditions.join(" / ")
                         : "公式の適用条件を確認してください。"}
                     </p>
+                    <SourceLinks
+                      numbers={offer.sourceNumbers.filter(
+                        number => !lineSources.includes(number),
+                      )}
+                      references={result.references}
+                      className="mt-1"
+                    />
                   </div>
                   <p className="flex-shrink-0 text-xs font-bold text-purple-900 font-mono">
                     ¥{offer.subtotal.toLocaleString("ja-JP")}
-                    <SourceMarks
-                      numbers={offer.sourceNumbers}
-                      references={result.references}
-                    />
                   </p>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
-      )}
-      {result.references.length > 0 && !compact && (
-        <div className="mt-3">
-          <SourceList references={result.references} />
-        </div>
       )}
       {result.notes.length > 0 && !compact && (
         <AlertDescription className="mt-3 text-xs text-gray-600 leading-relaxed">

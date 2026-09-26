@@ -8,14 +8,15 @@ export const hasNumericFilterValue = (
 
 // リフト券フィルタがデフォルト入力から変更されているかを判定する。
 // isFilterActive（filterResorts.ts）と同一の判定を共有し，
-// デフォルト値（今日・1日券・大人0人）を「フィルタ適用中」として数えないようにする。
+// デフォルト値（今日・1日券・大人1人）を「フィルタ適用中」として数えないようにする。
 export const isLiftTicketFilterActive = (liftTicket: LiftTicketSearchInput) =>
   liftTicket.visitDate !== DEFAULT_LIFT_TICKET_SEARCH_INPUT.visitDate ||
   liftTicket.usePreference !== "full_day" ||
   liftTicket.party.length !== 1 ||
   liftTicket.party[0]?.category !== "adult" ||
   liftTicket.party[0]?.age !== null ||
-  liftTicket.party[0]?.count !== 0;
+  liftTicket.party[0]?.count !==
+    DEFAULT_LIFT_TICKET_SEARCH_INPUT.party[0]?.count;
 
 const formatMetersRangeLabel = (
   minValue: NumericFilterValue | undefined,

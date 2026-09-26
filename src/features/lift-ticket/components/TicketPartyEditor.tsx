@@ -4,7 +4,6 @@ import { Plus, Trash2 } from "lucide-react";
 import { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -13,11 +12,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import type {
-  LiftTicketSearchInput,
-  TicketDayPlan,
-  TicketPartyCategory,
-  TicketPartyGroup,
+import {
+  type LiftTicketSearchInput,
+  TICKET_PARTY_CATEGORIES,
+  type TicketDayPlan,
+  type TicketPartyCategory,
+  type TicketPartyGroup,
 } from "../types";
 import {
   nextDateOf,
@@ -27,22 +27,103 @@ import {
 type Props = {
   value: LiftTicketSearchInput;
   onChange: (value: LiftTicketSearchInput) => void;
-  /** 選ばれた券種の説明（「7時間 → 9時間券 ¥6,300」のような結果の要約） */
-  durationHint?: string | null;
   compact?: boolean;
   onInputBlur?: () => void;
   onInputFocus?: () => void;
 };
+
+// Base UI の SelectValue は items が無いと生の値（day / adult）を表示するので、
+// トリガーに出すラベルを Root に渡す
+const HOUR_OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);
+const DURATION_LABELS: Record<string, string> = {
+  day: "1日",
+  "day-night": "1日＋ナイター",
+  ...Object.fromEntries(
+    HOUR_OPTIONS.map(hours => [`h${hours}`, `${hours}時間`]),
+  ),
+};
+
+/**
+ * 滑る長さは1つのドロップダウンで選ぶ（「1日」「1日＋ナイター」「1〜12時間」）。
+ * 時間を別の入力欄にすると、数字だけ（「4」）では何のことか分からず、行も折り返す
+ */
+const durationKeyOf = (duration: TicketDayPlan["duration"]) =>
+  duration.kind === "hours"
+    ? `h${duration.hours}`
+    : duration.withNight
+      ? "day-night"
+      : "day";
+
+const durationOfKey = (key: string): TicketDayPlan["duration"] =>
+  key.startsWith("h")
+    ? { kind: "hours", hours: Number(key.slice(1)) }
+    : { kind: "day", withNight: key === "day-night" };
 
 const sanitizeNumber = (value: string) => {
   const digits = value.replace(/\D/g, "");
   return digits ? Number.parseInt(digits, 10) : null;
 };
 
+/**
+ * 画面で選べる区分。「学校区分なし」（other）は大人と同じ扱いなので出さない。
+ * 保存済みの入力に残っていても表示できるよう、型とラベルは残す
+ */
+const SELECTABLE_CATEGORIES = TICKET_PARTY_CATEGORIES.filter(
+  category => category !== "other",
+);
+
+const SectionHeader = ({
+  title,
+  actionLabel,
+  onAction,
+}: {
+  title: string;
+  actionLabel: string;
+  onAction: () => void;
+}) => (
+  <div className="flex items-center justify-between gap-2">
+    {/* p にしない。フィルタ画面の AlertDescription が p に下余白を付ける */}
+    <span className="text-gray-900 text-sm font-semibold">{title}</span>
+    <Button
+      type="button"
+      variant="default"
+      className="flex-shrink-0 h-8 gap-1 font-bold text-sm"
+      onClick={onAction}
+    >
+      <Plus size={14} />
+      {actionLabel}
+    </Button>
+  </div>
+);
+
+/**
+ * 入力欄の見た目。灰色の枠の中で透明背景だと薄く見えるので白背景にする。
+ * 文字の大きさ・太さは Input / Select の既定（本文と同じ）に合わせる。
+ * スマホの入力欄を16px未満にすると iOS がフォーカス時に拡大するので、Input の既定のままにする
+ */
+const FIELD_CLASS = "h-9 bg-white text-gray-900 placeholder:text-gray-400";
+
+const RemoveButton = ({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) => (
+  <Button
+    type="button"
+    aria-label={label}
+    variant="ghost"
+    className="h-9 w-8 p-0 text-gray-500"
+    onClick={onClick}
+  >
+    <Trash2 size={16} />
+  </Button>
+);
+
 export const TicketPartyEditor = ({
   value,
   onChange,
-  durationHint,
   onInputBlur,
   onInputFocus,
 }: Props) => {
@@ -120,7 +201,8 @@ export const TicketPartyEditor = ({
           id: `party-${groupNumber}`,
           category: "elementary",
           age: null,
-          count: 0,
+          // 追加した行は1人いる前提。0人の行を足す人はいない
+          count: 1,
         },
       ],
     });
@@ -134,26 +216,32 @@ export const TicketPartyEditor = ({
     });
   };
 
+  const canRemoveGroup = value.party.length > 1;
+  const partyGrid = canRemoveGroup
+    ? "grid-cols-[minmax(0,1fr)_4rem_4rem_2rem]"
+    : "grid-cols-[minmax(0,1fr)_4rem_4rem]";
+
   return (
-    <div className="flex flex-col gap-2.5 md:gap-4">
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-gray-600 text-xs font-medium">利用日</p>
-          <Button
-            type="button"
-            variant="default"
-            className="flex-shrink-0 h-9 gap-1 font-bold text-sm"
-            onClick={addDay}
-          >
-            <Plus size={14} />
-            日を追加
-          </Button>
-        </div>
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1.5">
+        <SectionHeader
+          title="利用日"
+          actionLabel="日を追加"
+          onAction={addDay}
+        />
 
         {days.map((day, index) => {
           const duration = day.duration;
           return (
-            <div key={day.id} className="flex gap-1.5 items-center flex-wrap">
+            <div
+              key={day.id}
+              className={cn(
+                "grid gap-1.5 items-center",
+                days.length > 1
+                  ? "grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2rem]"
+                  : "grid-cols-2",
+              )}
+            >
               <Input
                 aria-label={`${index + 1}日目の日付`}
                 type="date"
@@ -166,199 +254,134 @@ export const TicketPartyEditor = ({
                 }
                 onBlur={onInputBlur}
                 onFocus={onInputFocus}
-                className="flex-[1_1_9rem] min-w-[8.5rem] h-[2.25rem]"
+                className={cn(FIELD_CLASS, "px-2")}
               />
 
-              {/* 「1日（ナイター無）」「1日（ナイター込）」「○時間」の3択 */}
               <Select
-                value={
-                  duration.kind === "hours"
-                    ? "hours"
-                    : duration.withNight
-                      ? "day-night"
-                      : "day"
-                }
+                items={DURATION_LABELS}
+                value={durationKeyOf(duration)}
                 onValueChange={value => {
+                  if (value == null) return;
                   updateDay(day.id, current => ({
                     ...current,
-                    duration:
-                      value === "hours"
-                        ? { kind: "hours", hours: 4 }
-                        : {
-                            kind: "day",
-                            withNight: value === "day-night",
-                          },
+                    duration: durationOfKey(String(value)),
                   }));
                 }}
               >
                 <SelectTrigger
-                  className="h-9 w-[10.5rem] flex-shrink-0"
+                  className={cn(FIELD_CLASS, "w-full px-2.5")}
                   aria-label={`${index + 1}日目の滑る長さ`}
                 >
-                  <SelectValue />
+                  <SelectValue className="min-w-0 truncate" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="day">1日（ナイター無）</SelectItem>
-                  <SelectItem value="day-night">1日（ナイター込）</SelectItem>
-                  <SelectItem value="hours">時間で指定</SelectItem>
+                  {Object.entries(DURATION_LABELS).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>
+                      {label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
 
-              {duration.kind === "hours" && (
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <Input
-                    aria-label={`${index + 1}日目の滑る時間`}
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    value={String(duration.hours)}
-                    onChange={event => {
-                      const next = sanitizeNumber(event.target.value);
-                      updateDay(day.id, current => ({
-                        ...current,
-                        duration: {
-                          kind: "hours",
-                          hours: Math.min(24, Math.max(1, next ?? 1)),
-                        },
-                      }));
-                    }}
-                    onBlur={onInputBlur}
-                    onFocus={onInputFocus}
-                    className="w-14 h-[2.25rem] px-1 text-center"
-                  />
-                  <p className="text-gray-700 text-sm font-medium">時間</p>
-                </div>
+              {days.length > 1 && (
+                <RemoveButton
+                  label={`${index + 1}日目を削除`}
+                  onClick={() => removeDay(day.id)}
+                />
               )}
-
-              <Button
-                type="button"
-                aria-label={`${index + 1}日目を削除`}
-                size="xs"
-                className="h-9 w-9 p-0 text-gray-500"
-                variant="ghost"
-                disabled={days.length <= 1}
-                onClick={() => removeDay(day.id)}
-              >
-                <Trash2 size={16} />
-              </Button>
             </div>
           );
         })}
-
-        {durationHint && (
-          <p className="text-gray-600 text-[0.6875rem] leading-relaxed">
-            {durationHint}
-          </p>
-        )}
       </div>
 
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-gray-600 text-xs font-medium">利用者情報</p>
-          <Button
-            type="button"
-            variant="default"
-            className="flex-shrink-0 h-9 gap-1 font-bold text-sm"
-            onClick={addGroup}
-          >
-            <Plus size={14} />
-            利用者を追加
-          </Button>
+      <div className="flex flex-col gap-1.5">
+        <SectionHeader
+          title="利用者情報"
+          actionLabel="利用者を追加"
+          onAction={addGroup}
+        />
+        {/* 見出しは1回だけ。行ごとに「区分・年齢・人数」を繰り返すと縦に長くなる */}
+        <div
+          className={cn(
+            "grid gap-1.5 -mb-0.5 text-gray-800 text-sm font-medium",
+            partyGrid,
+          )}
+        >
+          <span>区分</span>
+          <span className="text-center">年齢</span>
+          <span className="text-center">人数</span>
         </div>
         {value.party.map(group => (
           <div
             key={group.id}
-            className="grid grid-cols-[minmax(0,1fr)_4.25rem_4rem_1.75rem] gap-1.5 items-end"
+            className={cn("grid gap-1.5 items-center", partyGrid)}
           >
-            <div>
-              <Label className="block mb-0.5 text-gray-500 text-[0.6875rem] font-medium">
-                区分
-              </Label>
-              <Select
-                value={group.category}
-                onValueChange={value =>
-                  updateGroup(group.id, current => ({
-                    ...current,
-                    category: value as TicketPartyCategory,
-                  }))
-                }
-              >
-                <SelectTrigger className="h-9 w-full px-2 bg-white border border-gray-200 text-xs">
-                  <SelectValue className="min-w-0 truncate" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(TICKET_PARTY_CATEGORY_LABELS).map(
-                    ([category, label]) => (
-                      <SelectItem key={category} value={category}>
-                        {label}
-                      </SelectItem>
-                    ),
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="block mb-0.5 text-gray-500 text-[0.6875rem] font-medium">
-                年齢
-              </Label>
-              <Input
-                aria-label={`${TICKET_PARTY_CATEGORY_LABELS[group.category]}の年齢`}
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={group.age ?? ""}
-                placeholder="任意"
-                onChange={event =>
-                  updateGroup(group.id, current => ({
-                    ...current,
-                    age: sanitizeNumber(event.target.value),
-                  }))
-                }
-                onBlur={onInputBlur}
-                onFocus={onInputFocus}
-                className={cn(
-                  "text-center h-9 bg-gray-50 border-gray-200 border-[1.5px] text-base",
-                  "md:h-8 md:bg-white md:border-gray-200 md:border md:text-sm",
-                )}
-              />
-            </div>
-            <div>
-              <Label className="block mb-0.5 text-gray-500 text-[0.6875rem] font-medium">
-                人数
-              </Label>
-              <Input
-                aria-label={`${TICKET_PARTY_CATEGORY_LABELS[group.category]}の人数`}
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={group.count === 0 ? "" : group.count}
-                onChange={event =>
-                  updateGroup(group.id, current => ({
-                    ...current,
-                    count: Math.min(
-                      99,
-                      Math.max(0, sanitizeNumber(event.target.value) ?? 0),
-                    ),
-                  }))
-                }
-                onBlur={onInputBlur}
-                onFocus={onInputFocus}
-                className={cn(
-                  "text-center h-9 bg-gray-50 border-gray-200 border-[1.5px] text-base",
-                  "md:h-8 md:bg-white md:border-gray-200 md:border md:text-sm",
-                )}
-              />
-            </div>
-            <Button
-              type="button"
-              aria-label="この人数行を削除"
-              className="h-9 min-w-7 w-7 p-0 text-gray-500 bg-transparent"
-              variant="ghost"
-              disabled={value.party.length <= 1}
-              onClick={() => removeGroup(group.id)}
+            <Select
+              items={TICKET_PARTY_CATEGORY_LABELS}
+              value={group.category}
+              onValueChange={value =>
+                updateGroup(group.id, current => ({
+                  ...current,
+                  category: value as TicketPartyCategory,
+                }))
+              }
             >
-              <Trash2 size={14} />
-            </Button>
+              <SelectTrigger
+                aria-label="区分"
+                className={cn(FIELD_CLASS, "w-full px-2.5")}
+              >
+                <SelectValue className="min-w-0 truncate" />
+              </SelectTrigger>
+              <SelectContent>
+                {SELECTABLE_CATEGORIES.map(category => (
+                  <SelectItem key={category} value={category}>
+                    {TICKET_PARTY_CATEGORY_LABELS[category]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Input
+              aria-label={`${TICKET_PARTY_CATEGORY_LABELS[group.category]}の年齢`}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={group.age ?? ""}
+              placeholder="任意"
+              onChange={event =>
+                updateGroup(group.id, current => ({
+                  ...current,
+                  age: sanitizeNumber(event.target.value),
+                }))
+              }
+              onBlur={onInputBlur}
+              onFocus={onInputFocus}
+              className={cn(FIELD_CLASS, "text-center")}
+            />
+            <Input
+              aria-label={`${TICKET_PARTY_CATEGORY_LABELS[group.category]}の人数`}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={group.count === 0 ? "" : group.count}
+              onChange={event =>
+                updateGroup(group.id, current => ({
+                  ...current,
+                  count: Math.min(
+                    99,
+                    Math.max(0, sanitizeNumber(event.target.value) ?? 0),
+                  ),
+                }))
+              }
+              onBlur={onInputBlur}
+              onFocus={onInputFocus}
+              className={cn(FIELD_CLASS, "text-center")}
+            />
+            {canRemoveGroup && (
+              <RemoveButton
+                label="この利用者を削除"
+                onClick={() => removeGroup(group.id)}
+              />
+            )}
           </div>
         ))}
       </div>

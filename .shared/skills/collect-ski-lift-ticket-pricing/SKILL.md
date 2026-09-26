@@ -1,6 +1,6 @@
 ---
 name: collect-ski-lift-ticket-pricing
-description: ユーザー指定の公式URLから、利用日を指定して購入するリフト券（日券・時間券・回数券・複数日券・セット券等）の料金と適用条件を収集・監査し、1スキー場×1シーズン×1JSONへ整理する。シーズン券とその購入者・保有者向け特典は対象外。「リフト券料金を収集して」「lift-ticket JSONを作成・更新・監査して」「日付・人物区分から料金を照会して」の依頼で使う。URL登録は src/private/data/lift-ticket-source/{ski-resort-id}.json、作業資料は src/private/data/resorts-temporary/tmp/lift-ticket/（反映後に削除）、確定版は src/private/data/lift-ticket/{ski-resort-id}/{season-id}.json、照会は scripts/lookup-price.mjs、本番DBへの反映は mise run lift-ticket:publish を使う。
+description: ユーザー指定の公式URLから、利用日を指定して購入するリフト券（日券・時間券・回数券・複数日券・セット券等）の料金と適用条件を収集・監査し、1スキー場×1シーズン×1JSONへ整理する。シーズン券とその購入者・保有者向け特典、交通とセットのバスツアー・宿泊パックは対象外。「リフト券料金を収集して」「lift-ticket JSONを作成・更新・監査して」「日付・人物区分から料金を照会して」の依頼で使う。URL登録は src/private/data/lift-ticket-source/{ski-resort-id}.json、作業資料は src/private/data/resorts-temporary/tmp/lift-ticket/（反映後に削除）、確定版は src/private/data/lift-ticket/{ski-resort-id}/{season-id}.json、照会は scripts/lookup-price.mjs、本番DBへの反映は mise run lift-ticket:publish を使う。
 ---
 
 # リフト券料金の収集・監査
@@ -26,6 +26,7 @@ description: ユーザー指定の公式URLから、利用日を指定して購�
 # 残すもの（Git管理）
 src/private/data/lift-ticket-source/{resort-id}.json        公式URLの登録
 src/private/data/lift-ticket/{resort-id}/{season-id}.json   確定版（本番DBのバックアップ）
+src/private/data/lift-ticket/MISSING.md                     全スキー場の不足情報の一覧
 
 # 作業中だけ使うもの（Git管理外。本番DBへ反映したら削除する）
 src/private/data/resorts-temporary/tmp/lift-ticket/{resort-id}/
@@ -44,6 +45,9 @@ src/private/data/resorts-temporary/tmp/lift-ticket/{resort-id}/
 
 ## 対象範囲
 
+想定する利用者は、自分でスキー場へ行き、ゲレンデの窓口やスキー場のWeb販売で
+リフト券を買う人である。
+
 収集する:
 
 - 日券、時間券、回数券、ナイター券、複数日券、共通券、滑走用セット券
@@ -55,6 +59,8 @@ src/private/data/resorts-temporary/tmp/lift-ticket/{resort-id}/
 
 - シーズン券と、その購入者・保有者だけの特典
 - 観光用ゴンドラ券など滑走を目的としない券
+- バスツアー、交通付きパック、宿泊込みプランなど、リフト券と交通・宿泊を
+  まとめた商品（スキー場の公式サイトで売っていても含めない。バスツアーは別途収集する）
 - 駐車料金、キャンセル料、再発行手数料など通常購入額でない費用
 - 返金されるICカード保証金
 
@@ -88,6 +94,10 @@ src/private/data/resorts-temporary/tmp/lift-ticket/{resort-id}/
   `target_qualification.official_label_ja` に保存する。
 - 通常料金を基準表示し、宿泊者・会員等の入力だけでは確定できない割引は
   条件とともに別掲する。ただし、適用済み合計以上になる候補は表示しない。
+- 早割・WEB前売（`advance_purchase` / `online_purchase` のみで対象者の絞り込みがないもの）は、
+  照会日の時点で `sales_period` 内かつ `purchase_deadline` に間に合い、通常料金より
+  安ければ計算結果に使う。販売期間を過ぎたら料金表にも計算にも出さないので、
+  `sales_period` は公式の販売期間どおりに必ず記録する。
 - `special_day` のうち、calendar・audienceだけで対象が確定し、追加資格・提示物・
   事前購入条件がない料金は自動適用する（例: 土曜日の小学生向けこどもデー）。
 
@@ -151,7 +161,7 @@ src/private/data/resorts-temporary/tmp/lift-ticket/{resort-id}/
 - 全確定情報の `source_refs`
 - 条件付き料金の対象者と証明条件
 - 障がい者audienceと通常料金へのフォールバック
-- 動的価格、保証金、手数料、共通券、セット内容
+- 動的価格、保証金、手数料、共通券、セット内容、追加券（`add_on_to_product_ids`）
 - シーズン券や保有者限定特典の混入
 
 監査結果を作業領域の `{season-id}.audit.json` に保存する:
@@ -188,6 +198,16 @@ src/private/data/resorts-temporary/tmp/lift-ticket/{resort-id}/
 
 4. 答えられない事項は、資料にあれば抽出漏れとして修正し、資料になければ
    `unresolved_questions` へ記録する。
+   ただし**料金計算が変わる事項**（1日券でナイターも滑れるか等）は、
+   反映前に利用者へチャットで1行ずつ尋ね、回答を `notes_ja` に
+   「管理者の確認（日付）」として残す。
+5. 追加して使う券（`add_on_to_product_ids`）や、日をまたいで使う券のように
+   **画面の計算が券を組み合わせて比べる必要がある券**を記録したら、
+   そのスキー場の実データで組み合わせが選ばれることを確かめるテストを
+   `src/features/lift-ticket/utils/*.test.ts` に追加する
+   （例: ルスツ 8+8+8+6時間 → 25時間券＋トップアップ5時間が1日券4日分より安い。
+   `plan.test.ts` の hours_pool のテストに倣う）。
+   `pnpm test` で通ることを確認する。
 
 ## 本番DBへの反映
 
@@ -221,6 +241,14 @@ rm -rf src/private/data/resorts-temporary/tmp/lift-ticket/<resort-id>
 
 確定版JSONと公式URLの登録ファイルはコミット対象として残す。
 
+反映したら `lift-ticket/MISSING.md` の、そのスキー場の行を書き直す。
+利用者が困る不足（営業時間不明、前シーズンの情報が残っている、共通券の相手が未登録など）
+を1項目1文で、`- 八方尾根 営業時間不明` のように「スキー場名 不足内容」だけ書く。
+理由や資料の場所は書かない（詳細はJSONの `data_quality` にある）。
+ただし、不足情報を確認できる公式URLがあれば、行末に括弧でURLだけ添える
+（`- 明宝 Web販売の券種・価格が未収集（https://www.meihoski.co.jp/webticket/）`）。
+日付や補足は付けない。解消した行は消す。
+
 ## human_review_required
 
 確定できない事項は必ず次を記録する:
@@ -235,7 +263,11 @@ rm -rf src/private/data/resorts-temporary/tmp/lift-ticket/<resort-id>
 
 ## 完了報告
 
-次を簡潔に報告する:
+チャットで、**1項目1文の箇条書き**で報告する。説明を足さず、詳しいことは
+利用者が聞き直す。未解決事項・human_review_required は「JSONに記録した」で
+済ませず、確認してほしい内容を1件1文でチャットに並べる（利用者はJSONを開かない）。
+
+報告する項目:
 
 - 更新ファイル、対象スキー場・シーズン
 - 使用した公式URLと追加取得URL
@@ -246,6 +278,7 @@ rm -rf src/private/data/resorts-temporary/tmp/lift-ticket/<resort-id>
 - 判読不能、unknown、未解決事項、human_review_required
 - `data_quality.status`
 - 本番DBへの反映結果（新規作成 / 更新 / 変更なし、反映しなかった場合はその理由）
+- `lift-ticket/MISSING.md` に書いた行
 
 ## Skill自体の検証
 

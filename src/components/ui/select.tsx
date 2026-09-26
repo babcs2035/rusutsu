@@ -77,7 +77,9 @@ function SelectContent({
         align={align}
         alignOffset={alignOffset}
         alignItemWithTrigger={alignItemWithTrigger}
-        className="isolate z-50"
+        // body直下へ出るので、地図の上に重ねたパネル（z-[60]〜z-[420]）や
+        // ダイアログ（z-[901]）より前に出さないと、開いても裏に隠れて選べない
+        className="isolate z-[1100]"
       >
         <SelectPrimitive.Popup
           data-slot="select-content"

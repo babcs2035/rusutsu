@@ -3,7 +3,10 @@
 import path from "node:path";
 import { prepareLatestStatusMappingDocument } from "@/features/latest-status-mapping/server/mappingFiles";
 import { isValidResortId } from "@/features/lift/server/liftFiles";
-import { readMappingCrawlLatestStatus } from "@/lib/crawlLatestCurrent";
+import {
+  readMappingCrawlLatestStatus,
+  readMappingStatusHistory,
+} from "@/lib/crawlLatestCurrent";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { readExistingSkiResortIds } from "@/lib/skiResortData";
 import { scheduleSavedElevations } from "@/server/backgroundElevation";
@@ -196,6 +199,7 @@ export async function saveSlopeEdits(
         path.join(process.cwd(), "src/private/data/resorts-temporary"),
         request.mapping,
         readMappingCrawlLatestStatus,
+        readMappingStatusHistory,
       )
     : null;
   if (preparedMapping && !preparedMapping.ok) return preparedMapping;

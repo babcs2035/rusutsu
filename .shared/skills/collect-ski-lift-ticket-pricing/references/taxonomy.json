@@ -41,7 +41,7 @@
             "早割",
             "早期購入割引"
           ],
-          "decision_rule_ja": "**早割もこれに含める。** 誰でも期限内なら買えるので `everyone` だが、**当日には買えない**ため代表選択では「事前購入必須」の制約として扱われる。期限は `purchase_deadline`（利用日基準）と `sales_period`（販売期間）で表す。",
+          "decision_rule_ja": "**早割もこれに含める。** 誰でも期限内なら買えるので `everyone`。照会日の時点で `sales_period` 内かつ `purchase_deadline` に間に合うなら、通常料金より安ければ代表（画面の計算結果）になる。販売期間を過ぎた券は照会結果にも料金表にも出ない。期限は `purchase_deadline`（利用日基準）と `sales_period`（販売期間）で表す。",
           "status": "defined"
         },
         "special_day": {
@@ -210,7 +210,7 @@
             "再来場特典",
             "日中券をお持ちの方"
           ],
-          "decision_rule_ja": "★**初回の人に代表として出してはいけない。** 誰が対象かを `target_qualification` に、必要な過去の購入実績を `offers.requirements` の自由文に記録する。",
+          "decision_rule_ja": "★**初回の人に代表として出してはいけない。** 誰が対象かを `target_qualification` に、必要な過去の購入実績を `offers.requirements` の自由文に記録する。\n「25時間券を購入した方のみチャージ可能」のように**特定の券に追加して使う券**は、この理由に加えて products の `add_on_to_product_ids` に追加先の券を書く（画面の計算が「追加先の券＋追加券」を組み合わせて比べるため）。",
           "status": "defined"
         },
         "unknown": {
@@ -227,7 +227,7 @@
     },
     "validity_modes": {
       "description_ja": "その券を**いつ・どれだけ使えるか**の数え方。「何時間滑れるか」の算出に直結する（`lookup-price.mjs` がこのモードで分岐する）。\n**券の分類はこの1軸だけで表す。** かつて product_types という別の群があったが、validity から100%導出できる冗長なものだったため廃止した（実データ19件で検証）。表示用の分類名（「1日券」等）が必要な場合も validity から導出する。",
-      "notes_ja": "`hours_from_first_use` と `hours_pool` の区別が重要。25時間券を `hours_from_first_use: 25` と書くと「初回利用から連続25時間滑れる券」の意味になり、1日券や「9時間以上」の候補として誤って選ばれる。\n券の付帯情報は validity ではなく専用フィールドが担う:\n・滑走できるか → `skiable`（観光用ゴンドラ券は false）\n・ナイターに使えるか → `covers_hours_types`\n・共通券 → `shared_with_resorts` / セット券 → `included_items`\n・エリア限定 → `area_ids`",
+      "notes_ja": "`hours_from_first_use` と `hours_pool` の区別が重要。25時間券を `hours_from_first_use: 25` と書くと「初回利用から連続25時間滑れる券」の意味になり、1日券や「9時間以上」の候補として誤って選ばれる。\n券の付帯情報は validity ではなく専用フィールドが担う:\n・滑走できるか → `skiable`（観光用ゴンドラ券は false）\n・ナイターに使えるか → `covers_hours_types`\n・共通券 → `shared_with_resorts` / セット券 → `included_items`\n・エリア限定 → `area_ids`\n・別の券に追加（チャージ）して使う券（トップアップ5時間など） → `add_on_to_product_ids`",
       "labels": {
         "calendar_day": {
           "label_ja": "暦日",
@@ -1022,7 +1022,7 @@
       "companion": "party_rules（同行者構成で料金が決まる）",
       "membership": "discount_reasons の membership ＋ offers.requirements の自由文",
       "payment_method": "discount_reasons の payment_method ＋ offers.requirements の自由文",
-      "prior_purchase": "discount_reasons の prior_purchase ＋ offers.requirements の自由文",
+      "prior_purchase": "discount_reasons の prior_purchase ＋ offers.requirements の自由文。追加先の券を持つ人だけが買える追加券（トップアップ等）は、さらに products の add_on_to_product_ids で追加先の券を指す",
       "area_relationship": "target_qualification の official_label_ja / description_ja に公式表記のまま書く（居住・在勤・在学をラベルで区別しても、照会の入力に居住地が無いため料金計算に効かない）",
       "geographic_level": "target_qualification の文章（都道府県か市町村かを分類しても料金計算に効かない）",
       "gender": "target_genders（性別だけは料金表と直交する軸として構造化する）"

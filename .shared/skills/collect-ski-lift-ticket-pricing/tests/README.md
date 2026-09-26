@@ -31,6 +31,7 @@ node .shared/skills/collect-ski-lift-ticket-pricing/tests/run-tests.mjs --with-c
   - 学生区分（大学院生・短大・専門を含むことが明記されたaudience）
   - 昼食付きセット券（`included_items`）
   - 2スキー場共通券（`shared_with_resorts`）
+- `daypass-test-2025-2026.json` — 1日券・ナイター・時間券・複数日券の選択。25時間券と、それに追加するトップアップ5時間（`add_on_to_product_ids`）を含む
 - `minimal.json` — 空に近い最小構成（テンプレート相当）
 
 ### fixtures/invalid/ — ファイル名プレフィックスのスクリプトで失敗すること
@@ -50,6 +51,7 @@ node .shared/skills/collect-ski-lift-ticket-pricing/tests/run-tests.mjs --with-c
 | `taxonomy-deadline-without-advance.json` | check-taxonomy | 前日期限があるのに advance_purchase が無い |
 | `taxonomy-package-no-included-items.json` | check-taxonomy | package なのに included_items が無い |
 | `taxonomy-shared-no-resorts.json` | check-taxonomy | 共通券なのに相手スキー場の明記が無い |
+| `taxonomy-add-on-no-base.json` | check-taxonomy | トップアップ（追加券）なのに追加先の券（`add_on_to_product_ids`）が無い |
 | `taxonomy-local-no-qualification.json` | check-taxonomy | 地域割引なのに `target_qualification` がない（notesのみ） |
 
 | `taxonomy-ladies-day-no-target-genders.json` | check-taxonomy | 公式名称が性別を限定しているのに `target_genders` が無い |

@@ -15,6 +15,8 @@ import type {
   SaveLatestStatusMappingRequest,
   SaveLatestStatusMappingResult,
 } from "../types";
+import { rowCrawledNames, withCrawledNames } from "../utils/aliases";
+import { groupMappingPatterns } from "../utils/patterns";
 import { createSuggestedRows, reconcileSavedRows } from "../utils/rows";
 
 const RESORT_ID_PATTERN = /^[a-z0-9-]+$/;
@@ -100,7 +102,15 @@ const normalizeRow = (value: unknown): LatestStatusMappingRow | null => {
   const geometryId = normalizeString(value.geometryId);
   if (crawledName === null && geojsonName === null && geometryId === null)
     return null;
-  return { crawledName, geojsonName, ...(geometryId ? { geometryId } : {}) };
+  return withCrawledNames(
+    { crawledName, geojsonName, ...(geometryId ? { geometryId } : {}) },
+    [
+      crawledName,
+      ...(Array.isArray(value.crawledNames) ? value.crawledNames : []),
+    ]
+      .map(normalizeString)
+      .filter((name): name is string => name !== null),
+  );
 };
 
 const normalizeSection = (
@@ -200,6 +210,11 @@ const readLatestStatus = async (
   };
 };
 
+export type StatusHistoryLoader = (
+  resortId: string,
+  kind: LatestStatusMappingKind,
+) => Promise<LatestSuccessfulStatus[]>;
+
 const normalizeGeometryNames = (names: string[]): string[] => [
   ...new Set(
     names
@@ -246,16 +261,28 @@ export const loadLatestStatusMappingWorkspace = async (
     resortId: string,
     kind: LatestStatusMappingKind,
   ) => Promise<LatestSuccessfulStatus | null>,
+  historyLoader?: StatusHistoryLoader,
 ): Promise<LatestStatusMappingWorkspace> => {
   if (!RESORT_ID_PATTERN.test(resortId)) {
     throw new Error(`不正なスキー場IDです: ${resortId}`);
   }
 
-  const [latest, fileGeojsonNames, mapping] = await Promise.all([
+  const [latest, fileGeojsonNames, mapping, history] = await Promise.all([
     readLatestStatus(temporaryRoot, resortId, kind, latestStatusLoader),
     readGeometryNames(temporaryRoot, resortId, kind),
     readMappingFile(temporaryRoot, resortId),
+    historyLoader ? historyLoader(resortId, kind) : Promise.resolve([]),
   ]);
+  // 採用済み結果がなくても、保留された履歴の名前から対応を始められる。
+  if (!latest.fileName && history.length) {
+    const fallback = await readLatestStatus(
+      temporaryRoot,
+      resortId,
+      kind,
+      async () => history[0],
+    );
+    Object.assign(latest, fallback);
+  }
   const geojsonNames = geojsonNamesOverride
     ? normalizeGeometryNames(geojsonNamesOverride)
     : fileGeojsonNames;
@@ -278,7 +305,11 @@ export const loadLatestStatusMappingWorkspace = async (
       `${kind === "courses" ? "コースGeoJSON" : "lift_20m"} に名前付きの線がありません。`,
     );
   }
-  if (section && section.sourceFile !== latest.fileName) {
+  if (
+    section &&
+    section.sourceFile !== latest.fileName &&
+    !history.some(item => item.fileName === section.sourceFile)
+  ) {
     warnings.push(
       `保存後にクロール結果が更新されています（保存時: ${section.sourceFile} / 現在: ${latest.fileName ?? "なし"}）。対応を確認してください。`,
     );
@@ -288,10 +319,14 @@ export const loadLatestStatusMappingWorkspace = async (
   const geojsonNameSet = new Set(geojsonNames);
   if (
     section?.rows.some(
-      row => row.crawledName && !crawledNameSet.has(row.crawledName),
+      row =>
+        rowCrawledNames(row).length > 0 &&
+        !rowCrawledNames(row).some(name => crawledNameSet.has(name)),
     )
   ) {
-    warnings.push("保存済み対応に、現在のクロール結果にない名前があります。");
+    warnings.push(
+      "選択中の取得パターンに対応名がない線があります。別のパターンの登録名は保持されます。",
+    );
   }
   if (
     section?.rows.some(
@@ -303,6 +338,20 @@ export const loadLatestStatusMappingWorkspace = async (
 
   return {
     kind,
+    patterns: groupMappingPatterns([
+      ...(latest.fileName
+        ? [
+            {
+              fileName: latest.fileName,
+              time: latest.time,
+              archiveTimestamp: latest.archiveTimestamp,
+              items: latest.items.map(item => ({ ...item })),
+              sourceUrls: latest.sourceUrls,
+            },
+          ]
+        : []),
+      ...history,
+    ]),
     latestFile: latest.fileName,
     latestTime: latest.time,
     ...(latest.archiveTimestamp
@@ -317,7 +366,7 @@ export const loadLatestStatusMappingWorkspace = async (
     mappingFileHash: mapping.hash,
     needsSave:
       section === undefined ||
-      section.sourceFile !== latest.fileName ||
+      (!historyLoader && section.sourceFile !== latest.fileName) ||
       JSON.stringify(section.rows) !== JSON.stringify(rows),
     warnings,
   };
@@ -330,6 +379,7 @@ const validateRows = async (
     resortId: string,
     kind: LatestStatusMappingKind,
   ) => Promise<LatestSuccessfulStatus | null>,
+  historyLoader?: StatusHistoryLoader,
 ): Promise<string[]> => {
   const errors: string[] = [];
   if (!RESORT_ID_PATTERN.test(request.resortId)) {
@@ -341,7 +391,7 @@ const validateRows = async (
     return errors;
   }
 
-  const [latest, fileGeojsonNames] = await Promise.all([
+  const [latest, fileGeojsonNames, history] = await Promise.all([
     readLatestStatus(
       temporaryRoot,
       request.resortId,
@@ -349,17 +399,27 @@ const validateRows = async (
       latestStatusLoader,
     ),
     readGeometryNames(temporaryRoot, request.resortId, request.kind),
+    historyLoader
+      ? historyLoader(request.resortId, request.kind)
+      : Promise.resolve([]),
   ]);
   const geojsonNames = request.geojsonNames
     ? normalizeGeometryNames(request.geojsonNames)
     : fileGeojsonNames;
-  if (latest.fileName !== request.latestFile) {
+  if (
+    latest.fileName !== request.latestFile &&
+    !history.some(item => item.fileName === request.latestFile)
+  ) {
     errors.push(
       "画面を開いた後にクロール結果が更新されました。最新データを読み直してください。",
     );
   }
 
-  const crawledNameSet = new Set(latest.items.map(item => item.name));
+  const crawledNameSet = new Set(
+    [...latest.items, ...history.flatMap(item => item.items)].map(
+      item => item.name,
+    ),
+  );
   const geojsonNameSet = new Set(geojsonNames);
   const mappedGeojsonNames = new Set<string>();
   const geometryById = new Map(
@@ -392,22 +452,35 @@ const validateRows = async (
     if (
       unchangedOther &&
       unchangedOther.geojsonName === normalized.geojsonName &&
-      unchangedOther.crawledName === normalized.crawledName
+      JSON.stringify(rowCrawledNames(unchangedOther)) ===
+        JSON.stringify(rowCrawledNames(normalized))
     )
       continue;
+    const savedForTarget = savedRows.find(saved =>
+      normalized.geometryId
+        ? saved.geometryId === normalized.geometryId
+        : !saved.geometryId && saved.geojsonName === normalized.geojsonName,
+    );
+    const preservedNames = new Set(
+      savedForTarget ? rowCrawledNames(savedForTarget) : [],
+    );
     if (
-      normalized.crawledName &&
-      (!crawledNameSet.has(normalized.crawledName) ||
-        normalized.crawledName.length > 300)
+      rowCrawledNames(normalized).length > 100 ||
+      rowCrawledNames(normalized).some(
+        name =>
+          name.length > 300 ||
+          (!crawledNameSet.has(name) && !preservedNames.has(name)),
+      )
     ) {
-      errors.push(`${index + 1} 行目のクロール名が現在のデータにありません。`);
+      errors.push(`${index + 1} 行目のクロール名が取得履歴にありません。`);
     }
     if (normalized.geometryId) {
       const preserved = unchangedOtherIds.get(normalized.geometryId);
       if (
         preserved &&
         preserved.geojsonName === normalized.geojsonName &&
-        preserved.crawledName === normalized.crawledName
+        JSON.stringify(rowCrawledNames(preserved)) ===
+          JSON.stringify(rowCrawledNames(normalized))
       )
         continue;
       if (
@@ -458,11 +531,17 @@ export const prepareLatestStatusMappingDocument = async (
     resortId: string,
     kind: LatestStatusMappingKind,
   ) => Promise<LatestSuccessfulStatus | null>,
+  historyLoader?: StatusHistoryLoader,
 ): Promise<
   | { ok: true; document: DataDocumentWrite; savedAt: string }
   | { ok: false; errors: string[] }
 > => {
-  const errors = await validateRows(temporaryRoot, request, latestStatusLoader);
+  const errors = await validateRows(
+    temporaryRoot,
+    request,
+    latestStatusLoader,
+    historyLoader,
+  );
   if (errors.length > 0) return { ok: false, errors };
 
   const current = await readMappingFile(temporaryRoot, request.resortId);
@@ -484,7 +563,13 @@ export const prepareLatestStatusMappingDocument = async (
       updatedAt: savedAt,
       rows: request.rows.map(row => ({
         ...(row.geometryId ? { geometryId: row.geometryId } : {}),
-        crawledName: normalizeString(row.crawledName),
+        ...withCrawledNames(
+          {
+            crawledName: normalizeString(row.crawledName),
+            geojsonName: normalizeString(row.geojsonName),
+          },
+          rowCrawledNames(row),
+        ),
         geojsonName: normalizeString(row.geojsonName),
       })),
     },
@@ -509,11 +594,13 @@ export const saveLatestStatusMappingFile = async (
     resortId: string,
     kind: LatestStatusMappingKind,
   ) => Promise<LatestSuccessfulStatus | null>,
+  historyLoader?: StatusHistoryLoader,
 ): Promise<SaveLatestStatusMappingResult> => {
   const prepared = await prepareLatestStatusMappingDocument(
     temporaryRoot,
     request,
     latestStatusLoader,
+    historyLoader,
   );
   if (!prepared.ok) return prepared;
   const raw = prepared.document.content;
@@ -591,12 +678,24 @@ export const readResolvedLatestStatusMapping = async (
   for (const row of section.rows) {
     if (!row.geojsonName) continue;
     const values = candidates.get(row.geojsonName) ?? new Set<string | null>();
-    values.add(row.crawledName);
+    values.add(JSON.stringify(rowCrawledNames(row).sort()));
     candidates.set(row.geojsonName, values);
   }
   return {
     configured: true,
     sourceFile: section.sourceFile,
+    namesByGeometryId: new Map(
+      section.rows.flatMap(row =>
+        row.geometryId ? [[row.geometryId, rowCrawledNames(row)]] : [],
+      ),
+    ),
+    namesByGeojsonName: new Map(
+      [...candidates].flatMap(([name, values]) =>
+        values.size === 1
+          ? [[name, JSON.parse([...values][0] ?? "[]") as string[]]]
+          : [],
+      ),
+    ),
     byGeometryId: new Map(
       section.rows.flatMap(row =>
         row.geometryId ? [[row.geometryId, row.crawledName]] : [],
@@ -604,7 +703,14 @@ export const readResolvedLatestStatusMapping = async (
     ),
     byGeojsonName: new Map(
       [...candidates].flatMap(([name, values]) =>
-        values.size === 1 ? [[name, [...values][0]]] : [],
+        values.size === 1
+          ? [
+              [
+                name,
+                (JSON.parse([...values][0] ?? "[]") as string[])[0] ?? null,
+              ],
+            ]
+          : [],
       ),
     ),
   };

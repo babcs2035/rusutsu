@@ -1,5 +1,6 @@
 import type {
   LiftTicketAudience,
+  LiftTicketCalendar,
   LiftTicketData,
   LiftTicketOffer,
   LiftTicketProduct,
@@ -9,7 +10,13 @@ import { isSharedLiftTicketProduct, priceModeOf } from "../types";
 
 export type { PriceReference };
 
-import { buildReferences, formatLiftTicketPrice } from "./calculateLiftTicket";
+import {
+  buildReferences,
+  formatLiftTicketPrice,
+  formatSalesPeriod,
+  getTodayInJapan,
+  isSalesEnded,
+} from "./calculateLiftTicket";
 
 /**
  * リフト券の料金表を組み立てる。
@@ -18,24 +25,36 @@ import { buildReferences, formatLiftTicketPrice } from "./calculateLiftTicket";
  * **スキー場ごとの特別扱いを一切せずに**データから導く。
  *
  * 設計:
- * - 1行 = 1券種（product）。ただし**同じ券種の中で日付によって料金が違う場合は
- *   カレンダーごとに行を分ける**（「9時間券 平日」「9時間券 土日」）。
- *   料金が日付で変わらない券種は1行のまま。
+ * - 1行 = 1券種（product）。同じ券種の中で日付によって料金が違う場合は
+ *   セルに日付区分ごとの金額を並べる（画面では日付区分ごとの小行に展開する）。
  * - 1列 = 1人物区分（大人・子供・シニア…）。
- * - **基本料金と割引料金は別の表**にする（割引は条件付きで、通常料金と並べると
+ * - **誰でも買える料金は「通常料金」**。Web購入・前売のように買い方だけで
+ *   安くなる料金も誰でも買えるので通常料金に入れ、窓口料金と同じセルにまとめる。
+ * - 会員・宿泊者・障がい者手帳などの資格が要る料金、特定日のイベント料金、
+ *   販売期間が限られた早割は**別の表**にする（通常料金と並べると
  *   「誰でもその値段で買える」と誤読される）。
+ * - 購入方法・期限・対象者の長い説明は載せない。詳細は出典リンクの公式ページで見てもらう。
  *
  * 1 offer が1金額を持つ前提に依存している（`price.date_table` は廃止済み）。
  * offer が日付別の金額表を内包していると、この関数は金額を読み落とす。
  */
+
+/** 買い方だけで安くなる料金の目印（「Web」「前売」）。窓口でそのまま買える料金は null */
+export type PurchaseTag = "Web" | "前売";
 
 /** セル内の1行。日付で料金が変わる券は「平日：6,300円」のように複数行になる */
 export type PriceEntry = {
   offerId: string;
   /** 日付区分の名前。日付で変わらないなら null */
   calendarLabel: string | null;
+  /** 日付区分の期間（「12/19〜3/14」）。期間で決まらない区分（平日など）は null */
+  calendarPeriod: string | null;
   amount: number | null;
   text: string;
+  /** Web・前売で安くなった料金なら、その買い方 */
+  purchaseTag: PurchaseTag | null;
+  /** Web料金を出したときの、窓口で買った場合の金額（高い場合だけ） */
+  counterAmount: number | null;
   /** 出典の番号（本文の [1] 表示用）。references の index+1 */
   sourceNumbers: number[];
 };
@@ -46,13 +65,13 @@ export type PriceCell = {
 
 export type PriceRow = {
   key: string;
-  /** 主ラベル。基本料金の表では券種名、割引の表では割引名 */
+  /** 主ラベル。通常料金の表では券種名、割引の表では割引名 */
   label: string;
   /** 補助ラベル。割引の表では対象の券種名 */
   subLabel: string | null;
-  /** 券種の補足（「平日13時〜17時のみ」「年末年始は利用不可」など） */
+  /** 券種の補足（「13:00〜17:00のみ」など、券の中身が分かる最小限） */
   conditions: string[];
-  /** 購入方法・期限・対象者など、行の下に小さく出す注記 */
+  /** 割引の表で、販売期間が限られる場合だけ出す注記 */
   notes: string[];
   cells: Map<string, PriceCell>;
   /**
@@ -64,7 +83,7 @@ export type PriceRow = {
 
 export type PriceTable = {
   /** 表の列（この表に実際に金額があった人物区分だけ） */
-  audiences: Array<{ id: string; label: string }>;
+  audiences: Array<{ id: string; label: string; ageLabel: string | null }>;
   rows: PriceRow[];
 };
 
@@ -74,14 +93,35 @@ export type LiftTicketPriceTables = {
   references: PriceReference[];
 };
 
-const audienceLabel = (audience: LiftTicketAudience) =>
-  audience.official_label_ja ?? audience.name_ja;
+/**
+ * 列見出しの補足（「19〜64歳」）。見出し自体は短い name_ja にする。
+ * 学校区分で決まる区分（こども・中高生など）は年齢を併記しない
+ */
+const ageLabelOf = (audience: LiftTicketAudience) => {
+  if ((audience.school_levels ?? []).length > 0) return null;
+  const min = audience.age_min ?? null;
+  const max = audience.age_max ?? null;
+  if (min != null && max != null) return `${min}〜${max}歳`;
+  if (min != null) return `${min}歳〜`;
+  if (max != null) return `〜${max}歳`;
+  return null;
+};
 
 /**
  * 「9時間券（平日）」「9時間券／平日」からカレンダー名の接尾辞を落とす。
  * カレンダーごとに offer を分けた結果、券種名に日付区分が混ざるため。
  */
 const stripCalendarSuffix = (label: string, calendarNames: string[]) => {
+  // 「一日券（障がい者本人・大人・平日）」のように括弧の中に並んでいる場合は、
+  // 日付区分の部分だけを落とす（「平日」と書いた行に特定日の金額も並ぶため）
+  const inner = label.match(/^(.*)（([^（）]*)）$/u);
+  if (inner) {
+    const parts = inner[2].split("・");
+    const kept = parts.filter(part => !calendarNames.includes(part));
+    if (kept.length > 0 && kept.length < parts.length) {
+      return `${inner[1]}（${kept.join("・")}）`;
+    }
+  }
   for (const name of calendarNames) {
     for (const suffix of [
       `（${name}）`,
@@ -95,10 +135,51 @@ const stripCalendarSuffix = (label: string, calendarNames: string[]) => {
   return label;
 };
 
+/** 買い方だけで安くなる割引の理由。誰でも買えるので通常料金として扱う */
+const PURCHASE_METHOD_REASONS = ["online_purchase", "advance_purchase"];
+
+/**
+ * 販売期間が利用期間より先に終わる券（早割）か。
+ * Web券にも「シーズン終わりまで販売」と販売期間が書かれることがあるので、
+ * 販売期間があるだけでは早割にしない。
+ */
+const isLimitedSaleOffer = (offer: LiftTicketOffer, data: LiftTicketData) => {
+  const salesEnd = offer.sales_period?.end;
+  if (!salesEnd) return false;
+  const useEnd = offer.use_period?.end ?? data.season.end_date;
+  return useEnd == null || salesEnd < useEnd;
+};
+
+/**
+ * Web・前売のように**買い方だけ**で安くなる、誰でも買える料金か。
+ * 早割は「いつでも買える通常料金」ではないので含めない。
+ */
+const isOpenPurchaseOffer = (offer: LiftTicketOffer, data: LiftTicketData) => {
+  const reasons = offer.discount_reasons ?? [];
+  return (
+    reasons.length > 0 &&
+    reasons.every(reason => PURCHASE_METHOD_REASONS.includes(reason)) &&
+    offer.target_qualification == null &&
+    offer.target_genders == null &&
+    !isLimitedSaleOffer(offer, data)
+  );
+};
+
+const purchaseTagOf = (
+  offer: LiftTicketOffer,
+  data: LiftTicketData,
+): PurchaseTag | null => {
+  if (!isOpenPurchaseOffer(offer, data)) return null;
+  return (offer.discount_reasons ?? []).includes("online_purchase")
+    ? "Web"
+    : "前売";
+};
+
 /**
  * 同じ種類の offer をまとめるキー。
- * 券種・購入経路・対象の絞り込みが同じものを1グループにし、
- * カレンダーだけが違うものは行の分割で表す。
+ *
+ * **購入経路は区別しない**（窓口とWebは同じ券の買い方違いなので
+ * 同じ行・同じセルにまとめ、安いほうを出す）。
  *
  * 割引の表では**割引名も識別に使う**。同じ券種・同じ割引理由でも
  * 「サンフレッチェ応援デー」と「ドラゴンフライズ応援デー」は別のキャンペーンで、
@@ -111,7 +192,6 @@ const groupKeyOf = (
 ) =>
   [
     offer.product_id,
-    [...(offer.channel_ids ?? [])].sort().join("+"),
     offer.target_qualification?.official_label_ja ?? "",
     (offer.target_genders?.genders ?? []).join("+"),
     isDiscount ? discountLabelOf(offer, calendarNames) : "",
@@ -120,21 +200,6 @@ const groupKeyOf = (
 /** 割引名から日付区分の接尾辞を落としたもの（グループ識別と行ラベルに使う） */
 const discountLabelOf = (offer: LiftTicketOffer, calendarNames: string[]) =>
   stripCalendarSuffix(offer.official_label_ja ?? offer.name_ja, calendarNames);
-
-const rowNotesOf = (offer: LiftTicketOffer, data: LiftTicketData) => {
-  const notes: string[] = [];
-  const channels = (offer.channel_ids ?? [])
-    .map(id => data.channels.find(channel => channel.id === id)?.name_ja)
-    .filter((label): label is string => Boolean(label));
-  if (channels.length > 0) notes.push(channels.join("・"));
-  const qualification = offer.target_qualification?.official_label_ja;
-  if (qualification) notes.push(qualification);
-  const genders = offer.target_genders?.official_label_ja;
-  if (genders) notes.push(genders);
-  const deadline = offer.purchase_deadline?.official_text_ja;
-  if (deadline) notes.push(deadline);
-  return notes;
-};
 
 /**
  * 表に出す金額。「通常料金から1,000円引き」のような差額指定は、
@@ -182,33 +247,15 @@ const shortDate = (date: string) => {
 };
 
 /**
- * 日付の一覧を読める形にする。連続する3日以上は範囲にまとめる
- * （「12/29・12/30・12/31・1/1・1/2・1/3」より「12/29〜1/3」が読みやすい）。
+ * 日付区分の期間。「レギュラーシーズン」だけでは何月か分からないので添える。
+ * 期間1つだけで決まる区分に限る（平日・土日のような曜日の区分は名前で分かる）
  */
-const formatDateList = (dates: string[]) => {
-  const sorted = [...new Set(dates)].sort();
-  const parts: string[] = [];
-  let runStart = 0;
-  const dayNumber = (date: string) =>
-    Date.parse(`${date}T12:00:00Z`) / 86400000;
-  for (let i = 1; i <= sorted.length; i += 1) {
-    const isBreak =
-      i === sorted.length ||
-      dayNumber(sorted[i]) - dayNumber(sorted[i - 1]) !== 1;
-    if (!isBreak) continue;
-    const runLength = i - runStart;
-    if (runLength >= 3) {
-      parts.push(`${shortDate(sorted[runStart])}〜${shortDate(sorted[i - 1])}`);
-    } else {
-      for (let j = runStart; j < i; j += 1) parts.push(shortDate(sorted[j]));
-    }
-    runStart = i;
-  }
-  return parts.join("・");
+const calendarPeriodOf = (calendar: LiftTicketCalendar | undefined) => {
+  const ranges = calendar?.included_date_ranges ?? [];
+  if (ranges.length !== 1) return null;
+  if ((calendar?.included_day_types ?? []).length > 0) return null;
+  return `${shortDate(ranges[0].start)}〜${shortDate(ranges[0].end)}`;
 };
-
-const formatDateRange = (range: { start: string; end: string }) =>
-  `${shortDate(range.start)}〜${shortDate(range.end)}`;
 
 /**
  * 表示用のラベルを選ぶ。
@@ -216,110 +263,53 @@ const formatDateRange = (range: { start: string; end: string }) =>
  * `name_ja`（整理した名前）と `official_label_ja`（公式表記そのまま）の
  * どちらが名前として読めるかはデータによって違う
  * （「広島ドラゴンフライズ応援デー」は official 側が短く、
- * 「こどもデー（毎週土曜日）」は name 側が短い）。
- * **短いほうを見出しにし、長いほうは公式表記として下に添える**
+ * 「こどもデー（毎週土曜日）」は name 側が短い）。**短いほうを見出しにする**
  * — 見出しに一文が入ると表が読めなくなる。
  */
-const displayLabelOf = (
-  offer: LiftTicketOffer,
-  calendarNames: string[],
-): { label: string; officialNote: string | null } => {
+const displayLabelOf = (offer: LiftTicketOffer, calendarNames: string[]) => {
   const name = stripCalendarSuffix(offer.name_ja, calendarNames);
   const official = offer.official_label_ja
     ? stripCalendarSuffix(offer.official_label_ja, calendarNames)
     : null;
-  if (!official) return { label: name, officialNote: null };
-  if (official.length <= name.length) {
-    // 公式表記のほうが短い＝見出しに使える。隠れるのは自分で付けた名前なので添えない
-    return { label: official, officialNote: null };
-  }
-  // 公式表記が一文で長い場合だけ、見出しは短い名前にして公式表記を下に添える
-  return {
-    label: name,
-    officialNote: official.length > name.length + 8 ? official : null,
-  };
+  return official && official.length <= name.length ? official : name;
 };
 
-/** 券種そのものの利用条件（時間帯固定・利用不可期間など） */
+const shorterOf = (left?: string | null, right?: string | null) => {
+  if (!left) return right ?? null;
+  if (!right) return left;
+  return right.length < left.length ? right : left;
+};
+
+/** 券の中身が分かる最小限の補足（時間帯が決まっている券だけ） */
 const productConditionsOf = (product: LiftTicketProduct | undefined) => {
-  const conditions: string[] = [];
   const validity = product?.validity;
   if (
     validity?.mode === "fixed_time_window" &&
     validity.start_time &&
     validity.end_time
   ) {
-    conditions.push(`${validity.start_time}〜${validity.end_time}のみ`);
+    return [`${validity.start_time}〜${validity.end_time}`];
   }
-  if (validity?.usable_within_ja) conditions.push(validity.usable_within_ja);
-  return conditions;
-};
-
-/** その料金が使える日・使えない日。キャンペーン割引は対象日が分からないと使えない */
-const calendarConditionsOf = (
-  offers: LiftTicketOffer[],
-  data: LiftTicketData,
-) => {
-  const conditions: string[] = [];
-  const calendarById = new Map(
-    data.calendars.map(calendar => [calendar.id, calendar]),
-  );
-  const calendarIds = [
-    ...new Set(offers.flatMap(offer => offer.calendar_ids ?? [])),
-  ];
-  const calendars = calendarIds
-    .map(id => calendarById.get(id))
-    .filter(calendar => calendar != null);
-  const coveredByAnotherCalendar = (
-    excludedById: string,
-    dateOrRange: string | { start: string; end: string },
-  ) =>
-    calendars.some(calendar => {
-      if (calendar.id === excludedById) return false;
-      if (typeof dateOrRange === "string") {
-        return (
-          calendar.included_dates?.includes(dateOrRange) === true ||
-          calendar.included_date_ranges?.some(
-            range => range.start <= dateOrRange && dateOrRange <= range.end,
-          ) === true
-        );
-      }
-      return (
-        calendar.included_date_ranges?.some(
-          range =>
-            range.start <= dateOrRange.start && dateOrRange.end <= range.end,
-        ) === true
-      );
-    });
-  const seen = new Set<string>();
-  for (const offer of offers) {
-    for (const calendarId of offer.calendar_ids ?? []) {
-      if (seen.has(calendarId)) continue;
-      seen.add(calendarId);
-      const calendar = calendarById.get(calendarId);
-      if (!calendar) continue;
-      if ((calendar.included_dates ?? []).length > 0) {
-        conditions.push(
-          `対象日 ${formatDateList(calendar.included_dates ?? [])}`,
-        );
-      }
-      const unavailableDates = (calendar.excluded_dates ?? []).filter(
-        date => !coveredByAnotherCalendar(calendar.id, date),
-      );
-      if (unavailableDates.length > 0) {
-        conditions.push(`${formatDateList(unavailableDates)}は利用不可`);
-      }
-      for (const range of calendar.excluded_date_ranges ?? []) {
-        if (coveredByAnotherCalendar(calendar.id, range)) continue;
-        conditions.push(`${formatDateRange(range)}は利用不可`);
-      }
-    }
-  }
-  return conditions;
+  return [];
 };
 
 const cellTextOf = (amount: number | null, fallback: string) =>
   amount == null ? fallback : `${amount.toLocaleString("ja-JP")}円`;
+
+/** 同じ日付区分の中で、誰でも買える一番安い料金を選ぶ（同額なら窓口を優先） */
+const pickCheapest = (
+  candidates: Array<{ offer: LiftTicketOffer; amount: number | null }>,
+  data: LiftTicketData,
+) =>
+  [...candidates].sort((left, right) => {
+    if (left.amount == null) return 1;
+    if (right.amount == null) return -1;
+    if (left.amount !== right.amount) return left.amount - right.amount;
+    return (
+      Number(purchaseTagOf(left.offer, data) != null) -
+      Number(purchaseTagOf(right.offer, data) != null)
+    );
+  })[0];
 
 function buildTable(
   data: LiftTicketData,
@@ -335,6 +325,24 @@ function buildTable(
     data.calendars.map(calendar => [calendar.id, calendar]),
   );
   const offerById = new Map(data.offers.map(offer => [offer.id, offer]));
+  const audienceById = new Map(
+    data.audiences.map(audience => [audience.id, audience]),
+  );
+  // 障がい者料金は「大人」「小人」の列に入れる（行名で障がい者料金と分かる）。
+  // 専用の列を足すと、割引の表が大人・ハンディキャップ（大人）…と横に倍になる
+  const columnIdOf = (audienceId: string) => {
+    const audience = audienceById.get(audienceId);
+    return audience?.is_disability_qualified === true &&
+      audience.base_audience_id &&
+      audienceById.has(audience.base_audience_id)
+      ? audience.base_audience_id
+      : audienceId;
+  };
+  // 割引の行名に残った人物区分（「一日券（障がい者本人・大人）」の「大人」）は
+  // 列見出しと重なるうえ、大人以外の列の金額にも付くので落とす
+  const audienceNames = data.audiences.map(audience => audience.name_ja);
+  const columnIdsOf = (offer: LiftTicketOffer) =>
+    (offer.audience_ids ?? []).map(columnIdOf);
 
   const groups = new Map<string, LiftTicketOffer[]>();
   for (const offer of offers) {
@@ -353,49 +361,97 @@ function buildTable(
     // 行は券種なので**券種名を使う**。offer名には人物区分や日付が混ざるため
     // （「9時間券（大人・平日）」を行名にすると列と重複して読みにくい）
     const productLabel = stripCalendarSuffix(
-      product?.official_label_ja ?? product?.name_ja ?? first.name_ja,
+      shorterOf(product?.name_ja, product?.official_label_ja) ?? first.name_ja,
       calendarNames,
     );
-    const display = displayLabelOf(first, calendarNames);
-    const label = isDiscount ? display.label : productLabel;
+    const label = isDiscount
+      ? displayLabelOf(first, [...calendarNames, ...audienceNames])
+      : productLabel;
+    // 割引の表で見出しが券種名と同じだと、何の条件の料金か分からない
+    // （「宿泊者専用 苗場エリア1日券」の公式表記は「苗場エリア1日券」）。
+    // 対象者の表記が短ければ添える。一文の説明は公式ページで見てもらう
+    const qualification =
+      first.target_qualification?.official_label_ja ??
+      first.target_genders?.official_label_ja ??
+      null;
+    const qualificationNote =
+      isDiscount &&
+      label === productLabel &&
+      qualification &&
+      qualification.length <= 24
+        ? qualification
+        : null;
 
-    const audienceIds = [
-      ...new Set(groupOffers.flatMap(offer => offer.audience_ids ?? [])),
-    ];
+    const audienceIds = [...new Set(groupOffers.flatMap(columnIdsOf))];
 
     const cells = new Map<string, PriceCell>();
     for (const audienceId of audienceIds) {
       const forAudience = groupOffers.filter(offer =>
-        (offer.audience_ids ?? []).includes(audienceId),
+        columnIdsOf(offer).includes(audienceId),
       );
       if (forAudience.length === 0) continue;
+
+      // 日付区分ごとにまとめ、窓口とWebのうち安いほうを1つ出す
+      const byCalendar = new Map<string, LiftTicketOffer[]>();
+      for (const offer of forAudience) {
+        const calendarKey = [...(offer.calendar_ids ?? [])].sort().join("+");
+        const list = byCalendar.get(calendarKey) ?? [];
+        list.push(offer);
+        byCalendar.set(calendarKey, list);
+      }
       // ★同じ券種で日付によって料金が変わる場合は、行を分けずに
       // **1つのセルに「平日：6,300円 / 土日：6,800円」と並べる**
-      // （公式サイトの料金表と同じ見え方。行を分けると日付で変わらない区分の
-      // 金額が繰り返され、どこが違うのか読み取りにくい）
-      const showCalendar = forAudience.length > 1;
-      const entries: PriceEntry[] = forAudience.map(offer => {
-        const resolved = resolveAmount(offer, offerById);
-        const calendarLabel = showCalendar
-          ? (offer.calendar_ids ?? [])
-              .map(id => calendarById.get(id)?.name_ja)
-              .filter(Boolean)
-              .join("・") || null
-          : null;
-        return {
-          offerId: offer.id,
-          calendarLabel,
-          amount: resolved.amount,
-          text: cellTextOf(resolved.amount, resolved.fallback),
-          sourceNumbers: [
-            ...new Set(
-              (offer.source_refs ?? [])
-                .map(id => numberBySourceId.get(id))
-                .filter((n): n is number => n != null),
-            ),
-          ].sort((a, b) => a - b),
-        };
-      });
+      const showCalendar = byCalendar.size > 1;
+      const entries: PriceEntry[] = [...byCalendar.values()].map(
+        calendarOffers => {
+          const candidates = calendarOffers.map(offer => ({
+            offer,
+            amount: resolveAmount(offer, offerById).amount,
+          }));
+          const chosen = pickCheapest(candidates, data);
+          const resolved = resolveAmount(chosen.offer, offerById);
+          const purchaseTag = purchaseTagOf(chosen.offer, data);
+          const counterAmounts = candidates
+            .filter(
+              candidate =>
+                purchaseTagOf(candidate.offer, data) == null &&
+                candidate.amount != null,
+            )
+            .map(candidate => candidate.amount as number);
+          const counterAmount =
+            purchaseTag != null &&
+            counterAmounts.length > 0 &&
+            resolved.amount != null &&
+            Math.min(...counterAmounts) > resolved.amount
+              ? Math.min(...counterAmounts)
+              : null;
+          const calendars = (chosen.offer.calendar_ids ?? [])
+            .map(id => calendarById.get(id))
+            .filter(calendar => calendar != null);
+          return {
+            offerId: chosen.offer.id,
+            calendarLabel: showCalendar
+              ? calendars.map(calendar => calendar.name_ja).join("・") || null
+              : null,
+            calendarPeriod:
+              showCalendar && calendars.length === 1
+                ? calendarPeriodOf(calendars[0])
+                : null,
+            amount: resolved.amount,
+            text: cellTextOf(resolved.amount, resolved.fallback),
+            purchaseTag,
+            counterAmount,
+            sourceNumbers: [
+              ...new Set(
+                calendarOffers
+                  .flatMap(offer => offer.source_refs ?? [])
+                  .map(id => numberBySourceId.get(id))
+                  .filter((n): n is number => n != null),
+              ),
+            ].sort((a, b) => a - b),
+          };
+        },
+      );
       cells.set(audienceId, { entries });
       usedAudiences.add(audienceId);
     }
@@ -404,7 +460,10 @@ function buildTable(
     // 全区分で金額が同じならセルを結合する（回数券は大人・子供同額）
     const signatures = [...cells.values()].map(cell =>
       cell.entries
-        .map(entry => `${entry.calendarLabel ?? ""}:${entry.amount}`)
+        .map(
+          entry =>
+            `${entry.calendarLabel ?? ""}:${entry.amount}:${entry.purchaseTag}:${entry.counterAmount}`,
+        )
         .join("|"),
     );
     const spansAllAudiences =
@@ -412,18 +471,20 @@ function buildTable(
       cells.size > 1 &&
       new Set(signatures).size === 1;
 
+    // 早割だけは「いつまで買えるか」が分からないと使えないので販売期間を添える
+    const salesPeriod = isLimitedSaleOffer(first, data)
+      ? formatSalesPeriod(first.sales_period)
+      : null;
+
     rows.push({
       key,
       label,
-      subLabel: isDiscount ? productLabel : null,
+      subLabel: isDiscount && productLabel !== label ? productLabel : null,
       conditions: [
+        ...(qualificationNote ? [qualificationNote] : []),
         ...productConditionsOf(product),
-        ...calendarConditionsOf(groupOffers, data),
-        ...(isDiscount && display.officialNote
-          ? [`公式表記: ${display.officialNote}`]
-          : []),
       ],
-      notes: rowNotesOf(first, data),
+      notes: salesPeriod ? [salesPeriod] : [],
       cells,
       spansAllAudiences,
     });
@@ -431,32 +492,50 @@ function buildTable(
 
   const audiences = data.audiences
     .filter(audience => usedAudiences.has(audience.id))
-    .map(audience => ({ id: audience.id, label: audienceLabel(audience) }));
+    .map(audience => ({
+      id: audience.id,
+      label: shorterOf(audience.name_ja, audience.official_label_ja) ?? "",
+      ageLabel: ageLabelOf(audience),
+    }));
 
   return { audiences, rows };
 }
 
 export function buildLiftTicketPriceTables(
   data: LiftTicketData,
-  options: { scope: "single" | "shared" },
+  options: {
+    scope: "single" | "shared";
+    /** 照会日。省略時は日本時間の今日 */
+    today?: string;
+  },
 ): LiftTicketPriceTables {
   const productById = new Map(
     data.products.map(product => [product.id, product]),
   );
+  const audienceById = new Map(
+    data.audiences.map(audience => [audience.id, audience]),
+  );
   const calendarNames = data.calendars.map(calendar => calendar.name_ja);
 
+  const today = options.today ?? getTodayInJapan();
   const inScope = data.offers.filter(offer => {
+    // 販売が終わった券（早割など）はもう買えないので表に一切出さない
+    if (isSalesEnded(offer, today)) return false;
     const shared = isSharedLiftTicketProduct(productById.get(offer.product_id));
     return options.scope === "shared" ? shared : !shared;
   });
 
-  // 基本料金 = **誰でもその値段で買える**もの。割引理由が付いているもの、
-  // 対象者が絞られているもの（道民割・レディースデー・保護者同伴の未就学児無料）は
-  // 条件付きなので別の表にする。同じ表に並べると「誰でもその値段で買える」と誤読される
+  // 通常料金 = **誰でもその値段で買える**もの（窓口料金とWeb・前売料金）。
+  // 資格が要るもの（会員・宿泊者・道民割・レディースデー・障がい者手帳）、
+  // 特定日のイベント料金、販売期間が限られた早割は条件付きなので別の表にする
   const isConditional = (offer: LiftTicketOffer) =>
-    (offer.discount_reasons?.length ?? 0) > 0 ||
+    (offer.audience_ids ?? []).some(
+      id => audienceById.get(id)?.is_disability_qualified === true,
+    ) ||
     offer.target_qualification != null ||
-    offer.target_genders != null;
+    offer.target_genders != null ||
+    ((offer.discount_reasons?.length ?? 0) > 0 &&
+      !isOpenPurchaseOffer(offer, data));
 
   const { references, numberBySourceId } = buildReferences(data);
 

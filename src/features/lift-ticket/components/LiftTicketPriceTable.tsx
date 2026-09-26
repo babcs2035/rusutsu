@@ -3,154 +3,230 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import type { LiftTicketData } from "../types";
 import { sharedResortsOf } from "../types";
-import type {
-  PriceCell,
-  PriceReference,
-  PriceTable,
-} from "../utils/priceTable";
+import type { PriceEntry, PriceRow, PriceTable } from "../utils/priceTable";
 import { buildLiftTicketPriceTables } from "../utils/priceTable";
-import { SourceList, SourceMarks } from "./SourceMarks";
+import { SourceLinks } from "./SourceLinks";
 
 /** 単独券（このスキー場だけ）か共通券（他のスキー場でも使える）か */
 type TableMode = "single" | "shared";
 
 /**
- * 1セル。日付によって料金が変わる券は「平日：6,300円 / 土日：6,800円」と
- * 同じセルに並べる（公式サイトの料金表と同じ見え方）。
+ * 1つの金額。Web・前売で安くなる料金は青字にし、窓口の金額を下に小さく添える
+ * （目印のバッジを横に付けると列が広がり、スマホで横スクロールが増える）
  */
-const PriceCellBody = ({
-  cell,
-  references,
-}: {
-  cell: PriceCell | undefined;
-  references: PriceReference[];
-}) => {
-  if (!cell || cell.entries.length === 0) {
-    return <p className="text-gray-500 text-sm">—</p>;
+const PriceValue = ({ entry }: { entry: PriceEntry | undefined }) => {
+  if (!entry) return <span className="text-gray-400">—</span>;
+  if (entry.amount == null) {
+    return <span className="text-gray-600 text-xs">{entry.text}</span>;
   }
   return (
-    <div className="flex flex-col items-end gap-0.5">
-      {cell.entries.map(entry => (
-        <p
-          key={entry.offerId}
-          className={cn(
-            "text-gray-900 whitespace-nowrap",
-            entry.amount == null
-              ? "text-xs font-medium"
-              : "text-sm font-bold font-mono",
-          )}
-        >
-          {entry.calendarLabel && (
-            <span className="mr-1 text-gray-600 text-[0.6875rem] font-semibold">
-              {entry.calendarLabel}：
-            </span>
-          )}
-          {entry.text}
-          <SourceMarks numbers={entry.sourceNumbers} references={references} />
-        </p>
-      ))}
-    </div>
+    <span className="inline-flex flex-col items-end leading-tight">
+      <span
+        className={cn(
+          "font-bold tabular-nums",
+          entry.purchaseTag ? "text-blue-700" : "text-gray-900",
+        )}
+      >
+        {entry.amount === 0 ? "無料" : entry.amount.toLocaleString("ja-JP")}
+      </span>
+      {entry.counterAmount != null && (
+        <span className="text-gray-500 text-[0.625rem] tabular-nums">
+          窓口{entry.counterAmount.toLocaleString("ja-JP")}
+        </span>
+      )}
+    </span>
   );
 };
 
-const PriceGrid = ({
-  table,
-  references,
+/**
+ * 表の小行。日付で料金が変わる券は日付区分ごとに1行にする
+ * （セルに「平日：6,300円 / 土日：6,800円」を並べると横に長くなり、スマホで読めない）。
+ * 日付で変わらない区分（めがひらの子供料金など）は小行をまたいで1セルにする。
+ */
+type SubRow = { key: string; label: string | null; period: string | null };
+
+const subRowsOf = (row: PriceRow): SubRow[] => {
+  const seen = new Map<string, SubRow>();
+  for (const cell of row.cells.values()) {
+    for (const entry of cell.entries) {
+      if (entry.calendarLabel == null || seen.has(entry.calendarLabel)) {
+        continue;
+      }
+      seen.set(entry.calendarLabel, {
+        key: entry.calendarLabel,
+        label: entry.calendarLabel,
+        period: entry.calendarPeriod,
+      });
+    }
+  }
+  return seen.size > 0
+    ? [...seen.values()]
+    : [{ key: "all", label: null, period: null }];
+};
+
+const STICKY_CELL =
+  "sticky left-0 z-10 min-w-[5.5rem] max-w-[8rem] bg-white px-2 py-2 text-left align-middle md:max-w-none md:px-3";
+const PRICE_CELL =
+  "px-1.5 py-2 text-right align-middle whitespace-nowrap text-sm md:px-3";
+
+const RowLabel = ({ row }: { row: PriceRow }) => (
+  <>
+    <span className="block text-gray-900 text-sm font-semibold leading-snug">
+      {row.label}
+    </span>
+    {[row.subLabel, ...row.conditions, ...row.notes]
+      .filter(Boolean)
+      .map(text => (
+        <span
+          key={text}
+          className="block text-gray-500 text-[0.6875rem] leading-snug"
+        >
+          {text}
+        </span>
+      ))}
+  </>
+);
+
+const TableRows = ({
+  row,
+  audiences,
 }: {
-  table: PriceTable;
-  references: PriceReference[];
-}) => (
-  <Card className="w-full overflow-x-auto">
-    <CardContent
-      className="p-0"
-      style={{ minWidth: `${260 + table.audiences.length * 140}px` }}
-    >
-      <Table className="w-full">
-        <TableHeader>
-          <TableRow className="bg-gray-50">
-            <TableHead className="table-header-cell">券種</TableHead>
-            {table.audiences.map(audience => (
-              <TableHead
-                key={audience.id}
-                className="table-header-cell"
-                // .table-header-cell は unlayered CSS で text-align: left を持つため，
-                // ユーティリティの text-right では上書きできない（§4 参照）．
-                // 本文セル（text-right）と揃えるためインラインで右揃えを指定する．
-                style={{ textAlign: "right" }}
-              >
-                {audience.label}
-              </TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {table.rows.map(row => (
-            <TableRow key={row.key} className="border-gray-200">
-              <TableCell className="px-4 py-3 min-w-[240px] align-top">
-                <p className="text-gray-900 font-semibold">{row.label}</p>
-                {row.subLabel && (
-                  <p className="mt-0.5 text-gray-600 text-[0.6875rem]">
-                    {row.subLabel}
-                  </p>
+  row: PriceRow;
+  audiences: PriceTable["audiences"];
+}) => {
+  const subRows = subRowsOf(row);
+  const hasSubRows = subRows[0].label != null;
+  const cellOf = (audienceId: string) => row.cells.get(audienceId);
+  const entryFor = (audienceId: string, subRow: SubRow) =>
+    cellOf(audienceId)?.entries.find(
+      entry => entry.calendarLabel === subRow.label,
+    );
+  // 日付で変わらない区分（日付ラベルの無い金額）は小行をまたぐ
+  const spansSubRows = (audienceId: string) =>
+    hasSubRows &&
+    (cellOf(audienceId)?.entries.every(entry => entry.calendarLabel == null) ??
+      false);
+
+  return (
+    <>
+      {hasSubRows && (
+        <tr className="border-t border-gray-200">
+          <th
+            scope="rowgroup"
+            colSpan={audiences.length + 1}
+            className="sticky left-0 bg-white px-2.5 pt-2 pb-0.5 text-left font-normal md:px-3"
+          >
+            <RowLabel row={row} />
+          </th>
+        </tr>
+      )}
+      {subRows.map((subRow, subIndex) => (
+        <tr
+          key={subRow.key}
+          className={cn(!hasSubRows && "border-t border-gray-200")}
+        >
+          <th scope="row" className={cn(STICKY_CELL, "font-normal")}>
+            {hasSubRows ? (
+              <span className="block pl-2 text-gray-700 text-xs leading-snug">
+                {subRow.label}
+                {subRow.period && (
+                  <span className="block text-gray-500 text-[0.625rem]">
+                    {subRow.period}
+                  </span>
                 )}
-                {row.conditions.map(condition => (
-                  <p
-                    key={condition}
-                    className="mt-0.5 text-gray-600 text-[0.6875rem] leading-snug"
-                  >
-                    {condition}
-                  </p>
-                ))}
-                {row.notes.length > 0 && (
-                  <p className="mt-0.5 text-gray-500 text-[0.6875rem] leading-snug">
-                    {row.notes.join(" / ")}
-                  </p>
-                )}
-              </TableCell>
-              {/* 全区分で同額なら1つのセルに結合する（回数券は大人・子供同額） */}
-              {row.spansAllAudiences ? (
-                <TableCell
-                  className="px-4 py-3 text-center"
-                  style={{ gridColumn: `span ${table.audiences.length}` }}
-                >
-                  <div className="flex justify-center">
-                    <PriceCellBody
-                      cell={row.cells.get(table.audiences[0].id)}
-                      references={references}
-                    />
-                  </div>
-                </TableCell>
-              ) : (
-                table.audiences.map(audience => (
-                  <TableCell
+              </span>
+            ) : (
+              <RowLabel row={row} />
+            )}
+          </th>
+          {row.spansAllAudiences ? (
+            <td
+              colSpan={audiences.length}
+              className={cn(PRICE_CELL, "text-center")}
+            >
+              <PriceValue entry={entryFor(audiences[0].id, subRow)} />
+            </td>
+          ) : (
+            audiences.map(audience => {
+              if (spansSubRows(audience.id)) {
+                if (subIndex > 0) return null;
+                return (
+                  <td
                     key={audience.id}
-                    className="px-4 py-3 text-right align-top"
+                    rowSpan={subRows.length}
+                    className={PRICE_CELL}
                   >
-                    <PriceCellBody
-                      cell={row.cells.get(audience.id)}
-                      references={references}
-                    />
-                  </TableCell>
-                ))
-              )}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+                    <PriceValue entry={cellOf(audience.id)?.entries[0]} />
+                  </td>
+                );
+              }
+              return (
+                <td key={audience.id} className={PRICE_CELL}>
+                  <PriceValue entry={entryFor(audience.id, subRow)} />
+                </td>
+              );
+            })
+          )}
+        </tr>
+      ))}
+    </>
+  );
+};
+
+const PriceGrid = ({ table }: { table: PriceTable }) => (
+  <Card className="w-full overflow-hidden py-0">
+    <CardContent className="p-0">
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="bg-gray-50">
+              <th
+                scope="col"
+                className="sticky left-0 z-10 bg-gray-50 px-2.5 py-2 text-left text-gray-600 text-xs font-semibold md:px-3"
+              >
+                券種
+              </th>
+              {table.audiences.map(audience => (
+                <th
+                  key={audience.id}
+                  scope="col"
+                  className="px-1.5 py-2 text-right align-bottom text-gray-700 text-xs font-semibold whitespace-nowrap md:px-3"
+                >
+                  {audience.label}
+                  {audience.ageLabel && (
+                    <span className="block text-gray-500 text-[0.625rem] font-normal">
+                      {audience.ageLabel}
+                    </span>
+                  )}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {table.rows.map(row => (
+              <TableRows key={row.key} row={row} audiences={table.audiences} />
+            ))}
+          </tbody>
+        </table>
+      </div>
     </CardContent>
   </Card>
 );
+
+/** 表の金額が拠っている出典（重複を除く） */
+const tableSourcesOf = (table: PriceTable) =>
+  [
+    ...new Set(
+      table.rows.flatMap(row =>
+        [...row.cells.values()].flatMap(cell =>
+          cell.entries.flatMap(entry => entry.sourceNumbers),
+        ),
+      ),
+    ),
+  ].sort((left, right) => left - right);
 
 export const LiftTicketPriceTable = ({ data }: { data: LiftTicketData }) => {
   const [mode, setMode] = useState<TableMode>("single");
@@ -173,10 +249,23 @@ export const LiftTicketPriceTable = ({ data }: { data: LiftTicketData }) => {
     ],
   ];
 
+  // 通常料金と条件付き料金を分ける。同じ表に並べると
+  // 「誰でもその値段で買える」と誤読される
   const sections = [
-    { key: "base", title: "基本料金", table: tables.base },
-    { key: "discount", title: "割引・条件付き料金", table: tables.discount },
+    { key: "base", title: "通常料金", table: tables.base },
+    { key: "discount", title: "条件付きの料金", table: tables.discount },
   ].filter(section => section.table.rows.length > 0);
+
+  const fees = data.fees.filter(fee => fee.amount != null);
+  const tags = new Set(
+    sections.flatMap(section =>
+      section.table.rows.flatMap(row =>
+        [...row.cells.values()].flatMap(cell =>
+          cell.entries.map(entry => entry.purchaseTag),
+        ),
+      ),
+    ),
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -203,19 +292,23 @@ export const LiftTicketPriceTable = ({ data }: { data: LiftTicketData }) => {
         </div>
       )}
 
-      {/* 基本料金と条件付き料金を分ける。同じ表に並べると
-          「誰でもその値段で買える」と誤読される */}
       {sections.map(section => (
         <div key={section.key} className="flex flex-col gap-2">
-          <p className="text-gray-900 text-sm font-semibold font-[var(--font-heading)]">
-            {section.title}
-          </p>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <p className="text-gray-900 text-sm font-semibold font-[var(--font-heading)]">
+              {section.title}
+            </p>
+            <SourceLinks
+              numbers={tableSourcesOf(section.table)}
+              references={tables.references}
+            />
+          </div>
           {section.key === "discount" && (
-            <p className="text-gray-500 text-xs leading-relaxed">
-              対象者・購入方法・期限の条件があります。行の下の注記を確認してください。
+            <p className="text-gray-500 text-xs">
+              会員・宿泊者・特定日などの条件があります。詳細は公式サイトで確認してください。
             </p>
           )}
-          <PriceGrid table={section.table} references={tables.references} />
+          <PriceGrid table={section.table} />
         </div>
       ))}
 
@@ -229,26 +322,23 @@ export const LiftTicketPriceTable = ({ data }: { data: LiftTicketData }) => {
         </Card>
       )}
 
-      {data.fees.length > 0 && (
-        <p className="text-gray-500 text-xs leading-relaxed">
-          別途:{" "}
-          {data.fees
-            .filter(fee => fee.amount != null)
+      <p className="text-gray-500 text-xs leading-relaxed">
+        単位: 円
+        {data.calculation_policy?.tax_included === true ? "（税込）" : ""}
+        {tags.has("Web") && (
+          <>
+            ・<span className="text-blue-700 font-bold">青字</span>は
+            Webで買った場合の料金（下の小さい数字は窓口）
+          </>
+        )}
+        {tags.has("前売") && !tags.has("Web") && "・青字は前売の料金"}
+        {fees.length > 0 &&
+          `・別途 ${fees
             .map(
               fee =>
-                `${fee.official_label_ja ?? fee.name_ja} ¥${(fee.amount ?? 0).toLocaleString("ja-JP")}`,
+                `${fee.official_label_ja ?? fee.name_ja} ${(fee.amount ?? 0).toLocaleString("ja-JP")}円`,
             )
-            .join(" / ")}
-        </p>
-      )}
-
-      <SourceList references={tables.references} />
-
-      <p className="text-gray-500 text-xs leading-relaxed">
-        {data.season.label_ja}
-        {data.calculation_policy?.tax_included === true
-          ? "・税込"
-          : "・税込表記は公式確認が必要"}
+            .join(" / ")}`}
       </p>
     </div>
   );

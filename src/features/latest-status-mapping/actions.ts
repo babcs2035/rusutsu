@@ -1,7 +1,10 @@
 "use server";
 
 import path from "node:path";
-import { readMappingCrawlLatestStatus } from "@/lib/crawlLatestCurrent";
+import {
+  readMappingCrawlLatestStatus,
+  readMappingStatusHistory,
+} from "@/lib/crawlLatestCurrent";
 import { requireAdmin } from "@/lib/requireAdmin";
 import {
   loadLatestStatusMappingWorkspace,
@@ -36,6 +39,7 @@ export const loadLatestStatusMapping = async (
     kind,
     geojsonNames,
     loadCanonicalLatestStatus,
+    readMappingStatusHistory,
   );
 };
 
@@ -47,5 +51,6 @@ export const saveLatestStatusMapping = async (
     TEMPORARY_ROOT,
     request,
     loadCanonicalLatestStatus,
+    readMappingStatusHistory,
   );
 };

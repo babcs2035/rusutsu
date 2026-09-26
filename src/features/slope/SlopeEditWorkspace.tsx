@@ -474,7 +474,11 @@ export function SlopeEditWorkspace({
         mapping.crawledNameByGeojsonName,
       );
       for (const [id, crawledName] of Object.entries(inherited)) {
-        mapping.assignGeometry(id, crawledName);
+        mapping.assignGeometry(
+          id,
+          crawledName,
+          mapping.crawledNamesByGeometryId.get(activeCourse.id),
+        );
       }
       setCoursesState(next);
     }

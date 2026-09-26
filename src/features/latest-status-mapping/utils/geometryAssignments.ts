@@ -1,4 +1,5 @@
 import type { LatestStatusMappingRow } from "../types";
+import { rowCrawledNames, withCrawledNames } from "./aliases";
 import type { NamedGeometry } from "./editedRows";
 import { assignGeojsonName } from "./rows";
 
@@ -67,14 +68,27 @@ export function applyGeometryAssignments(
     const currentIds = new Set(geometries.map(item => item.id));
     const currentNames = new Set(geometries.map(item => item.name.trim()));
     const prior = geometryAssignmentsFromRows(rows, geometries);
-    const assignedRows = geometries.map(item => ({
-      geometryId: item.id,
-      geojsonName: item.name.trim() || null,
-      crawledName: Object.hasOwn(assignments, item.id)
+    const assignedRows = geometries.map(item => {
+      const previous =
+        rows.find(row => row.geometryId === item.id) ??
+        rows.find(
+          row => !row.geometryId && row.geojsonName === item.name.trim(),
+        );
+      const primary = Object.hasOwn(assignments, item.id)
         ? assignments[item.id]
-        : prior[item.id],
-    }));
-    const used = new Set(assignedRows.map(row => row.crawledName));
+        : prior[item.id];
+      return withCrawledNames(
+        {
+          geometryId: item.id,
+          geojsonName: item.name.trim() || null,
+          crawledName: primary,
+        },
+        primary
+          ? [primary, ...(previous ? rowCrawledNames(previous) : [])]
+          : [],
+      );
+    });
+    const used = new Set(assignedRows.flatMap(rowCrawledNames));
     return [
       ...rows.filter(row =>
         row.geometryId

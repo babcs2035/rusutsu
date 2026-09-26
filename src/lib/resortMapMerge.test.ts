@@ -248,3 +248,179 @@ test("リフトは別名の明示対応を使う", () => {
   assert.equal(result.features[0]?.properties.status, "○");
   assert.deepEqual(result.issues, []);
 });
+
+test("公式の一括名に対応したA線・B線は旧データの各線の状態を使う", () => {
+  const result = mergeLiftFeatures({
+    geometryFeatures: [
+      line("第1トリプルA線", { entityId: "a" }),
+      line("第1トリプルB線", { entityId: "b" }),
+    ],
+    baseItems: [],
+    statusItems: [
+      { name: "第1トリプルパラレルA線", status: "○", note: "A線の情報" },
+      { name: "第1トリプルパラレルB線", status: "×", note: "B線の情報" },
+    ],
+    statusMapping: {
+      configured: true,
+      sourceFile: "wayback.json",
+      byGeojsonName: new Map(),
+      byGeometryId: new Map([
+        ["a", "第1トリプルパラレル"],
+        ["b", "第1トリプルパラレル"],
+      ]),
+    },
+    baseSourceLabel: "lift_before",
+    hasStatusSource: true,
+    validateBaseFields: false,
+  });
+  assert.deepEqual(
+    result.features.map(feature => feature.properties.status),
+    ["○", "×"],
+  );
+  assert.deepEqual(result.issues, []);
+});
+
+for (const scenario of [
+  {
+    label: "公式の地図記号が追加されても保存済み対応を使う",
+    geometry: "第1トリプルA線",
+    mapped: "第1トリプルパラレル",
+    items: [{ name: "M 第1トリプルパラレル", status: "○" }],
+    expected: "○",
+  },
+  {
+    label: "同名に異なる地図記号がある場合は推測しない",
+    geometry: "第1トリプルA線",
+    mapped: "第1トリプルパラレル",
+    items: [
+      { name: "M 第1トリプルパラレル", status: "○" },
+      { name: "N 第1トリプルパラレル", status: "×" },
+    ],
+    expected: undefined,
+  },
+  {
+    label: "旧対応のA線から現在の公式一括名を参照できる",
+    geometry: "第1トリプルA線",
+    mapped: "第1トリプルパラレルA線",
+    items: [{ name: "第1トリプルパラレル", status: "○" }],
+    expected: "○",
+  },
+  {
+    label: "全角英数字と空白の違いを吸収する",
+    geometry: "第１トリプル Ａ線",
+    mapped: "第１トリプルパラレル",
+    items: [{ name: "第1トリプルパラレルA線", status: "○" }],
+    expected: "○",
+  },
+  {
+    label: "一致した公式一括名を優先する",
+    geometry: "第1トリプルA線",
+    mapped: "第1トリプルパラレル",
+    items: [
+      { name: "第1トリプルパラレル", status: "×" },
+      { name: "第1トリプルパラレルA線", status: "○" },
+    ],
+    expected: "×",
+  },
+  {
+    label: "公式一括名の不明を旧A線の運行で埋めない",
+    geometry: "第1トリプルA線",
+    mapped: "第1トリプルパラレル",
+    items: [
+      { name: "第1トリプルパラレル", status: null },
+      { name: "第1トリプルパラレルA線", status: "○" },
+    ],
+    expected: null,
+  },
+  {
+    label: "線の指定なしではA線を推測しない",
+    geometry: "第1トリプル",
+    mapped: "第1トリプルパラレル",
+    items: [{ name: "第1トリプルパラレルA線", status: "○" }],
+    expected: undefined,
+  },
+  {
+    label: "A線が欠けてもB線の状態を使わない",
+    geometry: "第1トリプルA線",
+    mapped: "第1トリプルパラレル",
+    items: [{ name: "第1トリプルパラレルB線", status: "○" }],
+    expected: undefined,
+  },
+  {
+    label: "正規化後に複数の候補が残るときは推測しない",
+    geometry: "第1トリプルA線",
+    mapped: "第1トリプルパラレル",
+    items: [
+      { name: "第1トリプルパラレルA線", status: "○" },
+      { name: "第１トリプルパラレルＡ線", status: "×" },
+    ],
+    expected: undefined,
+  },
+  {
+    label: "明示的な未対応を自動で対応付けない",
+    geometry: "第1トリプルA線",
+    mapped: null,
+    items: [{ name: "第1トリプルA線", status: "○" }],
+    expected: undefined,
+  },
+]) {
+  test(scenario.label, () => {
+    const result = mergeLiftFeatures({
+      geometryFeatures: [line(scenario.geometry)],
+      baseItems: [],
+      statusItems: scenario.items,
+      statusMapping: {
+        configured: true,
+        sourceFile: "saved.json",
+        byGeojsonName: new Map([[scenario.geometry, scenario.mapped]]),
+      },
+      baseSourceLabel: "lift_before",
+      hasStatusSource: true,
+      validateBaseFields: false,
+    });
+    assert.equal(result.features[0]?.properties.status, scenario.expected);
+    assert.equal(
+      result.issues.length,
+      scenario.expected === undefined && scenario.mapped !== null ? 1 : 0,
+    );
+  });
+}
+
+for (const [label, merge] of [
+  ["コース", mergeCourseFeatures],
+  ["リフト", mergeLiftFeatures],
+] as const) {
+  test(`${label}の保存済み別名から現在の取得名を選び、複数一致は不明にする`, () => {
+    const options = {
+      geometryFeatures: [line("地図", { entityId: "id" })],
+      baseItems: [],
+      statusMapping: {
+        configured: true,
+        sourceFile: "old",
+        byGeojsonName: new Map<string, string | null>(),
+        byGeometryId: new Map([["id", "旧名"]]),
+        namesByGeometryId: new Map([["id", ["旧名", "新名"]]]),
+      },
+      baseSourceLabel: "before",
+      hasStatusSource: true,
+      validateBaseFields: false,
+    };
+    const matched = merge({
+      ...options,
+      statusItems: [{ name: "新名", status: "×" }],
+    });
+    assert.equal(matched.features[0].properties.status, "×");
+    assert.deepEqual(matched.issues, []);
+    const ambiguous = merge({
+      ...options,
+      statusItems: [
+        { name: "旧名", status: "○" },
+        { name: "新名", status: "×" },
+      ],
+    });
+    assert.equal(ambiguous.features[0].properties.status, undefined);
+    assert(
+      ambiguous.issues.some(issue => issue.message.includes("Multiple mapped")),
+    );
+  });
+}

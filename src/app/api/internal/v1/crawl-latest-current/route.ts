@@ -1,9 +1,12 @@
+import path from "node:path";
 import { z } from "zod";
+import { loadStatusHistory } from "@/lib/latestStatusFiles";
 import {
   findAvailableCrawlLatestStatusDirect,
   listAvailableCrawlLatestResortIdsDirect,
 } from "@/server/crawl-latest/availableStatus";
 import { readAvailableConditions } from "@/server/crawl-latest/conditions";
+import { listMappingStatusHistoryDirect } from "@/server/crawl-latest/current";
 import {
   internalApiError,
   internalApiJson,
@@ -25,6 +28,7 @@ const viewSchema = z.enum([
   "resortIds",
   "conditions",
   "mappingStatus",
+  "mappingHistory",
   "mappingResortIds",
 ]);
 
@@ -68,6 +72,17 @@ export async function GET(request: Request) {
     const resortId = resortIdSchema.safeParse(searchParams.get("resortId"));
     if (!resortId.success) {
       return internalApiError(400, "INVALID_QUERY", "resortId is required");
+    }
+    if (view.data === "mappingHistory") {
+      const [database, bundled] = await Promise.all([
+        listMappingStatusHistoryDirect(resortId.data, kind.data),
+        loadStatusHistory(
+          path.join(process.cwd(), "src/private/data/resorts-temporary"),
+          resortId.data,
+          kind.data,
+        ),
+      ]);
+      return internalApiJson({ history: [...database, ...bundled] });
     }
     if (view.data === "conditions") {
       return internalApiJson({

@@ -361,7 +361,24 @@ export const mergeCourseFeatures = ({
       } else {
         const crawledName = lookup.get(lookupKey);
         if (crawledName) {
-          status = statusLookup.get(normalizeCrawledName(crawledName)) ?? null;
+          const names = (lookup === statusMapping.byGeometryId
+            ? statusMapping.namesByGeometryId?.get(lookupKey)
+            : statusMapping.namesByGeojsonName?.get(lookupKey)) ?? [
+            crawledName,
+          ];
+          const matches = [
+            ...new Set(
+              names
+                .map(alias => statusLookup.get(normalizeCrawledName(alias)))
+                .filter(Boolean),
+            ),
+          ];
+          status = matches.length === 1 ? (matches[0] ?? null) : null;
+          if (matches.length > 1)
+            issues.push({
+              level: "warn",
+              message: `⚠️ Multiple mapped crawled names found: ${normName}`,
+            });
           if (!status) {
             issues.push({
               level: "warn",
@@ -421,6 +438,40 @@ export const mergeCourseFeatures = ({
   }
 
   return { features, issues };
+};
+
+/**
+ * 公式の一括名と旧データのA線/B線を、保存済み対応と地図の線名で照合する。
+ * 地図記号（M 第1…）と全角英数字も吸収する。完全一致を優先し、
+ * 線の指定がない場合や候補が複数ある場合は推測しない。
+ */
+const findMappedLiftStatus = (
+  lookup: Map<string, Record<string, unknown>>,
+  crawledName: string,
+  geometryName: string,
+): Record<string, unknown> | null => {
+  const exact = lookup.get(crawledName);
+  if (exact) return exact;
+
+  const normalize = (name: string) =>
+    name
+      .normalize("NFKC")
+      .trim()
+      .replace(/^[A-Za-z]\s+(?=\S)/u, "")
+      .replace(/\s+/gu, "");
+  const target = normalize(crawledName);
+  const targetLine = /([A-Z]線)$/u.exec(target)?.[1];
+  const geometryLine = /([A-Z]線)$/u.exec(normalize(geometryName))?.[1];
+  const compatibleName = targetLine
+    ? target.slice(0, -targetLine.length)
+    : geometryLine
+      ? `${target}${geometryLine}`
+      : null;
+  const candidates = [...lookup].filter(([name]) => {
+    const normalized = normalize(name);
+    return normalized === target || normalized === compatibleName;
+  });
+  return candidates.length === 1 ? candidates[0][1] : null;
 };
 
 export const mergeLiftFeatures = ({
@@ -496,7 +547,33 @@ export const mergeLiftFeatures = ({
       } else {
         const crawledName = lookup.get(lookupKey);
         if (crawledName) {
-          status = statusLookup.get(crawledName) ?? null;
+          const names = (lookup === statusMapping.byGeometryId
+            ? statusMapping.namesByGeometryId?.get(lookupKey)
+            : statusMapping.namesByGeojsonName?.get(lookupKey)) ?? [
+            crawledName,
+          ];
+          const exactMatches = [
+            ...new Set(
+              names.map(alias => statusLookup.get(alias)).filter(Boolean),
+            ),
+          ];
+          const matches = exactMatches.length
+            ? exactMatches
+            : [
+                ...new Set(
+                  names
+                    .map(alias =>
+                      findMappedLiftStatus(statusLookup, alias, name),
+                    )
+                    .filter(Boolean),
+                ),
+              ];
+          status = matches.length === 1 ? (matches[0] ?? null) : null;
+          if (matches.length > 1)
+            issues.push({
+              level: "warn",
+              message: `⚠️ Multiple mapped crawled names found: ${name}`,
+            });
           if (!status) {
             issues.push({
               level: "warn",

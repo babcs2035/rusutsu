@@ -185,6 +185,56 @@ function checkFile(file) {
         );
       }
     }
+    // 別の券に追加（チャージ）して使う券は add_on_to_product_ids で追加先を指す。
+    // 自由文だけだと、画面が「追加先の券＋追加券」の組み合わせを計算できない
+    const addOnTo = p.add_on_to_product_ids ?? [];
+    if (/トップアップ|top.?up|追加\d+時間/i.test(productLabel) && addOnTo.length === 0) {
+      reporter.error(
+        `/products/${i}/add_on_to_product_ids`,
+        `公式名称「${p.official_label_ja ?? p.name_ja}」が別の券への追加を示していますが、追加先の券が add_on_to_product_ids に書かれていません（書かないと「追加先の券＋追加券」の組み合わせが計算されません）`,
+      );
+    }
+    const productById = new Map((data.products ?? []).map((other) => [other.id, other]));
+    for (const [j, baseId] of addOnTo.entries()) {
+      const base = productById.get(baseId);
+      const path = `/products/${i}/add_on_to_product_ids/${j}`;
+      if (!base || baseId === p.id) {
+        reporter.error(path, `追加先の券「${baseId}」が products にありません（自分自身も指せません）`);
+        continue;
+      }
+      if ((base.add_on_to_product_ids ?? []).length > 0) {
+        reporter.error(path, `追加先の券「${baseId}」自体が追加券です。単独で買える券を指してください`);
+      }
+      if (base.validity?.mode !== p.validity?.mode) {
+        reporter.error(
+          path,
+          `追加券の validity.mode「${p.validity?.mode}」が追加先の券「${baseId}」の「${base.validity?.mode}」と違います（時間を足す券なら両方 hours_pool）`,
+        );
+      }
+    }
+    if (addOnTo.length > 0) {
+      for (const [j, offer] of (data.offers ?? []).entries()) {
+        if (offer.product_id !== p.id) continue;
+        if ((offer.discount_reasons ?? []).includes("prior_purchase")) continue;
+        reporter.error(
+          `/offers/${j}/discount_reasons`,
+          `追加券「${p.name_ja}」の offer に prior_purchase がありません。追加先の券を持つ人しか買えないので、prior_purchase と target_qualification を付けてください（無いと単独の代表料金に選ばれます）`,
+        );
+      }
+    }
+  }
+
+  // ナイター営業があるのに、1日券がナイターを含むか決まっていない。
+  // null のままだと画面は「1日券＋ナイター券」で計算するので、利用者に尋ねる
+  const hasNight = (data.operating_hours ?? []).some((h) => h.hours_type === "night");
+  if (hasNight) {
+    for (const [i, p] of (data.products ?? []).entries()) {
+      if (p.validity?.mode !== "calendar_day" || p.covers_hours_types != null) continue;
+      reporter.warn(
+        `/products/${i}/covers_hours_types`,
+        `「${p.name_ja}」でナイターも滑れるかが未設定です。資料で確定できなければ利用者に尋ね、回答を covers_hours_types と notes_ja（管理者の確認・日付）に記録してください`,
+      );
+    }
   }
 
   // calculation_policy の通貨
@@ -1165,7 +1215,13 @@ function checkOperatingHours(reporter, data, taxonomy) {
       continue;
     }
     if (entry.start_time == null || entry.end_time == null) {
-      reporter.error(
+      // hours_type: "unknown" は「営業していそうだが時間が確定できない」の宣言なので、
+      // 時刻が無いこと自体は正しい記録。滑走時間を算出できない旨だけ警告する
+      const report =
+        entry.hours_type === "unknown"
+          ? reporter.warn.bind(reporter)
+          : reporter.error.bind(reporter);
+      report(
         `${path}`,
         `start_time / end_time がありません。この日に何時から何時まで滑れるかが不明だと、1日券の滑走時間を算出できません（資料に記載が無い場合はその旨を unresolved_questions へ）`,
       );

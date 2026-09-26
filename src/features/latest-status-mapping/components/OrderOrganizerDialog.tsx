@@ -19,6 +19,7 @@ import type {
   ApplyGeojsonOrderResult,
   LatestStatusMappingKind,
 } from "../types";
+import { rowCrawledNames } from "../utils/aliases";
 import { buildGeojsonOrderByCrawledItems } from "../utils/rows";
 
 export type OrganizerItem = {
@@ -96,10 +97,8 @@ export function OrderOrganizerDialog({
     const result = new Map<string, string[]>();
     for (const row of rows) {
       if (!row.crawledName || !row.geojsonName) continue;
-      result.set(row.crawledName, [
-        ...(result.get(row.crawledName) ?? []),
-        row.geojsonName,
-      ]);
+      for (const name of rowCrawledNames(row))
+        result.set(name, [...(result.get(name) ?? []), row.geojsonName]);
     }
     return result;
   }, [rows]);

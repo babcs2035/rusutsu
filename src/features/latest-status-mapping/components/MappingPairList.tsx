@@ -16,6 +16,7 @@ import type { SortableList } from "@/shared/hooks/useSortableList";
 import type { LatestStatusMappingState } from "../hooks/useLatestStatusMapping";
 
 const NO_CRAWLED_NAME = "__none__";
+const ADD_NAME = "__add__";
 
 export type MappingPairItem = {
   id: string;
@@ -99,6 +100,39 @@ export function MappingPairList<T extends MappingPairItem>({
         </span>
       </div>
 
+      {!!mapping.workspace?.patterns?.length && (
+        <div className="space-y-1 rounded border bg-slate-50 p-2">
+          <label htmlFor="mapping-pattern" className="text-xs font-semibold">
+            取得パターン
+          </label>
+          <select
+            id="mapping-pattern"
+            className="h-9 w-full rounded border bg-white px-2 text-xs"
+            value={
+              mapping.workspace.patterns.find(
+                pattern => pattern.fileName === mapping.workspace?.latestFile,
+              )?.id ?? mapping.workspace.patterns[0].id
+            }
+            onChange={event => mapping.selectPattern(event.target.value)}
+          >
+            {mapping.workspace.patterns.map((pattern, index) => (
+              <option key={pattern.id} value={pattern.id}>
+                パターン{index + 1} · {pattern.items.length}件 ·{" "}
+                {pattern.archiveTimestamp
+                  ? `Wayback ${pattern.archiveTimestamp.slice(0, 8)}`
+                  : (pattern.time ?? "日時不明")}
+              </option>
+            ))}
+          </select>
+          <p className="text-[11px] text-slate-600">
+            名前の一覧が同じ取得結果は1つにまとめています。パターンを切り替えて名前を追加できます。登録済みの名前は残ります。
+          </p>
+          <p className="text-[11px] text-slate-600">
+            名称対応用の資料です。営業状況が保留された取得結果も含みます。
+          </p>
+        </div>
+      )}
+
       {mapping.duplicateNames.length > 0 && (
         <p
           role="alert"
@@ -126,6 +160,9 @@ export function MappingPairList<T extends MappingPairItem>({
           const crawledName = mapping.crawledNameByGeometryId.has(item.id)
             ? mapping.crawledNameByGeometryId.get(item.id)
             : mapping.crawledNameByGeojsonName.get(item.name.trim());
+          const registeredNames =
+            mapping.crawledNamesByGeometryId.get(item.id) ??
+            (crawledName ? [crawledName] : []);
           const options = [
             ...new Set([
               ...crawledItems.map(crawled => crawled.name),
@@ -165,8 +202,9 @@ export function MappingPairList<T extends MappingPairItem>({
 
                 {hasCrawler ? (
                   <Select
-                    value={crawledName ?? NO_CRAWLED_NAME}
+                    value={ADD_NAME}
                     onValueChange={value =>
+                      value !== ADD_NAME &&
                       assignItem(
                         item,
                         value === NO_CRAWLED_NAME ? null : (value ?? null),
@@ -180,20 +218,44 @@ export function MappingPairList<T extends MappingPairItem>({
                       )}
                       title={crawledName ?? "未対応"}
                     >
-                      <SelectValue>{crawledName ?? "未対応"}</SelectValue>
+                      <SelectValue>取得名を追加…</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={NO_CRAWLED_NAME}>未対応</SelectItem>
-                      {options.map(name => (
-                        <SelectItem key={name} value={name}>
-                          {name}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value={ADD_NAME}>取得名を追加…</SelectItem>
+                      <SelectItem value={NO_CRAWLED_NAME}>
+                        すべて解除
+                      </SelectItem>
+                      {options
+                        .filter(name => !registeredNames.includes(name))
+                        .map(name => (
+                          <SelectItem key={name} value={name}>
+                            {name}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 ) : (
                   <span className="truncate text-[11px] text-gray-400">—</span>
                 )}
+              </div>
+
+              <div className="mt-1 flex flex-wrap justify-end gap-1">
+                {registeredNames.map(name => (
+                  <span
+                    key={name}
+                    className="inline-flex items-center gap-1 rounded bg-green-50 px-1.5 py-0.5 text-[11px] text-green-900"
+                  >
+                    {name}
+                    <button
+                      type="button"
+                      className="px-1 hover:bg-green-100"
+                      aria-label={`${item.name}の対応名「${name}」を解除`}
+                      onClick={() => mapping.removeGeometryName(item.id, name)}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
               </div>
 
               {crawledName && (
@@ -273,7 +335,7 @@ export function MappingPairList<T extends MappingPairItem>({
           <Button
             size="xs"
             variant="outline"
-            title="名前の一致から対応付けをやり直します"
+            title="選択中のパターンから対応名を追加します"
             onClick={mapping.autoAssign}
           >
             <Wand2 className="size-3" />

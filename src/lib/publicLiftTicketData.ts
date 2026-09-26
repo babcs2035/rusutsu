@@ -100,6 +100,7 @@ export const publicLiftTicketDataSchema = z.object({
         .optional(),
       area_ids: strings,
       covers_hours_types: z.array(text).nullable().optional(),
+      add_on_to_product_ids: strings,
       included_items: z
         .array(
           z.object({
@@ -168,7 +169,43 @@ export const publicLiftTicketDataSchema = z.object({
       ...notes,
     }),
   ),
-  party_rules: z.array(z.object({ ...named, description_ja: optionalText })),
+  // components が無いと親子パック等のセット料金を計算できない
+  party_rules: z.array(
+    z.object({
+      ...named,
+      description_ja: optionalText,
+      calendar_ids: strings,
+      channel_ids: strings,
+      target_genders: target,
+      target_qualification: target,
+      components: z
+        .array(
+          z.object({
+            role_ja: text,
+            audience_ids: strings,
+            product_ids: strings,
+            min_count: number,
+            max_count: number,
+            per_qualifying_count: number,
+            price_effect: z
+              .object({
+                type: text,
+                amount: number,
+                percent: number,
+                ...notes,
+              })
+              .nullable()
+              .optional(),
+            ...notes,
+          }),
+        )
+        .optional(),
+      sales_period: period,
+      use_period: period,
+      source_refs: strings,
+      ...notes,
+    }),
+  ),
   fees: z.array(
     z.object({
       ...named,

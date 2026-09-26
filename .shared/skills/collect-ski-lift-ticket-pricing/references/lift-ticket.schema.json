@@ -969,6 +969,13 @@
         "source_refs": {
           "$ref": "#/$defs/sourceRefs"
         },
+        "add_on_to_product_ids": {
+          "description": "★**この券が単独では買えず、別の券に追加（チャージ）して使う券なら、追加先の券の product id を列挙する。**ルスツの「トップアップ5時間」は「25時間券」を購入したICカードにだけチャージできるので `[\"prod-25hour\"]`。\n**空（または省略）なら単独で買える券。**画面の計算は、追加先の券と組み合わせた「25時間券＋トップアップ5時間×N」を候補にする（この項目が無いと、組み合わせたほうが安くても候補に出ない）。\n追加先の券と同じ `validity.mode` にする（時間を足す券なら両方 `hours_pool`）。offer には従来どおり `discount_reasons: [\"prior_purchase\"]` と追加先の券を持っている人に限る `target_qualification` を付ける（単独の代表料金に選ばれないため）。",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
         "covers_hours_types": {
           "description": "この券がどの営業区分の券か。**1日券・複数日券・時間帯固定券（fixed_time_window）にのみ設定する**。1日券・複数日券では「その1券でどの区分まで滑れるか」（複数可。券自体に時間が書かれていないため validity から導出できない）、fixed_time_window では「この券自体がどの区分の時間帯か」（1つだけ。例: ナイター券なら [\"night\"]）を表す。回数券・ポイント券・初回利用からN時間券は営業区分という概念が無いので設定しない。1日券・複数日券は資料に記載が無ければ null（推測しない）。fixed_time_window は必須。",
           "anyOf": [

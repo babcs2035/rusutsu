@@ -228,7 +228,7 @@ export const FilterPanel = ({
             <AlertTitle className="text-blue-900 font-bold text-sm">
               日程・人数からリフト券代を比較
             </AlertTitle>
-            <AlertDescription>
+            <AlertDescription className="mt-2">
               <TicketPartyEditor
                 value={filters.liftTicket ?? DEFAULT_LIFT_TICKET_SEARCH_INPUT}
                 onChange={liftTicket =>

@@ -8,6 +8,8 @@ export type ApplyGeojsonOrderResult = {
 export type LatestStatusMappingRow = {
   geometryId?: string;
   crawledName: string | null;
+  /** 過去の取得パターンを含む、同じ線の取得名。先頭は従来形式の代表名。 */
+  crawledNames?: string[];
   geojsonName: string | null;
 };
 
@@ -30,7 +32,18 @@ export type LatestStatusMappingItem = {
   time: string | null;
 };
 
+export type LatestStatusMappingPattern = {
+  id: string;
+  fileName: string;
+  time: string | null;
+  archiveTimestamp?: string | null;
+  sourceUrls: string[];
+  items: LatestStatusMappingItem[];
+  captureCount: number;
+};
+
 export type LatestStatusMappingWorkspace = {
+  patterns?: LatestStatusMappingPattern[];
   kind: LatestStatusMappingKind;
   latestFile: string | null;
   latestTime: string | null;
@@ -70,5 +83,7 @@ export type ResolvedLatestStatusMapping = {
   configured: boolean;
   sourceFile: string | null;
   byGeojsonName: Map<string, string | null>;
+  namesByGeojsonName?: Map<string, string[]>;
+  namesByGeometryId?: Map<string, string[]>;
   byGeometryId?: Map<string, string | null>;
 };

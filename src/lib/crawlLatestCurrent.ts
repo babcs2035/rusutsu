@@ -128,3 +128,96 @@ export async function readCurrentResortConditions(
     return readBundledResortConditions(resortId);
   }
 }
+
+/** 名称対応用の全パターン。公開の現在値とは独立した読み取り。 */
+export async function readMappingStatusHistory(
+  resortId: string,
+  kind: LatestStatusKind,
+): Promise<LatestSuccessfulStatus[]> {
+  const { loadStatusHistory } = await import("./latestStatusFiles");
+  const { default: path } = await import("node:path");
+  const bundled = await loadStatusHistory(
+    path.join(process.cwd(), "src/private/data/resorts-temporary"),
+    resortId,
+    kind,
+  );
+  if (!usesRemoteDataApi()) {
+    const { listMappingStatusHistoryDirect } = await import(
+      "@/server/crawl-latest/current"
+    );
+    return [
+      ...(await listMappingStatusHistoryDirect(resortId, kind)),
+      ...bundled,
+    ];
+  }
+  try {
+    const response = await fetchInternalDataApi(
+      `/api/internal/v1/crawl-latest-current?${new URLSearchParams({ resortId, kind, view: "mappingHistory" })}`,
+    );
+    return [
+      ...(await parseObjectEnvelope<LatestSuccessfulStatus[]>(
+        response,
+        "history",
+      )),
+      ...bundled,
+    ];
+  } catch (error) {
+    if (
+      !(error instanceof InternalDataApiError) ||
+      ![400, 404].includes(error.status ?? 0)
+    )
+      throw error;
+    // APIの先行デプロイがなくても既存の診断APIで履歴を読める。
+    const response = await fetchInternalDataApi(
+      `/api/internal/v1/crawl-latest-runs?${new URLSearchParams({ resortId, limit: "100" })}`,
+      {},
+      { scope: "diagnostics-read" },
+    );
+    const runs = await parseObjectEnvelope<Array<{ id: string }>>(
+      response,
+      "runs",
+    );
+    const captures: LatestSuccessfulStatus[] = [];
+    // 接続数を抑えながら履歴を取得する。
+    for (let offset = 0; offset < runs.length; offset += 5) {
+      const batch = await Promise.all(
+        runs.slice(offset, offset + 5).map(async ({ id }) => {
+          const detail = await fetchInternalDataApi(
+            `/api/internal/v1/crawl-latest-runs?${new URLSearchParams({ runId: id, include: "categoryData" })}`,
+            {},
+            { scope: "diagnostics-read" },
+          );
+          const run = await parseObjectEnvelope<{
+            observedAt: string;
+            archiveTimestamp: string | null;
+            categories: Array<{
+              id: string;
+              kind: string;
+              state: string;
+              data: unknown;
+              sourceUrls: string[];
+            }>;
+          }>(detail, "run");
+          const category = run.categories.find(
+            item => item.kind === (kind === "courses" ? "COURSES" : "LIFTS"),
+          );
+          if (category?.state !== "SUCCESS" || !Array.isArray(category.data))
+            return null;
+          return {
+            fileName: `history-${category.id}.json`,
+            time: run.observedAt,
+            archiveTimestamp: run.archiveTimestamp,
+            items: category.data as Record<string, unknown>[],
+            sourceUrls: category.sourceUrls,
+          };
+        }),
+      );
+      captures.push(
+        ...batch.filter(
+          (item): item is NonNullable<typeof item> => item !== null,
+        ),
+      );
+    }
+    return [...captures, ...bundled];
+  }
+}

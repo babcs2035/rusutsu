@@ -31,8 +31,11 @@
  *   --hours で「何時間滑りたいか」を渡すと、要件を満たす券の中から
  *   representative（代表）を1件選び、それ以外を alternatives に回す。
  *   代表に選ばないのは「滑る自由度を狭める制約」がある券:
- *     時間帯固定（平日ゴゴイチ券のような午後限定）/ 対象者限定 / 事前購入必須。
+ *     時間帯固定（平日ゴゴイチ券のような午後限定）/ 対象者限定 /
+ *     購入期限に間に合わない事前購入券。
  *   付帯品（食事券・温泉）は自由度を狭めないので、安ければ代表になる。
+ *   早割・WEB前売も、照会日 (--today) の時点で販売期間内かつ期限に間に合うなら
+ *   誰でもその値段で買えるので、安ければ代表になる。
  *   代表より安い券は cheaper_alternatives として理由付きで並ぶ
  *   （UIで「もっと安いものがあります」と出すため）。
  *
@@ -270,10 +273,10 @@ function offerMatchesCalendar(offer) {
     calendarIds.some((id) => calendarMatches(calendarById.get(id)));
 }
 
-function periodContains(period) {
+function periodContains(period, date = opts.date) {
   if (!period) return true;
-  if (typeof period.start === "string" && opts.date < period.start) return false;
-  if (typeof period.end === "string" && opts.date > period.end) return false;
+  if (typeof period.start === "string" && date < period.start) return false;
+  if (typeof period.end === "string" && date > period.end) return false;
   return true;
 }
 
@@ -627,11 +630,15 @@ function constraintsOf(offer, product, skiable) {
       description_ja: targetLabels(offer).join(", "),
     });
   }
-  // 前日以前に買う必要がある券は、今日決める人の代表にはしない。
-  // ただし「あと何日あるからまだ買える」なら候補に出せるので判定結果も持たせる
+  // 前日以前に買う必要がある券は、もう間に合わないなら代表にしない。
+  // 照会日 (today) の時点で「あと何日あるからまだ買える」なら誰でもその値段で
+  // 買えるので、制約にせず代表候補に残す（安ければ早割が代表になる）
   const deadline = offer.purchase_deadline ?? {};
-  if (deadline.same_day_allowed === false) {
-    const purchasability = purchasabilityOf(offer);
+  const purchasability = purchasabilityOf(offer);
+  if (
+    deadline.same_day_allowed === false &&
+    purchasability?.purchasable !== true
+  ) {
     list.push({
       type: "advance_purchase_required",
       description_ja: deadline.official_text_ja ?? "事前購入が必要",
@@ -685,9 +692,13 @@ for (const offer of data.offers ?? []) {
     if (scope === "shared" && !shared) continue;
   }
   if (opts.channel && (offer.channel_ids ?? []).length > 0 && !offer.channel_ids.includes(opts.channel)) continue;
-  // 販売期間が終了した割引（早割など）は候補に出さない。
-  // 「数日前に調べる」使い方では既に買えないため
-  if (!periodContains(offer.sales_period)) continue;
+  // ★販売期間は利用日ではなく照会日 (today) と比べる。「11/30まで販売の早割」は
+  // 1月に滑る分でも11/30を過ぎたら買えない。販売期間外・販売期限切れの券は一切出さない
+  if (!periodContains(offer.sales_period, today)) continue;
+  if (
+    hasTextValue(offer.purchase_deadline?.deadline_date) &&
+    today > offer.purchase_deadline.deadline_date
+  ) continue;
   if (!offerMatchesCalendar(offer)) continue;
   let matchedCalendar = null;
   if ((offer.calendar_ids ?? []).length > 0) {

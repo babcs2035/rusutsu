@@ -985,8 +985,9 @@ console.log("== lookup-price: 日付から料金が機械的に引けること =
 {
   const LOOKUP = path.join(SKILL_DIR, "scripts", "lookup-price.mjs");
   const FULL = path.join(TESTS_DIR, "fixtures", "valid", "yukigaoka-2025-2026.json");
+  // 照会日を固定する（省略するとシステム日付になり、販売期間の判定が日によって変わる）
   const lookup = (args) => {
-    const r = run(LOOKUP, [FULL, ...args, "--json"]);
+    const r = run(LOOKUP, [FULL, ...args, "--today", "2025-11-15", "--json"]);
     if (r.status !== 0) return { error: `${r.stdout}${r.stderr}` };
     return JSON.parse(r.stdout);
   };
@@ -1306,7 +1307,8 @@ console.log("== 分類フィールドの廃止（product_type / offer_type） ==
     // 券の合計 ＋ 返ってこない負担 ＝ 実質負担（数字は1つ）
     const query = (file) => {
       const r = run(path.join(SKILL_DIR, "scripts", "lookup-price.mjs"), [
-        file, "--date", "2026-01-14", "--today", "2026-01-01",
+        // 利用日当日の照会にして、前日までのWEB前売を候補から外す（窓口の1日券で合計を見る）
+        file, "--date", "2026-01-14", "--today", "2026-01-14",
         "--party", "adult:2", "--day-pass", "--json",
       ]);
       return JSON.parse(r.stdout).party_calculation;
@@ -1631,6 +1633,52 @@ console.log("== 分類フィールドの廃止（product_type / offer_type） ==
     sameDay?.purchasability?.purchasable === true,
     JSON.stringify(sameDay?.purchasability),
   );
+
+  // 今買える早割・前売は誰でもその値段で買えるので、安ければ代表になる
+  const representativeOn = (today) => {
+    const r = run(path.join(SKILL_DIR, "scripts", "lookup-price.mjs"), [
+      YUKI, "--date", "2026-01-08", "--today", today,
+      "--audience", "adult", "--day-pass", "--json",
+    ]);
+    return JSON.parse(r.stdout).selection?.representative?.id;
+  };
+  assert(
+    "期限に間に合う前売りは、通常料金より安ければ代表になる",
+    representativeOn("2025-12-25") === "offer-adult-day-web-advance",
+    representativeOn("2025-12-25"),
+  );
+  assert(
+    "期限に間に合わない前売りは代表にならず、通常料金が代表になる",
+    representativeOn("2026-01-08") === "offer-adult-day-standard-weekday",
+    representativeOn("2026-01-08"),
+  );
+
+  // ★販売期間は利用日ではなく照会日と比べる（12/20まで販売の早割で1/8に滑る）
+  const salesDir = fs.mkdtempSync(path.join(os.tmpdir(), "lift-ticket-sales-"));
+  try {
+    const early = JSON.parse(fs.readFileSync(YUKI, "utf8"));
+    early.offers.find((o) => o.id === "offer-adult-day-web-advance").sales_period.end =
+      "2025-12-20";
+    const earlyFile = path.join(salesDir, "early-bird.json");
+    fs.writeFileSync(earlyFile, JSON.stringify(early));
+    const offerIdsOn = (today) => {
+      const r = run(path.join(SKILL_DIR, "scripts", "lookup-price.mjs"), [
+        earlyFile, "--date", "2026-01-08", "--today", today,
+        "--audience", "adult", "--day-pass", "--json",
+      ]);
+      return JSON.parse(r.stdout).offers.map((o) => o.id);
+    };
+    assert(
+      "販売期間中に照会すれば、利用日が販売期間の後でも早割が出る",
+      offerIdsOn("2025-12-15").includes("offer-adult-day-web-advance"),
+    );
+    assert(
+      "販売期間を過ぎて照会すると、早割は一切出ない",
+      !offerIdsOn("2025-12-21").includes("offer-adult-day-web-advance"),
+    );
+  } finally {
+    fs.rmSync(salesDir, { recursive: true, force: true });
+  }
 
   const pdDir = fs.mkdtempSync(path.join(os.tmpdir(), "lift-ticket-pd-"));
   try {

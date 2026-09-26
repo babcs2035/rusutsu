@@ -22,6 +22,8 @@ const input = (
   category: TicketPartyCategory = "adult",
 ): LiftTicketSearchInput => ({
   visitDate: date,
+  // 前日までの宿泊者券が「もう買えない」と判定されないよう、照会日をシーズン前に固定する
+  today: "2025-11-01",
   usePreference: "full_day",
   party: [
     {
@@ -108,7 +110,7 @@ test("20歳でも対象期間外は通常料金になり、資格割引は条件
   );
   assert.equal(hotelOffer?.unitAmount, 5500);
   assert.match(hotelOffer?.conditions.join(" ") ?? "", /苗場プリンスホテル/);
-  assert.match(hotelOffer?.conditions.join(" ") ?? "", /利用日前日まで/);
+  assert.match(hotelOffer?.conditions.join(" ") ?? "", /利用日の前日まで/);
 });
 
 test("年齢が20歳でなければ平日20才無料を適用しない", () => {
