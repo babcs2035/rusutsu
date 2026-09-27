@@ -12,7 +12,7 @@ import { buildLiftTicketPriceTables } from "./priceTable";
 
 const NAEBA = path.join(
   process.cwd(),
-  "src/private/data/lift-ticket/naeba/2025-2026.json",
+  "src/private/data/lift-ticket-test-fixtures/ui/naeba/2025-2026.json",
 );
 
 /**

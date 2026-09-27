@@ -252,9 +252,12 @@ function checkFile(file) {
   }
 
   // --- 年齢境界 ---
+  // 学校とのAND条件（4歳以上かつ小学生以下等）は年齢軸だけの区間ではない。
+  // 年齢だけの「4歳以上」としてシニアとの重複や年齢の隙間を判定しない。
   const aged = (data.audiences ?? [])
     .map((a, i) => ({ a, i }))
-    .filter(({ a }) => a.age_min != null || a.age_max != null);
+    .filter(({ a }) => (a.school_levels?.length ?? 0) === 0 &&
+      (a.age_min != null || a.age_max != null));
   for (let x = 0; x < aged.length; x++) {
     for (let y = x + 1; y < aged.length; y++) {
       const { a: A, i: ai } = aged[x];

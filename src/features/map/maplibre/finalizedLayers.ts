@@ -47,6 +47,7 @@ export const EMPTY_STYLE_STATE: FinalizedStyleState = {
 export type FinalizedStyleState = {
   courseColorMode: CourseColorMode;
   showOpenOnly: boolean;
+  showUngroomed?: boolean;
   selectedFeature: SelectedMapFeature | null;
   isFocusMode: boolean;
   tileVariant: MapTileVariant;
@@ -176,19 +177,6 @@ const isSelectedExpression = (
     ? ["==", ["get", "sourceId"], selected.id]
     : ["literal", false];
 
-/** 「営業中のみ」で沈ませる対象か */
-const isMutedExpression = (
-  state: FinalizedStyleState,
-  kind: "course" | "lift",
-): ExpressionSpecification =>
-  state.showOpenOnly
-    ? [
-        "all",
-        ["!=", ["get", "status"], "open"],
-        ["!", isSelectedExpression(state.selectedFeature, kind)],
-      ]
-    : ["literal", false];
-
 /** 何かを選択しているときの、それ以外の線 */
 const isDimmedExpression = (
   state: FinalizedStyleState,
@@ -203,8 +191,6 @@ export const getLineOpacity = (
   kind: "course" | "lift",
 ): DataDrivenPropertyValueSpecification<number> => [
   "case",
-  isMutedExpression(state, kind),
-  MUTED_LINE_OPACITY,
   isDimmedExpression(state, kind),
   0.4,
   kind === "lift" ? LINE_STATUS_OPACITY : 1,
@@ -244,25 +230,21 @@ export const getLineWidth = (
 ): DataDrivenPropertyValueSpecification<number> => {
   const stops = kind === "course" ? COURSE_WIDTH : LIFT_WIDTH;
   const focus = state.isFocusMode ? 0.3 : 0;
-  const base = state.showOpenOnly ? focus + 0.3 : focus;
+  const base = focus;
 
   return widthByZoomAndCase(stops, width => [
     "case",
     isSelectedExpression(state.selectedFeature, kind),
     width + focus + 1.6,
-    isMutedExpression(state, kind),
-    width * 0.6 + focus,
     width + base,
   ]);
 };
 
-/** 流れる破線の濃さ。状態ごとの濃さに、選択・営業中のみの効果を掛ける */
+/** 流れる破線の濃さ。選択中の沈み込みを反映する */
 export const getFlowOpacity = (
   state: FinalizedStyleState,
 ): DataDrivenPropertyValueSpecification<number> => [
   "case",
-  isMutedExpression(state, "lift"),
-  0,
   isDimmedExpression(state, "lift"),
   ["*", FLOW_STATUS_OPACITY, 0.4],
   FLOW_STATUS_OPACITY,
@@ -270,7 +252,7 @@ export const getFlowOpacity = (
 
 /**
  * 点滅中のリフトの濃さ。
- * 生の数値で上書きすると「営業中のみ」や選択中の沈み込みが消えてしまうので、
+ * 生の数値で上書きすると選択中の沈み込みが消えてしまうので、
  * 同じ case を通してから点滅の値を入れる。
  */
 export const getBlinkOpacity = (
@@ -278,8 +260,6 @@ export const getBlinkOpacity = (
   blink: number,
 ): DataDrivenPropertyValueSpecification<number> => [
   "case",
-  isMutedExpression(state, "lift"),
-  MUTED_LINE_OPACITY,
   isDimmedExpression(state, "lift"),
   0.4,
   blink,
@@ -300,9 +280,6 @@ export const getCasingOpacity = (
   kind: "course" | "lift",
 ): DataDrivenPropertyValueSpecification<number> => [
   "case",
-  // 沈ませる線は白ケーシングを外す。白い縁が残ると薄いのに目立つままになる
-  isMutedExpression(state, kind),
-  0,
   isDimmedExpression(state, kind),
   0.12,
   state.tileVariant === "photo" ? 0.74 : 0.56,
@@ -353,6 +330,7 @@ const getUngroomedMaskFilter = (
   state: FinalizedStyleState,
 ): FilterSpecification => [
   "all",
+  ["literal", state.showUngroomed !== false],
   ["==", ["get", "ungroomed"], true],
   ["!", isSelectedExpression(state.selectedFeature, "course")],
 ];
@@ -523,14 +501,7 @@ export const createFinalizedLayers = (
       "icon-ignore-placement": true,
     },
     paint: {
-      "icon-opacity": [
-        "case",
-        isMutedExpression(state, "course"),
-        0,
-        isDimmedExpression(state, "course"),
-        0.45,
-        1,
-      ],
+      "icon-opacity": ["case", isDimmedExpression(state, "course"), 0.45, 1],
     },
   },
 ];
@@ -600,8 +571,6 @@ export const applyFinalizedStyleState = (
 
   set(FINALIZED_LAYER.courseArrow, "icon-opacity", [
     "case",
-    isMutedExpression(state, "course"),
-    0,
     isDimmedExpression(state, "course"),
     0.45,
     1,

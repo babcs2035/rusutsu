@@ -1,4 +1,5 @@
 import type L from "leaflet";
+import type { MapDisplaySettings } from "@/features/map/utils/mapDisplaySettings";
 import type {
   FinalizedResortMapData,
   GeoCoordinate,
@@ -197,6 +198,8 @@ export type JapanResortMapProps = {
    */
   courseColorMode?: CourseColorMode;
   onCourseColorModeChange?: (mode: CourseColorMode) => void;
+  mapDisplaySettings?: MapDisplaySettings;
+  onMapDisplaySettingsChange?: (settings: MapDisplaySettings) => void;
   showOpenOnly?: boolean;
   onShowOpenOnlyChange?: (showOpenOnly: boolean) => void;
   detailViewportMode?: "finalized" | "resort";

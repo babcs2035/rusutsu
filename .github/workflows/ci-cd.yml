@@ -71,6 +71,9 @@ jobs:
       - name: Unit and contract tests
         run: node scripts/runTests.mjs
 
+      - name: Verify collected lift ticket data against official expectations
+        run: LIFT_TICKET_DATA_ROOT=src/private/data/lift-ticket node --import tsx --test src/features/lift-ticket/utils/uiContract.test.ts
+
       - name: Apply migrations to disposable CI database
         run: pnpm prisma migrate deploy
 

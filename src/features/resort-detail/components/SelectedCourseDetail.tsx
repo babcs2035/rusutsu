@@ -101,7 +101,7 @@ export const SelectedCourseDetail = ({
   });
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2 sm:gap-3">
       <FeatureHeadline
         difficulty={difficulty}
         items={[

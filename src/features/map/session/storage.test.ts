@@ -118,3 +118,37 @@ test("画面保存はsessionStorageのみを使い、別タブと下書きを変
     "rusutsu",
   );
 });
+
+test("地図設定の4状態・表示スイッチを保存し、旧形式の保存データも受け付ける", () => {
+  const old = {
+    version: 1,
+    viewport: null,
+    tileVariant: "photo",
+    courseColorMode: "slope",
+    showOpenOnly: false,
+  };
+  assert.ok(mapSessionSchema.safeParse(old).success);
+  const displaySettings = {
+    showCourseNames: false,
+    showLiftNames: true,
+    showUngroomed: false,
+    monochrome: false,
+    courseStatuses: {
+      open: true,
+      limited: false,
+      closed: false,
+      unknown: true,
+    },
+  };
+  assert.deepEqual(
+    mapSessionSchema.parse({ ...old, displaySettings }).displaySettings,
+    displaySettings,
+  );
+  assert.equal(
+    mapSessionSchema.safeParse({
+      ...old,
+      displaySettings: { ...displaySettings, monochrome: "false" },
+    }).success,
+    false,
+  );
+});

@@ -25,6 +25,7 @@ import type {
   MapTileVariant,
   SelectedMapFeature,
 } from "@/features/map/types";
+import { DEFAULT_MAP_DISPLAY_SETTINGS } from "@/features/map/utils/mapDisplaySettings";
 import { SkiResortDetailView } from "@/features/resort-detail/SkiResortDetailView";
 import { cn } from "@/lib/utils";
 import { AnimatedPanel } from "@/shared/components/AnimatedPanel";
@@ -238,6 +239,9 @@ export const HomeLayout = ({
   // 地図ごとではなくここで持つ
   const [compareCourseColorMode, setCompareCourseColorMode] =
     useState<CourseColorMode>("slope");
+  const [compareMapDisplaySettings, setCompareMapDisplaySettings] = useState(
+    DEFAULT_MAP_DISPLAY_SETTINGS,
+  );
   const [compareShowOpenOnly, setCompareShowOpenOnly] = useState(false);
   const [compareSlopeTileVariant, setCompareSlopeTileVariant] =
     useState<MapTileVariant>("photo");
@@ -470,6 +474,8 @@ export const HomeLayout = ({
                   onPaneChange={setCompareLeftPane}
                   courseColorMode={compareCourseColorMode}
                   onCourseColorModeChange={setCompareCourseColorMode}
+                  mapDisplaySettings={compareMapDisplaySettings}
+                  onMapDisplaySettingsChange={setCompareMapDisplaySettings}
                   showOpenOnly={compareShowOpenOnly}
                   onShowOpenOnlyChange={setCompareShowOpenOnly}
                   mapTileVariant={compareSlopeTileVariant}
@@ -484,6 +490,8 @@ export const HomeLayout = ({
                     mapResorts={initialResorts}
                     courseColorMode={compareCourseColorMode}
                     onCourseColorModeChange={setCompareCourseColorMode}
+                    mapDisplaySettings={compareMapDisplaySettings}
+                    onMapDisplaySettingsChange={setCompareMapDisplaySettings}
                     showOpenOnly={compareShowOpenOnly}
                     onShowOpenOnlyChange={setCompareShowOpenOnly}
                     mapTileVariant={compareSlopeTileVariant}

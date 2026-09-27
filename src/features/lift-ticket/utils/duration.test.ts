@@ -12,7 +12,7 @@ import {
 
 const REAL = path.join(
   process.cwd(),
-  "src/private/data/lift-ticket/megahira-onsen-megahira/2025-2026.json",
+  "src/private/data/lift-ticket-test-fixtures/ui/megahira-onsen-megahira/2025-2026.json",
 );
 const data = JSON.parse(fs.readFileSync(REAL, "utf8")) as LiftTicketData;
 

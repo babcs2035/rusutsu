@@ -2,6 +2,7 @@
 
 import type { ComponentType } from "react";
 import { useMemo } from "react";
+import type { MapDisplaySettings } from "@/features/map/utils/mapDisplaySettings";
 import type {
   FinalizedResortMapData,
   GeoCoordinate,
@@ -58,6 +59,8 @@ type Props = {
    */
   courseColorMode?: CourseColorMode;
   onCourseColorModeChange?: (mode: CourseColorMode) => void;
+  mapDisplaySettings?: MapDisplaySettings;
+  onMapDisplaySettingsChange?: (settings: MapDisplaySettings) => void;
   showOpenOnly?: boolean;
   onShowOpenOnlyChange?: (showOpenOnly: boolean) => void;
   mapTileVariant?: MapTileVariant;
@@ -96,6 +99,8 @@ export const ResortFinalizedMap = ({
   showToolbar = true,
   courseColorMode,
   onCourseColorModeChange,
+  mapDisplaySettings,
+  onMapDisplaySettingsChange,
   showOpenOnly,
   onShowOpenOnlyChange,
   mapTileVariant,
@@ -156,6 +161,8 @@ export const ResortFinalizedMap = ({
         showMapToolbar={showToolbar}
         courseColorMode={courseColorMode}
         onCourseColorModeChange={onCourseColorModeChange}
+        mapDisplaySettings={mapDisplaySettings}
+        onMapDisplaySettingsChange={onMapDisplaySettingsChange}
         showOpenOnly={showOpenOnly}
         onShowOpenOnlyChange={onShowOpenOnlyChange}
         mapTileVariant={mapTileVariant}

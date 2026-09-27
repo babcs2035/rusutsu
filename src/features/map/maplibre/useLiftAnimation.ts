@@ -31,14 +31,13 @@ export const useLiftAnimation = ({
   isReady: boolean;
   isInteracting: boolean;
   prefersReducedMotion: boolean;
-  /** 「営業中のみ」や選択中の沈み込みを点滅で打ち消さないために使う */
+  /** 選択中の沈み込みを点滅で打ち消さないために使う */
   styleState: FinalizedStyleState;
 }) => {
   useEffect(() => {
     if (!map || !isReady || isInteracting || prefersReducedMotion) return;
 
-    const hasStateFilter =
-      styleState.showOpenOnly || styleState.selectedFeature !== null;
+    const hasStateFilter = styleState.selectedFeature !== null;
 
     // MapLibre は line-dasharray を「前の柄と次の柄のクロスフェード」で補間する。
     // 既定の 300ms のままコマ送りすると、常に 2 つの柄が混ざった状態が描かれ、

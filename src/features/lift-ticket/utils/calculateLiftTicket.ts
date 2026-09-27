@@ -531,11 +531,28 @@ export const selectCheapestProductForDuration = (
       data.products.find(product => product.id === request.productId) ?? null
     );
   }
+  const operatingHours = operatingHoursOn(data, input.visitDate);
+  if (
+    request.kind === "hours" &&
+    operatingHours != null &&
+    request.hours > operatingHours
+  )
+    return null;
   // 付属物（温泉特典など）が付いていても普通のリフト券なので候補から外さない。
   // 外していたため「温泉特典付き9時間券」が7時間の要件で該当なしになっていた。
   // 共通券だけは別枠（画面の単独券／共通券の切り替えで扱う）
+  const hasUnrestrictedDayPass = data.products.some(
+    product =>
+      !isSharedLiftTicketProduct(product) &&
+      (product.area_ids?.length ?? 0) === 0 &&
+      product.validity?.days === 1 &&
+      hasUnconditionalStandardOffer(data, product),
+  );
   const candidates = data.products.filter(product => {
     if (isSharedLiftTicketProduct(product)) return false;
+    // 利用エリアを指定していない検索に、初心者エリア限定の安い券を出さない。
+    if (hasUnrestrictedDayPass && (product.area_ids?.length ?? 0) > 0)
+      return false;
     if (!hasUnconditionalStandardOffer(data, product)) return false;
     // ★時間帯が固定された券（ゴゴイチ券など）は朝から滑りたい人の代表にしない。
     // 明示的に券種を選んだ場合だけ使える
@@ -662,125 +679,108 @@ const SCHOOL_LEVELS_BY_CATEGORY: Record<TicketPartyCategory, string[]> = {
   other: [],
 };
 
-/**
- * 学校区分ごとの年齢（年齢が未入力のとき、年齢だけで決まる区分に当てるのに使う）。
- * 中学生は1年の春に12歳の人がいるが、ほとんどの期間は13〜15歳なのでそちらで判定する
- */
-const TYPICAL_AGES_BY_CATEGORY: Partial<
-  Record<TicketPartyCategory, [number, number]>
-> = {
-  elementary: [6, 12],
-  junior_high: [13, 15],
-  high_school: [16, 18],
+/** 学校区分を年齢へ推測変換しない。公式の学校区分と年齢条件を使う。 */
+const matchesAge = (audience: LiftTicketAudience, age: number) =>
+  (audience.age_min == null || age >= audience.age_min) &&
+  (audience.age_max == null || age <= audience.age_max);
+
+const hasAgeCondition = (audience: LiftTicketAudience) =>
+  audience.age_min != null || audience.age_max != null;
+
+const matchesSchool = (audience: LiftTicketAudience, group: TicketPartyGroup) =>
+  SCHOOL_LEVELS_BY_CATEGORY[group.category].some(level =>
+    audience.school_levels?.includes(level),
+  );
+
+const audienceDirectlyMatchesGroup = (
+  audience: LiftTicketAudience,
+  group: TicketPartyGroup,
+): boolean => {
+  if (audience.is_disability_qualified) return false;
+  if ((audience.school_levels?.length ?? 0) > 0) {
+    // 年齢だけで他の学年の料金を適用しない。年齢が公式の追加条件なら両方必要。
+    return (
+      matchesSchool(audience, group) &&
+      (group.age == null || matchesAge(audience, group.age))
+    );
+  }
+  return (
+    group.age != null &&
+    hasAgeCondition(audience) &&
+    matchesAge(audience, group.age)
+  );
 };
 
-/**
- * その人物区分の料金をこの利用者が買えるか。
- *
- * ★**どの区分にも当てはまらない人は、基準区分（is_default）の料金を買う。**
- * 基準区分の名前はスキー場ごとに違う（「大人」「おとな」「一般」…）ので、
- * 名前では探さない。名前で探していたため、基準区分が「一般」の札幌国際では
- * 大人・大学生・学校区分なしの誰にも料金が出なかった。
- * ただし基準区分に年齢範囲があり、入力された年齢が範囲外なら使わない
- * （「大人（19〜64歳）」に70歳を当てはめない）。
- */
 const audienceMatchesGroup = (
   audience: LiftTicketAudience,
   group: TicketPartyGroup,
   audienceById: Map<string, LiftTicketAudience>,
 ): boolean => {
-  if (audienceDirectlyMatchesGroup(audience, group, audienceById)) return true;
-  if (audience.is_default !== true || group.category === "disabled") {
-    return false;
+  if (group.category === "disabled") {
+    // 専用料金も通常料金への戻しも、同じ年齢の基準区分を使う。
+    const base = audience.is_disability_qualified
+      ? audienceById.get(audience.base_audience_id ?? "")
+      : audience;
+    return (
+      !!base &&
+      !base.is_disability_qualified &&
+      audienceMatchesGroup(
+        base,
+        { ...group, category: group.baseCategory ?? "adult" },
+        audienceById,
+      )
+    );
   }
-  const hasAgeRange = audience.age_min != null || audience.age_max != null;
-  if (
-    group.age != null &&
-    hasAgeRange &&
-    ((audience.age_min != null && group.age < audience.age_min) ||
-      (audience.age_max != null && group.age > audience.age_max))
-  ) {
-    return false;
-  }
-  // 基準区分以外のどの区分にも当てはまらないときだけ、基準区分に回す
-  return ![...audienceById.values()].some(
-    other =>
-      other.id !== audience.id &&
-      other.is_default !== true &&
-      audienceDirectlyMatchesGroup(other, group, audienceById),
+  if (audience.is_disability_qualified) return false;
+  const others = [...audienceById.values()].filter(
+    a => !a.is_disability_qualified,
+  );
+  const schoolMatches = others.filter(
+    a => matchesSchool(a, group) && audienceDirectlyMatchesGroup(a, group),
+  );
+  if (schoolMatches.length > 0) return schoolMatches.includes(audience);
+  if (audienceDirectlyMatchesGroup(audience, group)) return true;
+  return (
+    audience.is_default === true &&
+    (group.age == null || matchesAge(audience, group.age)) &&
+    !others.some(
+      a => a.is_default !== true && audienceDirectlyMatchesGroup(a, group),
+    )
   );
 };
 
-/** 年齢・学校区分・公式表記から、その区分に直接当てはまるか（基準区分への回し込みは含めない） */
-const audienceDirectlyMatchesGroup = (
-  audience: LiftTicketAudience,
+/** 年齢で料金が分かれる未就学児、公式が年齢制の学童は年齢入力が必要。 */
+const needsAgeForGroup = (
+  data: LiftTicketData,
   group: TicketPartyGroup,
-  audienceById: Map<string, LiftTicketAudience>,
 ): boolean => {
-  if (group.category === "disabled") {
-    if (audience.is_disability_qualified === true) {
-      const baseAudience = audience.base_audience_id
-        ? audienceById.get(audience.base_audience_id)
-        : null;
-      return baseAudience
-        ? audienceMatchesGroup(
-            baseAudience,
-            { ...group, category: "adult" },
-            audienceById,
-          )
-        : true;
-    }
-    return audience.is_default === true;
-  }
-  if (audience.is_disability_qualified === true) return false;
-
-  const schoolLevels = audience.school_levels ?? [];
-  const label = [
-    audience.id,
-    audience.name_ja,
-    audience.official_label_ja ?? "",
-  ].join(" ");
-  const hasAgeRange = audience.age_min != null || audience.age_max != null;
-  const ageMatches =
-    group.age != null &&
-    hasAgeRange &&
-    (audience.age_min == null || group.age >= audience.age_min) &&
-    (audience.age_max == null || group.age <= audience.age_max);
-
-  if (ageMatches) return true;
-  if (group.category === "other") return false;
-  const wanted = SCHOOL_LEVELS_BY_CATEGORY[group.category];
-  if (wanted.length > 0 && wanted.some(level => schoolLevels.includes(level))) {
-    return true;
-  }
-  // ★**学校区分を持たず年齢だけで決まる区分**（ルスツの「小人 4〜12歳」）に、
-  // 年齢未入力の「小学生」を当てる。その学校区分の年齢がすべて入る区分だけに当てる
-  // （当てないと基準区分＝大人の料金になり、小学生が大人料金で計算される）
-  const typicalAges = TYPICAL_AGES_BY_CATEGORY[group.category];
+  if (group.category === "disabled")
+    return needsAgeForGroup(data, {
+      ...group,
+      category: group.baseCategory ?? "adult",
+    });
   if (
-    group.age == null &&
-    typicalAges &&
-    schoolLevels.length === 0 &&
-    audience.is_default !== true &&
-    hasAgeRange &&
-    (audience.age_min == null || audience.age_min <= typicalAges[0]) &&
-    (audience.age_max == null || typicalAges[1] <= audience.age_max) &&
-    // 上限・下限の片方しかない区分（「60歳以上」）には当てない
-    audience.age_min != null &&
-    audience.age_max != null
-  ) {
-    return true;
+    group.age != null ||
+    !["preschool", "elementary", "junior_high", "high_school"].includes(
+      group.category,
+    )
+  )
+    return false;
+  const audiences = data.audiences.filter(a => !a.is_disability_qualified);
+  const schoolMatches = audiences.filter(a => matchesSchool(a, group));
+  if (schoolMatches.length > 0) {
+    // 「4歳以上の未就学児」等を年齢なしで無料/有料のどちらかへ決めない。
+    return (
+      group.category === "preschool" && schoolMatches.some(hasAgeCondition)
+    );
   }
-  if (group.category === "adult") {
-    return /大人|adult/iu.test(label);
-  }
-  if (
-    ["junior_high", "high_school", "university"].includes(group.category) &&
-    /中学生以上/u.test(label)
-  ) {
-    return true;
-  }
-  return false;
+  return audiences.some(
+    a =>
+      a.is_default !== true &&
+      hasAgeCondition(a) &&
+      ((a.age_min != null && a.age_min < 19) ||
+        (a.age_max != null && a.age_max < 19)),
+  );
 };
 
 const offerMatchesDate = (
@@ -1049,7 +1049,10 @@ const purchaseMethodOf = (
 };
 
 const formatPartyGroupLabel = (group: TicketPartyGroup) => {
-  const category = TICKET_PARTY_CATEGORY_LABELS[group.category];
+  const category =
+    group.category === "disabled" && group.baseCategory
+      ? `${TICKET_PARTY_CATEGORY_LABELS[group.category]}・${TICKET_PARTY_CATEGORY_LABELS[group.baseCategory]}`
+      : TICKET_PARTY_CATEGORY_LABELS[group.category];
   return group.age == null ? category : `${category}（${group.age}歳）`;
 };
 
@@ -1118,6 +1121,66 @@ const calculateGroupLine = (
   numberBySourceId: Map<string, number>,
   heldProductIds: ReadonlySet<string>,
 ) => {
+  if (
+    group.category === "disabled" &&
+    group.baseCategory == null &&
+    group.age != null &&
+    group.age < 19 &&
+    data.audiences.some(a => (a.school_levels?.length ?? 0) > 0)
+  ) {
+    return {
+      line: createUnresolvedLine(
+        group,
+        baseProduct,
+        "障がい者の学校区分を選択してください。",
+      ),
+      conditionalOffers: [],
+    };
+  }
+  const schoolGroup =
+    group.category === "disabled"
+      ? { ...group, category: group.baseCategory ?? "adult" }
+      : group;
+  const schoolAudiences = data.audiences.filter(
+    a => !a.is_disability_qualified && matchesSchool(a, schoolGroup),
+  );
+  if (
+    group.age != null &&
+    schoolAudiences.length > 0 &&
+    schoolAudiences.every(a => !matchesAge(a, group.age as number)) &&
+    !data.audiences.some(
+      a =>
+        !a.is_default &&
+        !a.is_disability_qualified &&
+        (a.school_levels?.length ?? 0) === 0 &&
+        audienceDirectlyMatchesGroup(a, schoolGroup) &&
+        data.offers.some(
+          offer =>
+            offer.product_id === baseProduct.id &&
+            offer.audience_ids?.includes(a.id) &&
+            isUnconditionalStandardOffer(offer),
+        ),
+    )
+  ) {
+    return {
+      line: createUnresolvedLine(
+        group,
+        baseProduct,
+        "学校区分と年齢が公式の対象条件に一致しません。公式の対象条件を確認してください。",
+      ),
+      conditionalOffers: [],
+    };
+  }
+  if (needsAgeForGroup(data, group)) {
+    return {
+      line: createUnresolvedLine(
+        group,
+        baseProduct,
+        "年齢によって料金が変わります。年齢を入力してください。",
+      ),
+      conditionalOffers: [],
+    };
+  }
   const allowedProductIds = new Set([
     baseProduct.id,
     ...getAutomaticSpecialProductIds(data, baseProduct, dateString),
@@ -2026,7 +2089,12 @@ export type TicketPlanResult = {
  * ナイター込みは日中とナイターの時間を足す根拠が無いので null（時間券で比べない）
  */
 const plannedHoursOf = (data: LiftTicketData, plan: TicketDayPlan) => {
-  if (plan.duration.kind === "hours") return plan.duration.hours;
+  if (plan.duration.kind === "hours") {
+    const open = operatingHoursOn(data, plan.date);
+    return open != null && plan.duration.hours > open
+      ? null
+      : plan.duration.hours;
+  }
   if (plan.duration.withNight) return null;
   return operatingHoursOn(data, plan.date);
 };

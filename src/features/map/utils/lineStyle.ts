@@ -26,6 +26,7 @@ export type LineStyleContext = {
   mapTileVariant: MapTileVariant;
   isFocusMode: boolean;
   showOpenOnly: boolean;
+  showUngroomed?: boolean;
   selectedFeature: SelectedMapFeature | null;
 };
 
@@ -131,12 +132,8 @@ export const getLineStyle = ({
     selectedFeature.id === properties.sourceId;
   const isDimmed = selectedFeature !== null && !isSelected;
   const status = properties.statusKind;
-  const isOpen = status === "open";
   const isPhotoTile = context.mapTileVariant === "photo";
-  // 通常表示では営業状態で見た目を変えない。「営業中のみ」を入れたときだけ、
-  // 営業中を濃く太く、それ以外をはっきり薄くしてコントラストをつける。
-  const isMutedByOpenOnly = context.showOpenOnly && !isOpen && !isSelected;
-  const isEmphasized = context.showOpenOnly && isOpen;
+  const isUngroomed = properties.ungroomed && context.showUngroomed !== false;
 
   if (variant === "hit") {
     return { color: "#000000", opacity: 0, weight: hitWeight };
@@ -144,22 +141,13 @@ export const getLineStyle = ({
 
   const baseWidth = getMapLineWidth(context.zoom, getLineKind(featureKind));
   const focusBoost = context.isFocusMode ? 0.3 : 0;
-  const lineWidth =
-    (isMutedByOpenOnly ? baseWidth * 0.6 : baseWidth) +
-    (isEmphasized ? 0.3 : 0) +
-    focusBoost +
-    (isSelected ? 1.6 : 0);
+  const lineWidth = baseWidth + focusBoost + (isSelected ? 1.6 : 0);
 
   if (variant === "flow") {
     // Leaflet は className をパス生成時にしか適用しないので、
     // 非表示のときも同じ className を返しておく（後から表示に変わっても効くように）
     const flowClassName = `finalized-lift-flow finalized-lift-flow-${properties.flowSpeed ?? "normal"}`;
-    if (
-      featureKind !== "lift" ||
-      !hasLiftFlow(status) ||
-      isDimmed ||
-      isMutedByOpenOnly
-    ) {
+    if (featureKind !== "lift" || !hasLiftFlow(status) || isDimmed) {
       return { ...HIDDEN_PATH_OPTIONS, className: flowClassName };
     }
 
@@ -176,9 +164,6 @@ export const getLineStyle = ({
   }
 
   if (variant === "casing") {
-    // 沈ませる線はケーシングを外す。白い縁が残ると「薄いのに目立つ」ままになる
-    if (isMutedByOpenOnly) return HIDDEN_PATH_OPTIONS;
-
     const casingOpacity = isDimmed ? 0.12 : isPhotoTile ? 0.74 : 0.56;
 
     return {
@@ -192,21 +177,12 @@ export const getLineStyle = ({
     };
   }
 
-  // 色（難易度・斜度）は状態に関わらず保つ。営業していないことは
-  // 不透明度と太さ、ケーシングの有無で示す。
+  // 営業状態で難易度・斜度の色を上書きしない。
   const color = isDimmed ? DIMMED_LINE_COLOR : properties.color;
-  const opacity = (() => {
-    if (isDimmed) return 0.4;
-    if (isSelected) return 1;
-    if (isMutedByOpenOnly) return MUTED_LINE_OPACITY;
-    return 1;
-  })();
+  const opacity = isDimmed ? 0.4 : 1;
 
   const shouldBlink =
-    featureKind === "lift" &&
-    hasLiftBlink(status) &&
-    !isDimmed &&
-    !isMutedByOpenOnly;
+    featureKind === "lift" && hasLiftBlink(status) && !isDimmed;
 
   return {
     color,
@@ -215,10 +191,10 @@ export const getLineStyle = ({
     // 非圧雪は総幅を変えずに芯線を破線にする。
     // ただし選択中は形をはっきり見せたいので実線に戻す。
     dashArray:
-      properties.ungroomed && !isDimmed && !isSelected
+      isUngroomed && !isDimmed && !isSelected
         ? getUngroomedDashArray(lineWidth)
         : undefined,
-    lineCap: properties.ungroomed && !isSelected ? "butt" : "round",
+    lineCap: isUngroomed && !isSelected ? "butt" : "round",
     lineJoin: "round",
     className: shouldBlink
       ? `${LINE_PATH_CLASS} ${LIFT_BLINK_CLASS}`

@@ -37,7 +37,7 @@ const NIGHT_TICKET_ONLY: LiftTicketData = {
       end_time: "20:00",
     },
   ],
-  audiences: [{ id: "adult", name_ja: "大人" }],
+  audiences: [{ id: "adult", name_ja: "大人", is_default: true }],
   calendars: [
     {
       id: "cal-all",
@@ -123,7 +123,7 @@ test("ナイター営業日で、ナイター込み1日券が無ければ1日券
 
 const MEGAHIRA = path.join(
   process.cwd(),
-  "src/private/data/lift-ticket/megahira-onsen-megahira/2025-2026.json",
+  "src/private/data/lift-ticket-test-fixtures/ui/megahira-onsen-megahira/2025-2026.json",
 );
 const megahira = JSON.parse(
   fs.readFileSync(MEGAHIRA, "utf8"),

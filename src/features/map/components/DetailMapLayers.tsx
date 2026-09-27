@@ -75,6 +75,7 @@ export const FinalizedGeoJsonLayer = ({
   onSelectFeature,
   selectedPane,
   showOpenOnly,
+  showUngroomed = true,
 }: {
   collection: FinalizedLineFeatureCollection | null;
   /** ケーシングとヒット領域用。斜度モードでもコース単位で 1 本にする */
@@ -89,6 +90,7 @@ export const FinalizedGeoJsonLayer = ({
   onSelectFeature: (feature: SelectedMapFeature) => void;
   selectedPane: string;
   showOpenOnly: boolean;
+  showUngroomed?: boolean;
 }) => {
   const map = useMap();
   const [renderZoom, setRenderZoom] = useState(() =>
@@ -109,6 +111,7 @@ export const FinalizedGeoJsonLayer = ({
     mapTileVariant,
     isFocusMode,
     showOpenOnly,
+    showUngroomed,
     selectedFeature,
   };
   const styleContextRef = useRef(styleContext);
@@ -319,6 +322,7 @@ export const FinalizedGeoJsonLayer = ({
       mapTileVariant,
       isFocusMode,
       showOpenOnly,
+      showUngroomed,
       selectedFeature,
     };
 
@@ -349,6 +353,7 @@ export const FinalizedGeoJsonLayer = ({
     renderZoom,
     selectedFeature,
     showOpenOnly,
+    showUngroomed,
   ]);
 
   // 選択中の線だけを別ペインに重ねる。選択のたびに全パスを作り直さないための分離。

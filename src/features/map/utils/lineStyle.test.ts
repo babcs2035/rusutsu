@@ -99,20 +99,19 @@ test("営業中のコースは自分の色・ケーシングつき", () => {
   assert.ok((casing.weight ?? 0) > (line.weight ?? 0));
 });
 
-test("通常表示では営業状態で見た目を変えない", () => {
-  const open = styleOf(createFeature(), "line");
-  const closed = styleOf(createFeature({ statusKind: "closed" }), "line");
-  const limited = styleOf(createFeature({ statusKind: "limited" }), "line");
-
-  assert.equal(closed.color, open.color);
-  assert.equal(closed.opacity, open.opacity);
-  assert.equal(closed.weight, open.weight);
-  assert.equal(limited.opacity, open.opacity);
-  // ケーシングも同じ
-  assert.equal(
-    styleOf(createFeature({ statusKind: "closed" }), "casing").opacity,
-    styleOf(createFeature(), "casing").opacity,
-  );
+test("通常表示・営業中のみとも全営業状態で従来の色と濃さを保つ", () => {
+  for (const statusKind of ["open", "limited", "unknown", "closed"] as const) {
+    const line = styleOf(createFeature({ statusKind }), "line");
+    assert.equal(line.opacity, 1);
+    assert.equal(line.color, "#22C55E");
+    const filtered = styleOf(
+      createFeature({ statusKind }),
+      "line",
+      createContext({ showOpenOnly: true }),
+    );
+    assert.equal(filtered.opacity, 1);
+    assert.equal(filtered.color, "#22C55E");
+  }
 });
 
 test("非圧雪は総幅を変えずに芯線を破線にする", () => {
@@ -129,31 +128,27 @@ test("非圧雪は総幅を変えずに芯線を破線にする", () => {
   );
 });
 
-test("営業中のみ ON で、営業中を濃く太く・それ以外をはっきり薄くする", () => {
-  const context = createContext({ showOpenOnly: true });
-  const openLine = styleOf(createFeature(), "line", context);
-  const closedLine = styleOf(
-    createFeature({ statusKind: "closed" }),
-    "line",
-    context,
-  );
-  const closedCasing = styleOf(
-    createFeature({ statusKind: "closed" }),
-    "casing",
-    context,
-  );
+test("営業中のみの切り替えはリフトの線・点滅・矢印用スタイルに影響しない", () => {
+  for (const statusKind of ["open", "limited", "closed", "unknown"] as const) {
+    const feature = createFeature({ kind: "lift", statusKind });
+    for (const variant of ["line", "casing", "flow", "hit"] as const) {
+      assert.deepEqual(
+        styleOf(feature, variant, createContext({ showOpenOnly: true })),
+        styleOf(feature, variant),
+      );
+    }
+  }
+});
 
-  // 営業中は通常より少し太い
-  assert.ok(
-    (openLine.weight ?? 0) > (styleOf(createFeature(), "line").weight ?? 0),
-  );
-  assert.equal(openLine.opacity, 1);
-
-  // 非営業は色を保ったままはっきり薄く・細く、白ケーシングは外す
-  assert.equal(closedLine.color, "#22C55E");
-  assert.ok((closedLine.opacity ?? 1) <= 0.25);
-  assert.ok((closedLine.weight ?? 0) < (openLine.weight ?? 0));
-  assert.equal(closedCasing.weight, 0);
+test("非圧雪の点線をOFFにしてもコースの色・透明度・太さは保持する", () => {
+  const feature = createFeature({ ungroomed: true, statusKind: "limited" });
+  const on = styleOf(feature, "line");
+  const off = styleOf(feature, "line", createContext({ showUngroomed: false }));
+  assert.ok(on.dashArray);
+  assert.equal(off.dashArray, undefined);
+  assert.equal(off.color, on.color);
+  assert.equal(off.opacity, on.opacity);
+  assert.equal(off.weight, on.weight);
 });
 
 test("待機中のリフトは流れる破線ではなく赤い点滅にする", () => {
@@ -239,7 +234,7 @@ test("選択中は太く、非選択は灰色に沈む", () => {
   assert.ok((otherLine.opacity ?? 1) < 0.5);
 });
 
-test("選択中は営業中のみ ON でも薄くならない", () => {
+test("選択中も営業状態に関係なくコースを同じ濃さで表示する", () => {
   const context = createContext({
     showOpenOnly: true,
     selectedFeature: { kind: "course", id: "course-a" },

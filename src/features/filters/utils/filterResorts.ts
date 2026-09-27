@@ -79,6 +79,7 @@ export const areFiltersEqual = (left: Filters, right: Filters) => {
         otherGroup !== undefined &&
         group.id === otherGroup.id &&
         group.category === otherGroup.category &&
+        group.baseCategory === otherGroup.baseCategory &&
         group.age === otherGroup.age &&
         group.count === otherGroup.count
       );

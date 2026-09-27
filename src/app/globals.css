@@ -220,6 +220,12 @@ html
   filter: grayscale(1) contrast(0.92) brightness(1.06);
 }
 
+/* コースマップの背景色は設定で選ぶ。線・名前にはフィルターを掛けない。 */
+html body [data-map-monochrome="false"][data-map-tile-variant] .gsi-tile-layer-pale,
+html body [data-map-monochrome="false"][data-map-tile-variant] .gsi-tile-layer-photo { filter: none; }
+html body [data-map-monochrome="true"][data-map-tile-variant] .gsi-tile-layer-pale,
+html body [data-map-monochrome="true"][data-map-tile-variant] .gsi-tile-layer-photo { filter: grayscale(1); }
+
 /* EditorMap: 地図の重なり順を下げて、左パネルの portal Tooltip を上に出す */
 html body [data-editor-map="true"] .maplibregl-control-container,
 html body [data-editor-map="true"] .maplibregl-popup {

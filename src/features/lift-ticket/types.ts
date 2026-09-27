@@ -11,9 +11,22 @@ export const TICKET_PARTY_CATEGORIES = [
 
 export type TicketPartyCategory = (typeof TICKET_PARTY_CATEGORIES)[number];
 
+/** UIと照合テストで共有する選択肢。otherは保存済み入力の互換用。 */
+export const SELECTABLE_TICKET_PARTY_CATEGORIES =
+  TICKET_PARTY_CATEGORIES.filter(category => category !== "other");
+
+export const TICKET_DISABILITY_BASE_CATEGORIES =
+  SELECTABLE_TICKET_PARTY_CATEGORIES.filter(
+    category => category !== "disabled",
+  );
+
+export const TICKET_HOUR_OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);
+
 export type TicketPartyGroup = {
   id: string;
   category: TicketPartyCategory;
+  /** 障がい者本人の学校区分。未指定は従来の大人区分。 */
+  baseCategory?: Exclude<TicketPartyCategory, "disabled" | "other">;
   age: number | null;
   count: number;
 };

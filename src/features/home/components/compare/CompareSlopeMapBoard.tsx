@@ -12,6 +12,10 @@ import type {
   MapTileVariant,
   SelectedMapFeature,
 } from "@/features/map/types";
+import {
+  DEFAULT_MAP_DISPLAY_SETTINGS,
+  type MapDisplaySettings,
+} from "@/features/map/utils/mapDisplaySettings";
 import { FinalizedFeatureDetail } from "@/features/resort-detail/components/FinalizedFeatureDetail";
 import type { FeatureDetailPlacement } from "@/features/resort-detail/components/ResortMapSection";
 import { ResortMapSection } from "@/features/resort-detail/components/ResortMapSection";
@@ -114,7 +118,7 @@ const EmptyMessage = () => (
  * カード全体の左右スワイプを優先し、拡大ボタンからだけ操作できる全画面に入る。
  * MapLibre は WebGL コンテキストを持つので、表示中の 1 枚だけをマウントする。
  * 表示の切替は上に固定した帯にまとめ、比較中のスキー場すべてに効かせる。
- * 狭いので凡例はここには出さず、全画面の地図側に任せる。
+ * 色凡例と設定は通常表示でも使えるよう、この帯に置く。
  */
 export const CompareSlopeMapTab = ({
   resorts,
@@ -129,6 +133,9 @@ export const CompareSlopeMapTab = ({
   const [activeIndex, setActiveIndex] = useState(0);
   const [courseColorMode, setCourseColorMode] =
     useState<CourseColorMode>("slope");
+  const [mapDisplaySettings, onMapDisplaySettingsChange] = useState(
+    DEFAULT_MAP_DISPLAY_SETTINGS,
+  );
   const [showOpenOnly, setShowOpenOnly] = useState(false);
   const [mapTileVariant, setMapTileVariant] = useState<MapTileVariant>("photo");
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -161,11 +168,12 @@ export const CompareSlopeMapTab = ({
       <div className="scroll-touch shrink-0 overflow-x-auto border-b border-gray-200 bg-white pb-1.5">
         <FinalizedMapToolbar
           presentation="bar"
-          showLegend={false}
           mode={courseColorMode}
           onModeChange={setCourseColorMode}
           hasCourses={hasCourses}
           hasLifts={hasLifts}
+          mapDisplaySettings={mapDisplaySettings}
+          onMapDisplaySettingsChange={onMapDisplaySettingsChange}
           showOpenOnly={showOpenOnly}
           onShowOpenOnlyChange={setShowOpenOnly}
           mapTileVariant={mapTileVariant}
@@ -193,6 +201,8 @@ export const CompareSlopeMapTab = ({
                 showInlineMapToolbar={false}
                 courseColorMode={courseColorMode}
                 onCourseColorModeChange={setCourseColorMode}
+                mapDisplaySettings={mapDisplaySettings}
+                onMapDisplaySettingsChange={onMapDisplaySettingsChange}
                 showOpenOnly={showOpenOnly}
                 onShowOpenOnlyChange={setShowOpenOnly}
                 mapTileVariant={mapTileVariant}
@@ -263,6 +273,8 @@ export const CompareSlopeMapBoard = ({
   mapResorts,
   courseColorMode,
   onCourseColorModeChange,
+  mapDisplaySettings,
+  onMapDisplaySettingsChange,
   showOpenOnly,
   onShowOpenOnlyChange,
   mapTileVariant,
@@ -277,6 +289,8 @@ export const CompareSlopeMapBoard = ({
   mapResorts: MapSkiResort[];
   courseColorMode: CourseColorMode;
   onCourseColorModeChange: (mode: CourseColorMode) => void;
+  mapDisplaySettings?: MapDisplaySettings;
+  onMapDisplaySettingsChange?: (settings: MapDisplaySettings) => void;
   showOpenOnly: boolean;
   onShowOpenOnlyChange: (showOpenOnly: boolean) => void;
   mapTileVariant: MapTileVariant;
@@ -320,6 +334,8 @@ export const CompareSlopeMapBoard = ({
               showInlineMapToolbar={false}
               courseColorMode={courseColorMode}
               onCourseColorModeChange={onCourseColorModeChange}
+              mapDisplaySettings={mapDisplaySettings}
+              onMapDisplaySettingsChange={onMapDisplaySettingsChange}
               showOpenOnly={showOpenOnly}
               onShowOpenOnlyChange={onShowOpenOnlyChange}
               mapTileVariant={mapTileVariant}
@@ -481,6 +497,8 @@ const ResortSlopeMapCard = ({
   showInlineMapToolbar = true,
   courseColorMode,
   onCourseColorModeChange,
+  mapDisplaySettings,
+  onMapDisplaySettingsChange,
   showOpenOnly,
   onShowOpenOnlyChange,
   mapTileVariant,
@@ -498,6 +516,8 @@ const ResortSlopeMapCard = ({
   showInlineMapToolbar?: boolean;
   courseColorMode?: CourseColorMode;
   onCourseColorModeChange?: (mode: CourseColorMode) => void;
+  mapDisplaySettings?: MapDisplaySettings;
+  onMapDisplaySettingsChange?: (settings: MapDisplaySettings) => void;
   showOpenOnly?: boolean;
   onShowOpenOnlyChange?: (showOpenOnly: boolean) => void;
   mapTileVariant?: MapTileVariant;
@@ -571,6 +591,8 @@ const ResortSlopeMapCard = ({
         blockPreviewPointerEvents={!allowPreviewInteraction}
         courseColorMode={courseColorMode}
         onCourseColorModeChange={onCourseColorModeChange}
+        mapDisplaySettings={mapDisplaySettings}
+        onMapDisplaySettingsChange={onMapDisplaySettingsChange}
         showOpenOnly={showOpenOnly}
         onShowOpenOnlyChange={onShowOpenOnlyChange}
         mapTileVariant={mapTileVariant}

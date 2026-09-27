@@ -45,11 +45,11 @@ export const FeatureHeadline = ({
   const updatedAt = formatUpdatedAt(update);
 
   return (
-    <div className="flex flex-col gap-2.5">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         {difficulty && (
           <span
-            className="rounded-md px-2.5 py-1 text-base font-bold leading-none text-white"
+            className="rounded-md px-2.5 py-1 text-sm font-bold leading-snug sm:text-base text-white"
             style={{ background: difficulty.color }}
           >
             {difficulty.label}
@@ -62,7 +62,7 @@ export const FeatureHeadline = ({
             </span>
             <span
               className={cn(
-                "text-base font-bold leading-none",
+                "text-sm font-bold leading-snug sm:text-base",
                 item.tone ? TONE_CLASS[item.tone] : "text-gray-900",
               )}
             >
@@ -118,9 +118,11 @@ export const FeatureMetric = ({
 }) => (
   <div className="min-w-0 border-b border-gray-200 pb-2">
     <p className="truncate text-[11px] font-medium text-gray-500">{title}</p>
-    <p className="truncate text-base font-semibold text-gray-900">{value}</p>
+    <p className="break-words text-base font-semibold text-gray-900">{value}</p>
     {detail && (
-      <p className="truncate text-[10px] font-medium text-gray-500">{detail}</p>
+      <p className="break-words text-[11px] font-medium text-gray-500">
+        {detail}
+      </p>
     )}
   </div>
 );

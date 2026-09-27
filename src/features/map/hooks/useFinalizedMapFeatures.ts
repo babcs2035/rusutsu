@@ -9,11 +9,19 @@ import {
   buildLiftFeatureCollection,
   EMPTY_FINALIZED_COURSES,
   EMPTY_FINALIZED_LIFTS,
+  getFeatureStatusKind,
   getFinalizedMapDataBounds,
   toDownhillCourses,
 } from "../utils/finalizedMapData";
+import {
+  DEFAULT_MAP_DISPLAY_SETTINGS,
+  isCourseStatusVisible,
+  type MapDisplaySettings,
+} from "../utils/mapDisplaySettings";
 
 type UseFinalizedMapFeaturesParams = {
+  showOpenOnly?: boolean;
+  mapDisplaySettings?: MapDisplaySettings;
   courseColorMode: CourseColorMode;
   finalizedMapData: FinalizedResortMapData | null;
   interactionMode: "default" | "detail" | "compare";
@@ -21,6 +29,7 @@ type UseFinalizedMapFeaturesParams = {
 };
 
 export const useFinalizedMapFeatures = ({
+  mapDisplaySettings = DEFAULT_MAP_DISPLAY_SETTINGS,
   courseColorMode,
   finalizedMapData,
   interactionMode,
@@ -33,23 +42,34 @@ export const useFinalizedMapFeatures = ({
 
   // 滑走方向（標高降順）に揃えたコースを唯一の入力にする。
   // 線・ラベル・方向記号がすべて同じ向きを前提にできる（FR-4.1）。
-  const finalizedCourses = useMemo(
+  const allCourses = useMemo(
     () =>
       sourceCourses.length > 0
         ? toDownhillCourses(sourceCourses)
         : EMPTY_FINALIZED_COURSES,
     [sourceCourses],
   );
-  const hasFinalizedCourses = finalizedCourses.length > 0;
+  const { courseStatuses } = mapDisplaySettings;
+  const finalizedCourses = useMemo(
+    () =>
+      allCourses.filter(course =>
+        isCourseStatusVisible(
+          getFeatureStatusKind(course.properties.status),
+          courseStatuses,
+        ),
+      ),
+    [allCourses, courseStatuses],
+  );
+  const hasFinalizedCourses = allCourses.length > 0;
   const hasFinalizedLifts = finalizedLifts.length > 0;
   const isFinalizedFocusMode =
     interactionMode === "detail" && (hasFinalizedCourses || hasFinalizedLifts);
   const finalizedBounds = useMemo(
-    () => getFinalizedMapDataBounds(finalizedCourses, finalizedLifts),
-    [finalizedCourses, finalizedLifts],
+    () => getFinalizedMapDataBounds(allCourses, finalizedLifts),
+    [allCourses, finalizedLifts],
   );
 
-  // ズームと「営業中のみ」には依存させない（FR-1.1）。
+  // ズームには依存させない。営業状態による表示対象の変更だけを反映する。
   // ズームで変わるのは線幅・不透明度だけなので setStyle 側で処理する。
   const courseFeatureCollection = useMemo(
     () =>
@@ -88,6 +108,7 @@ export const useFinalizedMapFeatures = ({
   }, [finalizedLifts, selectedFinalizedFeature]);
 
   return {
+    allFinalizedCourses: allCourses,
     courseFeatureCollection,
     courseOutlineFeatureCollection,
     finalizedBounds,

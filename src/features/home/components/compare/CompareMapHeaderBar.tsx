@@ -2,6 +2,7 @@
 
 import { FinalizedMapToolbar } from "@/features/map/components/FinalizedMapToolbar";
 import type { CourseColorMode, MapTileVariant } from "@/features/map/types";
+import type { MapDisplaySettings } from "@/features/map/utils/mapDisplaySettings";
 import { SegmentedControl } from "@/shared/components/SegmentedControl";
 import type { CompareLeftPane } from "./types";
 
@@ -22,6 +23,8 @@ export const CompareMapHeaderBar = ({
   onPaneChange,
   courseColorMode,
   onCourseColorModeChange,
+  mapDisplaySettings,
+  onMapDisplaySettingsChange,
   showOpenOnly,
   onShowOpenOnlyChange,
   mapTileVariant,
@@ -33,6 +36,8 @@ export const CompareMapHeaderBar = ({
   onPaneChange: (pane: CompareLeftPane) => void;
   courseColorMode: CourseColorMode;
   onCourseColorModeChange: (mode: CourseColorMode) => void;
+  mapDisplaySettings?: MapDisplaySettings;
+  onMapDisplaySettingsChange?: (settings: MapDisplaySettings) => void;
   showOpenOnly: boolean;
   onShowOpenOnlyChange: (showOpenOnly: boolean) => void;
   mapTileVariant: MapTileVariant;
@@ -60,6 +65,8 @@ export const CompareMapHeaderBar = ({
         onModeChange={onCourseColorModeChange}
         hasCourses={hasCourses}
         hasLifts={hasLifts}
+        mapDisplaySettings={mapDisplaySettings}
+        onMapDisplaySettingsChange={onMapDisplaySettingsChange}
         showOpenOnly={showOpenOnly}
         onShowOpenOnlyChange={onShowOpenOnlyChange}
         mapTileVariant={mapTileVariant}

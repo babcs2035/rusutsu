@@ -76,7 +76,8 @@ export const useLineLabelMarkers = ({
   courses,
   lifts,
   selectedFeature,
-  showOpenOnly,
+  showCourseNames,
+  showLiftNames,
   onSelectFeature,
 }: {
   map: MapLibreMap | null;
@@ -84,7 +85,8 @@ export const useLineLabelMarkers = ({
   courses: FinalizedCourseFeature[];
   lifts: FinalizedLiftFeature[];
   selectedFeature: SelectedMapFeature | null;
-  showOpenOnly: boolean;
+  showCourseNames: boolean;
+  showLiftNames: boolean;
   onSelectFeature: (feature: SelectedMapFeature) => void;
 }) => {
   const markersRef = useRef<ManagedMarker[]>([]);
@@ -117,12 +119,11 @@ export const useLineLabelMarkers = ({
       const placements: LabelPlacement[] = [];
       const padding = getLabelCollisionPadding(zoom);
 
-      if (zoom >= LIFT_LABEL_MIN_ZOOM) {
+      if (showLiftNames && zoom >= LIFT_LABEL_MIN_ZOOM) {
         const liftSources = lifts.flatMap<LabelSource>(lift => {
           if (lift.name.length === 0) return [];
 
           const status = getFeatureStatusKind(lift.properties.status);
-          if (showOpenOnly && status !== "open") return [];
 
           const liftClass = getLiftClass(lift);
           if (zoom < LIFT_LABEL_MIN_ZOOM_BY_CLASS[liftClass]) return [];
@@ -159,7 +160,7 @@ export const useLineLabelMarkers = ({
         );
       }
 
-      if (zoom >= COURSE_LABEL_MIN_ZOOM) {
+      if (showCourseNames && zoom >= COURSE_LABEL_MIN_ZOOM) {
         const groups = new Map<
           string,
           {
@@ -183,7 +184,6 @@ export const useLineLabelMarkers = ({
             const status = group.statuses.includes("open")
               ? "open"
               : (group.statuses[0] ?? "unknown");
-            if (showOpenOnly && status !== "open") return [];
 
             // 同名のコースが複数線に分かれている場合はもっとも長い線に名前を置く
             const longest = group.lines
@@ -267,6 +267,7 @@ export const useLineLabelMarkers = ({
     map,
     onSelectFeature,
     selectedFeature,
-    showOpenOnly,
+    showCourseNames,
+    showLiftNames,
   ]);
 };

@@ -14,6 +14,11 @@ import {
   useRef,
   useState,
 } from "react";
+import {
+  DEFAULT_MAP_DISPLAY_SETTINGS,
+  type MapDisplaySettings,
+  OPEN_COURSE_STATUSES,
+} from "./utils/mapDisplaySettings";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { FinalizedMapToolbar } from "./components/FinalizedMapToolbar";
 import { MapErrorBoundary } from "./components/MapErrorBoundary";
@@ -143,6 +148,8 @@ function MapLibreResortMapContent({
   onMapTileVariantChange,
   courseColorMode: controlledCourseColorMode,
   onCourseColorModeChange,
+  mapDisplaySettings: controlledMapDisplaySettings,
+  onMapDisplaySettingsChange,
   showOpenOnly: controlledShowOpenOnly,
   onShowOpenOnlyChange,
   detailViewportMode = "finalized",
@@ -207,9 +214,7 @@ function MapLibreResortMapContent({
   // 既定（地図タイル）で作ってから切り替えると、白い淡色地図のタイルを
   // 読み込んでから写真の読み込みが始まり、切り替わるまで白い地図が見えてしまう。
   const [uncontrolledTileVariant, setUncontrolledTileVariant] =
-    useState<MapTileVariant>(
-      savedMap?.tileVariant ?? (isDetailMap ? "photo" : "pale"),
-    );
+    useState<MapTileVariant>(isDetailMap ? "photo" : "pale");
   const [uncontrolledCourseColorMode, setUncontrolledCourseColorMode] =
     useState<CourseColorMode>(
       savedMap?.courseColorMode ?? (isDetailMap ? "slope" : "difficulty"),
@@ -240,6 +245,22 @@ function MapLibreResortMapContent({
     },
     [onCourseColorModeChange],
   );
+  const [localMapDisplaySettings, setLocalMapDisplaySettings] =
+    useState<MapDisplaySettings>(() => ({
+      ...(savedMap?.displaySettings ?? {
+        ...DEFAULT_MAP_DISPLAY_SETTINGS,
+        courseStatuses: savedMap?.showOpenOnly
+          ? OPEN_COURSE_STATUSES
+          : DEFAULT_MAP_DISPLAY_SETTINGS.courseStatuses,
+      }),
+      monochrome: isDetailMap,
+    }));
+  const mapDisplaySettings =
+    controlledMapDisplaySettings ?? localMapDisplaySettings;
+  const setMapDisplaySettings = (settings: MapDisplaySettings) => {
+    setLocalMapDisplaySettings(settings);
+    onMapDisplaySettingsChange?.(settings);
+  };
   const showOpenOnly = controlledShowOpenOnly ?? uncontrolledShowOpenOnly;
   const setShowOpenOnly = useCallback(
     (next: boolean) => {
@@ -287,21 +308,33 @@ function MapLibreResortMapContent({
     )
       return;
     if (hasControlledStyleState) return;
-    // 保存設定を優先するのは初回の復元だけ。以後のスキー場選択には
-    // 詳細用の既定表示を適用する（同じ詳細モード内での選び直しも含む）。
+    // 初回は初期値を使う。背景は画面ごとの既定値、その他は保存設定を復元する。
     if (previousInteractionMode === null && savedMap) return;
 
     if (interactionMode === "detail") {
+      if (controlledMapDisplaySettings === undefined) {
+        setLocalMapDisplaySettings(previous => ({
+          ...previous,
+          monochrome: true,
+        }));
+      }
       setMapTileVariant("photo");
       setCourseColorMode("slope");
       return;
     }
     if (previousInteractionMode === "detail") {
       // 詳細から戻っても地図は作り直さないので、詳細用の見え方を明示的に戻す
+      if (controlledMapDisplaySettings === undefined) {
+        setLocalMapDisplaySettings(previous => ({
+          ...previous,
+          monochrome: false,
+        }));
+      }
       setMapTileVariant("pale");
       setCourseColorMode("difficulty");
     }
   }, [
+    controlledMapDisplaySettings,
     hasControlledStyleState,
     savedMap,
     interactionMode,
@@ -334,6 +367,7 @@ function MapLibreResortMapContent({
     tileVariant: mapTileVariant,
     // 詳細画面として作られる地図は 1 フレーム目から白黒にする
     initialTone: getRasterTone({
+      monochrome: mapDisplaySettings.monochrome,
       variant: mapTileVariant,
       isDetailView: isDetailMap,
       courseColorMode,
@@ -372,6 +406,7 @@ function MapLibreResortMapContent({
         tileVariant: mapTileVariant,
         courseColorMode,
         showOpenOnly,
+        displaySettings: mapDisplaySettings,
       });
     };
     save();
@@ -390,12 +425,14 @@ function MapLibreResortMapContent({
     isPreviewMap,
     interactionMode,
     storageKey,
+    mapDisplaySettings,
     mapTileVariant,
     courseColorMode,
     showOpenOnly,
   ]);
 
   const {
+    allFinalizedCourses,
     finalizedCourses,
     finalizedLifts,
     hasFinalizedCourses,
@@ -404,11 +441,30 @@ function MapLibreResortMapContent({
     selectedCourses,
     selectedLift,
   } = useFinalizedMapFeatures({
+    showOpenOnly,
+    mapDisplaySettings,
     courseColorMode,
     finalizedMapData,
     interactionMode,
     selectedFinalizedFeature,
   });
+  useEffect(() => {
+    if (
+      finalizedMapData &&
+      selectedFinalizedFeature?.kind === "course" &&
+      !selectedCourses
+    ) {
+      setSelectedFinalizedFeature(null);
+      onSelectedElevationProfilePointChange?.(null);
+    }
+  }, [
+    finalizedMapData,
+    selectedFinalizedFeature,
+    selectedCourses,
+    setSelectedFinalizedFeature,
+    onSelectedElevationProfilePointChange,
+  ]);
+
   const hasFinalizedFeatures = hasFinalizedCourses || hasFinalizedLifts;
 
   // --- ソースの中身 -------------------------------------------------------
@@ -444,12 +500,14 @@ function MapLibreResortMapContent({
     () => ({
       courseColorMode,
       showOpenOnly,
+      showUngroomed: mapDisplaySettings.showUngroomed,
       selectedFeature: selectedFinalizedFeature,
       isFocusMode: isFinalizedFocusMode,
       tileVariant: mapTileVariant,
     }),
     [
       courseColorMode,
+      mapDisplaySettings.showUngroomed,
       isFinalizedFocusMode,
       mapTileVariant,
       selectedFinalizedFeature,
@@ -471,6 +529,7 @@ function MapLibreResortMapContent({
     if (!map || !isReady) return;
 
     const tone = getRasterTone({
+      monochrome: mapDisplaySettings.monochrome,
       variant: mapTileVariant,
       // コースデータの到着を待たない。待つと一段遅れて色が抜けてちらつく
       isDetailView: isDetailMap,
@@ -497,6 +556,7 @@ function MapLibreResortMapContent({
     applyResortPointTileVariant(map, mapTileVariant);
   }, [
     courseColorMode,
+    mapDisplaySettings.monochrome,
     hasFinalizedCourses,
     isDetailMap,
     isReady,
@@ -831,7 +891,8 @@ function MapLibreResortMapContent({
     courses: finalizedCourses,
     lifts: finalizedLifts,
     selectedFeature: selectedFinalizedFeature,
-    showOpenOnly,
+    showCourseNames: mapDisplaySettings.showCourseNames,
+    showLiftNames: mapDisplaySettings.showLiftNames,
     onSelectFeature: setSelectedFinalizedFeature,
   });
 
@@ -855,10 +916,10 @@ function MapLibreResortMapContent({
   const finalizedBounds = useMemo(
     () =>
       getCoordinateBounds([
-        ...finalizedCourses.flatMap(course => course.coordinates),
+        ...allFinalizedCourses.flatMap(course => course.coordinates),
         ...finalizedLifts.flatMap(lift => lift.coordinates),
       ]),
-    [finalizedCourses, finalizedLifts],
+    [allFinalizedCourses, finalizedLifts],
   );
 
   useResortViewport({
@@ -984,12 +1045,14 @@ function MapLibreResortMapContent({
           className="pointer-events-none absolute inset-x-0 bottom-0 z-[750] flex justify-end pb-[calc(env(safe-area-inset-bottom,0px)+1.5rem)] pl-2"
           style={{ paddingRight: `${toolbarRightOverlap + 8}px` }}
         >
-          <div className="pointer-events-auto max-w-full">
+          <div className="pointer-events-auto w-full max-w-[27rem]">
             <FinalizedMapToolbar
               mode={courseColorMode}
               onModeChange={setCourseColorMode}
               hasCourses={hasFinalizedCourses}
               hasLifts={hasFinalizedLifts}
+              mapDisplaySettings={mapDisplaySettings}
+              onMapDisplaySettingsChange={setMapDisplaySettings}
               showOpenOnly={showOpenOnly}
               onShowOpenOnlyChange={setShowOpenOnly}
               mapTileVariant={mapTileVariant}

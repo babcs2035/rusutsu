@@ -1,7 +1,8 @@
 "use client";
 
-import { type PointerEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import useMediaQuery from "@/hooks/use-media-query";
 import type { ElevationProfilePoint } from "../types";
 
 /** 断面図の線の色。開いている区間と閉じている区間を塗り分ける */
@@ -47,10 +48,9 @@ export const ElevationProfile = ({
   activeDistance?: number | null;
   onPointSelect?: (point: ElevationProfilePoint) => void;
 }) => {
-  const [isDragging, setIsDragging] = useState(false);
-
   const chartRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(320);
+  const [isMobile] = useMediaQuery("(max-width: 767px)");
   const hasProfile = points.length >= 2;
   useEffect(() => {
     if (!hasProfile) return;
@@ -65,24 +65,39 @@ export const ElevationProfile = ({
 
   if (points.length < 2) return null;
 
-  // 実幅で描くことで、スマホでも目盛りの文字を縮小しない。
-  const height = width < 400 ? 170 : 190;
-  const chartLeft = 48;
-  const chartRight = width - 12;
-  const chartTop = 14;
-  const chartBottom = height - 34;
-  const chartWidth = chartRight - chartLeft;
-  const chartHeight = chartBottom - chartTop;
+  // 縦横とも同じ px/m。高さの上限に達したときは横幅も縮める。
+  // 軸の文字とつまみは実寸のままにし、短い・平坦なコースでも潰さない。
+  const axisLeftPadding = 50;
+  const chartTop = 16;
   const maxDistance = Math.max(...points.map(point => point.distance));
   const minElevation = Math.min(...points.map(point => point.elevation));
   const maxElevation = Math.max(...points.map(point => point.elevation));
-  const axisElevationOffset = Math.min(
-    40,
-    Math.max(12, (maxElevation - minElevation) * 0.08),
+  const elevationDifference = maxElevation - minElevation;
+  const availablePlotWidth = Math.max(1, width - axisLeftPadding - 12);
+  // スマホだけ15°相当の高さを上限にする。PCはパネルが狭くても制限しない。
+  const maxPlotHeight = isMobile
+    ? Math.min(
+        availablePlotWidth * Math.tan((15 * Math.PI) / 180),
+        width < 400 ? 100 : 150,
+      )
+    : Infinity;
+  const scale = Math.min(
+    availablePlotWidth / Math.max(1, maxDistance),
+    maxPlotHeight / Math.max(1, elevationDifference),
   );
-  const bottomAxisElevation = minElevation - axisElevationOffset;
-  const elevationRange = Math.max(1, maxElevation - bottomAxisElevation);
-  const elevationStep = Math.max(10, Math.ceil(elevationRange / 4 / 10) * 10);
+  const chartWidth = Math.max(1, maxDistance) * scale;
+  // 縮めた分の余白を左右に分け、軸ラベルを含む断面図を中央に置く。
+  const chartLeft = axisLeftPadding + (availablePlotWidth - chartWidth) / 2;
+  const chartRight = chartLeft + chartWidth;
+  const chartHeight = elevationDifference * scale + 10;
+  const chartBottom = chartTop + chartHeight;
+  const height = chartBottom + 32;
+  const bottomAxisElevation = minElevation - 10 / scale;
+  const elevationRange = maxElevation - bottomAxisElevation;
+  const elevationStep = getDistanceGridInterval(
+    elevationRange,
+    Math.max(1, Math.floor(chartHeight / 32)),
+  );
   const minGridElevation =
     Math.ceil(bottomAxisElevation / elevationStep) * elevationStep;
   const maxGridElevation =
@@ -98,17 +113,15 @@ export const ElevationProfile = ({
   ).filter(elevation => elevation >= bottomAxisElevation);
   const horizontalGridInterval = getDistanceGridInterval(
     maxDistance,
-    Math.max(2, Math.floor(chartWidth / 70)),
+    Math.max(1, Math.floor(chartWidth / 70)),
   );
   const distanceGridValues = Array.from(
     { length: Math.floor(maxDistance / horizontalGridInterval) + 1 },
     (_, index) => index * horizontalGridInterval,
   ).filter(distance => distance <= maxDistance);
-  const toX = (distance: number) =>
-    chartLeft + (distance / Math.max(1, maxDistance)) * chartWidth;
+  const toX = (distance: number) => chartLeft + distance * scale;
   const toY = (elevation: number) =>
-    chartBottom -
-    ((elevation - bottomAxisElevation) / elevationRange) * chartHeight;
+    chartTop + (maxElevation - elevation) * scale;
   const toPath = (segmentPoints: ElevationProfilePoint[]) =>
     segmentPoints
       .map(
@@ -144,63 +157,27 @@ export const ElevationProfile = ({
     );
     onPointSelect?.(nearestPoint);
   };
-  const selectNearestProfilePoint = (event: PointerEvent<SVGSVGElement>) => {
-    if (!onPointSelect) return;
-
-    const rect = event.currentTarget.getBoundingClientRect();
-    const pointerX = ((event.clientX - rect.left) / rect.width) * width;
-    const targetDistance = Math.min(
-      maxDistance,
-      Math.max(
-        0,
-        ((pointerX - chartLeft) / Math.max(1, chartWidth)) * maxDistance,
-      ),
-    );
-    selectDistance(targetDistance);
-  };
-  const handleProfilePointerDown = (event: PointerEvent<SVGSVGElement>) => {
-    if (!onPointSelect) return;
-    event.currentTarget.setPointerCapture(event.pointerId);
-    setIsDragging(true);
-    selectNearestProfilePoint(event);
-  };
-  const handleProfilePointerMove = (event: PointerEvent<SVGSVGElement>) => {
-    if (!isDragging) return;
-    selectNearestProfilePoint(event);
-  };
-  const handleProfilePointerUp = (event: PointerEvent<SVGSVGElement>) => {
-    if (!isDragging) return;
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    setIsDragging(false);
-  };
 
   return (
     <Card className="gap-0 py-0">
       <CardContent className="p-2.5 sm:p-3">
-        <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-          <p className="text-sm font-semibold text-gray-900">
-            標高プロファイル
-          </p>
-          {hasMixedStatus && (
-            <div className="flex items-center gap-2 text-[11px] font-medium text-gray-600">
-              {(["○", "△", "×"] as const).map(status => (
-                <span key={status} className="flex items-center gap-1">
-                  <span
-                    className="h-[3px] w-4 rounded-full"
-                    style={{ background: STATUS_LINE_COLOR[status] }}
-                  />
-                  {status}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1 text-sm tabular-nums text-gray-700">
+        {hasMixedStatus && (
+          <div className="mb-1 flex items-center gap-2 text-xs font-medium text-gray-600">
+            {(["○", "△", "×"] as const).map(status => (
+              <span key={status} className="flex items-center gap-1">
+                <span
+                  className="h-[3px] w-4 rounded-full"
+                  style={{ background: STATUS_LINE_COLOR[status] }}
+                />
+                {status}
+              </span>
+            ))}
+          </div>
+        )}
+        <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1 text-xs tabular-nums text-gray-700 sm:text-sm">
           <span>
             斜度{" "}
-            <strong className="text-xl text-gray-950">
+            <strong className="text-base text-gray-950 sm:text-lg">
               {activePoint.slope == null
                 ? "--"
                 : `${Math.round(activePoint.slope)}°`}
@@ -208,7 +185,7 @@ export const ElevationProfile = ({
           </span>
           <span>
             標高{" "}
-            <strong className="text-xl text-gray-950">
+            <strong className="text-base text-gray-950 sm:text-lg">
               {Math.round(activePoint.elevation).toLocaleString()}m
             </strong>
           </span>
@@ -218,16 +195,10 @@ export const ElevationProfile = ({
         </div>
         <div ref={chartRef}>
           <svg
-            aria-label="標高プロファイル上の位置を選択"
+            aria-label="コースの断面図（縦横同縮尺）"
             viewBox={`0 0 ${width} ${height}`}
             role="img"
-            onPointerDown={handleProfilePointerDown}
-            onPointerMove={handleProfilePointerMove}
-            onPointerCancel={handleProfilePointerUp}
-            onPointerUp={handleProfilePointerUp}
-            onLostPointerCapture={() => setIsDragging(false)}
-            style={{ touchAction: onPointSelect ? "none" : "auto" }}
-            className={`block h-auto w-full ${onPointSelect ? (isDragging ? "cursor-grabbing" : "cursor-grab") : "cursor-default"}`}
+            className="block h-auto w-full touch-pan-y"
           >
             <path
               d={`M${chartLeft} ${chartTop}V${chartBottom}H${chartRight}`}
@@ -312,32 +283,6 @@ export const ElevationProfile = ({
                 vectorEffect="non-scaling-stroke"
               />
             ))}
-            {steepestPoint && (
-              <g>
-                <circle
-                  cx={toX(steepestPoint.distance)}
-                  cy={toY(steepestPoint.elevation)}
-                  r={4}
-                  fill="#EF4444"
-                  stroke="#FFFFFF"
-                  strokeWidth={2}
-                  vectorEffect="non-scaling-stroke"
-                />
-                <text
-                  x={Math.min(chartRight - 52, toX(steepestPoint.distance) + 7)}
-                  y={Math.max(chartTop + 14, toY(steepestPoint.elevation) - 10)}
-                  fill="#B91C1C"
-                  fontSize={12}
-                  fontWeight={900}
-                  paintOrder="stroke"
-                  stroke="#FFFFFF"
-                  strokeLinejoin="round"
-                  strokeWidth={4}
-                >
-                  最大 {Math.round(steepestPoint.slope ?? 0)}°
-                </text>
-              </g>
-            )}
             {activePoint && (
               <>
                 <line
@@ -360,6 +305,43 @@ export const ElevationProfile = ({
                   vectorEffect="non-scaling-stroke"
                 />
               </>
+            )}
+            {steepestPoint && (
+              <g>
+                <circle
+                  cx={toX(steepestPoint.distance)}
+                  cy={toY(steepestPoint.elevation)}
+                  r={4}
+                  fill="#EF4444"
+                  stroke="#FFFFFF"
+                  strokeWidth={2}
+                  vectorEffect="non-scaling-stroke"
+                />
+                {/* ハローを全字描いてから文字本体を描き、隣の字を覆わない。 */}
+                {[true, false].map(halo => (
+                  <text
+                    key={String(halo)}
+                    aria-hidden={halo || undefined}
+                    x={Math.min(
+                      width - 4,
+                      Math.max(
+                        chartLeft + 64,
+                        toX(steepestPoint.distance) + 60,
+                      ),
+                    )}
+                    y={Math.max(14, toY(steepestPoint.elevation) - 10)}
+                    textAnchor="end"
+                    fill={halo ? "none" : "#B91C1C"}
+                    fontSize={12}
+                    fontWeight={700}
+                    stroke={halo ? "#FFFFFF" : "none"}
+                    strokeLinejoin="round"
+                    strokeWidth={halo ? 3 : 0}
+                  >
+                    最大 {Math.round(steepestPoint.slope ?? 0)}°
+                  </text>
+                ))}
+              </g>
             )}
           </svg>
         </div>
@@ -394,12 +376,9 @@ export const ElevationProfile = ({
                 }}
                 // ネイティブrangeはつまみの半径ぶん内側までしか動かないため補正する。
                 style={{ width: "calc(100% + 20px)", marginLeft: -10 }}
-                className="block h-8 appearance-none bg-transparent touch-pan-y [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-gray-200 [&::-webkit-slider-thumb]:-mt-2 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-600 [&::-moz-range-track]:h-1 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-gray-200 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-blue-600"
+                className="block h-11 appearance-none bg-transparent touch-pan-y [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-gray-200 [&::-webkit-slider-thumb]:-mt-2 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-600 [&::-moz-range-track]:h-1 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-gray-200 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-blue-600"
               />
             </div>
-            <p className="text-xs text-gray-500">
-              グラフをなぞるか、つまみを動かして斜度を確認
-            </p>
           </div>
         )}
       </CardContent>

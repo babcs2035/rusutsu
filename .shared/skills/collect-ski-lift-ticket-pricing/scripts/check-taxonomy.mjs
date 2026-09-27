@@ -900,6 +900,18 @@ function checkProductValidity(reporter, data) {
       }
     }
 
+    // 「2日券」のように日数が名前に出ている券は、連続か選択かが不明でも
+    // days が要る。無いと連続した日の料金比較に使えない
+    const labelDays = /([2-9２-９])日券/.exec(
+      `${product.official_label_ja ?? ""} ${product.name_ja ?? ""}`,
+    );
+    if (v.mode === "unknown" && v.days == null && labelDays) {
+      reporter.error(
+        `${path}/validity/days`,
+        `券種名に「${labelDays[0]}」とあるのに days がありません。連続か選択かが不明なら mode は "unknown" のまま days に日数を入れてください（無いと連続した日の比較で複数日券が選ばれません）`,
+      );
+    }
+
     // 「いつまでに使い切るか」は分割して使える券だけの概念。
     // その日で終わる券に書いても意味が無く、書けると誤解を生む
     const SPLITTABLE_MODES = ["selectable_days", "hours_pool"];
@@ -1104,6 +1116,17 @@ function checkAudienceResolution(reporter, data, taxonomy) {
       reporter.error(
         `${path}/school_levels`,
         `is_default: true の区分に学校区分が列挙されています（${levels.join(", ")}）。基準区分は「どの条件にも当てはまらなければこれ」なので、学校区分を列挙すると社会人が漏れます（「中学生以上」は学校区分では表せない）。school_levels を空にしてください`,
+      );
+    }
+
+    // 学校の明記を年齢だけへ置換すると、UIの年齢未入力検索から漏れる。
+    // 「中学生以上」など上が閉じない基準区分、資格区分は対象外。
+    if (!audience.is_default && !isDisabilityQualified && levels.length === 0 &&
+        /小学生|中学生|高校生|中高生/.test(officialLabel) &&
+        !/(?:中学生|高校生)以上/.test(officialLabel)) {
+      reporter.error(
+        `${path}/school_levels`,
+        `公式の学校区分が school_levels にありません。小学生・中学生・高校生を年齢だけに置き換えず、学校区分を記録してください`,
       );
     }
 

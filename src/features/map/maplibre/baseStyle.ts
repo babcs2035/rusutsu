@@ -45,22 +45,24 @@ const TONE: Record<MapTileVariant, { normal: RasterTone; mono: RasterTone }> = {
 /**
  * 地図の色味。
  *
- * スキー場を選んでいる間は必ず白黒にする。判断の材料は interactionMode だけで、
- * コースデータの到着を待たない。待つと「選んだ直後はカラー写真 → データが届いて
- * 白黒」と一段遅れて色が抜け、ちらついて見える。
+ * 明示したカラー・白黒設定を優先する。未指定の既存呼び出しだけ、
+ * 詳細表示・斜度モードを白黒にする従来の既定値を使う。
  */
 export const getRasterTone = ({
   variant,
+  monochrome,
   isDetailView,
   courseColorMode,
   hasCourses,
 }: {
   variant: MapTileVariant;
+  monochrome?: boolean;
   isDetailView: boolean;
   courseColorMode: CourseColorMode;
   hasCourses: boolean;
 }): RasterTone => {
   const tone = TONE[variant];
+  if (monochrome !== undefined) return monochrome ? tone.mono : tone.normal;
   if (isDetailView) return tone.mono;
   // 斜度モードでは地図を白黒にして、斜度の色だけが目に入るようにする
   if (hasCourses && courseColorMode === "slope") return tone.mono;

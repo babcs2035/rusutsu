@@ -122,6 +122,8 @@ export const FinalizedLineOverlay = ({
   lifts,
   selectedFeature,
   onSelectFeature,
+  showCourseNames = true,
+  showLiftNames = true,
   showOpenOnly,
 }: {
   /** 滑走方向（標高降順）に正規化済みのコース */
@@ -129,6 +131,8 @@ export const FinalizedLineOverlay = ({
   lifts: FinalizedLiftFeature[];
   selectedFeature: SelectedMapFeature | null;
   onSelectFeature: (feature: SelectedMapFeature) => void;
+  showCourseNames?: boolean;
+  showLiftNames?: boolean;
   showOpenOnly: boolean;
 }) => {
   const map = useMap();
@@ -203,7 +207,7 @@ export const FinalizedLineOverlay = ({
     // 何かを選択しているときは名前を出さない。名前はパネル側に出ているので、
     // 地図は選択した線そのものを見せることに集中させる。
     // リフトを先に置き、その矩形をコースの衝突判定に渡す（既存の優先順を踏襲）
-    if (!hasSelection && zoom >= LIFT_LABEL_MIN_ZOOM) {
+    if (showLiftNames && !hasSelection && zoom >= LIFT_LABEL_MIN_ZOOM) {
       const liftSources = lifts.flatMap<LabelSource>(lift => {
         if (lift.name.length === 0) return [];
 
@@ -249,7 +253,7 @@ export const FinalizedLineOverlay = ({
       coursePoints.set(course.id, project(course.coordinates));
     }
 
-    if (!hasSelection && zoom >= COURSE_LABEL_MIN_ZOOM) {
+    if (showCourseNames && !hasSelection && zoom >= COURSE_LABEL_MIN_ZOOM) {
       const courseSources = courseLabelGroups.flatMap<LabelSource>(group => {
         const isSelected = isSelectedId("course", group.sourceIds);
         const status = group.statuses.includes("open")
@@ -452,6 +456,8 @@ export const FinalizedLineOverlay = ({
     prefersReducedMotion,
     selectedFeature,
     showOpenOnly,
+    showCourseNames,
+    showLiftNames,
   ]);
 
   /** ズーム確定後の再配置。衝突判定はやり直さず、投影し直すだけ */

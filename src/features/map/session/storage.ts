@@ -101,6 +101,20 @@ export const mapSessionSchema = z.object({
   tileVariant: z.enum(["pale", "photo"]),
   courseColorMode: z.enum(["difficulty", "slope"]),
   showOpenOnly: z.boolean(),
+  displaySettings: z
+    .object({
+      showCourseNames: z.boolean(),
+      showLiftNames: z.boolean(),
+      showUngroomed: z.boolean(),
+      monochrome: z.boolean(),
+      courseStatuses: z.object({
+        open: z.boolean(),
+        limited: z.boolean(),
+        closed: z.boolean(),
+        unknown: z.boolean(),
+      }),
+    })
+    .optional(),
 });
 export const HOME_SESSION_KEY = "rusutsu:home:v1";
 export const mapSessionKey = (resortId: string | null) =>

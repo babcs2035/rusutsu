@@ -90,7 +90,7 @@ export const FinalizedFeatureDetail = ({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
+      <div className="min-h-0 flex-1 overflow-y-auto p-3 md:p-6">
         {courseGroup ? (
           <SelectedCourseDetail
             courseGroup={courseGroup}

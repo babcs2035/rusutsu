@@ -128,7 +128,10 @@ function inferredAudienceIds() {
   );
   if (requestedSchool) {
     const schoolMatches = audiences.filter((audience) =>
-      (audience.school_levels ?? []).includes(requestedSchool),
+      (audience.school_levels ?? []).includes(requestedSchool) &&
+      (requestedAge == null ||
+        ((audience.age_min == null || requestedAge >= audience.age_min) &&
+         (audience.age_max == null || requestedAge <= audience.age_max))),
     );
     if (schoolMatches.length > 0) {
       return schoolMatches.map((audience) => audience.id);
@@ -137,6 +140,7 @@ function inferredAudienceIds() {
   if (requestedAge != null) {
     const ageMatches = audiences.filter(
       (audience) =>
+        (audience.school_levels ?? []).length === 0 &&
         (audience.age_min != null || audience.age_max != null) &&
         (audience.age_min == null || requestedAge >= audience.age_min) &&
         (audience.age_max == null || requestedAge <= audience.age_max),

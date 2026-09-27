@@ -8,7 +8,12 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { ResortFinalizedMap } from "@/features/map/components/ResortFinalizedMap";
 import { useMapSession } from "@/features/map/session/MapSessionProvider";
-import { readStorage, writeStorage } from "@/features/map/session/storage";
+import {
+  mapSessionKey,
+  mapSessionSchema,
+  readStorage,
+  writeStorage,
+} from "@/features/map/session/storage";
 import type {
   CourseColorMode,
   ElevationProfileMapPoint,
@@ -16,6 +21,11 @@ import type {
   MapTileVariant,
   SelectedMapFeature,
 } from "@/features/map/types";
+import {
+  DEFAULT_MAP_DISPLAY_SETTINGS,
+  type MapDisplaySettings,
+  OPEN_COURSE_STATUSES,
+} from "@/features/map/utils/mapDisplaySettings";
 import type { FinalizedResortMapData } from "@/lib/finalizedResortGeojsonShared";
 import { cn } from "@/lib/utils";
 import type { MapSkiResort } from "@/types/skiResorts";
@@ -75,6 +85,8 @@ type Props = {
   /** 表示設定を呼び出し側で持つ場合に渡す（比較のゲレンデ一覧など） */
   courseColorMode?: CourseColorMode;
   onCourseColorModeChange?: (mode: CourseColorMode) => void;
+  mapDisplaySettings?: MapDisplaySettings;
+  onMapDisplaySettingsChange?: (settings: MapDisplaySettings) => void;
   showOpenOnly?: boolean;
   onShowOpenOnlyChange?: (showOpenOnly: boolean) => void;
   mapTileVariant?: MapTileVariant;
@@ -112,14 +124,62 @@ export const ResortMapSection = ({
   expandable = true,
   showInlineMapToolbar = true,
   detailViewportResetKey = 0,
-  courseColorMode,
+  courseColorMode: controlledCourseColorMode,
   onCourseColorModeChange,
-  showOpenOnly,
+  mapDisplaySettings: controlledMapDisplaySettings,
+  onMapDisplaySettingsChange,
+  showOpenOnly: controlledShowOpenOnly,
   onShowOpenOnlyChange,
-  mapTileVariant,
+  mapTileVariant: controlledMapTileVariant,
   onMapTileVariantChange,
 }: Props) => {
+  const [localMapDisplaySettings, setLocalMapDisplaySettings] = useState(
+    DEFAULT_MAP_DISPLAY_SETTINGS,
+  );
+  const mapDisplaySettings =
+    controlledMapDisplaySettings ?? localMapDisplaySettings;
+  const setMapDisplaySettings = (settings: MapDisplaySettings) => {
+    setLocalMapDisplaySettings(settings);
+    onMapDisplaySettingsChange?.(settings);
+  };
+  const [localShowOpenOnly, setLocalShowOpenOnly] = useState(false);
+  const showOpenOnly = controlledShowOpenOnly ?? localShowOpenOnly;
+  const setShowOpenOnly = (value: boolean) => {
+    setLocalShowOpenOnly(value);
+    onShowOpenOnlyChange?.(value);
+  };
+  const [localTileVariant, setLocalTileVariant] =
+    useState<MapTileVariant>("photo");
+  const mapTileVariant = controlledMapTileVariant ?? localTileVariant;
+  const setMapTileVariant = (value: MapTileVariant) => {
+    setLocalTileVariant(value);
+    onMapTileVariantChange?.(value);
+  };
+  const [localColorMode, setLocalColorMode] =
+    useState<CourseColorMode>("slope");
+  const courseColorMode = controlledCourseColorMode ?? localColorMode;
+  const setCourseColorMode = (value: CourseColorMode) => {
+    setLocalColorMode(value);
+    onCourseColorModeChange?.(value);
+  };
   const sessionEnabled = useMapSession() !== null;
+  useEffect(() => {
+    const saved = sessionEnabled
+      ? readStorage(`${mapSessionKey(resortId)}:expanded`, mapSessionSchema)
+      : null;
+    setLocalMapDisplaySettings({
+      ...(saved?.displaySettings ?? {
+        ...DEFAULT_MAP_DISPLAY_SETTINGS,
+        courseStatuses: saved?.showOpenOnly
+          ? OPEN_COURSE_STATUSES
+          : DEFAULT_MAP_DISPLAY_SETTINGS.courseStatuses,
+      }),
+      monochrome: true,
+    });
+    setLocalShowOpenOnly(saved?.showOpenOnly ?? false);
+    setLocalTileVariant("photo");
+    setLocalColorMode(saved?.courseColorMode ?? "slope");
+  }, [resortId, sessionEnabled]);
   const expandedKey = `rusutsu:expanded:v1:${resortId}`;
   const [isExpanded, setExpanded] = useState(false);
   useEffect(() => {
@@ -154,7 +214,14 @@ export const ResortMapSection = ({
 
     const handleKeyDown = (event: KeyboardEvent) => {
       // 選択中の Escape はコース選択の解除が先（地図側で処理する）
-      if (event.key !== "Escape" || hasSelection) return;
+      if (
+        event.key !== "Escape" ||
+        hasSelection ||
+        event.defaultPrevented ||
+        (event.target instanceof Element &&
+          event.target.closest('[role="dialog"]'))
+      )
+        return;
       collapse();
     };
     document.addEventListener("keydown", handleKeyDown);
@@ -173,11 +240,13 @@ export const ResortMapSection = ({
       presentation={presentation}
       showToolbar={showToolbar}
       courseColorMode={courseColorMode}
-      onCourseColorModeChange={onCourseColorModeChange}
+      onCourseColorModeChange={setCourseColorMode}
+      mapDisplaySettings={mapDisplaySettings}
+      onMapDisplaySettingsChange={setMapDisplaySettings}
       showOpenOnly={showOpenOnly}
-      onShowOpenOnlyChange={onShowOpenOnlyChange}
+      onShowOpenOnlyChange={setShowOpenOnly}
       mapTileVariant={mapTileVariant}
-      onMapTileVariantChange={onMapTileVariantChange}
+      onMapTileVariantChange={setMapTileVariant}
       selectedFinalizedFeature={selectedFinalizedFeature}
       selectedElevationProfilePoint={selectedElevationProfilePoint}
       onSelectedFinalizedFeatureChange={onSelectedFinalizedFeatureChange}

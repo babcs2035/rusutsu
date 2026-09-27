@@ -14,7 +14,9 @@ import {
 import { cn } from "@/lib/utils";
 import {
   type LiftTicketSearchInput,
-  TICKET_PARTY_CATEGORIES,
+  SELECTABLE_TICKET_PARTY_CATEGORIES,
+  TICKET_DISABILITY_BASE_CATEGORIES,
+  TICKET_HOUR_OPTIONS,
   type TicketDayPlan,
   type TicketPartyCategory,
   type TicketPartyGroup,
@@ -34,12 +36,11 @@ type Props = {
 
 // Base UI の SelectValue は items が無いと生の値（day / adult）を表示するので、
 // トリガーに出すラベルを Root に渡す
-const HOUR_OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);
 const DURATION_LABELS: Record<string, string> = {
   day: "1日",
   "day-night": "1日＋ナイター",
   ...Object.fromEntries(
-    HOUR_OPTIONS.map(hours => [`h${hours}`, `${hours}時間`]),
+    TICKET_HOUR_OPTIONS.map(hours => [`h${hours}`, `${hours}時間`]),
   ),
 };
 
@@ -63,14 +64,6 @@ const sanitizeNumber = (value: string) => {
   const digits = value.replace(/\D/g, "");
   return digits ? Number.parseInt(digits, 10) : null;
 };
-
-/**
- * 画面で選べる区分。「学校区分なし」（other）は大人と同じ扱いなので出さない。
- * 保存済みの入力に残っていても表示できるよう、型とラベルは残す
- */
-const SELECTABLE_CATEGORIES = TICKET_PARTY_CATEGORIES.filter(
-  category => category !== "other",
-);
 
 const SectionHeader = ({
   title,
@@ -316,30 +309,59 @@ export const TicketPartyEditor = ({
             key={group.id}
             className={cn("grid gap-1.5 items-center", partyGrid)}
           >
-            <Select
-              items={TICKET_PARTY_CATEGORY_LABELS}
-              value={group.category}
-              onValueChange={value =>
-                updateGroup(group.id, current => ({
-                  ...current,
-                  category: value as TicketPartyCategory,
-                }))
-              }
-            >
-              <SelectTrigger
-                aria-label="区分"
-                className={cn(FIELD_CLASS, "w-full px-2.5")}
+            <div className="flex min-w-0 flex-col gap-1.5">
+              <Select
+                items={TICKET_PARTY_CATEGORY_LABELS}
+                value={group.category}
+                onValueChange={value =>
+                  updateGroup(group.id, current => ({
+                    ...current,
+                    category: value as TicketPartyCategory,
+                  }))
+                }
               >
-                <SelectValue className="min-w-0 truncate" />
-              </SelectTrigger>
-              <SelectContent>
-                {SELECTABLE_CATEGORIES.map(category => (
-                  <SelectItem key={category} value={category}>
-                    {TICKET_PARTY_CATEGORY_LABELS[category]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                <SelectTrigger
+                  aria-label="区分"
+                  className={cn(FIELD_CLASS, "w-full px-2.5")}
+                >
+                  <SelectValue className="min-w-0 truncate" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SELECTABLE_TICKET_PARTY_CATEGORIES.map(category => (
+                    <SelectItem key={category} value={category}>
+                      {TICKET_PARTY_CATEGORY_LABELS[category]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {group.category === "disabled" && (
+                <Select
+                  items={TICKET_PARTY_CATEGORY_LABELS}
+                  value={group.baseCategory ?? "adult"}
+                  onValueChange={value => {
+                    if (value == null) return;
+                    updateGroup(group.id, current => ({
+                      ...current,
+                      baseCategory: value as TicketPartyGroup["baseCategory"],
+                    }));
+                  }}
+                >
+                  <SelectTrigger
+                    aria-label="障がい者の学校区分"
+                    className={cn(FIELD_CLASS, "w-full px-2.5")}
+                  >
+                    <SelectValue className="min-w-0 truncate" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TICKET_DISABILITY_BASE_CATEGORIES.map(category => (
+                      <SelectItem key={category} value={category}>
+                        {TICKET_PARTY_CATEGORY_LABELS[category]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
             <Input
               aria-label={`${TICKET_PARTY_CATEGORY_LABELS[group.category]}の年齢`}
               type="text"

@@ -17,7 +17,7 @@ const MULTI = path.join(
 /** 1日券もナイター券も無いスキー場（最長9時間券） */
 const NO_DAY_PASS = path.join(
   process.cwd(),
-  "src/private/data/lift-ticket/megahira-onsen-megahira/2025-2026.json",
+  "src/private/data/lift-ticket-test-fixtures/ui/megahira-onsen-megahira/2025-2026.json",
 );
 
 const load = (file: string) =>
@@ -163,7 +163,7 @@ test("出典は日をまたいで重複を除いて番号順に並べる", () =>
 /** 25時間券（日をまたいで1時間単位で使う）とWeb料金（12/19販売開始）があるスキー場 */
 const RUSUTSU = path.join(
   process.cwd(),
-  "src/private/data/lift-ticket/rusutsu-resort/2026-2027.json",
+  "src/private/data/lift-ticket-test-fixtures/ui/rusutsu-resort/2026-2027.json",
 );
 
 const rusutsuPlan = (dates: string[], hours: number, today: string) =>
@@ -197,6 +197,23 @@ test("利用日より後に販売が始まるWeb券は使わない", () => {
     ),
     "販売開始前のWeb料金を使っている",
   );
+});
+
+test("ルスツの連続2日券は、連続した2日なら1日券×2より安いので採用する", () => {
+  const result = calculateLiftTicketPlan(load(RUSUTSU), {
+    visitDate: "2027-01-14",
+    usePreference: "full_day",
+    party: PARTY,
+    today: "2026-09-25",
+    days: ["2027-01-14", "2027-01-15"].map((date, index) => ({
+      id: `day-${index + 1}`,
+      date,
+      duration: DAY,
+    })),
+  });
+  assert.equal(result.perDayTotal, 26400, "1日券×2の合計");
+  assert.equal(result.multiDay?.productId, "prod-2day");
+  assert.equal(result.total, 26000, "安い2日券が採用されていない");
 });
 
 test("5時間×4日なら25時間券1枚で全日をまかなう", () => {
@@ -316,7 +333,7 @@ test("営業時間が未掲載でも、時間指定なら1日券を選び、営�
 /** 基準区分の名前が「大人」ではなく「一般」のスキー場 */
 const SAPPORO = path.join(
   process.cwd(),
-  "src/private/data/lift-ticket/sapporo-kokusai/2026-2027.json",
+  "src/private/data/lift-ticket-test-fixtures/ui/sapporo-kokusai/2026-2027.json",
 );
 
 const sapporoDay = (group: Omit<TicketPartyGroup, "id" | "count">) =>
@@ -386,12 +403,12 @@ test("ルスツの1日券はナイターも滑れるので、ナイター込み�
   );
 });
 
-test("年齢未入力の小学生に、年齢だけで決まる小人料金を当てる", () => {
-  // ルスツの小人は「4〜12歳」で学校区分を持たない。当てないと大人料金になる
+test("年齢制の料金は小学生でも入力した年齢で判定する", () => {
+  // ルスツの小人は「4〜12歳」。学校区分から年齢を推測しない。
   const result = calculateLiftTicketPlan(load(RUSUTSU), {
     visitDate: "2027-01-27",
     usePreference: "full_day",
-    party: [{ id: "c", category: "elementary", age: null, count: 1 }],
+    party: [{ id: "c", category: "elementary", age: 10, count: 1 }],
     today: "2026-09-26",
     days: [
       {
@@ -431,4 +448,10 @@ test("営業時間が不明な「1日」の日は1日券にし、残りの日を
   ]);
   assert.equal(result.multiDay?.ticketTotal, 36000);
   assert.equal(result.total, 13200 + 36000);
+});
+
+test("営業時間を超える時間指定は25時間券でもまかなえない", () => {
+  const result = plan(MULTI, [["2026-01-14", { kind: "hours", hours: 9 }]]);
+  assert.equal(result.total, null);
+  assert.equal(result.multiDay, null);
 });

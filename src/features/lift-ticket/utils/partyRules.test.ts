@@ -12,7 +12,7 @@ import { calculateLiftTicket } from "./calculateLiftTicket";
 
 const SAPPORO_KOKUSAI = path.join(
   process.cwd(),
-  "src/private/data/lift-ticket/sapporo-kokusai/2026-2027.json",
+  "src/private/data/lift-ticket-test-fixtures/ui/sapporo-kokusai/2026-2027.json",
 );
 
 // 公開画面と同じく、公開用スキーマを通したデータで計算する

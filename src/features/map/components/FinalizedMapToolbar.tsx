@@ -3,6 +3,8 @@
 import type React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { StatusMark } from "@/features/resort-detail/components/CompactInfo";
+import { StatusLegendDialog } from "@/features/resort-detail/components/CourseStatusTable";
 import {
   COURSE_DIFFICULTY_META,
   SLOPE_COLOR_STOPS,
@@ -12,27 +14,24 @@ import {
 import { cn } from "@/lib/utils";
 import { SegmentedControl } from "@/shared/components/SegmentedControl";
 import { GSI_TILE_LAYERS } from "../constants";
-import type { CourseColorMode, MapTileVariant } from "../types";
-
-/**
- * リフトの凡例。地図と同じ「地の色＋流れる色」の二色で見せる。
- * 実際の色は maplibre/sources.ts の LIFT_PALETTE と合わせること。
- */
-const LIFT_STATUS_LEGEND = [
-  { label: "運行中", base: "#1E40AF", flow: "#00E1FF" },
-  { label: "待機中", base: "#B91C1C", flow: "#FECACA" },
-  { label: "運休", base: "#64748B", flow: "#FFFFFF" },
-  { label: "不明", base: "#7C3AED", flow: "#EDE9FE" },
-] as const;
-
-const LiftFlowSample = ({ base, flow }: { base: string; flow: string }) => (
-  <span
-    className="h-[4px] w-8 shrink-0 rounded-full border border-black/5"
-    style={{
-      background: `repeating-linear-gradient(90deg, ${flow} 0 7px, ${base} 7px 14px)`,
-    }}
-  />
-);
+import type {
+  CourseColorMode,
+  FinalizedFeatureStatus,
+  MapTileVariant,
+} from "../types";
+import {
+  ALL_COURSE_STATUSES,
+  COURSE_STATUS_OPTIONS,
+  DEFAULT_MAP_DISPLAY_SETTINGS,
+  type MapDisplaySettings,
+  OPEN_COURSE_STATUSES,
+} from "../utils/mapDisplaySettings";
+import {
+  LIFT_STATUS_LEGEND,
+  LiftFlowSample,
+  MapLineLegendDialog,
+} from "./MapLineLegendDialog";
+import { MapSettingsDialog } from "./MapSettingsDialog";
 
 /** 目盛りは 5° 刻み。幅が足りないときは 10° 刻みまで間引く */
 const SLOPE_TICKS = (() => {
@@ -115,7 +114,8 @@ const MODE_OPTIONS = [
   { value: "slope", label: "斜度" },
 ] as const satisfies readonly { value: CourseColorMode; label: string }[];
 
-const SEGMENT_ITEM_CLASS = "h-8 px-2.5 text-[13px]";
+const SEGMENT_ITEM_CLASS =
+  "h-6 flex-1 px-1.5 text-[11px] @[25rem]:px-2 @[25rem]:text-xs";
 
 /**
  * コースマップ用のツールバー。
@@ -123,43 +123,58 @@ const SEGMENT_ITEM_CLASS = "h-8 px-2.5 text-[13px]";
  * 表示切替と凡例をまとめたもの。地図の右下に浮かせる形（floating）と、
  * 地図の上の白い帯に並べる形（bar）で中身を変えないことで、
  * どこから見ても同じ操作・同じ凡例になるようにする。
- * 狭い画面でも縦に積み上がらないよう、各要素は横に並べて折り返す。
+ * 上段の操作は狭い画面でも必ず一列に並べる。
  */
 export const FinalizedMapToolbar = ({
   mode,
   onModeChange,
   hasCourses,
   hasLifts,
+  mapDisplaySettings = DEFAULT_MAP_DISPLAY_SETTINGS,
+  onMapDisplaySettingsChange,
   showOpenOnly,
   onShowOpenOnlyChange,
   mapTileVariant,
   onMapTileVariantChange,
   presentation = "floating",
-  showLegend = true,
   className,
 }: {
   mode: CourseColorMode;
   onModeChange: (mode: CourseColorMode) => void;
   hasCourses: boolean;
   hasLifts: boolean;
+  mapDisplaySettings?: MapDisplaySettings;
+  onMapDisplaySettingsChange?: (settings: MapDisplaySettings) => void;
   showOpenOnly: boolean;
   onShowOpenOnlyChange: (showOpenOnly: boolean) => void;
   mapTileVariant: MapTileVariant;
   onMapTileVariantChange: (variant: MapTileVariant) => void;
   /** "floating" は地図に浮かせるカード、"bar" は白い帯に並べる中身だけ */
   presentation?: "floating" | "bar";
-  /** 凡例を出すか。狭い帯では切替だけを残す */
-  showLegend?: boolean;
   className?: string;
 }) => {
   if (!hasCourses && !hasLifts) return null;
 
-  const tileOptions = Object.entries(GSI_TILE_LAYERS).map(
-    ([variant, layer]) => ({
-      value: variant as MapTileVariant,
-      label: layer.label,
-    }),
-  );
+  const changeSettings = (settings: MapDisplaySettings) =>
+    onMapDisplaySettingsChange?.(settings);
+  const changeBackground = (variant: MapTileVariant, monochrome: boolean) => {
+    onMapTileVariantChange(variant);
+    changeSettings({ ...mapDisplaySettings, monochrome });
+  };
+  const changeStatus = (status: FinalizedFeatureStatus, checked: boolean) => {
+    const courseStatuses = {
+      ...mapDisplaySettings.courseStatuses,
+      [status]: checked,
+    };
+    changeSettings({ ...mapDisplaySettings, courseStatuses });
+  };
+  const changeOpenOnly = (checked: boolean) => {
+    changeSettings({
+      ...mapDisplaySettings,
+      courseStatuses: checked ? OPEN_COURSE_STATUSES : ALL_COURSE_STATUSES,
+    });
+    onShowOpenOnlyChange(checked);
+  };
   // 浮かせるときは地図の右下に寄せる。帯に並べるときは左のボタンの続きにする
   const rowAlignClass =
     presentation === "bar" ? "justify-start" : "justify-end";
@@ -167,14 +182,15 @@ export const FinalizedMapToolbar = ({
   const content = (
     <div
       className={cn(
-        "flex flex-col gap-1",
+        "@container flex w-full flex-col gap-1",
         presentation === "floating" && "p-1.5",
         className,
       )}
     >
-      <div className={cn("flex flex-wrap items-center gap-1.5", rowAlignClass)}>
+      <div className={cn("flex flex-nowrap items-center gap-1", rowAlignClass)}>
         {hasCourses && (
           <SegmentedControl
+            className="min-w-0 flex-1"
             options={MODE_OPTIONS}
             value={mode}
             onChange={onModeChange}
@@ -183,74 +199,117 @@ export const FinalizedMapToolbar = ({
           />
         )}
         <SegmentedControl
-          options={tileOptions}
+          className="min-w-0 flex-1"
+          options={Object.entries(GSI_TILE_LAYERS).map(([value, layer]) => ({
+            value: value as MapTileVariant,
+            label: layer.label,
+          }))}
           value={mapTileVariant}
           onChange={onMapTileVariantChange}
           itemClassName={SEGMENT_ITEM_CLASS}
           ariaLabel={option => `${option.label}に切り替え`}
         />
-        <label className="flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 text-[13px] font-semibold text-gray-700 hover:bg-gray-50">
-          <Checkbox
-            checked={showOpenOnly}
-            onCheckedChange={checked => onShowOpenOnlyChange(checked === true)}
-            className="h-4 w-4 data-[state=checked]:border-green-500 data-[state=checked]:bg-green-500"
-          />
-          営業中のみ
-        </label>
-      </div>
-
-      {/*
-        凡例は畳まない。矢印の意味は動きそのもので分かるので出さない。
-        1 行目にコースの色、2 行目に非圧雪とリフトの営業状態を置く。
-      */}
-      <div
-        className={cn(
-          "flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] font-medium text-gray-700",
-          rowAlignClass,
-          showLegend ? "flex" : "hidden",
-        )}
-      >
-        {hasCourses &&
-          mode === "difficulty" &&
-          DIFFICULTY_KEYS.map(key => (
-            <LegendItem
-              key={key}
-              sample={
-                <span
-                  className="h-2.5 w-2.5 shrink-0 rounded-full border border-black/20"
-                  style={{ background: COURSE_DIFFICULTY_META[key].color }}
-                />
-              }
-            >
-              {COURSE_DIFFICULTY_META[key].label}
-            </LegendItem>
-          ))}
-        {hasCourses && mode === "slope" && <SlopeScale />}
-      </div>
-
-      {/* 非圧雪とリフトの営業状態。畳んで隠すほどの量ではない */}
-      <div
-        className={cn(
-          "flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] font-medium text-gray-700",
-          rowAlignClass,
-          showLegend ? "flex" : "hidden",
-        )}
-      >
         {hasCourses && (
-          <LegendItem
-            sample={
-              <span className="h-[3px] w-7 shrink-0 bg-[repeating-linear-gradient(90deg,#475569_0_6px,transparent_6px_10px)]" />
-            }
-          >
-            非圧雪
-          </LegendItem>
+          <label className="flex h-[26px] shrink-0 cursor-pointer items-center justify-center gap-1 whitespace-nowrap rounded-md border border-gray-200 bg-white px-1.5 text-[11px] @[25rem]:text-xs font-semibold text-gray-700 hover:bg-gray-50">
+            <Checkbox
+              checked={showOpenOnly}
+              onCheckedChange={checked => changeOpenOnly(checked === true)}
+              className="h-4 w-4 data-[state=checked]:border-green-500 data-[state=checked]:bg-green-500"
+            />
+            営業中のみ
+          </label>
         )}
-        {hasLifts &&
-          LIFT_STATUS_LEGEND.map(item => (
-            <LegendItem key={item.label} sample={<LiftFlowSample {...item} />}>
-              {item.label}
-            </LegendItem>
+      </div>
+
+      {hasCourses && showOpenOnly && (
+        <div
+          className="flex h-7 w-full items-center gap-1.5"
+          role="group"
+          aria-label="表示するコースの営業状況"
+        >
+          {COURSE_STATUS_OPTIONS.filter(
+            option => option.value !== "closed",
+          ).map(option => (
+            <label
+              key={option.value}
+              className={cn(
+                "flex h-7 min-w-0 flex-1 cursor-pointer items-center justify-center gap-1 whitespace-nowrap rounded-md border px-1 text-base font-semibold hover:bg-slate-100",
+                mapDisplaySettings.courseStatuses[option.value]
+                  ? "border-slate-400 bg-slate-50 text-slate-900"
+                  : "border-gray-200 bg-white text-slate-500",
+              )}
+            >
+              <Checkbox
+                aria-label={option.label}
+                checked={mapDisplaySettings.courseStatuses[option.value]}
+                onCheckedChange={checked =>
+                  changeStatus(option.value, checked === true)
+                }
+                className="size-4"
+              />
+              <span
+                aria-hidden="true"
+                className="flex h-5 shrink-0 items-center justify-center leading-none"
+              >
+                {option.value === "unknown" ? (
+                  <span className="text-sm leading-none font-semibold text-slate-700">
+                    不明
+                  </span>
+                ) : (
+                  <StatusMark symbol={option.symbol as "○" | "△" | "×"} />
+                )}
+              </span>
+            </label>
           ))}
+          <StatusLegendDialog name="コース" className="size-7 [&_svg]:size-4" />
+        </div>
+      )}
+      {/* 営業状況の選択中は色の凡例を隠す。 */}
+      {!showOpenOnly && (
+        <div
+          className={cn(
+            "h-7 flex-nowrap items-center gap-x-1 text-[10px] font-medium text-gray-700 @[25rem]:gap-x-2 @[25rem]:text-[11px]",
+            rowAlignClass,
+            "flex",
+          )}
+        >
+          {hasCourses &&
+            mode === "difficulty" &&
+            DIFFICULTY_KEYS.map(key => (
+              <LegendItem
+                key={key}
+                sample={
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-full border border-black/20"
+                    style={{ background: COURSE_DIFFICULTY_META[key].color }}
+                  />
+                }
+              >
+                {COURSE_DIFFICULTY_META[key].label}
+              </LegendItem>
+            ))}
+          {hasCourses && mode === "slope" && <SlopeScale />}
+        </div>
+      )}
+      <div className="flex w-full items-center gap-2">
+        {hasLifts && (
+          <div className="grid min-w-0 flex-1 grid-cols-4 items-center gap-x-2 text-[10px] font-medium text-gray-700 @[25rem]:text-[11px]">
+            {LIFT_STATUS_LEGEND.map(item => (
+              <div key={item.label} className="flex min-w-0 items-center gap-1">
+                <LiftFlowSample {...item} />
+                <span className="shrink-0 whitespace-nowrap">{item.label}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        <MapLineLegendDialog showUngroomed={mapDisplaySettings.showUngroomed} />
+        <MapSettingsDialog
+          settings={mapDisplaySettings}
+          onChange={changeSettings}
+          variant={mapTileVariant}
+          onBackgroundChange={changeBackground}
+          onStatusChange={changeStatus}
+        />
       </div>
     </div>
   );
@@ -258,7 +317,7 @@ export const FinalizedMapToolbar = ({
   if (presentation === "bar") return content;
 
   return (
-    <Card className="gap-0 overflow-hidden p-0">
+    <Card className="w-[min(27rem,100%)] gap-0 overflow-hidden p-0">
       <CardContent className="p-0">{content}</CardContent>
     </Card>
   );

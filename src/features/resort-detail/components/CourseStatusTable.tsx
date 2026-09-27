@@ -39,7 +39,7 @@ export function StatusLegendDialog({
           <DialogTitle className="pr-7 text-base font-semibold text-slate-900">
             {name} 営業状況
           </DialogTitle>
-          <dl className="my-4 grid grid-cols-[2rem_1fr] items-center gap-x-3 gap-y-2 rounded-lg bg-slate-50 p-3 text-sm">
+          <dl className="my-4 grid grid-cols-[2.5rem_1fr] items-center gap-x-3 gap-y-2 rounded-lg bg-slate-50 p-3 text-sm">
             <dt className="flex items-center justify-center font-semibold text-emerald-700">
               <StatusMark symbol="○" lift={isLift} />
             </dt>
@@ -52,6 +52,10 @@ export function StatusLegendDialog({
               <StatusMark symbol="×" lift={isLift} />
             </dt>
             <dd>{isLift ? "運休" : "クローズ"}</dd>
+            <dt className="text-center text-sm font-semibold text-slate-700">
+              不明
+            </dt>
+            <dd>状況不明（営業状況の情報なし）</dd>
           </dl>
           {isLift ? (
             <p className="text-sm leading-relaxed">

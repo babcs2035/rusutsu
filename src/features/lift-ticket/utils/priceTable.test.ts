@@ -11,12 +11,12 @@ const FIXTURES = path.join(
 );
 const REAL = path.join(
   process.cwd(),
-  "src/private/data/lift-ticket/megahira-onsen-megahira/2025-2026.json",
+  "src/private/data/lift-ticket-test-fixtures/ui/megahira-onsen-megahira/2025-2026.json",
 );
 
 const RUSUTSU = path.join(
   process.cwd(),
-  "src/private/data/lift-ticket/rusutsu-resort/2026-2027.json",
+  "src/private/data/lift-ticket-test-fixtures/ui/rusutsu-resort/2026-2027.json",
 );
 
 const load = (file: string) =>

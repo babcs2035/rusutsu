@@ -2,7 +2,6 @@
 
 import L from "leaflet";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-
 import {
   CircleMarker,
   MapContainer,
@@ -73,6 +72,10 @@ import { toLatLngTuple } from "./utils/finalizedMapData";
 import { measureLabelHeight } from "./utils/labelMeasure";
 import { createNameLabelIcon } from "./utils/leafletIcons";
 import { createLeafletProjection } from "./utils/leafletProjection";
+import {
+  DEFAULT_MAP_DISPLAY_SETTINGS,
+  type MapDisplaySettings,
+} from "./utils/mapDisplaySettings";
 import { getResortDisplayName } from "./utils/resortLabels";
 import {
   getResortPriority,
@@ -285,6 +288,10 @@ export const JapanResortMap = memo(function JapanResortMap({
   mapPresentation = "default",
   mapTileVariant: controlledMapTileVariant,
   onMapTileVariantChange,
+  mapDisplaySettings: controlledMapDisplaySettings,
+  onMapDisplaySettingsChange,
+  showOpenOnly: controlledShowOpenOnly,
+  onShowOpenOnlyChange,
   detailViewportMode = "finalized",
   selectedFinalizedFeature: controlledSelectedFinalizedFeature,
   onSelectedFinalizedFeatureChange,
@@ -321,7 +328,22 @@ export const JapanResortMap = memo(function JapanResortMap({
   );
   const [courseColorMode, setCourseColorMode] =
     useState<CourseColorMode>("difficulty");
-  const [showOpenFinalizedOnly, setShowOpenFinalizedOnly] = useState(false);
+  const [localMapDisplaySettings, setLocalMapDisplaySettings] = useState({
+    ...DEFAULT_MAP_DISPLAY_SETTINGS,
+    monochrome: interactionMode === "detail",
+  });
+  const mapDisplaySettings =
+    controlledMapDisplaySettings ?? localMapDisplaySettings;
+  const setMapDisplaySettings = (settings: MapDisplaySettings) => {
+    setLocalMapDisplaySettings(settings);
+    onMapDisplaySettingsChange?.(settings);
+  };
+  const [localShowOpenOnly, setLocalShowOpenOnly] = useState(false);
+  const showOpenFinalizedOnly = controlledShowOpenOnly ?? localShowOpenOnly;
+  const setShowOpenFinalizedOnly = (value: boolean) => {
+    setLocalShowOpenOnly(value);
+    onShowOpenOnlyChange?.(value);
+  };
   const [
     uncontrolledSelectedFinalizedFeature,
     setUncontrolledSelectedFinalizedFeature,
@@ -452,11 +474,29 @@ export const JapanResortMap = memo(function JapanResortMap({
     selectedCourses,
     selectedLift,
   } = useFinalizedMapFeatures({
+    showOpenOnly: showOpenFinalizedOnly,
+    mapDisplaySettings,
     courseColorMode,
     finalizedMapData,
     interactionMode,
     selectedFinalizedFeature,
   });
+  useEffect(() => {
+    if (
+      finalizedMapData &&
+      selectedFinalizedFeature?.kind === "course" &&
+      !selectedCourses
+    ) {
+      setSelectedFinalizedFeature(null);
+      onSelectedElevationProfilePointChange?.(null);
+    }
+  }, [
+    finalizedMapData,
+    selectedFinalizedFeature,
+    selectedCourses,
+    setSelectedFinalizedFeature,
+    onSelectedElevationProfilePointChange,
+  ]);
   // タッチはヒット領域を広く、マウスは狭く（FR-6.1）
   const finalizedHitWeight = isCoarsePointer ? 24 : 12;
 
@@ -589,6 +629,7 @@ export const JapanResortMap = memo(function JapanResortMap({
       ref={mapZoomSurfaceRef}
       data-map-zoom-surface="true"
       data-map-tile-variant={mapTileVariant}
+      data-map-monochrome={String(mapDisplaySettings.monochrome)}
       data-map-course-color-mode={courseColorMode}
       data-map-finalized-focus={isFinalizedFocusMode ? "true" : "false"}
       data-map-presentation={mapPresentation}
@@ -651,12 +692,13 @@ export const JapanResortMap = memo(function JapanResortMap({
           selectedFeature={selectedFinalizedFeature}
           onSelectFeature={setSelectedFinalizedFeature}
           selectedPane={FINALIZED_SELECTED_PANE}
-          showOpenOnly={showOpenFinalizedOnly}
+          showOpenOnly={false}
         />
         <FinalizedGeoJsonLayer
           collection={courseFeatureCollection}
           outlineCollection={courseOutlineFeatureCollection}
           pane={FINALIZED_COURSE_PANE}
+          showUngroomed={mapDisplaySettings.showUngroomed}
           featureKind="course"
           hitWeight={finalizedHitWeight}
           mapTileVariant={mapTileVariant}
@@ -676,11 +718,13 @@ export const JapanResortMap = memo(function JapanResortMap({
         {(hasFinalizedCourses || hasFinalizedLifts) && (
           <>
             <FinalizedLineOverlay
+              showCourseNames={mapDisplaySettings.showCourseNames}
+              showLiftNames={mapDisplaySettings.showLiftNames}
               courses={finalizedCourses}
               lifts={finalizedLifts}
               selectedFeature={selectedFinalizedFeature}
               onSelectFeature={setSelectedFinalizedFeature}
-              showOpenOnly={showOpenFinalizedOnly}
+              showOpenOnly={false}
             />
             <FinalizedSelectionInteractionController
               enabled={interactionMode === "detail"}
@@ -797,12 +841,14 @@ export const JapanResortMap = memo(function JapanResortMap({
           className="pointer-events-none absolute inset-x-0 bottom-0 z-[750] flex justify-end pl-2 pb-[calc(env(safe-area-inset-bottom,0px)+1.5rem)]"
           style={{ paddingRight: `${toolbarRightOverlap + 8}px` }}
         >
-          <div className="pointer-events-auto max-w-full">
+          <div className="pointer-events-auto w-full max-w-[27rem]">
             <FinalizedMapToolbar
               mode={courseColorMode}
               onModeChange={setCourseColorMode}
               hasCourses={hasFinalizedCourses}
               hasLifts={hasFinalizedLifts}
+              mapDisplaySettings={mapDisplaySettings}
+              onMapDisplaySettingsChange={setMapDisplaySettings}
               showOpenOnly={showOpenFinalizedOnly}
               onShowOpenOnlyChange={setShowOpenFinalizedOnly}
               mapTileVariant={mapTileVariant}
