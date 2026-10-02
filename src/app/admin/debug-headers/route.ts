@@ -2,14 +2,15 @@
 // x-forwarded-proto, x-forwarded-host などの値を確認する
 
 import { headers } from "next/headers";
+import { requireAdmin } from "@/lib/requireAdmin";
 
 export async function GET() {
+  await requireAdmin();
   const h = await headers();
   return Response.json({
     host: h.get("host"),
     "x-forwarded-proto": h.get("x-forwarded-proto"),
     "x-forwarded-host": h.get("x-forwarded-host"),
     "x-forwarded-for": h.get("x-forwarded-for"),
-    cookie: h.get("cookie"),
   });
 }

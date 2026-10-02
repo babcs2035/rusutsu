@@ -3,10 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { ZodError } from "zod";
 import { InternalDataApiError } from "@/lib/internalDataApiClient";
-import { requireAdmin } from "@/lib/requireAdmin";
+import { requireEditor } from "@/lib/requireEditor";
 import { readExistingSkiResortIds } from "@/lib/skiResortData";
 import * as client from "@/server/data-documents/client";
 import { DataDocumentConflictError } from "@/server/data-documents/contract";
+import { runEdit } from "@/server/edit-requests/workflow";
 import { prepareReviewPublication, publishReview } from "./server/publication";
 import {
   reviewContentSchema,
@@ -28,7 +29,7 @@ const errorMessage = (error: unknown) => {
 };
 
 export async function previewReviewUpload(raw: unknown) {
-  await requireAdmin();
+  await requireEditor();
   try {
     const content = reviewContentSchema.parse(raw);
     if (!(await readExistingSkiResortIds([content.resortId])).length)
@@ -46,21 +47,28 @@ export async function previewReviewUpload(raw: unknown) {
 }
 
 export async function publishReviewUpload(raw: unknown) {
-  await requireAdmin();
-  try {
-    const publication = reviewPublicationSchema.parse(raw);
-    if (
-      !(await readExistingSkiResortIds([publication.content.resortId])).length
-    )
-      return {
-        ok: false as const,
-        error: "このスキー場IDは登録されていません。",
-      };
-    await publishReview(client, publication);
-    revalidatePath("/admin/review");
-    revalidatePath("/", "layout");
-    return { ok: true as const };
-  } catch (error) {
-    return { ok: false as const, error: errorMessage(error) };
-  }
+  return runEdit(
+    "review-import",
+    reviewPublicationSchema.parse(raw).content.resortId,
+    raw,
+    async () => {
+      try {
+        const publication = reviewPublicationSchema.parse(raw);
+        if (
+          !(await readExistingSkiResortIds([publication.content.resortId]))
+            .length
+        )
+          return {
+            ok: false as const,
+            error: "このスキー場IDは登録されていません。",
+          };
+        await publishReview(client, publication);
+        revalidatePath("/admin/review");
+        revalidatePath("/", "layout");
+        return { ok: true as const };
+      } catch (error) {
+        return { ok: false as const, error: errorMessage(error) };
+      }
+    },
+  );
 }

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ReviewJsonUpload } from "@/features/review/ReviewJsonUpload";
-import { requireAdmin } from "@/lib/requireAdmin";
 import { getDataDocument } from "@/server/data-documents/client";
+import { requireEditingPage } from "@/server/edit-requests/authPages";
 import { skiResortIdSchema } from "@/server/ski-resorts/adminContract";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +10,7 @@ export default async function ReviewImportPage({
 }: {
   searchParams: Promise<{ resort?: string }>;
 }) {
-  await requireAdmin();
+  await requireEditingPage();
   const { resort } = await searchParams;
   const parsed = skiResortIdSchema.safeParse(resort);
   const documents = parsed.success

@@ -73,6 +73,7 @@ export type SaveLatestStatusMappingRequest = {
 export type SaveLatestStatusMappingResult =
   | {
       ok: true;
+      submission?: { requestId: string };
       savedAt: string;
       mappingFileHash: string;
       writtenFile: string;

@@ -327,7 +327,9 @@ export const useSelectedFeatureViewport = ({
     };
 
     // 同じものを選び直したときに動かさないよう、キーで覚えておく
-    const key = `${selectedFeature.kind}:${selectedFeature.id}`;
+    const routeId =
+      selectedFeature.kind === "course" ? (selectedFeature.routeId ?? "") : "";
+    const key = `${selectedFeature.kind}:${selectedFeature.id}:${routeId}`;
     if (lastSelectedRef.current !== key) {
       lastSelectedRef.current = key;
       fitToFeature(animate);

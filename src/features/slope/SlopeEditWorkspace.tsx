@@ -4,8 +4,10 @@ import { HelpCircle, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEditingRole } from "@/app/admin/EditorAccess";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useSubmissionNavigation } from "@/features/edit-requests/navigation";
 import { useLatestStatusMapping } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
 import { useMappingProceedGuard } from "@/features/latest-status-mapping/hooks/useMappingProceedGuard";
 import { splitGeometryAssignments } from "@/features/latest-status-mapping/utils/geometryAssignments";
@@ -126,6 +128,8 @@ export function SlopeEditWorkspace({
     [initialResorts, confirmedOverrides],
   );
   const linkEditor = useResortEditorLinks();
+  const navigateSubmission = useSubmissionNavigation();
+  const { isAdmin } = useEditingRole();
   const [step, setStep] = useState<EditStep>("select");
   const [resort, setResort] = useState<ResortOption | null>(null);
   const [sourceKind, setSourceKind] = useState<SlopeSourceKind>("curated");
@@ -655,6 +659,8 @@ export function SlopeEditWorkspace({
         fileHash,
         orderedGeojsonNames,
       });
+      if (navigateSubmission(result))
+        return { ok: true, message: "並べ替えを申請しました。" };
       if (!result.ok) {
         const message = result.errors.join("\n");
         setLoadError(message);
@@ -679,7 +685,7 @@ export function SlopeEditWorkspace({
       setSaveMessage(message);
       return { ok: true, message };
     },
-    [fileHash, resort?.id, sourceKind],
+    [fileHash, resort?.id, sourceKind, navigateSubmission],
   );
 
   const router = useRouter();
@@ -795,7 +801,7 @@ export function SlopeEditWorkspace({
           </Badge>
         </div>
       )}
-      {resort && step !== "select" && sourceKind === "osm" && (
+      {isAdmin && resort && step !== "select" && sourceKind === "osm" && (
         <Button
           size="sm"
           variant="outline"
@@ -1036,6 +1042,7 @@ export function SlopeEditWorkspace({
             {step === "confirm" && resort && (
               <ConfirmStep
                 saveLinks={() => linkEditor.save()}
+                getLinkRequests={() => linkEditor.getRequests()}
                 mapping={mapping}
                 resort={resort}
                 resorts={resorts}

@@ -9,11 +9,13 @@ import {
   Undo2,
 } from "lucide-react";
 import { useCallback, useMemo, useState, useTransition } from "react";
+import { useEditingRole } from "@/app/admin/EditorAccess";
 import { AdminWorkspaceSidebar } from "@/components/AdminWorkspaceSidebar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { useSubmissionNavigation } from "@/features/edit-requests/navigation";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { loadTicketForEdit, saveTicketFile, validateTicket } from "./actions";
@@ -62,6 +64,8 @@ export function TicketEditWorkspace({
   enumLabels: EnumLabelCatalog;
   initialData: TicketEditData | null;
 }) {
+  const navigateSubmission = useSubmissionNavigation();
+  const { isEditor } = useEditingRole();
   const [selected, setSelected] = useState<{
     resortId: string;
     seasonId: string;
@@ -254,6 +258,7 @@ export function TicketEditWorkspace({
         data,
         baseVersion,
       });
+      if (navigateSubmission(result)) return;
       setReport(result.ok ? result.report : (result.report ?? null));
       if (result.ok) {
         setData(result.data.data);
@@ -439,7 +444,7 @@ export function TicketEditWorkspace({
               onClick={save}
             >
               <Save size={17} />
-              検証して保存
+              {isEditor ? "検証して申請" : "検証して保存"}
             </Button>
           </div>
         </div>

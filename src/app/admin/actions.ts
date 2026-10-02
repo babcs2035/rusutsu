@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/requireAdmin";
+import { isUserRole } from "@/lib/roles";
 
 function isEnvAdmin(email: string | null): boolean {
   if (!email) return false;
@@ -47,7 +48,7 @@ export async function getAdminDashboardData() {
 
 export async function updateUserRole(userId: string, role: string) {
   const actor = await requireAdmin();
-  if (role !== "admin" && role !== "viewer") {
+  if (!isUserRole(role)) {
     throw new Error("無効なロールです");
   }
   const user = await prisma.user.findUnique({

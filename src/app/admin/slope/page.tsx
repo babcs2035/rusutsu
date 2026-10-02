@@ -8,7 +8,8 @@ import { readOsmSlopeConfirmedMap } from "@/features/slope/server/slopeConfirmat
 import { listSlopeBeforeResortIds } from "@/features/slope/server/slopeFiles";
 import type { ResortOption } from "@/features/slope/types";
 import { getResortLabelName, getResortSearchName } from "@/lib/resortAliases";
-import { readSkiResortsForMap } from "@/lib/skiResortData";
+import { readSkiResortsForEditor } from "@/lib/skiResortData";
+import { requireEditingPage } from "@/server/edit-requests/authPages";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ export const metadata: Metadata = {
 };
 
 export default async function SlopeEditPage() {
+  await requireEditingPage();
   const [
     resorts,
     slopeBeforeIds,
@@ -25,7 +27,7 @@ export default async function SlopeEditPage() {
     mappedCourseIds,
     osmConfirmedMap,
   ] = await Promise.all([
-    readSkiResortsForMap(),
+    readSkiResortsForEditor(),
     listSlopeBeforeResortIds(),
     listSlopeBeforeResortIds("osm"),
     listCrawlerCoveredResortIds("courses"),

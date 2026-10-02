@@ -105,7 +105,15 @@ export type MapTileVariant = "pale" | "photo";
 export type FinalizedFeatureStatus = "open" | "limited" | "closed" | "unknown";
 
 export type SelectedMapFeature =
-  | { kind: "course"; id: string }
+  | {
+      kind: "course";
+      id: string;
+      /**
+       * 「同じコースの別ルート」のうち、地図で押した1本の id。
+       * 一覧から選んだときは付けず、別ルートをまとめて見せる。
+       */
+      routeId?: string;
+    }
   | { kind: "lift"; id: string };
 
 export type ElevationProfileMapPoint = {

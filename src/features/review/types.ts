@@ -25,5 +25,5 @@ export type SaveReviewRequest = ReviewEditData & {
 };
 
 export type ReviewActionResult =
-  | { ok: true; data: ReviewEditData }
+  | { ok: true; submission?: { requestId: string }; data: ReviewEditData }
   | { ok: false; errors: string[] };

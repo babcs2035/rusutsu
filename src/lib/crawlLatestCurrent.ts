@@ -10,6 +10,10 @@ import type {
   LatestSuccessfulStatus,
 } from "@/lib/latestStatusFiles";
 import {
+  combineLatestStatuses,
+  withLinkedAreaIds,
+} from "@/lib/linkedAreaStatus";
+import {
   findAvailableCrawlLatestStatusDirect,
   listAvailableCrawlLatestResortIdsDirect,
 } from "@/server/crawl-latest/availableStatus";
@@ -29,7 +33,37 @@ const parseObjectEnvelope = async <T>(
   return record[key] as T;
 };
 
-export async function readCurrentCrawlLatestStatus(
+const readLinkedAreaList = async () => {
+  const { readLinkedAreas } = await import("./skiResortData");
+  return readLinkedAreas();
+};
+
+/** 連携エリアの親なら所属スキー場のID。親でなければ null。 */
+const linkedMemberIds = async (resortId: string) => {
+  const area = (await readLinkedAreaList()).find(item => item.id === resortId);
+  return area?.memberIds.length ? area.memberIds : null;
+};
+
+/** 連携エリアの親は、所属スキー場の取得結果をまとめて読む。 */
+const readForResortOrArea = async (
+  resortId: string,
+  read: (id: string) => Promise<LatestSuccessfulStatus | null>,
+) => {
+  const memberIds = await linkedMemberIds(resortId);
+  if (!memberIds) return read(resortId);
+  return combineLatestStatuses(await Promise.all(memberIds.map(read)));
+};
+
+export function readCurrentCrawlLatestStatus(
+  resortId: string,
+  kind: LatestStatusKind,
+): Promise<LatestSuccessfulStatus | null> {
+  return readForResortOrArea(resortId, id =>
+    readOwnCurrentCrawlLatestStatus(id, kind),
+  );
+}
+
+async function readOwnCurrentCrawlLatestStatus(
   resortId: string,
   kind: LatestStatusKind,
 ): Promise<LatestSuccessfulStatus | null> {
@@ -46,6 +80,16 @@ export async function readCurrentCrawlLatestStatus(
 export async function listCurrentCrawlLatestResortIds(
   kind: LatestStatusKind,
 ): Promise<string[]> {
+  const [ids, areas] = await Promise.all([
+    listOwnCurrentCrawlLatestResortIds(kind),
+    readLinkedAreaList(),
+  ]);
+  return withLinkedAreaIds(ids, areas);
+}
+
+async function listOwnCurrentCrawlLatestResortIds(
+  kind: LatestStatusKind,
+): Promise<string[]> {
   if (!usesRemoteDataApi()) {
     return listAvailableCrawlLatestResortIdsDirect(kind);
   }
@@ -57,7 +101,16 @@ export async function listCurrentCrawlLatestResortIds(
 }
 
 /** 名称対応付け専用。Wayback検証結果へのフォールバックを許可する。 */
-export async function readMappingCrawlLatestStatus(
+export function readMappingCrawlLatestStatus(
+  resortId: string,
+  kind: LatestStatusKind,
+): Promise<LatestSuccessfulStatus | null> {
+  return readForResortOrArea(resortId, id =>
+    readOwnMappingCrawlLatestStatus(id, kind),
+  );
+}
+
+async function readOwnMappingCrawlLatestStatus(
   resortId: string,
   kind: LatestStatusKind,
 ): Promise<LatestSuccessfulStatus | null> {
@@ -77,6 +130,16 @@ export async function readMappingCrawlLatestStatus(
 }
 
 export async function listMappingCrawlLatestResortIds(
+  kind: LatestStatusKind,
+): Promise<string[]> {
+  const [ids, areas] = await Promise.all([
+    listOwnMappingCrawlLatestResortIds(kind),
+    readLinkedAreaList(),
+  ]);
+  return withLinkedAreaIds(ids, areas);
+}
+
+async function listOwnMappingCrawlLatestResortIds(
   kind: LatestStatusKind,
 ): Promise<string[]> {
   if (!usesRemoteDataApi())
@@ -131,6 +194,19 @@ export async function readCurrentResortConditions(
 
 /** 名称対応用の全パターン。公開の現在値とは独立した読み取り。 */
 export async function readMappingStatusHistory(
+  resortId: string,
+  kind: LatestStatusKind,
+): Promise<LatestSuccessfulStatus[]> {
+  const memberIds = await linkedMemberIds(resortId);
+  if (!memberIds) return readOwnMappingStatusHistory(resortId, kind);
+  return (
+    await Promise.all(
+      memberIds.map(id => readOwnMappingStatusHistory(id, kind)),
+    )
+  ).flat();
+}
+
+async function readOwnMappingStatusHistory(
   resortId: string,
   kind: LatestStatusKind,
 ): Promise<LatestSuccessfulStatus[]> {

@@ -3,9 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RunDetailView } from "@/features/crawl-monitor/components/RunDetailView";
 import { formatJst } from "@/features/crawl-monitor/utils/labels";
-import { requireAdmin } from "@/lib/requireAdmin";
 import { readSkiResortNames } from "@/lib/skiResortData";
 import { fetchCrawlMonitorRunDetail } from "@/server/crawl-latest/adminClient";
+import { requireAdminPage } from "@/server/edit-requests/authPages";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "クロール結果の詳細 | 管理画面" };
@@ -15,7 +15,7 @@ export default async function CrawlMonitorRunPage({
 }: {
   params: Promise<{ resortId: string; runId: string }>;
 }) {
-  await requireAdmin();
+  await requireAdminPage();
   const { resortId, runId } = await params;
   const detail = await fetchCrawlMonitorRunDetail(resortId, runId);
   if (!detail) notFound();

@@ -19,7 +19,7 @@ export default function NoAccessPage() {
             権限がありません
           </CardTitle>
           <CardDescription className="text-sm text-gray-500">
-            管理画面には管理者アカウントのみアクセスできます。
+            この画面を利用する権限がありません。
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-4">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useEditingRole } from "@/app/admin/EditorAccess";
 import { Button } from "@/components/ui/button";
 import { refreshLiftElevations } from "@/features/lift/actions";
 import { refreshSlopeElevations } from "@/features/slope/actions";
@@ -14,6 +15,7 @@ export function ElevationRefreshButton({
   kind: "lift" | "slope";
   sourceKind?: "curated" | "osm";
 }) {
+  const { isAdmin } = useEditingRole();
   const [isStarting, setIsStarting] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(
     null,
@@ -44,6 +46,7 @@ export function ElevationRefreshButton({
       setIsStarting(false);
     }
   };
+  if (!isAdmin) return null;
   return (
     <div className="flex flex-col gap-1">
       <Button

@@ -1,10 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useEditingRole } from "@/app/admin/EditorAccess";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useSubmissionNavigation } from "@/features/edit-requests/navigation";
 import type { LatestStatusMappingState } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
+import type { LinkSaveRequest } from "@/features/links/model";
 import type { ValidationResult } from "@/features/slope/types";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { EditorStepContent } from "@/shared/components/resort-editor/EditorStepContent";
@@ -21,6 +24,7 @@ import { LinkListField } from "./LinksStep";
 
 type ConfirmStepProps = {
   saveLinks: () => Promise<string[]>;
+  getLinkRequests: () => LinkSaveRequest[];
   mapping: LatestStatusMappingState;
   resort: ResortOption;
   resorts: ResortOption[];
@@ -56,6 +60,7 @@ const ChangeValue = ({ before, after }: { before: string; after: string }) => (
 
 export function ConfirmStep({
   saveLinks,
+  getLinkRequests,
   mapping,
   resort,
   resorts,
@@ -68,6 +73,8 @@ export function ConfirmStep({
   onSaved,
   onToggleConfirmed,
 }: ConfirmStepProps) {
+  const navigateSubmission = useSubmissionNavigation();
+  const { isEditor, isAdmin } = useEditingRole();
   const [isSaving, setIsSaving] = useState(false);
   const [serverErrors, setServerErrors] = useState<string[]>([]);
   const [isTogglingConfirmed, setIsTogglingConfirmed] = useState(false);
@@ -118,18 +125,20 @@ export function ConfirmStep({
     try {
       const result = await saveEditorChanges({
         saveMapping: mapping.getSaveRequest ? async () => true : mapping.save,
-        saveLinks,
+        saveLinks: isEditor ? async () => [] : saveLinks,
         mappingFile: mapping.workspace?.latestFile
           ? `latest_status_mapping/${resort.id}.json`
           : undefined,
         saveGeometry: () =>
           saveLiftEdits({
             resortId: resort.id,
+            linkRequests: isEditor ? getLinkRequests() : undefined,
             mapping: mapping.getSaveRequest?.(),
             fileHash,
             lifts: lifts.map(liftToSavePayload),
           }),
       });
+      if (navigateSubmission(result)) return;
       if (result.ok) {
         onSaved(result.writtenFiles);
       } else {
@@ -174,7 +183,7 @@ export function ConfirmStep({
           <Button
             size="sm"
             variant="outline"
-            disabled={isTogglingConfirmed}
+            disabled={isTogglingConfirmed || !isAdmin}
             onClick={handleToggleConfirmed}
             className={
               resort.confirmedAt
@@ -421,14 +430,14 @@ export function ConfirmStep({
         <ConfirmDialog
           open={saveDialogOpen}
           onOpenChange={setSaveDialogOpen}
-          title="保存確認"
+          title={isEditor ? "申請確認" : "保存確認"}
           description={
             deletedLifts.length > 0
               ? `編集結果で リフト情報・営業情報の対応表・スキー場全体リンクを書き換え、${deletedLifts.length} 件のリフトを削除します。よろしいですか？`
               : "編集結果で リフト情報・営業情報の対応表・スキー場全体リンクを書き換えます。よろしいですか？"
           }
           onConfirm={handleSaveConfirm}
-          confirmLabel="保存する"
+          confirmLabel={isEditor ? "申請する" : "保存する"}
         />
         <Button
           variant="default"
@@ -441,7 +450,7 @@ export function ConfirmStep({
           }
           onClick={() => setSaveDialogOpen(true)}
         >
-          {isSaving ? "保存中…" : "すべて保存"}
+          {isSaving ? "処理中…" : isEditor ? "すべて申請" : "すべて保存"}
         </Button>
         <Button variant="outline" onClick={onBack} disabled={isSaving}>
           戻る

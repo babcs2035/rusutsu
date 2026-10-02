@@ -5,7 +5,8 @@ import {
   readMappingCrawlLatestStatus,
   readMappingStatusHistory,
 } from "@/lib/crawlLatestCurrent";
-import { requireAdmin } from "@/lib/requireAdmin";
+import { requireEditor } from "@/lib/requireEditor";
+import { runEdit } from "@/server/edit-requests/workflow";
 import {
   loadLatestStatusMappingWorkspace,
   saveLatestStatusMappingFile,
@@ -32,7 +33,7 @@ export const loadLatestStatusMapping = async (
   kind: LatestStatusMappingKind,
   geojsonNames?: string[],
 ): Promise<LatestStatusMappingWorkspace> => {
-  await requireAdmin();
+  await requireEditor();
   return loadLatestStatusMappingWorkspace(
     TEMPORARY_ROOT,
     resortId,
@@ -46,11 +47,12 @@ export const loadLatestStatusMapping = async (
 export const saveLatestStatusMapping = async (
   request: SaveLatestStatusMappingRequest,
 ): Promise<SaveLatestStatusMappingResult> => {
-  await requireAdmin();
-  return saveLatestStatusMappingFile(
-    TEMPORARY_ROOT,
-    request,
-    loadCanonicalLatestStatus,
-    readMappingStatusHistory,
-  );
+  return runEdit("mapping", request.resortId, request, async () => {
+    return saveLatestStatusMappingFile(
+      TEMPORARY_ROOT,
+      request,
+      loadCanonicalLatestStatus,
+      readMappingStatusHistory,
+    );
+  });
 };

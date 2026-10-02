@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useEditingRole } from "@/app/admin/EditorAccess";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RESORT_LINK_LABELS } from "@/features/lift/constants";
@@ -24,6 +25,7 @@ export function ResortEditorTools({
   linkEditor: ResortEditorLinks;
   crawlerSourceUrls?: string[];
 }) {
+  const { isEditor } = useEditingRole();
   const sourceUrls = [
     ...new Set(crawlerSourceUrls.map(url => url.trim())),
   ].filter(url => {
@@ -64,14 +66,16 @@ export function ResortEditorTools({
         <Button
           size="xs"
           variant="outline"
-          disabled={busy}
+          disabled={busy || isEditor}
           onClick={() => void save()}
         >
           {busy ? "保存中…" : "URLを保存"}
         </Button>
       </div>
       <p className="mb-2 text-[11px] text-gray-600">
-        最後の「すべて保存」にも含まれます。
+        {isEditor
+          ? "URLの変更は最後の「すべて申請」に含まれます。"
+          : "最後の「すべて保存」にも含まれます。"}
       </p>
       <div className="flex flex-col gap-2">
         {(["mapUrls", "mapPageUrls"] as const).map(key => {

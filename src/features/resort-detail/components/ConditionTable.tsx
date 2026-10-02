@@ -1,4 +1,5 @@
 import { conditionText, record } from "../utils/currentConditions";
+import { formatPublishedDate } from "../utils/operationDates";
 
 const observationText = (value: unknown) => {
   const text = conditionText(value);
@@ -22,7 +23,9 @@ export function ConditionTable({ data }: { data: unknown }) {
   const columns = fields.filter(field =>
     points.some(point => observationText(point.values[field.key]) !== null),
   );
-  const showLocation = !(points.length === 1 && points[0].name === "中腹");
+  const hasUpdates = points.some(point => observationText(point.values.update));
+  const showLocation =
+    hasUpdates || !(points.length === 1 && points[0].name === "中腹");
   if (!columns.length)
     return (
       <p className="text-sm text-slate-700">
@@ -56,18 +59,18 @@ export function ConditionTable({ data }: { data: unknown }) {
             ))}
           </tr>
         </thead>
-        <tbody>
-          {points.map(point => (
-            <tr
-              key={point.name}
-              className="border-t border-slate-200 odd:bg-white even:bg-slate-50"
-            >
+        {points.map((point, index) => (
+          <tbody
+            key={point.name}
+            className={`border-t border-slate-200 ${index % 2 === 0 ? "bg-white" : "bg-slate-50"}`}
+          >
+            <tr className="bg-inherit">
               {showLocation && (
                 <th
                   scope="row"
                   className="sticky left-0 z-10 min-w-20 bg-inherit px-2 py-2 text-left font-medium shadow-[1px_0_0_0_#e2e8f0] will-change-transform"
                 >
-                  {point.name}
+                  <span className="block">{point.name}</span>
                 </th>
               )}
               {columns.map(field => {
@@ -81,15 +84,31 @@ export function ConditionTable({ data }: { data: unknown }) {
                 return (
                   <td
                     key={field.key}
-                    className="min-w-16 px-2 py-2 tabular-nums text-slate-800"
+                    className="min-w-12 px-2 py-2 tabular-nums text-slate-800 sm:min-w-16"
                   >
                     {value}
                   </td>
                 );
               })}
             </tr>
-          ))}
-        </tbody>
+            {hasUpdates && (
+              <tr>
+                <td
+                  colSpan={columns.length + (showLocation ? 1 : 0)}
+                  className="px-2 pb-2"
+                >
+                  {/* 日時は全列にまたがる行に置き、地点名の列幅で折り返さない。 */}
+                  <span className="sticky left-2 inline-block whitespace-nowrap rounded-md border border-blue-100 bg-blue-50 px-2 py-0.5 text-xs leading-5 tabular-nums text-blue-800">
+                    <span className="sr-only">{point.name}の更新日時: </span>
+                    {formatPublishedDate(
+                      observationText(point.values.update) ?? "",
+                    ) ?? "更新日時不明"}
+                  </span>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        ))}
       </table>
     </div>
   );

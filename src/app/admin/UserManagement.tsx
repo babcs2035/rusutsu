@@ -27,10 +27,11 @@ import {
 } from "@/components/ui/table";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 
-// DB の role 値（"admin" / "viewer"）を画面表示用の日本語ラベルに映射する
+// DB の role 値を画面表示用の日本語ラベルに映射する
 const ROLE_LABELS: Record<string, string> = {
   admin: "管理者",
   viewer: "閲覧者",
+  editor: "編集者",
 };
 
 export function UserManagement({ users }: { users: AdminUser[] }) {
@@ -135,6 +136,7 @@ export function UserManagement({ users }: { users: AdminUser[] }) {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="viewer">閲覧者</SelectItem>
+                        <SelectItem value="editor">編集者</SelectItem>
                         <SelectItem value="admin">管理者</SelectItem>
                       </SelectContent>
                     </Select>

@@ -684,9 +684,16 @@ function MapLibreResortMapContent({
       const sourceId = feature.properties?.sourceId;
       if (typeof sourceId !== "string") return;
 
+      if (feature.layer.id === FINALIZED_LAYER.liftHit) {
+        setSelectedFinalizedFeature({ kind: "lift", id: sourceId });
+        return;
+      }
+      // 別ルートがあるコースは、押した1本だけを選ぶ
+      const routeId = feature.properties?.routeId;
       setSelectedFinalizedFeature({
-        kind: feature.layer.id === FINALIZED_LAYER.liftHit ? "lift" : "course",
+        kind: "course",
         id: sourceId,
+        ...(typeof routeId === "string" ? { routeId } : {}),
       });
     };
     const setPointer = (cursor: string) => () => {

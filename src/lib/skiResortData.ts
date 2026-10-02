@@ -4,8 +4,10 @@ import type { Weather, YukiMagi } from "@prisma/client";
 import { z } from "zod";
 import {
   fetchInternalDataApi,
+  InternalDataApiError,
   usesRemoteDataApi,
 } from "@/lib/internalDataApiClient";
+import { currentEditCapture } from "@/server/edit-requests/capture";
 import {
   type AdminSkiResortRecord,
   type AdminSkiResortUpdateRequest,
@@ -17,24 +19,36 @@ import {
 import {
   type ResortMergeRequest,
   type ResortMergeResult,
+  type ResortUnlinkRequest,
+  type ResortUnlinkResult,
   resortMergeRequestSchema,
   resortMergeResultSchema,
+  resortUnlinkRequestSchema,
+  resortUnlinkResultSchema,
+  type TicketGroupRequest,
+  type TicketGroupResult,
+  ticketGroupRequestSchema,
+  ticketGroupResultSchema,
 } from "@/server/ski-resorts/mergeContract";
 import { publicSkiResortSchema } from "@/server/ski-resorts/publicProjection";
 import {
   type FullSkiResortRecord,
   findAdminSkiResortsDirect,
   findExistingSkiResortIdsDirect,
+  findLinkedAreasDirect,
   findSkiResortByIdDirect,
   findSkiResortNamesDirect,
   findSkiResortsDirect,
+  findSkiResortsForEditorDirect,
   findSkiResortsForMapDirect,
   findSkiResortWeatherDirect,
   findYukiMagiListDirect,
   mergeAdminSkiResortsDirect,
   type SkiResortDetailRecord,
   type SkiResortMapRecord,
+  unlinkAdminSkiResortsDirect,
   updateAdminSkiResortDirect,
+  updateTicketGroupDirect,
 } from "@/server/ski-resorts/repository";
 
 type ResortName = { id: string; nameJa: string; shortName: string | null };
@@ -53,6 +67,38 @@ export async function mergeAdminSkiResorts(
     },
   );
   return resortMergeResultSchema.parse(await response.json());
+}
+
+export async function unlinkAdminSkiResorts(
+  rawRequest: ResortUnlinkRequest,
+): Promise<ResortUnlinkResult> {
+  const request = resortUnlinkRequestSchema.parse(rawRequest);
+  if (!usesRemoteDataApi()) return unlinkAdminSkiResortsDirect(request);
+  const response = await fetchInternalDataApi(
+    "/api/internal/v1/ski-resorts/unlink",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+    },
+  );
+  return resortUnlinkResultSchema.parse(await response.json());
+}
+
+export async function updateTicketGroup(
+  rawRequest: TicketGroupRequest,
+): Promise<TicketGroupResult> {
+  const request = ticketGroupRequestSchema.parse(rawRequest);
+  if (!usesRemoteDataApi()) return updateTicketGroupDirect(request);
+  const response = await fetchInternalDataApi(
+    "/api/internal/v1/ski-resorts/ticket-group",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+    },
+  );
+  return ticketGroupResultSchema.parse(await response.json());
 }
 
 const parseEnvelope = async <T>(
@@ -106,6 +152,54 @@ export async function readSkiResortsForMap(): Promise<SkiResortMapRecord[]> {
     "/api/internal/v1/ski-resorts?view=map",
   );
   return parseEnvelope<SkiResortMapRecord[]>(response, "resorts");
+}
+
+/** コース・リフト編集用。連携エリアは子ではなく親を1件として返す。 */
+export async function readSkiResortsForEditor(): Promise<SkiResortMapRecord[]> {
+  if (!usesRemoteDataApi()) return findSkiResortsForEditorDirect();
+  try {
+    const response = await fetchInternalDataApi(
+      "/api/internal/v1/ski-resorts?view=editor",
+    );
+    return parseEnvelope<SkiResortMapRecord[]>(response, "resorts");
+  } catch (error) {
+    // 連携エリアに未対応のデータAPIでは、連携エリアがないので地図用の一覧と同じ。
+    if (!isUnsupportedViewError(error)) throw error;
+    return readSkiResortsForMap();
+  }
+}
+
+export type LinkedAreaSummary = Awaited<
+  ReturnType<typeof findLinkedAreasDirect>
+>[number];
+
+const linkedAreaSummarySchema = z.array(
+  z.object({
+    id: skiResortIdSchema,
+    nameJa: z.string(),
+    isActive: z.boolean(),
+    memberIds: z.array(skiResortIdSchema),
+  }),
+);
+
+/** Webとデータ APIを別々にデプロイしたとき、旧APIは新しい view を 400 で返す。 */
+const isUnsupportedViewError = (error: unknown) =>
+  error instanceof InternalDataApiError && error.status === 400;
+
+export async function readLinkedAreas(): Promise<LinkedAreaSummary[]> {
+  if (!usesRemoteDataApi()) return findLinkedAreasDirect();
+  try {
+    const response = await fetchInternalDataApi(
+      "/api/internal/v1/ski-resorts?view=linkedAreas",
+    );
+    return linkedAreaSummarySchema.parse(
+      await parseEnvelope<unknown>(response, "areas"),
+    );
+  } catch (error) {
+    // 連携エリアに未対応のデータAPIには、連携エリアもない。
+    if (!isUnsupportedViewError(error)) throw error;
+    return [];
+  }
 }
 
 export async function readSkiResortById(
@@ -181,6 +275,17 @@ export async function updateAdminSkiResort(
 ): Promise<AdminSkiResortUpdateResult> {
   const id = skiResortIdSchema.parse(rawId);
   const request = adminSkiResortUpdateRequestSchema.parse(rawRequest);
+  const capture = currentEditCapture();
+  if (capture) {
+    const before =
+      capture.referencePlan?.resort?.before ??
+      (await readAdminSkiResorts()).find(resort => resort.id === id);
+    if (!before) return { status: "not_found" };
+    if (before.updatedAt !== request.expectedUpdatedAt)
+      return { status: "conflict", currentUpdatedAt: before.updatedAt };
+    capture.plan.resort = { id, request, before };
+    return { status: "updated", resort: { ...before, ...request.data } };
+  }
   if (!usesRemoteDataApi()) {
     return updateAdminSkiResortDirect(
       id,

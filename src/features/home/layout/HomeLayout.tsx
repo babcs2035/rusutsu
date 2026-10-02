@@ -601,6 +601,7 @@ export const HomeLayout = ({
                   onSelectedElevationProfilePointChange
                 }
                 onClose={onCloseDetail}
+                onSelectResort={onSelectResort}
                 mobileContentTab="info"
                 mobilePresentation="inline"
                 hideMobileInfoSection
@@ -682,6 +683,7 @@ export const HomeLayout = ({
               onSelectedElevationProfilePointChange
             }
             onClose={onCloseDetail}
+            onSelectResort={onSelectResort}
             mobileContentTab="info"
             hideMobileInfoSection
             isDesktopMapExpanded={isDesktopDetailMapExpanded}

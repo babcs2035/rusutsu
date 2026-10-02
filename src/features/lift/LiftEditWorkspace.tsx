@@ -665,6 +665,7 @@ export function LiftEditWorkspace({
             {step === "confirm" && effectiveResort && (
               <ConfirmStep
                 saveLinks={() => linkEditor.save()}
+                getLinkRequests={() => linkEditor.getRequests()}
                 mapping={mapping}
                 resort={effectiveResort}
                 resorts={effectiveResorts}

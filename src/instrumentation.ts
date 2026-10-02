@@ -1,6 +1,11 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
-    // 開発環境ではスケジューラーを無効化
+    const { startEditRequestJobScheduler } = await import(
+      "@/server/edit-requests/jobScheduler"
+    );
+    startEditRequestJobScheduler();
+
+    // 開発環境ではクローラースケジューラーを無効化
     if (process.env.NODE_ENV === "development") {
       console.log("ℹ️ Scheduler passed (development environment).");
       return;

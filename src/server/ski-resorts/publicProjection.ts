@@ -101,8 +101,28 @@ const yukiMagi = z.object({
   period: optionalText,
   exclusionDate: optionalText,
 });
+const linkedMember = z.object({
+  id: text,
+  nameJa: text,
+  shortName: optionalText,
+  latitude: number,
+  longitude: number,
+});
+/** 連携エリア（ピンは別々、地図・料金・レビューは共通）の親と所属スキー場。 */
+const linkedArea = z.object({
+  id: text,
+  nameJa: text,
+  members: z.array(linkedMember),
+});
+const ticketPartner = z.object({
+  id: text,
+  nameJa: text,
+  shortName: optionalText,
+});
 export const publicSkiResortSchema = publicResortScalars.extend({
   sourceResortIds: z.array(text).default([]),
+  linkedArea: linkedArea.nullable().default(null),
+  ticketPartners: z.array(ticketPartner).default([]),
   courses: z.array(course),
   lifts: z.array(lift),
   tickets: z.array(ticket),
@@ -120,6 +140,8 @@ export const publicSkiResortSelect = {
   sourceResortIds: true,
   mergedMembers: {
     select: {
+      ...selectShape(linkedMember.shape),
+      isActive: true,
       courses: { select: selectShape(course.shape) },
       lifts: { select: selectShape(lift.shape) },
       tickets: { select: selectShape(ticket.shape) },
@@ -133,3 +155,4 @@ export const publicSkiResortSelect = {
 } satisfies Prisma.SkiResortSelect;
 
 export type PublicSkiResortRecord = z.infer<typeof publicSkiResortSchema>;
+export type LinkedAreaRecord = z.infer<typeof linkedArea>;

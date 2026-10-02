@@ -92,6 +92,11 @@ export const useFinalizedMapFeatures = ({
   );
   const selectedCourses = useMemo(() => {
     if (selectedFinalizedFeature?.kind !== "course") return null;
+    const { routeId } = selectedFinalizedFeature;
+    const route = routeId
+      ? finalizedCourses.find(course => course.id === routeId)
+      : undefined;
+    if (route) return [route];
     const matchedCourses = finalizedCourses.filter(
       course =>
         course.groupId === selectedFinalizedFeature.id ||

@@ -1,4 +1,5 @@
 import type { SaveLatestStatusMappingRequest } from "@/features/latest-status-mapping/types";
+import type { LinkSaveRequest } from "@/features/links/model";
 import type { LngLat } from "@/features/slope/types";
 import type { ResortEditorLinkDraft } from "@/shared/components/resort-editor/useResortEditorLinks";
 
@@ -168,6 +169,7 @@ export type SaveLiftPayload = {
 };
 
 export type SaveRequest = {
+  linkRequests?: LinkSaveRequest[];
   mapping?: SaveLatestStatusMappingRequest;
   resortId: string;
   // loadLiftSourceData が返したハッシュ。ファイルが書き換わっていたら保存を中止する
@@ -176,7 +178,7 @@ export type SaveRequest = {
 };
 
 export type SaveResult =
-  | { ok: true; writtenFiles: string[] }
+  | { ok: true; submission?: { requestId: string }; writtenFiles: string[] }
   | { ok: false; errors: string[] };
 
 export type LiftEditDraft = {

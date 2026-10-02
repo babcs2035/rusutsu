@@ -24,6 +24,11 @@ model SkiResort {
   mergedInto SkiResort? @relation("ResortMerge", fields: [mergedIntoId], references: [id], onDelete: Restrict)
   mergedMembers SkiResort[] @relation("ResortMerge")
   sourceResortIds String[] @default([])
+  // 結合元を持つ親の結合方法。MERGED は親だけを公開し、LINKED は子を公開して
+  // 地図・コース・リフト・料金・レビューを親で共有する。DB CHECKで制限。
+  linkKind String @default("MERGED")
+  // 同じ値のスキー場どうしは共通券で滑走できる（地図や詳細は統合しない）。
+  ticketGroupId String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -102,6 +107,7 @@ model SkiResort {
 
   @@map("ski_resorts")
   @@index([mergedIntoId])
+  @@index([ticketGroupId])
 }
 
 model Course {
@@ -285,7 +291,7 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
   image         String?
-  role          String    @default("viewer") // "viewer" | "admin"
+  role          String    @default("viewer") // "viewer" | "editor" | "admin"; DB CHECKで制限
   accounts      Account[]
   sessions      Session[]
 
@@ -652,4 +658,57 @@ model MapDocumentBackup {
   createdAt DateTime @default(now())
   @@id([key, hash])
   @@map("map_document_backups")
+}
+
+// 提出した内容は不変。管理者の修正案と実際の反映内容を別々に保持する。
+// 利用者IDは外部キーにせず、利用者削除後も履歴を保持する。
+model EditRequest {
+  id String @id @default(cuid())
+  authorId String
+  authorName String
+  kind String
+  resortId String
+  status String @default("PENDING")
+  version Int @default(1)
+  submittedPayload Json @db.Json
+  submittedPlan Json @db.Json
+  candidatePayload Json @db.Json
+  candidatePlan Json @db.Json
+  reviewedById String?
+  reviewComment String?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  resolvedAt DateTime? @db.Timestamptz(3)
+  events EditRequestEvent[]
+  jobs EditRequestJob[]
+  @@index([authorId, createdAt])
+  @@index([status, createdAt])
+  @@map("edit_requests")
+}
+
+model EditRequestEvent {
+  id String @id @default(cuid())
+  requestId String
+  request EditRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  actorId String
+  action String
+  payload Json? @db.Json
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@index([requestId, createdAt])
+  @@map("edit_request_events")
+}
+
+// 承認と同じトランザクションで登録し、再起動後も標高取得を再試行する。
+model EditRequestJob {
+  id String @id @default(cuid())
+  requestId String
+  request EditRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  payload Json @db.Json
+  status String @default("PENDING")
+  attempts Int @default(0)
+  lastError String?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  @@index([status, updatedAt])
+  @@map("edit_request_jobs")
 }

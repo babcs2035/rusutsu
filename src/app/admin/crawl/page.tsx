@@ -13,8 +13,8 @@ import {
   parseOverviewQuery,
   type RawSearchParams,
 } from "@/features/crawl-monitor/utils/query";
-import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchCrawlMonitorOverview } from "@/server/crawl-latest/adminClient";
+import { requireAdminPage } from "@/server/edit-requests/authPages";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "クローラー監視 | 管理画面" };
@@ -24,7 +24,7 @@ export default async function CrawlMonitorPage({
 }: {
   searchParams: Promise<RawSearchParams>;
 }) {
-  await requireAdmin();
+  await requireAdminPage();
   const query = parseOverviewQuery(await searchParams);
   const overview = await fetchCrawlMonitorOverview(query.sourceModes);
   const now = Date.now();

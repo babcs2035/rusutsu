@@ -7,6 +7,7 @@ import {
 } from "@/lib/finalizedResortGeojson";
 import { hashDataDocumentContent } from "@/server/data-documents/repositoryCore";
 import {
+  buildLinkedStatusMappingDocument,
   buildMergedGeometryDocuments,
   ensureMergedGeometryDocuments,
 } from "./mergeGeometry";
@@ -191,4 +192,73 @@ test("new destination documents are saved through the caller's transaction", asy
   );
   assert.equal(reads, 2);
   assert.equal(writes, 1);
+});
+
+test("a linked area inherits each member's status mapping for the merged lines", () => {
+  const merged = [
+    {
+      key: "resorts-temporary/lift_before/area.geojson",
+      content: JSON.stringify({
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            properties: { name: "ゴンドラ", entityId: "merged:area:lift-a1" },
+            geometry: null,
+          },
+          {
+            type: "Feature",
+            properties: {
+              name: "Bエリア / 第1リフト",
+              entityId: "merged:area:x",
+            },
+            geometry: null,
+          },
+        ],
+      }),
+    },
+  ];
+  const mapping = (rows: object[]) =>
+    JSON.stringify({
+      version: 1,
+      lifts: { sourceFile: "2026.json", updatedAt: "", rows },
+    });
+  const document = buildLinkedStatusMappingDocument(
+    "area",
+    [
+      { id: "area-a", nameJa: "Aエリア" },
+      { id: "area-b", nameJa: "Bエリア" },
+    ],
+    [
+      {
+        key: "resorts-temporary/latest_status_mapping/area-a.json",
+        content: mapping([
+          {
+            geometryId: "lift-a1",
+            crawledName: "ゴンドラ",
+            geojsonName: "ゴンドラ",
+          },
+        ]),
+      },
+      {
+        key: "resorts-temporary/latest_status_mapping/area-b.json",
+        content: mapping([{ crawledName: "第1", geojsonName: "第1リフト" }]),
+      },
+    ],
+    merged,
+  );
+  assert.equal(
+    document?.key,
+    "resorts-temporary/latest_status_mapping/area.json",
+  );
+  const rows = JSON.parse(document?.content ?? "{}").lifts.rows;
+  assert.deepEqual(rows, [
+    {
+      geometryId: "merged:area:lift-a1",
+      crawledName: "ゴンドラ",
+      geojsonName: "ゴンドラ",
+    },
+    { crawledName: "第1", geojsonName: "Bエリア / 第1リフト" },
+  ]);
+  assert.equal(buildLinkedStatusMappingDocument("area", [], [], merged), null);
 });

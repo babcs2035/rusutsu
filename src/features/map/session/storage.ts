@@ -5,6 +5,7 @@ const id = z.string().min(1).max(200);
 export const featureSchema = z.object({
   kind: z.enum(["course", "lift"]),
   id,
+  routeId: id.optional(),
 });
 export const viewportSchema = z.object({
   center: z.object({

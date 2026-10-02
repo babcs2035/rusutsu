@@ -12,6 +12,7 @@ import { createLiftStatusSummary } from "../utils/liftStatusSummary";
 import { NotFetchedBadge, SourceLine } from "./CompactInfo";
 import { ConditionTable } from "./ConditionTable";
 import { CourseStatusTable } from "./CourseStatusTable";
+import { LinkedMemberTabs, useLinkedMember } from "./LinkedArea";
 import { ObservationTimes } from "./ObservationTimes";
 import { ResortComment } from "./ResortComment";
 
@@ -47,7 +48,12 @@ export function CurrentOverview({
   const courses = resort.finalizedMapData?.courses;
   const lifts = resort.finalizedMapData?.lifts;
   const courseStatus = resort.finalizedMapData?.courseStatusSummary;
-  const conditions = resort.currentConditions ?? [];
+  // 連携エリアのコンディション・コメントはスキー場ごとのタブで切り替える。
+  // コースとリフトの営業状況はエリア全体で共通。
+  const { members, activeId, setActiveId } = useLinkedMember(resort);
+  const conditions = (resort.currentConditions ?? []).filter(
+    item => members.length < 2 || item.id === activeId,
+  );
   // 「未取得」は出典が1つも登録されていないこと。出典があって中身が空のときは
   // 取得はできているので、件数を「不明」として出す。
   const hasCourseSource = hasSourceUrl(
@@ -146,6 +152,12 @@ export function CurrentOverview({
               <h3 className="text-base font-semibold text-slate-900 sm:text-lg">
                 コンディション
               </h3>
+              <LinkedMemberTabs
+                members={members}
+                activeId={activeId}
+                onChange={setActiveId}
+                label="コンディションを見るスキー場"
+              />
               {hasConditionSource ? (
                 conditions.map(
                   item =>
@@ -155,10 +167,8 @@ export function CurrentOverview({
                           label="コンディション"
                           showFetched={false}
                           showLabel={false}
+                          showPublished={false}
                           urls={item.weather.sourceUrls}
-                          updates={Object.values(record(item.weather.data)).map(
-                            point => conditionText(record(point).update) ?? "",
-                          )}
                         />
                       </div>
                     ),

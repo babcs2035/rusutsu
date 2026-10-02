@@ -6,8 +6,8 @@ import {
   readReviewForEdit,
 } from "@/features/review/server/reviewFiles";
 import { getReviewResortName } from "@/features/reviews/resortName";
-import { requireAdmin } from "@/lib/requireAdmin";
 import { readSkiResortNames } from "@/lib/skiResortData";
+import { requireEditingPage } from "@/server/edit-requests/authPages";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 };
 
 export default async function ReviewEditPage() {
-  await requireAdmin();
+  await requireEditingPage();
   const reviewResorts = await listReviewResorts();
   const databaseResorts = await readSkiResortNames(
     reviewResorts.map(resort => resort.resortId),

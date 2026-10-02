@@ -156,9 +156,17 @@ export async function getSkiResortsForMap() {
     liftTicketSeasons.map(season => season.resortId),
   );
   const liftTicketResortIdOf = (resort: (typeof resorts)[number]) => {
-    const fallback = resort.sourceResortIds?.[0];
-    if (resortIdsWithTickets.has(resort.id)) return resort.id;
-    return fallback && resortIdsWithTickets.has(fallback) ? fallback : null;
+    // 連携エリアの子は、親に登録した共通の料金を使う。
+    const candidates = [
+      resort.mergedIntoId,
+      resort.id,
+      resort.sourceResortIds?.[0],
+    ];
+    return (
+      candidates.find(
+        (id): id is string => Boolean(id) && resortIdsWithTickets.has(id ?? ""),
+      ) ?? null
+    );
   };
 
   return resorts.map(resort => ({
@@ -213,41 +221,53 @@ export async function getSkiResortById(id: string) {
 
   if (!resort) return null;
 
+  // 連携エリアの子として開いたときは、地図・料金・レビューを親のIDで読む。
+  const dataId = resort.linkedArea?.id ?? resort.id;
   const sourceIds = resort.sourceResortIds?.length
     ? resort.sourceResortIds
     : [resort.id];
   const [finalizedMapData, decisionData, primaryDecisionData, linksMap] =
     await Promise.all([
-      getFinalizedResortMapData(resort.id),
-      getResortDecisionData(resort.id),
-      sourceIds[0] !== resort.id ? getResortDecisionData(sourceIds[0]) : null,
+      getFinalizedResortMapData(dataId),
+      getResortDecisionData(dataId),
+      sourceIds[0] !== dataId ? getResortDecisionData(sourceIds[0]) : null,
       readResortLinksMap(),
     ]);
   const weatherEntries = sourceIds.flatMap(sourceId => {
     const entry = getWeatherIdsBySkiResortId(sourceId);
     return entry ? [entry] : [];
   });
-  const weatherIds =
-    getWeatherIdsBySkiResortId(resort.id) ??
-    (weatherEntries.length
-      ? {
-          ...weatherEntries[0],
-          tenkijp: weatherEntries.flatMap(entry => entry.tenkijp),
-          snowForecast: weatherEntries.flatMap(entry => [
-            ...entry.snowForecast,
-            ...(entry.SnowForecastId
-              ? [
-                  {
-                    snowForecastId: entry.SnowForecastId,
-                    snowForecastName: entry.SnowForecastName,
-                  },
-                ]
-              : []),
-          ]),
-          SnowForecastId: null,
-          SnowForecastName: null,
-        }
-      : null);
+  const weatherIds = resort.linkedArea
+    ? getWeatherIdsBySkiResortId(resort.id)
+    : (getWeatherIdsBySkiResortId(resort.id) ??
+      (weatherEntries.length
+        ? {
+            ...weatherEntries[0],
+            tenkijp: weatherEntries.flatMap(entry => entry.tenkijp),
+            snowForecast: weatherEntries.flatMap(entry => [
+              ...entry.snowForecast,
+              ...(entry.SnowForecastId
+                ? [
+                    {
+                      snowForecastId: entry.SnowForecastId,
+                      snowForecastName: entry.SnowForecastName,
+                    },
+                  ]
+                : []),
+            ]),
+            SnowForecastId: null,
+            SnowForecastName: null,
+          }
+        : null));
+  // 連携エリアは天気・予報・積雪をスキー場ごとのタブで出す。
+  const memberWeatherIds = resort.linkedArea
+    ? Object.fromEntries(
+        resort.linkedArea.members.map(member => [
+          member.id,
+          getWeatherIdsBySkiResortId(member.id),
+        ]),
+      )
+    : null;
 
   return {
     ...resort,
@@ -264,9 +284,10 @@ export async function getSkiResortById(id: string) {
         ...(await readCurrentResortConditions(id)),
       })),
     ),
-    socialAccounts: collectSocialAccounts(linksMap, [resort.id, ...sourceIds]),
-    trailMapLinks: collectTrailMapLinks(linksMap, [resort.id, ...sourceIds]),
+    socialAccounts: collectSocialAccounts(linksMap, [dataId, ...sourceIds]),
+    trailMapLinks: collectTrailMapLinks(linksMap, [dataId, ...sourceIds]),
     weatherIds,
+    memberWeatherIds,
     finalizedMapData,
     finalizedOperationSummary:
       createFinalizedOperationSummary(finalizedMapData),

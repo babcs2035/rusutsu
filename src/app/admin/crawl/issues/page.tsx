@@ -9,8 +9,8 @@ import {
   type RawSearchParams,
   sinceFromDays,
 } from "@/features/crawl-monitor/utils/query";
-import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchCrawlMonitorIssues } from "@/server/crawl-latest/adminClient";
+import { requireAdminPage } from "@/server/edit-requests/authPages";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "クロールの警告 | 管理画面" };
@@ -20,7 +20,7 @@ export default async function CrawlMonitorIssuesPage({
 }: {
   searchParams: Promise<RawSearchParams>;
 }) {
-  await requireAdmin();
+  await requireAdminPage();
   const query = parseIssueQuery(await searchParams);
   const page = await fetchCrawlMonitorIssues({
     severity: query.severity,

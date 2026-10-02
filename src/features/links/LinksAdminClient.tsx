@@ -4,8 +4,10 @@ import { Check, Copy, Search, X } from "lucide-react";
 import Link from "next/link";
 import type * as React from "react";
 import { useEffect, useRef, useState, useTransition } from "react";
+import { useEditingRole } from "@/app/admin/EditorAccess";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useSubmissionNavigation } from "@/features/edit-requests/navigation";
 import type { ResortLink } from "@/features/lift/types";
 import { cn } from "@/lib/utils";
 import { SortableLinkList } from "@/shared/components/resort-editor/SortableLinkList";
@@ -349,6 +351,8 @@ function LinkResortCard({
   onPendingChange: (pending: boolean) => void;
 }) {
   const values = draft ?? saved;
+  const navigateSubmission = useSubmissionNavigation();
+  const { isEditor } = useEditingRole();
   const [localPending, startTransition] = useTransition();
   const pending = isSaving || localPending;
   const [message, setMessage] = useState("");
@@ -395,6 +399,7 @@ function LinkResortCard({
           startTransition(async () => {
             try {
               const result = await saveResortLink(request.data);
+              if (navigateSubmission(result)) return;
               setError(!result.ok);
               setMessage(result.ok ? "保存しました。" : result.message);
               if (result.ok) onSaved(result.links);
@@ -507,7 +512,11 @@ function LinkResortCard({
               ＋ {label}のリンクを追加
             </Button>
             <Button type="submit" className="min-h-11" disabled={!draft}>
-              {pending ? "保存中…" : "このスキー場のリンクを保存"}
+              {pending
+                ? "処理中…"
+                : isEditor
+                  ? "このスキー場のリンクを申請"
+                  : "このスキー場のリンクを保存"}
             </Button>
           </div>
         </fieldset>

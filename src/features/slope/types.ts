@@ -1,4 +1,5 @@
 import type { SaveLatestStatusMappingRequest } from "@/features/latest-status-mapping/types";
+import type { LinkSaveRequest } from "@/features/links/model";
 import type { ResortEditorLinkDraft } from "@/shared/components/resort-editor/useResortEditorLinks";
 import type { CourseGrouping } from "@/shared/course-lift/identity";
 export type LngLat = [number, number];
@@ -146,6 +147,7 @@ export type SaveCoursePayload = {
 };
 
 export type SaveRequest = {
+  linkRequests?: LinkSaveRequest[];
   mapping?: SaveLatestStatusMappingRequest;
   resortId: string;
   sourceKind: SlopeSourceKind;
@@ -157,7 +159,7 @@ export type SaveRequest = {
 };
 
 export type SaveResult =
-  | { ok: true; writtenFiles: string[] }
+  | { ok: true; submission?: { requestId: string }; writtenFiles: string[] }
   | { ok: false; errors: string[] };
 
 export type ApplySlopeFeatureOrderRequest = {
@@ -168,7 +170,12 @@ export type ApplySlopeFeatureOrderRequest = {
 };
 
 export type ApplySlopeFeatureOrderResult =
-  | { ok: true; fileHash: string; writtenFile: string }
+  | {
+      ok: true;
+      submission?: { requestId: string };
+      fileHash: string;
+      writtenFile: string;
+    }
   | { ok: false; errors: string[] };
 
 export type ValidationResult = {

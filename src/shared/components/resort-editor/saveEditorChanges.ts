@@ -1,5 +1,5 @@
 type SaveResult =
-  | { ok: true; writtenFiles: string[] }
+  | { ok: true; writtenFiles: string[]; submission?: { requestId: string } }
   | { ok: false; errors: string[] };
 
 /** コース・リフト共通の最終保存。関連データの失敗時は完了扱いにしない。 */
@@ -25,7 +25,7 @@ export async function saveEditorChanges({
   const result = await saveGeometry();
   if (!result.ok) return result;
   return {
-    ok: true,
+    ...result,
     writtenFiles: [
       ...new Set([
         ...result.writtenFiles,

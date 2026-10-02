@@ -5,6 +5,7 @@ import {
   InternalDataApiError,
   usesRemoteDataApi,
 } from "@/lib/internalDataApiClient";
+import { currentEditCapture } from "@/server/edit-requests/capture";
 import {
   LiftTicketConflictError,
   type LiftTicketSeason,
@@ -16,6 +17,7 @@ import {
   liftTicketSeasonListResponseSchema,
   liftTicketSeasonWriteResponseSchema,
   liftTicketSeasonWriteSchema,
+  statusOfLiftTicket,
 } from "./contract";
 import {
   findLiftTicketSeasonsDirect,
@@ -89,6 +91,24 @@ export const findLiftTicketSeasons = async (
 export const writeLiftTicketSeason = async (
   write: LiftTicketSeasonWrite,
 ): Promise<LiftTicketSeason> => {
+  const capture = currentEditCapture();
+  if (capture) {
+    const parsed = liftTicketSeasonWriteSchema.parse(write);
+    const before =
+      capture.referencePlan?.ticket?.before ??
+      (await getLiftTicketSeason(parsed.resortId, parsed.seasonId));
+    if ((before?.version ?? null) !== parsed.expectedVersion)
+      throw new LiftTicketConflictError(before?.version ?? null);
+    capture.plan.ticket = { write: parsed, before };
+    return {
+      resortId: parsed.resortId,
+      seasonId: parsed.seasonId,
+      data: parsed.data,
+      version: (before?.version ?? 0) + 1,
+      status: statusOfLiftTicket(parsed.data),
+      updatedAt: new Date().toISOString(),
+    };
+  }
   if (!usesRemoteDataApi()) return writeLiftTicketSeasonDirect(write);
   const response = await fetchInternalDataApi(
     LIFT_TICKETS_API_PATH,

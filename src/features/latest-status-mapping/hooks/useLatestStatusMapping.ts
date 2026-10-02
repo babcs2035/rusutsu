@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSubmissionNavigation } from "@/features/edit-requests/navigation";
 import { loadLatestStatusMapping, saveLatestStatusMapping } from "../actions";
 import type {
   LatestStatusMappingKind,
@@ -77,6 +78,7 @@ export const useLatestStatusMapping = ({
   geometries,
   enabled = true,
 }: Options): LatestStatusMappingState => {
+  const navigateSubmission = useSubmissionNavigation();
   const [workspace, setWorkspace] =
     useState<LatestStatusMappingWorkspace | null>(null);
   const [rows, setRows] = useState<LatestStatusMappingRow[]>([]);
@@ -343,6 +345,7 @@ export const useLatestStatusMapping = ({
         geojsonNames: [...new Set(geojsonNamesRef.current)],
         geometries: geometriesRef.current,
       });
+      if (navigateSubmission(result)) return true;
       if (!result.ok) {
         setError(result.errors.join("\n"));
         return false;
@@ -380,6 +383,7 @@ export const useLatestStatusMapping = ({
     rows,
     workspace,
     geometryAssignments,
+    navigateSubmission,
   ]);
 
   return {

@@ -10,6 +10,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
+import { useEditingRole } from "@/app/admin/EditorAccess";
 import { AdminWorkspaceSidebar } from "@/components/AdminWorkspaceSidebar";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useSubmissionNavigation } from "@/features/edit-requests/navigation";
 import {
   REVIEW_CATEGORY_IDS,
   REVIEW_CATEGORY_LABELS,
@@ -500,6 +502,8 @@ export function ReviewEditWorkspace({
   initialResortId: string | null;
   initialData: ReviewEditData | null;
 }) {
+  const navigateSubmission = useSubmissionNavigation();
+  const { isEditor } = useEditingRole();
   const [selectedResortId, setSelectedResortId] = useState(initialResortId);
   const [data, setData] = useState(initialData);
   const [savedSnapshot, setSavedSnapshot] = useState(
@@ -630,6 +634,7 @@ export function ReviewEditWorkspace({
         resortId: selectedResortId,
         ...data,
       });
+      if (navigateSubmission(result)) return;
       if (result.ok) {
         setData(result.data);
         setSavedSnapshot(JSON.stringify(result.data));
@@ -739,7 +744,7 @@ export function ReviewEditWorkspace({
               onClick={save}
             >
               <Save size={17} />
-              保存
+              {isEditor ? "申請" : "保存"}
             </Button>
           </div>
         </header>

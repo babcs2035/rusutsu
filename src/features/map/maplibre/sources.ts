@@ -18,6 +18,8 @@ export type LiftFlowSpeed = "slow" | "normal" | "fast";
 
 export type FinalizedLineProperties = {
   sourceId: string;
+  /** 「同じコースの別ルート」に属するコースだけが持つ、そのルート自身の id */
+  routeId?: string;
   name: string;
   color: string;
   flowColor?: string;
@@ -46,6 +48,9 @@ const toLineFeature = (
   properties,
 });
 
+const getRouteIdProperty = (course: FinalizedCourseFeature) =>
+  course.groupKind === "routes" ? { routeId: course.id } : {};
+
 /**
  * コースの線。
  *
@@ -68,6 +73,7 @@ export const buildCourseCollection = (
     const ungroomed = isUngroomedPiste(course.properties.piste);
     const base = {
       sourceId: course.groupId,
+      ...getRouteIdProperty(course),
       name: course.displayName,
       status,
       ungroomed,
@@ -104,6 +110,7 @@ export const buildCourseOutlineCollection = (
   features: courses.map(course =>
     toLineFeature(course.coordinates as number[][], {
       sourceId: course.groupId,
+      ...getRouteIdProperty(course),
       name: course.displayName,
       color:
         COURSE_DIFFICULTY_META[getCourseDifficulty(course.properties.level)]

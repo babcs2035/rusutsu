@@ -4,9 +4,19 @@ import { useMemo } from "react";
 import { SnowForecastEmbed } from "@/features/weather/WeatherChart";
 import { cn } from "@/lib/utils";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
+import { LinkedMemberTabs, useLinkedMember } from "../components/LinkedArea";
 import type { Resort } from "../types";
 
 export const WeatherTab = ({ resort }: { resort: Resort }) => {
+  // 連携エリアは、天気・予報をスキー場ごとのタブで切り替える。
+  const { members, activeId, activeMember, setActiveId } =
+    useLinkedMember(resort);
+  const weatherIds = activeMember
+    ? (resort.memberWeatherIds?.[activeMember.id] ?? null)
+    : resort.weatherIds;
+  const latitude = activeMember?.latitude ?? resort.latitude;
+  const longitude = activeMember?.longitude ?? resort.longitude;
+  const resortName = activeMember?.nameJa ?? resort.nameJa;
   const snowForecastLinks = useMemo(() => {
     const links: Array<{
       id: string;
@@ -32,7 +42,7 @@ export const WeatherTab = ({ resort }: { resort: Resort }) => {
       });
     };
 
-    const merged = resort.weatherIds;
+    const merged = weatherIds;
 
     for (const entry of merged?.snowForecast ?? []) {
       addSnowForecastLink(
@@ -43,10 +53,10 @@ export const WeatherTab = ({ resort }: { resort: Resort }) => {
     addSnowForecastLink(merged?.SnowForecastId, merged?.SnowForecastName);
 
     return links;
-  }, [resort.weatherIds]);
+  }, [weatherIds]);
 
   const tenkiJpLinks = useMemo(() => {
-    const mergedEntry = resort.weatherIds;
+    const mergedEntry = weatherIds;
 
     if (!mergedEntry?.tenkijp || mergedEntry.tenkijp.length === 0) return [];
 
@@ -55,9 +65,9 @@ export const WeatherTab = ({ resort }: { resort: Resort }) => {
       displayName: t.displayName || t.tenkijpName || null,
       url: `https://tenki.jp/season/ski/${t.tenkijpId}/`,
     }));
-  }, [resort.weatherIds]);
+  }, [weatherIds]);
 
-  const weathernewsSpotId = resort.weatherIds?.weathernewsSpotId ?? null;
+  const weathernewsSpotId = weatherIds?.weathernewsSpotId ?? null;
 
   const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if ((e as unknown as { detail: number }).detail > 0) {
@@ -67,6 +77,14 @@ export const WeatherTab = ({ resort }: { resort: Resort }) => {
 
   return (
     <div className="flex flex-col gap-6">
+      {members.length > 1 && (
+        <LinkedMemberTabs
+          members={members}
+          activeId={activeId}
+          onChange={setActiveId}
+          label="天気を見るスキー場"
+        />
+      )}
       <section>
         <h3 className="text-base text-gray-900 font-semibold mb-3 font-[var(--font-heading)]">
           リンク一覧
@@ -119,8 +137,8 @@ export const WeatherTab = ({ resort }: { resort: Resort }) => {
               ? `https://weathernews.jp/ski/spot/${weathernewsSpotId}/`
               : null;
 
-            const lat = resort.latitude;
-            const lon = resort.longitude;
+            const lat = latitude;
+            const lon = longitude;
             const hasCoords =
               typeof lat === "number" && typeof lon === "number";
             const windyUrl = hasCoords
@@ -169,7 +187,7 @@ export const WeatherTab = ({ resort }: { resort: Resort }) => {
               </h3>
               <SnowForecastEmbed
                 snowForecastSlug={link.id}
-                resortName={resort.nameJa}
+                resortName={resortName}
               />
             </div>
           ))}

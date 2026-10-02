@@ -70,7 +70,7 @@ export const linkSaveSchema = z
   });
 export type LinkSaveRequest = z.infer<typeof linkSaveSchema>;
 export type LinkSaveResult =
-  | { ok: true; links: ResortLink[] }
+  | { ok: true; submission?: { requestId: string }; links: ResortLink[] }
   | { ok: false; message: string };
 
 export function isValidLinkUrl(platform: LinkKey, value: string): boolean {

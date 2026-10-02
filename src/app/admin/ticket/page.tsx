@@ -10,6 +10,7 @@ import {
 import { TicketEditClient } from "@/features/ticket/TicketEditClient";
 import type { TicketFileOption } from "@/features/ticket/types";
 import { readSkiResortNames } from "@/lib/skiResortData";
+import { requireEditingPage } from "@/server/edit-requests/authPages";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,7 @@ export const metadata: Metadata = {
 };
 
 export default async function TicketEditPage() {
+  await requireEditingPage();
   const [ticketFiles, schemaSpec, enumLabels, resorts] = await Promise.all([
     listTicketFiles(),
     readTicketSchemaSpec(),

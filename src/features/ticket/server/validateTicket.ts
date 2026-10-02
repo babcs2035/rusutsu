@@ -1,7 +1,6 @@
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import type { ValidationIssue, ValidationReport } from "../types";
 import { SKILL_SCRIPTS_DIR } from "./schemaSpec";
@@ -80,7 +79,12 @@ const parseIssues = (
 
 /** 検証スクリプトへ渡すため、保存候補のJSONを一時ファイルへ書き出す */
 const writeTemporaryTarget = async (content: string): Promise<string> => {
-  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "ticket-"));
+  const root = path.join(
+    process.cwd(),
+    "src/private/data/resorts-temporary/tmp/ticket-validation",
+  );
+  await fs.mkdir(root, { recursive: true });
+  const directory = await fs.mkdtemp(path.join(root, "ticket-"));
   const target = path.join(directory, `${randomUUID()}.json`);
   await fs.writeFile(target, content, "utf8");
   return target;

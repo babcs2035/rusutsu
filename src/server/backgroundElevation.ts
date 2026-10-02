@@ -1,6 +1,7 @@
 import { after } from "next/server";
 import { enrichLiftElevations } from "@/features/lift/server/elevation";
 import { enrichSlopeElevations } from "@/features/slope/server/elevation";
+import { currentEditCapture } from "@/server/edit-requests/capture";
 import { getDataDocument, writeDataDocuments } from "./data-documents/client";
 import {
   type DataDocument,
@@ -21,6 +22,11 @@ export function scheduleSavedElevations(
   source: LineGeojsonFeatureCollection,
   { force = false }: { force?: boolean } = {},
 ) {
+  const capture = currentEditCapture();
+  if (capture) {
+    capture.plan.elevations.push({ ...document, kind, source, force });
+    return;
+  }
   after(async () => {
     const previous = queues.get(document.key) ?? Promise.resolve();
     const next = previous.then(async () => {

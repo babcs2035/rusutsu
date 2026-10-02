@@ -175,6 +175,8 @@ export function EditorMap({
   const latest = useRef({
     mode,
     courses,
+    backgroundLines,
+    backgroundLineAppearance,
     activeCourse,
     onSelectCourse,
     onAppendVertex,
@@ -190,6 +192,8 @@ export function EditorMap({
   latest.current = {
     mode,
     courses,
+    backgroundLines,
+    backgroundLineAppearance,
     activeCourse,
     onSelectCourse,
     onAppendVertex,
@@ -671,10 +675,29 @@ export function EditorMap({
         return;
       }
 
-      popup.remove();
       setHovered(null);
       setInsertHint(null);
       canvas.style.cursor = "";
+
+      // 参照用リフトの名前は、描画中を除きコースの操作より優先度を下げて表示する。
+      if (current.backgroundLineAppearance === "lift") {
+        const lift = pickNearestLine(
+          map,
+          event.point,
+          queryLineCandidateIds(map, event.point, EDITOR_LAYER.backgroundLine),
+          current.backgroundLines,
+          LINE_TOLERANCE_PX,
+        );
+        if (lift) {
+          const hovered = current.backgroundLines.find(
+            item => item.id === lift.lineId,
+          );
+          show(hovered?.name || "（名前未入力）");
+          return;
+        }
+      }
+
+      popup.remove();
     };
 
     const handleOut = () => {

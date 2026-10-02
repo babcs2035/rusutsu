@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useEditingRole } from "@/app/admin/EditorAccess";
 import { Button } from "@/components/ui/button";
+import { useSubmissionNavigation } from "@/features/edit-requests/navigation";
 import { previewReviewUpload, publishReviewUpload } from "./publicationActions";
 
 type Preview = Extract<
@@ -13,6 +15,8 @@ export function ReviewJsonUpload({
 }: {
   currentFiles?: Array<{ key: string; content: string }>;
 }) {
+  const navigateSubmission = useSubmissionNavigation();
+  const { isEditor } = useEditingRole();
   const [preview, setPreview] = useState<Preview | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -58,6 +62,7 @@ export function ReviewJsonUpload({
     setMessage("");
     try {
       const result = await publishReviewUpload(preview.publication);
+      if (navigateSubmission(result)) return;
       if (result.ok) {
         setMessage("2つのJSONを保存しました。レビュー編集画面で確認できます。");
         setPreview(null);
@@ -82,7 +87,9 @@ export function ReviewJsonUpload({
         </details>
       ))}
       <p>
-        detail.jsonとarticle.jsonをまとめて選択します。選んだだけでは保存されません。保存先は、この管理画面の接続先です。本番APIに接続したローカル画面からも本番へ反映されます。
+        {isEditor
+          ? "detail.jsonとarticle.jsonをまとめて選択し、内容を確認して申請してください。管理者の確認後に反映されます。"
+          : "detail.jsonとarticle.jsonをまとめて選択し、内容を確認して保存してください。"}
       </p>
       <label className="block space-y-2">
         <span className="font-semibold">レビューJSON（2ファイル）</span>
@@ -136,7 +143,9 @@ export function ReviewJsonUpload({
               busy || preview.files.every(file => file.status === "変更なし")
             }
           >
-            確認した2ファイルを保存する
+            {isEditor
+              ? "確認した2ファイルを申請する"
+              : "確認した2ファイルを保存する"}
           </Button>
         </>
       )}

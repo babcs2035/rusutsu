@@ -19,7 +19,10 @@ import {
 import { FinalizedFeatureDetail } from "@/features/resort-detail/components/FinalizedFeatureDetail";
 import type { FeatureDetailPlacement } from "@/features/resort-detail/components/ResortMapSection";
 import { ResortMapSection } from "@/features/resort-detail/components/ResortMapSection";
-import { createFinalizedCourseGroups } from "@/features/resort-detail/utils/detailMetrics";
+import {
+  createFinalizedCourseGroups,
+  findSelectedCourseGroup,
+} from "@/features/resort-detail/utils/detailMetrics";
 import { getResortSearchName } from "@/lib/resortAliases";
 import { cn } from "@/lib/utils";
 import type { MapSkiResort } from "@/types/skiResorts";
@@ -386,10 +389,10 @@ export const CompareSlopeFeatureDetail = ({
       ),
     [resort.finalizedMapData],
   );
-  const selectedCourseGroup =
-    selection.feature.kind === "course"
-      ? (courseGroups.find(group => group.id === selection.feature.id) ?? null)
-      : null;
+  const selectedCourseGroup = findSelectedCourseGroup(
+    courseGroups,
+    selection.feature,
+  );
   const selectedLift =
     selection.feature.kind === "lift"
       ? (resort.finalizedMapData?.lifts?.features.find(
@@ -530,10 +533,10 @@ const ResortSlopeMapCard = ({
       ),
     [resort.finalizedMapData],
   );
-  const selectedCourseGroup =
-    selection.feature?.kind === "course"
-      ? (courseGroups.find(group => group.id === selection.feature?.id) ?? null)
-      : null;
+  const selectedCourseGroup = findSelectedCourseGroup(
+    courseGroups,
+    selection.feature,
+  );
   const selectedLift =
     selection.feature?.kind === "lift"
       ? (resort.finalizedMapData?.lifts?.features.find(

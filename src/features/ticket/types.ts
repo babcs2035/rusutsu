@@ -134,7 +134,12 @@ export type SaveTicketRequest = {
 };
 
 export type TicketActionResult =
-  | { ok: true; data: TicketEditData; report: ValidationReport }
+  | {
+      ok: true;
+      submission?: { requestId: string };
+      data: TicketEditData;
+      report: ValidationReport;
+    }
   | { ok: false; errors: string[]; report: ValidationReport | null };
 
 /** localStorage の下書き */

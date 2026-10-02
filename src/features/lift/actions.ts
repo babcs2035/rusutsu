@@ -7,6 +7,7 @@ import {
   readMappingStatusHistory,
 } from "@/lib/crawlLatestCurrent";
 import { requireAdmin } from "@/lib/requireAdmin";
+import { requireEditor } from "@/lib/requireEditor";
 import { scheduleSavedElevations } from "@/server/backgroundElevation";
 import {
   getDataDocument,
@@ -14,6 +15,8 @@ import {
 } from "@/server/data-documents/client";
 import { DataDocumentConflictError } from "@/server/data-documents/contract";
 import { synchronizeDerivedGeometry } from "@/server/derivedGeometry";
+import { saveRelatedEditorLinks } from "@/server/edit-requests/relatedLinks";
+import { runEdit } from "@/server/edit-requests/workflow";
 import { preserveFeature } from "@/shared/course-lift/preserveFeature";
 import { validateEntityMetadata } from "@/shared/course-lift/validateIdentity";
 import {
@@ -43,7 +46,7 @@ import { sourceDataToLifts } from "./utils/loadSource";
 export async function loadLiftSourceData(
   resortId: string,
 ): Promise<LiftSourceData> {
-  await requireAdmin();
+  await requireEditor();
   const [document, details] = await Promise.all([
     readLiftBeforeDocument(resortId),
     readLiftDetailEntries(resortId),
@@ -135,180 +138,183 @@ const toFeature = (lift: SaveLiftPayload): LiftBeforeFeature => ({
 // 編集結果で lift_before を書き換える。
 // 別スキー場へ移したリフトは移動先ファイルへ追記し、移動先の既存データは変更しない。
 export async function saveLiftEdits(request: SaveRequest): Promise<SaveResult> {
-  await requireAdmin();
-  const errors = validateSaveRequest(request);
-  if (
-    request.mapping &&
-    (request.mapping.resortId !== request.resortId ||
-      request.mapping.kind !== "lifts")
-  )
-    return { ok: false, errors: ["対応表の対象が一致しません。"] };
-  const preparedMapping = request.mapping
-    ? await prepareLatestStatusMappingDocument(
-        path.join(process.cwd(), "src/private/data/resorts-temporary"),
-        request.mapping,
-        readMappingCrawlLatestStatus,
-        readMappingStatusHistory,
-      )
-    : null;
-  if (preparedMapping && !preparedMapping.ok) return preparedMapping;
-  if (errors.length > 0) return { ok: false, errors };
+  return runEdit("lift", request.resortId, request, async () => {
+    const errors = validateSaveRequest(request);
+    if (
+      request.mapping &&
+      (request.mapping.resortId !== request.resortId ||
+        request.mapping.kind !== "lifts")
+    )
+      return { ok: false, errors: ["対応表の対象が一致しません。"] };
+    const preparedMapping = request.mapping
+      ? await prepareLatestStatusMappingDocument(
+          path.join(process.cwd(), "src/private/data/resorts-temporary"),
+          request.mapping,
+          readMappingCrawlLatestStatus,
+          readMappingStatusHistory,
+        )
+      : null;
+    if (preparedMapping && !preparedMapping.ok) return preparedMapping;
+    if (errors.length > 0) return { ok: false, errors };
 
-  // 読み込み時からファイルが変わっていないか確認する（他での編集の上書き防止）
-  const currentDocument = await readLiftBeforeDocument(request.resortId);
-  const currentHash = currentDocument?.hash ?? null;
-  if (currentHash !== request.fileHash) {
-    return {
-      ok: false,
-      errors: [
-        "読み込み後に lift_before ファイルが変更されています。ページを再読み込みして、最新のデータから編集し直してください。",
-      ],
-    };
-  }
-
-  // 移動先ごとにグループ化し、書き込み内容を先にすべて組み立てる
-  const originalFeatures = currentDocument
-    ? (parseLiftBeforeGeojson(currentDocument.content)?.features ?? [])
-    : [];
-  const toPreservedFeature = (lift: SaveLiftPayload) =>
-    preserveFeature(
-      toFeature(lift),
-      originalFeatures,
-      liftBeforeDocumentKey(request.resortId),
-    );
-  const movedByTarget = new Map<string, LiftBeforeFeature[]>();
-  const editableIndices = new Set(
-    sourceDataToLifts(request.resortId, {
-      geojson: { type: "FeatureCollection", features: originalFeatures },
-      details: null,
-      fileHash: currentHash,
-    }).lifts.map(lift => lift.sourceIndex),
-  );
-  const sourceFeatures: LiftBeforeFeature[] = originalFeatures.filter(
-    (_, index) => !editableIndices.has(index),
-  );
-  for (const lift of request.lifts) {
-    if (lift.targetSkiId === request.resortId) {
-      sourceFeatures.push(toPreservedFeature(lift));
-    } else {
-      const list = movedByTarget.get(lift.targetSkiId) ?? [];
-      list.push(toPreservedFeature(lift));
-      movedByTarget.set(lift.targetSkiId, list);
-    }
-  }
-
-  const writes: Array<{
-    resortId: string;
-    geojson: { type: "FeatureCollection"; features: LiftBeforeFeature[] };
-    expectedHash: string | null;
-    previousGeojson: ReturnType<typeof parseLiftBeforeGeojson>;
-  }> = [
-    {
-      resortId: request.resortId,
-      geojson: {
-        ...(currentDocument
-          ? parseLiftBeforeGeojson(currentDocument.content)
-          : {}),
-        type: "FeatureCollection",
-        features: sourceFeatures,
-      },
-      expectedHash: currentHash,
-      previousGeojson: currentDocument
-        ? parseLiftBeforeGeojson(currentDocument.content)
-        : null,
-    },
-  ];
-  for (const [targetId, features] of movedByTarget) {
-    const targetDocument = await readLiftBeforeDocument(targetId);
-    const targetRaw = targetDocument?.content ?? null;
-    const targetGeojson =
-      targetRaw === null ? null : parseLiftBeforeGeojson(targetRaw);
-    if (targetRaw !== null && targetGeojson === null) {
+    // 読み込み時からファイルが変わっていないか確認する（他での編集の上書き防止）
+    const currentDocument = await readLiftBeforeDocument(request.resortId);
+    const currentHash = currentDocument?.hash ?? null;
+    if (currentHash !== request.fileHash) {
       return {
         ok: false,
         errors: [
-          `移動先 ${targetId} の lift_before を解析できないため保存を中止しました。`,
+          "読み込み後に lift_before ファイルが変更されています。ページを再読み込みして、最新のデータから編集し直してください。",
         ],
       };
     }
-    writes.push({
-      resortId: targetId,
-      geojson: {
-        ...targetGeojson,
-        type: "FeatureCollection",
-        features: [...(targetGeojson?.features ?? []), ...features],
-      },
-      expectedHash: targetDocument?.hash ?? null,
-      previousGeojson: targetGeojson,
-    });
-  }
 
-  try {
-    const derivedDocuments = await Promise.all(
-      writes.map(async write => {
-        const key = lift20mDocumentKey(write.resortId);
-        const current = await getDataDocument(key);
-        return {
-          key,
-          current,
-          geojson: synchronizeDerivedGeometry({
-            previousBefore: write.previousGeojson,
-            nextBefore: write.geojson,
-            existingDerived: current
-              ? parseLiftBeforeGeojson(current.content)
-              : null,
-            intervalM: 20,
-            kind: "lift",
-          }),
-        };
-      }),
-    );
-
-    // 元・移動先の before と、公開画面が読む 20m 線を1トランザクションで更新する。
-    const savedDocuments = await writeDataDocuments([
-      ...(preparedMapping?.ok ? [preparedMapping.document] : []),
-      ...writes.map(write => ({
-        key: liftBeforeDocumentKey(write.resortId),
-        content: serializeLiftBeforeGeojson(write.geojson),
-        mediaType: "application/geo+json",
-        expectedHash: write.expectedHash,
-      })),
-      ...derivedDocuments.map(document => ({
-        key: document.key,
-        content: serializeLiftBeforeGeojson(document.geojson),
-        mediaType: "application/geo+json",
-        expectedHash: document.current?.hash ?? null,
-      })),
-    ]);
-    for (const [index, derived] of derivedDocuments.entries()) {
-      const saved = savedDocuments.find(
-        document => document.key === derived.key,
+    // 移動先ごとにグループ化し、書き込み内容を先にすべて組み立てる
+    const originalFeatures = currentDocument
+      ? (parseLiftBeforeGeojson(currentDocument.content)?.features ?? [])
+      : [];
+    const toPreservedFeature = (lift: SaveLiftPayload) =>
+      preserveFeature(
+        toFeature(lift),
+        originalFeatures,
+        liftBeforeDocumentKey(request.resortId),
       );
-      if (saved) scheduleSavedElevations(saved, "lift", writes[index].geojson);
+    const movedByTarget = new Map<string, LiftBeforeFeature[]>();
+    const editableIndices = new Set(
+      sourceDataToLifts(request.resortId, {
+        geojson: { type: "FeatureCollection", features: originalFeatures },
+        details: null,
+        fileHash: currentHash,
+      }).lifts.map(lift => lift.sourceIndex),
+    );
+    const sourceFeatures: LiftBeforeFeature[] = originalFeatures.filter(
+      (_, index) => !editableIndices.has(index),
+    );
+    for (const lift of request.lifts) {
+      if (lift.targetSkiId === request.resortId) {
+        sourceFeatures.push(toPreservedFeature(lift));
+      } else {
+        const list = movedByTarget.get(lift.targetSkiId) ?? [];
+        list.push(toPreservedFeature(lift));
+        movedByTarget.set(lift.targetSkiId, list);
+      }
     }
-  } catch (error) {
-    if (error instanceof DataDocumentConflictError) {
+
+    const writes: Array<{
+      resortId: string;
+      geojson: { type: "FeatureCollection"; features: LiftBeforeFeature[] };
+      expectedHash: string | null;
+      previousGeojson: ReturnType<typeof parseLiftBeforeGeojson>;
+    }> = [
+      {
+        resortId: request.resortId,
+        geojson: {
+          ...(currentDocument
+            ? parseLiftBeforeGeojson(currentDocument.content)
+            : {}),
+          type: "FeatureCollection",
+          features: sourceFeatures,
+        },
+        expectedHash: currentHash,
+        previousGeojson: currentDocument
+          ? parseLiftBeforeGeojson(currentDocument.content)
+          : null,
+      },
+    ];
+    for (const [targetId, features] of movedByTarget) {
+      const targetDocument = await readLiftBeforeDocument(targetId);
+      const targetRaw = targetDocument?.content ?? null;
+      const targetGeojson =
+        targetRaw === null ? null : parseLiftBeforeGeojson(targetRaw);
+      if (targetRaw !== null && targetGeojson === null) {
+        return {
+          ok: false,
+          errors: [
+            `移動先 ${targetId} の lift_before を解析できないため保存を中止しました。`,
+          ],
+        };
+      }
+      writes.push({
+        resortId: targetId,
+        geojson: {
+          ...targetGeojson,
+          type: "FeatureCollection",
+          features: [...(targetGeojson?.features ?? []), ...features],
+        },
+        expectedHash: targetDocument?.hash ?? null,
+        previousGeojson: targetGeojson,
+      });
+    }
+
+    try {
+      const derivedDocuments = await Promise.all(
+        writes.map(async write => {
+          const key = lift20mDocumentKey(write.resortId);
+          const current = await getDataDocument(key);
+          return {
+            key,
+            current,
+            geojson: synchronizeDerivedGeometry({
+              previousBefore: write.previousGeojson,
+              nextBefore: write.geojson,
+              existingDerived: current
+                ? parseLiftBeforeGeojson(current.content)
+                : null,
+              intervalM: 20,
+              kind: "lift",
+            }),
+          };
+        }),
+      );
+
+      // 元・移動先の before と、公開画面が読む 20m 線を1トランザクションで更新する。
+      await saveRelatedEditorLinks(request.resortId, request.linkRequests);
+      const savedDocuments = await writeDataDocuments([
+        ...(preparedMapping?.ok ? [preparedMapping.document] : []),
+        ...writes.map(write => ({
+          key: liftBeforeDocumentKey(write.resortId),
+          content: serializeLiftBeforeGeojson(write.geojson),
+          mediaType: "application/geo+json",
+          expectedHash: write.expectedHash,
+        })),
+        ...derivedDocuments.map(document => ({
+          key: document.key,
+          content: serializeLiftBeforeGeojson(document.geojson),
+          mediaType: "application/geo+json",
+          expectedHash: document.current?.hash ?? null,
+        })),
+      ]);
+      for (const [index, derived] of derivedDocuments.entries()) {
+        const saved = savedDocuments.find(
+          document => document.key === derived.key,
+        );
+        if (saved)
+          scheduleSavedElevations(saved, "lift", writes[index].geojson);
+      }
+    } catch (error) {
+      if (error instanceof DataDocumentConflictError) {
+        return {
+          ok: false,
+          errors: [
+            "読み込み後に lift_before または lift_20m が変更されています。ページを再読み込みして、最新のデータから編集し直してください。",
+          ],
+        };
+      }
       return {
         ok: false,
         errors: [
-          "読み込み後に lift_before または lift_20m が変更されています。ページを再読み込みして、最新のデータから編集し直してください。",
+          `リフト情報は保存されませんでした: ${error instanceof Error ? error.message : String(error)}`,
         ],
       };
     }
     return {
-      ok: false,
-      errors: [
-        `リフト情報は保存されませんでした: ${error instanceof Error ? error.message : String(error)}`,
-      ],
+      ok: true,
+      writtenFiles: writes.flatMap(write => [
+        `lift_before/${write.resortId}.geojson`,
+        `lift_20m/${write.resortId}.geojson`,
+      ]),
     };
-  }
-  return {
-    ok: true,
-    writtenFiles: writes.flatMap(write => [
-      `lift_before/${write.resortId}.geojson`,
-      `lift_20m/${write.resortId}.geojson`,
-    ]),
-  };
+  });
 }
 
 // 保存済みの線から全リフトの標高を取り直す。下書きは対象にしない。
@@ -367,7 +373,7 @@ export async function refreshLiftElevations(
 
 // スキー場一覧に lift_before の有無を付与するためのIDリスト
 export async function listLiftBeforeIds(): Promise<string[]> {
-  await requireAdmin();
+  await requireEditor();
   return listLiftBeforeResortIds();
 }
 
@@ -383,7 +389,7 @@ export async function setLiftConfirmed(
 
 // スキー場全体の参考リンク（SkiResortLinks.json）を読み込む
 export async function loadResortLinks(resortId: string): Promise<ResortLinks> {
-  await requireAdmin();
+  await requireEditor();
   return readResortLinks(resortId);
 }
 

@@ -1,11 +1,14 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
+import { useEditingRole } from "@/app/admin/EditorAccess";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { useSubmissionNavigation } from "@/features/edit-requests/navigation";
 import type { LatestStatusMappingState } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
+import type { LinkSaveRequest } from "@/features/links/model";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { EditorStepContent } from "@/shared/components/resort-editor/EditorStepContent";
 import { saveEditorChanges } from "@/shared/components/resort-editor/saveEditorChanges";
@@ -27,6 +30,7 @@ import { validateCourses } from "../utils/validation";
 
 type ConfirmStepProps = {
   saveLinks: () => Promise<string[]>;
+  getLinkRequests: () => LinkSaveRequest[];
   mapping: LatestStatusMappingState;
   resort: ResortOption;
   resorts: ResortOption[];
@@ -45,6 +49,7 @@ const displayValue = (value: string): string =>
 
 export function ConfirmStep({
   saveLinks,
+  getLinkRequests,
   mapping,
   resort,
   resorts,
@@ -57,6 +62,8 @@ export function ConfirmStep({
   onBack,
   onSaved,
 }: ConfirmStepProps) {
+  const navigateSubmission = useSubmissionNavigation();
+  const { isEditor } = useEditingRole();
   const [isSaving, setIsSaving] = useState(false);
   const [serverErrors, setServerErrors] = useState<string[]>([]);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
@@ -80,13 +87,14 @@ export function ConfirmStep({
     try {
       const result = await saveEditorChanges({
         saveMapping: mapping.getSaveRequest ? async () => true : mapping.save,
-        saveLinks,
+        saveLinks: isEditor ? async () => [] : saveLinks,
         mappingFile: mapping.workspace?.latestFile
           ? `latest_status_mapping/${resort.id}.json`
           : undefined,
         saveGeometry: () =>
           saveSlopeEdits({
             resortId: resort.id,
+            linkRequests: isEditor ? getLinkRequests() : undefined,
             mapping: mapping.getSaveRequest?.(),
             sourceKind,
             fileHash,
@@ -96,6 +104,7 @@ export function ConfirmStep({
             preservedDetails,
           }),
       });
+      if (navigateSubmission(result)) return;
       if (result.ok) {
         onSaved(result.writtenFiles);
       } else {
@@ -275,10 +284,10 @@ export function ConfirmStep({
         <ConfirmDialog
           open={saveDialogOpen}
           onOpenChange={setSaveDialogOpen}
-          title="保存確認"
+          title={isEditor ? "申請確認" : "保存確認"}
           description={`コース情報・営業情報の対応表・ゲレンデマップURLを保存します。よろしいですか？`}
           onConfirm={handleSaveConfirm}
-          confirmLabel="保存する"
+          confirmLabel={isEditor ? "申請する" : "保存する"}
         />
         <Button
           disabled={
@@ -290,7 +299,7 @@ export function ConfirmStep({
           }
           onClick={() => setSaveDialogOpen(true)}
         >
-          {isSaving ? "保存中…" : "すべて保存"}
+          {isSaving ? "処理中…" : isEditor ? "すべて申請" : "すべて保存"}
         </Button>
         <Button variant="outline" onClick={onBack} disabled={isSaving}>
           戻る

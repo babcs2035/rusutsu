@@ -3,8 +3,14 @@ import { test } from "node:test";
 import {
   adminSkiResortRecordSchema,
   adminSkiResortUpdateSchema,
+  isMergedSource,
 } from "./adminContract";
-import { mergeResortSummary, resortMergeRequestSchema } from "./mergeContract";
+import {
+  linkedAreaDefaults,
+  mergeResortSummary,
+  resortMergeRequestSchema,
+  ticketGroupRequestSchema,
+} from "./mergeContract";
 
 const request = {
   id: "combined-resort",
@@ -124,7 +130,69 @@ test("merge sums counts, combines elevations and evidence, and preserves primary
     updatedAt: _date,
     mergedIntoId: _parent,
     sourceResortIds: _sources,
+    linkKind: _linkKind,
+    ticketGroupId: _ticketGroupId,
     ...editable
   } = merged;
   assert.equal(adminSkiResortUpdateSchema.safeParse(editable).success, true);
+});
+
+test("merge kind defaults to a full merge and accepts a linked area", () => {
+  assert.equal(resortMergeRequestSchema.parse(request).kind, "MERGED");
+  assert.equal(
+    resortMergeRequestSchema.parse({ ...request, kind: "LINKED" }).kind,
+    "LINKED",
+  );
+  assert.equal(
+    resortMergeRequestSchema.safeParse({ ...request, kind: "TICKET" }).success,
+    false,
+  );
+});
+
+test("a shared ticket needs at least two distinct resorts", () => {
+  const resorts = request.sources;
+  assert.equal(
+    ticketGroupRequestSchema.safeParse({ action: "set", resorts }).success,
+    true,
+  );
+  for (const invalid of [
+    { action: "set", resorts: resorts.slice(0, 1) },
+    { action: "set", resorts: [resorts[0], resorts[0]] },
+    { action: "clear", resorts },
+  ])
+    assert.equal(ticketGroupRequestSchema.safeParse(invalid).success, false);
+  assert.equal(
+    ticketGroupRequestSchema.safeParse({ action: "clear", resort: resorts[0] })
+      .success,
+    true,
+  );
+});
+
+test("only sources of a full merge are hidden from per-resort editing", () => {
+  const merged = { id: "merged", linkKind: "MERGED" as const };
+  const linked = { id: "linked", linkKind: "LINKED" as const };
+  const resorts = [merged, linked];
+  assert.equal(isMergedSource({ mergedIntoId: "merged" }, resorts), true);
+  assert.equal(isMergedSource({ mergedIntoId: "linked" }, resorts), false);
+  assert.equal(isMergedSource({ mergedIntoId: null }, resorts), false);
+});
+
+test("a linked area may omit its ID, names and summary source", () => {
+  const sources = request.sources;
+  assert.equal(
+    resortMergeRequestSchema.safeParse({ kind: "LINKED", sources }).success,
+    true,
+  );
+  assert.equal(resortMergeRequestSchema.safeParse({ sources }).success, false);
+  const defaults = linkedAreaDefaults([
+    { id: "able-hakuba-goryu", nameJa: "エイブル白馬五竜", nameEn: "Goryu" },
+    { id: "hakuba-47", nameJa: "Hakuba47", nameEn: "Hakuba47" },
+  ]);
+  assert.equal(defaults.nameJa, "エイブル白馬五竜・Hakuba47");
+  assert.equal(defaults.nameEn, "Goryu & Hakuba47");
+  assert.equal(defaults.primaryId, "able-hakuba-goryu");
+  assert.deepEqual(defaults.idCandidates(2), [
+    "able-hakuba-goryu-area",
+    "able-hakuba-goryu-area-2",
+  ]);
 });

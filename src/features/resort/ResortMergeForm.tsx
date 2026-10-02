@@ -4,12 +4,46 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { AdminSkiResortRecord } from "@/server/ski-resorts/adminContract";
 import {
+  type AdminSkiResortRecord,
+  isMergedSource,
+} from "@/server/ski-resorts/adminContract";
+import {
+  linkedAreaDefaults,
   mergeResortSummary,
   type ResortMergeResult,
 } from "@/server/ski-resorts/mergeContract";
-import { mergeSkiResortsFromAdmin } from "./mergeActions";
+import {
+  mergeSkiResortsFromAdmin,
+  updateTicketGroupFromAdmin,
+} from "./mergeActions";
+
+type RelationKind = "LINKED" | "MERGED" | "TICKET";
+
+const RELATION_KINDS: Array<{
+  kind: RelationKind;
+  label: string;
+  description: string;
+}> = [
+  {
+    kind: "LINKED",
+    label: "連携エリア",
+    description:
+      "全国マップのピンは別々のまま、地図・コース・リフト・料金・レビューを共通にします。天気・予報・積雪はスキー場ごとに切り替えて表示します。",
+  },
+  {
+    kind: "MERGED",
+    label: "完全統合",
+    description:
+      "1つのスキー場にまとめます。公開一覧と地図には結合後の1件だけを表示します。",
+  },
+  {
+    kind: "TICKET",
+    label: "共通券",
+    description:
+      "別々のスキー場のまま、共通券で滑走できることを詳細画面に表示します。地図や詳細はまとめません。",
+  },
+];
 
 export function ResortMergeForm({
   resorts,
@@ -18,6 +52,7 @@ export function ResortMergeForm({
   onDirtyChange,
   onPendingChange,
   onCreated,
+  onTicketGrouped,
 }: {
   resorts: AdminSkiResortRecord[];
   initialId: string | null;
@@ -27,9 +62,15 @@ export function ResortMergeForm({
   onCreated: (
     result: Extract<ResortMergeResult, { status: "created" }>,
   ) => void;
+  onTicketGrouped: (resorts: AdminSkiResortRecord[]) => void;
 }) {
-  const eligible = resorts.filter(
-    resort => !resort.mergedIntoId && !resort.sourceResortIds.length,
+  const [kind, setKind] = useState<RelationKind>("LINKED");
+  const isTicket = kind === "TICKET";
+  // 共通券は公開中の単位（連携エリアの子を含む）どうしを結ぶ。
+  const eligible = resorts.filter(resort =>
+    isTicket
+      ? !isMergedSource(resort, resorts) && !resort.sourceResortIds.length
+      : !resort.mergedIntoId && !resort.sourceResortIds.length,
   );
   const [selectedIds, setSelectedIds] = useState<string[]>(
     initialId && eligible.some(resort => resort.id === initialId)
@@ -54,6 +95,26 @@ export function ResortMergeForm({
       .toLowerCase()
       .includes(query.trim().toLowerCase()),
   );
+  const changeKind = (next: RelationKind) => {
+    setKind(next);
+    setError(null);
+    onDirtyChange(true);
+  };
+  const canSubmit =
+    !pending &&
+    selected.length >= 2 &&
+    (kind !== "MERGED" || (Boolean(primary) && !idExists));
+  // 連携エリアの ID・名称はサーバーが同じ規則で決める。ここでは表示だけ。
+  const linkedDefaults =
+    selected.length >= 2 ? linkedAreaDefaults(selected) : null;
+  const linkedPreview = {
+    nameJa: linkedDefaults?.nameJa ?? "",
+    id:
+      linkedDefaults
+        ?.idCandidates(20)
+        .find(candidate => !resorts.some(resort => resort.id === candidate)) ??
+      "",
+  };
   const toggle = (id: string) => {
     const next = selectedIds.includes(id)
       ? selectedIds.filter(value => value !== id)
@@ -68,16 +129,26 @@ export function ResortMergeForm({
       className="flex min-h-0 flex-1 flex-col"
       onSubmit={event => {
         event.preventDefault();
-        if (pending || !primary || selected.length < 2 || idExists) return;
+        if (!canSubmit) return;
         setError(null);
         onPendingChange(true);
         startTransition(async () => {
           try {
+            if (kind === "TICKET") {
+              const result = await updateTicketGroupFromAdmin({
+                action: "set",
+                resorts: selected.map(resort => ({
+                  id: resort.id,
+                  expectedUpdatedAt: resort.updatedAt,
+                })),
+              });
+              if (result.status === "error") setError(result.message);
+              else onTicketGrouped(result.resorts);
+              return;
+            }
             const result = await mergeSkiResortsFromAdmin({
-              id,
-              nameJa,
-              nameEn,
-              primaryId,
+              kind,
+              ...(kind === "MERGED" ? { id, nameJa, nameEn, primaryId } : {}),
               sources: selected.map(resort => ({
                 id: resort.id,
                 expectedUpdatedAt: resort.updatedAt,
@@ -105,11 +176,14 @@ export function ResortMergeForm({
           一覧に戻る
         </Button>
         <h2 className="flex-1 font-bold">複数のスキー場を結合</h2>
-        <Button
-          type="submit"
-          disabled={pending || selected.length < 2 || !primary || idExists}
-        >
-          {pending ? "保存中…" : "結合して保存"}
+        <Button type="submit" disabled={!canSubmit}>
+          {pending
+            ? "保存中…"
+            : isTicket
+              ? "共通券として保存"
+              : kind === "LINKED"
+                ? "連携して保存"
+                : "結合して保存"}
         </Button>
       </div>
       {error && (
@@ -122,10 +196,47 @@ export function ResortMergeForm({
         className="min-h-0 flex-1 overflow-y-auto bg-gray-50 p-4 md:p-6"
       >
         <div className="mx-auto grid max-w-6xl gap-5 lg:grid-cols-2">
+          <section
+            className="space-y-3 rounded-xl border bg-white p-4 lg:col-span-2"
+            aria-labelledby="relation-kind-heading"
+          >
+            <h3 id="relation-kind-heading" className="font-bold">
+              1. 関係の種類を選ぶ
+            </h3>
+            <div className="grid gap-2 md:grid-cols-3">
+              {RELATION_KINDS.map(option => (
+                <label
+                  key={option.kind}
+                  className={`flex cursor-pointer gap-3 rounded-lg border p-3 ${
+                    kind === option.kind
+                      ? "border-blue-600 bg-blue-50"
+                      : "hover:bg-gray-50"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="relation-kind"
+                    value={option.kind}
+                    checked={kind === option.kind}
+                    onChange={() => changeKind(option.kind)}
+                    className="mt-1 size-4"
+                  />
+                  <span>
+                    <span className="block text-sm font-bold">
+                      {option.label}
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-gray-600">
+                      {option.description}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </section>
           <section className="space-y-3 rounded-xl border bg-white p-4">
-            <h3 className="font-bold">1. 結合するスキー場を選ぶ</h3>
+            <h3 className="font-bold">2. 対象のスキー場を選ぶ</h3>
             <p className="text-sm text-gray-600">
-              2件以上を選択してください。元データは残り、公開一覧と地図には結合後の1件を表示します。
+              2件以上を選択してください。元データは残ります。
             </p>
             <Input
               type="search"
@@ -181,94 +292,127 @@ export function ResortMergeForm({
               )}
             </div>
           </section>
-          <section
-            className="space-y-4 rounded-xl border bg-white p-4"
-            onChange={() => onDirtyChange(true)}
-          >
-            <h3 className="font-bold">2. 結合後の情報を設定する</h3>
-            <div className="space-y-1.5">
-              <Label htmlFor="merge-id">新しいスキー場ID</Label>
-              <Input
-                id="merge-id"
-                required
-                maxLength={200}
-                pattern="[a-z0-9]+(-[a-z0-9]+)*"
-                placeholder="example-snow-resort"
-                value={id}
-                onChange={event => setId(event.target.value)}
-                aria-invalid={idExists}
-              />
-              <p className="text-xs text-gray-500">
-                半角英小文字・数字・ハイフン。既存のIDは使用できません。
+          {isTicket ? (
+            <section className="space-y-3 rounded-xl border bg-white p-4">
+              <h3 className="font-bold">3. 保存後の表示</h3>
+              <p className="text-sm leading-6 text-gray-700">
+                選んだスキー場の詳細画面に「共通券で〇〇も滑走可」と表示します。すでに共通券グループに入っているスキー場を選ぶと、そのグループに追加します。
               </p>
-              {idExists && (
-                <p role="alert" className="text-sm text-red-700">
-                  このIDはすでに使われています。
+              {selected.length > 0 && (
+                <p className="rounded-lg bg-amber-50 p-3 text-sm">
+                  {selected.map(resort => resort.nameJa).join("・")}
                 </p>
               )}
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="merge-name-ja">結合後の名称（日本語）</Label>
-              <Input
-                id="merge-name-ja"
-                required
-                maxLength={300}
-                value={nameJa}
-                onChange={event => setNameJa(event.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="merge-name-en">結合後の名称（英語）</Label>
-              <Input
-                id="merge-name-en"
-                required
-                maxLength={300}
-                value={nameEn}
-                onChange={event => setNameEn(event.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="merge-primary">基本情報の引き継ぎ元</Label>
-              <select
-                id="merge-primary"
-                required
-                value={primaryId}
-                onChange={event => setPrimaryId(event.target.value)}
-                className="h-10 w-full rounded-md border bg-white px-3 text-sm"
-              >
-                <option value="" disabled>
-                  結合対象から選択
-                </option>
-                {selected.map(resort => (
-                  <option key={resort.id} value={resort.id}>
-                    {resort.nameJa}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs leading-5 text-gray-500">
-                所在地・地図の位置・営業時間・コースの割合などを引き継ぎます。コース数・リフト数は合算します。結合後の専用データがない場合、料金・レビューは引き継ぎ元の情報を表示します。
+            </section>
+          ) : kind === "LINKED" ? (
+            <section className="space-y-3 rounded-xl border bg-white p-4">
+              <h3 className="font-bold">3. 保存後の表示</h3>
+              <p className="text-sm leading-6 text-gray-700">
+                全国マップには各スキー場のピンを残し、地図・コース・リフト・料金・レビューを共通にします。地図は各スキー場の地図をまとめた状態で作成します。
               </p>
-            </div>
-            {summary && (
-              <div className="space-y-2 rounded-lg bg-blue-50 p-4 text-sm">
-                <h4 className="font-bold">保存後の表示</h4>
-                <p>
-                  {nameJa || "名称未入力"} / {id || "ID未入力"}
+              {selected.length >= 2 && (
+                <div className="space-y-1 rounded-lg bg-blue-50 p-4 text-sm">
+                  <p>
+                    エリア名：
+                    {linkedPreview.nameJa}
+                  </p>
+                  <p className="break-all text-xs text-gray-600">
+                    ID：{linkedPreview.id}
+                    （コース・リフト編集や料金・レビューの入力ではこの名前で表示します）
+                  </p>
+                </div>
+              )}
+            </section>
+          ) : (
+            <section
+              className="space-y-4 rounded-xl border bg-white p-4"
+              onChange={() => onDirtyChange(true)}
+            >
+              <h3 className="font-bold">3. 結合後の情報を設定する</h3>
+              <div className="space-y-1.5">
+                <Label htmlFor="merge-id">新しいスキー場ID</Label>
+                <Input
+                  id="merge-id"
+                  required
+                  maxLength={200}
+                  pattern="[a-z0-9]+(-[a-z0-9]+)*"
+                  placeholder="example-snow-resort"
+                  value={id}
+                  onChange={event => setId(event.target.value)}
+                  aria-invalid={idExists}
+                />
+                <p className="text-xs text-gray-500">
+                  半角英小文字・数字・ハイフン。既存のIDは使用できません。
                 </p>
-                <p>
-                  コース {summary.numberOfCourses}本・リフト{" "}
-                  {summary.numberOfLifts}基
-                </p>
-                <p>
-                  標高 {summary.baseElevation}〜{summary.topElevation}m
-                </p>
-                <p>位置・基本情報：{primary?.nameJa}</p>
-                <p className="text-xs text-gray-600">
-                  結合後は公開状態で作成し、詳細設定を開きます。内容を続けて編集できます。
+                {idExists && (
+                  <p role="alert" className="text-sm text-red-700">
+                    このIDはすでに使われています。
+                  </p>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="merge-name-ja">結合後の名称（日本語）</Label>
+                <Input
+                  id="merge-name-ja"
+                  required
+                  maxLength={300}
+                  value={nameJa}
+                  onChange={event => setNameJa(event.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="merge-name-en">結合後の名称（英語）</Label>
+                <Input
+                  id="merge-name-en"
+                  required
+                  maxLength={300}
+                  value={nameEn}
+                  onChange={event => setNameEn(event.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="merge-primary">基本情報の引き継ぎ元</Label>
+                <select
+                  id="merge-primary"
+                  required
+                  value={primaryId}
+                  onChange={event => setPrimaryId(event.target.value)}
+                  className="h-10 w-full rounded-md border bg-white px-3 text-sm"
+                >
+                  <option value="" disabled>
+                    結合対象から選択
+                  </option>
+                  {selected.map(resort => (
+                    <option key={resort.id} value={resort.id}>
+                      {resort.nameJa}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs leading-5 text-gray-500">
+                  所在地・地図の位置・営業時間・コースの割合などを引き継ぎます。コース数・リフト数は合算します。結合後の専用データがない場合、料金・レビューは引き継ぎ元の情報を表示します。
                 </p>
               </div>
-            )}
-          </section>
+              {summary && (
+                <div className="space-y-2 rounded-lg bg-blue-50 p-4 text-sm">
+                  <h4 className="font-bold">保存後の表示</h4>
+                  <p>
+                    {nameJa || "名称未入力"} / {id || "ID未入力"}
+                  </p>
+                  <p>
+                    コース {summary.numberOfCourses}本・リフト{" "}
+                    {summary.numberOfLifts}基
+                  </p>
+                  <p>
+                    標高 {summary.baseElevation}〜{summary.topElevation}m
+                  </p>
+                  <p>位置・基本情報：{primary?.nameJa}</p>
+                  <p className="text-xs text-gray-600">
+                    結合後は公開状態で作成し、詳細設定を開きます。内容を続けて編集できます。
+                  </p>
+                </div>
+              )}
+            </section>
+          )}
         </div>
       </fieldset>
     </form>

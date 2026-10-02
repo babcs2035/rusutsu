@@ -88,8 +88,22 @@ export const adminSkiResortRecordSchema = adminSkiResortUpdateSchema.extend({
   id: skiResortIdSchema,
   mergedIntoId: skiResortIdSchema.nullable().default(null),
   sourceResortIds: z.array(skiResortIdSchema).default([]),
+  linkKind: z.enum(["MERGED", "LINKED"]).default("MERGED"),
+  ticketGroupId: z.string().nullable().default(null),
   updatedAt: z.iso.datetime({ offset: true }),
 });
+
+/**
+ * 完全統合の結合元か。結合元は親として扱うので個別には編集しない。
+ * 連携エリアの子は、公式サイトやSNSなどを個別に持つ。
+ */
+export const isMergedSource = (
+  resort: Pick<AdminSkiResortRecord, "mergedIntoId">,
+  resorts: Pick<AdminSkiResortRecord, "id" | "linkKind">[],
+) =>
+  resort.mergedIntoId !== null &&
+  resorts.find(parent => parent.id === resort.mergedIntoId)?.linkKind !==
+    "LINKED";
 
 export const adminSkiResortUpdateRequestSchema = z
   .object({

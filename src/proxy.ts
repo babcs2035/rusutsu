@@ -59,12 +59,7 @@ export async function proxy(req: NextRequest) {
       url.pathname = "/admin/login";
       return Response.redirect(url);
     }
-    if (token.role !== "admin") {
-      // admin 以外なら権限なしページへ
-      const url = req.nextUrl.clone();
-      url.pathname = "/admin/no-access";
-      return Response.redirect(url);
-    }
+    // Proxyは認証の入口のみ。現在のDB権限は各ページ・操作で検証する。
   }
 }
 

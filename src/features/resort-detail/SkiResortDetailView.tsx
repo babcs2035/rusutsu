@@ -19,6 +19,7 @@ import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
 import type { MapSkiResort, NullableSkiResortDetail } from "@/types/skiResorts";
 import { DetailTabs } from "./components/DetailTabs";
 import { FinalizedFeatureDetail } from "./components/FinalizedFeatureDetail";
+import { ResortRelations } from "./components/LinkedArea";
 import { MapAreaTabs } from "./components/MapAreaTabs";
 import { ResortMapSection } from "./components/ResortMapSection";
 import { TrailMapPanel } from "./components/TrailMapPanel";
@@ -30,7 +31,10 @@ import {
   WeatherTab,
 } from "./tabs/DetailTabContent";
 import { SnsTab } from "./tabs/OverviewTab";
-import { createFinalizedCourseGroups } from "./utils/detailMetrics";
+import {
+  createFinalizedCourseGroups,
+  findSelectedCourseGroup,
+} from "./utils/detailMetrics";
 
 type Props = {
   DynamicMap: ComponentType<JapanResortMapProps>;
@@ -53,6 +57,8 @@ type Props = {
     point: ElevationProfileMapPoint | null,
   ) => void;
   onClose: () => void;
+  /** つながっているスキー場・共通券のスキー場の名前を押したときに開く */
+  onSelectResort?: (id: string) => void;
   mobileContentTab?: "info" | "map";
   mobilePresentation?: "overlay" | "inline";
   hideMobileInfoSection?: boolean;
@@ -134,6 +140,7 @@ export const SkiResortDetailView = ({
   onSelectedFinalizedFeatureChange,
   onSelectedElevationProfilePointChange,
   onClose,
+  onSelectResort,
   mobileContentTab = "info",
   mobilePresentation = "overlay",
   hideMobileInfoSection = false,
@@ -273,12 +280,10 @@ export const SkiResortDetailView = ({
   const finalizedCourseGroups = createFinalizedCourseGroups(
     resort.finalizedMapData?.courses?.features ?? [],
   );
-  const selectedCourseGroup =
-    selectedFinalizedFeature?.kind === "course"
-      ? (finalizedCourseGroups.find(
-          group => group.id === selectedFinalizedFeature.id,
-        ) ?? null)
-      : null;
+  const selectedCourseGroup = findSelectedCourseGroup(
+    finalizedCourseGroups,
+    selectedFinalizedFeature,
+  );
   const selectedLift =
     selectedFinalizedFeature?.kind === "lift"
       ? (resort.finalizedMapData?.lifts?.features.find(
@@ -349,6 +354,9 @@ export const SkiResortDetailView = ({
 
   const renderTabPanels = () => (
     <div className="relative">
+      {activeTab === "ゲレンデ" && !showTerrainDetail && (
+        <ResortRelations resort={resort} onSelectResort={onSelectResort} />
+      )}
       {activeTab === "ゲレンデ" && isSidePanel && desktopTrailMapSection}
       {activeTab === "ゲレンデ" && (
         <OverviewTab

@@ -1,3 +1,4 @@
+import type { SelectedMapFeature } from "@/features/map/types";
 import type { CourseStatusSummary } from "@/lib/courseStatusSummary";
 import type {
   CourseDifficulty,
@@ -252,6 +253,23 @@ export const createFinalizedCourseGroups = (
   return [...groups.values()];
 };
 
+/**
+ * 選択中のコースのまとまり。地図で別ルートの1本を押したときは、
+ * そのルートだけのまとまりにして断面図や距離をそのルートで出す。
+ */
+export const findSelectedCourseGroup = (
+  groups: FinalizedCourseGroup[],
+  feature: SelectedMapFeature | null | undefined,
+): FinalizedCourseGroup | null => {
+  if (feature?.kind !== "course") return null;
+  const group = groups.find(item => item.id === feature.id);
+  if (!group) return null;
+  const route = feature.routeId
+    ? group.courses.find(course => course.id === feature.routeId)
+    : undefined;
+  return route ? { ...group, courses: [route] } : group;
+};
+
 export const haversineMeters = (a: GeoCoordinate, b: GeoCoordinate) => {
   const radius = 6371000;
   const lat1 = (a[1] * Math.PI) / 180;
@@ -312,7 +330,12 @@ export const createConnectedCourseElevationProfile = (
   courses: FinalizedCourseFeature[],
 ): ElevationProfilePoint[] => {
   // Alternative routes do not form one continuous elevation profile.
-  if (courses.some(course => course.groupKind === "routes")) return [];
+  if (
+    courses.length > 1 &&
+    courses.some(course => course.groupKind === "routes")
+  ) {
+    return [];
+  }
   const sortedCourses = courses
     .map((course, index) => ({ course, index }))
     .sort((a, b) => {

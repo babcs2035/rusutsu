@@ -47,15 +47,8 @@ export function useResortEditorLinks() {
     setSavedLinks(expected);
     setLinks(next);
   };
-  const save = async (
-    keys: readonly LinkKey[] = RESORT_LINK_KEYS,
-  ): Promise<string[]> => {
-    if (saving.current)
-      throw new Error("リンクの保存中です。完了後に再度保存してください。");
-    if (!resortId.current)
-      throw new Error("スキー場のリンクを読み込んでください。");
-    // 全項目を検証してから書き込み、未編集のリンクは上書きしない。
-    const requests = keys.flatMap(platform => {
+  const getRequests = (keys: readonly LinkKey[] = RESORT_LINK_KEYS) => {
+    return keys.flatMap(platform => {
       const links = current.current[platform]
         .filter(link => link.url.trim())
         .map(link => ({
@@ -76,6 +69,16 @@ export function useResortEditorLinks() {
         );
       return [parsed.data];
     });
+  };
+  const save = async (
+    keys: readonly LinkKey[] = RESORT_LINK_KEYS,
+  ): Promise<string[]> => {
+    if (saving.current)
+      throw new Error("リンクの保存中です。完了後に再度保存してください。");
+    if (!resortId.current)
+      throw new Error("スキー場のリンクを読み込んでください。");
+    // 全項目を検証してから書き込み、未編集のリンクは上書きしない。
+    const requests = getRequests(keys);
     saving.current = true;
     setIsSaving(true);
     try {
@@ -98,7 +101,7 @@ export function useResortEditorLinks() {
     () => ({ links, baseline: savedLinks }),
     [links, savedLinks],
   );
-  return { links, setLinks, initialize, save, isSaving, draft };
+  return { links, setLinks, initialize, save, getRequests, isSaving, draft };
 }
 
 export type ResortEditorLinks = ReturnType<typeof useResortEditorLinks>;

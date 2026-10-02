@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { InternalDataApiError } from "@/lib/internalDataApiClient";
-import { requireAdmin } from "@/lib/requireAdmin";
+import { requireEditor } from "@/lib/requireEditor";
 import { updateAdminSkiResort } from "@/lib/skiResortData";
+import { runEdit } from "@/server/edit-requests/workflow";
 import {
   type AdminSkiResortRecord,
   adminSkiResortUpdateRequestSchema,
@@ -14,7 +15,12 @@ import { resortReadingFieldsFromFormData } from "./readingFormData";
 
 export type ResortAdminActionState =
   | { status: "idle" }
-  | { status: "saved"; message: string; resort: AdminSkiResortRecord }
+  | {
+      status: "saved";
+      message: string;
+      resort: AdminSkiResortRecord;
+      submission?: { requestId: string };
+    }
   | {
       status: "error";
       reason: "validation" | "conflict" | "not_found" | "unexpected";
@@ -62,7 +68,7 @@ export async function updateSkiResortFromAdmin(
   _previousState: ResortAdminActionState,
   formData: FormData,
 ): Promise<ResortAdminActionState> {
-  await requireAdmin();
+  await requireEditor();
 
   const id = skiResortIdSchema.safeParse(textValue(formData, "id"));
   const request = adminSkiResortUpdateRequestSchema.safeParse({
@@ -136,49 +142,56 @@ export async function updateSkiResortFromAdmin(
     };
   }
 
-  try {
-    const result = await updateAdminSkiResort(id.data, request.data);
-    if (result.status === "conflict") {
-      return {
-        status: "error",
-        reason: "conflict",
-        message:
-          "別の管理者が先にこのスキー場を更新しました。ページを再読み込みし、最新の内容を確認してから編集し直してください。",
-      };
-    }
-    if (result.status === "not_found") {
-      return {
-        status: "error",
-        reason: "not_found",
-        message: "このスキー場はデータベースに存在しません。",
-      };
-    }
+  return runEdit(
+    "resort",
+    id.data,
+    { id: id.data, request: request.data },
+    async () => {
+      try {
+        const result = await updateAdminSkiResort(id.data, request.data);
+        if (result.status === "conflict") {
+          return {
+            status: "error",
+            reason: "conflict",
+            message:
+              "別の管理者が先にこのスキー場を更新しました。ページを再読み込みし、最新の内容を確認してから編集し直してください。",
+          };
+        }
+        if (result.status === "not_found") {
+          return {
+            status: "error",
+            reason: "not_found",
+            message: "このスキー場はデータベースに存在しません。",
+          };
+        }
 
-    revalidatePath("/");
-    revalidatePath("/admin/resort");
-    return {
-      status: "saved",
-      message: "スキー場情報を保存しました。",
-      resort: result.resort,
-    };
-  } catch (error) {
-    console.error("Failed to update ski resort from admin", {
-      name: error instanceof Error ? error.name : "UnknownError",
-      status: error instanceof InternalDataApiError ? error.status : null,
-    });
-    if (error instanceof InternalDataApiError && error.status === 422) {
-      return {
-        status: "error",
-        reason: "validation",
-        message:
-          "保存先サーバーが現在の入力形式に対応していません。サーバーの更新とDBマイグレーションを適用してから保存してください。入力内容はこの画面に残っています。",
-      };
-    }
-    return {
-      status: "error",
-      reason: "unexpected",
-      message:
-        "サーバーとの通信または保存に失敗しました。時間を置いてもう一度お試しください。",
-    };
-  }
+        revalidatePath("/");
+        revalidatePath("/admin/resort");
+        return {
+          status: "saved",
+          message: "スキー場情報を保存しました。",
+          resort: result.resort,
+        };
+      } catch (error) {
+        console.error("Failed to update ski resort from admin", {
+          name: error instanceof Error ? error.name : "UnknownError",
+          status: error instanceof InternalDataApiError ? error.status : null,
+        });
+        if (error instanceof InternalDataApiError && error.status === 422) {
+          return {
+            status: "error",
+            reason: "validation",
+            message:
+              "保存先サーバーが現在の入力形式に対応していません。サーバーの更新とDBマイグレーションを適用してから保存してください。入力内容はこの画面に残っています。",
+          };
+        }
+        return {
+          status: "error",
+          reason: "unexpected",
+          message:
+            "サーバーとの通信または保存に失敗しました。時間を置いてもう一度お試しください。",
+        };
+      }
+    },
+  );
 }

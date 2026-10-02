@@ -1,7 +1,6 @@
 import "server-only";
 
-import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
+import { getCurrentActor } from "@/lib/requireEditor";
 
 export type AdminActor = {
   id: string;
@@ -13,23 +12,7 @@ export type AdminActor = {
  * 管理画面のproxyはUIへの導線を守るものであり、各変更処理の認可の代わりにはならない。
  */
 export async function requireAdmin(): Promise<AdminActor> {
-  const session = await auth();
-  const user = session?.user as { id?: string } | undefined;
-
-  if (!user?.id) {
-    throw new Error("管理者権限が必要です。");
-  }
-
-  // JWT 内の role は権限変更・ユーザー削除後も有効期限まで残り得るため、
-  // 操作のたびにDB上の現在のユーザーとroleを確認する。
-  const currentUser = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: {
-      id: true,
-      email: true,
-      role: true,
-    },
-  });
+  const currentUser = await getCurrentActor();
 
   if (currentUser?.role !== "admin") {
     throw new Error("管理者権限が必要です。");

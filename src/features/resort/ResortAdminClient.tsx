@@ -4,12 +4,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { adminToaster } from "@/app/admin/AdminToaster";
+import { useEditingRole } from "@/app/admin/EditorAccess";
 import { Button } from "@/components/ui/button";
 import type { AdminSkiResortRecord } from "@/server/ski-resorts/adminContract";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { StepIndicator } from "@/shared/components/StepIndicator";
 import { ResortEditForm } from "./ResortEditForm";
 import { ResortMergeForm } from "./ResortMergeForm";
+import { ResortRelationPanel } from "./ResortRelationPanel";
 import { ResortSelectStep } from "./ResortSelectStep";
 
 const STEPS = [
@@ -24,6 +26,7 @@ export function ResortAdminClient({
 }: {
   initialResorts: AdminSkiResortRecord[];
 }) {
+  const { isAdmin } = useEditingRole();
   const router = useRouter();
   const [resorts, setResorts] = useState(initialResorts);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -62,6 +65,15 @@ export function ResortAdminClient({
     if (hasChanges) setLeaveDestination(destination);
     else leaveEditor(destination);
   };
+
+  const replaceResorts = useCallback((updated: AdminSkiResortRecord[]) => {
+    setResorts(current => [
+      ...current.map(
+        resort => updated.find(item => item.id === resort.id) ?? resort,
+      ),
+      ...updated.filter(item => !current.some(resort => resort.id === item.id)),
+    ]);
+  }, []);
 
   const handleSaved = useCallback((saved: AdminSkiResortRecord) => {
     setResorts(current =>
@@ -103,7 +115,7 @@ export function ResortAdminClient({
             リンク編集
           </Link>
         )}
-        {!isEditing && !isMerging && (
+        {isAdmin && !isEditing && !isMerging && (
           <Button type="button" size="sm" onClick={() => setIsMerging(true)}>
             複数のスキー場を結合
           </Button>
@@ -130,36 +142,53 @@ export function ResortAdminClient({
           onDirtyChange={setHasChanges}
           onPendingChange={setIsSaving}
           onCreated={result => {
-            setResorts(current => [
-              ...current.map(
-                resort =>
-                  result.sources.find(source => source.id === resort.id) ??
-                  resort,
-              ),
-              result.resort,
-            ]);
+            replaceResorts([...result.sources, result.resort]);
             setSelectedId(result.resort.id);
             setSavedResortId(result.resort.id);
             setHasChanges(false);
             setIsMerging(false);
             setIsEditing(true);
             adminToaster.create({
-              title: "スキー場を結合しました。詳細設定を確認してください。",
+              title:
+                result.resort.linkKind === "LINKED"
+                  ? "連携エリアを作成しました。詳細設定を確認してください。"
+                  : "スキー場を結合しました。詳細設定を確認してください。",
+              type: "success",
+            });
+          }}
+          onTicketGrouped={updated => {
+            replaceResorts(updated);
+            setHasChanges(false);
+            setIsMerging(false);
+            adminToaster.create({
+              title: "共通券の関係を保存しました。",
               type: "success",
             });
           }}
         />
       ) : isEditing && selectedResort ? (
-        <ResortEditForm
-          key={`${selectedResort.id}:${selectedResort.updatedAt}`}
-          resort={selectedResort}
-          hasChanges={hasChanges}
-          wasSaved={savedResortId === selectedResort.id}
-          onSaved={handleSaved}
-          onDirtyChange={setHasChanges}
-          onPendingChange={setIsSaving}
-          onBack={() => requestLeave("select")}
-        />
+        <>
+          {isAdmin && (
+            <ResortRelationPanel
+              resort={selectedResort}
+              resorts={resorts}
+              onUpdated={(updated, message) => {
+                replaceResorts(updated);
+                adminToaster.create({ title: message, type: "success" });
+              }}
+            />
+          )}
+          <ResortEditForm
+            key={`${selectedResort.id}:${selectedResort.updatedAt}`}
+            resort={selectedResort}
+            hasChanges={hasChanges}
+            wasSaved={savedResortId === selectedResort.id}
+            onSaved={handleSaved}
+            onDirtyChange={setHasChanges}
+            onPendingChange={setIsSaving}
+            onBack={() => requestLeave("select")}
+          />
+        </>
       ) : (
         <div className="min-h-0 flex-1">
           <ResortSelectStep

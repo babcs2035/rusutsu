@@ -7,7 +7,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { getResortLabelName } from "@/lib/resortAliases";
 import { cn } from "@/lib/utils";
-import type { AdminSkiResortRecord } from "@/server/ski-resorts/adminContract";
+import {
+  type AdminSkiResortRecord,
+  isMergedSource,
+} from "@/server/ski-resorts/adminContract";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
 
 const ResortPickerMap = dynamic(
@@ -124,7 +127,9 @@ export function ResortSelectStep({
               </p>
               {selectedResort.mergedIntoId && (
                 <p className="break-all text-xs text-blue-700">
-                  結合先：
+                  {isMergedSource(selectedResort, resorts)
+                    ? "結合先："
+                    : "連携エリア："}
                   {
                     resorts.find(
                       resort => resort.id === selectedResort.mergedIntoId,
@@ -135,7 +140,9 @@ export function ResortSelectStep({
               )}
               {!!selectedResort.sourceResortIds.length && (
                 <p className="text-xs text-blue-700">
-                  結合元：
+                  {selectedResort.linkKind === "LINKED"
+                    ? "連携しているスキー場："
+                    : "結合元："}
                   {selectedResort.sourceResortIds
                     .map(
                       id =>
@@ -179,14 +186,20 @@ export function ResortSelectStep({
                 </span>
               </span>
               {resort.mergedIntoId ? (
-                <span className="text-xs text-blue-700">結合元</span>
+                <span className="text-xs text-blue-700">
+                  {isMergedSource(resort, resorts) ? "結合元" : "連携エリア"}
+                </span>
               ) : resort.sourceResortIds.length ? (
                 <span className="text-xs text-blue-700">
-                  {resort.sourceResortIds.length}件を結合
+                  {resort.sourceResortIds.length}件を
+                  {resort.linkKind === "LINKED" ? "連携" : "結合"}
                 </span>
               ) : null}
+              {resort.ticketGroupId && (
+                <span className="text-xs text-amber-700">共通券</span>
+              )}
               <PublicationBadge
-                isActive={resort.isActive && !resort.mergedIntoId}
+                isActive={resort.isActive && !isMergedSource(resort, resorts)}
               />
             </button>
           ))}

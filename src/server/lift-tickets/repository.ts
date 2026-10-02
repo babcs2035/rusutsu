@@ -80,6 +80,30 @@ export async function findLiftTicketSeasonsDirect(
   return rows.map(toSeason);
 }
 
+export async function writeLiftTicketSeasonInTransaction(
+  transaction: Prisma.TransactionClient,
+  input: LiftTicketSeasonWrite,
+): Promise<LiftTicketSeason> {
+  const write = liftTicketSeasonWriteSchema.parse(input);
+  const key = { skiResortId: write.resortId, seasonId: write.seasonId };
+  const status = statusOfLiftTicket(write.data);
+  const data = write.data as Prisma.InputJsonObject;
+  const current = await transaction.liftTicketSeason.findUnique({
+    where: { skiResortId_seasonId: key },
+    select: { version: true },
+  });
+  const actualVersion = current?.version ?? null;
+  if (actualVersion !== write.expectedVersion)
+    throw new LiftTicketConflictError(actualVersion);
+  const row = await transaction.liftTicketSeason.upsert({
+    where: { skiResortId_seasonId: key },
+    create: { ...key, status, data },
+    update: { status, data, version: { increment: 1 } },
+    select: seasonSelect,
+  });
+  return toSeason(row);
+}
+
 /**
  * 読んだ時点の version と一致するときだけ保存する。
  * 管理画面と `mise run lift-ticket:publish` が同じ規則で競合を検出する。
@@ -88,9 +112,6 @@ export async function writeLiftTicketSeasonDirect(
   input: LiftTicketSeasonWrite,
 ): Promise<LiftTicketSeason> {
   const write = liftTicketSeasonWriteSchema.parse(input);
-  const key = { skiResortId: write.resortId, seasonId: write.seasonId };
-  const status = statusOfLiftTicket(write.data);
-  const data = write.data as Prisma.InputJsonObject;
 
   for (
     let attempt = 1;
@@ -100,20 +121,7 @@ export async function writeLiftTicketSeasonDirect(
     try {
       return await prisma.$transaction(
         async transaction => {
-          const current = await transaction.liftTicketSeason.findUnique({
-            where: { skiResortId_seasonId: key },
-            select: { version: true },
-          });
-          const actualVersion = current?.version ?? null;
-          if (actualVersion !== write.expectedVersion)
-            throw new LiftTicketConflictError(actualVersion);
-          const row = await transaction.liftTicketSeason.upsert({
-            where: { skiResortId_seasonId: key },
-            create: { ...key, status, data },
-            update: { status, data, version: { increment: 1 } },
-            select: seasonSelect,
-          });
-          return toSeason(row);
+          return writeLiftTicketSeasonInTransaction(transaction, write);
         },
         {
           isolationLevel: Prisma.TransactionIsolationLevel.Serializable,

@@ -6,6 +6,11 @@ import {
   usesRemoteDataApi,
 } from "@/lib/internalDataApiClient";
 import {
+  captureDocumentWrites,
+  capturedDocument,
+  recordDocument,
+} from "@/server/edit-requests/capture";
+import {
   DataDocumentConflictError,
   type DataDocumentWrite,
   dataDocumentBatchWriteSchema,
@@ -92,13 +97,25 @@ const writeRemote = async (documents: readonly DataDocumentWrite[]) => {
  * DATA_API_BASE_URL が設定されたローカルサーバーだけremote APIを使い、
  * 未設定の本番サーバーは同じDBへ直接アクセスする。
  */
-export const getDataDocument = (key: string) =>
-  usesRemoteDataApi() ? getRemote(key) : getDataDocumentDirect(key);
+export const getDataDocument = async (key: string) => {
+  const captured = capturedDocument(key);
+  if (captured) return captured.document;
+  const document = await (usesRemoteDataApi()
+    ? getRemote(key)
+    : getDataDocumentDirect(key));
+  recordDocument(key, document);
+  return document;
+};
 
 export const listDataDocuments = (prefix = "") =>
   usesRemoteDataApi() ? listRemote(prefix) : listDataDocumentsDirect(prefix);
 
-export const writeDataDocuments = (documents: readonly DataDocumentWrite[]) =>
-  usesRemoteDataApi()
+export const writeDataDocuments = async (
+  documents: readonly DataDocumentWrite[],
+) => {
+  const captured = await captureDocumentWrites(documents, getDataDocument);
+  if (captured) return captured;
+  return usesRemoteDataApi()
     ? writeRemote(documents)
     : writeDataDocumentsDirect(documents);
+};

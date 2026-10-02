@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEditingRole } from "@/app/admin/EditorAccess";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -70,6 +71,7 @@ export function ResortSelectStep({
     };
   }, []);
 
+  const { isAdmin } = useEditingRole();
   const filteredResorts = useMemo(() => {
     const keyword = query.trim().toLowerCase();
     return resorts.filter(resort => {
@@ -267,6 +269,7 @@ export function ResortSelectStep({
                   </Button>
                 )}
                 <Button
+                  disabled={!isAdmin}
                   type="button"
                   size="sm"
                   variant="outline"

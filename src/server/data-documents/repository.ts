@@ -39,6 +39,82 @@ const isRetryableTransactionConflict = (error: unknown): boolean =>
   // 一意制約違反(P2002)になることがある。再試行してhash不一致として扱う。
   (error.code === "P2034" || error.code === "P2002");
 
+/** 同じトランザクション内で申請状態と正本を確定するための書込窓口。 */
+export async function writeDataDocumentsInTransaction(
+  transaction: Prisma.TransactionClient,
+  documents: readonly AtomicDataDocumentWrite[],
+) {
+  const currentRows = await transaction.dataDocument.findMany({
+    where: { key: { in: documents.map(document => document.key) } },
+    select: {
+      key: true,
+      content: true,
+      mediaType: true,
+      hash: true,
+      version: true,
+    },
+  });
+  const currentByKey = new Map(
+    currentRows.map(row => {
+      const document = storedDataDocumentSchema.parse(row);
+      return [document.key, document] as const;
+    }),
+  );
+  const conflicts: DataDocumentHashConflict[] = [];
+  for (const document of documents) {
+    const actualHash =
+      currentByKey.get(document.key)?.hash ?? document.fallbackHash;
+    if (actualHash !== document.expectedHash) {
+      conflicts.push({
+        key: document.key,
+        expectedHash: document.expectedHash,
+        actualHash,
+      });
+    }
+  }
+  if (conflicts.length > 0) {
+    throw new DataDocumentConflictError(conflicts);
+  }
+
+  const stored = [];
+  for (const document of documents) {
+    const row = await transaction.dataDocument.upsert({
+      where: { key: document.key },
+      create: {
+        key: document.key,
+        content: document.content,
+        mediaType: document.mediaType,
+        hash: document.hash,
+        version: 1,
+      },
+      update: {
+        content: document.content,
+        mediaType: document.mediaType,
+        hash: document.hash,
+        version: { increment: 1 },
+      },
+      select: {
+        key: true,
+        content: true,
+        mediaType: true,
+        hash: true,
+        version: true,
+      },
+    });
+    stored.push(storedDataDocumentSchema.parse(row));
+  }
+  const enabled = await transaction.canonicalDataMigration.findUnique({
+    where: { key: MAP_ENTITIES_MIGRATION_KEY },
+    select: { key: true },
+  });
+  if (enabled)
+    await syncMapEntities(
+      transaction,
+      documents.map(d => d.key),
+    );
+  return stored;
+}
+
 class PrismaDataDocumentDatabase implements DataDocumentDatabase {
   async get(key: string) {
     let row = await prisma.dataDocument.findUnique({
@@ -114,77 +190,7 @@ class PrismaDataDocumentDatabase implements DataDocumentDatabase {
       try {
         return await prisma.$transaction(
           async transaction => {
-            const currentRows = await transaction.dataDocument.findMany({
-              where: { key: { in: documents.map(document => document.key) } },
-              select: {
-                key: true,
-                content: true,
-                mediaType: true,
-                hash: true,
-                version: true,
-              },
-            });
-            const currentByKey = new Map(
-              currentRows.map(row => {
-                const document = storedDataDocumentSchema.parse(row);
-                return [document.key, document] as const;
-              }),
-            );
-            const conflicts: DataDocumentHashConflict[] = [];
-            for (const document of documents) {
-              const actualHash =
-                currentByKey.get(document.key)?.hash ?? document.fallbackHash;
-              if (actualHash !== document.expectedHash) {
-                conflicts.push({
-                  key: document.key,
-                  expectedHash: document.expectedHash,
-                  actualHash,
-                });
-              }
-            }
-            if (conflicts.length > 0) {
-              throw new DataDocumentConflictError(conflicts);
-            }
-
-            const stored = [];
-            for (const document of documents) {
-              const row = await transaction.dataDocument.upsert({
-                where: { key: document.key },
-                create: {
-                  key: document.key,
-                  content: document.content,
-                  mediaType: document.mediaType,
-                  hash: document.hash,
-                  version: 1,
-                },
-                update: {
-                  content: document.content,
-                  mediaType: document.mediaType,
-                  hash: document.hash,
-                  version: { increment: 1 },
-                },
-                select: {
-                  key: true,
-                  content: true,
-                  mediaType: true,
-                  hash: true,
-                  version: true,
-                },
-              });
-              stored.push(storedDataDocumentSchema.parse(row));
-            }
-            const enabled = await transaction.canonicalDataMigration.findUnique(
-              {
-                where: { key: MAP_ENTITIES_MIGRATION_KEY },
-                select: { key: true },
-              },
-            );
-            if (enabled)
-              await syncMapEntities(
-                transaction,
-                documents.map(d => d.key),
-              );
-            return stored;
+            return writeDataDocumentsInTransaction(transaction, documents);
           },
           {
             isolationLevel: Prisma.TransactionIsolationLevel.Serializable,

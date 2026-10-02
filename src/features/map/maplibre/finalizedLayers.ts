@@ -174,7 +174,9 @@ const isSelectedExpression = (
   kind: "course" | "lift",
 ): ExpressionSpecification =>
   selected && selected.kind === kind
-    ? ["==", ["get", "sourceId"], selected.id]
+    ? selected.kind === "course" && selected.routeId
+      ? ["==", ["get", "routeId"], selected.routeId]
+      : ["==", ["get", "sourceId"], selected.id]
     : ["literal", false];
 
 /** 何かを選択しているときの、それ以外の線 */

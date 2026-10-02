@@ -15,6 +15,7 @@ export function SourceLine({
   updates = [],
   showFetched = true,
   showLabel = true,
+  showPublished = true,
 }: {
   label: string;
   time?: string | null;
@@ -22,6 +23,7 @@ export function SourceLine({
   updates?: string[];
   showFetched?: boolean;
   showLabel?: boolean;
+  showPublished?: boolean;
 }) {
   const date = formatOperationDate(time);
   const published = [
@@ -29,7 +31,7 @@ export function SourceLine({
   ];
   const links = sourceUrls(urls);
   // 出典リンクと「〜現在」は対応する組として、同じ色の枠でまとめて囲う。
-  const rowCount = Math.max(links.length, published.length);
+  const rowCount = Math.max(links.length, showPublished ? published.length : 0);
   const rows =
     rowCount > 0
       ? Array.from({ length: rowCount }, (_, index) => ({
@@ -64,9 +66,11 @@ export function SourceLine({
           ) : (
             <span className="font-medium text-blue-700">出典未登録</span>
           )}
-          <span className="min-w-0 max-w-full text-blue-800">
-            {row.publishedDate ?? "日時不明"}
-          </span>
+          {showPublished && (
+            <span className="min-w-0 max-w-full text-blue-800">
+              {row.publishedDate ?? "日時不明"}
+            </span>
+          )}
         </span>
       ))}
     </div>

@@ -16,7 +16,6 @@ import {
   parseSourceModes,
   type RawSearchParams,
 } from "@/features/crawl-monitor/utils/query";
-import { requireAdmin } from "@/lib/requireAdmin";
 import { readSkiResortNames } from "@/lib/skiResortData";
 import {
   fetchCrawlMonitorCurrents,
@@ -24,6 +23,7 @@ import {
   fetchCrawlMonitorRuns,
 } from "@/server/crawl-latest/adminClient";
 import { crawlMonitorResortIdSchema } from "@/server/crawl-latest/adminContract";
+import { requireAdminPage } from "@/server/edit-requests/authPages";
 import { withBasePath } from "@/shared/utils/basePath";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +36,7 @@ export default async function CrawlMonitorResortPage({
   params: Promise<{ resortId: string }>;
   searchParams: Promise<RawSearchParams>;
 }) {
-  await requireAdmin();
+  await requireAdminPage();
   const { resortId: rawResortId } = await params;
   const parsedResortId = crawlMonitorResortIdSchema.safeParse(rawResortId);
   if (!parsedResortId.success) notFound();
