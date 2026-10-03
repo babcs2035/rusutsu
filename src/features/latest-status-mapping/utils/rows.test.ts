@@ -44,6 +44,19 @@ test("左右に分かれた未対応行を空欄なしの1行へ詰める", () =
   );
 });
 
+test("名前のない線も geometryId があれば対応表に残す", () => {
+  assert.deepEqual(
+    compactMappingRows([
+      { geometryId: "line-a", crawledName: null, geojsonName: null },
+      { crawledName: "公式コース", geojsonName: null },
+    ]),
+    [
+      { geometryId: "line-a", crawledName: null, geojsonName: null },
+      { crawledName: "公式コース", geojsonName: null },
+    ],
+  );
+});
+
 test("無名コースと余ったクローラー項目は対応なしのまま分離する", () => {
   assert.deepEqual(createSuggestedRows("courses", ["公式コース"], ["無名_1"]), [
     { crawledName: null, geojsonName: "無名_1" },

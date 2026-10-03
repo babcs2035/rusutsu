@@ -108,7 +108,9 @@ export const getCourseLabelName = (displayName: string) =>
     .trim();
 
 export const shouldSkipCourseLabel = (labelName: string) =>
-  labelName.length === 0 || labelName.startsWith("無名");
+  labelName.length === 0 ||
+  labelName.startsWith("無名") ||
+  labelName === "名前不明";
 
 export const collectLabelCandidates = ({
   sources,

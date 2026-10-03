@@ -304,7 +304,7 @@ const normalizeCourseFeature = (
   if (!coordinates) return null;
 
   const properties = candidate.properties ?? {};
-  const name = normalizeString(properties.name) ?? `コース ${index + 1}`;
+  const name = normalizeString(properties.name) ?? "名前不明";
   const parsedName = parseFinalizedCourseName(name);
   const grouping = readCourseGrouping(properties.courseGrouping);
   const explicitGrouping = Object.hasOwn(properties, "courseGrouping");

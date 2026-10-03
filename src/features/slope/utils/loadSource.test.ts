@@ -127,3 +127,36 @@ for (const note of ["注意事項\n迂回路あり", ""]) {
     );
   });
 }
+
+test("同名の別ルートの詳細を entityId で取り違えずに読む", () => {
+  const feature = (entityId: string) => ({
+    type: "Feature" as const,
+    properties: { entityId, name: "テストコース" },
+    geometry: {
+      type: "LineString",
+      coordinates: [
+        [140, 40],
+        [140.01, 40.01],
+      ],
+    },
+  });
+  const source: SlopeSourceData = {
+    sourceKind: "curated",
+    geojson: {
+      type: "FeatureCollection",
+      features: [feature("route-a"), feature("route-b")],
+    },
+    details: [
+      { entityId: "route-b", name: "テストコース", note: "Bの詳細" },
+      { entityId: "route-a", name: "テストコース", note: "Aの詳細" },
+    ],
+    fileHash: null,
+    detailFileHash: null,
+  };
+  const result = sourceDataToCourses("test", source);
+  assert.deepEqual(
+    result.courses.map(course => course.detail.note),
+    ["Aの詳細", "Bの詳細"],
+  );
+  assert.deepEqual(result.preservedDetails, []);
+});

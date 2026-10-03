@@ -17,6 +17,7 @@ const buildCourseDetailProperties = (
     ...(course.detailExtras ?? {}),
     resort: resortId,
     name: course.name,
+    entityId: course.id,
     level: course.detail.level,
     distance: toNumberOrEmpty(course.detail.distance),
     avg: toNumberOrEmpty(course.detail.avg),
@@ -47,6 +48,9 @@ const buildCourseBeforeProperties = (
   course: EditorCourse,
 ): Record<string, unknown> => ({
   ...course.beforeExtras,
+  ...buildCourseDetailProperties(resortId, course),
+  // 詳細側の extras は読み込み時の slope_before properties を含むため、
+  // 識別子・まとめ方は最後に置き、編集後の値が古い値で上書きされないようにする。
   entityId: course.id,
   nameUnknown: course.unnamed,
   courseGrouping: course.grouping ?? null,
@@ -54,7 +58,6 @@ const buildCourseBeforeProperties = (
   ...(course.skiId !== course.originalSkiId
     ? { assignment_method: "manual" }
     : {}),
-  ...buildCourseDetailProperties(resortId, course),
 });
 
 export const courseToSavePayload = (

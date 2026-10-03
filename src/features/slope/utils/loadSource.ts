@@ -192,7 +192,13 @@ export const sourceDataToCourses = (
     string,
     { entry: SlopeDetailEntry; index: number }
   >();
+  const detailById = new Map<
+    string,
+    { entry: SlopeDetailEntry; index: number }
+  >();
   detailEntries.forEach((entry, index) => {
+    if (typeof entry.entityId === "string" && entry.entityId)
+      detailById.set(entry.entityId, { entry, index });
     const name = typeof entry.name === "string" ? entry.name : "";
     if (
       name !== "" &&
@@ -234,7 +240,12 @@ export const sourceDataToCourses = (
 
     const rawName = feature.properties?.name;
     const name = typeof rawName === "string" ? rawName : "";
-    const detailMatch = detailByName.get(name);
+    const entityId = featureIdentity(
+      feature.properties,
+      `resorts-temporary/${source.sourceKind === "osm" ? "slope_before_osm" : "slope_before"}/${resortId}.geojson`,
+      featureIndex,
+    );
+    const detailMatch = detailById.get(entityId) ?? detailByName.get(name);
     if (detailMatch) matchedDetailIndexes.add(detailMatch.index);
     // slope_before の線・properties を土台に、同名の slope_detail が一意に
     // 対応する場合は、非空の詳細項目を優先して編集初期値へ取り込む。
@@ -258,11 +269,7 @@ export const sourceDataToCourses = (
 
     courses.push({
       ...createEmptyCourse(),
-      id: featureIdentity(
-        feature.properties,
-        `resorts-temporary/${source.sourceKind === "osm" ? "slope_before_osm" : "slope_before"}/${resortId}.geojson`,
-        featureIndex,
-      ),
+      id: entityId,
       grouping: Object.hasOwn(feature.properties ?? {}, "courseGrouping")
         ? readCourseGrouping(feature.properties?.courseGrouping)
         : legacyCourseGrouping(name, `${resortId}:${source.sourceKind}`),
@@ -309,6 +316,7 @@ export const fillDraftDetailFromSource = (
   source: SlopeSourceData,
 ): { courses: EditorCourse[]; filledCourseNames: string[] } => {
   const sourceCourses = sourceDataToCourses("", source).courses;
+  const byId = new Map(sourceCourses.map(course => [course.id, course]));
   const byName = new Map<string, EditorCourse>();
   const duplicated = new Set<string>();
   for (const course of sourceCourses) {
@@ -319,9 +327,10 @@ export const fillDraftDetailFromSource = (
 
   const filledCourseNames: string[] = [];
   const nextCourses = courses.map(course => {
-    const origin = byName.get(course.name);
+    const byIdentity = byId.get(course.id);
+    const origin = byIdentity ?? byName.get(course.name);
     // 同じ名前が複数あると、どれの値か決められないので触らない
-    if (!origin || duplicated.has(course.name)) return course;
+    if (!origin || (!byIdentity && duplicated.has(course.name))) return course;
 
     const detail = { ...course.detail };
     let filled = false;

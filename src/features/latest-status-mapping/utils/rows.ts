@@ -21,7 +21,12 @@ export const compactMappingRows = (
   rows: LatestStatusMappingRow[],
 ): LatestStatusMappingRow[] => {
   const next = rows
-    .filter(row => row.crawledName !== null || row.geojsonName !== null)
+    .filter(
+      row =>
+        row.crawledName !== null ||
+        row.geojsonName !== null ||
+        Boolean(row.geometryId),
+    )
     .flatMap(row =>
       row.crawledName !== null &&
       row.geojsonName !== null &&
@@ -36,7 +41,11 @@ export const compactMappingRows = (
   const geojsonOnlyIndexes: number[] = [];
 
   next.forEach((row, index) => {
-    if (row.crawledName !== null && row.geojsonName === null) {
+    if (
+      row.crawledName !== null &&
+      row.geojsonName === null &&
+      !row.geometryId
+    ) {
       crawledOnlyIndexes.push(index);
     } else if (
       row.crawledName === null &&

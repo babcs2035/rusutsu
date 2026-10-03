@@ -158,8 +158,9 @@ test("getCourseLabelName が区間と連番の接尾辞だけを落とす", () =
   assert.equal(getCourseLabelName("Aコース"), "Aコース");
 });
 
-test("shouldSkipCourseLabel は無名と空だけを除外する", () => {
+test("shouldSkipCourseLabel は名前不明と空を除外する", () => {
   assert.equal(shouldSkipCourseLabel("無名"), true);
+  assert.equal(shouldSkipCourseLabel("名前不明"), true);
   assert.equal(shouldSkipCourseLabel(""), true);
   // `_` を含む名前を弾いていた旧実装の挙動には戻さない
   assert.equal(shouldSkipCourseLabel("ホワイトラバー"), false);
