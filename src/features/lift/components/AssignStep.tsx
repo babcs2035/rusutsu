@@ -17,20 +17,12 @@ import type { EditorLift, ResortOption } from "../types";
 import { distanceM, formatDistanceM, liftDisplayName } from "../utils/liftOps";
 
 type AssignStepProps = {
-  resort: ResortOption;
   resorts: ResortOption[];
   lifts: EditorLift[];
   setLifts: (updater: (lifts: EditorLift[]) => EditorLift[]) => void;
-  savedAt: string | null;
   selectedLiftId: string | null;
   onSelectLift: (liftId: string | null) => void;
   onProceed: () => void;
-  onBackToSelect: () => void;
-};
-
-const formatDateTime = (iso: string): string => {
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? iso : date.toLocaleString("ja-JP");
 };
 
 // 所属候補として距離の近い順に表示するスキー場数
@@ -40,15 +32,12 @@ const resortLabel = (option: ResortOption | undefined, id: string): string =>
   option?.nameJa ? `${id}（${option.nameJa}）` : id;
 
 export function AssignStep({
-  resort,
   resorts,
   lifts,
   setLifts,
-  savedAt,
   selectedLiftId,
   onSelectLift,
   onProceed,
-  onBackToSelect,
 }: AssignStepProps) {
   const resortById = useMemo(
     () => new Map(resorts.map(option => [option.id, option])),
@@ -126,24 +115,6 @@ export function AssignStep({
 
   return (
     <div className="flex w-full min-w-0 shrink-0 flex-col gap-3 border-l border-gray-200 bg-white p-3">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2
-            className={`text-base font-bold ${resort.nameJa ? "font-[var(--font-heading)]" : "font-mono"}`}
-          >
-            {resort.nameJa || resort.id}
-          </h2>
-          <p className="text-xs text-gray-500">
-            {savedAt
-              ? `最終保存: ${formatDateTime(savedAt)}（下書き自動保存）`
-              : "未保存"}
-          </p>
-        </div>
-        <Button size="sm" variant="outline" onClick={onBackToSelect}>
-          スキー場選択へ戻る
-        </Button>
-      </div>
-
       <Card className="flex-shrink-0">
         <CardContent className="p-2">
           <p className="text-xs text-gray-600">

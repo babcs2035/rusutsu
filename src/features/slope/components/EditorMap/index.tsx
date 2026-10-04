@@ -74,6 +74,8 @@ type EditorMapProps = {
   googleMapsApiKey: string | null;
   // 値が変わるたびに全コースへ fitBounds する
   fitBoundsKey?: number;
+  fitBoundsToBackground?: boolean;
+  showTileSwitcher?: boolean;
   onSelectCourse?: (courseId: string) => void;
   onAppendVertex?: (lngLat: LngLat) => void;
   onMoveVertex?: (index: number, lngLat: LngLat) => void;
@@ -127,6 +129,8 @@ export function EditorMap({
   mode,
   googleMapsApiKey,
   fitBoundsKey = 0,
+  fitBoundsToBackground = false,
+  showTileSwitcher = true,
   onSelectCourse,
   onAppendVertex,
   onMoveVertex,
@@ -399,7 +403,9 @@ export function EditorMap({
   // biome-ignore lint/correctness/useExhaustiveDependencies: fitBoundsKey の変更時のみ全体表示する
   useEffect(() => {
     if (!map || !isReady || fitBoundsKey === 0) return;
-    const points = courses.flatMap(course => course.coordinates);
+    const points = (
+      fitBoundsToBackground ? [...courses, ...backgroundLines] : courses
+    ).flatMap(course => course.coordinates);
     if (points.length === 0) return;
     const bounds = getCoordinateBounds(points);
     if (!bounds) return;
@@ -750,12 +756,14 @@ export function EditorMap({
     // isolate で重なりの文脈を閉じ、地図の上の要素がダイアログより前へ出ないようにする
     <div className="relative isolate h-full w-full" data-editor-map="true">
       <div ref={containerRef} className="h-full w-full" />
-      <EditorTileSwitcher
-        layerId={layerId}
-        onLayerIdChange={setLayerId}
-        googleMapsApiKey={googleMapsApiKey}
-        googleUnavailable={googleUnavailable}
-      />
+      {showTileSwitcher && (
+        <EditorTileSwitcher
+          layerId={layerId}
+          onLayerIdChange={setLayerId}
+          googleMapsApiKey={googleMapsApiKey}
+          googleUnavailable={googleUnavailable}
+        />
+      )}
     </div>
   );
 }

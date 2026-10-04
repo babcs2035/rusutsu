@@ -75,6 +75,7 @@ const schemas = {
     sourceKind: z.enum(["curated", "osm"]),
     fileHash: hash,
     detailFileHash: hash,
+    forceOverwrite: z.boolean().optional(),
     mapping: mapping.optional(),
     linkRequests,
     courses: z

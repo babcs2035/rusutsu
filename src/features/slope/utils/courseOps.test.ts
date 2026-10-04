@@ -133,3 +133,68 @@ test("suggestMergedName strips the split suffix", () => {
     "ジジ",
   );
 });
+
+test("renaming split halves differently dissolves the auto-created group", async () => {
+  const { renameCourse, splitCourseAtVertex, createEmptyCourse } = await import(
+    "./courseOps"
+  );
+  const { courseGroupingBuckets } = await import("./courseGrouping");
+  const base = {
+    ...createEmptyCourse(),
+    id: "a",
+    skiId: "s",
+    name: "無名_1",
+    coordinates: [
+      [140, 40],
+      [140, 40.001],
+      [140, 40.002],
+    ] as [number, number][],
+  };
+  const split = splitCourseAtVertex([base], "a", 1);
+  assert.equal(courseGroupingBuckets(split).length, 1);
+  const search = () => "S";
+  const one = renameCourse(split, split[0].id, "パラダイス", search);
+  const two = renameCourse(one, split[1].id, "ダウンヒル", search);
+  assert.equal(courseGroupingBuckets(two).length, 0);
+  assert.ok(two.every(c => c.grouping === null));
+  const same = renameCourse(
+    split.map(c => ({ ...c })),
+    split[0].id,
+    "X",
+    search,
+  );
+  assert.ok(same.every(c => c.grouping == null || c.grouping.name === "X"));
+});
+
+test("loading a draft whose split halves were already renamed dissolves the stale group", async () => {
+  const { reconcileUnconfirmedGroupings, createEmptyCourse } = await import(
+    "./courseOps"
+  );
+  const grouping = (order: number) => ({
+    id: "g",
+    name: "無名_1",
+    kind: "continuous" as const,
+    order,
+  });
+  const course = (id: string, name: string, order: number) => ({
+    ...createEmptyCourse(),
+    id,
+    skiId: "s",
+    name,
+    grouping: grouping(order),
+    splitGroupId: "g",
+    splitBaseName: "無名_1",
+  });
+  const stale = [course("a", "パラダイス", 1), course("b", "ダウンヒル", 2)];
+  assert.ok(
+    reconcileUnconfirmedGroupings(stale).every(c => c.grouping === null),
+  );
+  const single = [course("a", "無名_1", 1)];
+  assert.equal(reconcileUnconfirmedGroupings(single)[0].grouping, null);
+  const legacy = [course("a", "X_#上部", 1), course("b", "X_#下部", 2)].map(
+    c => ({ ...c, grouping: { ...c.grouping, name: "X" } }),
+  );
+  assert.deepEqual(reconcileUnconfirmedGroupings(legacy), legacy);
+  const confirmed = stale.map(c => ({ ...c, groupingReviewed: "fp" }));
+  assert.deepEqual(reconcileUnconfirmedGroupings(confirmed), confirmed);
+});

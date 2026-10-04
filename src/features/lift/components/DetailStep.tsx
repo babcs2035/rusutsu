@@ -54,16 +54,9 @@ type DetailStepProps = {
   lifts: EditorLift[];
   setLifts: (updater: (lifts: EditorLift[]) => EditorLift[]) => void;
   details: LiftDetailEntry[];
-  savedAt: string | null;
   selectedLiftId: string | null;
   onSelectLift: (liftId: string | null) => void;
   onProceed: () => void;
-  onBack: () => void;
-};
-
-const formatDateTime = (iso: string): string => {
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? iso : date.toLocaleString("ja-JP");
 };
 
 const selectClassName =
@@ -113,11 +106,9 @@ export function DetailStep({
   lifts,
   setLifts,
   details,
-  savedAt,
   selectedLiftId,
   onSelectLift,
   onProceed,
-  onBack,
 }: DetailStepProps) {
   const [isOrganizerOpen, setIsOrganizerOpen] = useState(false);
   const [bulkOnlyEmpty, setBulkOnlyEmpty] = useState(false);
@@ -258,28 +249,6 @@ export function DetailStep({
 
   return (
     <div className="flex w-full min-w-0 shrink-0 flex-col gap-2 border-l border-gray-200 bg-white p-3">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2
-            className={cn(
-              "text-base font-bold",
-              resort.nameJa && "font-[var(--font-heading)]",
-              !resort.nameJa && "font-mono",
-            )}
-          >
-            {resort.nameJa || resort.id}
-          </h2>
-          <p className="text-xs text-gray-500">
-            {savedAt
-              ? `最終保存: ${formatDateTime(savedAt)}（下書き自動保存）`
-              : "未保存"}
-          </p>
-        </div>
-        <Button size="xs" variant="outline" onClick={onBack}>
-          位置補正へ戻る
-        </Button>
-      </div>
-
       <Button
         size="sm"
         variant="outline"

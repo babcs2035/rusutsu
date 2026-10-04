@@ -149,6 +149,7 @@ export type SaveCoursePayload = {
 export type SaveRequest = {
   linkRequests?: LinkSaveRequest[];
   mapping?: SaveLatestStatusMappingRequest;
+  forceOverwrite?: boolean;
   resortId: string;
   sourceKind: SlopeSourceKind;
   fileHash: string | null;
@@ -160,7 +161,7 @@ export type SaveRequest = {
 
 export type SaveResult =
   | { ok: true; submission?: { requestId: string }; writtenFiles: string[] }
-  | { ok: false; errors: string[] };
+  | { ok: false; errors: string[]; conflict?: boolean };
 
 export type ApplySlopeFeatureOrderRequest = {
   resortId: string;
@@ -174,6 +175,7 @@ export type ApplySlopeFeatureOrderResult =
       ok: true;
       submission?: { requestId: string };
       fileHash: string;
+      rebased: boolean;
       writtenFile: string;
     }
   | { ok: false; errors: string[] };

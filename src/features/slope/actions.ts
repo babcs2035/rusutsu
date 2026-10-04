@@ -7,6 +7,7 @@ import {
   readMappingCrawlLatestStatus,
   readMappingStatusHistory,
 } from "@/lib/crawlLatestCurrent";
+import { usesRemoteDataApi } from "@/lib/internalDataApiClient";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { requireEditor } from "@/lib/requireEditor";
 import { readExistingSkiResortIds } from "@/lib/skiResortData";
@@ -73,15 +74,9 @@ export async function applySlopeFeatureOrder(
         errors: [`${directoryName}/${request.resortId}.geojson がありません。`],
       };
     }
-    if (currentDocument.hash !== request.fileHash) {
-      return {
-        ok: false,
-        errors: [
-          `読み込み後に ${directoryName} が変更されています。ページを再読み込みして、最新のデータから並べ替えてください。`,
-        ],
-      };
-    }
-
+    // 並び順だけを最新のGeoJSONへ適用する。読み込み時の内容を保存し直すと、
+    // その後に加わったコースや詳細が消えるため、書き込み時のhashは最新値を使う。
+    const rebased = currentDocument.hash !== request.fileHash;
     const currentRaw = currentDocument.content;
     const geojson = parseSlopeBeforeGeojson(currentRaw);
     if (!geojson) {
@@ -133,7 +128,7 @@ export async function applySlopeFeatureOrder(
           key: beforeKey,
           content: serializeSlopeGeojson(reordered),
           mediaType: "application/geo+json",
-          expectedHash: request.fileHash,
+          expectedHash: currentDocument.hash,
         },
         {
           key: derivedKey,
@@ -164,6 +159,7 @@ export async function applySlopeFeatureOrder(
     return {
       ok: true,
       fileHash: writtenHash,
+      rebased,
       writtenFile: `${directoryName}/${request.resortId}.geojson`,
     };
   });
@@ -192,7 +188,7 @@ export async function loadSlopeSourceData(
 export async function saveSlopeEdits(
   request: SaveRequest,
 ): Promise<SaveResult> {
-  return runEdit("slope", request.resortId, request, async () => {
+  const operation = async (): Promise<SaveResult> => {
     const errors = validateSaveRequest(request);
     if (
       request.mapping &&
@@ -241,13 +237,15 @@ export async function saveSlopeEdits(
     const currentBeforeHash = currentBeforeDocument?.hash ?? null;
     const currentDetailHash = currentDetailDocument?.hash ?? null;
     if (
-      currentBeforeHash !== request.fileHash ||
-      currentDetailHash !== request.detailFileHash
+      !request.forceOverwrite &&
+      (currentBeforeHash !== request.fileHash ||
+        currentDetailHash !== request.detailFileHash)
     ) {
       return {
         ok: false,
+        conflict: true,
         errors: [
-          `読み込み後に ${request.sourceKind === "osm" ? "slope_before_osm" : "slope_before または slope_detail"} が変更されています。ページを再読み込みして、最新のデータから編集し直してください。`,
+          `読み込み後に ${request.sourceKind === "osm" ? "slope_before_osm" : "slope_before または slope_detail"} が変更されています。現在の編集内容を優先する場合は、上書き保存を選んでください。`,
         ],
       };
     }
@@ -405,8 +403,9 @@ export async function saveSlopeEdits(
       if (error instanceof DataDocumentConflictError) {
         return {
           ok: false,
+          conflict: true,
           errors: [
-            `読み込み後に ${request.sourceKind === "osm" ? "slope_before_osm" : "slope_before または slope_detail"} か公開用GeoJSONが変更されています。ページを再読み込みして、最新のデータから編集し直してください。`,
+            `保存中にデータが更新されました。現在の編集内容を優先する場合は、もう一度上書き保存してください。`,
           ],
         };
       }
@@ -420,7 +419,14 @@ export async function saveSlopeEdits(
         `${request.sourceKind === "osm" ? "slope_10m_osm" : "slope_10m"}/${write.resortId}.geojson`,
       ]),
     };
-  });
+  };
+  // ローカル管理画面が旧版の正本サーバーへ接続している間も、管理者の
+  // 明示的な上書きは既存のDataDocument APIで保存できるようにする。
+  if (request.forceOverwrite && usesRemoteDataApi()) {
+    await requireAdmin();
+    return operation();
+  }
+  return runEdit("slope", request.resortId, request, operation);
 }
 
 /** 保存済みの全コースを再計算する。編集途中の下書きは使わない。 */

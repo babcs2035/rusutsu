@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  ArrowLeft,
   ListOrdered,
   Maximize2,
   Merge,
@@ -21,7 +20,11 @@ import { PanelSection } from "@/shared/components/PanelSection";
 import { moveItem, useSortableList } from "@/shared/hooks/useSortableList";
 import { buildDefaultSearchWord } from "@/shared/utils/searchWord";
 import type { EditorCourse, ResortOption, ValidationResult } from "../types";
-import { createEmptyCourse, mergeSplitGroup } from "../utils/courseOps";
+import {
+  createEmptyCourse,
+  mergeSplitGroup,
+  renameCourse,
+} from "../utils/courseOps";
 import { importCoursesFromFile } from "../utils/importFiles";
 import { validateCourses } from "../utils/validation";
 import { CourseMappingList } from "./CourseMappingList";
@@ -33,7 +36,6 @@ type LineEditStepProps = {
   resorts: ResortOption[];
   courses: EditorCourse[];
   setCourses: (updater: (courses: EditorCourse[]) => EditorCourse[]) => void;
-  savedAt: string | null;
   activeCourseId: string | null;
   onActiveCourseIdChange: (courseId: string | null) => void;
   isDrawing: boolean;
@@ -43,8 +45,6 @@ type LineEditStepProps = {
   onApplyGeojsonOrder: (
     geojsonNames: string[],
   ) => Promise<ApplyGeojsonOrderResult>;
-  onBackToSelect: () => void;
-  backLabel?: string;
   showLabels: boolean;
   onShowLabelsChange: (showLabels: boolean) => void;
   isSplitMode: boolean;
@@ -66,18 +66,12 @@ type MergeCoursesPanelHandlers = Pick<
   "onKeepChange" | "onClearSlot"
 >;
 
-const formatDateTime = (iso: string): string => {
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? iso : date.toLocaleString("ja-JP");
-};
-
 export function LineEditStep({
   mapping,
   resort,
   resorts,
   courses,
   setCourses,
-  savedAt,
   activeCourseId,
   onActiveCourseIdChange,
   isDrawing,
@@ -85,8 +79,6 @@ export function LineEditStep({
   onFitBounds,
   onProceed,
   onApplyGeojsonOrder,
-  onBackToSelect,
-  backLabel = "スキー場選択へ戻る",
   showLabels,
   onShowLabelsChange,
   isSplitMode,
@@ -201,28 +193,6 @@ export function LineEditStep({
 
   return (
     <div className="flex w-full min-w-0 shrink-0 flex-col gap-2 border-l border-gray-200 bg-white p-3">
-      <div className="flex min-w-0 items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h2 className="truncate font-bold font-[var(--font-heading)] text-base">
-            {resort.nameJa}
-          </h2>
-          <p className="truncate text-[11px] text-gray-500">
-            {savedAt
-              ? `自動保存: ${formatDateTime(savedAt)}`
-              : "まだ自動保存されていません"}
-          </p>
-        </div>
-        <Button
-          size="sm"
-          variant="outline"
-          className="shrink-0"
-          onClick={onBackToSelect}
-        >
-          <ArrowLeft className="size-3.5" />
-          <span className="truncate">{backLabel}</span>
-        </Button>
-      </div>
-
       <div className="flex flex-wrap gap-1.5">
         <Button
           size="sm"
@@ -364,22 +334,13 @@ export function LineEditStep({
         }}
         onRenameCourse={(courseId, name) => {
           setCourses(previous =>
-            previous.map(item =>
-              item.id === courseId
-                ? {
-                    ...item,
-                    name,
-                    unnamed: false,
-                    detail: {
-                      ...item.detail,
-                      searchWord: buildDefaultSearchWord(
-                        resorts.find(option => option.id === item.skiId)
-                          ?.searchName ?? resort.searchName,
-                        name,
-                      ),
-                    },
-                  }
-                : item,
+            renameCourse(
+              previous,
+              courseId,
+              name,
+              item =>
+                resorts.find(option => option.id === item.skiId)?.searchName ??
+                resort.searchName,
             ),
           );
         }}

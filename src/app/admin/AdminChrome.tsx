@@ -15,6 +15,7 @@ const FULL_HEIGHT_PATHS = [
 ];
 
 export const isFullHeightAdminPath = (pathname: string): boolean =>
+  /^\/admin\/requests\/[^/]+\/?$/u.test(pathname) ||
   FULL_HEIGHT_PATHS.some(
     path => pathname === path || pathname.startsWith(`${path}/`),
   );

@@ -15,9 +15,11 @@ import { loadLiftSourceData, loadResortLinks } from "@/features/lift/actions";
 import { sourceDataToLifts } from "@/features/lift/utils/loadSource";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { ResizablePanel } from "@/shared/components/ResizablePanel";
+import { ResortEditorHeader } from "@/shared/components/resort-editor/ResortEditorHeader";
 import { ResortEditorTools } from "@/shared/components/resort-editor/ResortEditorTools";
 import { useResortEditorLinks } from "@/shared/components/resort-editor/useResortEditorLinks";
 import { StepIndicator } from "@/shared/components/StepIndicator";
+import { updateResortScopedList } from "@/shared/utils/resortScopedList";
 import {
   applySlopeFeatureOrder,
   loadSlopeSourceData,
@@ -56,6 +58,7 @@ import {
   createEmptyDetail,
   fillEmptyCourseSearchWords,
   mergeCourses,
+  reconcileUnconfirmedGroupings,
   splitCourseAtVertex,
   suggestMergedName,
 } from "./utils/courseOps";
@@ -197,6 +200,18 @@ export function SlopeEditWorkspace({
       setCoursesState(updater);
     },
     [],
+  );
+
+  // 所属確認より後の工程では、別スキー場へ移したコースを表示・編集しない
+  const resortId = resort?.id ?? null;
+  const setOwnCourses = useCallback(
+    (updater: (previous: EditorCourse[]) => EditorCourse[]) => {
+      if (!resortId) return;
+      setCoursesState(previous =>
+        updateResortScopedList(previous, resortId, updater),
+      );
+    },
+    [resortId],
   );
 
   const updateActiveCourse = useCallback(
@@ -346,6 +361,8 @@ export function SlopeEditWorkspace({
       } else {
         nextCourses = [];
       }
+      // 以前の下書きに残った、分割時の自動グループ（各線を別名にしたもの）を解除する
+      nextCourses = reconcileUnconfirmedGroupings(nextCourses);
 
       setResort(selected);
       setSourceKind(nextSourceKind);
@@ -442,6 +459,8 @@ export function SlopeEditWorkspace({
 
   const handleSaved = (writtenFiles: string[]) => {
     markSavedToServer();
+    setLoadError(null);
+    setLoadWarning(null);
     // 対応表や確認済みの有無はサーバーで組み立てているので、選択画面の
     // バッジを保存後の状態に合わせるために読み直す。
     router.refresh();
@@ -680,8 +699,12 @@ export function SlopeEditWorkspace({
             : course,
         );
       });
-      setFileHash(result.fileHash);
-      const message = `クローラーJSON順を ${result.writtenFile} の features に保存しました。`;
+      // 最新ファイルへ並び順だけを反映した場合、画面の詳細編集は古いまま。
+      // hashを更新すると後続の全件保存が新しい内容を上書きしてしまう。
+      if (!result.rebased) setFileHash(result.fileHash);
+      const message = result.rebased
+        ? `最新の ${result.writtenFile} にクローラーJSON順を保存しました。画面内の他の編集を保存する前に、最新データを読み直してください。`
+        : `クローラーJSON順を ${result.writtenFile} の features に保存しました。`;
       setSaveMessage(message);
       return { ok: true, message };
     },
@@ -689,25 +712,35 @@ export function SlopeEditWorkspace({
   );
 
   const router = useRouter();
+  const ownCourses = courses.filter(course => course.skiId === resort?.id);
+  // 所属確認では移動先を選び直せるよう全コースを、以降は所属コースだけを表示する
+  const visibleCourses = step === "assign" ? courses : ownCourses;
   const selectedCourse =
-    courses.find(course => course.id === activeCourseId) ?? null;
+    visibleCourses.find(course => course.id === activeCourseId) ?? null;
   const mapping = useLatestStatusMapping({
     resortId: resort?.id ?? "",
     kind: "courses",
-    geometries: courses
-      .filter(item => item.skiId === resort?.id)
-      .map(({ id, name }) => ({ id, name })),
-    geojsonNames: courses
-      .filter(course => course.skiId === resort?.id)
-      .map(item => item.name.trim())
-      .filter(Boolean),
+    geometries: ownCourses.map(({ id, name }) => ({ id, name })),
+    geojsonNames: ownCourses.map(item => item.name.trim()).filter(Boolean),
     enabled: resort !== null,
   });
-  const mappingGuard = useMappingProceedGuard(
-    courses.filter(item => item.skiId === resort?.id),
-    mapping,
-  );
+  const mappingGuard = useMappingProceedGuard(ownCourses, mapping);
 
+  // 工程ごとの戻り先。共通ヘッダーの戻るボタンで使う
+  const back =
+    step === "details"
+      ? {
+          label: "コースのまとめ方に戻る",
+          onClick: () => {
+            resetMapModes();
+            setStep("grouping");
+          },
+        }
+      : step === "grouping"
+        ? { label: "位置補正に戻る", onClick: () => setStep("lines") }
+        : step === "lines" && sourceKind === "osm"
+          ? { label: "所属確認に戻る", onClick: () => setStep("assign") }
+          : { label: "スキー場選択に戻る", onClick: handleBackToSelect };
   const mapIsVisible =
     step === "assign" ||
     step === "lines" ||
@@ -864,7 +897,7 @@ export function SlopeEditWorkspace({
                 <EditorMap
                   center={[resort.longitude, resort.latitude]}
                   zoom={RESORT_INITIAL_ZOOM}
-                  courses={courses}
+                  courses={visibleCourses}
                   backgroundLines={referenceLifts}
                   backgroundLineAppearance="lift"
                   activeCourseId={activeCourseId}
@@ -925,10 +958,20 @@ export function SlopeEditWorkspace({
             className={`max-md:w-full! max-md:border-t max-md:[&>button]:hidden ${mapIsVisible ? "max-md:h-[55%]" : "h-auto! w-full! flex-1 [&>button]:hidden"}`}
             side="right"
             storageKey={PANEL_WIDTH_KEY}
+            scrollResetKey={step}
             defaultWidth={470}
             minWidth={360}
             maxWidth={900}
           >
+            {resort && mapIsVisible && (
+              <ResortEditorHeader
+                resortId={resort.id}
+                resortName={resort.nameJa}
+                savedAt={savedAt}
+                backLabel={back.label}
+                onBack={back.onClick}
+              />
+            )}
             {resort && mapIsVisible && (
               <ResortEditorTools
                 key={resort.id}
@@ -948,8 +991,14 @@ export function SlopeEditWorkspace({
                 setCourses={setCourses}
                 selectedCourseId={activeCourseId}
                 onSelectCourse={setActiveCourseId}
-                onProceed={() => setStep("lines")}
-                onBackToSelect={handleBackToSelect}
+                onProceed={() => {
+                  if (
+                    !ownCourses.some(course => course.id === activeCourseId)
+                  ) {
+                    setActiveCourseId(ownCourses[0]?.id ?? null);
+                  }
+                  setStep("lines");
+                }}
               />
             )}
             {step === "lines" && resort && (
@@ -957,9 +1006,8 @@ export function SlopeEditWorkspace({
                 resorts={resorts}
                 mapping={mapping}
                 resort={resort}
-                courses={courses}
-                setCourses={setCourses}
-                savedAt={savedAt}
+                courses={ownCourses}
+                setCourses={setOwnCourses}
                 activeCourseId={activeCourseId}
                 onActiveCourseIdChange={setActiveCourseId}
                 isDrawing={isDrawing}
@@ -967,17 +1015,10 @@ export function SlopeEditWorkspace({
                 onFitBounds={() => setFitBoundsKey(key => key + 1)}
                 onProceed={() => {
                   resetMapModes();
+                  setCoursesState(reconcileUnconfirmedGroupings);
                   setStep("grouping");
                 }}
                 onApplyGeojsonOrder={handleApplyCrawlerOrder}
-                onBackToSelect={
-                  sourceKind === "osm"
-                    ? () => setStep("assign")
-                    : handleBackToSelect
-                }
-                backLabel={
-                  sourceKind === "osm" ? "所属確認へ戻る" : "スキー場選択へ"
-                }
                 showLabels={showLabels}
                 onShowLabelsChange={setShowLabels}
                 isSplitMode={isSplitMode}
@@ -1004,8 +1045,8 @@ export function SlopeEditWorkspace({
             )}
             {step === "grouping" && resort && (
               <CourseGroupingStep
-                courses={courses}
-                setCourses={setCourses}
+                courses={ownCourses}
+                setCourses={setOwnCourses}
                 onSelect={setActiveCourseId}
                 onBack={() => setStep("lines")}
                 onProceed={handleProceedToDetails}
@@ -1017,22 +1058,17 @@ export function SlopeEditWorkspace({
                 resort={resort}
                 resorts={resorts}
                 sourceKind={sourceKind}
-                courses={courses}
-                setCourses={setCourses}
-                savedAt={savedAt}
+                courses={ownCourses}
+                setCourses={setOwnCourses}
                 selectedCourseId={activeCourseId}
                 onSelectedCourseIdChange={setActiveCourseId}
                 showLabels={showLabels}
                 onShowLabelsChange={setShowLabels}
-                onBackToLines={() => {
-                  resetMapModes();
-                  setStep("grouping");
-                }}
                 onProceed={() =>
                   mappingGuard.proceed(() => {
                     resetMapModes();
                     setStep(
-                      groupingNeedsReview(courses) ? "grouping" : "confirm",
+                      groupingNeedsReview(ownCourses) ? "grouping" : "confirm",
                     );
                   })
                 }

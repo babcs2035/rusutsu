@@ -10,6 +10,11 @@ body:has(.admin-shell) {
   overscroll-behavior: auto;
 }
 
+html:has(.admin-request-workspace),
+body:has(.admin-request-workspace) {
+  overflow: hidden;
+}
+
 /* スマホの横向き表示など、幅が広くても高さが足りない場合を含む。 */
 @media (width < 48rem), (height < 40rem) {
   .admin-map-workspace {

@@ -1,12 +1,11 @@
 "use client";
 
-import { ArrowLeft, ListOrdered, Maximize2, Plus, Tag } from "lucide-react";
+import { ListOrdered, Maximize2, Plus, Tag } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { OrderOrganizerDialog } from "@/features/latest-status-mapping/components/OrderOrganizerDialog";
 import type { LatestStatusMappingState } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
-import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { PanelSection } from "@/shared/components/PanelSection";
 import { moveItem, useSortableList } from "@/shared/hooks/useSortableList";
@@ -30,7 +29,6 @@ type GeometryStepProps = {
   lifts: EditorLift[];
   deletedLifts: EditorLift[];
   setLifts: (updater: (lifts: EditorLift[]) => EditorLift[]) => void;
-  savedAt: string | null;
   selectedLiftId: string | null;
   onSelectLift: (liftId: string | null) => void;
   isDrawing: boolean;
@@ -39,14 +37,8 @@ type GeometryStepProps = {
   onMidstationModeChange: (isMidstationMode: boolean) => void;
   onFitBounds: () => void;
   onProceed: () => void;
-  onBack: () => void;
   showLabels: boolean;
   onShowLabelsChange: (showLabels: boolean) => void;
-};
-
-const formatDateTime = (iso: string): string => {
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? iso : date.toLocaleString("ja-JP");
 };
 
 const describeChange = (lift: EditorLift): string | null => {
@@ -83,7 +75,6 @@ export function GeometryStep({
   lifts,
   deletedLifts,
   setLifts,
-  savedAt,
   selectedLiftId,
   onSelectLift,
   isDrawing,
@@ -92,7 +83,6 @@ export function GeometryStep({
   onMidstationModeChange,
   onFitBounds,
   onProceed,
-  onBack,
   showLabels,
   onShowLabelsChange,
 }: GeometryStepProps) {
@@ -201,33 +191,6 @@ export function GeometryStep({
 
   return (
     <div className="flex w-full min-w-0 shrink-0 flex-col gap-2 border-l border-gray-200 bg-white p-3">
-      <div className="flex min-w-0 items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h2
-            className={cn(
-              "truncate font-bold text-base",
-              resort.nameJa ? "font-[var(--font-heading)]" : "font-mono",
-            )}
-          >
-            {resort.nameJa || resort.id}
-          </h2>
-          <p className="truncate text-[11px] text-gray-500">
-            {savedAt
-              ? `自動保存: ${formatDateTime(savedAt)}`
-              : "まだ自動保存されていません"}
-          </p>
-        </div>
-        <Button
-          size="sm"
-          variant="outline"
-          className="shrink-0"
-          onClick={onBack}
-        >
-          <ArrowLeft className="size-3.5" />
-          所属確認へ
-        </Button>
-      </div>
-
       <div className="flex flex-wrap gap-1.5">
         <Button
           size="sm"

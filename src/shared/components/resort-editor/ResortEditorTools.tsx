@@ -122,6 +122,7 @@ export function ResortEditorTools({
                     <Button
                       size="xs"
                       variant="outline"
+                      nativeButton={false}
                       render={
                         <a
                           href={`https://www.google.com/search?q=${encodeURIComponent(`${resortName} ゲレンデマップ`)}`}
@@ -136,6 +137,7 @@ export function ResortEditorTools({
                       <Button
                         size="xs"
                         variant="outline"
+                        nativeButton={false}
                         render={
                           <a
                             href={link.url.trim()}

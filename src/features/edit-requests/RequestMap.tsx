@@ -1,90 +1,373 @@
 "use client";
-import type { LatLngTuple } from "leaflet";
-import { MapContainer, Polyline, TileLayer } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
-import type { EditPlan } from "@/server/edit-requests/contract";
 
-function lines(plan: EditPlan, before: boolean) {
+import type { GeoJSONSource, Map as MapLibreMap } from "maplibre-gl";
+import { Map as MapLibreMapClass, Popup } from "maplibre-gl";
+import { useEffect, useMemo, useRef, useState } from "react";
+import "maplibre-gl/dist/maplibre-gl.css";
+import "@/features/map/maplibre/mapWorker";
+import { createEditorStyle } from "@/features/slope/components/EditorMap/editorTiles";
+import type { EditPlan } from "@/server/edit-requests/contract";
+import { featureIdentity } from "@/shared/course-lift/identity";
+import { candidateLiftId, liftCandidate } from "./liftCandidate";
+import type { RequestCourseLine } from "./mapContext";
+
+type Position = [number, number];
+type MapLine = { id: string; name: string; positions: Position[] };
+const SOURCE = {
+  courses: "request-courses",
+  previous: "request-previous",
+  after: "request-after",
+};
+const LAYER = {
+  outline: "request-course-outline",
+  courses: "request-course-lines",
+  previous: "request-previous-lines",
+  after: "request-after-lines",
+  selected: "request-selected-line",
+};
+
+function documentLines(plan: EditPlan, before: boolean): MapLine[] {
   const documents = before
     ? plan.beforeDocuments.flatMap(item =>
-        item.document ? [item.document] : [],
+        item.document
+          ? [{ key: item.key, content: item.document.content }]
+          : [],
       )
     : plan.documents;
   return documents
-    .filter(item => /\/(?:slope_before(?:_osm)?|lift_before)\//.test(item.key))
+    .filter(item => item.key.includes("/lift_before/"))
     .flatMap(document => {
       const parsed = JSON.parse(document.content) as {
         features?: Array<{
+          properties?: Record<string, unknown> | null;
           geometry?: { type: string; coordinates: number[][] } | null;
         }>;
       };
-      return (parsed.features ?? []).flatMap(feature =>
-        feature.geometry?.type === "LineString"
-          ? [
-              feature.geometry.coordinates
-                .filter(pair => pair.length >= 2 && pair.every(Number.isFinite))
-                .map(pair => [pair[1], pair[0]] as LatLngTuple),
-            ]
-          : [],
-      );
+      return (parsed.features ?? []).flatMap((feature, index) => {
+        if (feature.geometry?.type !== "LineString") return [];
+        const positions = feature.geometry.coordinates
+          .filter(pair => pair.length >= 2 && pair.every(Number.isFinite))
+          .map(pair => [pair[0], pair[1]] as Position);
+        if (positions.length < 2) return [];
+        return [
+          {
+            id: featureIdentity(
+              feature.properties ?? null,
+              document.key,
+              index,
+            ),
+            name:
+              typeof feature.properties?.name === "string"
+                ? feature.properties.name
+                : "名称未設定のリフト",
+            positions,
+          },
+        ];
+      });
     })
-    .filter(line => line.length >= 2)
     .slice(0, 1000);
 }
-export default function RequestMap({ plan }: { plan: EditPlan }) {
-  const before = lines(plan, true),
-    after = lines(plan, false);
-  const all = [...before, ...after];
-  if (!all.length) return null;
-  const flat = all.flat();
-  const extent = flat.reduce(
-    (box, pair) => [
-      Math.min(box[0], pair[0]),
-      Math.min(box[1], pair[1]),
-      Math.max(box[2], pair[0]),
-      Math.max(box[3], pair[1]),
-    ],
-    [90, 180, -90, -180],
-  );
-  const bounds: [LatLngTuple, LatLngTuple] = [
-    [extent[0], extent[1]],
-    [extent[2], extent[3]],
-  ];
 
-  return (
-    <div className="space-y-2">
-      <p className="text-sm">
-        <span className="text-orange-700">橙: 変更前</span> ／{" "}
-        <span className="text-blue-700">青: 反映する内容</span>
-        （重なった線は青で表示）
-      </p>
-      <MapContainer
-        className="h-96 w-full rounded"
-        bounds={bounds}
-        boundsOptions={{ padding: [20, 20] }}
-        scrollWheelZoom={false}
+function submittedLiftLines(payload: unknown): MapLine[] {
+  const candidate = liftCandidate(payload);
+  if (!candidate) return [];
+  return candidate.lifts.flatMap((lift, index) => {
+    const properties = lift?.properties as Record<string, unknown> | undefined;
+    const coordinates = lift?.coordinates;
+    if (!Array.isArray(coordinates)) return [];
+    const positions = coordinates
+      .filter(
+        pair =>
+          Array.isArray(pair) &&
+          pair.length >= 2 &&
+          pair.every(Number.isFinite),
+      )
+      .map(pair => [pair[0], pair[1]] as Position);
+    if (positions.length < 2) return [];
+    return [
+      {
+        id: candidateLiftId(candidate, lift, index),
+        name:
+          typeof properties?.name === "string"
+            ? properties.name
+            : "名称未設定のリフト",
+        positions,
+      },
+    ];
+  });
+}
+
+function collection(lines: MapLine[]): GeoJSON.FeatureCollection {
+  return {
+    type: "FeatureCollection",
+    features: lines.map(line => ({
+      type: "Feature",
+      properties: { id: line.id, name: line.name },
+      geometry: { type: "LineString", coordinates: line.positions },
+    })),
+  };
+}
+
+function updateSource(
+  map: MapLibreMap,
+  id: string,
+  data: GeoJSON.FeatureCollection,
+) {
+  (map.getSource(id) as GeoJSONSource | undefined)?.setData(data);
+}
+
+export default function RequestMap({
+  plan,
+  submittedPayload,
+  courseLines = [],
+  selectedId,
+  fill = false,
+  preferSubmittedPayload = false,
+  onSelectLift,
+}: {
+  plan?: EditPlan;
+  submittedPayload?: unknown;
+  courseLines?: RequestCourseLine[];
+  selectedId?: string;
+  fill?: boolean;
+  preferSubmittedPayload?: boolean;
+  onSelectLift?: (id: string) => void;
+}) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<MapLibreMap | null>(null);
+  const selectRef = useRef(onSelectLift);
+  selectRef.current = onSelectLift;
+  const [ready, setReady] = useState(false);
+
+  const before = useMemo(() => (plan ? documentLines(plan, true) : []), [plan]);
+  const after = useMemo(
+    () =>
+      plan && !preferSubmittedPayload
+        ? documentLines(plan, false)
+        : submittedLiftLines(submittedPayload),
+    [plan, preferSubmittedPayload, submittedPayload],
+  );
+  const previous = useMemo(
+    () =>
+      before.filter(line => {
+        const current = after.find(item => item.id === line.id);
+        return (
+          !current ||
+          JSON.stringify(current.positions) !== JSON.stringify(line.positions)
+        );
+      }),
+    [before, after],
+  );
+  const courses = useMemo(
+    () =>
+      courseLines.map((line, index) => ({
+        id: `course-${index}`,
+        name: line.name,
+        positions: line.coordinates.map(pair => [pair[0], pair[1]] as Position),
+      })),
+    [courseLines],
+  );
+  const courseData = useMemo(() => collection(courses), [courses]);
+  const previousData = useMemo(() => collection(previous), [previous]);
+  const afterData = useMemo(() => collection(after), [after]);
+  const all = useMemo(
+    () => [...courses, ...before, ...after],
+    [courses, before, after],
+  );
+  const hasLines = all.length > 0;
+
+  // MapLibre インスタンスは一度だけ作り、データは下の effect で更新する。
+  // biome-ignore lint/correctness/useExhaustiveDependencies: initial center is only used at creation
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || mapRef.current || !hasLines) return;
+    const map = new MapLibreMapClass({
+      container,
+      style: createEditorStyle("gsiPhoto"),
+      center: all[0].positions[0],
+      zoom: 12,
+      maxZoom: 18,
+      attributionControl: { compact: true },
+      dragRotate: false,
+      pitchWithRotate: false,
+      touchPitch: false,
+    });
+    mapRef.current = map;
+    map.scrollZoom.disable();
+    const popup = new Popup({ closeButton: false, closeOnClick: false });
+    const observer = new ResizeObserver(() => map.resize());
+    observer.observe(container);
+    map.on("load", () => {
+      for (const id of Object.values(SOURCE)) {
+        map.addSource(id, {
+          type: "geojson",
+          data: { type: "FeatureCollection", features: [] },
+        });
+      }
+      map.addLayer({
+        id: LAYER.outline,
+        type: "line",
+        source: SOURCE.courses,
+        paint: {
+          "line-color": "#0f172a",
+          "line-width": 7,
+          "line-opacity": 0.8,
+        },
+      });
+      map.addLayer({
+        id: LAYER.courses,
+        type: "line",
+        source: SOURCE.courses,
+        paint: { "line-color": "#bef264", "line-width": 3 },
+      });
+      map.addLayer({
+        id: LAYER.previous,
+        type: "line",
+        source: SOURCE.previous,
+        paint: {
+          "line-color": "#f97316",
+          "line-width": 4,
+          "line-opacity": 0.9,
+          "line-dasharray": [1.5, 1.5],
+        },
+      });
+      map.addLayer({
+        id: LAYER.after,
+        type: "line",
+        source: SOURCE.after,
+        filter: ["!=", ["get", "id"], ""],
+        paint: { "line-color": "#2563eb", "line-width": 4 },
+      });
+      map.addLayer({
+        id: LAYER.selected,
+        type: "line",
+        source: SOURCE.after,
+        filter: ["==", ["get", "id"], ""],
+        paint: { "line-color": "#fde047", "line-width": 7 },
+      });
+      for (const layer of [
+        LAYER.courses,
+        LAYER.previous,
+        LAYER.after,
+        LAYER.selected,
+      ]) {
+        map.on("mousemove", layer, event => {
+          const name = event.features?.[0]?.properties?.name;
+          if (typeof name !== "string") return;
+          map.getCanvas().style.cursor =
+            layer === LAYER.courses ? "" : "pointer";
+          popup
+            .setLngLat(event.lngLat)
+            .setText(layer === LAYER.previous ? `変更前: ${name}` : name)
+            .addTo(map);
+        });
+        map.on("mouseleave", layer, () => {
+          map.getCanvas().style.cursor = "";
+          popup.remove();
+        });
+      }
+      for (const layer of [LAYER.after, LAYER.selected]) {
+        map.on("click", layer, event => {
+          const id = event.features?.[0]?.properties?.id;
+          if (typeof id === "string") selectRef.current?.(id);
+        });
+      }
+      setReady(true);
+    });
+    return () => {
+      observer.disconnect();
+      popup.remove();
+      map.remove();
+      mapRef.current = null;
+    };
+  }, [hasLines]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    updateSource(map, SOURCE.courses, courseData);
+    updateSource(map, SOURCE.previous, previousData);
+    updateSource(map, SOURCE.after, afterData);
+    const positions = all.flatMap(line => line.positions);
+    if (!positions.length) return;
+    const extent = positions.reduce(
+      (box, pair) => [
+        Math.min(box[0], pair[0]),
+        Math.min(box[1], pair[1]),
+        Math.max(box[2], pair[0]),
+        Math.max(box[3], pair[1]),
+      ],
+      [180, 90, -180, -90],
+    );
+    map.fitBounds(
+      [
+        [extent[0], extent[1]],
+        [extent[2], extent[3]],
+      ],
+      { padding: 28, duration: 0, maxZoom: 17 },
+    );
+  }, [ready, courseData, previousData, afterData, all]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    map.setFilter(LAYER.after, ["!=", ["get", "id"], selectedId ?? ""]);
+    map.setFilter(LAYER.selected, ["==", ["get", "id"], selectedId ?? ""]);
+    map.setPaintProperty(LAYER.after, "line-opacity", selectedId ? 0.55 : 1);
+    map.setPaintProperty(
+      LAYER.previous,
+      "line-opacity",
+      selectedId ? 0.35 : 0.9,
+    );
+  }, [ready, selectedId]);
+
+  if (!hasLines) {
+    return (
+      <p
+        className={`${fill ? "flex h-full items-center justify-center" : "rounded-lg"} bg-slate-100 p-4 text-sm text-slate-600`}
       >
-        <TileLayer
-          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution="&copy; OpenStreetMap contributors"
-        />
-        {before.map((line, index) => (
-          <Polyline
-            // biome-ignore lint/suspicious/noArrayIndexKey: Immutable comparison geometry.
-            key={`before-${index}`}
-            positions={line}
-            pathOptions={{ color: "#c2410c", weight: 6, opacity: 0.7 }}
-          />
-        ))}
-        {after.map((line, index) => (
-          <Polyline
-            // biome-ignore lint/suspicious/noArrayIndexKey: Immutable comparison geometry.
-            key={`after-${index}`}
-            positions={line}
-            pathOptions={{ color: "#1d4ed8", weight: 3 }}
-          />
-        ))}
-      </MapContainer>
+        地図に表示できるリフト・コースの線がありません。
+      </p>
+    );
+  }
+  return (
+    <div
+      className={
+        fill
+          ? "flex h-full min-h-0 flex-col overflow-hidden bg-white"
+          : "overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+      }
+    >
+      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-b border-slate-200 px-4 py-2 text-[11px] font-medium text-slate-700">
+        <span>国土地理院の航空写真</span>
+        {courses.length > 0 ? (
+          <span className="flex items-center gap-1">
+            <i className="h-0.5 w-5 bg-lime-400" />
+            コース
+          </span>
+        ) : (
+          <span className="text-slate-500">コースの線は未登録</span>
+        )}
+        <span className="flex items-center gap-1">
+          <i className="h-0.5 w-5 bg-blue-500" />
+          申請後のリフト
+        </span>
+        {previous.length > 0 && (
+          <span className="flex items-center gap-1">
+            <i className="h-0.5 w-5 bg-orange-400" />
+            変更前の線
+          </span>
+        )}
+        {selectedId && (
+          <span className="text-amber-800">選択中のリフトを強調表示</span>
+        )}
+      </div>
+      <div
+        ref={containerRef}
+        className={
+          fill ? "min-h-0 w-full flex-1" : "h-[26rem] w-full md:h-[34rem]"
+        }
+      />
     </div>
   );
 }

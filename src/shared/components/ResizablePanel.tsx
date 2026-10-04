@@ -20,6 +20,8 @@ type ResizablePanelProps = {
   className?: string;
   /** パネルを画面のどちら側に置くか。つまむ縁は反対側に付く */
   side?: "left" | "right";
+  /** 値が変わったら中身を先頭までスクロールし直す。工程の切り替えなどに使う */
+  scrollResetKey?: string;
 };
 
 const clamp = (value: number, min: number, max: number): number =>
@@ -51,10 +53,18 @@ export function ResizablePanel({
   maxWidth = 900,
   className,
   side = "left",
+  scrollResetKey,
 }: ResizablePanelProps) {
   const [width, setWidth] = useState(defaultWidth);
   const [isResizing, setIsResizing] = useState(false);
   const startRef = useRef({ x: 0, width: defaultWidth });
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // 次の工程は前の工程のスクロール位置を引き継がず、先頭から見せる
+  // biome-ignore lint/correctness/useExhaustiveDependencies: キーの変化だけを合図にする
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [scrollResetKey]);
 
   // 保存済みの幅は、画面が出てから当てる（SSR と食い違わせない）
   useEffect(() => {
@@ -123,7 +133,10 @@ export function ResizablePanel({
       className={cn("relative flex h-full min-h-0 shrink-0", className)}
       style={{ width }}
     >
-      <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-y-auto">
+      <div
+        ref={scrollRef}
+        className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-y-auto"
+      >
         {children}
       </div>
       <button

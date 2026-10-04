@@ -66,7 +66,9 @@ export function ConfirmStep({
   const { isEditor } = useEditingRole();
   const [isSaving, setIsSaving] = useState(false);
   const [serverErrors, setServerErrors] = useState<string[]>([]);
+  const [hasSourceConflict, setHasSourceConflict] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [overwriteDialogOpen, setOverwriteDialogOpen] = useState(false);
   const validation = useMemo(() => validateCourses(courses, true), [courses]);
   const movedCourses = courses.filter(
     course => course.skiId !== course.originalSkiId,
@@ -75,15 +77,19 @@ export function ConfirmStep({
   const directoryName =
     sourceKind === "osm" ? "slope_before_osm" : "slope_before";
 
-  const handleSaveConfirm = async () => {
+  const handleSaveConfirm = async (forceOverwrite = false) => {
     if (validation.errors.length > 0 || isSaving) return;
-    if (groupingNeedsReview(courses)) {
+    // 別スキー場へ移したコースのまとめ方は、移動先の編集で確認する
+    if (
+      groupingNeedsReview(courses.filter(course => course.skiId === resort.id))
+    ) {
       setServerErrors(["コースのまとめ方を確認してください。"]);
       return;
     }
 
     setIsSaving(true);
     setServerErrors([]);
+    setHasSourceConflict(false);
     try {
       const result = await saveEditorChanges({
         saveMapping: mapping.getSaveRequest ? async () => true : mapping.save,
@@ -99,6 +105,7 @@ export function ConfirmStep({
             sourceKind,
             fileHash,
             detailFileHash,
+            ...(forceOverwrite ? { forceOverwrite: true } : {}),
             courses: courses.map(courseToSavePayload),
             preservedFeatures,
             preservedDetails,
@@ -109,6 +116,12 @@ export function ConfirmStep({
         onSaved(result.writtenFiles);
       } else {
         setServerErrors(result.errors);
+        setHasSourceConflict(
+          result.conflict === true ||
+            result.errors.some(error =>
+              /読み込み後に .* が変更されています/.test(error),
+            ),
+        );
       }
     } catch (error) {
       setServerErrors([
@@ -266,6 +279,16 @@ export function ConfirmStep({
         </Alert>
       )}
 
+      {hasSourceConflict && (
+        <Button
+          variant="destructive"
+          disabled={isSaving}
+          onClick={() => setOverwriteDialogOpen(true)}
+        >
+          現在の編集内容で上書き保存
+        </Button>
+      )}
+
       {mapping.error && (
         <p role="alert" className="text-sm text-red-700">
           {mapping.error}
@@ -286,8 +309,16 @@ export function ConfirmStep({
           onOpenChange={setSaveDialogOpen}
           title={isEditor ? "申請確認" : "保存確認"}
           description={`コース情報・営業情報の対応表・ゲレンデマップURLを保存します。よろしいですか？`}
-          onConfirm={handleSaveConfirm}
+          onConfirm={() => handleSaveConfirm()}
           confirmLabel={isEditor ? "申請する" : "保存する"}
+        />
+        <ConfirmDialog
+          open={overwriteDialogOpen}
+          onOpenChange={setOverwriteDialogOpen}
+          title={isEditor ? "上書き申請の確認" : "上書き保存の確認"}
+          description="画面内のコース情報を優先し、読み込み後に更新されたコース情報を置き換えます。現在の編集内容で続行しますか？"
+          onConfirm={() => handleSaveConfirm(true)}
+          confirmLabel={isEditor ? "上書きを申請" : "上書き保存する"}
         />
         <Button
           disabled={

@@ -116,15 +116,27 @@ export function groupingFingerprint(courses: EditorCourse[]): string {
   return `${value.length}:${hash >>> 0}`;
 }
 export function courseGroupingBuckets(courses: EditorCourse[]) {
+  // グループ済みの線は grouping.id で束ねる（名前変更や名前の衝突で合流させない）。
+  // 未グループの線は、同名のグループがあればそこへ、なければ名前で束ねる。
+  const groupKeyByName = new Map<string, string>();
+  for (const c of courses)
+    if (c.grouping)
+      groupKeyByName.set(
+        `${c.skiId}:${c.grouping.name.trim()}`,
+        `${c.skiId}:group:${c.grouping.id}`,
+      );
   const groups = new Map<string, EditorCourse[]>();
   for (const c of courses) {
+    const nameKey = `${c.skiId}:${c.name.trim()}`;
     const key = c.grouping
-      ? `${c.skiId}:name:${c.grouping.name.trim()}`
-      : `${c.skiId}:name:${c.name.trim() || c.id}`;
+      ? `${c.skiId}:group:${c.grouping.id}`
+      : c.name.trim()
+        ? (groupKeyByName.get(nameKey) ?? `${c.skiId}:name:${c.name.trim()}`)
+        : `${c.skiId}:id:${c.id}`;
     groups.set(key, [...(groups.get(key) ?? []), c]);
   }
   return [...groups.values()]
-    .filter(g => g.length > 1 || g[0].grouping)
+    .filter(g => g.length > 1)
     .map(g =>
       g.sort((a, b) => (a.grouping?.order ?? 0) - (b.grouping?.order ?? 0)),
     );

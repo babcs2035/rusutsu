@@ -1,6 +1,6 @@
 type SaveResult =
   | { ok: true; writtenFiles: string[]; submission?: { requestId: string } }
-  | { ok: false; errors: string[] };
+  | { ok: false; errors: string[]; conflict?: boolean };
 
 /** コース・リフト共通の最終保存。関連データの失敗時は完了扱いにしない。 */
 export async function saveEditorChanges({

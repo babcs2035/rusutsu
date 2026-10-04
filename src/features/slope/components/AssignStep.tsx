@@ -24,7 +24,6 @@ type Props = {
   selectedCourseId: string | null;
   onSelectCourse: (courseId: string | null) => void;
   onProceed: () => void;
-  onBackToSelect: () => void;
 };
 
 const NEARBY_OPTION_COUNT = 20;
@@ -49,7 +48,6 @@ export function AssignStep({
   selectedCourseId,
   onSelectCourse,
   onProceed,
-  onBackToSelect,
 }: Props) {
   const resortById = useMemo(
     () => new Map(resorts.map(option => [option.id, option])),
@@ -111,25 +109,15 @@ export function AssignStep({
 
   return (
     <div className="flex w-full min-w-0 shrink-0 flex-col gap-3 border-l border-gray-200 bg-white p-3">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="font-bold font-[var(--font-heading)]">
-            {resort.nameJa}
-          </h2>
-          <p
-            className={
-              resort.osmConfirmedAt
-                ? "text-xs text-green-900"
-                : "text-xs text-orange-900"
-            }
-          >
-            {resort.osmConfirmedAt ? "✓ 確認済み" : "OpenStreetMap由来・未確認"}
-          </p>
-        </div>
-        <Button size="sm" variant="outline" onClick={onBackToSelect}>
-          スキー場選択へ戻る
-        </Button>
-      </div>
+      <p
+        className={
+          resort.osmConfirmedAt
+            ? "text-xs text-green-900"
+            : "text-xs text-orange-900"
+        }
+      >
+        {resort.osmConfirmedAt ? "✓ 確認済み" : "OpenStreetMap由来・未確認"}
+      </p>
       <Card>
         <CardContent className="p-3 text-xs text-gray-600">
           距離で自動割当した所属を確認してください。変更したコースは保存時に移動先の

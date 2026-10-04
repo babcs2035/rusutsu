@@ -172,5 +172,48 @@ test("group metadata roundtrips and unsupported original details are not normali
   assert.equal(payload.properties.level, "初・中・上級");
   assert.equal(payload.properties.distance, "1000");
   assert.deepEqual(payload.properties.custom, { x: 1 });
-  assert.equal(courseGroupingBuckets(loaded.courses).length, 1);
+  // 1 本だけのグループは確認する対象がないので、まとめ方の画面には出さない
+  assert.equal(courseGroupingBuckets(loaded.courses).length, 0);
+});
+
+test("changing a saved group's kind is kept in the save payload", () => {
+  const feature = (entityId: string, order: number) => ({
+    type: "Feature" as const,
+    properties: {
+      entityId,
+      name: "D",
+      courseGrouping: { id: "g", name: "D", kind: "continuous", order },
+      groupingReviewed: "fp",
+    },
+    geometry: {
+      type: "LineString" as const,
+      coordinates: [
+        [140, 40 + order * 0.001],
+        [140, 40.001 + order * 0.001],
+      ],
+    },
+  });
+  const loaded = sourceDataToCourses("appi", {
+    sourceKind: "curated",
+    geojson: {
+      type: "FeatureCollection",
+      features: [feature("a", 1), feature("b", 2)],
+    },
+    details: null,
+    fileHash: null,
+    detailFileHash: null,
+  });
+  const next = applyCourseGrouping(loaded.courses, ["a", "b"], "routes", "D");
+  for (const course of next)
+    assert.equal(
+      (
+        courseToSavePayload(course).properties.courseGrouping as {
+          kind: string;
+        }
+      ).kind,
+      "routes",
+    );
+  const independent = applyCourseGrouping(next, ["a", "b"], "independent", "");
+  for (const course of independent)
+    assert.equal(courseToSavePayload(course).properties.courseGrouping, null);
 });

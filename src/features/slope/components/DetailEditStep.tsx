@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  ArrowLeft,
-  GripVertical,
-  ListOrdered,
-  Tag,
-  TriangleAlert,
-} from "lucide-react";
+import { GripVertical, ListOrdered, Tag, TriangleAlert } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -66,12 +60,10 @@ type DetailEditStepProps = {
   sourceKind: "curated" | "osm";
   courses: EditorCourse[];
   setCourses: (updater: (courses: EditorCourse[]) => EditorCourse[]) => void;
-  savedAt: string | null;
   selectedCourseId: string | null;
   onSelectedCourseIdChange: (courseId: string | null) => void;
   showLabels: boolean;
   onShowLabelsChange: (showLabels: boolean) => void;
-  onBackToLines: () => void;
   onProceed: () => void;
   onExported: () => void;
 };
@@ -110,11 +102,6 @@ const BULK_FIELDS = [
 
 type BulkFieldKey = (typeof BULK_FIELDS)[number]["key"];
 
-const formatDateTime = (iso: string): string => {
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? iso : date.toLocaleString("ja-JP");
-};
-
 export function DetailEditStep({
   mapping,
   resort,
@@ -122,12 +109,10 @@ export function DetailEditStep({
   sourceKind,
   courses,
   setCourses,
-  savedAt,
   selectedCourseId,
   onSelectedCourseIdChange,
   showLabels,
   onShowLabelsChange,
-  onBackToLines,
   onProceed,
   onExported,
 }: DetailEditStepProps) {
@@ -240,28 +225,6 @@ export function DetailEditStep({
 
   return (
     <div className="flex w-full min-w-0 shrink-0 flex-col gap-2 border-l border-gray-200 bg-white p-3">
-      <div className="flex min-w-0 items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h2 className="truncate font-bold font-[var(--font-heading)] text-base">
-            {resort.nameJa}
-          </h2>
-          <p className="truncate text-[11px] text-gray-500">
-            {savedAt
-              ? `自動保存: ${formatDateTime(savedAt)}`
-              : "まだ自動保存されていません"}
-          </p>
-        </div>
-        <Button
-          size="sm"
-          variant="outline"
-          className="shrink-0"
-          onClick={onBackToLines}
-        >
-          <ArrowLeft className="size-3.5" />
-          まとめ方へ戻る
-        </Button>
-      </div>
-
       <div className="flex shrink-0 flex-wrap gap-1.5">
         <Button
           size="sm"

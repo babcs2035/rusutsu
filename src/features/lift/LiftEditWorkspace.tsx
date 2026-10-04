@@ -14,9 +14,11 @@ import {
 import type { TileLayerId } from "@/features/slope/types";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { ResizablePanel } from "@/shared/components/ResizablePanel";
+import { ResortEditorHeader } from "@/shared/components/resort-editor/ResortEditorHeader";
 import { ResortEditorTools } from "@/shared/components/resort-editor/ResortEditorTools";
 import { useResortEditorLinks } from "@/shared/components/resort-editor/useResortEditorLinks";
 import { StepIndicator } from "@/shared/components/StepIndicator";
+import { updateResortScopedList } from "@/shared/utils/resortScopedList";
 import {
   loadLiftSourceData,
   loadResortLinks,
@@ -157,6 +159,18 @@ export function LiftEditWorkspace({
     [],
   );
 
+  // 所属確認より後の工程では、別スキー場へ移したリフトを表示・編集しない
+  const resortId = resort?.id ?? null;
+  const setOwnLifts = useCallback(
+    (updater: (previous: EditorLift[]) => EditorLift[]) => {
+      if (!resortId) return;
+      setLiftsState(previous =>
+        updateResortScopedList(previous, resortId, updater),
+      );
+    },
+    [resortId],
+  );
+
   const updateSelectedLift = useCallback(
     (updater: (lift: EditorLift) => EditorLift) => {
       if (!selectedLiftId) return;
@@ -176,26 +190,21 @@ export function LiftEditWorkspace({
 
   const router = useRouter();
   const activeLifts = lifts.filter(lift => !lift.isDeleted);
+  const ownLifts = activeLifts.filter(lift => lift.skiId === resort?.id);
   const deletedLifts = lifts.filter(lift => lift.isDeleted);
   const mapping = useLatestStatusMapping({
     resortId: resort?.id ?? "",
     kind: "lifts",
-    geometries: activeLifts
-      .filter(item => item.skiId === resort?.id)
-      .map(({ id, name }) => ({ id, name })),
-    geojsonNames: activeLifts
-      .filter(item => item.skiId === resort?.id)
-      .map(item => item.name.trim())
-      .filter(Boolean),
+    geometries: ownLifts.map(({ id, name }) => ({ id, name })),
+    geojsonNames: ownLifts.map(item => item.name.trim()).filter(Boolean),
     enabled: resort !== null,
   });
-  const mappingGuard = useMappingProceedGuard(
-    activeLifts.filter(item => item.skiId === resort?.id),
-    mapping,
-  );
+  const mappingGuard = useMappingProceedGuard(ownLifts, mapping);
+  // 所属確認では移動先を選び直せるよう全リフトを、以降は所属リフトだけを表示する
+  const visibleLifts = step === "assign" ? activeLifts : ownLifts;
 
   const selectedLift =
-    activeLifts.find(lift => lift.id === selectedLiftId) ?? null;
+    visibleLifts.find(lift => lift.id === selectedLiftId) ?? null;
   // resort state に確認済みフラグの最新値を反映する（ConfirmStep でのトグル直後に表示へ反映するため）
   const effectiveResort = resort
     ? (effectiveResorts.find(option => option.id === resort.id) ?? resort)
@@ -338,6 +347,25 @@ export function LiftEditWorkspace({
     handleBackToSelect();
   };
 
+  // 工程ごとの戻り先。共通ヘッダーの戻るボタンで使う
+  const back =
+    step === "details"
+      ? {
+          label: "位置補正に戻る",
+          onClick: () => {
+            resetMapModes();
+            setStep("geometry");
+          },
+        }
+      : step === "geometry"
+        ? {
+            label: "所属確認に戻る",
+            onClick: () => {
+              resetMapModes();
+              setStep("assign");
+            },
+          }
+        : { label: "スキー場選択に戻る", onClick: handleBackToSelect };
   const mapIsVisible =
     step === "assign" || step === "geometry" || step === "details";
   const mapMode: EditorMapMode =
@@ -466,7 +494,7 @@ export function LiftEditWorkspace({
                 <EditorMap
                   center={[resort.longitude, resort.latitude]}
                   zoom={RESORT_INITIAL_ZOOM}
-                  courses={activeLifts}
+                  courses={visibleLifts}
                   backgroundLines={
                     step === "geometry" &&
                     selectedLift &&
@@ -561,10 +589,20 @@ export function LiftEditWorkspace({
             className={`max-md:w-full! max-md:border-t max-md:[&>button]:hidden ${mapIsVisible ? "max-md:h-[55%]" : "h-auto! w-full! flex-1 [&>button]:hidden"}`}
             side="right"
             storageKey={PANEL_WIDTH_KEY}
+            scrollResetKey={step}
             defaultWidth={480}
             minWidth={360}
             maxWidth={900}
           >
+            {resort && mapIsVisible && (
+              <ResortEditorHeader
+                resortId={resort.id}
+                resortName={resort.nameJa}
+                savedAt={savedAt}
+                backLabel={back.label}
+                onBack={back.onClick}
+              />
+            )}
             {resort && mapIsVisible && (
               <ResortEditorTools
                 key={resort.id}
@@ -577,11 +615,9 @@ export function LiftEditWorkspace({
             )}
             {step === "assign" && resort && (
               <AssignStep
-                resort={resort}
                 resorts={effectiveResorts}
                 lifts={activeLifts}
                 setLifts={setLifts}
-                savedAt={savedAt}
                 selectedLiftId={selectedLiftId}
                 onSelectLift={liftId => {
                   setSelectedLiftId(liftId);
@@ -589,9 +625,11 @@ export function LiftEditWorkspace({
                 }}
                 onProceed={() => {
                   resetMapModes();
+                  if (!ownLifts.some(lift => lift.id === selectedLiftId)) {
+                    setSelectedLiftId(ownLifts[0]?.id ?? null);
+                  }
                   setStep("geometry");
                 }}
-                onBackToSelect={handleBackToSelect}
               />
             )}
             {step === "geometry" && resort && (
@@ -599,10 +637,9 @@ export function LiftEditWorkspace({
                 resorts={effectiveResorts}
                 mapping={mapping}
                 resort={resort}
-                lifts={activeLifts}
+                lifts={ownLifts}
                 deletedLifts={deletedLifts}
-                setLifts={setLifts}
-                savedAt={savedAt}
+                setLifts={setOwnLifts}
                 selectedLiftId={selectedLiftId}
                 onSelectLift={setSelectedLiftId}
                 isDrawing={isDrawing}
@@ -629,10 +666,6 @@ export function LiftEditWorkspace({
                     setStep("details");
                   })
                 }
-                onBack={() => {
-                  resetMapModes();
-                  setStep("assign");
-                }}
               />
             )}
             {step === "details" && resort && (
@@ -640,17 +673,12 @@ export function LiftEditWorkspace({
                 mapping={mapping}
                 resort={resort}
                 resorts={effectiveResorts}
-                lifts={activeLifts}
-                setLifts={setLifts}
+                lifts={ownLifts}
+                setLifts={setOwnLifts}
                 details={details}
-                savedAt={savedAt}
                 selectedLiftId={selectedLiftId}
                 onSelectLift={setSelectedLiftId}
                 onProceed={() => mappingGuard.proceed(() => setStep("links"))}
-                onBack={() => {
-                  resetMapModes();
-                  setStep("geometry");
-                }}
               />
             )}
             {step === "links" && resort && (

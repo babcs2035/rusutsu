@@ -259,6 +259,83 @@ const dissolveEmptySplitGroups = (courses: EditorCourse[]): EditorCourse[] => {
 };
 
 /**
+ * 一度も確定していない（groupingReviewed が無い）グループを、いまの名前に合わせて整える。
+ * 分割で自動作成されたグループは、あとで各線を別名にすると意味を失うため、
+ * 名前（_# の区間表記を除く）がそろわない・1 本しか残っていない場合は解除する。
+ * 名前がそろっていればグループ名をその名前へ追従させる。確定済みのグループは触らない。
+ */
+export const reconcileUnconfirmedGroupings = (
+  courses: EditorCourse[],
+): EditorCourse[] => {
+  const membersById = new Map<string, EditorCourse[]>();
+  for (const course of courses) {
+    if (!course.grouping) continue;
+    const members = membersById.get(course.grouping.id) ?? [];
+    members.push(course);
+    membersById.set(course.grouping.id, members);
+  }
+  const nextNameById = new Map<string, string | null>();
+  for (const [id, members] of membersById) {
+    if (members.some(course => course.groupingReviewed !== undefined)) continue;
+    const names = new Set(
+      members.map(course => stripSplitSuffix(course.name).trim()),
+    );
+    const [name] = names;
+    nextNameById.set(
+      id,
+      members.length >= 2 && names.size === 1 && name ? name : null,
+    );
+  }
+  if (nextNameById.size === 0) return courses;
+  return courses.map(course => {
+    const groupId = course.grouping?.id;
+    if (!course.grouping || !groupId || !nextNameById.has(groupId))
+      return course;
+    const name = nextNameById.get(groupId);
+    if (name == null)
+      return {
+        ...course,
+        splitGroupId: null,
+        splitBaseName: null,
+        grouping: null,
+        groupingReviewed: undefined,
+      };
+    if (course.grouping.name === name) return course;
+    return {
+      ...course,
+      splitBaseName: course.splitGroupId ? name : course.splitBaseName,
+      grouping: { ...course.grouping, name },
+    };
+  });
+};
+
+/** コース名を変更し、未確定のグループをいまの名前に合わせて整える。 */
+export const renameCourse = (
+  courses: EditorCourse[],
+  courseId: string,
+  name: string,
+  resortSearchName: (course: EditorCourse) => string,
+): EditorCourse[] =>
+  reconcileUnconfirmedGroupings(
+    courses.map(course =>
+      course.id === courseId
+        ? {
+            ...course,
+            name,
+            unnamed: false,
+            detail: {
+              ...course.detail,
+              searchWord: buildDefaultSearchWord(
+                resortSearchName(course),
+                name,
+              ),
+            },
+          }
+        : course,
+    ),
+  );
+
+/**
  * 2 本のコースを、それぞれの指定位置でつないで 1 本にする。
  *
  * 端どうしだけでなく、コースの途中どうしもつなげる。1 本目の枠（id・所属・
