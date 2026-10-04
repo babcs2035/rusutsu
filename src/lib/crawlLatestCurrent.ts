@@ -11,6 +11,7 @@ import type {
 } from "@/lib/latestStatusFiles";
 import {
   combineLatestStatuses,
+  combineLinkedMappingCaptures,
   withLinkedAreaIds,
 } from "@/lib/linkedAreaStatus";
 import {
@@ -44,6 +45,15 @@ const linkedMemberIds = async (resortId: string) => {
   return area?.memberIds.length ? area.memberIds : null;
 };
 
+/** 同名のコース・リフトを区別するための、所属スキー場の名前。 */
+const memberLabels = async (memberIds: string[]) => {
+  const { readSkiResortNames } = await import("./skiResortData");
+  const names = new Map(
+    (await readSkiResortNames(memberIds)).map(item => [item.id, item.nameJa]),
+  );
+  return memberIds.map(id => names.get(id) ?? id);
+};
+
 /** 連携エリアの親は、所属スキー場の取得結果をまとめて読む。 */
 const readForResortOrArea = async (
   resortId: string,
@@ -51,7 +61,11 @@ const readForResortOrArea = async (
 ) => {
   const memberIds = await linkedMemberIds(resortId);
   if (!memberIds) return read(resortId);
-  return combineLatestStatuses(await Promise.all(memberIds.map(read)));
+  const [statuses, labels] = await Promise.all([
+    Promise.all(memberIds.map(read)),
+    memberLabels(memberIds),
+  ]);
+  return combineLatestStatuses(statuses, labels);
 };
 
 export function readCurrentCrawlLatestStatus(
@@ -105,8 +119,34 @@ export function readMappingCrawlLatestStatus(
   resortId: string,
   kind: LatestStatusKind,
 ): Promise<LatestSuccessfulStatus | null> {
-  return readForResortOrArea(resortId, id =>
-    readOwnMappingCrawlLatestStatus(id, kind),
+  return readLinkedMappingCaptures(resortId, kind).then(captures =>
+    captures
+      ? captures.status
+      : readOwnMappingCrawlLatestStatus(resortId, kind),
+  );
+}
+
+/** 連携エリアの親なら、所属スキー場ごとの採用済み結果と履歴をまとめる。 */
+async function readLinkedMappingCaptures(
+  resortId: string,
+  kind: LatestStatusKind,
+) {
+  const memberIds = await linkedMemberIds(resortId);
+  if (!memberIds) return null;
+  const [members, labels] = await Promise.all([
+    Promise.all(
+      memberIds.map(async id => {
+        const [status, history] = await Promise.all([
+          readOwnMappingCrawlLatestStatus(id, kind),
+          readOwnMappingStatusHistory(id, kind),
+        ]);
+        return { status, history };
+      }),
+    ),
+    memberLabels(memberIds),
+  ]);
+  return combineLinkedMappingCaptures(
+    members.map((member, index) => ({ ...member, label: labels[index] })),
   );
 }
 
@@ -197,13 +237,10 @@ export async function readMappingStatusHistory(
   resortId: string,
   kind: LatestStatusKind,
 ): Promise<LatestSuccessfulStatus[]> {
-  const memberIds = await linkedMemberIds(resortId);
-  if (!memberIds) return readOwnMappingStatusHistory(resortId, kind);
-  return (
-    await Promise.all(
-      memberIds.map(id => readOwnMappingStatusHistory(id, kind)),
-    )
-  ).flat();
+  const captures = await readLinkedMappingCaptures(resortId, kind);
+  return captures
+    ? captures.history
+    : readOwnMappingStatusHistory(resortId, kind);
 }
 
 async function readOwnMappingStatusHistory(

@@ -32,6 +32,7 @@ export const buildLineCollection = (
   lines: EditorMapLine[],
   activeLineId: string | null,
   hoveredLineId: string | null = null,
+  highlightedLineIds?: ReadonlySet<string>,
 ): FeatureCollection => ({
   type: "FeatureCollection",
   features: lines.filter(isDrawable).map(line =>
@@ -40,6 +41,7 @@ export const buildLineCollection = (
       name: line.name,
       active: line.id === activeLineId,
       hovered: line.id === hoveredLineId && line.id !== activeLineId,
+      highlighted: highlightedLineIds?.has(line.id) ?? false,
     }),
   ),
 });

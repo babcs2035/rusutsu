@@ -1,11 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { legacyCourseGrouping } from "@/shared/course-lift/identity";
+import {
+  legacyCourseGrouping,
+  readCourseGrouping,
+} from "@/shared/course-lift/identity";
 import {
   applyCourseGrouping,
+  applyCourseGroupingPlan,
+  courseEditorLabel,
   courseGroupingBuckets,
   groupingNeedsReview,
   suggestCourseChain,
+  suggestCourseRoutes,
 } from "./courseGrouping";
 import { createEmptyCourse } from "./courseOps";
 import { courseToSavePayload } from "./exportFiles";
@@ -216,4 +222,75 @@ test("changing a saved group's kind is kept in the save payload", () => {
   const independent = applyCourseGrouping(next, ["a", "b"], "independent", "");
   for (const course of independent)
     assert.equal(courseToSavePayload(course).properties.courseGrouping, null);
+});
+
+test("two connected sections form route 1 and a third line becomes route 2", () => {
+  const line = (id: string, coordinates: [number, number][]) => ({
+    ...createEmptyCourse(),
+    id,
+    name: "X",
+    skiId: "appi",
+    coordinates,
+  });
+  const courses = [
+    line("a", [
+      [140, 40],
+      [140, 40.001],
+    ]),
+    line("b", [
+      [140, 40.001],
+      [140, 40.002],
+    ]),
+    line("c", [
+      [141, 40],
+      [141, 40.001],
+    ]),
+  ];
+  const suggestion = suggestCourseRoutes(courses);
+  assert.equal(suggestion.routes.length, 2);
+  assert.deepEqual([...suggestion.routes[0]].sort(), ["a", "b"]);
+  assert.deepEqual(suggestion.routes[1], ["c"]);
+
+  const grouped = applyCourseGroupingPlan(courses, ["a", "b", "c"], {
+    name: "X",
+    routes: [["a", "b"], ["c"]],
+  });
+  assert.deepEqual(
+    grouped.map(c => [
+      c.grouping?.kind,
+      c.grouping?.order,
+      c.grouping?.route,
+      c.grouping?.section,
+    ]),
+    [
+      ["routes", 1, 1, 1],
+      ["routes", 2, 1, 2],
+      ["routes", 3, 2, undefined],
+    ],
+  );
+  assert.equal(new Set(grouped.map(c => c.grouping?.id)).size, 1);
+  assert.deepEqual(grouped.map(courseEditorLabel), [
+    "X / ルート1 区間1",
+    "X / ルート1 区間2",
+    "X / ルート2",
+  ]);
+  assert.equal(groupingNeedsReview(grouped), false);
+
+  // 保存して読み直しても、ルートと区間が残る
+  const payload = courseToSavePayload(grouped[1]);
+  assert.deepEqual(
+    readCourseGrouping(payload.properties.courseGrouping),
+    grouped[1].grouping,
+  );
+
+  // 2本だけまとめ、1本は別コースにもできる
+  const partial = applyCourseGroupingPlan(grouped, ["a", "b", "c"], {
+    name: "X",
+    routes: [["a", "b"]],
+  });
+  assert.equal(partial[0].grouping?.kind, "continuous");
+  assert.equal(partial[1].grouping?.order, 2);
+  assert.equal(partial[2].grouping, null);
+  assert.equal(courseGroupingBuckets(partial)[0].length, 3);
+  assert.equal(groupingNeedsReview(partial), false);
 });

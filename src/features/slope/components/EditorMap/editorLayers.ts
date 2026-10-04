@@ -36,6 +36,7 @@ const COLOR = {
   inactiveLine: "#3182CE",
   hoveredLine: "#2B6CB0",
   backgroundLine: "#4A5568",
+  highlightedLine: "#F59E0B",
   vertex: "#E53E3E",
   lastVertex: "#DD6B20",
   splitVertex: "#805AD5",
@@ -141,9 +142,25 @@ export const createEditorLayers = (): LayerSpecification[] => [
     filter: ["all", ["!", isActive], ["!", isHovered]],
     layout: { "line-cap": "round", "line-join": "round" },
     paint: {
-      "line-color": COLOR.inactiveLine,
-      "line-width": 3,
-      "line-opacity": 0.7,
+      // 申請の編集中は、公開中のデータから変わった線を目立たせる
+      "line-color": [
+        "case",
+        ["boolean", ["get", "highlighted"], false],
+        COLOR.highlightedLine,
+        COLOR.inactiveLine,
+      ],
+      "line-width": [
+        "case",
+        ["boolean", ["get", "highlighted"], false],
+        4.5,
+        3,
+      ],
+      "line-opacity": [
+        "case",
+        ["boolean", ["get", "highlighted"], false],
+        0.95,
+        0.7,
+      ],
     },
   },
   {

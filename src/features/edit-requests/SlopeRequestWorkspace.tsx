@@ -2,18 +2,18 @@
 
 import dynamic from "next/dynamic";
 import { type ReactNode, useMemo, useState } from "react";
-import type { LngLat } from "@/features/lift/types";
+import type { LngLat } from "@/features/slope/types";
 import type { EditPlan } from "@/server/edit-requests/contract";
-import { type LiftEditorTab, LiftRequestEditor } from "./LiftRequestEditor";
-import {
-  candidateLiftId,
-  liftCandidate,
-  updateCandidateLift,
-} from "./liftCandidate";
-import { buildLiftReview, type LiftReview } from "./liftReview";
 import type { RequestCourseLine } from "./mapContext";
 import { RequestFeatureReview } from "./RequestFeatureReview";
 import { RequestWorkspaceLayout } from "./RequestWorkspaceLayout";
+import { type SlopeEditorTab, SlopeRequestEditor } from "./SlopeRequestEditor";
+import {
+  candidateCourseId,
+  slopeCandidate,
+  updateCandidateCourse,
+} from "./slopeCandidate";
+import { buildSlopeReview, type SlopeReview } from "./slopeReview";
 
 const RequestMap = dynamic(() => import("./RequestMap"), { ssr: false });
 const EditorMap = dynamic(
@@ -24,7 +24,7 @@ const EditorMap = dynamic(
   { ssr: false },
 );
 
-export function LiftRequestWorkspace({
+export function SlopeRequestWorkspace({
   resortName,
   authorName,
   createdAt,
@@ -34,7 +34,7 @@ export function LiftRequestWorkspace({
   submittedReview,
   payload,
   savedPayload,
-  courseLines,
+  liftLines,
   editing,
   pending,
   onEdit,
@@ -50,10 +50,10 @@ export function LiftRequestWorkspace({
   status: string;
   statusClass: string;
   plan?: EditPlan;
-  submittedReview?: LiftReview | null;
+  submittedReview?: SlopeReview | null;
   payload: unknown;
   savedPayload: unknown;
-  courseLines: RequestCourseLine[];
+  liftLines: RequestCourseLine[];
   editing: boolean;
   pending: boolean;
   onEdit?: () => void;
@@ -63,10 +63,10 @@ export function LiftRequestWorkspace({
   message?: string;
   extraContent?: ReactNode;
 }) {
-  const candidate = useMemo(() => liftCandidate(payload), [payload]);
-  const baseline = useMemo(() => liftCandidate(savedPayload), [savedPayload]);
+  const candidate = useMemo(() => slopeCandidate(payload), [payload]);
+  const baseline = useMemo(() => slopeCandidate(savedPayload), [savedPayload]);
   const review = useMemo(() => {
-    const review = plan ? buildLiftReview(plan) : submittedReview;
+    const review = plan ? buildSlopeReview(plan) : submittedReview;
     if (!review)
       return {
         items: [],
@@ -78,13 +78,14 @@ export function LiftRequestWorkspace({
     return {
       ...review,
       items: review.items.map(item => {
-        const lift = candidate.lifts.find(
-          (lift, index) => candidateLiftId(candidate, lift, index) === item.id,
+        const course = candidate.courses.find(
+          (course, index) =>
+            candidateCourseId(candidate, course, index) === item.id,
         );
-        return lift
+        return course
           ? {
               ...item,
-              name: String(lift.properties.name || "名称未設定のリフト"),
+              name: String(course.properties.name || "名称未設定のコース"),
             }
           : item;
       }),
@@ -95,73 +96,66 @@ export function LiftRequestWorkspace({
     review.items.find(item => item.id === selectedId) ??
     review.items.find(item => item.status !== "unchanged") ??
     review.items[0];
-  const [editorTab, setEditorTab] = useState<LiftEditorTab>("details");
-  const [placingMidstation, setPlacingMidstation] = useState(false);
-  const selectedLift = candidate?.lifts.find(
-    (lift, index) => candidateLiftId(candidate, lift, index) === selected?.id,
+  const [editorTab, setEditorTab] = useState<SlopeEditorTab>("details");
+  const selectedCourse = candidate?.courses.find(
+    (course, index) =>
+      candidateCourseId(candidate, course, index) === selected?.id,
   );
-  const baselineLift = baseline?.lifts.find(
-    (lift, index) => candidateLiftId(baseline, lift, index) === selected?.id,
+  const baselineCourse = baseline?.courses.find(
+    (course, index) =>
+      candidateCourseId(baseline, course, index) === selected?.id,
   );
   const editableLines = useMemo(
     () =>
-      candidate?.lifts.map((lift, index) => ({
-        id: candidateLiftId(candidate, lift, index),
-        name: String(lift.properties.name || "名称未設定のリフト"),
-        coordinates: lift.coordinates,
-      })) ?? [],
+      candidate?.courses.flatMap((course, index) =>
+        course.targetSkiId === candidate.resortId
+          ? [
+              {
+                id: candidateCourseId(candidate, course, index),
+                name: String(course.properties.name || "名称未設定のコース"),
+                coordinates: course.coordinates,
+              },
+            ]
+          : [],
+      ) ?? [],
     [candidate],
   );
   const contextLines = useMemo(
     () => [
-      ...courseLines.map((line, index) => ({
-        id: `course-${index}`,
+      ...liftLines.map((line, index) => ({
+        id: `lift-${index}`,
         name: line.name,
         coordinates: line.coordinates,
       })),
-      ...(baselineLift
+      ...(baselineCourse
         ? [
             {
               id: "saved-position",
               name: "保存済みの位置",
-              coordinates: baselineLift.coordinates,
+              coordinates: baselineCourse.coordinates,
             },
           ]
         : []),
     ],
-    [courseLines, baselineLift],
+    [liftLines, baselineCourse],
   );
   const updateCoordinates = (update: (coordinates: LngLat[]) => LngLat[]) => {
     if (!candidate || !selected || pending) return;
     onPayloadChange(
-      updateCandidateLift(candidate, selected.id, lift => ({
-        ...lift,
-        coordinates: update(lift.coordinates),
+      updateCandidateCourse(candidate, selected.id, course => ({
+        ...course,
+        coordinates: update(course.coordinates),
       })),
     );
   };
-  const updateMidstation = (coordinates: LngLat) => {
-    if (!candidate || !selected || pending) return;
-    onPayloadChange(
-      updateCandidateLift(candidate, selected.id, lift => ({
-        ...lift,
-        properties: { ...lift.properties, midstation: coordinates },
-      })),
-    );
-    setPlacingMidstation(false);
-  };
-  const midstation = Array.isArray(selectedLift?.properties.midstation)
-    ? (selectedLift.properties.midstation.slice(0, 2) as LngLat)
-    : null;
-  const selectLift = (id: string) => {
+  const selectCourse = (id: string) => {
     if (!review.items.some(item => item.id === id)) return;
     setSelectedId(id);
-    setPlacingMidstation(false);
   };
 
   return (
     <RequestWorkspaceLayout
-      title={`${resortName}のリフト変更`}
+      title={`${resortName}のコース変更`}
       authorName={authorName}
       createdAt={createdAt}
       status={status}
@@ -179,30 +173,25 @@ export function LiftRequestWorkspace({
       footer={footer}
       message={message}
       map={
-        editing && editorTab === "geometry" && candidate && selectedLift ? (
+        editing && editorTab === "geometry" && candidate && selectedCourse ? (
           <div className="flex h-full min-h-0 flex-col">
             <div className="shrink-0 border-b border-blue-200 bg-blue-50 px-4 py-2 text-xs font-medium text-blue-900">
-              {placingMidstation
-                ? "地図をクリックして中間駅を配置"
-                : `${selected?.name}の頂点をドラッグして位置を修正`}
+              {`${selected?.name}の頂点をドラッグして位置を修正`}
             </div>
             <div className="min-h-0 flex-1">
               <EditorMap
-                center={selectedLift.coordinates[0] ?? [138, 36]}
-                zoom={12}
+                center={selectedCourse.coordinates[0] ?? [138, 36]}
+                zoom={13}
                 courses={editableLines}
                 backgroundLines={contextLines}
                 activeCourseId={selected?.id ?? null}
-                mode={
-                  pending ? "view" : placingMidstation ? "midstation" : "edit"
-                }
+                mode={pending ? "view" : "edit"}
                 googleMapsApiKey={null}
                 layerId="gsiPhoto"
                 fitBoundsKey={1}
-                fitBoundsToBackground
                 showTileSwitcher={false}
                 showLabels
-                onSelectCourse={selectLift}
+                onSelectCourse={selectCourse}
                 onMoveVertex={(index, point) =>
                   updateCoordinates(coordinates =>
                     coordinates.map((original, i) =>
@@ -224,49 +213,43 @@ export function LiftRequestWorkspace({
                       : coordinates,
                   )
                 }
-                midstation={midstation}
-                onPlaceMidstation={updateMidstation}
-                onMoveMidstation={updateMidstation}
               />
             </div>
           </div>
         ) : (
           <RequestMap
             fill
-            kind="lift"
+            kind="slope"
             plan={plan}
             submittedPayload={payload}
             preferSubmittedPayload={editing}
-            contextLines={courseLines}
+            contextLines={liftLines}
             selectedId={selected?.id}
-            onSelectLine={selectLift}
+            onSelectLine={selectCourse}
           />
         )
       }
     >
       <RequestFeatureReview
-        noun="リフト"
+        noun="コース"
         review={review}
         selectedId={selected?.id ?? null}
-        onSelect={selectLift}
+        onSelect={selectCourse}
         editor={
           editing && candidate && selected ? (
-            <LiftRequestEditor
+            <SlopeRequestEditor
               candidate={candidate}
               item={selected}
               tab={editorTab}
-              onTabChange={tab => {
-                setEditorTab(tab);
-                setPlacingMidstation(false);
-              }}
+              onTabChange={setEditorTab}
               onChange={onPayloadChange}
               disabled={pending}
-              placingMidstation={placingMidstation}
-              onPlaceMidstation={() => setPlacingMidstation(value => !value)}
               onResetGeometry={() => {
-                if (baselineLift)
+                if (baselineCourse)
                   updateCoordinates(() =>
-                    baselineLift.coordinates.map(point => [...point] as LngLat),
+                    baselineCourse.coordinates.map(
+                      point => [...point] as LngLat,
+                    ),
                   );
               }}
             />

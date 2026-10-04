@@ -1,4 +1,7 @@
-import type { CourseGrouping } from "@/shared/course-lift/identity";
+import {
+  type CourseGrouping,
+  courseGroupingLabel,
+} from "@/shared/course-lift/identity";
 import type { EditorCourse } from "../types";
 
 export const ENDPOINT_TOLERANCE_M = 10;
@@ -116,30 +119,148 @@ export function groupingFingerprint(courses: EditorCourse[]): string {
   return `${value.length}:${hash >>> 0}`;
 }
 export function courseGroupingBuckets(courses: EditorCourse[]) {
-  // グループ済みの線は grouping.id で束ねる（名前変更や名前の衝突で合流させない）。
-  // 未グループの線は、同名のグループがあればそこへ、なければ名前で束ねる。
-  const groupKeyByName = new Map<string, string>();
-  for (const c of courses)
-    if (c.grouping)
-      groupKeyByName.set(
-        `${c.skiId}:${c.grouping.name.trim()}`,
-        `${c.skiId}:group:${c.grouping.id}`,
-      );
-  const groups = new Map<string, EditorCourse[]>();
-  for (const c of courses) {
-    const nameKey = `${c.skiId}:${c.name.trim()}`;
-    const key = c.grouping
-      ? `${c.skiId}:group:${c.grouping.id}`
-      : c.name.trim()
-        ? (groupKeyByName.get(nameKey) ?? `${c.skiId}:name:${c.name.trim()}`)
-        : `${c.skiId}:id:${c.id}`;
-    groups.set(key, [...(groups.get(key) ?? []), c]);
-  }
+  // 線の名前・グループ名・グループIDのどれかが共通する線を1つの確認単位にする。
+  // 同名の線の一部だけをまとめたグループと、残りの単独の線を一緒に見直せる。
+  const parent = courses.map((_, index) => index);
+  const find = (index: number): number => {
+    while (parent[index] !== index) {
+      parent[index] = parent[parent[index]];
+      index = parent[index];
+    }
+    return index;
+  };
+  const firstByKey = new Map<string, number>();
+  courses.forEach((c, index) => {
+    const keys = [
+      c.name.trim() && `name:${c.name.trim()}`,
+      c.grouping && `name:${c.grouping.name.trim()}`,
+      c.grouping && `group:${c.grouping.id}`,
+    ];
+    for (const key of keys) {
+      if (!key) continue;
+      const scoped = `${c.skiId}:${key}`;
+      const first = firstByKey.get(scoped);
+      if (first === undefined) firstByKey.set(scoped, index);
+      else parent[find(index)] = find(first);
+    }
+  });
+  const groups = new Map<number, EditorCourse[]>();
+  courses.forEach((c, index) => {
+    const root = find(index);
+    groups.set(root, [...(groups.get(root) ?? []), c]);
+  });
   return [...groups.values()]
     .filter(g => g.length > 1)
-    .map(g =>
-      g.sort((a, b) => (a.grouping?.order ?? 0) - (b.grouping?.order ?? 0)),
-    );
+    .map(g => {
+      const groupIds = [...new Set(g.flatMap(c => c.grouping?.id ?? []))];
+      return g.sort(
+        (a, b) =>
+          (a.grouping ? groupIds.indexOf(a.grouping.id) : groupIds.length) -
+            (b.grouping ? groupIds.indexOf(b.grouping.id) : groupIds.length) ||
+          (a.grouping?.order ?? 0) - (b.grouping?.order ?? 0),
+      );
+    });
+}
+
+/** 1つのコースとしてまとめる線。ルートごとに、上から区間順に線IDを並べる。 */
+export type CourseGroupDraft = {
+  name: string;
+  routes: string[][];
+};
+
+/**
+ * 端点が一続きにつながる線を1つのルート（連続区間）とし、
+ * 残りの線はそれぞれ別ルートとして提案する。
+ */
+export function suggestCourseRoutes(
+  lines: Line[],
+  tolerance = ENDPOINT_TOLERANCE_M,
+): { routes: string[][]; reason: string } {
+  const whole = suggestCourseChain(lines, tolerance);
+  if (whole.kind === "continuous")
+    return { routes: [whole.ids], reason: whole.reason };
+  const parent = lines.map((_, index) => index);
+  const find = (index: number): number => {
+    while (parent[index] !== index) index = parent[index];
+    return index;
+  };
+  for (let i = 0; i < lines.length; i++)
+    for (let j = i + 1; j < lines.length; j++) {
+      const a = lines[i].coordinates,
+        b = lines[j].coordinates;
+      if (a.length < 2 || b.length < 2) continue;
+      const touches = [a[0], a[a.length - 1]].some(p =>
+        [b[0], b[b.length - 1]].some(q => endpointDistance(p, q) <= tolerance),
+      );
+      if (touches) parent[find(j)] = find(i);
+    }
+  const components = new Map<number, Line[]>();
+  lines.forEach((line, index) => {
+    const root = find(index);
+    components.set(root, [...(components.get(root) ?? []), line]);
+  });
+  const routes = [...components.values()].flatMap(component => {
+    if (component.length < 2) return [component.map(line => line.id)];
+    const chain = suggestCourseChain(component, tolerance);
+    return chain.kind === "continuous"
+      ? [chain.ids]
+      : component.map(line => [line.id]);
+  });
+  if (routes.every(route => route.length === 1))
+    return { routes: [], reason: whole.reason };
+  return {
+    routes,
+    reason: `端点が${tolerance}m以内で一続きになる線を1つのルートにし、ほかの線を別ルートとして提案しました。名前が同じだけの別コースなら「別コース」へ移してください。`,
+  };
+}
+
+/** 確認単位の線を、1つのコース（ルート・区間）と別コースの線に振り分けて確定する。 */
+export function applyCourseGroupingPlan(
+  courses: EditorCourse[],
+  memberIds: string[],
+  group: CourseGroupDraft | null,
+): EditorCourse[] {
+  const members = courses.filter(c => memberIds.includes(c.id));
+  if (new Set(members.map(c => c.skiId)).size > 1)
+    throw new Error("異なるスキー場の線はまとめられません。");
+  const routes = (group?.routes ?? []).filter(route => route.length > 0);
+  const assigned = routes.flat();
+  if (
+    new Set(assigned).size !== assigned.length ||
+    assigned.some(id => !memberIds.includes(id))
+  )
+    throw new Error("同じ線を複数のルートに入れることはできません。");
+  if (assigned.length > 0 && !group?.name.trim())
+    throw new Error("まとめて表示する名前が必要です。");
+  const kind = routes.length > 1 ? "routes" : "continuous";
+  const id =
+    assigned
+      .map(lineId => members.find(c => c.id === lineId)?.grouping?.id)
+      .find(Boolean) ?? crypto.randomUUID();
+  const fingerprint = groupingFingerprint(members);
+  return courses.map(c => {
+    if (!memberIds.includes(c.id)) return c;
+    const route = routes.findIndex(r => r.includes(c.id));
+    if (route < 0 || !group)
+      return { ...c, grouping: null, groupingReviewed: fingerprint };
+    const section = routes[route].indexOf(c.id) + 1;
+    return {
+      ...c,
+      grouping: {
+        id,
+        name: group.name.trim(),
+        kind,
+        order: assigned.indexOf(c.id) + 1,
+        ...(kind === "routes"
+          ? {
+              route: route + 1,
+              ...(routes[route].length > 1 ? { section } : {}),
+            }
+          : {}),
+      },
+      groupingReviewed: fingerprint,
+    };
+  });
 }
 export function applyCourseGrouping(
   courses: EditorCourse[],
@@ -147,23 +268,12 @@ export function applyCourseGrouping(
   kind: CourseGrouping["kind"] | "independent",
   name: string,
 ): EditorCourse[] {
-  const members = courses.filter(c => ids.includes(c.id));
-  if (new Set(members.map(c => c.skiId)).size > 1)
-    throw new Error("異なるスキー場の線はまとめられません。");
-  const existing = members.find(c => c.grouping)?.grouping;
-  const id = existing?.id ?? crypto.randomUUID();
-  const fingerprint = groupingFingerprint(members);
-  return courses.map(c =>
-    ids.includes(c.id)
-      ? {
-          ...c,
-          grouping:
-            kind === "independent"
-              ? null
-              : { id, name: name.trim(), kind, order: ids.indexOf(c.id) + 1 },
-          groupingReviewed: fingerprint,
-        }
-      : c,
+  return applyCourseGroupingPlan(
+    courses,
+    ids,
+    kind === "independent"
+      ? null
+      : { name, routes: kind === "continuous" ? [ids] : ids.map(id => [id]) },
   );
 }
 export function groupingNeedsReview(courses: EditorCourse[]) {
@@ -173,5 +283,5 @@ export function groupingNeedsReview(courses: EditorCourse[]) {
 }
 export function courseEditorLabel(course: EditorCourse) {
   if (!course.grouping) return course.name || "名前不明";
-  return `${course.grouping.name} / ${course.grouping.kind === "continuous" ? "区間" : "ルート"}${course.grouping.order}`;
+  return `${course.grouping.name} / ${courseGroupingLabel(course.grouping)}`;
 }

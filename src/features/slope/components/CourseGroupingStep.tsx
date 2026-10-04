@@ -1,41 +1,74 @@
 "use client";
 
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { EditorStepContent } from "@/shared/components/resort-editor/EditorStepContent";
+import { courseGroupingRoute } from "@/shared/course-lift/identity";
 import type { EditorCourse } from "../types";
 import {
-  applyCourseGrouping,
+  applyCourseGroupingPlan,
   courseGroupingBuckets,
   groupingFingerprint,
   groupingNeedsReview,
-  suggestCourseChain,
+  suggestCourseRoutes,
 } from "../utils/courseGrouping";
 
 type Props = {
   courses: EditorCourse[];
   setCourses: (updater: (courses: EditorCourse[]) => EditorCourse[]) => void;
+  selectedId: string | null;
   onSelect: (id: string) => void;
   onBack: () => void;
   onProceed: () => void;
 };
+
+const NEW_ROUTE = "new";
+const SEPARATE = "separate";
+
+/** 保存済みのルート・区間。未確認なら端点のつながりから提案する。 */
+function initialRoutes(members: EditorCourse[], reviewed: boolean) {
+  const saved = new Map<string, string[]>();
+  for (const c of members) {
+    if (!c.grouping) continue;
+    const key =
+      c.grouping.kind === "continuous"
+        ? `${c.grouping.id}`
+        : `${c.grouping.id}:${courseGroupingRoute(c.grouping)}`;
+    saved.set(key, [...(saved.get(key) ?? []), c.id]);
+  }
+  if (saved.size > 0 || reviewed) return [...saved.values()];
+  return suggestCourseRoutes(members).routes;
+}
+
+/** ルートと区間の組み合わせを、言葉で確認できるようにする。 */
+function describe(routes: string[][]) {
+  const count = routes.flat().length;
+  if (count === 0) return "まとめずに、すべて別コースとして扱います。";
+  if (routes.length === 1)
+    return `1本のコースを${count}つの区間に分けた「連続した区間」として扱います。`;
+  return `同じコースの別ルートとして扱います（${routes
+    .map(
+      (route, index) =>
+        `ルート${index + 1}: ${route.length > 1 ? `${route.length}区間` : "1本"}`,
+    )
+    .join("、")}）。`;
+}
+
 function GroupEditor({
   members,
   ...props
 }: Props & { members: EditorCourse[] }) {
-  const proposal = suggestCourseChain(members);
-  const saved = members[0].grouping;
-  const [kind, setKind] = useState<"continuous" | "routes" | "independent">(
-    saved?.kind ??
-      (members.every(c => c.groupingReviewed === groupingFingerprint(members))
-        ? "independent"
-        : proposal.kind),
-  );
-  const [name, setName] = useState(saved?.name ?? members[0].name);
-  const [ids, setIds] = useState(saved ? members.map(c => c.id) : proposal.ids);
+  const proposal = suggestCourseRoutes(members);
   const reviewed = members.every(
     c => c.groupingReviewed === groupingFingerprint(members),
   );
+  const [routes, setRoutes] = useState<string[][]>(() =>
+    initialRoutes(members, reviewed),
+  );
+  const [name, setName] = useState(
+    members.find(c => c.grouping)?.grouping?.name ?? members[0].name,
+  );
+  const separate = members.filter(c => !routes.some(r => r.includes(c.id)));
   const invalidate = () =>
     props.setCourses(current =>
       current.map(c =>
@@ -44,44 +77,115 @@ function GroupEditor({
           : c,
       ),
     );
-  const move = (index: number, delta: number) => {
+  const update = (updater: (routes: string[][]) => string[][]) => {
     invalidate();
-    setIds(previous => {
-      const next = [...previous];
-      const target = index + delta;
-      if (target >= 0 && target < next.length)
-        [next[index], next[target]] = [next[target], next[index]];
-      return next;
-    });
+    // 線がなくなったルートは消す
+    setRoutes(previous => updater(previous).filter(r => r.length > 0));
   };
+  const moveTo = (id: string, target: string) =>
+    update(previous => {
+      const next = previous.map(r => r.filter(other => other !== id));
+      if (target === NEW_ROUTE) return [...next, [id]];
+      if (target === SEPARATE) return next;
+      return next.map((r, index) =>
+        String(index) === target ? [...r, id] : r,
+      );
+    });
+  const move = (routeIndex: number, index: number, delta: number) =>
+    update(previous =>
+      previous.map((r, other) => {
+        const target = index + delta;
+        if (other !== routeIndex || target < 0 || target >= r.length) return r;
+        const next = [...r];
+        [next[index], next[target]] = [next[target], next[index]];
+        return next;
+      }),
+    );
+  const grouped = routes.flat().length;
+  const problems = [
+    ...(grouped === 1
+      ? [
+          "まとめる線は2本以上にしてください。1本だけなら「別コース」にしてください。",
+        ]
+      : []),
+    ...(grouped > 0 && !name.trim()
+      ? ["まとめて表示する名前を入力してください。"]
+      : []),
+  ];
+
+  const membership = (c: EditorCourse, current: string) => (
+    <select
+      aria-label={`${c.name || "名前不明"}の扱い`}
+      className="min-w-0 flex-1 rounded border bg-background p-2 text-sm"
+      value={current}
+      onChange={e => moveTo(c.id, e.target.value)}
+    >
+      {routes.map((route, index) => (
+        <option key={route.join(":")} value={String(index)}>
+          ルート{index + 1}に入れる
+        </option>
+      ))}
+      <option value={NEW_ROUTE}>
+        {routes.length === 0 ? "まとめる（ルート1）" : "新しいルートにする"}
+      </option>
+      <option value={SEPARATE}>別コース（まとめない）</option>
+    </select>
+  );
+  /** 名前を上、扱い・並べ替えを下に置く。名前部分を押すと地図で赤く表示する */
+  const lineRow = (
+    c: EditorCourse,
+    prefix: string,
+    current: string,
+    controls?: ReactNode,
+  ) => {
+    const selected = c.id === props.selectedId;
+    return (
+      <li
+        key={c.id}
+        className={`space-y-2 rounded border p-2 ${
+          selected
+            ? "border-red-500 bg-red-50"
+            : "border-transparent bg-muted/50"
+        }`}
+      >
+        <button
+          type="button"
+          aria-pressed={selected}
+          className="block w-full text-left text-sm"
+          onClick={() => props.onSelect(c.id)}
+        >
+          <span className="font-medium">
+            {prefix}
+            {c.name || "名前不明"}
+          </span>
+          <span className="block text-xs text-muted-foreground">
+            {c.detail.level || "難易度未設定"}・
+            {selected ? "地図で赤く表示中" : "押すと地図で表示"}
+          </span>
+        </button>
+        <div className="flex items-center gap-1">
+          {membership(c, current)}
+          {controls}
+        </div>
+      </li>
+    );
+  };
+
   return (
     <section className="space-y-3 rounded-lg border p-3">
       <div className="flex justify-between gap-2">
         <h3 className="font-semibold">
-          {saved?.name ?? members[0].name}（{members.length}本）
+          {members[0].name || members[0].grouping?.name}（{members.length}本）
         </h3>
         <span className={reviewed ? "text-green-700" : "text-amber-700"}>
           {reviewed ? "確認済み" : "要確認"}
         </span>
       </div>
       <p className="text-xs text-muted-foreground">{proposal.reason}</p>
-      <label className="block text-sm">
-        扱い
-        <select
-          aria-label="扱い"
-          className="mt-1 block w-full rounded border bg-background p-2"
-          value={kind}
-          onChange={e => {
-            invalidate();
-            setKind(e.target.value as typeof kind);
-          }}
-        >
-          <option value="continuous">連続した区間</option>
-          <option value="routes">同じコースの別ルート</option>
-          <option value="independent">名前が同じ別コース</option>
-        </select>
-      </label>
-      {kind !== "independent" && (
+      <p className="text-xs text-muted-foreground">
+        つながって1本のコースになる線は同じルートに入れ、上から区間順に並べます。並行する別の道は別のルートにします。
+      </p>
+      {grouped > 0 && (
         <label className="block text-sm">
           まとめて表示する名前
           <input
@@ -94,75 +198,98 @@ function GroupEditor({
           />
         </label>
       )}
-      <ol className="space-y-2">
-        {ids.map((id, index) => {
-          const c = members.find(m => m.id === id);
-          if (!c) return null;
-          return (
-            <li
-              key={id}
-              className="flex items-center gap-1 rounded bg-muted/50 p-2"
+      {routes.map((route, routeIndex) => (
+        <div
+          key={route.join(":")}
+          className="space-y-2 rounded border bg-muted/20 p-2"
+        >
+          <p className="text-sm font-semibold">
+            ルート{routeIndex + 1}
+            <span className="ml-1 text-xs font-normal text-muted-foreground">
+              {route.length > 1 ? `${route.length}区間（上から順）` : "1本"}
+            </span>
+          </p>
+          <ol className="space-y-2">
+            {route.map((id, index) => {
+              const c = members.find(m => m.id === id);
+              if (!c) return null;
+              return lineRow(
+                c,
+                route.length > 1 ? `区間${index + 1}：` : "",
+                String(routeIndex),
+                route.length > 1 && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      aria-label={`ルート${routeIndex + 1}の区間${index + 1}を上へ`}
+                      disabled={index === 0}
+                      onClick={() => move(routeIndex, index, -1)}
+                    >
+                      ↑
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      aria-label={`ルート${routeIndex + 1}の区間${index + 1}を下へ`}
+                      disabled={index === route.length - 1}
+                      onClick={() => move(routeIndex, index, 1)}
+                    >
+                      ↓
+                    </Button>
+                  </>
+                ),
+              );
+            })}
+          </ol>
+          {route.length > 1 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                update(previous =>
+                  previous.map((r, other) =>
+                    other === routeIndex ? [...r].reverse() : r,
+                  ),
+                )
+              }
             >
-              <button
-                type="button"
-                className="min-w-0 flex-1 text-left text-sm"
-                onClick={() => props.onSelect(id)}
-              >
-                {kind === "continuous"
-                  ? "区間"
-                  : kind === "routes"
-                    ? "ルート"
-                    : "線"}
-                {index + 1}：{c.name || "名前不明"}
-                <span className="block text-xs text-muted-foreground">
-                  {c.detail.level || "難易度未設定"}・地図で確認
-                </span>
-              </button>
-              <Button
-                variant="outline"
-                size="sm"
-                aria-label={`${index + 1}番目を上へ`}
-                disabled={index === 0}
-                onClick={() => move(index, -1)}
-              >
-                ↑
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                aria-label={`${index + 1}番目を下へ`}
-                disabled={index === ids.length - 1}
-                onClick={() => move(index, 1)}
-              >
-                ↓
-              </Button>
-            </li>
-          );
-        })}
-      </ol>
-      <div className="flex flex-wrap gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            invalidate();
-            setIds(previous => [...previous].reverse());
-          }}
-        >
-          順序を反転
-        </Button>
-        <Button
-          size="sm"
-          disabled={kind !== "independent" && !name.trim()}
-          onClick={() =>
-            props.setCourses(current =>
-              applyCourseGrouping(current, ids, kind, name),
-            )
-          }
-        >
-          この扱い・順序で確定
-        </Button>
-      </div>
+              区間の順序を反転
+            </Button>
+          )}
+        </div>
+      ))}
+      {separate.length > 0 && (
+        <div className="space-y-2 rounded border p-2">
+          <p className="text-sm font-semibold">
+            別コース（名前が同じだけで、まとめない線）
+          </p>
+          <ul className="space-y-2">
+            {separate.map(c => lineRow(c, "", SEPARATE))}
+          </ul>
+        </div>
+      )}
+      <p className="rounded bg-muted/40 p-2 text-sm">{describe(routes)}</p>
+      {problems.map(problem => (
+        <p key={problem} className="text-xs text-amber-700">
+          {problem}
+        </p>
+      ))}
+      <Button
+        size="sm"
+        disabled={problems.length > 0}
+        onClick={() =>
+          props.setCourses(current =>
+            applyCourseGroupingPlan(
+              current,
+              members.map(c => c.id),
+              routes.flat().length > 0 ? { name, routes } : null,
+            ),
+          )
+        }
+      >
+        このまとめ方で確定
+      </Button>
     </section>
   );
 }

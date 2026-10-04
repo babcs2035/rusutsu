@@ -9,6 +9,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { RequestChangeBadge } from "@/features/edit-requests/requestEditing";
 import { MappingPairList } from "@/features/latest-status-mapping/components/MappingPairList";
 import type { LatestStatusMappingState } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
 import { cn } from "@/lib/utils";
@@ -107,6 +108,7 @@ export function CourseMappingList({
       )}
       renderBelow={(course, index, isActive) => (
         <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 pl-6">
+          <RequestChangeBadge id={course.id} />
           <span className="text-[11px] text-gray-500">
             {course.coordinates.length} 点
           </span>

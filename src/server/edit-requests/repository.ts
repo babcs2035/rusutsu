@@ -1,6 +1,7 @@
 import "server-only";
 import { buildLiftReview } from "@/features/edit-requests/liftReview";
 import { courseLinesFromDocuments } from "@/features/edit-requests/mapContext";
+import { buildSlopeReview } from "@/features/edit-requests/slopeReview";
 import { usesRemoteDataApi } from "@/lib/internalDataApiClient";
 import { prisma } from "@/lib/prisma";
 import { requireEditor } from "@/lib/requireEditor";
@@ -16,15 +17,20 @@ import {
 } from "./remoteContract";
 import { ensureLocalWorkflow } from "./workflow";
 
-async function readCourseLines(
+const COURSE_FOLDERS = [
+  ["slope_before", "slope_10m"],
+  ["slope_before_osm", "slope_10m_osm"],
+];
+const LIFT_FOLDERS = [["lift_before", "lift_20m"]];
+
+/** 申請の地図で背景に出す、もう一方の種類（リフトならコース）の線。 */
+async function readContextLines(
   resortId: string,
+  folderGroups: string[][],
   readDocument: (key: string) => Promise<{ content: string } | null>,
 ) {
   const documents = await Promise.all(
-    [
-      ["slope_before", "slope_10m"],
-      ["slope_before_osm", "slope_10m_osm"],
-    ].map(async folders => {
+    folderGroups.map(async folders => {
       for (const folder of folders) {
         const document = await readDocument(
           `resorts-temporary/${folder}/${resortId}.geojson`,
@@ -89,10 +95,13 @@ export async function getEditRequest(id: string) {
       { operation: "get", id },
       remoteRequestDetailSchema,
     );
-    const [courseLines, resort] = await Promise.all([
+    const [courseLines, liftLines, resort] = await Promise.all([
       request.kind === "lift" && !request.courseLines
-        ? readCourseLines(request.resortId, getDataDocument)
+        ? readContextLines(request.resortId, COURSE_FOLDERS, getDataDocument)
         : Promise.resolve(request.courseLines ?? []),
+      request.kind === "slope" && !request.liftLines
+        ? readContextLines(request.resortId, LIFT_FOLDERS, getDataDocument)
+        : Promise.resolve(request.liftLines ?? []),
       request.resortName
         ? Promise.resolve(null)
         : readSkiResortById(request.resortId),
@@ -100,7 +109,13 @@ export async function getEditRequest(id: string) {
     return {
       ...request,
       resortName: request.resortName ?? resort?.nameJa ?? null,
+      slopeReview:
+        request.slopeReview ??
+        (request.kind === "slope" && request.submittedPlan
+          ? buildSlopeReview(request.submittedPlan)
+          : null),
       courseLines,
+      liftLines,
     };
   }
   ensureLocalWorkflow();
@@ -114,10 +129,18 @@ export async function getEditRequest(id: string) {
     where: { id: request.resortId },
     select: { nameJa: true },
   });
-  const courseLines =
+  const [courseLines, liftLines] = await Promise.all([
     request.kind === "lift"
-      ? await readCourseLines(request.resortId, getDataDocumentDirect)
-      : [];
+      ? readContextLines(
+          request.resortId,
+          COURSE_FOLDERS,
+          getDataDocumentDirect,
+        )
+      : [],
+    request.kind === "slope"
+      ? readContextLines(request.resortId, LIFT_FOLDERS, getDataDocumentDirect)
+      : [],
+  ]);
   return {
     id: request.id,
     kind: request.kind as EditKind,
@@ -135,7 +158,12 @@ export async function getEditRequest(id: string) {
       request.kind === "lift"
         ? buildLiftReview(request.submittedPlan as unknown as EditPlan)
         : null,
+    slopeReview:
+      request.kind === "slope"
+        ? buildSlopeReview(request.submittedPlan as unknown as EditPlan)
+        : null,
     courseLines,
+    liftLines,
     // Editors see their own submitted change, status, and comment only.
     candidatePayload: actor.role === "admin" ? request.candidatePayload : null,
     submittedPlan:
@@ -146,5 +174,23 @@ export async function getEditRequest(id: string) {
       actor.role === "admin"
         ? (request.candidatePlan as unknown as EditPlan)
         : null,
+  };
+}
+
+/** 通常の編集画面で申請を直すための内容。管理者が確認待ちの申請を開くときだけ返す。 */
+export async function getRequestEditContext(
+  id: string,
+  kind: "slope" | "lift",
+) {
+  const request = await getEditRequest(id);
+  if (!request.isAdmin || request.status !== "PENDING" || request.kind !== kind)
+    return null;
+  return {
+    id: request.id,
+    version: request.version,
+    comment: request.comment ?? "",
+    resortId: request.resortId,
+    authorName: request.authorName,
+    payload: request.candidatePayload ?? request.submittedPayload,
   };
 }

@@ -4,6 +4,7 @@ import { GripVertical, MapPin, RotateCcw, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { RequestChangeBadge } from "@/features/edit-requests/requestEditing";
 import { MappingPairList } from "@/features/latest-status-mapping/components/MappingPairList";
 import type { LatestStatusMappingState } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
 import { cn } from "@/lib/utils";
@@ -102,6 +103,7 @@ export function LiftMappingList({
         const change = describeChange(lift);
         return (
           <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 pl-6">
+            <RequestChangeBadge id={lift.id} />
             <span className="text-[11px] text-gray-500">
               {lift.coordinates.length} 点
             </span>

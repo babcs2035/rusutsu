@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import type { RequestEditContext } from "@/features/edit-requests/requestEditing";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
 import type { ResortOption } from "./types";
 
@@ -18,6 +19,7 @@ const LiftEditWorkspace = dynamic(
 type LiftEditClientProps = {
   resorts: ResortOption[];
   googleMapsApiKey: string | null;
+  editRequest?: RequestEditContext | null;
 };
 
 export function LiftEditClient(props: LiftEditClientProps) {

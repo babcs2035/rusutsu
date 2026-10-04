@@ -3,8 +3,27 @@ export type CourseGrouping = {
   id: string;
   name: string;
   kind: "continuous" | "routes";
+  /** グループ内の通し番号（ルート順→区間順） */
   order: number;
+  /** 別ルートのときのルート番号。古いデータにはなく、order がルート番号 */
+  route?: number;
+  /** 1つのルートが複数の区間からなるときの区間番号 */
+  section?: number;
 };
+
+const positiveInteger = (value: unknown) =>
+  Number.isSafeInteger(value) && Number(value) >= 1 ? Number(value) : null;
+
+/** 別ルートのルート番号。 */
+export const courseGroupingRoute = (grouping: CourseGrouping) =>
+  grouping.route ?? grouping.order;
+
+/** 「区間2」「ルート1」「ルート1 区間2」のような表示名。 */
+export function courseGroupingLabel(grouping: CourseGrouping) {
+  if (grouping.kind === "continuous") return `区間${grouping.order}`;
+  const route = `ルート${courseGroupingRoute(grouping)}`;
+  return grouping.section ? `${route} 区間${grouping.section}` : route;
+}
 export const featureIdentity = (
   properties: Record<string, unknown> | null,
   documentKey: string,
@@ -27,7 +46,16 @@ export function readCourseGrouping(value: unknown): CourseGrouping | null {
     Number(v.order) < 1
   )
     return null;
-  return { id: v.id, name: v.name, kind: v.kind, order: Number(v.order) };
+  const route = v.kind === "routes" ? positiveInteger(v.route) : null;
+  const section = route ? positiveInteger(v.section) : null;
+  return {
+    id: v.id,
+    name: v.name,
+    kind: v.kind,
+    order: Number(v.order),
+    ...(route ? { route } : {}),
+    ...(section ? { section } : {}),
+  };
 }
 
 /** Only _# means grouping. Plain _ and numeric suffixes remain independent. */

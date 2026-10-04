@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode, useEffect, useId, useState } from "react";
-import type { LiftReview } from "./liftReview";
+import type { FeatureReview } from "./featureReview";
 
 const statusLabel = {
   added: "追加",
@@ -10,14 +10,17 @@ const statusLabel = {
   unchanged: "変更なし",
 } as const;
 
-export function LiftRequestReview({
+export function RequestFeatureReview({
+  noun,
   review,
   selectedId,
   onSelect,
   editor,
   extraContent,
 }: {
-  review: LiftReview;
+  /** 「リフト」「コース」のような、一覧の対象の呼び名 */
+  noun: string;
+  review: FeatureReview;
   selectedId: string | null;
   onSelect: (id: string) => void;
   editor?: ReactNode;
@@ -35,12 +38,12 @@ export function LiftRequestReview({
   return (
     <section
       className="flex min-h-0 flex-1 flex-col"
-      aria-label="リフトの申請内容"
+      aria-label={`${noun}の申請内容`}
     >
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-2.5">
         <p className="text-xs text-slate-600">
           <span className="font-semibold text-slate-900">
-            リフト {review.items.length}件
+            {noun} {review.items.length}件
           </span>
           <span className="ml-2">変更 {review.changedCount}件</span>
           {review.orderChanged && (
@@ -66,7 +69,7 @@ export function LiftRequestReview({
       </div>
       <div
         role="tablist"
-        aria-label="リフト一覧"
+        aria-label={`${noun}一覧`}
         className="flex shrink-0 gap-1 overflow-x-auto border-b border-slate-200 bg-slate-50 p-2"
       >
         {visible.map(item => (
@@ -110,7 +113,7 @@ export function LiftRequestReview({
         ))}
         {!visible.length && (
           <p className="p-2 text-xs text-slate-500">
-            変更があるリフトはありません。
+            変更がある{noun}はありません。
           </p>
         )}
       </div>

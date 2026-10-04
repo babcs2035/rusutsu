@@ -10,9 +10,18 @@ import type { EditPlan } from "@/server/edit-requests/contract";
 import { featureIdentity } from "@/shared/course-lift/identity";
 import { candidateLiftId, liftCandidate } from "./liftCandidate";
 import type { RequestCourseLine } from "./mapContext";
+import { candidateCourseId, slopeCandidate } from "./slopeCandidate";
+import { isSlopeFeatureDocument } from "./slopeReview";
+
+export type RequestMapKind = "lift" | "slope";
 
 type Position = [number, number];
 type MapLine = { id: string; name: string; positions: Position[] };
+const NOUN = { lift: "リフト", slope: "コース" } as const;
+const CONTEXT = {
+  lift: { label: "コース", color: "#bef264", className: "bg-lime-400" },
+  slope: { label: "リフト", color: "#e879f9", className: "bg-fuchsia-400" },
+} as const;
 const SOURCE = {
   courses: "request-courses",
   previous: "request-previous",
@@ -26,7 +35,11 @@ const LAYER = {
   selected: "request-selected-line",
 };
 
-function documentLines(plan: EditPlan, before: boolean): MapLine[] {
+function documentLines(
+  plan: EditPlan,
+  before: boolean,
+  kind: RequestMapKind,
+): MapLine[] {
   const documents = before
     ? plan.beforeDocuments.flatMap(item =>
         item.document
@@ -35,7 +48,11 @@ function documentLines(plan: EditPlan, before: boolean): MapLine[] {
       )
     : plan.documents;
   return documents
-    .filter(item => item.key.includes("/lift_before/"))
+    .filter(item =>
+      kind === "lift"
+        ? item.key.includes("/lift_before/")
+        : isSlopeFeatureDocument(item.key),
+    )
     .flatMap(document => {
       const parsed = JSON.parse(document.content) as {
         features?: Array<{
@@ -59,7 +76,7 @@ function documentLines(plan: EditPlan, before: boolean): MapLine[] {
             name:
               typeof feature.properties?.name === "string"
                 ? feature.properties.name
-                : "名称未設定のリフト",
+                : `名称未設定の${NOUN[kind]}`,
             positions,
           },
         ];
@@ -68,12 +85,29 @@ function documentLines(plan: EditPlan, before: boolean): MapLine[] {
     .slice(0, 1000);
 }
 
-function submittedLiftLines(payload: unknown): MapLine[] {
-  const candidate = liftCandidate(payload);
-  if (!candidate) return [];
-  return candidate.lifts.flatMap((lift, index) => {
-    const properties = lift?.properties as Record<string, unknown> | undefined;
-    const coordinates = lift?.coordinates;
+function submittedLines(payload: unknown, kind: RequestMapKind): MapLine[] {
+  const lift = kind === "lift" ? liftCandidate(payload) : null;
+  const slope = kind === "slope" ? slopeCandidate(payload) : null;
+  const items: Array<{
+    id: string;
+    properties: Record<string, unknown>;
+    coordinates: unknown;
+  }> = lift
+    ? lift.lifts.map((item, index) => ({
+        id: candidateLiftId(lift, item, index),
+        properties: item.properties,
+        coordinates: item.coordinates,
+      }))
+    : slope
+      ? slope.courses.map((item, index) => ({
+          id: candidateCourseId(slope, item, index),
+          properties: item.properties,
+          coordinates: item.coordinates,
+        }))
+      : [];
+  return items.flatMap(item => {
+    const properties = item.properties;
+    const coordinates = item.coordinates;
     if (!Array.isArray(coordinates)) return [];
     const positions = coordinates
       .filter(
@@ -86,11 +120,11 @@ function submittedLiftLines(payload: unknown): MapLine[] {
     if (positions.length < 2) return [];
     return [
       {
-        id: candidateLiftId(candidate, lift, index),
+        id: item.id,
         name:
           typeof properties?.name === "string"
             ? properties.name
-            : "名称未設定のリフト",
+            : `名称未設定の${NOUN[kind]}`,
         positions,
       },
     ];
@@ -117,35 +151,41 @@ function updateSource(
 }
 
 export default function RequestMap({
+  kind = "lift",
   plan,
   submittedPayload,
-  courseLines = [],
+  contextLines = [],
   selectedId,
   fill = false,
   preferSubmittedPayload = false,
-  onSelectLift,
+  onSelectLine,
 }: {
+  kind?: RequestMapKind;
   plan?: EditPlan;
   submittedPayload?: unknown;
-  courseLines?: RequestCourseLine[];
+  /** 参考として下に敷く、もう一方の種類の線 */
+  contextLines?: RequestCourseLine[];
   selectedId?: string;
   fill?: boolean;
   preferSubmittedPayload?: boolean;
-  onSelectLift?: (id: string) => void;
+  onSelectLine?: (id: string) => void;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
-  const selectRef = useRef(onSelectLift);
-  selectRef.current = onSelectLift;
+  const selectRef = useRef(onSelectLine);
+  selectRef.current = onSelectLine;
   const [ready, setReady] = useState(false);
 
-  const before = useMemo(() => (plan ? documentLines(plan, true) : []), [plan]);
+  const before = useMemo(
+    () => (plan ? documentLines(plan, true, kind) : []),
+    [plan, kind],
+  );
   const after = useMemo(
     () =>
       plan && !preferSubmittedPayload
-        ? documentLines(plan, false)
-        : submittedLiftLines(submittedPayload),
-    [plan, preferSubmittedPayload, submittedPayload],
+        ? documentLines(plan, false, kind)
+        : submittedLines(submittedPayload, kind),
+    [plan, preferSubmittedPayload, submittedPayload, kind],
   );
   const previous = useMemo(
     () =>
@@ -160,12 +200,12 @@ export default function RequestMap({
   );
   const courses = useMemo(
     () =>
-      courseLines.map((line, index) => ({
-        id: `course-${index}`,
+      contextLines.map((line, index) => ({
+        id: `context-${index}`,
         name: line.name,
         positions: line.coordinates.map(pair => [pair[0], pair[1]] as Position),
       })),
-    [courseLines],
+    [contextLines],
   );
   const courseData = useMemo(() => collection(courses), [courses]);
   const previousData = useMemo(() => collection(previous), [previous]);
@@ -218,7 +258,7 @@ export default function RequestMap({
         id: LAYER.courses,
         type: "line",
         source: SOURCE.courses,
-        paint: { "line-color": "#bef264", "line-width": 3 },
+        paint: { "line-color": CONTEXT[kind].color, "line-width": 3 },
       });
       map.addLayer({
         id: LAYER.previous,
@@ -342,15 +382,17 @@ export default function RequestMap({
         <span>国土地理院の航空写真</span>
         {courses.length > 0 ? (
           <span className="flex items-center gap-1">
-            <i className="h-0.5 w-5 bg-lime-400" />
-            コース
+            <i className={`h-0.5 w-5 ${CONTEXT[kind].className}`} />
+            {CONTEXT[kind].label}
           </span>
         ) : (
-          <span className="text-slate-500">コースの線は未登録</span>
+          <span className="text-slate-500">
+            {CONTEXT[kind].label}の線は未登録
+          </span>
         )}
         <span className="flex items-center gap-1">
           <i className="h-0.5 w-5 bg-blue-500" />
-          申請後のリフト
+          申請後の{NOUN[kind]}
         </span>
         {previous.length > 0 && (
           <span className="flex items-center gap-1">
@@ -359,7 +401,7 @@ export default function RequestMap({
           </span>
         )}
         {selectedId && (
-          <span className="text-amber-800">選択中のリフトを強調表示</span>
+          <span className="text-amber-800">選択中の{NOUN[kind]}を強調表示</span>
         )}
       </div>
       <div

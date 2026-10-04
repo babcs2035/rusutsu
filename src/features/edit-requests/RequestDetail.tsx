@@ -20,6 +20,7 @@ import {
 } from "./actions";
 import { type ChangeRow, changeRows } from "./diff";
 import { LiftRequestWorkspace } from "./LiftRequestWorkspace";
+import { SlopeRequestWorkspace } from "./SlopeRequestWorkspace";
 import { fieldLabel, ValueFields } from "./ValueFields";
 
 const RequestMap = dynamic(() => import("./RequestMap"), { ssr: false });
@@ -446,18 +447,27 @@ export function RequestDetail({
   );
   const groups = useMemo(() => {
     if (!plan) return [];
-    if (request.kind !== "lift") return groupChanges(plan);
-    const isInternalLiftDocument = (key: string) =>
-      ["/lift_before/", "/lift_20m/", "/latest_status_mapping/"].some(path =>
-        key.includes(path),
-      );
+    const internalPaths =
+      request.kind === "lift"
+        ? ["/lift_before/", "/lift_20m/", "/latest_status_mapping/"]
+        : request.kind === "slope"
+          ? [
+              "/slope_before/",
+              "/slope_before_osm/",
+              "/slope_10m/",
+              "/slope_10m_osm/",
+              "/latest_status_mapping/",
+            ]
+          : null;
+    if (!internalPaths) return groupChanges(plan);
+    // 地図と一覧で確認できる線・対応表は、それ以外の変更の要約から外す
+    const isInternalDocument = (key: string) =>
+      internalPaths.some(path => key.includes(path));
     return groupChanges({
       ...plan,
-      documents: plan.documents.filter(
-        item => !isInternalLiftDocument(item.key),
-      ),
+      documents: plan.documents.filter(item => !isInternalDocument(item.key)),
       beforeDocuments: plan.beforeDocuments.filter(
-        item => !isInternalLiftDocument(item.key),
+        item => !isInternalDocument(item.key),
       ),
     });
   }, [plan, request.kind]);
@@ -522,159 +532,168 @@ export function RequestDetail({
       }
     });
   const resortName = request.resortName || request.resortId;
-  if (request.kind === "lift" && (plan || request.liftReview)) {
-    return (
-      <LiftRequestWorkspace
-        resortName={resortName}
-        authorName={request.authorName}
-        createdAt={request.createdAt}
-        status={REQUEST_STATUS_LABELS[request.status] ?? request.status}
-        statusClass={statusClass[request.status] ?? statusClass.WITHDRAWN}
-        plan={plan ?? undefined}
-        submittedReview={request.liftReview}
-        payload={payload}
-        savedPayload={JSON.parse(savedPayload)}
-        courseLines={request.courseLines ?? []}
-        editing={editing}
-        pending={pending}
-        onEdit={canReview ? () => setEditing(true) : undefined}
-        onPayloadChange={setPayload}
-        message={message}
-        extraContent={
-          <div className="space-y-3">
-            {request.comment && !canReview && (
-              <div className="rounded-lg bg-slate-50 p-3 text-sm">
-                <h3 className="text-xs font-semibold text-slate-600">
-                  管理者からのコメント
-                </h3>
-                <p className="mt-1 whitespace-pre-wrap">{request.comment}</p>
-              </div>
-            )}
-            {plan && request.isAdmin && groups.length > 0 && (
-              <details className="rounded-lg border border-slate-200 p-3">
-                <summary className="cursor-pointer text-xs font-medium">
-                  関連リンクなどの変更
-                </summary>
-                <div className="mt-3">
-                  <PlanSummary groups={groups} />
-                </div>
-              </details>
-            )}
-            <details className="rounded-lg border border-slate-200 p-3">
-              <summary className="cursor-pointer text-xs text-slate-500">
-                提出した内部データ
-              </summary>
-              <div className="mt-3">
-                <ValueFields value={request.submittedPayload} />
-              </div>
-            </details>
+  const featureWorkspace = {
+    resortName,
+    authorName: request.authorName,
+    createdAt: request.createdAt,
+    status: REQUEST_STATUS_LABELS[request.status] ?? request.status,
+    statusClass: statusClass[request.status] ?? statusClass.WITHDRAWN,
+    plan: plan ?? undefined,
+    payload,
+    savedPayload: JSON.parse(savedPayload),
+    editing,
+    pending,
+    onEdit: canReview ? () => setEditing(true) : undefined,
+    // 修正案を保存してから開けば、編集画面は最新の申請内容から始まる
+    fullEditorHref:
+      canReview && !dirty
+        ? `/admin/${request.kind}?request=${encodeURIComponent(request.id)}`
+        : undefined,
+    onPayloadChange: setPayload,
+    message,
+    extraContent: (
+      <div className="space-y-3">
+        {request.comment && !canReview && (
+          <div className="rounded-lg bg-slate-50 p-3 text-sm">
+            <h3 className="text-xs font-semibold text-slate-600">
+              管理者からのコメント
+            </h3>
+            <p className="mt-1 whitespace-pre-wrap">{request.comment}</p>
           </div>
-        }
-        footer={
-          canReview ? (
-            editing ? (
-              <>
-                <p className="text-xs text-slate-600">
-                  修正を保存してから、確認画面で承認できます。
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    className="h-9 flex-1"
-                    disabled={pending || !dirty}
-                    onClick={save}
-                  >
-                    {pending ? "保存中…" : "修正を保存して確認へ"}
-                  </Button>
-                  <Button
-                    className="h-9"
-                    variant="outline"
-                    disabled={pending}
-                    onClick={() => {
-                      setPayload(JSON.parse(savedPayload));
-                      setEditing(false);
-                    }}
-                  >
-                    修正を取り消す
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <>
-                <label className="block text-xs font-medium text-slate-600">
-                  申請者へのコメント{" "}
-                  <span className="font-normal">（却下時は必須）</span>
-                  <textarea
-                    className="mt-1 block w-full resize-none rounded-md border border-slate-300 bg-white px-2.5 py-2 text-sm"
-                    rows={2}
-                    maxLength={2000}
-                    value={comment}
-                    disabled={pending}
-                    onChange={event => setComment(event.target.value)}
-                    placeholder="確認結果や修正理由"
-                  />
-                </label>
-                <div className="flex gap-2">
-                  <Button
-                    className="h-9 flex-1"
-                    disabled={pending || dirty}
-                    onClick={() =>
-                      act(() => approveEditRequest(request.id, version))
-                    }
-                  >
-                    <Check className="size-3.5" />
-                    承認して反映
-                  </Button>
-                  {dirty && (
-                    <Button
-                      className="h-9"
-                      variant="outline"
-                      disabled={pending}
-                      onClick={save}
-                    >
-                      コメントを保存
-                    </Button>
-                  )}
-                  <Button
-                    className="h-9"
-                    variant="outline"
-                    disabled={pending || !comment.trim()}
-                    onClick={() =>
-                      act(() => rejectEditRequest(request.id, version, comment))
-                    }
-                  >
-                    却下
-                  </Button>
-                </div>
-              </>
-            )
-          ) : !request.isAdmin && request.status === "PENDING" ? (
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs text-slate-600">
-                管理者の確認を待っています。
-              </p>
+        )}
+        {plan && request.isAdmin && groups.length > 0 && (
+          <details className="rounded-lg border border-slate-200 p-3">
+            <summary className="cursor-pointer text-xs font-medium">
+              関連リンクなどの変更
+            </summary>
+            <div className="mt-3">
+              <PlanSummary groups={groups} />
+            </div>
+          </details>
+        )}
+        <details className="rounded-lg border border-slate-200 p-3">
+          <summary className="cursor-pointer text-xs text-slate-500">
+            提出した内部データ
+          </summary>
+          <div className="mt-3">
+            <ValueFields value={request.submittedPayload} />
+          </div>
+        </details>
+      </div>
+    ),
+    footer: canReview ? (
+      editing ? (
+        <>
+          <p className="text-xs text-slate-600">
+            修正を保存してから、確認画面で承認できます。
+          </p>
+          <div className="flex gap-2">
+            <Button
+              className="h-9 flex-1"
+              disabled={pending || !dirty}
+              onClick={save}
+            >
+              {pending ? "保存中…" : "修正を保存して確認へ"}
+            </Button>
+            <Button
+              className="h-9"
+              variant="outline"
+              disabled={pending}
+              onClick={() => {
+                setPayload(JSON.parse(savedPayload));
+                setEditing(false);
+              }}
+            >
+              修正を取り消す
+            </Button>
+          </div>
+        </>
+      ) : (
+        <>
+          <label className="block text-xs font-medium text-slate-600">
+            申請者へのコメント{" "}
+            <span className="font-normal">（却下時は必須）</span>
+            <textarea
+              className="mt-1 block w-full resize-none rounded-md border border-slate-300 bg-white px-2.5 py-2 text-sm"
+              rows={2}
+              maxLength={2000}
+              value={comment}
+              disabled={pending}
+              onChange={event => setComment(event.target.value)}
+              placeholder="確認結果や修正理由"
+            />
+          </label>
+          <div className="flex gap-2">
+            <Button
+              className="h-9 flex-1"
+              disabled={pending || dirty}
+              onClick={() => act(() => approveEditRequest(request.id, version))}
+            >
+              <Check className="size-3.5" />
+              承認して反映
+            </Button>
+            {dirty && (
               <Button
-                size="sm"
+                className="h-9"
                 variant="outline"
                 disabled={pending}
-                onClick={() =>
-                  act(() => withdrawEditRequest(request.id, request.version))
-                }
+                onClick={save}
               >
-                申請を取り下げる
+                コメントを保存
               </Button>
-            </div>
-          ) : request.resolvedAt ? (
-            <p className="text-xs text-slate-500">
-              処理日時:{" "}
-              {new Date(request.resolvedAt).toLocaleString("ja-JP", {
-                timeZone: "Asia/Tokyo",
-              })}
-            </p>
-          ) : undefined
-        }
+            )}
+            <Button
+              className="h-9"
+              variant="outline"
+              disabled={pending || !comment.trim()}
+              onClick={() =>
+                act(() => rejectEditRequest(request.id, version, comment))
+              }
+            >
+              却下
+            </Button>
+          </div>
+        </>
+      )
+    ) : !request.isAdmin && request.status === "PENDING" ? (
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs text-slate-600">管理者の確認を待っています。</p>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={pending}
+          onClick={() =>
+            act(() => withdrawEditRequest(request.id, request.version))
+          }
+        >
+          申請を取り下げる
+        </Button>
+      </div>
+    ) : request.resolvedAt ? (
+      <p className="text-xs text-slate-500">
+        処理日時:{" "}
+        {new Date(request.resolvedAt).toLocaleString("ja-JP", {
+          timeZone: "Asia/Tokyo",
+        })}
+      </p>
+    ) : undefined,
+  };
+  if (request.kind === "lift" && (plan || request.liftReview))
+    return (
+      <LiftRequestWorkspace
+        {...featureWorkspace}
+        submittedReview={request.liftReview}
+        courseLines={request.courseLines ?? []}
       />
     );
-  }
+  if (request.kind === "slope" && (plan || request.slopeReview))
+    return (
+      <SlopeRequestWorkspace
+        {...featureWorkspace}
+        submittedReview={request.slopeReview}
+        liftLines={request.liftLines ?? []}
+      />
+    );
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-4 pb-12 md:p-8">
       <Link
@@ -725,7 +744,7 @@ export function RequestDetail({
           管理者の確認を待っています。承認されると変更が反映されます。
         </section>
       )}
-      {!request.isAdmin && (request.kind !== "lift" || !request.liftReview) && (
+      {!request.isAdmin && (
         <section className="rounded-xl border border-slate-200 bg-white p-5">
           <h2 className="font-semibold text-slate-900">提出した内容</h2>
           <p className="mt-2 text-sm text-slate-700">
@@ -738,11 +757,7 @@ export function RequestDetail({
           )}
         </section>
       )}
-      {plan &&
-        request.isAdmin &&
-        (request.kind !== "lift" || groups.length > 0) && (
-          <PlanSummary groups={groups} />
-        )}
+      {plan && request.isAdmin && <PlanSummary groups={groups} />}
       {canReview && (
         <section
           className="space-y-4 rounded-xl border border-slate-300 bg-white p-5 shadow-sm"
@@ -826,9 +841,7 @@ export function RequestDetail({
           </Button>
         </details>
       )}
-      {request.isAdmin && plan && request.kind !== "lift" && (
-        <PlanTechnical plan={plan} groups={groups} />
-      )}
+      {request.isAdmin && plan && <PlanTechnical plan={plan} groups={groups} />}
       {request.isAdmin &&
         JSON.stringify(payload) !==
           JSON.stringify(request.submittedPayload) && (

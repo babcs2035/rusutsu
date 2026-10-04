@@ -49,7 +49,9 @@ const toLineFeature = (
 });
 
 const getRouteIdProperty = (course: FinalizedCourseFeature) =>
-  course.groupKind === "routes" ? { routeId: course.id } : {};
+  course.groupKind === "routes"
+    ? { routeId: course.routeKey ?? course.id }
+    : {};
 
 /**
  * コースの線。

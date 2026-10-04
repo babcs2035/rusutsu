@@ -17,6 +17,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  RequestChangeBadge,
+  RequestFieldChange,
+} from "@/features/edit-requests/requestEditing";
 import { OrderOrganizerDialog } from "@/features/latest-status-mapping/components/OrderOrganizerDialog";
 import type { LatestStatusMappingState } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
 import { cn } from "@/lib/utils";
@@ -57,6 +61,7 @@ type DetailStepProps = {
   selectedLiftId: string | null;
   onSelectLift: (liftId: string | null) => void;
   onProceed: () => void;
+  proceedLabel?: string;
 };
 
 const selectClassName =
@@ -109,6 +114,7 @@ export function DetailStep({
   selectedLiftId,
   onSelectLift,
   onProceed,
+  proceedLabel = "次へ（全体情報リンク）",
 }: DetailStepProps) {
   const [isOrganizerOpen, setIsOrganizerOpen] = useState(false);
   const [bulkOnlyEmpty, setBulkOnlyEmpty] = useState(false);
@@ -322,6 +328,7 @@ export function DetailStep({
             <p className="truncate text-sm flex-1">
               {index + 1}. {liftDisplayName(lift, index)}
             </p>
+            <RequestChangeBadge id={lift.id} />
             {lift.detailMatch && (
               <Badge
                 variant="secondary"
@@ -518,6 +525,7 @@ export function DetailStep({
             <div className="flex flex-col gap-2">
               <div>
                 <Label>リフト名</Label>
+                <RequestFieldChange id={selectedLift.id} field="name" />
                 <Input
                   className="h-9 w-full rounded-md border border-input bg-white px-3 py-1 text-sm shadow-sm"
                   value={selectedLift.name}
@@ -543,6 +551,7 @@ export function DetailStep({
               <div className="flex gap-2">
                 <div className="flex-1">
                   <Label>{DETAIL_LABELS.type}</Label>
+                  <RequestFieldChange id={selectedLift.id} field="type" />
                   <Select
                     value={selectedLift.detail.type}
                     onValueChange={value =>
@@ -571,6 +580,7 @@ export function DetailStep({
                 </div>
                 <div className="flex-1">
                   <Label>{DETAIL_LABELS.speed}</Label>
+                  <RequestFieldChange id={selectedLift.id} field="speed" />
                   <Select
                     value={selectedLift.detail.speed}
                     onValueChange={value =>
@@ -591,6 +601,7 @@ export function DetailStep({
                 </div>
                 <div className="flex-1">
                   <Label>{DETAIL_LABELS.capacity}</Label>
+                  <RequestFieldChange id={selectedLift.id} field="capacity" />
                   <Input
                     className="h-9 w-full rounded-md border border-input bg-white px-3 py-1 text-sm shadow-sm"
                     type="number"
@@ -606,6 +617,7 @@ export function DetailStep({
               <div className="flex gap-2">
                 <div className="flex-1">
                   <Label>{DETAIL_LABELS.distance}</Label>
+                  <RequestFieldChange id={selectedLift.id} field="distance" />
                   <Input
                     className="h-9 w-full rounded-md border border-input bg-white px-3 py-1 text-sm shadow-sm"
                     type="number"
@@ -618,6 +630,7 @@ export function DetailStep({
                 </div>
                 <div className="flex-1">
                   <Label>{DETAIL_LABELS.vertical}</Label>
+                  <RequestFieldChange id={selectedLift.id} field="vertical" />
                   <Input
                     className="h-9 w-full rounded-md border border-input bg-white px-3 py-1 text-sm shadow-sm"
                     type="number"
@@ -630,6 +643,7 @@ export function DetailStep({
                 </div>
                 <div className="flex-1">
                   <Label>{DETAIL_LABELS.towers}</Label>
+                  <RequestFieldChange id={selectedLift.id} field="towers" />
                   <Input
                     className="h-9 w-full rounded-md border border-input bg-white px-3 py-1 text-sm shadow-sm"
                     type="number"
@@ -642,6 +656,7 @@ export function DetailStep({
                 </div>
                 <div className="flex-1">
                   <Label>{DETAIL_LABELS.year}</Label>
+                  <RequestFieldChange id={selectedLift.id} field="year" />
                   <Input
                     className="h-9 w-full rounded-md border border-input bg-white px-3 py-1 text-sm shadow-sm"
                     value={selectedLift.detail.year}
@@ -655,6 +670,7 @@ export function DetailStep({
               <div className="flex gap-2">
                 <div className="flex-1">
                   <Label>{DETAIL_LABELS.top}</Label>
+                  <RequestFieldChange id={selectedLift.id} field="top" />
                   <Input
                     className="h-9 w-full rounded-md border border-input bg-white px-3 py-1 text-sm shadow-sm"
                     value={selectedLift.detail.top}
@@ -665,6 +681,7 @@ export function DetailStep({
                 </div>
                 <div className="flex-1">
                   <Label>{DETAIL_LABELS.bottom}</Label>
+                  <RequestFieldChange id={selectedLift.id} field="bottom" />
                   <Input
                     className="h-9 w-full rounded-md border border-input bg-white px-3 py-1 text-sm shadow-sm"
                     value={selectedLift.detail.bottom}
@@ -678,6 +695,7 @@ export function DetailStep({
               <div className="flex gap-2">
                 <div className="flex-1">
                   <Label>{DETAIL_LABELS.hood}</Label>
+                  <RequestFieldChange id={selectedLift.id} field="hood" />
                   <MarkSelect
                     value={selectedLift.detail.hood}
                     onChange={value => updateDetail({ hood: value })}
@@ -685,6 +703,7 @@ export function DetailStep({
                 </div>
                 <div className="flex-1">
                   <Label>{DETAIL_LABELS.footrest}</Label>
+                  <RequestFieldChange id={selectedLift.id} field="footrest" />
                   <MarkSelect
                     value={selectedLift.detail.footrest}
                     onChange={value => updateDetail({ footrest: value })}
@@ -692,6 +711,7 @@ export function DetailStep({
                 </div>
                 <div className="flex-1">
                   <Label>{DETAIL_LABELS.oilShield}</Label>
+                  <RequestFieldChange id={selectedLift.id} field="oilShield" />
                   <MarkSelect
                     value={selectedLift.detail.oilShield}
                     onChange={value => updateDetail({ oilShield: value })}
@@ -702,6 +722,7 @@ export function DetailStep({
               <div className="flex gap-2">
                 <div className="flex-1">
                   <Label>{DETAIL_LABELS.morning}</Label>
+                  <RequestFieldChange id={selectedLift.id} field="morning" />
                   <MarkSelect
                     value={selectedLift.detail.morning}
                     onChange={value => updateDetail({ morning: value })}
@@ -710,6 +731,7 @@ export function DetailStep({
                 </div>
                 <div className="flex-1">
                   <Label>{DETAIL_LABELS.night}</Label>
+                  <RequestFieldChange id={selectedLift.id} field="night" />
                   <MarkSelect
                     value={selectedLift.detail.night}
                     onChange={value => updateDetail({ night: value })}
@@ -718,6 +740,7 @@ export function DetailStep({
                 </div>
                 <div className="flex-1">
                   <Label>{DETAIL_LABELS.maker}</Label>
+                  <RequestFieldChange id={selectedLift.id} field="maker" />
                   <Select
                     value={selectedLift.detail.maker}
                     onValueChange={value =>
@@ -748,6 +771,7 @@ export function DetailStep({
 
               <div>
                 <Label>{DETAIL_LABELS.searchWord}</Label>
+                <RequestFieldChange id={selectedLift.id} field="searchWord" />
                 <Input
                   className="h-9 w-full rounded-md border border-input bg-white px-3 py-1 text-sm shadow-sm"
                   value={selectedLift.detail.searchWord}
@@ -758,6 +782,7 @@ export function DetailStep({
               </div>
               <div>
                 <Label>{DETAIL_LABELS.link}</Label>
+                <RequestFieldChange id={selectedLift.id} field="link" />
                 <Input
                   className="h-9 w-full rounded-md border border-input bg-white px-3 py-1 text-sm shadow-sm"
                   value={selectedLift.detail.link}
@@ -766,6 +791,7 @@ export function DetailStep({
               </div>
               <div>
                 <Label htmlFor="lift-note">{DETAIL_LABELS.note}（note）</Label>
+                <RequestFieldChange id={selectedLift.id} field="note" />
                 <Textarea
                   id="lift-note"
                   rows={3}
@@ -826,7 +852,7 @@ export function DetailStep({
           className="flex-shrink-0"
           onClick={handleProceed}
         >
-          次へ（全体情報リンク）
+          {proceedLabel}
         </Button>
       )}
     </div>

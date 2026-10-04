@@ -1,6 +1,7 @@
 import { NUMERIC_DETAIL_KEYS } from "@/features/lift/constants";
 import type { SaveLiftPayload, SaveRequest } from "@/features/lift/types";
 import { featureIdentity } from "@/shared/course-lift/identity";
+import { renameMappedGeometry } from "./candidateMapping";
 
 export function liftCandidate(payload: unknown): SaveRequest | null {
   if (!payload || typeof payload !== "object") return null;
@@ -48,34 +49,18 @@ export function updateCandidateLift(
   const lifts = candidate.lifts.map((lift, i) => (i === index ? next : lift));
   if (previous.properties.name === next.properties.name || !candidate.mapping)
     return { ...candidate, lifts };
-  const oldName = previous.properties.name;
-  const newName = String(next.properties.name ?? "");
-  const uniqueName =
-    candidate.lifts.filter(lift => lift.properties.name === oldName).length ===
-    1;
   return {
     ...candidate,
     lifts,
-    mapping: {
-      ...candidate.mapping,
-      rows: candidate.mapping.rows.map(row =>
-        row.geometryId === id ||
-        (!row.geometryId && uniqueName && row.geojsonName === oldName)
-          ? { ...row, geojsonName: newName }
-          : row,
-      ),
-      ...(candidate.mapping.geometries && {
-        geometries: candidate.mapping.geometries.map(line =>
-          line.id === id ? { ...line, name: newName } : line,
-        ),
-      }),
-      ...(candidate.mapping.geojsonNames && {
-        geojsonNames: lifts
-          .filter(lift => lift.targetSkiId === candidate.resortId)
-          .map(lift => String(lift.properties.name ?? ""))
-          .filter(Boolean),
-      }),
-    },
+    mapping: renameMappedGeometry(
+      candidate.mapping,
+      candidate.resortId,
+      id,
+      candidate.lifts,
+      lifts,
+      previous.properties.name,
+      String(next.properties.name ?? ""),
+    ),
   };
 }
 

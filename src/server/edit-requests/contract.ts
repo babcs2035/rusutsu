@@ -100,15 +100,56 @@ const IMMUTABLE_FIELDS = new Set([
   "expectedLinks",
   "latestFile",
 ]);
+/** コース・リフト・対応表の行は、並べ替えや分割で位置が変わるためIDで対応させる。 */
+function itemIdentity(value: unknown): string | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const item = value as Record<string, unknown>;
+  const properties =
+    item.properties && typeof item.properties === "object"
+      ? (item.properties as Record<string, unknown>)
+      : null;
+  const id = properties?.entityId ?? item.geometryId;
+  return typeof id === "string" && id ? id : null;
+}
+
 export function assertCorrectionScope(
   original: unknown,
   candidate: unknown,
 ): void {
   const walk = (a: unknown, b: unknown) => {
     if (Array.isArray(a) && Array.isArray(b)) {
+      const byIdentity = new Map(
+        b.flatMap(entry => {
+          const id = itemIdentity(entry);
+          return id ? [[id, entry] as const] : [];
+        }),
+      );
       a.forEach((entry, index) => {
-        walk(entry, b[index]);
+        const id = itemIdentity(entry);
+        if (!id) walk(entry, b[index]);
+        // 削除は申請の範囲内の修正として扱う。残した項目の対象は変えられない。
+        else if (byIdentity.has(id)) walk(entry, byIdentity.get(id));
       });
+      const targets = new Set(
+        a.flatMap(entry =>
+          entry && typeof entry === "object" && "targetSkiId" in entry
+            ? [(entry as { targetSkiId: unknown }).targetSkiId]
+            : [],
+        ),
+      );
+      if (
+        targets.size > 0 &&
+        b.some(
+          entry =>
+            entry &&
+            typeof entry === "object" &&
+            "targetSkiId" in entry &&
+            !targets.has((entry as { targetSkiId: unknown }).targetSkiId),
+        )
+      )
+        throw new Error(
+          "対象と更新基準は変更できません。移動先を変更する場合は再申請してください。",
+        );
     } else if (a && typeof a === "object") {
       if (!b || typeof b !== "object" || Array.isArray(b))
         throw new Error("対象と更新基準は変更できません。");

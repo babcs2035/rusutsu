@@ -66,6 +66,43 @@ test("administrator corrections cannot rebase or redirect a submitted request", 
     }),
   );
 });
+test("administrator corrections may split, reorder and remove identified items", () => {
+  const course = (id: string, name: string) => ({
+    targetSkiId: "example",
+    properties: { entityId: id, name },
+  });
+  const original = {
+    resortId: "example",
+    courses: [course("a", "A"), course("b", "B")],
+  };
+  assert.doesNotThrow(() =>
+    assertCorrectionScope(original, {
+      ...original,
+      courses: [course("b", "B"), course("a", "A上部"), course("c", "A下部")],
+    }),
+  );
+  assert.doesNotThrow(() =>
+    assertCorrectionScope(original, {
+      ...original,
+      courses: [course("a", "A")],
+    }),
+  );
+  assert.throws(() =>
+    assertCorrectionScope(original, {
+      ...original,
+      courses: [
+        { ...course("a", "A"), targetSkiId: "other" },
+        course("b", "B"),
+      ],
+    }),
+  );
+  assert.throws(() =>
+    assertCorrectionScope(original, {
+      ...original,
+      courses: [...original.courses, { ...course("c", "C"), targetSkiId: "x" }],
+    }),
+  );
+});
 test("malformed, oversized and polluted proposals fail before any write", () => {
   const valid = {
     resortId: "example",

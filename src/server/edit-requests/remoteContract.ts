@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { LiftReview } from "@/features/edit-requests/liftReview";
+import type { SlopeReview } from "@/features/edit-requests/slopeReview";
 import {
   EDIT_KIND_LABELS,
   type EditPlan,
@@ -131,6 +132,36 @@ export const remotePlanSchema = z
     elevations: z.array(z.unknown()),
   })
   .transform(value => value as unknown as EditPlan);
+const featureReviewSchema = z
+  .object({
+    items: z.array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        status: z.enum(["added", "removed", "changed", "unchanged"]),
+        fields: z.array(
+          z.object({
+            key: z.string(),
+            label: z.string(),
+            before: z.string(),
+            after: z.string(),
+            changed: z.boolean(),
+          }),
+        ),
+        geometryChanged: z.boolean(),
+        movedFrom: z.string().nullable(),
+        movedTo: z.string().nullable(),
+        mappingNames: z.array(z.string()),
+        mapName: z.string().nullable(),
+        mappingChanged: z.boolean(),
+      }),
+    ),
+    changedCount: z.number(),
+    mappingCount: z.number(),
+    orderChanged: z.boolean(),
+  })
+  .nullable()
+  .optional();
 export const remoteRequestDetailSchema = summary
   .omit({ updatedAt: true })
   .extend({
@@ -139,38 +170,22 @@ export const remoteRequestDetailSchema = summary
     comment: z.string().nullable(),
     resolvedAt: z.iso.datetime().nullable(),
     submittedPayload: z.unknown(),
-    liftReview: z
-      .object({
-        items: z.array(
-          z.object({
-            id: z.string(),
-            name: z.string(),
-            status: z.enum(["added", "removed", "changed", "unchanged"]),
-            fields: z.array(
-              z.object({
-                key: z.string(),
-                label: z.string(),
-                before: z.string(),
-                after: z.string(),
-                changed: z.boolean(),
-              }),
-            ),
-            geometryChanged: z.boolean(),
-            movedFrom: z.string().nullable(),
-            movedTo: z.string().nullable(),
-            mappingNames: z.array(z.string()),
-            mapName: z.string().nullable(),
-            mappingChanged: z.boolean(),
-          }),
-        ),
-        changedCount: z.number(),
-        mappingCount: z.number(),
-        orderChanged: z.boolean(),
-      })
-      .nullable()
-      .optional()
-      .transform(value => value as LiftReview | null | undefined),
+    liftReview: featureReviewSchema.transform(
+      value => value as LiftReview | null | undefined,
+    ),
+    slopeReview: featureReviewSchema.transform(
+      value => value as SlopeReview | null | undefined,
+    ),
     courseLines: z
+      .array(
+        z.object({
+          name: z.string(),
+          coordinates: z.array(z.tuple([z.number(), z.number()])).max(400),
+        }),
+      )
+      .max(2000)
+      .optional(),
+    liftLines: z
       .array(
         z.object({
           name: z.string(),

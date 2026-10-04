@@ -30,7 +30,33 @@ type Options = {
   geojsonNames: string[];
   geometries?: NamedGeometry[];
   enabled?: boolean;
+  /** 申請を直すときは、保存済みの対応表ではなく申請に含まれる対応表から始める */
+  initialRequest?: SaveLatestStatusMappingRequest | null;
 };
+
+function withRequestRows(
+  data: LatestStatusMappingWorkspace,
+  request: SaveLatestStatusMappingRequest,
+): LatestStatusMappingWorkspace {
+  const pattern = data.patterns?.find(
+    item => item.fileName === request.latestFile,
+  );
+  return {
+    ...data,
+    ...(pattern
+      ? {
+          latestTime: pattern.time,
+          archiveTimestamp: pattern.archiveTimestamp ?? null,
+          sourceUrls: pattern.sourceUrls,
+          crawledItems: pattern.items,
+        }
+      : {}),
+    latestFile: request.latestFile,
+    mappingFileHash: request.mappingFileHash,
+    rows: request.rows,
+    needsSave: false,
+  };
+}
 
 export type LatestStatusMappingState = {
   workspace: LatestStatusMappingWorkspace | null;
@@ -77,7 +103,10 @@ export const useLatestStatusMapping = ({
   geojsonNames,
   geometries,
   enabled = true,
+  initialRequest,
 }: Options): LatestStatusMappingState => {
+  const initialRequestRef = useRef(initialRequest);
+  initialRequestRef.current = initialRequest;
   const navigateSubmission = useSubmissionNavigation();
   const [workspace, setWorkspace] =
     useState<LatestStatusMappingWorkspace | null>(null);
@@ -214,9 +243,14 @@ export const useLatestStatusMapping = ({
     setIsLoading(true);
     setError(null);
     try {
-      const data = await loadLatestStatusMapping(resortId, kind, [
+      const loaded = await loadLatestStatusMapping(resortId, kind, [
         ...new Set(geojsonNamesRef.current),
       ]);
+      const seed = initialRequestRef.current;
+      const data =
+        seed && seed.resortId === resortId && seed.kind === kind
+          ? withRequestRows(loaded, seed)
+          : loaded;
       setWorkspace(data);
       setRows(data.rows);
       setGeometryAssignments(

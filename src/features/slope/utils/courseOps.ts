@@ -79,6 +79,15 @@ export const buildSplitSuffixes = (count: number): string[] => {
 
 const stripSplitSuffix = (name: string): string => name.replace(/_#.*$/, "");
 
+const routeSection = (members: EditorCourse[], course: EditorCourse) => {
+  const route = course.grouping?.route;
+  if (course.grouping?.kind !== "routes" || !route) return {};
+  const sameRoute = members.filter(member => member.grouping?.route === route);
+  return sameRoute.length > 1
+    ? { route, section: sameRoute.indexOf(course) + 1 }
+    : { route };
+};
+
 // 同じ分割グループのコース名をグループ内の並び順で振り直す
 const relabelSplitGroup = (
   courses: EditorCourse[],
@@ -118,6 +127,8 @@ const relabelSplitGroup = (
         name: baseName,
         kind: members[0].grouping?.kind ?? "continuous",
         order: members.findIndex(member => member.id === course.id) + 1,
+        // 別ルートの線を分割したときは、分けた線を同じルートの区間にする
+        ...routeSection(members, course),
       },
       groupingReviewed: undefined,
     };

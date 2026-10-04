@@ -8,6 +8,17 @@ import { useEditingRole } from "@/app/admin/EditorAccess";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useSubmissionNavigation } from "@/features/edit-requests/navigation";
+import {
+  computeRequestChanges,
+  RequestChangesProvider,
+  RequestEditBanner,
+  type RequestEditContext,
+  useRequestCandidateSave,
+} from "@/features/edit-requests/requestEditing";
+import {
+  candidateCourseId,
+  slopeCandidate,
+} from "@/features/edit-requests/slopeCandidate";
 import { useLatestStatusMapping } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
 import { useMappingProceedGuard } from "@/features/latest-status-mapping/hooks/useMappingProceedGuard";
 import { splitGeometryAssignments } from "@/features/latest-status-mapping/utils/geometryAssignments";
@@ -40,14 +51,20 @@ import { LineEditStep } from "./components/LineEditStep";
 import type { MergeDraft } from "./components/MergeCoursesPanel";
 import { ResortSelectStep } from "./components/ResortSelectStep";
 import { TutorialOverlay } from "./components/TutorialOverlay";
-import { RESORT_INITIAL_ZOOM, TUTORIAL_SEEN_STORAGE_KEY } from "./constants";
+import {
+  COURSE_DETAIL_LABELS,
+  RESORT_INITIAL_ZOOM,
+  TUTORIAL_SEEN_STORAGE_KEY,
+} from "./constants";
 import { loadDraft, useDraftStorage } from "./hooks/useDraftStorage";
 import type {
   EditorCourse,
   EditStep,
   LngLat,
   ResortOption,
+  SaveCoursePayload,
   SlopeBeforeFeature,
+  SlopeBeforeGeojson,
   SlopeDetailEntry,
   SlopeSourceKind,
   StartSource,
@@ -83,6 +100,21 @@ import {
 type SlopeEditWorkspaceProps = {
   resorts: ResortOption[];
   googleMapsApiKey: string | null;
+  /** 確認待ちの申請を開いて直すとき。保存すると申請の修正案になる */
+  editRequest?: RequestEditContext | null;
+};
+
+const COURSE_CHANGE_FIELDS: Record<string, (course: EditorCourse) => string> = {
+  name: course => course.name,
+  ...Object.fromEntries(
+    (
+      Object.keys(COURSE_DETAIL_LABELS) as Array<keyof EditorCourse["detail"]>
+    ).map(key => [key, (course: EditorCourse) => course.detail[key] ?? ""]),
+  ),
+  grouping: course =>
+    course.grouping
+      ? `${course.grouping.name}（${course.grouping.order}番目）`
+      : "",
 };
 
 const STEPS: Array<{ id: EditStep; label: string }> = [
@@ -116,6 +148,7 @@ const normalizeDraftCourse = (
 export function SlopeEditWorkspace({
   resorts: initialResorts,
   googleMapsApiKey,
+  editRequest = null,
 }: SlopeEditWorkspaceProps) {
   const [confirmedOverrides, setConfirmedOverrides] = useState<
     Record<string, string | null>
@@ -162,6 +195,13 @@ export function SlopeEditWorkspace({
   const [pendingSource, setPendingSource] = useState<StartSource | null>(null);
 
   const [draftBaseline, setDraftBaseline] = useState("");
+  // 申請の編集中に、公開中のデータとの違いを示すための元データ
+  const [publishedCourses, setPublishedCourses] = useState<EditorCourse[]>([]);
+  const requestPayload = useMemo(
+    () => (editRequest ? slopeCandidate(editRequest.payload) : null),
+    [editRequest],
+  );
+  const saveRequestCandidate = useRequestCandidateSave(editRequest);
 
   const { savedAt, markExported, markSavedToServer } = useDraftStorage(
     resort?.id ?? null,
@@ -171,7 +211,8 @@ export function SlopeEditWorkspace({
     courses,
     preservedFeatures,
     preservedDetails,
-    step !== "select",
+    // 申請の編集内容は通常の下書きと混ぜない
+    step !== "select" && !editRequest,
     draftBaseline,
     linkEditor.draft,
   );
@@ -385,6 +426,76 @@ export function SlopeEditWorkspace({
       setIsLoadingSource(false);
     }
   };
+
+  const startFromRequest = async (request: RequestEditContext) => {
+    const selected = resorts.find(option => option.id === request.resortId);
+    if (!requestPayload || !selected) {
+      setLoadError("申請内容を編集画面で開けませんでした。");
+      return;
+    }
+    setIsLoadingSource(true);
+    setLoadError(null);
+    try {
+      const [data, liftResult] = await Promise.all([
+        loadSlopeSourceData(selected.id, requestPayload.sourceKind),
+        loadLiftSourceData(selected.id)
+          .then(data => sourceDataToLifts(selected.id, data))
+          .catch(() => null),
+      ]);
+      const geojson: SlopeBeforeGeojson = {
+        type: "FeatureCollection",
+        features: requestPayload.courses.map(course => ({
+          type: "Feature",
+          properties: { ...course.properties },
+          geometry: { type: "LineString", coordinates: course.coordinates },
+        })),
+      };
+      // 申請の線は、保存時と同じ並び・IDのまま編集用のコースへ戻す
+      const requested = sourceDataToCourses(selected.id, {
+        sourceKind: requestPayload.sourceKind,
+        geojson,
+        details: null,
+        fileHash: requestPayload.fileHash,
+        detailFileHash: requestPayload.detailFileHash,
+      });
+      const targetById = new Map(
+        requestPayload.courses.map((course, index) => [
+          candidateCourseId(requestPayload, course, index),
+          course.targetSkiId,
+        ]),
+      );
+      const nextCourses = requested.courses.map(course => {
+        const target = targetById.get(course.id) ?? selected.id;
+        return { ...course, skiId: target, originalSkiId: target };
+      });
+      setPublishedCourses(sourceDataToCourses(selected.id, data).courses);
+      setResort(selected);
+      setSourceKind(requestPayload.sourceKind);
+      setCoursesState(nextCourses);
+      setReferenceLifts(liftResult?.lifts ?? []);
+      setPreservedFeatures(requestPayload.preservedFeatures ?? []);
+      setPreservedDetails(requestPayload.preservedDetails ?? []);
+      setFileHash(requestPayload.fileHash);
+      setDetailFileHash(requestPayload.detailFileHash);
+      setLoadWarning(
+        liftResult === null ? "参照用リフトの読み込みに失敗しました。" : null,
+      );
+      setActiveCourseId(nextCourses[0]?.id ?? null);
+      resetMapModes();
+      setFitBoundsKey(key => key + 1);
+      setStep("lines");
+    } catch {
+      setLoadError("申請内容の読み込みに失敗しました。");
+    } finally {
+      setIsLoadingSource(false);
+    }
+  };
+
+  // 申請を開いたときは、スキー場選択を飛ばして申請内容から始める
+  // biome-ignore lint/correctness/useExhaustiveDependencies: load the request once on mount
+  useEffect(() => {
+    if (editRequest) void startFromRequest(editRequest);
+  }, []);
 
   const handleProceedToDetails = () => {
     const searchNameByResortId = new Map(
@@ -667,6 +778,13 @@ export function SlopeEditWorkspace({
   const handleApplyCrawlerOrder = useCallback(
     async (orderedGeojsonNames: string[]) => {
       const targetResortId = resort?.id;
+      if (editRequest) {
+        return {
+          ok: false,
+          message:
+            "申請の編集中は並べ替えを別に保存できません。一覧の並びを直してから保存してください。",
+        };
+      }
       if (!targetResortId || orderedGeojsonNames.length === 0) {
         return { ok: false, message: "並べ替えるコース線がありません。" };
       }
@@ -708,7 +826,7 @@ export function SlopeEditWorkspace({
       setSaveMessage(message);
       return { ok: true, message };
     },
-    [fileHash, resort?.id, sourceKind, navigateSubmission],
+    [fileHash, resort?.id, sourceKind, navigateSubmission, editRequest],
   );
 
   const router = useRouter();
@@ -723,7 +841,38 @@ export function SlopeEditWorkspace({
     geometries: ownCourses.map(({ id, name }) => ({ id, name })),
     geojsonNames: ownCourses.map(item => item.name.trim()).filter(Boolean),
     enabled: resort !== null,
+    initialRequest: requestPayload?.mapping ?? null,
   });
+  const requestChanges = useMemo(
+    () =>
+      editRequest
+        ? computeRequestChanges(courses, publishedCourses, {
+            id: course => course.id,
+            name: course => course.name,
+            fields: COURSE_CHANGE_FIELDS,
+            geometry: course => course.coordinates,
+          })
+        : null,
+    [editRequest, courses, publishedCourses],
+  );
+  const highlightedLineIds = useMemo(
+    () => (requestChanges ? new Set(requestChanges.items.keys()) : undefined),
+    [requestChanges],
+  );
+  const submitRequestCandidate =
+    requestPayload &&
+    ((
+      savedCourses: SaveCoursePayload[],
+      mappingRequest: ReturnType<NonNullable<typeof mapping.getSaveRequest>>,
+    ) =>
+      saveRequestCandidate({
+        ...requestPayload,
+        courses: savedCourses,
+        preservedFeatures,
+        preservedDetails,
+        // 申請に対応表が含まれないときは、申請の対象外の対応表を作らない
+        mapping: requestPayload.mapping ? mappingRequest : undefined,
+      }));
   const mappingGuard = useMappingProceedGuard(ownCourses, mapping);
 
   // 工程ごとの戻り先。共通ヘッダーの戻るボタンで使う
@@ -740,7 +889,15 @@ export function SlopeEditWorkspace({
         ? { label: "位置補正に戻る", onClick: () => setStep("lines") }
         : step === "lines" && sourceKind === "osm"
           ? { label: "所属確認に戻る", onClick: () => setStep("assign") }
-          : { label: "スキー場選択に戻る", onClick: handleBackToSelect };
+          : editRequest
+            ? {
+                label: "申請の確認画面に戻る",
+                onClick: () =>
+                  router.push(
+                    `/admin/requests/${encodeURIComponent(editRequest.id)}`,
+                  ),
+              }
+            : { label: "スキー場選択に戻る", onClick: handleBackToSelect };
   const mapIsVisible =
     step === "assign" ||
     step === "lines" ||
@@ -834,20 +991,24 @@ export function SlopeEditWorkspace({
           </Badge>
         </div>
       )}
-      {isAdmin && resort && step !== "select" && sourceKind === "osm" && (
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={isConfirming}
-          onClick={handleToggleConfirmed}
-        >
-          {isConfirming
-            ? "更新中…"
-            : resort.osmConfirmedAt
-              ? "確認済みを解除"
-              : "✓ 確認済みにする"}
-        </Button>
-      )}
+      {isAdmin &&
+        !editRequest &&
+        resort &&
+        step !== "select" &&
+        sourceKind === "osm" && (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={isConfirming}
+            onClick={handleToggleConfirmed}
+          >
+            {isConfirming
+              ? "更新中…"
+              : resort.osmConfirmedAt
+                ? "確認済みを解除"
+                : "✓ 確認済みにする"}
+          </Button>
+        )}
       {isLoadingSource && (
         <span className="shrink-0 text-xs text-gray-500">読み込み中…</span>
       )}
@@ -870,244 +1031,263 @@ export function SlopeEditWorkspace({
   );
 
   return (
-    <div
-      className={`admin-map-workspace flex h-[100dvh] min-h-0 flex-col overflow-hidden ${mapIsVisible ? "md:flex-row" : ""}`}
-    >
-      {step === "select" ? (
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          {header}
-          <div className="relative min-h-0 flex-1">
-            <ResortSelectStep resorts={resorts} onStart={handleStart} />
-            {messagePanel}
-          </div>
-        </div>
-      ) : (
-        <>
-          {/* スマホは地図と入力欄を上下に配置する。 */}
-          <div
-            className={`flex min-h-0 min-w-0 flex-1 flex-col ${!mapIsVisible ? "flex-none" : ""}`}
-          >
+    <RequestChangesProvider value={requestChanges}>
+      <div
+        className={`admin-map-workspace flex h-[100dvh] min-h-0 flex-col overflow-hidden ${mapIsVisible ? "md:flex-row" : ""}`}
+      >
+        {step === "select" ? (
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             {header}
-            <div
-              className={`relative min-h-0 flex-1 ${
-                mapIsVisible ? "visible" : "hidden"
-              }`}
-            >
-              {resort && (
-                <EditorMap
-                  center={[resort.longitude, resort.latitude]}
-                  zoom={RESORT_INITIAL_ZOOM}
-                  courses={visibleCourses}
-                  backgroundLines={referenceLifts}
-                  backgroundLineAppearance="lift"
-                  activeCourseId={activeCourseId}
-                  mode={mapMode}
-                  googleMapsApiKey={googleMapsApiKey}
-                  fitBoundsKey={fitBoundsKey}
-                  visible={mapIsVisible}
-                  showLabels={showLabels}
-                  mergePreview={mergePreview}
-                  onPickLinePoint={handlePickLinePoint}
-                  onSelectCourse={courseId => {
-                    if (!isDrawing && !isSplitMode && !mergeDraft) {
-                      setActiveCourseId(courseId);
-                    }
-                  }}
-                  onAppendVertex={lngLat =>
-                    updateActiveCourse(course => ({
-                      ...course,
-                      coordinates: [...course.coordinates, lngLat],
-                    }))
-                  }
-                  onMoveVertex={(index, lngLat) =>
-                    updateActiveCourse(course => ({
-                      ...course,
-                      coordinates: course.coordinates.map(
-                        (coordinate, coordinateIndex) =>
-                          coordinateIndex === index ? lngLat : coordinate,
-                      ),
-                    }))
-                  }
-                  onInsertVertex={(index, lngLat) =>
-                    updateActiveCourse(course => ({
-                      ...course,
-                      coordinates: [
-                        ...course.coordinates.slice(0, index),
-                        lngLat,
-                        ...course.coordinates.slice(index),
-                      ],
-                    }))
-                  }
-                  onDeleteVertex={index =>
-                    updateActiveCourse(course => ({
-                      ...course,
-                      coordinates: course.coordinates.filter(
-                        (_, coordinateIndex) => coordinateIndex !== index,
-                      ),
-                    }))
-                  }
-                  onFinishDraw={() => setIsDrawing(false)}
-                  onSplitVertex={handleSplitAtVertex}
-                />
+            <div className="relative min-h-0 flex-1">
+              {editRequest ? (
+                <p className="p-6 text-sm text-gray-600">
+                  {loadError ? "" : "申請内容を読み込んでいます…"}
+                </p>
+              ) : (
+                <ResortSelectStep resorts={resorts} onStart={handleStart} />
               )}
               {messagePanel}
             </div>
           </div>
-
-          <ResizablePanel
-            className={`max-md:w-full! max-md:border-t max-md:[&>button]:hidden ${mapIsVisible ? "max-md:h-[55%]" : "h-auto! w-full! flex-1 [&>button]:hidden"}`}
-            side="right"
-            storageKey={PANEL_WIDTH_KEY}
-            scrollResetKey={step}
-            defaultWidth={470}
-            minWidth={360}
-            maxWidth={900}
-          >
-            {resort && mapIsVisible && (
-              <ResortEditorHeader
-                resortId={resort.id}
-                resortName={resort.nameJa}
-                savedAt={savedAt}
-                backLabel={back.label}
-                onBack={back.onClick}
-              />
-            )}
-            {resort && mapIsVisible && (
-              <ResortEditorTools
-                key={resort.id}
-                resortId={resort.id}
-                resortName={resort.nameJa || resort.id}
-                kind="slope"
-                sourceKind={sourceKind}
-                linkEditor={linkEditor}
-                crawlerSourceUrls={mapping.workspace?.sourceUrls}
-              />
-            )}
-            {step === "assign" && resort && (
-              <AssignStep
-                resort={resort}
-                resorts={resorts}
-                courses={courses}
-                setCourses={setCourses}
-                selectedCourseId={activeCourseId}
-                onSelectCourse={setActiveCourseId}
-                onProceed={() => {
-                  if (
-                    !ownCourses.some(course => course.id === activeCourseId)
-                  ) {
-                    setActiveCourseId(ownCourses[0]?.id ?? null);
-                  }
-                  setStep("lines");
-                }}
-              />
-            )}
-            {step === "lines" && resort && (
-              <LineEditStep
-                resorts={resorts}
-                mapping={mapping}
-                resort={resort}
-                courses={ownCourses}
-                setCourses={setOwnCourses}
-                activeCourseId={activeCourseId}
-                onActiveCourseIdChange={setActiveCourseId}
-                isDrawing={isDrawing}
-                onDrawingChange={setIsDrawing}
-                onFitBounds={() => setFitBoundsKey(key => key + 1)}
-                onProceed={() => {
-                  resetMapModes();
-                  setCoursesState(reconcileUnconfirmedGroupings);
-                  setStep("grouping");
-                }}
-                onApplyGeojsonOrder={handleApplyCrawlerOrder}
-                showLabels={showLabels}
-                onShowLabelsChange={setShowLabels}
-                isSplitMode={isSplitMode}
-                onSplitModeChange={setIsSplitMode}
-                resortSearchName={resortSearchNameFor(
-                  selectedCourse ?? undefined,
+        ) : (
+          <>
+            {/* スマホは地図と入力欄を上下に配置する。 */}
+            <div
+              className={`flex min-h-0 min-w-0 flex-1 flex-col ${!mapIsVisible ? "flex-none" : ""}`}
+            >
+              {header}
+              <div
+                className={`relative min-h-0 flex-1 ${
+                  mapIsVisible ? "visible" : "hidden"
+                }`}
+              >
+                {resort && (
+                  <EditorMap
+                    center={[resort.longitude, resort.latitude]}
+                    zoom={RESORT_INITIAL_ZOOM}
+                    courses={visibleCourses}
+                    backgroundLines={referenceLifts}
+                    backgroundLineAppearance="lift"
+                    highlightedLineIds={highlightedLineIds}
+                    activeCourseId={activeCourseId}
+                    mode={mapMode}
+                    googleMapsApiKey={googleMapsApiKey}
+                    fitBoundsKey={fitBoundsKey}
+                    visible={mapIsVisible}
+                    showLabels={showLabels}
+                    mergePreview={mergePreview}
+                    onPickLinePoint={handlePickLinePoint}
+                    onSelectCourse={courseId => {
+                      if (!isDrawing && !isSplitMode && !mergeDraft) {
+                        setActiveCourseId(courseId);
+                      }
+                    }}
+                    onAppendVertex={lngLat =>
+                      updateActiveCourse(course => ({
+                        ...course,
+                        coordinates: [...course.coordinates, lngLat],
+                      }))
+                    }
+                    onMoveVertex={(index, lngLat) =>
+                      updateActiveCourse(course => ({
+                        ...course,
+                        coordinates: course.coordinates.map(
+                          (coordinate, coordinateIndex) =>
+                            coordinateIndex === index ? lngLat : coordinate,
+                        ),
+                      }))
+                    }
+                    onInsertVertex={(index, lngLat) =>
+                      updateActiveCourse(course => ({
+                        ...course,
+                        coordinates: [
+                          ...course.coordinates.slice(0, index),
+                          lngLat,
+                          ...course.coordinates.slice(index),
+                        ],
+                      }))
+                    }
+                    onDeleteVertex={index =>
+                      updateActiveCourse(course => ({
+                        ...course,
+                        coordinates: course.coordinates.filter(
+                          (_, coordinateIndex) => coordinateIndex !== index,
+                        ),
+                      }))
+                    }
+                    onFinishDraw={() => setIsDrawing(false)}
+                    onSplitVertex={handleSplitAtVertex}
+                  />
                 )}
-                mergeDraft={mergeDraft}
-                canMerge={canMerge}
-                onMergeStart={handleMergeStart}
-                onMergeCancel={() => setMergeDraft(null)}
-                onMergeConfirm={handleMergeConfirm}
-                onMergeKeepChange={handleMergeKeepChange}
-                onMergeClearSlot={handleMergeClearSlot}
-                onMergeNameChange={name =>
-                  setMergeDraft(draft => (draft ? { ...draft, name } : draft))
-                }
-                onMergeDetailFromChange={detailFrom =>
-                  setMergeDraft(draft =>
-                    draft ? { ...draft, detailFrom } : draft,
-                  )
-                }
-              />
-            )}
-            {step === "grouping" && resort && (
-              <CourseGroupingStep
-                courses={ownCourses}
-                setCourses={setOwnCourses}
-                onSelect={setActiveCourseId}
-                onBack={() => setStep("lines")}
-                onProceed={handleProceedToDetails}
-              />
-            )}
-            {step === "details" && resort && (
-              <DetailEditStep
-                mapping={mapping}
-                resort={resort}
-                resorts={resorts}
-                sourceKind={sourceKind}
-                courses={ownCourses}
-                setCourses={setOwnCourses}
-                selectedCourseId={activeCourseId}
-                onSelectedCourseIdChange={setActiveCourseId}
-                showLabels={showLabels}
-                onShowLabelsChange={setShowLabels}
-                onProceed={() =>
-                  mappingGuard.proceed(() => {
-                    resetMapModes();
-                    setStep(
-                      groupingNeedsReview(ownCourses) ? "grouping" : "confirm",
-                    );
-                  })
-                }
-                onExported={markExported}
-              />
-            )}
-            {step === "confirm" && resort && (
-              <ConfirmStep
-                saveLinks={() => linkEditor.save()}
-                getLinkRequests={() => linkEditor.getRequests()}
-                mapping={mapping}
-                resort={resort}
-                resorts={resorts}
-                courses={courses}
-                sourceKind={sourceKind}
-                fileHash={fileHash}
-                detailFileHash={detailFileHash}
-                preservedFeatures={preservedFeatures}
-                preservedDetails={preservedDetails}
-                onBack={() => setStep("details")}
-                onSaved={handleSaved}
-              />
-            )}
-          </ResizablePanel>
-        </>
-      )}
+                {messagePanel}
+              </div>
+            </div>
 
-      <TutorialOverlay open={showTutorial} onClose={closeTutorial} />
-      {mappingGuard.dialog}
-      <ConfirmDialog
-        open={draftDialogOpen}
-        onOpenChange={open => {
-          if (!open) handleDraftDialogCancel();
-        }}
-        title="下書きの上書き確認"
-        description="このスキー場には保存済みの下書きがあります。新しい編集を始めると、次の自動保存で下書きが上書きされます。続行しますか？"
-        onConfirm={handleDraftDialogConfirm}
-        confirmLabel="読み込む"
-      />
-    </div>
+            <ResizablePanel
+              className={`max-md:w-full! max-md:border-t max-md:[&>button]:hidden ${mapIsVisible ? "max-md:h-[55%]" : "h-auto! w-full! flex-1 [&>button]:hidden"}`}
+              side="right"
+              storageKey={PANEL_WIDTH_KEY}
+              scrollResetKey={step}
+              defaultWidth={470}
+              minWidth={360}
+              maxWidth={900}
+            >
+              {resort && mapIsVisible && (
+                <ResortEditorHeader
+                  resortId={resort.id}
+                  resortName={resort.nameJa}
+                  savedAt={savedAt}
+                  backLabel={back.label}
+                  onBack={back.onClick}
+                />
+              )}
+              {editRequest && requestChanges && (
+                <RequestEditBanner
+                  request={editRequest}
+                  changes={requestChanges}
+                />
+              )}
+              {resort && mapIsVisible && !editRequest && (
+                <ResortEditorTools
+                  key={resort.id}
+                  resortId={resort.id}
+                  resortName={resort.nameJa || resort.id}
+                  kind="slope"
+                  sourceKind={sourceKind}
+                  linkEditor={linkEditor}
+                  crawlerSourceUrls={mapping.workspace?.sourceUrls}
+                />
+              )}
+              {step === "assign" && resort && (
+                <AssignStep
+                  resort={resort}
+                  resorts={resorts}
+                  courses={courses}
+                  setCourses={setCourses}
+                  selectedCourseId={activeCourseId}
+                  onSelectCourse={setActiveCourseId}
+                  onProceed={() => {
+                    if (
+                      !ownCourses.some(course => course.id === activeCourseId)
+                    ) {
+                      setActiveCourseId(ownCourses[0]?.id ?? null);
+                    }
+                    setStep("lines");
+                  }}
+                />
+              )}
+              {step === "lines" && resort && (
+                <LineEditStep
+                  resorts={resorts}
+                  mapping={mapping}
+                  resort={resort}
+                  courses={ownCourses}
+                  setCourses={setOwnCourses}
+                  activeCourseId={activeCourseId}
+                  onActiveCourseIdChange={setActiveCourseId}
+                  isDrawing={isDrawing}
+                  onDrawingChange={setIsDrawing}
+                  onFitBounds={() => setFitBoundsKey(key => key + 1)}
+                  onProceed={() => {
+                    resetMapModes();
+                    setCoursesState(reconcileUnconfirmedGroupings);
+                    setStep("grouping");
+                  }}
+                  onApplyGeojsonOrder={handleApplyCrawlerOrder}
+                  showLabels={showLabels}
+                  onShowLabelsChange={setShowLabels}
+                  isSplitMode={isSplitMode}
+                  onSplitModeChange={setIsSplitMode}
+                  resortSearchName={resortSearchNameFor(
+                    selectedCourse ?? undefined,
+                  )}
+                  mergeDraft={mergeDraft}
+                  canMerge={canMerge}
+                  onMergeStart={handleMergeStart}
+                  onMergeCancel={() => setMergeDraft(null)}
+                  onMergeConfirm={handleMergeConfirm}
+                  onMergeKeepChange={handleMergeKeepChange}
+                  onMergeClearSlot={handleMergeClearSlot}
+                  onMergeNameChange={name =>
+                    setMergeDraft(draft => (draft ? { ...draft, name } : draft))
+                  }
+                  onMergeDetailFromChange={detailFrom =>
+                    setMergeDraft(draft =>
+                      draft ? { ...draft, detailFrom } : draft,
+                    )
+                  }
+                />
+              )}
+              {step === "grouping" && resort && (
+                <CourseGroupingStep
+                  courses={ownCourses}
+                  setCourses={setOwnCourses}
+                  selectedId={activeCourseId}
+                  onSelect={setActiveCourseId}
+                  onBack={() => setStep("lines")}
+                  onProceed={handleProceedToDetails}
+                />
+              )}
+              {step === "details" && resort && (
+                <DetailEditStep
+                  mapping={mapping}
+                  resort={resort}
+                  resorts={resorts}
+                  sourceKind={sourceKind}
+                  courses={ownCourses}
+                  setCourses={setOwnCourses}
+                  selectedCourseId={activeCourseId}
+                  onSelectedCourseIdChange={setActiveCourseId}
+                  showLabels={showLabels}
+                  onShowLabelsChange={setShowLabels}
+                  onProceed={() =>
+                    mappingGuard.proceed(() => {
+                      resetMapModes();
+                      setStep(
+                        groupingNeedsReview(ownCourses)
+                          ? "grouping"
+                          : "confirm",
+                      );
+                    })
+                  }
+                  onExported={markExported}
+                />
+              )}
+              {step === "confirm" && resort && (
+                <ConfirmStep
+                  saveLinks={() => linkEditor.save()}
+                  getLinkRequests={() => linkEditor.getRequests()}
+                  mapping={mapping}
+                  resort={resort}
+                  resorts={resorts}
+                  courses={courses}
+                  sourceKind={sourceKind}
+                  fileHash={fileHash}
+                  detailFileHash={detailFileHash}
+                  preservedFeatures={preservedFeatures}
+                  preservedDetails={preservedDetails}
+                  onBack={() => setStep("details")}
+                  onSaved={handleSaved}
+                  onSubmitRequest={submitRequestCandidate || undefined}
+                />
+              )}
+            </ResizablePanel>
+          </>
+        )}
+
+        <TutorialOverlay open={showTutorial} onClose={closeTutorial} />
+        {mappingGuard.dialog}
+        <ConfirmDialog
+          open={draftDialogOpen}
+          onOpenChange={open => {
+            if (!open) handleDraftDialogCancel();
+          }}
+          title="下書きの上書き確認"
+          description="このスキー場には保存済みの下書きがあります。新しい編集を始めると、次の自動保存で下書きが上書きされます。続行しますか？"
+          onConfirm={handleDraftDialogConfirm}
+          confirmLabel="読み込む"
+        />
+      </div>
+    </RequestChangesProvider>
   );
 }

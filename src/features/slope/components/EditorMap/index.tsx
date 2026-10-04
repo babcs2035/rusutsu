@@ -69,6 +69,8 @@ type EditorMapProps = {
   // 参照用に薄く表示する編集対象外の線（編集前の位置など）
   backgroundLines?: EditorMapLine[];
   backgroundLineAppearance?: "muted" | "lift";
+  // 申請の編集中に、公開中のデータから変わった線を色分けする
+  highlightedLineIds?: ReadonlySet<string>;
   activeCourseId: string | null;
   mode: EditorMapMode;
   googleMapsApiKey: string | null;
@@ -125,6 +127,7 @@ export function EditorMap({
   courses,
   backgroundLines = [],
   backgroundLineAppearance = "muted",
+  highlightedLineIds,
   activeCourseId,
   mode,
   googleMapsApiKey,
@@ -287,8 +290,14 @@ export function EditorMap({
 
   // --- 描くものを地図へ流し込む -------------------------------------------
   const lineCollection = useMemo(
-    () => buildLineCollection(courses, activeCourseId, hoveredCourseId),
-    [courses, activeCourseId, hoveredCourseId],
+    () =>
+      buildLineCollection(
+        courses,
+        activeCourseId,
+        hoveredCourseId,
+        highlightedLineIds,
+      ),
+    [courses, activeCourseId, hoveredCourseId, highlightedLineIds],
   );
   const backgroundCollection = useMemo(
     () => buildBackgroundCollection(backgroundLines),

@@ -265,9 +265,11 @@ export const findSelectedCourseGroup = (
   const group = groups.find(item => item.id === feature.id);
   if (!group) return null;
   const route = feature.routeId
-    ? group.courses.find(course => course.id === feature.routeId)
-    : undefined;
-  return route ? { ...group, courses: [route] } : group;
+    ? group.courses.filter(
+        course => (course.routeKey ?? course.id) === feature.routeId,
+      )
+    : [];
+  return route.length > 0 ? { ...group, courses: route } : group;
 };
 
 export const haversineMeters = (a: GeoCoordinate, b: GeoCoordinate) => {
@@ -330,9 +332,11 @@ export const createConnectedCourseElevationProfile = (
   courses: FinalizedCourseFeature[],
 ): ElevationProfilePoint[] => {
   // Alternative routes do not form one continuous elevation profile.
+  // The sections of a single route do.
   if (
     courses.length > 1 &&
-    courses.some(course => course.groupKind === "routes")
+    courses.some(course => course.groupKind === "routes") &&
+    new Set(courses.map(course => course.routeKey ?? course.id)).size > 1
   ) {
     return [];
   }
@@ -367,7 +371,7 @@ export const createConnectedCourseElevationProfile = (
     const coordinates = getProfileCoordinates(course.coordinates);
     const lastPoint = points.at(-1);
     if (
-      course.groupKind === "continuous" &&
+      course.groupKind !== undefined &&
       lastPoint &&
       coordinates[0] &&
       haversineMeters(lastPoint.coordinate, coordinates[0]) > 10

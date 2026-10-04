@@ -3,8 +3,19 @@
 import { HelpCircle, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  candidateLiftId,
+  liftCandidate,
+} from "@/features/edit-requests/liftCandidate";
+import {
+  computeRequestChanges,
+  RequestChangesProvider,
+  RequestEditBanner,
+  type RequestEditContext,
+  useRequestCandidateSave,
+} from "@/features/edit-requests/requestEditing";
 import { useLatestStatusMapping } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
 import { useMappingProceedGuard } from "@/features/latest-status-mapping/hooks/useMappingProceedGuard";
 import {
@@ -35,6 +46,7 @@ import {
   type StartSource,
 } from "./components/ResortSelectStep";
 import {
+  DETAIL_KEYS,
   LIFT_TUTORIAL_SEEN_STORAGE_KEY,
   RESORT_INITIAL_ZOOM,
 } from "./constants";
@@ -42,8 +54,10 @@ import { loadDraft, useDraftStorage } from "./hooks/useDraftStorage";
 import type {
   EditorLift,
   EditStep,
+  LiftBeforeGeojson,
   LiftDetailEntry,
   ResortOption,
+  SaveLiftPayload,
 } from "./types";
 import { liftDraftContentKey } from "./utils/draftContent";
 import {
@@ -56,6 +70,16 @@ import { sourceDataToLifts } from "./utils/loadSource";
 type LiftEditWorkspaceProps = {
   resorts: ResortOption[];
   googleMapsApiKey: string | null;
+  /** 確認待ちの申請を開いて直すとき。保存すると申請の修正案になる */
+  editRequest?: RequestEditContext | null;
+};
+
+const LIFT_CHANGE_FIELDS: Record<string, (lift: EditorLift) => string> = {
+  name: lift => lift.name,
+  ...Object.fromEntries(
+    DETAIL_KEYS.map(key => [key, (lift: EditorLift) => lift.detail[key]]),
+  ),
+  midstation: lift => (lift.midstation ? "あり" : ""),
 };
 
 const STEPS: Array<{ id: EditStep; label: string }> = [
@@ -72,6 +96,7 @@ const PANEL_WIDTH_KEY = "rusutsu-lift-panel-width";
 export function LiftEditWorkspace({
   resorts,
   googleMapsApiKey,
+  editRequest = null,
 }: LiftEditWorkspaceProps) {
   const [step, setStep] = useState<EditStep>("select");
   const [resort, setResort] = useState<ResortOption | null>(null);
@@ -123,12 +148,20 @@ export function LiftEditWorkspace({
   };
 
   const [draftBaseline, setDraftBaseline] = useState("");
+  // 申請の編集中に、公開中のデータとの違いを示すための元データ
+  const [publishedLifts, setPublishedLifts] = useState<EditorLift[]>([]);
+  const requestPayload = useMemo(
+    () => (editRequest ? liftCandidate(editRequest.payload) : null),
+    [editRequest],
+  );
+  const saveRequestCandidate = useRequestCandidateSave(editRequest);
 
   const { savedAt, markSavedToServer } = useDraftStorage(
     resort?.id ?? null,
     fileHash,
     lifts,
-    step !== "select",
+    // 申請の編集内容は通常の下書きと混ぜない
+    step !== "select" && !editRequest,
     draftBaseline,
     linkEditor.draft,
   );
@@ -198,7 +231,36 @@ export function LiftEditWorkspace({
     geometries: ownLifts.map(({ id, name }) => ({ id, name })),
     geojsonNames: ownLifts.map(item => item.name.trim()).filter(Boolean),
     enabled: resort !== null,
+    initialRequest: requestPayload?.mapping ?? null,
   });
+  const requestChanges = useMemo(
+    () =>
+      editRequest
+        ? computeRequestChanges(activeLifts, publishedLifts, {
+            id: lift => lift.id,
+            name: lift => lift.name,
+            fields: LIFT_CHANGE_FIELDS,
+            geometry: lift => [lift.coordinates, lift.midstation],
+          })
+        : null,
+    [editRequest, activeLifts, publishedLifts],
+  );
+  const highlightedLineIds = useMemo(
+    () => (requestChanges ? new Set(requestChanges.items.keys()) : undefined),
+    [requestChanges],
+  );
+  const submitRequestCandidate =
+    requestPayload &&
+    ((
+      savedLifts: SaveLiftPayload[],
+      mappingRequest: ReturnType<NonNullable<typeof mapping.getSaveRequest>>,
+    ) =>
+      saveRequestCandidate({
+        ...requestPayload,
+        lifts: savedLifts,
+        // 申請に対応表が含まれないときは、申請の対象外の対応表を作らない
+        mapping: requestPayload.mapping ? mappingRequest : undefined,
+      }));
   const mappingGuard = useMappingProceedGuard(ownLifts, mapping);
   // 所属確認では移動先を選び直せるよう全リフトを、以降は所属リフトだけを表示する
   const visibleLifts = step === "assign" ? activeLifts : ownLifts;
@@ -309,6 +371,66 @@ export function LiftEditWorkspace({
     }
   };
 
+  const startFromRequest = async (request: RequestEditContext) => {
+    const selected = resorts.find(option => option.id === request.resortId);
+    if (!requestPayload || !selected) {
+      setLoadError("申請内容を編集画面で開けませんでした。");
+      return;
+    }
+    setIsLoadingSource(true);
+    setLoadError(null);
+    try {
+      const data = await loadLiftSourceData(selected.id);
+      const geojson: LiftBeforeGeojson = {
+        type: "FeatureCollection",
+        features: requestPayload.lifts.map(lift => ({
+          type: "Feature",
+          properties: { ...lift.properties },
+          geometry: { type: "LineString", coordinates: lift.coordinates },
+        })),
+      };
+      // 申請の線は、保存時と同じ並び・IDのまま編集用のリフトへ戻す
+      const requested = sourceDataToLifts(selected.id, {
+        geojson,
+        details: null,
+        fileHash: requestPayload.fileHash,
+      });
+      const targetById = new Map(
+        requestPayload.lifts.map((lift, index) => [
+          candidateLiftId(requestPayload, lift, index),
+          lift.targetSkiId,
+        ]),
+      );
+      const nextLifts = requested.lifts.map(lift => {
+        const target = targetById.get(lift.id) ?? selected.id;
+        return {
+          ...lift,
+          skiId: target,
+          original: { ...lift.original, skiId: target },
+        };
+      });
+      setPublishedLifts(sourceDataToLifts(selected.id, data).lifts);
+      setResort(selected);
+      setLiftsState(nextLifts);
+      setDetails(data.details ?? []);
+      setFileHash(requestPayload.fileHash);
+      setSelectedLiftId(nextLifts[0]?.id ?? null);
+      resetMapModes();
+      setFitBoundsKey(key => key + 1);
+      setStep("geometry");
+    } catch {
+      setLoadError("申請内容の読み込みに失敗しました。");
+    } finally {
+      setIsLoadingSource(false);
+    }
+  };
+
+  // 申請を開いたときは、スキー場選択を飛ばして申請内容から始める
+  // biome-ignore lint/correctness/useExhaustiveDependencies: load the request once on mount
+  useEffect(() => {
+    if (editRequest) void startFromRequest(editRequest);
+  }, []);
+
   const handleBackToSelect = () => {
     // 編集内容は下書きとして自動保存済みなのでそのまま戻れる
     setStep("select");
@@ -357,15 +479,23 @@ export function LiftEditWorkspace({
             setStep("geometry");
           },
         }
-      : step === "geometry"
+      : step === "geometry" && editRequest
         ? {
-            label: "所属確認に戻る",
-            onClick: () => {
-              resetMapModes();
-              setStep("assign");
-            },
+            label: "申請の確認画面に戻る",
+            onClick: () =>
+              router.push(
+                `/admin/requests/${encodeURIComponent(editRequest.id)}`,
+              ),
           }
-        : { label: "スキー場選択に戻る", onClick: handleBackToSelect };
+        : step === "geometry"
+          ? {
+              label: "所属確認に戻る",
+              onClick: () => {
+                resetMapModes();
+                setStep("assign");
+              },
+            }
+          : { label: "スキー場選択に戻る", onClick: handleBackToSelect };
   const mapIsVisible =
     step === "assign" || step === "geometry" || step === "details";
   const mapMode: EditorMapMode =
@@ -463,266 +593,290 @@ export function LiftEditWorkspace({
   );
 
   return (
-    <div
-      className={`admin-map-workspace flex h-[100dvh] min-h-0 flex-col overflow-hidden ${mapIsVisible ? "md:flex-row" : ""}`}
-    >
-      {step === "select" ? (
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          {header}
-          <div className="relative min-h-0 flex-1">
-            <ResortSelectStep
-              resorts={effectiveResorts}
-              onStart={handleStart}
-              onToggleConfirmed={handleToggleConfirmed}
-            />
-            {messagePanel}
-          </div>
-        </div>
-      ) : (
-        <>
-          {/* スマホは地図と入力欄を上下に配置する。 */}
-          <div
-            className={`flex min-h-0 min-w-0 flex-1 flex-col ${!mapIsVisible ? "flex-none" : ""}`}
-          >
+    <RequestChangesProvider value={requestChanges}>
+      <div
+        className={`admin-map-workspace flex h-[100dvh] min-h-0 flex-col overflow-hidden ${mapIsVisible ? "md:flex-row" : ""}`}
+      >
+        {step === "select" ? (
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             {header}
-            <div
-              className={`relative min-h-0 flex-1 ${
-                mapIsVisible ? "visible" : "hidden"
-              }`}
-            >
-              {resort && (
-                <EditorMap
-                  center={[resort.longitude, resort.latitude]}
-                  zoom={RESORT_INITIAL_ZOOM}
-                  courses={visibleLifts}
-                  backgroundLines={
-                    step === "geometry" &&
-                    selectedLift &&
-                    hasLineChange(selectedLift) &&
-                    !selectedLift.isNew
-                      ? [
-                          {
-                            id: `${selectedLift.id}-original`,
-                            name: `${liftDisplayName(selectedLift)}（編集前）`,
-                            coordinates: selectedLift.original.coordinates,
-                          },
-                        ]
-                      : []
-                  }
-                  activeCourseId={selectedLiftId}
-                  mode={mapMode}
-                  googleMapsApiKey={googleMapsApiKey}
-                  fitBoundsKey={fitBoundsKey}
-                  layerId={tileLayerId}
-                  onLayerIdChange={setTileLayerId}
-                  visible={mapIsVisible}
-                  showLabels={showLabels}
-                  labelText={(line, index) => line.name || `リフト${index + 1}`}
-                  midstation={selectedLift?.midstation ?? null}
-                  onPlaceMidstation={lngLat => {
-                    updateSelectedLift(lift => ({
-                      ...lift,
-                      midstation: lngLat,
-                    }));
-                    setIsMidstationMode(false);
-                  }}
-                  onMoveMidstation={lngLat =>
-                    updateSelectedLift(lift => ({
-                      ...lift,
-                      midstation: lngLat,
-                    }))
-                  }
-                  onSelectCourse={liftId => {
-                    if (
-                      step !== "geometry" ||
-                      (!isDrawing && !isMidstationMode)
-                    ) {
-                      setSelectedLiftId(liftId);
-                      if (step === "geometry") resetMapModes();
-                    }
-                  }}
-                  onAppendVertex={lngLat =>
-                    updateSelectedLift(lift => ({
-                      ...lift,
-                      coordinates: [...lift.coordinates, lngLat],
-                    }))
-                  }
-                  onFinishDraw={() => setIsDrawing(false)}
-                  onMoveVertex={(index, lngLat) =>
-                    updateSelectedLift(lift => ({
-                      ...lift,
-                      coordinates: lift.coordinates.map((pair, pairIndex) =>
-                        pairIndex === index ? lngLat : pair,
-                      ),
-                    }))
-                  }
-                  onInsertVertex={(index, lngLat) =>
-                    updateSelectedLift(lift => ({
-                      ...lift,
-                      coordinates: [
-                        ...lift.coordinates.slice(0, index),
-                        lngLat,
-                        ...lift.coordinates.slice(index),
-                      ],
-                    }))
-                  }
-                  onDeleteVertex={index =>
-                    updateSelectedLift(lift => {
-                      if (!lift.isNew && lift.coordinates.length <= 2) {
-                        return lift;
-                      }
-                      return {
-                        ...lift,
-                        coordinates: lift.coordinates.filter(
-                          (_, pairIndex) => pairIndex !== index,
-                        ),
-                      };
-                    })
-                  }
+            <div className="relative min-h-0 flex-1">
+              {editRequest ? (
+                <p className="p-6 text-sm text-gray-600">
+                  {loadError ? "" : "申請内容を読み込んでいます…"}
+                </p>
+              ) : (
+                <ResortSelectStep
+                  resorts={effectiveResorts}
+                  onStart={handleStart}
+                  onToggleConfirmed={handleToggleConfirmed}
                 />
               )}
               {messagePanel}
             </div>
           </div>
-
-          <ResizablePanel
-            className={`max-md:w-full! max-md:border-t max-md:[&>button]:hidden ${mapIsVisible ? "max-md:h-[55%]" : "h-auto! w-full! flex-1 [&>button]:hidden"}`}
-            side="right"
-            storageKey={PANEL_WIDTH_KEY}
-            scrollResetKey={step}
-            defaultWidth={480}
-            minWidth={360}
-            maxWidth={900}
-          >
-            {resort && mapIsVisible && (
-              <ResortEditorHeader
-                resortId={resort.id}
-                resortName={resort.nameJa}
-                savedAt={savedAt}
-                backLabel={back.label}
-                onBack={back.onClick}
-              />
-            )}
-            {resort && mapIsVisible && (
-              <ResortEditorTools
-                key={resort.id}
-                resortId={resort.id}
-                resortName={resort.nameJa || resort.id}
-                kind="lift"
-                linkEditor={linkEditor}
-                crawlerSourceUrls={mapping.workspace?.sourceUrls}
-              />
-            )}
-            {step === "assign" && resort && (
-              <AssignStep
-                resorts={effectiveResorts}
-                lifts={activeLifts}
-                setLifts={setLifts}
-                selectedLiftId={selectedLiftId}
-                onSelectLift={liftId => {
-                  setSelectedLiftId(liftId);
-                  resetMapModes();
-                }}
-                onProceed={() => {
-                  resetMapModes();
-                  if (!ownLifts.some(lift => lift.id === selectedLiftId)) {
-                    setSelectedLiftId(ownLifts[0]?.id ?? null);
-                  }
-                  setStep("geometry");
-                }}
-              />
-            )}
-            {step === "geometry" && resort && (
-              <GeometryStep
-                resorts={effectiveResorts}
-                mapping={mapping}
-                resort={resort}
-                lifts={ownLifts}
-                deletedLifts={deletedLifts}
-                setLifts={setOwnLifts}
-                selectedLiftId={selectedLiftId}
-                onSelectLift={setSelectedLiftId}
-                isDrawing={isDrawing}
-                onDrawingChange={setIsDrawing}
-                isMidstationMode={isMidstationMode}
-                onMidstationModeChange={setIsMidstationMode}
-                onFitBounds={() => setFitBoundsKey(key => key + 1)}
-                showLabels={showLabels}
-                onShowLabelsChange={setShowLabels}
-                onProceed={() =>
-                  mappingGuard.proceed(() => {
-                    resetMapModes();
-                    setLiftsState(previous =>
-                      fillEmptyLiftSearchWords(
-                        previous,
-                        new Map(
-                          effectiveResorts.map(option => [
-                            option.id,
-                            option.searchName,
-                          ]),
+        ) : (
+          <>
+            {/* スマホは地図と入力欄を上下に配置する。 */}
+            <div
+              className={`flex min-h-0 min-w-0 flex-1 flex-col ${!mapIsVisible ? "flex-none" : ""}`}
+            >
+              {header}
+              <div
+                className={`relative min-h-0 flex-1 ${
+                  mapIsVisible ? "visible" : "hidden"
+                }`}
+              >
+                {resort && (
+                  <EditorMap
+                    center={[resort.longitude, resort.latitude]}
+                    zoom={RESORT_INITIAL_ZOOM}
+                    courses={visibleLifts}
+                    highlightedLineIds={highlightedLineIds}
+                    backgroundLines={
+                      step === "geometry" &&
+                      selectedLift &&
+                      hasLineChange(selectedLift) &&
+                      !selectedLift.isNew
+                        ? [
+                            {
+                              id: `${selectedLift.id}-original`,
+                              name: `${liftDisplayName(selectedLift)}（編集前）`,
+                              coordinates: selectedLift.original.coordinates,
+                            },
+                          ]
+                        : []
+                    }
+                    activeCourseId={selectedLiftId}
+                    mode={mapMode}
+                    googleMapsApiKey={googleMapsApiKey}
+                    fitBoundsKey={fitBoundsKey}
+                    layerId={tileLayerId}
+                    onLayerIdChange={setTileLayerId}
+                    visible={mapIsVisible}
+                    showLabels={showLabels}
+                    labelText={(line, index) =>
+                      line.name || `リフト${index + 1}`
+                    }
+                    midstation={selectedLift?.midstation ?? null}
+                    onPlaceMidstation={lngLat => {
+                      updateSelectedLift(lift => ({
+                        ...lift,
+                        midstation: lngLat,
+                      }));
+                      setIsMidstationMode(false);
+                    }}
+                    onMoveMidstation={lngLat =>
+                      updateSelectedLift(lift => ({
+                        ...lift,
+                        midstation: lngLat,
+                      }))
+                    }
+                    onSelectCourse={liftId => {
+                      if (
+                        step !== "geometry" ||
+                        (!isDrawing && !isMidstationMode)
+                      ) {
+                        setSelectedLiftId(liftId);
+                        if (step === "geometry") resetMapModes();
+                      }
+                    }}
+                    onAppendVertex={lngLat =>
+                      updateSelectedLift(lift => ({
+                        ...lift,
+                        coordinates: [...lift.coordinates, lngLat],
+                      }))
+                    }
+                    onFinishDraw={() => setIsDrawing(false)}
+                    onMoveVertex={(index, lngLat) =>
+                      updateSelectedLift(lift => ({
+                        ...lift,
+                        coordinates: lift.coordinates.map((pair, pairIndex) =>
+                          pairIndex === index ? lngLat : pair,
                         ),
-                      ),
-                    );
-                    setStep("details");
-                  })
-                }
-              />
-            )}
-            {step === "details" && resort && (
-              <DetailStep
-                mapping={mapping}
-                resort={resort}
-                resorts={effectiveResorts}
-                lifts={ownLifts}
-                setLifts={setOwnLifts}
-                details={details}
-                selectedLiftId={selectedLiftId}
-                onSelectLift={setSelectedLiftId}
-                onProceed={() => mappingGuard.proceed(() => setStep("links"))}
-              />
-            )}
-            {step === "links" && resort && (
-              <LinksStep
-                resort={resort}
-                links={resortLinks}
-                setLinks={setResortLinks}
-                onProceed={() => setStep("confirm")}
-                onBack={() => setStep("details")}
-              />
-            )}
-            {step === "confirm" && effectiveResort && (
-              <ConfirmStep
-                saveLinks={() => linkEditor.save()}
-                getLinkRequests={() => linkEditor.getRequests()}
-                mapping={mapping}
-                resort={effectiveResort}
-                resorts={effectiveResorts}
-                lifts={activeLifts}
-                deletedLifts={deletedLifts}
-                links={resortLinks}
-                setLinks={setResortLinks}
-                fileHash={fileHash}
-                onBack={() => setStep("links")}
-                onSaved={handleSaved}
-                onToggleConfirmed={handleToggleConfirmed}
-              />
-            )}
-          </ResizablePanel>
-        </>
-      )}
+                      }))
+                    }
+                    onInsertVertex={(index, lngLat) =>
+                      updateSelectedLift(lift => ({
+                        ...lift,
+                        coordinates: [
+                          ...lift.coordinates.slice(0, index),
+                          lngLat,
+                          ...lift.coordinates.slice(index),
+                        ],
+                      }))
+                    }
+                    onDeleteVertex={index =>
+                      updateSelectedLift(lift => {
+                        if (!lift.isNew && lift.coordinates.length <= 2) {
+                          return lift;
+                        }
+                        return {
+                          ...lift,
+                          coordinates: lift.coordinates.filter(
+                            (_, pairIndex) => pairIndex !== index,
+                          ),
+                        };
+                      })
+                    }
+                  />
+                )}
+                {messagePanel}
+              </div>
+            </div>
 
-      <LiftTutorialOverlay open={showTutorial} onClose={closeTutorial} />
-      {mappingGuard.dialog}
-      <ConfirmDialog
-        open={draftDialogOpen}
-        onOpenChange={(open: boolean) => {
-          if (!open) handleDraftDialogCancel();
-        }}
-        title="下書きの上書き確認"
-        description="このスキー場には保存済みの下書きがあります。新しく読み込むと、次の自動保存で下書きが上書きされます。続行しますか？"
-        onConfirm={handleDraftDialogConfirm}
-        confirmLabel="読み込む"
-      />
-    </div>
+            <ResizablePanel
+              className={`max-md:w-full! max-md:border-t max-md:[&>button]:hidden ${mapIsVisible ? "max-md:h-[55%]" : "h-auto! w-full! flex-1 [&>button]:hidden"}`}
+              side="right"
+              storageKey={PANEL_WIDTH_KEY}
+              scrollResetKey={step}
+              defaultWidth={480}
+              minWidth={360}
+              maxWidth={900}
+            >
+              {resort && mapIsVisible && (
+                <ResortEditorHeader
+                  resortId={resort.id}
+                  resortName={resort.nameJa}
+                  savedAt={savedAt}
+                  backLabel={back.label}
+                  onBack={back.onClick}
+                />
+              )}
+              {editRequest && requestChanges && (
+                <RequestEditBanner
+                  request={editRequest}
+                  changes={requestChanges}
+                />
+              )}
+              {resort && mapIsVisible && !editRequest && (
+                <ResortEditorTools
+                  key={resort.id}
+                  resortId={resort.id}
+                  resortName={resort.nameJa || resort.id}
+                  kind="lift"
+                  linkEditor={linkEditor}
+                  crawlerSourceUrls={mapping.workspace?.sourceUrls}
+                />
+              )}
+              {step === "assign" && resort && (
+                <AssignStep
+                  resorts={effectiveResorts}
+                  lifts={activeLifts}
+                  setLifts={setLifts}
+                  selectedLiftId={selectedLiftId}
+                  onSelectLift={liftId => {
+                    setSelectedLiftId(liftId);
+                    resetMapModes();
+                  }}
+                  onProceed={() => {
+                    resetMapModes();
+                    if (!ownLifts.some(lift => lift.id === selectedLiftId)) {
+                      setSelectedLiftId(ownLifts[0]?.id ?? null);
+                    }
+                    setStep("geometry");
+                  }}
+                />
+              )}
+              {step === "geometry" && resort && (
+                <GeometryStep
+                  resorts={effectiveResorts}
+                  mapping={mapping}
+                  resort={resort}
+                  lifts={ownLifts}
+                  deletedLifts={deletedLifts}
+                  setLifts={setOwnLifts}
+                  selectedLiftId={selectedLiftId}
+                  onSelectLift={setSelectedLiftId}
+                  isDrawing={isDrawing}
+                  onDrawingChange={setIsDrawing}
+                  isMidstationMode={isMidstationMode}
+                  onMidstationModeChange={setIsMidstationMode}
+                  onFitBounds={() => setFitBoundsKey(key => key + 1)}
+                  showLabels={showLabels}
+                  onShowLabelsChange={setShowLabels}
+                  onProceed={() =>
+                    mappingGuard.proceed(() => {
+                      resetMapModes();
+                      setLiftsState(previous =>
+                        fillEmptyLiftSearchWords(
+                          previous,
+                          new Map(
+                            effectiveResorts.map(option => [
+                              option.id,
+                              option.searchName,
+                            ]),
+                          ),
+                        ),
+                      );
+                      setStep("details");
+                    })
+                  }
+                />
+              )}
+              {step === "details" && resort && (
+                <DetailStep
+                  mapping={mapping}
+                  resort={resort}
+                  resorts={effectiveResorts}
+                  lifts={ownLifts}
+                  setLifts={setOwnLifts}
+                  details={details}
+                  selectedLiftId={selectedLiftId}
+                  onSelectLift={setSelectedLiftId}
+                  onProceed={() =>
+                    mappingGuard.proceed(() =>
+                      // 申請の編集では関連リンクは扱わない
+                      setStep(editRequest ? "confirm" : "links"),
+                    )
+                  }
+                  proceedLabel={editRequest ? "次へ（確認・保存）" : undefined}
+                />
+              )}
+              {step === "links" && resort && (
+                <LinksStep
+                  resort={resort}
+                  links={resortLinks}
+                  setLinks={setResortLinks}
+                  onProceed={() => setStep("confirm")}
+                  onBack={() => setStep("details")}
+                />
+              )}
+              {step === "confirm" && effectiveResort && (
+                <ConfirmStep
+                  saveLinks={() => linkEditor.save()}
+                  getLinkRequests={() => linkEditor.getRequests()}
+                  mapping={mapping}
+                  resort={effectiveResort}
+                  resorts={effectiveResorts}
+                  lifts={activeLifts}
+                  deletedLifts={deletedLifts}
+                  links={resortLinks}
+                  setLinks={setResortLinks}
+                  fileHash={fileHash}
+                  onBack={() => setStep(editRequest ? "details" : "links")}
+                  onSaved={handleSaved}
+                  onToggleConfirmed={handleToggleConfirmed}
+                  onSubmitRequest={submitRequestCandidate || undefined}
+                />
+              )}
+            </ResizablePanel>
+          </>
+        )}
+
+        <LiftTutorialOverlay open={showTutorial} onClose={closeTutorial} />
+        {mappingGuard.dialog}
+        <ConfirmDialog
+          open={draftDialogOpen}
+          onOpenChange={(open: boolean) => {
+            if (!open) handleDraftDialogCancel();
+          }}
+          title="下書きの上書き確認"
+          description="このスキー場には保存済みの下書きがあります。新しく読み込むと、次の自動保存で下書きが上書きされます。続行しますか？"
+          onConfirm={handleDraftDialogConfirm}
+          confirmLabel="読み込む"
+        />
+      </div>
+    </RequestChangesProvider>
   );
 }

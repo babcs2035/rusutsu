@@ -2,7 +2,11 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { readResolvedLatestStatusMapping } from "@/features/latest-status-mapping/server/mappingFiles";
 import type { ResolvedLatestStatusMapping } from "@/features/latest-status-mapping/types";
-import { readCourseGrouping } from "@/shared/course-lift/identity";
+import {
+  courseGroupingLabel,
+  courseGroupingRoute,
+  readCourseGrouping,
+} from "@/shared/course-lift/identity";
 import type { CourseStatusSummary } from "./courseStatusSummary";
 import { createCourseStatusSummary } from "./courseStatusSummary";
 import { calculateCoordinateSlopes } from "./finalizedResortGeojsonShared";
@@ -324,12 +328,20 @@ const normalizeCourseFeature = (
           ? `${sourcePrefix}${baseId}`
           : `${sourcePrefix}course-group-${parsedName.groupName}`),
     sectionName: grouping
-      ? `${grouping.kind === "continuous" ? "区間" : "ルート"}${grouping.order}`
+      ? courseGroupingLabel(grouping)
       : explicitGrouping
         ? null
         : parsedName.sectionName,
     ...(grouping
-      ? { sectionOrder: grouping.order, groupKind: grouping.kind }
+      ? {
+          sectionOrder: grouping.order,
+          groupKind: grouping.kind,
+          ...(grouping.kind === "routes"
+            ? {
+                routeKey: `${sourcePrefix}${grouping.id}:route:${courseGroupingRoute(grouping)}`,
+              }
+            : {}),
+        }
       : {}),
     latestStatusName: normalizeString(properties.latest_status_name),
     verificationStatus,

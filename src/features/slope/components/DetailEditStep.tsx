@@ -21,6 +21,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  RequestChangeBadge,
+  RequestFieldChange,
+} from "@/features/edit-requests/requestEditing";
 import { OrderOrganizerDialog } from "@/features/latest-status-mapping/components/OrderOrganizerDialog";
 import type { LatestStatusMappingState } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
 import { cn } from "@/lib/utils";
@@ -298,6 +302,7 @@ export function DetailEditStep({
             >
               {courseEditorLabel(course)}
             </button>
+            <RequestChangeBadge id={course.id} />
             {course.splitGroupId && (
               <span className="shrink-0 text-[11px] text-purple-900">分割</span>
             )}
@@ -361,6 +366,7 @@ export function DetailEditStep({
           <div className="flex flex-col gap-2">
             <div>
               <Label>コース名</Label>
+              <RequestFieldChange id={selectedCourse.id} field="name" />
               <Input
                 className="h-7 w-full rounded-md border border-input bg-white px-2.5 text-xs shadow-sm"
                 value={selectedCourse.name}
@@ -385,6 +391,7 @@ export function DetailEditStep({
 
             <div>
               <Label>難易度</Label>
+              <RequestFieldChange id={selectedCourse.id} field="level" />
               <Select
                 value={selectedCourse.detail.level || "__empty__"}
                 onValueChange={v =>
@@ -408,6 +415,7 @@ export function DetailEditStep({
             <div className="flex gap-2">
               <div className="flex-1">
                 <Label>滑走距離（m）</Label>
+                <RequestFieldChange id={selectedCourse.id} field="distance" />
                 <Input
                   className="h-7 w-full rounded-md border border-input bg-white px-2.5 text-xs shadow-sm"
                   type="number"
@@ -420,6 +428,7 @@ export function DetailEditStep({
               </div>
               <div className="flex-1">
                 <Label>平均斜度（°）</Label>
+                <RequestFieldChange id={selectedCourse.id} field="avg" />
                 <Input
                   className="h-7 w-full rounded-md border border-input bg-white px-2.5 text-xs shadow-sm"
                   type="number"
@@ -430,6 +439,7 @@ export function DetailEditStep({
               </div>
               <div className="flex-1">
                 <Label>最大斜度（°）</Label>
+                <RequestFieldChange id={selectedCourse.id} field="max" />
                 <Input
                   className="h-7 w-full rounded-md border border-input bg-white px-2.5 text-xs shadow-sm"
                   type="number"
@@ -442,6 +452,7 @@ export function DetailEditStep({
 
             <div>
               <Label>圧雪</Label>
+              <RequestFieldChange id={selectedCourse.id} field="piste" />
               <Select
                 value={selectedCourse.detail.piste}
                 onValueChange={v =>
@@ -466,6 +477,7 @@ export function DetailEditStep({
             <div className="flex gap-2">
               <div className="flex-1">
                 <Label>早朝営業</Label>
+                <RequestFieldChange id={selectedCourse.id} field="morning" />
                 <Select
                   value={selectedCourse.detail.morning}
                   onValueChange={v =>
@@ -490,6 +502,7 @@ export function DetailEditStep({
               </div>
               <div className="flex-1">
                 <Label>ナイター営業</Label>
+                <RequestFieldChange id={selectedCourse.id} field="night" />
                 <Select
                   value={selectedCourse.detail.night}
                   onValueChange={v =>
@@ -516,6 +529,7 @@ export function DetailEditStep({
 
             <div>
               <Label htmlFor="course-note">備考（note）</Label>
+              <RequestFieldChange id={selectedCourse.id} field="note" />
               <Textarea
                 id="course-note"
                 value={selectedCourse.detail.note ?? ""}
@@ -526,6 +540,7 @@ export function DetailEditStep({
 
             <div>
               <Label>画像URL</Label>
+              <RequestFieldChange id={selectedCourse.id} field="image" />
               <Input
                 className="h-7 w-full rounded-md border border-input bg-white px-2.5 text-xs shadow-sm"
                 type="url"
@@ -537,6 +552,7 @@ export function DetailEditStep({
 
             <div>
               <Label htmlFor="course-youtube-url">YouTube動画URL</Label>
+              <RequestFieldChange id={selectedCourse.id} field="youtubeUrl" />
               <Input
                 id="course-youtube-url"
                 className="h-7 w-full rounded-md border border-input bg-white px-2.5 text-xs shadow-sm"
@@ -558,6 +574,7 @@ export function DetailEditStep({
 
             <div>
               <Label>検索ワード</Label>
+              <RequestFieldChange id={selectedCourse.id} field="searchWord" />
               <Input
                 className="h-7 w-full rounded-md border border-input bg-white px-2.5 text-xs shadow-sm"
                 placeholder="スキー場名 コース名"

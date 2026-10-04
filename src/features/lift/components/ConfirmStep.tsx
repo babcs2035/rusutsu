@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSubmissionNavigation } from "@/features/edit-requests/navigation";
 import type { LatestStatusMappingState } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
+import type { SaveLatestStatusMappingRequest } from "@/features/latest-status-mapping/types";
 import type { LinkSaveRequest } from "@/features/links/model";
 import type { ValidationResult } from "@/features/slope/types";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
@@ -14,7 +15,12 @@ import { EditorStepContent } from "@/shared/components/resort-editor/EditorStepC
 import { saveEditorChanges } from "@/shared/components/resort-editor/saveEditorChanges";
 import { saveLiftEdits } from "../actions";
 import { RESORT_LINK_KEYS, RESORT_LINK_LABELS } from "../constants";
-import type { EditorLift, ResortLinks, ResortOption } from "../types";
+import type {
+  EditorLift,
+  ResortLinks,
+  ResortOption,
+  SaveLiftPayload,
+} from "../types";
 import { collectLiftChanges, hasAnyChange } from "../utils/diff";
 import { liftDisplayName } from "../utils/liftOps";
 import { validateResortLinks } from "../utils/linkValidation";
@@ -41,6 +47,11 @@ type ConfirmStepProps = {
     resort: ResortOption,
     confirmed: boolean,
   ) => Promise<void>;
+  /** 申請の編集中は、保存せずに申請の修正案として送る。失敗時はエラー文を返す */
+  onSubmitRequest?: (
+    lifts: SaveLiftPayload[],
+    mapping: SaveLatestStatusMappingRequest | undefined,
+  ) => Promise<string | null>;
 };
 
 const formatDateTime = (iso: string): string => {
@@ -72,6 +83,7 @@ export function ConfirmStep({
   onBack,
   onSaved,
   onToggleConfirmed,
+  onSubmitRequest,
 }: ConfirmStepProps) {
   const navigateSubmission = useSubmissionNavigation();
   const { isEditor, isAdmin } = useEditingRole();
@@ -123,6 +135,14 @@ export function ConfirmStep({
     setIsSaving(true);
     setServerErrors([]);
     try {
+      if (onSubmitRequest) {
+        const error = await onSubmitRequest(
+          lifts.map(liftToSavePayload),
+          mapping.getSaveRequest?.(),
+        );
+        if (error) setServerErrors([error]);
+        return;
+      }
       const result = await saveEditorChanges({
         saveMapping: mapping.getSaveRequest ? async () => true : mapping.save,
         saveLinks: isEditor ? async () => [] : saveLinks,
@@ -180,21 +200,23 @@ export function ConfirmStep({
           )}
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={isTogglingConfirmed || !isAdmin}
-            onClick={handleToggleConfirmed}
-            className={
-              resort.confirmedAt
-                ? "border-orange-300 text-orange-900 hover:bg-orange-50 hover:text-orange-700"
-                : "border-green-300 text-green-900 hover:bg-green-50"
-            }
-          >
-            {resort.confirmedAt ? "確認済みを解除" : "✓ 確認済みにする"}
-          </Button>
+          {!onSubmitRequest && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isTogglingConfirmed || !isAdmin}
+              onClick={handleToggleConfirmed}
+              className={
+                resort.confirmedAt
+                  ? "border-orange-300 text-orange-900 hover:bg-orange-50 hover:text-orange-700"
+                  : "border-green-300 text-green-900 hover:bg-green-50"
+              }
+            >
+              {resort.confirmedAt ? "確認済みを解除" : "✓ 確認済みにする"}
+            </Button>
+          )}
           <Button size="sm" variant="outline" onClick={onBack}>
-            全体情報リンクへ戻る
+            {onSubmitRequest ? "詳細情報へ戻る" : "全体情報リンクへ戻る"}
           </Button>
         </div>
       </div>
@@ -245,28 +267,30 @@ export function ConfirmStep({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-semibold">
-            スキー場全体のリンク
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="mb-4 text-xs text-gray-500">
-            手順5で追加した内容を確認できます。この画面でも追加・修正できます。
-          </p>
-          <div className="flex flex-col gap-4">
-            {RESORT_LINK_KEYS.map(key => (
-              <LinkListField
-                key={key}
-                label={RESORT_LINK_LABELS[key]}
-                values={links[key] ?? []}
-                onChange={values => setLinks({ ...links, [key]: values })}
-              />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      {!onSubmitRequest && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-semibold">
+              スキー場全体のリンク
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-4 text-xs text-gray-500">
+              手順5で追加した内容を確認できます。この画面でも追加・修正できます。
+            </p>
+            <div className="flex flex-col gap-4">
+              {RESORT_LINK_KEYS.map(key => (
+                <LinkListField
+                  key={key}
+                  label={RESORT_LINK_LABELS[key]}
+                  values={links[key] ?? []}
+                  onChange={values => setLinks({ ...links, [key]: values })}
+                />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -430,14 +454,28 @@ export function ConfirmStep({
         <ConfirmDialog
           open={saveDialogOpen}
           onOpenChange={setSaveDialogOpen}
-          title={isEditor ? "申請確認" : "保存確認"}
+          title={
+            onSubmitRequest
+              ? "修正案の保存確認"
+              : isEditor
+                ? "申請確認"
+                : "保存確認"
+          }
           description={
-            deletedLifts.length > 0
-              ? `編集結果で リフト情報・営業情報の対応表・スキー場全体リンクを書き換え、${deletedLifts.length} 件のリフトを削除します。よろしいですか？`
-              : "編集結果で リフト情報・営業情報の対応表・スキー場全体リンクを書き換えます。よろしいですか？"
+            onSubmitRequest
+              ? "この内容を申請の修正案として保存し、確認画面に戻ります。データへの反映は確認画面で承認したときです。"
+              : deletedLifts.length > 0
+                ? `編集結果で リフト情報・営業情報の対応表・スキー場全体リンクを書き換え、${deletedLifts.length} 件のリフトを削除します。よろしいですか？`
+                : "編集結果で リフト情報・営業情報の対応表・スキー場全体リンクを書き換えます。よろしいですか？"
           }
           onConfirm={handleSaveConfirm}
-          confirmLabel={isEditor ? "申請する" : "保存する"}
+          confirmLabel={
+            onSubmitRequest
+              ? "修正案を保存"
+              : isEditor
+                ? "申請する"
+                : "保存する"
+          }
         />
         <Button
           variant="default"
@@ -450,7 +488,13 @@ export function ConfirmStep({
           }
           onClick={() => setSaveDialogOpen(true)}
         >
-          {isSaving ? "処理中…" : isEditor ? "すべて申請" : "すべて保存"}
+          {isSaving
+            ? "処理中…"
+            : onSubmitRequest
+              ? "申請の修正案として保存"
+              : isEditor
+                ? "すべて申請"
+                : "すべて保存"}
         </Button>
         <Button variant="outline" onClick={onBack} disabled={isSaving}>
           戻る

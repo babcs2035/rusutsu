@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useSubmissionNavigation } from "@/features/edit-requests/navigation";
 import type { LatestStatusMappingState } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
+import type { SaveLatestStatusMappingRequest } from "@/features/latest-status-mapping/types";
 import type { LinkSaveRequest } from "@/features/links/model";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { EditorStepContent } from "@/shared/components/resort-editor/EditorStepContent";
@@ -17,6 +18,7 @@ import { COURSE_DETAIL_LABELS } from "../constants";
 import type {
   EditorCourse,
   ResortOption,
+  SaveCoursePayload,
   SlopeBeforeFeature,
   SlopeDetailEntry,
   SlopeSourceKind,
@@ -42,6 +44,11 @@ type ConfirmStepProps = {
   preservedDetails: SlopeDetailEntry[];
   onBack: () => void;
   onSaved: (writtenFiles: string[]) => void;
+  /** 申請の編集中は、保存せずに申請の修正案として送る。失敗時はエラー文を返す */
+  onSubmitRequest?: (
+    courses: SaveCoursePayload[],
+    mapping: SaveLatestStatusMappingRequest | undefined,
+  ) => Promise<string | null>;
 };
 
 const displayValue = (value: string): string =>
@@ -61,6 +68,7 @@ export function ConfirmStep({
   preservedDetails,
   onBack,
   onSaved,
+  onSubmitRequest,
 }: ConfirmStepProps) {
   const navigateSubmission = useSubmissionNavigation();
   const { isEditor } = useEditingRole();
@@ -91,6 +99,14 @@ export function ConfirmStep({
     setServerErrors([]);
     setHasSourceConflict(false);
     try {
+      if (onSubmitRequest) {
+        const error = await onSubmitRequest(
+          courses.map(courseToSavePayload),
+          mapping.getSaveRequest?.(),
+        );
+        if (error) setServerErrors([error]);
+        return;
+      }
       const result = await saveEditorChanges({
         saveMapping: mapping.getSaveRequest ? async () => true : mapping.save,
         saveLinks: isEditor ? async () => [] : saveLinks,
@@ -307,10 +323,26 @@ export function ConfirmStep({
         <ConfirmDialog
           open={saveDialogOpen}
           onOpenChange={setSaveDialogOpen}
-          title={isEditor ? "申請確認" : "保存確認"}
-          description={`コース情報・営業情報の対応表・ゲレンデマップURLを保存します。よろしいですか？`}
+          title={
+            onSubmitRequest
+              ? "修正案の保存確認"
+              : isEditor
+                ? "申請確認"
+                : "保存確認"
+          }
+          description={
+            onSubmitRequest
+              ? "この内容を申請の修正案として保存し、確認画面に戻ります。データへの反映は確認画面で承認したときです。"
+              : "コース情報・営業情報の対応表・ゲレンデマップURLを保存します。よろしいですか？"
+          }
           onConfirm={() => handleSaveConfirm()}
-          confirmLabel={isEditor ? "申請する" : "保存する"}
+          confirmLabel={
+            onSubmitRequest
+              ? "修正案を保存"
+              : isEditor
+                ? "申請する"
+                : "保存する"
+          }
         />
         <ConfirmDialog
           open={overwriteDialogOpen}
@@ -330,7 +362,13 @@ export function ConfirmStep({
           }
           onClick={() => setSaveDialogOpen(true)}
         >
-          {isSaving ? "処理中…" : isEditor ? "すべて申請" : "すべて保存"}
+          {isSaving
+            ? "処理中…"
+            : onSubmitRequest
+              ? "申請の修正案として保存"
+              : isEditor
+                ? "すべて申請"
+                : "すべて保存"}
         </Button>
         <Button variant="outline" onClick={onBack} disabled={isSaving}>
           戻る
