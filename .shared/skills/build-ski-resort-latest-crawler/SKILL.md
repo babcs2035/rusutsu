@@ -13,6 +13,12 @@ description: 指定されたスキー場公式URLをPlaywrightと冬季Wayback�
 - 別サイトや別スキー場のURLは探索しない。同じURLのWaybackアーカイブと、ページが直接参照するAPI・CSS・JavaScript・画像は調査してよい。
 - 提供URLに掲載され、既存型で正確に表現できるカテゴリは省略しない。一方、掲載のない情報や意味を確認できない値は作らない。
 
+### 連携エリアの対象ID
+
+- 着手時に `SkiResort.linkKind`、`mergedIntoId`、`sourceResortIds` と公開画面の読み取り経路を確認する。`LINKED` の親を指定された場合、親だけのクローラーで完了としない。所属する公開子スキー場ごとに `resorts/<child-id>.ts` を用意し、結果の `resortName` と `Utils.saveLatestResult` の保存先をそれぞれの子IDにする。抽出処理は `shared` で共用してよい。
+- 共通の公式ページに複数スキー場のコース・リフトが載る場合も、行の所属を根拠に各子の結果へ振り分ける。天候・積雪・コメントと `weatherUrl` / `commentUrl` / `newsUrl` も子ごとに対応づける。`weatherUrl` は出典であり、画面のタブを指定する値ではない。所属を確認できない値を親へ一括保存したり、各子へ複製したりしない。
+- `LINKED` のコース・リフトは画面側で子IDの現在値を合算し、コンディションは子IDでタブを切り替える。既存の親クローラーから移行する場合は、その親結果の利用先と子への移行状況を確認する。`MERGED` の親は別の公開単位なので、この分割規則を一律に適用しない。詳しくは[実装ガイドの連携エリア](references/implementation-guidelines.md#連携エリアの保存単位)を参照する。
+
 ## ローカル作業ファイルの保存先
 
 - 調査・検証の成果物はすべて `src/private`（rusutsu-library）配下へ保存する。親rusutsuの `tmp/`、`logs/`、ルートやOSの `/tmp` を作業資料の保存先にしない。
@@ -102,7 +108,7 @@ node .shared/skills/build-ski-resort-latest-crawler/scripts/capture-rendered-pag
 
 ### 4. 検証する
 
-1. 現行URLの検証は `mise run crawl:latest -- --remote-api --resort <resort-id>` で実行し、設定済みAPIへ保存する。スキー場ID、名前、状態、件数、URL、`note`、`update`、警告をDOMと照合し、APIのrun・カテゴリ保存結果とadminが参照する現在値への反映まで確認する。検証目的という理由だけでAPI設定を空にしたり、ローカルJSON保存だけで完了したりしない。API設定不足・通信失敗は未完了として報告する。
+1. 現行URLの検証は `mise run crawl:latest -- --remote-api --resort <resort-id>` で実行し、設定済みAPIへ保存する。`LINKED` では子IDごとに実行する。スキー場ID、名前、状態、件数、URL、`note`、`update`、警告をDOMと照合し、APIのrun・カテゴリ保存結果とadminが参照する現在値への反映まで確認する。さらに、親のコース・リフト合算と、子ごとのコンディションタブを確認する。検証目的という理由だけでAPI設定を空にしたり、ローカルJSON保存だけで完了したりしない。API設定不足・通信失敗は未完了として報告する。
 2. オフシーズンまたは状態の意味が現行DOMだけで確定しない場合は、`CRAWL_LATEST_ARCHIVE_TIMESTAMP=YYYYMMDD` を使うなどして、同じクローラー経路を冬季アーカイブでも検証する。
 3. 正常・無警告で診断DOMが増えないことと、未知状態・必須DOM消失・件数異常の各テストで警告、DOM、診断メタデータが同じ実行IDで残ることを確認する。
 4. 対象ファイルをBiomeで検査し、`mise run typecheck` を実行する。
@@ -128,5 +134,6 @@ node .shared/skills/build-ski-resort-latest-crawler/scripts/capture-rendered-pag
 - 画像天気を使う場合は、調査した識別子と未知値警告のテスト結果
 - 未確認の状態・カテゴリ、残したTODO、対応URLを残した／空にした理由、推測しなかった範囲
 - 現行データのAPI保存結果（run ID・カテゴリ別の反映結果）、残した検証JSONパス、Biome・型チェックの結果
+- `LINKED` では所属子IDごとの保存・反映結果、親のコース・リフト合算、コンディションタブの子別表示と未完了の子
 
 単に「確認済み」とせず、何をどのDOM・凡例・アーカイブで確認し、何が未確認かを区別する。

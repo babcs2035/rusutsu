@@ -68,6 +68,9 @@ jobs:
       - name: Run Type Check
         run: pnpm tsc --noEmit
 
+      - name: Install Playwright browser for DOM tests
+        run: pnpm exec playwright install --with-deps --only-shell chromium
+
       - name: Unit and contract tests
         run: node scripts/runTests.mjs
 
