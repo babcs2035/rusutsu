@@ -13,6 +13,10 @@ import { useEffect, useState } from "react";
 import { z } from "zod";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { AccountButton } from "@/features/favorites/AccountButton";
+import { FavoriteButton } from "@/features/favorites/FavoriteButton";
+import { FavoriteCompareButton } from "@/features/favorites/FavoriteCompareButton";
+import { useFavorites } from "@/features/favorites/FavoritesProvider";
 import { REGION_PREFECTURES } from "@/features/filters/constants";
 import type { Filters } from "@/features/filters/types";
 import { getActiveFilterLabels } from "@/features/filters/utils/filterLabels";
@@ -138,6 +142,7 @@ type Props = {
   onMobileSearchSubmit: (event: ReactFormEvent<HTMLElement>) => void;
   onMobileSearch: () => void;
   onOpenCompare: () => void;
+  onCompareFavorites: () => void;
   onOpenMobileFilterOverlay: () => void;
   onSearch: () => void;
   onSelectResort: (id: string) => void;
@@ -218,6 +223,7 @@ export const HomeLayout = ({
   onMobileSearchSubmit,
   onMobileSearch,
   onOpenCompare,
+  onCompareFavorites,
   onOpenMobileFilterOverlay,
   onSearch,
   onSelectResort,
@@ -231,6 +237,7 @@ export const HomeLayout = ({
   onUserMapInteraction,
   onUserMapZoomInteraction,
 }: Props) => {
+  const favorites = useFavorites();
   // デスクトップの比較では、左の地図エリアを「ゲレンデ（コースマップ一覧）」と
   // 「アクセス（位置の地図）」で切り替える。既定はゲレンデ
   const [compareLeftPane, setCompareLeftPane] =
@@ -320,7 +327,10 @@ export const HomeLayout = ({
     !isSidePanelLayout &&
     !isMobileFilterOverlayOpen &&
     !isCompareOpen &&
-    (Boolean(selectedResortId) || hasSearched || selectedCompareIds.length > 0);
+    (Boolean(selectedResortId) ||
+      hasSearched ||
+      selectedCompareIds.length > 0 ||
+      (favorites?.ids.length ?? 0) >= 2);
   const shouldShowMobileSearchButton =
     !isCompareOpen && !isMobileFilterOverlayOpen && !selectedResortId;
   const shouldShowMobileTopChrome =
@@ -451,6 +461,7 @@ export const HomeLayout = ({
               onCloseDetail={onCloseDetail}
               onClearCompare={onClearCompare}
               onOpenCompare={onOpenCompare}
+              onCompareFavorites={onCompareFavorites}
               onToggleCompare={onToggleCompare}
             />
           )}
@@ -637,6 +648,7 @@ export const HomeLayout = ({
       </div>
 
       <DesktopSearchPanel
+        showAccount={!selectedResortId && !isCompareOpen}
         filters={filters}
         resorts={initialResorts}
         filteredResorts={filteredResorts}
@@ -651,6 +663,7 @@ export const HomeLayout = ({
         onKeyboardInputFocus={onFilterKeyboardInputFocus}
         onClearCompare={onClearCompare}
         onOpenCompare={onOpenCompare}
+        onCompareFavorites={onCompareFavorites}
         onSearch={onSearch}
         onSelectResort={onSelectResort}
         onToggleCompare={onToggleCompare}
@@ -735,7 +748,7 @@ const MobileSearchHeader = ({
         onChange={onTabChange}
         radius="full"
         className="h-10 shadow-sm"
-        itemClassName="h-full flex-1 px-4"
+        itemClassName="h-full flex-1 px-2"
         ariaLabel={option => `${option.label}を表示`}
       />
     }
@@ -765,6 +778,7 @@ type MobileContextHeaderProps = {
   onCloseDetail: () => void;
   onClearCompare: () => void;
   onOpenCompare: () => void;
+  onCompareFavorites: () => void;
   onToggleCompare: (id: string, selected: boolean) => void;
 };
 
@@ -784,6 +798,7 @@ const MobileContextHeader = ({
   onCloseDetail,
   onClearCompare,
   onOpenCompare,
+  onCompareFavorites,
   onToggleCompare,
 }: MobileContextHeaderProps) => {
   const isResults = mode === "results";
@@ -854,15 +869,21 @@ const MobileContextHeader = ({
             </p>
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1">
-            <Button
-              type="button"
-              aria-label="詳細を閉じる"
-              variant="ghost"
-              onClick={onCloseDetail}
-              className="flex h-8 w-8 min-w-8 shrink-0 items-center justify-center rounded-full border border-gray-200 p-0 text-gray-500 hover:bg-gray-50 hover:text-gray-900"
-            >
-              <X size={18} strokeWidth={2.5} />
-            </Button>
+            <div className="flex items-center gap-1">
+              {detailResortId && (
+                <FavoriteButton resortId={detailResortId} name={detailTitle} />
+              )}
+              <Button
+                type="button"
+                aria-label="詳細を閉じる"
+                variant="ghost"
+                onClick={onCloseDetail}
+                className="flex h-8 w-8 min-w-8 shrink-0 items-center justify-center rounded-full border border-gray-200 p-0 text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+              >
+                <X size={18} strokeWidth={2.5} />
+              </Button>
+              <AccountButton />
+            </div>
             {detailResortId && (
               <Button
                 type="button"
@@ -884,6 +905,7 @@ const MobileContextHeader = ({
         </div>
       )}
 
+      {isResults && <FavoriteCompareButton onCompare={onCompareFavorites} />}
       {isResults && compareCount > 0 && (
         <div className="flex px-4 pb-3 gap-2 items-center border-b border-gray-100">
           <Button

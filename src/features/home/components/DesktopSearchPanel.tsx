@@ -1,6 +1,8 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { AccountButton } from "@/features/favorites/AccountButton";
+import { FavoriteCompareButton } from "@/features/favorites/FavoriteCompareButton";
 import { FilterPanel } from "@/features/filters/FilterPanel";
 import type { Filters } from "@/features/filters/types";
 import { DEFAULT_LIFT_TICKET_SEARCH_INPUT } from "@/features/lift-ticket/utils/calculateLiftTicket";
@@ -9,6 +11,7 @@ import type { MapSkiResort } from "@/types/skiResorts";
 import { SkiResortList } from "./SkiResortList";
 
 type Props = {
+  showAccount?: boolean;
   filters: Filters;
   resorts: MapSkiResort[];
   filteredResorts: MapSkiResort[];
@@ -23,6 +26,7 @@ type Props = {
   onKeyboardInputFocus: () => void;
   onClearCompare: () => void;
   onOpenCompare: () => void;
+  onCompareFavorites: () => void;
   onSearch: () => void;
   onSelectResort: (id: string) => void;
   onToggleCompare: (id: string, selected: boolean) => void;
@@ -30,6 +34,7 @@ type Props = {
 };
 
 export const DesktopSearchPanel = ({
+  showAccount = true,
   filters,
   resorts,
   filteredResorts,
@@ -44,6 +49,7 @@ export const DesktopSearchPanel = ({
   onKeyboardInputFocus,
   onClearCompare,
   onOpenCompare,
+  onCompareFavorites,
   onSearch,
   onSelectResort,
   onToggleCompare,
@@ -57,6 +63,11 @@ export const DesktopSearchPanel = ({
     )}
   >
     <div className="flex h-full flex-col overflow-hidden">
+      {showAccount && (
+        <div className="flex justify-end px-4 pt-2">
+          <AccountButton />
+        </div>
+      )}
       <FilterPanel
         filters={filters}
         resorts={resorts}
@@ -69,6 +80,7 @@ export const DesktopSearchPanel = ({
         onKeyboardInputFocus={onKeyboardInputFocus}
         onSearch={onSearch}
       />
+      <FavoriteCompareButton onCompare={onCompareFavorites} />
       {compareCount > 0 && (
         <div className="flex w-full flex-shrink-0 gap-2 px-4 py-3 border-b border-gray-100 bg-white">
           <Button

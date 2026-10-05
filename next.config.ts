@@ -21,6 +21,13 @@ const nextConfig: NextConfig = {
   },
   allowedDevOrigins: ["10.100.160.132", "*.trycloudflare.com", "192.168.10.25"],
   output: "standalone",
+  outputFileTracingExcludes: {
+    "/*": [
+      "./src/private/data/resorts-temporary/tmp/**/*",
+      "./src/private/data/resorts-temporary/logs/**/*",
+      "./src/private/data/resorts-temporary/crawl_latest_dom/**/*",
+    ],
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: "6mb",

@@ -305,6 +305,8 @@ export const SkiResortDetailView = ({
   const renderFeatureDetail = (options?: { withOpenList?: boolean }) =>
     selectedCourseGroup || selectedLift ? (
       <FinalizedFeatureDetail
+        resortId={resort.id}
+        showAccount={isSidePanel}
         courseGroup={selectedCourseGroup}
         lift={selectedLift}
         resortLabelName={getResortSearchName(

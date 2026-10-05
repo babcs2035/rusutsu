@@ -3,10 +3,12 @@
 
 import type { AuthConfig } from "@auth/core";
 import { PrismaAdapter } from "@auth/prisma-adapter";
+import { cookies } from "next/headers";
 import Google from "next-auth/providers/google";
 import { prisma } from "@/lib/prisma";
 
-function isAdmin(email: string): boolean {
+function isAdmin(email: string | null | undefined): boolean {
+  if (!email) return false;
   const admins = process.env.ADMIN_EMAILS ?? "";
   return admins
     .split(",")
@@ -91,11 +93,44 @@ export const authConfig: AuthConfig = {
   },
   pages: {
     signIn: "/admin/login",
+    error: "/login",
+  },
+  events: {
+    async signOut() {
+      const jar = await cookies();
+      const options = {
+        httpOnly: true,
+        sameSite: "lax" as const,
+        secure: process.env.AUTH_URL?.startsWith("https://") ?? false,
+        path: "/rusutsu",
+        maxAge: 0,
+      };
+      jar.set("rusutsu-login-history", "", options);
+      jar.set("rusutsu-favorite-intent", "", options);
+    },
   },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        // Bind an automatic favorite addition to this successful sign-in only.
+        try {
+          const jar = await cookies();
+          jar.set("rusutsu-login-history", "1", {
+            httpOnly: true,
+            sameSite: "lax",
+            secure: process.env.AUTH_URL?.startsWith("https://") ?? false,
+            path: "/rusutsu",
+            maxAge: 365 * 24 * 60 * 60,
+          });
+          const intent = JSON.parse(
+            jar.get("rusutsu-favorite-intent")?.value ?? "null",
+          );
+          if (typeof intent?.nonce === "string")
+            token.favoriteLoginNonce = intent.nonce;
+        } catch {
+          /* Admin login and expired intents need no public operation. */
+        }
         token.role = (user as { role?: string }).role;
 
         // 初回サインイン時に ADMIN_EMAILS のメールアドレスなら DB の role を admin に設定
@@ -122,6 +157,10 @@ export const authConfig: AuthConfig = {
         (session.user as unknown as { role: string }).role =
           (token.role as string) ?? "viewer";
       }
+      if (typeof token.favoriteLoginNonce === "string")
+        (
+          session as typeof session & { favoriteLoginNonce?: string }
+        ).favoriteLoginNonce = token.favoriteLoginNonce;
       return session;
     },
     // Override redirect to include Next.js basePath (/rusutsu).
@@ -130,38 +169,19 @@ export const authConfig: AuthConfig = {
     // returning it as-is causes an infinite redirect loop. Detect and return
     // the post-signin destination instead.
     redirect({ url, baseUrl }) {
-      const basePath = "/rusutsu";
-
-      if (url.startsWith("/")) {
-        return `${baseUrl}${basePath}${url}`;
-      }
-
-      // url is a full URL — normalize baseUrl (strip trailing slash)
-      const base = baseUrl.replace(/\/$/, "");
-
-      if (url.startsWith(base)) {
-        const urlObj = new URL(url);
-        const callbackUrl = urlObj.searchParams.get("callbackUrl");
-
-        // Use the callbackUrl if present (from OAuth flow or signIn redirect)
-        if (callbackUrl) {
-          if (callbackUrl.startsWith("/")) {
-            return `${base}${basePath}${callbackUrl}`;
-          }
-          return callbackUrl;
-        }
-
-        const withoutBase = url.replace(base, "");
-        // url is an auth callback URL without callbackUrl — return home
-        if (withoutBase.startsWith("/api/auth")) return `${base}${basePath}/`;
-        // Already has basePath — return as-is (idempotent)
-        if (withoutBase.startsWith(basePath)) return url;
-        return `${base}${basePath}${withoutBase}`;
-      }
-
-      return `${base}${basePath}/`;
+      const base = new URL(baseUrl).origin;
+      const candidate = new URL(url, base);
+      if (candidate.origin !== base) return `${base}/rusutsu/`;
+      if (
+        candidate.pathname === "/rusutsu" ||
+        candidate.pathname.startsWith("/rusutsu/")
+      )
+        return candidate.href;
+      if (candidate.pathname.startsWith("/api/auth")) return `${base}/rusutsu/`;
+      candidate.pathname = `/rusutsu${candidate.pathname}`;
+      return candidate.href;
     },
   },
   secret: process.env.AUTH_SECRET,
-  debug: true,
+  debug: process.env.NODE_ENV === "development",
 };

@@ -3,6 +3,7 @@ node = "24.19.0"
 "npm:pnpm" = "11.20.0"
 
 [tasks]
+"recommendations:rebuild" = { description = "コース推薦特徴量を再計算（既定dry-run、--applyで開発／接続先DBへ反映）", run = "node --import tsx src/private/scripts/rebuildCourseRecommendations.ts" }
 "reviews:publish" = { description = "レビューJSONの本番差分を確認（--applyで反映）", run = "node --import tsx scripts/publishReview.ts" }
 "lift-ticket:publish" = { description = "リフト券JSONの本番差分を確認（--applyで反映、--pullで本番→ローカル）", run = "node --import tsx scripts/publishLiftTicket.ts" }
 "links:strip-tracking-params" = { description = "SNSリンクの?stkn=等トラッキングトークンを除去（--applyで反映）", run = "pnpm tsx src/private/scripts/stripLinkTrackingParams.ts" }

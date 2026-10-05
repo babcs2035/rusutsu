@@ -93,6 +93,7 @@ model SkiResort {
   yukiMagi   YukiMagi? @relation(fields: [yukiMagiId], references: [id])
 
   // Relations
+  favorites           Favorite[]
   courses             Course[]
   lifts               Lift[]
   tickets             Ticket[]
@@ -292,6 +293,7 @@ model User {
   emailVerified DateTime?
   image         String?
   role          String    @default("viewer") // "viewer" | "editor" | "admin"; DB CHECKで制限
+  favorites     Favorite[]
   accounts      Account[]
   sessions      Session[]
 
@@ -711,4 +713,40 @@ model EditRequestJob {
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
   @@index([status, updatedAt])
   @@map("edit_request_jobs")
+}
+
+// Browser favorites are merged once into these account-owned rows.
+model Favorite {
+  userId String
+  skiResortId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skiResort SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  createdAt DateTime @default(now())
+  @@id([userId, skiResortId])
+  @@index([skiResortId])
+  @@map("favorites")
+}
+
+// Rebuilt transactionally from canonical map documents; no GeoJSON at query time.
+model CourseRecommendationFeature {
+  resortId String
+  key String
+  groupId String
+  courseIds String[]
+  name String
+  routeKey String?
+  histogram Float[]
+  cumulative Float[]
+  distance Float
+  logDistance Float
+  meanSlope Float
+  shape String
+  grooming String
+  geometryHash String @db.Char(64)
+  sourceHash String @db.Char(64)
+  calculationVersion Int
+  updatedAt DateTime @default(now()) @updatedAt
+  @@id([resortId, key])
+  @@index([resortId, calculationVersion])
+  @@map("course_recommendation_features")
 }

@@ -12,6 +12,7 @@ import {
 } from "react";
 import { calculateLiftTicketsForList } from "@/actions/skiResorts";
 import { Button } from "@/components/ui/button";
+import { FavoriteButton } from "@/features/favorites/FavoriteButton";
 import { TicketCalculationCard } from "@/features/lift-ticket/components/TicketCalculationCard";
 import type {
   LiftTicketSearchInput,
@@ -225,7 +226,10 @@ const SkiResortListItem = memo(
           onFocus={highlightResort}
           onBlur={clearHighlight}
           onKeyDown={e => {
-            if (e.key === "Enter" || e.key === " ") {
+            if (
+              e.target === e.currentTarget &&
+              (e.key === "Enter" || e.key === " ")
+            ) {
               e.preventDefault();
               handleSelect();
             }
@@ -280,6 +284,7 @@ const SkiResortListItem = memo(
                 ))}
             </div>
             <div className="flex flex-shrink-0 items-center justify-end gap-2 min-w-[5.75rem] md:min-w-[100px]">
+              <FavoriteButton resortId={resort.id} name={resort.nameJa} />
               <Button
                 type="button"
                 size="sm"

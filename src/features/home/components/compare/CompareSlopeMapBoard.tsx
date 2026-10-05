@@ -408,6 +408,7 @@ export const CompareSlopeFeatureDetail = ({
       </p>
       <div className="min-h-0 flex-1">
         <FinalizedFeatureDetail
+          resortId={resort.id}
           courseGroup={selectedCourseGroup}
           lift={selectedLift}
           resortLabelName={getResortSearchName(
@@ -546,6 +547,7 @@ const ResortSlopeMapCard = ({
   const featureDetail =
     selectedCourseGroup || selectedLift ? (
       <FinalizedFeatureDetail
+        resortId={resort.id}
         courseGroup={selectedCourseGroup}
         lift={selectedLift}
         resortLabelName={getResortSearchName(

@@ -60,7 +60,7 @@ export const homeSessionSchema = z.object({
   filters: filtersSchema,
   mobileDraftFilters: filtersSchema.optional(),
   isMobileFilterOverlayOpen: z.boolean().optional(),
-  selectedCompareIds: z.array(id).max(100).optional(),
+  selectedCompareIds: z.array(id).max(2000).optional(),
   isCompareOpen: z.boolean().optional(),
   selectedElevationProfilePoint: z
     .object({
@@ -188,7 +188,10 @@ export function initializeTabSession() {
     const navigation = performance.getEntriesByType("navigation")[0] as
       | PerformanceNavigationTiming
       | undefined;
-    if (navigation?.type === "navigate") {
+    if (
+      navigation?.type === "navigate" &&
+      !new URL(window.location.href).searchParams.has("favoriteLogin")
+    ) {
       for (const key of Object.keys(sessionStorage)) {
         if (isScreenKey(key)) sessionStorage.removeItem(key);
       }

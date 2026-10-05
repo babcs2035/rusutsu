@@ -3,6 +3,8 @@
 import { Check, Plus, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { AccountButton } from "@/features/favorites/AccountButton";
+import { FavoriteButton } from "@/features/favorites/FavoriteButton";
 import { cn } from "@/lib/utils";
 import { CopyResortNameButton } from "@/shared/components/CopyResortNameButton";
 import { FormerResortNames } from "@/shared/components/FormerResortNames";
@@ -44,6 +46,7 @@ export const InfoSection = ({
           />
         </h2>
         <div className="flex shrink-0 items-center gap-1">
+          <FavoriteButton resortId={resort.id} name={resort.nameJa} />
           <Button
             type="button"
             variant="ghost"
@@ -53,6 +56,7 @@ export const InfoSection = ({
           >
             <X size={18} strokeWidth={2.5} />
           </Button>
+          <AccountButton />
         </div>
       </div>
       {resort.formerNames.length > 0 && (

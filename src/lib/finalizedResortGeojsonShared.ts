@@ -2,6 +2,9 @@ import type { CourseStatusSummary } from "./courseStatusSummary";
 export type GeoCoordinate = [number, number] | [number, number, number];
 
 export type FinalizedCourseFeature = {
+  originalName?: string | null;
+  coordinateDataInvalid?: boolean;
+  recommendationGroupingInvalid?: boolean;
   id: string;
   name: string;
   displayName: string;

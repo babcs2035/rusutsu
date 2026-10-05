@@ -7,6 +7,7 @@ import {
 import { canonicalBase, type RawGeoFeature } from "@/lib/resortMapMerge";
 import { MAP_ENTITIES_MIGRATION_KEY } from "@/server/course-lift/migrationPlan";
 import { syncMapEntities } from "@/server/course-lift/repository";
+import { syncRecommendationDocuments } from "@/server/course-recommendations/projection";
 import { dataDocumentWriteSchema } from "@/server/data-documents/contract";
 import { hashDataDocumentContent } from "@/server/data-documents/repositoryCore";
 import {
@@ -85,6 +86,10 @@ export async function ensureMergedGeometryDocuments(
   }
   if (merged.length) {
     await transaction.dataDocument.createMany({ data: merged });
+    await syncRecommendationDocuments(
+      transaction,
+      merged.map(d => d.key),
+    );
     const enabled = await transaction.canonicalDataMigration.findUnique({
       where: { key: MAP_ENTITIES_MIGRATION_KEY },
     });

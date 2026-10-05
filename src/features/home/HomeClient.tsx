@@ -18,6 +18,11 @@ import {
 import { flushSync } from "react-dom";
 import { z } from "zod";
 import { getSkiResortById } from "@/actions/skiResorts";
+import { CourseNavigationContext } from "@/features/course-recommendations/SimilarCourses";
+import {
+  FavoritesProvider,
+  useFavorites,
+} from "@/features/favorites/FavoritesProvider";
 import { DEFAULT_FILTERS } from "@/features/filters/constants";
 import type { Filters } from "@/features/filters/types";
 import {
@@ -116,6 +121,11 @@ export function HomeClient({ initialResorts }: Props) {
       if (disposed) return;
       const resorts = cached ?? initialResorts;
       if (!cached) void writeOverviewCache(token, initialResorts);
+      const returnUrl = new URL(window.location.href);
+      if (returnUrl.searchParams.has("favoriteLogin")) {
+        returnUrl.searchParams.delete("favoriteLogin");
+        window.history.replaceState(window.history.state, "", returnUrl);
+      }
       setBoot({
         resorts,
         session: resolveHomeSession(
@@ -134,7 +144,9 @@ export function HomeClient({ initialResorts }: Props) {
   if (!boot)
     return <LoadingSpinner className="h-dvh" text="地図を準備しています..." />;
   return (
-    <HomeClientContent initialResorts={boot.resorts} session={boot.session} />
+    <FavoritesProvider resortIds={boot.resorts.map(resort => resort.id)}>
+      <HomeClientContent initialResorts={boot.resorts} session={boot.session} />
+    </FavoritesProvider>
   );
 }
 
@@ -142,6 +154,7 @@ function HomeClientContent({
   initialResorts,
   session,
 }: Props & { session: HomeSession | null }) {
+  const favorites = useFavorites();
   // マップコンポーネントを SSR 無効で動的インポート
   const DynamicMap = useMemo(
     () =>
@@ -879,29 +892,31 @@ function HomeClientContent({
     [isCompareOpen],
   );
 
-  const handleOpenCompare = useCallback(async () => {
-    if (selectedCompareIds.length === 0) return;
+  const handleOpenCompare = useCallback(
+    async (ids = selectedCompareIds) => {
+      if (ids.length === 0) return;
+      setSelectedCompareIds(ids);
 
-    setMobileContentTab("info");
-    setHoveredResortId(null);
-    saveReturnViewState();
-    setIsCompareOpen(true);
-    setIsCompareLoading(true);
-    if (isSidePanelLayout) {
-      setIsListSheetOpen(false);
-    } else {
-      setListSheetSnapPoint(BOTTOM_SHEET_SEARCH_SNAP_POINT);
-      setIsListSheetOpen(true);
-    }
-    setCompareResortData([]);
+      setMobileContentTab("info");
+      setHoveredResortId(null);
+      saveReturnViewState();
+      setIsCompareOpen(true);
+      setIsCompareLoading(true);
+      if (isSidePanelLayout) {
+        setIsListSheetOpen(false);
+      } else {
+        setListSheetSnapPoint(BOTTOM_SHEET_SEARCH_SNAP_POINT);
+        setIsListSheetOpen(true);
+      }
+      setCompareResortData([]);
 
-    const data = await Promise.all(
-      selectedCompareIds.map(id => getCachedResort(id)),
-    );
+      const data = await Promise.all(ids.map(id => getCachedResort(id)));
 
-    setCompareResortData(data.filter(resort => resort !== null));
-    setIsCompareLoading(false);
-  }, [isSidePanelLayout, saveReturnViewState, selectedCompareIds]);
+      setCompareResortData(data.filter(resort => resort !== null));
+      setIsCompareLoading(false);
+    },
+    [isSidePanelLayout, saveReturnViewState, selectedCompareIds],
+  );
 
   const handleMainPointerDownCapture = useCallback(
     (event: ReactPointerEvent<HTMLElement>) => {
@@ -958,106 +973,127 @@ function HomeClientContent({
       (mobileContentTab === "info" && (isListSheetOpen || hasSearched)));
 
   return (
-    <MapSessionProvider onSelectResort={handleSelectResort}>
-      {detailError && !selectedResortData && (
-        <div
-          role="status"
-          className="fixed left-1/2 top-24 z-[1000] w-72 -translate-x-1/2 rounded-md border bg-white p-3 text-sm shadow-lg"
-        >
-          スキー場を読み込めませんでした。
-          <button
-            type="button"
-            onClick={() => setDetailRetry(value => value + 1)}
-            className="ml-2 min-h-11 text-blue-600"
+    <CourseNavigationContext.Provider
+      value={(id, feature) => {
+        handleSelectResort(id);
+        setSelectedFinalizedFeature(feature);
+        setSelectedElevationProfilePoint(null);
+      }}
+    >
+      <MapSessionProvider onSelectResort={handleSelectResort}>
+        {detailError && !selectedResortData && (
+          <div
+            role="status"
+            className="fixed left-1/2 top-24 z-[1000] w-72 -translate-x-1/2 rounded-md border bg-white p-3 text-sm shadow-lg"
           >
-            再試行
-          </button>
-        </div>
-      )}
-      <HomeLayout
-        DynamicMap={DynamicMap}
-        compareResortData={compareResortData}
-        filteredResortIdSet={filteredResortIdSet}
-        filteredResortIds={filteredResortIds}
-        filteredResorts={filteredResorts}
-        filters={filters}
-        hasActiveFilters={hasActiveFilters}
-        hasSearched={hasSearched}
-        hoveredResortId={hoveredResortId}
-        initialResorts={initialResorts}
-        isCompareLoading={isCompareLoading}
-        isCompareOpen={isCompareOpen}
-        isFilterEditorOpen={isFilterEditorOpen}
-        isListSheetOpen={isListSheetOpen}
-        isMobileFilterOverlayOpen={isMobileFilterOverlayOpen}
-        isPending={isPending || (detailLoading && !selectedResortData)}
-        isSidePanelLayout={isSidePanelLayout}
-        listSheetContentRef={listSheetContentRef}
-        listSheetSnapPoint={listSheetSnapPoint}
-        mapInteractionMode={mapInteractionMode}
-        mobileContentTab={mobileContentTab}
-        mobileFilterOverlayRef={mobileFilterOverlayRef}
-        mobileListSheetSnapPoints={mobileListSheetSnapPoints}
-        mobileDraftFilteredResortCount={mobileDraftFilteredResortCount}
-        mobileDraftHasChanges={hasMobileDraftFilterChanges}
-        mobileDraftFilters={mobileDraftFilters}
-        mobileSearchFilterBottomPadding={mobileSearchFilterBottomPadding}
-        mobileSearchFilterScrollRef={mobileSearchFilterScrollRef}
-        mobileSearchPanelInputRef={mobileSearchPanelInputRef}
-        restoreViewRequest={restoreViewRequest}
-        searchViewportBottomPaddingRatio={searchViewportBottomPaddingRatio}
-        searchViewportRequestKey={searchViewportRequestKey}
-        selectedCompareIdSet={selectedCompareIdSet}
-        selectedCompareIds={selectedCompareIds}
-        selectedElevationProfilePoint={selectedElevationProfilePoint}
-        selectedFinalizedFeature={selectedFinalizedFeature}
-        selectedResortData={selectedResortData}
-        selectedResortId={selectedResortId}
-        selectedResortSummary={selectedResortSummary}
-        shouldRenderMobileListSheet={shouldRenderMobileListSheet}
-        onCloseCompare={handleCloseCompare}
-        onClearCompare={handleClearCompare}
-        onCloseDetail={handleCloseDetail}
-        onCloseMobileFilterOverlay={handleCloseMobileFilterOverlay}
-        onFilterChange={handleFilterChange}
-        onFilterKeyboardInputBlur={handleFilterKeyboardInputBlur}
-        onFilterKeyboardInputFocus={handleFilterKeyboardInputFocus}
-        onMainPointerDownCapture={handleMainPointerDownCapture}
-        onMapViewChange={handleMapViewChange}
-        onMobileFilterAreaPointerDown={handleMobileFilterAreaPointerDown}
-        onMobileFilterChange={setMobileDraftFilters}
-        onMobileKeywordChange={handleMobileKeywordChange}
-        onMobileKeywordClear={handleMobileKeywordClear}
-        onMobileSearchButtonKeywordClear={handleMobileSearchButtonKeywordClear}
-        onMobileSearchButtonPointerDown={handleMobileSearchButtonPointerDown}
-        onMobileContentTabChange={handleMobileContentTabChange}
-        onMobileSearchFilterInputBlur={handleMobileSearchFilterInputBlur}
-        onMobileSearchFilterInputFocus={handleMobileSearchFilterInputFocus}
-        onMobileSearchSubmit={handleMobileSearchSubmit}
-        onOpenCompare={handleOpenCompare}
-        onOpenMobileFilterOverlay={handleOpenMobileFilterOverlay}
-        onSearch={handleSearch}
-        onMobileSearch={handleMobileSearch}
-        onSelectResort={handleSelectResort}
-        onSelectedFinalizedFeatureChange={handleSelectedFinalizedFeatureChange}
-        onSelectedElevationProfilePointChange={setSelectedElevationProfilePoint}
-        onSetFilterEditorOpen={setIsFilterEditorOpen}
-        onSetHoveredResortId={setHoveredResortId}
-        onSetListSheetOpen={setIsListSheetOpen}
-        onSetListSheetSnapPoint={setListSheetSnapPoint}
-        onToggleCompare={handleToggleCompare}
-        onUserMapInteraction={handleUserMapInteraction}
-        onUserMapZoomInteraction={handleUserMapZoomInteraction}
-      />
-      <ConfirmDialog
-        open={discardFilterChangesDialogOpen}
-        onOpenChange={setDiscardFilterChangesDialogOpen}
-        title="変更の破棄"
-        description="変更を破棄しますか？"
-        onConfirm={handleConfirmCloseMobileFilterOverlay}
-        confirmLabel="破棄する"
-      />
-    </MapSessionProvider>
+            スキー場を読み込めませんでした。
+            <button
+              type="button"
+              onClick={() => setDetailRetry(value => value + 1)}
+              className="ml-2 min-h-11 text-blue-600"
+            >
+              再試行
+            </button>
+          </div>
+        )}
+        <HomeLayout
+          DynamicMap={DynamicMap}
+          compareResortData={compareResortData}
+          filteredResortIdSet={filteredResortIdSet}
+          filteredResortIds={filteredResortIds}
+          filteredResorts={filteredResorts}
+          filters={filters}
+          hasActiveFilters={hasActiveFilters}
+          hasSearched={hasSearched}
+          hoveredResortId={hoveredResortId}
+          initialResorts={initialResorts}
+          isCompareLoading={isCompareLoading}
+          isCompareOpen={isCompareOpen}
+          isFilterEditorOpen={isFilterEditorOpen}
+          isListSheetOpen={isListSheetOpen}
+          isMobileFilterOverlayOpen={isMobileFilterOverlayOpen}
+          isPending={isPending || (detailLoading && !selectedResortData)}
+          isSidePanelLayout={isSidePanelLayout}
+          listSheetContentRef={listSheetContentRef}
+          listSheetSnapPoint={listSheetSnapPoint}
+          mapInteractionMode={mapInteractionMode}
+          mobileContentTab={mobileContentTab}
+          mobileFilterOverlayRef={mobileFilterOverlayRef}
+          mobileListSheetSnapPoints={mobileListSheetSnapPoints}
+          mobileDraftFilteredResortCount={mobileDraftFilteredResortCount}
+          mobileDraftHasChanges={hasMobileDraftFilterChanges}
+          mobileDraftFilters={mobileDraftFilters}
+          mobileSearchFilterBottomPadding={mobileSearchFilterBottomPadding}
+          mobileSearchFilterScrollRef={mobileSearchFilterScrollRef}
+          mobileSearchPanelInputRef={mobileSearchPanelInputRef}
+          restoreViewRequest={restoreViewRequest}
+          searchViewportBottomPaddingRatio={searchViewportBottomPaddingRatio}
+          searchViewportRequestKey={searchViewportRequestKey}
+          selectedCompareIdSet={selectedCompareIdSet}
+          selectedCompareIds={selectedCompareIds}
+          selectedElevationProfilePoint={selectedElevationProfilePoint}
+          selectedFinalizedFeature={selectedFinalizedFeature}
+          selectedResortData={selectedResortData}
+          selectedResortId={selectedResortId}
+          selectedResortSummary={selectedResortSummary}
+          shouldRenderMobileListSheet={shouldRenderMobileListSheet}
+          onCloseCompare={handleCloseCompare}
+          onClearCompare={handleClearCompare}
+          onCloseDetail={handleCloseDetail}
+          onCloseMobileFilterOverlay={handleCloseMobileFilterOverlay}
+          onFilterChange={handleFilterChange}
+          onFilterKeyboardInputBlur={handleFilterKeyboardInputBlur}
+          onFilterKeyboardInputFocus={handleFilterKeyboardInputFocus}
+          onMainPointerDownCapture={handleMainPointerDownCapture}
+          onMapViewChange={handleMapViewChange}
+          onMobileFilterAreaPointerDown={handleMobileFilterAreaPointerDown}
+          onMobileFilterChange={setMobileDraftFilters}
+          onMobileKeywordChange={handleMobileKeywordChange}
+          onMobileKeywordClear={handleMobileKeywordClear}
+          onMobileSearchButtonKeywordClear={
+            handleMobileSearchButtonKeywordClear
+          }
+          onMobileSearchButtonPointerDown={handleMobileSearchButtonPointerDown}
+          onMobileContentTabChange={handleMobileContentTabChange}
+          onMobileSearchFilterInputBlur={handleMobileSearchFilterInputBlur}
+          onMobileSearchFilterInputFocus={handleMobileSearchFilterInputFocus}
+          onMobileSearchSubmit={handleMobileSearchSubmit}
+          onOpenCompare={() => void handleOpenCompare()}
+          onCompareFavorites={() =>
+            void handleOpenCompare(
+              favorites?.ids.filter(id =>
+                initialResorts.some(r => r.id === id),
+              ) ?? [],
+            )
+          }
+          onOpenMobileFilterOverlay={handleOpenMobileFilterOverlay}
+          onSearch={handleSearch}
+          onMobileSearch={handleMobileSearch}
+          onSelectResort={handleSelectResort}
+          onSelectedFinalizedFeatureChange={
+            handleSelectedFinalizedFeatureChange
+          }
+          onSelectedElevationProfilePointChange={
+            setSelectedElevationProfilePoint
+          }
+          onSetFilterEditorOpen={setIsFilterEditorOpen}
+          onSetHoveredResortId={setHoveredResortId}
+          onSetListSheetOpen={setIsListSheetOpen}
+          onSetListSheetSnapPoint={setListSheetSnapPoint}
+          onToggleCompare={handleToggleCompare}
+          onUserMapInteraction={handleUserMapInteraction}
+          onUserMapZoomInteraction={handleUserMapZoomInteraction}
+        />
+        <ConfirmDialog
+          open={discardFilterChangesDialogOpen}
+          onOpenChange={setDiscardFilterChangesDialogOpen}
+          title="変更の破棄"
+          description="変更を破棄しますか？"
+          onConfirm={handleConfirmCloseMobileFilterOverlay}
+          confirmLabel="破棄する"
+        />
+      </MapSessionProvider>
+    </CourseNavigationContext.Provider>
   );
 }
 

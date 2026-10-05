@@ -27,6 +27,9 @@ import {
 export type GeoCoordinate = [number, number] | [number, number, number];
 
 export type FinalizedCourseFeature = {
+  originalName?: string | null;
+  coordinateDataInvalid?: boolean;
+  recommendationGroupingInvalid?: boolean;
   id: string;
   name: string;
   displayName: string;
@@ -317,6 +320,28 @@ const normalizeCourseFeature = (
 
   return {
     id: `${sourcePrefix}${baseId}`,
+    originalName:
+      normalizeString(properties.source_name) ??
+      normalizeString(properties.name),
+    recommendationGroupingInvalid:
+      properties.courseGrouping != null &&
+      (!grouping ||
+        (isRecord(properties.courseGrouping) &&
+          properties.courseGrouping.kind === "routes" &&
+          ((properties.courseGrouping.route != null &&
+            (!Number.isSafeInteger(properties.courseGrouping.route) ||
+              Number(properties.courseGrouping.route) < 1)) ||
+            (properties.courseGrouping.section != null &&
+              (!Number.isSafeInteger(properties.courseGrouping.section) ||
+                Number(properties.courseGrouping.section) < 1))))),
+    coordinateDataInvalid:
+      !Array.isArray(candidate.geometry.coordinates) ||
+      candidate.geometry.coordinates.some(
+        (c: unknown) =>
+          !Array.isArray(c) ||
+          c.length < 3 ||
+          c.slice(0, 3).some(v => normalizeNumber(v) === null),
+      ),
     name,
     displayName:
       grouping?.name ?? (explicitGrouping ? name : parsedName.displayName),

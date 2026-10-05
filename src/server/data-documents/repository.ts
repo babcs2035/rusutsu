@@ -10,6 +10,7 @@ import {
   syncMapEntities,
   verifyRelationalDocument,
 } from "@/server/course-lift/repository";
+import { syncRecommendationDocuments } from "@/server/course-recommendations/projection";
 import {
   BundledFileDataDocumentSource,
   defaultBundledDataDocumentRoot,
@@ -112,6 +113,10 @@ export async function writeDataDocumentsInTransaction(
       transaction,
       documents.map(d => d.key),
     );
+  await syncRecommendationDocuments(
+    transaction,
+    documents.map(d => d.key),
+  );
   return stored;
 }
 

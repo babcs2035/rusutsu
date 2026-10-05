@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { AccountButton } from "@/features/favorites/AccountButton";
 import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
 import type { JapanResortMapProps } from "@/features/map/types";
 import { useBreakpointValue } from "@/hooks/use-breakpoint-value";
@@ -157,14 +158,17 @@ export const SkiResortCompareView = ({
         <h2 className="text-base font-bold text-gray-900 font-[var(--font-heading)] md:text-xl">
           比較 {resorts.length}件
         </h2>
-        <Button
-          variant="ghost"
-          onClick={onClose}
-          className="flex h-9 w-9 min-w-9 items-center justify-center rounded-full border border-gray-200 p-0 text-gray-600 hover:bg-gray-50 hover:text-gray-900 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10 md:h-10 md:w-10 md:min-w-10"
-          aria-label="比較画面を閉じる"
-        >
-          <X size={18} strokeWidth={2.5} />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            onClick={onClose}
+            className="flex h-9 w-9 min-w-9 items-center justify-center rounded-full border border-gray-200 p-0 text-gray-600 hover:bg-gray-50 hover:text-gray-900 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10 md:h-10 md:w-10 md:min-w-10"
+            aria-label="比較画面を閉じる"
+          >
+            <X size={18} strokeWidth={2.5} />
+          </Button>
+          <AccountButton />
+        </div>
       </div>
 
       {/*

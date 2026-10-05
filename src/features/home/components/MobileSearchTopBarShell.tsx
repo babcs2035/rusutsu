@@ -1,6 +1,7 @@
 "use client";
 
 import type { FormEvent, ReactNode } from "react";
+import { AccountButton } from "@/features/favorites/AccountButton";
 
 // 内容（pt 0.625rem + h-12 + pb-2 = 66px）と一致させる
 export const MOBILE_SEARCH_TOP_BAR_HEIGHT =
@@ -31,9 +32,10 @@ export const MobileSearchTopBarShell = ({
           onSubmit(e as unknown as FormEvent<HTMLElement>);
         }}
       >
-        <div className="grid w-full grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-center gap-2.5">
+        <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2.5">
           <div className="min-w-0">{children}</div>
           {action}
+          <AccountButton />
         </div>
       </form>
     );
@@ -41,9 +43,10 @@ export const MobileSearchTopBarShell = ({
 
   return (
     <div className={baseClasses}>
-      <div className="grid w-full grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-center gap-2.5">
+      <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2.5">
         <div className="min-w-0">{children}</div>
         {action}
+        <AccountButton />
       </div>
     </div>
   );

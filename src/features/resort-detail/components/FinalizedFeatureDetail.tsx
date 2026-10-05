@@ -2,6 +2,8 @@
 
 import { List, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SimilarCourses } from "@/features/course-recommendations/SimilarCourses";
+import { AccountButton } from "@/features/favorites/AccountButton";
 import type { ElevationProfileMapPoint } from "@/features/map/types";
 import type { FinalizedLiftFeature } from "@/lib/finalizedResortGeojsonShared";
 import type { FinalizedCourseGroup } from "../types";
@@ -17,6 +19,8 @@ import { SelectedLiftDetail } from "./SelectedLiftDetail";
  * 「×」は選択だけを解除して、選ぶ前の画面（全画面地図・一覧）へ戻す。
  */
 export const FinalizedFeatureDetail = ({
+  resortId,
+  showAccount = false,
   courseGroup,
   lift,
   resortLabelName,
@@ -29,6 +33,8 @@ export const FinalizedFeatureDetail = ({
   onClose,
   onOpenList,
 }: {
+  resortId?: string;
+  showAccount?: boolean;
   courseGroup: FinalizedCourseGroup | null;
   lift: FinalizedLiftFeature | null;
   /** 地図のラベルに出している省略名。検索語の組み立てに使う */
@@ -87,20 +93,26 @@ export const FinalizedFeatureDetail = ({
           >
             <X size={18} strokeWidth={2.5} />
           </Button>
+          {showAccount && <AccountButton />}
         </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-3 md:p-6">
         {courseGroup ? (
-          <SelectedCourseDetail
-            courseGroup={courseGroup}
-            resortLabelName={resortLabelName}
-            sourceUrls={courseSourceUrls}
-            selectedElevationProfilePoint={selectedElevationProfilePoint}
-            onSelectedElevationProfilePointChange={
-              onSelectedElevationProfilePointChange
-            }
-          />
+          <>
+            <SelectedCourseDetail
+              courseGroup={courseGroup}
+              resortLabelName={resortLabelName}
+              sourceUrls={courseSourceUrls}
+              selectedElevationProfilePoint={selectedElevationProfilePoint}
+              onSelectedElevationProfilePointChange={
+                onSelectedElevationProfilePointChange
+              }
+            />
+            {resortId && (
+              <SimilarCourses resortId={resortId} courseGroup={courseGroup} />
+            )}
+          </>
         ) : lift ? (
           <SelectedLiftDetail
             lift={lift}
