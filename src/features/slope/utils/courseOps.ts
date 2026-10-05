@@ -3,6 +3,7 @@ import {
   updateDefaultSearchWord,
 } from "@/shared/utils/searchWord";
 import type { CourseDetail, EditorCourse, LngLat } from "../types";
+import { normalizeCourseGroupings } from "./courseGrouping";
 import type { LinePosition, LineSide } from "./lineGeometry";
 import { joinLines } from "./lineGeometry";
 
@@ -172,7 +173,7 @@ export const splitCourseAtVertex = (
   const next = courses.flatMap(course =>
     course.id === courseId ? [upper, lower] : [course],
   );
-  return relabelSplitGroup(next, groupId, resortName);
+  return normalizeCourseGroupings(relabelSplitGroup(next, groupId, resortName));
 };
 
 const isSameCoordinate = (a: LngLat, b: LngLat): boolean =>
@@ -297,27 +298,29 @@ export const reconcileUnconfirmedGroupings = (
       members.length >= 2 && names.size === 1 && name ? name : null,
     );
   }
-  if (nextNameById.size === 0) return courses;
-  return courses.map(course => {
-    const groupId = course.grouping?.id;
-    if (!course.grouping || !groupId || !nextNameById.has(groupId))
-      return course;
-    const name = nextNameById.get(groupId);
-    if (name == null)
+  if (nextNameById.size === 0) return normalizeCourseGroupings(courses);
+  return normalizeCourseGroupings(
+    courses.map(course => {
+      const groupId = course.grouping?.id;
+      if (!course.grouping || !groupId || !nextNameById.has(groupId))
+        return course;
+      const name = nextNameById.get(groupId);
+      if (name == null)
+        return {
+          ...course,
+          splitGroupId: null,
+          splitBaseName: null,
+          grouping: null,
+          groupingReviewed: undefined,
+        };
+      if (course.grouping.name === name) return course;
       return {
         ...course,
-        splitGroupId: null,
-        splitBaseName: null,
-        grouping: null,
-        groupingReviewed: undefined,
+        splitBaseName: course.splitGroupId ? name : course.splitBaseName,
+        grouping: { ...course.grouping, name },
       };
-    if (course.grouping.name === name) return course;
-    return {
-      ...course,
-      splitBaseName: course.splitGroupId ? name : course.splitBaseName,
-      grouping: { ...course.grouping, name },
-    };
-  });
+    }),
+  );
 };
 
 /** コース名を変更し、未確定のグループをいまの名前に合わせて整える。 */

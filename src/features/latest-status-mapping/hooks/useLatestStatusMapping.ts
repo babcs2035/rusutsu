@@ -16,6 +16,7 @@ import {
   duplicateGeometryNames,
   type GeometryAssignments,
   geometryAssignmentsFromRows,
+  pinAssignmentsBeforeEdit,
 } from "../utils/geometryAssignments";
 import {
   assignGeojsonName,
@@ -209,14 +210,19 @@ export const useLatestStatusMapping = ({
     const previous = previousGeometry.current;
     previousGeometry.current = { resortId, snapshot: geometrySnapshot };
     if (previous.resortId !== resortId || !workspace || !geometries) return;
-    const next = applyGeometryAssignments(
-      reconcileEditedRows(
-        rows,
-        JSON.parse(previous.snapshot),
-        JSON.parse(geometrySnapshot),
-      ),
+    const before: NamedGeometry[] = JSON.parse(previous.snapshot);
+    const pinned = pinAssignmentsBeforeEdit(
+      rows,
+      before,
       geometries,
       geometryAssignments,
+    );
+    if (Object.keys(pinned).length > 0)
+      setGeometryAssignments(current => ({ ...pinned, ...current }));
+    const next = applyGeometryAssignments(
+      reconcileEditedRows(rows, before, JSON.parse(geometrySnapshot)),
+      geometries,
+      { ...pinned, ...geometryAssignments },
       true,
     );
     if (JSON.stringify(next) === JSON.stringify(rows)) return;

@@ -1224,6 +1224,7 @@ export function SlopeEditWorkspace({
                   setCourses={setOwnCourses}
                   selectedId={activeCourseId}
                   onSelect={setActiveCourseId}
+                  resortSearchNameFor={resortSearchNameFor}
                   onBack={() => setStep("lines")}
                   onProceed={handleProceedToDetails}
                 />

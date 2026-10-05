@@ -62,3 +62,18 @@ test("複数の空名のうち選んだ線だけにクローラ名を入れて�
     [{ geojsonName: "第1ペア", crawledName: "第1ペア" }],
   );
 });
+
+test("同名の線をまとめて同じ名前へ改名しても、名前の対応を残す", () => {
+  const rows = reconcileEditedRows(
+    [{ crawledName: "C", geojsonName: "X" }],
+    [
+      { id: "a", name: "X" },
+      { id: "b", name: "X" },
+    ],
+    [
+      { id: "a", name: "Y" },
+      { id: "b", name: "Y" },
+    ],
+  );
+  assert.deepEqual(rows, [{ crawledName: "C", geojsonName: "Y" }]);
+});

@@ -1,6 +1,7 @@
 import {
   type CourseGrouping,
   courseGroupingLabel,
+  courseGroupingRoute,
 } from "@/shared/course-lift/identity";
 import type { EditorCourse } from "../types";
 
@@ -162,6 +163,14 @@ export function courseGroupingBuckets(courses: EditorCourse[]) {
     });
 }
 
+/** 線の長さ（m）。 */
+export function lineLength(line?: Pick<Line, "coordinates">) {
+  const c = line?.coordinates ?? [];
+  let total = 0;
+  for (let i = 1; i < c.length; i++) total += endpointDistance(c[i - 1], c[i]);
+  return total;
+}
+
 /** 1つのコースとしてまとめる線。ルートごとに、上から区間順に線IDを並べる。 */
 export type CourseGroupDraft = {
   name: string;
@@ -170,7 +179,8 @@ export type CourseGroupDraft = {
 
 /**
  * 端点が一続きにつながる線を1つのルート（連続区間）とし、
- * 残りの線はそれぞれ別ルートとして提案する。
+ * 残りの線はそれぞれ別ルートとして提案する。同じ名前の線を
+ * 「別コース」として提案することはない。
  */
 export function suggestCourseRoutes(
   lines: Line[],
@@ -206,11 +216,18 @@ export function suggestCourseRoutes(
       ? [chain.ids]
       : component.map(line => [line.id]);
   });
-  if (routes.every(route => route.length === 1))
-    return { routes: [], reason: whole.reason };
+  // 長いルートほどメインのコースとみなし、上に並べる
+  const length = (route: string[]) =>
+    route.reduce(
+      (sum, id) => sum + lineLength(lines.find(line => line.id === id)),
+      0,
+    );
+  routes.sort((a, b) => length(b) - length(a));
   return {
     routes,
-    reason: `端点が${tolerance}m以内で一続きになる線を1つのルートにし、ほかの線を別ルートとして提案しました。名前が同じだけの別コースなら「別コース」へ移してください。`,
+    reason: routes.some(route => route.length > 1)
+      ? `端点が${tolerance}m以内で一続きになる線を1つのルートにし、ほかの線を別ルートとして提案しました。`
+      : `端点がつながっていないため、それぞれを別ルートとして提案しました。`,
   };
 }
 
@@ -281,6 +298,77 @@ export function groupingNeedsReview(courses: EditorCourse[]) {
     bucket.some(c => c.groupingReviewed !== groupingFingerprint(bucket)),
   );
 }
+const baseName = (name: string) => name.replace(/_#.*$/u, "").trim();
+
+/**
+ * 保存済みのまとめ方を、いまの線に合わせて整える。
+ * - 線の名前がそろっていれば、まとめて表示する名前もその名前にする
+ *   （線の名前を変えたのに、まとめた名前だけ古いまま残らないように）
+ * - 別ルートが1つしか残っていなければ連続した区間に戻し、ルート番号を詰める
+ */
+export function normalizeCourseGroupings(
+  courses: EditorCourse[],
+): EditorCourse[] {
+  const membersById = new Map<string, EditorCourse[]>();
+  for (const c of courses)
+    if (c.grouping)
+      membersById.set(c.grouping.id, [
+        ...(membersById.get(c.grouping.id) ?? []),
+        c,
+      ]);
+  const next = new Map<string, CourseGrouping>();
+  for (const members of membersById.values()) {
+    const sorted = [...members].sort(
+      (a, b) => (a.grouping?.order ?? 0) - (b.grouping?.order ?? 0),
+    );
+    const names = new Set(sorted.map(c => baseName(c.name)));
+    const [common] = names;
+    const name =
+      names.size === 1 && common ? common : (sorted[0].grouping?.name ?? "");
+    const routeNumbers = [
+      ...new Set(
+        sorted.map(c =>
+          c.grouping ? courseGroupingRoute(c.grouping) : Number.NaN,
+        ),
+      ),
+    ].sort((a, b) => a - b);
+    const routes =
+      sorted[0].grouping?.kind === "routes" && routeNumbers.length > 1
+        ? routeNumbers.map(route =>
+            sorted.filter(
+              c => c.grouping && courseGroupingRoute(c.grouping) === route,
+            ),
+          )
+        : [sorted];
+    const ordered = routes.flat();
+    for (const [routeIndex, route] of routes.entries())
+      for (const [sectionIndex, c] of route.entries()) {
+        if (!c.grouping) continue;
+        next.set(c.id, {
+          id: c.grouping.id,
+          name,
+          kind: routes.length > 1 ? "routes" : "continuous",
+          order: ordered.indexOf(c) + 1,
+          ...(routes.length > 1
+            ? {
+                route: routeIndex + 1,
+                ...(route.length > 1 ? { section: sectionIndex + 1 } : {}),
+              }
+            : {}),
+        });
+      }
+  }
+  let changed = false;
+  const result = courses.map(c => {
+    const grouping = next.get(c.id);
+    if (!grouping || JSON.stringify(grouping) === JSON.stringify(c.grouping))
+      return c;
+    changed = true;
+    return { ...c, grouping };
+  });
+  return changed ? result : courses;
+}
+
 export function courseEditorLabel(course: EditorCourse) {
   if (!course.grouping) return course.name || "名前不明";
   return `${course.grouping.name} / ${courseGroupingLabel(course.grouping)}`;

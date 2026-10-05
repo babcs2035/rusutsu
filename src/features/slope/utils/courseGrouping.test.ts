@@ -10,6 +10,7 @@ import {
   courseEditorLabel,
   courseGroupingBuckets,
   groupingNeedsReview,
+  normalizeCourseGroupings,
   suggestCourseChain,
   suggestCourseRoutes,
 } from "./courseGrouping";
@@ -293,4 +294,77 @@ test("two connected sections form route 1 and a third line becomes route 2", () 
   assert.equal(partial[2].grouping, null);
   assert.equal(courseGroupingBuckets(partial)[0].length, 3);
   assert.equal(groupingNeedsReview(partial), false);
+});
+
+test("a group keeps up with renamed lines and a lone route becomes continuous", () => {
+  const line = (id: string, name: string, order: number, route: number) => ({
+    ...createEmptyCourse(),
+    id,
+    name,
+    skiId: "appi",
+    grouping: { id: "g", name: "旧名", kind: "routes" as const, order, route },
+  });
+  const normalized = normalizeCourseGroupings([
+    line("a", "新名", 1, 2),
+    line("b", "新名", 2, 2),
+  ]);
+  assert.deepEqual(
+    normalized.map(c => c.grouping),
+    [
+      { id: "g", name: "新名", kind: "continuous", order: 1 },
+      { id: "g", name: "新名", kind: "continuous", order: 2 },
+    ],
+  );
+  assert.deepEqual(normalized.map(courseEditorLabel), [
+    "新名 / 区間1",
+    "新名 / 区間2",
+  ]);
+  const untouched = [line("a", "X", 1, 1), line("b", "X", 2, 2)].map(c => ({
+    ...c,
+    grouping: { ...c.grouping, name: "X" },
+  }));
+  assert.equal(normalizeCourseGroupings(untouched), untouched);
+});
+
+test("suggested routes put the longest route first", () => {
+  const line = (id: string, coordinates: [number, number][]) => ({
+    id,
+    coordinates,
+  });
+  const result = suggestCourseRoutes([
+    line("short", [
+      [141, 40],
+      [141, 40.001],
+    ]),
+    line("a", [
+      [140, 40],
+      [140, 40.002],
+    ]),
+    line("b", [
+      [140, 40.002],
+      [140, 40.004],
+    ]),
+  ]);
+  assert.equal(result.routes[0].length, 2);
+  assert.deepEqual(result.routes[1], ["short"]);
+});
+
+test("disconnected same-name lines default to separate routes, never separate courses", () => {
+  const result = suggestCourseRoutes([
+    {
+      id: "a",
+      coordinates: [
+        [140, 40],
+        [140, 40.002],
+      ],
+    },
+    {
+      id: "b",
+      coordinates: [
+        [141, 40],
+        [141, 40.001],
+      ],
+    },
+  ]);
+  assert.deepEqual(result.routes, [["a"], ["b"]]);
 });

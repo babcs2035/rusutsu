@@ -12,10 +12,15 @@ export function reconcileEditedRows(
   const renamed = new Map<string, string | null>();
   for (const item of before) {
     const name = item.name.trim();
-    const remaining = before
-      .filter(candidate => candidate.name.trim() === name)
-      .map(candidate => nextById.get(candidate.id))
-      .filter((value): value is string => !!value);
+    // 同名の線をまとめて同じ名前へ改名した場合は、1つの改名として扱う
+    const remaining = [
+      ...new Set(
+        before
+          .filter(candidate => candidate.name.trim() === name)
+          .map(candidate => nextById.get(candidate.id))
+          .filter((value): value is string => !!value),
+      ),
+    ];
     // 同名の片方だけを改名・削除した場合、残る線の対応を動かさない。
     renamed.set(
       name,

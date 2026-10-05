@@ -111,3 +111,22 @@ export function applyGeometryAssignments(
     return assignGeojsonName(result, name, assignments[item.id]);
   }, rows);
 }
+
+/**
+ * 線の名前が変わる前に、いまの対応を線IDで固定する。
+ * 名前で対応している線（同名の線をまとめて改名した場合など）が、
+ * 改名で対応を失わないようにする。すでにIDで持っている線はそのまま。
+ */
+export function pinAssignmentsBeforeEdit(
+  rows: LatestStatusMappingRow[],
+  before: NamedGeometry[],
+  after: NamedGeometry[],
+  assignments: GeometryAssignments,
+): GeometryAssignments {
+  const afterIds = new Set(after.map(item => item.id));
+  return Object.fromEntries(
+    Object.entries(geometryAssignmentsFromRows(rows, before)).filter(
+      ([id]) => afterIds.has(id) && !Object.hasOwn(assignments, id),
+    ),
+  );
+}

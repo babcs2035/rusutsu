@@ -10,6 +10,7 @@ import {
   applyGeometryAssignments,
   duplicateGeometryNames,
   geometryAssignmentsFromRows,
+  pinAssignmentsBeforeEdit,
   splitGeometryAssignments,
 } from "./geometryAssignments";
 import { reconcileSavedRows } from "./rows";
@@ -188,5 +189,30 @@ test("並べ替え・一時的な同名化を経てもIDごとの手動対応を
   assert.equal(
     result.find(row => row.geojsonName === "A")?.crawledName,
     "公式A",
+  );
+});
+
+test("改名の前に、名前で対応していた線の対応をIDで固定する", () => {
+  const rows: LatestStatusMappingRow[] = [
+    { crawledName: "C", geojsonName: "X" },
+    { crawledName: "D", geojsonName: "Z", geometryId: "c" },
+  ];
+  const before = [
+    { id: "a", name: "X" },
+    { id: "b", name: "X" },
+    { id: "c", name: "Z" },
+  ];
+  const after = before.map(item => ({ ...item, name: `${item.name}2` }));
+  const pinned = pinAssignmentsBeforeEdit(rows, before, after, { c: "D" });
+  assert.deepEqual(pinned, { a: "C", b: "C" });
+  const next = applyGeometryAssignments(
+    reconcileEditedRows(rows, before, after),
+    after,
+    { ...pinned, c: "D" },
+    true,
+  );
+  assert.deepEqual(
+    Object.fromEntries(next.map(row => [row.geometryId, row.crawledName])),
+    { a: "C", b: "C", c: "D" },
   );
 });
