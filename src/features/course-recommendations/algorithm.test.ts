@@ -12,10 +12,12 @@ import {
   groomingCompatible,
   hasCourseName,
   rankCourses,
+  recommendationGrade,
   recommendationSelection,
   routeNumber,
   similarity,
   slopeBin,
+  steepTerrain,
   wasserstein,
 } from "./algorithm";
 
@@ -218,7 +220,7 @@ test("Wasserstein finite bins, bin boundaries, logarithmic length ratio, symmetr
     assert.equal(score.score, similarity(b, a).score);
   }
 });
-test("ranking excludes opposites, own resort, copied geometry, dissimilar candidates and returns stable top three", () => {
+test("ranking prioritizes compatible grooming/shape, excludes own resort and copied geometry; returns stable top three", () => {
   const source = { ...feature(), geometryHash: "source" };
   const candidate = (id: string, overrides = {}) => ({
     ...feature({ resortId: id }),
@@ -245,18 +247,35 @@ test("ranking excludes opposites, own resort, copied geometry, dissimilar candid
     rankCourses(source, [...candidates].reverse()).map(r => r.resortId),
     ["a", "b", "c"],
   );
+  assert.equal(
+    rankCourses(source, [candidate("wrong", { grooming: "ungroomed" })]).length,
+    1,
+  );
+  assert.equal(
+    rankCourses(source, [candidate("far", { logDistance: 99 })]).length,
+    1,
+  );
+  assert.equal(
+    rankCourses(source, [candidate("winding", { shape: "winding" })]).length,
+    1,
+  );
   assert.deepEqual(
-    rankCourses(source, [candidate("wrong", { grooming: "ungroomed" })]),
-    [],
+    rankCourses(source, [
+      candidate("winding", { shape: "winding" }),
+      candidate("far", { logDistance: 99 }),
+    ]).map(r => r.resortId),
+    ["far", "winding"],
   );
 });
 test("slope distributions distinguish steady slopes from flat/steep mixtures with the same mean", () => {
   const steady = feature({
     meanSlope: 15,
+    steepSlope: 15,
     histogram: Array.from({ length: 16 }, (_, i) => (i === 5 ? 1 : 0)),
   });
   const mixed = feature({
     meanSlope: 15,
+    steepSlope: 30,
     histogram: Array.from({ length: 16 }, (_, i) =>
       i === 0 || i === 10 ? 0.5 : 0,
     ),
@@ -265,6 +284,97 @@ test("slope distributions distinguish steady slopes from flat/steep mixtures wit
   assert.equal(wasserstein(steady.histogram, mixed.histogram), 15);
   assert.ok(similarity(steady, mixed).score < 50);
   assert.equal(similarity(steady, steady).score, 100);
+});
+test("steep terrain captures a sustained pitch without diluting it with a long flat runout", () => {
+  const steep = [{ slope: 30, length: 200 }];
+  assert.deepEqual(steepTerrain(steep), { steepSlope: 30, steepDistance: 200 });
+  assert.deepEqual(
+    steepTerrain([...steep, { slope: 0, length: 2000 }]),
+    steepTerrain(steep),
+  );
+  assert.deepEqual(steepTerrain([{ slope: 0, length: 200 }]), {
+    steepSlope: 0,
+    steepDistance: 0,
+  });
+  assert.deepEqual(steepTerrain([{ slope: 20, length: 40 }]), {
+    steepSlope: 20,
+    steepDistance: 40,
+  });
+  // A one-metre spike is averaged into 50 metres, rather than reported as a 60° pitch.
+  assert.deepEqual(
+    steepTerrain([
+      { slope: 0, length: 100 },
+      { slope: 60, length: 1 },
+      { slope: 0, length: 100 },
+    ]),
+    { steepSlope: 1.2, steepDistance: 1 },
+  );
+  assert.deepEqual(
+    steepTerrain([
+      { slope: 0, length: 100 },
+      { slope: 25, length: 30 },
+      { slope: 0, length: 100 },
+    ]),
+    { steepSlope: 15, steepDistance: 30 },
+  );
+});
+test("steep terrain uses distance weights, is invariant to segment splitting, and includes start/end windows", () => {
+  const original = [
+    { slope: 10, length: 20 },
+    { slope: 30, length: 30 },
+    { slope: 0, length: 200 },
+  ];
+  const split = original.flatMap(s => [
+    { slope: s.slope, length: s.length / 2 },
+    { slope: s.slope, length: s.length / 2 },
+  ]);
+  assert.deepEqual(steepTerrain(original), {
+    steepSlope: 22,
+    steepDistance: 30,
+  });
+  assert.deepEqual(steepTerrain(split), steepTerrain(original));
+  assert.deepEqual(
+    steepTerrain([...original].reverse()),
+    steepTerrain(original),
+  );
+});
+test("terrain similarity prioritizes sustained steep pitches, handles flat courses and exposes meaningful grades", () => {
+  const source = feature({ steepSlope: 30, steepDistance: 200 });
+  const gentle = feature({ steepSlope: 10, steepDistance: 200 });
+  const longer = feature({
+    steepSlope: 30,
+    steepDistance: 200,
+    distance: source.distance * 3,
+    logDistance: source.logDistance + Math.log(3),
+  });
+  assert.ok(
+    similarity(source, longer).score > similarity(source, gentle).score,
+  );
+  const flat = feature({ steepSlope: 0, steepDistance: 0 });
+  assert.equal(similarity(flat, flat).score, 100);
+  assert.ok(Number.isFinite(similarity(flat, source).score));
+  assert.equal(
+    similarity(source, gentle).score,
+    similarity(gentle, source).score,
+  );
+  assert.deepEqual(
+    [100, 80, 79.99, 60, 59.99, 0].map(s => recommendationGrade(s).grade),
+    ["A", "A", "B", "B", "C", "C"],
+  );
+  const far = feature({
+    resortId: "far",
+    histogram: Array(16)
+      .fill(0)
+      .map((_, i) => (i === 0 ? 1 : 0)),
+    steepSlope: 0,
+    steepDistance: 0,
+    logDistance: 99,
+  });
+  const results = rankCourses({ ...source, geometryHash: "source" }, [
+    { ...far, geometryHash: "far", resortName: "far" },
+  ]);
+  assert.equal(results.length, 1);
+  assert.ok(results[0].score < 60);
 });
 test("distance smoothing classifies large repeated bends, ignores tiny coordinate noise and point density", () => {
   const winding: GeoCoordinate[] = [];

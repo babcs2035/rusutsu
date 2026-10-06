@@ -28,6 +28,8 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
       export * from '@/features/favorites/actions';
       export * from '@/server/course-recommendations/projection';
       export * from '@/server/course-recommendations/repository';
+      export * from '@/features/course-recommendations/actions';
+      export { POST as recommendationIndexRoute } from '@/app/api/course-recommendations/route';
       export { writeDataDocumentsInTransaction } from '@/server/data-documents/repository';
       export { authConfig } from '@/lib/auth.config';
     `,
@@ -323,6 +325,134 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
     );
     assert.equal(current.status, "ready");
     assert.equal(current.recommendations[0].score, 100);
+    assert.ok(current.recommendations[0].steepSlope > 0);
+    assert.ok(current.recommendations[0].steepDistance > 0);
+    const index = await api.getCourseRecommendationIndexDirect("source", [
+      "candidate",
+    ]);
+    assert.equal(index.status, "ready");
+    assert.deepEqual(index.courses[0].recommendations, current.recommendations);
+    const requestIndex = (guestFavorites: string[]) =>
+      api.recommendationIndexRoute(
+        new Request("http://localhost/rusutsu/api/course-recommendations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ resortId: "source", guestFavorites }),
+        }),
+      );
+    const guestResponse = await run(guest, () => requestIndex(["candidate"]));
+    assert.equal(guestResponse.status, 200);
+    assert.deepEqual(await guestResponse.json(), index);
+    assert.equal(
+      guestResponse.headers.get("Cache-Control"),
+      "private, no-store",
+    );
+    // Logged-in requests use DB favorites even if the supplied guest list differs.
+    const accountResponse = await run(a, () => requestIndex(["third"]));
+    assert.deepEqual(await accountResponse.json(), index);
+    const otherAccountResponse = await run(b, () =>
+      requestIndex(["candidate"]),
+    );
+    assert.equal((await otherAccountResponse.json()).status, "no_favorites");
+    const invalidResponse = await run(guest, () =>
+      api.recommendationIndexRoute(
+        new Request("http://localhost/rusutsu/api/course-recommendations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ resortId: "source", guestFavorites: [42] }),
+        }),
+      ),
+    );
+    assert.equal(invalidResponse.status, 400);
+    const opposite = JSON.parse(content("candidate"));
+    for (const f of opposite.features) f.properties.piste = "×";
+    const candidateDocument = await db.dataDocument.findUniqueOrThrow({
+      where: { key: "resorts-temporary/slope_10m/candidate.geojson" },
+    });
+    await write("candidate", JSON.stringify(opposite), candidateDocument.hash);
+    const reference = await api.searchCourseRecommendationsDirect(
+      "source",
+      currentMain,
+      ["candidate"],
+    );
+    assert.equal(reference.recommendations.length, 1);
+    assert.equal(reference.recommendations[0].groomingDifferent, true);
+    // Missing new metrics cannot be converted to zero-degree, flat terrain.
+    await db.courseRecommendationFeature.updateMany({
+      where: { resortId: "source" },
+      data: { steepSlope: null },
+    });
+    assert.equal(
+      (
+        await api.searchCourseRecommendationsDirect("source", currentMain, [
+          "candidate",
+        ])
+      ).status,
+      "source_unavailable",
+    );
+    sourceHash = await write("source", JSON.stringify(migrated), sourceHash);
+    const savedFetch = globalThis.fetch;
+    const savedApiUrl = process.env.DATA_API_BASE_URL;
+    const savedToken = process.env.INTERNAL_DATA_API_ADMIN_TOKEN;
+    try {
+      process.env.DATA_API_BASE_URL = "https://canonical.test/rusutsu";
+      process.env.INTERNAL_DATA_API_ADMIN_TOKEN = "isolated-test-token";
+      globalThis.fetch = async () =>
+        Response.json({ recommendations: current.recommendations });
+      assert.equal(
+        (
+          await run(guest, () =>
+            api.getCourseRecommendations("source", currentMain, ["candidate"]),
+          )
+        ).status,
+        "api_outdated",
+      );
+      globalThis.fetch = async () =>
+        Response.json({
+          status: "ready",
+          calculationVersion: 2,
+          recommendations: current.recommendations,
+        });
+      const remote = await run(guest, () =>
+        api.getCourseRecommendations("source", currentMain, ["candidate"]),
+      );
+      assert.equal(remote.status, "ready");
+      assert.equal(
+        remote.recommendations[0].steepSlope,
+        current.recommendations[0].steepSlope,
+      );
+      globalThis.fetch = async () =>
+        Response.json({ error: "old-contract" }, { status: 400 });
+      assert.equal(
+        (
+          await run(guest, () =>
+            api.getCourseRecommendationIndex("source", ["candidate"]),
+          )
+        ).status,
+        "api_outdated",
+      );
+      globalThis.fetch = async () =>
+        Response.json({
+          status: "ready",
+          calculationVersion: 2,
+          courses: index.courses,
+        });
+      const remoteIndex = await run(guest, () =>
+        api.getCourseRecommendationIndex("source", ["candidate"]),
+      );
+      assert.deepEqual(
+        remoteIndex.courses[0].recommendations,
+        current.recommendations,
+      );
+    } finally {
+      globalThis.fetch = savedFetch;
+      if (savedApiUrl === undefined) delete process.env.DATA_API_BASE_URL;
+      else process.env.DATA_API_BASE_URL = savedApiUrl;
+      if (savedToken === undefined)
+        delete process.env.INTERNAL_DATA_API_ADMIN_TOKEN;
+      else process.env.INTERNAL_DATA_API_ADMIN_TOKEN = savedToken;
+    }
+
     sourceHash = await write(
       "source",
       JSON.stringify({ type: "FeatureCollection", features: [] }),

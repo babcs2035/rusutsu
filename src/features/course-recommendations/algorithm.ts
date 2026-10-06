@@ -5,14 +5,20 @@ import {
 } from "@/lib/finalizedResortGeojsonShared";
 
 export const RECOMMENDATION = {
-  version: 1,
+  version: 2,
   binDegrees: 3,
   bins: 16,
   slopeNormalization: 18,
   distanceRatio: 3,
-  slopeWeight: 0.65,
-  distanceWeight: 0.35,
-  minimumScore: 75,
+  steepSlopeNormalization: 12,
+  steepWindowMeters: 50,
+  steepFraction: 0.8,
+  steepSlopeWeight: 0.5,
+  steepDistanceWeight: 0.25,
+  slopeWeight: 0.15,
+  distanceWeight: 0.1,
+  gradeA: 80,
+  gradeB: 60,
   limit: 3,
   sampleMeters: 10,
   maximumInputGap: 100,
@@ -37,6 +43,8 @@ export type CourseFeature = {
   distance: number;
   logDistance: number;
   meanSlope: number;
+  steepSlope: number;
+  steepDistance: number;
   shape: "normal" | "winding";
   grooming: Grooming;
 };
@@ -181,6 +189,62 @@ export function classifyShape(
 export const slopeBin = (slope: number) =>
   Math.min(15, Math.max(0, Math.floor(slope / 3)));
 
+/** Maximum distance-weighted slope over a continuous 50m of sliding distance.
+ * Checking every segment boundary and boundary minus the window finds the
+ * exact maximum of the piecewise-linear moving integral, including both ends.
+ */
+export function steepTerrain(
+  segments: Array<{ slope: number; length: number }>,
+) {
+  const distances = [0],
+    integrals = [0];
+  const positive = segments.filter(s => s.length > 0);
+  for (const { slope, length } of positive) {
+    distances.push(distances[distances.length - 1] + length);
+    integrals.push(
+      integrals[integrals.length - 1] + Math.max(0, slope) * length,
+    );
+  }
+  const total = distances[distances.length - 1];
+  if (!total) return { steepSlope: 0, steepDistance: 0 };
+  const window = Math.min(RECOMMENDATION.steepWindowMeters, total);
+  const integralAt = (d: number) => {
+    let left = 0,
+      right = positive.length;
+    while (left < right) {
+      const mid = Math.floor((left + right) / 2);
+      if (distances[mid + 1] < d) left = mid + 1;
+      else right = mid;
+    }
+    if (left === positive.length) return integrals[left];
+    return (
+      integrals[left] +
+      (d - distances[left]) * Math.max(0, positive[left].slope)
+    );
+  };
+  let steepSlope = 0;
+  for (const boundary of distances)
+    for (const start of [boundary, boundary - window]) {
+      const clamped = Math.min(total - window, Math.max(0, start));
+      steepSlope = Math.max(
+        steepSlope,
+        (integralAt(clamped + window) - integralAt(clamped)) / window,
+      );
+    }
+  const steepDistance =
+    steepSlope > 0
+      ? positive.reduce(
+          (sum, segment) =>
+            sum +
+            (segment.slope >= steepSlope * RECOMMENDATION.steepFraction
+              ? segment.length
+              : 0),
+          0,
+        )
+      : 0;
+  return { steepSlope, steepDistance };
+}
+
 function connect(courses: FinalizedCourseFeature[]): GeoCoordinate[] | null {
   if (
     courses.some(
@@ -275,6 +339,7 @@ export function extractCourseFeatures(
     if (samples.length < 2) continue;
     const slopes = calculateCoordinateSlopes(samples);
     const histogram = Array<number>(16).fill(0);
+    const segments: Array<{ slope: number; length: number }> = [];
     let distance = 0,
       meanSlope = 0;
     for (let i = 1; i < samples.length; i++) {
@@ -290,10 +355,17 @@ export function extractCourseFeatures(
         break;
       }
       histogram[slopeBin(slope)] += length;
+      segments.push({ slope, length });
       meanSlope += Math.max(0, slope) * length;
       distance += length;
     }
     if (!Number.isFinite(distance) || distance < RECOMMENDATION.minimumDistance)
+      continue;
+    const terrain = steepTerrain(segments);
+    if (
+      !Number.isFinite(terrain.steepSlope) ||
+      !Number.isFinite(terrain.steepDistance)
+    )
       continue;
     for (let i = 0; i < histogram.length; i++) histogram[i] /= distance;
     let cumulativeSum = 0;
@@ -309,6 +381,7 @@ export function extractCourseFeatures(
       distance,
       logDistance: Math.log(distance),
       meanSlope: meanSlope / distance,
+      ...terrain,
       shape: classifyShape(samples),
       grooming: aggregateGrooming(chosen.map(c => c.properties.piste)),
     });
@@ -338,11 +411,42 @@ export function similarity(a: CourseFeature, b: CourseFeature) {
     Math.abs(a.logDistance - b.logDistance) /
       Math.log(RECOMMENDATION.distanceRatio),
   );
+  const steepSlopeDifference = Math.min(
+    1,
+    Math.abs(a.steepSlope - b.steepSlope) /
+      RECOMMENDATION.steepSlopeNormalization,
+  );
+  // A 50m offset makes zero-length steep terrain comparable without log(0),
+  // and prevents tiny near-flat patches from dominating the length penalty.
+  const steepDistanceDifference = Math.min(
+    1,
+    Math.abs(
+      Math.log(
+        (a.steepDistance + RECOMMENDATION.steepWindowMeters) /
+          (b.steepDistance + RECOMMENDATION.steepWindowMeters),
+      ),
+    ) / Math.log(RECOMMENDATION.distanceRatio),
+  );
   const score =
     100 *
-    (RECOMMENDATION.slopeWeight * (1 - slopeDifference) +
+    (RECOMMENDATION.steepSlopeWeight * (1 - steepSlopeDifference) +
+      RECOMMENDATION.steepDistanceWeight * (1 - steepDistanceDifference) +
+      RECOMMENDATION.slopeWeight * (1 - slopeDifference) +
       RECOMMENDATION.distanceWeight * (1 - lengthDifference));
-  return { score, slopeDifference, lengthDifference };
+  return {
+    score,
+    steepSlopeDifference,
+    steepDistanceDifference,
+    slopeDifference,
+    lengthDifference,
+  };
+}
+export function recommendationGrade(score: number) {
+  if (score >= RECOMMENDATION.gradeA)
+    return { grade: "A", label: "近い" } as const;
+  if (score >= RECOMMENDATION.gradeB)
+    return { grade: "B", label: "やや近い" } as const;
+  return { grade: "C", label: "違いが大きい" } as const;
 }
 export type RecommendationCandidate = CourseFeature & {
   geometryHash: string;
@@ -353,17 +457,19 @@ export function rankCourses(
   candidates: RecommendationCandidate[],
 ) {
   const seen = new Set<string>([source.geometryHash]);
+  const priority = (candidate: RecommendationCandidate) =>
+    Number(!groomingCompatible(source.grooming, candidate.grooming)) * 2 +
+    Number(candidate.shape !== source.shape);
   return candidates
     .filter(
       c =>
         c.resortId !== source.resortId &&
-        c.shape === source.shape &&
-        groomingCompatible(source.grooming, c.grooming),
+        c.geometryHash !== source.geometryHash,
     )
     .map(course => ({ ...course, ...similarity(source, course) }))
-    .filter(course => course.score >= RECOMMENDATION.minimumScore)
     .sort(
       (a, b) =>
+        priority(a) - priority(b) ||
         b.score - a.score ||
         a.resortId.localeCompare(b.resortId, "en") ||
         a.key.localeCompare(b.key, "en"),

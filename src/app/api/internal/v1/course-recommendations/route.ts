@@ -1,12 +1,16 @@
 import { z } from "zod";
+import { RECOMMENDATION } from "@/features/course-recommendations/algorithm";
 import { favoriteIdsSchema } from "@/features/favorites/storage";
 import { featureSchema } from "@/features/map/session/storage";
-import { searchCourseRecommendationsDirect } from "@/server/course-recommendations/repository";
+import {
+  getCourseRecommendationIndexDirect,
+  searchCourseRecommendationsDirect,
+} from "@/server/course-recommendations/repository";
 import { requireInternalApiRequest } from "@/server/internalApiHttp";
 
 const schema = z.object({
   resortId: z.string().min(1).max(200),
-  selected: featureSchema,
+  selected: featureSchema.optional(),
   favoriteIds: favoriteIdsSchema,
 });
 export async function POST(request: Request) {
@@ -17,7 +21,16 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid request" }, { status: 400 });
   const { resortId, selected, favoriteIds } = parsed.data;
   return Response.json(
-    await searchCourseRecommendationsDirect(resortId, selected, favoriteIds),
+    {
+      ...(selected
+        ? await searchCourseRecommendationsDirect(
+            resortId,
+            selected,
+            favoriteIds,
+          )
+        : await getCourseRecommendationIndexDirect(resortId, favoriteIds)),
+      calculationVersion: RECOMMENDATION.version,
+    },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

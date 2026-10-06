@@ -18,6 +18,10 @@ import {
 import { flushSync } from "react-dom";
 import { z } from "zod";
 import { getSkiResortById } from "@/actions/skiResorts";
+import {
+  RecommendationProvider,
+  usePrefetchRecommendations,
+} from "@/features/course-recommendations/RecommendationProvider";
 import { CourseNavigationContext } from "@/features/course-recommendations/SimilarCourses";
 import {
   FavoritesProvider,
@@ -145,7 +149,12 @@ export function HomeClient({ initialResorts }: Props) {
     return <LoadingSpinner className="h-dvh" text="地図を準備しています..." />;
   return (
     <FavoritesProvider resortIds={boot.resorts.map(resort => resort.id)}>
-      <HomeClientContent initialResorts={boot.resorts} session={boot.session} />
+      <RecommendationProvider>
+        <HomeClientContent
+          initialResorts={boot.resorts}
+          session={boot.session}
+        />
+      </RecommendationProvider>
     </FavoritesProvider>
   );
 }
@@ -202,6 +211,10 @@ function HomeClientContent({
   const [isCompareOpen, setIsCompareOpen] = useState(
     session?.isCompareOpen ?? false,
   );
+  usePrefetchRecommendations([
+    selectedResortData?.id === selectedResortId ? selectedResortId : null,
+    ...(isCompareOpen ? compareResortData.slice(0, 4).map(r => r.id) : []),
+  ]);
   const [isCompareLoading, setIsCompareLoading] = useState(false);
   const [isMobileFilterOverlayOpen, setIsMobileFilterOverlayOpen] = useState(
     session?.isMobileFilterOverlayOpen ?? false,

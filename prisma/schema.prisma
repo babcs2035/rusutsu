@@ -740,6 +740,8 @@ model CourseRecommendationFeature {
   distance Float
   logDistance Float
   meanSlope Float
+  steepSlope Float?
+  steepDistance Float?
   shape String
   grooming String
   geometryHash String @db.Char(64)
