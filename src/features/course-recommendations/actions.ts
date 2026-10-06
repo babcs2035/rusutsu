@@ -10,7 +10,8 @@ import {
 import { prisma } from "@/lib/prisma";
 import {
   type CourseRecommendation,
-  recommendCoursesDirect,
+  type CourseRecommendationSearch,
+  searchCourseRecommendationsDirect,
 } from "@/server/course-recommendations/repository";
 
 export async function getCourseRecommendations(
@@ -30,7 +31,8 @@ export async function getCourseRecommendations(
         })
       ).map(f => f.skiResortId)
     : requested;
-  if (!ids.length) return [];
+  if (!ids.length)
+    return { status: "no_favorites" as const, recommendations: [] };
   if (usesRemoteDataApi()) {
     const response = await fetchInternalDataApi(
       "/api/internal/v1/course-recommendations",
@@ -40,9 +42,16 @@ export async function getCourseRecommendations(
         body: JSON.stringify({ resortId, selected: feature, favoriteIds: ids }),
       },
     );
-    const result: { recommendations: CourseRecommendation[] } =
-      await response.json();
-    return result.recommendations;
+    const result: {
+      recommendations: CourseRecommendation[];
+      status?: CourseRecommendationSearch["status"];
+    } = await response.json();
+    // Allow the client and canonical API to be deployed in either order.
+    return {
+      ...result,
+      status:
+        result.status ?? (result.recommendations.length ? "ready" : "no_match"),
+    };
   }
-  return recommendCoursesDirect(resortId, feature, ids);
+  return searchCourseRecommendationsDirect(resortId, feature, ids);
 }

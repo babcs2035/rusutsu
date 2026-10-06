@@ -52,6 +52,7 @@ elif args[0]=='compose':
         print(json.dumps({'services':{'app':{'environment':app}},'volumes':{'postgres_data':{'external':True,'name':'existing-data'}}}))
     elif any('check-existing-database' in a for a in args) and mode=='connection': sys.exit(1)
     elif 'migrate' in args and mode=='migration': sys.exit(1)
+    elif any('rebuildCourseRecommendations' in a for a in args) and mode=='recommendations': sys.exit(1)
     elif any('check-readiness' in a for a in args) and mode=='readiness': sys.exit(1)
 `;
 
@@ -157,6 +158,11 @@ test("unchanged DB paths skip backup but still migrate and require public readin
     assert.ok(!f.calls().includes("pg_dump"));
     assert.ok(!f.calls().includes("importCanonicalDataDocuments"));
     assert.ok(f.calls().includes("prisma migrate deploy"));
+    const rebuild = f
+      .calls()
+      .indexOf("rebuildCourseRecommendations.ts --apply");
+    assert.ok(rebuild > f.calls().indexOf("prisma migrate deploy"));
+    assert.ok(rebuild < f.calls().indexOf("up -d --wait --wait-timeout"));
     assert.ok(
       f.calls().includes("check-readiness.mjs https://example.test/rusutsu"),
     );
@@ -187,6 +193,7 @@ test("initialization backs up first, then migrates/imports and records only afte
       "prisma migrate deploy",
       "importCanonicalDataDocuments.ts --initialize",
       "importSkiResortShortNames.ts --initialize",
+      "rebuildCourseRecommendations.ts --apply",
       "up -d --wait --wait-timeout",
       "check-readiness.mjs",
     ].map(s => f.calls().indexOf(s));
@@ -207,7 +214,7 @@ test("initialization backs up first, then migrates/imports and records only afte
   }
 });
 
-for (const failure of ["readiness", "migration"]) {
+for (const failure of ["readiness", "migration", "recommendations"]) {
   test(`failed ${failure} preserves the previous configuration and success record`, () => {
     const f = fixture();
     try {
@@ -230,6 +237,8 @@ for (const failure of ["readiness", "migration"]) {
         !readdirSync(path.join(f.root, "state")).includes("pending.env.sh"),
       );
       assert.ok(f.calls().includes("rm -f owned-lock-container"));
+      if (failure === "recommendations")
+        assert.ok(!f.calls().includes("up -d --wait --wait-timeout"));
     } finally {
       f.clean();
     }

@@ -250,6 +250,22 @@ test("ranking excludes opposites, own resort, copied geometry, dissimilar candid
     [],
   );
 });
+test("slope distributions distinguish steady slopes from flat/steep mixtures with the same mean", () => {
+  const steady = feature({
+    meanSlope: 15,
+    histogram: Array.from({ length: 16 }, (_, i) => (i === 5 ? 1 : 0)),
+  });
+  const mixed = feature({
+    meanSlope: 15,
+    histogram: Array.from({ length: 16 }, (_, i) =>
+      i === 0 || i === 10 ? 0.5 : 0,
+    ),
+  });
+  assert.equal(steady.meanSlope, mixed.meanSlope);
+  assert.equal(wasserstein(steady.histogram, mixed.histogram), 15);
+  assert.ok(similarity(steady, mixed).score < 50);
+  assert.equal(similarity(steady, steady).score, 100);
+});
 test("distance smoothing classifies large repeated bends, ignores tiny coordinate noise and point density", () => {
   const winding: GeoCoordinate[] = [];
   for (let i = 0; i <= 120; i++) {

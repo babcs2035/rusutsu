@@ -10,6 +10,10 @@ paths += list((root / "scripts/backfills").rglob("*"))
 paths += list((root / "scripts").glob("import*.ts"))
 paths += list((root / "scripts").glob("canonicalImport*.ts"))
 paths += [root / "src/server/data-documents/initialization.ts"]
+paths += [root / "src/private/scripts/rebuildCourseRecommendations.ts"]
+paths += [root / "src/server/course-recommendations/projection.ts"]
+paths += [root / "src/features/course-recommendations/algorithm.ts"]
+paths += [root / "scripts/migrateMapEntities.ts"]
 digest = hashlib.sha256()
 for path in sorted(path for path in paths if path.is_file() and not path.name.endswith(".test.ts")):
     digest.update(str(path.relative_to(root)).encode())

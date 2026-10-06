@@ -263,6 +263,16 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
       id: "source-group",
       routeId: "source-group:route:2",
     };
+    assert.equal(
+      (await api.searchCourseRecommendationsDirect("source", main, ["third"]))
+        .status,
+      "candidates_unavailable",
+    );
+    assert.equal(
+      (await api.searchCourseRecommendationsDirect("source", main, ["source"]))
+        .status,
+      "no_other_favorites",
+    );
     const rec = await api.recommendCoursesDirect("source", main, [
       "candidate",
       "source",
@@ -271,6 +281,14 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
     assert.equal(rec.length, 1);
     assert.equal(rec[0].score, 100);
     assert.equal(rec[0].selected.routeId, "candidate-group:route:2");
+    assert.equal(
+      (
+        await api.searchCourseRecommendationsDirect("source", main, [
+          "candidate",
+        ])
+      ).status,
+      "ready",
+    );
     assert.deepEqual(
       await api.recommendCoursesDirect(
         "source",
@@ -279,6 +297,32 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
       ),
       [],
     );
+    // A canonical identity migration must remove old selection IDs and publish
+    // current IDs in the same transaction, without changing the course shape.
+    const migrated = JSON.parse(content("source"));
+    for (const f of migrated.features)
+      f.properties.courseGrouping.id = "current-source-group";
+    sourceHash = await write("source", JSON.stringify(migrated), sourceHash);
+    assert.equal(
+      (
+        await api.searchCourseRecommendationsDirect("source", main, [
+          "candidate",
+        ])
+      ).status,
+      "source_unavailable",
+    );
+    const currentMain = {
+      ...main,
+      id: "current-source-group",
+      routeId: "current-source-group:route:2",
+    };
+    const current = await api.searchCourseRecommendationsDirect(
+      "source",
+      currentMain,
+      ["candidate"],
+    );
+    assert.equal(current.status, "ready");
+    assert.equal(current.recommendations[0].score, 100);
     sourceHash = await write(
       "source",
       JSON.stringify({ type: "FeatureCollection", features: [] }),
@@ -293,6 +337,14 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
     assert.deepEqual(
       await api.recommendCoursesDirect("source", main, ["candidate"]),
       [],
+    );
+    assert.equal(
+      (
+        await api.searchCourseRecommendationsDirect("source", currentMain, [
+          "candidate",
+        ])
+      ).status,
+      "source_unavailable",
     );
   } finally {
     await api.disconnectPrisma();

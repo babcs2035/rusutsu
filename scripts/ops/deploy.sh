@@ -48,6 +48,9 @@ if [[ "$initialize" == true ]]; then
   compose run --rm --no-deps app node --import tsx scripts/importCanonicalDataDocuments.ts --initialize
   compose run --rm --no-deps app node --import tsx scripts/importSkiResortShortNames.ts --initialize
 fi
+# Derived recommendation rows must exist before serving searches. Rebuild from
+# the canonical DB, including current entity/group IDs; never import fixtures.
+compose run --rm --no-deps app node --import tsx src/private/scripts/rebuildCourseRecommendations.ts --apply
 compose up -d --wait --wait-timeout 180
 compose exec -T app node scripts/ops/check-readiness.mjs "$DATA_API_BASE_URL"
 mv "$OPS_STATE_DIR/pending.env.sh" "$OPS_STATE_DIR/runtime.env.sh"

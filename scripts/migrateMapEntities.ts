@@ -13,6 +13,7 @@ import {
   syncMapEntities,
   verifyRelationalDocument,
 } from "../src/server/course-lift/repository";
+import { syncRecommendationDocuments } from "../src/server/course-recommendations/projection";
 
 const args = process.argv.slice(2);
 const option = (key: string) => {
@@ -158,6 +159,10 @@ async function main() {
       );
       for (const d of plan.documents.filter(d => primaryMapKey(d.key)))
         await verifyRelationalDocument(tx, d);
+      await syncRecommendationDocuments(
+        tx,
+        plan.documents.map(d => d.key),
+      );
       await tx.canonicalDataMigration.upsert({
         where: { key: MAP_ENTITIES_MIGRATION_KEY },
         create: {

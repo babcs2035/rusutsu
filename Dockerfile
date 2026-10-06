@@ -75,6 +75,9 @@ COPY --from=build-cache --chown=nextjs:nodejs /app/scripts ./scripts
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/lib ./src/lib
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/server ./src/server
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/shared ./src/shared
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/features/course-recommendations/algorithm.ts ./src/features/course-recommendations/algorithm.ts
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/features/latest-status-mapping ./src/features/latest-status-mapping
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/features/resort-detail/utils/detailMetrics.ts ./src/features/resort-detail/utils/detailMetrics.ts
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/scripts ./src/private/scripts
 # Frozen sources for EXPLICIT one-time import/recovery. App startup never imports.
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/SkiAreaNameDict.json ./src/private/data/SkiAreaNameDict.json
@@ -115,6 +118,7 @@ USER nextjs
 # Verify the final image, including files not discoverable by Next's tracer.
 # These commands do not connect to a DB or crawl any external website.
 RUN node scripts/ops/check-runtime-files.mjs && \
+    node --import tsx --eval 'import("./src/server/course-recommendations/projection.ts")' && \
     node --import tsx scripts/importCanonicalDataDocuments.ts --dry-run && \
     node --import tsx scripts/importSkiResortShortNames.ts --dry-run
 

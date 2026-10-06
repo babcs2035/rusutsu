@@ -10,7 +10,10 @@ import { Button } from "@/components/ui/button";
 import { useFavorites } from "@/features/favorites/FavoritesProvider";
 import type { SelectedMapFeature } from "@/features/map/types";
 import type { FinalizedCourseGroup } from "@/features/resort-detail/types";
-import type { CourseRecommendation } from "@/server/course-recommendations/repository";
+import type {
+  CourseRecommendation,
+  CourseRecommendationSearch,
+} from "@/server/course-recommendations/repository";
 import { getCourseRecommendations } from "./actions";
 import { recommendationSelection } from "./algorithm";
 
@@ -41,6 +44,7 @@ export function SimilarCourses({
   const [state, setState] = useState<{
     key: string;
     results: CourseRecommendation[];
+    status?: CourseRecommendationSearch["status"];
     error?: boolean;
   } | null>(null);
   const [retry, setRetry] = useState(0);
@@ -51,12 +55,17 @@ export function SimilarCourses({
     const request = JSON.parse(key);
     startTransition(async () => {
       try {
-        const results = await getCourseRecommendations(
+        const result = await getCourseRecommendations(
           request.resortId,
           request.selected,
           request.favorites,
         );
-        if (!disposed) setState({ key, results });
+        if (!disposed)
+          setState({
+            key,
+            results: result.recommendations,
+            status: result.status,
+          });
       } catch {
         if (!disposed) setState({ key, results: [], error: true });
       }
@@ -89,7 +98,13 @@ export function SimilarCourses({
         </Button>
       ) : current.results.length === 0 ? (
         <p className="text-xs text-gray-500">
-          条件を満たすコースはありません。
+          {current.status === "source_unavailable"
+            ? "このコースは現在、類似コースを検索するためのデータがありません。"
+            : current.status === "candidates_unavailable"
+              ? "お気に入りのスキー場に、比較できるコースデータがありません。"
+              : current.status === "no_other_favorites"
+                ? "ほかのスキー場をお気に入りに追加すると、似ているコースを探せます。"
+                : "条件を満たすコースはありません。"}
         </p>
       ) : (
         <ol className="flex flex-col gap-2">

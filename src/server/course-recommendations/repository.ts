@@ -7,12 +7,13 @@ import {
 import type { SelectedMapFeature } from "@/features/map/types";
 import { prisma } from "@/lib/prisma";
 
-export async function recommendCoursesDirect(
+export async function searchCourseRecommendationsDirect(
   resortId: string,
   selected: SelectedMapFeature,
   favoriteIds: string[],
 ) {
-  if (selected.kind !== "course" || !favoriteIds.length) return [];
+  if (selected.kind !== "course" || !favoriteIds.length)
+    return { status: "no_favorites" as const, recommendations: [] };
   const resorts = await prisma.skiResort.findMany({
     where: { id: { in: [...new Set([resortId, ...favoriteIds])] } },
     select: {
@@ -29,7 +30,8 @@ export async function recommendCoursesDirect(
   const canonical = (r: (typeof resorts)[number]) =>
     r.mergedInto?.linkKind === "LINKED" ? r.mergedInto.id : r.id;
   const sourceResort = resorts.find(r => r.id === resortId);
-  if (!sourceResort) return [];
+  if (!sourceResort)
+    return { status: "source_unavailable" as const, recommendations: [] };
   const sourceId = canonical(sourceResort);
   const sourceMembers = new Set([
     resortId,
@@ -51,6 +53,8 @@ export async function recommendCoursesDirect(
   const byCanonical = new Map<string, (typeof resorts)[number]>();
   for (const r of candidates.sort((a, b) => a.id.localeCompare(b.id, "en")))
     if (!byCanonical.has(canonical(r))) byCanonical.set(canonical(r), r);
+  if (!byCanonical.size)
+    return { status: "no_other_favorites" as const, recommendations: [] };
   const rows = await prisma.courseRecommendationFeature.findMany({
     where: {
       resortId: { in: [sourceId, ...byCanonical.keys()] },
@@ -75,12 +79,12 @@ export async function recommendCoursesDirect(
     !source ||
     (!selected.routeId && source.routeKey && source.groupId === selected.id)
   )
-    return [];
-  const results = rankCourses(
-    convert(source),
-    rows.filter(row => row.resortId !== sourceId).map(convert),
-  );
-  return results.map(row => {
+    return { status: "source_unavailable" as const, recommendations: [] };
+  const candidateRows = rows.filter(row => row.resortId !== sourceId);
+  if (!candidateRows.length)
+    return { status: "candidates_unavailable" as const, recommendations: [] };
+  const results = rankCourses(convert(source), candidateRows.map(convert));
+  const recommendations = results.map(row => {
     const visible = byCanonical.get(row.resortId);
     return {
       resortId: visible?.id ?? row.resortId,
@@ -99,7 +103,23 @@ export async function recommendCoursesDirect(
       },
     };
   });
+  return {
+    status: recommendations.length ? ("ready" as const) : ("no_match" as const),
+    recommendations,
+  };
 }
+export async function recommendCoursesDirect(
+  resortId: string,
+  selected: SelectedMapFeature,
+  favoriteIds: string[],
+) {
+  return (
+    await searchCourseRecommendationsDirect(resortId, selected, favoriteIds)
+  ).recommendations;
+}
+export type CourseRecommendationSearch = Awaited<
+  ReturnType<typeof searchCourseRecommendationsDirect>
+>;
 export type CourseRecommendation = Awaited<
   ReturnType<typeof recommendCoursesDirect>
 >[number];
