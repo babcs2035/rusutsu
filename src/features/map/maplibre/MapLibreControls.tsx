@@ -12,6 +12,9 @@ import { MapCompassDial } from "./MapCompassDial";
 
 const CONTROL_BUTTON_CLASS =
   "flex h-10 w-10 items-center justify-center rounded-none bg-white p-0 text-xl font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 min-w-0";
+/** コース比較のような小さな地図では、地図を隠さないよう一回り小さくする */
+const COMPACT_ZOOM_BUTTON_CLASS = "h-7 w-7 text-base";
+const COMPACT_DIAL_SIZE = 48;
 
 /**
  * ズーム・回転・ホーム・地図種別のボタン。
@@ -27,6 +30,7 @@ export const MapLibreControls = ({
   showTileVariantControl,
   showHomeButton,
   canRotate,
+  compact = false,
   onUserMapInteraction,
   onUserMapZoomInteraction,
 }: {
@@ -38,6 +42,7 @@ export const MapLibreControls = ({
   showTileVariantControl: boolean;
   showHomeButton: boolean;
   canRotate: boolean;
+  compact?: boolean;
   onUserMapInteraction?: () => void;
   onUserMapZoomInteraction?: () => void;
 }) => {
@@ -57,7 +62,11 @@ export const MapLibreControls = ({
   const compassDial = (
     <Card className="gap-0 overflow-hidden rounded-full p-0">
       <CardContent className="p-0">
-        <MapCompassDial map={map} bearing={bearing} />
+        <MapCompassDial
+          map={map}
+          bearing={bearing}
+          size={compact ? COMPACT_DIAL_SIZE : undefined}
+        />
       </CardContent>
     </Card>
   );
@@ -65,8 +74,20 @@ export const MapLibreControls = ({
   return (
     // 地図種別とホームは常に左下の同じ位置。ボトムシートの高さで
     // 動かすと押したい瞬間に位置が変わるので、オフセットは固定にする。
-    <div className="pointer-events-none absolute z-[750] flex flex-col gap-2 items-start left-4 bottom-[calc(env(safe-area-inset-bottom,0px)+1rem)] md:bottom-4">
-      <div className="pointer-events-auto flex items-end gap-2">
+    <div
+      className={cn(
+        "pointer-events-none absolute z-[750] flex flex-col gap-2 items-start",
+        compact
+          ? "bottom-2 left-2"
+          : "left-4 bottom-[calc(env(safe-area-inset-bottom,0px)+1rem)] md:bottom-4",
+      )}
+    >
+      <div
+        className={cn(
+          "pointer-events-auto flex items-end",
+          compact ? "gap-1.5" : "gap-2",
+        )}
+      >
         {/* 拡大縮小はデスクトップのみ。スマホはピンチ操作で行う */}
         <Card className="hidden md:flex gap-0 overflow-hidden p-0">
           <CardContent className="p-0">
@@ -76,7 +97,10 @@ export const MapLibreControls = ({
                 window.setTimeout(() => onUserMapZoomInteraction?.(), 0);
               }}
               aria-label="地図を拡大"
-              className={CONTROL_BUTTON_CLASS}
+              className={cn(
+                CONTROL_BUTTON_CLASS,
+                compact && COMPACT_ZOOM_BUTTON_CLASS,
+              )}
             >
               +
             </Button>
@@ -86,7 +110,11 @@ export const MapLibreControls = ({
                 window.setTimeout(() => onUserMapZoomInteraction?.(), 0);
               }}
               aria-label="地図を縮小"
-              className={cn(CONTROL_BUTTON_CLASS, "border-t border-gray-100")}
+              className={cn(
+                CONTROL_BUTTON_CLASS,
+                compact && COMPACT_ZOOM_BUTTON_CLASS,
+                "border-t border-gray-100",
+              )}
             >
               -
             </Button>

@@ -1,6 +1,7 @@
 "use client";
 
 import { Circle, Minus, Play, Triangle, X } from "lucide-react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { StatusSymbol } from "../utils/detailMetrics";
 import { getYoutubeSearchUrl } from "../utils/featureLinks";
@@ -174,30 +175,126 @@ export const FeatureMetrics = ({
   </dl>
 );
 
-/** 当日のコメントは本文の大きさで、固定の説明文は一段小さく出す */
+const NOTE_TOGGLE_CLASS =
+  "whitespace-nowrap text-xs text-sky-700 underline underline-offset-2 hover:text-sky-900 md:text-sm";
+
+/**
+ * 囲みラベルに続けて本文を流し、2行目以降はラベルの下まで回り込ませる。
+ * 1行に収まらないときは「続きを読む」で開き、末尾の「閉じる」で戻す。
+ */
+const ExpandableNote = ({
+  label,
+  labelClassName,
+  texts,
+  className,
+}: {
+  label: string;
+  labelClassName: string;
+  texts: string[];
+  className: string;
+}) => {
+  const textRef = useRef<HTMLSpanElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [overflowing, setOverflowing] = useState(false);
+
+  useLayoutEffect(() => {
+    const element = textRef.current;
+    if (!element || expanded) return;
+    const measure = () =>
+      setOverflowing(element.scrollWidth > element.clientWidth + 1);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [expanded]);
+
+  const badge = (
+    <span
+      className={cn(
+        "mr-1.5 inline-flex shrink-0 items-center rounded border px-1 align-[1px] text-[11px] font-semibold leading-4 whitespace-nowrap md:text-xs",
+        labelClassName,
+      )}
+    >
+      {label}
+    </span>
+  );
+
+  if (expanded) {
+    return (
+      <div className={className}>
+        {texts.map((text, index) => (
+          <p key={text}>
+            {index === 0 && badge}
+            {text}
+            {index === texts.length - 1 && (
+              <button
+                type="button"
+                onClick={() => setExpanded(false)}
+                aria-label={`${label}を閉じる`}
+                className={cn(NOTE_TOGGLE_CLASS, "ml-1.5")}
+              >
+                閉じる
+              </button>
+            )}
+          </p>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn("flex items-center", className)}>
+      {badge}
+      <span ref={textRef} className="min-w-0 flex-1 truncate">
+        {texts.join(" ／ ")}
+      </span>
+      {overflowing && (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          aria-label={`${label}の続きを読む`}
+          className={cn(NOTE_TOGGLE_CLASS, "ml-1.5 shrink-0")}
+        >
+          続きを読む
+        </button>
+      )}
+    </div>
+  );
+};
+
+/**
+ * クローラーで取った当日のコメント（最新情報）と、固定の紹介文を
+ * 囲みラベルで分けて出す
+ */
 export const FeatureNotes = ({
   comments,
   descriptions = [],
+  descriptionLabel = "コース紹介",
 }: {
   comments: string[];
   descriptions?: string[];
+  descriptionLabel?: string;
 }) =>
   comments.length + descriptions.length > 0 ? (
     <div className="flex flex-col gap-1">
       {comments.length > 0 && (
-        <ul className="flex flex-col gap-0.5 border-l-2 border-amber-300 pl-2">
-          {comments.map(comment => (
-            <li key={comment} className="text-sm leading-snug text-slate-900">
-              {comment}
-            </li>
-          ))}
-        </ul>
+        <ExpandableNote
+          key={comments.join("\n")}
+          label="最新情報"
+          labelClassName="border-amber-300 bg-amber-50 text-amber-900"
+          texts={comments}
+          className="border-l-2 border-amber-300 pl-2 text-sm leading-snug text-slate-900 md:text-base"
+        />
       )}
-      {descriptions.map(note => (
-        <p key={note} className="text-xs leading-relaxed text-slate-600">
-          {note}
-        </p>
-      ))}
+      {descriptions.length > 0 && (
+        <ExpandableNote
+          key={descriptions.join("\n")}
+          label={descriptionLabel}
+          labelClassName="border-slate-300 bg-slate-50 text-slate-600"
+          texts={descriptions}
+          className="border-l-2 border-slate-200 pl-2 text-sm leading-snug text-slate-600 md:text-base"
+        />
+      )}
     </div>
   ) : null;
 

@@ -145,6 +145,7 @@ function MapLibreResortMapContent({
   initialViewport = null,
   showMapToolbar = true,
   showContextLabels = false,
+  embedded = false,
   mapTileVariant: controlledMapTileVariant,
   onMapTileVariantChange,
   courseColorMode: controlledCourseColorMode,
@@ -163,7 +164,8 @@ function MapLibreResortMapContent({
   onRecover: () => void;
   onAutoRecover: () => boolean;
 }) {
-  const sessionEnabled = useMapSession() !== null;
+  // 埋め込みの地図は、同じスキー場の拡大地図と表示位置を共有しない
+  const sessionEnabled = useMapSession() !== null && !embedded;
   const storageKey = `${mapSessionKey(selectedResortId)}${mapPresentation === "expanded" ? ":expanded" : ""}`;
   // プレビュー地図（拡大していない小さい地図）は常に同じ見え方（北が上・
   // スキー場全体が入る大きさ）にしたいので、保存された表示位置は読まない。
@@ -204,6 +206,8 @@ function MapLibreResortMapContent({
       ? true
       : window.matchMedia(MOBILE_MAP_MEDIA_QUERY).matches,
   );
+  // モバイルと埋め込みの地図は寄せる動きを見せない。開いた時点で目的の範囲を出す
+  const animateViewport = !isMobile && !embedded;
   const [isCoarsePointer, setIsCoarsePointer] = useState(() =>
     typeof window === "undefined"
       ? true
@@ -949,7 +953,7 @@ function MapLibreResortMapContent({
     selectedViewportBottomPaddingRatio,
     labelShowZoom,
     // モバイルは動かす様子を見せない。開いた時点でスキー場が出ている方が速い
-    animate: !isMobile,
+    animate: animateViewport,
     skipCompareRecenterRef,
     viewportResetKey: detailViewportResetKey,
     preserveViewport,
@@ -963,9 +967,14 @@ function MapLibreResortMapContent({
     searchViewportRequestKey,
     searchViewportBottomPaddingRatio,
     labelShowZoom,
-    animate: !isMobile,
+    animate: animateViewport,
   });
-  useRestoreViewport({ map, isReady, restoreViewRequest, animate: !isMobile });
+  useRestoreViewport({
+    map,
+    isReady,
+    restoreViewRequest,
+    animate: animateViewport,
+  });
   useSelectedFeatureViewport({
     map,
     isReady,
@@ -975,7 +984,7 @@ function MapLibreResortMapContent({
     // モバイルは詳細を開くと表示領域が変わるため、保存位置より全体表示を優先する。
     preserveViewport: preserveViewport && !isMobile,
     bottomPaddingRatio: selectedViewportBottomPaddingRatio,
-    animate: !isMobile,
+    animate: animateViewport,
   });
 
   const toolbarRightOverlap = useDetailPanelRightOverlap(
@@ -993,7 +1002,7 @@ function MapLibreResortMapContent({
       className="relative z-0 h-full w-full"
     >
       <div ref={containerRef} className="h-full w-full" />
-      {isReady && (
+      {isReady && !embedded && (
         <MapLocationControl
           map={map}
           resorts={resorts}
@@ -1048,6 +1057,7 @@ function MapLibreResortMapContent({
           }
           showHomeButton={!isDetailMap}
           canRotate={canRotate}
+          compact={embedded}
           onUserMapInteraction={onUserMapInteraction}
           onUserMapZoomInteraction={onUserMapZoomInteraction}
         />

@@ -2,7 +2,7 @@ import type { FinalizedCourseGroup } from "@/features/resort-detail/types";
 import { RECOMMENDATION, recommendationSelection } from "./algorithm";
 
 type Differences = {
-  steepSlopeDifference: number;
+  maxSlopeDifference: number;
   steepDistanceDifference: number;
   slopeDifference: number;
   lengthDifference: number;
@@ -11,12 +11,12 @@ type Differences = {
 export function comparisonScoreRows(course: Differences) {
   return [
     {
-      label: "急斜面の斜度",
-      difference: course.steepSlopeDifference,
-      weight: RECOMMENDATION.steepSlopeWeight,
+      label: "最大斜度",
+      difference: course.maxSlopeDifference,
+      weight: RECOMMENDATION.maxSlopeWeight,
     },
     {
-      label: "急な区間の長さ",
+      label: "急斜面の距離",
       difference: course.steepDistanceDifference,
       weight: RECOMMENDATION.steepDistanceWeight,
     },

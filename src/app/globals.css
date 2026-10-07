@@ -699,16 +699,9 @@ html body .course-profile-marker-ring {
 
 html body .course-profile-marker .course-profile-label {
   position: absolute;
+  bottom: calc(100% + 10px);
   left: 50%;
   transform: translateX(-50%);
-}
-
-html body .course-profile-marker[data-placement="top"] .course-profile-label {
-  bottom: calc(100% + 10px);
-}
-
-html body .course-profile-marker[data-placement="bottom"] .course-profile-label {
-  top: calc(100% + 10px);
 }
 
 /* 比較モードでマーカーから開く吹き出し。 */

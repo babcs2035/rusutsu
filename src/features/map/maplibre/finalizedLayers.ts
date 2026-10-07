@@ -188,12 +188,17 @@ const isSelectedExpression = (
       : ["==", ["get", "sourceId"], selected.id]
     : ["literal", false];
 
-/** 何かを選択しているときの、それ以外の線 */
+/**
+ * 何かを選択しているときの、それ以外の線。
+ * コースを選んでいるときのリフトは沈めない。動きと色で位置と向きが読めるので、
+ * 選んだコースへの行き方の目印としてふだんどおり見せる。
+ */
 const isDimmedExpression = (
   state: FinalizedStyleState,
   kind: "course" | "lift",
 ): ExpressionSpecification =>
-  state.selectedFeature
+  state.selectedFeature &&
+  (kind === "course" || state.selectedFeature.kind === "lift")
     ? ["!", isSelectedExpression(state.selectedFeature, kind)]
     : ["literal", false];
 
@@ -253,14 +258,14 @@ export const getLineWidth = (
 
 /**
  * 流れる破線の濃さ。
- * 選択中のほかのリフトは流れを止めて、紺の実線だけを目印として残す。
+ * リフトを選んでいるときのほかのリフトも、流れは止めずに薄くして残す。
  */
 export const getFlowOpacity = (
   state: FinalizedStyleState,
 ): DataDrivenPropertyValueSpecification<number> => [
   "case",
   isDimmedExpression(state, "lift"),
-  0,
+  ["*", FLOW_STATUS_OPACITY, 0.45],
   FLOW_STATUS_OPACITY,
 ];
 

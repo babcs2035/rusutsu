@@ -10,6 +10,9 @@ export function createResultCache<T>(
     string,
     { promise: Promise<T>; value?: T; expires: number }
   >();
+  // 期限切れでも最後に取れた結果。取り直している間はこれを見せて、
+  // 画面を戻るたびに「検索中」へ戻らないようにする
+  const latest = new Map<string, T>();
   const peek = (id: string) => {
     const entry = entries.get(id);
     return entry && entry.expires > now() ? entry.value : undefined;
@@ -28,6 +31,9 @@ export function createResultCache<T>(
       .then(value => {
         entry.value = value;
         entry.expires = now() + 60000;
+        if (latest.size >= 20 && !latest.has(id))
+          latest.delete(latest.keys().next().value as string);
+        latest.set(id, value);
         return value;
       })
       .catch(error => {
@@ -36,7 +42,16 @@ export function createResultCache<T>(
       });
     return entry.promise;
   };
-  return { get, peek, invalidate: (id: string) => entries.delete(id) };
+  return {
+    get,
+    peek,
+    /** 期限切れも含めた最後の結果。再検索（invalidate）で消える */
+    peekStale: (id: string) => latest.get(id),
+    invalidate: (id: string) => {
+      latest.delete(id);
+      return entries.delete(id);
+    },
+  };
 }
 
 export function selectCachedRecommendations(

@@ -121,11 +121,12 @@ function FavoritesState({
       ...local.current,
       ids: local.current.ids.filter(id => availableResorts.has(id)),
     };
-    setSnapshot(previous => ({
-      userId,
-      ids: previous.userId === userId ? previous.ids : [],
-      ready: false,
-    }));
+    // 同じアカウントの再同期中は、前の一覧を使える状態のまま残す。
+    // 一度 ready を落とすと、お気に入りに依存する表示（類似コースなど）が
+    // タブを戻るたびに作り直されて読み込み直しになる。
+    setSnapshot(previous =>
+      previous.userId === userId ? previous : { userId, ids: [], ready: false },
+    );
     startTransition(async () => {
       try {
         if (userId) {

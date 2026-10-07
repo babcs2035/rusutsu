@@ -11,6 +11,7 @@ import { useFavorites } from "@/features/favorites/FavoritesProvider";
 import type { SelectedMapFeature } from "@/features/map/types";
 import { FeatureSectionTitle } from "@/features/resort-detail/components/FeatureHeadline";
 import type { FinalizedCourseGroup } from "@/features/resort-detail/types";
+import type { FinalizedResortMapData } from "@/lib/finalizedResortGeojsonShared";
 import type {
   CourseRecommendation,
   CourseRecommendationSearch,
@@ -19,6 +20,7 @@ import { DetailButton } from "@/shared/components/DetailButton";
 import { recommendationGrade, recommendationSelection } from "./algorithm";
 import { CourseComparisonDialog } from "./CourseComparisonDialog";
 import { selectCachedRecommendations } from "./cache";
+import { prefetchComparisonMapData } from "./comparisonData";
 import { useRecommendationCache } from "./RecommendationProvider";
 
 const GRADE_CLASS = {
@@ -41,10 +43,13 @@ export function SimilarCourses({
   resortId,
   resortName,
   courseGroup,
+  mapData,
 }: {
   resortId: string;
   resortName: string;
   courseGroup: FinalizedCourseGroup;
+  /** 表示中のスキー場の地図データ。比較の地図にそのまま使う */
+  mapData?: FinalizedResortMapData | null;
 }) {
   const favorites = useFavorites();
   const navigate = useContext(CourseNavigationContext);
@@ -107,15 +112,26 @@ export function SimilarCourses({
   const cached = cache?.store.peek(resortId);
   const immediate =
     cached && selected ? selectCachedRecommendations(cached, selected) : null;
+  // 期限切れで取り直している間も、前の結果を出し続ける
+  const stale = cache?.store.peekStale(resortId);
+  const previous =
+    stale && selected ? selectCachedRecommendations(stale, selected) : null;
+  const loaded = state?.key === key ? state : null;
   const current = immediate
     ? {
         results: immediate.recommendations,
         status: immediate.status,
         error: false,
       }
-    : state?.key === key
-      ? state
-      : null;
+    : loaded && !loaded.error
+      ? loaded
+      : previous
+        ? {
+            results: previous.recommendations,
+            status: previous.status,
+            error: false,
+          }
+        : loaded;
   return (
     <section className="min-w-0" aria-label="類似コース">
       <FeatureSectionTitle aside="お気に入りのスキー場から">
@@ -219,6 +235,14 @@ export function SimilarCourses({
                     <DetailButton
                       compact
                       className="ml-auto"
+                      // 押す前から比較先の地図データを読み始める
+                      onPointerEnter={() =>
+                        prefetchComparisonMapData(course.resortId)
+                      }
+                      onPointerDown={() =>
+                        prefetchComparisonMapData(course.resortId)
+                      }
+                      onFocus={() => prefetchComparisonMapData(course.resortId)}
                       aria-label={`${course.resortName} ${course.name}との比較詳細`}
                       onClick={() => setComparison(course)}
                     />
@@ -231,9 +255,11 @@ export function SimilarCourses({
       )}
       {comparison && (
         <CourseComparisonDialog
+          key={`${comparison.resortId}:${comparison.key}`}
           resortId={resortId}
           resortName={resortName}
           courseGroup={courseGroup}
+          mapData={mapData}
           candidate={comparison}
           onClose={() => setComparison(null)}
         />

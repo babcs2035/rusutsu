@@ -84,19 +84,12 @@ import {
 
 export type { ElevationProfileMapPoint, SelectedMapFeature } from "./types";
 
-type CourseLinePoint = ElevationProfileMapPoint & {
-  segmentDy: number;
-};
-
-const getElevationProfileLabelIcon = (
-  point: ElevationProfileMapPoint,
-  placement: "top" | "bottom",
-) =>
+const getElevationProfileLabelIcon = (point: ElevationProfileMapPoint) =>
   L.divIcon({
-    className: `course-profile-label-icon course-profile-label-icon-${placement}`,
+    className: "course-profile-label-icon",
     html: `<div class="course-profile-label"><span>${point.slope == null ? "--" : `${Math.round(point.slope)}°`}</span><span>${Math.round(point.elevation).toLocaleString()}m</span></div>`,
     iconSize: [56, 44],
-    iconAnchor: placement === "top" ? [28, 54] : [28, -10],
+    iconAnchor: [28, 54],
   });
 
 const ElevationProfileMapMarker = ({
@@ -117,19 +110,20 @@ const ElevationProfileMapMarker = ({
   );
   const [isDraggingProfilePoint, setIsDraggingProfilePoint] = useState(false);
   const getNearestCourseLinePoint = useCallback(
-    (latLng: L.LatLng): CourseLinePoint | null => {
+    (latLng: L.LatLng): ElevationProfileMapPoint | null => {
       if (profilePoints.length === 0) return null;
       if (profilePoints.length === 1) {
         return {
           ...profilePoints[0],
           courseGroupId: point.courseGroupId,
           courseName: point.courseName,
-          segmentDy: 0,
         };
       }
 
       const draggedPoint = map.latLngToLayerPoint(latLng);
-      let nearest: (CourseLinePoint & { layerDistance: number }) | null = null;
+      let nearest:
+        | (ElevationProfileMapPoint & { layerDistance: number })
+        | null = null;
 
       for (let index = 1; index < profilePoints.length; index += 1) {
         const start = profilePoints[index - 1];
@@ -169,7 +163,6 @@ const ElevationProfileMapMarker = ({
           distance: startDistance + (endDistance - startDistance) * t,
           elevation,
           slope: t < 0.5 ? start.slope : end.slope,
-          segmentDy: segment.y,
           layerDistance,
         };
       }
@@ -200,16 +193,7 @@ const ElevationProfileMapMarker = ({
       point.courseName,
     ],
   );
-  const selectedLinePoint = useMemo(
-    () => getNearestCourseLinePoint(L.latLng(toLatLngTuple(point.coordinate))),
-    [getNearestCourseLinePoint, point.coordinate],
-  );
-  const labelPlacement =
-    selectedLinePoint && selectedLinePoint.segmentDy < 0 ? "bottom" : "top";
-  const labelIcon = useMemo(
-    () => getElevationProfileLabelIcon(point, labelPlacement),
-    [labelPlacement, point],
-  );
+  const labelIcon = useMemo(() => getElevationProfileLabelIcon(point), [point]);
 
   useEffect(() => {
     if (!isDraggingProfilePoint) return;

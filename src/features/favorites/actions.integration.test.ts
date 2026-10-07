@@ -325,8 +325,8 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
     );
     assert.equal(current.status, "ready");
     assert.equal(current.recommendations[0].score, 100);
-    assert.ok(current.recommendations[0].steepSlope > 0);
-    assert.ok(current.recommendations[0].steepDistance > 0);
+    assert.ok(current.recommendations[0].maxSlope > 0);
+    assert.ok(current.recommendations[0].candidateSteepDistance > 0);
     const index = await api.getCourseRecommendationIndexDirect("source", [
       "candidate",
     ]);
@@ -377,10 +377,10 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
     );
     assert.equal(reference.recommendations.length, 1);
     assert.equal(reference.recommendations[0].groomingDifferent, true);
-    // Missing new metrics cannot be converted to zero-degree, flat terrain.
+    // Rows from an older calculation are never compared with current ones.
     await db.courseRecommendationFeature.updateMany({
       where: { resortId: "source" },
-      data: { steepSlope: null },
+      data: { calculationVersion: 2 },
     });
     assert.equal(
       (
@@ -410,7 +410,7 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
       globalThis.fetch = async () =>
         Response.json({
           status: "ready",
-          calculationVersion: 2,
+          calculationVersion: 3,
           recommendations: current.recommendations,
         });
       const remote = await run(guest, () =>
@@ -418,8 +418,8 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
       );
       assert.equal(remote.status, "ready");
       assert.equal(
-        remote.recommendations[0].steepSlope,
-        current.recommendations[0].steepSlope,
+        remote.recommendations[0].maxSlope,
+        current.recommendations[0].maxSlope,
       );
       globalThis.fetch = async () =>
         Response.json({ error: "old-contract" }, { status: 400 });
@@ -434,7 +434,7 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
       globalThis.fetch = async () =>
         Response.json({
           status: "ready",
-          calculationVersion: 2,
+          calculationVersion: 3,
           courses: index.courses,
         });
       const remoteIndex = await run(guest, () =>

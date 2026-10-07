@@ -100,10 +100,13 @@ export const getCourseGroupPisteSymbol = (
 export const getCourseGroupTags = (group: FinalizedCourseGroup) => {
   const first = group.courses[0];
   const piste = getCourseGroupPisteSymbol(group);
+  const difficulty = first ? getCourseDifficulty(first.properties.level) : null;
   return {
-    difficulty: first
-      ? COURSE_DIFFICULTY_META[getCourseDifficulty(first.properties.level)]
-      : null,
+    // レベルが分からないときは「不明」と書かず、チップを出さない
+    difficulty:
+      difficulty && difficulty !== "unknown"
+        ? COURSE_DIFFICULTY_META[difficulty]
+        : null,
     grooming: piste ? PISTE_STATUS_DESCRIPTION[piste] : null,
   };
 };
@@ -415,4 +418,51 @@ export const createConnectedCourseElevationProfile = (
   }
 
   return points;
+};
+
+/** コースの数値の帯（`FeatureMetrics`）に並べる値。詳細とコース比較で同じ並びにする */
+export const getCourseGroupMetricItems = (group: FinalizedCourseGroup) => {
+  const distances = group.courses
+    .map(
+      course =>
+        course.properties.slopeDistMap ?? course.properties.distance ?? null,
+    )
+    .filter((value): value is number => value !== null);
+  const distance =
+    distances.length > 0
+      ? distances.reduce((sum, value) => sum + value, 0)
+      : null;
+  const horizontalDistances = group.courses.map(
+    course => course.properties.horizontalDistMap,
+  );
+  const horizontalDistance = horizontalDistances.some(
+    (value): value is number => typeof value === "number",
+  )
+    ? horizontalDistances.reduce<number>((sum, value) => sum + (value ?? 0), 0)
+    : null;
+  const averageSlope = averageNullable(
+    group.courses.map(course => course.properties.avgSlopeDegMap),
+  );
+  const maxSlope = maxNullable(
+    group.courses.map(course => course.properties.maxSlopeDegMap),
+  );
+  const elevationRange = getElevationRange(
+    group.courses.map(course => course.coordinates),
+  );
+  const elevationDiff = elevationRange
+    ? elevationRange.max - elevationRange.min
+    : null;
+  return [
+    { title: "水平距離", value: formatMeters(horizontalDistance) },
+    { title: "斜面距離", value: formatMeters(distance) },
+    {
+      title: "標高差",
+      value: formatMeters(elevationDiff),
+      detail: elevationRange
+        ? `${Math.round(elevationRange.max)} - ${Math.round(elevationRange.min)}m`
+        : null,
+    },
+    { title: "平均", value: formatDegree(averageSlope) },
+    { title: "最大", value: formatDegree(maxSlope) },
+  ];
 };

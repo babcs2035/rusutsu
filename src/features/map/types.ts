@@ -202,6 +202,11 @@ export type JapanResortMapProps = {
    * 選択した線に重なる位置には置かない。
    */
   showContextLabels?: boolean;
+  /**
+   * ダイアログの中に置く小さな地図（コース比較）。
+   * 現在地を出さず、表示位置も保存・復元しない。操作ボタンは小さくする。
+   */
+  embedded?: boolean;
   mapTileVariant?: MapTileVariant;
   onMapTileVariantChange?: (variant: MapTileVariant) => void;
   /**

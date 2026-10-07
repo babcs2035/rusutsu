@@ -11,14 +11,11 @@ type NearestPoint = {
   distance: number;
   elevation: number;
   slope: number | null;
-  /** 線が画面上で下向きか上向きか。吹き出しを線とは反対側に置くのに使う */
-  segmentDy: number;
 };
 
 const createMarkerElement = () => {
   const element = document.createElement("div");
   element.className = "course-profile-marker";
-  element.dataset.placement = "top";
 
   const ring = document.createElement("div");
   ring.className = "course-profile-marker-ring";
@@ -77,7 +74,6 @@ export const useElevationProfileMarker = ({
           distance: first.distance,
           elevation: first.elevation,
           slope: first.slope,
-          segmentDy: 0,
         };
       }
 
@@ -122,7 +118,6 @@ export const useElevationProfileMarker = ({
           distance: start.distance + (end.distance - start.distance) * t,
           elevation,
           slope: t < 0.5 ? start.slope : end.slope,
-          segmentDy: segmentY,
           screenDistance,
         };
       }
@@ -164,14 +159,7 @@ export const useElevationProfileMarker = ({
     const elevationText = document.createElement("span");
     elevationText.textContent = `${Math.round(point.elevation).toLocaleString()}m`;
     label.append(slopeText, elevationText);
-
-    const nearest = getNearestPoint({
-      lng: point.coordinate[0],
-      lat: point.coordinate[1],
-    });
-    marker.getElement().dataset.placement =
-      nearest && nearest.segmentDy < 0 ? "bottom" : "top";
-  }, [getNearestPoint, isReady, map, point]);
+  }, [isReady, map, point]);
 
   useEffect(
     () => () => {

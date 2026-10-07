@@ -55,6 +55,8 @@ type Props = {
   showToolbar?: boolean;
   /** 選択中もほかのコース・リフト名を薄く出す（コース比較） */
   showContextLabels?: boolean;
+  /** ダイアログ内の小さな地図。現在地・表示位置の保存なし、ボタン小さめ */
+  embedded?: boolean;
   /**
    * 表示設定を呼び出し側で持つ場合に渡す。
    * 比較のゲレンデ一覧のように、複数の地図へ同じ設定を効かせるときに使う。
@@ -100,6 +102,7 @@ export const ResortFinalizedMap = ({
   presentation,
   showToolbar = true,
   showContextLabels = false,
+  embedded = false,
   courseColorMode,
   onCourseColorModeChange,
   mapDisplaySettings,
@@ -163,6 +166,7 @@ export const ResortFinalizedMap = ({
         initialViewport={initialViewport}
         showMapToolbar={showToolbar}
         showContextLabels={showContextLabels}
+        embedded={embedded}
         courseColorMode={courseColorMode}
         onCourseColorModeChange={onCourseColorModeChange}
         mapDisplaySettings={mapDisplaySettings}

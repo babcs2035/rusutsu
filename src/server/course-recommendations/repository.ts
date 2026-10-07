@@ -66,18 +66,15 @@ async function loadRecommendationPool(resortId: string, favoriteIds: string[]) {
   // Missing metrics are never interpreted as flat terrain.
   const rows = stored.filter(
     row =>
-      row.steepSlope !== null &&
-      Number.isFinite(row.steepSlope) &&
-      row.steepDistance !== null &&
-      Number.isFinite(row.steepDistance),
+      Number.isFinite(row.maxSlope) &&
+      row.slopeDistances.length === RECOMMENDATION.profileDegrees + 1 &&
+      row.slopeDistances.every(Number.isFinite),
   );
   // 地図のラベルと同じ省略名にする
   const labelName = (r: (typeof resorts)[number]) =>
     getResortLabelName(r.id, r.nameJa, r.shortName);
   const convert = (row: (typeof rows)[number]): RecommendationCandidate => ({
     ...row,
-    steepSlope: row.steepSlope as number,
-    steepDistance: row.steepDistance as number,
     shape: row.shape as "normal" | "winding",
     grooming: row.grooming as Grooming,
     resortName: labelName(byCanonical.get(row.resortId) ?? sourceResort),
@@ -93,14 +90,15 @@ async function loadRecommendationPool(resortId: string, favoriteIds: string[]) {
       key: row.key,
       name: row.name,
       distance: row.distance,
-      meanSlope: row.meanSlope,
-      steepSlope: row.steepSlope,
-      steepDistance: row.steepDistance,
+      maxSlope: row.maxSlope,
+      steepThreshold: row.steepThreshold,
+      sourceSteepDistance: row.sourceSteepDistance,
+      candidateSteepDistance: row.candidateSteepDistance,
       shapeDifferent: row.shape !== source.shape,
       groomingDifferent: !groomingCompatible(source.grooming, row.grooming),
       score: row.score,
       slopeDifference: row.slopeDifference,
-      steepSlopeDifference: row.steepSlopeDifference,
+      maxSlopeDifference: row.maxSlopeDifference,
       steepDistanceDifference: row.steepDistanceDifference,
       lengthDifference: row.lengthDifference,
       selected: {

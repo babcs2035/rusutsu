@@ -80,6 +80,8 @@ test("管理画面・認証・POST・RSC はキャッシュに介入しない", 
   });
   for (const [path, method, mode] of [
     ["/rusutsu/admin", "GET", "navigate"],
+    ["/rusutsu/login", "GET", "navigate"],
+    ["/rusutsu/a/b", "GET", "navigate"],
     ["/rusutsu/api/auth/session", "GET", "cors"],
     ["/rusutsu", "POST", "cors"],
     ["/rusutsu?_rsc=a", "GET", "cors"],
@@ -99,7 +101,11 @@ test("圏外で末尾スラッシュの有無とスキー場クエリを問わ�
     "https://example.com/rusutsu",
     new Response("saved map", { headers: { "Content-Type": "text/html" } }),
   );
-  for (const path of ["/rusutsu", "/rusutsu/?resort=rusutsu-resort"]) {
+  for (const path of [
+    "/rusutsu",
+    "/rusutsu/?resort=rusutsu-resort",
+    "/rusutsu/rusutsu-resort",
+  ]) {
     const result = await runtime.dispatch({
       url: `https://example.com${path}`,
       method: "GET",

@@ -25,8 +25,10 @@ test("cache expiry, retry and separate account caches cannot reuse stale results
   assert.equal(await cache.get("source"), 1);
   time = 60000;
   assert.equal(cache.peek("source"), undefined);
+  assert.equal(cache.peekStale("source"), 1);
   assert.equal(await cache.get("source"), 2);
   cache.invalidate("source");
+  assert.equal(cache.peekStale("source"), undefined);
   assert.equal(await cache.get("source"), 3);
   const otherAccount = createResultCache(async () => 99);
   assert.equal(otherAccount.peek("source"), undefined);

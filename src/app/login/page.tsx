@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { isPublicMapPathname } from "@/shared/utils/resortPath";
 
 export default async function LoginError() {
   const jar = await cookies();
@@ -12,7 +13,7 @@ export default async function LoginError() {
       const url = new URL(intent.returnTo, "https://return.invalid");
       if (
         url.origin === "https://return.invalid" &&
-        (url.pathname === "/rusutsu" || url.pathname === "/rusutsu/") &&
+        isPublicMapPathname(url.pathname) &&
         url.searchParams.get("favoriteLogin") === intent.nonce
       )
         // Next navigation adds the application's base path itself.

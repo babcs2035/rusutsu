@@ -35,18 +35,20 @@ export const SelectedLiftDetail = ({
   } | null>(null);
   const profilePoints = createElevationProfile(lift.coordinates);
   const statusSymbol = normalizeIconSymbol(lift.properties.status);
-  const comments = [
-    ...new Set(
-      [lift.properties.latestNote, lift.properties.note]
-        .filter((value): value is string => Boolean(value?.trim()))
-        .map(value => value.trim())
-        .filter(
-          value =>
-            value.replace(/--:--/gu, "").replace(/[\s~〜～]/gu, "") !==
-            (statusSymbol ? LIFT_STATUS_DESCRIPTION[statusSymbol] : null),
-        ),
-    ),
-  ];
+  const statusText = statusSymbol
+    ? LIFT_STATUS_DESCRIPTION[statusSymbol]
+    : null;
+  // 営業状況のチップと同じ文言だけのメモは繰り返さない
+  const toNotes = (value: string | null | undefined) =>
+    [value?.trim()].filter(
+      (note): note is string =>
+        Boolean(note) &&
+        note?.replace(/--:--/gu, "").replace(/[\s~〜～]/gu, "") !== statusText,
+    );
+  const comments = toNotes(lift.properties.latestNote);
+  const descriptions = toNotes(lift.properties.note).filter(
+    note => !comments.includes(note),
+  );
   const elevationRange =
     getElevationRange([lift.coordinates]) ??
     (lift.properties.top != null && lift.properties.bottom != null
@@ -97,7 +99,11 @@ export const SelectedLiftDetail = ({
         ]}
       />
 
-      <FeatureNotes comments={comments} />
+      <FeatureNotes
+        comments={comments}
+        descriptions={descriptions}
+        descriptionLabel="リフト紹介"
+      />
 
       <ElevationProfile
         points={profilePoints}

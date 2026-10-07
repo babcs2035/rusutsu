@@ -4,6 +4,7 @@ import { Bricolage_Grotesque, Geist, Manrope } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import { SITE_TITLE } from "@/shared/utils/resortPath";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -27,7 +28,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: "Rusutsu | 全国のスキー場情報・積雪予報・コース詳細を一元化",
+    default: SITE_TITLE,
     template: "%s | Rusutsu",
   },
   icons: {

@@ -43,10 +43,16 @@ export const ElevationProfile = ({
   points,
   activeDistance = null,
   onPointSelect,
+  maxPlotHeight: desktopMaxPlotHeight = Infinity,
+  desktopReadout = true,
 }: {
   points: ElevationProfilePoint[];
   activeDistance?: number | null;
   onPointSelect?: (point: ElevationProfilePoint) => void;
+  /** PCでの描画部の高さの上限（px）。コース比較のように高さを揃えたい所で使う */
+  maxPlotHeight?: number;
+  /** false ならPCで上の読み値（斜度・標高・水平距離）を出さない。地図の点に出すとき用 */
+  desktopReadout?: boolean;
 }) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(320);
@@ -74,13 +80,13 @@ export const ElevationProfile = ({
   const maxElevation = Math.max(...points.map(point => point.elevation));
   const elevationDifference = maxElevation - minElevation;
   const availablePlotWidth = Math.max(1, width - axisLeftPadding - 12);
-  // スマホだけ15°相当の高さを上限にする。PCはパネルが狭くても制限しない。
+  // スマホだけ15°相当の高さを上限にする。PCは呼び出し側が決めた上限だけ。
   const maxPlotHeight = isMobile
     ? Math.min(
         availablePlotWidth * Math.tan((15 * Math.PI) / 180),
         width < 400 ? 100 : 150,
       )
-    : Infinity;
+    : desktopMaxPlotHeight;
   const scale = Math.min(
     availablePlotWidth / Math.max(1, maxDistance),
     maxPlotHeight / Math.max(1, elevationDifference),
@@ -174,7 +180,9 @@ export const ElevationProfile = ({
             ))}
           </div>
         )}
-        <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1 text-xs tabular-nums text-gray-700 sm:text-sm">
+        <div
+          className={`mb-1 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1 text-xs tabular-nums text-gray-700 sm:text-sm ${desktopReadout ? "" : "md:hidden"}`}
+        >
           <span>
             斜度{" "}
             <strong className="text-base text-gray-950 sm:text-lg">

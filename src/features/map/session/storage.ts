@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { TICKET_PARTY_CATEGORIES } from "@/features/lift-ticket/types";
+import { resortIdFromUrl } from "@/shared/utils/resortPath";
 
 const id = z.string().min(1).max(200);
 export const featureSchema = z.object({
@@ -145,12 +146,9 @@ export function resolveHomeSession(
   resortIds: Set<string>,
 ): HomeSession | null {
   if (!saved) return null;
-  const explicit = url.searchParams.get("resort");
-  const selectedResortId = explicit ?? saved.selectedResortId;
-  const validId =
-    selectedResortId && resortIds.has(selectedResortId)
-      ? selectedResortId
-      : null;
+  // URL が履歴の各エントリの正なので、ホームの URL ならスキー場を選ばない。
+  const explicit = resortIdFromUrl(url);
+  const validId = explicit && resortIds.has(explicit) ? explicit : null;
   return {
     ...saved,
     selectedResortId: validId,

@@ -48,10 +48,13 @@ const polarToPoint = (angleDeg: number, radius: number) => {
 export const MapCompassDial = ({
   map,
   bearing,
+  size = DIAL_SIZE,
   className,
 }: {
   map: MapLibreMap | null;
   bearing: number;
+  /** 表示する大きさ（px）。描画は viewBox のまま縮める */
+  size?: number;
   className?: string;
 }) => {
   const surfaceRef = useRef<HTMLDivElement | null>(null);
@@ -162,15 +165,16 @@ export const MapCompassDial = ({
       onPointerCancel={endDrag}
       onKeyDown={handleKeyDown}
       className={cn(
-        "relative flex h-[72px] w-[72px] cursor-grab touch-none items-center justify-center rounded-full bg-white select-none active:cursor-grabbing focus-visible:ring-3 focus-visible:ring-blue-600/40 focus-visible:outline-none",
+        "relative flex cursor-grab touch-none items-center justify-center rounded-full bg-white select-none active:cursor-grabbing focus-visible:ring-3 focus-visible:ring-blue-600/40 focus-visible:outline-none",
         className,
       )}
+      style={{ width: size, height: size }}
     >
       <svg
         aria-hidden="true"
         role="presentation"
-        width={DIAL_SIZE}
-        height={DIAL_SIZE}
+        width={size}
+        height={size}
         viewBox={`0 0 ${DIAL_SIZE} ${DIAL_SIZE}`}
       >
         {/* つかんで回す外周 */}

@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { z } from "zod";
 import { auth, signIn, signOut } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { isPublicMapPathname } from "@/shared/utils/resortPath";
 import { favoriteIdsSchema } from "./storage";
 
 const INTENT_COOKIE = "rusutsu-favorite-intent";
@@ -22,8 +23,7 @@ export async function startPublicLogin(returnTo: string, resortId?: string) {
   const destination = new URL(returnTo, "https://return.invalid");
   if (
     destination.origin !== "https://return.invalid" ||
-    (destination.pathname !== "/rusutsu" &&
-      destination.pathname !== "/rusutsu/")
+    !isPublicMapPathname(destination.pathname)
   )
     throw new Error("ログイン先が不正です。");
   const nonce = randomUUID();

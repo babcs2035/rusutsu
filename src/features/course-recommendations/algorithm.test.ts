@@ -16,8 +16,8 @@ import {
   recommendationSelection,
   routeNumber,
   similarity,
-  slopeBin,
-  steepTerrain,
+  slopeDistanceProfile,
+  steepThreshold,
   wasserstein,
 } from "./algorithm";
 
@@ -46,8 +46,22 @@ const feature = (overrides: Partial<CourseFeature> = {}) => ({
   ...extractCourseFeatures("source", [course()])[0],
   ...overrides,
 });
+/** A synthetic course whose features come straight from slope segments. */
+const terrain = (
+  segments: Array<{ slope: number; length: number }>,
+  overrides: Partial<CourseFeature> = {},
+) => {
+  const distance = segments.reduce((sum, s) => sum + s.length, 0);
+  return feature({
+    distance,
+    logDistance: Math.log(distance),
+    maxSlope: Math.max(0, ...segments.map(s => s.slope)),
+    slopeDistances: slopeDistanceProfile(segments),
+    ...overrides,
+  });
+};
 
-test("one course has a normalized distance-weighted smoothed histogram, geometry distance only", () => {
+test("one course has a whole-degree distance profile from geometry distance only", () => {
   const a = extractCourseFeatures("r", [course()])[0];
   const b = extractCourseFeatures("r", [
     course({
@@ -59,15 +73,19 @@ test("one course has a normalized distance-weighted smoothed histogram, geometry
     }),
   ])[0];
   assert.equal(a.distance, b.distance);
-  assert.ok(Math.abs(a.histogram.reduce((s, p) => s + p, 0) - 1) < 1e-12);
+  assert.equal(a.slopeDistances.length, 61);
+  assert.ok(Math.abs(a.slopeDistances[0] - a.distance) < 1e-9);
   assert.ok(a.distance > 200 && a.distance < 220);
+  // 3m drop per 9.99m horizontal is about 16.7 degrees everywhere.
+  assert.ok(Math.abs(a.maxSlope - 16.7) < 0.1);
+  assert.ok(Math.abs(a.slopeDistances[16] - a.distance) < 1e-9);
+  assert.equal(a.slopeDistances[17], 0);
   assert.equal(similarity(a, a).score, 100);
-  assert.deepEqual(
-    extractCourseFeatures("r", [
-      course({ coordinates: [...line()].reverse() }),
-    ])[0].histogram,
-    a.histogram,
-  );
+  const reversed = extractCourseFeatures("r", [
+    course({ coordinates: [...line()].reverse() }),
+  ])[0];
+  assert.deepEqual(reversed.slopeDistances, a.slopeDistances);
+  assert.equal(reversed.maxSlope, a.maxSlope);
 });
 test("continuous sections connect in section order, reject gaps, ambiguous order and missing elevation", () => {
   const sections = [
@@ -194,17 +212,12 @@ test("grooming aggregates actual segments and enforces only definite opposites",
   }
   assert.equal(groomingCompatible("groomed", "ungroomed"), false);
 });
-test("Wasserstein finite bins, bin boundaries, logarithmic length ratio, symmetry", () => {
-  const histogram = (bin: number) =>
-    Array.from({ length: 16 }, (_, i) => (i === bin ? 1 : 0));
-  assert.equal(wasserstein(histogram(0), histogram(1)), 3);
-  assert.equal(wasserstein(histogram(0), histogram(3)), 9);
-  assert.equal(wasserstein(histogram(0), histogram(15)), 45);
-  assert.equal(wasserstein(histogram(14), histogram(15)), 3);
-  assert.deepEqual(
-    [-5, 0, 2.999, 3, 44.999, 45, 70].map(slopeBin),
-    [0, 0, 0, 1, 14, 15, 15],
-  );
+test("Wasserstein compares length-normalized profiles per degree; length ratio is logarithmic", () => {
+  const steady = (slope: number, length = 500) => terrain([{ slope, length }]);
+  assert.equal(wasserstein(steady(10), steady(15)), 5);
+  assert.equal(wasserstein(steady(15), steady(10)), 5);
+  // Only the length differs, so the distribution is identical.
+  assert.equal(wasserstein(steady(15, 300), steady(15, 900)), 0);
   for (const ratio of [1, 1.5, 2, 3, 4]) {
     const a = feature(),
       b = feature({
@@ -268,106 +281,91 @@ test("ranking prioritizes compatible grooming/shape, excludes own resort and cop
   );
 });
 test("slope distributions distinguish steady slopes from flat/steep mixtures with the same mean", () => {
-  const steady = feature({
-    meanSlope: 15,
-    steepSlope: 15,
-    histogram: Array.from({ length: 16 }, (_, i) => (i === 5 ? 1 : 0)),
-  });
-  const mixed = feature({
-    meanSlope: 15,
-    steepSlope: 30,
-    histogram: Array.from({ length: 16 }, (_, i) =>
-      i === 0 || i === 10 ? 0.5 : 0,
-    ),
-  });
-  assert.equal(steady.meanSlope, mixed.meanSlope);
-  assert.equal(wasserstein(steady.histogram, mixed.histogram), 15);
-  assert.ok(similarity(steady, mixed).score < 50);
+  const steady = terrain([{ slope: 15, length: 400 }]);
+  const mixed = terrain([
+    { slope: 0, length: 200 },
+    { slope: 30, length: 200 },
+  ]);
+  assert.equal(wasserstein(steady, mixed), 15);
+  assert.equal(similarity(steady, mixed).slopeDifference, 1);
   assert.equal(similarity(steady, steady).score, 100);
 });
-test("steep terrain captures a sustained pitch without diluting it with a long flat runout", () => {
-  const steep = [{ slope: 30, length: 200 }];
-  assert.deepEqual(steepTerrain(steep), { steepSlope: 30, steepDistance: 200 });
+test("steep threshold is 80% of the maximum, at least 5 degrees below it, floored", () => {
   assert.deepEqual(
-    steepTerrain([...steep, { slope: 0, length: 2000 }]),
-    steepTerrain(steep),
-  );
-  assert.deepEqual(steepTerrain([{ slope: 0, length: 200 }]), {
-    steepSlope: 0,
-    steepDistance: 0,
-  });
-  assert.deepEqual(steepTerrain([{ slope: 20, length: 40 }]), {
-    steepSlope: 20,
-    steepDistance: 40,
-  });
-  // A one-metre spike is averaged into 50 metres, rather than reported as a 60° pitch.
-  assert.deepEqual(
-    steepTerrain([
-      { slope: 0, length: 100 },
-      { slope: 60, length: 1 },
-      { slope: 0, length: 100 },
-    ]),
-    { steepSlope: 1.2, steepDistance: 1 },
-  );
-  assert.deepEqual(
-    steepTerrain([
-      { slope: 0, length: 100 },
-      { slope: 25, length: 30 },
-      { slope: 0, length: 100 },
-    ]),
-    { steepSlope: 15, steepDistance: 30 },
+    [0, 3, 8, 10, 20, 25, 29, 30, 35, 40, 90].map(steepThreshold),
+    [0, 0, 3, 5, 15, 20, 23, 24, 28, 32, 60],
   );
 });
-test("steep terrain uses distance weights, is invariant to segment splitting, and includes start/end windows", () => {
+test("slope profile counts each whole degree, is split-invariant and ignores uphill", () => {
   const original = [
-    { slope: 10, length: 20 },
-    { slope: 30, length: 30 },
-    { slope: 0, length: 200 },
+    { slope: 30, length: 200 },
+    { slope: -4, length: 50 },
+    { slope: 12.5, length: 100 },
+    { slope: 75, length: 10 },
   ];
+  const profile = slopeDistanceProfile(original);
+  assert.equal(profile.length, 61);
+  assert.equal(profile[0], 360);
+  assert.equal(profile[1], 310);
+  assert.equal(profile[12], 310);
+  assert.equal(profile[13], 210);
+  assert.equal(profile[30], 210);
+  assert.equal(profile[31], 10);
+  assert.equal(profile[60], 10);
   const split = original.flatMap(s => [
     { slope: s.slope, length: s.length / 2 },
     { slope: s.slope, length: s.length / 2 },
   ]);
-  assert.deepEqual(steepTerrain(original), {
-    steepSlope: 22,
-    steepDistance: 30,
-  });
-  assert.deepEqual(steepTerrain(split), steepTerrain(original));
-  assert.deepEqual(
-    steepTerrain([...original].reverse()),
-    steepTerrain(original),
-  );
+  assert.deepEqual(slopeDistanceProfile(split), profile);
+  assert.deepEqual(slopeDistanceProfile([...original].reverse()), profile);
 });
-test("terrain similarity prioritizes sustained steep pitches, handles flat courses and exposes meaningful grades", () => {
-  const source = feature({ steepSlope: 30, steepDistance: 200 });
-  const gentle = feature({ steepSlope: 10, steepDistance: 200 });
-  const longer = feature({
-    steepSlope: 30,
-    steepDistance: 200,
-    distance: source.distance * 3,
-    logDistance: source.logDistance + Math.log(3),
-  });
+test("candidates are measured at the source course's steep threshold", () => {
+  const source = terrain([
+    { slope: 30, length: 200 },
+    { slope: 10, length: 800 },
+  ]);
+  // Same steep length, but at 20 degrees: nothing reaches the source's 24 degrees.
+  const gentler = terrain([
+    { slope: 20, length: 200 },
+    { slope: 10, length: 800 },
+  ]);
+  const shorterPitch = terrain([
+    { slope: 30, length: 100 },
+    { slope: 10, length: 900 },
+  ]);
+  const result = similarity(source, gentler);
+  assert.equal(result.steepThreshold, 24);
+  assert.equal(result.sourceSteepDistance, 200);
+  assert.equal(result.candidateSteepDistance, 0);
+  assert.equal(result.steepDistanceDifference, 1);
+  assert.equal(result.maxSlopeDifference, 1);
   assert.ok(
-    similarity(source, longer).score > similarity(source, gentle).score,
+    similarity(source, shorterPitch).score > similarity(source, gentler).score,
   );
-  const flat = feature({ steepSlope: 0, steepDistance: 0 });
+  // 10m and 20m are within the 40m slope window and almost equal.
+  const short = (length: number) =>
+    terrain([
+      { slope: 20, length },
+      { slope: 5, length: 300 - length },
+    ]);
+  assert.ok(similarity(short(10), short(20)).steepDistanceDifference < 0.15);
+  // The source sets the threshold, so swapping the pair may change the score.
+  assert.equal(similarity(gentler, source).steepThreshold, 15);
+});
+test("terrain similarity handles flat courses and exposes meaningful grades", () => {
+  const source = terrain([
+    { slope: 30, length: 200 },
+    { slope: 10, length: 800 },
+  ]);
+  const flat = terrain([{ slope: 0, length: 500 }]);
   assert.equal(similarity(flat, flat).score, 100);
   assert.ok(Number.isFinite(similarity(flat, source).score));
-  assert.equal(
-    similarity(source, gentle).score,
-    similarity(gentle, source).score,
-  );
   assert.deepEqual(
     [100, 80, 79.99, 60, 59.99, 0].map(s => recommendationGrade(s).grade),
     ["A", "A", "B", "B", "C", "C"],
   );
-  const far = feature({
+  const far = terrain([{ slope: 0, length: 500 }], {
     resortId: "far",
-    histogram: Array(16)
-      .fill(0)
-      .map((_, i) => (i === 0 ? 1 : 0)),
-    steepSlope: 0,
-    steepDistance: 0,
     logDistance: 99,
   });
   const results = rankCourses({ ...source, geometryHash: "source" }, [

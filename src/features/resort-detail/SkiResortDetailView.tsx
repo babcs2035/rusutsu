@@ -306,6 +306,7 @@ export const SkiResortDetailView = ({
     selectedCourseGroup || selectedLift ? (
       <FinalizedFeatureDetail
         resortId={resort.id}
+        mapData={resort.finalizedMapData ?? null}
         courseGroup={selectedCourseGroup}
         lift={selectedLift}
         resortLabelName={getResortSearchName(

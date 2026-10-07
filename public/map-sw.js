@@ -13,6 +13,16 @@ const isAsset = url =>
   (url.pathname.startsWith("/rusutsu/_next/static/") ||
     /^\/rusutsu\/social\/[\w.-]+\.(png|svg)$/.test(url.pathname) ||
     /^\/rusutsu\/maplibre\/[\w.-]+\.mjs$/.test(url.pathname));
+const isHomePath = pathname => ["/rusutsu", ROOT].includes(pathname);
+// /rusutsu/{resortId} もホームと同じ画面。src/shared/utils/resortPath.ts と揃える。
+const isMapPath = pathname => {
+  if (isHomePath(pathname)) return true;
+  const match = /^\/rusutsu\/([a-z0-9-]{1,200})\/?$/.exec(pathname);
+  return (
+    !!match &&
+    !["admin", "api", "login", "offline-tab"].includes(match[1])
+  );
+};
 const isTile = url =>
   url.origin === "https://cyberjapandata.gsi.go.jp" &&
   /^\/xyz\/(pale|seamlessphoto)\/\d+\/\d+\/\d+\.(png|jpg)$/.test(url.pathname);
@@ -286,7 +296,7 @@ self.addEventListener("message", event => {
   )
     return;
   const source = new URL(event.source.url);
-  if (!["/rusutsu", ROOT].includes(source.pathname)) return;
+  if (!isMapPath(source.pathname)) return;
   if (event.data?.type === "SET_VIEW") {
     views.set(event.source.id, event.data.id);
     if (
@@ -373,7 +383,7 @@ self.addEventListener("fetch", event => {
   if (
     request.mode !== "navigate" ||
     url.origin !== self.location.origin ||
-    !["/rusutsu", ROOT].includes(url.pathname)
+    !isMapPath(url.pathname)
   )
     return;
   const network =
@@ -381,9 +391,11 @@ self.addEventListener("fetch", event => {
       ? Promise.reject(new TypeError("offline"))
       : fetchPublic(request);
   // イベントの寿命は同期的に延長する。CacheStorage の await 後に登録しない。
-  event.waitUntil(
-    network.then(response => saveHome(response.clone())).catch(() => {}),
-  );
+  // スキー場 URL の HTML はルートが異なるので、ホームの保存には使わない。
+  if (isHomePath(url.pathname))
+    event.waitUntil(
+      network.then(response => saveHome(response.clone())).catch(() => {}),
+    );
   event.respondWith(
     (async () => {
       let cached;

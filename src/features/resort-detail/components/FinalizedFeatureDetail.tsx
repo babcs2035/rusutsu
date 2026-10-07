@@ -4,7 +4,10 @@ import { List, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SimilarCourses } from "@/features/course-recommendations/SimilarCourses";
 import type { ElevationProfileMapPoint } from "@/features/map/types";
-import type { FinalizedLiftFeature } from "@/lib/finalizedResortGeojsonShared";
+import type {
+  FinalizedLiftFeature,
+  FinalizedResortMapData,
+} from "@/lib/finalizedResortGeojsonShared";
 import type { FinalizedCourseGroup } from "../types";
 import { getCourseGroupTags } from "../utils/detailMetrics";
 import { FeatureTags } from "./FeatureHeadline";
@@ -20,6 +23,7 @@ import { SelectedLiftDetail } from "./SelectedLiftDetail";
  */
 export const FinalizedFeatureDetail = ({
   resortId,
+  mapData,
   courseGroup,
   lift,
   resortLabelName,
@@ -31,6 +35,8 @@ export const FinalizedFeatureDetail = ({
   onOpenList,
 }: {
   resortId?: string;
+  /** 表示中のスキー場の地図データ。コース比較の地図に使い回す */
+  mapData?: FinalizedResortMapData | null;
   courseGroup: FinalizedCourseGroup | null;
   lift: FinalizedLiftFeature | null;
   /** 地図のラベルに出している省略名。検索語の組み立てに使う */
@@ -109,6 +115,7 @@ export const FinalizedFeatureDetail = ({
                   resortId={resortId}
                   resortName={resortLabelName}
                   courseGroup={courseGroup}
+                  mapData={mapData}
                 />
               ) : null
             }

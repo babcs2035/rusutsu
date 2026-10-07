@@ -63,6 +63,11 @@ import type {
 } from "@/features/map/types";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
+import {
+  resortDocumentTitle,
+  resortIdFromPathname,
+  resortPathname,
+} from "@/shared/utils/resortPath";
 import type {
   MapSkiResort,
   NullableSkiResortDetail,
@@ -253,6 +258,8 @@ function HomeClientContent({
   const mobileSearchFilterScrollRef = useRef<HTMLDivElement | null>(null);
   const mobileSearchViewportBaseHeightRef = useRef<number | null>(null);
   const returnViewStateRef = useRef<ReturnViewState | null>(null);
+  // 初回の URL 正規化（旧 ?resort= や末尾スラッシュ）は履歴を増やさない。
+  const urlHistoryModeRef = useRef<"push" | "replace">("replace");
   const mobileSearchReturnStateRef = useRef<MobileSearchReturnState | null>(
     session?.mobileSearchReturn
       ? { ...session.mobileSearchReturn, selectedResortData: null }
@@ -414,12 +421,21 @@ function HomeClientContent({
       listSheetSnapPoint,
     };
     writeStorage(HOME_SESSION_KEY, value);
-    // 地図移動は URL 履歴を増やさない。スキー場への直接リンクだけ保持する。
+    // 地図移動は URL 履歴を増やさない。スキー場の切り替えだけ履歴に積み、
+    // ブラウザの戻る・進むで前のスキー場（またはホーム）へ戻れるようにする。
     const url = new URL(window.location.href);
-    if (selectedResortId) url.searchParams.set("resort", selectedResortId);
-    else url.searchParams.delete("resort");
-    if (url.href !== window.location.href)
-      window.history.replaceState(window.history.state, "", url);
+    url.pathname = resortPathname(selectedResortId);
+    url.searchParams.delete("resort");
+    const historyMode = urlHistoryModeRef.current;
+    urlHistoryModeRef.current = "push";
+    if (url.href === window.location.href) return;
+    const isResortChange =
+      resortIdFromPathname(window.location.pathname) !== selectedResortId;
+    // state は null で渡す。Next の内部 state を渡すとルーターに反映されず、
+    // 次の再描画で元の URL に書き戻される。
+    if (historyMode === "push" && isResortChange)
+      window.history.pushState(null, "", url);
+    else window.history.replaceState(null, "", url);
   }, [
     selectedResortId,
     selectedFinalizedFeature,
@@ -627,6 +643,8 @@ function HomeClientContent({
     };
 
     if (selectedResortId) {
+      // 検索を閉じれば元のスキー場へ戻るので、一時的なホーム表示は履歴に積まない。
+      urlHistoryModeRef.current = "replace";
       setSelectedResortId(null);
       setSelectedResortData(null);
     }
@@ -694,6 +712,7 @@ function HomeClientContent({
     }
 
     setMobileContentTab(returnState.mobileContentTab);
+    urlHistoryModeRef.current = "replace";
     setSelectedResortId(returnState.selectedResortId);
     setSelectedResortData(returnState.selectedResortData);
     setIsCompareOpen(returnState.isCompareOpen);
@@ -880,6 +899,36 @@ function HomeClientContent({
       restoreReturnViewState(shouldRestoreMap);
     });
   };
+
+  // ブラウザの戻る・進むで、URL のスキー場を開く／詳細を閉じる。
+  const historyNavigationRef = useRef({
+    selectedResortId,
+    select: handleSelectResort,
+    close: handleCloseDetail,
+  });
+  useEffect(() => {
+    historyNavigationRef.current = {
+      selectedResortId,
+      select: handleSelectResort,
+      close: handleCloseDetail,
+    };
+  });
+  useEffect(() => {
+    const resortIds = new Set(initialResorts.map(resort => resort.id));
+    const handlePopState = () => {
+      const id = resortIdFromPathname(window.location.pathname);
+      const navigation = historyNavigationRef.current;
+      if (id === navigation.selectedResortId) return;
+      if (id && resortIds.has(id)) navigation.select(id);
+      else if (navigation.selectedResortId) navigation.close();
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [initialResorts]);
+  useEffect(() => {
+    const resort = initialResorts.find(item => item.id === selectedResortId);
+    document.title = resortDocumentTitle(resort?.nameJa ?? null);
+  }, [initialResorts, selectedResortId]);
 
   const handleToggleCompare = useCallback(
     (id: string, selected: boolean) => {

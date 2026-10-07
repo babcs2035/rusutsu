@@ -1,26 +1,31 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { FinalizedCourseFeature } from "@/lib/finalizedResortGeojsonShared";
-import { type CourseFeature, similarity } from "./algorithm";
+import {
+  type CourseFeature,
+  similarity,
+  slopeDistanceProfile,
+} from "./algorithm";
 import { comparisonScoreRows, comparisonSourceGroup } from "./comparison";
 
 test("評価基準の4項目の得点合計は推薦に使った類似度と一致する", () => {
-  const a = {
-    histogram: Array(16).fill(0),
-    logDistance: Math.log(1000),
-    steepSlope: 20,
-    steepDistance: 400,
-  } as CourseFeature;
-  a.histogram[3] = 1;
-  const b = {
-    ...a,
-    histogram: [...a.histogram],
-    logDistance: Math.log(1800),
-    steepSlope: 25,
-    steepDistance: 200,
+  const profile = (segments: Array<{ slope: number; length: number }>) => {
+    const distance = segments.reduce((sum, s) => sum + s.length, 0);
+    return {
+      distance,
+      logDistance: Math.log(distance),
+      maxSlope: Math.max(...segments.map(s => s.slope)),
+      slopeDistances: slopeDistanceProfile(segments),
+    } as CourseFeature;
   };
-  b.histogram[3] = 0;
-  b.histogram[5] = 1;
+  const a = profile([
+    { slope: 20, length: 400 },
+    { slope: 10, length: 600 },
+  ]);
+  const b = profile([
+    { slope: 25, length: 200 },
+    { slope: 15, length: 1600 },
+  ]);
   for (const metrics of [similarity(a, a), similarity(a, b)]) {
     const rows = comparisonScoreRows(metrics);
     assert.equal(
@@ -33,7 +38,7 @@ test("評価基準の4項目の得点合計は推薦に使った類似度と一�
     );
     assert.deepEqual(
       rows.map(row => row.weight * 100),
-      [50, 25, 15, 10],
+      [20, 40, 20, 20],
     );
   }
 });

@@ -40,6 +40,21 @@ test("別のスキー場への直接リンクを優先し、古いコース選�
   assert.equal(result?.selectedFeature, null);
   assert.equal(result?.mobileContentTab, "info");
 });
+test("スキー場のパスを直接リンクとして扱い、ホームのパスでは選択しない", () => {
+  const known = new Set(["rusutsu", "niseko"]);
+  const linked = resolveHomeSession(
+    session,
+    new URL("https://example.com/rusutsu/niseko"),
+    known,
+  );
+  assert.equal(linked?.selectedResortId, "niseko");
+  assert.equal(linked?.mobileContentTab, "info");
+  assert.equal(
+    resolveHomeSession(session, new URL("https://example.com/rusutsu"), known)
+      ?.selectedResortId,
+    null,
+  );
+});
 test("削除されたスキー場と破損した保存データは復元しない", () => {
   assert.equal(
     resolveHomeSession(

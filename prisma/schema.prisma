@@ -735,13 +735,10 @@ model CourseRecommendationFeature {
   courseIds String[]
   name String
   routeKey String?
-  histogram Float[]
-  cumulative Float[]
   distance Float
   logDistance Float
-  meanSlope Float
-  steepSlope Float?
-  steepDistance Float?
+  maxSlope Float
+  slopeDistances Float[]
   shape String
   grooming String
   geometryHash String @db.Char(64)

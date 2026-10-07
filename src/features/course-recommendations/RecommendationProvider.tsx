@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
 } from "react";
 import { useFavorites } from "@/features/favorites/FavoritesProvider";
 import type { RecommendationIndexResult } from "./actions";
@@ -39,13 +40,19 @@ export function RecommendationProvider({ children }: { children: ReactNode }) {
     favorites?.ready,
     [...(favorites?.ids ?? [])].sort(),
   ]);
+  // 同じアカウント・同じお気に入りに戻ったときは、前のキャッシュをそのまま使う。
+  // 再同期でいったん別の scope を経由しても、取り直しにならないようにする。
+  const caches = useRef(new Map<string, Cache>());
   const cache = useMemo(() => {
     const [, , ready, ids] = JSON.parse(scope);
-    return {
-      scope,
-      ready: ready && ids.length > 0,
-      store: createResultCache(id => loadIndex(id, ids)),
-    };
+    let store = caches.current.get(scope);
+    if (!store) {
+      if (caches.current.size >= 4)
+        caches.current.delete(caches.current.keys().next().value as string);
+      store = createResultCache(id => loadIndex(id, ids));
+      caches.current.set(scope, store);
+    }
+    return { scope, ready: ready && ids.length > 0, store };
   }, [scope]);
   return <Context.Provider value={cache}>{children}</Context.Provider>;
 }

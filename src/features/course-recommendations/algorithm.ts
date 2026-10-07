@@ -5,18 +5,19 @@ import {
 } from "@/lib/finalizedResortGeojsonShared";
 
 export const RECOMMENDATION = {
-  version: 2,
-  binDegrees: 3,
-  bins: 16,
-  slopeNormalization: 18,
-  distanceRatio: 3,
-  steepSlopeNormalization: 12,
-  steepWindowMeters: 50,
+  version: 3,
+  /** slopeDistances[x] is the sliding distance at or above x degrees. */
+  profileDegrees: 60,
+  maxSlopeNormalization: 10,
   steepFraction: 0.8,
-  steepSlopeWeight: 0.5,
-  steepDistanceWeight: 0.25,
-  slopeWeight: 0.15,
-  distanceWeight: 0.1,
+  steepMarginDegrees: 5,
+  steepOffsetMeters: 50,
+  slopeNormalization: 6,
+  distanceRatio: 3,
+  maxSlopeWeight: 0.2,
+  steepDistanceWeight: 0.4,
+  slopeWeight: 0.2,
+  distanceWeight: 0.2,
   gradeA: 80,
   gradeB: 60,
   limit: 3,
@@ -38,13 +39,10 @@ export type CourseFeature = {
   courseIds: string[];
   name: string;
   routeKey: string | null;
-  histogram: number[];
-  cumulative: number[];
   distance: number;
   logDistance: number;
-  meanSlope: number;
-  steepSlope: number;
-  steepDistance: number;
+  maxSlope: number;
+  slopeDistances: number[];
   shape: "normal" | "winding";
   grooming: Grooming;
 };
@@ -186,63 +184,34 @@ export function classifyShape(
     ? "winding"
     : "normal";
 }
-export const slopeBin = (slope: number) =>
-  Math.min(15, Math.max(0, Math.floor(slope / 3)));
-
-/** Maximum distance-weighted slope over a continuous 50m of sliding distance.
- * Checking every segment boundary and boundary minus the window finds the
- * exact maximum of the piecewise-linear moving integral, including both ends.
+/** Lower of 80% and maximum minus 5 degrees, floored to a whole degree.
+ * The 5 degree margin keeps the band wider than elevation noise on gentle runs.
  */
-export function steepTerrain(
+export const steepThreshold = (maxSlope: number) =>
+  Math.min(
+    RECOMMENDATION.profileDegrees,
+    Math.max(
+      0,
+      Math.floor(
+        Math.min(
+          maxSlope * RECOMMENDATION.steepFraction,
+          maxSlope - RECOMMENDATION.steepMarginDegrees,
+        ),
+      ),
+    ),
+  );
+
+/** Sliding distance at or above each whole degree; index 0 is the full length. */
+export function slopeDistanceProfile(
   segments: Array<{ slope: number; length: number }>,
 ) {
-  const distances = [0],
-    integrals = [0];
-  const positive = segments.filter(s => s.length > 0);
-  for (const { slope, length } of positive) {
-    distances.push(distances[distances.length - 1] + length);
-    integrals.push(
-      integrals[integrals.length - 1] + Math.max(0, slope) * length,
-    );
+  const profile = Array<number>(RECOMMENDATION.profileDegrees + 1).fill(0);
+  for (const { slope, length } of segments) {
+    profile[0] += length;
+    const top = Math.min(RECOMMENDATION.profileDegrees, Math.floor(slope));
+    for (let degree = 1; degree <= top; degree++) profile[degree] += length;
   }
-  const total = distances[distances.length - 1];
-  if (!total) return { steepSlope: 0, steepDistance: 0 };
-  const window = Math.min(RECOMMENDATION.steepWindowMeters, total);
-  const integralAt = (d: number) => {
-    let left = 0,
-      right = positive.length;
-    while (left < right) {
-      const mid = Math.floor((left + right) / 2);
-      if (distances[mid + 1] < d) left = mid + 1;
-      else right = mid;
-    }
-    if (left === positive.length) return integrals[left];
-    return (
-      integrals[left] +
-      (d - distances[left]) * Math.max(0, positive[left].slope)
-    );
-  };
-  let steepSlope = 0;
-  for (const boundary of distances)
-    for (const start of [boundary, boundary - window]) {
-      const clamped = Math.min(total - window, Math.max(0, start));
-      steepSlope = Math.max(
-        steepSlope,
-        (integralAt(clamped + window) - integralAt(clamped)) / window,
-      );
-    }
-  const steepDistance =
-    steepSlope > 0
-      ? positive.reduce(
-          (sum, segment) =>
-            sum +
-            (segment.slope >= steepSlope * RECOMMENDATION.steepFraction
-              ? segment.length
-              : 0),
-          0,
-        )
-      : 0;
-  return { steepSlope, steepDistance };
+  return profile;
 }
 
 function connect(courses: FinalizedCourseFeature[]): GeoCoordinate[] | null {
@@ -338,10 +307,8 @@ export function extractCourseFeatures(
     const samples = resample(coordinates, RECOMMENDATION.sampleMeters);
     if (samples.length < 2) continue;
     const slopes = calculateCoordinateSlopes(samples);
-    const histogram = Array<number>(16).fill(0);
     const segments: Array<{ slope: number; length: number }> = [];
-    let distance = 0,
-      meanSlope = 0;
+    let distance = 0;
     for (let i = 1; i < samples.length; i++) {
       const a = samples[i - 1],
         b = samples[i];
@@ -354,21 +321,14 @@ export function extractCourseFeatures(
         distance = NaN;
         break;
       }
-      histogram[slopeBin(slope)] += length;
       segments.push({ slope, length });
-      meanSlope += Math.max(0, slope) * length;
       distance += length;
     }
     if (!Number.isFinite(distance) || distance < RECOMMENDATION.minimumDistance)
       continue;
-    const terrain = steepTerrain(segments);
-    if (
-      !Number.isFinite(terrain.steepSlope) ||
-      !Number.isFinite(terrain.steepDistance)
-    )
-      continue;
-    for (let i = 0; i < histogram.length; i++) histogram[i] /= distance;
-    let cumulativeSum = 0;
+    // Same 40m point slopes as the map's maximum slope, not segment averages.
+    const maxSlope = Math.max(0, ...(slopes as number[]));
+    if (!Number.isFinite(maxSlope)) continue;
     output.push({
       resortId,
       key: routeKey ?? groupId,
@@ -376,12 +336,10 @@ export function extractCourseFeatures(
       courseIds: chosen.map(c => c.id).sort(),
       name: chosen[0].displayName,
       routeKey,
-      histogram,
-      cumulative: histogram.map(p => (cumulativeSum += p)),
       distance,
       logDistance: Math.log(distance),
-      meanSlope: meanSlope / distance,
-      ...terrain,
+      maxSlope,
+      slopeDistances: slopeDistanceProfile(segments),
       shape: classifyShape(samples),
       grooming: aggregateGrooming(chosen.map(c => c.properties.piste)),
     });
@@ -389,53 +347,58 @@ export function extractCourseFeatures(
   return output;
 }
 
-export function wasserstein(a: readonly number[], b: readonly number[]) {
-  let sumA = 0,
-    sumB = 0,
-    distance = 0;
-  // 15 finite intervals; the final >=45 bin contributes no infinite tail.
-  for (let i = 0; i < 15; i++) {
-    sumA += a[i];
-    sumB += b[i];
-    distance += 3 * Math.abs(sumA - sumB);
-  }
+/** 1-D Wasserstein distance in degrees between length-normalized profiles. */
+export function wasserstein(a: CourseFeature, b: CourseFeature) {
+  let distance = 0;
+  for (let degree = 1; degree <= RECOMMENDATION.profileDegrees; degree++)
+    distance += Math.abs(
+      a.slopeDistances[degree] / a.distance -
+        b.slopeDistances[degree] / b.distance,
+    );
   return distance;
 }
-export function similarity(a: CourseFeature, b: CourseFeature) {
-  const slopeDifference = Math.min(
+/** Compares a candidate against the source course's own steep threshold. */
+export function similarity(source: CourseFeature, candidate: CourseFeature) {
+  const maxSlopeDifference = Math.min(
     1,
-    wasserstein(a.histogram, b.histogram) / RECOMMENDATION.slopeNormalization,
+    Math.abs(source.maxSlope - candidate.maxSlope) /
+      RECOMMENDATION.maxSlopeNormalization,
   );
-  const lengthDifference = Math.min(
-    1,
-    Math.abs(a.logDistance - b.logDistance) /
-      Math.log(RECOMMENDATION.distanceRatio),
-  );
-  const steepSlopeDifference = Math.min(
-    1,
-    Math.abs(a.steepSlope - b.steepSlope) /
-      RECOMMENDATION.steepSlopeNormalization,
-  );
-  // A 50m offset makes zero-length steep terrain comparable without log(0),
-  // and prevents tiny near-flat patches from dominating the length penalty.
+  const threshold = steepThreshold(source.maxSlope);
+  const sourceSteepDistance = source.slopeDistances[threshold];
+  const candidateSteepDistance = candidate.slopeDistances[threshold];
+  // The offset is about the 40m slope window: shorter differences are noise,
+  // longer ones compare by ratio. It also keeps zero-length terrain finite.
   const steepDistanceDifference = Math.min(
     1,
     Math.abs(
       Math.log(
-        (a.steepDistance + RECOMMENDATION.steepWindowMeters) /
-          (b.steepDistance + RECOMMENDATION.steepWindowMeters),
+        (sourceSteepDistance + RECOMMENDATION.steepOffsetMeters) /
+          (candidateSteepDistance + RECOMMENDATION.steepOffsetMeters),
       ),
     ) / Math.log(RECOMMENDATION.distanceRatio),
   );
+  const slopeDifference = Math.min(
+    1,
+    wasserstein(source, candidate) / RECOMMENDATION.slopeNormalization,
+  );
+  const lengthDifference = Math.min(
+    1,
+    Math.abs(source.logDistance - candidate.logDistance) /
+      Math.log(RECOMMENDATION.distanceRatio),
+  );
   const score =
     100 *
-    (RECOMMENDATION.steepSlopeWeight * (1 - steepSlopeDifference) +
+    (RECOMMENDATION.maxSlopeWeight * (1 - maxSlopeDifference) +
       RECOMMENDATION.steepDistanceWeight * (1 - steepDistanceDifference) +
       RECOMMENDATION.slopeWeight * (1 - slopeDifference) +
       RECOMMENDATION.distanceWeight * (1 - lengthDifference));
   return {
     score,
-    steepSlopeDifference,
+    steepThreshold: threshold,
+    sourceSteepDistance,
+    candidateSteepDistance,
+    maxSlopeDifference,
     steepDistanceDifference,
     slopeDifference,
     lengthDifference,
