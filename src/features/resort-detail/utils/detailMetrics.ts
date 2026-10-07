@@ -7,7 +7,11 @@ import type {
   FinalizedResortMapData,
   GeoCoordinate,
 } from "@/lib/finalizedResortGeojsonShared";
-import { calculateCoordinateSlopes } from "@/lib/finalizedResortGeojsonShared";
+import {
+  COURSE_DIFFICULTY_META,
+  calculateCoordinateSlopes,
+  getCourseDifficulty,
+} from "@/lib/finalizedResortGeojsonShared";
 import type { ElevationProfilePoint, FinalizedCourseGroup } from "../types";
 
 export const normalizeIconSymbol = (value: string | null | undefined) => {
@@ -33,11 +37,11 @@ export const LIFT_STATUS_DESCRIPTION: Record<StatusSymbol, string> = {
   "×": "運休",
 };
 
-export const PISTE_STATUS_DESCRIPTION: Record<StatusSymbol, string> = {
+export const PISTE_STATUS_DESCRIPTION = {
   "○": "圧雪",
   "△": "一部圧雪",
   "×": "非圧雪",
-};
+} as const;
 
 /**
  * コース全体の営業状況。
@@ -90,6 +94,18 @@ export const getCourseGroupPisteSymbol = (
   if (symbols.every(symbol => symbol === "○")) return "○";
   if (symbols.every(symbol => symbol === "×")) return "×";
   return "△";
+};
+
+/** コース名の横に出すレベル・圧雪 */
+export const getCourseGroupTags = (group: FinalizedCourseGroup) => {
+  const first = group.courses[0];
+  const piste = getCourseGroupPisteSymbol(group);
+  return {
+    difficulty: first
+      ? COURSE_DIFFICULTY_META[getCourseDifficulty(first.properties.level)]
+      : null,
+    grooming: piste ? PISTE_STATUS_DESCRIPTION[piste] : null,
+  };
 };
 
 const collectUnique = (values: Array<string | null | undefined>) => [

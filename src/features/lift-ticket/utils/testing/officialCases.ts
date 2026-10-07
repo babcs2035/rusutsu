@@ -57,7 +57,7 @@ export type OfficialCase = {
   season: string;
   date: string;
   urls: string[];
-  /** UIの「1日」、年齢未入力。nullは年齢確認が必要。 */
+  /** UIの「1日」、年齢未入力（小7〜12・中13〜15・高16〜18歳として扱う）。nullは年齢確認が必要。 */
   categories: Record<Exclude<TicketPartyCategory, "other">, number | null>;
   ages: Array<[TicketPartyCategory, number, number]>;
   disabilityAmounts: Record<
@@ -103,9 +103,9 @@ export const OFFICIAL_CASES: OfficialCase[] = [
     urls: ["https://rusutsu.com/winter-lift-tickets/"],
     categories: {
       preschool: null,
-      elementary: null,
-      junior_high: null,
-      high_school: null,
+      elementary: 6400,
+      junior_high: 9800,
+      high_school: 9800,
       university: 13200,
       adult: 13200,
       disabled: 11100,

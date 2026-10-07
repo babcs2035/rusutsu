@@ -47,6 +47,10 @@ Rusutsu は、日本全国のスキー場情報（基本情報・コース/リ�
 - `prisma/schema.prisma`: データモデル定義（`SkiResort`, `Course`, `Lift`, `Weather`, `SnowDepthRecord`, `SnowFallRecord`, `LatestReport`, `AmedasData`, `YukiMagi` 等）とマイグレーション・generator/datasource 設定。
 - `prisma.config.ts`: Prisma CLI の接続設定を一元管理するファイル（`DATABASE_URL` を dotenv 経由で読み込む）。Prisma 7 では `schema.prisma` 内で datasource URL を直接指定しない構成になっており、実行時の接続先はこちらが担う。
 
+## UI を作る・直すとき
+- 必ず `docs/ui-guidelines.md` を読んでから着手する。特にスマホは縦の余白を無駄にしない（ボタンだけの行を作らない、タブ・ヘッダーは詰める）。
+- スキー場詳細（PC・スマホとも）にはログイン／アカウントのボタンを置かない。
+
 ## コーディングスタイル・設計パターンについて
 - **一貫している点**: Biome によるフォーマット（ダブルクォート、セミコロン必須、インデント2スペース、行幅80）と lint ルールはプロジェクト全体で強制されている（`mise run check` で担保）。Prisma へのアクセスは `src/lib/prisma.ts` のシングルトンクライアント経由に統一されている。
 - **現状は統一されていない点**: クローラースクリプト間で「削除→再作成」「upsert」「create + try/catch」のいずれを使うかはサイト・モデルごとに異なり、明文化された規約はない。また `src/features/<domain>` 配下のサブディレクトリ構成（`layout/` vs `layouts/`、`tabs/` の有無など）もドメインごとにばらつきがあり、共通テンプレートに従っているわけではない。名寄せ辞書のキー→値の向き（正式名→別名か別名→正式名か）もファイルごとに異なるため、利用時は個別に確認が必要。

@@ -32,6 +32,29 @@ import {
   shouldSkipCourseLabel,
 } from "../utils/lineOverlayLayout";
 
+const SELECTED_LINE_CLEARANCE_PX = 16;
+
+/** 選択した線を細かい矩形で覆い、名前の置き場から外す */
+const getSelectedLineRects = (lines: LayoutPoint[][]): OrientedRect[] =>
+  lines.flatMap(points =>
+    points.slice(1).flatMap((current, index) => {
+      const previous = points[index];
+      if (!previous) return [];
+      const length = Math.hypot(current.x - previous.x, current.y - previous.y);
+      return [
+        {
+          cx: (previous.x + current.x) / 2,
+          cy: (previous.y + current.y) / 2,
+          halfWidth: length / 2 + SELECTED_LINE_CLEARANCE_PX,
+          halfHeight: SELECTED_LINE_CLEARANCE_PX,
+          angle:
+            (Math.atan2(current.y - previous.y, current.x - previous.x) * 180) /
+            Math.PI,
+        },
+      ];
+    }),
+  );
+
 const measureWidth = (text: string, fontSize: number) =>
   measureCanvasTextWidth(text, getLabelFont(fontSize));
 
@@ -78,6 +101,8 @@ export const useLineLabelMarkers = ({
   selectedFeature,
   showCourseNames,
   showLiftNames,
+  showContextLabels = false,
+  selectedLines = [],
   onSelectFeature,
 }: {
   map: MapLibreMap | null;
@@ -87,6 +112,9 @@ export const useLineLabelMarkers = ({
   selectedFeature: SelectedMapFeature | null;
   showCourseNames: boolean;
   showLiftNames: boolean;
+  showContextLabels?: boolean;
+  /** 地図側で解決済みの選択中の線。比較の薄い名前をここから避ける */
+  selectedLines?: Array<FinalizedCourseFeature | FinalizedLiftFeature>;
   onSelectFeature: (feature: SelectedMapFeature) => void;
 }) => {
   const markersRef = useRef<ManagedMarker[]>([]);
@@ -107,7 +135,9 @@ export const useLineLabelMarkers = ({
       const hasSelection = selectedFeature !== null;
       // 選択中は名前を出さない。名前はパネル側に出ているので、
       // 地図は選択した線そのものを見せることに集中させる。
-      if (hasSelection) return;
+      // コース比較だけは周りの位置関係が分かるよう、ほかの名前を薄く添える。
+      if (hasSelection && !showContextLabels) return;
+      const isContext = hasSelection;
 
       const project = (coordinates: number[][]): LayoutPoint[] =>
         coordinates.map(coordinate => {
@@ -115,13 +145,20 @@ export const useLineLabelMarkers = ({
           return { x: point.x, y: point.y };
         });
 
-      const placedRects: OrientedRect[] = [];
+      // 選択した線の上と、その両脇には名前を置かない
+      const selectedIds = new Set(selectedLines.map(line => line.id));
+      const placedRects: OrientedRect[] = isContext
+        ? getSelectedLineRects(
+            selectedLines.map(line => project(line.coordinates as number[][])),
+          )
+        : [];
       const placements: LabelPlacement[] = [];
       const padding = getLabelCollisionPadding(zoom);
 
       if (showLiftNames && zoom >= LIFT_LABEL_MIN_ZOOM) {
         const liftSources = lifts.flatMap<LabelSource>(lift => {
           if (lift.name.length === 0) return [];
+          if (selectedIds.has(lift.id)) return [];
 
           const status = getFeatureStatusKind(lift.properties.status);
 
@@ -170,6 +207,7 @@ export const useLineLabelMarkers = ({
           }
         >();
         for (const course of courses) {
+          if (selectedIds.has(course.id)) continue;
           const name = getCourseLabelName(course.displayName);
           if (shouldSkipCourseLabel(name)) continue;
 
@@ -236,7 +274,13 @@ export const useLineLabelMarkers = ({
 
       for (const placement of placements) {
         const lngLat = map.unproject([placement.x, placement.y]);
-        const element = createLabelElement(placement, onSelectFeature);
+        const element = createLabelElement(
+          isContext
+            ? { ...placement, fontSize: Math.round(placement.fontSize * 0.85) }
+            : placement,
+          onSelectFeature,
+        );
+        if (isContext) element.classList.add("is-context");
         const marker = new Marker({
           element,
           anchor: "center",
@@ -269,5 +313,7 @@ export const useLineLabelMarkers = ({
     selectedFeature,
     showCourseNames,
     showLiftNames,
+    showContextLabels,
+    selectedLines,
   ]);
 };

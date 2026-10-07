@@ -3,7 +3,6 @@
 import { Check, Plus, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AccountButton } from "@/features/favorites/AccountButton";
 import { FavoriteButton } from "@/features/favorites/FavoriteButton";
 import { cn } from "@/lib/utils";
 import { CopyResortNameButton } from "@/shared/components/CopyResortNameButton";
@@ -50,13 +49,12 @@ export const InfoSection = ({
           <Button
             type="button"
             variant="ghost"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-gray-200 shadow-sm hover:bg-gray-50 hover:text-gray-900 text-lg p-0 min-h-8 text-gray-500 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10"
+            className="flex size-7 min-h-7 shrink-0 items-center justify-center rounded-full border border-gray-200 shadow-sm hover:bg-gray-50 hover:text-gray-900 text-lg p-0 text-gray-500 md:size-8 md:min-h-8 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10"
             onClick={onClose}
             aria-label="詳細を閉じる"
           >
             <X size={18} strokeWidth={2.5} />
           </Button>
-          <AccountButton />
         </div>
       </div>
       {resort.formerNames.length > 0 && (

@@ -34,3 +34,13 @@ test("地点別に日時を表示する場合は共通出典リンクのみ表�
   assert.equal((html.match(/href=/g) ?? []).length, 1);
   assert.doesNotMatch(html, /出典未登録|日時不明|2026|出典1/);
 });
+test("掲載日時が分からない出典は日時を書かない", () => {
+  const html = renderToStaticMarkup(
+    createElement(SourceLine, {
+      label: "コース",
+      urls: ["https://example.com/courses"],
+      showLabel: false,
+    }),
+  );
+  assert.doesNotMatch(html.replace(/<[^>]+>/g, ""), /不明|取得/);
+});

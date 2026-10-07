@@ -13,7 +13,6 @@ import { useEffect, useState } from "react";
 import { z } from "zod";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AccountButton } from "@/features/favorites/AccountButton";
 import { FavoriteButton } from "@/features/favorites/FavoriteButton";
 import { FavoriteCompareButton } from "@/features/favorites/FavoriteCompareButton";
 import { useFavorites } from "@/features/favorites/FavoritesProvider";
@@ -832,15 +831,14 @@ const MobileContextHeader = ({
       )}
 
       {/*
-        close/比較に追加の2つのボタンは縦に並べて1カラムに収め、
-        名前側のカラムを横に広く取れるようにする（長い名前ほど1行に収まりやすい）。
-        テキスト側（名前・旧称・所在地）は隙間なく積み、
-        地図をすぐ始めたいので上下の余白は最小限にする。
+        名前・所在地の右に、お気に入り・比較・閉じるを1行で並べる。
+        ボタンを縦に積むとヘッダーが2段分の高さになり、地図が下に押し出される。
+        比較ボタンは文言を短くし、正式な操作名は aria-label に持たせる。
       */}
       {mode === "detail" && (
-        <div className="px-4 pt-1.5 pb-2 flex items-center gap-2">
+        <div className="flex items-center gap-1.5 px-3 pt-1 pb-1.5">
           <div className="min-w-0 flex-1">
-            <h2 className="truncate-2 text-gray-900 text-base font-bold font-[var(--font-heading)]">
+            <h2 className="truncate-2 text-gray-900 text-base leading-tight font-bold font-[var(--font-heading)]">
               <RubyText segments={detailNameRuby} fallback={detailTitle} />
               {/* 名前のすぐ後ろに置く。行ボックスを広げないよう行送りより小さくする */}
               <CopyResortNameButton
@@ -849,11 +847,11 @@ const MobileContextHeader = ({
               />
             </h2>
             {detailFormerNames.length > 0 && (
-              <p className="mt-0.5 truncate text-[11px] leading-snug text-gray-500">
+              <p className="truncate text-[11px] leading-snug text-gray-500">
                 旧称: <FormerResortNames names={detailFormerNames} />
               </p>
             )}
-            <p className="mt-0.5 flex items-center gap-1.5 text-gray-600 text-xs font-semibold leading-snug">
+            <p className="flex items-center gap-1.5 text-gray-600 text-xs font-semibold leading-snug">
               {/* 県・市町村のどちらかが未取得のときに区切り文字だけが残らないようにする */}
               {detailLocation && (
                 <span className="truncate">{detailLocation}</span>
@@ -861,46 +859,47 @@ const MobileContextHeader = ({
               {detailYukiMagi && (
                 <Badge
                   variant="secondary"
-                  className="shrink-0 rounded-full bg-pink-50 text-pink-700 text-[0.625rem] font-semibold whitespace-nowrap"
+                  className="h-4 shrink-0 rounded-full bg-pink-50 px-1.5 text-pink-700 text-[0.625rem] font-semibold whitespace-nowrap"
                 >
                   雪マジ
                 </Badge>
               )}
             </p>
           </div>
-          <div className="flex shrink-0 flex-col items-end gap-1">
-            <div className="flex items-center gap-1">
-              {detailResortId && (
-                <FavoriteButton resortId={detailResortId} name={detailTitle} />
-              )}
-              <Button
-                type="button"
-                aria-label="詳細を閉じる"
-                variant="ghost"
-                onClick={onCloseDetail}
-                className="flex h-8 w-8 min-w-8 shrink-0 items-center justify-center rounded-full border border-gray-200 p-0 text-gray-500 hover:bg-gray-50 hover:text-gray-900"
-              >
-                <X size={18} strokeWidth={2.5} />
-              </Button>
-              <AccountButton />
-            </div>
+          <div className="flex shrink-0 items-center gap-1">
+            {detailResortId && (
+              <FavoriteButton resortId={detailResortId} name={detailTitle} />
+            )}
             {detailResortId && (
               <Button
                 type="button"
                 variant={isDetailCompareSelected ? "default" : "outline"}
+                aria-pressed={isDetailCompareSelected}
+                aria-label={
+                  isDetailCompareSelected ? "比較から外す" : "比較に追加"
+                }
                 onClick={() =>
                   onToggleCompare(detailResortId, !isDetailCompareSelected)
                 }
-                className="flex h-8 shrink-0 items-center justify-center gap-1 rounded-lg px-2.5 text-xs font-semibold"
+                className="flex h-8 shrink-0 items-center justify-center gap-0.5 rounded-full px-2 text-xs font-semibold"
               >
                 {isDetailCompareSelected ? (
                   <Check size={14} strokeWidth={2.5} />
                 ) : (
                   <Plus size={14} strokeWidth={2.5} />
                 )}
-                {isDetailCompareSelected ? "比較から外す" : "比較に追加"}
+                {isDetailCompareSelected ? "比較中" : "比較"}
               </Button>
             )}
+            <Button
+              type="button"
+              aria-label="詳細を閉じる"
+              variant="ghost"
+              onClick={onCloseDetail}
+              className="flex h-8 w-8 min-w-8 shrink-0 items-center justify-center rounded-full border border-gray-200 p-0 text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+            >
+              <X size={18} strokeWidth={2.5} />
+            </Button>
           </div>
         </div>
       )}

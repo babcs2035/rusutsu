@@ -1,10 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { ElevationProfileMapPoint } from "@/features/map/types";
-import {
-  COURSE_DIFFICULTY_META,
-  getCourseDifficulty,
-} from "@/lib/finalizedResortGeojsonShared";
 import type { FinalizedCourseGroup } from "../types";
 import {
   averageNullable,
@@ -18,32 +15,34 @@ import {
   getElevationRange,
   maxNullable,
   PISTE_STATUS_DESCRIPTION,
-  type StatusSymbol,
 } from "../utils/detailMetrics";
 import { getFeatureSearchWord } from "../utils/featureLinks";
+import { collectFeatureMedia } from "../utils/featureMedia";
+import { courseStatusSources } from "../utils/featureSources";
 import { ElevationProfile } from "./ElevationProfile";
-import { FeatureHeadline, FeatureMetric } from "./FeatureHeadline";
+import {
+  FeatureHeadline,
+  FeatureMetrics,
+  FeatureNotes,
+} from "./FeatureHeadline";
+import { FeatureMediaGallery } from "./FeatureMediaGallery";
 
 type Props = {
   courseGroup: FinalizedCourseGroup;
   resortLabelName: string;
   sourceUrls: string[];
+  similarCourses?: ReactNode;
   selectedElevationProfilePoint: ElevationProfileMapPoint | null;
   onSelectedElevationProfilePointChange: (
     point: ElevationProfileMapPoint | null,
   ) => void;
 };
 
-const SYMBOL_TONE: Record<StatusSymbol, "open" | "limited" | "closed"> = {
-  "○": "open",
-  "△": "limited",
-  "×": "closed",
-};
-
 export const SelectedCourseDetail = ({
   courseGroup,
   resortLabelName,
   sourceUrls,
+  similarCourses,
   selectedElevationProfilePoint,
   onSelectedElevationProfilePointChange,
 }: Props) => {
@@ -51,10 +50,6 @@ export const SelectedCourseDetail = ({
 
   if (!selectedCourse) return null;
 
-  const difficulty =
-    COURSE_DIFFICULTY_META[
-      getCourseDifficulty(selectedCourse.properties.level)
-    ];
   const status = getCourseGroupStatus(courseGroup);
   const pisteSymbol = getCourseGroupPisteSymbol(courseGroup);
 
@@ -93,7 +88,14 @@ export const SelectedCourseDetail = ({
     : null;
   const notes = getCourseGroupNotes(courseGroup);
   // 一部だけオープンしている場合の「下部のみオープン」も当日の状況として扱う
-  const comments = [...(status.note ? [status.note] : []), ...notes.latest];
+  const repeatedLabels = new Set([
+    status.symbol ? COURSE_STATUS_DESCRIPTION[status.symbol] : "",
+    pisteSymbol ? PISTE_STATUS_DESCRIPTION[pisteSymbol] : "",
+    ...(status.symbol === "×" ? ["閉鎖中", "滑走不可", "CLOSE", "CLOSED"] : []),
+  ]);
+  const comments = [
+    ...new Set([...(status.note ? [status.note] : []), ...notes.latest]),
+  ].filter(comment => !repeatedLabels.has(comment.trim()));
   const searchWord = getFeatureSearchWord({
     searchWord: selectedCourse.properties.searchWord,
     resortLabelName,
@@ -101,31 +103,36 @@ export const SelectedCourseDetail = ({
   });
 
   return (
-    <div className="flex flex-col gap-2 sm:gap-3">
+    <div className="flex flex-col gap-3">
       <FeatureHeadline
-        difficulty={difficulty}
-        items={[
-          {
-            label: "営業状況",
-            text: status.symbol
-              ? COURSE_STATUS_DESCRIPTION[status.symbol]
-              : "不明",
-            tone: status.symbol ? SYMBOL_TONE[status.symbol] : null,
-          },
-          ...(pisteSymbol
-            ? [
-                {
-                  label: "圧雪",
-                  text: PISTE_STATUS_DESCRIPTION[pisteSymbol],
-                  tone: SYMBOL_TONE[pisteSymbol],
-                },
-              ]
-            : []),
-        ]}
-        update={selectedCourse.properties.update}
+        kind="course"
+        status={{
+          symbol: status.symbol,
+          text: status.symbol
+            ? COURSE_STATUS_DESCRIPTION[status.symbol]
+            : "状況不明",
+        }}
         searchWord={searchWord}
-        sourceUrls={selectedCourse.sourceUrls ?? sourceUrls}
+        sources={courseStatusSources(courseGroup, sourceUrls)}
       />
+
+      <FeatureMetrics
+        items={[
+          { title: "滑走距離", value: formatMeters(distance) },
+          {
+            title: "標高差",
+            value: formatMeters(elevationDiff),
+            detail: elevationRange
+              ? `${Math.round(elevationRange.max)} - ${Math.round(elevationRange.min)}m`
+              : null,
+          },
+          { title: "平均斜度", value: formatDegree(averageSlope) },
+          { title: "最大斜度", value: formatDegree(maxSlope) },
+          { title: "水平距離", value: formatMeters(horizontalDistance) },
+        ]}
+      />
+
+      <FeatureNotes comments={comments} descriptions={notes.description} />
 
       <ElevationProfile
         points={profilePoints}
@@ -146,50 +153,14 @@ export const SelectedCourseDetail = ({
         }
       />
 
-      <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
-        <FeatureMetric
-          title="水平距離"
-          value={formatMeters(horizontalDistance)}
-        />
-        <FeatureMetric title="斜面距離" value={formatMeters(distance)} />
-        <FeatureMetric
-          title="標高差"
-          value={formatMeters(elevationDiff)}
-          detail={
-            elevationRange
-              ? `${Math.round(elevationRange.max)} - ${Math.round(elevationRange.min)}m`
-              : null
-          }
-        />
-        <FeatureMetric title="平均斜度" value={formatDegree(averageSlope)} />
-        <FeatureMetric title="最大斜度" value={formatDegree(maxSlope)} />
-      </div>
+      {similarCourses}
 
-      {comments.length > 0 && (
-        <div>
-          <p className="text-xs font-semibold text-gray-500">コメント</p>
-          <ul className="mt-1 flex flex-col gap-1">
-            {comments.map(comment => (
-              <li
-                key={comment}
-                className="text-sm leading-relaxed text-gray-800"
-              >
-                {comment}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {notes.description.length > 0 && (
-        <div className="flex flex-col gap-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
-          {notes.description.map(note => (
-            <p key={note} className="text-sm leading-relaxed text-gray-700">
-              {note}
-            </p>
-          ))}
-        </div>
-      )}
+      <FeatureMediaGallery
+        media={collectFeatureMedia(
+          courseGroup.courses.map(course => course.properties),
+        )}
+        name={courseGroup.displayName}
+      />
     </div>
   );
 };

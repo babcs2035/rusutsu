@@ -17,7 +17,7 @@ export function formatPublishedDate(value: string) {
   const text = value
     .trim()
     .replace(/^(?:更新日時|更新日|更新|発表日時|発表)\s*[:：]?\s*/u, "")
-    .replace(/\s*現在\s*$/u, "")
+    .replace(/\s*(?:現在|更新)\s*$/u, "")
     .trim();
   return text ? `${formatOperationDate(text)}現在` : null;
 }

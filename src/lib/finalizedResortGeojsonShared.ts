@@ -15,6 +15,7 @@ export type FinalizedCourseFeature = {
   /** 別ルートのとき、同じルート（複数区間を含む）の線に共通するキー */
   routeKey?: string;
   latestStatusName?: string | null;
+  statusMappingNames?: string[];
   /** 人手確認済みの既存データか、未確認のOSM由来か。 */
   verificationStatus?: "verified" | "unverified";
   sourceUrls?: string[];
@@ -39,6 +40,7 @@ export type FinalizedCourseFeature = {
     minWidth: number | null;
     note: string | null;
     image: string | null;
+    youtubeUrl?: string | null;
     searchWord: string | null;
     morning: string | null;
     night: string | null;
@@ -82,6 +84,8 @@ export const parseFinalizedCourseName = (name: string): ParsedCourseName => {
 };
 
 export type FinalizedLiftFeature = {
+  latestStatusName?: string | null;
+  statusMappingNames?: string[];
   id: string;
   name: string;
   coordinates: GeoCoordinate[];
@@ -110,6 +114,8 @@ export type FinalizedLiftFeature = {
     elevationDiffMap: number | null;
     searchWord: string | null;
     link: string | null;
+    image?: string | null;
+    youtubeUrl?: string | null;
     morning: string | null;
     night: string | null;
   };

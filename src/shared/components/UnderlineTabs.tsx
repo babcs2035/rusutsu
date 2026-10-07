@@ -9,6 +9,8 @@ type Props<TTab extends string> = {
   className?: string;
   /** タブが多い場合に均等割りをやめて横スクロールさせる */
   fill?: boolean;
+  /** 詳細画面など縦の余白が惜しい場所では高さを詰める（h-9 / md:h-10） */
+  compact?: boolean;
 };
 
 /**
@@ -24,6 +26,7 @@ export const UnderlineTabs = <TTab extends string>({
   onTabChange,
   className,
   fill = true,
+  compact = false,
 }: Props<TTab>) => (
   <div
     role="tablist"
@@ -44,7 +47,8 @@ export const UnderlineTabs = <TTab extends string>({
           onClick={() => onTabChange(tab)}
           className={cn(
             // スマホでも 6 タブが 1 画面に収まるよう、狭い側は px と文字を詰める
-            "relative h-11 shrink-0 whitespace-nowrap border-b-2 px-1.5 text-[13px] transition-colors md:h-12 md:px-4 md:text-base",
+            "relative shrink-0 whitespace-nowrap border-b-2 px-1.5 text-[13px] transition-colors md:px-4",
+            compact ? "h-9 md:h-10 md:text-base" : "h-11 md:h-12 md:text-base",
             fill ? "min-w-0 flex-1 md:min-w-[6rem]" : "min-w-0",
             isActive
               ? "border-blue-600 font-bold text-blue-600"

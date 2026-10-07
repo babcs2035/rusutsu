@@ -115,6 +115,12 @@
   /* デスクトップの右パネル幅。左のゲレンデ一覧の右端をここに合わせる */
   --compare-panel-width: min(620px, 52vw);
   --desktop-search-panel-width: min(400px, 50vw);
+  /*
+   * スキー場詳細の右パネル幅。以前の 560px は地図を削りすぎるので詰める。
+   * 500px は料金タブの公式リフト料金表（大人〜3歳以下の5列）が
+   * 横スクロールなしで収まる最小幅。これより狭くする場合は料金表も見直す。
+   */
+  --desktop-detail-panel-width: min(500px, 45vw);
 }
 
 .dark {
@@ -1009,4 +1015,14 @@ html body .resort-action-popup::after {
     font-size: 0.45em;
     margin-bottom: 0.1em;
   }
+}
+
+/* コース比較で、選択中のコースの周りに薄く添えるほかの名前。
+   位置関係の手がかりなので、読めるが主役の線より目立たない濃さにする。 */
+html body .finalized-line-label.is-context {
+  color: #475569;
+  opacity: 0.72;
+  font-weight: 700;
+  pointer-events: none;
+  cursor: default;
 }

@@ -197,6 +197,11 @@ export type JapanResortMapProps = {
    * 高さの限られた地図では場所を取りすぎるので、呼び出し側で落とせるようにする。
    */
   showMapToolbar?: boolean;
+  /**
+   * 選択中でも、ほかのコース・リフト名を薄く出す（コース比較の地図）。
+   * 選択した線に重なる位置には置かない。
+   */
+  showContextLabels?: boolean;
   mapTileVariant?: MapTileVariant;
   onMapTileVariantChange?: (variant: MapTileVariant) => void;
   /**

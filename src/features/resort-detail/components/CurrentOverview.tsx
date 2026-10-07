@@ -87,7 +87,7 @@ export function CurrentOverview({
     <section aria-label="営業・気象情報" className="space-y-2">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         {!summaryOnly && (
-          <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
+          <h2 className="text-base font-semibold text-slate-900 md:text-lg">
             営業状況
           </h2>
         )}
@@ -99,12 +99,9 @@ export function CurrentOverview({
           <NotFetchedBadge title="営業状況はまだ取得できていません" />
         )}
       </div>
-      <div className={summaryOnly ? "grid grid-cols-2 gap-3" : "space-y-2"}>
-        <div
-          className={
-            summaryOnly ? "min-w-0 border-r border-slate-200 pr-3" : "min-w-0"
-          }
-        >
+      {/* コースとリフトは常に横に並べ、縦の場所を取らないようにする */}
+      <div className="grid grid-cols-2 gap-1.5 md:gap-2">
+        <div className="min-w-0">
           <CourseStatusTable
             summary={courseSummary}
             unavailable={!hasCourseSource}
@@ -112,6 +109,7 @@ export function CurrentOverview({
             source={
               hasCourseSource ? (
                 <SourceLine
+                  compact
                   label="コース"
                   showLabel={false}
                   showFetched={false}
@@ -134,6 +132,7 @@ export function CurrentOverview({
             source={
               hasLiftSource ? (
                 <SourceLine
+                  compact
                   label="リフト"
                   showLabel={false}
                   showFetched={false}
@@ -149,7 +148,7 @@ export function CurrentOverview({
         <>
           <section aria-label="コンディション" className="space-y-1.5">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-              <h3 className="text-base font-semibold text-slate-900 sm:text-lg">
+              <h3 className="text-sm font-semibold text-slate-900 md:text-base">
                 コンディション
               </h3>
               <LinkedMemberTabs
@@ -164,6 +163,7 @@ export function CurrentOverview({
                     item.weather && (
                       <div key={item.id} className="min-w-0">
                         <SourceLine
+                          compact
                           label="コンディション"
                           showFetched={false}
                           showLabel={false}
@@ -202,7 +202,7 @@ export function CurrentOverview({
               className="space-y-1.5 border-t border-slate-200 pt-2"
               aria-label="コメント"
             >
-              <h3 className="text-base font-semibold text-slate-900 sm:text-lg">
+              <h3 className="text-sm font-semibold text-slate-900 md:text-base">
                 コメント
               </h3>
               {conditions.map(item => {

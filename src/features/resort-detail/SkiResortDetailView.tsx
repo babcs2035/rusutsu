@@ -232,7 +232,7 @@ export const SkiResortDetailView = ({
               <AnimatedPanel
                 data-ski-resort-detail-panel="true"
                 visible={isSidePanel}
-                contentClassName="relative z-10 flex h-full max-h-none w-[min(560px,50vw)] max-w-none flex-col overflow-hidden bg-white border border-gray-200 pointer-events-auto shadow-2xl"
+                contentClassName="relative z-10 flex h-full max-h-none w-[var(--desktop-detail-panel-width)] max-w-none flex-col overflow-hidden bg-white border border-gray-200 pointer-events-auto shadow-2xl"
               >
                 {loadingContent}
               </AnimatedPanel>
@@ -306,7 +306,6 @@ export const SkiResortDetailView = ({
     selectedCourseGroup || selectedLift ? (
       <FinalizedFeatureDetail
         resortId={resort.id}
-        showAccount={isSidePanel}
         courseGroup={selectedCourseGroup}
         lift={selectedLift}
         resortLabelName={getResortSearchName(
@@ -562,8 +561,8 @@ export const SkiResortDetailView = ({
               contentClassName={cn(
                 "relative z-10 flex h-full max-h-none max-w-none flex-col overflow-hidden bg-white border border-gray-200 pointer-events-auto shadow-2xl",
                 isDesktopMapExpanded
-                  ? "w-[min(460px,40vw)] rounded-xl"
-                  : "w-[min(560px,50vw)]",
+                  ? "w-[min(400px,40vw)] rounded-xl"
+                  : "w-[var(--desktop-detail-panel-width)]",
               )}
             >
               {isDesktopMapExpanded ? desktopFeatureDetail : detailPanelContent}

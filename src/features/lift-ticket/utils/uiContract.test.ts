@@ -115,6 +115,22 @@ for (const spec of OFFICIAL_CASES.filter(c =>
       }
     });
   }
+  for (const [category, [min, max]] of [
+    ["elementary", [7, 12]],
+    ["junior_high", [13, 15]],
+    ["high_school", [16, 18]],
+  ] as const) {
+    test(`${spec.resort}: ${category}は在学年齢${min}〜${max}歳で料金が1つなら年齢未入力でも出す`, () => {
+      const totals = new Set(
+        Array.from(
+          { length: max - min + 1 },
+          (_, i) => plan(category, min + i).total,
+        ),
+      );
+      if (totals.size !== 1) return;
+      assert.equal(plan(category, null).total, [...totals][0]);
+    });
+  }
   const representativeAges = {
     preschool: 4,
     elementary: 10,

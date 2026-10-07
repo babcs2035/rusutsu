@@ -344,6 +344,7 @@ export const mergeCourseFeatures = ({
     }
 
     let status: Record<string, unknown> | null = null;
+    let statusMappingNames: string[] = [];
     if (statusMapping?.configured) {
       const entityId = feature.properties.entityId;
       const lookup =
@@ -366,6 +367,7 @@ export const mergeCourseFeatures = ({
             : statusMapping.namesByGeojsonName?.get(lookupKey)) ?? [
             crawledName,
           ];
+          statusMappingNames = [...names];
           const matches = [
             ...new Set(
               names
@@ -429,6 +431,7 @@ export const mergeCourseFeatures = ({
     }
     if (status) Object.assign(properties, renameStatusKeys(status));
     properties.latest_status_name = status ? getName(status) : null;
+    properties.status_mapping_names = statusMappingNames;
 
     features.push({
       type: "Feature",
@@ -530,6 +533,7 @@ export const mergeLiftFeatures = ({
     }
 
     let status: Record<string, unknown> | null = null;
+    let statusMappingNames: string[] = [];
     if (statusMapping?.configured) {
       const entityId = feature.properties.entityId;
       const lookup =
@@ -552,6 +556,7 @@ export const mergeLiftFeatures = ({
             : statusMapping.namesByGeojsonName?.get(lookupKey)) ?? [
             crawledName,
           ];
+          statusMappingNames = [...names];
           const exactMatches = [
             ...new Set(
               names.map(alias => statusLookup.get(alias)).filter(Boolean),
@@ -613,6 +618,8 @@ export const mergeLiftFeatures = ({
     const properties: Record<string, unknown> = { ...feature.properties };
     if (base) Object.assign(properties, withoutName(base));
     if (status) Object.assign(properties, renameStatusKeys(status));
+    properties.latest_status_name = status ? getName(status) : null;
+    properties.status_mapping_names = statusMappingNames;
 
     features.push({
       type: "Feature",

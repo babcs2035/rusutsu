@@ -8,17 +8,17 @@ import {
   getElevationRange,
   LIFT_STATUS_DESCRIPTION,
   normalizeIconSymbol,
-  type StatusSymbol,
 } from "../utils/detailMetrics";
 import { getFeatureSearchWord } from "../utils/featureLinks";
+import { collectFeatureMedia } from "../utils/featureMedia";
+import { liftStatusSources } from "../utils/featureSources";
 import { ElevationProfile } from "./ElevationProfile";
-import { FeatureHeadline, FeatureMetric } from "./FeatureHeadline";
-
-const SYMBOL_TONE: Record<StatusSymbol, "open" | "limited" | "closed"> = {
-  "○": "open",
-  "△": "limited",
-  "×": "closed",
-};
+import {
+  FeatureHeadline,
+  FeatureMetrics,
+  FeatureNotes,
+} from "./FeatureHeadline";
+import { FeatureMediaGallery } from "./FeatureMediaGallery";
 
 export const SelectedLiftDetail = ({
   lift,
@@ -39,7 +39,12 @@ export const SelectedLiftDetail = ({
     ...new Set(
       [lift.properties.latestNote, lift.properties.note]
         .filter((value): value is string => Boolean(value?.trim()))
-        .map(value => value.trim()),
+        .map(value => value.trim())
+        .filter(
+          value =>
+            value.replace(/--:--/gu, "").replace(/[\s~〜～]/gu, "") !==
+            (statusSymbol ? LIFT_STATUS_DESCRIPTION[statusSymbol] : null),
+        ),
     ),
   ];
   const elevationRange =
@@ -59,21 +64,40 @@ export const SelectedLiftDetail = ({
   return (
     <div className="flex flex-col gap-3">
       <FeatureHeadline
-        items={[
-          {
-            label: "運行状況",
-            text: statusSymbol ? LIFT_STATUS_DESCRIPTION[statusSymbol] : "不明",
-            tone: statusSymbol ? SYMBOL_TONE[statusSymbol] : null,
-          },
-          { label: "種別", text: lift.properties.type ?? "リフト" },
-          ...(lift.properties.speed
-            ? [{ label: "速度", text: lift.properties.speed }]
-            : []),
-        ]}
-        update={lift.properties.update}
+        kind="lift"
+        status={{
+          symbol: statusSymbol,
+          text: statusSymbol
+            ? LIFT_STATUS_DESCRIPTION[statusSymbol]
+            : "状況不明",
+        }}
         searchWord={searchWord}
-        sourceUrls={sourceUrls}
+        sources={liftStatusSources(lift, sourceUrls)}
       />
+
+      <FeatureMetrics
+        items={[
+          // 距離は地図から算出した値ではなく、公表されている distance を使う
+          { title: "距離", value: formatMeters(lift.properties.distance) },
+          {
+            title: "標高差",
+            value: formatMeters(elevationDiff),
+            detail: elevationRange
+              ? `${Math.round(elevationRange.max)} - ${Math.round(elevationRange.min)}m`
+              : null,
+          },
+          {
+            title: "定員",
+            value:
+              lift.properties.capacity == null
+                ? "--"
+                : `${lift.properties.capacity}名`,
+          },
+          { title: "フード", value: lift.properties.hood ?? "--" },
+        ]}
+      />
+
+      <FeatureNotes comments={comments} />
 
       <ElevationProfile
         points={profilePoints}
@@ -85,47 +109,10 @@ export const SelectedLiftDetail = ({
         }
       />
 
-      <div className="grid grid-cols-4 gap-2">
-        {/* 距離は地図から算出した値ではなく、公表されている distance を使う */}
-        <FeatureMetric
-          title="距離"
-          value={formatMeters(lift.properties.distance)}
-        />
-        <FeatureMetric
-          title="標高差"
-          value={formatMeters(elevationDiff)}
-          detail={
-            elevationRange
-              ? `${Math.round(elevationRange.max)} - ${Math.round(elevationRange.min)}m`
-              : null
-          }
-        />
-        <FeatureMetric
-          title="定員"
-          value={
-            lift.properties.capacity == null
-              ? "--"
-              : `${lift.properties.capacity}名`
-          }
-        />
-        <FeatureMetric title="フード" value={lift.properties.hood ?? "--"} />
-      </div>
-
-      {comments.length > 0 && (
-        <div>
-          <p className="text-xs font-semibold text-gray-500">コメント</p>
-          <ul className="mt-1 flex flex-col gap-1">
-            {comments.map(comment => (
-              <li
-                key={comment}
-                className="text-sm leading-relaxed text-gray-800"
-              >
-                {comment}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <FeatureMediaGallery
+        media={collectFeatureMedia([lift.properties])}
+        name={lift.name}
+      />
     </div>
   );
 };

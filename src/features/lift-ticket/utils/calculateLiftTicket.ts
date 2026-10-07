@@ -679,10 +679,41 @@ const SCHOOL_LEVELS_BY_CATEGORY: Record<TicketPartyCategory, string[]> = {
   other: [],
 };
 
-/** 学校区分を年齢へ推測変換しない。公式の学校区分と年齢条件を使う。 */
 const matchesAge = (audience: LiftTicketAudience, age: number) =>
   (audience.age_min == null || age >= audience.age_min) &&
   (audience.age_max == null || age <= audience.age_max);
+
+/**
+ * 年齢未入力の小中高生は、通常の在学年齢として年齢制の料金に当てはめる。
+ * 入力された年齢があればそちらを優先する（中学生12歳→小人など）。
+ * 未就学児は無料と有料の境目をまたぐことが多いので年齢入力を求める。
+ */
+const DEFAULT_SCHOOL_AGE_RANGES: Partial<
+  Record<TicketPartyCategory, readonly [number, number]>
+> = {
+  elementary: [7, 12],
+  junior_high: [13, 15],
+  high_school: [16, 18],
+};
+
+const ageRangeOf = (group: TicketPartyGroup) =>
+  group.age != null
+    ? ([group.age, group.age] as const)
+    : (DEFAULT_SCHOOL_AGE_RANGES[group.category] ?? null);
+
+const containsAgeRange = (
+  audience: LiftTicketAudience,
+  [min, max]: readonly [number, number],
+) =>
+  (audience.age_min == null || min >= audience.age_min) &&
+  (audience.age_max == null || max <= audience.age_max);
+
+const overlapsAgeRange = (
+  audience: LiftTicketAudience,
+  [min, max]: readonly [number, number],
+) =>
+  (audience.age_min == null || max >= audience.age_min) &&
+  (audience.age_max == null || min <= audience.age_max);
 
 const hasAgeCondition = (audience: LiftTicketAudience) =>
   audience.age_min != null || audience.age_max != null;
@@ -704,10 +735,11 @@ const audienceDirectlyMatchesGroup = (
       (group.age == null || matchesAge(audience, group.age))
     );
   }
+  const range = ageRangeOf(group);
   return (
-    group.age != null &&
+    range != null &&
     hasAgeCondition(audience) &&
-    matchesAge(audience, group.age)
+    containsAgeRange(audience, range)
   );
 };
 
@@ -749,7 +781,7 @@ const audienceMatchesGroup = (
   );
 };
 
-/** 年齢で料金が分かれる未就学児、公式が年齢制の学童は年齢入力が必要。 */
+/** 年齢で料金が分かれる未就学児、通常の在学年齢が年齢区分をまたぐ学童は年齢入力が必要。 */
 const needsAgeForGroup = (
   data: LiftTicketData,
   group: TicketPartyGroup,
@@ -774,12 +806,20 @@ const needsAgeForGroup = (
       group.category === "preschool" && schoolMatches.some(hasAgeCondition)
     );
   }
-  return audiences.some(
+  const ageAudiences = audiences.filter(
+    a => a.is_default !== true && hasAgeCondition(a),
+  );
+  const range = DEFAULT_SCHOOL_AGE_RANGES[group.category];
+  if (range) {
+    // 例: 中学生13〜15歳がルスツの中人13〜18歳に収まれば年齢なしで決まる。
+    return ageAudiences.some(
+      a => overlapsAgeRange(a, range) && !containsAgeRange(a, range),
+    );
+  }
+  return ageAudiences.some(
     a =>
-      a.is_default !== true &&
-      hasAgeCondition(a) &&
-      ((a.age_min != null && a.age_min < 19) ||
-        (a.age_max != null && a.age_max < 19)),
+      (a.age_min != null && a.age_min < 19) ||
+      (a.age_max != null && a.age_max < 19),
   );
 };
 

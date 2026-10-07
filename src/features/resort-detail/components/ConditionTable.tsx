@@ -28,7 +28,7 @@ export function ConditionTable({ data }: { data: unknown }) {
     hasUpdates || !(points.length === 1 && points[0].name === "中腹");
   if (!columns.length)
     return (
-      <p className="text-sm text-slate-700">
+      <p className="text-sm text-slate-700 md:text-base">
         コンディションの情報はありません。
       </p>
     );
@@ -37,13 +37,16 @@ export function ConditionTable({ data }: { data: unknown }) {
     // ページ全体をスクロールするタブバーなど、外側の sticky 要素と
     // z-index・描画順で干渉しないようにする（高速スクロール時に一瞬重なる不具合の対策）。
     <div className="isolate overflow-x-auto rounded-lg border border-slate-200">
-      <table aria-label="コンディション" className="w-full text-sm">
+      <table
+        aria-label="コンディション"
+        className="w-full text-sm md:text-base"
+      >
         <thead>
-          <tr className="bg-slate-100 text-left text-slate-700">
+          <tr className="bg-slate-100 text-left text-xs text-slate-700 md:text-sm">
             {showLocation && (
               <th
                 scope="col"
-                className="sticky left-0 z-10 whitespace-nowrap bg-slate-100 px-2 py-2 font-medium shadow-[1px_0_0_0_#e2e8f0] will-change-transform"
+                className="sticky left-0 z-10 whitespace-nowrap bg-slate-100 px-2 py-1 font-medium md:py-1.5 shadow-[1px_0_0_0_#e2e8f0] will-change-transform"
               >
                 地点
               </th>
@@ -52,7 +55,7 @@ export function ConditionTable({ data }: { data: unknown }) {
               <th
                 key={field.key}
                 scope="col"
-                className="whitespace-nowrap px-2 py-2 font-medium"
+                className="whitespace-nowrap px-2 py-1 font-medium md:py-1.5"
               >
                 {field.label}
               </th>
@@ -68,7 +71,7 @@ export function ConditionTable({ data }: { data: unknown }) {
               {showLocation && (
                 <th
                   scope="row"
-                  className="sticky left-0 z-10 min-w-20 bg-inherit px-2 py-2 text-left font-medium shadow-[1px_0_0_0_#e2e8f0] will-change-transform"
+                  className="sticky left-0 z-10 min-w-20 bg-inherit px-2 py-1.5 text-left font-medium md:py-2 shadow-[1px_0_0_0_#e2e8f0] will-change-transform"
                 >
                   <span className="block">{point.name}</span>
                 </th>
@@ -84,7 +87,7 @@ export function ConditionTable({ data }: { data: unknown }) {
                 return (
                   <td
                     key={field.key}
-                    className="min-w-12 px-2 py-2 tabular-nums text-slate-800 sm:min-w-16"
+                    className="min-w-12 px-2 py-1.5 tabular-nums text-slate-800 md:min-w-16 md:py-2"
                   >
                     {value}
                   </td>
@@ -95,10 +98,10 @@ export function ConditionTable({ data }: { data: unknown }) {
               <tr>
                 <td
                   colSpan={columns.length + (showLocation ? 1 : 0)}
-                  className="px-2 pb-2"
+                  className="px-2 pb-1.5 md:pb-2"
                 >
                   {/* 日時は全列にまたがる行に置き、地点名の列幅で折り返さない。 */}
-                  <span className="sticky left-2 inline-block whitespace-nowrap rounded-md border border-blue-100 bg-blue-50 px-2 py-0.5 text-xs leading-5 tabular-nums text-blue-800">
+                  <span className="sticky left-2 inline-block whitespace-nowrap rounded-md border border-blue-100 bg-blue-50 px-1.5 py-0.5 text-[11px] leading-4 tabular-nums text-blue-800 md:px-2 md:text-xs md:leading-5">
                     <span className="sr-only">{point.name}の更新日時: </span>
                     {formatPublishedDate(
                       observationText(point.values.update) ?? "",

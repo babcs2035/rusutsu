@@ -37,7 +37,9 @@ export type FinalizedCourseFeature = {
   sectionName: string | null;
   sectionOrder?: number;
   groupKind?: "continuous" | "routes";
+  routeKey?: string;
   latestStatusName?: string | null;
+  statusMappingNames?: string[];
   /** 人手確認済みの既存データか、未確認のOSM由来か。 */
   verificationStatus?: "verified" | "unverified";
   sourceUrls?: string[];
@@ -62,6 +64,7 @@ export type FinalizedCourseFeature = {
     minWidth: number | null;
     note: string | null;
     image: string | null;
+    youtubeUrl?: string | null;
     searchWord: string | null;
     morning: string | null;
     night: string | null;
@@ -99,6 +102,8 @@ const parseFinalizedCourseName = (name: string) => {
 };
 
 export type FinalizedLiftFeature = {
+  latestStatusName?: string | null;
+  statusMappingNames?: string[];
   id: string;
   name: string;
   coordinates: GeoCoordinate[];
@@ -127,6 +132,8 @@ export type FinalizedLiftFeature = {
     elevationDiffMap: number | null;
     searchWord: string | null;
     link: string | null;
+    image?: string | null;
+    youtubeUrl?: string | null;
     morning: string | null;
     night: string | null;
   };
@@ -296,6 +303,17 @@ const createFeatureId = (
     : `${kind}-${index}-${name}`;
 };
 
+const normalizeStringArray = (value: unknown): string[] =>
+  Array.isArray(value)
+    ? [
+        ...new Set(
+          value
+            .map(normalizeString)
+            .filter((name): name is string => name !== null),
+        ),
+      ]
+    : [];
+
 const normalizeCourseFeature = (
   feature: unknown,
   index: number,
@@ -369,6 +387,7 @@ const normalizeCourseFeature = (
         }
       : {}),
     latestStatusName: normalizeString(properties.latest_status_name),
+    statusMappingNames: normalizeStringArray(properties.status_mapping_names),
     verificationStatus,
     sourceUrls,
     coordinates,
@@ -392,6 +411,7 @@ const normalizeCourseFeature = (
       minWidth: normalizeNumber(properties.minWidth),
       note: normalizeString(properties.note),
       image: normalizeString(properties.image),
+      youtubeUrl: normalizeString(properties.youtubeUrl),
       searchWord: normalizeString(properties.searchWord),
       morning: normalizeString(properties.morning),
       night: normalizeString(properties.night),
@@ -416,6 +436,8 @@ const normalizeLiftFeature = (
 
   return {
     id: createFeatureId("lift", properties, index),
+    latestStatusName: normalizeString(properties.latest_status_name),
+    statusMappingNames: normalizeStringArray(properties.status_mapping_names),
     name,
     coordinates,
     properties: {
@@ -445,6 +467,8 @@ const normalizeLiftFeature = (
       elevationDiffMap: normalizeNumber(properties.elevation_diff_map),
       searchWord: normalizeString(properties.searchWord),
       link: normalizeString(properties.link),
+      image: normalizeString(properties.image),
+      youtubeUrl: normalizeString(properties.youtubeUrl),
       morning: normalizeString(properties.morning),
       night: normalizeString(properties.night),
     },

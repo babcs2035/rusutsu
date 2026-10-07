@@ -53,6 +53,8 @@ type Props = {
   presentation: "preview" | "expanded";
   /** コースマップ用ツールバーを出すか。狭い地図では畳む */
   showToolbar?: boolean;
+  /** 選択中もほかのコース・リフト名を薄く出す（コース比較） */
+  showContextLabels?: boolean;
   /**
    * 表示設定を呼び出し側で持つ場合に渡す。
    * 比較のゲレンデ一覧のように、複数の地図へ同じ設定を効かせるときに使う。
@@ -97,6 +99,7 @@ export const ResortFinalizedMap = ({
   mapResorts,
   presentation,
   showToolbar = true,
+  showContextLabels = false,
   courseColorMode,
   onCourseColorModeChange,
   mapDisplaySettings,
@@ -159,6 +162,7 @@ export const ResortFinalizedMap = ({
         mapPresentation={presentation}
         initialViewport={initialViewport}
         showMapToolbar={showToolbar}
+        showContextLabels={showContextLabels}
         courseColorMode={courseColorMode}
         onCourseColorModeChange={onCourseColorModeChange}
         mapDisplaySettings={mapDisplaySettings}

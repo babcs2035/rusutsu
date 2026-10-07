@@ -20,7 +20,7 @@ export function ObservationTimes({
   }
   return (
     <div
-      className={`min-w-0 space-y-0.5 text-sm leading-5 text-slate-600 ${align === "right" ? "ml-auto text-right" : "text-left"}`}
+      className={`min-w-0 space-y-0.5 text-xs leading-4 text-slate-600 md:text-sm md:leading-5 ${align === "right" ? "ml-auto text-right" : "text-left"}`}
       role="group"
       aria-label="情報取得日時"
     >
@@ -29,7 +29,10 @@ export function ObservationTimes({
           key={date}
           className={`flex min-w-0 items-start gap-1.5 ${align === "right" ? "justify-end" : ""}`}
         >
-          <Clock3 aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+          <Clock3
+            aria-hidden="true"
+            className="mt-0.5 size-3 shrink-0 md:size-4"
+          />
           {/* 狭い画面では対象と日時の間で折り返し、日時の途中では切らない */}
           <span className="min-w-0">
             {groups.size > 1 ? `${labels.join(", ")}: ` : ""}

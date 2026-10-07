@@ -87,13 +87,13 @@ test("通常の斜度モードはコース全状態で元の色と不透明度�
   assert.deepEqual(getLineColor(state, "course"), [
     "case",
     ["literal", false],
-    "#94A3B8",
+    "#64748B",
     ["get", "color"],
   ]);
   assert.deepEqual(getLineOpacity(state, "course"), [
     "case",
     ["literal", false],
-    0.4,
+    0.72,
     1,
   ]);
   assert.deepEqual(

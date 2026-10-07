@@ -261,8 +261,8 @@ export function OverviewTab({
       : section?.observedAt;
     return (
       <div className="space-y-3">
-        {/* 上の「ゲレンデ／SNS…」タブ（h-11 / md:h-12）の真下で固定する */}
-        <div className="sticky top-11 z-10 -mx-3 -mt-3 flex items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 py-2 md:top-12 md:-mx-4 md:-mt-4 md:px-4">
+        {/* 上の「ゲレンデ／SNS…」タブ（h-9 / md:h-10）の真下で固定する */}
+        <div className="sticky top-9 z-10 -mx-3 -mt-3 flex items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 py-1.5 md:top-10 md:-mx-4 md:-mt-4 md:px-4">
           <button
             type="button"
             onClick={onCloseTerrainDetail}

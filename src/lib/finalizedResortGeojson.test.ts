@@ -255,6 +255,8 @@ test("map data follows finalized, measured, then before priority", async () => {
           piste: "○",
           snowboard: "○",
           searchWord: "テスト　白樺ゲレンデ",
+          image: "https://example.com/course.jpg",
+          youtubeUrl: "https://youtu.be/abcdefghijk",
         },
       ],
     );
@@ -494,7 +496,16 @@ test("map data follows finalized, measured, then before priority", async () => {
     assert.equal(mergedCourse?.displayName, "白樺ゲレンデ");
     assert.equal(mergedCourse?.sectionName, "上部");
     assert.equal(mergedCourse?.properties.level, "中級");
+    assert.equal(mergedCourse?.latestStatusName, "白樺ゲレンデ上部");
     assert.equal(mergedCourse?.properties.searchWord, "テスト　白樺ゲレンデ");
+    assert.equal(
+      mergedCourse?.properties.image,
+      "https://example.com/course.jpg",
+    );
+    assert.equal(
+      mergedCourse?.properties.youtubeUrl,
+      "https://youtu.be/abcdefghijk",
+    );
     // latest_data の note は latestNote に移し、基本情報の note と混ぜない
     assert.equal(mergedCourse?.properties.latestNote, "圧雪");
     assert.equal(mergedCourse?.properties.status, "○");
@@ -503,6 +514,7 @@ test("map data follows finalized, measured, then before priority", async () => {
     const mergedLift = mergedData?.lifts?.features[0];
     assert.equal(mergedData?.lifts?.baseSource, "lift_detail");
     assert.equal(mergedLift?.properties.type, "ペアリフト");
+    assert.equal(mergedLift?.latestStatusName, "第1ペア");
     assert.equal(mergedLift?.properties.status, "×");
     assert.deepEqual(mergedData?.lifts?.sourceUrls, [
       "https://example.com/lift",

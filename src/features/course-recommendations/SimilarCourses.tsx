@@ -6,39 +6,50 @@ import {
   useEffect,
   useState,
 } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useFavorites } from "@/features/favorites/FavoritesProvider";
 import type { SelectedMapFeature } from "@/features/map/types";
+import { FeatureSectionTitle } from "@/features/resort-detail/components/FeatureHeadline";
 import type { FinalizedCourseGroup } from "@/features/resort-detail/types";
 import type {
   CourseRecommendation,
   CourseRecommendationSearch,
 } from "@/server/course-recommendations/repository";
+import { DetailButton } from "@/shared/components/DetailButton";
 import { recommendationGrade, recommendationSelection } from "./algorithm";
+import { CourseComparisonDialog } from "./CourseComparisonDialog";
 import { selectCachedRecommendations } from "./cache";
 import { useRecommendationCache } from "./RecommendationProvider";
+
+const GRADE_CLASS = {
+  A: "bg-emerald-600 text-white",
+  B: "bg-amber-400 text-amber-950",
+  C: "bg-slate-200 text-slate-700",
+};
 
 export const CourseNavigationContext = createContext<
   ((resortId: string, feature: SelectedMapFeature) => void) | null
 >(null);
+/**
+ * 地図のラベルと同じ省略名（スキー場ID → 表示名）。
+ * 推薦結果の名前はAPIの版によって正式名のことがあるので、表示はこちらを優先する。
+ */
+export const ResortLabelNameContext = createContext<Map<string, string> | null>(
+  null,
+);
 export function SimilarCourses({
   resortId,
+  resortName,
   courseGroup,
 }: {
   resortId: string;
+  resortName: string;
   courseGroup: FinalizedCourseGroup;
 }) {
   const favorites = useFavorites();
   const navigate = useContext(CourseNavigationContext);
+  const labelNames = useContext(ResortLabelNameContext);
   const cache = useRecommendationCache();
-  const routes = [
-    ...new Set(
-      courseGroup.courses
-        .map(c => c.routeKey)
-        .filter((key): key is string => !!key),
-    ),
-  ];
   const selected = recommendationSelection(courseGroup.id, courseGroup.courses);
   const key =
     favorites?.ready && favorites.ids.length && selected && cache
@@ -51,6 +62,9 @@ export function SimilarCourses({
     error?: boolean;
   } | null>(null);
   const [retry, setRetry] = useState(0);
+  const [comparison, setComparison] = useState<CourseRecommendation | null>(
+    null,
+  );
   useEffect(() => {
     void retry;
     if (!key || !cache) return;
@@ -89,7 +103,7 @@ export function SimilarCourses({
       clearTimeout(deadline);
     };
   }, [key, retry, cache, resortId]);
-  if (!key || !navigate) return null;
+  if (!key) return null;
   const cached = cache?.store.peek(resortId);
   const immediate =
     cached && selected ? selectCachedRecommendations(cached, selected) : null;
@@ -103,24 +117,17 @@ export function SimilarCourses({
       ? state
       : null;
   return (
-    <section
-      className="border-t border-gray-200 pt-3"
-      aria-label="似ているコース"
-    >
-      <h3 className="text-sm font-semibold">似ているコース</h3>
-      <p className="mb-2 text-xs text-gray-500">
-        お気に入りのスキー場から、{routes.length > 1 ? "メインルートの" : ""}
-        急斜面の斜度・長さを中心に、圧雪状態や形の近い候補を優先して表示します。
-      </p>
+    <section className="min-w-0" aria-label="類似コース">
+      <FeatureSectionTitle aside="お気に入りのスキー場から">
+        類似コース
+      </FeatureSectionTitle>
       {!current ? (
-        <p className="text-xs text-gray-500">検索中…</p>
+        <p role="status" className="py-1 text-xs text-slate-500">
+          検索中…
+        </p>
       ) : current.error || current.status === "api_outdated" ? (
-        <div>
-          <p className="mb-2 text-xs text-gray-500">
-            {current.status === "api_outdated"
-              ? "コース比較の更新が必要なため、現在は取得できません。待っても自動では表示されません。"
-              : "似ているコースを取得できませんでした。"}
-          </p>
+        <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
+          <p>類似コースを取得できませんでした。</p>
           <Button
             variant="outline"
             size="sm"
@@ -130,92 +137,106 @@ export function SimilarCourses({
               setRetry(n => n + 1);
             }}
           >
-            再度検索する
+            再検索
           </Button>
         </div>
       ) : current.results.length === 0 ? (
-        <p className="text-xs text-gray-500">
+        <p className="py-1 text-xs text-slate-500">
           {current.status === "source_unavailable"
-            ? "このコースは現在、類似コースを検索するためのデータがありません。"
+            ? "比較に必要なコースデータがありません。"
             : current.status === "candidates_unavailable"
-              ? "お気に入りのスキー場に、比較できるコースデータがありません。"
+              ? "お気に入りに比較できるコースデータがありません。"
               : current.status === "no_other_favorites"
-                ? "ほかのスキー場をお気に入りに追加すると、似ているコースを探せます。"
-                : "条件を満たすコースはありません。"}
+                ? "ほかのスキー場をお気に入りに追加すると表示されます。"
+                : "条件に合うコースがありません。"}
         </p>
       ) : (
-        <ol className="flex flex-col gap-2">
-          {current.results.map(course => {
-            const rating = recommendationGrade(course.score);
-            return (
-              <li key={`${course.resortId}:${course.key}`}>
-                <button
-                  type="button"
-                  className="w-full rounded-lg border border-gray-200 p-3 text-left hover:bg-blue-50 focus-visible:ring-2 focus-visible:ring-blue-600"
-                  onClick={() => navigate(course.resortId, course.selected)}
-                >
-                  <p className="text-sm font-semibold text-blue-800">
-                    {course.name}
-                  </p>
-                  <p className="my-1 flex flex-wrap items-center gap-2 text-xs">
-                    <Badge
-                      variant={rating.grade === "A" ? "default" : "secondary"}
-                    >
-                      {rating.grade} · {rating.label}
-                    </Badge>
-                    <span className="text-gray-600">
-                      地形の近さ{" "}
-                      {(Math.floor(course.score * 10) / 10).toFixed(1)} / 100点
+        <table className="w-full table-fixed overflow-hidden rounded-lg border border-slate-200 text-left">
+          <colgroup>
+            <col className="w-[4.5rem]" />
+            <col className="w-[24%]" />
+            <col />
+            <col className="w-16" />
+          </colgroup>
+          <thead className="bg-slate-50 text-[11px] text-slate-500">
+            <tr>
+              <th scope="col" className="px-2 py-1 font-medium">
+                類似度
+              </th>
+              <th scope="col" className="px-2 py-1 font-medium">
+                スキー場
+              </th>
+              <th scope="col" className="px-2 py-1 font-medium">
+                コース
+              </th>
+              <th scope="col">
+                <span className="sr-only">比較</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {current.results.slice(0, 3).map(result => {
+              const course = {
+                ...result,
+                resortName:
+                  labelNames?.get(result.resortId) ?? result.resortName,
+              };
+              const rating = recommendationGrade(course.score);
+              return (
+                <tr key={`${course.resortId}:${course.key}`}>
+                  <td className="px-2 py-1.5" title={rating.label}>
+                    <span className="flex items-center gap-1">
+                      <span
+                        className={`inline-flex size-5 shrink-0 items-center justify-center rounded text-[11px] font-bold ${GRADE_CLASS[rating.grade]}`}
+                      >
+                        {rating.grade}
+                      </span>
+                      <span className="text-sm font-bold tabular-nums text-slate-900">
+                        {Math.round(course.score)}
+                        <span className="text-[10px] font-normal text-slate-500">
+                          点
+                        </span>
+                      </span>
                     </span>
-                  </p>
-                  <p className="text-xs text-gray-600">
-                    {course.resortName} ·{" "}
-                    {Math.round(course.distance).toLocaleString()}m · 急な区間{" "}
-                    {course.steepSlope.toFixed(1)}°（50m平均） · 約
-                    {Math.round(course.steepDistance).toLocaleString()}m
-                  </p>
-                  <p className="mt-1 text-xs text-gray-600">
-                    {rating.grade === "C"
-                      ? "条件の違いが大きい参考候補です"
-                      : course.steepSlopeDifference < 0.25 &&
-                          course.steepDistanceDifference < 0.25
-                        ? "急斜面の斜度・長さともに近い"
-                        : course.steepSlopeDifference < 0.25
-                          ? "急斜面の斜度が近い"
-                          : course.steepDistanceDifference < 0.25
-                            ? "急な区間の長さが近い"
-                            : "全体の条件から選んだ候補です"}
-                  </p>
-                  {course.shapeDifferent && (
-                    <p className="mt-1 text-xs text-gray-600">
-                      コースの曲がり方が異なる参考候補です
-                    </p>
-                  )}
-                  {course.groomingDifferent && (
-                    <p className="mt-1 text-xs font-medium text-amber-800">
-                      圧雪・非圧雪の状態が異なる参考候補です
-                    </p>
-                  )}
-                </button>
-              </li>
-            );
-          })}
-        </ol>
+                  </td>
+                  <td className="truncate px-2 py-1.5 text-xs text-slate-600">
+                    {course.resortName}
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <button
+                      type="button"
+                      disabled={!navigate}
+                      title={`${course.resortName} ${course.name}を地図で見る`}
+                      className="block w-full truncate text-left text-sm font-semibold text-blue-700 underline-offset-2 hover:underline disabled:text-slate-900 disabled:no-underline focus-visible:outline-2 focus-visible:outline-blue-600"
+                      onClick={() =>
+                        navigate?.(course.resortId, course.selected)
+                      }
+                    >
+                      {course.name}
+                    </button>
+                  </td>
+                  <td className="py-1 pr-1.5">
+                    <DetailButton
+                      compact
+                      className="ml-auto"
+                      aria-label={`${course.resortName} ${course.name}との比較詳細`}
+                      onClick={() => setComparison(course)}
+                    />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       )}
-      {current && !current.error && current.results.length > 0 && (
-        <details className="mt-2 text-xs text-gray-500">
-          <summary className="cursor-pointer">評価の見方</summary>
-          <p className="mt-1">
-            急斜面の斜度50%、急な区間の長さ25%、全体の斜度分布15%、全長10%で計算。
-            Aは80点以上、Bは60点以上、Cは60点未満です。
-            A〜Cは選択中のコースに対する近さを表します。
-            点数は地形データの比較値で、体感の一致率や難易度の保証ではありません。
-          </p>
-          <p className="mt-1">
-            最も急な50m区間の平均斜度と、その斜度の80%以上になる区間の総距離を比較します。
-            50m未満のコースは全長を使用します。
-          </p>
-        </details>
+      {comparison && (
+        <CourseComparisonDialog
+          resortId={resortId}
+          resortName={resortName}
+          courseGroup={courseGroup}
+          candidate={comparison}
+          onClose={() => setComparison(null)}
+        />
       )}
     </section>
   );

@@ -46,7 +46,7 @@ export function ResortComment({
   return (
     <div className="space-y-1">
       {fallback && (
-        <div className="whitespace-pre-line break-words text-sm leading-relaxed text-slate-700">
+        <div className="whitespace-pre-line break-words text-sm leading-relaxed text-slate-700 md:text-base">
           {parts.map(part => {
             const key = offset;
             offset += part.text.length;
@@ -67,14 +67,19 @@ export function ResortComment({
         </div>
       )}
       {links.length > 0 && (
-        <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs md:text-sm">
           {links.map((url, index) => (
             <ExternalLinkComponent
               key={url}
               href={url}
               title={url}
-              className="min-h-8 font-medium text-blue-700 underline underline-offset-2"
-              icon={<ExternalLink aria-hidden="true" className="size-3.5" />}
+              className="min-h-6 font-medium text-blue-700 underline underline-offset-2 md:min-h-8"
+              icon={
+                <ExternalLink
+                  aria-hidden="true"
+                  className="size-3 md:size-3.5"
+                />
+              }
             >
               公式情報{links.length > 1 ? ` ${index + 1}` : ""}を見る
             </ExternalLinkComponent>

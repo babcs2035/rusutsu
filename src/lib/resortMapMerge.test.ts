@@ -54,6 +54,7 @@ test("fixed IDs keep same-name attributes and explicit unmapped status separate"
   });
   assert.equal(result.features[0].properties.level, "上級");
   assert.equal(result.features[1].properties.level, "初級");
+  assert.deepEqual(result.features[1].properties.status_mapping_names, []);
   assert.equal(result.features[0].properties.status, "○");
   assert.notEqual(result.features[1].properties.status, "○");
   assert.equal(result.features[2].properties.status, "○");
@@ -410,6 +411,11 @@ for (const [label, merge] of [
       statusItems: [{ name: "新名", status: "×" }],
     });
     assert.equal(matched.features[0].properties.status, "×");
+    assert.equal(matched.features[0].properties.latest_status_name, "新名");
+    assert.deepEqual(matched.features[0].properties.status_mapping_names, [
+      "旧名",
+      "新名",
+    ]);
     assert.deepEqual(matched.issues, []);
     const ambiguous = merge({
       ...options,
@@ -419,6 +425,7 @@ for (const [label, merge] of [
       ],
     });
     assert.equal(ambiguous.features[0].properties.status, undefined);
+    assert.equal(ambiguous.features[0].properties.latest_status_name, null);
     assert(
       ambiguous.issues.some(issue => issue.message.includes("Multiple mapped")),
     );

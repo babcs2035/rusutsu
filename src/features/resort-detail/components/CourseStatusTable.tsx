@@ -1,7 +1,7 @@
 "use client";
 
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
-import { ChevronRight, Info, X } from "lucide-react";
+import { Info, X } from "lucide-react";
 import { type ReactNode, useId } from "react";
 import {
   Dialog,
@@ -12,6 +12,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import type { CourseStatusSummary } from "@/lib/courseStatusSummary";
+import { DetailButton } from "@/shared/components/DetailButton";
 import { NotFetchedBadge, StatusMark } from "./CompactInfo";
 
 /** ○△×の意味と数え方の説明。表・チップのどちらからも同じ内容を開く。 */
@@ -19,19 +20,25 @@ export function StatusLegendDialog({
   name,
   kind = "course",
   className,
+  compact = false,
 }: {
   name: string;
   kind?: "course" | "lift";
   className?: string;
+  /** 見出しの横に置くときは行の高さを増やさない大きさにする */
+  compact?: boolean;
 }) {
   const isLift = kind === "lift";
   return (
     <Dialog>
       <DialogTrigger
         aria-label={`${name}の記号と集計方法について`}
-        className={`flex size-7 shrink-0 items-center justify-center rounded-full text-slate-600 hover:bg-slate-200 focus-visible:outline-2 focus-visible:outline-blue-600 ${className ?? ""}`}
+        className={`flex shrink-0 items-center justify-center rounded-full text-slate-600 hover:bg-slate-200 focus-visible:outline-2 focus-visible:outline-blue-600 ${compact ? "size-5 md:size-6" : "size-7"} ${className ?? ""}`}
       >
-        <Info className="size-4" aria-hidden="true" />
+        <Info
+          className={compact ? "size-3.5 md:size-4" : "size-4"}
+          aria-hidden="true"
+        />
       </DialogTrigger>
       <DialogPortal>
         <DialogOverlay className="z-[900]" />
@@ -110,64 +117,69 @@ export function CourseStatusTable({
         { label: "×", count: summary?.closed, tone: "text-slate-700" },
         { label: "不明", count: summary?.unknown, tone: "text-slate-700" },
       ];
+  // スマホではコースとリフトを2列に並べるので、1列あたり約170pxに収める。
+  // 見出し行（名前・件数・説明・詳細）→ 記号と件数 → 出典の順に積む。
   return (
-    <section className="min-w-0" aria-labelledby={headingId}>
-      <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+    <section
+      className="flex min-w-0 flex-col gap-1 rounded-lg border border-slate-200 px-1.5 py-1.5 md:px-2.5 md:py-2"
+      aria-labelledby={headingId}
+    >
+      <div className="flex min-w-0 items-center">
         <h3
           id={headingId}
-          className="whitespace-nowrap text-base font-semibold text-slate-900 sm:text-lg"
+          className="min-w-0 truncate text-sm font-semibold text-slate-900 md:text-base"
         >
           {name}
           {summary && (
-            <span className="whitespace-nowrap text-sm font-normal text-slate-700">
-              {`（${summary.total}${isLift ? "本" : "区間"}）`}
+            <span className="ml-0.5 text-[11px] font-normal text-slate-600 md:ml-1 md:text-sm">
+              {`${summary.total}${isLift ? "本" : "区間"}`}
             </span>
           )}
         </h3>
+        {!unavailable && <StatusLegendDialog name={name} kind={kind} compact />}
+        {onShowDetail && (
+          <DetailButton
+            compact
+            className="ml-auto md:min-h-7 md:py-1 md:pr-2 md:pl-3 md:text-sm"
+            onClick={onShowDetail}
+          >
+            {detailLabel}
+          </DetailButton>
+        )}
+      </div>
+      {/* 記号と数字は列幅いっぱいに均等に散らす */}
+      <div
+        role="group"
+        aria-labelledby={headingId}
+        className="flex min-w-0 items-center justify-between gap-1"
+      >
         {unavailable && (
           <NotFetchedBadge
             title={`${name}の営業状況はまだ取得できていません`}
           />
         )}
-        {source && <div className="min-w-0">{source}</div>}
-      </div>
-      {/* 表だと列が均等割りで間延びするので、中身の幅だけ使うチップを横に並べる */}
-      <div
-        role="group"
-        aria-labelledby={headingId}
-        className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-slate-200 px-2.5 py-1.5"
-      >
         {columns.map(column => (
-          <div key={column.label} className="flex items-center gap-1.5">
+          <div key={column.label} className="flex items-center gap-0.5">
             {column.label === "不明" ? (
-              <span className={`text-sm font-semibold ${column.tone}`}>
+              <span
+                className={`text-[11px] font-semibold md:text-xs ${column.tone}`}
+              >
                 不明
               </span>
             ) : (
               <StatusMark
                 symbol={column.label as "○" | "△" | "×"}
                 lift={isLift}
+                size="sm"
               />
             )}
-            <span className="text-lg font-bold tabular-nums text-slate-900">
+            <span className="text-base leading-6 font-bold tabular-nums text-slate-900 md:text-lg md:leading-7">
               {column.count ?? "—"}
             </span>
           </div>
         ))}
-        {!unavailable && (
-          <StatusLegendDialog name={name} kind={kind} className="ml-auto" />
-        )}
-        {onShowDetail && (
-          <button
-            type="button"
-            onClick={onShowDetail}
-            className="flex min-h-7 shrink-0 items-center gap-0.5 rounded-full border border-blue-200 bg-blue-50 py-1 pr-2 pl-3 text-sm font-semibold text-blue-700 hover:border-blue-300 hover:bg-blue-100 active:bg-blue-200"
-          >
-            {detailLabel}
-            <ChevronRight className="size-4" aria-hidden="true" />
-          </button>
-        )}
       </div>
+      {source && <div className="min-w-0">{source}</div>}
     </section>
   );
 }

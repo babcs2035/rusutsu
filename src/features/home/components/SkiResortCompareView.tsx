@@ -167,7 +167,7 @@ export const SkiResortCompareView = ({
           >
             <X size={18} strokeWidth={2.5} />
           </Button>
-          <AccountButton />
+          {!featureDetailOverlay && <AccountButton />}
         </div>
       </div>
 

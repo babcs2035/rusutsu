@@ -38,7 +38,7 @@ test("未取得は記号の列を出さず、不明の件数だけを出す", ()
   assert.match(text, /未取得/);
   assert.match(text, /40区間/);
   // ○△×のアイコンは出さない（全部0にしかならないため）
-  assert.doesNotMatch(html, /stroke-width="3.25"/);
+  assert.doesNotMatch(html, /stroke-width="3"/);
 });
 
 test("地図のデータもないときは件数を出さない", () => {
@@ -59,6 +59,6 @@ test("リフトも太線の記号と4つの件数を表示する", () => {
   );
   assert.match(html, /リフト/);
   assert.match(html.replace(/<[^>]+>/g, ""), /4本/);
-  assert.equal((html.match(/stroke-width="3.25"/g) ?? []).length, 3);
-  assert.match(html, /size-5/);
+  assert.equal((html.match(/stroke-width="3"/g) ?? []).length, 3);
+  assert.match(html, /size-3.5/);
 });

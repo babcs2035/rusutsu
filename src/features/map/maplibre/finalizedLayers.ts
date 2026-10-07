@@ -32,7 +32,16 @@ export const FINALIZED_LAYER = {
   liftHit: "finalized-lift-hit",
 } as const;
 
-export const DIMMED_LINE_COLOR = "#94A3B8";
+/**
+ * 何かを選択しているときの、それ以外の線。
+ * 薄くしすぎると形も位置も分からなくなるので、コースは濃いめの灰色に
+ * 白い縁を残して形を読めるようにする。リフトは目印になるので、
+ * コースより濃い紺で実線にして、どこにあるかをはっきり残す。
+ */
+const DIMMED_STYLE = {
+  course: { color: "#64748B", opacity: 0.72, casingOpacity: 0.5 },
+  lift: { color: "#1E293B", opacity: 0.8, casingOpacity: 0.55 },
+} as const;
 export const MUTED_LINE_OPACITY = 0.2;
 export const ARROW_ICON_ID = "finalized-direction-arrow";
 
@@ -194,7 +203,7 @@ export const getLineOpacity = (
 ): DataDrivenPropertyValueSpecification<number> => [
   "case",
   isDimmedExpression(state, kind),
-  0.4,
+  DIMMED_STYLE[kind].opacity,
   kind === "lift" ? LINE_STATUS_OPACITY : 1,
 ];
 
@@ -204,7 +213,7 @@ export const getLineColor = (
 ): DataDrivenPropertyValueSpecification<string> => [
   "case",
   isDimmedExpression(state, kind),
-  DIMMED_LINE_COLOR,
+  DIMMED_STYLE[kind].color,
   ["get", "color"],
 ];
 
@@ -242,13 +251,16 @@ export const getLineWidth = (
   ]);
 };
 
-/** 流れる破線の濃さ。選択中の沈み込みを反映する */
+/**
+ * 流れる破線の濃さ。
+ * 選択中のほかのリフトは流れを止めて、紺の実線だけを目印として残す。
+ */
 export const getFlowOpacity = (
   state: FinalizedStyleState,
 ): DataDrivenPropertyValueSpecification<number> => [
   "case",
   isDimmedExpression(state, "lift"),
-  ["*", FLOW_STATUS_OPACITY, 0.4],
+  0,
   FLOW_STATUS_OPACITY,
 ];
 
@@ -263,7 +275,7 @@ export const getBlinkOpacity = (
 ): DataDrivenPropertyValueSpecification<number> => [
   "case",
   isDimmedExpression(state, "lift"),
-  0.4,
+  DIMMED_STYLE.lift.opacity,
   blink,
 ];
 
@@ -283,7 +295,7 @@ export const getCasingOpacity = (
 ): DataDrivenPropertyValueSpecification<number> => [
   "case",
   isDimmedExpression(state, kind),
-  0.12,
+  DIMMED_STYLE[kind].casingOpacity,
   state.tileVariant === "photo" ? 0.74 : 0.56,
 ];
 

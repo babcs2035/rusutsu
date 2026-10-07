@@ -144,6 +144,7 @@ function MapLibreResortMapContent({
   mapPresentation = "default",
   initialViewport = null,
   showMapToolbar = true,
+  showContextLabels = false,
   mapTileVariant: controlledMapTileVariant,
   onMapTileVariantChange,
   courseColorMode: controlledCourseColorMode,
@@ -892,6 +893,10 @@ function MapLibreResortMapContent({
     ),
   });
 
+  const contextSelectedLines = useMemo(
+    () => [...(selectedCourses ?? []), ...(selectedLift ? [selectedLift] : [])],
+    [selectedCourses, selectedLift],
+  );
   useLineLabelMarkers({
     map,
     isReady,
@@ -900,6 +905,8 @@ function MapLibreResortMapContent({
     selectedFeature: selectedFinalizedFeature,
     showCourseNames: mapDisplaySettings.showCourseNames,
     showLiftNames: mapDisplaySettings.showLiftNames,
+    showContextLabels,
+    selectedLines: contextSelectedLines,
     onSelectFeature: setSelectedFinalizedFeature,
   });
 

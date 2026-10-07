@@ -7,6 +7,7 @@ import {
 } from "@/features/course-recommendations/algorithm";
 import type { SelectedMapFeature } from "@/features/map/types";
 import { prisma } from "@/lib/prisma";
+import { getResortLabelName } from "@/lib/resortAliases";
 
 type Unavailable =
   | "no_favorites"
@@ -22,6 +23,7 @@ async function loadRecommendationPool(resortId: string, favoriteIds: string[]) {
     select: {
       id: true,
       nameJa: true,
+      shortName: true,
       sourceResortIds: true,
       isActive: true,
       mergedInto: {
@@ -69,13 +71,16 @@ async function loadRecommendationPool(resortId: string, favoriteIds: string[]) {
       row.steepDistance !== null &&
       Number.isFinite(row.steepDistance),
   );
+  // 地図のラベルと同じ省略名にする
+  const labelName = (r: (typeof resorts)[number]) =>
+    getResortLabelName(r.id, r.nameJa, r.shortName);
   const convert = (row: (typeof rows)[number]): RecommendationCandidate => ({
     ...row,
     steepSlope: row.steepSlope as number,
     steepDistance: row.steepDistance as number,
     shape: row.shape as "normal" | "winding",
     grooming: row.grooming as Grooming,
-    resortName: byCanonical.get(row.resortId)?.nameJa ?? sourceResort.nameJa,
+    resortName: labelName(byCanonical.get(row.resortId) ?? sourceResort),
   });
   const sources = rows.filter(row => row.resortId === sourceId).map(convert);
   if (!sources.length) return { status: "source_unavailable" as const };

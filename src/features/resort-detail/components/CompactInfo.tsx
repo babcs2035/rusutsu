@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import { sourceUrls } from "../utils/currentConditions";
 import { normalizeIconSymbol, type StatusSymbol } from "../utils/detailMetrics";
+import { withTextFragment } from "../utils/featureSources";
 import {
   formatOperationDate,
   formatPublishedDate,
@@ -16,6 +17,8 @@ export function SourceLine({
   showFetched = true,
   showLabel = true,
   showPublished = true,
+  highlights = [],
+  compact = false,
 }: {
   label: string;
   time?: string | null;
@@ -24,6 +27,10 @@ export function SourceLine({
   showFetched?: boolean;
   showLabel?: boolean;
   showPublished?: boolean;
+  /** 出典ページ内で、この文字列が書かれた箇所へ直接飛ばす */
+  highlights?: string[];
+  /** スマホの狭い列に添えるときは文字と枠を小さくする（PCは通常の大きさ） */
+  compact?: boolean;
 }) {
   const date = formatOperationDate(time);
   const published = [
@@ -40,35 +47,38 @@ export function SourceLine({
         }))
       : [{ url: undefined, publishedDate: undefined }];
   return (
-    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 break-words text-sm leading-5 text-slate-700">
+    <div
+      className={`flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 break-words text-slate-700 ${compact ? "text-xs leading-4 md:text-sm md:leading-5" : "text-sm leading-5"}`}
+    >
       {showLabel && <span>{label}</span>}
-      {showFetched && (
-        <span>
-          取得: {date ?? "日時不明"}
-          {date ? "（日本時間）" : ""}
-        </span>
-      )}
+      {showFetched && date && <span>取得: {date}（日本時間）</span>}
       {rows.map((row, index) => (
         <span
           key={row.url ?? row.publishedDate ?? index}
-          className="inline-flex min-h-7 min-w-0 max-w-full shrink-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 rounded-md border border-blue-100 bg-blue-50 px-2 py-0.5"
+          className={`inline-flex min-w-0 max-w-full shrink-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 rounded-md border border-blue-100 bg-blue-50 py-0.5 ${compact ? "min-h-5 px-1.5 md:min-h-7 md:px-2" : "min-h-7 px-2"}`}
         >
           {row.url ? (
             <ExternalLinkComponent
-              href={row.url}
-              title={row.url}
+              href={withTextFragment(row.url, highlights)}
+              title={
+                highlights.length
+                  ? `公式サイトの「${highlights.join("」「")}」の箇所を開く`
+                  : row.url
+              }
               className="inline-flex shrink-0 items-center gap-0.5 font-medium text-blue-700 underline underline-offset-2 hover:text-blue-800"
               aria-label={`${label}の出典を開く${rows.length > 1 ? `（${index + 1}）` : ""}`}
             >
               出典{rows.length > 1 ? index + 1 : ""}
-              <ExternalLink className="size-3.5" />
+              <ExternalLink
+                className={compact ? "size-3 md:size-3.5" : "size-3.5"}
+              />
             </ExternalLinkComponent>
           ) : (
             <span className="font-medium text-blue-700">出典未登録</span>
           )}
-          {showPublished && (
+          {showPublished && row.publishedDate && (
             <span className="min-w-0 max-w-full text-blue-800">
-              {row.publishedDate ?? "日時不明"}
+              {row.publishedDate}
             </span>
           )}
         </span>
@@ -84,7 +94,7 @@ export function NotFetchedBadge({ title }: { title?: string }) {
   return (
     <span
       title={title ?? "この情報はまだ取得できていません"}
-      className="inline-flex shrink-0 items-center rounded-md border border-amber-300 bg-amber-100 px-1.5 py-0.5 text-sm font-semibold text-amber-800"
+      className="inline-flex shrink-0 items-center rounded-md border border-amber-300 bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-800 md:text-sm"
     >
       未取得
     </span>
@@ -122,10 +132,14 @@ export function operationText(
 export function StatusMark({
   symbol,
   lift = false,
+  size = "md",
 }: {
   symbol: StatusSymbol | null;
   lift?: boolean;
+  /** sm: 件数の集計チップのように、数字が主役で記号は添えるだけの場所 */
+  size?: "sm" | "md";
 }) {
+  const boxClassName = size === "sm" ? "size-3.5 md:size-4" : "size-5";
   const label =
     symbol === "○"
       ? lift
@@ -153,12 +167,20 @@ export function StatusMark({
       role="img"
       title={label}
       aria-label={label}
-      className={`inline-flex size-5 shrink-0 items-center justify-center align-middle leading-none ${symbol === "○" ? "text-emerald-700" : symbol === "△" ? "text-amber-800" : "text-slate-700"}`}
+      className={`inline-flex ${boxClassName} shrink-0 items-center justify-center align-middle leading-none ${symbol === "○" ? "text-emerald-700" : symbol === "△" ? "text-amber-800" : "text-slate-700"}`}
     >
       {Icon ? (
-        <Icon aria-hidden="true" className="size-5" strokeWidth={3.25} />
+        <Icon
+          aria-hidden="true"
+          className={boxClassName}
+          strokeWidth={size === "sm" ? 3 : 3.25}
+        />
       ) : (
-        <span className="text-lg font-bold">—</span>
+        <span
+          className={size === "sm" ? "text-sm font-bold" : "text-lg font-bold"}
+        >
+          —
+        </span>
       )}
     </span>
   );
