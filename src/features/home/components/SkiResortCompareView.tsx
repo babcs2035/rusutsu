@@ -5,7 +5,6 @@ import { X } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { AccountButton } from "@/features/favorites/AccountButton";
 import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
 import type { JapanResortMapProps } from "@/features/map/types";
 import { useBreakpointValue } from "@/hooks/use-breakpoint-value";
@@ -167,7 +166,6 @@ export const SkiResortCompareView = ({
           >
             <X size={18} strokeWidth={2.5} />
           </Button>
-          {!featureDetailOverlay && <AccountButton />}
         </div>
       </div>
 

@@ -1,8 +1,9 @@
 "use client";
 
-import { Check, Maximize2, Minimize2, Plus, X } from "lucide-react";
+import { Maximize2, Minimize2, X } from "lucide-react";
 import type {
   ComponentType,
+  CSSProperties,
   ChangeEvent as ReactChangeEvent,
   FormEvent as ReactFormEvent,
   PointerEvent as ReactPointerEvent,
@@ -14,11 +15,8 @@ import { z } from "zod";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FavoriteButton } from "@/features/favorites/FavoriteButton";
-import { FavoriteCompareButton } from "@/features/favorites/FavoriteCompareButton";
 import { useFavorites } from "@/features/favorites/FavoritesProvider";
-import { REGION_PREFECTURES } from "@/features/filters/constants";
 import type { Filters } from "@/features/filters/types";
-import { getActiveFilterLabels } from "@/features/filters/utils/filterLabels";
 import { DEFAULT_LIFT_TICKET_SEARCH_INPUT } from "@/features/lift-ticket/utils/calculateLiftTicket";
 import { useScreenState } from "@/features/map/session/useScreenState";
 import type {
@@ -32,6 +30,7 @@ import { DEFAULT_MAP_DISPLAY_SETTINGS } from "@/features/map/utils/mapDisplaySet
 import { SkiResortDetailView } from "@/features/resort-detail/SkiResortDetailView";
 import { cn } from "@/lib/utils";
 import { AnimatedPanel } from "@/shared/components/AnimatedPanel";
+import { CompareResortButton } from "@/shared/components/CompareResortButton";
 import { CopyResortNameButton } from "@/shared/components/CopyResortNameButton";
 import { FormerResortNames } from "@/shared/components/FormerResortNames";
 import { RubyText } from "@/shared/components/RubyText";
@@ -45,6 +44,7 @@ import type {
   NullableSkiResortDetail,
   SkiResortDetail,
 } from "@/types/skiResorts";
+import { ComparisonActions } from "../components/ComparisonActions";
 import { CompareMapHeaderBar } from "../components/compare/CompareMapHeaderBar";
 import type { CompareSlopeSelection } from "../components/compare/CompareSlopeMapBoard";
 import {
@@ -54,9 +54,12 @@ import {
 import type { CompareLeftPane } from "../components/compare/types";
 import { DesktopSearchPanel } from "../components/DesktopSearchPanel";
 import { MobileResultsSheet } from "../components/MobileResultsSheet";
-import { MobileSearchButton } from "../components/MobileSearchButton";
 import { MobileSearchOverlay } from "../components/MobileSearchOverlay";
-import { MobileSearchTopBarShell } from "../components/MobileSearchTopBarShell";
+import {
+  MOBILE_SEARCH_TOP_BAR_HEIGHT,
+  MobileSearchTopBarShell,
+} from "../components/MobileSearchTopBarShell";
+import { SearchButton } from "../components/SearchButton";
 import { SkiResortCompareView } from "../components/SkiResortCompareView";
 import type { MapViewRestoreRequest } from "../types";
 
@@ -88,7 +91,6 @@ type Props = {
   isCompareLoading: boolean;
   isCompareOpen: boolean;
   isFilterEditorOpen: boolean;
-  isListSheetOpen: boolean;
   isMobileFilterOverlayOpen: boolean;
   isPending: boolean;
   isSidePanelLayout: boolean;
@@ -174,7 +176,6 @@ export const HomeLayout = ({
   isCompareLoading,
   isCompareOpen,
   isFilterEditorOpen,
-  isListSheetOpen,
   isMobileFilterOverlayOpen,
   isPending,
   isSidePanelLayout,
@@ -315,10 +316,6 @@ export const HomeLayout = ({
   const mapSearchResultResortIds = hasActiveFilters ? filteredResortIds : [];
   const shouldShowMobileSearchScreen =
     !isSidePanelLayout && isMobileFilterOverlayOpen;
-  // 未検索状態で比較セットを構築した場合（詳細シート/リストから追加）も
-  // 「N 件を比較」ボタンを表示できる必要があり，compareCount > 0 でも表示する。
-  // デスクトップ（DesktopSearchPanel）は compareCount > 0 で常時表示するため，
-  // モバイルとの挙動を揃える。
   // モバイルの比較は専用画面（比較タブ）で完結させるので、
   // 上部のコンテキストヘッダーも背景地図も出さない
   const isMobileCompare = !isSidePanelLayout && isCompareOpen;
@@ -326,10 +323,7 @@ export const HomeLayout = ({
     !isSidePanelLayout &&
     !isMobileFilterOverlayOpen &&
     !isCompareOpen &&
-    (Boolean(selectedResortId) ||
-      hasSearched ||
-      selectedCompareIds.length > 0 ||
-      (favorites?.ids.length ?? 0) >= 2);
+    Boolean(selectedResortId);
   const shouldShowMobileSearchButton =
     !isCompareOpen && !isMobileFilterOverlayOpen && !selectedResortId;
   const shouldShowMobileTopChrome =
@@ -341,6 +335,12 @@ export const HomeLayout = ({
     (!isMobileCompare &&
       (mobileContentTab === "map" ||
         (!shouldShowMobileTopChrome && !shouldShowMobileSearchScreen)));
+  const shouldShowMobileComparisonActions =
+    selectedCompareIds.length > 0 ||
+    Boolean(favorites?.ready && favorites.ids.length >= 2);
+  const mobileSearchChromeHeight = shouldShowMobileComparisonActions
+    ? `calc(${MOBILE_SEARCH_TOP_BAR_HEIGHT} + 2.5rem)`
+    : MOBILE_SEARCH_TOP_BAR_HEIGHT;
 
   const compareSelectedSlopeResort = compareSlopeSelection
     ? (compareResortData.find(
@@ -356,23 +356,6 @@ export const HomeLayout = ({
       />
     ) : null;
 
-  const availablePrefectureSet = new Set(
-    initialResorts.map(resort => resort.prefecture).filter(Boolean),
-  );
-  const mobileRegionOptions = Object.entries(REGION_PREFECTURES)
-    .map(([region, prefectures]) => ({
-      region,
-      prefectures: prefectures.filter(prefecture =>
-        availablePrefectureSet.has(prefecture),
-      ),
-    }))
-    .filter(option => option.prefectures.length > 0);
-  const mobileActiveFilterLabels = getActiveFilterLabels(
-    filters,
-    mobileRegionOptions,
-    { includeKeyword: false },
-  );
-
   return (
     <main
       onPointerDownCapture={onMainPointerDownCapture}
@@ -386,11 +369,14 @@ export const HomeLayout = ({
         )}
       >
         {/*
-          中身が検索ヘッダだけなので、検索ヘッダを出さないとき（詳細・比較）は
-          帯ごと描かない。空の帯でも pb-2 + border-b の分だけ画面上部を食う。
+          検索画面では検索欄と比較チップを地図に重ねる。
+          詳細・比較画面ではこの検索用の操作を出さない。
         */}
         {shouldShowMobileTopChrome && shouldShowMobileSearchButton && (
-          <div className="fixed top-0 right-0 left-0 z-[150] hide-desktop flex-col gap-2 pb-2 bg-white border-b border-gray-100">
+          <div
+            data-map-top-controls="true"
+            className="pointer-events-none fixed top-0 right-0 left-0 z-[150] hide-desktop flex-col"
+          >
             <MobileSearchHeader
               activeTab={mobileContentTab}
               keyword={filters.keyword}
@@ -399,30 +385,30 @@ export const HomeLayout = ({
               onPointerDown={onMobileSearchButtonPointerDown}
               onTabChange={onMobileContentTabChange}
             />
+            <ComparisonActions
+              compareCount={selectedCompareIds.length}
+              onOpenCompare={onOpenCompare}
+              onClearCompare={onClearCompare}
+              onCompareFavorites={onCompareFavorites}
+            />
           </div>
         )}
         {/*
-          固定トップバー（検索ヘッダ）はフロー外（position: fixed）のため，
-          表示中はフロー内コンテンツをバーの高さだけ下げる。
-          4.6875rem = MobileSearchTopBarShell の 4.125rem + ラッパーの pb-2 + border-b。
-          無視するとコンテキストヘッダ（件数バッジ・比較ボタン）とリスト先頭が
-          バーに隠れる（モバイルの検索結果表示・リストタブで発生していた）。
-          変更時は MobileSearchTopBarShell の高さとも同期が必要。
+          地図は検索欄の背後まで描画する。リストだけは検索欄と比較チップの
+          高さを空け、先頭のスキー場が固定操作に隠れないようにする。
         */}
         <div
-          className={cn(
-            "flex-1 min-h-0 flex flex-col",
-            // isSidePanelLayout（デスクトップ）ではトップバー自体が存在しない
+          className="flex-1 min-h-0 flex flex-col"
+          style={
             !isSidePanelLayout &&
-              shouldShowMobileSearchButton &&
-              "pt-[calc(env(safe-area-inset-top,0px)+4.6875rem)]",
-          )}
+            shouldShowMobileSearchButton &&
+            !shouldRenderMap
+              ? { paddingTop: mobileSearchChromeHeight }
+              : undefined
+          }
         >
           {shouldShowMobileContextHeader && (
             <MobileContextHeader
-              mode={selectedResortId ? "detail" : "results"}
-              resultCount={filteredResorts.length}
-              compareCount={selectedCompareIds.length}
               detailTitle={
                 selectedResortData?.nameJa ??
                 selectedResortSummary?.nameJa ??
@@ -456,15 +442,20 @@ export const HomeLayout = ({
                   ? selectedCompareIdSet.has(selectedResortId)
                   : false
               }
-              activeFilterLabels={mobileActiveFilterLabels}
               onCloseDetail={onCloseDetail}
-              onClearCompare={onClearCompare}
-              onOpenCompare={onOpenCompare}
-              onCompareFavorites={onCompareFavorites}
               onToggleCompare={onToggleCompare}
             />
           )}
-          <div className="flex-1 min-h-0 relative">
+          <div
+            className="flex-1 min-h-0 relative"
+            style={
+              !isSidePanelLayout && shouldShowMobileSearchButton
+                ? ({
+                    "--mobile-map-top-offset": mobileSearchChromeHeight,
+                  } as CSSProperties)
+                : undefined
+            }
+          >
             {/*
               比較の左エリア。上に白い帯（切替と表示設定）を固定し、
               その下だけがスクロールする。ゲレンデ一覧は地図の上に重ねる。
@@ -574,7 +565,6 @@ export const HomeLayout = ({
                   filteredResorts={filteredResorts}
                   isCompareLoading={isCompareLoading}
                   isCompareOpen={isCompareOpen}
-                  isListSheetOpen={isListSheetOpen}
                   listSheetContentRef={listSheetContentRef}
                   listSheetSnapPoint={listSheetSnapPoint}
                   snapPoints={mobileListSheetSnapPoints}
@@ -658,6 +648,7 @@ export const HomeLayout = ({
         selectedCompareIdSet={selectedCompareIdSet}
         onExpandedChange={onSetFilterEditorOpen}
         onFilterChange={onFilterChange}
+        onKeywordClear={onMobileSearchButtonKeywordClear}
         onKeyboardInputBlur={onFilterKeyboardInputBlur}
         onKeyboardInputFocus={onFilterKeyboardInputFocus}
         onClearCompare={onClearCompare}
@@ -739,6 +730,8 @@ const MobileSearchHeader = ({
   onTabChange,
 }: MobileSearchHeaderProps) => (
   <MobileSearchTopBarShell
+    floating
+    showAccount
     action={
       // §13: 塗りつぶしセグメントタブはウェイト font-semibold（比較タブと同一）
       <SegmentedControl
@@ -752,7 +745,7 @@ const MobileSearchHeader = ({
       />
     }
   >
-    <MobileSearchButton
+    <SearchButton
       keyword={keyword}
       onKeywordClear={onKeywordClear}
       onOpen={onOpenSearch}
@@ -762,9 +755,6 @@ const MobileSearchHeader = ({
 );
 
 type MobileContextHeaderProps = {
-  mode: "results" | "detail";
-  resultCount: number;
-  compareCount: number;
   detailTitle: string;
   detailNameRuby: ResortRubySegment[] | null;
   detailFormerNames: ResortFormerName[];
@@ -773,18 +763,11 @@ type MobileContextHeaderProps = {
   detailYukiMagi: boolean;
   detailResortId: string | null;
   isDetailCompareSelected: boolean;
-  activeFilterLabels: string[];
   onCloseDetail: () => void;
-  onClearCompare: () => void;
-  onOpenCompare: () => void;
-  onCompareFavorites: () => void;
   onToggleCompare: (id: string, selected: boolean) => void;
 };
 
 const MobileContextHeader = ({
-  mode,
-  resultCount,
-  compareCount,
   detailTitle,
   detailNameRuby,
   detailFormerNames,
@@ -793,136 +776,75 @@ const MobileContextHeader = ({
   detailYukiMagi,
   detailResortId,
   isDetailCompareSelected,
-  activeFilterLabels,
   onCloseDetail,
-  onClearCompare,
-  onOpenCompare,
-  onCompareFavorites,
   onToggleCompare,
 }: MobileContextHeaderProps) => {
-  const isResults = mode === "results";
-  const filterLabels = activeFilterLabels;
   const detailLocation = [detailPrefecture, detailTown]
     .filter(Boolean)
     .join("・");
 
   return (
     <div className="relative z-10 pointer-events-auto md:hidden">
-      {isResults && (
-        <div className="px-4 pt-0 pb-2">
-          <div className="flex gap-4 flex-wrap items-center">
-            {filterLabels.map(label => (
-              <Badge
-                key={label}
-                variant="secondary"
-                className="min-h-[28px] rounded-lg text-sm font-semibold"
-              >
-                {label}
-              </Badge>
-            ))}
-            <Badge
-              variant="secondary"
-              className="min-h-[28px] rounded-lg bg-blue-50 text-blue-900 text-sm font-medium"
-            >
-              {resultCount.toLocaleString()}件
-            </Badge>
-          </div>
-        </div>
-      )}
-
       {/*
         名前・所在地の右に、お気に入り・比較・閉じるを1行で並べる。
         ボタンを縦に積むとヘッダーが2段分の高さになり、地図が下に押し出される。
         比較ボタンは文言を短くし、正式な操作名は aria-label に持たせる。
       */}
-      {mode === "detail" && (
-        <div className="flex items-center gap-1.5 px-3 pt-1 pb-1.5">
-          <div className="min-w-0 flex-1">
-            <h2 className="truncate-2 text-gray-900 text-base leading-tight font-bold font-[var(--font-heading)]">
-              <RubyText segments={detailNameRuby} fallback={detailTitle} />
-              {/* 名前のすぐ後ろに置く。行ボックスを広げないよう行送りより小さくする */}
-              <CopyResortNameButton
-                name={detailTitle}
-                className="ml-1 size-5 align-middle"
-              />
-            </h2>
-            {detailFormerNames.length > 0 && (
-              <p className="truncate text-[11px] leading-snug text-gray-500">
-                旧称: <FormerResortNames names={detailFormerNames} />
-              </p>
-            )}
-            <p className="flex items-center gap-1.5 text-gray-600 text-xs font-semibold leading-snug">
-              {/* 県・市町村のどちらかが未取得のときに区切り文字だけが残らないようにする */}
-              {detailLocation && (
-                <span className="truncate">{detailLocation}</span>
-              )}
-              {detailYukiMagi && (
-                <Badge
-                  variant="secondary"
-                  className="h-4 shrink-0 rounded-full bg-pink-50 px-1.5 text-pink-700 text-[0.625rem] font-semibold whitespace-nowrap"
-                >
-                  雪マジ
-                </Badge>
-              )}
+      <div className="flex items-center gap-1.5 px-3 pt-1 pb-1.5">
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate-2 text-gray-900 text-base leading-tight font-bold font-[var(--font-heading)]">
+            <RubyText segments={detailNameRuby} fallback={detailTitle} />
+            {/* 名前のすぐ後ろに置く。行ボックスを広げないよう行送りより小さくする */}
+            <CopyResortNameButton
+              name={detailTitle}
+              className="ml-1 size-5 align-middle"
+            />
+          </h2>
+          {detailFormerNames.length > 0 && (
+            <p className="truncate text-[11px] leading-snug text-gray-500">
+              旧称: <FormerResortNames names={detailFormerNames} />
             </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-1">
-            {detailResortId && (
-              <FavoriteButton resortId={detailResortId} name={detailTitle} />
+          )}
+          <p className="flex items-center gap-1.5 text-gray-600 text-xs font-semibold leading-snug">
+            {/* 県・市町村のどちらかが未取得のときに区切り文字だけが残らないようにする */}
+            {detailLocation && (
+              <span className="truncate">{detailLocation}</span>
             )}
-            {detailResortId && (
-              <Button
-                type="button"
-                variant={isDetailCompareSelected ? "default" : "outline"}
-                aria-pressed={isDetailCompareSelected}
-                aria-label={
-                  isDetailCompareSelected ? "比較から外す" : "比較に追加"
-                }
-                onClick={() =>
-                  onToggleCompare(detailResortId, !isDetailCompareSelected)
-                }
-                className="flex h-8 shrink-0 items-center justify-center gap-0.5 rounded-full px-2 text-xs font-semibold"
+            {detailYukiMagi && (
+              <Badge
+                variant="secondary"
+                className="h-4 shrink-0 rounded-full bg-pink-50 px-1.5 text-pink-700 text-[0.625rem] font-semibold whitespace-nowrap"
               >
-                {isDetailCompareSelected ? (
-                  <Check size={14} strokeWidth={2.5} />
-                ) : (
-                  <Plus size={14} strokeWidth={2.5} />
-                )}
-                {isDetailCompareSelected ? "比較中" : "比較"}
-              </Button>
+                雪マジ
+              </Badge>
             )}
-            <Button
-              type="button"
-              aria-label="詳細を閉じる"
-              variant="ghost"
-              onClick={onCloseDetail}
-              className="flex h-8 w-8 min-w-8 shrink-0 items-center justify-center rounded-full border border-gray-200 p-0 text-gray-500 hover:bg-gray-50 hover:text-gray-900"
-            >
-              <X size={18} strokeWidth={2.5} />
-            </Button>
-          </div>
+          </p>
         </div>
-      )}
-
-      {isResults && <FavoriteCompareButton onCompare={onCompareFavorites} />}
-      {isResults && compareCount > 0 && (
-        <div className="flex px-4 pb-3 gap-2 items-center border-b border-gray-100">
+        <div className="flex shrink-0 items-center gap-1">
+          {detailResortId && (
+            <FavoriteButton resortId={detailResortId} name={detailTitle} />
+          )}
+          {detailResortId && (
+            <CompareResortButton
+              isSelected={isDetailCompareSelected}
+              resortName={detailTitle}
+              onClick={() =>
+                onToggleCompare(detailResortId, !isDetailCompareSelected)
+              }
+              className="flex h-8 shrink-0 items-center justify-center gap-0.5 rounded-full px-2 text-xs font-semibold"
+            />
+          )}
           <Button
-            variant="default"
-            className="flex-1 min-w-0 h-10 rounded-lg font-semibold shadow-sm"
-            onClick={onOpenCompare}
+            type="button"
+            aria-label="詳細を閉じる"
+            variant="ghost"
+            onClick={onCloseDetail}
+            className="flex h-8 w-8 min-w-8 shrink-0 items-center justify-center rounded-full border border-gray-200 p-0 text-gray-500 hover:bg-gray-50 hover:text-gray-900"
           >
-            {compareCount} 件を比較
-          </Button>
-          <Button
-            variant="outline"
-            className="flex-1 min-w-0 h-10 rounded-lg border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50 hover:text-gray-900"
-            onClick={onClearCompare}
-          >
-            比較をクリア
+            <X size={18} strokeWidth={2.5} />
           </Button>
         </div>
-      )}
+      </div>
     </div>
   );
 };

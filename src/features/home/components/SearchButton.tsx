@@ -8,17 +8,17 @@ type Props = {
   keyword: string;
   onKeywordClear: () => void;
   onOpen: () => void;
-  onPointerDown: (event: ReactPointerEvent<HTMLButtonElement>) => void;
+  onPointerDown?: (event: ReactPointerEvent<HTMLButtonElement>) => void;
 };
 
 // トップバー内（静的配置）でのみ使用されるため，配置は固定
-export const MobileSearchButton = ({
+export const SearchButton = ({
   keyword,
   onKeywordClear,
   onOpen,
   onPointerDown,
 }: Props) => (
-  <div className="flex md:hidden w-full min-w-0 pointer-events-auto relative">
+  <div className="flex w-full min-w-0 pointer-events-auto relative">
     <Button
       type="button"
       aria-label="スキー場を検索"

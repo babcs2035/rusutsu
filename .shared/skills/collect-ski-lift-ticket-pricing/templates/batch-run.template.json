@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "run_id": null,
+  "season_id": null,
+  "mode": "collect",
+  "target_checkpoint": "tested",
+  "publish_authorized": false,
+  "request_scope_ja": null,
+  "status": "running",
+  "created_at": null,
+  "updated_at": null,
+  "master_source": null,
+  "master_snapshot_path": null,
+  "master_fetched_at": null,
+  "master_total_count": null,
+  "batch_size": 5,
+  "max_parallel_resorts": 1,
+  "excluded": [],
+  "jobs": []
+}

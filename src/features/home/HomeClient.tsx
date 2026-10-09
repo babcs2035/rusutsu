@@ -119,7 +119,7 @@ export function HomeClient({ initialResorts }: Props) {
       mobileContentTab: "map",
       filters: DEFAULT_FILTERS,
       hasSearched: false,
-      isFilterEditorOpen: true,
+      isFilterEditorOpen: false,
       isListSheetOpen: false,
       listSheetSnapPoint: BOTTOM_SHEET_INITIAL_SNAP_POINT,
     };
@@ -198,7 +198,7 @@ function HomeClientContent({
     session?.mobileDraftFilters ?? session?.filters ?? DEFAULT_FILTERS,
   );
   const [isFilterEditorOpen, setIsFilterEditorOpen] = useState(
-    session?.isFilterEditorOpen ?? true,
+    session?.isFilterEditorOpen ?? false,
   );
   const [hasSearched, setHasSearched] = useState(session?.hasSearched ?? false);
   const [selectedResortId, setSelectedResortId] = useState<string | null>(
@@ -214,6 +214,10 @@ function HomeClientContent({
     );
   const [selectedCompareIds, setSelectedCompareIds] = useState<string[]>(
     session?.selectedCompareIds ?? [],
+  );
+  // お気に入り比較は一時的な表示。手動で選んだ比較リストは書き換えない。
+  const [favoriteCompareIds, setFavoriteCompareIds] = useState<string[] | null>(
+    session?.favoriteCompareIds ?? null,
   );
   const [compareResortData, setCompareResortData] = useState<SkiResortDetail[]>(
     [],
@@ -251,6 +255,7 @@ function HomeClientContent({
   const [isPending, startTransition] = useTransition();
   const [discardFilterChangesDialogOpen, setDiscardFilterChangesDialogOpen] =
     useState(false);
+  const [clearCompareDialogOpen, setClearCompareDialogOpen] = useState(false);
   const latestMapViewRef = useRef<MapViewSnapshot | null>(null);
   const listSheetContentRef = useRef<HTMLDivElement | null>(null);
   const mobileFilterOverlayRef = useRef<HTMLDivElement | null>(null);
@@ -403,6 +408,7 @@ function HomeClientContent({
       mobileDraftFilters,
       isMobileFilterOverlayOpen,
       selectedCompareIds,
+      favoriteCompareIds,
       isCompareOpen,
       selectedElevationProfilePoint,
       mobileSearchReturn: mobileSearchReturnStateRef.current
@@ -448,6 +454,7 @@ function HomeClientContent({
     isMobileFilterOverlayOpen,
     mobileDraftFilters,
     selectedCompareIds,
+    favoriteCompareIds,
     isCompareOpen,
     selectedElevationProfilePoint,
   ]);
@@ -456,7 +463,9 @@ function HomeClientContent({
     if (!session?.isCompareOpen) return;
     let disposed = false;
     void Promise.all(
-      (session.selectedCompareIds ?? []).map(getCachedResort),
+      (session.favoriteCompareIds ?? session.selectedCompareIds ?? []).map(
+        getCachedResort,
+      ),
     ).then(data => {
       if (!disposed) setCompareResortData(data.filter(item => item !== null));
     });
@@ -493,9 +502,13 @@ function HomeClientContent({
     () => !areFiltersEqual(mobileDraftFilters, filters),
     [filters, mobileDraftFilters],
   );
+  const activeCompareIds =
+    isCompareOpen && favoriteCompareIds !== null
+      ? favoriteCompareIds
+      : selectedCompareIds;
   const selectedCompareIdSet = useMemo(
-    () => new Set(selectedCompareIds),
-    [selectedCompareIds],
+    () => new Set(activeCompareIds),
+    [activeCompareIds],
   );
   // 詳細データの取得を待たずに名前と所在地を出すための素材。
   // 一覧（地図用データ）はページのSSRに含まれるので、リストや地図から選んだ
@@ -566,6 +579,7 @@ function HomeClientContent({
   const handleSearch = useCallback(() => {
     const returnState = mobileSearchReturnStateRef.current;
     mobileSearchReturnStateRef.current = null;
+    if (returnState?.isCompareOpen) setFavoriteCompareIds(null);
     const nextMobileContentTab = isSidePanelLayout
       ? "info"
       : (returnState?.mobileContentTab ?? mobileContentTab);
@@ -618,7 +632,7 @@ function HomeClientContent({
     }
 
     setHasSearched(false);
-    setIsFilterEditorOpen(true);
+    setIsFilterEditorOpen(false);
     setIsListSheetOpen(mobileContentTab === "info");
     setListSheetSnapPoint(BOTTOM_SHEET_INITIAL_SNAP_POINT);
   }, [filters, mobileContentTab]);
@@ -851,6 +865,7 @@ function HomeClientContent({
       saveReturnViewState();
       hasUserInteractedWithMapInDetailRef.current = false;
       setIsCompareOpen(false);
+      setFavoriteCompareIds(null);
       setSelectedFinalizedFeature(null);
       setSelectedElevationProfilePoint(null);
       setSelectedResortId(id);
@@ -933,9 +948,14 @@ function HomeClientContent({
   const handleToggleCompare = useCallback(
     (id: string, selected: boolean) => {
       setHoveredResortId(null);
-      setSelectedCompareIds(prev => {
-        if (selected) return prev.includes(id) ? prev : [...prev, id];
-        return prev.filter(compareId => compareId !== id);
+      const setCompareIds =
+        isCompareOpen && favoriteCompareIds !== null
+          ? setFavoriteCompareIds
+          : setSelectedCompareIds;
+      setCompareIds((prev: string[] | null) => {
+        const ids = prev ?? [];
+        if (selected) return ids.includes(id) ? ids : [...ids, id];
+        return ids.filter(compareId => compareId !== id);
       });
 
       if (!isCompareOpen) return;
@@ -956,13 +976,13 @@ function HomeClientContent({
         setIsCompareLoading(false);
       });
     },
-    [isCompareOpen],
+    [isCompareOpen, favoriteCompareIds],
   );
 
   const handleOpenCompare = useCallback(
-    async (ids = selectedCompareIds) => {
+    async (ids = selectedCompareIds, fromFavorites = false) => {
       if (ids.length === 0) return;
-      setSelectedCompareIds(ids);
+      setFavoriteCompareIds(fromFavorites ? ids : null);
 
       setMobileContentTab("info");
       setHoveredResortId(null);
@@ -1003,10 +1023,12 @@ function HomeClientContent({
   const handleCloseCompare = () => {
     closeMobileContentTab();
     setIsCompareOpen(false);
+    setFavoriteCompareIds(null);
     restoreReturnViewState();
   };
   const handleClearCompare = useCallback(() => {
-    setSelectedCompareIds([]);
+    if (favoriteCompareIds === null) setSelectedCompareIds([]);
+    setFavoriteCompareIds(null);
     setCompareResortData([]);
     setIsCompareLoading(false);
     if (isCompareOpen) {
@@ -1014,7 +1036,12 @@ function HomeClientContent({
       setIsCompareOpen(false);
       restoreReturnViewState();
     }
-  }, [closeMobileContentTab, isCompareOpen, restoreReturnViewState]);
+  }, [
+    closeMobileContentTab,
+    favoriteCompareIds,
+    isCompareOpen,
+    restoreReturnViewState,
+  ]);
   const mobileSearchResultSnapPoints = useMemo(
     () => [...BOTTOM_SHEET_SNAP_POINTS],
     [],
@@ -1036,8 +1063,7 @@ function HomeClientContent({
   const shouldRenderMobileListSheet =
     !isSidePanelLayout &&
     !selectedResortId &&
-    (isCompareOpen ||
-      (mobileContentTab === "info" && (isListSheetOpen || hasSearched)));
+    (isCompareOpen || mobileContentTab === "info");
 
   return (
     <CourseNavigationContext.Provider
@@ -1078,7 +1104,6 @@ function HomeClientContent({
             isCompareLoading={isCompareLoading}
             isCompareOpen={isCompareOpen}
             isFilterEditorOpen={isFilterEditorOpen}
-            isListSheetOpen={isListSheetOpen}
             isMobileFilterOverlayOpen={isMobileFilterOverlayOpen}
             isPending={isPending || (detailLoading && !selectedResortData)}
             isSidePanelLayout={isSidePanelLayout}
@@ -1098,7 +1123,7 @@ function HomeClientContent({
             searchViewportBottomPaddingRatio={searchViewportBottomPaddingRatio}
             searchViewportRequestKey={searchViewportRequestKey}
             selectedCompareIdSet={selectedCompareIdSet}
-            selectedCompareIds={selectedCompareIds}
+            selectedCompareIds={activeCompareIds}
             selectedElevationProfilePoint={selectedElevationProfilePoint}
             selectedFinalizedFeature={selectedFinalizedFeature}
             selectedResortData={selectedResortData}
@@ -1106,7 +1131,7 @@ function HomeClientContent({
             selectedResortSummary={selectedResortSummary}
             shouldRenderMobileListSheet={shouldRenderMobileListSheet}
             onCloseCompare={handleCloseCompare}
-            onClearCompare={handleClearCompare}
+            onClearCompare={() => setClearCompareDialogOpen(true)}
             onCloseDetail={handleCloseDetail}
             onCloseMobileFilterOverlay={handleCloseMobileFilterOverlay}
             onFilterChange={handleFilterChange}
@@ -1134,6 +1159,7 @@ function HomeClientContent({
                 favorites?.ids.filter(id =>
                   initialResorts.some(r => r.id === id),
                 ) ?? [],
+                true,
               )
             }
             onOpenMobileFilterOverlay={handleOpenMobileFilterOverlay}
@@ -1153,6 +1179,16 @@ function HomeClientContent({
             onToggleCompare={handleToggleCompare}
             onUserMapInteraction={handleUserMapInteraction}
             onUserMapZoomInteraction={handleUserMapZoomInteraction}
+          />
+          <ConfirmDialog
+            open={clearCompareDialogOpen}
+            onOpenChange={setClearCompareDialogOpen}
+            title="比較の選択をクリアしますか？"
+            description=""
+            onConfirm={handleClearCompare}
+            confirmLabel="クリアする"
+            className="z-[1000]"
+            overlayClassName="z-[999]"
           />
           <ConfirmDialog
             open={discardFilterChangesDialogOpen}

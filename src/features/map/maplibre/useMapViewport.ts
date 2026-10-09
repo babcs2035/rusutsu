@@ -218,6 +218,7 @@ export const useSearchViewport = ({
       map,
       resorts: resorts.filter(resort => searchResultResortIdSet.has(resort.id)),
       bottomPanelHeight: getMapSize(map).y * searchViewportBottomPaddingRatio,
+      topPanelHeight: getMapTopControlsOverlapHeight(map),
       labelShowZoom,
       animate,
     });

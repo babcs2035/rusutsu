@@ -29,6 +29,8 @@ type ConfirmDialogProps = {
   confirmLabel?: string;
   /** キャンセルボタンのラベル（デフォルト: "キャンセル"） */
   cancelLabel?: string;
+  className?: string;
+  overlayClassName?: string;
 };
 
 /**
@@ -53,6 +55,8 @@ export function ConfirmDialog({
   onConfirm,
   confirmLabel = "確認",
   cancelLabel = "キャンセル",
+  className,
+  overlayClassName,
 }: ConfirmDialogProps) {
   const [isConfirming, setIsConfirming] = useState(false);
 
@@ -69,7 +73,10 @@ export function ConfirmDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="sm:max-w-[425px]">
+      <AlertDialogContent
+        className={`sm:max-w-[425px] ${className ?? ""}`}
+        overlayClassName={overlayClassName}
+      >
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-amber-500" />

@@ -1,6 +1,5 @@
 "use client";
 
-import { Check, Plus } from "lucide-react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import {
   memo,
@@ -11,15 +10,14 @@ import {
   useState,
 } from "react";
 import { calculateLiftTicketsForList } from "@/actions/skiResorts";
-import { Button } from "@/components/ui/button";
 import { FavoriteButton } from "@/features/favorites/FavoriteButton";
 import { TicketCalculationCard } from "@/features/lift-ticket/components/TicketCalculationCard";
 import type {
   LiftTicketSearchInput,
   TicketCalculationResult,
 } from "@/features/lift-ticket/types";
+import { CompareResortButton } from "@/shared/components/CompareResortButton";
 import { CopyResortNameButton } from "@/shared/components/CopyResortNameButton";
-import { FormerResortNames } from "@/shared/components/FormerResortNames";
 import { RubyText } from "@/shared/components/RubyText";
 import type { MapSkiResort } from "@/types/skiResorts";
 
@@ -234,80 +232,81 @@ const SkiResortListItem = memo(
               handleSelect();
             }
           }}
-          onClick={handleSelect}
-          className="w-full cursor-pointer text-left transition-all duration-200 ease-in-out border-b border-gray-100 md:border md:rounded-xl md:border-gray-200 md:bg-white md:px-4 md:py-3 md:shadow-sm hover:md:border-blue-600 hover:md:shadow-md hover:md:-translate-y-0.5 focus-visible:outline-none focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10"
+          onClick={event => {
+            // 無効なボタンは pointer-events:none で操作行へクリックが抜ける。
+            // お気に入り・比較の領域では、詳細への遷移を起こさない。
+            if (
+              event.target instanceof Element &&
+              event.target.closest("[data-ski-resort-list-actions='true']")
+            ) {
+              return;
+            }
+            handleSelect();
+          }}
+          className="w-full cursor-pointer text-left transition-all duration-200 ease-in-out border-b border-gray-100 md:border md:rounded-xl md:border-gray-200 md:bg-white md:px-4 md:py-1 md:shadow-sm hover:md:border-blue-600 hover:md:shadow-md hover:md:-translate-y-0.5 focus-visible:outline-none focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10"
         >
-          <div className="flex min-h-[48px] md:min-h-auto items-center justify-between gap-2">
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <div className="flex min-w-0 items-center gap-1">
-                <p className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-bold text-base md:text-lg leading-tight text-gray-900 font-[var(--font-heading)]">
-                  <RubyText
-                    segments={resort.nameRuby}
-                    fallback={resort.nameJa}
-                  />
-                </p>
-                <CopyResortNameButton
-                  name={resort.nameJa}
-                  className="-my-1"
-                  onInteract={clearHighlight}
-                />
-              </div>
-              <p className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-xs md:text-sm font-medium leading-snug text-gray-500">
+          <div className="flex min-w-0 flex-col py-0.5 md:py-0">
+            <p className="min-w-0 break-words font-bold text-base md:text-lg leading-tight text-gray-900 font-[var(--font-heading)]">
+              <RubyText segments={resort.nameRuby} fallback={resort.nameJa} />
+              <CopyResortNameButton
+                name={resort.nameJa}
+                className="ml-1 size-5 align-middle"
+                onInteract={clearHighlight}
+              />
+            </p>
+            <div className="flex min-w-0 items-center justify-between gap-2">
+              <p className="min-w-0 flex-1 break-words text-xs md:text-sm font-medium leading-snug text-gray-500">
                 {resort.prefecture} · {resort.town}
               </p>
-              {resort.formerNames.length > 0 && (
-                <p className="min-w-0 break-words text-[0.6875rem] md:text-xs font-medium leading-loose text-gray-400">
-                  旧称: <FormerResortNames names={resort.formerNames} />
-                </p>
-              )}
-              {liftTicketResortId &&
-                (liftTicketResults.status === "done" ? (
-                  <div
-                    className="mt-1"
-                    onPointerDown={event => event.stopPropagation()}
-                  >
-                    <TicketCalculationCard
-                      result={
-                        liftTicketResults.results[liftTicketResortId] ?? null
-                      }
-                      compact
-                    />
-                  </div>
-                ) : (
-                  <p className="mt-1 text-xs font-semibold text-blue-600">
-                    {liftTicketResults.status === "loading"
-                      ? "料金を計算中…"
-                      : liftTicketResults.status === "error"
-                        ? "料金を計算できませんでした"
-                        : "日付・人数別の料金計算に対応"}
-                  </p>
-                ))}
-            </div>
-            <div className="flex flex-shrink-0 items-center justify-end gap-2 min-w-[5.75rem] md:min-w-[100px]">
-              <FavoriteButton resortId={resort.id} name={resort.nameJa} />
-              <Button
-                type="button"
-                size="sm"
-                variant={isCompareSelected ? "default" : "outline"}
-                className={`flex items-center gap-1 rounded-lg font-semibold h-8 md:h-9 min-w-[5.75rem] md:min-w-[100px] w-auto text-xs transition-smooth`}
-                aria-pressed={isCompareSelected}
-                aria-label={`${resort.nameJa}を${
-                  isCompareSelected ? "比較対象から外す" : "比較対象に追加"
-                }`}
-                onPointerDown={handleActionPointerDown}
-                onClick={e => {
-                  e.stopPropagation();
-                  onToggleCompare(resort.id, !isCompareSelected);
-                }}
+              <div
+                data-ski-resort-list-actions="true"
+                className="flex shrink-0 items-center justify-end gap-1"
               >
-                {isCompareSelected ? (
-                  <Check className="h-3 w-3" strokeWidth={3} />
-                ) : (
-                  <Plus className="h-3.5 w-3.5" strokeWidth={3} />
-                )}
-                <span>{isCompareSelected ? "比較から外す" : "比較に追加"}</span>
-              </Button>
+                <FavoriteButton
+                  resortId={resort.id}
+                  name={resort.nameJa}
+                  className="size-6 md:size-7"
+                />
+                <CompareResortButton
+                  isSelected={isCompareSelected}
+                  resortName={resort.nameJa}
+                  size="sm"
+                  className="h-6 md:h-7 min-w-16 md:min-w-18 rounded-lg text-xs md:text-sm transition-smooth"
+                  onPointerDown={handleActionPointerDown}
+                  onClick={e => {
+                    e.stopPropagation();
+                    onToggleCompare(resort.id, !isCompareSelected);
+                  }}
+                />
+              </div>
             </div>
+            {resort.formerNames.length > 0 && (
+              <p className="min-w-0 break-words text-[0.6875rem] md:text-xs font-medium leading-tight text-gray-400">
+                旧称: {resort.formerNames.map(name => name.name).join("、")}
+              </p>
+            )}
+            {liftTicketResortId &&
+              (liftTicketResults.status === "done" ? (
+                <div
+                  className="mt-1"
+                  onPointerDown={event => event.stopPropagation()}
+                >
+                  <TicketCalculationCard
+                    result={
+                      liftTicketResults.results[liftTicketResortId] ?? null
+                    }
+                    compact
+                  />
+                </div>
+              ) : (
+                <p className="mt-1 text-xs font-semibold text-blue-600">
+                  {liftTicketResults.status === "loading"
+                    ? "料金を計算中…"
+                    : liftTicketResults.status === "error"
+                      ? "料金を計算できませんでした"
+                      : "日付・人数別の料金計算に対応"}
+                </p>
+              ))}
           </div>
         </div>
       </li>

@@ -1,12 +1,29 @@
 ---
 name: collect-ski-lift-ticket-pricing
-description: ユーザー指定の公式URLから、利用日を指定して購入するリフト券（日券・時間券・回数券・複数日券・セット券等）の料金と適用条件を収集・監査し、1スキー場×1シーズン×1JSONへ整理する。シーズン券とその購入者・保有者向け特典、交通とセットのバスツアー・宿泊パックは対象外。「リフト券料金を収集して」「lift-ticket JSONを作成・更新・監査して」「日付・人物区分から料金を照会して」の依頼で使う。URL登録は src/private/data/lift-ticket-source/{ski-resort-id}.json、作業資料は src/private/data/resorts-temporary/tmp/lift-ticket/（反映後に削除）、確定版は src/private/data/lift-ticket/{ski-resort-id}/{season-id}.json、照会は scripts/lookup-price.mjs、本番DBへの反映は mise run lift-ticket:publish を使う。
+description: スキー場の公式URLを調査・確認して登録し、リフト券料金と適用条件を収集・独立監査して1スキー場×1シーズン×1JSONへ整理する。URL指定あり・なしの収集、公式料金URLの調査、lift-ticket JSONの更新・監査、全スキー場の小分け処理・再開、日付・人物区分からの料金照会に使う。シーズン券・保有者特典、交通・宿泊付きパックは対象外。URLはsrc/private/data/lift-ticket-source/、確定版はsrc/private/data/lift-ticket/、進捗はsrc/private/data/lift-ticket-workflow/で管理する。
 ---
 
 # リフト券料金の収集・監査
 
-ユーザー指定の公式情報だけを根拠に、リフト券料金を共通JSONへ整理する。
-推測せず、取得＋抽出と独立監査を分ける。
+ユーザー指定または自分で探索・確認した公式情報を登録し、リフト券料金を
+共通JSONへ整理する。URL探索、取得＋抽出、独立監査を分け、推測しない。
+
+## 依頼の範囲と実行モード
+
+- **URL調査のみ**: Stage 0まで。料金JSON作成・本番反映は行わない。
+- **料金収集・更新**: Stage 0から照会テストまで進め、本番反映は依頼の範囲に従う。
+  「試す」「草案まで」「反映しない」の依頼では本番へ書き込まない。
+  試行・草案のみでは既存確定版も更新せず、結果を作業領域に保持する。
+- **監査のみ・料金照会**: 既存の登録URL・保存資料・JSONを使う。
+  URL探索やデータ更新は、その作業も依頼されている場合に行う。
+- **複数件・全スキー場・途中再開**: [複数件の進め方](references/batch-workflow.md)
+  を先に読み、対象と進捗を保存して小分けで進める。全件依頼はバッチごとに
+  再承認を求めず続行するが、個別の未解決事項は保留する。
+
+URLが指定されている場合はその範囲を尊重し、探索も依頼されていなければ検索で
+広げない。URLなしの収集依頼ではStage 0で自分で探す。対象シーズンが未指定なら
+現在日付から想定するシーズンを明示するが、資料のシーズンは内容から別途確認する。
+名称が曖昧ならマスタの所在地・旧称で照合し、対象IDを推測で決めない。
 
 ## 正本と参照先
 
@@ -15,6 +32,8 @@ description: ユーザー指定の公式URLから、利用日を指定して購�
 
 | 必要なとき | 読むもの |
 | --- | --- |
+| URL探索・登録・登録URLの再確認 | `references/source-discovery.md`、`templates/source-urls.template.json` |
+| 複数件・全件・再開 | `references/batch-workflow.md`、`templates/batch-run.template.json` |
 | 抽出・データ編集 | `references/data-model.md`、`references/extraction-rules.md`、`references/taxonomy.json`、`templates/lift-ticket.template.json` |
 | 書き方に迷ったとき | `references/examples.md` |
 | 独立監査 | `references/extraction-rules.md` の監査チェックリスト、`references/taxonomy.json` |
@@ -27,12 +46,16 @@ description: ユーザー指定の公式URLから、利用日を指定して購�
 src/private/data/lift-ticket-source/{resort-id}.json        公式URLの登録
 src/private/data/lift-ticket/{resort-id}/{season-id}.json   確定版（本番DBのバックアップ）
 src/private/data/lift-ticket/MISSING.md                     全スキー場の不足情報の一覧
+src/private/data/lift-ticket-workflow/{run-id}/run.json     対象・段階別進捗・保留理由
 
 # 作業中だけ使うもの（Git管理外。本番DBへ反映したら削除する）
 src/private/data/resorts-temporary/tmp/lift-ticket/{resort-id}/
   sources/{season-id}/        公式ページの保存資料
   {season-id}.draft.json      草案
   {season-id}.audit.json      独立監査の結果
+
+src/private/data/resorts-temporary/tmp/lift-ticket-discovery/{resort-id}/
+  {season-id}/                URL候補・探索時の確認資料（料金抽出の根拠にはしない）
 ```
 
 公開サイトと管理画面 `/admin/ticket` が読むのは、本番DBの `lift_ticket_seasons`
@@ -68,8 +91,12 @@ src/private/data/resorts-temporary/tmp/lift-ticket/{resort-id}/
 
 1. 公式資料にない金額・年齢・学校区分・日付・条件を推測しない。
 2. 1スキー場×1シーズン×1JSONとし、別シーズンを混ぜない。
-3. 情報源は登録URL、そこから辿れる同一公式ドメイン内の1階層のリンク、
-   ユーザーが明示した追加URLだけ。検索エンジンで情報源を増やさない。
+3. URL探索はStage 0だけで行い、実際に開いて確認した公式URLだけを登録する。
+   抽出の情報源は登録URL、そこから直接辿れる公式資料、ユーザーが明示した
+   追加URLだけ。外部販売ページは公式からの直接案内を確認する。
+   抽出中に不足が見つかったら、依頼で許可された範囲内でStage 0へ戻って
+   確認・登録してから再取得する。指定URL限定なら範囲外は不足として残す。
+   検索結果のスニペットや探索時の要約を料金の根拠にしない。
 4. 確定情報には保存資料を指す `source_refs` を付ける。
 5. 分類ラベルは `references/taxonomy.json` だけを正本とし、独断で追加しない。
 6. 不明点は `unknown`、`unresolved_questions`、または
@@ -113,6 +140,18 @@ src/private/data/resorts-temporary/tmp/lift-ticket/{resort-id}/
 - `special_day` のうち、calendar・audienceだけで対象が確定し、追加資格・提示物・
   事前購入条件がない料金は自動適用する（例: 土曜日の小学生向けこどもデー）。
 
+## Stage 0: 公式URLの探索・確認・登録
+
+[URL探索の手順](references/source-discovery.md)を読む。
+マスタの公式サイトと既存のURL登録を起点に、必要な項目のページを探索し、
+本文・PDF・画像・販売内容を開いて確認する。公式性、対象施設、内容、
+資料のシーズンの確認状況を記録し、公式性と必要な内容を確認できたURLだけ登録する。
+
+URL登録はシーズンに紐付けず、1スキー場1ファイルで管理する。
+確認した内容と由来は登録ファイル、未発見・閲覧不能・今季未発表は探索結果に残す。
+登録済みという理由だけで今シーズンの資料と扱わない。
+URL調査のみの依頼はここで報告して終了する。
+
 ## Stage 1: 取得＋抽出
 
 サブエージェントが利用可能なら、取得＋抽出担当と監査担当を分ける。
@@ -122,25 +161,43 @@ src/private/data/resorts-temporary/tmp/lift-ticket/{resort-id}/
    - 既存マスタと一致するスキー場ID
    - スキー場名
    - 対象シーズン
-   - 公式URL一覧
+   - Stage 0で確認した、またはユーザー指定の公式URL一覧
    - 新規作成 / 更新 / 監査のみ
-   更新・監査のときは、管理画面での修正を取り込むため本番DBの内容を先に
-   確定版JSONへ取り込み、`git diff` で変更点を確認する。更新は、確定版を
-   作業領域の `{season-id}.draft.json` へ複製して始める:
+   更新・監査では本番の現在の内容を読み、管理画面の修正を取り込んで始める。
+   `--pull` はローカル確定版を上書きするため、先に対象ファイルのGit差分・
+   未追跡状態・他runの使用を確認し、元ファイルとSHA-256を作業領域へ保存する。
+   未反映候補・他者編集がある場合、試行・監査のみの場合はpullを実行しない。
+   `scripts/publishLiftTicket.ts` の `fetchRemote` と同じ読取APIで本番データを
+   作業領域へ保存し、ローカルとの差分を確認する。競合を解消できなければ保留する。
+   ローカルを同期してよい場合だけpullし、`git diff` と本番未登録の有無を確認する:
 
    ```bash
    mise run lift-ticket:publish -- --resort <resort-id> --season <season-id> --pull
    ```
 
-2. URL未登録なら
-   `src/private/data/lift-ticket-source/{resort-id}.json` へ登録する。
-   URLはシーズンに紐付けず、1スキー場1ファイルで管理する。
-3. 登録URLを取得する:
+   抽出・修正は本番の現在の内容を基に作業領域の `{season-id}.draft.json` で行う。
+   同期済み確定版または読取APIで保存した本番データを複製し、本番versionと
+   ローカルの開始時SHA-256を残す。本番未登録の場合はローカル候補と区別する。
+
+2. `src/private/data/lift-ticket-source/{resort-id}.json` の対象URLを確認する。
+   未登録の追加URLはStage 0の基準で確認・登録する。
+   自動探索の由来は登録ファイルの `discovered_by` 等に残す。
+   既存の `sources[].user_specified` は「登録URLか」を表す互換フィールドであり、
+   自動探索した登録URLでもtrueとする（人が指定したという意味に変更しない）。
+3. 今回取得するURL集合を、指定範囲・Stage 0の結果・対象シーズンから確定する。
+   登録に残した旧資料・閲覧不能URL・依頼範囲外のURLを一律に取得しない。
+   全登録が今回の取得対象HTMLと一致するときだけ次を使う:
 
    ```bash
    node .shared/skills/collect-ski-lift-ticket-pricing/scripts/capture-sources.mjs \
      --resort <resort-id> --season <season-id> --from-registry
    ```
+
+   一部URLだけを使う場合やPDF・画像がある場合は `--from-registry` を使わず、
+   HTMLは `--url`、ファイルは `--download` に今回のURLを明示する。
+   「指定URLだけ」なら `--follow-links` も使わない。既存manifestが今回の範囲外の
+   資料を含む場合は、元資料を退避して別の作業領域を `--out` で指定し、
+   範囲外の資料がseason_checkや抽出へ混ざらないようにする。
 
 4. `manifest.json` と各 `metadata.json` で取得成功・公式ドメイン・保存先を確認する。
 5. 保存資料を次の順で読む:
@@ -149,8 +206,13 @@ src/private/data/resorts-temporary/tmp/lift-ticket/{resort-id}/
    - `screens/*.jpg` の全タイル（画像内料金・脚注を確認）
    - 必要なPDF・料金画像
 6. 必要な公式リンク先は `--url` / `--download` と `--linked-from` で追加取得する。
-7. `manifest.json.season_check.verdict` が `match` でなければ抽出を止める。
+   別ドメインの販売ページはStage 0で公式からの直接案内と商品内容を確認する。
+   登録一覧に含めたPDF・画像は `--download` で取得する（登録一覧からの取得は
+   ページ取得なので、ファイル本体の保存・可読性も確認する）。
+7. `manifest.json.season_check.verdict` が `match` でなければその施設の抽出を止める。
    人間が公式資料から確定した場合だけ `--accept-season` を使う。
+   matchでも各料金表・販売商品・脚注のシーズンを個別に照合する。
+   古い料金表と今季の営業日を組み合わせて今季料金を作らない。
 8. 新規作成ではテンプレートから作業領域の `{season-id}.draft.json` を作り、
    資料にある情報だけを記録する。
 9. 機械検証3本を通す:
@@ -193,14 +255,19 @@ src/private/data/resorts-temporary/tmp/lift-ticket/{resort-id}/
 ## 最終統合と照会テスト
 
 1. メイン担当が監査指摘の根拠を確認し、草案を差分修正する。
-2. 機械検証3本を再実行し、通過した草案を確定版
-   `src/private/data/lift-ticket/{resort-id}/{season-id}.json` として保存する。
+   修正後は独立担当が修正箇所と影響範囲を再確認し、最新草案のSHA-256と
+   照合した監査結果へ更新する。古い草案への監査を流用しない。
+2. 機械検証3本を再実行し、通過した草案を候補として保持する。
+   照会テスト前に既存確定版を上書きしない。
 3. [UI共通照合テスト](references/ui-contract-tests.md)を全スキー場で実施する。
    UIにある全人物区分について年齢未入力・必要な境界年齢を確認し、券種、利用時間、
    平休日・年末年始・季節料金、定休日と例外営業日、営業期間内外を同じ項目で確認する。
    期待額・条件は公式URLの表と脚注から独立に転記する。実装の計算結果や草案JSONの
    値をそのまま期待値にしてはならない。画面と同じ公開データ変換と料金計算を通す。
    `lookup-price.mjs --audience <id>` だけではUIの学校区分の不具合を検出できない。
+   草案を参照資料どおり一時ルートの `{resort-id}/{season-id}.json` へ複製して
+   `LIFT_TICKET_DATA_ROOT` をそのルートへ向ける。旧確定版のテストを草案の成功と
+   扱わない。テスト結果に対象草案のSHA-256を残す。
 
 4. 答えられない事項は、資料にあれば抽出漏れとして修正し、資料になければ
    `unresolved_questions` へ記録する。
@@ -211,13 +278,24 @@ src/private/data/resorts-temporary/tmp/lift-ticket/{resort-id}/
    追加券・複数日券・親子パック等は該当データがある場合に同じ機能別テストを適用する。
    実データの照合とCIの固定資料テストの両方を通す。CIから未コミットの
    `src/private` JSONを直接参照させない。
+6. 独立監査と照会テストを通過した候補は草案と結果を作業領域に保持する。
+   途中で草案を修正した場合は機械検証・独立再確認・照会テストをやり直す。
+   料金計算を左右する未解決事項に回答がなければ、その施設は反映を保留する。
+   試行・草案まで・本番未反映の依頼はここで終了し、既存確定版を保持する。
+   確定版JSONだけの作成・更新を明示された場合は、検証済み候補を指定先へ保存し、
+   本番未反映であることを報告する（保存先が既存ファイルなら元内容を退避する）。
 
 ## 本番DBへの反映
 
-照会テストまで終えた確定版 `lift-ticket/{resort-id}/{season-id}.json` を
-本番DBへ保存する。
+本番反映まで依頼され、照会テストまで終えた候補だけを本番DBへ保存する。
 接続先とトークンは `.env.local` の `DATA_API_BASE_URL` と
 `INTERNAL_DATA_API_ADMIN_TOKEN` を使う。
+
+プレビュー前に開始時のローカルSHA-256と現在のファイルを照合する。途中で
+他者編集があれば上書きせず保留する。現行publishは確定版パスを読むため、
+元ファイル（存在しなかった場合も記録）を作業領域へ退避したうえで、検証済み候補を
+`src/private/data/lift-ticket/{resort-id}/{season-id}.json` へ配置する。
+試行・本番未反映の依頼ではこの配置を行わない。
 
 1. プレビューする（本番へは書き込まない）:
 
@@ -229,9 +307,16 @@ src/private/data/resorts-temporary/tmp/lift-ticket/{resort-id}/
    表示して、`src/private/data/resorts-temporary/tmp/lift-ticket-publish/` に
    プランを保存する。「本番と同じ内容です」なら反映は不要。
 2. 差分が今回の作業で変えた箇所だけであることを確認する。自分が変えていない
-   差分（管理画面での修正など）が出たら、`--pull` で取り込んで作業をやり直す。
+   差分（管理画面での修正など）が出たら、候補を草案として保持し、開始時の
+   元ファイルを戻してからStage 1の競合確認・本番読取りをやり直す。
 3. 同じコマンドに `--apply` を付けて保存する。プレビュー後にローカルJSONか
    本番が変わっていれば拒否されるので、プレビューからやり直す。
+
+反映せず保留・失敗した場合、確定版パスが配置した候補のSHA-256のままである
+ことを確かめて元内容へ戻す。元ファイルがなかった場合は今回作った候補だけを
+取り除く。配置後に他者編集があれば復元で上書きせず保留する。
+API応答が途切れて反映成否が不明なら、先に本番を読み取って確認する。
+反映成功または本番同内容を確認できた場合は候補を確定版として残す。
 
 `data_quality.status` が `needs_review` のJSONも反映できる。公開画面は
 その状態を表示するので、未解決事項は完了報告で伝える。
@@ -266,7 +351,10 @@ rm -rf src/private/data/resorts-temporary/tmp/lift-ticket/<resort-id>
 
 ## 完了報告
 
-チャットで、**1項目1文の箇条書き**で報告する。説明を足さず、詳しいことは
+チャットで、**1項目1文の箇条書き**で報告する。URL調査のみでは施設・シーズン、
+採用URLと確認内容、未発見・閲覧不能・旧シーズンの項目を報告する。
+複数件では進捗台帳、URL確認・テスト・反映の各件数、保留施設と理由を報告する。
+未実施の段階を成功と報告しない。詳しいことは
 利用者が聞き直す。未解決事項・human_review_required は「JSONに記録した」で
 済ませず、確認してほしい内容を1件1文でチャットに並べる（利用者はJSONを開かない）。
 

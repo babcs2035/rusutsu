@@ -1,7 +1,11 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { type ReactNode, useRef } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SimilarCourses } from "@/features/course-recommendations/SimilarCourses";
 import type { ElevationProfileMapPoint } from "@/features/map/types";
+import useMediaQuery from "@/hooks/use-media-query";
+import type { FinalizedResortMapData } from "@/lib/finalizedResortGeojsonShared";
 import type { FinalizedCourseGroup } from "../types";
 import {
   COURSE_STATUS_DESCRIPTION,
@@ -27,7 +31,8 @@ type Props = {
   courseGroup: FinalizedCourseGroup;
   resortLabelName: string;
   sourceUrls: string[];
-  similarCourses?: ReactNode;
+  resortId?: string;
+  mapData?: FinalizedResortMapData | null;
   selectedElevationProfilePoint: ElevationProfileMapPoint | null;
   onSelectedElevationProfilePointChange: (
     point: ElevationProfileMapPoint | null,
@@ -38,10 +43,13 @@ export const SelectedCourseDetail = ({
   courseGroup,
   resortLabelName,
   sourceUrls,
-  similarCourses,
+  resortId,
+  mapData,
   selectedElevationProfilePoint,
   onSelectedElevationProfilePointChange,
 }: Props) => {
+  const [isMobile] = useMediaQuery("(max-width: 767px)");
+  const figuresRef = useRef<HTMLDivElement>(null);
   const selectedCourse = courseGroup.courses[0];
 
   if (!selectedCourse) return null;
@@ -67,9 +75,114 @@ export const SelectedCourseDetail = ({
     resortLabelName,
     featureName: courseGroup.displayName,
   });
+  const notesContent = (
+    <FeatureNotes comments={comments} descriptions={notes.description} />
+  );
+  const profile = (
+    <ElevationProfile
+      points={profilePoints}
+      activeDistance={
+        selectedElevationProfilePoint?.courseGroupId === courseGroup.id
+          ? selectedElevationProfilePoint.distance
+          : null
+      }
+      onPointSelect={point =>
+        onSelectedElevationProfilePointChange({
+          courseGroupId: courseGroup.id,
+          courseName: courseGroup.displayName,
+          coordinate: point.coordinate,
+          distance: point.distance,
+          elevation: point.elevation,
+          slope: point.slope,
+        })
+      }
+    />
+  );
+  const media = (
+    <div className="empty:hidden">
+      <FeatureMediaGallery
+        media={collectFeatureMedia(
+          courseGroup.courses.map(course => course.properties),
+        )}
+        name={courseGroup.displayName}
+      />
+    </div>
+  );
+  const renderFigures = (similarCourses: ReactNode, count: number | null) => {
+    if (isMobile && similarCourses) {
+      return (
+        <Tabs
+          ref={figuresRef}
+          defaultValue="profile"
+          className="flex-col gap-2"
+          onValueChange={() => {
+            const figures = figuresRef.current;
+            if (!figures) return;
+            let scroller = figures.parentElement;
+            while (
+              scroller &&
+              !["auto", "scroll"].includes(getComputedStyle(scroller).overflowY)
+            ) {
+              scroller = scroller.parentElement;
+            }
+            if (!scroller) return;
+            // 読み進めてから切り替えた場合も、新しい内容の先頭を見せる。
+            const offset =
+              figures.getBoundingClientRect().top -
+              scroller.getBoundingClientRect().top -
+              scroller.clientTop -
+              Number.parseFloat(getComputedStyle(scroller).paddingTop);
+            if (offset < 0) scroller.scrollTop += offset;
+          }}
+        >
+          <TabsList
+            variant="line"
+            aria-label="コース詳細の表示"
+            className="sticky top-0 z-10 h-9 w-full shrink-0 rounded-none border-b border-gray-200 bg-white p-0"
+          >
+            <TabsTrigger
+              value="profile"
+              className="h-9 rounded-none border-0 border-b-2 border-transparent text-[13px] after:hidden data-active:border-blue-600 data-active:font-bold data-active:text-blue-600"
+            >
+              断面図
+            </TabsTrigger>
+            <TabsTrigger
+              value="similar"
+              className="h-9 rounded-none border-0 border-b-2 border-transparent text-[13px] after:hidden data-active:border-blue-600 data-active:font-bold data-active:text-blue-600"
+            >
+              類似コース{count == null ? "" : `（${count}）`}
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="profile" keepMounted>
+            {profilePoints.length >= 2 ? (
+              profile
+            ) : (
+              <p className="text-xs text-slate-500">
+                断面図のデータがありません。
+              </p>
+            )}
+          </TabsContent>
+          <TabsContent value="similar" keepMounted>
+            {similarCourses}
+          </TabsContent>
+          {notesContent}
+          {media}
+        </Tabs>
+      );
+    }
+    return (
+      <>
+        {!isMobile && notesContent}
+        {similarCourses}
+        {profile}
+        {isMobile && notesContent}
+        {media}
+      </>
+    );
+  };
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2 md:gap-3">
       <FeatureHeadline
         kind="course"
         status={{
@@ -84,40 +197,19 @@ export const SelectedCourseDetail = ({
 
       <FeatureMetrics items={getCourseGroupMetricItems(courseGroup)} />
 
-      <FeatureNotes comments={comments} descriptions={notes.description} />
-
-      {/* PC は類似コースを断面図より上に出す */}
-      <div className="md:order-2">
-        <ElevationProfile
-          points={profilePoints}
-          activeDistance={
-            selectedElevationProfilePoint?.courseGroupId === courseGroup.id
-              ? selectedElevationProfilePoint.distance
-              : null
-          }
-          onPointSelect={point =>
-            onSelectedElevationProfilePointChange({
-              courseGroupId: courseGroup.id,
-              courseName: courseGroup.displayName,
-              coordinate: point.coordinate,
-              distance: point.distance,
-              elevation: point.elevation,
-              slope: point.slope,
-            })
-          }
-        />
-      </div>
-
-      {similarCourses && <div className="md:order-1">{similarCourses}</div>}
-
-      <div className="empty:hidden md:order-3">
-        <FeatureMediaGallery
-          media={collectFeatureMedia(
-            courseGroup.courses.map(course => course.properties),
-          )}
-          name={courseGroup.displayName}
-        />
-      </div>
+      {resortId ? (
+        <SimilarCourses
+          resortId={resortId}
+          resortName={resortLabelName}
+          courseGroup={courseGroup}
+          mapData={mapData}
+          showHeading={!isMobile}
+        >
+          {renderFigures}
+        </SimilarCourses>
+      ) : (
+        renderFigures(null, null)
+      )}
     </div>
   );
 };

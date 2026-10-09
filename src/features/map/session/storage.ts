@@ -62,6 +62,7 @@ export const homeSessionSchema = z.object({
   mobileDraftFilters: filtersSchema.optional(),
   isMobileFilterOverlayOpen: z.boolean().optional(),
   selectedCompareIds: z.array(id).max(2000).optional(),
+  favoriteCompareIds: z.array(id).max(2000).nullable().optional(),
   isCompareOpen: z.boolean().optional(),
   selectedElevationProfilePoint: z
     .object({

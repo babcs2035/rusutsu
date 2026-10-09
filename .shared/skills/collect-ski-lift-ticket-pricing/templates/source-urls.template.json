@@ -4,12 +4,22 @@
     {
       "url": "https://example.com/ticket/",
       "label_ja": "リフト券料金ページ",
-      "added_at": "2026-07-18"
+      "added_at": "2026-07-18",
+      "discovered_by": "agent",
+      "verified_at": "2026-07-18",
+      "official_basis_ja": "公式サイト内の料金ページで、対象施設名と料金表を確認",
+      "linked_from_url": null,
+      "content_season": null
     },
     {
       "url": "https://example.com/shop/",
       "label_ja": "公式オンラインチケットストア",
-      "added_at": "2026-07-18"
+      "added_at": "2026-07-18",
+      "discovered_by": "agent",
+      "verified_at": "2026-07-18",
+      "official_basis_ja": "公式料金ページから直接案内され、対象施設の滑走用商品の内容を確認",
+      "linked_from_url": "https://example.com/ticket/",
+      "content_season": null
     }
   ]
 }

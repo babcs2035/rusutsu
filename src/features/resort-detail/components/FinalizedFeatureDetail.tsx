@@ -2,7 +2,6 @@
 
 import { List, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SimilarCourses } from "@/features/course-recommendations/SimilarCourses";
 import type { ElevationProfileMapPoint } from "@/features/map/types";
 import type {
   FinalizedLiftFeature,
@@ -109,16 +108,8 @@ export const FinalizedFeatureDetail = ({
               resortId,
               ...courseGroup.courses.map(course => course.id),
             ])}
-            similarCourses={
-              resortId ? (
-                <SimilarCourses
-                  resortId={resortId}
-                  resortName={resortLabelName}
-                  courseGroup={courseGroup}
-                  mapData={mapData}
-                />
-              ) : null
-            }
+            resortId={resortId}
+            mapData={mapData}
             courseGroup={courseGroup}
             resortLabelName={resortLabelName}
             sourceUrls={courseSourceUrls}

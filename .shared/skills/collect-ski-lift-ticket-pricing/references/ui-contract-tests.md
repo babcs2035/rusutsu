@@ -40,9 +40,20 @@
 
 ## 実行
 
+草案は確定版を上書きせず、対象施設の作業領域に一時ルート（例:
+`src/private/data/resorts-temporary/tmp/lift-ticket/{resort-id}/staged-ui/`）を作り、
+その直下の `{resort-id}/{season-id}.json` にバイト列を保って複製する。
+`staged_root` にそのルートを設定し、下の草案用コマンドを使う。
+環境変数指定時はルート内にある施設だけを照合するため、全確定版をコピーする
+必要はない。公式期待値が未登録なら先に追加する。草案とコピーのSHA-256が一致する
+ことと、対象施設のケースが実際に実行されたことを確認し、結果へSHA-256を残す。
+
 ```bash
 # CIと同じ固定資料の共通テスト（pnpm testにも含まれる）
 mise exec -- node --import tsx --test src/features/lift-ticket/utils/uiContract.test.ts
+
+# 作業領域の草案を照合。staged_rootは上記の一時ルートへ設定してから実行する
+LIFT_TICKET_DATA_ROOT="$staged_root" mise exec -- node --import tsx --test src/features/lift-ticket/utils/uiContract.test.ts
 
 # 同じ期待値を収集済み全JSONへ適用。未登録のスキー場/シーズンも失敗として検出する
 LIFT_TICKET_DATA_ROOT=src/private/data/lift-ticket mise exec -- node --import tsx --test src/features/lift-ticket/utils/uiContract.test.ts

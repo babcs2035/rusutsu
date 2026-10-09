@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { GSI_TILE_LAYERS, INITIAL_CENTER } from "../constants";
 import type { MapTileVariant } from "../types";
 import { MapCompassDial } from "./MapCompassDial";
+import { getMapTopControlsOverlapHeight, getPanelOffset } from "./viewport";
 
 const CONTROL_BUTTON_CLASS =
   "flex h-10 w-10 items-center justify-center rounded-none bg-white p-0 text-xl font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 min-w-0";
@@ -129,9 +130,17 @@ export const MapLibreControls = ({
               <Button
                 onClick={() => {
                   onUserMapInteraction?.();
-                  map?.jumpTo({
+                  map?.easeTo({
                     center: [INITIAL_CENTER[1], INITIAL_CENTER[0]],
                     zoom: initialZoom,
+                    offset: map
+                      ? getPanelOffset(
+                          0,
+                          0,
+                          getMapTopControlsOverlapHeight(map),
+                        )
+                      : undefined,
+                    duration: 0,
                   });
                 }}
                 aria-label="地図をリセット"

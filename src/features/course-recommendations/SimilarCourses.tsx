@@ -1,6 +1,7 @@
 "use client";
 import {
   createContext,
+  type ReactNode,
   startTransition,
   useContext,
   useEffect,
@@ -44,12 +45,17 @@ export function SimilarCourses({
   resortName,
   courseGroup,
   mapData,
+  children,
+  showHeading = true,
 }: {
   resortId: string;
   resortName: string;
   courseGroup: FinalizedCourseGroup;
   /** 表示中のスキー場の地図データ。比較の地図にそのまま使う */
   mapData?: FinalizedResortMapData | null;
+  /** 検索結果と件数を使って、呼び出し側でタブなどの配置を組む */
+  children?: (content: ReactNode, count: number | null) => ReactNode;
+  showHeading?: boolean;
 }) {
   const favorites = useFavorites();
   const navigate = useContext(CourseNavigationContext);
@@ -108,7 +114,7 @@ export function SimilarCourses({
       clearTimeout(deadline);
     };
   }, [key, retry, cache, resortId]);
-  if (!key) return null;
+  if (!key) return children ? children(null, null) : null;
   const cached = cache?.store.peek(resortId);
   const immediate =
     cached && selected ? selectCachedRecommendations(cached, selected) : null;
@@ -132,11 +138,15 @@ export function SimilarCourses({
             error: false,
           }
         : loaded;
-  return (
+  const content = (
     <section className="min-w-0" aria-label="類似コース">
-      <FeatureSectionTitle aside="お気に入りのスキー場から">
-        類似コース
-      </FeatureSectionTitle>
+      {showHeading ? (
+        <FeatureSectionTitle aside="お気に入りのスキー場から">
+          類似コース
+        </FeatureSectionTitle>
+      ) : (
+        <p className="mb-1 text-xs text-slate-500">お気に入りのスキー場から</p>
+      )}
       {!current ? (
         <p role="status" className="py-1 text-xs text-slate-500">
           検索中…
@@ -266,4 +276,9 @@ export function SimilarCourses({
       )}
     </section>
   );
+  const count =
+    current && !current.error && current.status !== "api_outdated"
+      ? Math.min(current.results.length, 3)
+      : null;
+  return children ? children(content, count) : content;
 }

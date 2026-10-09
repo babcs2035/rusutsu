@@ -70,6 +70,8 @@ capture-sources が保存した証拠へのポインタ。料金計算に影響�
   「画像/PDFの根拠には path が必須」という検査も、**全資料に path を必須**に
   変えたほうが強く、種類の判定を必要としない
 - `user_specified`: URL登録ファイルに書かれたURLなら true。
+  自動探索で確認・登録したURLもtrue。名前は既存互換のままで、実際に人が
+  指定したかどうかは登録ファイルの `discovered_by` に記録する。
   **そのページに貼られたリンクを辿って取った資料は false** とし、
   `linked_from_source_id` でリンク元の source を指す。
   `capture-sources.mjs --follow-links` が manifest に

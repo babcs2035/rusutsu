@@ -291,7 +291,13 @@ export const getCasingWidth = (
   const stops = kind === "course" ? COURSE_WIDTH : LIFT_WIDTH;
   const isPhoto = state.tileVariant === "photo";
   const extra = (state.isFocusMode ? 0.3 : 0) + (isPhoto ? 2.2 : 1.8);
-  return scaleWidth(stops, 1, extra);
+  // 選択時の芯線の拡幅に追従し、白い縁の幅を保つ。
+  return widthByZoomAndCase(stops, width => [
+    "case",
+    isSelectedExpression(state.selectedFeature, kind),
+    width + extra + 1.6,
+    width + extra,
+  ]);
 };
 
 export const getCasingOpacity = (

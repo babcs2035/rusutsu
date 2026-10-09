@@ -97,7 +97,7 @@ export function MapLocationControl({
   if (!location || !interactive) return null;
   return (
     <div
-      className={`absolute right-3 ${expanded ? "top-16" : "top-3"} z-[760] flex max-w-[calc(100%-1.5rem)] flex-col items-end gap-2`}
+      className={`absolute right-3 ${expanded ? "top-16" : "top-[calc(var(--mobile-map-top-offset,0px)+0.75rem)]"} z-[760] flex max-w-[calc(100%-1.5rem)] flex-col items-end gap-2`}
     >
       <div className="flex gap-2">
         {position && (

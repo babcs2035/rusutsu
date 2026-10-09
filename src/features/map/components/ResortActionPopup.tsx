@@ -1,9 +1,9 @@
 "use client";
 
-import { Check, Plus } from "lucide-react";
 import { Popup } from "react-leaflet";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { CompareResortButton } from "@/shared/components/CompareResortButton";
 import type { MapSkiResort } from "@/types/skiResorts";
 
 type Props = {
@@ -44,7 +44,9 @@ export const ResortActionPopup = ({
           詳細を見る
         </Button>
         {onToggleCompare && (
-          <Button
+          <CompareResortButton
+            isSelected={isCompareSelected}
+            resortName={resort.nameJa}
             size="xs"
             variant="outline"
             className={cn(
@@ -53,19 +55,11 @@ export const ResortActionPopup = ({
                 ? "bg-blue-600 text-white border-blue-600"
                 : "bg-white text-blue-600 border-blue-600",
             )}
-            aria-pressed={isCompareSelected}
             onClick={() => {
               onToggleCompare(resort.id, !isCompareSelected);
               onClose();
             }}
-          >
-            {isCompareSelected ? (
-              <Check size={14} strokeWidth={3} />
-            ) : (
-              <Plus size={14} strokeWidth={3} />
-            )}
-            {isCompareSelected ? "比較から外す" : "比較に追加"}
-          </Button>
+          />
         )}
       </div>
     </div>

@@ -1,10 +1,11 @@
 "use client";
 
-import { Check, Plus, X } from "lucide-react";
+import { X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FavoriteButton } from "@/features/favorites/FavoriteButton";
 import { cn } from "@/lib/utils";
+import { CompareResortButton } from "@/shared/components/CompareResortButton";
 import { CopyResortNameButton } from "@/shared/components/CopyResortNameButton";
 import { FormerResortNames } from "@/shared/components/FormerResortNames";
 import { RubyText } from "@/shared/components/RubyText";
@@ -74,26 +75,15 @@ export const InfoSection = ({
             </Badge>
           )}
         </p>
-        <Button
-          type="button"
-          variant={isCompareSelected ? "default" : "outline"}
+        <CompareResortButton
+          isSelected={isCompareSelected}
+          resortName={resort.nameJa}
           className={cn(
             compareBtnClassName,
             "w-auto min-w-[5.75rem] md:w-[5.75rem] px-2 text-xs",
           )}
-          aria-pressed={isCompareSelected}
-          aria-label={`${resort.nameJa}を${
-            isCompareSelected ? "比較から外す" : "比較に追加"
-          }`}
           onClick={() => onToggleCompare(resort.id, !isCompareSelected)}
-        >
-          {isCompareSelected ? (
-            <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
-          ) : (
-            <Plus className="h-3.5 w-3.5 text-blue-600" strokeWidth={2.5} />
-          )}
-          <span>{isCompareSelected ? "比較から外す" : "比較に追加"}</span>
-        </Button>
+        />
       </div>
     </div>
   );

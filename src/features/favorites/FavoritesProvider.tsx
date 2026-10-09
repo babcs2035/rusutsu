@@ -1,5 +1,6 @@
 "use client";
 
+import { AlertTriangle } from "lucide-react";
 import { SessionProvider, signOut, useSession } from "next-auth/react";
 import {
   createContext,
@@ -295,7 +296,7 @@ function FavoritesState({
         open={accountOpen && !!session?.user}
         onOpenChange={setAccountOpen}
       >
-        <DialogContent className="z-[1000]">
+        <DialogContent className="z-[1000]" overlayClassName="z-[999]">
           <DialogTitle>アカウント</DialogTitle>
           <DialogDescription>
             {session?.user?.name}
@@ -320,27 +321,40 @@ function FavoritesState({
           if (!open) setDialog(null);
         }}
       >
-        <DialogContent className="z-[1000]">
-          <DialogTitle>お気に入りの保存</DialogTitle>
-          <DialogDescription>
-            {dialog?.step === "browser" ? (
-              <>
-                このブラウザにお気に入りを保存します。
-                <br />
-                ブラウザのデータ削除や利用状況によって、お気に入りが消える場合があります。
-              </>
-            ) : (
-              "保存方法を選んでください。Googleログインすると、異なる端末でも利用できます。"
+        <DialogContent className="z-[1000]" overlayClassName="z-[999]">
+          <DialogTitle className="flex items-center gap-2">
+            {dialog?.step === "browser" && (
+              <AlertTriangle
+                className="size-5 shrink-0 text-amber-600"
+                aria-hidden="true"
+              />
             )}
-          </DialogDescription>
+            {dialog?.step === "browser"
+              ? "保存が消える可能性があります"
+              : "お気に入りの保存"}
+          </DialogTitle>
+          {dialog?.step === "browser" && (
+            <DialogDescription>
+              ブラウザに保存します。
+              <br />
+              利用状況によっては、お気に入りが消える可能性があります。
+            </DialogDescription>
+          )}
           {dialog?.step === "choice" ? (
             <div className="flex flex-col gap-2">
-              <Button onClick={() => login(dialog.id)}>ログインして保存</Button>
               <Button
                 variant="outline"
+                className="font-semibold md:h-9 md:text-base"
+                onClick={() => login(dialog.id)}
+              >
+                ログインして保存
+              </Button>
+              <Button
+                variant="outline"
+                className="font-semibold md:h-9 md:text-base"
                 onClick={() => setDialog({ ...dialog, step: "browser" })}
               >
-                ログインせずに保存
+                このブラウザに保存
               </Button>
             </div>
           ) : (
@@ -371,7 +385,7 @@ function FavoritesState({
           if (!open) dismissExpiry();
         }}
       >
-        <DialogContent className="z-[1000]">
+        <DialogContent className="z-[1000]" overlayClassName="z-[999]">
           <DialogTitle>ログインが解除されています。</DialogTitle>
           <DialogDescription>
             再度ログインすると、保存済みのお気に入りを利用できます。

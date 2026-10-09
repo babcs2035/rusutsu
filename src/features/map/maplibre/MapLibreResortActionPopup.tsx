@@ -1,11 +1,12 @@
 "use client";
 
-import { Check, MapPin, Navigation, Plus } from "lucide-react";
+import { MapPin, Navigation } from "lucide-react";
 import { type Map as MapLibreMap, Marker } from "maplibre-gl";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { CompareResortButton } from "@/shared/components/CompareResortButton";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import {
   getGoogleMapsDirectionsUrl,
@@ -111,7 +112,9 @@ export const MapLibreResortActionPopup = ({
           詳細を見る
         </Button>
         {onToggleCompare && (
-          <Button
+          <CompareResortButton
+            isSelected={isCompareSelected}
+            resortName={resort.nameJa}
             size="xs"
             variant="outline"
             className={cn(
@@ -120,19 +123,11 @@ export const MapLibreResortActionPopup = ({
                 ? "border-blue-600 bg-blue-600 text-white"
                 : "border-blue-600 bg-white text-blue-600",
             )}
-            aria-pressed={isCompareSelected}
             onClick={() => {
               onToggleCompare(resort.id, !isCompareSelected);
               onClose();
             }}
-          >
-            {isCompareSelected ? (
-              <Check size={14} strokeWidth={3} />
-            ) : (
-              <Plus size={14} strokeWidth={3} />
-            )}
-            {isCompareSelected ? "比較から外す" : "比較に追加"}
-          </Button>
+          />
         )}
       </div>
     </div>,

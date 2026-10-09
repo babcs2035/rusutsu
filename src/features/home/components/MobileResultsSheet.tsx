@@ -3,7 +3,6 @@
 import type { ComponentType, RefObject } from "react";
 import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
 import type { JapanResortMapProps } from "@/features/map/types";
-import { cn } from "@/lib/utils";
 import type { MapSkiResort, SkiResortDetail } from "@/types/skiResorts";
 import { SkiResortCompareView } from "./SkiResortCompareView";
 import { SkiResortList } from "./SkiResortList";
@@ -15,7 +14,6 @@ type Props = {
   filteredResorts: MapSkiResort[];
   isCompareLoading: boolean;
   isCompareOpen: boolean;
-  isListSheetOpen: boolean;
   listSheetContentRef: RefObject<HTMLDivElement | null>;
   listSheetSnapPoint: number | string | null;
   snapPoints: (number | string)[];
@@ -36,7 +34,6 @@ export const MobileResultsSheet = ({
   filteredResorts,
   isCompareLoading,
   isCompareOpen,
-  isListSheetOpen,
   listSheetContentRef,
   selectedCompareIdSet,
   liftTicketInput,
@@ -48,10 +45,7 @@ export const MobileResultsSheet = ({
   <div
     ref={listSheetContentRef}
     data-mobile-results-panel="true"
-    className={cn(
-      "relative h-full min-h-0 flex flex-col bg-white overflow-hidden",
-      !isListSheetOpen && !isCompareOpen && "hidden",
-    )}
+    className="relative h-full min-h-0 flex flex-col bg-white overflow-hidden"
   >
     {isCompareOpen ? (
       <SkiResortCompareView

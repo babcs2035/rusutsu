@@ -21,6 +21,7 @@ import {
   RESORT_POINT_SOURCE,
 } from "./resortPointLayers";
 import { EMPTY_LINE_COLLECTION } from "./sources";
+import { getMapTopControlsOverlapHeight, getPanelOffset } from "./viewport";
 // ワーカー URL の設定。import した時点で副作用として走る
 import "./mapWorker";
 
@@ -91,6 +92,15 @@ export const useMapLibreMap = ({
       maxPitch: 0,
     });
     mapRef.current = map;
+    if (!viewport) {
+      // 検索欄の背後まで地図を描くが、初期位置は見える範囲の中央に置く。
+      map.easeTo({
+        center: [INITIAL_CENTER[1], INITIAL_CENTER[0]],
+        zoom,
+        offset: getPanelOffset(0, 0, getMapTopControlsOverlapHeight(map)),
+        duration: 0,
+      });
+    }
 
     map.on("load", () => {
       registerArrowIcon(map);
