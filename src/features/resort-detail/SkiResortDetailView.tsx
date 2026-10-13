@@ -232,7 +232,7 @@ export const SkiResortDetailView = ({
               <AnimatedPanel
                 data-ski-resort-detail-panel="true"
                 visible={isSidePanel}
-                contentClassName="relative z-10 flex h-full max-h-none w-[var(--desktop-detail-panel-width)] max-w-none flex-col overflow-hidden bg-white border border-gray-200 pointer-events-auto shadow-2xl"
+                contentClassName="@container/resort-detail relative z-10 flex h-full max-h-none w-[var(--desktop-detail-panel-width)] max-w-none flex-col overflow-hidden bg-white border border-gray-200 pointer-events-auto shadow-2xl"
               >
                 {loadingContent}
               </AnimatedPanel>
@@ -407,7 +407,9 @@ export const SkiResortDetailView = ({
           activeTab={activeTab}
           onTabChange={setActiveTab}
         />
-        <div className="p-3 md:p-4 text-gray-700">{renderTabPanels()}</div>
+        <div className="p-3 @min-[30rem]/resort-detail:p-4 text-gray-700">
+          {renderTabPanels()}
+        </div>
       </div>
     ))
   ) : (
@@ -560,7 +562,7 @@ export const SkiResortDetailView = ({
               data-ski-resort-detail-panel="true"
               visible={isSidePanel}
               contentClassName={cn(
-                "relative z-10 flex h-full max-h-none max-w-none flex-col overflow-hidden bg-white border border-gray-200 pointer-events-auto shadow-2xl",
+                "@container/resort-detail relative z-10 flex h-full max-h-none max-w-none flex-col overflow-hidden bg-white border border-gray-200 pointer-events-auto shadow-2xl",
                 isDesktopMapExpanded
                   ? "w-[min(400px,40vw)] rounded-xl"
                   : "w-[var(--desktop-detail-panel-width)]",

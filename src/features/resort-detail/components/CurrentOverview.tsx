@@ -84,10 +84,13 @@ export function CurrentOverview({
       .map(item => ({ label: "コンディション", time: item.weather?.time })),
   ];
   return (
-    <section aria-label="営業・気象情報" className="space-y-2">
+    <section
+      aria-label="営業・気象情報"
+      className="@container/overview space-y-2"
+    >
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         {!summaryOnly && (
-          <h2 className="text-base font-semibold text-slate-900 md:text-lg">
+          <h2 className="text-base font-semibold text-slate-900 @min-[28rem]/overview:text-lg">
             営業状況
           </h2>
         )}
@@ -100,7 +103,7 @@ export function CurrentOverview({
         )}
       </div>
       {/* コースとリフトは常に横に並べ、縦の場所を取らないようにする */}
-      <div className="grid grid-cols-2 gap-1.5 md:gap-2">
+      <div className="grid grid-cols-2 gap-1.5 @min-[28rem]/overview:gap-2">
         <div className="min-w-0">
           <CourseStatusTable
             summary={courseSummary}
@@ -148,7 +151,7 @@ export function CurrentOverview({
         <>
           <section aria-label="コンディション" className="space-y-1.5">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-              <h3 className="text-sm font-semibold text-slate-900 md:text-base">
+              <h3 className="text-sm font-semibold text-slate-900 @min-[28rem]/overview:text-base">
                 コンディション
               </h3>
               <LinkedMemberTabs
@@ -202,7 +205,7 @@ export function CurrentOverview({
               className="space-y-1.5 border-t border-slate-200 pt-2"
               aria-label="コメント"
             >
-              <h3 className="text-sm font-semibold text-slate-900 md:text-base">
+              <h3 className="text-sm font-semibold text-slate-900 @min-[28rem]/overview:text-base">
                 コメント
               </h3>
               {conditions.map(item => {

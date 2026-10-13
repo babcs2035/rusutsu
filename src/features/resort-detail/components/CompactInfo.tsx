@@ -9,6 +9,13 @@ import {
   formatPublishedDate,
 } from "../utils/operationDates";
 
+const COMPACT_SOURCE_TEXT =
+  "text-xs leading-4 md:text-sm md:leading-5 md:@max-[28rem]/overview:text-xs md:@max-[28rem]/overview:leading-4 md:@max-[12rem]/status-summary:text-xs md:@max-[12rem]/status-summary:leading-4";
+const COMPACT_SOURCE_CHIP =
+  "min-h-5 px-1.5 md:min-h-7 md:px-2 md:@max-[28rem]/overview:min-h-5 md:@max-[28rem]/overview:px-1.5 md:@max-[12rem]/status-summary:min-h-5 md:@max-[12rem]/status-summary:px-1.5";
+const COMPACT_SOURCE_ICON =
+  "size-3 md:size-3.5 md:@max-[28rem]/overview:size-3 md:@max-[12rem]/status-summary:size-3";
+
 export function SourceLine({
   label,
   time,
@@ -48,14 +55,14 @@ export function SourceLine({
       : [{ url: undefined, publishedDate: undefined }];
   return (
     <div
-      className={`flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 break-words text-slate-700 ${compact ? "text-xs leading-4 md:text-sm md:leading-5" : "text-sm leading-5"}`}
+      className={`flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 break-words text-slate-700 ${compact ? COMPACT_SOURCE_TEXT : "text-sm leading-5"}`}
     >
       {showLabel && <span>{label}</span>}
       {showFetched && date && <span>取得: {date}（日本時間）</span>}
       {rows.map((row, index) => (
         <span
           key={row.url ?? row.publishedDate ?? index}
-          className={`inline-flex min-w-0 max-w-full shrink-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 rounded-md border border-blue-100 bg-blue-50 py-0.5 ${compact ? "min-h-5 px-1.5 md:min-h-7 md:px-2" : "min-h-7 px-2"}`}
+          className={`inline-flex min-w-0 max-w-full shrink-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 rounded-md border border-blue-100 bg-blue-50 py-0.5 ${compact ? COMPACT_SOURCE_CHIP : "min-h-7 px-2"}`}
         >
           {row.url ? (
             <ExternalLinkComponent
@@ -70,7 +77,7 @@ export function SourceLine({
             >
               出典{rows.length > 1 ? index + 1 : ""}
               <ExternalLink
-                className={compact ? "size-3 md:size-3.5" : "size-3.5"}
+                className={compact ? COMPACT_SOURCE_ICON : "size-3.5"}
               />
             </ExternalLinkComponent>
           ) : (

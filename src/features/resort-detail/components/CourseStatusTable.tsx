@@ -121,26 +121,33 @@ export function CourseStatusTable({
   // 見出し行（名前・件数・説明・詳細）→ 記号と件数 → 出典の順に積む。
   return (
     <section
-      className="flex min-w-0 flex-col gap-1 rounded-lg border border-slate-200 px-1.5 py-1.5 md:px-2.5 md:py-2"
+      className="@container/status-summary flex min-w-0 flex-col gap-1 rounded-lg border border-slate-200 px-1.5 py-1.5"
       aria-labelledby={headingId}
     >
       <div className="flex min-w-0 items-center">
         <h3
           id={headingId}
-          className="min-w-0 truncate text-sm font-semibold text-slate-900 md:text-base"
+          className="flex min-w-0 flex-wrap items-baseline gap-x-0.5 text-sm font-semibold text-slate-900 @min-[12rem]/status-summary:text-base"
         >
-          {name}
+          <span className="whitespace-nowrap">{name}</span>
           {summary && (
-            <span className="ml-0.5 text-[11px] font-normal text-slate-600 md:ml-1 md:text-sm">
+            <span className="whitespace-nowrap text-[11px] font-normal text-slate-600 @min-[12rem]/status-summary:text-sm">
               {`${summary.total}${isLift ? "本" : "区間"}`}
             </span>
           )}
         </h3>
-        {!unavailable && <StatusLegendDialog name={name} kind={kind} compact />}
+        {!unavailable && (
+          <StatusLegendDialog
+            name={name}
+            kind={kind}
+            compact
+            className="size-5 md:size-5 [&_svg]:size-3.5 @min-[12rem]/status-summary:size-6 @min-[12rem]/status-summary:[&_svg]:size-4"
+          />
+        )}
         {onShowDetail && (
           <DetailButton
             compact
-            className="ml-auto md:min-h-7 md:py-1 md:pr-2 md:pl-3 md:text-sm"
+            className="ml-auto @min-[12rem]/status-summary:min-h-7 @min-[12rem]/status-summary:py-1 @min-[12rem]/status-summary:pr-2 @min-[12rem]/status-summary:pl-3 @min-[12rem]/status-summary:text-sm"
             onClick={onShowDetail}
           >
             {detailLabel}
@@ -151,7 +158,7 @@ export function CourseStatusTable({
       <div
         role="group"
         aria-labelledby={headingId}
-        className="flex min-w-0 items-center justify-between gap-1"
+        className="flex min-w-0 items-center justify-between gap-1 [&_[role=img]]:size-3.5 [&_svg]:size-3.5 @min-[12rem]/status-summary:[&_[role=img]]:size-4 @min-[12rem]/status-summary:[&_svg]:size-4"
       >
         {unavailable && (
           <NotFetchedBadge
@@ -162,7 +169,7 @@ export function CourseStatusTable({
           <div key={column.label} className="flex items-center gap-0.5">
             {column.label === "不明" ? (
               <span
-                className={`text-[11px] font-semibold md:text-xs ${column.tone}`}
+                className={`whitespace-nowrap text-[11px] font-semibold @min-[12rem]/status-summary:text-xs ${column.tone}`}
               >
                 不明
               </span>
@@ -173,7 +180,7 @@ export function CourseStatusTable({
                 size="sm"
               />
             )}
-            <span className="text-base leading-6 font-bold tabular-nums text-slate-900 md:text-lg md:leading-7">
+            <span className="text-base leading-6 font-bold tabular-nums text-slate-900 @min-[12rem]/status-summary:text-lg @min-[12rem]/status-summary:leading-7">
               {column.count ?? "—"}
             </span>
           </div>

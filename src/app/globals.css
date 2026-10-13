@@ -114,11 +114,11 @@
 
   /* デスクトップの右パネル幅。左のゲレンデ一覧の右端をここに合わせる */
   --compare-panel-width: min(620px, 52vw);
-  --desktop-search-panel-width: min(400px, 50vw);
+  --desktop-search-panel-width: min(500px, 45vw);
   /*
    * スキー場詳細の右パネル幅。以前の 560px は地図を削りすぎるので詰める。
-   * 500px は料金タブの公式リフト料金表（大人〜3歳以下の5列）が
-   * 横スクロールなしで収まる最小幅。これより狭くする場合は料金表も見直す。
+   * 上限の500pxは料金表も余裕を持って読める幅。
+   * 狭い側はコンテナ幅に応じて余白を詰め、450pxでも5列を収める。
    */
   --desktop-detail-panel-width: min(500px, 45vw);
 }

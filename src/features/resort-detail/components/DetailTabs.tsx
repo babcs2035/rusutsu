@@ -18,6 +18,7 @@ export const DetailTabs = <TTab extends string>({
     activeTab={activeTab}
     onTabChange={onTabChange}
     compact
+    fit
     className="sticky top-0 z-20 will-change-transform"
   />
 );

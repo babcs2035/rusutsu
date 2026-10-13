@@ -68,9 +68,9 @@ const subRowsOf = (row: PriceRow): SubRow[] => {
 };
 
 const STICKY_CELL =
-  "sticky left-0 z-10 min-w-[5.5rem] max-w-[8rem] bg-white px-2 py-2 text-left align-middle md:max-w-none md:px-3";
+  "sticky left-0 z-10 min-w-[5.5rem] max-w-[8rem] bg-white px-2 py-2 text-left align-middle @min-[28rem]/price-table:max-w-none @min-[28rem]/price-table:px-3";
 const PRICE_CELL =
-  "px-1.5 py-2 text-right align-middle whitespace-nowrap text-sm md:px-3";
+  "px-1.5 py-2 text-right align-middle whitespace-nowrap text-sm @min-[28rem]/price-table:px-3";
 
 const RowLabel = ({ row }: { row: PriceRow }) => (
   <>
@@ -117,7 +117,7 @@ const TableRows = ({
           <th
             scope="rowgroup"
             colSpan={audiences.length + 1}
-            className="sticky left-0 bg-white px-2.5 pt-2 pb-0.5 text-left font-normal md:px-3"
+            className="sticky left-0 bg-white px-2.5 pt-2 pb-0.5 text-left font-normal @min-[28rem]/price-table:px-3"
           >
             <RowLabel row={row} />
           </th>
@@ -177,7 +177,7 @@ const TableRows = ({
 };
 
 const PriceGrid = ({ table }: { table: PriceTable }) => (
-  <Card className="w-full overflow-hidden py-0">
+  <Card className="@container/price-table w-full overflow-hidden py-0">
     <CardContent className="p-0">
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
@@ -185,7 +185,7 @@ const PriceGrid = ({ table }: { table: PriceTable }) => (
             <tr className="bg-gray-50">
               <th
                 scope="col"
-                className="sticky left-0 z-10 bg-gray-50 px-2.5 py-2 text-left text-gray-600 text-xs font-semibold md:px-3"
+                className="sticky left-0 z-10 bg-gray-50 px-2.5 py-2 text-left text-gray-600 text-xs font-semibold @min-[28rem]/price-table:px-3"
               >
                 券種
               </th>
@@ -193,7 +193,7 @@ const PriceGrid = ({ table }: { table: PriceTable }) => (
                 <th
                   key={audience.id}
                   scope="col"
-                  className="px-1.5 py-2 text-right align-bottom text-gray-700 text-xs font-semibold whitespace-nowrap md:px-3"
+                  className="px-1.5 py-2 text-right align-bottom text-gray-700 text-xs font-semibold whitespace-nowrap @min-[28rem]/price-table:px-3"
                 >
                   {audience.label}
                   {audience.ageLabel && (
