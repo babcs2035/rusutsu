@@ -497,7 +497,7 @@
             "シーズン中",
             "通年"
           ],
-          "decision_rule_ja": "`included_date_ranges` に営業期間を入れて範囲を限定する（無限に一致させない）。",
+          "decision_rule_ja": "営業期間中の全日に使う。包含はORなので、期間で限定したいときは all を使わず `included_date_ranges` だけで指定する（all と期間を併記すると全日に一致する）。全日から一部を除くときは all と `excluded_dates` / `excluded_date_ranges` を使う。",
           "status": "defined"
         },
         "unknown": {
@@ -1006,6 +1006,304 @@
           "excludes_ja": [],
           "official_examples_ja": [],
           "decision_rule_ja": "公式資料に時間の記載が無い場合。**営業しているとみなして時間を推測してはいけない。** `unresolved_questions` にも記録する。**operating_hours 専用**で、products の `covers_hours_types` には使えない（いつ使えるか不明な券は、券自体の記録を見直す）。",
+          "status": "defined"
+        }
+      }
+    },
+    "rental_item_types": {
+      "description_ja": "レンタル料金に含まれる用具（`rentals[].items`）。画面の「レンタル（スキー／ボード／＋ウェア）」に必要な用具がそろう最安の組み合わせを探すために使う。",
+      "notes_ja": "**セットで貸す料金はセットのラベル1つで書く。** スキーセット（板・ブーツ・ストック）とウェアのセットは [\"ski_set\", \"wear\"]。単品料金は単品のラベルで書き、画面側が単品の合計とセットを比べる。グレード・ブランドは `grade_ja` / `official_label_ja` に公式表記のまま残し、ラベルを分けない。",
+      "labels": {
+        "ski_set": {
+          "label_ja": "スキーセット",
+          "definition_ja": "スキー板・ブーツ・ストックの3点を借りるセット。",
+          "includes_ja": [
+            "スキー3点セット",
+            "スキーセット（板・靴・ストック）"
+          ],
+          "excludes_ja": [
+            "ウェアも含む → [ski_set, wear]",
+            "板だけ → skis"
+          ],
+          "official_examples_ja": [
+            "スキーセット",
+            "スキー3点セット"
+          ],
+          "decision_rule_ja": "**3点のうち何が含まれるかを公式表記で確かめる。** ストックが含まれない等、3点がそろわない場合は単品ラベルの組み合わせ（[skis, ski_boots]）で書く。",
+          "status": "defined"
+        },
+        "snowboard_set": {
+          "label_ja": "スノーボードセット",
+          "definition_ja": "スノーボード（ビンディング付き）とブーツを借りるセット。",
+          "includes_ja": [
+            "ボード2点セット",
+            "スノーボードセット"
+          ],
+          "excludes_ja": [
+            "ウェアも含む → [snowboard_set, wear]",
+            "板だけ → snowboard"
+          ],
+          "official_examples_ja": [
+            "スノーボードセット",
+            "ボード＋ブーツ"
+          ],
+          "decision_rule_ja": "ボードとブーツの両方が含まれる場合だけ使う。",
+          "status": "defined"
+        },
+        "skis": {
+          "label_ja": "スキー板（単品）",
+          "definition_ja": "スキー板だけを借りる料金。",
+          "includes_ja": [],
+          "excludes_ja": [
+            "ブーツ・ストック込み → ski_set"
+          ],
+          "official_examples_ja": [
+            "スキー板のみ"
+          ],
+          "decision_rule_ja": "単品の料金表にある場合だけ使う。「板のみ」「ブーツのみ」のようにスキー用かボード用かが書かれていない単品は、スキー用とボード用の2件に分けて同額で記録する（既定の解釈）。",
+          "status": "defined"
+        },
+        "ski_boots": {
+          "label_ja": "スキーブーツ（単品）",
+          "definition_ja": "スキーブーツだけを借りる料金。",
+          "includes_ja": [],
+          "excludes_ja": [
+            "スノーボードブーツ → snowboard_boots"
+          ],
+          "official_examples_ja": [
+            "スキーブーツのみ"
+          ],
+          "decision_rule_ja": "単品の料金表にある場合だけ使う。",
+          "status": "defined"
+        },
+        "poles": {
+          "label_ja": "ストック（単品）",
+          "definition_ja": "ストック（ポール）だけを借りる料金。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "ストック"
+          ],
+          "decision_rule_ja": "単品の料金表にある場合だけ使う。",
+          "status": "defined"
+        },
+        "snowboard": {
+          "label_ja": "スノーボード板（単品）",
+          "definition_ja": "スノーボード板（ビンディング付き）だけを借りる料金。",
+          "includes_ja": [],
+          "excludes_ja": [
+            "ブーツ込み → snowboard_set"
+          ],
+          "official_examples_ja": [
+            "ボードのみ"
+          ],
+          "decision_rule_ja": "単品の料金表にある場合だけ使う。",
+          "status": "defined"
+        },
+        "snowboard_boots": {
+          "label_ja": "スノーボードブーツ（単品）",
+          "definition_ja": "スノーボードブーツだけを借りる料金。",
+          "includes_ja": [],
+          "excludes_ja": [
+            "スキーブーツ → ski_boots"
+          ],
+          "official_examples_ja": [
+            "ボードブーツのみ"
+          ],
+          "decision_rule_ja": "単品の料金表にある場合だけ使う。",
+          "status": "defined"
+        },
+        "snowboard_bindings": {
+          "label_ja": "ビンディング（単品）",
+          "definition_ja": "スノーボードのビンディングだけを借りる料金。",
+          "includes_ja": [],
+          "excludes_ja": [
+            "ボード（ビンディング付き） → snowboard"
+          ],
+          "official_examples_ja": [
+            "ビンディング"
+          ],
+          "decision_rule_ja": "単品の料金表にある場合だけ使う。画面では選ばない（ボード板の料金にビンディングが含まれる前提）。",
+          "status": "defined"
+        },
+        "wear": {
+          "label_ja": "ウェア",
+          "definition_ja": "スキー・スノーボードウェアの上下。",
+          "includes_ja": [
+            "ウェア上下",
+            "ジャケット＋パンツ",
+            "ウエアセット"
+          ],
+          "excludes_ja": [
+            "上だけ・下だけ → unknown"
+          ],
+          "official_examples_ja": [
+            "ウェア上下"
+          ],
+          "decision_rule_ja": "**上下セットのときだけ使う。** 上だけ・下だけは unknown にして公式表記を残す。",
+          "status": "defined"
+        },
+        "helmet": {
+          "label_ja": "ヘルメット",
+          "definition_ja": "ヘルメット。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "ヘルメット"
+          ],
+          "decision_rule_ja": "単品・セットに含まれる場合とも使う。",
+          "status": "defined"
+        },
+        "goggles": {
+          "label_ja": "ゴーグル",
+          "definition_ja": "ゴーグル。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "ゴーグル"
+          ],
+          "decision_rule_ja": "単品・セットに含まれる場合とも使う。",
+          "status": "defined"
+        },
+        "gloves": {
+          "label_ja": "グローブ",
+          "definition_ja": "手袋・グローブ。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "グローブ"
+          ],
+          "decision_rule_ja": "単品・セットに含まれる場合とも使う。",
+          "status": "defined"
+        },
+        "unknown": {
+          "label_ja": "用具が確定できない",
+          "definition_ja": "上のどれにも当てはまらない、または内容が特定できない用具。",
+          "includes_ja": [
+            "ソリ",
+            "スノーシュー",
+            "ウェア上だけ・下だけ",
+            "ファンスキー・ショートスキー",
+            "ボーゲンヘルパー等の補助具"
+          ],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "ソリ"
+          ],
+          "decision_rule_ja": "`official_label_ja` に公式表記を写す。ファンスキー等をスキー板と同一視しない。**ラベルを勝手に追加してはならない。**",
+          "status": "defined"
+        }
+      }
+    },
+    "rental_duration_modes": {
+      "description_ja": "レンタル料金の貸出期間（`rentals[].duration.mode`）。画面の「1日」「N時間」「ナイター」に合う料金を選ぶために使う。",
+      "notes_ja": "リフト券の validity_modes とは別に持つ。レンタルは「1日」「半日」「N時間」「N日間」で売られ、営業時間からの計算を要しないため。",
+      "labels": {
+        "day": {
+          "label_ja": "1日",
+          "definition_ja": "営業日1日のあいだ借りる料金。",
+          "includes_ja": [
+            "1日",
+            "終日"
+          ],
+          "excludes_ja": [
+            "2日以上 → days",
+            "時間指定 → hours"
+          ],
+          "official_examples_ja": [
+            "1日",
+            "1DAY"
+          ],
+          "decision_rule_ja": "「1日」と書かれた料金。期間の書かれていない料金（ヘルメット単品など）も day とする（既定の解釈）。返却時刻が公式にあれば end_time に書く。",
+          "status": "defined"
+        },
+        "half_day": {
+          "label_ja": "半日",
+          "definition_ja": "半日だけ借りる料金。",
+          "includes_ja": [
+            "半日",
+            "午前・午後",
+            "13:00以降"
+          ],
+          "excludes_ja": [
+            "時間数が書かれた料金 → hours"
+          ],
+          "official_examples_ja": [
+            "半日",
+            "AM/PM"
+          ],
+          "decision_rule_ja": "「午後」「13:00以降」のように開始時刻だけがある料金も half_day とし、start_time に書く。時間数・返却時刻が公式に書かれていれば hours / end_time に写す。書かれていなければ推測しない（画面は4時間以下の滑走にだけ当てる）。",
+          "status": "defined"
+        },
+        "hours": {
+          "label_ja": "N時間",
+          "definition_ja": "借りてからN時間の料金。",
+          "includes_ja": [
+            "4時間",
+            "2時間"
+          ],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "4時間"
+          ],
+          "decision_rule_ja": "`hours` に時間数を必ず書く。",
+          "status": "defined"
+        },
+        "days": {
+          "label_ja": "N日間",
+          "definition_ja": "連続N日間借りる料金。",
+          "includes_ja": [
+            "2日間",
+            "3日間"
+          ],
+          "excludes_ja": [
+            "1日 → day"
+          ],
+          "official_examples_ja": [
+            "2日券",
+            "2DAYS"
+          ],
+          "decision_rule_ja": "`days` に日数を必ず書く。連続でない日に使えるかが公式にあれば notes_ja に書く。",
+          "status": "defined"
+        },
+        "extra_day": {
+          "label_ja": "追加1日",
+          "definition_ja": "複数日で借りるとき、基準の料金に1日ごとに足す料金。",
+          "includes_ja": [
+            "以降1日＋",
+            "+1日追加",
+            "6日目以降1日ごと"
+          ],
+          "excludes_ja": [
+            "2日間・3日間のまとまった料金 → days"
+          ],
+          "official_examples_ja": [
+            "以降1日+¥5,000",
+            "6日以降 / 1日"
+          ],
+          "decision_rule_ja": "`after_days` に何日目より後に足すかを書く（「以降1日＋」は1、「6日目以降」は5）。基準の料金（day / days）と同じ `items`・対象者で記録する。",
+          "status": "defined"
+        },
+        "night": {
+          "label_ja": "ナイター",
+          "definition_ja": "ナイター営業の時間帯だけ借りる料金。",
+          "includes_ja": [
+            "ナイター"
+          ],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "ナイター"
+          ],
+          "decision_rule_ja": "時刻が公式にあれば start_time / end_time に書く。",
+          "status": "defined"
+        },
+        "unknown": {
+          "label_ja": "期間が確定できない",
+          "definition_ja": "貸出期間が公式から読み取れない料金。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": "公式表記を notes_ja に写し、human_review_required へ。",
           "status": "defined"
         }
       }

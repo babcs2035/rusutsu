@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { LiftTicketCalculator } from "@/features/lift-ticket/components/LiftTicketCalculator";
 import { LiftTicketPriceTable } from "@/features/lift-ticket/components/LiftTicketPriceTable";
+import { RentalPriceTable } from "@/features/lift-ticket/components/RentalPriceTable";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import type { Resort } from "../types";
 
@@ -81,6 +82,17 @@ export const TicketsTab = ({ resort }: { resort: Resort }) => {
           </p>
           <LiftTicketPriceTable data={liftTicketData} />
         </section>
+        {(liftTicketData.rentals?.length ?? 0) > 0 && (
+          <section>
+            <h2 className="text-lg font-bold text-gray-900 font-[var(--font-heading)]">
+              公式レンタル料金表
+            </h2>
+            <p className="mt-2 mb-4 text-gray-600 text-sm">
+              用具・対象・期間ごとの料金を表示しています。
+            </p>
+            <RentalPriceTable data={liftTicketData} />
+          </section>
+        )}
         {(liftTicketData.data_quality.unresolved_questions?.length ?? 0) >
           0 && (
           <Alert className="bg-orange-50 border-orange-300">

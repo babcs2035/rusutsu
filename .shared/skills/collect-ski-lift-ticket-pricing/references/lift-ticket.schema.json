@@ -144,6 +144,20 @@
         "$ref": "#/$defs/fee"
       }
     },
+    "rental_audiences": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/audience"
+      },
+      "description": "レンタル料金だけで使う人物区分（券と年齢の分け方が違う「子供（小学生以下）」等）。audiences に足すとリフト券の計算と料金表の列が変わるので、ここに分けて置く。券と同じ区分で足りるなら空にして audiences のIDを参照する。"
+    },
+    "rentals": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/rental"
+      },
+      "description": "スキー場公式サイトに掲載されたレンタル用具の料金。リフト券の料金計算とは別に、画面でレンタル有りを選んだ人数分を足す。省略・空配列は「未収集」を意味し、「レンタルが無い」とは区別しない（無いことを確認したら data_quality.notes_ja に書く）。"
+    },
     "calculation_policy": {
       "type": "object",
       "additionalProperties": false,
@@ -1573,6 +1587,38 @@
               "type": "null"
             }
           ]
+        },
+        "source_quotes": {
+          "type": "array",
+          "description": "料金が書かれている場所。出典リンクで #:~:text= によりその文言をハイライトする。text・prefix は出典ページの表示テキストと完全一致させる。",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "source_id",
+              "text"
+            ],
+            "properties": {
+              "source_id": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "prefix": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "suffix": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
         }
       }
     },
@@ -1729,6 +1775,38 @@
               "type": "null"
             }
           ]
+        },
+        "source_quotes": {
+          "type": "array",
+          "description": "料金が書かれている場所。出典リンクで #:~:text= によりその文言をハイライトする。text・prefix は出典ページの表示テキストと完全一致させる。",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "source_id",
+              "text"
+            ],
+            "properties": {
+              "source_id": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "prefix": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "suffix": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
         }
       }
     },
@@ -1788,6 +1866,296 @@
         }
       },
       "description": "★**券の料金とは別に払う「返ってこない追加負担」だけ**を記録する（ICカード発行手数料・システム利用料・送料など）。\n★**返金される保証金（ICカードデポジット等）は記録しない。** 返却すれば戻ってくるので実質の負担ではない。返金の有無を表すフラグも持たない — 載っているものは全て負担、というだけにする。\n★**特定の状況でのみ発生する費用も記録しない**（再発行手数料＝紛失時、キャンセル料など）。\n券の提示価格に返金される保証金が含まれている場合は、**offerの price を実質負担（保証金を差し引いた額）で記録し**、公式提示額と差し引いた理由を price.notes_ja に書く。知りたいのは実質いくら払うかであって、内訳の分類ではない。"
+    },
+    "rental": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name_ja",
+        "items",
+        "audience_ids",
+        "duration",
+        "price",
+        "source_refs"
+      ],
+      "description": "レンタル料金1件（1つの用具の組み合わせ × 対象者 × 期間 × 料金区分 = 1件）。offerと同じく、日付で金額が変わるなら calendar_ids で分け、対象者で変わるなら audience_ids で分ける。\n★**宿泊者・会員など入力から判定できない条件は target_qualification に置く**（画面では自動適用せず条件付きで別掲する）。\n★**身長・サイズで決まる区分（「ジュニア（身長150cm以下）」等）は年齢・学校区分へ置き換えない。** 基準区分（大人）へ紐付けて target_qualification に公式表記を残す。",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name_ja": {
+          "type": "string",
+          "minLength": 1
+        },
+        "official_label_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "shop_name_ja": {
+          "description": "貸し出すショップ名（公式表記）。スキー場内に複数ショップがあり料金が違う場合に区別する",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "items": {
+          "description": "含まれる用具（taxonomy.json の rental_item_types）。「スキーセット＋ウェア」は [\"ski_set\", \"wear\"]",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "ski_set",
+              "snowboard_set",
+              "skis",
+              "ski_boots",
+              "poles",
+              "snowboard",
+              "snowboard_boots",
+              "snowboard_bindings",
+              "wear",
+              "helmet",
+              "goggles",
+              "gloves",
+              "unknown"
+            ]
+          }
+        },
+        "grade_ja": {
+          "description": "グレード（「スタンダード」「ハイグレード」等）を公式表記のまま。グレード分けが無ければ null",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "audience_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          },
+          "description": "audiences または rental_audiences のID。レンタルで参照する区分のうち1つ（通常は大人）は is_default: true であること"
+        },
+        "calendar_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "channel_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "duration": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "mode"
+          ],
+          "properties": {
+            "mode": {
+              "description": "taxonomy.json の rental_duration_modes",
+              "type": "string",
+              "enum": [
+                "day",
+                "half_day",
+                "hours",
+                "days",
+                "extra_day",
+                "night",
+                "unknown"
+              ]
+            },
+            "hours": {
+              "description": "hours のとき必須。half_day は公式に時間が書かれている場合だけ",
+              "type": [
+                "number",
+                "null"
+              ],
+              "exclusiveMinimum": 0
+            },
+            "days": {
+              "description": "days のとき必須（2日間 → 2）",
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1
+            },
+            "after_days": {
+              "description": "extra_day のとき、何日目より後に1日ごとに足す料金か（「以降1日＋」は1、「6日目以降1日ごと」は5）。省略は1",
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1
+            },
+            "start_time": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/timeOfDay"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "end_time": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/timeOfDay"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "notes_ja": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "price": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "amount"
+          ],
+          "properties": {
+            "currency": {
+              "type": "string",
+              "enum": [
+                "JPY"
+              ]
+            },
+            "amount": {
+              "description": "税込の支払額（円）。判読不能・未掲載なら null にして human_review_required へ",
+              "$ref": "#/$defs/nullableAmount"
+            },
+            "notes_ja": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "target_qualification": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/targetQualification"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "purchase_deadline": {
+          "description": "予約・購入の期限（「前日までのWeb予約で割引」等）。窓口で当日借りる料金には書かない。offer.purchase_deadline と同じ書き方。",
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "same_day_allowed",
+            "official_text_ja"
+          ],
+          "properties": {
+            "same_day_allowed": {
+              "description": "利用日当日に買えるか。true＝当日購入可（「当日OK」「利用15分前まで」）、false＝前日以前に買う必要がある（前売り）、null＝**公式に記載がない**（推測してはいけない。人間に通知される）",
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "days_before_use": {
+              "description": "利用日の何日前までに買う必要があるか（**1日単位**）。「前日まで」＝1、「3日前まで」＝3、当日購入可なら 0 か null。**照会日から「あと何日あるので買えるか」を判定するために使う**。当日内の分単位の期限（「利用15分前まで」等）はここに入れず official_text_ja だけに書く（1日単位の判定には効かないため）",
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "deadline_date": {
+              "description": "「〇月〇日まで販売」のように利用日と無関係な固定期限。照会日がこの日を過ぎていれば買えない",
+              "$ref": "#/$defs/nullableDate"
+            },
+            "official_text_ja": {
+              "description": "期限の公式表記をそのまま（「利用日前日23:59まで」「リフト利用開始15分前まで」「1/31まで販売」）。same_day_allowed が null のときのみ null にできる",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "notes_ja": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "source_refs": {
+              "$ref": "#/$defs/sourceRefs"
+            }
+          }
+        },
+        "use_period": {
+          "$ref": "#/$defs/nullablePeriod"
+        },
+        "sales_period": {
+          "$ref": "#/$defs/nullablePeriod"
+        },
+        "notes_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_refs": {
+          "$ref": "#/$defs/sourceRefs"
+        },
+        "source_quotes": {
+          "type": "array",
+          "description": "料金が書かれている場所。出典リンクで #:~:text= によりその文言をハイライトする。text・prefix は出典ページの表示テキストと完全一致させる。",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "source_id",
+              "text"
+            ],
+            "properties": {
+              "source_id": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "prefix": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "suffix": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      }
     },
     "operatingHours": {
       "type": "object",

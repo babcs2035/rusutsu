@@ -103,6 +103,50 @@ test("administrator corrections may split, reorder and remove identified items",
     }),
   );
 });
+test("administrator corrections may regroup courses and edit ticket documents", () => {
+  const grouping = { id: "g1", name: "A", kind: "continuous", order: 1 };
+  const original = {
+    resortId: "example",
+    fileHash: "a".repeat(64),
+    courses: [
+      {
+        targetSkiId: "example",
+        properties: { entityId: "a", courseGrouping: grouping },
+      },
+    ],
+  };
+  for (const courseGrouping of [
+    null,
+    undefined,
+    { ...grouping, id: "g2", kind: "routes" },
+  ])
+    assert.doesNotThrow(() =>
+      assertCorrectionScope(original, {
+        ...original,
+        courses: [
+          {
+            targetSkiId: "example",
+            properties: { entityId: "a", courseGrouping },
+          },
+        ],
+      }),
+    );
+  const ticket = {
+    resortId: "example",
+    seasonId: "2026-2027",
+    baseVersion: 3,
+    data: { offers: [{ id: "o1" }, { id: "o2" }] },
+  };
+  assert.doesNotThrow(() =>
+    assertCorrectionScope(ticket, {
+      ...ticket,
+      data: { offers: [{ id: "o2" }] },
+    }),
+  );
+  assert.throws(() =>
+    assertCorrectionScope(ticket, { ...ticket, baseVersion: 4 }),
+  );
+});
 test("malformed, oversized and polluted proposals fail before any write", () => {
   const valid = {
     resortId: "example",

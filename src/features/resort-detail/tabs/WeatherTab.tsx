@@ -7,6 +7,18 @@ import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import { LinkedMemberTabs, useLinkedMember } from "../components/LinkedArea";
 import type { Resort } from "../types";
 
+// 各サイト1件ずつの4リンクはスマホでも横1列。複数地点のリンクは折り返してよい。
+const weatherLinkClassName =
+  "shrink-0 whitespace-nowrap rounded-full px-1.5 py-1.5 text-[11px] font-medium hover:no-underline @min-[21rem]/weather-links:text-xs @min-[22rem]/weather-links:px-2 @min-[28rem]/weather-links:text-sm";
+const redWeatherLinkClassName = cn(
+  weatherLinkClassName,
+  "bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800",
+);
+const blueWeatherLinkClassName = cn(
+  weatherLinkClassName,
+  "bg-blue-50 text-blue-900 hover:bg-blue-100 hover:text-blue-700",
+);
+
 export const WeatherTab = ({ resort }: { resort: Resort }) => {
   // 連携エリアは、天気・予報をスキー場ごとのタブで切り替える。
   const { members, activeId, activeMember, setActiveId } =
@@ -85,16 +97,16 @@ export const WeatherTab = ({ resort }: { resort: Resort }) => {
           label="天気を見るスキー場"
         />
       )}
-      <section>
+      <section className="@container/weather-links min-w-0">
         <h3 className="text-base text-gray-900 font-semibold mb-3 font-[var(--font-heading)]">
           リンク一覧
         </h3>
-        <div className="flex flex-wrap items-center gap-3 mb-6">
+        <div className="flex flex-wrap items-center gap-1 mb-6 @min-[22rem]/weather-links:gap-1.5 @min-[28rem]/weather-links:gap-2">
           {snowForecastLinks.length === 1 && (
             <ExternalLinkComponent
               href={snowForecastLinks[0].url}
               onClick={handleLinkClick}
-              className="px-3 py-2 rounded-full bg-red-50 text-red-700 text-sm font-medium hover:bg-red-100 hover:text-red-800 hover:no-underline"
+              className={redWeatherLinkClassName}
             >
               Snow Forecast
             </ExternalLinkComponent>
@@ -105,7 +117,7 @@ export const WeatherTab = ({ resort }: { resort: Resort }) => {
                 key={link.id}
                 href={link.url}
                 onClick={handleLinkClick}
-                className="px-3 py-2 rounded-full bg-red-50 text-red-700 text-sm font-medium hover:bg-red-100 hover:text-red-800 hover:no-underline"
+                className={redWeatherLinkClassName}
               >
                 {`Snow Forecast ${link.displayName}`}
               </ExternalLinkComponent>
@@ -114,7 +126,7 @@ export const WeatherTab = ({ resort }: { resort: Resort }) => {
             <ExternalLinkComponent
               href={tenkiJpLinks[0].url}
               onClick={handleLinkClick}
-              className="px-3 py-2 rounded-full bg-blue-50 text-blue-900 text-sm font-medium hover:bg-blue-100 hover:text-blue-700 hover:no-underline"
+              className={blueWeatherLinkClassName}
             >
               tenki.jp
             </ExternalLinkComponent>
@@ -126,7 +138,7 @@ export const WeatherTab = ({ resort }: { resort: Resort }) => {
                 key={link.id}
                 href={link.url}
                 onClick={handleLinkClick}
-                className="px-3 py-2 rounded-full bg-blue-50 text-blue-900 text-sm font-medium hover:bg-blue-100 hover:text-blue-700 hover:no-underline"
+                className={blueWeatherLinkClassName}
               >
                 {`tenki.jp ${link.displayName}`}
               </ExternalLinkComponent>
@@ -152,7 +164,7 @@ export const WeatherTab = ({ resort }: { resort: Resort }) => {
                     key="weathernews"
                     href={weathernewsUrl}
                     onClick={handleLinkClick}
-                    className="px-3 py-2 rounded-full bg-blue-50 text-blue-900 text-sm font-medium hover:bg-blue-100 hover:text-blue-700 hover:no-underline"
+                    className={blueWeatherLinkClassName}
                   >
                     ウェザーニュース
                   </ExternalLinkComponent>
@@ -163,7 +175,7 @@ export const WeatherTab = ({ resort }: { resort: Resort }) => {
                     key="windy"
                     href={windyUrl}
                     onClick={handleLinkClick}
-                    className="px-3 py-2 rounded-full bg-red-50 text-red-700 text-sm font-medium hover:bg-red-100 hover:text-red-800 hover:no-underline"
+                    className={redWeatherLinkClassName}
                   >
                     Windy
                   </ExternalLinkComponent>

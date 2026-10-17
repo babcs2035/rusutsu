@@ -89,11 +89,14 @@ export async function syncFavorites(
       addedPending: !!pendingId && valid.some(r => r.id === pendingId),
     };
   });
-  jar.set(INTENT_COOKIE, "", { ...cookieOptions, maxAge: 0 });
-  jar.set(HISTORY_COOKIE, "1", {
-    ...cookieOptions,
-    maxAge: 365 * 24 * 60 * 60,
-  });
+  // 同期するたびにCookieを書くと、Next.jsがページ全体を更新してしまう。
+  if (jar.get(INTENT_COOKIE))
+    jar.set(INTENT_COOKIE, "", { ...cookieOptions, maxAge: 0 });
+  if (jar.get(HISTORY_COOKIE)?.value !== "1")
+    jar.set(HISTORY_COOKIE, "1", {
+      ...cookieOptions,
+      maxAge: 365 * 24 * 60 * 60,
+    });
   return { ...result, userId };
 }
 
@@ -129,14 +132,16 @@ export async function readLoginHistory() {
   const jar = await cookies();
   const session = await auth();
   if (session?.user?.id) {
-    jar.set(HISTORY_COOKIE, "1", {
-      ...cookieOptions,
-      maxAge: 365 * 24 * 60 * 60,
-    });
+    if (jar.get(HISTORY_COOKIE)?.value !== "1")
+      jar.set(HISTORY_COOKIE, "1", {
+        ...cookieOptions,
+        maxAge: 365 * 24 * 60 * 60,
+      });
     return false;
   }
   // An unfinished/cancelled OAuth flow must not become a future addition.
-  jar.set(INTENT_COOKIE, "", { ...cookieOptions, maxAge: 0 });
+  if (jar.get(INTENT_COOKIE))
+    jar.set(INTENT_COOKIE, "", { ...cookieOptions, maxAge: 0 });
   return jar.get(HISTORY_COOKIE)?.value === "1";
 }
 

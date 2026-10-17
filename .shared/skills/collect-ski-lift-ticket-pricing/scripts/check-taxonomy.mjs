@@ -135,11 +135,19 @@ function checkFile(file) {
         `included_day_type ${needsDates.map((d) => `"${d}"`).join(" / ")} は単独では日付に一致しません。公式資料の対象日を included_dates（明示日）か included_date_ranges（期間）で指定してください（記載が無ければカレンダーを作らず unresolved_questions へ）`,
       );
     }
-    // all は範囲を限定しないと無限に一致してしまう
-    if ((c.included_day_types ?? []).includes("all") && (c.included_date_ranges ?? []).length === 0) {
-      reporter.warn(
+    // 包含はOR。all と明示日付を併記すると明示日付が効かず全日に一致する。
+    // 営業期間全体を覆う範囲（cal-season-all 等）は結果が同じなので許す
+    const seasonStart = data.season?.start_date;
+    const seasonEnd = data.season?.end_date;
+    const coversWholeSeason =
+      (c.included_dates ?? []).length === 0 &&
+      seasonStart != null &&
+      seasonEnd != null &&
+      (c.included_date_ranges ?? []).some((r) => r.start <= seasonStart && seasonEnd <= r.end);
+    if ((c.included_day_types ?? []).includes("all") && hasExplicit && !coversWholeSeason) {
+      reporter.error(
         `/calendars/${i}`,
-        `included_day_type "all" は included_date_ranges で営業期間を限定してください（無限に一致します）`,
+        `included_day_type "all" と included_dates / included_date_ranges を併記しています。包含はORなので全日に一致します。期間で限定するなら included_day_types を [] にして日付範囲だけで指定してください（全日から一部を除くなら all と excluded_dates / excluded_date_ranges を使います）`,
       );
     }
   }
@@ -271,6 +279,55 @@ function checkFile(file) {
       }
     }
   });
+
+  for (const [i, audience] of (data.rental_audiences ?? []).entries()) {
+    checkLabelArray(
+      reporter,
+      `/rental_audiences/${i}/school_levels`,
+      audience.school_levels,
+      "school_levels",
+    );
+  }
+
+  for (const [i, rental] of (data.rentals ?? []).entries()) {
+    checkLabelArray(
+      reporter,
+      `/rentals/${i}/items`,
+      rental.items,
+      "rental_item_types",
+    );
+    checkLabel(
+      reporter,
+      `/rentals/${i}/duration/mode`,
+      rental.duration?.mode,
+      "rental_duration_modes",
+    );
+    if (rental.duration?.mode === "hours" && rental.duration.hours == null) {
+      reporter.error(
+        `/rentals/${i}/duration/hours`,
+        "duration.mode が hours のときは時間数を hours に書いてください",
+      );
+    }
+    if (rental.duration?.mode === "days" && rental.duration.days == null) {
+      reporter.error(
+        `/rentals/${i}/duration/days`,
+        "duration.mode が days のときは日数を days に書いてください",
+      );
+    }
+    const rentalText = `${rental.name_ja ?? ""} ${rental.official_label_ja ?? ""}`;
+    if (/シーズン|宅配|配送/.test(rentalText)) {
+      reporter.error(
+        `/rentals/${i}`,
+        `「${rentalText.trim()}」はシーズンレンタル・宅配レンタルなので収集対象外です。rentals から削除してください`,
+      );
+    }
+    if (/保証金|デポジット|預り金/.test(rentalText)) {
+      reporter.error(
+        `/rentals/${i}`,
+        `「${rentalText.trim()}」は返却すれば戻ってくる保証金なので記録しません`,
+      );
+    }
+  }
 
   for (const [i, fee] of (data.fees ?? []).entries()) {
     // ★fees に載るのは「返ってこない追加負担」だけ。
@@ -870,6 +927,8 @@ function collectUnknownItems(data) {
   scan(data.offers, "/offers");
   scan(data.party_rules, "/party_rules");
   scan(data.fees, "/fees");
+  scan(data.rental_audiences, "/rental_audiences");
+  scan(data.rentals, "/rentals");
   return items;
 }
 

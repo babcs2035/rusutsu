@@ -21,6 +21,8 @@
   "offers": [],
   "party_rules": [],
   "fees": [],
+  "rental_audiences": [],
+  "rentals": [],
   "calculation_policy": {},
   "data_quality": {}
 }
@@ -545,6 +547,31 @@ products / offers / party_rules のいずれにも記録しない。
   実データでも文章に同じことが書かれていた）。公式表記のまま写す
 - `stacking`: 他割引との併用可否。資料に無ければ `"unknown"`（推測しない）
 - `source_refs`: 必須（確定料金でsource_refsが無いとcoverageチェックが落ちる）
+- `source_quotes`: 料金の記載場所（下記）
+
+## source_quotes（料金の記載場所）
+
+画面では料金1行につき出典リンクを1つ出す。`source_quotes` があると、リンクに
+ブラウザのテキストフラグメント（`#:~:text=前の文言-,金額`）を付けて、出典ページ内の
+そのマスをハイライトしてスクロールさせる。offers・party_rules・rentals に書ける。
+
+```json
+"source_quotes": [
+  { "source_id": "src-price", "text": "5,900円", "prefix": "7,900円" }
+]
+```
+
+- `source_id`: `source_refs` のどれか（ハイライトする出典）
+- `text`: ハイライトする金額の文言。ページの表示テキストと完全一致させる
+  （`5,900円` `¥5,900` などページの書き方のまま）
+- `prefix` / `suffix`: 同じ金額が並ぶ表で場所を絞る、直前・直後の文言
+  （直前のセルの金額や行見出し）。ページ内で最初に一致する箇所が対象になる
+- 手で書かずに `src/private/scripts/lift-ticket-quotes/attach-quotes.mjs` で付け、
+  `verify-quotes.mjs` で実際のハイライト位置を確かめる（SKILL.md Stage 1の9）
+- 金額と前後の見出しが照合できない料金、開いてもその位置へ飛ばない出典には
+  付けない。その料金の出典リンクはページを開くだけになる
+- ハイライトの色が出なくても、その位置までスクロールすれば付けたままにする
+  （キロロのWebストアは色が出ないがスクロールする）
 
 ## price（価格）
 
@@ -627,6 +654,67 @@ party_rules を適用し、**個別購入の合計と比べて安い方**を返�
 
 かつて `refundable` / `included_in_offer_price` のフラグから「窓口で払う額」
 「戻る額」「実質負担」の3つを出していたが、必要なのは実質負担だけだった。
+
+## rentals（レンタル用具の料金）
+
+★**画面で「レンタル有り」を選んだ人に、借りる用具の料金を足すための情報。**
+利用者は「スキー／ボード」と、借りる物（板・ブーツ・ストック・ウェア・ヘルメット・
+ゴーグル・グローブ）を1つずつ選ぶ。画面はその用具がそろう**セットと単品の
+組み合わせのうち最安**を出すので、料金表にあるセット・単品をすべて記録する。
+
+```json
+{
+  "id": "rental-ski-set-adult-day",
+  "name_ja": "スキーセット 大人 1日",
+  "official_label_ja": "スキー3点セット",
+  "shop_name_ja": "センターハウス レンタルショップ",
+  "items": ["ski_set"],
+  "grade_ja": "スタンダード",
+  "audience_ids": ["adult"],
+  "calendar_ids": [],
+  "channel_ids": [],
+  "duration": { "mode": "day" },
+  "price": { "currency": "JPY", "amount": 5500 },
+  "target_qualification": null,
+  "purchase_deadline": null,
+  "source_refs": ["src-rental"]
+}
+```
+
+- **1件 = 用具の組み合わせ × 対象者 × 期間 × 料金区分 × 金額**。
+  offerと同じく、平日・休日で金額が違うなら `calendar_ids` で分ける。
+- `items`: taxonomy の `rental_item_types`。セット料金はセットのラベル
+  （`ski_set` = 板・ブーツ・ストック、`snowboard_set` = ボード・ブーツ）、
+  「スキーセット＋ウェア」は `["ski_set", "wear"]`。単品は単品ラベル。
+  セットに何が含まれるかは公式表記で確かめ、3点がそろわないなら単品ラベルの組み合わせで書く。
+- `grade_ja`: スタンダード／ハイグレード等。グレードごとに別の件にする
+  （画面は最安を使うので、上位グレードしか無い用具も分かる）。
+- `audience_ids`: 券と同じ区分で足りるなら `audiences` のIDを参照する。
+  ★**レンタルだけの年齢区分（「子供（小学生以下）」が券と違う等）は `audiences` に足さず、
+  `rental_audiences`（audienceと同じ形）に置く。** `audiences` に足すとリフト券の計算と
+  料金表の列が変わってしまう。レンタルで参照する区分のうち1つ（通常は大人）は
+  `is_default: true` にする。券の大人で足りれば既存の大人を参照し、レンタル表の
+  「大人」「一般」の範囲が券と違えば `rental_audiences` 側に基準区分を置く
+  （券の基準区分とは別に数える。画面はレンタルが参照する区分だけで対象者を決める）。
+  ★**身長・サイズで決まる区分（「ジュニア（130cm以下）」）は年齢へ置き換えない。**
+  基準区分へ紐付け、`target_qualification` に公式表記を書く（画面では条件付きで別掲）。
+- `duration.mode`: `day` / `half_day` / `hours` / `days` / `extra_day` / `night`。
+  `hours` は `hours`、`days` は `days` が必須。半日の時間数は公式にあれば書く。
+  「以降1日＋5,000円」「6日目以降1日ごと」は `extra_day` に `after_days`（何日目より後か。
+  省略は1）を書き、基準の料金（`day` / `days`）と同じ `items`・対象者で記録する。
+  画面は「基準の料金＋追加日×残りの日数」と、1日ずつ・N日間の料金を比べて安いほうを使う。
+- `channel_ids` / `purchase_deadline`: Web予約割引など、予約経路と期限で金額が
+  違う料金だけに書く（offerと同じ書き方）。窓口で当日借りる料金には書かない。
+- `target_qualification`: 宿泊者・リフト券購入者・会員など入力から判定できない条件。
+  画面は自動適用せず条件付きで別掲する。
+- ★**`rentals` が空・省略は「未収集」の意味。** レンタルが無いことを公式で
+  確認したら `data_quality.notes_ja` に書き、画面の「未収集」と区別できるようにする。
+
+収集しないもの: シーズンレンタル、宅配・配送レンタル、公式サイトから案内されて
+いない外部ショップ、返金される保証金、破損補償など任意の追加費用
+（補償料が必須なら `price.notes_ja` に書き、必須額を含めた支払額を `amount` にする）。
+リフト券とレンタルのセット券は従来どおり `products.included_items`（`rental`）に書き、
+`rentals` には重ねて書かない。
 
 ## calculation_policy
 

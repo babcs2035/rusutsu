@@ -176,7 +176,13 @@ const TableRows = ({
   );
 };
 
-const PriceGrid = ({ table }: { table: PriceTable }) => (
+export const PriceGrid = ({
+  table,
+  firstColumnLabel = "券種",
+}: {
+  table: PriceTable;
+  firstColumnLabel?: string;
+}) => (
   <Card className="@container/price-table w-full overflow-hidden py-0">
     <CardContent className="p-0">
       <div className="overflow-x-auto">
@@ -187,7 +193,7 @@ const PriceGrid = ({ table }: { table: PriceTable }) => (
                 scope="col"
                 className="sticky left-0 z-10 bg-gray-50 px-2.5 py-2 text-left text-gray-600 text-xs font-semibold @min-[28rem]/price-table:px-3"
               >
-                券種
+                {firstColumnLabel}
               </th>
               {table.audiences.map(audience => (
                 <th
@@ -217,7 +223,7 @@ const PriceGrid = ({ table }: { table: PriceTable }) => (
 );
 
 /** 表の金額が拠っている出典（重複を除く） */
-const tableSourcesOf = (table: PriceTable) =>
+export const tableSourcesOf = (table: PriceTable) =>
   [
     ...new Set(
       table.rows.flatMap(row =>

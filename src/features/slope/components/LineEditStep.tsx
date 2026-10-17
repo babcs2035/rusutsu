@@ -159,14 +159,21 @@ export function LineEditStep({
         setImportMessage("読み込めるコース線がありませんでした。");
         return;
       }
-      setCourses(previous => [
-        ...previous,
-        ...result.courses.map(course => ({
-          ...course,
-          skiId: resort.id,
-          originalSkiId: resort.id,
-        })),
-      ]);
+      // 同じ entityId のコースは追加せず置き換える（書き出したファイルを
+      // 読み戻しても同じコースが2本にならないようにする）。
+      const imported = result.courses.map(course => ({
+        ...course,
+        skiId: resort.id,
+        originalSkiId: resort.id,
+      }));
+      const importedById = new Map(imported.map(course => [course.id, course]));
+      setCourses(previous => {
+        const previousIds = new Set(previous.map(course => course.id));
+        return [
+          ...previous.map(course => importedById.get(course.id) ?? course),
+          ...imported.filter(course => !previousIds.has(course.id)),
+        ];
+      });
       onFitBounds();
       setImportMessage(
         `${result.courses.length} コースを読み込みました。` +

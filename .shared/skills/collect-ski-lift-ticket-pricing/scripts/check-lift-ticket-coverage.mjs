@@ -50,6 +50,8 @@ function checkFile(file) {
     "offers",
     "party_rules",
     "fees",
+    "rental_audiences",
+    "rentals",
   ];
   for (const name of collections) {
     for (const [i, item] of (data[name] ?? []).entries()) {
@@ -360,6 +362,49 @@ function checkFile(file) {
     }
     // fees に載るのは「返ってこない追加負担」だけなので、
     // 返金の有無を表すフラグは持たない（check-taxonomy が保証金の混入を検出する）
+  }
+
+  // --- rentals ---
+  for (const [i, rental] of (data.rentals ?? []).entries()) {
+    const rPath = `/rentals/${i}`;
+    for (const [j, id] of (rental.audience_ids ?? []).entries()) {
+      const known = [...(data.audiences ?? []), ...(data.rental_audiences ?? [])].some(
+        (audience) => audience.id === id,
+      );
+      if (!known) {
+        reporter.error(
+          `${rPath}/audience_ids/${j}`,
+          `"${id}" は audiences にも rental_audiences にもありません`,
+        );
+      }
+    }
+    checkRefArray(`${rPath}/calendar_ids`, rental.calendar_ids, "calendars");
+    checkRefArray(`${rPath}/channel_ids`, rental.channel_ids, "channels");
+    checkSourceRefs(`${rPath}/source_refs`, rental.source_refs);
+    if (rental.price?.amount != null && (rental.source_refs ?? []).length === 0) {
+      reporter.error(`${rPath}/source_refs`, `確定したレンタル料金には source_refs が必要です`);
+    }
+  }
+
+  if ((data.rentals ?? []).length > 0) {
+    const rentalAudienceIds = new Set(
+      (data.rentals ?? []).flatMap((rental) => rental.audience_ids ?? []),
+    );
+    const hasDefault = [...(data.audiences ?? []), ...(data.rental_audiences ?? [])].some(
+      (audience) => audience.is_default === true && rentalAudienceIds.has(audience.id),
+    );
+    if (!hasDefault) {
+      reporter.error(
+        "/rentals",
+        "レンタルで参照する人物区分に is_default: true の区分（通常は大人）がありません",
+      );
+    }
+    const ticketAudienceIds = new Set((data.audiences ?? []).map((a) => a.id));
+    for (const [i, audience] of (data.rental_audiences ?? []).entries()) {
+      if (ticketAudienceIds.has(audience.id)) {
+        reporter.error(`/rental_audiences/${i}/id`, `"${audience.id}" は audiences と重複しています`);
+      }
+    }
   }
 
   // --- data_quality ---

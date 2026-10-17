@@ -80,6 +80,28 @@ test("親子2組なら親子パック2セット", () => {
 
   assert.equal(result.ticketTotal, 16000);
   assert.match(packLine(result.lines)?.offerName ?? "", /× 2セット/);
+  assert.equal(
+    packLine(result.lines)?.partySet?.members,
+    "大人1名＋小学生1名 × 2",
+  );
+});
+
+test("同じ区分を別の行に分けて入力しても、セットの中身は1組分で出す", () => {
+  // レンタルの有無で大人・小学生を1名ずつ別の行に分けたとき
+  const result = calculateLiftTicket(
+    data,
+    input("2027-01-13", [
+      { category: "adult", count: 1 },
+      { category: "adult", count: 1 },
+      { category: "elementary", count: 1 },
+      { category: "elementary", count: 1 },
+    ]),
+  );
+
+  assert.equal(result.ticketTotal, 16000);
+  const pack = packLine(result.lines);
+  assert.equal(pack?.partySet?.members, "大人1名＋小学生1名 × 2");
+  assert.equal(pack?.groupLabel, "大人＋小学生");
 });
 
 test("スプリング期間は7,500円の親子パックを使う", () => {

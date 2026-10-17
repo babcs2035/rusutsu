@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { TICKET_PARTY_CATEGORIES } from "@/features/lift-ticket/types";
+import {
+  TICKET_PARTY_CATEGORIES,
+  TICKET_RENTAL_ITEMS,
+  TICKET_RENTAL_SPORTS,
+} from "@/features/lift-ticket/types";
 import { resortIdFromUrl } from "@/shared/utils/resortPath";
 
 const id = z.string().min(1).max(200);
@@ -48,6 +52,13 @@ export const filtersSchema = z.object({
           category: z.enum(TICKET_PARTY_CATEGORIES),
           age: numeric,
           count: z.number().int().nonnegative(),
+          rental: z
+            .object({
+              sport: z.enum(TICKET_RENTAL_SPORTS),
+              items: z.array(z.enum(TICKET_RENTAL_ITEMS)).max(20),
+            })
+            .nullable()
+            .optional(),
         }),
       )
       .max(100),

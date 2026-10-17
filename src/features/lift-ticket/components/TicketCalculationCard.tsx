@@ -1,9 +1,9 @@
 "use client";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { TicketCalculationResult } from "../types";
+import { ConditionalOffers } from "./ConditionalOffers";
 import { SourceLinks } from "./SourceLinks";
 import { PurchaseSummary, TicketLineDetail } from "./TicketLineDetail";
 
@@ -107,10 +107,20 @@ export const TicketCalculationCard = ({
 
       {!compact && (
         <div className="mt-4 flex flex-col gap-2">
-          <SourceLinks numbers={lineSources} references={result.references} />
           {result.lines.map(line => (
             <div key={line.groupId} className="pb-2 border-b border-gray-100">
-              <TicketLineDetail line={line} />
+              <TicketLineDetail
+                line={line}
+                sources={
+                  <SourceLinks
+                    numbers={line.sourceNumbers}
+                    references={result.references}
+                    quotes={line.sourceQuotes}
+                    single
+                    className="mt-0.5"
+                  />
+                }
+              />
             </div>
           ))}
           <PurchaseSummary
@@ -120,45 +130,15 @@ export const TicketCalculationCard = ({
         </div>
       )}
 
-      {result.conditionalOffers.length > 0 && !compact && (
-        <Card className="mt-3 rounded-lg border border-purple-200 bg-purple-50">
-          <CardHeader>
-            <CardTitle className="text-xs font-bold text-purple-900">
-              条件を満たす場合の割引料金
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="mt-2 flex flex-col gap-2">
-              {result.conditionalOffers.map(offer => (
-                <div
-                  key={offer.id}
-                  className="flex items-start justify-between gap-3"
-                >
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-purple-900">
-                      {offer.offerName}（{offer.groupLabel} × {offer.count}）
-                    </p>
-                    <p className="mt-0.5 text-xs text-purple-900">
-                      {offer.conditions.length > 0
-                        ? offer.conditions.join(" / ")
-                        : "公式の適用条件を確認してください。"}
-                    </p>
-                    <SourceLinks
-                      numbers={offer.sourceNumbers.filter(
-                        number => !lineSources.includes(number),
-                      )}
-                      references={result.references}
-                      className="mt-1"
-                    />
-                  </div>
-                  <p className="flex-shrink-0 text-xs font-bold text-purple-900 font-mono">
-                    ¥{offer.subtotal.toLocaleString("ja-JP")}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      {!compact && (
+        <ConditionalOffers
+          offers={result.conditionalOffers}
+          sourcesOf={offer =>
+            offer.sourceNumbers.filter(number => !lineSources.includes(number))
+          }
+          references={result.references}
+          className="mt-3"
+        />
       )}
       {result.notes.length > 0 && !compact && (
         <AlertDescription className="mt-3 text-xs text-gray-600 leading-relaxed">

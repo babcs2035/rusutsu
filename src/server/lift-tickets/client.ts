@@ -19,6 +19,7 @@ import {
   liftTicketSeasonWriteSchema,
   statusOfLiftTicket,
 } from "./contract";
+import { withLocalPreview } from "./localPreview";
 import {
   findLiftTicketSeasonsDirect,
   getLiftTicketSeasonDirect,
@@ -71,7 +72,11 @@ export const getLiftTicketSeason = async (
 export const findLiftTicketSeasons = async (
   resortIds: readonly string[],
 ): Promise<LiftTicketSeason[]> => {
-  if (!usesRemoteDataApi()) return findLiftTicketSeasonsDirect(resortIds);
+  if (!usesRemoteDataApi())
+    return withLocalPreview(
+      await findLiftTicketSeasonsDirect(resortIds),
+      resortIds,
+    );
   const chunks: string[][] = [];
   for (let i = 0; i < resortIds.length; i += REMOTE_RESORT_ID_CHUNK)
     chunks.push(resortIds.slice(i, i + REMOTE_RESORT_ID_CHUNK));
@@ -85,7 +90,7 @@ export const findLiftTicketSeasons = async (
         .seasons;
     }),
   );
-  return results.flat();
+  return withLocalPreview(results.flat(), resortIds);
 };
 
 export const writeLiftTicketSeason = async (

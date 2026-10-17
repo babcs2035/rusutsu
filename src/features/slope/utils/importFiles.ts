@@ -1,5 +1,6 @@
-import type { EditorCourse, LngLat } from "../types";
-import { createEmptyCourse } from "./courseOps";
+import type { EditorCourse, LngLat, SlopeBeforeFeature } from "../types";
+import { createCourseId, createEmptyCourse } from "./courseOps";
+import { sourceDataToCourses } from "./loadSource";
 
 export type ImportResult = {
   courses: EditorCourse[];
@@ -28,6 +29,30 @@ const buildCourse = (name: string, coordinates: LngLat[]): EditorCourse => ({
   coordinates,
 });
 
+// 管理画面から書き出した GeoJSON は entityId・courseGrouping・詳細を
+// properties に持つ。管理画面で開くときと同じ変換を通し、区間に分かれた
+// 1コースが別々のコースとして増えないようにする。
+const buildCourseFromFeature = (
+  properties: Record<string, unknown>,
+  coordinates: LngLat[],
+): EditorCourse => {
+  const feature: SlopeBeforeFeature = {
+    type: "Feature",
+    properties,
+    geometry: { type: "LineString", coordinates },
+  };
+  const [course] = sourceDataToCourses("", {
+    sourceKind: "curated",
+    geojson: { type: "FeatureCollection", features: [feature] },
+    details: null,
+    fileHash: null,
+    detailFileHash: null,
+  }).courses;
+  const hasEntityId =
+    typeof properties.entityId === "string" && properties.entityId !== "";
+  return hasEntityId ? course : { ...course, id: createCourseId() };
+};
+
 const parseGeojson = (text: string): ImportResult => {
   const parsed: unknown = JSON.parse(text);
   const root = parsed as Record<string, unknown>;
@@ -54,7 +79,7 @@ const parseGeojson = (text: string): ImportResult => {
     if (geometry.type === "LineString") {
       const coordinates = toLineCoordinates(geometry.coordinates);
       if (coordinates) {
-        courses.push(buildCourse(name, coordinates));
+        courses.push(buildCourseFromFeature(properties, coordinates));
         continue;
       }
     } else if (

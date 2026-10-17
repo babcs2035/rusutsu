@@ -100,6 +100,11 @@ const IMMUTABLE_FIELDS = new Set([
   "expectedLinks",
   "latestFile",
 ]);
+/**
+ * 管理者が自由に直してよい中身。コースのまとめ方やリフト券の文書は
+ * 内部に独自の id・kind を持つため、対象・更新基準の判定から外す。
+ */
+const CONTENT_FIELDS = new Set(["courseGrouping", "data"]);
 /** コース・リフト・対応表の行は、並べ替えや分割で位置が変わるためIDで対応させる。 */
 function itemIdentity(value: unknown): string | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
@@ -154,6 +159,7 @@ export function assertCorrectionScope(
       if (!b || typeof b !== "object" || Array.isArray(b))
         throw new Error("対象と更新基準は変更できません。");
       for (const [key, value] of Object.entries(a)) {
+        if (CONTENT_FIELDS.has(key)) continue;
         const next = (b as Record<string, unknown>)[key];
         if (
           IMMUTABLE_FIELDS.has(key) &&

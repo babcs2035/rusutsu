@@ -272,3 +272,140 @@ test("要件に合う券が無いとき別の券にフォールバックしな�
   assert.equal(result.payableTotal, null);
   assert.match(result.notes[0] ?? "", /条件を満たす券/);
 });
+
+/** 日中だけの券と、閉店までナイターを含む日券がある料金表。 */
+const lateHoursData = (): LiftTicketData => ({
+  schema_version: "1.0.0",
+  resort: { id: "late-hours-test" },
+  season: {
+    id: "2025-2026",
+    label_ja: "2025-2026シーズン",
+    start_date: "2026-01-01",
+    end_date: "2026-03-31",
+  },
+  sources: [],
+  audiences: [{ id: "adult", name_ja: "大人", is_default: true }],
+  calendars: [{ id: "all", name_ja: "全日", included_day_types: ["all"] }],
+  operating_hours: [
+    {
+      id: "regular",
+      hours_type: "regular",
+      calendar_ids: ["all"],
+      start_time: "09:00",
+      end_time: "17:00",
+    },
+    {
+      id: "night",
+      hours_type: "night",
+      calendar_ids: ["all"],
+      start_time: "17:00",
+      end_time: "22:00",
+    },
+  ],
+  products: [
+    {
+      id: "day-only",
+      name_ja: "日中券",
+      validity: { mode: "calendar_day", days: 1 },
+      covers_hours_types: ["regular"],
+    },
+    {
+      id: "day-night",
+      name_ja: "ナイター込み1日券",
+      validity: { mode: "calendar_day", days: 1 },
+      covers_hours_types: ["regular", "night"],
+    },
+  ],
+  channels: [],
+  offers: [
+    {
+      id: "day-only-price",
+      name_ja: "日中券",
+      product_id: "day-only",
+      audience_ids: ["adult"],
+      calendar_ids: ["all"],
+      price: { amount: 2000 },
+    },
+    {
+      id: "day-night-price",
+      name_ja: "ナイター込み1日券",
+      product_id: "day-night",
+      audience_ids: ["adult"],
+      calendar_ids: ["all"],
+      price: { amount: 3000 },
+    },
+  ],
+  party_rules: [],
+  fees: [],
+  data_quality: { status: "complete", unresolved_questions: [] },
+});
+
+test("日券がナイターを含むとき9時から22時までの13時間を満たす", () => {
+  const data = lateHoursData();
+  const dayNight = data.products[1];
+  assert.equal(skiableHoursOf(dayNight, data, WEDNESDAY), 13);
+  for (const hours of [9, 12, 13]) {
+    assert.equal(
+      selectCheapestProductForDuration(data, input, { kind: "hours", hours })
+        ?.id,
+      "day-night",
+    );
+  }
+});
+
+test("日中だけの券にナイターの5時間を足さず、閉店後の時間要求を拒否する", () => {
+  const data = lateHoursData();
+  assert.equal(skiableHoursOf(data.products[0], data, WEDNESDAY), 8);
+  assert.equal(
+    selectCheapestProductForDuration(data, input, { kind: "hours", hours: 8 })
+      ?.id,
+    "day-only",
+  );
+  assert.equal(
+    selectCheapestProductForDuration(data, input, {
+      kind: "hours",
+      hours: 14,
+    }),
+    null,
+  );
+});
+
+test("重なる日中営業とナイターの区間を二重に数えない", () => {
+  const data = lateHoursData();
+  const hours = data.operating_hours;
+  assert.ok(hours);
+  hours[0].end_time = "18:00";
+  hours.push({
+    id: "overlapping-lift",
+    hours_type: "regular",
+    calendar_ids: ["all"],
+    start_time: "10:00",
+    end_time: "16:00",
+  });
+  assert.equal(skiableHoursOf(data.products[0], data, WEDNESDAY), 9);
+  assert.equal(skiableHoursOf(data.products[1], data, WEDNESDAY), 13);
+  assert.equal(
+    selectCheapestProductForDuration(data, input, {
+      kind: "hours",
+      hours: 14,
+    }),
+    null,
+  );
+});
+
+test("ナイター営業の対象日でない日は夜間有効の日券にも夜の時間を足さない", () => {
+  const data = lateHoursData();
+  data.calendars.push({
+    id: "night-date",
+    name_ja: "ナイター営業日",
+    included_dates: ["2026-01-31"],
+  });
+  const hours = data.operating_hours;
+  assert.ok(hours);
+  hours[1].calendar_ids = ["night-date"];
+  assert.equal(skiableHoursOf(data.products[1], data, WEDNESDAY), 8);
+  assert.equal(
+    selectCheapestProductForDuration(data, input, { kind: "hours", hours: 9 }),
+    null,
+  );
+});

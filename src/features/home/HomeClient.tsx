@@ -374,12 +374,11 @@ function HomeClientContent({
     };
     void refresh();
     window.addEventListener("online", resume);
-    document.addEventListener("visibilitychange", resume);
+    // タブへ戻っただけなら、表示中の詳細と地図をそのまま使う。
     return () => {
       disposed = true;
       for (const timer of timers) clearTimeout(timer);
       window.removeEventListener("online", resume);
-      document.removeEventListener("visibilitychange", resume);
     };
   }, [selectedResortId, detailRetry]);
 

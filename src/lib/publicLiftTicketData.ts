@@ -31,6 +31,17 @@ const target = z
   .nullable()
   .optional();
 
+const audience = z.object({
+  ...named,
+  age_min: number,
+  age_max: number,
+  school_levels: strings,
+  is_disability_qualified: flag,
+  base_audience_id: optionalText,
+  is_default: flag,
+  ...notes,
+});
+
 /**
  * Public calculation/display contract. z.object strips unknown fields at every
  * object boundary; new admin/source fields are never implicitly made public.
@@ -60,18 +71,7 @@ export const publicLiftTicketDataSchema = z.object({
       }),
     )
     .optional(),
-  audiences: z.array(
-    z.object({
-      ...named,
-      age_min: number,
-      age_max: number,
-      school_levels: strings,
-      is_disability_qualified: flag,
-      base_audience_id: optionalText,
-      is_default: flag,
-      ...notes,
-    }),
-  ),
+  audiences: z.array(audience),
   calendars: z.array(
     z.object({
       ...named,
@@ -166,6 +166,16 @@ export const publicLiftTicketDataSchema = z.object({
         )
         .optional(),
       source_refs: strings,
+      source_quotes: z
+        .array(
+          z.object({
+            source_id: text,
+            text,
+            prefix: optionalText,
+            suffix: optionalText,
+          }),
+        )
+        .optional(),
       ...notes,
     }),
   ),
@@ -203,6 +213,16 @@ export const publicLiftTicketDataSchema = z.object({
       sales_period: period,
       use_period: period,
       source_refs: strings,
+      source_quotes: z
+        .array(
+          z.object({
+            source_id: text,
+            text,
+            prefix: optionalText,
+            suffix: optionalText,
+          }),
+        )
+        .optional(),
       ...notes,
     }),
   ),
@@ -215,6 +235,58 @@ export const publicLiftTicketDataSchema = z.object({
       ...notes,
     }),
   ),
+  rental_audiences: z.array(audience).optional(),
+  rentals: z
+    .array(
+      z.object({
+        ...named,
+        shop_name_ja: optionalText,
+        items: z.array(text),
+        grade_ja: optionalText,
+        audience_ids: strings,
+        calendar_ids: strings,
+        channel_ids: strings,
+        duration: z.object({
+          mode: text,
+          hours: number,
+          days: number,
+          after_days: number,
+          start_time: optionalText,
+          end_time: optionalText,
+          ...notes,
+        }),
+        price: z.object({
+          currency: text.optional(),
+          amount: number,
+          ...notes,
+        }),
+        target_qualification: target,
+        purchase_deadline: z
+          .object({
+            same_day_allowed: z.boolean().nullable().optional(),
+            days_before_use: number,
+            deadline_date: optionalText,
+            official_text_ja: optionalText,
+          })
+          .nullable()
+          .optional(),
+        use_period: period,
+        sales_period: period,
+        source_refs: strings,
+        source_quotes: z
+          .array(
+            z.object({
+              source_id: text,
+              text,
+              prefix: optionalText,
+              suffix: optionalText,
+            }),
+          )
+          .optional(),
+        ...notes,
+      }),
+    )
+    .optional(),
   calculation_policy: z
     .object({
       currency: text.optional(),

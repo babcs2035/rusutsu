@@ -97,7 +97,7 @@ export type LiftTicketPriceTables = {
  * 列見出しの補足（「19〜64歳」）。見出し自体は短い name_ja にする。
  * 学校区分で決まる区分（こども・中高生など）は年齢を併記しない
  */
-const ageLabelOf = (audience: LiftTicketAudience) => {
+export const ageLabelOf = (audience: LiftTicketAudience) => {
   if ((audience.school_levels ?? []).length > 0) return null;
   const min = audience.age_min ?? null;
   const max = audience.age_max ?? null;
@@ -274,7 +274,7 @@ const displayLabelOf = (offer: LiftTicketOffer, calendarNames: string[]) => {
   return official && official.length <= name.length ? official : name;
 };
 
-const shorterOf = (left?: string | null, right?: string | null) => {
+export const shorterOf = (left?: string | null, right?: string | null) => {
   if (!left) return right ?? null;
   if (!right) return left;
   return right.length < left.length ? right : left;
@@ -346,7 +346,11 @@ function buildTable(
 
   const groups = new Map<string, LiftTicketOffer[]>();
   for (const offer of offers) {
-    const key = groupKeyOf(offer, calendarNames, isDiscount);
+    const key = groupKeyOf(
+      offer,
+      [...calendarNames, ...audienceNames],
+      isDiscount,
+    );
     const list = groups.get(key) ?? [];
     list.push(offer);
     groups.set(key, list);

@@ -1,10 +1,12 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import type { TicketCalculationLine } from "../types";
+import type { PriceReference, TicketCalculationLine } from "../types";
 import type { TicketPlanResult } from "../utils/calculateLiftTicket";
-import { splitSources } from "../utils/sources";
+import type { TicketRentalResult } from "../utils/rental";
+import { ConditionalOffers } from "./ConditionalOffers";
+import { RentalSummary } from "./RentalSummary";
 import { SourceLinks } from "./SourceLinks";
 import {
   hasOnlineLine,
@@ -25,12 +27,15 @@ const TicketLines = ({
   multiplier,
   multiplierUnit,
   showAmounts = lines.length > 1,
+  references,
 }: {
   lines: TicketCalculationLine[];
   multiplier: number;
   multiplierUnit: "枚" | "日";
   /** 枠の中に券が複数種類あるときは、1人でも行ごとの金額を出す */
   showAmounts?: boolean;
+  /** 券の料金の根拠。各行の下に1つずつ出す */
+  references: PriceReference[];
 }) => {
   const shared = sharesTicket(lines);
   return (
@@ -48,6 +53,15 @@ const TicketLines = ({
           multiplierUnit={multiplierUnit}
           showAmount={showAmounts}
           showTicket={!shared}
+          sources={
+            <SourceLinks
+              numbers={line.sourceNumbers}
+              references={references}
+              quotes={line.sourceQuotes}
+              single
+              className="mt-0.5"
+            />
+          }
         />
       ))}
     </div>
@@ -60,6 +74,9 @@ const weekdayOf = (date: string) => {
   return ["日", "月", "火", "水", "木", "金", "土"][at.getUTCDay()];
 };
 
+const shortDateOf = (date: string) =>
+  `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}（${weekdayOf(date)}）`;
+
 /**
  * 日ごとの料金と合計を出す。
  *
@@ -71,23 +88,24 @@ const weekdayOf = (date: string) => {
  * その日の内訳が複数行ある（または追加費用がある）ときだけ出す。
  * 1人1日なら「合計」と内訳の2か所で足りる。
  */
-export const TicketPlanCard = ({ plan }: { plan: TicketPlanResult }) => {
+export const TicketPlanCard = ({
+  plan,
+  rental = null,
+}: {
+  plan: TicketPlanResult;
+  /** レンタルを選んだ人がいれば、リフト券の合計に足して内訳を出す */
+  rental?: TicketRentalResult | null;
+}) => {
   const usesMultiDay = plan.multiDay != null;
-
-  // 全日に共通する出典は合計の横に1回だけ出し、日ごとには追加分だけ出す。
-  // 複数日券でまかなう日は、その券の出典を使う
-  const daySources = plan.days.map(day =>
-    usesMultiDay && plan.multiDay?.dates.includes(day.plan.date)
-      ? plan.multiDay.sourceNumbers
-      : [...new Set(day.result.lines.flatMap(line => line.sourceNumbers))],
-  );
-  const sources = splitSources(daySources);
-  const extraSourcesOf = (numbers: number[], dayIndex: number) =>
-    numbers.filter(
-      number =>
-        !sources.common.includes(number) &&
-        !daySources[dayIndex]?.includes(number),
-    );
+  const rentalShown =
+    rental != null &&
+    (rental.status === "complete" || rental.status === "partial");
+  // リフト券もレンタルも出たときだけ合計を出す。どちらかが未確定なら合計も未確定
+  const total = !rentalShown
+    ? plan.total
+    : plan.total == null || rental.total == null
+      ? null
+      : plan.total + rental.total;
 
   // ★**券も金額も同じ日は1つにまとめて「× 3日」と出す**（同じ内訳を繰り返さない）
   const dayGroups: Array<{ indices: number[] }> = [];
@@ -127,8 +145,7 @@ export const TicketPlanCard = ({ plan }: { plan: TicketPlanResult }) => {
     dateLabelOfDates(indices.map(index => plan.days[index].plan.date));
   function dateLabelOfDates(dates: string[]) {
     if (dates.length === 1 && !dates[0]) return "日付未入力";
-    const short = (date: string) =>
-      `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}（${weekdayOf(date)}）`;
+    const short = shortDateOf;
     const consecutive = dates.every(
       (date, i) =>
         i === 0 ||
@@ -142,7 +159,7 @@ export const TicketPlanCard = ({ plan }: { plan: TicketPlanResult }) => {
       : dates.map(short).join("・");
   }
 
-  // 画面に出す券の行と、その行を買う回数（日数・枚数）。オンライン購入の案内に使う
+  // 画面に出す券の行と、その行を買う回数（日数・枚数）。WEB購入の案内に使う
   const shownLines = [
     ...dayGroups.flatMap(({ indices }) => {
       const day = plan.days[indices[0]];
@@ -192,7 +209,7 @@ export const TicketPlanCard = ({ plan }: { plan: TicketPlanResult }) => {
       <div
         className={cn(
           "rounded-xl border p-4",
-          plan.total == null
+          total == null
             ? "bg-gray-50 border-gray-200"
             : "bg-orange-50 border-orange-300",
         )}
@@ -202,15 +219,24 @@ export const TicketPlanCard = ({ plan }: { plan: TicketPlanResult }) => {
             <p className="text-sm font-semibold text-gray-700">
               {plan.days.length === 1 ? "合計" : `${plan.days.length}日の合計`}
             </p>
-            {hasOnlineLine(shownLines.map(({ line }) => line)) && (
-              <p className="text-xs text-gray-600">オンライン購入の料金</p>
+            {(rentalShown ||
+              hasOnlineLine(shownLines.map(({ line }) => line))) && (
+              <p className="text-xs text-gray-600">
+                {[
+                  rentalShown && "リフト券＋レンタル",
+                  hasOnlineLine(shownLines.map(({ line }) => line)) &&
+                    "WEB購入の料金",
+                ]
+                  .filter(Boolean)
+                  .join("・")}
+              </p>
             )}
           </div>
-          {plan.total == null ? (
+          {total == null ? (
             <p className="text-sm font-semibold text-gray-600">未確定</p>
           ) : (
             <p className="text-2xl font-bold text-gray-900 font-mono">
-              {yen(plan.total)}
+              {yen(total)}
             </p>
           )}
         </div>
@@ -264,55 +290,18 @@ export const TicketPlanCard = ({ plan }: { plan: TicketPlanResult }) => {
                     lines={day.result.lines}
                     multiplier={dayCount}
                     multiplierUnit="日"
+                    references={plan.references}
                   />
                 )}
-                <SourceLinks
-                  numbers={sources.extras[index] ?? []}
-                  references={plan.references}
-                  className="mt-1.5"
-                />
 
-                {!covered && day.result.conditionalOffers.length > 0 && (
-                  <Card className="mt-2 rounded-lg border-purple-200 bg-purple-50">
-                    <CardHeader>
-                      <CardTitle className="text-[0.6875rem] font-bold text-purple-900">
-                        条件を満たす場合の割引料金
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="mt-1.5 flex flex-col gap-1.5">
-                        {day.result.conditionalOffers.map(offer => (
-                          <div
-                            key={offer.id}
-                            className="flex items-start justify-between gap-2"
-                          >
-                            <div className="min-w-0">
-                              <p className="text-[0.6875rem] font-bold text-purple-900">
-                                {offer.offerName}（{offer.groupLabel} ×{" "}
-                                {offer.count}）
-                              </p>
-                              <p className="mt-0.5 text-[0.6875rem] text-purple-900 leading-snug">
-                                {offer.conditions.length > 0
-                                  ? offer.conditions.join(" / ")
-                                  : "公式の適用条件を確認してください。"}
-                              </p>
-                              <SourceLinks
-                                numbers={extraSourcesOf(
-                                  offer.sourceNumbers,
-                                  index,
-                                )}
-                                references={plan.references}
-                                className="mt-1"
-                              />
-                            </div>
-                            <p className="flex-shrink-0 text-[0.6875rem] font-bold text-purple-900 font-mono">
-                              {yen(offer.subtotal)}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
+                {!covered && (
+                  <ConditionalOffers
+                    className="mt-2"
+                    dayCount={dayCount}
+                    offers={day.result.conditionalOffers}
+                    sourcesOf={offer => offer.sourceNumbers}
+                    references={plan.references}
+                  />
                 )}
               </div>
             );
@@ -332,15 +321,29 @@ export const TicketPlanCard = ({ plan }: { plan: TicketPlanResult }) => {
                 </p>
               </div>
               <div className="mt-1 flex flex-col gap-0.5">
-                <TicketLines
-                  lines={plan.multiDay.lines}
-                  multiplier={plan.multiDay.ticketCount}
-                  multiplierUnit="枚"
-                  showAmounts={
-                    plan.multiDay.lines.length > 1 ||
-                    plan.multiDay.addOns.length > 0
-                  }
-                />
+                {plan.multiDay.ticketSet ? (
+                  <p className="text-sm text-gray-900">
+                    {plan.multiDay.productName} × {plan.multiDay.ticketCount}
+                    セット
+                    <span className="ml-2 whitespace-nowrap text-xs text-gray-600 md:text-sm">
+                      {plan.multiDay.ticketSet.ticketsPerSet *
+                        plan.multiDay.ticketCount}
+                      枚（のべ{plan.multiDay.ticketSet.coveredPersonDays}
+                      人日分）
+                    </span>
+                  </p>
+                ) : (
+                  <TicketLines
+                    lines={plan.multiDay.lines}
+                    multiplier={plan.multiDay.ticketCount}
+                    multiplierUnit="枚"
+                    showAmounts={
+                      plan.multiDay.lines.length > 1 ||
+                      plan.multiDay.addOns.length > 0
+                    }
+                    references={plan.references}
+                  />
+                )}
                 {/* 足りない時間を足す追加券（トップアップ5時間など） */}
                 {plan.multiDay.addOns.map(addOn => (
                   <TicketLines
@@ -349,23 +352,36 @@ export const TicketPlanCard = ({ plan }: { plan: TicketPlanResult }) => {
                     multiplier={addOn.ticketCount}
                     multiplierUnit="枚"
                     showAmounts
+                    references={plan.references}
                   />
                 ))}
-                <SourceLinks
-                  numbers={plan.multiDay.sourceNumbers.filter(
-                    number => !sources.common.includes(number),
-                  )}
-                  references={plan.references}
-                />
+                {plan.multiDay.ticketSet && (
+                  <SourceLinks
+                    numbers={plan.multiDay.sourceNumbers}
+                    references={plan.references}
+                  />
+                )}
               </div>
+              <ConditionalOffers
+                className="mt-2"
+                offers={plan.multiDay.conditionalOffers}
+                sourcesOf={offer => offer.sourceNumbers}
+                references={plan.references}
+              />
             </div>
           )}
         </div>
 
-        {/* オンライン購入の案内・出典は、日ごとに繰り返さず最後に1回だけ出す */}
+        {rental && rental.status !== "none" && (
+          <div className="mt-2">
+            <RentalSummary rental={rental} dayCount={plan.days.length} />
+          </div>
+        )}
+
+        {/* WEB購入の案内は、日ごとに繰り返さず最後に1回だけ出す。出典は各料金の下に出す */}
         <div className="mt-3 flex flex-col gap-2">
-          <PurchaseSummary lines={shownLines} total={plan.total} />
-          <SourceLinks numbers={sources.common} references={plan.references} />
+          {/* 見出しの合計（レンタル込み）と同じ基準で「窓口で買う場合」を出す */}
+          <PurchaseSummary lines={shownLines} total={total} />
         </div>
       </div>
     </div>

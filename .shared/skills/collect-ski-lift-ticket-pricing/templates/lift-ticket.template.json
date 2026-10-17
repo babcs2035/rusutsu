@@ -24,6 +24,8 @@
   "offers": [],
   "party_rules": [],
   "fees": [],
+  "rental_audiences": [],
+  "rentals": [],
   "calculation_policy": {
     "currency": "JPY",
     "tax_included": null,

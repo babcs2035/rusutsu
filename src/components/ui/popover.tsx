@@ -32,7 +32,9 @@ function PopoverContent({
         alignOffset={alignOffset}
         side={side}
         sideOffset={sideOffset}
-        className="isolate z-50"
+        // Portal は body 直下に出るため、詳細パネル（z-[60]〜z-[420]）や
+        // ダイアログ（z-[1000]）より前に表示する。Select と同じ重なり順。
+        className="isolate z-[1100]"
       >
         <PopoverPrimitive.Popup
           data-slot="popover-content"

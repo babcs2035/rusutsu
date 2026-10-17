@@ -38,7 +38,9 @@ const files = fs
   );
 
 test("全スキー場・シーズンに公式と照合した共通テストの期待値がある", () => {
-  const expected = OFFICIAL_CASES.map(c => `${c.resort}/${c.season}.json`);
+  const expected = [
+    ...new Set(OFFICIAL_CASES.map(c => `${c.resort}/${c.season}.json`)),
+  ];
   assert.ok(files.length > 0, "料金データがありません");
   for (const file of files)
     assert.ok(expected.includes(file), `${file} の公式照合ケースが未登録`);
@@ -110,7 +112,9 @@ for (const spec of OFFICIAL_CASES.filter(c =>
       if (spec.categories[category] == null) {
         assert.match(
           result.days[0].result.lines.map(line => line.note).join(" "),
-          /年齢.*入力/,
+          spec.noPriceCategories?.includes(category)
+            ? /一致する料金がありません/
+            : /年齢.*入力/,
         );
       }
     });
@@ -140,15 +144,26 @@ for (const spec of OFFICIAL_CASES.filter(c =>
     adult: 30,
   };
   for (const baseCategory of TICKET_DISABILITY_BASE_CATEGORIES) {
-    test(`${spec.resort}: 障がい者＋${baseCategory}の料金と通常料金への戻し`, () => {
+    test(`${spec.resort}: 障がい者＋${baseCategory}の料金と通常料金への戻し`, {
+      skip:
+        spec.disabilityAmounts[baseCategory] === undefined
+          ? "公式料金が未確定のため照合しない"
+          : false,
+    }, () => {
       const base = input("disabled", representativeAges[baseCategory]);
       const result = calculateLiftTicketPlan(data, {
         ...base,
         party: [{ ...base.party[0], baseCategory }],
         days: [{ id: "day", date: spec.date, duration: DAY }],
       });
-      assert.equal(result.total, spec.disabilityAmounts[baseCategory]);
-      assertPrice(result.days[0].result, spec.disabilityAmounts[baseCategory]);
+      assert.equal(
+        result.total,
+        spec.disabilityAmounts[baseCategory] as number,
+      );
+      assertPrice(
+        result.days[0].result,
+        spec.disabilityAmounts[baseCategory] as number,
+      );
     });
   }
   test(`${spec.resort}: 掲載された券の利用単位を共通検証から漏らさない`, () => {
@@ -165,14 +180,20 @@ for (const spec of OFFICIAL_CASES.filter(c =>
       );
     }
   });
-  test(`${spec.resort}: UIの1日＋ナイターの料金`, () => {
-    // ルスツの1日券の夜間利用可否は既存の管理者確認。他は代表日がナイター営業日ではない。
+  test(`${spec.resort}: UIの1日＋ナイターの料金`, {
+    skip: spec.nightUnknown ? "公式資料にナイター営業の掲載なし" : false,
+  }, () => {
+    // 夜間込みの日券と、代表日に夜間営業がない施設を同じ入力で照合する。
     const result = plan("adult", 30, spec.date, {
       kind: "day",
       withNight: true,
     });
-    assert.equal(result.total, spec.categories.adult);
-    assertPrice(result.days[0].result, spec.categories.adult);
+    const expected =
+      spec.dayWithNight === undefined
+        ? spec.categories.adult
+        : spec.dayWithNight;
+    assert.equal(result.total, expected);
+    assertPrice(result.days[0].result, expected);
   });
   for (const [dates, hours, amount] of spec.multiDays ?? []) {
     test(`${spec.resort}: 日をまたぐ時間券と追加券の合計`, () => {
@@ -228,9 +249,30 @@ for (const spec of OFFICIAL_CASES.filter(c =>
       );
     });
   }
+  for (const query of spec.productQueries ?? []) {
+    test(`${spec.resort}: ${query.product}を${query.today}に照会（利用日${query.date}）`, () => {
+      const result = calculateLiftTicket(
+        data,
+        {
+          ...input(
+            query.category ?? "adult",
+            query.age === undefined ? 30 : query.age,
+            query.date,
+          ),
+          today: query.today,
+        },
+        query.product,
+      );
+      assertPrice(result, query.amount);
+      if (query.payable !== undefined)
+        assert.equal(result.payableTotal, query.payable);
+    });
+  }
   for (const [product, category, age, amount] of OFFICIAL_AUDIENCE_TICKETS[
-    spec.resort
-  ] ?? []) {
+    `${spec.resort}@${spec.season}`
+  ] ??
+    OFFICIAL_AUDIENCE_TICKETS[spec.resort] ??
+    []) {
     test(`${spec.resort}: ${product} / ${category} / ${age ?? "年齢なし"}`, () => {
       assertPrice(
         calculateLiftTicket(data, input(category, age), product),

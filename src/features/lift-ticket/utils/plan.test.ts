@@ -20,6 +20,18 @@ const NO_DAY_PASS = path.join(
   "src/private/data/lift-ticket-test-fixtures/ui/megahira-onsen-megahira/2025-2026.json",
 );
 
+/** 恐羅漢。「2日券(9時間券)」は時間で数えない連続2日券 */
+const OSORAKAN = path.join(
+  process.cwd(),
+  "src/private/data/lift-ticket/osorakan-snow-park/2026-2027.json",
+);
+
+/** 青森スプリング。「1日券5枚セット」（selectable_days）が全日券と平日券の2種類ある */
+const AOMORI = path.join(
+  process.cwd(),
+  "src/private/data/lift-ticket-test-fixtures/ui/aomori-spring-ski-resort/2026-2027.json",
+);
+
 const load = (file: string) =>
   JSON.parse(fs.readFileSync(file, "utf8")) as LiftTicketData;
 
@@ -454,4 +466,144 @@ test("営業時間を超える時間指定は25時間券でもまかなえない
   const result = plan(MULTI, [["2026-01-14", { kind: "hours", hours: 9 }]]);
   assert.equal(result.total, null);
   assert.equal(result.multiDay, null);
+});
+
+const twoDayPool = (data: LiftTicketData): LiftTicketData => ({
+  ...data,
+  products: data.products
+    .filter(
+      product =>
+        product.validity?.mode !== "consecutive_days" &&
+        (product.add_on_to_product_ids?.length ?? 0) === 0,
+    )
+    .map(product =>
+      product.validity?.mode === "hours_pool"
+        ? { ...product, validity: { ...product.validity, hours: 9, days: 2 } }
+        : product,
+    ),
+});
+
+test("合計9時間を2日まで分けて使う券を連続2日の日券として選ばない", () => {
+  const result = plan(
+    MULTI,
+    [
+      ["2026-01-14", DAY],
+      ["2026-01-15", DAY],
+    ],
+    twoDayPool,
+  );
+  assert.equal(result.perDayTotal, 12000);
+  assert.equal(result.total, 10000, "16時間には9時間券を2枚購入する");
+  assert.equal(result.multiDay?.kind, "hours_pool");
+  assert.equal(result.multiDay?.ticketCount, 2);
+});
+
+test("2日限定の時間券1枚で3日をまかなわず、2日分の券と残り1日を比べる", () => {
+  const result = plan(
+    MULTI,
+    [
+      ["2026-01-14", { kind: "hours", hours: 3 }],
+      ["2026-01-17", { kind: "hours", hours: 3 }],
+      ["2026-01-20", { kind: "hours", hours: 3 }],
+    ],
+    twoDayPool,
+  );
+  assert.equal(result.perDayTotal, 18000);
+  assert.equal(result.total, 11000, "2日時間券5000円＋残り1日の6000円");
+  assert.equal(result.multiDay?.kind, "hours_pool");
+  assert.equal(result.multiDay?.ticketCount, 1);
+  assert.equal(result.multiDay?.dates.length, 2);
+  assert.equal(result.multiDay?.requiredHours, 6);
+});
+
+test("恐羅漢の「2日券(9時間券)」は時間で数えず、1日×連続2日に使う", () => {
+  // 営業時間が未掲載でも、連続2日券として1日券×2と比べる
+  const result = plan(OSORAKAN, [
+    ["2027-01-16", DAY],
+    ["2027-01-17", DAY],
+  ]);
+  assert.equal(result.perDayTotal, 12400, "土日の1日券×2");
+  assert.equal(result.multiDay?.kind, "consecutive_days");
+  assert.equal(result.multiDay?.productId, "two-day");
+  assert.equal(result.total, 10500);
+});
+
+test("2日券の枠にも、会員の2日券と木曜レディースDAYを使って1日ずつ買う案を出す", () => {
+  const result = plan(OSORAKAN, [
+    ["2026-12-24", DAY],
+    ["2026-12-25", DAY],
+  ]);
+  assert.equal(result.total, 10500, "平日の2日券");
+  const offers = result.multiDay?.conditionalOffers ?? [];
+  const member = offers.find(
+    offer => offer.offerName === "メンバーズカード会員" && offer.days == null,
+  );
+  assert.equal(member?.subtotal, 10000, "会員は2日券から500円引き");
+  const ladies = offers.find(offer => offer.offerName === "レディースDAY");
+  assert.equal(ladies?.subtotal, 7500, "木曜2,000円＋金曜1日券5,500円");
+  assert.deepEqual(
+    ladies?.days?.map(day => [day.date, day.subtotal]),
+    [
+      ["2026-12-24", 2000],
+      ["2026-12-25", 5500],
+    ],
+  );
+});
+
+const aomoriPlan = (
+  dates: string[],
+  party: Array<[TicketPartyGroup["category"], number]>,
+) =>
+  calculateLiftTicketPlan(load(AOMORI), {
+    visitDate: dates[0],
+    usePreference: "full_day",
+    today: "2026-10-15",
+    party: party.map(([category, count], index) => ({
+      id: `g${index}`,
+      category,
+      age: null,
+      count,
+    })),
+    days: dates.map((date, index) => ({
+      id: `day-${index + 1}`,
+      date,
+      duration: DAY,
+    })),
+  });
+
+test("選べる5枚セットは、5日間でも1日5名でもまかなえる（のべ5人日）", () => {
+  const fiveDays = aomoriPlan(
+    ["2026-12-17", "2026-12-18", "2026-12-19", "2026-12-20", "2026-12-21"],
+    [["adult", 1]],
+  );
+  assert.equal(fiveDays.perDayTotal, 47000, "週末を含む5日は1日券×5");
+  assert.equal(fiveDays.multiDay?.kind, "ticket_set");
+  assert.equal(fiveDays.multiDay?.productId, "prod-5set-all");
+  assert.equal(fiveDays.total, 30000);
+
+  const weekdays = aomoriPlan(
+    ["2027-01-18", "2027-01-19", "2027-01-20", "2027-01-21", "2027-01-22"],
+    [["adult", 1]],
+  );
+  assert.equal(weekdays.multiDay?.productId, "prod-5set-weekday", "平日だけ");
+  assert.equal(weekdays.total, 25000);
+
+  const fiveAdults = aomoriPlan(["2026-12-19"], [["adult", 5]]);
+  assert.equal(fiveAdults.multiDay?.productId, "prod-5set-all", "土曜は全日券");
+  assert.equal(fiveAdults.total, 30000);
+});
+
+test("セットが得にならない・買えない場合は1日券のまま", () => {
+  const twoAdults = aomoriPlan(["2026-12-17"], [["adult", 2]]);
+  assert.equal(twoAdults.multiDay, null, "2人日ならセットは高い");
+  assert.equal(twoAdults.total, 18800);
+
+  const family = aomoriPlan(
+    ["2026-12-17", "2026-12-18"],
+    [
+      ["adult", 2],
+      ["elementary", 1],
+    ],
+  );
+  assert.equal(family.multiDay, null, "子供が混ざる日はセット券で買えない");
 });

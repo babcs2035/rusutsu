@@ -129,3 +129,34 @@ test("年齢が20歳でなければ平日20才無料を適用しない", () => {
     false,
   );
 });
+
+test("条件説明に含むカード名は繰り返さず、別の提示物は残す", () => {
+  const standard = data.offers.find(
+    offer => offer.id === "offer-naeba-1day-adult",
+  );
+  assert.ok(standard);
+  const member = {
+    ...standard,
+    id: "member",
+    name_ja: "メンバーズカード会員",
+    discount_reasons: ["membership"],
+    target_qualification: {
+      description_ja: "メンバーズカードをお持ちの方",
+    },
+    requirements: [
+      { proof_ja: "メンバーズカード" },
+      { proof_ja: "本人確認書類" },
+    ],
+    price: { amount: 5000 },
+  };
+  const result = calculateLiftTicket(
+    { ...data, offers: [...data.offers, member] },
+    input("2026-01-06", 30),
+    "prod-naeba-1day",
+  );
+  assert.deepEqual(
+    result.conditionalOffers.find(offer => offer.offerName === member.name_ja)
+      ?.conditions,
+    ["メンバーズカードをお持ちの方", "要提示: 本人確認書類"],
+  );
+});

@@ -22,6 +22,34 @@ export const TICKET_DISABILITY_BASE_CATEGORIES =
 
 export const TICKET_HOUR_OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);
 
+/** 画面で1つずつ選べるレンタル用具。セット（ski_set 等）はデータ側だけのラベル */
+export const TICKET_RENTAL_ITEMS = [
+  "skis",
+  "ski_boots",
+  "poles",
+  "snowboard",
+  "snowboard_boots",
+  "wear",
+  "helmet",
+  "goggles",
+  "gloves",
+] as const;
+
+export type TicketRentalItem = (typeof TICKET_RENTAL_ITEMS)[number];
+
+export const TICKET_RENTAL_SPORTS = ["ski", "snowboard"] as const;
+
+export type TicketRentalSport = (typeof TICKET_RENTAL_SPORTS)[number];
+
+/**
+ * 借りる物。種目で選べる板・ブーツが変わる（スキーならストックも）。
+ * 板だけ・ブーツだけ・ウェアだけのように1つずつ選べる
+ */
+export type TicketRentalRequest = {
+  sport: TicketRentalSport;
+  items: TicketRentalItem[];
+};
+
 export type TicketPartyGroup = {
   id: string;
   category: TicketPartyCategory;
@@ -29,6 +57,8 @@ export type TicketPartyGroup = {
   baseCategory?: Exclude<TicketPartyCategory, "disabled" | "other">;
   age: number | null;
   count: number;
+  /** レンタルする用具。借りないなら null / 未指定 */
+  rental?: TicketRentalRequest | null;
 };
 
 export type TicketUsePreference = "full_day" | "half_day";
@@ -249,6 +279,21 @@ export const priceModeOf = (price?: LiftTicketPrice) => {
   return "unknown";
 };
 
+/**
+ * 出典ページ内で、この料金が書かれている場所。リンクに `#:~:text=` を付けて
+ * その文言をハイライトしてスクロールさせる（ブラウザのテキストフラグメント）。
+ * text と prefix はページ上の表示テキストと完全一致が必要
+ */
+export type LiftTicketSourceQuote = {
+  source_id: string;
+  /** ハイライトする文言（「5,900円」） */
+  text: string;
+  /** text の直前にある文言。同額が並ぶ表で場所を絞る */
+  prefix?: string | null;
+  /** text の直後にある文言 */
+  suffix?: string | null;
+};
+
 export type LiftTicketOffer = {
   id: string;
   name_ja: string;
@@ -280,6 +325,8 @@ export type LiftTicketOffer = {
   }>;
   /** 根拠資料（sources[].id）。画面の出典番号 [1] [2] に使う */
   source_refs?: string[];
+  /** 料金が書かれている場所。出典リンクでその文言をハイライトする */
+  source_quotes?: LiftTicketSourceQuote[];
   notes_ja?: string | null;
 };
 
@@ -319,6 +366,7 @@ export type LiftTicketPartyRule = {
   sales_period?: LiftTicketPeriod | null;
   use_period?: LiftTicketPeriod | null;
   source_refs?: string[];
+  source_quotes?: LiftTicketSourceQuote[];
   notes_ja?: string | null;
 };
 
@@ -330,6 +378,44 @@ export type LiftTicketFee = {
   amount?: number | null;
   currency?: string;
   applies_to_product_ids?: string[];
+  notes_ja?: string | null;
+};
+
+/**
+ * レンタル料金1件（用具の組み合わせ × 対象者 × 期間 × 料金区分）。
+ * items はセット（ski_set = 板・ブーツ・ストック、snowboard_set = ボード・ブーツ）か単品
+ */
+export type LiftTicketRental = {
+  id: string;
+  name_ja: string;
+  official_label_ja?: string | null;
+  shop_name_ja?: string | null;
+  items: string[];
+  grade_ja?: string | null;
+  audience_ids?: string[];
+  calendar_ids?: string[];
+  channel_ids?: string[];
+  duration: {
+    mode: string;
+    hours?: number | null;
+    days?: number | null;
+    /** extra_day のとき、何日目より後に1日ごとに足す料金か（「6日目以降」なら5） */
+    after_days?: number | null;
+    start_time?: string | null;
+    end_time?: string | null;
+    notes_ja?: string | null;
+  };
+  price: {
+    currency?: string;
+    amount?: number | null;
+    notes_ja?: string | null;
+  };
+  target_qualification?: LiftTicketTarget | null;
+  purchase_deadline?: LiftTicketOffer["purchase_deadline"];
+  use_period?: LiftTicketPeriod | null;
+  sales_period?: LiftTicketPeriod | null;
+  source_refs?: string[];
+  source_quotes?: LiftTicketSourceQuote[];
   notes_ja?: string | null;
 };
 
@@ -370,6 +456,10 @@ export type LiftTicketData = {
   offers: LiftTicketOffer[];
   party_rules: LiftTicketPartyRule[];
   fees: LiftTicketFee[];
+  /** レンタルだけで使う人物区分（券と分け方が違う「子供（小学生以下）」等） */
+  rental_audiences?: LiftTicketAudience[];
+  /** レンタル料金。省略・空は「未収集」（レンタルが無いという意味ではない） */
+  rentals?: LiftTicketRental[];
   calculation_policy?: {
     currency?: string;
     tax_included?: boolean | null;
@@ -413,6 +503,8 @@ export type TicketCalculationLine = {
   unitAmount: number | null;
   subtotal: number | null;
   note: string | null;
+  /** 年齢で料金が変わるのに年齢が未入力で、料金を決められない行 */
+  missingAge?: boolean;
   /** 年齢世代割引などを自動適用した場合の、割引前の通常料金 */
   standardOfferName?: string | null;
   standardUnitAmount?: number | null;
@@ -424,10 +516,20 @@ export type TicketCalculationLine = {
   purchaseNote?: string | null;
   /** 購入ページのURL */
   purchaseUrl?: string | null;
+  /** 親子パックなど複数人セットの料金。画面では「誰と誰のセットか」を出す */
+  partySet?: {
+    /** 「親子パック」 */
+    name: string;
+    /** セットの中身とセット数。「大人1名＋小学生1名 × 2」 */
+    members: string;
+    setCount: number;
+  } | null;
   /** 自動適用した料金について、利用者が確認すべき条件（短く・必要なものだけ） */
   warnings?: string[];
   /** 出典番号（画面の [1] 表示用）。料金表と同じ番号を使う */
   sourceNumbers: number[];
+  /** 出典番号 → 料金の記載場所。出典リンクのハイライトに使う */
+  sourceQuotes?: Record<number, LiftTicketSourceQuote>;
 };
 
 export type TicketConditionalOffer = {
@@ -439,9 +541,12 @@ export type TicketConditionalOffer = {
   offerName: string;
   unitAmount: number;
   subtotal: number;
+  /** 見出しに出す条件名（「女性」「メンバーズカードをお持ちの方」） */
+  label: string;
   /** 宿泊・会員・購入期限など、照会入力だけでは確定できない適用条件 */
   conditions: string[];
   sourceNumbers: number[];
+  sourceQuotes?: Record<number, LiftTicketSourceQuote>;
 };
 
 export type TicketCalculationFee = {
