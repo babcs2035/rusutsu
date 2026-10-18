@@ -7,19 +7,31 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
-import { calculateLiftTicketsForList } from "@/actions/skiResorts";
+import { calculateLiftTicketAndRentalForList } from "@/actions/skiResorts";
 import { FavoriteButton } from "@/features/favorites/FavoriteButton";
-import { TicketCalculationCard } from "@/features/lift-ticket/components/TicketCalculationCard";
+import type {
+  OperatingCount,
+  ResortOperatingCounts,
+} from "@/features/home/utils/operatingCounts";
 import type {
   LiftTicketSearchInput,
   TicketCalculationResult,
 } from "@/features/lift-ticket/types";
+import { TICKET_PARTY_CATEGORY_LABELS } from "@/features/lift-ticket/utils/calculateLiftTicket";
+import type { TicketRentalResult } from "@/features/lift-ticket/utils/rental";
+import { cn } from "@/lib/utils";
 import { CompareResortButton } from "@/shared/components/CompareResortButton";
 import { CopyResortNameButton } from "@/shared/components/CopyResortNameButton";
 import { RubyText } from "@/shared/components/RubyText";
 import type { MapSkiResort } from "@/types/skiResorts";
+import type { ResortSortControls } from "../hooks/useResortSort";
+import { formatVisitDates } from "../utils/formatVisitDates";
+import { groupResortsByRegion } from "../utils/groupResortsByRegion";
+import { GroupedResortList } from "./GroupedResortList";
+import { ResortSortButton } from "./ResortSortButton";
 
 const HOVER_HIGHLIGHT_MEDIA_QUERY = "(min-width: 48em)";
 
@@ -31,7 +43,16 @@ type ListLiftTicketResults =
   | { status: "idle" }
   | { status: "loading" }
   | { status: "error" }
-  | { status: "done"; results: Record<string, TicketCalculationResult | null> };
+  | {
+      status: "done";
+      results: Record<
+        string,
+        {
+          ticket: TicketCalculationResult | null;
+          rental: TicketRentalResult | null;
+        }
+      >;
+    };
 
 /**
  * 日付が入ったときだけ、一覧にある料金データ付きスキー場の料金をサーバーで
@@ -65,7 +86,7 @@ const useListLiftTicketResults = (
       input: LiftTicketSearchInput;
     };
     let cancelled = false;
-    calculateLiftTicketsForList(ids, requestInput)
+    calculateLiftTicketAndRentalForList(ids, requestInput)
       .then(results => {
         if (!cancelled)
           setState({ key: requestKey, value: { status: "done", results } });
@@ -85,12 +106,100 @@ const useListLiftTicketResults = (
 
 type Props = {
   resorts: MapSkiResort[];
+  sortControls: ResortSortControls;
   onSelectResort: (id: string) => void;
   selectedCompareIdSet: Set<string>;
   onToggleCompare: (id: string, selected: boolean) => void;
   onHoverResortChange?: (id: string | null) => void;
   showHeader?: boolean;
   liftTicketInput: LiftTicketSearchInput;
+  onEditLiftTicketConditions: () => void;
+};
+
+const dateLabel = (input: LiftTicketSearchInput) => {
+  const dates = (
+    input.days?.length ? input.days : [{ date: input.visitDate }]
+  ).map(day => day.date);
+  return formatVisitDates(dates);
+};
+
+const conditionsLabel = (input: LiftTicketSearchInput) => {
+  const party = input.party
+    .filter(group => group.count > 0)
+    .map(
+      group =>
+        `${TICKET_PARTY_CATEGORY_LABELS[group.category]}${group.count}名`,
+    )
+    .join("・");
+  const hasRental = input.party.some(
+    group => (group.rental?.items.length ?? 0) > 0,
+  );
+  return [dateLabel(input), party, hasRental ? "レンタルあり" : null]
+    .filter(Boolean)
+    .join("　");
+};
+
+const priceText = (
+  ticket: TicketCalculationResult | null | undefined,
+  rental: TicketRentalResult | null | undefined,
+) => {
+  if (!ticket) return "不明";
+  if (["unavailable", "outside_season", "closed"].includes(ticket.status)) {
+    return ticket.status === "outside_season" ? "営業期間外" : "不明";
+  }
+  const ticketAmount = ticket.ticketTotal ?? ticket.knownTicketTotal;
+  const rentalAmount = rental?.total ?? rental?.knownTotal ?? 0;
+  const uncertain =
+    ticket.status === "partial" ||
+    (rental != null &&
+      rental.status !== "none" &&
+      rental.status !== "complete");
+  if (uncertain && ticketAmount + rentalAmount === 0) {
+    return "料金一部不明";
+  }
+  return `¥${(ticketAmount + rentalAmount).toLocaleString("ja-JP")}${
+    uncertain ? "〜" : ""
+  }`;
+};
+
+const ListMetric = ({ label, value }: { label: string; value: string }) => (
+  <span className="flex min-w-0 items-baseline gap-1 overflow-hidden whitespace-nowrap">
+    <span className="shrink-0 text-[11px] font-semibold text-gray-700 @min-[400px]:text-xs">
+      {label}
+    </span>
+    <span
+      title={value}
+      className="truncate text-[13px] font-bold leading-tight tabular-nums text-blue-700 @min-[300px]:text-sm @min-[400px]:text-base"
+    >
+      {value}
+    </span>
+  </span>
+);
+
+const OperatingMetric = ({
+  label,
+  count,
+  hasMap,
+  isLoading,
+  fallbackTotal,
+}: {
+  label: string;
+  count: OperatingCount | null | undefined;
+  hasMap: boolean | undefined;
+  isLoading: boolean;
+  fallbackTotal: number;
+}) => {
+  const total = count?.total ?? fallbackTotal;
+  const value = isLoading
+    ? "集計中…"
+    : count
+      ? count.active == null
+        ? `不明/${count.total}`
+        : `${count.active}/${count.total}`
+      : hasMap === false && total > 0
+        ? `不明/${total}`
+        : "不明";
+  return <ListMetric label={label} value={value} />;
 };
 
 /**
@@ -98,14 +207,36 @@ type Props = {
  */
 export const SkiResortList = ({
   resorts,
+  sortControls,
   onSelectResort,
   selectedCompareIdSet,
   onToggleCompare,
   onHoverResortChange,
   showHeader = true,
   liftTicketInput,
+  onEditLiftTicketConditions,
 }: Props) => {
+  const listRef = useRef<HTMLUListElement>(null);
+  const sortOrder = sortControls.order;
+  const previousSortOrder = useRef(sortOrder);
+  useEffect(() => {
+    if (previousSortOrder.current === sortOrder) return;
+    previousSortOrder.current = sortOrder;
+    // 並び替えたあとは、順位の先頭から見せる。
+    listRef.current?.scrollTo({ top: 0 });
+  }, [sortOrder]);
   const liftTicketResults = useListLiftTicketResults(resorts, liftTicketInput);
+  const regions = useMemo(
+    () => (sortOrder === "prefecture" ? groupResortsByRegion(resorts) : []),
+    [resorts, sortOrder],
+  );
+  const operatingCounts = useMemo(
+    () =>
+      Object.fromEntries(
+        resorts.map(resort => [resort.id, resort.operatingCounts]),
+      ),
+    [resorts],
+  );
   const [localSelectedCompareIdSet, setLocalSelectedCompareIdSet] = useState(
     () => new Set(selectedCompareIdSet),
   );
@@ -129,6 +260,18 @@ export const SkiResortList = ({
     },
     [onToggleCompare],
   );
+  const renderResort = (resort: MapSkiResort) => (
+    <SkiResortListItem
+      key={resort.id}
+      resort={resort}
+      isCompareSelected={localSelectedCompareIdSet.has(resort.id)}
+      onSelectResort={onSelectResort}
+      onToggleCompare={handleToggleCompare}
+      onHoverResortChange={onHoverResortChange}
+      liftTicketResults={liftTicketResults}
+      operatingCounts={operatingCounts}
+    />
+  );
 
   return (
     <div className="flex h-full flex-col bg-transparent">
@@ -144,6 +287,45 @@ export const SkiResortList = ({
         </div>
       )}
 
+      <div className="flex min-w-0 shrink-0 items-center gap-1.5 border-b border-gray-100 px-3 pb-2 md:px-4">
+        <button
+          type="button"
+          className="flex h-8 min-w-0 flex-1 items-center gap-1.5 rounded-full bg-gray-950 px-3 text-left text-[13px] font-medium text-white shadow-md hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500"
+          onClick={onEditLiftTicketConditions}
+          title={conditionsLabel(liftTicketInput)}
+          aria-label={`日程と利用者、レンタルの料金計算条件を編集：${conditionsLabel(liftTicketInput)}`}
+        >
+          <span className="min-w-0 flex-1 truncate">
+            {conditionsLabel(liftTicketInput) || "日程・人数を設定"}
+          </span>
+          <span className="shrink-0 whitespace-nowrap border-l border-white/30 pl-2">
+            編集
+          </span>
+        </button>
+        <ResortSortButton {...sortControls} />
+      </div>
+      {(sortControls.locating || sortControls.locationError) && (
+        <p
+          role="status"
+          className="shrink-0 px-3 pb-1 text-xs text-gray-600 md:px-4"
+        >
+          {sortControls.locating ? (
+            "現在地を取得中…"
+          ) : (
+            <>
+              {sortControls.locationError}
+              <button
+                type="button"
+                className="ml-1 whitespace-nowrap font-semibold text-blue-700 underline"
+                onClick={() => sortControls.onOrderChange("distance")}
+              >
+                再取得
+              </button>
+            </>
+          )}
+        </p>
+      )}
+
       {/* スクロール可能なリスト本体 */}
       {resorts.length === 0 ? (
         <div className="flex flex-grow items-center justify-center px-6 py-12 text-center">
@@ -153,22 +335,22 @@ export const SkiResortList = ({
         </div>
       ) : (
         <ul
+          ref={listRef}
           data-ski-resort-list-scroll="true"
           data-session-scroll="results-list"
-          className="flex-grow list-none overflow-y-auto px-4 pt-0 pb-[env(safe-area-inset-bottom,0px)] md:gap-3 md:py-4"
+          className={cn(
+            "@container/resort-list flex-grow list-none overflow-y-auto pt-0 pb-[env(safe-area-inset-bottom,0px)] md:gap-3 md:py-4",
+            sortOrder === "prefecture"
+              ? "scroll-pt-[4.75rem] px-3 md:pt-0"
+              : "px-4",
+          )}
           onScroll={() => onHoverResortChange?.(null)}
         >
-          {resorts.map(resort => (
-            <SkiResortListItem
-              key={resort.id}
-              resort={resort}
-              isCompareSelected={localSelectedCompareIdSet.has(resort.id)}
-              onSelectResort={onSelectResort}
-              onToggleCompare={handleToggleCompare}
-              onHoverResortChange={onHoverResortChange}
-              liftTicketResults={liftTicketResults}
-            />
-          ))}
+          {sortOrder === "prefecture" ? (
+            <GroupedResortList regions={regions} renderResort={renderResort} />
+          ) : (
+            resorts.map(renderResort)
+          )}
         </ul>
       )}
     </div>
@@ -183,6 +365,7 @@ const SkiResortListItem = memo(
     onToggleCompare,
     onHoverResortChange,
     liftTicketResults,
+    operatingCounts,
   }: {
     resort: MapSkiResort;
     isCompareSelected: boolean;
@@ -190,6 +373,7 @@ const SkiResortListItem = memo(
     onToggleCompare: (id: string, selected: boolean) => void;
     onHoverResortChange?: (id: string | null) => void;
     liftTicketResults: ListLiftTicketResults;
+    operatingCounts: Record<string, ResortOperatingCounts> | null;
   }) => {
     const highlightResort = () => {
       if (!canUseHoverHighlight()) return;
@@ -209,6 +393,15 @@ const SkiResortListItem = memo(
       onSelectResort(resort.id);
     };
     const liftTicketResortId = resort.liftTicketResortId;
+    const rentalResult =
+      liftTicketResortId && liftTicketResults.status === "done"
+        ? liftTicketResults.results[liftTicketResortId]?.rental
+        : null;
+    const operating = operatingCounts?.[resort.id];
+    const ticketResult =
+      liftTicketResortId && liftTicketResults.status === "done"
+        ? liftTicketResults.results[liftTicketResortId]?.ticket
+        : null;
 
     return (
       <li className="block">
@@ -285,28 +478,39 @@ const SkiResortListItem = memo(
                 旧称: {resort.formerNames.map(name => name.name).join("、")}
               </p>
             )}
-            {liftTicketResortId &&
-              (liftTicketResults.status === "done" ? (
-                <div
-                  className="mt-1"
-                  onPointerDown={event => event.stopPropagation()}
-                >
-                  <TicketCalculationCard
-                    result={
-                      liftTicketResults.results[liftTicketResortId] ?? null
-                    }
-                    compact
-                  />
-                </div>
-              ) : (
-                <p className="mt-1 text-xs font-semibold text-blue-600">
-                  {liftTicketResults.status === "loading"
-                    ? "料金を計算中…"
-                    : liftTicketResults.status === "error"
-                      ? "料金を計算できませんでした"
-                      : "日付・人数別の料金計算に対応"}
-                </p>
-              ))}
+            <div
+              className="@container mt-2 grid min-w-0 grid-cols-3 items-baseline gap-1 overflow-hidden rounded-md bg-sky-50 px-1.5 py-1"
+              onPointerDown={event => event.stopPropagation()}
+              role="group"
+              aria-label="営業コース、運行リフト、料金"
+            >
+              <OperatingMetric
+                label="コース"
+                count={operating?.courses}
+                hasMap={operating?.hasMap}
+                isLoading={operatingCounts === null}
+                fallbackTotal={resort.numberOfCourses}
+              />
+              <OperatingMetric
+                label="リフト"
+                count={operating?.lifts}
+                hasMap={operating?.hasMap}
+                isLoading={operatingCounts === null}
+                fallbackTotal={resort.numberOfLifts}
+              />
+              <ListMetric
+                label="料金"
+                value={
+                  liftTicketResults.status === "done"
+                    ? priceText(ticketResult, rentalResult)
+                    : liftTicketResults.status === "loading"
+                      ? "計算中…"
+                      : liftTicketResults.status === "error"
+                        ? "不明"
+                        : "日程を設定"
+                }
+              />
+            </div>
           </div>
         </div>
       </li>

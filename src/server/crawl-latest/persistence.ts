@@ -7,6 +7,7 @@ import {
 } from "@prisma/client";
 import type { LatestStatusCapabilityFile } from "@/features/latest-status-mapping/types.capability";
 import { prisma } from "@/lib/prisma";
+import { refreshMapOperations } from "@/server/course-lift/operations";
 import {
   buildCrawlLatestPersistenceValidation,
   type CrawlLatestServerValidationIssue,
@@ -319,6 +320,7 @@ export async function persistCrawlLatestRun(
             });
           }
 
+          const adoptedKinds = new Set<string>();
           for (const snapshot of snapshots) {
             if (!snapshot.eligibleForCurrent) continue;
             const current = await transaction.crawlLatestCurrent.findUnique({
@@ -342,6 +344,7 @@ export async function persistCrawlLatestRun(
             ) {
               continue;
             }
+            adoptedKinds.add(snapshot.kind);
             await transaction.crawlLatestCurrent.upsert({
               where: {
                 skiResortId_kind: {
@@ -358,7 +361,29 @@ export async function persistCrawlLatestRun(
             });
           }
 
-          return { runId: run.id, outcome, created: true } as const;
+          let finalOutcome = outcome;
+          if (
+            !isYukiMagi &&
+            (adoptedKinds.has("COURSES") || adoptedKinds.has("LIFTS"))
+          ) {
+            const projection = await refreshMapOperations(
+              transaction,
+              [input.resortId],
+              { runId: run.id, adoptedKinds },
+            );
+            if (projection?.warningCount && outcome === "SUCCESS") {
+              finalOutcome = "PARTIAL";
+              await transaction.crawlLatestRun.update({
+                where: { id: run.id },
+                data: { outcome: finalOutcome },
+              });
+            }
+          }
+          return {
+            runId: run.id,
+            outcome: finalOutcome,
+            created: true,
+          } as const;
         },
         {
           isolationLevel: Prisma.TransactionIsolationLevel.Serializable,

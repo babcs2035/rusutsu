@@ -4,6 +4,7 @@ import type { ComponentType, RefObject } from "react";
 import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
 import type { JapanResortMapProps } from "@/features/map/types";
 import type { MapSkiResort, SkiResortDetail } from "@/types/skiResorts";
+import type { ResortSortControls } from "../hooks/useResortSort";
 import { SkiResortCompareView } from "./SkiResortCompareView";
 import { SkiResortList } from "./SkiResortList";
 
@@ -12,6 +13,7 @@ type Props = {
   mapResorts: MapSkiResort[];
   compareResorts: SkiResortDetail[];
   filteredResorts: MapSkiResort[];
+  sortControls: ResortSortControls;
   isCompareLoading: boolean;
   isCompareOpen: boolean;
   listSheetContentRef: RefObject<HTMLDivElement | null>;
@@ -20,6 +22,7 @@ type Props = {
   selectedCompareIdSet: Set<string>;
   liftTicketInput: LiftTicketSearchInput;
   onCloseCompare: () => void;
+  onEditLiftTicketConditions: () => void;
   onHoverResortChange: (id: string | null) => void;
   onOpenChange: (open: boolean) => void;
   onSelectResort: (id: string) => void;
@@ -32,12 +35,14 @@ export const MobileResultsSheet = ({
   mapResorts,
   compareResorts,
   filteredResorts,
+  sortControls,
   isCompareLoading,
   isCompareOpen,
   listSheetContentRef,
   selectedCompareIdSet,
   liftTicketInput,
   onCloseCompare,
+  onEditLiftTicketConditions,
   onHoverResortChange,
   onSelectResort,
   onToggleCompare,
@@ -67,12 +72,14 @@ export const MobileResultsSheet = ({
       >
         <SkiResortList
           resorts={filteredResorts}
+          sortControls={sortControls}
           liftTicketInput={liftTicketInput}
           onSelectResort={onSelectResort}
           selectedCompareIdSet={selectedCompareIdSet}
           onToggleCompare={onToggleCompare}
           onHoverResortChange={onHoverResortChange}
           showHeader={false}
+          onEditLiftTicketConditions={onEditLiftTicketConditions}
         />
       </div>
     )}

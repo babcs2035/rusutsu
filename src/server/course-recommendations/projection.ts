@@ -11,6 +11,7 @@ import {
   TEMPORARY_RESORTS_ROOT,
 } from "@/lib/finalizedResortGeojson";
 import type { FinalizedCourseFeature } from "@/lib/finalizedResortGeojsonShared";
+import { readMapOrDataDocument } from "@/server/course-lift/canonicalDocuments";
 
 export const recommendationResortId = (key: string) =>
   /^resorts-temporary\/(?:slope_before(?:_osm)?|slope_10m(?:_osm)?|slope_detail)\/([^/]+)\.(?:geojson|json)$/u.exec(
@@ -49,6 +50,21 @@ export async function rebuildRecommendationFeatures(
   resortId: string,
 ) {
   const hashes = new Map<string, string>();
+  // All reads share one transaction connection; serialize and deduplicate them.
+  let queue = Promise.resolve();
+  const pending = new Map<string, ReturnType<typeof readMapOrDataDocument>>();
+  const loadDocument = (key: string) => {
+    let result = pending.get(key);
+    if (!result) {
+      result = queue.then(() => readMapOrDataDocument(tx, key));
+      queue = result.then(
+        () => undefined,
+        () => undefined,
+      );
+      pending.set(key, result);
+    }
+    return result;
+  };
   const { data } = await buildResortMapData(resortId, {
     temporaryRoot: TEMPORARY_RESORTS_ROOT,
     latestStatusLoader: async () => null,
@@ -57,7 +73,7 @@ export async function rebuildRecommendationFeatures(
         .relative(path.resolve(process.cwd(), "src/private/data"), absolutePath)
         .split(path.sep)
         .join("/");
-      const document = await tx.dataDocument.findUnique({ where: { key } });
+      const document = await loadDocument(key);
       hashes.set(key, document?.hash ?? "absent");
       return document?.content ?? null;
     },

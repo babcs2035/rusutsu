@@ -5,6 +5,10 @@ import {
   TEMPORARY_RESORTS_ROOT,
 } from "@/lib/finalizedResortGeojson";
 import { canonicalBase, type RawGeoFeature } from "@/lib/resortMapMerge";
+import {
+  canonicalMapsEnabled,
+  readMapOrDataDocument,
+} from "@/server/course-lift/canonicalDocuments";
 import { MAP_ENTITIES_MIGRATION_KEY } from "@/server/course-lift/migrationPlan";
 import { syncMapEntities } from "@/server/course-lift/repository";
 import { syncRecommendationDocuments } from "@/server/course-recommendations/projection";
@@ -39,23 +43,29 @@ export async function ensureMergedGeometryDocuments(
   sources: Source[],
   options: { linked?: boolean } = {},
 ) {
-  const existing = await transaction.dataDocument.findMany({
-    where: {
-      key: { in: GEOMETRY_FOLDERS.map(folder => keyFor(folder, resortId)) },
-    },
-    select: { key: true },
-  });
+  const canonical = await canonicalMapsEnabled(transaction);
+  const readKeys = async (keys: string[]) => {
+    if (!canonical)
+      return transaction.dataDocument.findMany({
+        where: { key: { in: keys } },
+        select: { key: true, content: true },
+      });
+    const documents = [];
+    for (const key of keys) {
+      const document = await readMapOrDataDocument(transaction, key);
+      if (document) documents.push(document);
+    }
+    return documents;
+  };
+  const existing = await readKeys(
+    GEOMETRY_FOLDERS.map(folder => keyFor(folder, resortId)),
+  );
   if (existing.length) return;
-  const documents = await transaction.dataDocument.findMany({
-    where: {
-      key: {
-        in: sources.flatMap(source =>
-          SOURCE_FOLDERS.map(folder => keyFor(folder, source.id)),
-        ),
-      },
-    },
-    select: { key: true, content: true },
-  });
+  const documents = await readKeys(
+    sources.flatMap(source =>
+      SOURCE_FOLDERS.map(folder => keyFor(folder, source.id)),
+    ),
+  );
   const merged = await buildMergedGeometryDocuments(
     resortId,
     sources,
@@ -65,14 +75,8 @@ export async function ensureMergedGeometryDocuments(
   if (options.linked && merged.length) {
     const mappingKey = mappingKeyFor(resortId);
     const [existingMapping, sourceMappings] = await Promise.all([
-      transaction.dataDocument.findUnique({
-        where: { key: mappingKey },
-        select: { key: true },
-      }),
-      transaction.dataDocument.findMany({
-        where: { key: { in: sources.map(source => mappingKeyFor(source.id)) } },
-        select: { key: true, content: true },
-      }),
+      readMapOrDataDocument(transaction, mappingKey),
+      readKeys(sources.map(source => mappingKeyFor(source.id))),
     ]);
     const mapping = existingMapping
       ? null
@@ -85,6 +89,21 @@ export async function ensureMergedGeometryDocuments(
     if (mapping) merged.push(mapping);
   }
   if (merged.length) {
+    if (await canonicalMapsEnabled(transaction)) {
+      const { writeDataDocumentsInTransaction } = await import(
+        "@/server/data-documents/repository"
+      );
+      await writeDataDocumentsInTransaction(
+        transaction,
+        merged.map(document => ({
+          ...document,
+          hash: hashDataDocumentContent(document.content),
+          expectedHash: null,
+          fallbackHash: null,
+        })),
+      );
+      return;
+    }
     await transaction.dataDocument.createMany({ data: merged });
     await syncRecommendationDocuments(
       transaction,

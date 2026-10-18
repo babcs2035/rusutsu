@@ -105,6 +105,7 @@ model SkiResort {
   latestReports       LatestReport[]
   crawlLatestRuns     CrawlLatestRun[]
   crawlLatestCurrents CrawlLatestCurrent[]
+  operationSummary SkiResortOperationSummary?
 
   @@map("ski_resorts")
   @@index([mergedIntoId])
@@ -609,11 +610,44 @@ model MapCourse {
   distance Float?
   angleAvg Float?
   angleMax Float?
+  piste String?
+  snowboard String?
+  morning String?
+  night String?
+  note String?
+  image String?
+  youtubeUrl String?
+  searchWord String?
+  maxWidth Float?
+  minWidth Float?
   properties Json
   geometry Json?
-  // Complete source Feature keeps unknown top-level fields and null properties.
-  feature Json
+  // Legacy caches for rolling migration only. Canonical v2 leaves these NULL.
+  feature Json?
   derivedFeature Json?
+  // Canonical geometry/attributes. Legacy Feature columns are cleared on migration.
+  derivedGeometry Json?
+  geometryType String?
+  featureMetadata Json @default("{}")
+  derivedMetadata Json @default("{}")
+  derivedProperties Json @default("{}")
+  derivedIndex Int?
+  horizontalDistance Float?
+  slopeDistance Float?
+  elevationDifference Float?
+  calculatedAverageSlope Float?
+  calculatedMaxSlope Float?
+  elevationReady Boolean @default(false)
+  crawledNames String[] @default([])
+  mappingAssigned Boolean @default(false)
+  status String?
+  latestNote String?
+  officialUpdatedAt String?
+  statusObservedAt DateTime? @db.Timestamptz(3)
+  statusSnapshotId String?
+  statusName String?
+  statusSourceUrls String[] @default([])
+  hasStatusSource Boolean @default(false)
   archivedAt DateTime?
   updatedAt DateTime @updatedAt
   @@index([resortId, sourceKind, archivedAt])
@@ -631,10 +665,51 @@ model MapLift {
   type String?
   capacity Int?
   distance Float?
+  speed String?
+  hood String?
+  footrest String?
+  towers String?
+  signal String?
+  oilShield String?
+  maker String?
+  year String?
+  note String?
+  searchWord String?
+  link String?
+  image String?
+  youtubeUrl String?
+  morning String?
+  night String?
+  vertical Float?
+  top Float?
+  bottom Float?
   properties Json
   geometry Json?
-  feature Json
+  feature Json?
   derivedFeature Json?
+  // Canonical geometry/attributes. Legacy Feature columns are cleared on migration.
+  derivedGeometry Json?
+  geometryType String?
+  featureMetadata Json @default("{}")
+  derivedMetadata Json @default("{}")
+  derivedProperties Json @default("{}")
+  derivedIndex Int?
+  horizontalDistance Float?
+  slopeDistance Float?
+  elevationDifference Float?
+  calculatedAverageSlope Float?
+  calculatedMaxSlope Float?
+  elevationReady Boolean @default(false)
+  crawledNames String[] @default([])
+  mappingAssigned Boolean @default(false)
+  status String?
+  latestNote String?
+  officialUpdatedAt String?
+  statusObservedAt DateTime? @db.Timestamptz(3)
+  statusSnapshotId String?
+  statusName String?
+  statusSourceUrls String[] @default([])
+  hasStatusSource Boolean @default(false)
   archivedAt DateTime?
   updatedAt DateTime @updatedAt
   @@index([resortId, archivedAt])
@@ -646,6 +721,11 @@ model MapDocumentState {
   key String @id
   hash String @db.Char(64)
   featureCount Int
+  metadata Json @default("{}")
+  mediaType String @default("application/geo+json")
+  version Int @default(1)
+  relational Boolean @default(false)
+  createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@map("map_document_states")
 }
@@ -748,4 +828,20 @@ model CourseRecommendationFeature {
   @@id([resortId, key])
   @@index([resortId, calculationVersion])
   @@map("course_recommendation_features")
+}
+
+// Read model for search results. No geometry or crawler payload is read by lists.
+model SkiResortOperationSummary {
+  skiResortId String @id
+  skiResort SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "summary_resort_fk")
+  hasMap Boolean
+  courseTotal Int?
+  courseActive Int?
+  liftTotal Int?
+  liftActive Int?
+  courseCountSource String
+  liftCountSource String
+  calculationVersion Int @default(1)
+  updatedAt DateTime @updatedAt
+  @@map("ski_resort_operation_summaries")
 }

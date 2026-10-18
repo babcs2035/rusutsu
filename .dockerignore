@@ -23,4 +23,6 @@ backups
 **/__pycache__
 **/pending.env.sh
 **/runtime.env.sh
+src/private/data/resorts-temporary/tmp
+src/private/data/resorts-temporary/logs
 production-settings.json

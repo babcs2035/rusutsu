@@ -14,6 +14,8 @@ paths += [root / "src/private/scripts/rebuildCourseRecommendations.ts"]
 paths += [root / "src/server/course-recommendations/projection.ts"]
 paths += [root / "src/features/course-recommendations/algorithm.ts"]
 paths += [root / "scripts/migrateMapEntities.ts"]
+paths += [root / "src/private/scripts/migrateCanonicalMaps.ts"]
+paths += list((root / "src/server/course-lift").glob("*.ts"))
 digest = hashlib.sha256()
 for path in sorted(path for path in paths if path.is_file() and not path.name.endswith(".test.ts")):
     digest.update(str(path.relative_to(root)).encode())

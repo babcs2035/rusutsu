@@ -81,7 +81,30 @@ export const areFiltersEqual = (left: Filters, right: Filters) => {
         group.category === otherGroup.category &&
         group.baseCategory === otherGroup.baseCategory &&
         group.age === otherGroup.age &&
-        group.count === otherGroup.count
+        group.count === otherGroup.count &&
+        group.rental?.sport === otherGroup.rental?.sport &&
+        (group.rental?.items ?? []).length ===
+          (otherGroup.rental?.items ?? []).length &&
+        (group.rental?.items ?? []).every(
+          (item, itemIndex) => item === otherGroup.rental?.items[itemIndex],
+        )
+      );
+    }) &&
+    (leftLiftTicket.days ?? []).length ===
+      (rightLiftTicket.days ?? []).length &&
+    (leftLiftTicket.days ?? []).every((day, index) => {
+      const otherDay = rightLiftTicket.days?.[index];
+      return (
+        otherDay !== undefined &&
+        day.id === otherDay.id &&
+        day.date === otherDay.date &&
+        day.duration.kind === otherDay.duration.kind &&
+        (day.duration.kind !== "day" ||
+          otherDay.duration.kind !== "day" ||
+          day.duration.withNight === otherDay.duration.withNight) &&
+        (day.duration.kind !== "hours" ||
+          otherDay.duration.kind !== "hours" ||
+          day.duration.hours === otherDay.duration.hours)
       );
     }) &&
     left.prefectures.length === right.prefectures.length &&

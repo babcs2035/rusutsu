@@ -1,3 +1,4 @@
+import { refreshMapOperations } from "@/server/course-lift/operations";
 import "server-only";
 
 import { randomUUID } from "node:crypto";
@@ -384,6 +385,7 @@ export async function updateAdminSkiResortInTransaction(
     where: { id },
     select: adminSkiResortSelect,
   });
+  await refreshMapOperations(transaction, [id]);
   return { status: "updated", resort: serializeAdminSkiResort(resort) };
 }
 
@@ -524,6 +526,10 @@ export async function mergeAdminSkiResortsDirect(
           where: { mergedIntoId: request.id },
           select: adminSkiResortSelect,
         });
+        await refreshMapOperations(transaction, [
+          request.id,
+          ...sourceResortIds,
+        ]);
         return {
           status: "created" as const,
           resort: serializeAdminSkiResort(created),
@@ -607,6 +613,10 @@ export async function unlinkAdminSkiResortsDirect(
           where: { id: { in: members.map(member => member.id) } },
           select: adminSkiResortSelect,
         });
+        await refreshMapOperations(transaction, [
+          request.id,
+          ...members.map(member => member.id),
+        ]);
         return {
           status: "unlinked" as const,
           resort: serializeAdminSkiResort(resort),

@@ -1097,7 +1097,6 @@ function HomeClientContent({
             filteredResorts={filteredResorts}
             filters={filters}
             hasActiveFilters={hasActiveFilters}
-            hasSearched={hasSearched}
             hoveredResortId={hoveredResortId}
             initialResorts={initialResorts}
             isCompareLoading={isCompareLoading}

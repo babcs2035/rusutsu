@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { usesRemoteDataApi } from "@/lib/internalDataApiClient";
 import { prisma } from "@/lib/prisma";
 import { requireEditor } from "@/lib/requireEditor";
+import { readMapOrDataDocument } from "@/server/course-lift/canonicalDocuments";
 import { writeDataDocumentsInTransaction } from "@/server/data-documents/repository";
 import { hashDataDocumentContent } from "@/server/data-documents/repositoryCore";
 import { writeLiftTicketSeasonInTransaction } from "@/server/lift-tickets/repository";
@@ -56,10 +57,7 @@ export async function assertPlanCurrent(
   plan: EditPlan,
 ) {
   for (const { key, document } of plan.beforeDocuments) {
-    const row = await tx.dataDocument.findUnique({
-      where: { key },
-      select: { hash: true, version: true },
-    });
+    const row = await readMapOrDataDocument(tx, key);
     if (
       (row?.hash ?? null) !== (document?.hash ?? null) ||
       (row?.version ?? null) !== (document?.version ?? null)

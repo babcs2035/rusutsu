@@ -61,6 +61,7 @@ import {
 } from "../components/MobileSearchTopBarShell";
 import { SearchButton } from "../components/SearchButton";
 import { SkiResortCompareView } from "../components/SkiResortCompareView";
+import { useResortSort } from "../hooks/useResortSort";
 import type { MapViewRestoreRequest } from "../types";
 
 /**
@@ -85,7 +86,6 @@ type Props = {
   filteredResorts: MapSkiResort[];
   filters: Filters;
   hasActiveFilters: boolean;
-  hasSearched: boolean;
   hoveredResortId: string | null;
   initialResorts: MapSkiResort[];
   isCompareLoading: boolean;
@@ -170,7 +170,6 @@ export const HomeLayout = ({
   filteredResorts,
   filters,
   hasActiveFilters,
-  hasSearched,
   hoveredResortId,
   initialResorts,
   isCompareLoading,
@@ -335,11 +334,15 @@ export const HomeLayout = ({
     (!isMobileCompare &&
       (mobileContentTab === "map" ||
         (!shouldShowMobileTopChrome && !shouldShowMobileSearchScreen)));
+  const { sortedResorts, controls: sortControls } =
+    useResortSort(filteredResorts);
+  const shouldShowMobileResultCount = mobileContentTab === "info";
   const shouldShowMobileComparisonActions =
+    shouldShowMobileResultCount ||
     selectedCompareIds.length > 0 ||
-    Boolean(favorites?.ready && favorites.ids.length >= 2);
+    Boolean(favorites && (!favorites.ready || favorites.ids.length >= 2));
   const mobileSearchChromeHeight = shouldShowMobileComparisonActions
-    ? `calc(${MOBILE_SEARCH_TOP_BAR_HEIGHT} + 2.5rem)`
+    ? `calc(${MOBILE_SEARCH_TOP_BAR_HEIGHT} + 2.25rem)`
     : MOBILE_SEARCH_TOP_BAR_HEIGHT;
 
   const compareSelectedSlopeResort = compareSlopeSelection
@@ -387,6 +390,9 @@ export const HomeLayout = ({
             />
             <ComparisonActions
               compareCount={selectedCompareIds.length}
+              resultCount={
+                shouldShowMobileResultCount ? filteredResorts.length : undefined
+              }
               onOpenCompare={onOpenCompare}
               onClearCompare={onClearCompare}
               onCompareFavorites={onCompareFavorites}
@@ -562,7 +568,8 @@ export const HomeLayout = ({
                   DynamicMap={DynamicMap}
                   mapResorts={initialResorts}
                   compareResorts={compareResortData}
-                  filteredResorts={filteredResorts}
+                  filteredResorts={sortedResorts}
+                  sortControls={sortControls}
                   isCompareLoading={isCompareLoading}
                   isCompareOpen={isCompareOpen}
                   listSheetContentRef={listSheetContentRef}
@@ -571,6 +578,19 @@ export const HomeLayout = ({
                   selectedCompareIdSet={selectedCompareIdSet}
                   liftTicketInput={liftTicketInput}
                   onCloseCompare={onCloseCompare}
+                  onEditLiftTicketConditions={() => {
+                    onOpenMobileFilterOverlay();
+                    window.setTimeout(() => {
+                      const calculator = document.getElementById(
+                        "lift-ticket-calculator",
+                      );
+                      calculator?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "center",
+                      });
+                      calculator?.focus({ preventScroll: true });
+                    }, 180);
+                  }}
                   onHoverResortChange={onSetHoveredResortId}
                   onOpenChange={open => {
                     onSetListSheetOpen(open && mobileContentTab === "info");
@@ -640,9 +660,9 @@ export const HomeLayout = ({
         showAccount={!selectedResortId && !isCompareOpen}
         filters={filters}
         resorts={initialResorts}
-        filteredResorts={filteredResorts}
+        filteredResorts={sortedResorts}
+        sortControls={sortControls}
         compareCount={selectedCompareIds.length}
-        hasSearched={hasSearched}
         isCompareOpen={isCompareOpen}
         isFilterEditorOpen={isFilterEditorOpen}
         selectedCompareIdSet={selectedCompareIdSet}

@@ -314,7 +314,7 @@ const normalizeStringArray = (value: unknown): string[] =>
       ]
     : [];
 
-const normalizeCourseFeature = (
+export const normalizeCourseFeature = (
   feature: unknown,
   index: number,
   verificationStatus: "verified" | "unverified" = "verified",
@@ -419,7 +419,7 @@ const normalizeCourseFeature = (
   };
 };
 
-const normalizeLiftFeature = (
+export const normalizeLiftFeature = (
   feature: unknown,
   index: number,
 ): FinalizedLiftFeature | null => {
@@ -1013,7 +1013,12 @@ export const getResortMapDataFromRoots = async (
 ): Promise<FinalizedResortMapData | null> =>
   (await buildResortMapData(resortId, roots)).data;
 
-export const getFinalizedResortMapData = (resortId: string) => {
+export const getFinalizedResortMapData = async (resortId: string) => {
+  const { readCanonicalResortMap } = await import(
+    "@/server/course-lift/mapData"
+  );
+  const canonical = await readCanonicalResortMap(resortId);
+  if (canonical.enabled) return canonical.data;
   return getResortMapDataFromRoots(resortId, {
     temporaryRoot: TEMPORARY_RESORTS_ROOT,
     documentLoader: async absoluteFilePath => {

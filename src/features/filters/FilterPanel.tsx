@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TicketPartyEditor } from "@/features/lift-ticket/components/TicketPartyEditor";
 import { DEFAULT_LIFT_TICKET_SEARCH_INPUT } from "@/features/lift-ticket/utils/calculateLiftTicket";
+import { SEARCH_RENTAL_OPTIONS } from "@/features/lift-ticket/utils/rental";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import type { MapSkiResort } from "@/types/skiResorts";
@@ -224,21 +225,29 @@ export const FilterPanel = ({
           )}
         >
           {/* Lift ticket editor */}
-          <Alert className="rounded-xl bg-blue-50 border-blue-200">
+          <Alert
+            id="lift-ticket-calculator"
+            tabIndex={-1}
+            className="rounded-xl border-blue-200 bg-blue-50 transition-shadow focus:outline-none focus:ring-4 focus:ring-blue-500/40"
+          >
             <AlertTitle className="text-blue-900 font-bold text-sm">
-              日程・人数からリフト券代を比較
+              料金を計算する
             </AlertTitle>
-            <AlertDescription className="mt-2">
+            <AlertDescription className="mt-1 text-xs leading-relaxed">
+              日程・利用者ごとにリフト券とレンタル料金を計算します。
+            </AlertDescription>
+            <div className="mt-2">
               <TicketPartyEditor
                 value={filters.liftTicket ?? DEFAULT_LIFT_TICKET_SEARCH_INPUT}
                 onChange={liftTicket =>
                   onFilterChange({ ...filters, liftTicket })
                 }
+                rentalOptions={SEARCH_RENTAL_OPTIONS}
                 compact
                 onInputBlur={onKeyboardInputBlur}
                 onInputFocus={onKeyboardInputFocus}
               />
-            </AlertDescription>
+            </div>
           </Alert>
 
           {/* Quick filters */}

@@ -16,6 +16,7 @@ import { DEFAULT_LIFT_TICKET_SEARCH_INPUT } from "@/features/lift-ticket/utils/c
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import type { MapSkiResort } from "@/types/skiResorts";
+import type { ResortSortControls } from "../hooks/useResortSort";
 import { ComparisonActions } from "./ComparisonActions";
 import { SearchButton } from "./SearchButton";
 import { SkiResortList } from "./SkiResortList";
@@ -25,8 +26,8 @@ type Props = {
   filters: Filters;
   resorts: MapSkiResort[];
   filteredResorts: MapSkiResort[];
+  sortControls: ResortSortControls;
   compareCount: number;
-  hasSearched: boolean;
   isCompareOpen: boolean;
   isFilterEditorOpen: boolean;
   selectedCompareIdSet: Set<string>;
@@ -49,8 +50,8 @@ export const DesktopSearchPanel = ({
   filters,
   resorts,
   filteredResorts,
+  sortControls,
   compareCount,
-  hasSearched,
   isCompareOpen,
   isFilterEditorOpen,
   selectedCompareIdSet,
@@ -97,6 +98,14 @@ export const DesktopSearchPanel = ({
   const draftResultCount = resorts.filter(resort =>
     matchesFilters(resort, draftFilters),
   ).length;
+  const editLiftTicketConditions = () => {
+    onExpandedChange(true);
+    window.setTimeout(() => {
+      const calculator = document.getElementById("lift-ticket-calculator");
+      calculator?.scrollIntoView({ behavior: "smooth", block: "center" });
+      calculator?.focus({ preventScroll: true });
+    }, 120);
+  };
 
   return (
     <div
@@ -237,34 +246,30 @@ export const DesktopSearchPanel = ({
         <ComparisonActions
           compareCount={compareCount}
           isCompareOpen={isCompareOpen}
-          className="py-2"
+          resultCount={!isFilterEditorOpen ? filteredResorts.length : undefined}
           onOpenCompare={onOpenCompare}
           onClearCompare={onClearCompare}
           onCompareFavorites={onCompareFavorites}
         />
         {!isFilterEditorOpen && (
-          <>
-            <div className="px-4 py-2 text-sm font-semibold text-gray-900">
-              {hasSearched ? "検索結果" : "スキー場"}{" "}
-              {filteredResorts.length.toLocaleString()}件
-            </div>
-            <div
-              data-ski-resort-list-scroll-container="true"
-              className="flex-grow min-h-0"
-            >
-              <SkiResortList
-                resorts={filteredResorts}
-                liftTicketInput={
-                  filters.liftTicket ?? DEFAULT_LIFT_TICKET_SEARCH_INPUT
-                }
-                onSelectResort={onSelectResort}
-                selectedCompareIdSet={selectedCompareIdSet}
-                onToggleCompare={onToggleCompare}
-                onHoverResortChange={onHoverResortChange}
-                showHeader={false}
-              />
-            </div>
-          </>
+          <div
+            data-ski-resort-list-scroll-container="true"
+            className="flex-grow min-h-0"
+          >
+            <SkiResortList
+              resorts={filteredResorts}
+              sortControls={sortControls}
+              liftTicketInput={
+                filters.liftTicket ?? DEFAULT_LIFT_TICKET_SEARCH_INPUT
+              }
+              onSelectResort={onSelectResort}
+              selectedCompareIdSet={selectedCompareIdSet}
+              onToggleCompare={onToggleCompare}
+              onHoverResortChange={onHoverResortChange}
+              showHeader={false}
+              onEditLiftTicketConditions={editLiftTicketConditions}
+            />
+          </div>
         )}
       </div>
     </div>

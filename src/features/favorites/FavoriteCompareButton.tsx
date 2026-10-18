@@ -1,5 +1,5 @@
 "use client";
-import { Heart } from "lucide-react";
+import { Heart, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useFavorites } from "./FavoritesProvider";
@@ -13,17 +13,25 @@ export function FavoriteCompareButton({
   presentation?: "panel" | "chip";
 }) {
   const favorites = useFavorites();
-  if (!favorites?.ready || favorites.ids.length < 2) return null;
+  if (!favorites || (favorites.ready && favorites.ids.length < 2)) return null;
+  const isLoading = !favorites.ready;
+  const label = isLoading ? "お気に入りを取得中" : "お気に入りを比較";
   if (presentation === "chip") {
     return (
       <Button
         type="button"
         variant="default"
-        className="h-8 gap-1.5 rounded-full bg-pink-500 px-3 text-[13px] font-medium text-white shadow-md hover:bg-pink-600 focus-visible:ring-pink-500/20"
+        className="h-8 gap-1 rounded-full bg-pink-500 px-1 text-xs font-medium text-white shadow-md hover:bg-pink-600 focus-visible:ring-pink-500/20 @min-[24rem]/comparison-actions:px-2 @min-[24rem]/comparison-actions:text-[13px]"
         onClick={onCompare}
+        disabled={isLoading}
+        aria-busy={isLoading}
       >
-        <Heart className="size-3.5" />
-        お気に入りを比較
+        {isLoading ? (
+          <LoaderCircle className="size-3.5 animate-spin motion-reduce:animate-none" />
+        ) : (
+          <Heart className="size-3.5" />
+        )}
+        {label}
       </Button>
     );
   }
@@ -37,8 +45,13 @@ export function FavoriteCompareButton({
           variant === "orange" ? "font-medium" : "font-semibold shadow-sm",
         )}
         onClick={onCompare}
+        disabled={isLoading}
+        aria-busy={isLoading}
       >
-        お気に入りを比較
+        {isLoading && (
+          <LoaderCircle className="size-3.5 animate-spin motion-reduce:animate-none" />
+        )}
+        {label}
       </Button>
     </div>
   );

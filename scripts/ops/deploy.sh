@@ -48,6 +48,9 @@ if [[ "$initialize" == true ]]; then
   compose run --rm --no-deps app node --import tsx scripts/importCanonicalDataDocuments.ts --initialize
   compose run --rm --no-deps app node --import tsx scripts/importSkiResortShortNames.ts --initialize
 fi
+# Validate and cut over existing map data before the app resumes. The migration
+# compares the captured hashes again under table locks and is idempotent.
+compose run --rm --no-deps app node --import tsx src/private/scripts/migrateCanonicalMaps.ts --deploy
 # Derived recommendation rows must exist before serving searches. Rebuild from
 # the canonical DB, including current entity/group IDs; never import fixtures.
 compose run --rm --no-deps app node --import tsx src/private/scripts/rebuildCourseRecommendations.ts --apply

@@ -1,5 +1,6 @@
 import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
 import { DEFAULT_LIFT_TICKET_SEARCH_INPUT } from "@/features/lift-ticket/utils/calculateLiftTicket";
+import { formatRentalRequest } from "@/features/lift-ticket/utils/rental";
 import type { Filters, NumericFilterValue, RegionOption } from "../types";
 
 export const hasNumericFilterValue = (
@@ -16,7 +17,9 @@ export const isLiftTicketFilterActive = (liftTicket: LiftTicketSearchInput) =>
   liftTicket.party[0]?.category !== "adult" ||
   liftTicket.party[0]?.age !== null ||
   liftTicket.party[0]?.count !==
-    DEFAULT_LIFT_TICKET_SEARCH_INPUT.party[0]?.count;
+    DEFAULT_LIFT_TICKET_SEARCH_INPUT.party[0]?.count ||
+  (liftTicket.days?.length ?? 0) > 1 ||
+  liftTicket.party.some(group => formatRentalRequest(group.rental) !== "なし");
 
 const formatMetersRangeLabel = (
   minValue: NumericFilterValue | undefined,
@@ -125,8 +128,12 @@ export const getActiveFilterLabels = (
       0,
     );
     labels.push(
-      `リフト券 ${liftTicket.visitDate}・${partyCount}人・${
-        liftTicket.usePreference === "full_day" ? "1日" : "半日"
+      `料金 ${liftTicket.days?.length ?? 1}日・${partyCount}人${
+        liftTicket.party.some(
+          group => formatRentalRequest(group.rental) !== "なし",
+        )
+          ? "・レンタル"
+          : ""
       }`,
     );
   }

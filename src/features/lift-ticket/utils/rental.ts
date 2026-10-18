@@ -577,6 +577,15 @@ export type TicketRentalOptions = {
 };
 
 /**
+ * 検索条件では特定のスキー場を選んでいないため、選択できるレンタル用具を
+ * 共通で表示する。各スキー場の料金計算では実際の登録内容に照合する。
+ */
+export const SEARCH_RENTAL_OPTIONS: TicketRentalOptions = {
+  sports: [...TICKET_RENTAL_SPORTS],
+  itemsBySport: TICKET_RENTAL_ITEMS_BY_SPORT,
+};
+
+/**
  * そのスキー場で借りられる物。誰でも借りられる料金（宿泊者限定などを除く）に
  * 含まれる用具だけを選択肢にする（料金表に無い物を選ばせて「未確定」にしない）。
  * レンタル料金を集めていなければ null
