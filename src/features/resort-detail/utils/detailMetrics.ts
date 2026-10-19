@@ -171,6 +171,25 @@ export const getElevationRange = (
   return { min: Math.min(...elevations), max: Math.max(...elevations) };
 };
 
+export const formatElevationRange = (
+  range: { min: number; max: number } | null,
+) => (range ? `(${Math.round(range.max)}〜${Math.round(range.min)}m)` : null);
+
+/** 山麓・山頂駅の標高。途中の地形の起伏ではなくGeoJSONの両端を使う。 */
+export const getLiftElevationRange = (coordinates: GeoCoordinate[]) => {
+  const first = coordinates[0]?.[2];
+  const last = coordinates.at(-1)?.[2];
+  if (
+    coordinates.length < 2 ||
+    first == null ||
+    last == null ||
+    !Number.isFinite(first) ||
+    !Number.isFinite(last)
+  )
+    return null;
+  return { min: Math.min(first, last), max: Math.max(first, last) };
+};
+
 export const getLiftElevationDiff = (lift: FinalizedLiftFeature) => {
   if (lift.properties.elevationDiffMap != null) {
     return lift.properties.elevationDiffMap;
@@ -305,6 +324,7 @@ export const haversineMeters = (a: GeoCoordinate, b: GeoCoordinate) => {
 
 export const createElevationProfile = (
   coordinates: GeoCoordinate[],
+  direction: "downhill" | "uphill" = "downhill",
 ): ElevationProfilePoint[] => {
   if (
     coordinates.length < 2 ||
@@ -313,8 +333,12 @@ export const createElevationProfile = (
     return [];
   }
 
+  const firstElevation = coordinates[0][2] ?? 0;
+  const lastElevation = coordinates[coordinates.length - 1][2] ?? 0;
   const shouldReverse =
-    (coordinates[0][2] ?? 0) < (coordinates[coordinates.length - 1][2] ?? 0);
+    direction === "uphill"
+      ? firstElevation > lastElevation
+      : firstElevation < lastElevation;
   const displayCoordinates = shouldReverse
     ? [...coordinates].reverse()
     : coordinates;
@@ -328,11 +352,19 @@ export const createElevationProfile = (
     return {
       distance,
       elevation: coordinate[2] as number,
-      slope: slopes[index] ?? null,
+      // リフトは登りを正として、コースと同じく斜度の大きさを読めるようにする。
+      slope:
+        slopes[index] == null
+          ? null
+          : slopes[index] * (direction === "uphill" ? -1 : 1),
       coordinate,
     };
   });
 };
+
+/** リフトは左が山麓、右が山頂。地図側の距離もこの向きに揃える。 */
+export const createLiftElevationProfile = (coordinates: GeoCoordinate[]) =>
+  createElevationProfile(coordinates, "uphill");
 
 const COURSE_SECTION_ORDER: Record<string, number> = {
   上部: 0,

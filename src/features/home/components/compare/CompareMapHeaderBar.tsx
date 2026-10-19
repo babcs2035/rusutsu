@@ -25,7 +25,6 @@ export const CompareMapHeaderBar = ({
   onCourseColorModeChange,
   mapDisplaySettings,
   onMapDisplaySettingsChange,
-  showOpenOnly,
   onShowOpenOnlyChange,
   mapTileVariant,
   onMapTileVariantChange,
@@ -38,7 +37,6 @@ export const CompareMapHeaderBar = ({
   onCourseColorModeChange: (mode: CourseColorMode) => void;
   mapDisplaySettings?: MapDisplaySettings;
   onMapDisplaySettingsChange?: (settings: MapDisplaySettings) => void;
-  showOpenOnly: boolean;
   onShowOpenOnlyChange: (showOpenOnly: boolean) => void;
   mapTileVariant: MapTileVariant;
   onMapTileVariantChange: (variant: MapTileVariant) => void;
@@ -67,7 +65,6 @@ export const CompareMapHeaderBar = ({
         hasLifts={hasLifts}
         mapDisplaySettings={mapDisplaySettings}
         onMapDisplaySettingsChange={onMapDisplaySettingsChange}
-        showOpenOnly={showOpenOnly}
         onShowOpenOnlyChange={onShowOpenOnlyChange}
         mapTileVariant={mapTileVariant}
         onMapTileVariantChange={onMapTileVariantChange}

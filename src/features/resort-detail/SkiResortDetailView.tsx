@@ -4,7 +4,6 @@ import { Portal } from "@radix-ui/react-portal";
 import type { ComponentType } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { z } from "zod";
-import { MAP_TOP_CONTROLS_ATTRIBUTE } from "@/features/map/constants";
 import { useScreenState } from "@/features/map/session/useScreenState";
 import type {
   ElevationProfileMapPoint,
@@ -471,47 +470,22 @@ export const SkiResortDetailView = ({
                 : "relative isolate h-[clamp(200px,41dvh,396px)] shrink-0"
             }
           >
-            {/* 「拡大」ボタン（top-2 / h-9）と同じ中心線にそろえる */}
-            <div
-              {...{ [MAP_TOP_CONTROLS_ATTRIBUTE]: "true" }}
-              className={
-                mobileFeatureDetail
-                  ? "hidden"
-                  : "pointer-events-none absolute inset-x-0 top-2 z-20 flex h-9 items-center gap-2 px-2"
-              }
-            >
-              {hasTrailMap && (
-                <div className="pointer-events-auto">
-                  <MapAreaTabs
-                    tabs={MAP_AREA_TABS}
-                    activeTab={mapAreaView}
-                    onTabChange={setMapAreaView}
-                  />
-                </div>
-              )}
-              {hasTrailMap && (
-                // 国土地理院の規定で出典表示が必要なだけなので、小さく控えめに出す
-                <a
-                  href="https://maps.gsi.go.jp/development/ichiran.html"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="pointer-events-auto mr-11 ml-auto flex h-5 items-center rounded bg-white/85 px-1.5 text-[10px] leading-none text-gray-600 backdrop-blur-sm hover:bg-white hover:text-gray-900"
-                >
-                  地理院タイル
-                </a>
-              )}
-            </div>
             <div
               className={
-                mobileFeatureDetail
-                  ? "flex min-h-0 flex-1 flex-col"
-                  : hasTrailMap
-                    ? "h-full [&_.maplibregl-ctrl-bottom-right]:hidden"
-                    : "h-full"
+                mobileFeatureDetail ? "flex min-h-0 flex-1 flex-col" : "h-full"
               }
             >
               <ResortMapSection
                 DynamicMap={DynamicMap}
+                mapTopControls={
+                  hasTrailMap && !mobileFeatureDetail ? (
+                    <MapAreaTabs
+                      tabs={MAP_AREA_TABS}
+                      activeTab={mapAreaView}
+                      onTabChange={setMapAreaView}
+                    />
+                  ) : undefined
+                }
                 resortId={resort.id}
                 previewHeightClassName="h-full shrink-0"
                 selectedHeightClassName="h-[38%] min-h-[180px] shrink-0"

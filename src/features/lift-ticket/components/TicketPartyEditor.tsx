@@ -378,7 +378,11 @@ export const TicketPartyEditor = ({
                 }
                 onBlur={onInputBlur}
                 onFocus={onInputFocus}
-                className={cn(FIELD_CLASS, "px-2")}
+                // iOS の日付入力がネイティブの最小サイズで隣の列にはみ出さないようにする。
+                className={cn(
+                  FIELD_CLASS,
+                  "block max-w-full appearance-none px-2",
+                )}
               />
 
               <Select
@@ -393,7 +397,7 @@ export const TicketPartyEditor = ({
                 }}
               >
                 <SelectTrigger
-                  className={cn(FIELD_CLASS, "w-full px-2.5")}
+                  className={cn(FIELD_CLASS, "min-w-0 w-full px-2.5")}
                   aria-label={`${index + 1}日目の滑る長さ`}
                 >
                   <SelectValue className="min-w-0 truncate" />

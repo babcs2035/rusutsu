@@ -177,7 +177,6 @@ export const CompareSlopeMapTab = ({
           hasLifts={hasLifts}
           mapDisplaySettings={mapDisplaySettings}
           onMapDisplaySettingsChange={onMapDisplaySettingsChange}
-          showOpenOnly={showOpenOnly}
           onShowOpenOnlyChange={setShowOpenOnly}
           mapTileVariant={mapTileVariant}
           onMapTileVariantChange={setMapTileVariant}
@@ -267,7 +266,7 @@ export const CompareSlopeMapTab = ({
  * 幅が広ければ 2 列、狭ければ 1 列で縦に積む。
  * 地図で埋め尽くすと、ホイールもドラッグも地図に吸われて縦スクロールできなく
  * なるため、余白・カード見出し・右端のスクロールバー領域を必ず残す。
- * 色分け・地図種別・営業中のみは上の帯（CompareMapHeaderBar）が持ち、
+ * 色分け・地図種別は上の帯（CompareMapHeaderBar）、営業フィルターは各地図に置く。
  * ここでは全カードへ同じ値を配る。
  */
 export const CompareSlopeMapBoard = ({

@@ -20,6 +20,33 @@ const session: HomeSession = {
   isListSheetOpen: false,
   listSheetSnapPoint: 0.5,
 };
+test("断面図の位置はコース・リフトとも保存と復元ができる", () => {
+  const values = {
+    courseName: "リフト",
+    coordinate: [140, 43, 532],
+    distance: 100,
+    elevation: 532,
+    slope: 12,
+  };
+  for (const identity of [
+    { courseGroupId: "course-a" },
+    { liftId: "lift-a" },
+  ]) {
+    const point = { ...values, ...identity };
+    const restored = homeSessionSchema.parse({
+      ...session,
+      selectedElevationProfilePoint: point,
+    });
+    assert.deepEqual(restored.selectedElevationProfilePoint, point);
+  }
+  assert.equal(
+    homeSessionSchema.safeParse({
+      ...session,
+      selectedElevationProfilePoint: values,
+    }).success,
+    false,
+  );
+});
 test("再読み込み時は URL が同じスキー場でも全画面の親タブを保持する", () => {
   assert.equal(
     resolveHomeSession(

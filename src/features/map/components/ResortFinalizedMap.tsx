@@ -1,6 +1,6 @@
 "use client";
 
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { useMemo } from "react";
 import type { MapDisplaySettings } from "@/features/map/utils/mapDisplaySettings";
 import type {
@@ -53,6 +53,9 @@ type Props = {
   presentation: "preview" | "expanded";
   /** コースマップ用ツールバーを出すか。狭い地図では畳む */
   showToolbar?: boolean;
+  showOpenOnlyControl?: boolean;
+  mapTopControls?: ReactNode;
+  mapStatusFilterShared?: boolean;
   /** 選択中もほかのコース・リフト名を薄く出す（コース比較） */
   showContextLabels?: boolean;
   /** ダイアログ内の小さな地図。現在地・表示位置の保存なし、ボタン小さめ */
@@ -101,6 +104,9 @@ export const ResortFinalizedMap = ({
   mapResorts,
   presentation,
   showToolbar = true,
+  showOpenOnlyControl = showToolbar,
+  mapTopControls,
+  mapStatusFilterShared,
   showContextLabels = false,
   embedded = false,
   courseColorMode,
@@ -165,6 +171,9 @@ export const ResortFinalizedMap = ({
         mapPresentation={presentation}
         initialViewport={initialViewport}
         showMapToolbar={showToolbar}
+        showMapOpenOnlyControl={showOpenOnlyControl}
+        mapTopControls={mapTopControls}
+        mapStatusFilterShared={mapStatusFilterShared}
         showContextLabels={showContextLabels}
         embedded={embedded}
         courseColorMode={courseColorMode}

@@ -15,6 +15,7 @@ import {
   MAP_BOTTOM_TOOLBAR_ATTRIBUTE,
   MAP_TOP_CONTROLS_ATTRIBUTE,
 } from "../constants";
+import { getTopControlOverlapHeight } from "../utils/controlOverlap";
 
 const BASE_PADDING = 32;
 /**
@@ -125,17 +126,13 @@ const getOverlapTopHeight = (map: MapLibreMap, attribute: string): number => {
   if (typeof document === "undefined") return 0;
 
   const mapRect = map.getContainer().getBoundingClientRect();
-  let bottom = 0;
-  for (const element of document.querySelectorAll<HTMLElement>(
-    `[${attribute}="true"]`,
-  )) {
-    const rect = element.getBoundingClientRect();
-    const overlapsHorizontally =
-      rect.right > mapRect.left && rect.left < mapRect.right;
-    if (!overlapsHorizontally || rect.height >= mapRect.height) continue;
-    bottom = Math.max(bottom, rect.bottom - mapRect.top);
-  }
-  return Math.max(0, Math.min(mapRect.height, bottom));
+  return getTopControlOverlapHeight(
+    mapRect,
+    Array.from(
+      document.querySelectorAll<HTMLElement>(`[${attribute}="true"]`),
+      element => element.getBoundingClientRect(),
+    ),
+  );
 };
 
 /** 比較の切替・表示設定の帯 */

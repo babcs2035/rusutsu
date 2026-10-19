@@ -15,12 +15,18 @@ import {
   useState,
 } from "react";
 import {
+  createConnectedCourseElevationProfile,
+  createLiftElevationProfile,
+} from "@/features/resort-detail/utils/detailMetrics";
+import {
   DEFAULT_MAP_DISPLAY_SETTINGS,
+  hasCourseOperatingData,
   type MapDisplaySettings,
   OPEN_COURSE_STATUSES,
 } from "./utils/mapDisplaySettings";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { FinalizedMapToolbar } from "./components/FinalizedMapToolbar";
+import { MapCourseStatusControl } from "./components/MapCourseStatusControl";
 import { MapErrorBoundary } from "./components/MapErrorBoundary";
 import {
   COARSE_POINTER_MEDIA_QUERY,
@@ -144,6 +150,9 @@ function MapLibreResortMapContent({
   mapPresentation = "default",
   initialViewport = null,
   showMapToolbar = true,
+  showMapOpenOnlyControl = showMapToolbar,
+  mapTopControls,
+  mapStatusFilterShared = false,
   showContextLabels = false,
   embedded = false,
   mapTileVariant: controlledMapTileVariant,
@@ -922,11 +931,18 @@ function MapLibreResortMapContent({
     styleState,
   });
 
+  const elevationProfilePoints = useMemo(
+    () =>
+      selectedLift
+        ? createLiftElevationProfile(selectedLift.coordinates)
+        : createConnectedCourseElevationProfile(selectedCourses ?? []),
+    [selectedCourses, selectedLift],
+  );
   useElevationProfileMarker({
     map,
     isReady,
     point: selectedElevationProfilePoint,
-    selectedCourses: selectedCourses ?? [],
+    profilePoints: elevationProfilePoints,
     onPointChange: onSelectedElevationProfilePointChange,
   });
 
@@ -1062,6 +1078,27 @@ function MapLibreResortMapContent({
           onUserMapZoomInteraction={onUserMapZoomInteraction}
         />
       )}
+      {(hasFinalizedCourses || mapTopControls) &&
+        showMapOpenOnlyControl &&
+        !embedded && (
+          <MapCourseStatusControl
+            enabled={hasCourseOperatingData(finalizedMapData)}
+            checked={showOpenOnly}
+            settings={mapDisplaySettings}
+            onCheckedChange={setShowOpenOnly}
+            onSettingsChange={setMapDisplaySettings}
+            shared={mapStatusFilterShared}
+            leading={mapTopControls}
+            compact={isPreviewMap}
+            className={
+              isDetailMap && mapPresentation === "default"
+                ? "top-3 left-16"
+                : mapPresentation === "expanded"
+                  ? "top-[calc(env(safe-area-inset-top,0px)+0.75rem)]"
+                  : undefined
+            }
+          />
+        )}
       {!isPreviewMap && hasFinalizedFeatures && showMapToolbar && (
         <div
           // 高さは地図側が「コースを潜らせない余白」として読み取る
@@ -1077,7 +1114,6 @@ function MapLibreResortMapContent({
               hasLifts={hasFinalizedLifts}
               mapDisplaySettings={mapDisplaySettings}
               onMapDisplaySettingsChange={setMapDisplaySettings}
-              showOpenOnly={showOpenOnly}
               onShowOpenOnlyChange={setShowOpenOnly}
               mapTileVariant={mapTileVariant}
               onMapTileVariantChange={setMapTileVariant}

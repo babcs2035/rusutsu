@@ -138,7 +138,7 @@ export const SelectedCourseDetail = ({
           <TabsList
             variant="line"
             aria-label="コース詳細の表示"
-            className="sticky top-0 z-10 h-9 w-full shrink-0 rounded-none border-b border-gray-200 bg-white p-0"
+            className="sticky top-0 z-10 -mx-3 h-9 w-auto shrink-0 rounded-none border-b border-gray-200 bg-white px-3 py-0"
           >
             <TabsTrigger
               value="profile"

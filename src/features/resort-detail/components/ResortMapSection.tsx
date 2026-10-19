@@ -81,6 +81,7 @@ type Props = {
    * 比較（デスクトップ）は上の帯に同じものをまとめているので出さない。
    */
   showInlineMapToolbar?: boolean;
+  mapTopControls?: ReactNode;
   detailViewportResetKey?: number;
   /** 表示設定を呼び出し側で持つ場合に渡す（比較のゲレンデ一覧など） */
   courseColorMode?: CourseColorMode;
@@ -123,6 +124,7 @@ export const ResortMapSection = ({
   blockPreviewPointerEvents = false,
   expandable = true,
   showInlineMapToolbar = true,
+  mapTopControls,
   detailViewportResetKey = 0,
   courseColorMode: controlledCourseColorMode,
   onCourseColorModeChange,
@@ -239,6 +241,9 @@ export const ResortMapSection = ({
       mapResorts={mapResorts}
       presentation={presentation}
       showToolbar={showToolbar}
+      showOpenOnlyControl
+      mapTopControls={presentation === "preview" ? mapTopControls : undefined}
+      mapStatusFilterShared={controlledShowOpenOnly !== undefined}
       courseColorMode={courseColorMode}
       onCourseColorModeChange={setCourseColorMode}
       mapDisplaySettings={mapDisplaySettings}

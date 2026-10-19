@@ -153,15 +153,15 @@ export const SkiResortCompareView = ({
     // ヘッダーとタブバーは固定し，タブの中身のみスクロールさせる
     // （全体スクロールだとタブバーが画面外に出てタブ切替しにくくなる）
     <div className="relative flex h-full min-h-0 flex-col">
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-gray-100 px-4 pt-2.5 pb-2 md:px-6 md:pt-4 md:pb-3">
-        <h2 className="text-base font-bold text-gray-900 font-[var(--font-heading)] md:text-xl">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-gray-100 px-3 py-1 md:px-4 md:py-1.5">
+        <h2 className="text-sm font-bold text-gray-900 font-[var(--font-heading)] md:text-base">
           比較 {resorts.length}件
         </h2>
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             onClick={onClose}
-            className="flex h-9 w-9 min-w-9 items-center justify-center rounded-full border border-gray-200 p-0 text-gray-600 hover:bg-gray-50 hover:text-gray-900 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10 md:h-10 md:w-10 md:min-w-10"
+            className="flex h-7 w-7 min-w-7 items-center justify-center rounded-full border border-gray-200 p-0 text-gray-600 hover:bg-gray-50 hover:text-gray-900 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10 md:h-8 md:w-8 md:min-w-8"
             aria-label="比較画面を閉じる"
           >
             <X size={18} strokeWidth={2.5} />
@@ -179,6 +179,7 @@ export const SkiResortCompareView = ({
           activeTab={currentTab}
           onTabChange={setActiveTab}
           className="shrink-0"
+          compact
         />
 
         <div

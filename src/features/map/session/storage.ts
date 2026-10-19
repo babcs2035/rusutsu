@@ -77,7 +77,6 @@ export const homeSessionSchema = z.object({
   isCompareOpen: z.boolean().optional(),
   selectedElevationProfilePoint: z
     .object({
-      courseGroupId: id,
       courseName: z.string(),
       coordinate: z.union([
         z.tuple([z.number(), z.number()]),
@@ -87,6 +86,12 @@ export const homeSessionSchema = z.object({
       elevation: z.number(),
       slope: z.number().nullable(),
     })
+    .and(
+      z.union([
+        z.object({ courseGroupId: id, liftId: z.never().optional() }),
+        z.object({ liftId: id, courseGroupId: z.never().optional() }),
+      ]),
+    )
     .nullable()
     .optional(),
   mobileSearchReturn: z

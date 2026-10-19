@@ -483,7 +483,6 @@ export const HomeLayout = ({
                   onCourseColorModeChange={setCompareCourseColorMode}
                   mapDisplaySettings={compareMapDisplaySettings}
                   onMapDisplaySettingsChange={setCompareMapDisplaySettings}
-                  showOpenOnly={compareShowOpenOnly}
                   onShowOpenOnlyChange={setCompareShowOpenOnly}
                   mapTileVariant={compareSlopeTileVariant}
                   onMapTileVariantChange={setCompareSlopeTileVariant}

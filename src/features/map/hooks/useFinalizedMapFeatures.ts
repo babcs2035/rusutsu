@@ -15,6 +15,7 @@ import {
 } from "../utils/finalizedMapData";
 import {
   DEFAULT_MAP_DISPLAY_SETTINGS,
+  getCourseDisplayStatuses,
   isCourseStatusVisible,
   type MapDisplaySettings,
 } from "../utils/mapDisplaySettings";
@@ -49,7 +50,10 @@ export const useFinalizedMapFeatures = ({
         : EMPTY_FINALIZED_COURSES,
     [sourceCourses],
   );
-  const { courseStatuses } = mapDisplaySettings;
+  const courseStatuses = getCourseDisplayStatuses(
+    finalizedMapData,
+    mapDisplaySettings,
+  );
   const finalizedCourses = useMemo(
     () =>
       allCourses.filter(course =>

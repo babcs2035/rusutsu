@@ -10,8 +10,14 @@ import {
   TileLayer,
   useMap,
 } from "react-leaflet";
-import { createConnectedCourseElevationProfile } from "@/features/resort-detail/utils/detailMetrics";
-import type { FinalizedCourseFeature } from "@/lib/finalizedResortGeojsonShared";
+import {
+  createConnectedCourseElevationProfile,
+  createLiftElevationProfile,
+} from "@/features/resort-detail/utils/detailMetrics";
+import type {
+  FinalizedCourseFeature,
+  FinalizedLiftFeature,
+} from "@/lib/finalizedResortGeojsonShared";
 import { FinalizedGeoJsonLayer } from "./components/DetailMapLayers";
 import { FinalizedLineOverlay } from "./components/DetailMapLineOverlay";
 import { FinalizedMapToolbar } from "./components/FinalizedMapToolbar";
@@ -26,6 +32,7 @@ import {
   SelectedFinalizedFeatureViewportController,
 } from "./components/MapControllers";
 import { MapControls } from "./components/MapControls";
+import { MapCourseStatusControl } from "./components/MapCourseStatusControl";
 import { ResortActionPopup } from "./components/ResortActionPopup";
 import { ResortMarkersLayer } from "./components/ResortMarkersLayer";
 import { SmoothWheelZoomController } from "./components/SmoothWheelZoomController";
@@ -74,6 +81,7 @@ import { createNameLabelIcon } from "./utils/leafletIcons";
 import { createLeafletProjection } from "./utils/leafletProjection";
 import {
   DEFAULT_MAP_DISPLAY_SETTINGS,
+  hasCourseOperatingData,
   type MapDisplaySettings,
 } from "./utils/mapDisplaySettings";
 import { getResortDisplayName } from "./utils/resortLabels";
@@ -95,18 +103,23 @@ const getElevationProfileLabelIcon = (point: ElevationProfileMapPoint) =>
 const ElevationProfileMapMarker = ({
   point,
   selectedCourses,
+  selectedLift,
   pane,
   onPointChange,
 }: {
   point: ElevationProfileMapPoint;
   selectedCourses: FinalizedCourseFeature[];
+  selectedLift: FinalizedLiftFeature | null;
   pane: string;
   onPointChange?: (point: ElevationProfileMapPoint | null) => void;
 }) => {
   const map = useMap();
   const profilePoints = useMemo(
-    () => createConnectedCourseElevationProfile(selectedCourses),
-    [selectedCourses],
+    () =>
+      selectedLift
+        ? createLiftElevationProfile(selectedLift.coordinates)
+        : createConnectedCourseElevationProfile(selectedCourses),
+    [selectedCourses, selectedLift],
   );
   const [isDraggingProfilePoint, setIsDraggingProfilePoint] = useState(false);
   const getNearestCourseLinePoint = useCallback(
@@ -114,9 +127,8 @@ const ElevationProfileMapMarker = ({
       if (profilePoints.length === 0) return null;
       if (profilePoints.length === 1) {
         return {
+          ...point,
           ...profilePoints[0],
-          courseGroupId: point.courseGroupId,
-          courseName: point.courseName,
         };
       }
 
@@ -157,8 +169,7 @@ const ElevationProfileMapMarker = ({
         const projectedLatLng = map.layerPointToLatLng(projectedPoint);
         const elevation = startElevation + (endElevation - startElevation) * t;
         nearest = {
-          courseGroupId: point.courseGroupId,
-          courseName: point.courseName,
+          ...point,
           coordinate: [projectedLatLng.lng, projectedLatLng.lat, elevation],
           distance: startDistance + (endDistance - startDistance) * t,
           elevation,
@@ -169,7 +180,7 @@ const ElevationProfileMapMarker = ({
 
       return nearest;
     },
-    [map, point.courseGroupId, point.courseName, profilePoints],
+    [map, point, profilePoints],
   );
   const updateToNearestCourseLinePoint = useCallback(
     (latLng: L.LatLng) => {
@@ -178,20 +189,14 @@ const ElevationProfileMapMarker = ({
       if (!nearestPoint) return;
 
       onPointChange({
-        courseGroupId: point.courseGroupId,
-        courseName: point.courseName,
+        ...point,
         coordinate: nearestPoint.coordinate,
         distance: nearestPoint.distance,
         elevation: nearestPoint.elevation,
         slope: nearestPoint.slope,
       });
     },
-    [
-      getNearestCourseLinePoint,
-      onPointChange,
-      point.courseGroupId,
-      point.courseName,
-    ],
+    [getNearestCourseLinePoint, onPointChange, point],
   );
   const labelIcon = useMemo(() => getElevationProfileLabelIcon(point), [point]);
 
@@ -270,6 +275,11 @@ export const JapanResortMap = memo(function JapanResortMap({
   restoreViewRequest = null,
   finalizedMapData = null,
   mapPresentation = "default",
+  showMapToolbar = true,
+  showMapOpenOnlyControl = showMapToolbar,
+  mapTopControls,
+  mapStatusFilterShared = false,
+  embedded = false,
   mapTileVariant: controlledMapTileVariant,
   onMapTileVariantChange,
   mapDisplaySettings: controlledMapDisplaySettings,
@@ -717,10 +727,11 @@ export const JapanResortMap = memo(function JapanResortMap({
             />
           </>
         )}
-        {selectedElevationProfilePoint && selectedCourses && (
+        {selectedElevationProfilePoint && (selectedCourses || selectedLift) && (
           <ElevationProfileMapMarker
             point={selectedElevationProfilePoint}
-            selectedCourses={selectedCourses}
+            selectedCourses={selectedCourses ?? []}
+            selectedLift={selectedLift}
             pane={FINALIZED_SELECTED_PANE}
             onPointChange={onSelectedElevationProfilePointChange}
           />
@@ -820,7 +831,28 @@ export const JapanResortMap = memo(function JapanResortMap({
           zoomDelta={zoomSettings.zoomDelta}
         />
       </MapContainer>
-      {!isPreviewMap && hasFinalizedFeatures && (
+      {(hasFinalizedCourses || mapTopControls) &&
+        showMapOpenOnlyControl &&
+        !embedded && (
+          <MapCourseStatusControl
+            enabled={hasCourseOperatingData(finalizedMapData)}
+            checked={showOpenFinalizedOnly}
+            settings={mapDisplaySettings}
+            onCheckedChange={setShowOpenFinalizedOnly}
+            onSettingsChange={setMapDisplaySettings}
+            shared={mapStatusFilterShared}
+            leading={mapTopControls}
+            compact={isPreviewMap}
+            className={
+              interactionMode === "detail" && mapPresentation === "default"
+                ? "top-3 left-16"
+                : mapPresentation === "expanded"
+                  ? "top-[calc(env(safe-area-inset-top,0px)+0.75rem)]"
+                  : undefined
+            }
+          />
+        )}
+      {!isPreviewMap && hasFinalizedFeatures && showMapToolbar && (
         <div
           className="pointer-events-none absolute inset-x-0 bottom-0 z-[750] flex justify-end pl-2 pb-[calc(env(safe-area-inset-bottom,0px)+1.5rem)]"
           style={{ paddingRight: `${toolbarRightOverlap + 8}px` }}
@@ -833,7 +865,6 @@ export const JapanResortMap = memo(function JapanResortMap({
               hasLifts={hasFinalizedLifts}
               mapDisplaySettings={mapDisplaySettings}
               onMapDisplaySettingsChange={setMapDisplaySettings}
-              showOpenOnly={showOpenFinalizedOnly}
               onShowOpenOnlyChange={setShowOpenFinalizedOnly}
               mapTileVariant={mapTileVariant}
               onMapTileVariantChange={setMapTileVariant}

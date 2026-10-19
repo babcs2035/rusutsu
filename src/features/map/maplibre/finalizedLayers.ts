@@ -10,6 +10,7 @@ import type {
   MapTileVariant,
   SelectedMapFeature,
 } from "../types";
+import { SELECTED_LIFT_COLOR } from "../utils/lineStyle";
 
 export const FINALIZED_SOURCE = {
   courses: "finalized-courses",
@@ -23,6 +24,8 @@ export const FINALIZED_LAYER = {
   courseUngroomedMask: "finalized-course-ungroomed-mask",
   courseArrow: "finalized-course-arrow",
   liftCasing: "finalized-lift-casing",
+  liftSelectionHalo: "finalized-lift-selection-halo",
+  liftSelectionCasing: "finalized-lift-selection-casing",
   liftLine: "finalized-lift-line",
   liftBlink: "finalized-lift-blink",
   liftFlowSlow: "finalized-lift-flow-slow",
@@ -205,12 +208,17 @@ const isDimmedExpression = (
 export const getLineOpacity = (
   state: FinalizedStyleState,
   kind: "course" | "lift",
-): DataDrivenPropertyValueSpecification<number> => [
-  "case",
-  isDimmedExpression(state, kind),
-  DIMMED_STYLE[kind].opacity,
-  kind === "lift" ? LINE_STATUS_OPACITY : 1,
-];
+): DataDrivenPropertyValueSpecification<number> =>
+  kind === "lift"
+    ? [
+        "case",
+        isSelectedExpression(state.selectedFeature, "lift"),
+        1,
+        isDimmedExpression(state, kind),
+        DIMMED_STYLE[kind].opacity,
+        LINE_STATUS_OPACITY,
+      ]
+    : ["case", isDimmedExpression(state, kind), DIMMED_STYLE[kind].opacity, 1];
 
 export const getLineColor = (
   state: FinalizedStyleState,
@@ -402,6 +410,10 @@ const createHitLayer = (
   paint: { "line-color": "#000000", "line-opacity": 0, "line-width": hitWidth },
 });
 
+const getLiftSelectionFilter = (
+  state: FinalizedStyleState,
+): FilterSpecification => isSelectedExpression(state.selectedFeature, "lift");
+
 export const createFinalizedLayers = (
   state: FinalizedStyleState,
   hitWidth: number,
@@ -454,6 +466,30 @@ export const createFinalizedLayers = (
       "line-width": getLineWidth(state, "course"),
       "line-opacity": getLineOpacity(state, "course"),
       "line-dasharray": UNGROOMED_MASK_DASH,
+    },
+  },
+  {
+    id: FINALIZED_LAYER.liftSelectionHalo,
+    type: "line",
+    source: FINALIZED_SOURCE.lifts,
+    filter: getLiftSelectionFilter(state),
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: {
+      "line-color": SELECTED_LIFT_COLOR,
+      "line-width": scaleWidth(LIFT_WIDTH, 1, 8),
+      "line-opacity": 0.95,
+    },
+  },
+  {
+    id: FINALIZED_LAYER.liftSelectionCasing,
+    type: "line",
+    source: FINALIZED_SOURCE.lifts,
+    filter: getLiftSelectionFilter(state),
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: {
+      "line-color": "#FFFFFF",
+      "line-width": scaleWidth(LIFT_WIDTH, 1, 4),
+      "line-opacity": 1,
     },
   },
   {
@@ -550,6 +586,14 @@ export const applyFinalizedStyleState = (
       FINALIZED_LAYER.courseUngroomedMask,
       getUngroomedMaskFilter(state),
     );
+  }
+
+  for (const layerId of [
+    FINALIZED_LAYER.liftSelectionHalo,
+    FINALIZED_LAYER.liftSelectionCasing,
+  ]) {
+    if (map.getLayer(layerId))
+      map.setFilter(layerId, getLiftSelectionFilter(state));
   }
 
   for (const [layerId, kind] of [

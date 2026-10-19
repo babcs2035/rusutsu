@@ -31,6 +31,7 @@ export type LineStyleContext = {
 };
 
 export const DIMMED_LINE_COLOR = "#94A3B8";
+export const SELECTED_LIFT_COLOR = "#2563EB";
 export const LINE_PATH_CLASS = "finalized-line-path";
 
 /** 「営業中のみ」で沈ませるときの不透明度（線・ラベル・矢羽で共通） */
@@ -164,12 +165,20 @@ export const getLineStyle = ({
   }
 
   if (variant === "casing") {
-    const casingOpacity = isDimmed ? 0.12 : isPhotoTile ? 0.74 : 0.56;
+    const isSelectedLift = isSelected && featureKind === "lift";
+    const casingOpacity = isSelectedLift
+      ? 1
+      : isDimmed
+        ? 0.12
+        : isPhotoTile
+          ? 0.74
+          : 0.56;
 
     return {
-      color: "#FFFFFF",
+      color: isSelectedLift ? SELECTED_LIFT_COLOR : "#FFFFFF",
       opacity: casingOpacity,
-      weight: getMapCasingWidth(lineWidth, isPhotoTile),
+      weight:
+        getMapCasingWidth(lineWidth, isPhotoTile) + (isSelectedLift ? 4 : 0),
       dashArray: undefined,
       lineCap: "round",
       lineJoin: "round",

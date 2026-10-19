@@ -27,7 +27,7 @@ export function MapAreaTabs<TTab extends string>({
             role="tab"
             aria-selected={isActive}
             onClick={() => onTabChange(tab)}
-            className={`min-h-7 rounded-full px-3 text-sm font-semibold whitespace-nowrap transition-colors ${
+            className={`min-h-7 rounded-full px-1.5 text-xs min-[375px]:px-2 min-[375px]:text-[13px] font-semibold whitespace-nowrap transition-colors ${
               isActive
                 ? "bg-blue-600 text-white"
                 : "text-slate-600 hover:bg-slate-100"

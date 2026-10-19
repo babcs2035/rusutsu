@@ -6,14 +6,15 @@ import type { SelectedMapFeature } from "@/features/map/types";
 import type { FinalizedResortMapData } from "@/lib/finalizedResortGeojsonShared";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import { SourceLine, StatusMark } from "../components/CompactInfo";
-import { LiftTypeIcon } from "../components/LiftTypeIcon";
 import { StatusBreakdownTable } from "../components/StatusBreakdownTable";
 import type { Resort } from "../types";
 import { sumKnown } from "../utils/courseDistribution";
 import { hasSourceUrl, sourceUrls } from "../utils/currentConditions";
 import {
+  formatElevationRange,
   formatMeters,
   getLiftElevationDiff,
+  getLiftElevationRange,
   normalizeIconSymbol,
   type StatusSymbol,
   summarizeCourseStatuses,
@@ -47,17 +48,22 @@ export const LiftsTab = ({
   const liftStatus = createLiftStatusSummary(section);
   const features = section?.features ?? [];
   const rows = features.length
-    ? features.map(lift => ({
-        id: lift.id,
-        name: lift.name,
-        mapped: true,
-        properties: {
-          ...lift.properties,
-          vertical: getLiftElevationDiff(lift),
-          officialDistance: lift.properties.distance,
-          distance: lift.properties.slopeDistMap ?? lift.properties.distance,
-        },
-      }))
+    ? features.map(lift => {
+        const elevationRange = getLiftElevationRange(lift.coordinates);
+        return {
+          id: lift.id,
+          name: lift.name,
+          mapped: true,
+          properties: {
+            ...lift.properties,
+            vertical: elevationRange
+              ? elevationRange.max - elevationRange.min
+              : getLiftElevationDiff(lift),
+            elevationRange,
+            distance: lift.properties.distance ?? lift.properties.slopeDistMap,
+          },
+        };
+      })
     : resort.lifts.map(lift => ({
         id: lift.id,
         name: lift.name,
@@ -65,10 +71,10 @@ export const LiftsTab = ({
         properties: {
           ...lift,
           status: null,
-          officialDistance: lift.distance,
           capacity: null,
           speed: null,
           vertical: null,
+          elevationRange: null,
           bottom: null,
           top: null,
           footrest: null,
@@ -131,31 +137,63 @@ export const LiftsTab = ({
   const displayed = rows.filter(
     row => filter === "all" || row.properties.type === filter,
   );
+  type LiftProperties = (typeof rows)[number]["properties"];
+  const optionalMeters = (value: number | null) =>
+    value == null ? null : formatMeters(value);
+  const columns: Array<{
+    title: string;
+    value: (properties: LiftProperties) => string | number | null;
+    wrap?: boolean;
+    detail?: (properties: LiftProperties) => string | null;
+  }> = [
+    {
+      title: "定員",
+      value: p => (p.capacity == null ? null : `${p.capacity}人`),
+    },
+    { title: "距離", value: p => optionalMeters(p.distance) },
+    {
+      title: "標高差",
+      value: p => optionalMeters(p.vertical),
+      detail: p => formatElevationRange(p.elevationRange),
+    },
+    { title: "速度", value: p => p.speed },
+    { title: "フード", value: p => p.hood },
+    { title: "フットレスト", value: p => p.footrest },
+    {
+      title: "支柱数",
+      value: p => p.towers,
+    },
+    { title: "信号", value: p => p.signal },
+    { title: "油よけカバー", value: p => p.oilShield },
+    { title: "索道メーカー", value: p => p.maker },
+    { title: "設置年", value: p => (p.year == null ? null : `${p.year}年`) },
+    { title: "早朝営業", value: p => p.morning },
+    { title: "ナイター営業", value: p => p.night },
+    { title: "水平距離", value: p => optionalMeters(p.horizontalDistMap) },
+    { title: "斜面距離", value: p => optionalMeters(p.slopeDistMap) },
+    { title: "発表・更新", value: p => p.update },
+    { title: "運行コメント", value: p => p.latestNote, wrap: true },
+    { title: "備考", value: p => p.note, wrap: true },
+  ];
+  const hasValue = (value: string | number | null) =>
+    value != null && (typeof value !== "string" || value.trim().length > 0);
+  // 絞り込みで列が入れ替わらないよう、スキー場の全リフトで判定する。
+  const visibleColumns = columns.filter(column =>
+    rows.some(
+      row =>
+        hasValue(column.value(row.properties)) ||
+        Boolean(column.detail?.(row.properties)),
+    ),
+  );
+  const hasRelatedLinks = rows.some(
+    row => sourceUrls(row.properties.link).length > 0,
+  );
   const headers = [
     "状況",
     "リフト名",
     "タイプ",
-    "定員",
-    "距離",
-    "標高差",
-    "速度",
-    "山麓標高",
-    "山頂標高",
-    "フード",
-    "足置き",
-    "支柱数",
-    "信号",
-    "油よけ",
-    "メーカー",
-    "設置年",
-    "早朝",
-    "ナイター",
-    "水平距離",
-    "公表距離",
-    "発表・更新",
-    "運行コメント",
-    "備考",
-    "関連情報",
+    ...visibleColumns.map(column => column.title),
+    ...(hasRelatedLinks ? ["関連情報"] : []),
   ];
   return (
     <div className="space-y-3">
@@ -177,7 +215,7 @@ export const LiftsTab = ({
         }
       />
       <p className="text-sm text-slate-700">
-        距離は地形データ優先・公表値で補完
+        距離は公表値優先・未取得時は斜面距離で補完
         {distance.missing > 0 && ` · 距離不明${distance.missing}本を除く`}
       </p>
       <section>
@@ -227,28 +265,6 @@ export const LiftsTab = ({
                   selectedFinalizedFeature?.id === row.id
                     ? "bg-blue-50"
                     : "bg-white";
-                const values = [
-                  p.capacity == null ? "—" : `${p.capacity}人`,
-                  formatMeters(p.distance),
-                  formatMeters(p.vertical),
-                  p.speed,
-                  formatMeters(p.bottom),
-                  formatMeters(p.top),
-                  p.hood,
-                  p.footrest,
-                  p.towers,
-                  p.signal,
-                  p.oilShield,
-                  p.maker,
-                  p.year,
-                  p.morning,
-                  p.night,
-                  formatMeters(p.horizontalDistMap),
-                  formatMeters(p.officialDistance),
-                  p.update,
-                  p.latestNote,
-                  p.note,
-                ];
                 return (
                   <tr key={row.id}>
                     <td
@@ -277,31 +293,41 @@ export const LiftsTab = ({
                         row.name
                       )}
                     </th>
-                    <td className={`border-b px-3 py-2 ${bg}`}>
-                      <span className="flex items-center gap-1.5 whitespace-nowrap">
-                        <LiftTypeIcon type={p.type} />
-                        {p.type ?? "—"}
-                      </span>
+                    <td
+                      className={`border-b px-3 py-2 whitespace-nowrap ${bg}`}
+                    >
+                      {p.type?.trim() || "—"}
                     </td>
-                    {values.map((value, index) => (
-                      <td
-                        key={headers[index + 3]}
-                        className={`max-w-64 border-b px-3 py-2 tabular-nums ${index >= 18 ? "min-w-40 whitespace-pre-line break-words" : "whitespace-nowrap"} ${bg}`}
-                      >
-                        {value ?? "—"}
-                      </td>
-                    ))}
-                    <td className={`border-b px-3 py-2 ${bg}`}>
-                      {sourceUrls(p.link).map(url => (
-                        <ExternalLinkComponent
-                          key={url}
-                          href={url}
-                          className="whitespace-nowrap text-blue-700 underline"
+                    {visibleColumns.map(column => {
+                      const value = column.value(p);
+                      const detail = column.detail?.(p);
+                      return (
+                        <td
+                          key={column.title}
+                          className={`max-w-64 border-b px-3 py-2 tabular-nums ${column.wrap ? "min-w-40 whitespace-pre-line break-words" : "whitespace-nowrap"} ${bg}`}
                         >
-                          関連情報 ↗
-                        </ExternalLinkComponent>
-                      ))}
-                    </td>
+                          {hasValue(value) ? value : "—"}
+                          {detail && (
+                            <div className="text-xs text-slate-500">
+                              {detail}
+                            </div>
+                          )}
+                        </td>
+                      );
+                    })}
+                    {hasRelatedLinks && (
+                      <td className={`border-b px-3 py-2 ${bg}`}>
+                        {sourceUrls(p.link).map(url => (
+                          <ExternalLinkComponent
+                            key={url}
+                            href={url}
+                            className="whitespace-nowrap text-blue-700 underline"
+                          >
+                            関連情報 ↗
+                          </ExternalLinkComponent>
+                        ))}
+                      </td>
+                    )}
                   </tr>
                 );
               })}

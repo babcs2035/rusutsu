@@ -45,6 +45,7 @@ export const ElevationProfile = ({
   onPointSelect,
   maxPlotHeight: desktopMaxPlotHeight = Infinity,
   desktopReadout = true,
+  kind = "course",
 }: {
   points: ElevationProfilePoint[];
   activeDistance?: number | null;
@@ -53,6 +54,7 @@ export const ElevationProfile = ({
   maxPlotHeight?: number;
   /** false ならPCで上の読み値（斜度・標高・水平距離）を出さない。地図の点に出すとき用 */
   desktopReadout?: boolean;
+  kind?: "course" | "lift";
 }) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(320);
@@ -95,10 +97,12 @@ export const ElevationProfile = ({
   // 縮めた分の余白を左右に分け、軸ラベルを含む断面図を中央に置く。
   const chartLeft = axisLeftPadding + (availablePlotWidth - chartWidth) / 2;
   const chartRight = chartLeft + chartWidth;
-  const chartHeight = elevationDifference * scale + 10;
+  // リフトは最大斜度の点の右下にラベルを置くため、横軸との余白を確保する。
+  const bottomPadding = kind === "lift" ? 26 : 10;
+  const chartHeight = elevationDifference * scale + bottomPadding;
   const chartBottom = chartTop + chartHeight;
   const height = chartBottom + 32;
-  const bottomAxisElevation = minElevation - 10 / scale;
+  const bottomAxisElevation = minElevation - bottomPadding / scale;
   const elevationRange = maxElevation - bottomAxisElevation;
   const elevationStep = getDistanceGridInterval(
     elevationRange,
@@ -203,7 +207,7 @@ export const ElevationProfile = ({
         </div>
         <div ref={chartRef}>
           <svg
-            aria-label="コースの断面図（縦横同縮尺）"
+            aria-label={`${kind === "lift" ? "リフト" : "コース"}の断面図（縦横同縮尺）`}
             viewBox={`0 0 ${width} ${height}`}
             role="img"
             className="block h-auto w-full touch-pan-y"
@@ -337,7 +341,11 @@ export const ElevationProfile = ({
                         toX(steepestPoint.distance) + 60,
                       ),
                     )}
-                    y={Math.max(14, toY(steepestPoint.elevation) - 10)}
+                    y={
+                      kind === "lift"
+                        ? toY(steepestPoint.elevation) + 20
+                        : Math.max(14, toY(steepestPoint.elevation) - 10)
+                    }
                     textAnchor="end"
                     fill={halo ? "none" : "#B91C1C"}
                     fontSize={12}

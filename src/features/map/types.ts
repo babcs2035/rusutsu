@@ -1,4 +1,5 @@
 import type L from "leaflet";
+import type { ReactNode } from "react";
 import type { MapDisplaySettings } from "@/features/map/utils/mapDisplaySettings";
 import type {
   FinalizedResortMapData,
@@ -117,13 +118,16 @@ export type SelectedMapFeature =
   | { kind: "lift"; id: string };
 
 export type ElevationProfileMapPoint = {
-  courseGroupId: string;
+  /** コース名、またはリフト名。 */
   courseName: string;
   coordinate: GeoCoordinate;
   distance: number;
   elevation: number;
   slope: number | null;
-};
+} & (
+  | { courseGroupId: string; liftId?: never }
+  | { liftId: string; courseGroupId?: never }
+);
 
 export type FinalizedLineFeatureProperties = {
   id: string;
@@ -193,10 +197,14 @@ export type JapanResortMapProps = {
    */
   initialViewport?: { center: [number, number]; zoom: number } | null;
   /**
-   * コースマップ用ツールバー（色分け・タイル・営業中のみ・凡例）を出すか。
+   * コースマップ用ツールバー（色分け・タイル・設定・凡例）を出すか。
    * 高さの限られた地図では場所を取りすぎるので、呼び出し側で落とせるようにする。
    */
   showMapToolbar?: boolean;
+  /** 営業フィルターはプレビューでも表示できる。コース比較の埋め込みでは出さない。 */
+  showMapOpenOnlyControl?: boolean;
+  mapTopControls?: ReactNode;
+  mapStatusFilterShared?: boolean;
   /**
    * 選択中でも、ほかのコース・リフト名を薄く出す（コース比較の地図）。
    * 選択した線に重なる位置には置かない。

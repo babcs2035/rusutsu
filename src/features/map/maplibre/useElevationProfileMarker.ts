@@ -2,8 +2,7 @@
 
 import { type Map as MapLibreMap, Marker } from "maplibre-gl";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { createConnectedCourseElevationProfile } from "@/features/resort-detail/utils/detailMetrics";
-import type { FinalizedCourseFeature } from "@/lib/finalizedResortGeojsonShared";
+import type { ElevationProfilePoint } from "@/features/resort-detail/types";
 import type { ElevationProfileMapPoint } from "../types";
 
 type NearestPoint = {
@@ -31,20 +30,20 @@ const createMarkerElement = () => {
 /**
  * 断面図と連動する地図上の点。
  *
- * 掴んで動かすとコースの線の上を滑る。線からいちばん近い位置を
+ * 掴んで動かすとコース・リフトの線の上を滑る。線からいちばん近い位置を
  * 画面座標で探すので、ズームしていても手元の感覚と合う。
  */
 export const useElevationProfileMarker = ({
   map,
   isReady,
   point,
-  selectedCourses,
+  profilePoints,
   onPointChange,
 }: {
   map: MapLibreMap | null;
   isReady: boolean;
   point: ElevationProfileMapPoint | null;
-  selectedCourses: FinalizedCourseFeature[];
+  profilePoints: ElevationProfilePoint[];
   onPointChange?: (point: ElevationProfileMapPoint | null) => void;
 }) => {
   const markerRef = useRef<{ marker: Marker; label: HTMLDivElement } | null>(
@@ -52,16 +51,14 @@ export const useElevationProfileMarker = ({
   );
   const [isDragging, setIsDragging] = useState(false);
 
-  const profilePoints = useRef(selectedCourses);
-  profilePoints.current = selectedCourses;
+  const pointsRef = useRef(profilePoints);
+  pointsRef.current = profilePoints;
 
   const getNearestPoint = useCallback(
     (lngLat: { lng: number; lat: number }): NearestPoint | null => {
       if (!map) return null;
 
-      const points = createConnectedCourseElevationProfile(
-        profilePoints.current,
-      );
+      const points = pointsRef.current;
       const first = points[0];
       if (!first) return null;
       if (points.length === 1) {
@@ -178,8 +175,7 @@ export const useElevationProfileMarker = ({
       if (!nearest) return;
 
       onPointChange({
-        courseGroupId: point.courseGroupId,
-        courseName: point.courseName,
+        ...point,
         coordinate: nearest.coordinate,
         distance: nearest.distance,
         elevation: nearest.elevation,

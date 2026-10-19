@@ -101,31 +101,38 @@ export const FinalizedFeatureDetail = ({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-3 md:p-4">
-        {courseGroup ? (
-          <SelectedCourseDetail
-            key={JSON.stringify([
-              resortId,
-              ...courseGroup.courses.map(course => course.id),
-            ])}
-            resortId={resortId}
-            mapData={mapData}
-            courseGroup={courseGroup}
-            resortLabelName={resortLabelName}
-            sourceUrls={courseSourceUrls}
-            selectedElevationProfilePoint={selectedElevationProfilePoint}
-            onSelectedElevationProfilePointChange={
-              onSelectedElevationProfilePointChange
-            }
-          />
-        ) : lift ? (
-          <SelectedLiftDetail
-            key={lift.id}
-            lift={lift}
-            resortLabelName={resortLabelName}
-            sourceUrls={liftSourceUrls}
-          />
-        ) : null}
+      {/* 上余白は内側に置き、sticky タブがスクロール領域の上端まで届くようにする。 */}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="p-3 md:p-4">
+          {courseGroup ? (
+            <SelectedCourseDetail
+              key={JSON.stringify([
+                resortId,
+                ...courseGroup.courses.map(course => course.id),
+              ])}
+              resortId={resortId}
+              mapData={mapData}
+              courseGroup={courseGroup}
+              resortLabelName={resortLabelName}
+              sourceUrls={courseSourceUrls}
+              selectedElevationProfilePoint={selectedElevationProfilePoint}
+              onSelectedElevationProfilePointChange={
+                onSelectedElevationProfilePointChange
+              }
+            />
+          ) : lift ? (
+            <SelectedLiftDetail
+              key={lift.id}
+              lift={lift}
+              resortLabelName={resortLabelName}
+              sourceUrls={liftSourceUrls}
+              selectedElevationProfilePoint={selectedElevationProfilePoint}
+              onSelectedElevationProfilePointChange={
+                onSelectedElevationProfilePointChange
+              }
+            />
+          ) : null}
+        </div>
       </div>
     </div>
   );

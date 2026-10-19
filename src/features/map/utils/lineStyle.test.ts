@@ -10,6 +10,7 @@ import {
   getMapCasingWidth,
   getMapLineWidth,
   type LineStyleContext,
+  SELECTED_LIFT_COLOR,
 } from "./lineStyle";
 
 const createFeature = ({
@@ -68,6 +69,32 @@ const styleOf = (
     hitWeight: 24,
     context,
   });
+
+test("運休リフトも選択時は太い青の縁取りで他の線と区別できる", () => {
+  const feature = createFeature({
+    kind: "lift",
+    sourceId: "lift-a",
+    statusKind: "closed",
+  });
+  for (const mapTileVariant of ["pale", "photo"] as const) {
+    const selected = createContext({
+      mapTileVariant,
+      selectedFeature: { kind: "lift", id: "lift-a" },
+    });
+    const other = createContext({
+      mapTileVariant,
+      selectedFeature: { kind: "lift", id: "lift-b" },
+    });
+    const casing = styleOf(feature, "casing", selected);
+    assert.equal(casing.color, SELECTED_LIFT_COLOR);
+    assert.equal(casing.opacity, 1);
+    assert.ok(
+      (casing.weight ?? 0) >
+        (styleOf(feature, "casing", other).weight ?? 0) + 4,
+    );
+    assert.equal(styleOf(feature, "line", selected).opacity, 1);
+  }
+});
 
 test("線幅テーブルはズームで補間し、範囲外は端で止まる", () => {
   assert.equal(getMapLineWidth(16, "course"), 4.4);
