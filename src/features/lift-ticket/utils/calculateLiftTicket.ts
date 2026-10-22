@@ -996,8 +996,18 @@ const getAutomaticSpecialProductIds = (
   dateString: string,
 ) => {
   if (!isFullDayLike(baseProduct)) return [];
+  const productById = new Map(
+    data.products.map(product => [product.id, product]),
+  );
   return data.offers
     .filter(offer => offerMatchesDate(data, offer, dateString))
+    // ナイター券など1日券に当たらない券の割引は、1日券の候補に混ぜない
+    .filter(offer => {
+      const product = productById.get(offer.product_id);
+      if (product == null) return false;
+      const mode = product.validity?.mode;
+      return mode == null || mode === "unknown" || isFullDayLike(product);
+    })
     .filter(
       offer =>
         offer.discount_reasons?.some(reason =>
