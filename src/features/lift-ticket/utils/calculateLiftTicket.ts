@@ -499,7 +499,10 @@ const allOperatingHoursOn = (data: LiftTicketData, dateString: string) =>
  * その日にナイター営業があるか。定休日・ナイター営業日でない日は false。
  * 「ナイター込み1日券」の解決に、この日にそもそもナイターがあるかを使う。
  */
-const hasNightOperatingOn = (data: LiftTicketData, dateString: string) => {
+export const hasNightOperatingOn = (
+  data: LiftTicketData,
+  dateString: string,
+) => {
   if (findClosedCalendar(data, dateString)) return false;
   const calendarById = new Map(
     data.calendars.map(calendar => [calendar.id, calendar]),
@@ -612,9 +615,12 @@ export const selectCheapestProductForDuration = (
           }),
       ),
     );
+  // レンタル付きパックは通常の1日券の代わりにならない
+  // （高鷲は単独の通常1日券がなく、パックがあると共通券が候補から外れていた）
   const hasSingleDayPass = data.products.some(
     product =>
       !isSharedLiftTicketProduct(product) &&
+      !(product.included_items ?? []).some(item => item.type === "rental") &&
       product.validity?.days === 1 &&
       hasUnconditionalStandardOffer(data, product) &&
       coversParty(product),
