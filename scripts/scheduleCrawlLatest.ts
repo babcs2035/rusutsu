@@ -8,7 +8,7 @@ import { normalizeInternalDataApiBaseUrl } from "@/lib/internalDataApiBaseUrl";
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local"), quiet: true });
 dotenv.config({ path: path.resolve(process.cwd(), ".env"), quiet: true });
 
-const DEFAULT_SCHEDULE = "0 12 * * *";
+const DEFAULT_SCHEDULE = "0 14 * * *";
 const TIME_ZONE = "Asia/Tokyo";
 const batchScript = path.resolve(
   process.cwd(),

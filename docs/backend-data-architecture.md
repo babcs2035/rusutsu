@@ -40,7 +40,7 @@ Dockerを使うことと、DBを永久に残すことは両立する。コンテ
                     -> HTTPS + admin-dataトークン -> 本番Next.js
                                                -> 本番PostgreSQL
 
-本番のcrawl_latest専用scheduler（毎日12:00 JST）
+本番のcrawl_latest専用scheduler（毎日14:00 JST）
   crawler -> HTTPS + crawler-ingestトークン -> 本番Next.js -> 本番PostgreSQL
 
 診断DOMの取得
@@ -222,7 +222,7 @@ Cookie、Authorization、API key、フォーム値等はDOM保存前に除去し
 - 雪マジは取得・検証がすべて成功したときだけDBを更新する。0件、取得失敗、形式異常なら
   既存DBを変更しない。
 - 各スキー場の `crawl_latest` は別系統である。現在の93本は、本番デプロイで標準で `crawlers` profileを有効化した
-  `crawl-latest-scheduler` コンテナが毎日12:00（JST）に実行し、結果を内部APIへ送る。
+  `crawl-latest-scheduler` コンテナが毎日14:00（JST）に実行し、結果を内部APIへ送る。
   schedulerは起動直後には実行せず、同日二重実行と前回バッチへの重複を避ける。
 - 実行対象は `resorts/*.ts` から自動列挙し、`template.ts`、`*_before.ts`、テストファイルは
   除外する。現在93本だが、条件を満たすクローラーを追加すれば対象数も増える。

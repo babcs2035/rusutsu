@@ -53,7 +53,7 @@ test("production Compose isolates tokens and waits for DB/API health", {
     undefined,
   );
   assert.equal(worker.depends_on.app.condition, "service_healthy");
-  assert.equal(worker.environment.CRAWL_LATEST_CRON, "0 12 * * *");
+  assert.equal(worker.environment.CRAWL_LATEST_CRON, "0 14 * * *");
   assert.equal(worker.environment.TZ, "Asia/Tokyo");
   assert.equal(worker.restart, "unless-stopped");
   assert.equal(app.depends_on.db.condition, "service_healthy");

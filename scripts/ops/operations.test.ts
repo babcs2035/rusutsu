@@ -273,7 +273,7 @@ test("deployment starts the scheduler when the GitHub flag is unset", () => {
       path.join(f.root, "state", "runtime.env.sh"),
       "utf8",
     );
-    assert.ok(saved.includes("export CRAWL_LATEST_CRON='0 12 * * *'"));
+    assert.ok(saved.includes("export CRAWL_LATEST_CRON='0 14 * * *'"));
   } finally {
     f.clean();
   }

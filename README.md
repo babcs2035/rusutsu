@@ -140,7 +140,7 @@ mise run dev
 | `CRAWLER_ARTIFACT_ROOT`                     | 警告・失敗時だけ保存する診断DOMの永続化ディレクトリ       |
 | `CRAWLER_ARTIFACT_RETENTION_DAYS`           | 診断DOMの保持期間（既定30日） |
 | `DATA_DOCUMENT_ALLOW_BUNDLED_FIXTURES`      | 開発DBへの初回移行前だけ，同梱fixtureを読む明示設定．通常は未設定 |
-| `CRAWL_LATEST_CRON`                         | `crawl_latest`専用schedulerのcron（既定`0 12 * * *`、Asia/Tokyo） |
+| `CRAWL_LATEST_CRON`                         | `crawl_latest`専用schedulerのcron（既定`0 14 * * *`、Asia/Tokyo） |
 | `CRAWL_LATEST_CONCURRENCY`                  | `crawl_latest`の同時実行数（既定1、最大4）                |
 | `CRAWL_LATEST_TIMEOUT_MS`                   | 1スキー場あたりの制限時間（既定1,200,000ms＝20分）        |
 | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`           | 編集画面の Google Maps 用 API キー                           |
@@ -170,7 +170,7 @@ schedulerとローカルNext.jsで使う．3種類の内部APIトークンには
 - schedulerのレポート・日次lock: `crawler_worker_artifacts`
 
 `crawl-latest-scheduler` は本番デプロイで標準で `crawlers` profileを有効にして常駐し，現在の93本を
-毎日12:00 JSTに実行する．appのreadinessを待ち，起動直後にはクロールしない．
+毎日14:00 JSTに実行する．appのreadinessを待ち，起動直後にはクロールしない．
 停止する場合はGitHub Variable `ENABLE_CRAWL_LATEST_SCHEDULER=false`を設定して再デプロイする．
 以前このVariableを`false`にしていた場合は，`true`へ変更するか削除してからデプロイする．
 本番コンテナ内だけに存在するJSON/GeoJSONはなく，旧コンテナからJSONを退避・比較する作業は不要である．
@@ -218,7 +218,7 @@ DOMはDBコピーに含まれず，古い日次lockは復元しない．
 *   **正本データ**: 本番PostgreSQLに運用データを集約する．本番Next.jsはDBを直接使い，`DATA_API_BASE_URL` があるローカルNext.jsはサーバーから内部APIを使う．admin編集をGit版JSONで上書きしない．
 *   **初回投入**: `CanonicalDataMigration` に完了を記録し，文書追加と完了記録を同じtransactionで確定する．完了後は再実行しても書き込まず，DBから削除した文書もGit版で復活させない．通常運用は実行時のGit fallbackなし．開発用fixtureの例外は明示設定がある初回移行前だけである．
 *   **公開データ**: スキー場と料金は公開項目を明示し，元JSONの未知の管理フィールドや不要な旧weather JSONを送らない．地図の座標・短縮名など，表示に必要な公開データはDevToolsから確認できる．旧weather取得のServer Actionは管理者専用である．
-*   **スケジューラ**: `src/lib/scheduler.ts` が毎日 03:00 (JST) に雪マジのみを実行する．別の `scripts/scheduleCrawlLatest.ts` は毎日12:00 (JST) に現在の `crawl_latest` 93本を実行する．どちらも起動直後には実行しない．他の従来クローラー本体と手動実行コマンドは保守用に残す．
+*   **スケジューラ**: `src/lib/scheduler.ts` が毎日 03:00 (JST) に雪マジのみを実行する．別の `scripts/scheduleCrawlLatest.ts` は毎日14:00 (JST) に現在の `crawl_latest` 93本を実行する．どちらも起動直後には実行しない．他の従来クローラー本体と手動実行コマンドは保守用に残す．
 
 ### データモデル
 
@@ -295,7 +295,7 @@ Gitに残す．`src/private` はprivate crawler code，対応辞書，初回fixt
 
 *   従来のクローラー本体は削除していない．個別実行は `mise run crawl:ski-areas` などのタスク，一括実行は `mise run crawl:all` で引き続き行える．
 *   従来系で自動実行するのは雪マジだけで，本番スケジューラが毎日03:00 (JST) に実行する．それ以外の従来クローラーは自動実行しない．
-*   スキー場別 `crawl_latest` は本番の専用schedulerが毎日12:00 (JST) に現在の93本を実行し，正常値を内部APIへ送る．実行対象は`resorts/*.ts`から自動列挙し，`template.ts`、`*_before.ts`、テストファイルを除外する．
+*   スキー場別 `crawl_latest` は本番の専用schedulerが毎日14:00 (JST) に現在の93本を実行し，正常値を内部APIへ送る．実行対象は`resorts/*.ts`から自動列挙し，`template.ts`、`*_before.ts`、テストファイルを除外する．
 *   ローカル確認は `mise run crawl:latest -- --local-files --resort <id>` を使う．正常結果は`src/private/data/resorts-temporary/latest_data/<id>/<日時>.json`、警告時の生結果とDOMは通常`src/private/data/resorts-temporary/crawl_latest_dom/<id>/`以下に残るため、VS Codeで確認できる．このモードは本番API設定を明示的に無効化し、生成JSONをGitHub経由で本番値にする運用には使わない．
 *   本番の警告・失敗DOMは `mise run crawl:diagnostics:pull -- --resort <id>` でVS Code用に取得できる．本番schedulerの導入は、ローカル1件、本番APIへ1件、少数件、全93件の順で確認する．
 *   書き込み戦略はモデルごとに upsert や削除→再作成など異なる．履歴系テーブルはスキー場 + 日付の一意制約で重複行を防ぐ．

@@ -105,8 +105,8 @@ export function prepareEnvironment(containers, settings) {
     AUTH_URL: new URL(baseUrl).origin,
     AUTH_TRUST_HOST: appEnv.AUTH_TRUST_HOST || "true",
     DATA_API_BASE_URL: baseUrl,
-    // Deploy the daily noon schedule even if an old app had a different cron.
-    CRAWL_LATEST_CRON: "0 12 * * *",
+    // Deploy the daily 14:00 JST schedule even if an old app had a different cron.
+    CRAWL_LATEST_CRON: "0 14 * * *",
   };
   for (const key of loginKeys) {
     if (!updates[key] && !appEnv[key])
