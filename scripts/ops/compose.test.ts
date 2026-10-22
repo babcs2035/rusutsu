@@ -39,7 +39,7 @@ function config(env: Partial<NodeJS.ProcessEnv>, json = false) {
 test("production Compose isolates tokens and waits for DB/API health", {
   skip: !available,
 }, () => {
-  const result = config({}, true);
+  const result = config({ CRAWL_LATEST_CRON: "" }, true);
   assert.equal(result.status, 0, result.stderr);
   const compose = JSON.parse(result.stdout);
   const { app, "crawl-latest-scheduler": worker } = compose.services;
@@ -53,6 +53,9 @@ test("production Compose isolates tokens and waits for DB/API health", {
     undefined,
   );
   assert.equal(worker.depends_on.app.condition, "service_healthy");
+  assert.equal(worker.environment.CRAWL_LATEST_CRON, "0 12 * * *");
+  assert.equal(worker.environment.TZ, "Asia/Tokyo");
+  assert.equal(worker.restart, "unless-stopped");
   assert.equal(app.depends_on.db.condition, "service_healthy");
   assert.deepEqual(worker.profiles, ["crawlers"]);
   assert.deepEqual(Object.keys(compose.volumes).sort(), [

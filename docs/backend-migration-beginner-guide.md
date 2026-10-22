@@ -99,7 +99,7 @@ Secretsは秘密の値、Variablesは公開されても困らない設定を入�
 | Name | Value | 意味 |
 | --- | --- | --- |
 | `INITIALIZE_CANONICAL_DATA` | `true` | 初回だけ、料金・レビュー等のファイルと短縮名をDBへ取り込む |
-| `ENABLE_CRAWL_LATEST_SCHEDULER` | `false` | 最新営業情報の全件自動収集は、動作確認が終わるまで止める |
+| `ENABLE_CRAWL_LATEST_SCHEDULER` | 未設定または`true` | 最新営業情報を毎日12時に自動収集する。停止時だけ`false`にして再公開 |
 | `DATA_API_BASE_URL` | あなたの本番サイトのURL。例：`https://example.com/rusutsu` | APIと公開後の動作確認の接続先 |
 
 `true`はON、`false`はOFFです。半角小文字で、引用符を付けずに入力します。
@@ -189,7 +189,7 @@ Deployment completed; database and /rusutsu readiness checks passed.
 
 確認が済んだら、次の操作で全件の定期実行を始めます。
 
-1. Variablesの`ENABLE_CRAWL_LATEST_SCHEDULER`を`true`にする。
+1. Variablesの`ENABLE_CRAWL_LATEST_SCHEDULER`が未設定または`true`であることを確認する。以前`false`にした場合は`true`に変更する。
 2. `INITIALIZE_CANONICAL_DATA`は`false`であることを確認する。
 3. **Actions → CI/CD → Run workflow** を開く。
 4. ブランチを`main`にし、`initialize_data`と`force_database_backup`はチェックせず実行する。
@@ -201,7 +201,7 @@ Deployment completed; database and /rusutsu readiness checks passed.
 | --- | --- | --- |
 | VPS内のDBコピー | 毎日01:15 | 初回の公開後。GitHub側の都合で遅れる場合がある |
 | 雪マジの取得 | 毎日03:00 | 初回の公開後。最新情報スイッチとは別に動く |
-| 最新営業情報の全件取得 | 毎日07:00 | 全件収集をtrueにして再公開した後 |
+| 最新営業情報の全件取得 | 毎日12:00 | 再公開後（標準で有効。false指定時は停止） |
 
 起動直後にはクロールせず、次の予定時刻に実行します。雪マジは初回公開後の次の03:00から動きます。
 翌日の実行結果も開発担当と確認してください。

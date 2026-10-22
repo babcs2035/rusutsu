@@ -6,7 +6,7 @@ source "$(dirname "$0")/common.sh"
 export APP_IMAGE="ghcr.io/babcs2035/rusutsu:$DEPLOY_IMAGE_TAG"
 initialize="${INITIALIZE_CANONICAL_DATA:-false}"
 force_backup="${FORCE_DATABASE_BACKUP:-false}"
-scheduler_enabled="${ENABLE_CRAWL_LATEST_SCHEDULER:-false}"
+scheduler_enabled="${ENABLE_CRAWL_LATEST_SCHEDULER:-true}"
 for value in "$initialize" "$force_backup" "$scheduler_enabled"; do
   [[ "$value" == true || "$value" == false ]] || ops_die 'Deployment flags must be true or false.'
 done

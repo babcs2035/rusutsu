@@ -258,6 +258,27 @@ for (const failure of [
   });
 }
 
+test("deployment starts the scheduler when the GitHub flag is unset", () => {
+  const f = fixture();
+  try {
+    const result = f.run("deploy.sh", {
+      ENABLE_CRAWL_LATEST_SCHEDULER: "",
+      COMPOSE_PROFILES: "",
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.ok(
+      f.calls().includes("up -d --wait --wait-timeout 180 [profiles=crawlers]"),
+    );
+    const saved = readFileSync(
+      path.join(f.root, "state", "runtime.env.sh"),
+      "utf8",
+    );
+    assert.ok(saved.includes("export CRAWL_LATEST_CRON='0 12 * * *'"));
+  } finally {
+    f.clean();
+  }
+});
+
 for (const enabled of [false, true]) {
   test(`GitHub flag controls scheduler startup (${enabled})`, () => {
     const f = fixture();

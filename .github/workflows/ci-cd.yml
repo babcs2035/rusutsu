@@ -148,7 +148,7 @@ jobs:
       DEPLOY_IMAGE_TAG: ${{ github.sha }}
       INITIALIZE_CANONICAL_DATA: ${{ inputs.initialize_data == true || vars.INITIALIZE_CANONICAL_DATA == 'true' }}
       FORCE_DATABASE_BACKUP: ${{ inputs.force_database_backup == true }}
-      ENABLE_CRAWL_LATEST_SCHEDULER: ${{ vars.ENABLE_CRAWL_LATEST_SCHEDULER == 'true' }}
+      ENABLE_CRAWL_LATEST_SCHEDULER: ${{ vars.ENABLE_CRAWL_LATEST_SCHEDULER != 'false' }}
       GHCR_DEPLOY_TOKEN: ${{ secrets.GHCR_DEPLOY_TOKEN }}
       GHCR_DEPLOY_USER: ${{ github.actor }}
       DEPLOY_TARGET: ${{ secrets.DEPLOY_TARGET }}

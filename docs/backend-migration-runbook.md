@@ -41,7 +41,7 @@ Settings → Secrets and variables → Actionsで設定する。
 | 名前 | 初回 | 以後 |
 | --- | --- | --- |
 | `INITIALIZE_CANONICAL_DATA` | `true` | 初回成功後`false` |
-| `ENABLE_CRAWL_LATEST_SCHEDULER` | `false`または未設定 | 1件・少数件検証後に`true`としてCI/CD再実行 |
+| `ENABLE_CRAWL_LATEST_SCHEDULER` | 未設定または`true`で有効 | 停止時だけ`false`として再デプロイ |
 | `DATA_API_BASE_URL` | 本番HTTPS URL、末尾`/rusutsu` | URL変更時だけ更新 |
 
 `DATA_API_BASE_URL`は同名Secretでも渡せるがVariableを優先する。
@@ -131,10 +131,13 @@ mise run crawl:latest -- --remote-api --resort rusutsu-resort
 ```
 
 次に`--resort`を数件指定して検証する。成功・警告・失敗の記録を見てから、
-`ENABLE_CRAWL_LATEST_SCHEDULER=true`にし、CI/CDをmainに対して新しく手動実行する。
+CI/CDをmainに対して新しく手動実行する。schedulerは標準で有効。
+以前`ENABLE_CRAWL_LATEST_SCHEDULER=false`にしていた場合は、`true`へ変更するか削除してから実行する。
 初回取り込みのチェックは外す。
 
-最新情報は毎日07:00 JST、雪マジは本番app内で毎日03:00 JST。
+ktakサーバーの専用コンテナで、最新情報は毎日12:00 JSTに1回実行する。
+デプロイ時には古いcron設定を昼12時へ更新する。雪マジは本番app内で毎日03:00 JST。
+起動状態と次回実行時刻は、専用コンテナの起動ログで確認する。
 起動直後には実行せず、多重実行を抑止する。最新情報のスイッチは雪マジを止めない。
 旧来の基本情報・天気等のコードと手動コマンドは残すが定期実行しない。
 未知状態などは推測変換せず、問題のあるカテゴリを保留する。雪マジは全取得・検証成功時だけ更新する。

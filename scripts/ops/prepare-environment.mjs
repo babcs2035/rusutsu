@@ -105,6 +105,8 @@ export function prepareEnvironment(containers, settings) {
     AUTH_URL: new URL(baseUrl).origin,
     AUTH_TRUST_HOST: appEnv.AUTH_TRUST_HOST || "true",
     DATA_API_BASE_URL: baseUrl,
+    // Deploy the daily noon schedule even if an old app had a different cron.
+    CRAWL_LATEST_CRON: "0 12 * * *",
   };
   for (const key of loginKeys) {
     if (!updates[key] && !appEnv[key])
@@ -116,7 +118,6 @@ export function prepareEnvironment(containers, settings) {
   for (const key of tokenKeys) result[key] = updates[key];
   for (const [key, fallback] of Object.entries({
     CRAWLER_ARTIFACT_RETENTION_DAYS: "30",
-    CRAWL_LATEST_CRON: "0 7 * * *",
     CRAWL_LATEST_CONCURRENCY: "1",
     CRAWL_LATEST_TIMEOUT_MS: "1200000",
   }))

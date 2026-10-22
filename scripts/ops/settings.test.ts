@@ -26,6 +26,14 @@ test("bootstrap preserves DB identity/credentials, OAuth and ports and normalize
   assert.equal(output.DB_PORT, "15432");
   assert.equal(output.AUTH_URL, "https://example.test");
   assert.equal(output.DATA_API_BASE_URL, "https://example.test/rusutsu");
+  assert.equal(output.CRAWL_LATEST_CRON, "0 12 * * *");
+});
+
+test("deployment replaces an old app cron with the daily noon schedule", () => {
+  const containers = existingContainers();
+  containers[1].Config.Env.push("CRAWL_LATEST_CRON=0 7 * * *");
+  const output = prepareEnvironment(containers, settings);
+  assert.equal(output.CRAWL_LATEST_CRON, "0 12 * * *");
 });
 
 test("explicit GitHub URL overrides the old origin while API scopes remain independent", () => {

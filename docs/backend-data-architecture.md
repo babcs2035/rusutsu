@@ -40,7 +40,7 @@ Dockerを使うことと、DBを永久に残すことは両立する。コンテ
                     -> HTTPS + admin-dataトークン -> 本番Next.js
                                                -> 本番PostgreSQL
 
-本番のcrawl_latest専用scheduler（毎日07:00 JST）
+本番のcrawl_latest専用scheduler（毎日12:00 JST）
   crawler -> HTTPS + crawler-ingestトークン -> 本番Next.js -> 本番PostgreSQL
 
 診断DOMの取得
@@ -221,8 +221,8 @@ Cookie、Authorization、API key、フォーム値等はDOM保存前に除去し
   外部の単一schedulerへ移す。
 - 雪マジは取得・検証がすべて成功したときだけDBを更新する。0件、取得失敗、形式異常なら
   既存DBを変更しない。
-- 各スキー場の `crawl_latest` は別系統である。現在の93本は、段階試験後に `crawlers` profileを有効化した
-  `crawl-latest-scheduler` コンテナが毎日07:00（JST）に実行し、結果を内部APIへ送る。
+- 各スキー場の `crawl_latest` は別系統である。現在の93本は、本番デプロイで標準で `crawlers` profileを有効化した
+  `crawl-latest-scheduler` コンテナが毎日12:00（JST）に実行し、結果を内部APIへ送る。
   schedulerは起動直後には実行せず、同日二重実行と前回バッチへの重複を避ける。
 - 実行対象は `resorts/*.ts` から自動列挙し、`template.ts`、`*_before.ts`、テストファイルは
   除外する。現在93本だが、条件を満たすクローラーを追加すれば対象数も増える。
@@ -266,7 +266,8 @@ Cookie、Authorization、API key、フォーム値等はDOM保存前に除去し
 
 APIキー3つはGitHub Actionsの同名Secretsへ登録する。各64桁の異なる16進文字列を要求する。
 本番URLはVariable `DATA_API_BASE_URL`へ指定でき、省略時は既存appのAUTH_URLから組み立てる。
-初回の `INITIALIZE_CANONICAL_DATA=true` と、段階試験後の `ENABLE_CRAWL_LATEST_SCHEDULER=true` はVariablesで制御する。
+初回の `INITIALIZE_CANONICAL_DATA=true` はVariablesで制御する。最新情報schedulerは標準で有効。
+停止する場合だけ `ENABLE_CRAWL_LATEST_SCHEDULER=false` を指定して再デプロイする。
 任意のログイン設定Secrets（AUTH_SECRET、GOOGLE_CLIENT_ID、GOOGLE_CLIENT_SECRET、ADMIN_EMAILS）は、非空で指定したものだけ更新する。
 
 GitHub設定を検証し、許可した値だけをマスク対象のBase64 JSONとしてSSH環境変数で渡す。

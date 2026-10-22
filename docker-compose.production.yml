@@ -37,7 +37,7 @@ services:
         condition: service_healthy
 
   # アプリとは別の専用scheduler。起動時にはクロールせず、
-  # 次の07:00 (JST)まで待機する。
+  # 次の12:00 (JST)まで待機する。
   crawl-latest-scheduler:
     profiles: ["crawlers"]
     image: ${APP_IMAGE:-ghcr.io/babcs2035/rusutsu:latest}
@@ -47,7 +47,7 @@ services:
       - TZ=Asia/Tokyo
       - DATA_API_BASE_URL=${DATA_API_BASE_URL:?DATA_API_BASE_URL is required for crawl_latest scheduler}
       - INTERNAL_DATA_API_CRAWLER_TOKEN=${INTERNAL_DATA_API_CRAWLER_TOKEN:?INTERNAL_DATA_API_CRAWLER_TOKEN is required}
-      - CRAWL_LATEST_CRON=${CRAWL_LATEST_CRON:-0 7 * * *}
+      - CRAWL_LATEST_CRON=${CRAWL_LATEST_CRON:-0 12 * * *}
       - CRAWL_LATEST_CONCURRENCY=${CRAWL_LATEST_CONCURRENCY:-1}
       - CRAWL_LATEST_TIMEOUT_MS=${CRAWL_LATEST_TIMEOUT_MS:-1200000}
       - CRAWLER_ARTIFACT_ROOT=/app/var/crawler-worker-artifacts
