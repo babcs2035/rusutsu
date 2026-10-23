@@ -607,6 +607,8 @@ export const selectCheapestProductForDuration = (
         offer =>
           offer.product_id === product.id &&
           isUnconditionalStandardOffer(offer) &&
+          // 単独券が売られていない日（奥志賀の5/4〜5/5）は共通券を使う
+          offerMatchesDate(data, offer, input.visitDate) &&
           (offer.audience_ids ?? []).some(audienceId => {
             const audience = audienceById.get(audienceId);
             return audience
