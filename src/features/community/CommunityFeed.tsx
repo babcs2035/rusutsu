@@ -17,16 +17,19 @@ import type {
   RatingSummary,
 } from "@/features/community/contract";
 import { CorrectionLink } from "@/features/corrections/CorrectionLink";
+import { ReportSections } from "./ReportSections";
 
 export function CommunityFeed({
   resortId,
   courseId,
+  liftId,
   compact = false,
   hideHeading = false,
   headerActions,
 }: {
   resortId: string;
   courseId?: string;
+  liftId?: string;
   compact?: boolean;
   hideHeading?: boolean;
   headerActions?: ReactNode;
@@ -45,6 +48,7 @@ export function CommunityFeed({
     void getCommunityFeed({
       resortId,
       courseId,
+      liftId,
       kind,
       from: from || undefined,
       to: to || undefined,
@@ -61,12 +65,13 @@ export function CommunityFeed({
     return () => {
       active = false;
     };
-  }, [resortId, courseId, kind, from, to, sort]);
+  }, [resortId, courseId, liftId, kind, from, to, sort]);
   const loadMore = () => {
     if (!nextCursor) return;
     void getCommunityFeed({
       resortId,
       courseId,
+      liftId,
       kind,
       from: from || undefined,
       to: to || undefined,
@@ -86,6 +91,7 @@ export function CommunityFeed({
           <h3 className="font-semibold">
             みんなの投稿
             {(() => {
+              if (liftId) return null;
               const summary = ratings.find(
                 rating => rating.courseId === (courseId ?? null),
               );
@@ -97,7 +103,9 @@ export function CommunityFeed({
             })()}
           </h3>
         )}
-        {compact && !courseId && <CorrectionLink resortId={resortId} />}
+        {compact && !courseId && !liftId && (
+          <CorrectionLink resortId={resortId} />
+        )}
         {headerActions}
         <div className="flex w-full min-w-0 flex-wrap items-center gap-2 text-xs">
           {courseId && (
@@ -114,7 +122,8 @@ export function CommunityFeed({
                 value={kind ?? ""}
                 items={[
                   { value: "", label: "すべて" },
-                  { value: "REPORT", label: "滑走レポート" },
+                  { value: "COURSE", label: "コースを含む" },
+                  { value: "LIFT", label: "リフトを含む" },
                   { value: "MOGUL", label: "コブ" },
                   { value: "ITEM", label: "パーク" },
                 ]}
@@ -127,7 +136,8 @@ export function CommunityFeed({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">すべて</SelectItem>
-                  <SelectItem value="REPORT">滑走レポート</SelectItem>
+                  <SelectItem value="COURSE">コースを含む</SelectItem>
+                  <SelectItem value="LIFT">リフトを含む</SelectItem>
                   <SelectItem value="MOGUL">コブ</SelectItem>
                   <SelectItem value="ITEM">パーク</SelectItem>
                 </SelectContent>
@@ -178,7 +188,7 @@ export function CommunityFeed({
           </Link>
           <Link
             className="rounded-md border border-slate-300 bg-white px-2 py-1.5 font-medium whitespace-nowrap text-slate-700 hover:bg-slate-50"
-            href={`/community/${encodeURIComponent(resortId)}/new${courseId ? `?courseId=${encodeURIComponent(courseId)}` : ""}`}
+            href={`/community/${encodeURIComponent(resortId)}/new${courseId ? `?courseId=${encodeURIComponent(courseId)}` : liftId ? `?liftId=${encodeURIComponent(liftId)}` : ""}`}
           >
             ＋投稿
           </Link>
@@ -209,20 +219,14 @@ export function CommunityFeed({
 }
 
 export function PostCard({ post }: { post: PublicPost }) {
-  const title =
-    post.kind === "MOGUL"
-      ? post.present
-        ? "コブあり"
-        : "コブなし"
-      : post.kind === "ITEM"
-        ? `${post.itemType ?? "アイテム"}${post.present ? "あり" : "撤去"}`
-        : "滑走レポート";
   return (
     <article className="rounded-lg border p-3 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-1">
         <div className="font-semibold">
-          {title}
-          {post.courseName ? ` · ${post.courseName}` : ""}
+          {post.observedOn}の滑走レポート
+          <span className="ml-1 text-xs font-normal text-slate-500">
+            {post.resortName}
+          </span>
         </div>
         <time className="text-xs text-gray-500">{post.observedOn}</time>
       </div>
@@ -236,7 +240,14 @@ export function PostCard({ post }: { post: PublicPost }) {
         · ★ {post.rating ?? "—"} · ♡ {post.likeCount} · コメント{" "}
         {post.commentCount}
       </p>
-      {post.body && <p className="mt-2 whitespace-pre-wrap">{post.body}</p>}
+      {post.body && (
+        <p className="mt-2 whitespace-pre-wrap break-words">{post.body}</p>
+      )}
+      {post.entries.length > 0 && (
+        <div className="mt-2">
+          <ReportSections entries={post.entries} compact />
+        </div>
+      )}
       <div className="mt-2 flex gap-2 overflow-x-auto">
         {post.photos.map(photo => (
           <Link

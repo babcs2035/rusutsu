@@ -43,9 +43,13 @@ export async function normalizePhoto(file: File) {
   }
 }
 
-export async function readEntryPhotos(form: FormData, index: number) {
-  const files = form.getAll(`photo:${index}`);
-  if (files.length > 6) throw new Error("写真は1投稿6枚までです。");
+export async function readReportPhotos(form: FormData) {
+  if (!(form instanceof FormData))
+    throw new Error("写真の形式を確認してください。");
+  for (const [key] of form.entries())
+    if (key !== "photos") throw new Error("写真の対象を確認してください。");
+  const files = form.getAll("photos");
+  if (files.length > 6) throw new Error("写真はレポート全体で6枚までです。");
   const results = [];
   for (const file of files) {
     if (!(file instanceof File))

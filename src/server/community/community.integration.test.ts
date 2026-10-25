@@ -7,7 +7,11 @@ import test from "node:test";
 import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import sharp from "sharp";
-import type { ActionResult } from "@/features/community/contract";
+import type {
+  ActionResult,
+  ReportDraft,
+  ReportEntryDraft,
+} from "@/features/community/contract";
 
 type TestApi = typeof import("@/features/community/actions") &
   typeof import("@/server/community/moderation") &
@@ -21,7 +25,7 @@ type TestApi = typeof import("@/features/community/actions") &
   };
 
 const testDatabase = process.env.COMMUNITY_TEST_DATABASE_URL;
-test("community: PostgreSQL authentication, independent reports, moderation, privacy and erasure", {
+test("community reports: atomic daily report lifecycle and privacy", {
   skip: !testDatabase,
 }, async () => {
   const url = new URL(testDatabase ?? "");
@@ -71,7 +75,7 @@ test("community: PostgreSQL authentication, independent reports, moderation, pri
                         ? `export function revalidatePath(){}`
                         : args.path === "next/server"
                           ? `export function after(){}`
-                          : `export async function getFinalizedResortMapData(){return {courses:{features:[{groupId:'test-course-a',displayName:'A',coordinates:[[140,43],[140.01,43.01]]},{groupId:'test-course-b',displayName:'B',coordinates:[[140,43],[140.02,43.02]]}]}};}`,
+                          : `export async function getFinalizedResortMapData(){return {courses:{features:[{groupId:'test-course-a',displayName:'A',coordinates:[[140,43],[140.01,43.01]]},{groupId:'test-course-b',displayName:'B',coordinates:[[140,43],[140.02,43.02]]}]},lifts:{features:[{id:'test-lift-a',name:'第1リフト',coordinates:[[140,43],[140.005,43.005]]}]}};}`,
           }));
         },
       },
@@ -80,10 +84,10 @@ test("community: PostgreSQL authentication, independent reports, moderation, pri
   const api = (await import(pathToFileURL(outfile).href)) as TestApi;
   const db = api.prisma;
   const prefix = `ct-${randomUUID().slice(0, 8)}`;
-  const owner = `${prefix}-owner`,
-    other = `${prefix}-other`,
-    admin = `${prefix}-admin`,
-    resortId = `${prefix}-resort`;
+  const owner = `${prefix}-owner`;
+  const other = `${prefix}-other`;
+  const admin = `${prefix}-admin`;
+  const resortId = `${prefix}-resort`;
   const account = (id: string | null) => ({
     session: id ? { user: { id } } : null,
     cookies: new Map<string, string>(),
@@ -92,27 +96,93 @@ test("community: PostgreSQL authentication, independent reports, moderation, pri
     b = account(other),
     g = account(null),
     m = account(admin);
-  const run = <T>(
-    actor: ReturnType<typeof account>,
-    fn: () => Promise<T>,
-  ): Promise<T> => api.runtime.run(actor, fn);
-  const report = (courseId: string | null, rating: number | null = 5) => ({
-    kind: "REPORT",
+  const run = <T>(actor: ReturnType<typeof account>, fn: () => Promise<T>) =>
+    api.runtime.run(actor, fn);
+  const course = (key: string, courseId: string): ReportEntryDraft => ({
+    clientKey: key,
+    kind: "COURSE",
     courseId,
-    observedOn: "2026-01-10",
-    rating,
-    body: "雪がよかった",
+    liftId: null,
+    body: `${courseId} の雪は良好`,
+    snowQualities: ["パウダー（軽い）"],
+    conditions: [],
+    crowding: "普通",
+    rating: 4,
+    latitude: null,
+    longitude: null,
+    present: null,
+    itemType: null,
+    size: null,
+    waitMinutes: null,
+  });
+  const lift = (key: string): ReportEntryDraft => ({
+    clientKey: key,
+    kind: "LIFT",
+    courseId: null,
+    liftId: "test-lift-a",
+    body: "待ち時間は短め",
     snowQualities: [],
     conditions: [],
+    crowding: "空いている",
+    rating: 5,
+    latitude: null,
+    longitude: null,
+    present: null,
+    itemType: null,
+    size: null,
+    waitMinutes: 5,
+  });
+  const mogul = (key: string): ReportEntryDraft => ({
+    clientKey: key,
+    kind: "MOGUL",
+    courseId: "test-course-a",
+    liftId: null,
+    body: "コブは柔らかい",
+    snowQualities: ["柔らかい"],
+    conditions: [],
+    crowding: null,
+    rating: null,
+    latitude: 43.001,
+    longitude: 140.001,
+    present: true,
+    itemType: null,
+    size: null,
+    waitMinutes: null,
+  });
+  const item = (key: string): ReportEntryDraft => ({
+    clientKey: key,
+    kind: "ITEM",
+    courseId: "test-course-b",
+    liftId: null,
+    body: "キッカーあり",
+    snowQualities: [],
+    conditions: [],
+    crowding: null,
+    rating: null,
+    latitude: 43.02,
+    longitude: 140.02,
+    present: true,
+    itemType: "キッカー",
+    size: "中",
+    waitMinutes: null,
+  });
+  const draft = (
+    entries: ReportDraft["entries"],
+    body = "一日の記録",
+  ): ReportDraft => ({
+    observedOn: "2026-01-10",
+    body,
+    rating: 5,
+    entries,
   });
   const publish = (
     actor: ReturnType<typeof account>,
-    entries: unknown[],
+    report: ReportDraft,
     photos = new FormData(),
-    key = randomUUID(),
+    idempotencyKey = randomUUID(),
   ) =>
     run(actor, () =>
-      api.publishPosts({ resortId, entries, idempotencyKey: key }, photos),
+      api.publishReport({ resortId, report, idempotencyKey }, photos),
     );
   const assertSuccess = <T>(result: ActionResult<T>) => {
     assert.ok(result.ok, JSON.stringify(result));
@@ -162,14 +232,19 @@ test("community: PostgreSQL authentication, independent reports, moderation, pri
         outlineImages: [],
       },
     });
-    assertFailure(await publish(g, [report("test-course-a")]));
-    assertFailure(await publish(a, [report("test-course-a")]));
+    assertFailure(
+      await publish(g, draft([course(randomUUID(), "test-course-a")])),
+    );
+    assertFailure(
+      await publish(a, draft([course(randomUUID(), "test-course-a")])),
+    );
     assertSuccess(
       await run(a, () => api.saveCommunityProfile("ANONYMOUS", "")),
     );
     assertSuccess(
       await run(b, () => api.saveCommunityProfile("NICKNAME", "雪だるま")),
     );
+
     const image = await sharp({
       create: { width: 10, height: 10, channels: 3, background: "red" },
     })
@@ -178,45 +253,79 @@ test("community: PostgreSQL authentication, independent reports, moderation, pri
       .toBuffer();
     const upload = new FormData();
     upload.append(
-      "photo:0",
+      "photos",
       new File([new Uint8Array(image)], "private.jpg", { type: "image/jpeg" }),
     );
     const key = randomUUID();
-    const batch = assertSuccess(
-      await publish(
-        a,
-        [report("test-course-a"), report("test-course-b", 3)],
-        upload,
-        key,
-      ),
-    );
-    assert.equal(batch.ids.length, 2);
-    assert.notEqual(batch.ids[0], batch.ids[1]);
-    assert.deepEqual(
-      assertSuccess(
-        await publish(
-          a,
-          [report("test-course-a"), report("test-course-b", 3)],
-          upload,
-          key,
-        ),
-      ).ids,
-      batch.ids,
+    const mixed = draft([
+      course(randomUUID(), "test-course-a"),
+      lift(randomUUID()),
+      mogul(randomUUID()),
+      item(randomUUID()),
+    ]);
+    const created = assertSuccess(await publish(a, mixed, upload, key));
+    assert.equal(typeof created.id, "string");
+    assert.equal(
+      assertSuccess(await publish(a, mixed, upload, key)).id,
+      created.id,
     );
     assert.equal(
       await db.communityPost.count({ where: { authorId: owner } }),
-      2,
+      1,
     );
+    assert.equal(
+      await db.communityEntry.count({ where: { postId: created.id } }),
+      4,
+    );
+    assert.deepEqual(
+      (
+        await db.communityEntry.findMany({
+          where: { postId: created.id },
+          orderBy: { position: "asc" },
+          select: { kind: true },
+        })
+      ).map(row => row.kind),
+      ["COURSE", "LIFT", "MOGUL", "ITEM"],
+    );
+
     const feed = assertSuccess(
       await run(g, () =>
         api.getCommunityFeed({ resortId, courseId: "test-course-a" }),
       ),
     );
     assert.equal(feed.posts.length, 1);
+    assert.equal(feed.posts[0].id, created.id);
+    assert.equal(feed.posts[0].entries.length, 4);
     assert.equal(feed.posts[0].author.publicName, "匿名");
     assert.ok(!JSON.stringify(feed).includes("Private Google Name"));
     assert.ok(!JSON.stringify(feed).includes("@example.invalid"));
-    const photoId = feed.posts[0].photos[0].id;
+    assert.equal(
+      assertSuccess(
+        await run(g, () =>
+          api.getCommunityFeed({ resortId, liftId: "test-lift-a" }),
+        ),
+      ).posts[0].id,
+      created.id,
+    );
+    assert.equal(
+      assertSuccess(
+        await run(g, () => api.getCommunityFeed({ resortId, kind: "ITEM" })),
+      ).posts.length,
+      1,
+    );
+    for (const kind of ["MOGUL", "ITEM"] as const) {
+      const mapResult = assertSuccess(
+        await run(g, () => api.getCommunityMapEntries({ resortId, kind })),
+      );
+      assert.equal(mapResult.entries.length, 1);
+      assert.equal(mapResult.entries[0].postId, created.id);
+    }
+    const detail = assertSuccess(
+      await run(g, () => api.getPostDetail(created.id)),
+    );
+    assert.equal(detail.post.entries.length, 4);
+    assert.ok(!("history" in detail));
+    const photoId = detail.post.photos[0].id;
     const photo = await db.contributionPhoto.findUniqueOrThrow({
       where: { id: photoId },
     });
@@ -233,47 +342,61 @@ test("community: PostgreSQL authentication, independent reports, moderation, pri
       ).status,
       200,
     );
+
+    const beforeInvalid = await db.communityPost.count({
+      where: { authorId: owner },
+    });
+    const invalid = draft([
+      course(randomUUID(), "missing-course"),
+      lift(randomUUID()),
+    ]);
+    assertFailure(await publish(a, invalid));
+    assert.equal(
+      await db.communityPost.count({ where: { authorId: owner } }),
+      beforeInvalid,
+    );
+    const invalidLift = draft([
+      { ...lift(randomUUID()), liftId: "missing-lift" },
+    ]);
+    assertFailure(await publish(a, invalidLift));
+    assert.equal(
+      await db.communityPost.count({ where: { authorId: owner } }),
+      beforeInvalid,
+    );
+
     assertFailure(
       await run(b, () =>
-        api.updatePost(
-          batch.ids[0],
-          1,
-          report("test-course-a"),
-          new FormData(),
-          [],
-        ),
+        api.updateReport(created.id, 1, mixed, new FormData(), []),
       ),
     );
-    assertFailure(await run(b, () => api.deletePost(batch.ids[0], 1)));
-    assertSuccess(await run(b, () => api.setPostLike(batch.ids[0], true)));
-    assertSuccess(await run(b, () => api.setPostLike(batch.ids[0], true)));
+    assertFailure(await run(b, () => api.deletePost(created.id, 1)));
+    assertSuccess(await run(b, () => api.setPostLike(created.id, true)));
+    assertSuccess(await run(b, () => api.setPostLike(created.id, true)));
     assert.equal(
-      await db.communityLike.count({ where: { postId: batch.ids[0] } }),
+      await db.communityLike.count({ where: { postId: created.id } }),
       1,
     );
     const commentKey = randomUUID();
     const comment = assertSuccess(
-      await run(b, () =>
-        api.saveComment(batch.ids[0], "よいですね", commentKey),
-      ),
+      await run(b, () => api.saveComment(created.id, "よいですね", commentKey)),
     );
     assert.equal(
       assertSuccess(
         await run(b, () =>
-          api.saveComment(batch.ids[0], "よいですね", commentKey),
+          api.saveComment(created.id, "よいですね", commentKey),
         ),
       ).id,
       comment.id,
     );
     assertFailure(
       await run(a, () =>
-        api.saveComment(batch.ids[0], "他人の文", randomUUID(), comment.id, 1),
+        api.saveComment(created.id, "他人の編集", randomUUID(), comment.id, 1),
       ),
     );
     assertSuccess(
       await run(b, () =>
         api.saveComment(
-          batch.ids[0],
+          created.id,
           "編集しました",
           randomUUID(),
           comment.id,
@@ -282,77 +405,40 @@ test("community: PostgreSQL authentication, independent reports, moderation, pri
       ),
     );
     assertFailure(await run(b, () => api.deleteComment(comment.id, 1)));
-    assert.equal(
-      assertSuccess(await run(a, () => api.getNotifications())).unreadCount,
-      2,
-    );
-    assertSuccess(await run(a, () => api.markNotificationsRead()));
-    assert.equal(
-      assertSuccess(await run(a, () => api.getNotifications())).unreadCount,
-      0,
-    );
-    assertSuccess(await publish(a, [report("test-course-a", 1)]));
-    assertSuccess(await publish(a, [report("test-course-a", null)]));
-    const ratings = assertSuccess(
-      await run(g, () => api.getCommunityFeed({ resortId })),
-    ).ratings;
-    assert.equal(
-      ratings.find(row => row.courseId === "test-course-a")?.average,
-      1,
-    );
-    assert.equal(
-      ratings.find(row => row.courseId === "test-course-a")?.count,
-      1,
-    );
-    const mogul = {
-      kind: "MOGUL",
-      courseId: "test-course-a",
-      observedOn: "2026-01-10",
-      latitude: 43,
-      longitude: 140,
-      present: true,
-    };
-    const parent = assertSuccess(await publish(a, [mogul])).ids[0];
-    const child = assertSuccess(
-      await publish(b, [
-        {
-          ...mogul,
-          parentId: parent,
-          present: false,
-          observedOn: "2026-01-11",
-        },
-      ]),
-    ).ids[0];
-    assert.equal(
-      assertSuccess(await run(g, () => api.getPostDetail(parent))).history
-        .length,
-      2,
-    );
-    assertFailure(
-      await publish(b, [
-        { ...mogul, parentId: parent, longitude: 141, present: false },
-      ]),
-    );
     assertSuccess(
       await run(g, () =>
         api.reportCommunityContent(
           "POST",
-          parent,
+          created.id,
           "不適切な内容",
           "確認してください",
         ),
       ),
     );
-    // A manually hidden photo is immediately inaccessible even to its author.
-    const hiddenForm = new FormData();
-    for (const [k, v] of Object.entries({
-      targetKind: "POST",
-      targetId: batch.ids[0],
-      version: "1",
-      decision: "HIDE",
-    }))
-      hiddenForm.set(k, v);
-    await run(m, () => api.reviewCommunityContent(hiddenForm));
+
+    const revised = draft(
+      [course(randomUUID(), "test-course-a"), item(randomUUID())],
+      "部分編集後",
+    );
+    const updated = assertSuccess(
+      await run(a, () =>
+        api.updateReport(created.id, 1, revised, new FormData(), [photoId]),
+      ),
+    );
+    assert.equal(updated.id, created.id);
+    assertFailure(
+      await run(a, () =>
+        api.updateReport(created.id, 1, revised, new FormData(), []),
+      ),
+    );
+    assert.equal(
+      await db.communityEntry.count({ where: { postId: created.id } }),
+      2,
+    );
+    assert.equal(
+      await db.contributionPhoto.count({ where: { postId: created.id } }),
+      0,
+    );
     assert.equal(
       (
         await run(g, () =>
@@ -363,111 +449,54 @@ test("community: PostgreSQL authentication, independent reports, moderation, pri
       ).status,
       404,
     );
-    assertFailure(await run(g, () => api.getPostDetail(batch.ids[0])));
-    assert.equal(
-      (
-        await run(m, () =>
-          api.photoGET(new Request("http://localhost"), {
-            params: Promise.resolve({ photoId }),
-          }),
-        )
-      ).status,
-      200,
-    );
-    // Non-admin cannot restore hidden content; stale versions cannot be applied.
-    await assert.rejects(run(b, () => api.reviewCommunityContent(hiddenForm)));
-    hiddenForm.set("decision", "RESTORE");
-    await assert.rejects(run(m, () => api.reviewCommunityContent(hiddenForm)));
-    hiddenForm.set("version", "2");
-    await run(m, () => api.reviewCommunityContent(hiddenForm));
-    // Photo evidence belongs only to a private edit request, never its public author.
-    const request = await db.editRequest.create({
-      data: {
-        authorId: "anonymous",
-        authorName: "匿名",
-        kind: "public-correction",
-        resortId,
-        submittedPayload: {},
-        candidatePayload: {},
-        submittedPlan: {},
-        candidatePlan: {},
-      },
-    });
-    const privatePhoto = await db.contributionPhoto.create({
-      data: {
-        requestId: request.id,
-        bytes: photo.bytes,
-        mimeType: "image/webp",
-        width: 10,
-        height: 10,
-      },
-    });
-    assert.equal(
-      (
-        await run(g, () =>
-          api.photoGET(new Request("http://localhost"), {
-            params: Promise.resolve({ photoId: privatePhoto.id }),
-          }),
-        )
-      ).status,
-      404,
+
+    const mapEntries = assertSuccess(
+      await run(g, () =>
+        api.getCommunityMapEntries({ resortId, kind: "MOGUL" }),
+      ),
     );
     assert.equal(
-      (
-        await run(m, () =>
-          api.photoGET(new Request("http://localhost"), {
-            params: Promise.resolve({ photoId: privatePhoto.id }),
-          }),
-        )
-      ).status,
-      200,
+      mapEntries.entries.length,
+      0,
+      "MOGUL entry was removed by the partial edit",
     );
-    // AI checks are versioned and cannot ban accounts. Mock the provider, no real API call.
+    const withPoint = draft([mogul(randomUUID())]);
+    const pointPost = assertSuccess(await publish(a, withPoint));
+    const points = assertSuccess(
+      await run(g, () =>
+        api.getCommunityMapEntries({ resortId, kind: "MOGUL" }),
+      ),
+    );
+    assert.equal(points.entries.length, 1);
+    assert.equal(points.entries[0].postId, pointPost.id);
+
+    // AI receives the parent text and every child observation, then hides the whole report.
+    const flagged = draft(
+      [course(randomUUID(), "test-course-a"), item(randomUUID())],
+      "AI flagged report",
+    );
+    const flaggedPhotos = new FormData();
+    flaggedPhotos.append(
+      "photos",
+      new File([new Uint8Array(image)], "flagged.jpg", { type: "image/jpeg" }),
+    );
+    const flaggedResult = assertSuccess(
+      await publish(a, flagged, flaggedPhotos),
+    );
+    const flaggedDetail = assertSuccess(
+      await run(g, () => api.getPostDetail(flaggedResult.id)),
+    );
+    const flaggedPhotoId = flaggedDetail.post.photos[0].id;
     await db.communityModerationJob.updateMany({
-      where: {
-        targetId: {
-          in: (
-            await db.communityPost.findMany({
-              where: { resortId },
-              select: { id: true },
-            })
-          ).map(p => p.id),
-        },
-      },
+      where: { targetKind: "POST", targetId: { not: flaggedResult.id } },
       data: { status: "REVIEWED" },
     });
-    const stale = await db.communityPost.create({
-      data: {
-        authorId: owner,
-        resortId,
-        kind: "REPORT",
-        observedOn: "2026-01-10",
-        batchKey: randomUUID(),
-        batchIndex: 0,
-        body: "new content",
-        version: 2,
-      },
-    });
-    await db.communityModerationJob.create({
-      data: { targetKind: "POST", targetId: stale.id, targetVersion: 1 },
-    });
-    const toHide = await db.communityPost.create({
-      data: {
-        authorId: owner,
-        resortId,
-        kind: "REPORT",
-        observedOn: "2026-01-10",
-        batchKey: randomUUID(),
-        batchIndex: 0,
-      },
-    });
-    await db.communityModerationJob.create({
-      data: { targetKind: "POST", targetId: toHide.id, targetVersion: 1 },
-    });
     const originalFetch = globalThis.fetch;
+    let moderationRequest = "";
     process.env.OPENAI_API_KEY = "test-only-not-a-real-key";
-    globalThis.fetch = async input => {
+    globalThis.fetch = async (input, init) => {
       assert.equal(input, "https://api.openai.com/v1/moderations");
+      moderationRequest = String(init?.body);
       return Response.json({
         results: [
           {
@@ -484,20 +513,52 @@ test("community: PostgreSQL authentication, independent reports, moderation, pri
       globalThis.fetch = originalFetch;
       delete process.env.OPENAI_API_KEY;
     }
+    const sent = await db.communityModerationJob.findFirst({
+      where: { targetId: flaggedResult.id },
+      orderBy: { createdAt: "desc" },
+    });
+    assert.ok(sent);
     assert.equal(
-      (await db.communityPost.findUniqueOrThrow({ where: { id: stale.id } }))
-        .status,
-      "VISIBLE",
-    );
-    assert.equal(
-      (await db.communityPost.findUniqueOrThrow({ where: { id: toHide.id } }))
-        .status,
+      (
+        await db.communityPost.findUniqueOrThrow({
+          where: { id: flaggedResult.id },
+        })
+      ).status,
       "HIDDEN",
     );
+    assertFailure(await run(g, () => api.getPostDetail(flaggedResult.id)));
+    assert.ok(moderationRequest.includes("test-course-a の雪は良好"));
+    assert.ok(moderationRequest.includes("キッカーあり"));
     assert.equal(
-      (await db.user.findUniqueOrThrow({ where: { id: owner } })).suspendedAt,
-      null,
+      (
+        await run(g, () =>
+          api.photoGET(new Request("http://localhost"), {
+            params: Promise.resolve({ photoId: flaggedPhotoId }),
+          }),
+        )
+      ).status,
+      404,
     );
+
+    const hideForm = new FormData();
+    for (const [k, v] of Object.entries({
+      targetKind: "POST",
+      targetId: created.id,
+      version: "2",
+      decision: "HIDE",
+    }))
+      hideForm.set(k, v);
+    await run(m, () => api.reviewCommunityContent(hideForm));
+    assertFailure(await run(g, () => api.getPostDetail(created.id)));
+    await assert.rejects(run(b, () => api.reviewCommunityContent(hideForm)));
+    hideForm.set("version", "3");
+    hideForm.set("decision", "RESTORE");
+    await run(m, () => api.reviewCommunityContent(hideForm));
+    assert.equal(
+      assertSuccess(await run(g, () => api.getPostDetail(created.id))).post.id,
+      created.id,
+    );
+
     assertFailure(
       await run(a, () => api.deleteCommunityAccount("wrong" as never)),
     );
@@ -511,33 +572,39 @@ test("community: PostgreSQL authentication, independent reports, moderation, pri
       0,
     );
     assert.equal(
-      (
-        await run(g, () =>
-          api.photoGET(new Request("http://localhost"), {
-            params: Promise.resolve({ photoId }),
-          }),
-        )
-      ).status,
-      404,
-    );
-    assert.equal(
-      (await db.communityPost.findUniqueOrThrow({ where: { id: child } }))
-        .parentId,
-      null,
-    );
-    assert.equal(await db.editRequest.count({ where: { id: request.id } }), 1);
-    assert.equal(
       await db.communityLike.count({
-        where: { userId: other, postId: batch.ids[0] },
+        where: { userId: other, postId: created.id },
       }),
       0,
     );
+    assert.equal(
+      await db.communityComment.count({
+        where: { authorId: other, postId: created.id },
+      }),
+      0,
+    );
+    assert.equal(await db.editRequest.count({ where: { resortId } }), 0);
   } finally {
+    const postIds = (
+      await db.communityPost.findMany({
+        where: { resortId },
+        select: { id: true },
+      })
+    ).map(row => row.id);
+    const commentIds = (
+      await db.communityComment.findMany({
+        where: { post: { resortId } },
+        select: { id: true },
+      })
+    ).map(row => row.id);
     await db.communityReport.deleteMany({
-      where: { targetId: { startsWith: prefix } },
+      where: {
+        OR: [
+          { targetKind: "POST", targetId: { in: postIds } },
+          { targetKind: "COMMENT", targetId: { in: commentIds } },
+        ],
+      },
     });
-    await db.contributionPhoto.deleteMany({ where: { request: { resortId } } });
-    await db.editRequest.deleteMany({ where: { resortId } });
     await db.skiResort.deleteMany({ where: { id: resortId } });
     await db.user.deleteMany({ where: { id: { in: [owner, other, admin] } } });
     await api.disconnectPrisma();

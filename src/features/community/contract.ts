@@ -1,11 +1,14 @@
 import { z } from "zod";
 import type { AnonymousChallenge } from "@/features/corrections/anonymousCheck";
 
-export const POST_KINDS = {
-  REPORT: "滑走レポート",
+export const ENTRY_KINDS = {
+  COURSE: "コース",
   MOGUL: "コブ",
   ITEM: "パーク",
+  LIFT: "リフト",
 } as const;
+export const POST_KINDS = ENTRY_KINDS;
+export const MAX_REPORT_ENTRIES = 40;
 export const SNOW_QUALITIES = [
   "パウダー（軽い）",
   "パウダー（重い）",
@@ -46,92 +49,170 @@ export const observedOnSchema = z
       value <= new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10)
     );
   }, "現地確認日を確認してください。");
-export const postDraftSchema = z
+export const reportEntrySchema = z
   .strictObject({
-    kind: z.enum(["REPORT", "MOGUL", "ITEM"]),
+    clientKey: z.string().uuid(),
+    kind: z.enum(["COURSE", "LIFT", "MOGUL", "ITEM"]),
     courseId: idSchema.nullable().default(null),
-    observedOn: observedOnSchema,
+    liftId: idSchema.nullable().default(null),
     body: z.string().trim().max(4000).default(""),
     snowQualities: z
       .array(z.enum([...SNOW_QUALITIES, ...MOGUL_SNOW]))
       .max(8)
       .default([]),
     conditions: z.array(z.enum(COURSE_CONDITIONS)).max(4).default([]),
-    crowding: z.enum(["空いている", "普通", "混雑"]).nullable().optional(),
-    rating: z.number().int().min(1).max(5).nullable().optional(),
-    latitude: z.number().min(-90).max(90).nullable().optional(),
-    longitude: z.number().min(-180).max(180).nullable().optional(),
-    present: z.boolean().nullable().optional(),
-    itemType: z.enum(ITEM_TYPES).nullable().optional(),
-    size: z.string().trim().max(100).nullable().optional(),
-    parentId: idSchema.nullable().optional(),
+    crowding: z.enum(["空いている", "普通", "混雑"]).nullable().default(null),
+    rating: z.number().int().min(1).max(5).nullable().default(null),
+    latitude: z.number().min(-90).max(90).nullable().default(null),
+    longitude: z.number().min(-180).max(180).nullable().default(null),
+    present: z.boolean().nullable().default(null),
+    itemType: z.enum(ITEM_TYPES).nullable().default(null),
+    size: z.string().trim().max(100).nullable().default(null),
+    waitMinutes: z.number().int().min(0).max(240).nullable().default(null),
   })
-  .superRefine((post, ctx) => {
+  .superRefine((entry, ctx) => {
+    const fail = (message: string, field: string) =>
+      ctx.addIssue({ code: "custom", message, path: [field] });
+    if (entry.kind === "COURSE" && !entry.courseId)
+      fail("コースを選択してください。", "courseId");
+    if (entry.kind === "LIFT" && !entry.liftId)
+      fail("リフトを選択してください。", "liftId");
+    if (entry.kind !== "LIFT" && entry.liftId)
+      fail("リフトはリフト項目で指定してください。", "liftId");
+    if (entry.kind === "LIFT" && entry.courseId)
+      fail("リフト項目にコースは指定できません。", "courseId");
+    const point = entry.kind === "MOGUL" || entry.kind === "ITEM";
     if (
-      post.kind !== "REPORT" &&
-      (post.latitude == null || post.longitude == null || post.present == null)
+      point &&
+      (entry.latitude == null ||
+        entry.longitude == null ||
+        entry.present == null)
     )
-      ctx.addIssue({
-        code: "custom",
-        message: "地図上の位置と状態を指定してください。",
-      });
-    if (post.kind === "ITEM" && !post.itemType)
-      ctx.addIssue({
-        code: "custom",
-        message: "アイテムの種類を選んでください。",
-      });
+      fail("地図上の場所と状態を選択してください。", "latitude");
     if (
-      post.kind === "REPORT" &&
-      (post.latitude != null || post.longitude != null || post.parentId)
+      !point &&
+      (entry.latitude != null ||
+        entry.longitude != null ||
+        entry.present != null)
     )
-      ctx.addIssue({
-        code: "custom",
-        message: "滑走レポートには位置や追加報告を指定できません。",
-      });
+      fail("場所と有無はコブ・パークの項目で指定してください。", "latitude");
+    if (entry.kind === "ITEM" && !entry.itemType)
+      fail("パークの種類を選択してください。", "itemType");
+    if (entry.kind !== "ITEM" && (entry.itemType || entry.size))
+      fail("設備の種類とサイズはパークの項目で指定してください。", "itemType");
+    if (entry.kind !== "LIFT" && entry.waitMinutes != null)
+      fail("待ち時間はリフトの項目で指定してください。", "waitMinutes");
     if (
-      post.kind !== "REPORT" &&
-      (post.rating != null || post.crowding || post.conditions.length)
+      point &&
+      (entry.rating != null || entry.crowding || entry.conditions.length)
     )
-      ctx.addIssue({
-        code: "custom",
-        message: "評価・混雑・コース状態は滑走レポートで指定してください。",
-      });
+      fail(
+        "評価・混雑・コース状態はコースかリフトの項目で指定してください。",
+        "rating",
+      );
+    if (
+      entry.kind === "LIFT" &&
+      (entry.snowQualities.length || entry.conditions.length)
+    )
+      fail(
+        "雪質・コース状態はコースの項目で指定してください。",
+        "snowQualities",
+      );
     const allowed =
-      post.kind === "MOGUL"
+      entry.kind === "MOGUL"
         ? MOGUL_SNOW
-        : post.kind === "REPORT"
+        : entry.kind === "COURSE"
           ? SNOW_QUALITIES
           : [];
     if (
-      post.snowQualities.some(
+      entry.snowQualities.some(
         value => !(allowed as readonly string[]).includes(value),
       )
     )
+      fail("雪質の選択を確認してください。", "snowQualities");
+  });
+export const reportDraftSchema = z
+  .strictObject({
+    observedOn: observedOnSchema,
+    body: z.string().trim().max(4000).default(""),
+    rating: z.number().int().min(1).max(5).nullable().default(null),
+    entries: z.array(reportEntrySchema).max(MAX_REPORT_ENTRIES),
+  })
+  .superRefine((report, ctx) => {
+    if (!report.body && !report.entries.length)
       ctx.addIssue({
         code: "custom",
-        message: "雪質の選択を確認してください。",
+        message:
+          "感想を入力するか、コース・リフト・コブ・パークの項目を追加してください。",
+        path: ["body"],
+      });
+    if (
+      new Set(report.entries.map(entry => entry.clientKey)).size !==
+      report.entries.length
+    )
+      ctx.addIssue({
+        code: "custom",
+        message: "項目の識別子が重複しています。",
+        path: ["entries"],
+      });
+    const targets = report.entries
+      .filter(entry => entry.kind === "COURSE" || entry.kind === "LIFT")
+      .map(entry => `${entry.kind}:${entry.courseId ?? entry.liftId}`);
+    if (new Set(targets).size !== targets.length)
+      ctx.addIssue({
+        code: "custom",
+        message: "同じコース・リフトは1つの項目にまとめてください。",
+        path: ["entries"],
       });
   });
-export type PostDraft = z.infer<typeof postDraftSchema>;
+export type ReportEntryDraft = z.infer<typeof reportEntrySchema>;
+export type ReportDraft = z.infer<typeof reportDraftSchema>;
 export type CourseOption = {
   id: string;
   name: string;
   coordinates: number[][];
+  lines: number[][][];
+};
+export type LiftOption = CourseOption;
+export type CommunityMapData = {
+  name: string;
+  center: [number, number];
+  courses: CourseOption[];
+  lifts: LiftOption[];
 };
 export type PublicPhoto = { id: string; width: number; height: number };
 export type PublicAuthor = { id: string; publicName: string };
-export type PublicPost = PostDraft & {
+export type PublicReportEntry = ReportEntryDraft & {
+  id: string;
+  targetName: string;
+};
+export type PublicPost = Omit<ReportDraft, "entries"> & {
   id: string;
   resortId: string;
+  resortName: string;
   version: number;
   author: PublicAuthor;
   createdAt: string;
   updatedAt: string;
+  entries: PublicReportEntry[];
   photos: PublicPhoto[];
   likeCount: number;
   commentCount: number;
   liked: boolean;
-  courseName: string | null;
+};
+export type PublicMapEntry = {
+  id: string;
+  postId: string;
+  kind: "MOGUL" | "ITEM";
+  observedOn: string;
+  body: string;
+  latitude: number;
+  longitude: number;
+  present: boolean;
+  itemType: string | null;
+  size: string | null;
+  targetName: string;
+  author: PublicAuthor;
 };
 export type PublicComment = {
   id: string;
@@ -148,7 +229,8 @@ export type RatingSummary = {
 export type FeedInput = {
   resortId: string;
   courseId?: string;
-  kind?: keyof typeof POST_KINDS;
+  liftId?: string;
+  kind?: keyof typeof ENTRY_KINDS;
   from?: string;
   to?: string;
   sort?: "created" | "observed";

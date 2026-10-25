@@ -59,6 +59,7 @@ export async function drainModerationJobs() {
                 where: { id: job.targetId },
                 include: {
                   photos: { select: { bytes: true, mimeType: true } },
+                  entries: { orderBy: { position: "asc" } },
                 },
               })
             : await prisma.communityComment.findUnique({
@@ -78,7 +79,24 @@ export async function drainModerationJobs() {
         const input: Array<
           | { type: "text"; text: string }
           | { type: "image_url"; image_url: { url: string } }
-        > = [{ type: "text", text: target.body || "スキー場の現地情報" }];
+        > = [
+          {
+            type: "text",
+            text:
+              [
+                target.body,
+                ...("entries" in target
+                  ? target.entries.flatMap(entry => [
+                      entry.targetName,
+                      entry.body,
+                      entry.size ?? "",
+                    ])
+                  : []),
+              ]
+                .filter(Boolean)
+                .join("\n") || "スキー場の現地情報",
+          },
+        ];
         const photoReviewPending =
           "photos" in target && target.photos.length > 0 && !localEndpoint;
         if (localEndpoint && "photos" in target)

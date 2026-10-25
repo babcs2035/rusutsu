@@ -134,11 +134,12 @@ export const FinalizedFeatureDetail = ({
               }
             />
           ) : null}
-          {resortId && courseGroup && (
+          {resortId && (courseGroup || lift) && (
             <div className="mt-3 border-t pt-3">
               <CommunityFeed
                 resortId={resortId}
-                courseId={courseGroup.id}
+                courseId={courseGroup?.id}
+                liftId={lift?.id}
                 compact
               />
             </div>

@@ -7,7 +7,7 @@ import { signIn, signOut } from "@/auth";
 import type { AnonymousProof } from "@/features/corrections/anonymousCheck";
 import { prisma } from "@/lib/prisma";
 import { drainModerationJobs } from "@/server/community/moderation";
-import { readEntryPhotos } from "@/server/community/photos";
+import { readReportPhotos } from "@/server/community/photos";
 import {
   AnonymousChallengeError,
   consumeWriteLimit,
@@ -18,6 +18,7 @@ import {
   courseOptions,
   publicPostInclude,
   readFeed,
+  readMapEntries,
   requireUserId,
   serializePosts,
   type Tx,
@@ -26,10 +27,12 @@ import {
 } from "@/server/community/repository";
 import {
   type ActionResult,
+  type CommunityMapData,
   type FeedInput,
   idSchema,
   observedOnSchema,
-  postDraftSchema,
+  type ReportDraft,
+  reportDraftSchema,
 } from "./contract";
 
 async function result<T>(
@@ -65,11 +68,31 @@ export async function getCommunityFeed(input: FeedInput) {
         .strictObject({
           resortId: idSchema,
           courseId: idSchema.optional(),
-          kind: z.enum(["REPORT", "MOGUL", "ITEM"]).optional(),
+          liftId: idSchema.optional(),
+          kind: z.enum(["COURSE", "LIFT", "MOGUL", "ITEM"]).optional(),
           from: observedOnSchema.optional(),
           to: observedOnSchema.optional(),
           sort: z.enum(["created", "observed"]).optional(),
           authorId: idSchema.optional(),
+          cursor: idSchema.optional(),
+        })
+        .parse(input),
+    ),
+  );
+}
+export async function getCommunityMapEntries(input: {
+  resortId: string;
+  kind: "MOGUL" | "ITEM";
+  from?: string;
+  cursor?: string;
+}) {
+  return result(() =>
+    readMapEntries(
+      z
+        .strictObject({
+          resortId: idSchema,
+          kind: z.enum(["MOGUL", "ITEM"]),
+          from: observedOnSchema.optional(),
           cursor: idSchema.optional(),
         })
         .parse(input),
@@ -150,139 +173,98 @@ async function notify(
     update: {},
   });
 }
-async function validateTargets(
-  tx: Tx,
-  resortId: string,
-  entries: z.infer<typeof postDraftSchema>[],
-  validCourses: Set<string>,
-) {
-  if (
-    !(await tx.skiResort.findFirst({
-      where: { id: resortId, isActive: true },
-      select: { id: true },
-    }))
-  )
-    throw new Error("スキー場が見つかりません。");
-  for (const entry of entries) {
-    if (entry.courseId && !validCourses.has(entry.courseId))
-      throw new Error("対象のコースを確認してください。");
-    if (entry.parentId) {
-      const parent = await tx.communityPost.findFirst({
-        where: {
-          id: entry.parentId,
-          status: "VISIBLE",
-          resortId,
-          kind: entry.kind,
-        },
-      });
-      if (
-        !parent ||
-        entry.kind === "REPORT" ||
-        parent.latitude !== entry.latitude ||
-        parent.longitude !== entry.longitude ||
-        parent.courseId !== entry.courseId ||
-        parent.itemType !== (entry.itemType ?? null)
-      )
-        throw new Error(
-          "追加報告の対象や位置が変わりました。元の投稿から開き直してください。",
-        );
-    }
-  }
+function prepareEntries(report: ReportDraft, options: CommunityMapData) {
+  const courses = new Map(options.courses.map(course => [course.id, course]));
+  const lifts = new Map(options.lifts.map(lift => [lift.id, lift]));
+  return report.entries.map((entry, position) => {
+    const course = entry.courseId ? courses.get(entry.courseId) : null;
+    const lift = entry.liftId ? lifts.get(entry.liftId) : null;
+    if (entry.courseId && !course)
+      throw new Error("このスキー場のコースを選択してください。");
+    if (entry.liftId && !lift)
+      throw new Error("このスキー場のリフトを選択してください。");
+    return {
+      ...entry,
+      position,
+      targetName: (
+        course?.name ??
+        lift?.name ??
+        (entry.kind === "MOGUL" ? "コブ" : "パーク")
+      ).slice(0, 500),
+    };
+  });
 }
 
-export async function publishPosts(input: unknown, photos: FormData) {
+export async function publishReport(input: unknown, photos: FormData) {
   return result(async () => {
     const id = await requireUserId();
     const batch = z
       .strictObject({
         resortId: idSchema,
-        entries: z.array(postDraftSchema).min(1).max(20),
+        report: reportDraftSchema,
         idempotencyKey: operationKeySchema,
       })
       .parse(input);
-    const existing = await prisma.communityPost.findMany({
-      where: { authorId: id, batchKey: batch.idempotencyKey },
-      orderBy: { batchIndex: "asc" },
+    const prior = await prisma.communityPost.findUnique({
+      where: {
+        authorId_submissionKey: {
+          authorId: id,
+          submissionKey: batch.idempotencyKey,
+        },
+      },
       select: { id: true },
     });
-    if (existing.length) return { ids: existing.map(row => row.id) };
-    const reports = batch.entries.filter(entry => entry.kind === "REPORT");
-    if (new Set(reports.map(entry => entry.courseId)).size !== reports.length)
-      throw new Error("同じコースの入力が重複しています。");
+    if (prior) return prior;
     await consumeWriteLimit("post", id, 30);
     const options = await courseOptions(batch.resortId);
-    const validCourses = new Set(options.courses.map(course => course.id));
-    if (!(photos instanceof FormData))
-      throw new Error("写真の形式を確認してください。");
-    let totalBytes = 0;
-    for (const [key, file] of photos.entries()) {
-      if (
-        !(file instanceof File) ||
-        !/^photo:\d+$/.test(key) ||
-        Number(key.slice(6)) >= batch.entries.length
-      )
-        throw new Error("写真の対象を確認してください。");
-      totalBytes += file.size;
-    }
-    if (totalBytes > 48 * 1024 * 1024)
-      throw new Error("写真はまとめて48MB以内で送信してください。");
-    const normalized: Array<Awaited<ReturnType<typeof readEntryPhotos>>> = [];
-    for (let index = 0; index < batch.entries.length; index++)
-      normalized.push(await readEntryPhotos(photos, index));
-    const ids = await prisma.$transaction(
+    const entries = prepareEntries(batch.report, options);
+    const normalized = await readReportPhotos(photos);
+    const saved = await prisma.$transaction(
       async tx => {
         await writableUser(tx, id);
-        const raced = await tx.communityPost.findMany({
-          where: { authorId: id, batchKey: batch.idempotencyKey },
-          orderBy: { batchIndex: "asc" },
+        const existing = await tx.communityPost.findUnique({
+          where: {
+            authorId_submissionKey: {
+              authorId: id,
+              submissionKey: batch.idempotencyKey,
+            },
+          },
           select: { id: true },
         });
-        if (raced.length) return raced.map(row => row.id);
-        await validateTargets(tx, batch.resortId, batch.entries, validCourses);
-        const saved: string[] = [];
-        for (const [index, entry] of batch.entries.entries()) {
-          const post = await tx.communityPost.create({
-            data: {
-              ...entry,
-              resortId: batch.resortId,
-              authorId: id,
-              batchKey: batch.idempotencyKey,
-              batchIndex: index,
-              photos: {
-                create: normalized[index].map(photo => ({
-                  ...photo,
-                  ownerId: id,
-                })),
-              },
+        if (existing) return existing;
+        if (
+          !(await tx.skiResort.findFirst({
+            where: { id: batch.resortId, isActive: true },
+            select: { id: true },
+          }))
+        )
+          throw new Error("スキー場が見つかりません。");
+        const { entries: _entries, ...report } = batch.report;
+        const post = await tx.communityPost.create({
+          data: {
+            ...report,
+            resortId: batch.resortId,
+            authorId: id,
+            submissionKey: batch.idempotencyKey,
+            entries: { create: entries },
+            photos: {
+              create: normalized.map(photo => ({ ...photo, ownerId: id })),
             },
-          });
-          saved.push(post.id);
-          await queueModeration(tx, "POST", post.id, post.version);
-          if (entry.parentId) {
-            const parent = await tx.communityPost.findUniqueOrThrow({
-              where: { id: entry.parentId },
-            });
-            await notify(
-              tx,
-              parent.authorId,
-              id,
-              parent.id,
-              "STATUS",
-              `status:${post.id}`,
-            );
-          }
-        }
-        return saved;
+          },
+          select: { id: true, version: true },
+        });
+        await queueModeration(tx, "POST", post.id, post.version);
+        return { id: post.id };
       },
       { timeout: 20000 },
     );
     refresh();
     after(() => drainModerationJobs());
-    return { ids };
+    return saved;
   });
 }
 
-export async function updatePost(
+export async function updateReport(
   postId: string,
   version: number,
   input: unknown,
@@ -293,40 +275,41 @@ export async function updatePost(
     const id = await requireUserId();
     idSchema.parse(postId);
     versionSchema.parse(version);
-    const entry = postDraftSchema.parse(input);
+    const report = reportDraftSchema.parse(input);
     const remove = z.array(idSchema).max(6).parse(removePhotoIds);
     await consumeWriteLimit("post-edit", id);
-    const uploaded = await readEntryPhotos(photos, 0);
     const current = await prisma.communityPost.findUnique({
       where: { id: postId },
     });
-    if (!current || current.authorId !== id || current.version !== version)
-      throw new Error("投稿が更新されたか、編集できません。");
+    if (
+      !current ||
+      current.authorId !== id ||
+      current.version !== version ||
+      current.status !== "VISIBLE"
+    )
+      throw new Error("レポートが更新されたか、編集できません。");
     const options = await courseOptions(current.resortId);
+    const entries = prepareEntries(report, options);
+    const uploaded = await readReportPhotos(photos);
     await prisma.$transaction(async tx => {
       await writableUser(tx, id);
-      await validateTargets(
-        tx,
-        current.resortId,
-        [entry],
-        new Set(options.courses.map(course => course.id)),
-      );
-      if (
-        entry.kind !== current.kind ||
-        (entry.parentId ?? null) !== current.parentId
-      )
-        throw new Error("投稿の種類と追加報告の対象は変更できません。");
       const kept = await tx.contributionPhoto.count({
         where: { postId, id: { notIn: remove } },
       });
       if (kept + uploaded.length > 6)
-        throw new Error("写真は1投稿6枚までです。");
+        throw new Error("写真はレポート全体で6枚までです。");
+      const { entries: _entries, ...fields } = report;
       const updated = await tx.communityPost.updateMany({
         where: { id: postId, authorId: id, version, status: "VISIBLE" },
-        data: { ...entry, version: { increment: 1 } },
+        data: { ...fields, version: { increment: 1 } },
       });
       if (updated.count !== 1)
-        throw new Error("投稿が更新されたか、編集できません。");
+        throw new Error("レポートが更新されたか、編集できません。");
+      await tx.communityEntry.deleteMany({ where: { postId } });
+      if (entries.length)
+        await tx.communityEntry.createMany({
+          data: entries.map(entry => ({ ...entry, postId })),
+        });
       await tx.contributionPhoto.deleteMany({
         where: { postId, id: { in: remove } },
       });
@@ -370,26 +353,12 @@ export async function getPostDetail(postId: string) {
       include: publicPostInclude,
     });
     if (!post) throw new Error("投稿が見つかりません。");
-    const rootId = post.parentId ?? post.id;
-    const [comments, history] = await Promise.all([
-      prisma.communityComment.findMany({
-        where: { postId, status: "VISIBLE" },
-        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-        take: 200,
-        include: { author: { select: { id: true, publicName: true } } },
-      }),
-      post.kind === "REPORT"
-        ? []
-        : prisma.communityPost.findMany({
-            where: {
-              status: "VISIBLE",
-              OR: [{ id: rootId }, { parentId: rootId }],
-            },
-            include: publicPostInclude,
-            orderBy: [{ observedOn: "desc" }, { createdAt: "desc" }],
-            take: 100,
-          }),
-    ]);
+    const comments = await prisma.communityComment.findMany({
+      where: { postId, status: "VISIBLE" },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      take: 200,
+      include: { author: { select: { id: true, publicName: true } } },
+    });
     return {
       post: (await serializePosts([post], id))[0],
       comments: comments.map(row => ({
@@ -402,7 +371,6 @@ export async function getPostDetail(postId: string) {
           publicName: row.author.publicName ?? "匿名",
         },
       })),
-      history: await serializePosts(history, id),
       viewerId: id,
     };
   });

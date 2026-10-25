@@ -67,7 +67,7 @@ export default async function CommunityAdminPage({
         include: {
           author: { select: { id: true, publicName: true } },
           photos: { select: { id: true } },
-          _count: { select: { history: true } },
+          entries: { orderBy: { position: "asc" } },
         },
       }),
       prisma.communityComment.findMany({
@@ -156,7 +156,7 @@ export default async function CommunityAdminPage({
             <div className="flex flex-wrap gap-2">
               <strong>{post.author.publicName ?? "匿名"}</strong>
               <span>
-                {post.kind} · {post.observedOn} ·{" "}
+                滑走レポート · {post.observedOn} ·{" "}
                 {post.status === "HIDDEN" ? "非表示" : "公開中"}
               </span>
               <Link className="underline" href={`/community/post/${post.id}`}>
@@ -164,14 +164,23 @@ export default async function CommunityAdminPage({
               </Link>
             </div>
             <p>
-              {post.resortId} · {post.courseId ?? "スキー場全体"} ·{" "}
-              {post.present === null
-                ? ""
-                : post.present
-                  ? "あり"
-                  : "なし・撤去"}
+              {post.resortId} · {post.entries.length}項目
             </p>
             <p className="whitespace-pre-wrap">{post.body}</p>
+            {post.entries.map(entry => (
+              <div key={entry.id} className="rounded border bg-slate-50 p-2">
+                <b>
+                  {entry.kind} · {entry.targetName}
+                </b>
+                <p className="whitespace-pre-wrap">{entry.body}</p>
+                {entry.present != null && (
+                  <p>
+                    {entry.present ? "あり" : "なし・撤去"} {entry.itemType}{" "}
+                    {entry.size}
+                  </p>
+                )}
+              </div>
+            ))}
             <div className="flex flex-wrap gap-2">
               {post.photos.map(photo => (
                 <a

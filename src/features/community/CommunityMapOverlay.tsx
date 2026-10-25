@@ -10,8 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getCommunityFeed } from "./actions";
-import type { FeedInput, PublicPost } from "./contract";
+import { getCommunityMapEntries } from "./actions";
+import type { PublicMapEntry } from "./contract";
 import {
   type CommunityPeriod,
   getPeriodStart,
@@ -135,8 +135,8 @@ export function CommunityMapOverlay({
   period: CommunityPeriod;
   kind: "MOGUL" | "ITEM";
 }) {
-  const [posts, setPosts] = useState<PublicPost[]>([]);
-  const [overlap, setOverlap] = useState<PublicPost[] | null>(null);
+  const [posts, setPosts] = useState<PublicMapEntry[]>([]);
+  const [overlap, setOverlap] = useState<PublicMapEntry[] | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   useEffect(() => {
@@ -147,19 +147,18 @@ export function CommunityMapOverlay({
     }
     let active = true;
     setLoading(true);
-    const input: FeedInput = {
+    const input = {
       resortId,
       from: getPeriodStart(period),
       kind,
-      sort: "observed",
     };
     void (async () => {
-      const collected: PublicPost[] = [];
+      const collected: PublicMapEntry[] = [];
       let cursor: string | undefined;
       do {
-        const result = await getCommunityFeed({ ...input, cursor });
+        const result = await getCommunityMapEntries({ ...input, cursor });
         if (!result.ok) throw new Error(result.error);
-        collected.push(...result.data.posts);
+        collected.push(...result.data.entries);
         cursor = result.data.nextCursor ?? undefined;
       } while (cursor);
       if (active) setPosts(collected);
@@ -200,7 +199,7 @@ export function CommunityMapOverlay({
         event.stopPropagation();
         if (group.posts.length === 1)
           router.push(
-            `/community/post/${encodeURIComponent(group.posts[0].id)}`,
+            `/community/post/${encodeURIComponent(group.posts[0].postId)}`,
           );
         else setOverlap(group.posts);
       });
@@ -246,7 +245,9 @@ export function CommunityMapOverlay({
               key={post.id}
               className="block w-full border-t px-2 py-2 text-left text-xs hover:bg-slate-50"
               onClick={() =>
-                router.push(`/community/post/${encodeURIComponent(post.id)}`)
+                router.push(
+                  `/community/post/${encodeURIComponent(post.postId)}`,
+                )
               }
             >
               <b>
@@ -258,7 +259,7 @@ export function CommunityMapOverlay({
               </b>
               <span className="ml-2">{post.observedOn}</span>
               <span className="block text-gray-500">
-                {post.courseName ?? "コース指定なし"} · {post.author.publicName}
+                {post.targetName} · {post.author.publicName}
               </span>
             </button>
           ))}

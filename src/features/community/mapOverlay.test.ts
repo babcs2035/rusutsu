@@ -1,45 +1,40 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { PublicPost } from "./contract";
+import type { PublicMapEntry } from "./contract";
 import { getPeriodStart, groupExactCoordinates } from "./mapOverlay";
 
-const post = (id: string, latitude: number, longitude: number): PublicPost =>
-  ({
-    id,
-    kind: "MOGUL",
-    courseId: null,
-    observedOn: "2026-10-20",
-    body: "",
-    snowQualities: [],
-    conditions: [],
-    present: true,
-    latitude,
-    longitude,
-    itemType: null,
-    size: null,
-    resortId: "resort",
-    version: 1,
-    author: { id: "author", publicName: "匿名" },
-    createdAt: "2026-10-20T00:00:00.000Z",
-    updatedAt: "2026-10-20T00:00:00.000Z",
-    photos: [],
-    likeCount: 0,
-    commentCount: 0,
-    liked: false,
-    courseName: null,
-  }) satisfies PublicPost;
+const entry = (
+  id: string,
+  latitude: number,
+  longitude: number,
+): PublicMapEntry => ({
+  id,
+  postId: `post-${id}`,
+  kind: id.endsWith("item") ? "ITEM" : "MOGUL",
+  observedOn: "2026-10-20",
+  body: "",
+  latitude,
+  longitude,
+  present: true,
+  itemType: null,
+  size: null,
+  targetName: "コースA",
+  author: { id: "author", publicName: "匿名" },
+});
 
-test("groups exact overlaps only", () => {
+test("groups exact point overlaps without merging nearby entries", () => {
   const groups = groupExactCoordinates([
-    post("a", 43, 142),
-    post("b", 43, 142),
-    post("c", 43.00001, 142),
+    entry("a", 43, 142),
+    entry("b", 43, 142),
+    entry("c", 43.00001, 142),
   ]);
   assert.deepEqual(
     groups.map(group => group.posts.map(item => item.id)),
     [["a", "b"], ["c"]],
   );
+  assert.deepEqual(groups[0]?.coordinates, [142, 43]);
 });
+
 test("calculates date windows from observed date", () => {
   assert.equal(
     getPeriodStart("3d", new Date("2026-10-24T03:00:00Z")),

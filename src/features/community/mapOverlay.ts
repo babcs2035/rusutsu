@@ -1,4 +1,4 @@
-import type { PublicPost } from "./contract";
+import type { PublicMapEntry } from "./contract";
 
 export type CommunityPeriod = "3d" | "7d" | "season" | "all";
 
@@ -36,8 +36,8 @@ export function getPeriodStart(
   return start.toISOString().slice(0, 10);
 }
 
-export function groupExactCoordinates(posts: PublicPost[]) {
-  const groups = new Map<string, PublicPost[]>();
+export function groupExactCoordinates(posts: PublicMapEntry[]) {
+  const groups = new Map<string, PublicMapEntry[]>();
   for (const post of posts) {
     if (post.latitude == null || post.longitude == null) continue;
     const key = `${post.longitude},${post.latitude}`;

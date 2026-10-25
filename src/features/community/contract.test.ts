@@ -1,65 +1,154 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { latestRatings, observedOnSchema, postDraftSchema } from "./contract";
+import {
+  latestRatings,
+  observedOnSchema,
+  reportDraftSchema,
+  reportEntrySchema,
+} from "./contract";
 
-test("reports do not need arbitrary fields, but ratings and map submissions are constrained", () => {
+const entry = (kind: "COURSE" | "LIFT" | "MOGUL" | "ITEM", extra = {}) => ({
+  clientKey: crypto.randomUUID(),
+  kind,
+  courseId: null,
+  liftId: null,
+  body: "",
+  snowQualities: [],
+  conditions: [],
+  crowding: null,
+  rating: null,
+  latitude: null,
+  longitude: null,
+  present: null,
+  itemType: null,
+  size: null,
+  waitMinutes: null,
+  ...extra,
+});
+
+test("report entries enforce target and kind-specific fields", () => {
   assert.ok(
-    postDraftSchema.safeParse({
-      kind: "REPORT",
-      observedOn: "2026-01-10",
-      courseId: "a",
-    }).success,
+    reportEntrySchema.safeParse(
+      entry("COURSE", { courseId: "course-a", rating: 4 }),
+    ).success,
   );
   assert.ok(
-    !postDraftSchema.safeParse({
-      kind: "REPORT",
-      observedOn: "2026-01-10",
-      rating: 6,
-    }).success,
+    reportEntrySchema.safeParse(
+      entry("LIFT", { liftId: "lift-a", waitMinutes: 12, crowding: "普通" }),
+    ).success,
   );
   assert.ok(
-    !postDraftSchema.safeParse({
-      kind: "REPORT",
-      observedOn: "2026-01-10",
+    reportEntrySchema.safeParse(
+      entry("MOGUL", {
+        courseId: "course-a",
+        latitude: 43,
+        longitude: 140,
+        present: true,
+        snowQualities: ["柔らかい"],
+      }),
+    ).success,
+  );
+  assert.ok(
+    reportEntrySchema.safeParse(
+      entry("ITEM", {
+        courseId: "course-a",
+        latitude: 43,
+        longitude: 140,
+        present: false,
+        itemType: "キッカー",
+        size: "小さめ",
+      }),
+    ).success,
+  );
+
+  assert.ok(!reportEntrySchema.safeParse(entry("COURSE")).success);
+  assert.ok(!reportEntrySchema.safeParse(entry("LIFT")).success);
+  assert.ok(
+    !reportEntrySchema.safeParse(
+      entry("COURSE", { courseId: "course-a", liftId: "lift-a" }),
+    ).success,
+  );
+  assert.ok(
+    !reportEntrySchema.safeParse(
+      entry("MOGUL", { latitude: 43, longitude: 140 }),
+    ).success,
+  );
+  assert.ok(
+    !reportEntrySchema.safeParse(
+      entry("ITEM", {
+        latitude: 43,
+        longitude: 140,
+        present: true,
+      }),
+    ).success,
+  );
+  assert.ok(
+    !reportEntrySchema.safeParse(
+      entry("LIFT", { liftId: "lift-a", snowQualities: ["パウダー（軽い）"] }),
+    ).success,
+  );
+  assert.ok(
+    !reportEntrySchema.safeParse(entry("COURSE", { rating: 6 })).success,
+  );
+});
+
+test("a visit report can combine all entry kinds and rejects duplicate targets", () => {
+  const entries = [
+    entry("COURSE", { courseId: "course-a", rating: 4 }),
+    entry("LIFT", { liftId: "lift-a", waitMinutes: 5 }),
+    entry("MOGUL", {
+      courseId: "course-a",
       latitude: 43,
       longitude: 140,
-    }).success,
-  );
-  assert.ok(
-    !postDraftSchema.safeParse({
-      kind: "MOGUL",
-      observedOn: "2026-01-10",
       present: true,
-    }).success,
-  );
-  assert.ok(
-    postDraftSchema.safeParse({
-      kind: "MOGUL",
-      observedOn: "2026-01-10",
-      latitude: 43,
-      longitude: 140,
-      present: false,
-    }).success,
-  );
-  assert.ok(
-    !postDraftSchema.safeParse({
-      kind: "ITEM",
-      observedOn: "2026-01-10",
-      latitude: 43,
-      longitude: 140,
+    }),
+    entry("ITEM", {
+      courseId: "course-a",
+      latitude: 43.01,
+      longitude: 140.01,
       present: true,
+      itemType: "レール",
+    }),
+  ];
+  assert.ok(
+    reportDraftSchema.safeParse({
+      observedOn: "2026-01-10",
+      body: "一日の記録",
+      rating: 5,
+      entries,
     }).success,
   );
   assert.ok(
-    !postDraftSchema.safeParse({
-      kind: "REPORT",
+    !reportDraftSchema.safeParse({
       observedOn: "2026-01-10",
-      snowboard: "○",
+      body: "",
+      rating: null,
+      entries: [],
     }).success,
   );
+  assert.ok(
+    !reportDraftSchema.safeParse({
+      observedOn: "2026-01-10",
+      body: "",
+      rating: null,
+      entries: [entries[0], { ...entries[0], clientKey: crypto.randomUUID() }],
+    }).success,
+  );
+  assert.ok(
+    !reportDraftSchema.safeParse({
+      observedOn: "2026-01-10",
+      body: "",
+      rating: null,
+      entries: [entries[0], { ...entries[1], clientKey: entries[0].clientKey }],
+    }).success,
+  );
+});
+
+test("observed dates reject impossible calendar days", () => {
   assert.ok(!observedOnSchema.safeParse("2026-02-30").success);
 });
-test("ratings use latest rated report per author and target, not the latest unrated report", () => {
+
+test("ratings use the latest rated report per author and course", () => {
   const rows = [
     {
       id: "1",
