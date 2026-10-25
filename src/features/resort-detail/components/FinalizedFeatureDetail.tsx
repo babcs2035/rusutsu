@@ -2,6 +2,7 @@
 
 import { List, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CommunityFeed } from "@/features/community/CommunityFeed";
 import type { ElevationProfileMapPoint } from "@/features/map/types";
 import type {
   FinalizedLiftFeature,
@@ -123,6 +124,7 @@ export const FinalizedFeatureDetail = ({
           ) : lift ? (
             <SelectedLiftDetail
               key={lift.id}
+              resortId={resortId}
               lift={lift}
               resortLabelName={resortLabelName}
               sourceUrls={liftSourceUrls}
@@ -132,6 +134,15 @@ export const FinalizedFeatureDetail = ({
               }
             />
           ) : null}
+          {resortId && courseGroup && (
+            <div className="mt-3 border-t pt-3">
+              <CommunityFeed
+                resortId={resortId}
+                courseId={courseGroup.id}
+                compact
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>

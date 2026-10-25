@@ -478,8 +478,8 @@ export const JapanResortMap = memo(function JapanResortMap({
   useEffect(() => {
     if (
       finalizedMapData &&
-      selectedFinalizedFeature?.kind === "course" &&
-      !selectedCourses
+      ((selectedFinalizedFeature?.kind === "course" && !selectedCourses) ||
+        (selectedFinalizedFeature?.kind === "lift" && !selectedLift))
     ) {
       setSelectedFinalizedFeature(null);
       onSelectedElevationProfilePointChange?.(null);
@@ -488,6 +488,7 @@ export const JapanResortMap = memo(function JapanResortMap({
     finalizedMapData,
     selectedFinalizedFeature,
     selectedCourses,
+    selectedLift,
     setSelectedFinalizedFeature,
     onSelectedElevationProfilePointChange,
   ]);

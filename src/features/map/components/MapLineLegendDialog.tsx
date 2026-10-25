@@ -36,9 +36,15 @@ export function MapLineLegendDialog({
             線の色・点線・動きで、コースの特徴やリフトの状態を表しています。
           </DialogDescription>
           <section className="mt-5 text-sm leading-relaxed">
+            <h3 className="font-semibold text-slate-900">ナイターの縁取り</h3>
+            <p className="mt-2">
+              黄色い縁取りはナイター対応を示します。コースは難易度モードで、リフトは難易度・斜度の両モードで表示します。
+            </p>
+          </section>
+          <section className="mt-5 text-sm leading-relaxed">
             <h3 className="font-semibold text-slate-900">コースの線</h3>
             <p className="mt-2">
-              「非圧雪コースを点線表示」がオンのとき、圧雪コースは実線、一部圧雪・非圧雪コースは点線になります。
+              「非圧雪コースを点線表示」がオンのとき、○は実線、△（日によって圧雪）は長い破線、×（非圧雪）は短い破線になります。
             </p>
             <dl className="my-3 grid grid-cols-[3rem_1fr] items-center gap-x-3 gap-y-3 rounded-lg bg-slate-50 p-3">
               <dt>
@@ -56,7 +62,7 @@ export function MapLineLegendDialog({
                 />
                 <span className="sr-only">点線</span>
               </dt>
-              <dd>一部圧雪・非圧雪</dd>
+              <dd>△：長い破線／×：短い破線</dd>
             </dl>
             <p>圧雪情報がないコースも実線で表示します。</p>
             <p className="mt-2">

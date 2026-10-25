@@ -1,12 +1,13 @@
 import { Circle, ExternalLink, Triangle, X } from "lucide-react";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
+import type { PublishedTime } from "@/shared/utils/publishedTime";
 import { sourceUrls } from "../utils/currentConditions";
 import { normalizeIconSymbol, type StatusSymbol } from "../utils/detailMetrics";
 import { withTextFragment } from "../utils/featureSources";
 import {
   formatOperationDate,
-  formatPublishedDate,
+  summarizePublishedDates,
 } from "../utils/operationDates";
 
 const COMPACT_SOURCE_TEXT =
@@ -30,7 +31,7 @@ export function SourceLine({
   label: string;
   time?: string | null;
   urls?: string[];
-  updates?: string[];
+  updates?: Array<string | PublishedTime>;
   showFetched?: boolean;
   showLabel?: boolean;
   showPublished?: boolean;
@@ -40,56 +41,58 @@ export function SourceLine({
   compact?: boolean;
 }) {
   const date = formatOperationDate(time);
-  const published = [
-    ...new Set(updates.map(formatPublishedDate).filter(Boolean)),
-  ];
+  const published = showPublished ? summarizePublishedDates(updates) : [];
   const links = sourceUrls(urls);
-  // 出典リンクと「〜現在」は対応する組として、同じ色の枠でまとめて囲う。
-  const rowCount = Math.max(links.length, showPublished ? published.length : 0);
-  const rows =
-    rowCount > 0
-      ? Array.from({ length: rowCount }, (_, index) => ({
-          url: links[index],
-          publishedDate: published[index],
-        }))
-      : [{ url: undefined, publishedDate: undefined }];
+  if (!links.length && !published.length && !(showFetched && date)) return null;
   return (
     <div
       className={`flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 break-words text-slate-700 ${compact ? COMPACT_SOURCE_TEXT : "text-sm leading-5"}`}
     >
       {showLabel && <span>{label}</span>}
       {showFetched && date && <span>取得: {date}（日本時間）</span>}
-      {rows.map((row, index) => (
+      {(links.length > 0 || published.length > 0) && (
         <span
-          key={row.url ?? row.publishedDate ?? index}
-          className={`inline-flex min-w-0 max-w-full shrink-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 rounded-md border border-blue-100 bg-blue-50 py-0.5 ${compact ? COMPACT_SOURCE_CHIP : "min-h-7 px-2"}`}
+          className={`inline-flex min-w-0 max-w-full flex-wrap items-center gap-x-1.5 gap-y-0.5 rounded-md border border-blue-100 bg-blue-50 py-0.5 ${compact ? COMPACT_SOURCE_CHIP : "min-h-7 px-2"}`}
         >
-          {row.url ? (
+          {/* URLs describe the category; item timestamps are not URL-index pairs. */}
+          {links.map((url, index) => (
             <ExternalLinkComponent
-              href={withTextFragment(row.url, highlights)}
+              key={url}
+              href={withTextFragment(url, highlights)}
               title={
                 highlights.length
                   ? `公式サイトの「${highlights.join("」「")}」の箇所を開く`
-                  : row.url
+                  : url
               }
               className="inline-flex shrink-0 items-center gap-0.5 font-medium text-blue-700 underline underline-offset-2 hover:text-blue-800"
-              aria-label={`${label}の出典を開く${rows.length > 1 ? `（${index + 1}）` : ""}`}
+              aria-label={`${label}の出典を開く${links.length > 1 ? `（${index + 1}）` : ""}`}
             >
-              出典{rows.length > 1 ? index + 1 : ""}
+              出典{links.length > 1 ? index + 1 : ""}
+              {highlights.length > 0
+                ? `（表記：${[...new Set(highlights)].join("・")}）`
+                : ""}
               <ExternalLink
                 className={compact ? COMPACT_SOURCE_ICON : "size-3.5"}
               />
             </ExternalLinkComponent>
-          ) : (
-            <span className="font-medium text-blue-700">出典未登録</span>
-          )}
-          {showPublished && row.publishedDate && (
-            <span className="min-w-0 max-w-full text-blue-800">
-              {row.publishedDate}
+          ))}
+          {published.map(text => (
+            <span
+              key={text}
+              title="更新日時（複数の場合は最古〜最新）"
+              className="max-w-full text-blue-800"
+            >
+              {text.split(/(?<=〜)| /u).map((part, index, parts) => (
+                <Fragment key={part}>
+                  {index > 0 &&
+                    (parts[index - 1].endsWith("〜") ? <wbr /> : " ")}
+                  <span className="whitespace-nowrap">{part}</span>
+                </Fragment>
+              ))}
             </span>
-          )}
+          ))}
         </span>
-      ))}
+      )}
     </div>
   );
 }

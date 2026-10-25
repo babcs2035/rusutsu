@@ -6,7 +6,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogClose,
-  DialogDescription,
   DialogOverlay,
   DialogPortal,
   DialogTitle,
@@ -27,56 +26,41 @@ export function MapSettingsDialog({
   variant,
   onBackgroundChange,
   onStatusChange,
+  courseColorMode,
+  onCourseColorModeChange,
 }: {
   settings: MapDisplaySettings;
   onChange: (settings: MapDisplaySettings) => void;
   variant: MapTileVariant;
   onBackgroundChange: (variant: MapTileVariant, monochrome: boolean) => void;
   onStatusChange: (status: FinalizedFeatureStatus, checked: boolean) => void;
+  courseColorMode: "difficulty" | "slope";
+  onCourseColorModeChange: (mode: "difficulty" | "slope") => void;
 }) {
   return (
     <Dialog>
       <DialogTrigger
         aria-label="地図の設定"
-        className="flex h-6 shrink-0 items-center justify-center gap-1 rounded-md border border-gray-200 bg-white px-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-blue-600"
+        className="flex h-6 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-gray-300 bg-white px-2 text-xs font-bold text-black shadow-sm hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-blue-600 md:h-8 md:text-sm"
       >
-        <Settings className="size-[18px]" aria-hidden="true" />
+        <Settings
+          className="size-[18px]"
+          strokeWidth={2.5}
+          aria-hidden="true"
+        />
         設定
       </DialogTrigger>
       <DialogPortal>
         <DialogOverlay className="z-[900]" />
         <DialogPrimitive.Popup className="fixed left-1/2 top-1/2 z-[901] max-h-[85dvh] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-slate-200 bg-white p-5 text-slate-700 shadow-xl outline-none">
           <DialogTitle className="pr-9 text-base font-semibold text-slate-900">
-            地図の設定
+            設定
           </DialogTitle>
-          <DialogDescription className="mt-2 text-xs">
-            変更は地図にすぐ反映されます。
-          </DialogDescription>
-          <div className="my-4 divide-y divide-slate-100">
-            {(
-              [
-                { key: "showCourseNames", label: "コース名を表示" },
-                { key: "showLiftNames", label: "リフト名を表示" },
-                { key: "showUngroomed", label: "非圧雪コースを点線表示" },
-              ] as const
-            ).map(item => (
-              <label
-                key={item.key}
-                className="flex min-h-12 cursor-pointer items-center justify-between gap-4 text-sm"
-              >
-                {item.label}
-                <Switch
-                  checked={settings[item.key]}
-                  onCheckedChange={checked =>
-                    onChange({ ...settings, [item.key]: checked })
-                  }
-                />
-              </label>
-            ))}
-          </div>
-          <fieldset className="mb-5">
-            <legend className="mb-2 text-sm font-semibold">地図の表示</legend>
-            <div className="flex flex-col gap-2">
+          <fieldset className="my-4 border-t border-slate-100 pt-3">
+            <legend className="mb-2 text-sm font-semibold md:text-base">
+              地図
+            </legend>
+            <div className="grid grid-cols-2 gap-1.5">
               <SegmentedControl
                 options={[
                   { value: "pale", label: "標準" },
@@ -86,7 +70,7 @@ export function MapSettingsDialog({
                 onChange={value =>
                   onBackgroundChange(value, settings.monochrome)
                 }
-                itemClassName="min-h-11 flex-1 px-4 text-sm"
+                itemClassName="h-8 flex-1 whitespace-nowrap px-1 text-xs md:px-2 md:text-sm"
                 ariaLabel={option => `背景を${option.label}にする`}
               />
               <SegmentedControl
@@ -98,43 +82,125 @@ export function MapSettingsDialog({
                 onChange={value =>
                   onBackgroundChange(variant, value === "mono")
                 }
-                itemClassName="min-h-11 flex-1 px-4 text-sm"
+                itemClassName="h-8 flex-1 whitespace-nowrap px-1 text-xs md:px-2 md:text-sm"
                 ariaLabel={option => `背景を${option.label}にする`}
               />
             </div>
           </fieldset>
-          <fieldset>
-            <legend className="mb-2 text-sm font-semibold">
-              表示するコースの営業状況
+          <fieldset className="border-t border-slate-100 py-3">
+            <legend className="mb-1 text-sm font-semibold md:text-base">
+              コース
             </legend>
-            <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
-              {COURSE_STATUS_OPTIONS.map(option => (
-                <label
-                  key={option.value}
-                  className="flex min-h-11 cursor-pointer items-center gap-2 rounded-md border border-slate-200 px-3 text-sm hover:bg-slate-50"
-                >
-                  <Checkbox
-                    aria-label={
-                      option.value === "unknown" ? option.label : undefined
-                    }
-                    checked={settings.courseStatuses[option.value]}
+            <label className="flex min-h-9 cursor-pointer items-center justify-between gap-3 text-sm font-medium md:text-base">
+              コースを表示
+              <Switch
+                checked={settings.showCourses}
+                onCheckedChange={checked =>
+                  onChange({ ...settings, showCourses: checked })
+                }
+              />
+            </label>
+            {settings.showCourses && (
+              <div className="mt-1 divide-y divide-slate-100">
+                {settings.showCourseNames && (
+                  <div className="pb-2">
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {COURSE_STATUS_OPTIONS.map(option => (
+                        <label
+                          key={option.value}
+                          className="flex min-h-8 cursor-pointer items-center gap-1.5 rounded-md border border-slate-200 px-2 text-xs whitespace-nowrap hover:bg-slate-50 md:text-sm"
+                        >
+                          <Checkbox
+                            aria-label={
+                              option.value === "unknown"
+                                ? option.label
+                                : undefined
+                            }
+                            checked={settings.courseStatuses[option.value]}
+                            onCheckedChange={checked =>
+                              onStatusChange(option.value, checked === true)
+                            }
+                          />
+                          <span aria-hidden="true">
+                            {option.value === "unknown" ? (
+                              <span className="font-semibold text-slate-700">
+                                不明
+                              </span>
+                            ) : (
+                              <StatusMark
+                                symbol={option.symbol as "○" | "△" | "×"}
+                              />
+                            )}
+                          </span>
+                          {option.value !== "unknown" && option.label}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <label className="flex min-h-9 cursor-pointer items-center justify-between gap-3 text-sm md:text-base">
+                  コース名を表示
+                  <Switch
+                    checked={settings.showCourseNames}
                     onCheckedChange={checked =>
-                      onStatusChange(option.value, checked === true)
+                      onChange({ ...settings, showCourseNames: checked })
                     }
                   />
-                  <span aria-hidden="true">
-                    {option.value === "unknown" ? (
-                      <span className="text-sm font-semibold text-slate-700">
-                        不明
-                      </span>
-                    ) : (
-                      <StatusMark symbol={option.symbol as "○" | "△" | "×"} />
-                    )}
-                  </span>
-                  {option.value !== "unknown" && option.label}
                 </label>
-              ))}
-            </div>
+                <label className="flex min-h-9 cursor-pointer items-center justify-between gap-3 text-sm md:text-base">
+                  非圧雪コースを点線表示
+                  <Switch
+                    checked={settings.showUngroomed}
+                    onCheckedChange={checked =>
+                      onChange({ ...settings, showUngroomed: checked })
+                    }
+                  />
+                </label>
+                <div className="grid grid-cols-2 items-center gap-1.5 py-2">
+                  <p className="whitespace-nowrap text-sm md:text-base">
+                    コース色分け
+                  </p>
+                  <SegmentedControl
+                    className="min-w-0"
+                    options={[
+                      { value: "difficulty", label: "難易度" },
+                      { value: "slope", label: "斜度" },
+                    ]}
+                    value={courseColorMode}
+                    onChange={onCourseColorModeChange}
+                    itemClassName="h-8 flex-1 whitespace-nowrap px-1 text-xs md:px-2 md:text-sm"
+                    ariaLabel={option =>
+                      `コースの色分けを${option.label}に切り替え`
+                    }
+                  />
+                </div>
+              </div>
+            )}
+          </fieldset>
+          <fieldset className="border-t border-slate-100 pt-3">
+            <legend className="mb-1 text-sm font-semibold md:text-base">
+              リフト
+            </legend>
+            <label className="flex min-h-9 cursor-pointer items-center justify-between gap-3 text-sm font-medium md:text-base">
+              リフトを表示
+              <Switch
+                checked={settings.showLifts}
+                onCheckedChange={checked =>
+                  onChange({ ...settings, showLifts: checked })
+                }
+              />
+            </label>
+            {settings.showLifts && (
+              <label className="flex min-h-9 cursor-pointer items-center justify-between gap-3 border-t border-slate-100 text-sm md:text-base">
+                リフト名を表示
+                <Switch
+                  checked={settings.showLiftNames}
+                  onCheckedChange={checked =>
+                    onChange({ ...settings, showLiftNames: checked })
+                  }
+                />
+              </label>
+            )}
           </fieldset>
           <DialogClose
             aria-label="設定を閉じる"

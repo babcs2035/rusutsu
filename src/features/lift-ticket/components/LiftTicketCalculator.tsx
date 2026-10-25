@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { ReportErrorButton } from "@/features/corrections/ReportErrorButton";
 import { filtersSchema } from "@/features/map/session/storage";
 import { useScreenState } from "@/features/map/session/useScreenState";
 import type { LiftTicketData, LiftTicketSearchInput } from "../types";
@@ -11,6 +12,7 @@ import {
   selectLiftTicketSeason,
 } from "../utils/calculateLiftTicket";
 import { calculateRentalPlan, rentalOptionsOf } from "../utils/rental";
+import { calculateRentalBundle } from "../utils/rentalBundle";
 import { TicketPartyEditor } from "./TicketPartyEditor";
 import { TicketPlanCard } from "./TicketPlanCard";
 
@@ -45,6 +47,14 @@ export const LiftTicketCalculator = ({
     () => (data && rentalOptions ? calculateRentalPlan(data, input) : null),
     [data, input, rentalOptions],
   );
+  // リフト券とレンタルのセット券が、別々に買うより安ければ使う
+  const bundle = useMemo(
+    () =>
+      data && plan && rental
+        ? calculateRentalBundle(data, input, plan, rental)
+        : null,
+    [data, input, plan, rental],
+  );
 
   return (
     <section className="rounded-2xl bg-gray-50 border border-gray-200 p-4 md:p-5">
@@ -61,7 +71,26 @@ export const LiftTicketCalculator = ({
           rentalOptions={rentalOptions}
           ageRequiredGroupIds={plan ? ageRequiredGroupIdsOf(plan) : []}
         />
-        {plan && <TicketPlanCard plan={plan} rental={rental} />}
+        {plan && <TicketPlanCard plan={plan} rental={rental} bundle={bundle} />}
+        {data && plan && (
+          <ReportErrorButton
+            resortId={data.resort.id}
+            kind="ticket"
+            label="この料金が間違っている"
+            context={{
+              type: "calculation",
+              input,
+              plan,
+              rental,
+              bundle,
+              seasonId: data.season.id,
+              schemaVersion: data.schema_version,
+              offers: data.offers,
+              calendars: data.calendars,
+              fees: data.fees,
+            }}
+          />
+        )}
       </div>
     </section>
   );

@@ -38,7 +38,7 @@ const FIELD_LABELS: Record<string, string> = {
 };
 const PISTE_LABELS: Record<string, string> = {
   "○": "圧雪",
-  "△": "一部圧雪",
+  "△": "日によって圧雪",
   "×": "非圧雪",
 };
 

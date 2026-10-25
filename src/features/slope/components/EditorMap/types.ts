@@ -14,6 +14,8 @@ export type EditorMapLine = {
   id: string;
   name: string;
   coordinates: LngLat[];
+  kind?: "slope" | "lift";
+  properties?: Record<string, unknown>;
 };
 
 /** 線上の一点。どの線のどこを指しているか */

@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Allows an isolated QA server alongside the developer's existing server.
+  distDir: process.env.RUSUTSU_DIST_DIR || ".next",
   basePath: "/rusutsu",
   async headers() {
     return [
@@ -30,7 +32,7 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: {
-      bodySizeLimit: "6mb",
+      bodySizeLimit: "64mb",
       allowedOrigins: ["ktak.dev", "*.trycloudflare.com"],
     },
   },

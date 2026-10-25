@@ -36,6 +36,23 @@ test("deployment replaces an old app cron with the daily 14:00 JST schedule", ()
   assert.equal(output.CRAWL_LATEST_CRON, "0 14 * * *");
 });
 
+test("community moderation settings survive deploys and explicit updates", () => {
+  const containers = existingContainers();
+  containers[1].Config.Env.push(
+    "COMMUNITY_MODERATION_URL=http://moderation:8080/v1/moderations",
+  );
+  const preserved = prepareEnvironment(containers, settings);
+  assert.equal(
+    preserved.COMMUNITY_MODERATION_URL,
+    "http://moderation:8080/v1/moderations",
+  );
+  const changed = prepareEnvironment(containers, {
+    ...settings,
+    OPENAI_API_KEY: "test-provider-key",
+  });
+  assert.equal(changed.OPENAI_API_KEY, "test-provider-key");
+});
+
 test("explicit GitHub URL overrides the old origin while API scopes remain independent", () => {
   const output = prepareEnvironment(existingContainers(), {
     ...settings,

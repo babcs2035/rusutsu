@@ -22,6 +22,7 @@ import type {
 } from "@/features/lift-ticket/types";
 import { TICKET_PARTY_CATEGORY_LABELS } from "@/features/lift-ticket/utils/calculateLiftTicket";
 import type { TicketRentalResult } from "@/features/lift-ticket/utils/rental";
+import type { TicketBundleResult } from "@/features/lift-ticket/utils/rentalBundle";
 import { cn } from "@/lib/utils";
 import { CompareResortButton } from "@/shared/components/CompareResortButton";
 import { CopyResortNameButton } from "@/shared/components/CopyResortNameButton";
@@ -50,6 +51,7 @@ type ListLiftTicketResults =
         {
           ticket: TicketCalculationResult | null;
           rental: TicketRentalResult | null;
+          bundle: TicketBundleResult | null;
         }
       >;
     };
@@ -142,10 +144,15 @@ const conditionsLabel = (input: LiftTicketSearchInput) => {
 const priceText = (
   ticket: TicketCalculationResult | null | undefined,
   rental: TicketRentalResult | null | undefined,
+  bundle: TicketBundleResult | null | undefined,
 ) => {
   if (!ticket) return "不明";
   if (["unavailable", "outside_season", "closed"].includes(ticket.status)) {
     return ticket.status === "outside_season" ? "営業期間外" : "不明";
+  }
+  // セット券（リフト券＋レンタル）のほうが安いときは、その合計を使う
+  if (bundle && bundle.lines.length > 0 && bundle.total != null) {
+    return `¥${bundle.total.toLocaleString("ja-JP")}`;
   }
   const ticketAmount = ticket.ticketTotal ?? ticket.knownTicketTotal;
   const rentalAmount = rental?.total ?? rental?.knownTotal ?? 0;
@@ -402,6 +409,10 @@ const SkiResortListItem = memo(
       liftTicketResortId && liftTicketResults.status === "done"
         ? liftTicketResults.results[liftTicketResortId]?.ticket
         : null;
+    const bundleResult =
+      liftTicketResortId && liftTicketResults.status === "done"
+        ? liftTicketResults.results[liftTicketResortId]?.bundle
+        : null;
 
     return (
       <li className="block">
@@ -502,7 +513,7 @@ const SkiResortListItem = memo(
                 label="料金"
                 value={
                   liftTicketResults.status === "done"
-                    ? priceText(ticketResult, rentalResult)
+                    ? priceText(ticketResult, rentalResult, bundleResult)
                     : liftTicketResults.status === "loading"
                       ? "計算中…"
                       : liftTicketResults.status === "error"

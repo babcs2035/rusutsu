@@ -45,6 +45,7 @@
     "react-leaflet": "^5.0.0",
     "react-leaflet-markercluster": "5.0.0-rc.0",
     "recharts": "^3.10.1",
+    "sharp": "0.35.3",
     "sonner": "^2.0.8",
     "tailwind-merge": "^3.6.0",
     "ts-tqdm": "^0.8.6",

@@ -11,6 +11,8 @@ export type FeatureSourceMatch = {
 };
 
 export type FeatureStatusSource = {
+  snapshotIds?: string[];
+  entityIds?: string[];
   urls: string[];
   update: string | null;
   matches: FeatureSourceMatch[];
@@ -38,6 +40,8 @@ export function courseStatusSources(
       : null;
     const section = originalSection ?? course.sectionName;
     const source = {
+      snapshotIds: course.statusSnapshotId ? [course.statusSnapshotId] : [],
+      entityIds: course.id ? [course.id] : [],
       urls: urls.length ? urls : sourceUrls(fallback),
       update: course.properties.update,
       matches: [
@@ -56,7 +60,14 @@ export function courseStatusSources(
     const unique = new Map(
       matches.map(match => [JSON.stringify(match), match]),
     );
-    sources.set(key, { ...source, matches: [...unique.values()] });
+    sources.set(key, {
+      ...source,
+      snapshotIds: [
+        ...new Set([...(previous?.snapshotIds ?? []), ...source.snapshotIds]),
+      ],
+      entityIds: [...(previous?.entityIds ?? []), ...source.entityIds],
+      matches: [...unique.values()],
+    });
   }
   return [...sources.values()];
 }
@@ -68,6 +79,8 @@ export function liftStatusSources(
   return [
     {
       urls: sourceUrls(urls),
+      snapshotIds: lift.statusSnapshotId ? [lift.statusSnapshotId] : [],
+      entityIds: [lift.id],
       update: lift.properties.update,
       matches: [{ mapName: lift.name, officialNames: matchingNames(lift) }],
     },

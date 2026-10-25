@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { parsePublishedTime } from "../../shared/utils/publishedTime";
 import { crawlLatestRunInputSchema } from "./contract";
 
 type TestCategory = {
@@ -93,6 +94,41 @@ test("accepts a complete LIVE run and applies safe defaults", () => {
   assert.equal(result.data.categories.length, 5);
   assert.deepEqual(result.data.issues, []);
   assert.deepEqual(result.data.artifacts, []);
+});
+
+test("accepts matching updateTime metadata and rejects inconsistent dates", () => {
+  const payload = validPayload();
+  const expected = parsePublishedTime("09:00");
+  assert.ok(expected);
+  const weather = payload.categories[2]?.data as Record<
+    string,
+    Record<string, unknown>
+  >;
+  const weatherPoint = weather.mountain;
+  assert.ok(weatherPoint);
+  weatherPoint.updateTime = expected;
+  const parsed = crawlLatestRunInputSchema.safeParse(payload);
+  assert.equal(parsed.success, true);
+  if (parsed.success) {
+    const parsedWeather = parsed.data.categories.find(
+      item => item.kind === "WEATHER",
+    );
+    assert.ok(parsedWeather);
+    assert.deepEqual(
+      (parsedWeather.data as typeof weather).mountain?.updateTime,
+      expected,
+    );
+  }
+
+  weatherPoint.updateTime = { ...expected, day: 31 };
+  assert.equal(crawlLatestRunInputSchema.safeParse(payload).success, false);
+
+  weatherPoint.updateTime = {
+    ...expected,
+    month: 2,
+    day: 30,
+  };
+  assert.equal(crawlLatestRunInputSchema.safeParse(payload).success, false);
 });
 
 test("accepts an explicitly validated empty comment", () => {

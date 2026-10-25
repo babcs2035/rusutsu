@@ -171,6 +171,8 @@ test("地図設定の4状態・表示スイッチを保存し、旧形式の保�
   };
   assert.ok(mapSessionSchema.safeParse(old).success);
   const displaySettings = {
+    showCourses: false,
+    showLifts: false,
     showCourseNames: false,
     showLiftNames: true,
     showUngroomed: false,
@@ -185,6 +187,16 @@ test("地図設定の4状態・表示スイッチを保存し、旧形式の保�
   assert.deepEqual(
     mapSessionSchema.parse({ ...old, displaySettings }).displaySettings,
     displaySettings,
+  );
+  const {
+    showCourses: _courses,
+    showLifts: _lifts,
+    ...legacySettings
+  } = displaySettings;
+  assert.deepEqual(
+    mapSessionSchema.parse({ ...old, displaySettings: legacySettings })
+      .displaySettings,
+    { ...displaySettings, showCourses: true, showLifts: true },
   );
   assert.equal(
     mapSessionSchema.safeParse({

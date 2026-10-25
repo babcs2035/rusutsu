@@ -22,6 +22,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  getCommunityAccount,
+  saveCommunityProfile,
+} from "@/features/community/actions";
+import { CommunityNotificationsLink } from "@/features/community/CommunityNotificationsLink";
+import {
   publicLogout,
   readLoginHistory,
   startPublicLogin,
@@ -88,6 +93,13 @@ function FavoritesState({
     step: "choice" | "browser";
   } | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [needsCommunityName, setNeedsCommunityName] = useState(false);
+  const [communityNameMode, setCommunityNameMode] = useState<
+    "GOOGLE" | "NICKNAME" | "ANONYMOUS"
+  >("ANONYMOUS");
+  const [communityNickname, setCommunityNickname] = useState("");
+  const [communitySetupError, setCommunitySetupError] = useState("");
+  const checkedCommunityUser = useRef<string | null>(null);
   const [expired, setExpired] = useState(false);
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
   const busy = useRef(new Set<string>());
@@ -110,6 +122,22 @@ function FavoritesState({
     localStorage.setItem(FAVORITES_KEY, JSON.stringify(value));
     local.current = value;
   }, []);
+  useEffect(() => {
+    if (!userId) {
+      checkedCommunityUser.current = null;
+      setNeedsCommunityName(false);
+      return;
+    }
+    if (checkedCommunityUser.current === userId) return;
+    checkedCommunityUser.current = userId;
+    void getCommunityAccount().then(result => {
+      if (!result.ok || result.data?.publicName) return;
+      setNeedsCommunityName(true);
+      setCommunityNameMode(result.data?.nameMode ?? "ANONYMOUS");
+      setCommunityNickname(result.data?.publicName ?? "");
+      setAccountOpen(true);
+    });
+  }, [userId]);
   const refresh = useCallback(() => {
     if (status === "loading" || busy.current.size) return;
     const request = ++generation.current;
@@ -303,6 +331,63 @@ function FavoritesState({
             <br />
             {session?.user?.email}
           </DialogDescription>
+          <CommunityNotificationsLink />
+          {needsCommunityName && (
+            <section className="space-y-2 rounded-lg border border-sky-200 bg-sky-50 p-3">
+              <h3 className="font-semibold">
+                投稿に使う公開名を選んでください
+              </h3>
+              <p className="text-xs text-gray-700">
+                Googleの名前は「Googleアカウント名」を選んだ場合だけ公開されます。
+              </p>
+              {(
+                [
+                  ["GOOGLE", "Googleアカウント名"],
+                  ["NICKNAME", "ニックネーム"],
+                  ["ANONYMOUS", "匿名"],
+                ] as const
+              ).map(([mode, label]) => (
+                <label key={mode} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    checked={communityNameMode === mode}
+                    onChange={() => setCommunityNameMode(mode)}
+                  />
+                  {label}
+                </label>
+              ))}
+              {communityNameMode === "NICKNAME" && (
+                <input
+                  className="h-9 w-full rounded border bg-white px-2 text-sm"
+                  value={communityNickname}
+                  onChange={event => setCommunityNickname(event.target.value)}
+                  maxLength={40}
+                  placeholder="ニックネーム"
+                />
+              )}
+              <Button
+                size="sm"
+                disabled={
+                  communityNameMode === "NICKNAME" && !communityNickname.trim()
+                }
+                onClick={() =>
+                  startTransition(async () => {
+                    const result = await saveCommunityProfile(
+                      communityNameMode,
+                      communityNickname,
+                    );
+                    if (result.ok) setNeedsCommunityName(false);
+                    else setCommunitySetupError(result.error);
+                  })
+                }
+              >
+                公開名を保存
+              </Button>
+              {communitySetupError && (
+                <p className="text-xs text-red-700">{communitySetupError}</p>
+              )}
+            </section>
+          )}
           <Button
             variant="outline"
             onClick={() => {

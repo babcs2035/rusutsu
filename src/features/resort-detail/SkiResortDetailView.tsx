@@ -4,6 +4,8 @@ import { Portal } from "@radix-ui/react-portal";
 import type { ComponentType } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { z } from "zod";
+import { CommunityFeed } from "@/features/community/CommunityFeed";
+import { CorrectionLink } from "@/features/corrections/CorrectionLink";
 import { useScreenState } from "@/features/map/session/useScreenState";
 import type {
   ElevationProfileMapPoint,
@@ -69,13 +71,13 @@ type Props = {
   isDesktopMapExpanded?: boolean;
 };
 
-const tabSchema = z.enum(["ゲレンデ", "SNS", "料金", "天気"]);
+const tabSchema = z.enum(["ゲレンデ", "SNS", "料金", "天気", "投稿"]);
 const terrainSchema = z.enum(["コース", "リフト"]);
 const areaSchema = z.enum(["地図", "ゲレンデマップ"]);
 const booleanSchema = z.boolean();
 const originSchema = z.enum(["map", "list"]);
 
-const TABS = ["ゲレンデ", "SNS", "料金", "天気"];
+const TABS = ["ゲレンデ", "SNS", "料金", "天気", "投稿"];
 const MAP_AREA_TABS = ["地図", "ゲレンデマップ"] as const;
 
 /**
@@ -386,6 +388,14 @@ export const SkiResortDetailView = ({
       </div>
       {activeTab === "料金" && <TicketsTab resort={resort} />}
       {activeTab === "天気" && <WeatherTab resort={resort} />}
+      {activeTab === "投稿" && (
+        <div className="p-3 text-gray-700 md:p-4">
+          <CommunityFeed
+            resortId={resort.id}
+            headerActions={<CorrectionLink resortId={resort.id} />}
+          />
+        </div>
+      )}
     </div>
   );
 

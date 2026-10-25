@@ -10,6 +10,13 @@ export const loginKeys = [
   "GOOGLE_CLIENT_SECRET",
   "ADMIN_EMAILS",
 ];
+export const communityKeys = [
+  "OPENAI_API_KEY",
+  "COMMUNITY_MODERATION_URL",
+  "COMMUNITY_MODERATION_TOKEN",
+  "COMMUNITY_MODERATION_MODEL",
+  "CONTRIBUTION_TRUST_PROXY",
+];
 
 export function validateSettings(settings) {
   for (const key of tokenKeys) {
@@ -24,10 +31,9 @@ export function validateSettings(settings) {
   }
   if (settings.DATA_API_BASE_URL) publicUrl(settings.DATA_API_BASE_URL);
   return Object.fromEntries(
-    [...tokenKeys, ...loginKeys, "DATA_API_BASE_URL"].map(key => [
-      key,
-      settings[key] || "",
-    ]),
+    [...tokenKeys, ...loginKeys, ...communityKeys, "DATA_API_BASE_URL"].map(
+      key => [key, settings[key] || ""],
+    ),
   );
 }
 

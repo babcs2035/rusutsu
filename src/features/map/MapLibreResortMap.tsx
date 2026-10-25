@@ -25,6 +25,12 @@ import {
   OPEN_COURSE_STATUSES,
 } from "./utils/mapDisplaySettings";
 import "maplibre-gl/dist/maplibre-gl.css";
+import {
+  CommunityMapControls,
+  CommunityMapFilters,
+  CommunityMapOverlay,
+} from "@/features/community/CommunityMapOverlay";
+import type { CommunityPeriod } from "@/features/community/mapOverlay";
 import { FinalizedMapToolbar } from "./components/FinalizedMapToolbar";
 import { MapCourseStatusControl } from "./components/MapCourseStatusControl";
 import { MapErrorBoundary } from "./components/MapErrorBoundary";
@@ -35,6 +41,7 @@ import {
   DESKTOP_LABEL_SHOW_ZOOM,
   FINALIZED_RESORT_LABEL_HIDE_MIN_ZOOM,
   MAP_BOTTOM_TOOLBAR_ATTRIBUTE,
+  MAP_TOP_CONTROLS_ATTRIBUTE,
   MOBILE_INITIAL_ZOOM,
   MOBILE_LABEL_ADVANCED_LAYOUT_ZOOM,
   MOBILE_LABEL_SHOW_ZOOM,
@@ -51,6 +58,7 @@ import {
   FINALIZED_SOURCE,
   type FinalizedStyleState,
 } from "./maplibre/finalizedLayers";
+import { MapAttributionSlot } from "./maplibre/MapAttributionSlot";
 import { MapLibreControls } from "./maplibre/MapLibreControls";
 import { MapLibreResortActionPopup } from "./maplibre/MapLibreResortActionPopup";
 import { MapLocationControl } from "./maplibre/MapLocationControl";
@@ -222,6 +230,9 @@ function MapLibreResortMapContent({
       ? true
       : window.matchMedia(COARSE_POINTER_MEDIA_QUERY).matches,
   );
+  const [showCommunityPosts, setShowCommunityPosts] = useState(false);
+  const [communityPeriod, setCommunityPeriod] = useState<CommunityPeriod>("7d");
+  const [communityKind, setCommunityKind] = useState<"MOGUL" | "ITEM">("MOGUL");
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [isInteracting, setIsInteracting] = useState(false);
   // 詳細地図は最初のフレームから写真＋斜度で作る。
@@ -447,6 +458,7 @@ function MapLibreResortMapContent({
 
   const {
     allFinalizedCourses,
+    allFinalizedLifts,
     finalizedCourses,
     finalizedLifts,
     hasFinalizedCourses,
@@ -465,8 +477,8 @@ function MapLibreResortMapContent({
   useEffect(() => {
     if (
       finalizedMapData &&
-      selectedFinalizedFeature?.kind === "course" &&
-      !selectedCourses
+      ((selectedFinalizedFeature?.kind === "course" && !selectedCourses) ||
+        (selectedFinalizedFeature?.kind === "lift" && !selectedLift))
     ) {
       setSelectedFinalizedFeature(null);
       onSelectedElevationProfilePointChange?.(null);
@@ -475,6 +487,7 @@ function MapLibreResortMapContent({
     finalizedMapData,
     selectedFinalizedFeature,
     selectedCourses,
+    selectedLift,
     setSelectedFinalizedFeature,
     onSelectedElevationProfilePointChange,
   ]);
@@ -951,9 +964,9 @@ function MapLibreResortMapContent({
     () =>
       getCoordinateBounds([
         ...allFinalizedCourses.flatMap(course => course.coordinates),
-        ...finalizedLifts.flatMap(lift => lift.coordinates),
+        ...allFinalizedLifts.flatMap(lift => lift.coordinates),
       ]),
-    [allFinalizedCourses, finalizedLifts],
+    [allFinalizedCourses, allFinalizedLifts],
   );
 
   useResortViewport({
@@ -1003,9 +1016,23 @@ function MapLibreResortMapContent({
     animate: animateViewport,
   });
 
+  const showCommunityControls =
+    !!selectedResortId &&
+    !embedded &&
+    !isPreviewMap &&
+    interactionMode !== "compare";
+  const hasBottomToolbar =
+    !isPreviewMap && showMapToolbar && hasFinalizedFeatures;
+  const showBottomToolbar = hasBottomToolbar && isReady;
+  const showBottomPreviewStatus =
+    isMobile &&
+    isPreviewMap &&
+    !embedded &&
+    showMapOpenOnlyControl &&
+    Boolean(hasFinalizedCourses || mapTopControls);
   const toolbarRightOverlap = useDetailPanelRightOverlap(
     surfaceRef,
-    !isPreviewMap && hasFinalizedFeatures,
+    showBottomToolbar,
   );
 
   return (
@@ -1078,36 +1105,109 @@ function MapLibreResortMapContent({
           onUserMapZoomInteraction={onUserMapZoomInteraction}
         />
       )}
-      {(hasFinalizedCourses || mapTopControls) &&
-        showMapOpenOnlyControl &&
-        !embedded && (
-          <MapCourseStatusControl
-            enabled={hasCourseOperatingData(finalizedMapData)}
-            checked={showOpenOnly}
-            settings={mapDisplaySettings}
-            onCheckedChange={setShowOpenOnly}
-            onSettingsChange={setMapDisplaySettings}
-            shared={mapStatusFilterShared}
-            leading={mapTopControls}
-            compact={isPreviewMap}
-            className={
-              isDetailMap && mapPresentation === "default"
-                ? "top-3 left-16"
-                : mapPresentation === "expanded"
-                  ? "top-[calc(env(safe-area-inset-top,0px)+0.75rem)]"
-                  : undefined
-            }
+      {hasBottomToolbar || showBottomPreviewStatus
+        ? mapTopControls && (
+            <div
+              {...{ [MAP_TOP_CONTROLS_ATTRIBUTE]: "true" }}
+              className="pointer-events-none absolute top-2 left-2 z-[760]"
+            >
+              <div className="pointer-events-auto">{mapTopControls}</div>
+            </div>
+          )
+        : (hasFinalizedCourses || mapTopControls) &&
+          showMapOpenOnlyControl &&
+          !embedded && (
+            <MapCourseStatusControl
+              enabled={hasCourseOperatingData(finalizedMapData)}
+              checked={showOpenOnly}
+              settings={mapDisplaySettings}
+              onCheckedChange={setShowOpenOnly}
+              onSettingsChange={setMapDisplaySettings}
+              shared={mapStatusFilterShared}
+              leading={mapTopControls}
+              compact={isPreviewMap}
+              className={
+                isDetailMap && mapPresentation === "default"
+                  ? "top-3 left-16"
+                  : mapPresentation === "expanded"
+                    ? "top-[calc(env(safe-area-inset-top,0px)+0.75rem)]"
+                    : undefined
+              }
+            />
+          )}
+      {showBottomPreviewStatus && (
+        <MapCourseStatusControl
+          placement="bottom"
+          compact
+          enabled={hasCourseOperatingData(finalizedMapData)}
+          checked={showOpenOnly}
+          settings={mapDisplaySettings}
+          onCheckedChange={setShowOpenOnly}
+          onSettingsChange={setMapDisplaySettings}
+        />
+      )}
+      {isReady &&
+        map &&
+        selectedResortId &&
+        !embedded &&
+        !isPreviewMap &&
+        interactionMode !== "compare" && (
+          <CommunityMapOverlay
+            map={map}
+            resortId={selectedResortId}
+            enabled={showCommunityPosts}
+            period={communityPeriod}
+            kind={communityKind}
           />
         )}
-      {!isPreviewMap && hasFinalizedFeatures && showMapToolbar && (
+      {showBottomToolbar && (
         <div
           // 高さは地図側が「コースを潜らせない余白」として読み取る
           {...{ [MAP_BOTTOM_TOOLBAR_ATTRIBUTE]: "true" }}
-          className="pointer-events-none absolute inset-x-0 bottom-0 z-[750] flex justify-end pb-[calc(env(safe-area-inset-bottom,0px)+1.5rem)] pl-2"
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-[750] flex justify-end pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)] pl-2"
           style={{ paddingRight: `${toolbarRightOverlap + 8}px` }}
         >
-          <div className="pointer-events-auto w-full max-w-[27rem]">
+          <div
+            className="pointer-events-auto flex w-full max-w-[27rem] flex-col gap-1"
+            data-map-bottom-panel="true"
+          >
+            <div
+              className="flex min-h-7 w-full flex-nowrap items-center gap-1"
+              data-map-action-row="true"
+            >
+              {showMapOpenOnlyControl && !embedded && (
+                <MapCourseStatusControl
+                  inline
+                  enabled={hasCourseOperatingData(finalizedMapData)}
+                  checked={showOpenOnly}
+                  settings={mapDisplaySettings}
+                  onCheckedChange={setShowOpenOnly}
+                  onSettingsChange={setMapDisplaySettings}
+                />
+              )}
+              {showCommunityControls && selectedResortId && (
+                <CommunityMapControls
+                  resortId={selectedResortId}
+                  enabled={showCommunityPosts}
+                  onEnabledChange={setShowCommunityPosts}
+                />
+              )}
+              <MapAttributionSlot map={isReady ? map : null} />
+            </div>
             <FinalizedMapToolbar
+              showOpenOnly={
+                showOpenOnly && hasCourseOperatingData(finalizedMapData)
+              }
+              communityFilters={
+                showCommunityControls && showCommunityPosts ? (
+                  <CommunityMapFilters
+                    period={communityPeriod}
+                    onPeriodChange={setCommunityPeriod}
+                    kind={communityKind}
+                    onKindChange={setCommunityKind}
+                  />
+                ) : undefined
+              }
               mode={courseColorMode}
               onModeChange={setCourseColorMode}
               hasCourses={hasFinalizedCourses}

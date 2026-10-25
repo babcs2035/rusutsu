@@ -122,6 +122,8 @@ export const mapSessionSchema = z.object({
   showOpenOnly: z.boolean(),
   displaySettings: z
     .object({
+      showCourses: z.boolean().default(true),
+      showLifts: z.boolean().default(true),
       showCourseNames: z.boolean(),
       showLiftNames: z.boolean(),
       showUngroomed: z.boolean(),

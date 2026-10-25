@@ -5,6 +5,11 @@ import { cn } from "@/lib/utils";
 import type { PriceReference, TicketCalculationLine } from "../types";
 import type { TicketPlanResult } from "../utils/calculateLiftTicket";
 import type { TicketRentalResult } from "../utils/rental";
+import {
+  planWithoutBundledGroups,
+  type TicketBundleResult,
+} from "../utils/rentalBundle";
+import { BundleSummary } from "./BundleSummary";
 import { ConditionalOffers } from "./ConditionalOffers";
 import { RentalSummary } from "./RentalSummary";
 import { SourceLinks } from "./SourceLinks";
@@ -89,23 +94,70 @@ const shortDateOf = (date: string) =>
  * 1人1日なら「合計」と内訳の2か所で足りる。
  */
 export const TicketPlanCard = ({
-  plan,
-  rental = null,
+  plan: fullPlan,
+  rental: fullRental = null,
+  bundle = null,
 }: {
   plan: TicketPlanResult;
   /** レンタルを選んだ人がいれば、リフト券の合計に足して内訳を出す */
   rental?: TicketRentalResult | null;
+  /** リフト券とレンタルのセット券。別々に買うより安いときだけ使う */
+  bundle?: TicketBundleResult | null;
 }) => {
+  // セット券を使う人は、リフト券もレンタルもセット券の枠に移す
+  const bundleApplied =
+    bundle != null && bundle.lines.length > 0 ? bundle : null;
+  const plan = bundleApplied
+    ? planWithoutBundledGroups(fullPlan, bundleApplied)
+    : fullPlan;
+  const bundledIds = new Set(bundleApplied?.lines.map(line => line.groupId));
+  const rental: TicketRentalResult | null =
+    bundleApplied && fullRental
+      ? fullRental.status === "not_collected"
+        ? bundleApplied.unbundledRenterGroupIds.length > 0
+          ? fullRental
+          : null
+        : (() => {
+            const lines = fullRental.lines.filter(
+              line => !bundledIds.has(line.groupId),
+            );
+            const complete = lines.every(line => line.subtotal != null);
+            const knownTotal = lines.reduce(
+              (sum, line) => sum + (line.subtotal ?? 0),
+              0,
+            );
+            return lines.length === 0
+              ? null
+              : {
+                  ...fullRental,
+                  lines,
+                  knownTotal,
+                  total: complete ? knownTotal : null,
+                };
+          })()
+      : fullRental;
+  const tripDayCount = fullPlan.days.length;
   const usesMultiDay = plan.multiDay != null;
   const rentalShown =
     rental != null &&
     (rental.status === "complete" || rental.status === "partial");
   // リフト券もレンタルも出たときだけ合計を出す。どちらかが未確定なら合計も未確定
-  const total = !rentalShown
+  const separateTotal = !rentalShown
     ? plan.total
     : plan.total == null || rental.total == null
       ? null
       : plan.total + rental.total;
+  const total = bundleApplied ? bundleApplied.total : separateTotal;
+  const withRental = rentalShown || bundleApplied != null;
+  const references = bundle
+    ? [
+        ...plan.references,
+        ...bundle.references.filter(
+          reference =>
+            !plan.references.some(other => other.number === reference.number),
+        ),
+      ]
+    : plan.references;
 
   // ★**券も金額も同じ日は1つにまとめて「× 3日」と出す**（同じ内訳を繰り返さない）
   const dayGroups: Array<{ indices: number[] }> = [];
@@ -183,16 +235,16 @@ export const TicketPlanCard = ({
   // 全日が同じ理由で計算できない場合（日付・人数の未入力など）は、
   // 未確定の行を並べるより理由を1つ出したほうが分かりやすい
   const blockingNote =
-    plan.days.length > 0 &&
-    plan.days.every(
+    fullPlan.days.length > 0 &&
+    fullPlan.days.every(
       day =>
         day.result.status === "unavailable" &&
-        day.result.notes[0] === plan.days[0].result.notes[0],
+        day.result.notes[0] === fullPlan.days[0].result.notes[0],
     )
-      ? plan.days[0].result.notes[0]
+      ? fullPlan.days[0].result.notes[0]
       : null;
 
-  if (plan.days.length === 0 || blockingNote) {
+  if (fullPlan.days.length === 0 || blockingNote) {
     return (
       <Card>
         <CardContent className="p-4 text-center">
@@ -217,13 +269,13 @@ export const TicketPlanCard = ({
         <div className="flex items-baseline justify-between gap-3">
           <div className="min-w-0">
             <p className="text-sm font-semibold text-gray-700">
-              {plan.days.length === 1 ? "合計" : `${plan.days.length}日の合計`}
+              {tripDayCount === 1 ? "合計" : `${tripDayCount}日の合計`}
             </p>
-            {(rentalShown ||
+            {(withRental ||
               hasOnlineLine(shownLines.map(({ line }) => line))) && (
               <p className="text-xs text-gray-600">
                 {[
-                  rentalShown && "リフト券＋レンタル",
+                  withRental && "リフト券＋レンタル",
                   hasOnlineLine(shownLines.map(({ line }) => line)) &&
                     "WEB購入の料金",
                 ]
@@ -372,10 +424,26 @@ export const TicketPlanCard = ({
           )}
         </div>
 
+        {bundleApplied && (
+          <div className="mt-2">
+            <BundleSummary bundle={bundleApplied} />
+          </div>
+        )}
+
         {rental && rental.status !== "none" && (
           <div className="mt-2">
-            <RentalSummary rental={rental} dayCount={plan.days.length} />
+            <RentalSummary rental={rental} dayCount={tripDayCount} />
           </div>
+        )}
+
+        {/* 会員・クーポンなど条件を満たせば使えるセット券。合計には含めない */}
+        {bundle && bundle.conditionalOffers.length > 0 && (
+          <ConditionalOffers
+            className="mt-2"
+            offers={bundle.conditionalOffers}
+            sourcesOf={offer => offer.sourceNumbers}
+            references={references}
+          />
         )}
 
         {/* WEB購入の案内は、日ごとに繰り返さず最後に1回だけ出す。出典は各料金の下に出す */}

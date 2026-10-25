@@ -39,7 +39,7 @@ export const LIFT_STATUS_DESCRIPTION: Record<StatusSymbol, string> = {
 
 export const PISTE_STATUS_DESCRIPTION = {
   "○": "圧雪",
-  "△": "一部圧雪",
+  "△": "日によって圧雪",
   "×": "非圧雪",
 } as const;
 
@@ -91,9 +91,8 @@ export const getCourseGroupPisteSymbol = (
     .map(course => normalizeIconSymbol(course.properties.piste))
     .filter((symbol): symbol is StatusSymbol => symbol !== null);
   if (symbols.length === 0) return null;
-  if (symbols.every(symbol => symbol === "○")) return "○";
-  if (symbols.every(symbol => symbol === "×")) return "×";
-  return "△";
+  if (symbols.length !== group.courses.length) return null;
+  return symbols.every(symbol => symbol === symbols[0]) ? symbols[0] : null;
 };
 
 /** コース名の横に出すレベル・圧雪 */
@@ -107,7 +106,17 @@ export const getCourseGroupTags = (group: FinalizedCourseGroup) => {
       difficulty && difficulty !== "unknown"
         ? COURSE_DIFFICULTY_META[difficulty]
         : null,
-    grooming: piste ? PISTE_STATUS_DESCRIPTION[piste] : null,
+    grooming:
+      group.courses.some(course => course.properties.pisteSegments?.length) ||
+      new Set(
+        group.courses.map(course =>
+          normalizeIconSymbol(course.properties.piste),
+        ),
+      ).size > 1
+        ? ("区間別" as const)
+        : piste
+          ? PISTE_STATUS_DESCRIPTION[piste]
+          : null,
   };
 };
 

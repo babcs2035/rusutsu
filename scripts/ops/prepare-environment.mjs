@@ -2,6 +2,7 @@ import { chmodSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
+  communityKeys,
   loginKeys,
   publicUrl,
   tokenKeys,
@@ -116,6 +117,8 @@ export function prepareEnvironment(containers, settings) {
     result[key] = updates[key] || appEnv[key];
   }
   for (const key of tokenKeys) result[key] = updates[key];
+  for (const key of communityKeys)
+    result[key] = updates[key] || appEnv[key] || "";
   for (const [key, fallback] of Object.entries({
     CRAWLER_ARTIFACT_RETENTION_DAYS: "30",
     CRAWL_LATEST_CONCURRENCY: "1",

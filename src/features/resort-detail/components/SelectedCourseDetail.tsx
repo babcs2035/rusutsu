@@ -2,6 +2,7 @@
 
 import { type ReactNode, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CorrectionLink } from "@/features/corrections/CorrectionLink";
 import { SimilarCourses } from "@/features/course-recommendations/SimilarCourses";
 import type { ElevationProfileMapPoint } from "@/features/map/types";
 import useMediaQuery from "@/hooks/use-media-query";
@@ -193,9 +194,27 @@ export const SelectedCourseDetail = ({
         }}
         searchWord={searchWord}
         sources={courseStatusSources(courseGroup, sourceUrls)}
+        reportContext={
+          resortId
+            ? {
+                resortId,
+                targetIds: courseGroup.courses.map(course => course.id),
+              }
+            : undefined
+        }
       />
 
       <FeatureMetrics items={getCourseGroupMetricItems(courseGroup)} />
+      {resortId && (
+        <CorrectionLink
+          resortId={resortId}
+          context={{
+            kind: "slope",
+            targetKind: "slope",
+            targetId: selectedCourse.id,
+          }}
+        />
+      )}
 
       {resortId ? (
         <SimilarCourses

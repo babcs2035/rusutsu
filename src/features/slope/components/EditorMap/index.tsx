@@ -16,6 +16,8 @@ import type { LngLat, TileLayerId } from "../../types";
 import { EditorTileSwitcher } from "./EditorTileSwitcher";
 import { buildLabels, EditorLabelLayer } from "./editorLabels";
 import {
+  CORRECTION_ACTIVE_COURSE_WIDTH,
+  CORRECTION_COURSE_WIDTH,
   createEditorLayers,
   EDITOR_LAYER,
   EDITOR_SOURCE,
@@ -28,6 +30,8 @@ import {
 } from "./editorPicking";
 import {
   buildBackgroundCollection,
+  buildCorrectionMaskCollection,
+  buildCorrectionSelectionCollection,
   buildInsertHintCollection,
   buildLineCollection,
   buildMergeAnchorCollection,
@@ -78,6 +82,9 @@ type EditorMapProps = {
   fitBoundsKey?: number;
   fitBoundsToBackground?: boolean;
   showTileSwitcher?: boolean;
+  correctionPreview?: boolean;
+  correctionSelection?: { lineId: string; from: number; to: number };
+  readOnlyPick?: boolean;
   onSelectCourse?: (courseId: string) => void;
   onAppendVertex?: (lngLat: LngLat) => void;
   onMoveVertex?: (index: number, lngLat: LngLat) => void;
@@ -134,6 +141,9 @@ export function EditorMap({
   fitBoundsKey = 0,
   fitBoundsToBackground = false,
   showTileSwitcher = true,
+  correctionPreview = false,
+  correctionSelection: correctionSelectionProp,
+  readOnlyPick = false,
   onSelectCourse,
   onAppendVertex,
   onMoveVertex,
@@ -181,6 +191,7 @@ export function EditorMap({
   // イベントハンドラは地図に一度だけ登録するので、最新の値は ref から読む
   const latest = useRef({
     mode,
+    readOnlyPick,
     courses,
     backgroundLines,
     backgroundLineAppearance,
@@ -198,6 +209,7 @@ export function EditorMap({
   });
   latest.current = {
     mode,
+    readOnlyPick,
     courses,
     backgroundLines,
     backgroundLineAppearance,
@@ -288,6 +300,44 @@ export function EditorMap({
     );
   }, [backgroundLineAppearance, isReady, map]);
 
+  useEffect(() => {
+    if (!map || !isReady) return;
+    map.setPaintProperty(
+      EDITOR_LAYER.lineInactive,
+      "line-color",
+      correctionPreview
+        ? [
+            "case",
+            ["boolean", ["get", "highlighted"], false],
+            "#F59E0B",
+            ["coalesce", ["get", "previewColor"], "#3182CE"],
+          ]
+        : [
+            "case",
+            ["boolean", ["get", "highlighted"], false],
+            "#F59E0B",
+            "#3182CE",
+          ],
+    );
+    map.setPaintProperty(
+      EDITOR_LAYER.lineInactive,
+      "line-width",
+      correctionPreview ? CORRECTION_COURSE_WIDTH : 3,
+    );
+    map.setPaintProperty(
+      EDITOR_LAYER.lineActive,
+      "line-color",
+      correctionPreview
+        ? ["coalesce", ["get", "previewColor"], "#E53E3E"]
+        : "#E53E3E",
+    );
+    map.setPaintProperty(
+      EDITOR_LAYER.lineActive,
+      "line-width",
+      correctionPreview ? CORRECTION_ACTIVE_COURSE_WIDTH : 5,
+    );
+  }, [correctionPreview, isReady, map]);
+
   // --- 描くものを地図へ流し込む -------------------------------------------
   const lineCollection = useMemo(
     () =>
@@ -296,8 +346,29 @@ export function EditorMap({
         activeCourseId,
         hoveredCourseId,
         highlightedLineIds,
+        correctionPreview,
       ),
-    [courses, activeCourseId, hoveredCourseId, highlightedLineIds],
+    [
+      courses,
+      activeCourseId,
+      hoveredCourseId,
+      highlightedLineIds,
+      correctionPreview,
+    ],
+  );
+  const correctionMasks = useMemo(
+    () =>
+      correctionPreview
+        ? buildCorrectionMaskCollection(courses, activeCourseId)
+        : EMPTY_COLLECTION,
+    [activeCourseId, correctionPreview, courses],
+  );
+  const correctionSelectionCollection = useMemo(
+    () =>
+      correctionPreview
+        ? buildCorrectionSelectionCollection(courses, correctionSelectionProp)
+        : EMPTY_COLLECTION,
+    [correctionPreview, courses, correctionSelectionProp],
   );
   const backgroundCollection = useMemo(
     () => buildBackgroundCollection(backgroundLines),
@@ -332,6 +403,12 @@ export function EditorMap({
     if (!map || !isReady) return;
     setSourceData(map, EDITOR_SOURCE.lines, lineCollection);
     setSourceData(map, EDITOR_SOURCE.backgroundLines, backgroundCollection);
+    setSourceData(map, EDITOR_SOURCE.correctionMasks, correctionMasks);
+    setSourceData(
+      map,
+      EDITOR_SOURCE.correctionSelection,
+      correctionSelectionCollection,
+    );
     setSourceData(map, EDITOR_SOURCE.vertices, vertexCollection);
     setSourceData(map, EDITOR_SOURCE.midpoints, midpointCollection);
     setSourceData(map, EDITOR_SOURCE.midstation, midstationCollection);
@@ -340,6 +417,8 @@ export function EditorMap({
     setSourceData(map, EDITOR_SOURCE.mergeAnchors, mergeAnchorCollection);
   }, [
     backgroundCollection,
+    correctionMasks,
+    correctionSelectionCollection,
     isReady,
     lineCollection,
     map,
@@ -488,7 +567,7 @@ export function EditorMap({
 
       const line = nearestLine(event);
       if (line) {
-        if (current.mode === "merge") {
+        if (current.readOnlyPick || current.mode === "merge") {
           current.onPickLinePoint?.(line);
           return;
         }
@@ -680,9 +759,11 @@ export function EditorMap({
         show(
           canInsert
             ? "クリックでここに点を追加"
-            : current.mode === "merge"
-              ? `ここでつなぐ: ${hovered?.name || "（名前未入力）"}`
-              : hovered?.name || "（名前未入力）",
+            : current.readOnlyPick
+              ? "タップして区間の端点を選択"
+              : current.mode === "merge"
+                ? `ここでつなぐ: ${hovered?.name || "（名前未入力）"}`
+                : hovered?.name || "（名前未入力）",
         );
         canvas.style.cursor = "pointer";
         setHovered(isActiveLine ? null : line.lineId);

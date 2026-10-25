@@ -2,6 +2,7 @@
 
 import { Circle, Minus, Play, Triangle, X } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
+import { ReportErrorButton } from "@/features/corrections/ReportErrorButton";
 import { cn } from "@/lib/utils";
 import type { StatusSymbol } from "../utils/detailMetrics";
 import { getYoutubeSearchUrl } from "../utils/featureLinks";
@@ -25,15 +26,16 @@ const UNKNOWN_STATUS_STYLE = {
   className: "border-slate-200 bg-white text-slate-500",
 };
 const GROOMING_CLASS = {
+  区間別: "text-violet-700",
   圧雪: "text-cyan-700",
-  一部圧雪: "text-violet-700",
+  日によって圧雪: "text-violet-700",
   非圧雪: "text-fuchsia-700",
 };
 // Preserve the map's level colors while making small text readable on white.
 const LEVEL_TEXT_COLOR: Record<string, string> = {
   "#22C55E": "#15803D",
-  "#F2C94C": "#854D0E",
-  "#E53935": "#B91C1C",
+  "#FF8C00": "#9A3412",
+  "#FF0000": "#B91C1C",
   "#B45309": "#92400E",
 };
 const TAG_CLASS =
@@ -91,11 +93,17 @@ export const FeatureHeadline = ({
   status,
   searchWord,
   sources,
+  reportContext,
 }: {
   kind: "course" | "lift";
   status: { symbol: StatusSymbol | null; text: string };
   searchWord?: string | null;
   sources: FeatureStatusSource[];
+  reportContext?: {
+    resortId: string;
+    targetIds: string[];
+    snapshotId?: string | null;
+  };
 }) => {
   const statusStyle = status.symbol
     ? STATUS_STYLE[status.symbol]
@@ -131,6 +139,14 @@ export const FeatureHeadline = ({
             compact
           />
         ))}
+        {reportContext && sources.some(source => source.urls.length > 0) && (
+          <ReportErrorButton
+            resortId={reportContext.resortId}
+            kind="source"
+            label="出典表記の誤りを報告"
+            context={{ ...reportContext, targetKind: kind, sources }}
+          />
+        )}
         {searchWord && (
           <a
             href={getYoutubeSearchUrl(searchWord)}

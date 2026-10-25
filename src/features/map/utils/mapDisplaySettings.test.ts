@@ -16,8 +16,26 @@ import {
   getCourseDisplayStatuses,
   hasCourseOperatingData,
   isCourseStatusVisible,
+  isOpenOnlyCourseSelection,
   OPEN_COURSE_STATUSES,
 } from "./mapDisplaySettings";
+
+test("営業中のみは○・△の両方だけを表示する条件で、×のみや不明を含む条件ではない", () => {
+  for (let mask = 0; mask < 16; mask++) {
+    const courseStatuses = Object.fromEntries(
+      COURSE_STATUS_OPTIONS.map(({ value }, index) => [
+        value,
+        Boolean(mask & (1 << index)),
+      ]),
+    ) as typeof OPEN_COURSE_STATUSES;
+    const settings = { ...DEFAULT_MAP_DISPLAY_SETTINGS, courseStatuses };
+    assert.equal(isOpenOnlyCourseSelection(settings), mask === 3);
+    assert.equal(
+      isOpenOnlyCourseSelection({ ...settings, showCourses: false }),
+      false,
+    );
+  }
+});
 
 test("比較の絞り込みは未取得のコースを残し、取得済みの不明は選択条件に従う", () => {
   const course = normalizeCourseFeature(

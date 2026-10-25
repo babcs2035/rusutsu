@@ -1,3 +1,4 @@
+import type { PropertySegment } from "@/shared/course-lift/segments";
 import type { CourseStatusSummary } from "./courseStatusSummary";
 export type GeoCoordinate = [number, number] | [number, number, number];
 
@@ -15,6 +16,7 @@ export type FinalizedCourseFeature = {
   /** 別ルートのとき、同じルート（複数区間を含む）の線に共通するキー */
   routeKey?: string;
   latestStatusName?: string | null;
+  statusSnapshotId?: string | null;
   statusMappingNames?: string[];
   /** 人手確認済みの既存データか、未確認のOSM由来か。 */
   verificationStatus?: "verified" | "unverified";
@@ -24,6 +26,9 @@ export type FinalizedCourseFeature = {
     name: string;
     level: string | null;
     piste: string | null;
+    pisteSegments?: PropertySegment[];
+    morningSegments?: PropertySegment[];
+    nightSegments?: PropertySegment[];
     snowboard: string | null;
     status: string | null;
     update: string | null;
@@ -84,6 +89,7 @@ export const parseFinalizedCourseName = (name: string): ParsedCourseName => {
 };
 
 export type FinalizedLiftFeature = {
+  statusSnapshotId?: string | null;
   latestStatusName?: string | null;
   statusMappingNames?: string[];
   id: string;
@@ -181,8 +187,8 @@ export const COURSE_DIFFICULTY_META: Record<
   { label: string; color: string }
 > = {
   beginner: { label: "初級", color: "#22C55E" },
-  beginnerIntermediate: { label: "初・中級", color: "#F2C94C" },
-  intermediate: { label: "中級", color: "#E53935" },
+  beginnerIntermediate: { label: "初・中級", color: "#FF8C00" },
+  intermediate: { label: "中級", color: "#FF0000" },
   intermediateAdvanced: { label: "中・上級", color: "#B45309" },
   advanced: { label: "上級", color: "#222222" },
   unknown: { label: "不明", color: "#6B7280" },
@@ -217,6 +223,7 @@ export type PisteStyle = "solid" | "dash" | "dot";
 
 export const getPisteStyle = (piste: string | null | undefined): PisteStyle => {
   if (!piste) return "solid";
+  if (/[△]/u.test(piste)) return "dash";
   if (/[×✕✖]/u.test(piste)) return "dot";
   return "solid";
 };

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { ReportErrorButton } from "@/features/corrections/ReportErrorButton";
 import { cn } from "@/lib/utils";
 import type { LiftTicketData } from "../types";
 import { sharedResortsOf } from "../types";
@@ -93,9 +94,11 @@ const RowLabel = ({ row }: { row: PriceRow }) => (
 const TableRows = ({
   row,
   audiences,
+  reportData,
 }: {
   row: PriceRow;
   audiences: PriceTable["audiences"];
+  reportData?: LiftTicketData;
 }) => {
   const subRows = subRowsOf(row);
   const hasSubRows = subRows[0].label != null;
@@ -109,6 +112,31 @@ const TableRows = ({
     hasSubRows &&
     (cellOf(audienceId)?.entries.every(entry => entry.calendarLabel == null) ??
       false);
+  const price = (
+    entry: PriceEntry | undefined,
+    audience: PriceTable["audiences"][number],
+  ) =>
+    entry && reportData ? (
+      <ReportErrorButton
+        resortId={reportData.resort.id}
+        kind="ticket"
+        label={`${row.label}・${audience.label}の料金の間違いを報告`}
+        context={{
+          type: "price-entry",
+          seasonId: reportData.season.id,
+          schemaVersion: reportData.schema_version,
+          productLabel: row.label,
+          audience,
+          entry,
+          offer: reportData.offers.find(offer => offer.id === entry.offerId),
+          conditions: row.conditions,
+        }}
+      >
+        <PriceValue entry={entry} />
+      </ReportErrorButton>
+    ) : (
+      <PriceValue entry={entry} />
+    );
 
   return (
     <>
@@ -147,7 +175,7 @@ const TableRows = ({
               colSpan={audiences.length}
               className={cn(PRICE_CELL, "text-center")}
             >
-              <PriceValue entry={entryFor(audiences[0].id, subRow)} />
+              {price(entryFor(audiences[0].id, subRow), audiences[0])}
             </td>
           ) : (
             audiences.map(audience => {
@@ -159,13 +187,13 @@ const TableRows = ({
                     rowSpan={subRows.length}
                     className={PRICE_CELL}
                   >
-                    <PriceValue entry={cellOf(audience.id)?.entries[0]} />
+                    {price(cellOf(audience.id)?.entries[0], audience)}
                   </td>
                 );
               }
               return (
                 <td key={audience.id} className={PRICE_CELL}>
-                  <PriceValue entry={entryFor(audience.id, subRow)} />
+                  {price(entryFor(audience.id, subRow), audience)}
                 </td>
               );
             })
@@ -179,9 +207,11 @@ const TableRows = ({
 export const PriceGrid = ({
   table,
   firstColumnLabel = "券種",
+  reportData,
 }: {
   table: PriceTable;
   firstColumnLabel?: string;
+  reportData?: LiftTicketData;
 }) => (
   <Card className="@container/price-table w-full overflow-hidden py-0">
     <CardContent className="p-0">
@@ -213,7 +243,12 @@ export const PriceGrid = ({
           </thead>
           <tbody>
             {table.rows.map(row => (
-              <TableRows key={row.key} row={row} audiences={table.audiences} />
+              <TableRows
+                key={row.key}
+                row={row}
+                audiences={table.audiences}
+                reportData={reportData}
+              />
             ))}
           </tbody>
         </table>
@@ -314,7 +349,7 @@ export const LiftTicketPriceTable = ({ data }: { data: LiftTicketData }) => {
               会員・宿泊者・特定日などの条件があります。詳細は公式サイトで確認してください。
             </p>
           )}
-          <PriceGrid table={section.table} />
+          <PriceGrid table={section.table} reportData={data} />
         </div>
       ))}
 

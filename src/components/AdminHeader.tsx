@@ -3,11 +3,18 @@ import Link from "next/link";
 import { signOut } from "@/auth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { prisma } from "@/lib/prisma";
 import { getCurrentActor } from "@/lib/requireEditor";
 import { ROLE_LABELS } from "@/lib/roles";
 
 export async function AdminHeader() {
   const user = await getCurrentActor();
+  const pendingCorrections =
+    user?.role === "admin"
+      ? await prisma.editRequest.count({
+          where: { kind: "public-correction", status: "PENDING" },
+        })
+      : 0;
 
   return (
     <header className="flex h-16 items-center justify-between gap-2 md:gap-4 border-b border-white/10 bg-[var(--admin-dark)] px-4 md:px-8 shadow-md">
@@ -20,6 +27,22 @@ export async function AdminHeader() {
       </Link>
 
       <div className="flex min-w-0 items-center gap-2 md:gap-4">
+        {user?.role === "admin" && (
+          <>
+            <Link
+              className="text-xs text-white underline"
+              href="/admin/corrections"
+            >
+              修正 {pendingCorrections}
+            </Link>
+            <Link
+              className="text-xs text-white underline"
+              href="/admin/community"
+            >
+              投稿
+            </Link>
+          </>
+        )}
         {user && (
           <div className="hidden min-w-0 items-center gap-2 md:flex">
             {user.image && (

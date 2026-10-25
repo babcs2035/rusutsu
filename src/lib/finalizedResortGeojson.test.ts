@@ -135,7 +135,7 @@ test("only top middle bottom suffixes produce course groups", () => {
 
 test("piste styles are mapped from piste status", () => {
   assert.equal(getPisteStyle("○"), "solid");
-  assert.equal(getPisteStyle("△"), "solid");
+  assert.equal(getPisteStyle("△"), "dash");
   assert.equal(getPisteStyle("×"), "dot");
   assert.equal(getPisteStyle(undefined), "solid");
 });

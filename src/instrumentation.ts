@@ -4,6 +4,10 @@ export async function register() {
       "@/server/edit-requests/jobScheduler"
     );
     startEditRequestJobScheduler();
+    const { startCommunityModerationScheduler } = await import(
+      "@/server/community/moderation"
+    );
+    startCommunityModerationScheduler();
 
     // 開発環境ではクローラースケジューラーを無効化
     if (process.env.NODE_ENV === "development") {

@@ -38,8 +38,10 @@ export const useFinalizedMapFeatures = ({
 }: UseFinalizedMapFeaturesParams) => {
   const sourceCourses =
     finalizedMapData?.courses?.features ?? EMPTY_FINALIZED_COURSES;
-  const finalizedLifts =
-    finalizedMapData?.lifts?.features ?? EMPTY_FINALIZED_LIFTS;
+  const allLifts = finalizedMapData?.lifts?.features ?? EMPTY_FINALIZED_LIFTS;
+  const finalizedLifts = mapDisplaySettings.showLifts
+    ? allLifts
+    : EMPTY_FINALIZED_LIFTS;
 
   // 滑走方向（標高降順）に揃えたコースを唯一の入力にする。
   // 線・ラベル・方向記号がすべて同じ向きを前提にできる（FR-4.1）。
@@ -56,21 +58,23 @@ export const useFinalizedMapFeatures = ({
   );
   const finalizedCourses = useMemo(
     () =>
-      allCourses.filter(course =>
-        isCourseStatusVisible(
-          getFeatureStatusKind(course.properties.status),
-          courseStatuses,
-        ),
-      ),
-    [allCourses, courseStatuses],
+      mapDisplaySettings.showCourses
+        ? allCourses.filter(course =>
+            isCourseStatusVisible(
+              getFeatureStatusKind(course.properties.status),
+              courseStatuses,
+            ),
+          )
+        : EMPTY_FINALIZED_COURSES,
+    [allCourses, courseStatuses, mapDisplaySettings.showCourses],
   );
   const hasFinalizedCourses = allCourses.length > 0;
-  const hasFinalizedLifts = finalizedLifts.length > 0;
+  const hasFinalizedLifts = allLifts.length > 0;
   const isFinalizedFocusMode =
     interactionMode === "detail" && (hasFinalizedCourses || hasFinalizedLifts);
   const finalizedBounds = useMemo(
-    () => getFinalizedMapDataBounds(allCourses, finalizedLifts),
-    [allCourses, finalizedLifts],
+    () => getFinalizedMapDataBounds(allCourses, allLifts),
+    [allCourses, allLifts],
   );
 
   // ズームには依存させない。営業状態による表示対象の変更だけを反映する。
@@ -120,6 +124,7 @@ export const useFinalizedMapFeatures = ({
 
   return {
     allFinalizedCourses: allCourses,
+    allFinalizedLifts: allLifts,
     courseFeatureCollection,
     courseOutlineFeatureCollection,
     finalizedBounds,

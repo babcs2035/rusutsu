@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parsePublishedTime } from "../../shared/utils/publishedTime";
 
 export const CRAWL_LATEST_SCHEMA_VERSION = 1 as const;
 export const CRAWL_LATEST_MAX_BODY_BYTES = 2 * 1024 * 1024;
@@ -58,8 +59,23 @@ const httpUrlSchema = z
 const sourceUrlsSchema = z.array(httpUrlSchema).max(20);
 
 const weatherValueSchema = z.union([z.number(), z.string().max(100), z.null()]);
+const publishedTimeSchema = z
+  .strictObject({
+    raw: z.string(),
+    year: z.number().int().min(1).max(9999).nullable(),
+    month: z.number().int().min(1).max(12).nullable(),
+    day: z.number().int().min(1).max(31).nullable(),
+    hour: z.number().int().min(0).max(23).nullable(),
+    minute: z.number().int().min(0).max(59).nullable(),
+    second: z.number().int().min(0).max(59).nullable(),
+    precision: z.enum(["day", "hour", "minute", "second"]).nullable(),
+    timeZone: z.literal("Asia/Tokyo"),
+  })
+  .nullable();
+const updateTimeSchema = publishedTimeSchema.optional();
 const weatherPointSchema = z.strictObject({
   update: nullableTextSchema(500),
+  updateTime: updateTimeSchema,
   weather: nullableTextSchema(500),
   temperature: weatherValueSchema,
   snowDepth: weatherValueSchema,
@@ -67,8 +83,56 @@ const weatherPointSchema = z.strictObject({
   condition: nullableTextSchema(1_000),
   windSpeed: weatherValueSchema,
 });
+const operationItemSchema = z.strictObject({
+  name: z.string().min(1).max(300),
+  status: z.enum(CRAWL_LATEST_OPERATION_STATUSES).nullable(),
+  update: nullableTextSchema(1_000),
+  updateTime: updateTimeSchema,
+  note: nullableTextSchema(10_000),
+});
+function refinePublishedTime(
+  item: { update: string | null; updateTime?: unknown },
+  context: z.RefinementCtx,
+) {
+  if (!("updateTime" in item)) return;
+  const expected = parsePublishedTime(item.update);
+  const fields = [
+    "raw",
+    "year",
+    "month",
+    "day",
+    "hour",
+    "minute",
+    "second",
+    "precision",
+    "timeZone",
+  ] as const;
+  const matches =
+    item.updateTime === null
+      ? expected === null
+      : typeof item.updateTime === "object" &&
+        item.updateTime !== null &&
+        expected !== null &&
+        fields.every(
+          field =>
+            (item.updateTime as Record<string, unknown>)[field] ===
+            expected[field],
+        );
+  if (!matches) {
+    context.addIssue({
+      code: "custom",
+      message: "updateTime must match the parsed update value",
+      path: ["updateTime"],
+    });
+  }
+}
+const checkedWeatherPointSchema =
+  weatherPointSchema.superRefine(refinePublishedTime);
+const checkedOperationItemSchema =
+  operationItemSchema.superRefine(refinePublishedTime);
+const operationItemsSchema = z.array(checkedOperationItemSchema).max(2_000);
 const weatherDataSchema = z
-  .record(z.string().min(1).max(200), weatherPointSchema)
+  .record(z.string().min(1).max(200), checkedWeatherPointSchema)
   .superRefine((value, context) => {
     if (Object.keys(value).length > 100) {
       context.addIssue({
@@ -77,14 +141,6 @@ const weatherDataSchema = z
       });
     }
   });
-
-const operationItemSchema = z.strictObject({
-  name: z.string().min(1).max(300),
-  status: z.enum(CRAWL_LATEST_OPERATION_STATUSES).nullable(),
-  update: nullableTextSchema(1_000),
-  note: nullableTextSchema(10_000),
-});
-const operationItemsSchema = z.array(operationItemSchema).max(2_000);
 const commentDataSchema = z.strictObject({
   value: nullableTextSchema(100_000).refine(
     value => value === null || value.trim() !== "",

@@ -1,6 +1,7 @@
 import type {
   LiftTicketAudience,
   LiftTicketData,
+  LiftTicketProduct,
   LiftTicketRental,
   LiftTicketSearchInput,
   LiftTicketSourceQuote,
@@ -107,6 +108,65 @@ const coveredItemsOf = (rental: LiftTicketRental) =>
   new Set(
     rental.items.flatMap(item => SET_ITEMS[item] ?? [item as TicketRentalItem]),
   );
+
+/** セット券に含まれていても、リフト券＋レンタルの代わりとして比べてよい付帯サービス */
+const BUNDLE_COMPATIBLE_ITEM_TYPES = [
+  "rental",
+  "meal",
+  "voucher",
+  "bath",
+  "parking",
+];
+
+/**
+ * リフト券とレンタルをまとめて売るセット券か（1日券で、レンタル以外の
+ * 付帯がレッスン・内容不明でないもの）。レッスン付きなどは別物なので比べない。
+ */
+export const isRentalBundleProduct = (product: LiftTicketProduct) => {
+  const items = product.included_items ?? [];
+  return (
+    product.validity?.mode === "calendar_day" &&
+    (product.add_on_to_product_ids?.length ?? 0) === 0 &&
+    items.some(item => item.type === "rental") &&
+    items.every(item =>
+      BUNDLE_COMPATIBLE_ITEM_TYPES.includes(item.type ?? "unknown"),
+    )
+  );
+};
+
+/**
+ * セット券がまかなう用具。データには用具の構造がなく公式表記だけなので、
+ * 表記から読む（「レンタルセット」「スキー3点」「ブーツ＋スキー・ストック」は板・
+ * ブーツ・ストック、「ウェア」はウェア）。ヘルメット・ゴーグル・グローブは
+ * 表記が無ければ含めない。種目が片方しか書かれていなければ、その種目だけ
+ */
+export const bundleCoveredItemsOf = (
+  product: LiftTicketProduct,
+  sport: TicketRentalSport,
+): Set<TicketRentalItem> => {
+  const text = (product.included_items ?? [])
+    .filter(item => item.type === "rental")
+    .map(item =>
+      [item.name_ja, item.description_ja]
+        .filter((part): part is string => Boolean(part))
+        .join(" "),
+    )
+    .join(" ");
+  const covered = new Set<TicketRentalItem>();
+  const skiOnly = /スキー/.test(text) && !/ボード|スノボ/.test(text);
+  const boardOnly = /ボード|スノボ/.test(text) && !/スキー/.test(text);
+  if (
+    /レンタルセット|オールセット|スキー|ボード|スノボ|ブーツ|板|ストック/.test(
+      text,
+    ) &&
+    !(sport === "ski" && boardOnly) &&
+    !(sport === "snowboard" && skiOnly)
+  ) {
+    for (const item of DEFAULT_TICKET_RENTAL_ITEMS[sport]) covered.add(item);
+  }
+  if (/ウェア|オールセット/.test(text)) covered.add("wear");
+  return covered;
+};
 
 /**
  * レンタルの対象者を決める。券の区分（audiences）とレンタル専用の区分
@@ -597,6 +657,15 @@ export const rentalOptionsOf = (
   for (const rental of data.rentals ?? []) {
     if (rental.target_qualification || rental.price.amount == null) continue;
     for (const item of coveredItemsOf(rental)) available.add(item);
+  }
+  // 単品のレンタル料金が無いスキー場でも、セット券で借りられる物は選べる
+  for (const product of data.products) {
+    if (!isRentalBundleProduct(product)) continue;
+    for (const sport of TICKET_RENTAL_SPORTS) {
+      for (const item of bundleCoveredItemsOf(product, sport)) {
+        available.add(item);
+      }
+    }
   }
   const itemsBySport = Object.fromEntries(
     TICKET_RENTAL_SPORTS.map(sport => [

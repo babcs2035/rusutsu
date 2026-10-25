@@ -42,7 +42,7 @@ const choiceOptions: Partial<
 };
 const markLabel = (key: string, option: string) =>
   key === "piste"
-    ? ({ "○": "圧雪", "△": "一部圧雪", "×": "非圧雪" }[option] ?? option)
+    ? ({ "○": "圧雪", "△": "日によって圧雪", "×": "非圧雪" }[option] ?? option)
     : option === "○"
       ? "あり"
       : option === "×"

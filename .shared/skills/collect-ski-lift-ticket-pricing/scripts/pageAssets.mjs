@@ -67,10 +67,10 @@ export function extractTablesInPage() {
       }
       rowIndex++;
     }
-    const columnCount = grid.reduce((max, row) => Math.max(max, row.length), 0);
-    const rows = grid.map((row) => {
+    const columnCount = grid.reduce((max, row) => Math.max(max, row?.length ?? 0), 0);
+    const rows = Array.from(grid, (row) => {
       const filled = [];
-      for (let c = 0; c < columnCount; c++) filled.push(row[c] ?? "");
+      for (let c = 0; c < columnCount; c++) filled.push(row?.[c] ?? "");
       return filled;
     });
     return { rows, columnCount, hasMergedCells: merged };

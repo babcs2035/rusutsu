@@ -177,6 +177,11 @@ jobs:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          COMMUNITY_MODERATION_URL: ${{ vars.COMMUNITY_MODERATION_URL }}
+          COMMUNITY_MODERATION_TOKEN: ${{ secrets.COMMUNITY_MODERATION_TOKEN }}
+          COMMUNITY_MODERATION_MODEL: ${{ vars.COMMUNITY_MODERATION_MODEL }}
+          CONTRIBUTION_TRUST_PROXY: ${{ vars.CONTRIBUTION_TRUST_PROXY }}
         run: node scripts/ops/production-settings.mjs
 
       - name: Fingerprint explicit database-changing paths

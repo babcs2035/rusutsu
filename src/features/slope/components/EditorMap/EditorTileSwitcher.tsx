@@ -2,6 +2,13 @@
 
 import { Button } from "@/components/ui/button";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -30,24 +37,36 @@ export function EditorTileSwitcher({
 }: Props) {
   return (
     <div className="absolute top-2.5 right-2.5 z-20 flex flex-col gap-1 rounded-md bg-white p-1.5 shadow-sm">
-      <select
-        aria-label="背景地図"
-        className="min-h-11 max-w-40 rounded border bg-white px-2 text-sm md:hidden"
+      <Select
         value={layerId}
-        onChange={event => onLayerIdChange(event.target.value as TileLayerId)}
+        items={TILE_LAYER_ORDER.map(id => ({
+          value: id,
+          label: isGoogleTileLayer(id)
+            ? GOOGLE_TILE_LAYERS[id].label
+            : TILE_LAYERS[id as keyof typeof TILE_LAYERS].label,
+        }))}
+        onValueChange={value => onLayerIdChange(value as TileLayerId)}
       >
-        {TILE_LAYER_ORDER.map(id => (
-          <option
-            key={id}
-            value={id}
-            disabled={isGoogleTileLayer(id) && !googleMapsApiKey}
-          >
-            {isGoogleTileLayer(id)
-              ? GOOGLE_TILE_LAYERS[id].label
-              : TILE_LAYERS[id as keyof typeof TILE_LAYERS].label}
-          </option>
-        ))}
-      </select>
+        <SelectTrigger
+          aria-label="背景地図"
+          className="min-h-11 max-w-40 text-sm md:hidden"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {TILE_LAYER_ORDER.map(id => (
+            <SelectItem
+              key={id}
+              value={id}
+              disabled={isGoogleTileLayer(id) && !googleMapsApiKey}
+            >
+              {isGoogleTileLayer(id)
+                ? GOOGLE_TILE_LAYERS[id].label
+                : TILE_LAYERS[id as keyof typeof TILE_LAYERS].label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       <div className="hidden flex-col gap-1 md:flex">
         {TILE_LAYER_ORDER.map(id => {
           const isGoogle = isGoogleTileLayer(id);

@@ -34,6 +34,8 @@ test("空の区間出典でもスキー場の出典リンクを保持し、現�
     [
       {
         urls: ["https://example.com/status"],
+        snapshotIds: [],
+        entityIds: [],
         update: "2026/4/2 8:04",
         matches: [{ mapName: "地図名", officialNames: ["公式の新名"] }],
       },

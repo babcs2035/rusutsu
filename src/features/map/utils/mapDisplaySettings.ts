@@ -3,6 +3,8 @@ import type { FinalizedResortMapData } from "@/lib/finalizedResortGeojsonShared"
 import type { FinalizedFeatureStatus } from "../types";
 
 export type MapDisplaySettings = {
+  showCourses: boolean;
+  showLifts: boolean;
   showCourseNames: boolean;
   showLiftNames: boolean;
   showUngroomed: boolean;
@@ -23,6 +25,8 @@ export const OPEN_COURSE_STATUSES = {
   unknown: false,
 };
 export const DEFAULT_MAP_DISPLAY_SETTINGS: MapDisplaySettings = {
+  showCourses: true,
+  showLifts: true,
   showCourseNames: true,
   showLiftNames: true,
   showUngroomed: true,
@@ -39,6 +43,14 @@ export const isCourseStatusVisible = (
   status: FinalizedFeatureStatus,
   courseStatuses: MapDisplaySettings["courseStatuses"],
 ) => courseStatuses[status];
+
+/** 営業中のみのプリセット（○・△）と完全に一致する場合だけ有効。 */
+export const isOpenOnlyCourseSelection = (settings: MapDisplaySettings) =>
+  settings.showCourses &&
+  COURSE_STATUS_OPTIONS.every(
+    ({ value }) =>
+      settings.courseStatuses[value] === OPEN_COURSE_STATUSES[value],
+  );
 
 /** 営業状況欄の「未取得」と同じ基準。全件不明と未取得を区別する。 */
 export const hasCourseOperatingData = (data: FinalizedResortMapData | null) =>

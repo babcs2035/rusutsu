@@ -1,8 +1,14 @@
 import type { ExpressionSpecification, LayerSpecification } from "maplibre-gl";
+import {
+  UNGROOMED_MASK_DASH,
+  VARIABLE_MASK_DASH,
+} from "@/features/map/maplibre/finalizedLayers";
 
 export const EDITOR_SOURCE = {
   backgroundLines: "editor-background-lines",
   lines: "editor-lines",
+  correctionMasks: "editor-correction-masks",
+  correctionSelection: "editor-correction-selection",
   mergeDiscarded: "editor-merge-discarded",
   mergePreview: "editor-merge-preview",
   mergeAnchors: "editor-merge-anchors",
@@ -18,6 +24,9 @@ export const EDITOR_LAYER = {
   lineHovered: "editor-line-hovered",
   lineActive: "editor-line-active",
   lineHit: "editor-line-hit",
+  correctionSelection: "editor-correction-selection-line",
+  correctionUngroomedMask: "editor-correction-ungroomed-mask",
+  correctionVariableMask: "editor-correction-variable-mask",
   mergeDiscarded: "editor-merge-discarded-line",
   mergePreview: "editor-merge-preview-line",
   midpoint: "editor-midpoint",
@@ -82,6 +91,32 @@ const HIT_RADIUS = {
 
 const isActive: ExpressionSpecification = ["get", "active"];
 const isHovered: ExpressionSpecification = ["get", "hovered"];
+export const CORRECTION_COURSE_WIDTH: ExpressionSpecification = [
+  "interpolate",
+  ["linear"],
+  ["zoom"],
+  12,
+  2,
+  14,
+  3,
+  16,
+  4.4,
+  18,
+  6,
+];
+export const CORRECTION_ACTIVE_COURSE_WIDTH: ExpressionSpecification = [
+  "interpolate",
+  ["linear"],
+  ["zoom"],
+  12,
+  ["case", ["boolean", ["get", "active"], false], 3.6, 2],
+  14,
+  ["case", ["boolean", ["get", "active"], false], 4.6, 3],
+  16,
+  ["case", ["boolean", ["get", "active"], false], 6, 4.4],
+  18,
+  ["case", ["boolean", ["get", "active"], false], 7.6, 6],
+];
 
 const createPointHitLayer = (
   id: string,
@@ -185,6 +220,44 @@ export const createEditorLayers = (): LayerSpecification[] => [
       "line-color": COLOR.activeLine,
       "line-width": 5,
       "line-opacity": 0.95,
+    },
+  },
+  {
+    id: EDITOR_LAYER.correctionSelection,
+    type: "line",
+    source: EDITOR_SOURCE.correctionSelection,
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: {
+      "line-color": "#FACC15",
+      "line-width": 11,
+      "line-opacity": 0.38,
+      "line-blur": 1,
+    },
+  },
+  {
+    id: EDITOR_LAYER.correctionUngroomedMask,
+    type: "line",
+    source: EDITOR_SOURCE.correctionMasks,
+    filter: ["==", ["get", "grooming"], "ungroomed"],
+    layout: { "line-cap": "butt", "line-join": "round" },
+    paint: {
+      "line-color": "#FFFFFF",
+      "line-width": CORRECTION_ACTIVE_COURSE_WIDTH,
+      "line-opacity": 0.9,
+      "line-dasharray": UNGROOMED_MASK_DASH,
+    },
+  },
+  {
+    id: EDITOR_LAYER.correctionVariableMask,
+    type: "line",
+    source: EDITOR_SOURCE.correctionMasks,
+    filter: ["==", ["get", "grooming"], "variable"],
+    layout: { "line-cap": "butt", "line-join": "round" },
+    paint: {
+      "line-color": "#FFFFFF",
+      "line-width": CORRECTION_ACTIVE_COURSE_WIDTH,
+      "line-opacity": 0.9,
+      "line-dasharray": VARIABLE_MASK_DASH,
     },
   },
   {

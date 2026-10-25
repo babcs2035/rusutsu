@@ -49,7 +49,7 @@ export const COURSE_DETAIL_LABELS: Record<keyof CourseDetail, string> = {
 
 export const PISTE_DESCRIPTIONS: Record<string, string> = {
   "○": "常に圧雪",
-  "△": "一部圧雪（コース幅の半分が圧雪・半分が非圧雪のようなイメージ）",
+  "△": "日によって圧雪・非圧雪が変わる",
   "×": "未圧雪",
   "": "不明・未入力",
 };

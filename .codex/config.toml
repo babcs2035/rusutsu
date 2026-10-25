@@ -1,0 +1,6 @@
+[agents]
+enabled = true
+# サブエージェントはLuna。難しい判断は親が引き取る（AGENTS.md参照）。
+default_subagent_model = "gpt-6-luna"
+default_subagent_reasoning_effort = "low"
+max_concurrent_threads_per_session = 2

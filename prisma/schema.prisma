@@ -106,6 +106,7 @@ model SkiResort {
   crawlLatestRuns     CrawlLatestRun[]
   crawlLatestCurrents CrawlLatestCurrent[]
   operationSummary SkiResortOperationSummary?
+  communityPosts CommunityPost[]
 
   @@map("ski_resorts")
   @@index([mergedIntoId])
@@ -297,6 +298,14 @@ model User {
   favorites     Favorite[]
   accounts      Account[]
   sessions      Session[]
+  publicName    String? @db.VarChar(40)
+  nameMode      String? @db.VarChar(16)
+  suspendedAt   DateTime?
+  communityPosts CommunityPost[]
+  communityComments CommunityComment[]
+  communityLikes CommunityLike[]
+  communityNotifications CommunityNotification[]
+  contributionPhotos ContributionPhoto[]
 
   @@map("users")
 }
@@ -746,6 +755,7 @@ model MapDocumentBackup {
 // 利用者IDは外部キーにせず、利用者削除後も履歴を保持する。
 model EditRequest {
   id String @id @default(cuid())
+  submissionKey String? @unique @db.VarChar(64)
   authorId String
   authorName String
   kind String
@@ -763,9 +773,154 @@ model EditRequest {
   resolvedAt DateTime? @db.Timestamptz(3)
   events EditRequestEvent[]
   jobs EditRequestJob[]
+  photos ContributionPhoto[]
   @@index([authorId, createdAt])
   @@index([status, createdAt])
   @@map("edit_requests")
+}
+
+// Public community content is deliberately separate from private edit requests.
+model CommunityPost {
+  id String @id @default(cuid())
+  authorId String
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  resortId String
+  resort SkiResort @relation(fields: [resortId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  courseId String?
+  kind String @db.VarChar(16)
+  observedOn String @db.VarChar(10)
+  body String @default("") @db.VarChar(4000)
+  snowQualities String[] @default([])
+  conditions String[] @default([])
+  crowding String? @db.VarChar(16)
+  rating Int?
+  latitude Float?
+  longitude Float?
+  present Boolean?
+  itemType String? @db.VarChar(30)
+  size String? @db.VarChar(100)
+  // A follow-up is independent content; deleting its parent keeps it intact.
+  parentId String?
+  parent CommunityPost? @relation("CommunityHistory", fields: [parentId], references: [id], onDelete: SetNull)
+  history CommunityPost[] @relation("CommunityHistory")
+  status String @default("VISIBLE") @db.VarChar(16)
+  version Int @default(1)
+  batchKey String @db.VarChar(64)
+  batchIndex Int
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  photos ContributionPhoto[]
+  comments CommunityComment[]
+  likes CommunityLike[]
+  notifications CommunityNotification[]
+  @@unique([authorId, batchKey, batchIndex])
+  @@index([resortId, status, observedOn])
+  @@index([resortId, courseId, status, createdAt])
+  @@index([authorId, createdAt])
+  @@map("community_posts")
+}
+
+model CommunityComment {
+  id String @id @default(cuid())
+  postId String
+  post CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId String
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  body String @db.VarChar(2000)
+  status String @default("VISIBLE") @db.VarChar(16)
+  version Int @default(1)
+  operationKey String @db.VarChar(64)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  @@unique([authorId, operationKey])
+  @@index([postId, status, createdAt])
+  @@map("community_comments")
+}
+
+model CommunityLike {
+  postId String
+  userId String
+  post CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@id([postId, userId])
+  @@map("community_likes")
+}
+
+model CommunityNotification {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId String
+  post CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  kind String @db.VarChar(16)
+  readAt DateTime?
+  dedupeKey String @unique @db.VarChar(200)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@index([userId, readAt, createdAt])
+  @@map("community_notifications")
+}
+
+// Re-encoded bytes have no EXIF. No public directory, external image URL or
+// immutable CDN cache can outlive a deletion or moderation decision.
+model ContributionPhoto {
+  id String @id @default(cuid())
+  postId String?
+  post CommunityPost? @relation(fields: [postId], references: [id], onDelete: Cascade)
+  requestId String?
+  request EditRequest? @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  ownerId String?
+  owner User? @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  bytes Bytes
+  mimeType String @db.VarChar(40)
+  width Int
+  height Int
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@index([postId])
+  @@index([requestId])
+  @@map("contribution_photos")
+}
+
+model CommunityReport {
+  id String @id @default(cuid())
+  targetKind String @db.VarChar(16)
+  targetId String
+  reason String @db.VarChar(40)
+  body String @db.VarChar(2000)
+  status String @default("PENDING") @db.VarChar(16)
+  reviewedById String?
+  reviewedAt DateTime?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@index([status, createdAt])
+  @@map("community_reports")
+}
+
+// Durable asynchronous moderation queue; version guards prevent stale scans
+// from hiding a newer edit. AI never changes account permissions.
+model CommunityModerationJob {
+  id String @id @default(cuid())
+  targetKind String @db.VarChar(16)
+  targetId String
+  targetVersion Int
+  status String @default("PENDING") @db.VarChar(16)
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(now())
+  lockedAt DateTime?
+  result Json?
+  lastError String? @db.VarChar(500)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  @@unique([targetKind, targetId, targetVersion])
+  @@index([status, nextAttemptAt])
+  @@map("community_moderation_jobs")
+}
+
+model ContributionRateBucket {
+  key String @id @db.VarChar(100)
+  count Int
+  expiresAt DateTime
+  @@index([expiresAt])
+  @@map("contribution_rate_buckets")
 }
 
 model EditRequestEvent {

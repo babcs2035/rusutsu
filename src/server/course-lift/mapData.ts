@@ -51,6 +51,7 @@ export async function findCanonicalResortMap(
         update: row.officialUpdatedAt,
         latest_note: row.latestNote,
         latest_status_name: row.statusName,
+        status_snapshot_id: row.statusSnapshotId,
         status_mapping_names: row.crawledNames,
       },
     };

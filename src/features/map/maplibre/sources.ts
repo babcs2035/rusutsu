@@ -7,6 +7,7 @@ import {
   getCourseDifficulty,
   getSlopeColor,
 } from "@/lib/finalizedResortGeojsonShared";
+import { propertyAt, sliceLineByFraction } from "@/shared/course-lift/segments";
 import type { CourseColorMode, FinalizedFeatureStatus } from "../types";
 import {
   getFeatureStatusKind,
@@ -25,8 +26,11 @@ export type FinalizedLineProperties = {
   flowColor?: string;
   /** リフトの速さ。流れる破線の速度を分けるのに使う */
   flowSpeed?: LiftFlowSpeed;
+  /** コース・リフトの夜間営業（元データの「○」のみ true） */
+  night?: boolean;
   status: FinalizedFeatureStatus;
   ungroomed: boolean;
+  grooming?: "solid" | "variable" | "ungroomed";
 };
 
 export type FinalizedLineCollection = FeatureCollection<
@@ -79,6 +83,7 @@ export const buildCourseCollection = (
       name: course.displayName,
       status,
       ungroomed,
+      night: course.properties.night === "○",
     };
 
     if (mode === "slope") {
@@ -109,18 +114,50 @@ export const buildCourseOutlineCollection = (
   courses: FinalizedCourseFeature[],
 ): FinalizedLineCollection => ({
   type: "FeatureCollection",
-  features: courses.map(course =>
-    toLineFeature(course.coordinates as number[][], {
-      sourceId: course.groupId,
-      ...getRouteIdProperty(course),
-      name: course.displayName,
-      color:
-        COURSE_DIFFICULTY_META[getCourseDifficulty(course.properties.level)]
-          .color,
-      status: getFeatureStatusKind(course.properties.status),
-      ungroomed: isUngroomedPiste(course.properties.piste),
-    }),
-  ),
+  features: courses.flatMap(course => {
+    const ranges = [
+      ...(course.properties.pisteSegments ?? []),
+      ...(course.properties.nightSegments ?? []),
+    ];
+    const boundaries = [
+      ...new Set([0, 1, ...ranges.flatMap(range => [range.from, range.to])]),
+    ].sort((a, b) => a - b);
+    return boundaries.slice(0, -1).map((from, index) => {
+      const to = boundaries[index + 1];
+      const piste = propertyAt(
+        course.properties.pisteSegments,
+        (from + to) / 2,
+        course.properties.piste,
+      );
+      return toLineFeature(
+        boundaries.length === 2
+          ? (course.coordinates as number[][])
+          : sliceLineByFraction(course.coordinates, from, to),
+        {
+          sourceId: course.groupId,
+          ...getRouteIdProperty(course),
+          name: course.displayName,
+          color:
+            COURSE_DIFFICULTY_META[getCourseDifficulty(course.properties.level)]
+              .color,
+          status: getFeatureStatusKind(course.properties.status),
+          ungroomed: isUngroomedPiste(piste),
+          grooming:
+            piste === "△"
+              ? "variable"
+              : isUngroomedPiste(piste)
+                ? "ungroomed"
+                : "solid",
+          night:
+            propertyAt(
+              course.properties.nightSegments,
+              (from + to) / 2,
+              course.properties.night,
+            ) === "○",
+        },
+      );
+    });
+  }),
 });
 
 /**
@@ -217,6 +254,7 @@ export const buildLiftCollection = (
         ),
         status,
         ungroomed: false,
+        night: lift.properties.night === "○",
       },
     );
   }),

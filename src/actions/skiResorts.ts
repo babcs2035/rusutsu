@@ -8,12 +8,17 @@ import type {
 } from "@/features/lift-ticket/types";
 import {
   calculateLiftTicketForSeasons,
+  calculateLiftTicketPlan,
   selectLiftTicketSeason,
 } from "@/features/lift-ticket/utils/calculateLiftTicket";
 import {
   calculateRentalPlan,
   type TicketRentalResult,
 } from "@/features/lift-ticket/utils/rental";
+import {
+  calculateRentalBundle,
+  type TicketBundleResult,
+} from "@/features/lift-ticket/utils/rentalBundle";
 import { collectSocialAccounts } from "@/features/resort-detail/utils/socialAccounts";
 import { collectTrailMapLinks } from "@/features/resort-detail/utils/trailMapLinks";
 import { readCurrentResortConditions } from "@/lib/crawlLatestCurrent";
@@ -251,6 +256,7 @@ export async function calculateLiftTicketAndRentalForList(
     {
       ticket: TicketCalculationResult | null;
       rental: TicketRentalResult | null;
+      bundle: TicketBundleResult | null;
     }
   >
 > {
@@ -276,21 +282,31 @@ export async function calculateLiftTicketAndRentalForList(
     {
       ticket: TicketCalculationResult | null;
       rental: TicketRentalResult | null;
+      bundle: TicketBundleResult | null;
     }
   > = {};
   for (const id of uniqueIds) {
     const seasons = seasonsByResortId.get(id) ?? [];
     try {
+      const season =
+        selectLiftTicketSeason(seasons, input.visitDate) ?? seasons[0];
+      const rental = season ? calculateRentalPlan(season, input) : null;
       results[id] = {
         ticket: calculateLiftTicketForSeasons(seasons, input),
-        rental: (() => {
-          const season =
-            selectLiftTicketSeason(seasons, input.visitDate) ?? seasons[0];
-          return season ? calculateRentalPlan(season, input) : null;
-        })(),
+        rental,
+        // セット券（リフト券＋レンタル）が別々に買うより安ければ、その合計を使う
+        bundle:
+          season && rental && rental.status !== "none" && input.days?.length
+            ? calculateRentalBundle(
+                season,
+                input,
+                calculateLiftTicketPlan(season, input),
+                rental,
+              )
+            : null,
       };
     } catch {
-      results[id] = { ticket: null, rental: null };
+      results[id] = { ticket: null, rental: null, bundle: null };
     }
   }
   return results;

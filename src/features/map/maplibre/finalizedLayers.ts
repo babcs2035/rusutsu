@@ -19,9 +19,12 @@ export const FINALIZED_SOURCE = {
 } as const;
 
 export const FINALIZED_LAYER = {
+  courseNightCasing: "finalized-course-night-casing",
+  liftNightCasing: "finalized-lift-night-casing",
   courseCasing: "finalized-course-casing",
   courseLine: "finalized-course-line",
   courseUngroomedMask: "finalized-course-ungroomed-mask",
+  courseVariableMask: "finalized-course-variable-mask",
   courseArrow: "finalized-course-arrow",
   liftCasing: "finalized-lift-casing",
   liftSelectionHalo: "finalized-lift-selection-halo",
@@ -311,11 +314,64 @@ export const getCasingWidth = (
 export const getCasingOpacity = (
   state: FinalizedStyleState,
   kind: "course" | "lift",
-): DataDrivenPropertyValueSpecification<number> => [
+): ExpressionSpecification => [
   "case",
   isDimmedExpression(state, kind),
   DIMMED_STYLE[kind].casingOpacity,
   state.tileVariant === "photo" ? 0.74 : 0.56,
+];
+
+/** 夜間営業の黄色い外側。選択中の線幅と白い縁に追従する。 */
+const getNightCasingWidth = (
+  state: FinalizedStyleState,
+  kind: "course" | "lift",
+): DataDrivenPropertyValueSpecification<number> => {
+  const stops = kind === "course" ? COURSE_WIDTH : LIFT_WIDTH;
+  const isPhoto = state.tileVariant === "photo";
+  const casingExtra = (state.isFocusMode ? 0.3 : 0) + (isPhoto ? 2.2 : 1.8);
+  const nightExtra = kind === "lift" ? 5 : 3;
+  return widthByZoomAndCase(stops, width => [
+    "case",
+    isSelectedExpression(state.selectedFeature, kind),
+    kind === "lift"
+      ? width + 8 + nightExtra
+      : width + casingExtra + 1.6 + nightExtra,
+    width + casingExtra + nightExtra,
+  ]);
+};
+
+const getNightCasingFilter = (
+  state: FinalizedStyleState,
+  kind: "course" | "lift",
+): FilterSpecification => [
+  "all",
+  ["literal", kind === "lift" || state.courseColorMode === "difficulty"],
+  ["==", ["get", "night"], true],
+  ["!", isDimmedExpression(state, kind)],
+];
+
+const getNightCasingOpacity = (
+  state: FinalizedStyleState,
+  kind: "course" | "lift",
+): ExpressionSpecification => [
+  "case",
+  isDimmedExpression(state, kind),
+  DIMMED_STYLE[kind].casingOpacity,
+  1,
+];
+
+const getNightAwareCasingOpacity = (
+  state: FinalizedStyleState,
+  kind: "course" | "lift",
+): DataDrivenPropertyValueSpecification<number> => [
+  "case",
+  [
+    "all",
+    ["==", ["get", "night"], true],
+    ["literal", kind === "lift" || state.courseColorMode === "difficulty"],
+  ],
+  getNightCasingOpacity(state, kind),
+  getCasingOpacity(state, kind),
 ];
 
 /**
@@ -337,7 +393,9 @@ export const getCasingOpacity = (
  * 先頭の 0 は「塗らない区間」から始める指定。[0, 描く, 空ける] の並びで、
  * 元の破線とちょうど裏返しの位置（＝隙間になるところ）だけを白く塗る。
  */
-const UNGROOMED_MASK_DASH: DataDrivenPropertyValueSpecification<number[]> = [
+export const UNGROOMED_MASK_DASH: DataDrivenPropertyValueSpecification<
+  number[]
+> = [
   "step",
   ["zoom"],
   // 配列そのものを式の戻り値にするので literal で包む。
@@ -355,17 +413,35 @@ const UNGROOMED_MASK_DASH: DataDrivenPropertyValueSpecification<number[]> = [
   ["literal", [0, 1.3, 0.95]],
 ] as unknown as DataDrivenPropertyValueSpecification<number[]>;
 
+export const VARIABLE_MASK_DASH: DataDrivenPropertyValueSpecification<
+  number[]
+> = [
+  "step",
+  ["zoom"],
+  ["literal", [0, 6, 2.2]],
+  13,
+  ["literal", [0, 4.8, 1.8]],
+  14,
+  ["literal", [0, 4, 1.5]],
+  15,
+  ["literal", [0, 3.4, 1.25]],
+  16,
+  ["literal", [0, 3, 1.1]],
+  17,
+  ["literal", [0, 2.6, 0.95]],
+] as unknown as DataDrivenPropertyValueSpecification<number[]>;
+
 /**
  * 隙間を空ける対象。
  * 選択中のコースは実線で見せる（点線のままだと形が読みにくい）。
  */
 const getUngroomedMaskFilter = (
   state: FinalizedStyleState,
+  variable = false,
 ): FilterSpecification => [
   "all",
   ["literal", state.showUngroomed !== false],
-  ["==", ["get", "ungroomed"], true],
-  ["!", isSelectedExpression(state.selectedFeature, "course")],
+  ["==", ["get", "grooming"], variable ? "variable" : "ungroomed"],
 ];
 
 /** 矢羽の間隔。線幅ではなく画面上の読みやすさで決める */
@@ -419,6 +495,30 @@ export const createFinalizedLayers = (
   hitWidth: number,
 ): LayerSpecification[] => [
   {
+    id: FINALIZED_LAYER.courseNightCasing,
+    type: "line",
+    source: FINALIZED_SOURCE.courseOutlines,
+    filter: getNightCasingFilter(state, "course"),
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: {
+      "line-color": "#FACC15",
+      "line-width": getNightCasingWidth(state, "course"),
+      "line-opacity": getLineOpacity(state, "course"),
+    },
+  },
+  {
+    id: FINALIZED_LAYER.liftNightCasing,
+    type: "line",
+    source: FINALIZED_SOURCE.lifts,
+    filter: getNightCasingFilter(state, "lift"),
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: {
+      "line-color": "#FACC15",
+      "line-width": getNightCasingWidth(state, "lift"),
+      "line-opacity": getNightCasingOpacity(state, "lift"),
+    },
+  },
+  {
     id: FINALIZED_LAYER.courseCasing,
     type: "line",
     source: FINALIZED_SOURCE.courseOutlines,
@@ -426,7 +526,7 @@ export const createFinalizedLayers = (
     paint: {
       "line-color": "#FFFFFF",
       "line-width": getCasingWidth(state, "course"),
-      "line-opacity": getCasingOpacity(state, "course"),
+      "line-opacity": getNightAwareCasingOpacity(state, "course"),
     },
   },
   {
@@ -437,7 +537,7 @@ export const createFinalizedLayers = (
     paint: {
       "line-color": "#FFFFFF",
       "line-width": getCasingWidth(state, "lift"),
-      "line-opacity": getCasingOpacity(state, "lift"),
+      "line-opacity": getNightAwareCasingOpacity(state, "lift"),
     },
   },
   // 圧雪・非圧雪をまとめて実線で描く。斜度モードでは 1 コースが
@@ -466,6 +566,19 @@ export const createFinalizedLayers = (
       "line-width": getLineWidth(state, "course"),
       "line-opacity": getLineOpacity(state, "course"),
       "line-dasharray": UNGROOMED_MASK_DASH,
+    },
+  },
+  {
+    id: FINALIZED_LAYER.courseVariableMask,
+    type: "line",
+    source: FINALIZED_SOURCE.courseOutlines,
+    filter: getUngroomedMaskFilter(state, true),
+    layout: { "line-cap": "butt", "line-join": "round" },
+    paint: {
+      "line-color": "#FFFFFF",
+      "line-width": getLineWidth(state, "course"),
+      "line-opacity": getLineOpacity(state, "course"),
+      "line-dasharray": VARIABLE_MASK_DASH,
     },
   },
   {
@@ -587,6 +700,35 @@ export const applyFinalizedStyleState = (
       getUngroomedMaskFilter(state),
     );
   }
+  if (map.getLayer(FINALIZED_LAYER.courseVariableMask)) {
+    map.setFilter(
+      FINALIZED_LAYER.courseVariableMask,
+      getUngroomedMaskFilter(state, true),
+    );
+  }
+  set(
+    FINALIZED_LAYER.courseVariableMask,
+    "line-width",
+    getLineWidth(state, "course"),
+  );
+  set(
+    FINALIZED_LAYER.courseVariableMask,
+    "line-opacity",
+    getLineOpacity(state, "course"),
+  );
+
+  if (map.getLayer(FINALIZED_LAYER.courseNightCasing)) {
+    map.setFilter(
+      FINALIZED_LAYER.courseNightCasing,
+      getNightCasingFilter(state, "course"),
+    );
+  }
+  if (map.getLayer(FINALIZED_LAYER.liftNightCasing)) {
+    map.setFilter(
+      FINALIZED_LAYER.liftNightCasing,
+      getNightCasingFilter(state, "lift"),
+    );
+  }
 
   for (const layerId of [
     FINALIZED_LAYER.liftSelectionHalo,
@@ -606,6 +748,26 @@ export const applyFinalizedStyleState = (
     set(layerId, "line-opacity", getLineOpacity(state, kind));
   }
 
+  set(
+    FINALIZED_LAYER.courseNightCasing,
+    "line-width",
+    getNightCasingWidth(state, "course"),
+  );
+  set(
+    FINALIZED_LAYER.courseNightCasing,
+    "line-opacity",
+    getLineOpacity(state, "course"),
+  );
+  set(
+    FINALIZED_LAYER.liftNightCasing,
+    "line-width",
+    getNightCasingWidth(state, "lift"),
+  );
+  set(
+    FINALIZED_LAYER.liftNightCasing,
+    "line-opacity",
+    getNightCasingOpacity(state, "lift"),
+  );
   // 隙間の線は白のままで、太さと濃さだけ色付きの線に追従させる
   set(
     FINALIZED_LAYER.courseUngroomedMask,
@@ -626,13 +788,13 @@ export const applyFinalizedStyleState = (
   set(
     FINALIZED_LAYER.courseCasing,
     "line-opacity",
-    getCasingOpacity(state, "course"),
+    getNightAwareCasingOpacity(state, "course"),
   );
   set(FINALIZED_LAYER.liftCasing, "line-width", getCasingWidth(state, "lift"));
   set(
     FINALIZED_LAYER.liftCasing,
     "line-opacity",
-    getCasingOpacity(state, "lift"),
+    getNightAwareCasingOpacity(state, "lift"),
   );
   for (const layer of LIFT_FLOW_LAYERS) {
     set(layer.id, "line-opacity", getFlowOpacity(state));

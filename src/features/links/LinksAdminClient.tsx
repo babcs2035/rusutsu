@@ -145,6 +145,7 @@ export function LinksAdminClient({
   const [query, setQuery] = useState("");
   const [prefecture, setPrefecture] = useState("");
   const [missingOnly, setMissingOnly] = useState(false);
+  const [multipleMapUrlsOnly, setMultipleMapUrlsOnly] = useState(false);
   const [limit, setLimit] = useState(20);
   const dirtyCount = Object.keys(drafts).length;
   const label =
@@ -163,6 +164,9 @@ export function LinksAdminClient({
     resort =>
       (!prefecture || resort.prefecture === prefecture) &&
       (!missingOnly || !links[resort.id]?.[category]?.length) &&
+      (category !== "mapPageUrls" ||
+        !multipleMapUrlsOnly ||
+        (links[resort.id]?.mapUrls?.length ?? 0) > 1) &&
       `${resort.name} ${resort.searchName} ${resort.id}`
         .normalize("NFKC")
         .toLowerCase()
@@ -269,6 +273,20 @@ export function LinksAdminClient({
           />
           {label}が未登録のスキー場のみ
         </label>
+        {category === "mapPageUrls" && (
+          <label className="flex min-h-11 items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={multipleMapUrlsOnly}
+              className="size-5"
+              onChange={event => {
+                setMultipleMapUrlsOnly(event.target.checked);
+                setLimit(20);
+              }}
+            />
+            ゲレンデマップURLが複数あるスキー場のみ
+          </label>
+        )}
         <p className="text-sm text-gray-600">
           {label}登録済み {registered} / {resorts.length}施設 · 表示対象{" "}
           {filtered.length}施設

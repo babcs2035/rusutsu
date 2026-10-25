@@ -1,5 +1,6 @@
 "use client";
 
+import { CorrectionLink } from "@/features/corrections/CorrectionLink";
 import type { ElevationProfileMapPoint } from "@/features/map/types";
 import type { FinalizedLiftFeature } from "@/lib/finalizedResortGeojsonShared";
 import {
@@ -20,12 +21,14 @@ import { LiftMetrics } from "./LiftMetrics";
 
 export const SelectedLiftDetail = ({
   lift,
+  resortId,
   resortLabelName,
   sourceUrls,
   selectedElevationProfilePoint,
   onSelectedElevationProfilePointChange,
 }: {
   lift: FinalizedLiftFeature;
+  resortId?: string;
   resortLabelName: string;
   sourceUrls: string[];
   selectedElevationProfilePoint: ElevationProfileMapPoint | null;
@@ -107,7 +110,16 @@ export const SelectedLiftDetail = ({
         }}
         searchWord={searchWord}
         sources={liftStatusSources(lift, sourceUrls)}
+        reportContext={
+          resortId ? { resortId, targetIds: [lift.id] } : undefined
+        }
       />
+      {resortId && (
+        <CorrectionLink
+          resortId={resortId}
+          context={{ kind: "lift", targetKind: "lift", targetId: lift.id }}
+        />
+      )}
 
       <LiftMetrics
         key={lift.id}

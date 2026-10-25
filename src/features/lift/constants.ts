@@ -25,6 +25,7 @@ export const MAKER_OPTIONS = [
   "JFE",
   "三菱重工業",
   "POMA",
+  "樫山工業",
   "",
 ] as const;
 

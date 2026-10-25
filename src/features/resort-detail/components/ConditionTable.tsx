@@ -19,11 +19,14 @@ export function ConditionTable({ data }: { data: unknown }) {
   const points = Object.entries(record(data)).map(([name, value]) => ({
     name,
     values: record(value),
+    updatedAt: formatPublishedDate(
+      record(value).updateTime ?? record(value).update ?? record(value).time,
+    ),
   }));
   const columns = fields.filter(field =>
     points.some(point => observationText(point.values[field.key]) !== null),
   );
-  const hasUpdates = points.some(point => observationText(point.values.update));
+  const hasUpdates = points.some(point => point.updatedAt);
   const showLocation =
     hasUpdates || !(points.length === 1 && points[0].name === "中腹");
   if (!columns.length)
@@ -94,7 +97,7 @@ export function ConditionTable({ data }: { data: unknown }) {
                 );
               })}
             </tr>
-            {hasUpdates && (
+            {point.updatedAt && (
               <tr>
                 <td
                   colSpan={columns.length + (showLocation ? 1 : 0)}
@@ -103,9 +106,7 @@ export function ConditionTable({ data }: { data: unknown }) {
                   {/* 日時は全列にまたがる行に置き、地点名の列幅で折り返さない。 */}
                   <span className="sticky left-2 inline-block whitespace-nowrap rounded-md border border-blue-100 bg-blue-50 px-1.5 py-0.5 text-[11px] leading-4 tabular-nums text-blue-800 md:@min-[28rem]/conditions:px-2 md:@min-[28rem]/conditions:text-xs md:@min-[28rem]/conditions:leading-5">
                     <span className="sr-only">{point.name}の更新日時: </span>
-                    {formatPublishedDate(
-                      observationText(point.values.update) ?? "",
-                    ) ?? "更新日時不明"}
+                    {point.updatedAt}
                   </span>
                 </td>
               </tr>
