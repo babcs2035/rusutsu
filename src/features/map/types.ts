@@ -170,6 +170,8 @@ export type MapViewRestoreRequest = MapViewSnapshot & {
 };
 
 export type JapanResortMapProps = {
+  onCommunityPointPick?: (coordinates: [number, number]) => void;
+  communityPoint?: [number, number] | null;
   resorts: MapSkiResort[];
   filteredResortIdSet?: Set<string>;
   isFilterActive?: boolean;
@@ -203,6 +205,8 @@ export type JapanResortMapProps = {
   showMapToolbar?: boolean;
   /** 営業フィルターはプレビューでも表示できる。コース比較の埋め込みでは出さない。 */
   showMapOpenOnlyControl?: boolean;
+  /** 現在地ボタンを出すか。投稿中の地図では出さない */
+  showLocationControl?: boolean;
   mapTopControls?: ReactNode;
   mapStatusFilterShared?: boolean;
   /**

@@ -156,27 +156,23 @@ export default async function CommunityAdminPage({
             <div className="flex flex-wrap gap-2">
               <strong>{post.author.publicName ?? "匿名"}</strong>
               <span>
-                滑走レポート · {post.observedOn} ·{" "}
+                現地レポート · {post.observedOn} {post.observedTime} ·{" "}
                 {post.status === "HIDDEN" ? "非表示" : "公開中"}
               </span>
               <Link className="underline" href={`/community/post/${post.id}`}>
                 公開画面
               </Link>
             </div>
-            <p>
-              {post.resortId} · {post.entries.length}項目
-            </p>
-            <p className="whitespace-pre-wrap">{post.body}</p>
+            <p>{post.resortId}</p>
             {post.entries.map(entry => (
               <div key={entry.id} className="rounded border bg-slate-50 p-2">
                 <b>
                   {entry.kind} · {entry.targetName}
                 </b>
                 <p className="whitespace-pre-wrap">{entry.body}</p>
-                {entry.present != null && (
+                {entry.itemType && (
                   <p>
-                    {entry.present ? "あり" : "なし・撤去"} {entry.itemType}{" "}
-                    {entry.size}
+                    {entry.itemType} {entry.size}
                   </p>
                 )}
               </div>

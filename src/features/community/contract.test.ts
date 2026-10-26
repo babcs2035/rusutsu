@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  latestRatings,
   observedOnSchema,
   reportDraftSchema,
   reportEntrySchema,
@@ -14,185 +13,103 @@ const entry = (kind: "COURSE" | "LIFT" | "MOGUL" | "ITEM", extra = {}) => ({
   liftId: null,
   body: "",
   snowQualities: [],
-  conditions: [],
+  status: null,
   crowding: null,
-  rating: null,
   latitude: null,
   longitude: null,
-  present: null,
   itemType: null,
   size: null,
   waitMinutes: null,
+  liftSpeed: null,
+  liftSpeedLevel: null,
+  depth: null,
   ...extra,
 });
 
 test("report entries enforce target and kind-specific fields", () => {
-  assert.ok(
-    reportEntrySchema.safeParse(
-      entry("COURSE", { courseId: "course-a", rating: 4 }),
-    ).success,
-  );
-  assert.ok(
-    reportEntrySchema.safeParse(
-      entry("LIFT", { liftId: "lift-a", waitMinutes: 12, crowding: "普通" }),
-    ).success,
-  );
-  assert.ok(
-    reportEntrySchema.safeParse(
-      entry("MOGUL", {
-        courseId: "course-a",
-        latitude: 43,
-        longitude: 140,
-        present: true,
-        snowQualities: ["柔らかい"],
-      }),
-    ).success,
-  );
-  assert.ok(
-    reportEntrySchema.safeParse(
-      entry("ITEM", {
-        courseId: "course-a",
-        latitude: 43,
-        longitude: 140,
-        present: false,
-        itemType: "キッカー",
-        size: "小さめ",
-      }),
-    ).success,
-  );
-
-  assert.ok(!reportEntrySchema.safeParse(entry("COURSE")).success);
-  assert.ok(!reportEntrySchema.safeParse(entry("LIFT")).success);
-  assert.ok(
-    !reportEntrySchema.safeParse(
-      entry("COURSE", { courseId: "course-a", liftId: "lift-a" }),
-    ).success,
-  );
-  assert.ok(
-    !reportEntrySchema.safeParse(
-      entry("MOGUL", { latitude: 43, longitude: 140 }),
-    ).success,
-  );
-  assert.ok(
-    !reportEntrySchema.safeParse(
-      entry("ITEM", {
-        latitude: 43,
-        longitude: 140,
-        present: true,
-      }),
-    ).success,
-  );
-  assert.ok(
-    !reportEntrySchema.safeParse(
-      entry("LIFT", { liftId: "lift-a", snowQualities: ["パウダー（軽い）"] }),
-    ).success,
-  );
-  assert.ok(
-    !reportEntrySchema.safeParse(entry("COURSE", { rating: 6 })).success,
-  );
-});
-
-test("a visit report can combine all entry kinds and rejects duplicate targets", () => {
-  const entries = [
-    entry("COURSE", { courseId: "course-a", rating: 4 }),
-    entry("LIFT", { liftId: "lift-a", waitMinutes: 5 }),
+  const valid = [
+    entry("COURSE", {
+      courseId: "course-a",
+      status: "積雪不足",
+      snowQualities: ["硬め"],
+      crowding: "普通",
+      latitude: 43,
+      longitude: 140,
+    }),
+    entry("LIFT", {
+      liftId: "lift-a",
+      status: "減速中",
+      waitMinutes: 12,
+      liftSpeed: 2.3,
+      liftSpeedLevel: "遅い",
+    }),
     entry("MOGUL", {
       courseId: "course-a",
       latitude: 43,
       longitude: 140,
-      present: true,
+      snowQualities: ["柔らかめ"],
+      depth: "深い",
     }),
     entry("ITEM", {
-      courseId: "course-a",
-      latitude: 43.01,
-      longitude: 140.01,
-      present: true,
-      itemType: "レール",
+      latitude: 43,
+      longitude: 140,
+      itemType: "キッカー",
+      size: "5m",
     }),
   ];
+  for (const item of valid)
+    assert.ok(reportEntrySchema.safeParse(item).success);
+
+  const invalid = [
+    // 対象・状況・場所・アイテムの必須
+    entry("COURSE", { status: "オープン" }),
+    entry("COURSE", { courseId: "course-a" }),
+    entry("LIFT", { liftId: "lift-a" }),
+    entry("MOGUL"),
+    entry("ITEM", { latitude: 43, longitude: 140 }),
+    // 種類に合わない欄・値
+    entry("COURSE", { courseId: "c", status: "減速中" }),
+    entry("LIFT", { liftId: "l", status: "積雪不足" }),
+    entry("LIFT", { liftId: "l", status: "オープン", snowQualities: ["硬め"] }),
+    entry("LIFT", { liftId: "l", status: "オープン", crowding: "混雑" }),
+    entry("COURSE", { courseId: "c", status: "オープン", waitMinutes: 5 }),
+    entry("COURSE", { courseId: "c", status: "オープン", depth: "浅い" }),
+    entry("MOGUL", { latitude: 43, longitude: 140, status: "オープン" }),
+    entry("LIFT", { liftId: "l", status: "オープン", liftSpeed: 20 }),
+    entry("COURSE", { courseId: "c", status: "オープン", latitude: 43 }),
+  ];
+  for (const item of invalid)
+    assert.ok(!reportEntrySchema.safeParse(item).success, JSON.stringify(item));
+});
+
+test("a report carries exactly one item with its date and time", () => {
+  const course = entry("COURSE", { courseId: "course-a", status: "オープン" });
+  const valid = {
+    observedOn: "2026-01-10",
+    observedTime: "10:35",
+    entries: [course],
+  };
+  assert.ok(reportDraftSchema.safeParse(valid).success);
+  assert.ok(!reportDraftSchema.safeParse({ ...valid, entries: [] }).success);
   assert.ok(
-    reportDraftSchema.safeParse({
-      observedOn: "2026-01-10",
-      body: "一日の記録",
-      rating: 5,
-      entries,
+    !reportDraftSchema.safeParse({
+      ...valid,
+      entries: [course, { ...course, clientKey: crypto.randomUUID() }],
     }).success,
   );
   assert.ok(
-    !reportDraftSchema.safeParse({
-      observedOn: "2026-01-10",
-      body: "",
-      rating: null,
-      entries: [],
-    }).success,
+    !reportDraftSchema.safeParse({ ...valid, observedTime: null }).success,
   );
   assert.ok(
-    !reportDraftSchema.safeParse({
-      observedOn: "2026-01-10",
-      body: "",
-      rating: null,
-      entries: [entries[0], { ...entries[0], clientKey: crypto.randomUUID() }],
-    }).success,
+    !reportDraftSchema.safeParse({ ...valid, observedTime: "24:00" }).success,
   );
+  // 以前の全体の感想・評価は受け付けない
   assert.ok(
-    !reportDraftSchema.safeParse({
-      observedOn: "2026-01-10",
-      body: "",
-      rating: null,
-      entries: [entries[0], { ...entries[1], clientKey: entries[0].clientKey }],
-    }).success,
+    !reportDraftSchema.safeParse({ ...valid, body: "感想", rating: 5 }).success,
   );
 });
 
 test("observed dates reject impossible calendar days", () => {
+  assert.ok(observedOnSchema.safeParse("2024-02-29").success);
   assert.ok(!observedOnSchema.safeParse("2026-02-30").success);
-});
-
-test("ratings use the latest rated report per author and course", () => {
-  const rows = [
-    {
-      id: "1",
-      authorId: "a",
-      courseId: "course",
-      rating: 1,
-      createdAt: "2026-01-01",
-    },
-    {
-      id: "2",
-      authorId: "a",
-      courseId: "course",
-      rating: 5,
-      createdAt: "2026-01-02",
-    },
-    {
-      id: "3",
-      authorId: "a",
-      courseId: "course",
-      rating: null,
-      createdAt: "2026-01-03",
-    },
-    {
-      id: "4",
-      authorId: "b",
-      courseId: "course",
-      rating: 3,
-      createdAt: "2026-01-01",
-    },
-    {
-      id: "5",
-      authorId: "a",
-      courseId: null,
-      rating: 2,
-      createdAt: "2026-01-01",
-    },
-  ];
-  const summaries = latestRatings(rows);
-  assert.deepEqual(
-    summaries.find(summary => summary.courseId === "course"),
-    { courseId: "course", average: 4, count: 2 },
-  );
-  assert.deepEqual(
-    summaries.find(summary => summary.courseId === null),
-    { courseId: null, average: 2, count: 1 },
-  );
 });

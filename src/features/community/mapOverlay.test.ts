@@ -15,7 +15,6 @@ const entry = (
   body: "",
   latitude,
   longitude,
-  present: true,
   itemType: null,
   size: null,
   targetName: "コースA",

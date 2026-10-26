@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import { z } from "zod";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { COMPOSE_STATE_EVENT } from "@/features/community/composerEvents";
 import { FavoriteButton } from "@/features/favorites/FavoriteButton";
 import { useFavorites } from "@/features/favorites/FavoritesProvider";
 import type { Filters } from "@/features/filters/types";
@@ -237,6 +238,26 @@ export const HomeLayout = ({
   onUserMapZoomInteraction,
 }: Props) => {
   const favorites = useFavorites();
+  const [composingResortId, setComposingResortId] = useState<string | null>(
+    null,
+  );
+  useEffect(() => {
+    const handle = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{ resortId: string; active: boolean }>
+      ).detail;
+      if (!detail) return;
+      setComposingResortId(current =>
+        detail.active
+          ? detail.resortId
+          : current === detail.resortId
+            ? null
+            : current,
+      );
+    };
+    window.addEventListener(COMPOSE_STATE_EVENT, handle);
+    return () => window.removeEventListener(COMPOSE_STATE_EVENT, handle);
+  }, []);
   // デスクトップの比較では、左の地図エリアを「ゲレンデ（コースマップ一覧）」と
   // 「アクセス（位置の地図）」で切り替える。既定はゲレンデ
   const [compareLeftPane, setCompareLeftPane] =
@@ -322,6 +343,7 @@ export const HomeLayout = ({
     !isSidePanelLayout &&
     !isMobileFilterOverlayOpen &&
     !isCompareOpen &&
+    selectedResortId !== composingResortId &&
     Boolean(selectedResortId);
   const shouldShowMobileSearchButton =
     !isCompareOpen && !isMobileFilterOverlayOpen && !selectedResortId;
@@ -333,7 +355,9 @@ export const HomeLayout = ({
     isSidePanelLayout ||
     (!isMobileCompare &&
       (mobileContentTab === "map" ||
-        (!shouldShowMobileTopChrome && !shouldShowMobileSearchScreen)));
+        (!selectedResortId &&
+          !shouldShowMobileTopChrome &&
+          !shouldShowMobileSearchScreen)));
   const { sortedResorts, controls: sortControls } =
     useResortSort(filteredResorts);
   const shouldShowMobileResultCount = mobileContentTab === "info";

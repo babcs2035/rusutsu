@@ -54,6 +54,7 @@ type Props = {
   /** コースマップ用ツールバーを出すか。狭い地図では畳む */
   showToolbar?: boolean;
   showOpenOnlyControl?: boolean;
+  showLocationControl?: boolean;
   mapTopControls?: ReactNode;
   mapStatusFilterShared?: boolean;
   /** 選択中もほかのコース・リフト名を薄く出す（コース比較） */
@@ -105,6 +106,7 @@ export const ResortFinalizedMap = ({
   presentation,
   showToolbar = true,
   showOpenOnlyControl = showToolbar,
+  showLocationControl = true,
   mapTopControls,
   mapStatusFilterShared,
   showContextLabels = false,
@@ -172,6 +174,7 @@ export const ResortFinalizedMap = ({
         initialViewport={initialViewport}
         showMapToolbar={showToolbar}
         showMapOpenOnlyControl={showOpenOnlyControl}
+        showLocationControl={showLocationControl}
         mapTopControls={mapTopControls}
         mapStatusFilterShared={mapStatusFilterShared}
         showContextLabels={showContextLabels}

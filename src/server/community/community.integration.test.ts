@@ -12,16 +12,19 @@ import type {
   ReportDraft,
   ReportEntryDraft,
 } from "@/features/community/contract";
+import { verifyRemoteCommunity } from "./remoteIntegration";
 
 type TestApi = typeof import("@/features/community/actions") &
   typeof import("@/server/community/moderation") &
   typeof import("@/server/community/admin") &
+  typeof import("@/server/community/photos") &
   typeof import("@/lib/prisma") & {
     runtime: AsyncLocalStorage<{
       session: { user: { id: string } } | null;
       cookies: Map<string, string>;
     }>;
     photoGET: typeof import("@/app/api/community/photos/[photoId]/route").GET;
+    internalCommunityPOST: typeof import("@/app/api/internal/v1/community/route").POST;
   };
 
 const testDatabase = process.env.COMMUNITY_TEST_DATABASE_URL;
@@ -40,7 +43,7 @@ test("community reports: atomic daily report lifecycle and privacy", {
   const outfile = path.join(root, "integration.mjs");
   await build({
     stdin: {
-      contents: `export {runtime} from 'community-test-runtime'; export {prisma,disconnectPrisma} from '@/lib/prisma'; export * from '@/features/community/actions'; export * from '@/server/community/moderation'; export {normalizePhoto} from '@/server/community/photos'; export {GET as photoGET} from '@/app/api/community/photos/[photoId]/route'; export * from '@/server/community/admin';`,
+      contents: `export {runtime} from 'community-test-runtime'; export {prisma,disconnectPrisma} from '@/lib/prisma'; export * from '@/features/community/actions'; export * from '@/server/community/moderation'; export {normalizePhoto} from '@/server/community/photos'; export {GET as photoGET} from '@/app/api/community/photos/[photoId]/route'; export {POST as internalCommunityPOST} from '@/app/api/internal/v1/community/route'; export * from '@/server/community/admin';`,
       resolveDir: process.cwd(),
       loader: "ts",
     },
@@ -56,7 +59,7 @@ test("community reports: atomic daily report lifecycle and privacy", {
           builder.onResolve(
             {
               filter:
-                /^(server-only|community-test-runtime|next\/headers|next\/cache|next\/server|@\/auth|@\/lib\/finalizedResortGeojson)$/,
+                /^(server-only|community-test-runtime|next\/headers|next\/cache|next\/server|@\/auth|@\/lib\/finalizedResortGeojson|@\/lib\/skiResortData)$/,
             },
             args => ({ path: args.path, namespace: "test" }),
           );
@@ -65,17 +68,19 @@ test("community reports: atomic daily report lifecycle and privacy", {
             contents:
               args.path === "server-only"
                 ? "export {}"
-                : args.path === "community-test-runtime"
-                  ? `import {AsyncLocalStorage} from 'node:async_hooks'; export const runtime=new AsyncLocalStorage();`
-                  : args.path === "@/auth"
-                    ? `import {runtime} from 'community-test-runtime'; export async function auth(){return runtime.getStore()?.session ?? null;} export async function signIn(){} export async function signOut(){runtime.getStore().session=null;}`
-                    : args.path === "next/headers"
-                      ? `import {runtime} from 'community-test-runtime'; export async function headers(){return new Headers();} export async function cookies(){const store=runtime.getStore().cookies;return {get:key=>store.has(key)?{value:store.get(key)}:undefined,set:(key,value)=>store.set(key,value)};}`
-                      : args.path === "next/cache"
-                        ? `export function revalidatePath(){}`
-                        : args.path === "next/server"
-                          ? `export function after(){}`
-                          : `export async function getFinalizedResortMapData(){return {courses:{features:[{groupId:'test-course-a',displayName:'A',coordinates:[[140,43],[140.01,43.01]]},{groupId:'test-course-b',displayName:'B',coordinates:[[140,43],[140.02,43.02]]}]},lifts:{features:[{id:'test-lift-a',name:'第1リフト',coordinates:[[140,43],[140.005,43.005]]}]}};}`,
+                : args.path === "@/lib/skiResortData"
+                  ? `export async function readSkiResortById(){throw new Error('Unexpected legacy catalogue call in isolated workflow test');}`
+                  : args.path === "community-test-runtime"
+                    ? `import {AsyncLocalStorage} from 'node:async_hooks'; export const runtime=new AsyncLocalStorage();`
+                    : args.path === "@/auth"
+                      ? `import {runtime} from 'community-test-runtime'; export async function auth(){return runtime.getStore()?.session ?? null;} export async function signIn(){} export async function signOut(){runtime.getStore().session=null;}`
+                      : args.path === "next/headers"
+                        ? `import {runtime} from 'community-test-runtime'; export async function headers(){return new Headers();} export async function cookies(){const store=runtime.getStore().cookies;return {get:key=>store.has(key)?{value:store.get(key)}:undefined,set:(key,value)=>store.set(key,value)};}`
+                        : args.path === "next/cache"
+                          ? `export function revalidatePath(){}`
+                          : args.path === "next/server"
+                            ? `export function after(){}`
+                            : `export async function getFinalizedResortMapData(){return {courses:{features:[{groupId:'test-course-a',displayName:'A',coordinates:[[140,43],[140.01,43.01]]},{groupId:'test-course-b',displayName:'B',coordinates:[[140,43],[140.02,43.02]]}]},lifts:{features:[{id:'test-lift-a',name:'第1リフト',coordinates:[[140,43],[140.005,43.005]]}]}};}`,
           }));
         },
       },
@@ -105,15 +110,16 @@ test("community reports: atomic daily report lifecycle and privacy", {
     liftId: null,
     body: `${courseId} の雪は良好`,
     snowQualities: ["パウダー（軽い）"],
-    conditions: [],
+    status: "積雪不足",
     crowding: "普通",
-    rating: 4,
-    latitude: null,
-    longitude: null,
-    present: null,
+    latitude: 43.005,
+    longitude: 140.005,
     itemType: null,
     size: null,
     waitMinutes: null,
+    liftSpeed: null,
+    liftSpeedLevel: null,
+    depth: null,
   });
   const lift = (key: string): ReportEntryDraft => ({
     clientKey: key,
@@ -122,15 +128,16 @@ test("community reports: atomic daily report lifecycle and privacy", {
     liftId: "test-lift-a",
     body: "待ち時間は短め",
     snowQualities: [],
-    conditions: [],
-    crowding: "空いている",
-    rating: 5,
+    status: "減速中",
+    crowding: null,
     latitude: null,
     longitude: null,
-    present: null,
     itemType: null,
     size: null,
     waitMinutes: 5,
+    liftSpeed: 2.3,
+    liftSpeedLevel: "遅い",
+    depth: null,
   });
   const mogul = (key: string): ReportEntryDraft => ({
     clientKey: key,
@@ -138,16 +145,17 @@ test("community reports: atomic daily report lifecycle and privacy", {
     courseId: "test-course-a",
     liftId: null,
     body: "コブは柔らかい",
-    snowQualities: ["柔らかい"],
-    conditions: [],
+    snowQualities: ["柔らかめ"],
+    status: null,
     crowding: null,
-    rating: null,
     latitude: 43.001,
     longitude: 140.001,
-    present: true,
     itemType: null,
     size: null,
     waitMinutes: null,
+    liftSpeed: null,
+    liftSpeedLevel: null,
+    depth: "深い",
   });
   const item = (key: string): ReportEntryDraft => ({
     clientKey: key,
@@ -156,25 +164,30 @@ test("community reports: atomic daily report lifecycle and privacy", {
     liftId: null,
     body: "キッカーあり",
     snowQualities: [],
-    conditions: [],
+    status: null,
     crowding: null,
-    rating: null,
     latitude: 43.02,
     longitude: 140.02,
-    present: true,
     itemType: "キッカー",
     size: "中",
     waitMinutes: null,
+    liftSpeed: null,
+    liftSpeedLevel: null,
+    depth: null,
   });
-  const draft = (
-    entries: ReportDraft["entries"],
-    body = "一日の記録",
-  ): ReportDraft => ({
+  const draft = (entry: ReportEntryDraft): ReportDraft => ({
     observedOn: "2026-01-10",
-    body,
-    rating: 5,
-    entries,
+    observedTime: "10:35",
+    entries: [entry],
   });
+  const photoForm = (entryKey: string, image: Buffer, name: string) => {
+    const form = new FormData();
+    form.append(
+      `photos:${entryKey}`,
+      new File([new Uint8Array(image)], name, { type: "image/jpeg" }),
+    );
+    return form;
+  };
   const publish = (
     actor: ReturnType<typeof account>,
     report: ReportDraft,
@@ -233,10 +246,10 @@ test("community reports: atomic daily report lifecycle and privacy", {
       },
     });
     assertFailure(
-      await publish(g, draft([course(randomUUID(), "test-course-a")])),
+      await publish(g, draft(course(randomUUID(), "test-course-a"))),
     );
     assertFailure(
-      await publish(a, draft([course(randomUUID(), "test-course-a")])),
+      await publish(a, draft(course(randomUUID(), "test-course-a"))),
     );
     assertSuccess(
       await run(a, () => api.saveCommunityProfile("ANONYMOUS", "")),
@@ -245,28 +258,41 @@ test("community reports: atomic daily report lifecycle and privacy", {
       await run(b, () => api.saveCommunityProfile("NICKNAME", "雪だるま")),
     );
 
+    const heicFixture = process.env.COMMUNITY_HEIC_TEST_FILE;
+    if (heicFixture) {
+      const original = await fs.readFile(heicFixture);
+      const heic = new File([original], "sample.heic", { type: "image/heic" });
+      const normalized = await api.normalizePhoto(heic);
+      const meta = await sharp(normalized.bytes).metadata();
+      assert.equal(meta.format, "webp");
+      assert.equal(meta.exif, undefined);
+      assert.ok(normalized.width <= 2048 && normalized.height <= 2048);
+      const form = new FormData();
+      form.set("photo", heic);
+      const prepared = assertSuccess(
+        await run(a, () => api.prepareCommunityPhoto(form)),
+      );
+      assert.equal(prepared.mimeType, "image/webp");
+      assert.equal(
+        (await sharp(Buffer.from(prepared.base64, "base64")).metadata()).format,
+        "webp",
+      );
+    }
     const image = await sharp({
       create: { width: 10, height: 10, channels: 3, background: "red" },
     })
       .jpeg()
       .withExif({ IFD0: { Artist: "Private artist" } })
       .toBuffer();
-    const upload = new FormData();
-    upload.append(
-      "photos",
-      new File([new Uint8Array(image)], "private.jpg", { type: "image/jpeg" }),
-    );
+    // 1件の投稿は1項目。写真はその項目に付く。
+    const courseKey = randomUUID();
+    const report = draft(course(courseKey, "test-course-a"));
+    const upload = photoForm(courseKey, image, "private.jpg");
     const key = randomUUID();
-    const mixed = draft([
-      course(randomUUID(), "test-course-a"),
-      lift(randomUUID()),
-      mogul(randomUUID()),
-      item(randomUUID()),
-    ]);
-    const created = assertSuccess(await publish(a, mixed, upload, key));
+    const created = assertSuccess(await publish(a, report, upload, key));
     assert.equal(typeof created.id, "string");
     assert.equal(
-      assertSuccess(await publish(a, mixed, upload, key)).id,
+      assertSuccess(await publish(a, report, upload, key)).id,
       created.id,
     );
     assert.equal(
@@ -275,17 +301,51 @@ test("community reports: atomic daily report lifecycle and privacy", {
     );
     assert.equal(
       await db.communityEntry.count({ where: { postId: created.id } }),
-      4,
+      1,
     );
-    assert.deepEqual(
-      (
-        await db.communityEntry.findMany({
-          where: { postId: created.id },
-          orderBy: { position: "asc" },
-          select: { kind: true },
-        })
-      ).map(row => row.kind),
-      ["COURSE", "LIFT", "MOGUL", "ITEM"],
+    // 項目に紐づかない写真や、ほかの項目宛ての写真は受け付けない
+    const loosePhoto = new FormData();
+    loosePhoto.append(
+      "photos",
+      new File([new Uint8Array(image)], "loose.jpg", { type: "image/jpeg" }),
+    );
+    assertFailure(
+      await publish(
+        a,
+        draft(course(randomUUID(), "test-course-a")),
+        loosePhoto,
+      ),
+    );
+    assertFailure(
+      await publish(
+        a,
+        draft(course(randomUUID(), "test-course-a")),
+        photoForm(randomUUID(), image, "other.jpg"),
+      ),
+    );
+
+    const single = assertSuccess(await publish(a, draft(lift(randomUUID()))));
+    const singleFeed = assertSuccess(
+      await run(g, () => api.getCommunityFeed({ resortId, kind: "LIFT" })),
+    );
+    const singlePost = singleFeed.posts.find(post => post.id === single.id);
+    assert.equal(singlePost?.observedTime, "10:35");
+    assert.equal(singlePost?.entries.length, 1);
+    assert.equal(singlePost?.entries[0].status, "減速中");
+    assert.equal(singlePost?.entries[0].liftSpeed, 2.3);
+    assert.equal(
+      assertSuccess(
+        await run(g, () =>
+          api.getCommunityFeed({ resortId, liftId: "test-lift-a" }),
+        ),
+      ).posts[0].id,
+      single.id,
+    );
+    assertSuccess(
+      await run(a, async () => {
+        const detail = assertSuccess(await api.getPostDetail(single.id));
+        return api.deletePost(single.id, detail.post.version);
+      }),
     );
 
     const feed = assertSuccess(
@@ -295,37 +355,16 @@ test("community reports: atomic daily report lifecycle and privacy", {
     );
     assert.equal(feed.posts.length, 1);
     assert.equal(feed.posts[0].id, created.id);
-    assert.equal(feed.posts[0].entries.length, 4);
+    assert.equal(feed.posts[0].entries.length, 1);
     assert.equal(feed.posts[0].author.publicName, "匿名");
     assert.ok(!JSON.stringify(feed).includes("Private Google Name"));
     assert.ok(!JSON.stringify(feed).includes("@example.invalid"));
-    assert.equal(
-      assertSuccess(
-        await run(g, () =>
-          api.getCommunityFeed({ resortId, liftId: "test-lift-a" }),
-        ),
-      ).posts[0].id,
-      created.id,
-    );
-    assert.equal(
-      assertSuccess(
-        await run(g, () => api.getCommunityFeed({ resortId, kind: "ITEM" })),
-      ).posts.length,
-      1,
-    );
-    for (const kind of ["MOGUL", "ITEM"] as const) {
-      const mapResult = assertSuccess(
-        await run(g, () => api.getCommunityMapEntries({ resortId, kind })),
-      );
-      assert.equal(mapResult.entries.length, 1);
-      assert.equal(mapResult.entries[0].postId, created.id);
-    }
     const detail = assertSuccess(
       await run(g, () => api.getPostDetail(created.id)),
     );
-    assert.equal(detail.post.entries.length, 4);
+    assert.equal(detail.post.entries.length, 1);
     assert.ok(!("history" in detail));
-    const photoId = detail.post.photos[0].id;
+    const photoId = detail.post.entries[0].photos[0].id;
     const photo = await db.contributionPhoto.findUniqueOrThrow({
       where: { id: photoId },
     });
@@ -346,18 +385,16 @@ test("community reports: atomic daily report lifecycle and privacy", {
     const beforeInvalid = await db.communityPost.count({
       where: { authorId: owner },
     });
-    const invalid = draft([
-      course(randomUUID(), "missing-course"),
-      lift(randomUUID()),
-    ]);
+    const invalid = draft(course(randomUUID(), "missing-course"));
     assertFailure(await publish(a, invalid));
     assert.equal(
       await db.communityPost.count({ where: { authorId: owner } }),
       beforeInvalid,
     );
-    const invalidLift = draft([
-      { ...lift(randomUUID()), liftId: "missing-lift" },
-    ]);
+    const invalidLift = draft({
+      ...lift(randomUUID()),
+      liftId: "missing-lift",
+    });
     assertFailure(await publish(a, invalidLift));
     assert.equal(
       await db.communityPost.count({ where: { authorId: owner } }),
@@ -366,7 +403,7 @@ test("community reports: atomic daily report lifecycle and privacy", {
 
     assertFailure(
       await run(b, () =>
-        api.updateReport(created.id, 1, mixed, new FormData(), []),
+        api.updateReport(created.id, 1, report, new FormData(), []),
       ),
     );
     assertFailure(await run(b, () => api.deletePost(created.id, 1)));
@@ -416,10 +453,15 @@ test("community reports: atomic daily report lifecycle and privacy", {
       ),
     );
 
-    const revised = draft(
-      [course(randomUUID(), "test-course-a"), item(randomUUID())],
-      "部分編集後",
-    );
+    // 編集は項目をその場で書き換え、残した写真の紐づけを保つ
+    const entryBefore = await db.communityEntry.findFirstOrThrow({
+      where: { postId: created.id },
+    });
+    const revised = draft({
+      ...course(courseKey, "test-course-b"),
+      status: "クローズ",
+      body: "部分編集後",
+    });
     const updated = assertSuccess(
       await run(a, () =>
         api.updateReport(created.id, 1, revised, new FormData(), [photoId]),
@@ -431,10 +473,12 @@ test("community reports: atomic daily report lifecycle and privacy", {
         api.updateReport(created.id, 1, revised, new FormData(), []),
       ),
     );
-    assert.equal(
-      await db.communityEntry.count({ where: { postId: created.id } }),
-      2,
-    );
+    const entryAfter = await db.communityEntry.findFirstOrThrow({
+      where: { postId: created.id },
+    });
+    assert.equal(entryAfter.id, entryBefore.id);
+    assert.equal(entryAfter.courseId, "test-course-b");
+    assert.equal(entryAfter.status, "クローズ");
     assert.equal(
       await db.contributionPhoto.count({ where: { postId: created.id } }),
       0,
@@ -455,12 +499,8 @@ test("community reports: atomic daily report lifecycle and privacy", {
         api.getCommunityMapEntries({ resortId, kind: "MOGUL" }),
       ),
     );
-    assert.equal(
-      mapEntries.entries.length,
-      0,
-      "MOGUL entry was removed by the partial edit",
-    );
-    const withPoint = draft([mogul(randomUUID())]);
+    assert.equal(mapEntries.entries.length, 0);
+    const withPoint = draft(mogul(randomUUID()));
     const pointPost = assertSuccess(await publish(a, withPoint));
     const points = assertSuccess(
       await run(g, () =>
@@ -469,24 +509,26 @@ test("community reports: atomic daily report lifecycle and privacy", {
     );
     assert.equal(points.entries.length, 1);
     assert.equal(points.entries[0].postId, pointPost.id);
+    assert.equal(
+      (
+        await db.communityEntry.findFirstOrThrow({
+          where: { postId: pointPost.id },
+        })
+      ).depth,
+      "深い",
+    );
 
-    // AI receives the parent text and every child observation, then hides the whole report.
-    const flagged = draft(
-      [course(randomUUID(), "test-course-a"), item(randomUUID())],
-      "AI flagged report",
-    );
-    const flaggedPhotos = new FormData();
-    flaggedPhotos.append(
-      "photos",
-      new File([new Uint8Array(image)], "flagged.jpg", { type: "image/jpeg" }),
-    );
+    // AI receives the item text, then hides the whole report.
+    const itemKey = randomUUID();
+    const flagged = draft(item(itemKey));
+    const flaggedPhotos = photoForm(itemKey, image, "flagged.jpg");
     const flaggedResult = assertSuccess(
       await publish(a, flagged, flaggedPhotos),
     );
     const flaggedDetail = assertSuccess(
       await run(g, () => api.getPostDetail(flaggedResult.id)),
     );
-    const flaggedPhotoId = flaggedDetail.post.photos[0].id;
+    const flaggedPhotoId = flaggedDetail.post.entries[0].photos[0].id;
     await db.communityModerationJob.updateMany({
       where: { targetKind: "POST", targetId: { not: flaggedResult.id } },
       data: { status: "REVIEWED" },
@@ -527,7 +569,6 @@ test("community reports: atomic daily report lifecycle and privacy", {
       "HIDDEN",
     );
     assertFailure(await run(g, () => api.getPostDetail(flaggedResult.id)));
-    assert.ok(moderationRequest.includes("test-course-a の雪は良好"));
     assert.ok(moderationRequest.includes("キッカーあり"));
     assert.equal(
       (
@@ -562,6 +603,12 @@ test("community reports: atomic daily report lifecycle and privacy", {
     assertFailure(
       await run(a, () => api.deleteCommunityAccount("wrong" as never)),
     );
+    await verifyRemoteCommunity(api, root, testDatabase as string, {
+      resortId,
+      owner,
+      other,
+      admin,
+    });
     assertSuccess(await run(a, () => api.deleteCommunityAccount("削除")));
     assert.equal(
       await db.communityPost.count({ where: { authorId: owner } }),

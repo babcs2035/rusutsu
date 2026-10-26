@@ -10,11 +10,11 @@ export class RequestBodyError extends Error {
   }
 }
 
-export async function readRequestText(
+export async function readRequestBytes(
   request: Request,
   maxBytes: number,
   timeoutMs = 30_000,
-): Promise<string> {
+): Promise<Buffer> {
   const tooLarge = () =>
     new RequestBodyError(413, "PAYLOAD_TOO_LARGE", "Request body is too large");
   const length = request.headers.get("content-length");
@@ -24,7 +24,7 @@ export async function readRequestText(
     }
     if (Number(length) > maxBytes) throw tooLarge();
   }
-  if (!request.body) return "";
+  if (!request.body) return Buffer.alloc(0);
   const reader = request.body.getReader();
   const chunks: Uint8Array[] = [];
   let size = 0;
@@ -50,9 +50,7 @@ export async function readRequestText(
       if (size > maxBytes) throw tooLarge();
       chunks.push(value);
     }
-    return new TextDecoder("utf-8", { fatal: true }).decode(
-      Buffer.concat(chunks, size),
-    );
+    return Buffer.concat(chunks, size);
   } catch (error) {
     void reader.cancel().catch(() => {});
     if (error instanceof RequestBodyError) throw error;
@@ -64,6 +62,23 @@ export async function readRequestText(
   } finally {
     clearTimeout(timeout);
     reader.releaseLock();
+  }
+}
+
+export async function readRequestText(
+  request: Request,
+  maxBytes: number,
+  timeoutMs = 30_000,
+): Promise<string> {
+  const bytes = await readRequestBytes(request, maxBytes, timeoutMs);
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    throw new RequestBodyError(
+      400,
+      "INVALID_BODY",
+      "Unable to read request body",
+    );
   }
 }
 

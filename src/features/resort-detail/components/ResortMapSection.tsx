@@ -76,6 +76,8 @@ type Props = {
   blockPreviewPointerEvents?: boolean;
   /** 拡大ボタンを出すか */
   expandable?: boolean;
+  /** 地図の操作だけにする（投稿中）。拡大・現在地・営業フィルターを出さない */
+  minimalControls?: boolean;
   /**
    * 地図に浮かぶコースマップ用ツールバーを出すか。
    * 比較（デスクトップ）は上の帯に同じものをまとめているので出さない。
@@ -123,6 +125,7 @@ export const ResortMapSection = ({
   allowPreviewInteraction = false,
   blockPreviewPointerEvents = false,
   expandable = true,
+  minimalControls = false,
   showInlineMapToolbar = true,
   mapTopControls,
   detailViewportResetKey = 0,
@@ -241,7 +244,8 @@ export const ResortMapSection = ({
       mapResorts={mapResorts}
       presentation={presentation}
       showToolbar={showToolbar}
-      showOpenOnlyControl
+      showOpenOnlyControl={!minimalControls}
+      showLocationControl={!minimalControls}
       mapTopControls={presentation === "preview" ? mapTopControls : undefined}
       mapStatusFilterShared={controlledShowOpenOnly !== undefined}
       courseColorMode={courseColorMode}
@@ -313,7 +317,7 @@ export const ResortMapSection = ({
             )}
         </div>
         {!isExpanded && renderOverlayDetail()}
-        {expandable && !isExpanded && (
+        {expandable && !minimalControls && !isExpanded && (
           <Button
             type="button"
             aria-label="地図を拡大"

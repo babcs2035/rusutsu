@@ -2,7 +2,8 @@
 
 import { type Map as MapLibreMap, Marker } from "maplibre-gl";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -10,13 +11,61 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getCommunityMapEntries } from "./actions";
+import { getCommunityFeed, getCommunityMapEntries } from "./actions";
+import {
+  communityComposerUrl,
+  requestCommunityComposer,
+} from "./composerEvents";
 import type { PublicMapEntry } from "./contract";
 import {
   type CommunityPeriod,
   getPeriodStart,
   groupExactCoordinates,
 } from "./mapOverlay";
+
+// スキー場ごとに投稿があるか。同じ詳細の小さい地図と拡大地図で1回だけ調べる。
+// 読み込み中は undefined。取得できないときは地図に出せる投稿もないので false。
+const postPresence = new Map<string, boolean | Promise<void>>();
+const presenceListeners = new Set<() => void>();
+const notifyPresence = () => {
+  for (const listener of presenceListeners) listener();
+};
+const subscribePresence = (listener: () => void) => {
+  presenceListeners.add(listener);
+  return () => {
+    presenceListeners.delete(listener);
+  };
+};
+function loadPostPresence(resortId: string) {
+  if (postPresence.has(resortId)) return;
+  postPresence.set(
+    resortId,
+    getCommunityFeed({ resortId })
+      .then(result => {
+        postPresence.set(resortId, result.ok && result.data.posts.length > 0);
+      })
+      .catch(() => {
+        postPresence.set(resortId, false);
+      })
+      .finally(notifyPresence),
+  );
+}
+/** 投稿した直後に、地図の「投稿」を使える状態にする */
+export function rememberCommunityPost(resortId: string) {
+  postPresence.set(resortId, true);
+  notifyPresence();
+}
+function useHasCommunityPosts(resortId: string) {
+  useEffect(() => loadPostPresence(resortId), [resortId]);
+  return useSyncExternalStore(
+    subscribePresence,
+    () => {
+      const value = postPresence.get(resortId);
+      return typeof value === "boolean" ? value : undefined;
+    },
+    () => undefined,
+  );
+}
 
 export function CommunityMapControls({
   resortId,
@@ -28,26 +77,38 @@ export function CommunityMapControls({
   onEnabledChange: (enabled: boolean) => void;
 }) {
   const router = useRouter();
+  const hasPosts = useHasCommunityPosts(resortId);
+  const available = hasPosts !== false;
   return (
     <div className="flex shrink-0 items-center gap-1">
-      <label className="flex h-9 cursor-pointer items-center gap-1 rounded-md border border-slate-300 bg-white px-1 text-sm font-semibold whitespace-nowrap text-slate-700 shadow-sm min-[375px]:px-1.5 md:h-8 md:px-1.5 md:text-[13px]">
+      <label
+        className={
+          available
+            ? "flex h-9 cursor-pointer items-center gap-1 rounded-md border border-slate-300 bg-white px-1 text-sm font-semibold whitespace-nowrap text-slate-700 shadow-sm min-[375px]:px-1.5 md:h-8 md:px-1.5 md:text-[13px]"
+            : "flex h-9 cursor-default items-center gap-1 rounded-md border border-slate-300 bg-white px-1 text-sm font-semibold whitespace-nowrap text-slate-700 opacity-50 shadow-sm min-[375px]:px-1.5 md:h-8 md:px-1.5 md:text-[13px]"
+        }
+      >
         <input
           type="checkbox"
-          checked={enabled}
+          checked={enabled && available}
+          disabled={!available}
           onChange={event => onEnabledChange(event.target.checked)}
           className="size-3.5 accent-blue-500"
         />
         投稿
       </label>
-      <button
+      <Button
         type="button"
+        variant="outline"
         className="h-9 rounded-md border border-slate-300 bg-white px-1 text-sm font-semibold whitespace-nowrap text-slate-700 shadow-sm hover:bg-slate-50 min-[375px]:px-1.5 md:h-8 md:px-1.5 md:text-[13px]"
-        onClick={() =>
-          router.push(`/community/${encodeURIComponent(resortId)}/new`)
-        }
+        onClick={() => {
+          const request = { resortId };
+          if (!requestCommunityComposer(request))
+            router.push(communityComposerUrl(request));
+        }}
       >
         ＋投稿
-      </button>
+      </Button>
     </div>
   );
 }
@@ -184,13 +245,7 @@ export function CommunityMapOverlay({
         group.posts.length > 1 ? String(group.posts.length) : "";
       const representative = group.posts[0];
       const color =
-        representative.kind === "MOGUL"
-          ? representative.present
-            ? "bg-fuchsia-600"
-            : "bg-slate-600"
-          : representative.present
-            ? "bg-amber-500"
-            : "bg-slate-600";
+        representative.kind === "MOGUL" ? "bg-fuchsia-600" : "bg-amber-500";
       button.className = `flex size-5 items-center justify-center rounded-full border-2 border-white text-[10px] font-bold text-white shadow ${color}`;
       if (group.posts.length > 1)
         button.className =
@@ -251,11 +306,7 @@ export function CommunityMapOverlay({
               }
             >
               <b>
-                {post.kind === "MOGUL"
-                  ? post.present
-                    ? "コブあり"
-                    : "コブなし"
-                  : `${post.itemType ?? "パーク"} ${post.present ? "設置中" : "撤去済み"}`}
+                {post.kind === "MOGUL" ? "コブ" : (post.itemType ?? "パーク")}
               </b>
               <span className="ml-2">{post.observedOn}</span>
               <span className="block text-gray-500">

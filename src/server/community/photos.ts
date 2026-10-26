@@ -1,5 +1,6 @@
 import "server-only";
-import sharp from "sharp";
+import decodeHeic from "heic-decode";
+import sharp, { type Sharp } from "sharp";
 
 export const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
 export async function normalizePhoto(file: File) {
@@ -7,15 +8,49 @@ export async function normalizePhoto(file: File) {
     throw new Error("写真は1枚8MB以内で選んでください。");
   const input = Buffer.from(await file.arrayBuffer());
   try {
-    const image = sharp(input, {
-      limitInputPixels: 40_000_000,
-      animated: false,
-      failOn: "warning",
-    });
+    const heic =
+      input.length >= 12 &&
+      input.toString("ascii", 4, 8) === "ftyp" &&
+      ["heic", "heix", "mif1"].includes(input.toString("ascii", 8, 12));
+    let image: Sharp;
+    if (heic) {
+      const images = await decodeHeic.all({ buffer: input });
+      try {
+        const primary = images[0];
+        if (
+          !primary ||
+          !Number.isSafeInteger(primary.width) ||
+          !Number.isSafeInteger(primary.height) ||
+          primary.width < 1 ||
+          primary.height < 1 ||
+          primary.width * primary.height > 40_000_000
+        )
+          throw new Error("dimensions");
+        const decoded = await primary.decode();
+        image = sharp(Buffer.from(decoded.data), {
+          raw: { width: decoded.width, height: decoded.height, channels: 4 },
+          limitInputPixels: 40_000_000,
+        });
+      } finally {
+        images.dispose();
+      }
+    } else
+      image = sharp(input, {
+        limitInputPixels: 40_000_000,
+        animated: false,
+        failOn: "warning",
+      });
     const metadata = await image.metadata();
     if (
       !metadata.format ||
-      !["jpeg", "png", "webp", "heif", "avif"].includes(metadata.format) ||
+      ![
+        "jpeg",
+        "png",
+        "webp",
+        "heif",
+        "avif",
+        ...(heic ? ["raw"] : []),
+      ].includes(metadata.format) ||
       (metadata.pages ?? 1) > 1
     )
       throw new Error("format");
@@ -38,20 +73,21 @@ export async function normalizePhoto(file: File) {
     };
   } catch {
     throw new Error(
-      "写真を読み込めません。JPEG・PNG・WebPで選び直してください。HEICは端末でJPEGに変換できます。",
+      "写真を読み込めません。HEIC・JPEG・PNG・WebPの画像を選び直してください。",
     );
   }
 }
 
-export async function readReportPhotos(form: FormData) {
+export async function readReportPhotos(form: FormData, entryKey: string) {
   if (!(form instanceof FormData))
     throw new Error("写真の形式を確認してください。");
-  for (const [key] of form.entries())
-    if (key !== "photos") throw new Error("写真の対象を確認してください。");
-  const files = form.getAll("photos");
-  if (files.length > 6) throw new Error("写真はレポート全体で6枚までです。");
+  const files = [...form.entries()];
+  if (files.length > 6) throw new Error("写真は1件の投稿で6枚までです。");
   const results = [];
-  for (const file of files) {
+  for (const [key, file] of files) {
+    // 写真は必ず投稿する項目に付ける。項目に紐づかない写真は受け付けない。
+    if (key !== `photos:${entryKey}`)
+      throw new Error("写真の対象を確認してください。");
     if (!(file instanceof File))
       throw new Error("写真の形式を確認してください。");
     results.push(await normalizePhoto(file));

@@ -3,6 +3,7 @@ import { createHmac, randomUUID } from "node:crypto";
 import { cookies, headers } from "next/headers";
 import type { AnonymousProof } from "@/features/corrections/anonymousCheck";
 import { prisma } from "@/lib/prisma";
+import { internalCommunityActor } from "./actorContext";
 import {
   AnonymousChallengeError,
   issueAnonymousChallenge,
@@ -42,6 +43,9 @@ export async function consumeWriteLimit(
 }
 
 export async function anonymousSubmissionKey(operationKey: string) {
+  const internal = internalCommunityActor();
+  if (internal?.anonymousIdentity && operationKey === "rate-limit")
+    return internal.anonymousIdentity;
   const jar = await cookies();
   let identity = jar.get("rusutsu-contribution-id")?.value;
   if (!identity || !/^[a-f0-9-]{36}$/.test(identity)) {
@@ -70,7 +74,7 @@ export async function limitAnonymous(
   // trusted proxy. Never trust arbitrary X-Forwarded-For from the Internet.
   const requestHeaders = await headers();
   const address =
-    process.env.CONTRIBUTION_TRUST_PROXY === "true"
+    !internalCommunityActor() && process.env.CONTRIBUTION_TRUST_PROXY === "true"
       ? requestHeaders.get("x-real-ip")
       : null;
   const networkCount = await consumeWriteLimit(

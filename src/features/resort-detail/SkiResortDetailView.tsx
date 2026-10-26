@@ -2,9 +2,19 @@
 
 import { Portal } from "@radix-ui/react-portal";
 import type { ComponentType } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
+import { CommunityComposer } from "@/features/community/CommunityComposer";
 import { CommunityFeed } from "@/features/community/CommunityFeed";
+import {
+  COMPOSE_EVENT,
+  COMPOSE_STATE_EVENT,
+  type ComposeRequest,
+  MAP_TARGET_EVENT,
+  setCommunityMapPickMode,
+  setCommunityMapPoint,
+} from "@/features/community/composerEvents";
+import type { ReportMapTarget } from "@/features/community/contract";
 import { CorrectionLink } from "@/features/corrections/CorrectionLink";
 import { useScreenState } from "@/features/map/session/useScreenState";
 import type {
@@ -180,6 +190,137 @@ export const SkiResortDetailView = ({
     "map",
   );
   const [detailViewportResetKey, setDetailViewportResetKey] = useState(0);
+  const [composeRequest, setComposeRequest] = useState<ComposeRequest | null>(
+    null,
+  );
+  const [composeTarget, setComposeTarget] = useState<ReportMapTarget | null>(
+    null,
+  );
+  const composeResortId = resortData?.id;
+  const handlePickMode = useCallback(
+    (mode: "POINT" | null) => {
+      if (composeResortId) setCommunityMapPickMode(composeResortId, mode);
+    },
+    [composeResortId],
+  );
+  const handleMapPoint = useCallback(
+    (point: [number, number] | null) => {
+      if (composeResortId) setCommunityMapPoint(composeResortId, point);
+    },
+    [composeResortId],
+  );
+  useEffect(() => {
+    setComposeRequest(null);
+    setComposeTarget(null);
+    if (!composeResortId) return;
+    const open = (event: Event) => {
+      const request = (event as CustomEvent<ComposeRequest>).detail;
+      if (request?.resortId !== composeResortId) return;
+      event.preventDefault();
+      if (request.target) setComposeTarget(request.target);
+      setComposeRequest(current =>
+        current && !request.postId ? current : request,
+      );
+    };
+    const pick = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{ resortId: string; target: ReportMapTarget }>
+      ).detail;
+      if (detail?.resortId === composeResortId) setComposeTarget(detail.target);
+    };
+    window.addEventListener(COMPOSE_EVENT, open);
+    window.addEventListener(MAP_TARGET_EVENT, pick);
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("compose") === "1") {
+      const courseId = url.searchParams.get("courseId");
+      const liftId = url.searchParams.get("liftId");
+      setComposeRequest({
+        resortId: composeResortId,
+        postId: url.searchParams.get("edit") ?? undefined,
+        target: courseId
+          ? { kind: "COURSE", id: courseId }
+          : liftId
+            ? { kind: "LIFT", id: liftId }
+            : undefined,
+      });
+      for (const key of ["compose", "edit", "courseId", "liftId"])
+        url.searchParams.delete(key);
+      window.history.replaceState(
+        window.history.state,
+        "",
+        url.pathname + url.search + url.hash,
+      );
+    }
+    return () => {
+      window.removeEventListener(COMPOSE_EVENT, open);
+      window.removeEventListener(MAP_TARGET_EVENT, pick);
+      setCommunityMapPickMode(composeResortId, null);
+    };
+  }, [composeResortId]);
+  // 投稿中に地図で選んだコース・リフトは投稿の対象にする。閉じたら、
+  // 投稿を始める前の選択に戻して元の詳細を出す。
+  const selectionBeforeCompose = useRef<SelectedMapFeature | null>(null);
+  const composing = composeRequest != null;
+  const latestSelection = useRef(selectedFinalizedFeature);
+  latestSelection.current = selectedFinalizedFeature;
+  useEffect(() => {
+    if (composing) selectionBeforeCompose.current = latestSelection.current;
+  }, [composing]);
+  const composeFeatureKey =
+    composing && selectedFinalizedFeature
+      ? `${selectedFinalizedFeature.kind}:${selectedFinalizedFeature.id}`
+      : null;
+  const composeCourseFeatures = resortData?.finalizedMapData?.courses?.features;
+  useEffect(() => {
+    if (!composeFeatureKey) return;
+    const feature = latestSelection.current;
+    if (!feature) return;
+    if (feature.kind === "lift") {
+      setComposeTarget({ kind: "LIFT", id: feature.id });
+      return;
+    }
+    const group = findSelectedCourseGroup(
+      createFinalizedCourseGroups(composeCourseFeatures ?? []),
+      feature,
+    );
+    if (group) setComposeTarget({ kind: "COURSE", id: group.id });
+  }, [composeCourseFeatures, composeFeatureKey]);
+  const handleComposeTargetChange = useCallback(
+    (target: { kind: "COURSE" | "LIFT"; id: string } | null) => {
+      const current = latestSelection.current;
+      if (!target) {
+        if (current) onSelectedFinalizedFeatureChange(null);
+        return;
+      }
+      const kind = target.kind === "LIFT" ? "lift" : "course";
+      if (current?.kind === kind && current.id === target.id) return;
+      onSelectedFinalizedFeatureChange({ kind, id: target.id });
+    },
+    [onSelectedFinalizedFeatureChange],
+  );
+  const closeComposer = () => {
+    handlePickMode(null);
+    setComposeRequest(null);
+    setComposeTarget(null);
+    onSelectedFinalizedFeatureChange(selectionBeforeCompose.current);
+  };
+  const activeComposerResortId = composeRequest?.resortId;
+  useEffect(() => {
+    if (!activeComposerResortId) return;
+    const resortId = activeComposerResortId;
+    window.dispatchEvent(
+      new CustomEvent(COMPOSE_STATE_EVENT, {
+        detail: { resortId, active: true },
+      }),
+    );
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent(COMPOSE_STATE_EVENT, {
+          detail: { resortId, active: false },
+        }),
+      );
+    };
+  }, [activeComposerResortId]);
 
   const selectFeatureFromMap = useCallback(
     (feature: SelectedMapFeature | null) => {
@@ -399,7 +540,33 @@ export const SkiResortDetailView = ({
     </div>
   );
 
-  const mobileFeatureDetail = renderFeatureDetail();
+  const composer =
+    composeRequest?.resortId === resort.id ? (
+      <div
+        className="flex h-full min-h-0 flex-col"
+        role="region"
+        aria-label="現地レポートの投稿パネル"
+      >
+        <div className="min-h-0 flex-1">
+          <CommunityComposer
+            key={`${resort.id}:${composeRequest.postId ?? "new"}`}
+            resortId={resort.id}
+            postId={composeRequest.postId}
+            embedded
+            onClose={closeComposer}
+            initialTarget={composeRequest.target}
+            selectedMapTarget={composeTarget}
+            onMapPickModeChange={handlePickMode}
+            onMapPointChange={handleMapPoint}
+            onTargetChange={handleComposeTargetChange}
+            allowPreview={process.env.NODE_ENV === "development"}
+          />
+        </div>
+      </div>
+    ) : null;
+  // スマホの投稿はコース詳細と同じく、上の地図をそのまま使い下だけを差し替える。
+  const mobileFeatureDetail =
+    composer && !isSidePanel ? composer : renderFeatureDetail();
 
   // スマホは地図を常に同じ位置に置いたまま、その下だけを詳細に差し替える。
   // 位置が変わると地図が作り直され、選択状態が失われる。
@@ -433,7 +600,7 @@ export const SkiResortDetailView = ({
           : "h-full min-h-0 overflow-y-auto overscroll-contain"
       }
     >
-      {hideMobileInfoSection ? null : (
+      {hideMobileInfoSection || composer ? null : (
         <InfoSection
           resort={resortInfo}
           isCompareSelected={isCompareSelected}
@@ -508,6 +675,7 @@ export const SkiResortDetailView = ({
                   onSelectedElevationProfilePointChange
                 }
                 featureDetail={mobileFeatureDetail}
+                minimalControls={Boolean(composer)}
                 detailViewportResetKey={detailViewportResetKey}
               />
             </div>
@@ -527,6 +695,31 @@ export const SkiResortDetailView = ({
   // 何も選んでいなければパネルごと畳んで地図を邪魔しない。
   const shouldRenderDesktopPanel =
     isSidePanel && (!isDesktopMapExpanded || Boolean(desktopFeatureDetail));
+
+  if (composer && isSidePanel)
+    return (
+      <Portal>
+        <div
+          className={cn(
+            "fixed inset-0 z-[420] flex justify-end pointer-events-none",
+            isSidePanel && isDesktopMapExpanded && "p-3",
+          )}
+        >
+          <AnimatedPanel
+            visible
+            rootClassName="h-full w-full md:w-auto"
+            contentClassName={cn(
+              "@container/resort-detail relative flex h-full min-h-0 w-full flex-col overflow-hidden border border-gray-200 bg-white pointer-events-auto shadow-2xl md:w-[var(--desktop-detail-panel-width)]",
+              isSidePanel &&
+                isDesktopMapExpanded &&
+                "md:w-[min(400px,40vw)] rounded-xl",
+            )}
+          >
+            {composer}
+          </AnimatedPanel>
+        </div>
+      </Portal>
+    );
 
   return (
     <>

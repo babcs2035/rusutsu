@@ -1,11 +1,23 @@
-import { CommunityComposer } from "@/features/community/CommunityComposer";
+import { redirect } from "next/navigation";
+import { communityComposerUrl } from "@/features/community/composerEvents";
+
 export default async function NewCommunityPost({
   params,
   searchParams,
 }: {
   params: Promise<{ resortId: string }>;
-  searchParams: Promise<{ edit?: string }>;
+  searchParams: Promise<{ edit?: string; courseId?: string; liftId?: string }>;
 }) {
   const [{ resortId }, query] = await Promise.all([params, searchParams]);
-  return <CommunityComposer resortId={resortId} postId={query.edit} />;
+  redirect(
+    communityComposerUrl({
+      resortId,
+      postId: query.edit,
+      target: query.courseId
+        ? { kind: "COURSE", id: query.courseId }
+        : query.liftId
+          ? { kind: "LIFT", id: query.liftId }
+          : undefined,
+    }),
+  );
 }

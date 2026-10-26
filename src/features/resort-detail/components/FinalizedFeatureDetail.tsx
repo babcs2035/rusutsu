@@ -3,6 +3,7 @@
 import { List, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CommunityFeed } from "@/features/community/CommunityFeed";
+import { requestCommunityComposer } from "@/features/community/composerEvents";
 import type { ElevationProfileMapPoint } from "@/features/map/types";
 import type {
   FinalizedLiftFeature,
@@ -105,6 +106,25 @@ export const FinalizedFeatureDetail = ({
       {/* 上余白は内側に置き、sticky タブがスクロール領域の上端まで届くようにする。 */}
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="p-3 md:p-4">
+          {resortId && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="mb-2 h-8"
+              onClick={() =>
+                requestCommunityComposer({
+                  resortId,
+                  target: courseGroup
+                    ? { kind: "COURSE", id: courseGroup.id }
+                    : lift
+                      ? { kind: "LIFT", id: lift.id }
+                      : undefined,
+                })
+              }
+            >
+              この{courseGroup ? "コース" : "リフト"}について投稿
+            </Button>
+          )}
           {courseGroup ? (
             <SelectedCourseDetail
               key={JSON.stringify([

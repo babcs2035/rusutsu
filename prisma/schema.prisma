@@ -787,8 +787,7 @@ model CommunityPost {
   resortId String
   resort SkiResort @relation(fields: [resortId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   observedOn String @db.VarChar(10)
-  body String @default("") @db.VarChar(4000)
-  rating Int?
+  observedTime String @db.VarChar(5)
   status String @default("VISIBLE") @db.VarChar(16)
   version Int @default(1)
   submissionKey String @db.VarChar(64)
@@ -817,15 +816,17 @@ model CommunityEntry {
   targetName String @db.VarChar(500)
   body String @default("") @db.VarChar(4000)
   snowQualities String[] @default([])
-  conditions String[] @default([])
+  status String? @db.VarChar(16)
   crowding String? @db.VarChar(16)
-  rating Int?
   latitude Float?
   longitude Float?
-  present Boolean?
   itemType String? @db.VarChar(30)
   size String? @db.VarChar(100)
   waitMinutes Int?
+  liftSpeed Float?
+  liftSpeedLevel String? @db.VarChar(16)
+  depth String? @db.VarChar(16)
+  photos ContributionPhoto[]
   @@unique([postId, clientKey])
   @@unique([postId, position])
   @@index([kind, courseId, postId])
@@ -880,6 +881,8 @@ model ContributionPhoto {
   id String @id @default(cuid())
   postId String?
   post CommunityPost? @relation(fields: [postId], references: [id], onDelete: Cascade)
+  entryId String?
+  entry CommunityEntry? @relation(fields: [entryId], references: [id], onDelete: Cascade)
   requestId String?
   request EditRequest? @relation(fields: [requestId], references: [id], onDelete: Cascade)
   ownerId String?
@@ -890,6 +893,7 @@ model ContributionPhoto {
   height Int
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   @@index([postId])
+  @@index([entryId])
   @@index([requestId])
   @@map("contribution_photos")
 }

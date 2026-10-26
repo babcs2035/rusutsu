@@ -7,8 +7,6 @@ export const ENTRY_KINDS = {
   ITEM: "パーク",
   LIFT: "リフト",
 } as const;
-export const POST_KINDS = ENTRY_KINDS;
-export const MAX_REPORT_ENTRIES = 40;
 export const SNOW_QUALITIES = [
   "パウダー（軽い）",
   "パウダー（重い）",
@@ -18,12 +16,6 @@ export const SNOW_QUALITIES = [
   "湿り雪",
   "ザラメ",
   "シャバ雪",
-] as const;
-export const COURSE_CONDITIONS = [
-  "荒れている",
-  "雪が薄い",
-  "コブあり",
-  "アイテムあり",
 ] as const;
 export const ITEM_TYPES = [
   "キッカー",
@@ -36,8 +28,25 @@ export const ITEM_TYPES = [
   "ウェーブ",
   "その他",
 ] as const;
-export const MOGUL_SNOW = ["柔らかい", "硬い", "アイスバーン"] as const;
+// 現地で見たコース・リフトの状況。クローラーの営業状況とは別に持つ。
+export const COURSE_STATUSES = ["オープン", "積雪不足", "クローズ"] as const;
+export const LIFT_STATUSES = ["オープン", "減速中", "クローズ"] as const;
+export const CROWDING = ["空いている", "普通", "混雑"] as const;
+export const LIFT_SPEED_LEVELS = ["速い", "普通", "遅い"] as const;
+export const MOGUL_DEPTHS = ["浅い", "普通", "深い"] as const;
+// バンク・ウェーブなど大きさを言い表しにくいものはサイズ欄を出さない。
+export const SIZED_ITEM_TYPES: readonly string[] = [
+  "キッカー",
+  "レール",
+  "ボックス",
+  "ハーフパイプ",
+  "ウォール",
+  "ヒップ・スパイン",
+];
 export const idSchema = z.string().min(1).max(200);
+export const observedTimeSchema = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "時刻を確認してください。");
 export const observedOnSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -48,7 +57,8 @@ export const observedOnSchema = z
       date.toISOString().slice(0, 10) === value &&
       value <= new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10)
     );
-  }, "現地確認日を確認してください。");
+  }, "日付を確認してください。");
+// 1回の投稿は1項目。項目ごとに使う欄だけを受け付け、ほかの種類の欄は空にさせる。
 export const reportEntrySchema = z
   .strictObject({
     clientKey: z.string().uuid(),
@@ -56,115 +66,76 @@ export const reportEntrySchema = z
     courseId: idSchema.nullable().default(null),
     liftId: idSchema.nullable().default(null),
     body: z.string().trim().max(4000).default(""),
-    snowQualities: z
-      .array(z.enum([...SNOW_QUALITIES, ...MOGUL_SNOW]))
-      .max(8)
-      .default([]),
-    conditions: z.array(z.enum(COURSE_CONDITIONS)).max(4).default([]),
-    crowding: z.enum(["空いている", "普通", "混雑"]).nullable().default(null),
-    rating: z.number().int().min(1).max(5).nullable().default(null),
+    snowQualities: z.array(z.enum(SNOW_QUALITIES)).max(8).default([]),
+    status: z
+      .enum([...COURSE_STATUSES, ...LIFT_STATUSES])
+      .nullable()
+      .default(null),
+    crowding: z.enum(CROWDING).nullable().default(null),
     latitude: z.number().min(-90).max(90).nullable().default(null),
     longitude: z.number().min(-180).max(180).nullable().default(null),
-    present: z.boolean().nullable().default(null),
     itemType: z.enum(ITEM_TYPES).nullable().default(null),
     size: z.string().trim().max(100).nullable().default(null),
     waitMinutes: z.number().int().min(0).max(240).nullable().default(null),
+    // m/s。索道の運転速度は高速リフトでも6m/s前後に収まる。
+    liftSpeed: z
+      .number()
+      .min(0.1, "速度は0.1〜12m/sで入力してください。")
+      .max(12, "速度は0.1〜12m/sで入力してください。")
+      .nullable()
+      .default(null),
+    liftSpeedLevel: z.enum(LIFT_SPEED_LEVELS).nullable().default(null),
+    depth: z.enum(MOGUL_DEPTHS).nullable().default(null),
   })
   .superRefine((entry, ctx) => {
     const fail = (message: string, field: string) =>
       ctx.addIssue({ code: "custom", message, path: [field] });
+    const point = entry.kind === "MOGUL" || entry.kind === "ITEM";
     if (entry.kind === "COURSE" && !entry.courseId)
       fail("コースを選択してください。", "courseId");
     if (entry.kind === "LIFT" && !entry.liftId)
       fail("リフトを選択してください。", "liftId");
     if (entry.kind !== "LIFT" && entry.liftId)
-      fail("リフトはリフト項目で指定してください。", "liftId");
+      fail("リフトはリフトの項目で指定してください。", "liftId");
     if (entry.kind === "LIFT" && entry.courseId)
-      fail("リフト項目にコースは指定できません。", "courseId");
-    const point = entry.kind === "MOGUL" || entry.kind === "ITEM";
-    if (
-      point &&
-      (entry.latitude == null ||
-        entry.longitude == null ||
-        entry.present == null)
-    )
-      fail("地図上の場所と状態を選択してください。", "latitude");
-    if (
-      !point &&
-      (entry.latitude != null ||
-        entry.longitude != null ||
-        entry.present != null)
-    )
-      fail("場所と有無はコブ・パークの項目で指定してください。", "latitude");
-    if (entry.kind === "ITEM" && !entry.itemType)
-      fail("パークの種類を選択してください。", "itemType");
-    if (entry.kind !== "ITEM" && (entry.itemType || entry.size))
-      fail("設備の種類とサイズはパークの項目で指定してください。", "itemType");
-    if (entry.kind !== "LIFT" && entry.waitMinutes != null)
-      fail("待ち時間はリフトの項目で指定してください。", "waitMinutes");
-    if (
-      point &&
-      (entry.rating != null || entry.crowding || entry.conditions.length)
-    )
-      fail(
-        "評価・混雑・コース状態はコースかリフトの項目で指定してください。",
-        "rating",
-      );
-    if (
-      entry.kind === "LIFT" &&
-      (entry.snowQualities.length || entry.conditions.length)
-    )
-      fail(
-        "雪質・コース状態はコースの項目で指定してください。",
-        "snowQualities",
-      );
-    const allowed =
-      entry.kind === "MOGUL"
-        ? MOGUL_SNOW
-        : entry.kind === "COURSE"
-          ? SNOW_QUALITIES
+      fail("リフトの項目にコースは指定できません。", "courseId");
+    if ((entry.latitude == null) !== (entry.longitude == null))
+      fail("場所を確認してください。", "latitude");
+    if (point && entry.latitude == null)
+      fail("地図で場所を指定してください。", "latitude");
+    const statuses: readonly string[] =
+      entry.kind === "COURSE"
+        ? COURSE_STATUSES
+        : entry.kind === "LIFT"
+          ? LIFT_STATUSES
           : [];
+    if (statuses.length && !entry.status)
+      fail("状況を選択してください。", "status");
+    if (entry.status && !statuses.includes(entry.status))
+      fail("状況の選択を確認してください。", "status");
+    if (entry.kind === "ITEM" && !entry.itemType)
+      fail("アイテムを選択してください。", "itemType");
+    if (entry.kind !== "ITEM" && (entry.itemType || entry.size))
+      fail("アイテムとサイズはパークの項目で指定してください。", "itemType");
     if (
-      entry.snowQualities.some(
-        value => !(allowed as readonly string[]).includes(value),
-      )
+      entry.kind !== "LIFT" &&
+      (entry.waitMinutes != null ||
+        entry.liftSpeed != null ||
+        entry.liftSpeedLevel)
     )
-      fail("雪質の選択を確認してください。", "snowQualities");
+      fail("待ち時間と速度はリフトの項目で指定してください。", "waitMinutes");
+    if (entry.kind === "LIFT" && entry.snowQualities.length)
+      fail("雪質はリフトの項目では指定できません。", "snowQualities");
+    if (entry.kind !== "COURSE" && entry.crowding)
+      fail("混雑状況はコースの項目で指定してください。", "crowding");
+    if (entry.kind !== "MOGUL" && entry.depth)
+      fail("深さはコブの項目で指定してください。", "depth");
   });
-export const reportDraftSchema = z
-  .strictObject({
-    observedOn: observedOnSchema,
-    body: z.string().trim().max(4000).default(""),
-    rating: z.number().int().min(1).max(5).nullable().default(null),
-    entries: z.array(reportEntrySchema).max(MAX_REPORT_ENTRIES),
-  })
-  .superRefine((report, ctx) => {
-    if (!report.body && !report.entries.length)
-      ctx.addIssue({
-        code: "custom",
-        message:
-          "感想を入力するか、コース・リフト・コブ・パークの項目を追加してください。",
-        path: ["body"],
-      });
-    if (
-      new Set(report.entries.map(entry => entry.clientKey)).size !==
-      report.entries.length
-    )
-      ctx.addIssue({
-        code: "custom",
-        message: "項目の識別子が重複しています。",
-        path: ["entries"],
-      });
-    const targets = report.entries
-      .filter(entry => entry.kind === "COURSE" || entry.kind === "LIFT")
-      .map(entry => `${entry.kind}:${entry.courseId ?? entry.liftId}`);
-    if (new Set(targets).size !== targets.length)
-      ctx.addIssue({
-        code: "custom",
-        message: "同じコース・リフトは1つの項目にまとめてください。",
-        path: ["entries"],
-      });
-  });
+export const reportDraftSchema = z.strictObject({
+  observedOn: observedOnSchema,
+  observedTime: observedTimeSchema,
+  entries: z.tuple([reportEntrySchema]),
+});
 export type ReportEntryDraft = z.infer<typeof reportEntrySchema>;
 export type ReportDraft = z.infer<typeof reportDraftSchema>;
 export type CourseOption = {
@@ -181,10 +152,14 @@ export type CommunityMapData = {
   lifts: LiftOption[];
 };
 export type PublicPhoto = { id: string; width: number; height: number };
+export type ReportMapTarget =
+  | { kind: "COURSE" | "LIFT"; id: string }
+  | { kind: "POINT"; coordinates: [number, number]; courseId: string | null };
 export type PublicAuthor = { id: string; publicName: string };
 export type PublicReportEntry = ReportEntryDraft & {
   id: string;
   targetName: string;
+  photos: PublicPhoto[];
 };
 export type PublicPost = Omit<ReportDraft, "entries"> & {
   id: string;
@@ -195,7 +170,6 @@ export type PublicPost = Omit<ReportDraft, "entries"> & {
   createdAt: string;
   updatedAt: string;
   entries: PublicReportEntry[];
-  photos: PublicPhoto[];
   likeCount: number;
   commentCount: number;
   liked: boolean;
@@ -208,7 +182,6 @@ export type PublicMapEntry = {
   body: string;
   latitude: number;
   longitude: number;
-  present: boolean;
   itemType: string | null;
   size: string | null;
   targetName: string;
@@ -220,11 +193,6 @@ export type PublicComment = {
   author: PublicAuthor;
   createdAt: string;
   version: number;
-};
-export type RatingSummary = {
-  courseId: string | null;
-  average: number;
-  count: number;
 };
 export type FeedInput = {
   resortId: string;
@@ -254,35 +222,3 @@ export type CommunityNotificationDto = {
 export type ActionResult<T = Record<string, never>> =
   | { ok: true; data: T }
   | { ok: false; error: string; challenge?: AnonymousChallenge };
-
-export function latestRatings(
-  posts: Array<{
-    authorId: string;
-    courseId: string | null;
-    rating: number | null;
-    createdAt: Date | string;
-    id: string;
-  }>,
-): RatingSummary[] {
-  const latest = new Map<string, (typeof posts)[number]>();
-  for (const post of [...posts].sort(
-    (a, b) =>
-      +new Date(b.createdAt) - +new Date(a.createdAt) ||
-      b.id.localeCompare(a.id),
-  )) {
-    if (post.rating == null) continue;
-    const key = JSON.stringify([post.authorId, post.courseId]);
-    if (!latest.has(key)) latest.set(key, post);
-  }
-  const groups = new Map<string | null, number[]>();
-  for (const post of latest.values())
-    groups.set(post.courseId, [
-      ...(groups.get(post.courseId) ?? []),
-      post.rating as number,
-    ]);
-  return [...groups].map(([courseId, values]) => ({
-    courseId,
-    average: values.reduce((a, b) => a + b, 0) / values.length,
-    count: values.length,
-  }));
-}

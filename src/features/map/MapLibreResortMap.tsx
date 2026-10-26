@@ -5,6 +5,7 @@ import type {
   MapLayerMouseEvent,
   MapMouseEvent,
 } from "maplibre-gl";
+import { Marker } from "maplibre-gl";
 import {
   memo,
   useCallback,
@@ -30,6 +31,12 @@ import {
   CommunityMapFilters,
   CommunityMapOverlay,
 } from "@/features/community/CommunityMapOverlay";
+import {
+  MAP_PICK_MODE_EVENT,
+  MAP_POINT_EVENT,
+  selectCommunityMapTarget,
+} from "@/features/community/composerEvents";
+import { nearestCourseId } from "@/features/community/location";
 import type { CommunityPeriod } from "@/features/community/mapOverlay";
 import { FinalizedMapToolbar } from "./components/FinalizedMapToolbar";
 import { MapCourseStatusControl } from "./components/MapCourseStatusControl";
@@ -134,6 +141,8 @@ export const MapLibreResortMap = memo(function MapLibreResortMap(
 });
 
 function MapLibreResortMapContent({
+  onCommunityPointPick,
+  communityPoint,
   onRecover,
   onAutoRecover,
   resorts,
@@ -159,6 +168,7 @@ function MapLibreResortMapContent({
   initialViewport = null,
   showMapToolbar = true,
   showMapOpenOnlyControl = showMapToolbar,
+  showLocationControl = true,
   mapTopControls,
   mapStatusFilterShared = false,
   showContextLabels = false,
@@ -184,6 +194,39 @@ function MapLibreResortMapContent({
   // 埋め込みの地図は、同じスキー場の拡大地図と表示位置を共有しない
   const sessionEnabled = useMapSession() !== null && !embedded;
   const storageKey = `${mapSessionKey(selectedResortId)}${mapPresentation === "expanded" ? ":expanded" : ""}`;
+  const [communityPointMode, setCommunityPointMode] = useState(false);
+  const [pickedCommunityPoint, setPickedCommunityPoint] = useState<
+    [number, number] | null
+  >(null);
+  useEffect(() => {
+    setCommunityPointMode(false);
+    setPickedCommunityPoint(null);
+    const handle = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{ resortId: string; mode: "POINT" | null }>
+      ).detail;
+      if (detail?.resortId !== selectedResortId) return;
+      const enabled = detail.mode === "POINT";
+      setCommunityPointMode(enabled);
+      if (!enabled) setPickedCommunityPoint(null);
+    };
+    window.addEventListener(MAP_PICK_MODE_EVENT, handle);
+    const point = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{
+          resortId: string;
+          point: [number, number] | null;
+        }>
+      ).detail;
+      if (detail?.resortId === selectedResortId)
+        setPickedCommunityPoint(detail.point);
+    };
+    window.addEventListener(MAP_POINT_EVENT, point);
+    return () => {
+      window.removeEventListener(MAP_PICK_MODE_EVENT, handle);
+      window.removeEventListener(MAP_POINT_EVENT, point);
+    };
+  }, [selectedResortId]);
   // プレビュー地図（拡大していない小さい地図）は常に同じ見え方（北が上・
   // スキー場全体が入る大きさ）にしたいので、保存された表示位置は読まない。
   const [savedMap] = useState(() =>
@@ -409,6 +452,14 @@ function MapLibreResortMapContent({
       : initialViewport,
   });
   const { failed, retry } = useMapRecovery(map, onRecover, onAutoRecover);
+  useEffect(() => {
+    const point = communityPoint ?? pickedCommunityPoint;
+    if (!map || !isReady || !point) return;
+    const marker = new Marker({ color: "#0284c7" }).setLngLat(point).addTo(map);
+    return () => {
+      marker.remove();
+    };
+  }, [communityPoint, pickedCommunityPoint, map, isReady]);
 
   useEffect(() => {
     if (
@@ -695,6 +746,28 @@ function MapLibreResortMapContent({
     const hitLayers = [FINALIZED_LAYER.courseHit, FINALIZED_LAYER.liftHit];
     const handleClick = (event: MapMouseEvent) => {
       if (event.defaultPrevented) return;
+      if (onCommunityPointPick || (!embedded && communityPointMode)) {
+        const coordinates: [number, number] = [
+          event.lngLat.lng,
+          event.lngLat.lat,
+        ];
+        setPickedCommunityPoint(coordinates);
+        if (onCommunityPointPick) onCommunityPointPick(coordinates);
+        else if (selectedResortId)
+          selectCommunityMapTarget(selectedResortId, {
+            kind: "POINT",
+            coordinates,
+            courseId: nearestCourseId(
+              coordinates,
+              (finalizedMapData?.courses?.features ?? []).map(feature => ({
+                id: feature.groupId,
+                coordinates: feature.coordinates,
+                lines: [feature.coordinates],
+              })),
+            ),
+          });
+        return;
+      }
 
       const features = map.queryRenderedFeatures(event.point, {
         layers: hitLayers.filter(layer => map.getLayer(layer)),
@@ -747,6 +820,11 @@ function MapLibreResortMapContent({
     map,
     selectedFinalizedFeature,
     setSelectedFinalizedFeature,
+    onCommunityPointPick,
+    communityPointMode,
+    selectedResortId,
+    finalizedMapData,
+    embedded,
   ]);
 
   useEffect(() => {
@@ -1045,7 +1123,7 @@ function MapLibreResortMapContent({
       className="relative z-0 h-full w-full"
     >
       <div ref={containerRef} className="h-full w-full" />
-      {isReady && !embedded && (
+      {isReady && !embedded && showLocationControl && (
         <MapLocationControl
           map={map}
           resorts={resorts}
@@ -1136,21 +1214,41 @@ function MapLibreResortMapContent({
             />
           )}
       {showBottomPreviewStatus && (
-        <MapCourseStatusControl
-          placement="bottom"
-          compact
-          enabled={hasCourseOperatingData(finalizedMapData)}
-          checked={showOpenOnly}
-          settings={mapDisplaySettings}
-          onCheckedChange={setShowOpenOnly}
-          onSettingsChange={setMapDisplaySettings}
-        />
+        // 拡大地図の下部パネルと同じ「営業中のみ・投稿・＋投稿」と出典の行。
+        // 狭い幅では出典だけを1段上の右端へ逃がし、ボタンに重ねない。
+        <div
+          {...{ [MAP_BOTTOM_TOOLBAR_ATTRIBUTE]: "true" }}
+          className="pointer-events-none absolute inset-x-2 bottom-2 z-[760] flex flex-wrap-reverse items-start justify-between gap-1"
+        >
+          <MapCourseStatusControl
+            placement="bottom"
+            compact
+            className="static"
+            enabled={hasCourseOperatingData(finalizedMapData)}
+            checked={showOpenOnly}
+            settings={mapDisplaySettings}
+            onCheckedChange={setShowOpenOnly}
+            onSettingsChange={setMapDisplaySettings}
+            trailing={
+              selectedResortId && interactionMode !== "compare" ? (
+                <CommunityMapControls
+                  resortId={selectedResortId}
+                  enabled={showCommunityPosts}
+                  onEnabledChange={setShowCommunityPosts}
+                />
+              ) : undefined
+            }
+          />
+          <div className="pointer-events-auto ml-auto">
+            <MapAttributionSlot map={isReady ? map : null} />
+          </div>
+        </div>
       )}
       {isReady &&
         map &&
         selectedResortId &&
         !embedded &&
-        !isPreviewMap &&
+        (!isPreviewMap || showBottomPreviewStatus) &&
         interactionMode !== "compare" && (
           <CommunityMapOverlay
             map={map}

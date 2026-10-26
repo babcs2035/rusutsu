@@ -1,5 +1,4 @@
 "use client";
-import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState, useTransition } from "react";
@@ -82,34 +81,17 @@ export default function CommunityPostDetail() {
       </Link>
       <article className="space-y-3 rounded-xl border bg-white p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h1 className="font-bold">{post.resortName}の滑走レポート</h1>
-          <time className="text-sm text-slate-500">{post.observedOn}</time>
+          <h1 className="font-bold">{post.resortName}の現地レポート</h1>
+          <time className="text-sm text-slate-500">
+            {post.observedOn} {post.observedTime}
+          </time>
         </div>
         <p className="text-sm">
           <Link className="underline" href={`/profile/${post.author.id}`}>
             {post.author.publicName}
           </Link>
-          {post.rating != null ? ` · 全体評価 ★ ${post.rating}` : ""}
         </p>
-        {post.body && (
-          <p className="whitespace-pre-wrap break-words text-sm">{post.body}</p>
-        )}
         <ReportSections entries={post.entries} />
-        {post.photos.length > 0 && (
-          <div className="grid grid-cols-2 gap-2">
-            {post.photos.map(photo => (
-              <Image
-                key={photo.id}
-                className="h-auto w-full rounded-lg object-cover"
-                src={`/rusutsu/api/community/photos/${photo.id}`}
-                alt="レポートの写真"
-                width={photo.width}
-                height={photo.height}
-                unoptimized
-              />
-            ))}
-          </div>
-        )}
         <div className="flex flex-wrap gap-2 text-sm">
           <button
             type="button"

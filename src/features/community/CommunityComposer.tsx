@@ -1,22 +1,33 @@
 "use client";
 
-import Link from "next/link";
 import {
+  Camera,
+  Check,
+  ChevronLeft,
+  Minus,
+  TriangleAlert,
+  X,
+} from "lucide-react";
+import Image from "next/image";
+import {
+  type ReactNode,
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
   useTransition,
 } from "react";
-import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -24,194 +35,368 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Spinner } from "@/components/ui/spinner";
+import { Textarea } from "@/components/ui/textarea";
 import {
   getCommunityAccount,
   getCommunityCourses,
   getPostDetail,
+  prepareCommunityPhoto,
   publishReport,
   saveCommunityProfile,
   startCommunityLogin,
   updateReport,
 } from "@/features/community/actions";
 import {
-  COURSE_CONDITIONS,
-  type CommunityAccount,
+  COURSE_STATUSES,
   type CommunityMapData,
+  CROWDING,
   ENTRY_KINDS,
   ITEM_TYPES,
-  MAX_REPORT_ENTRIES,
-  MOGUL_SNOW,
+  LIFT_SPEED_LEVELS,
+  LIFT_STATUSES,
+  MOGUL_DEPTHS,
+  type PublicPhoto,
   type PublicPost,
-  type ReportDraft,
   type ReportEntryDraft,
+  type ReportMapTarget,
   reportDraftSchema,
+  SIZED_ITEM_TYPES,
   SNOW_QUALITIES,
 } from "@/features/community/contract";
-import { ReportSections } from "./ReportSections";
-import { type ReportMapTarget, ReportSelectionMap } from "./ReportSelectionMap";
+import { cn } from "@/lib/utils";
+import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
+import { rememberCommunityPost } from "./CommunityMapOverlay";
+import { nearestCourseId } from "./location";
+import { readPhotoMetadata } from "./photoGps";
 
-type Props = { resortId: string; postId?: string };
-const photoKeys = new WeakMap<File, string>();
-const photoKey = (file: File) => {
-  let key = photoKeys.get(file);
-  if (!key) {
-    key = crypto.randomUUID();
-    photoKeys.set(file, key);
-  }
-  return key;
+type Kind = ReportEntryDraft["kind"];
+// 入力途中の状態。種類を選ぶ前は項目がなく、時刻も空のことがある。
+// 送信時に reportDraftSchema（日時必須・1項目）で確かめる。
+type ComposerDraft = {
+  observedOn: string;
+  observedTime: string | null;
+  entries: ReportEntryDraft[];
 };
+type FeatureTarget = { kind: "COURSE" | "LIFT"; id: string };
+
+type Props = {
+  resortId: string;
+  postId?: string;
+  allowPreview?: boolean;
+  embedded?: boolean;
+  onClose?: () => void;
+  /** PCの背後の地図で、クリックを地点の指定に使うかどうか */
+  onMapPickModeChange?: (mode: "POINT" | null) => void;
+  onMapPointChange?: (point: [number, number] | null) => void;
+  /** 選んだコース・リフトを背後の地図でも選択状態にする */
+  onTargetChange?: (target: FeatureTarget | null) => void;
+  initialTarget?: FeatureTarget;
+  selectedMapTarget?: ReportMapTarget | null;
+};
+
+const KINDS = ["COURSE", "LIFT", "MOGUL", "ITEM"] as const;
+// 開いている・注意・閉じているを、緑・黄・赤とアイコンで一目で分かるようにする
+const STATUS_STYLES: Record<
+  NonNullable<ReportEntryDraft["status"]>,
+  { icon: ReactNode; mark: string; selected: string }
+> = {
+  オープン: {
+    icon: <Check strokeWidth={3.5} />,
+    mark: "bg-green-600 text-white",
+    selected: "border-green-600 bg-green-50 text-green-800",
+  },
+  積雪不足: {
+    // 丸ではなく、三角の注意マークそのものを出す
+    icon: <TriangleAlert className="size-3.5 fill-yellow-400 text-gray-900" />,
+    mark: "",
+    selected: "border-yellow-500 bg-yellow-50 text-yellow-900",
+  },
+  減速中: {
+    // 丸ではなく、三角の注意マークそのものを出す
+    icon: <TriangleAlert className="size-3.5 fill-yellow-400 text-gray-900" />,
+    mark: "",
+    selected: "border-yellow-500 bg-yellow-50 text-yellow-900",
+  },
+  クローズ: {
+    icon: <Minus strokeWidth={4} />,
+    mark: "bg-red-600 text-white",
+    selected: "border-red-600 bg-red-50 text-red-800",
+  },
+};
+const MAX_PHOTOS = 6;
+const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
+const MAX_TOTAL_BYTES = 48 * 1024 * 1024;
+
 const today = () =>
   new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo" }).format(
     new Date(),
   );
-const blankEntry = (
-  kind: ReportEntryDraft["kind"] = "COURSE",
-): ReportEntryDraft => ({
+const blankEntry = (kind: Kind): ReportEntryDraft => ({
   clientKey: crypto.randomUUID(),
   kind,
   courseId: null,
   liftId: null,
   body: "",
   snowQualities: [],
-  conditions: [],
+  status: null,
   crowding: null,
-  rating: null,
   latitude: null,
   longitude: null,
-  present: kind === "MOGUL" || kind === "ITEM" ? true : null,
   itemType: null,
   size: null,
   waitMinutes: null,
+  liftSpeed: null,
+  liftSpeedLevel: null,
+  depth: null,
 });
-const blankReport = (): ReportDraft => ({
+const blankReport = (): ComposerDraft => ({
   observedOn: today(),
-  body: "",
-  rating: null,
+  observedTime: null,
   entries: [],
 });
-const labelClass = "block space-y-1 text-sm font-medium";
-const inputClass =
-  "h-9 w-full rounded-md border border-input bg-background px-3 text-sm";
-const kinds = ["COURSE", "MOGUL", "ITEM", "LIFT"] as const;
+const isPointKind = (kind: Kind) => kind === "MOGUL" || kind === "ITEM";
+const photoUrl = (id: string) =>
+  `/rusutsu/api/community/photos/${encodeURIComponent(id)}`;
 
-export function CommunityComposer({ resortId, postId }: Props) {
-  const [account, setAccount] = useState<CommunityAccount | null>(null);
-  const [mapData, setMapData] = useState<CommunityMapData | null>(null);
-  const [report, setReport] = useState<ReportDraft>(blankReport);
-  const [newPhotos, setNewPhotos] = useState<File[]>([]);
-  const [existingPhotos, setExistingPhotos] = useState<PublicPost["photos"]>(
-    [],
+// 項目名の下に「必須」「任意」を小さく添える。欄の高さ（h-8）に収まるよう行送りを詰める
+const labelClass =
+  "flex w-[4.5rem] shrink-0 flex-col pt-0.5 text-sm leading-tight font-medium text-gray-700 md:text-base";
+const chipClass = (selected: boolean) =>
+  cn(
+    "h-7 min-w-0 rounded-md border px-2 text-xs font-medium whitespace-nowrap",
+    selected
+      ? "border-blue-600 bg-blue-600 text-white hover:bg-blue-600 hover:text-white hover:brightness-95"
+      : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-900",
   );
-  const [removedPhotoIds, setRemovedPhotoIds] = useState<string[]>([]);
-  const [version, setVersion] = useState<number | null>(null);
-  const [savedPostId, setSavedPostId] = useState<string | null>(null);
-  const [mode, setMode] = useState<"GOOGLE" | "NICKNAME" | "ANONYMOUS">(
+
+function Field({
+  label,
+  required = false,
+  error,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  /** 投稿を押したときに足りなかった必須項目の警告 */
+  error?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-2">
+      <span className={labelClass}>
+        {label}
+        <span
+          className={cn(
+            "text-[10px] leading-3 font-normal",
+            required ? "text-red-600" : "text-gray-400",
+          )}
+        >
+          {required ? "必須" : "任意"}
+        </span>
+      </span>
+      <div className="min-w-0 flex-1">
+        {children}
+        {error && (
+          <p data-field-error className="mt-1 text-xs text-red-600">
+            {error}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// 小数第1位までの数字だけを受け付ける（上下の矢印やホイールで値が変わらないよう text で扱う）
+const DECIMAL_1 = /^\d{0,3}(\.\d?)?$/;
+const toSpeedNumber = (text: string) => {
+  const value = Number(text);
+  return text !== "" && text !== "." && Number.isFinite(value) ? value : null;
+};
+const round1 = (value: number) => Math.round(value * 10) / 10;
+
+function Chips<T extends string>({
+  label,
+  values,
+  selected,
+  multiple = false,
+  onChange,
+}: {
+  label: string;
+  values: readonly T[];
+  selected: readonly T[];
+  multiple?: boolean;
+  onChange: (values: T[]) => void;
+}) {
+  return (
+    <fieldset className="flex flex-wrap gap-1.5">
+      <legend className="sr-only">{label}</legend>
+      {values.map(value => {
+        const checked = selected.includes(value);
+        return (
+          <Button
+            type="button"
+            key={value}
+            variant="outline"
+            aria-pressed={checked}
+            className={chipClass(checked)}
+            onClick={() =>
+              onChange(
+                checked
+                  ? selected.filter(item => item !== value)
+                  : multiple
+                    ? [...selected, value]
+                    : [value],
+              )
+            }
+          >
+            {value}
+          </Button>
+        );
+      })}
+    </fieldset>
+  );
+}
+
+export function CommunityComposer({
+  resortId,
+  postId,
+  allowPreview = false,
+  embedded = false,
+  onClose,
+  onMapPickModeChange,
+  onMapPointChange,
+  onTargetChange,
+  initialTarget,
+  selectedMapTarget = null,
+}: Props) {
+  const [mapData, setMapData] = useState<CommunityMapData | null>(null);
+  const [step, setStep] = useState<
+    "loading" | "profile" | "choose" | "edit" | "done"
+  >("loading");
+  const [loadingError, setLoadingError] = useState("");
+  const [previewOnly, setPreviewOnly] = useState(false);
+  const [nameMode, setNameMode] = useState<"GOOGLE" | "NICKNAME" | "ANONYMOUS">(
     "ANONYMOUS",
   );
   const [nickname, setNickname] = useState("");
-  const [step, setStep] = useState<
-    "loading" | "profile" | "edit" | "review" | "done"
-  >("loading");
-  const [loadingError, setLoadingError] = useState("");
+  // 1回の投稿は1項目。入力中の項目は entries[0] に持つ。
+  const [report, setReport] = useState<ComposerDraft>(blankReport);
+  const [editingPostId, setEditingPostId] = useState(postId ?? null);
+  const [version, setVersion] = useState<number | null>(null);
+  const [savedPhotos, setSavedPhotos] = useState<PublicPhoto[]>([]);
+  const [removedPhotoIds, setRemovedPhotoIds] = useState<string[]>([]);
+  const [newPhotos, setNewPhotos] = useState<{ file: File; url: string }[]>([]);
+  const [processingPhotos, setProcessingPhotos] = useState(false);
+  const [pickingPoint, setPickingPoint] = useState(false);
+  // 「2.」のような入力途中の文字を残すため、数値とは別に持つ。
+  const [liftSpeedText, setLiftSpeedText] = useState("");
+  const [kmhText, setKmhText] = useState("");
+  const [showErrors, setShowErrors] = useState(false);
   const [error, setError] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [openKeys, setOpenKeys] = useState<string[]>([]);
-  const [activeKey, setActiveKey] = useState<string | null>(null);
-  const [mapOpen, setMapOpen] = useState(false);
-  const [mapTarget, setMapTarget] = useState<ReportMapTarget | null>(null);
-  const [mobile, setMobile] = useState(false);
+  const [confirmClose, setConfirmClose] = useState(false);
   const [busy, startTransition] = useTransition();
   const idempotencyKey = useRef(crypto.randomUUID());
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const scrollPosition = useRef(0);
-  const mainRef = useRef<HTMLElement>(null);
-  const [pendingErrorEntry, setPendingErrorEntry] = useState<string | null>(
-    null,
+  const timeEdited = useRef(false);
+  const lastExternalTarget = useRef<ReportMapTarget | null>(null);
+  const initialTargetRef = useRef(initialTarget);
+  const newPhotosRef = useRef(newPhotos);
+  newPhotosRef.current = newPhotos;
+  const reportRef = useRef(report);
+  reportRef.current = report;
+  const callbacks = useRef({ onMapPickModeChange, onMapPointChange });
+  callbacks.current = { onMapPickModeChange, onMapPointChange };
+
+  const entry = report.entries[0] ?? null;
+  const missing: Record<string, string> = {};
+  if (entry) {
+    if (!report.observedOn || !report.observedTime)
+      missing.日時 = "日付と時刻を入力してください。";
+    if (
+      isPointKind(entry.kind) &&
+      (entry.latitude == null || entry.longitude == null)
+    )
+      missing.場所 = "地図で場所を指定してください。";
+    if (entry.kind === "COURSE" && !entry.courseId)
+      missing.コース = "コースを選択してください。";
+    if (entry.kind === "LIFT" && !entry.liftId)
+      missing.リフト = "リフトを選択してください。";
+    if ((entry.kind === "COURSE" || entry.kind === "LIFT") && !entry.status)
+      missing.状況 = "状況を選択してください。";
+    if (entry.kind === "ITEM" && !entry.itemType)
+      missing.アイテム = "アイテムを選択してください。";
+  }
+  const fieldError = (label: string) =>
+    showErrors ? missing[label] : undefined;
+  const visibleSavedPhotos = savedPhotos.filter(
+    photo => !removedPhotoIds.includes(photo.id),
   );
-  const selectedEntry =
-    report.entries.find(entry => entry.clientKey === activeKey) ?? null;
-  const liveEntries = useMemo(() => report.entries, [report.entries]);
+  const photoCount = visibleSavedPhotos.length + newPhotos.length;
 
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 767px)");
-    const update = () => {
-      setMobile(mq.matches);
-      if (!mq.matches) {
-        setMapOpen(false);
-        setMapTarget(null);
-      }
-    };
-    update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
-  }, []);
-
-  useEffect(() => {
-    const key = pendingErrorEntry;
-    if (!key || !openKeys.includes(key)) return;
-    const element = document.querySelector<HTMLElement>(
-      `[data-entry-key="${key}"]`,
-    );
-    if (!element) return;
-    element.scrollIntoView({ behavior: "smooth", block: "center" });
-    setPendingErrorEntry(null);
-  }, [openKeys, pendingErrorEntry]);
+  useEffect(
+    () => () => {
+      for (const photo of newPhotosRef.current) URL.revokeObjectURL(photo.url);
+      callbacks.current.onMapPickModeChange?.(null);
+      callbacks.current.onMapPointChange?.(null);
+    },
+    [],
+  );
 
   useEffect(() => {
     let alive = true;
-    setStep("loading");
-    setLoadingError("");
-    setError("");
-    setNewPhotos([]);
-    setRemovedPhotoIds([]);
-    setExistingPhotos([]);
-    setVersion(null);
-    idempotencyKey.current = crypto.randomUUID();
     void (async () => {
       try {
-        const [accountResult, coursesResult] = await Promise.all([
+        const [accountSettled, coursesSettled] = await Promise.allSettled([
           getCommunityAccount(),
           getCommunityCourses(resortId),
         ]);
         if (!alive) return;
-        if (!accountResult.ok) {
-          setLoadingError(accountResult.error);
-          return;
-        }
-        if (!accountResult.data) {
-          void startCommunityLogin(
-            `${window.location.pathname}${window.location.search}`,
+        if (coursesSettled.status === "rejected" || !coursesSettled.value.ok) {
+          setLoadingError(
+            coursesSettled.status === "fulfilled" && !coursesSettled.value.ok
+              ? coursesSettled.value.error
+              : "地図データを読み込めませんでした。",
           );
           return;
         }
-        if (!coursesResult.ok) {
-          setLoadingError(coursesResult.error);
+        const courses = coursesSettled.value.data;
+        const accountResult =
+          accountSettled.status === "fulfilled" ? accountSettled.value : null;
+        const account = accountResult?.ok ? accountResult.data : null;
+        const canPreview = allowPreview && !postId;
+        if (!account && !canPreview) {
+          if (accountResult && !accountResult.ok)
+            setLoadingError(accountResult.error);
+          else if (accountSettled.status === "rejected")
+            setLoadingError("投稿の準備に失敗しました。");
+          else
+            void startCommunityLogin(
+              `${window.location.pathname}${window.location.search}`,
+            );
           return;
         }
-        setAccount(accountResult.data);
-        setMode(accountResult.data.nameMode ?? "ANONYMOUS");
-        setNickname(accountResult.data.publicName ?? "");
-        setMapData(coursesResult.data);
-        const params = new URLSearchParams(window.location.search);
-        const requestedCourse = params.get("courseId");
-        const requestedLift = params.get("liftId");
+        if (account) {
+          setNameMode(account.nameMode ?? "ANONYMOUS");
+          setNickname(account.publicName ?? "");
+        }
+        setPreviewOnly(canPreview && !account?.publicName);
+        setMapData(courses);
         const initial = blankReport();
+        const target = initialTargetRef.current;
         if (
-          requestedCourse &&
-          coursesResult.data.courses.some(item => item.id === requestedCourse)
+          target &&
+          (target.kind === "COURSE" ? courses.courses : courses.lifts).some(
+            item => item.id === target.id,
+          )
         )
-          initial.entries.push({
-            ...blankEntry("COURSE"),
-            courseId: requestedCourse,
-          });
-        if (
-          requestedLift &&
-          coursesResult.data.lifts.some(item => item.id === requestedLift)
-        )
-          initial.entries.push({
-            ...blankEntry("LIFT"),
-            liftId: requestedLift,
-          });
+          initial.entries = [
+            {
+              ...blankEntry(target.kind),
+              ...(target.kind === "COURSE"
+                ? { courseId: target.id }
+                : { liftId: target.id }),
+            },
+          ];
         if (postId) {
           const detail = await getPostDetail(postId);
           if (!alive) return;
@@ -220,27 +405,30 @@ export function CommunityComposer({ resortId, postId }: Props) {
             return;
           }
           const post = detail.data.post as PublicPost;
-          if (post.resortId !== resortId) {
-            setLoadingError("この投稿は編集できません。");
-            return;
-          }
-          if (detail.data.viewerId !== post.author.id) {
+          if (
+            post.resortId !== resortId ||
+            detail.data.viewerId !== post.author.id
+          ) {
             setLoadingError("この投稿は編集できません。");
             return;
           }
           initial.observedOn = post.observedOn;
-          initial.body = post.body;
-          initial.rating = post.rating;
+          initial.observedTime = post.observedTime;
           initial.entries = post.entries.map(
-            ({ id: _id, targetName: _name, ...entry }) => ({ ...entry }),
+            ({ id: _id, targetName: _name, photos: _photos, ...item }) => item,
           );
-          setExistingPhotos(post.photos);
+          timeEdited.current = true;
+          setSavedPhotos(post.entries[0]?.photos ?? []);
           setVersion(post.version);
         }
         setReport(initial);
-        setOpenKeys(initial.entries.map(entry => entry.clientKey));
-        setActiveKey(initial.entries[0]?.clientKey ?? null);
-        setStep(accountResult.data.publicName ? "edit" : "profile");
+        setStep(
+          !account?.publicName && !canPreview
+            ? "profile"
+            : initial.entries.length
+              ? "edit"
+              : "choose",
+        );
       } catch (cause) {
         if (alive)
           setLoadingError(
@@ -253,255 +441,398 @@ export function CommunityComposer({ resortId, postId }: Props) {
     return () => {
       alive = false;
     };
-  }, [resortId, postId]);
+  }, [allowPreview, resortId, postId]);
 
-  const patchReport = (patch: Partial<ReportDraft>) =>
-    setReport(current => ({ ...current, ...patch }));
   const patchEntry = useCallback(
-    (key: string, patch: Partial<ReportEntryDraft>) =>
+    (patch: Partial<ReportEntryDraft>) =>
       setReport(current => ({
         ...current,
-        entries: current.entries.map(entry =>
-          entry.clientKey === key ? { ...entry, ...patch } : entry,
+        entries: current.entries.map((item, index) =>
+          index === 0 ? { ...item, ...patch } : item,
         ),
       })),
     [],
   );
-  const addEntry = (kind: ReportEntryDraft["kind"]) => {
-    if (report.entries.length >= MAX_REPORT_ENTRIES) return;
-    const entry = blankEntry(kind);
+  const startEntry = useCallback((kind: Kind, patch = {}) => {
     setReport(current => ({
       ...current,
-      entries: [...current.entries, entry],
+      entries: [{ ...blankEntry(kind), ...patch }],
     }));
-    setOpenKeys(current => [...current, entry.clientKey]);
-    setActiveKey(entry.clientKey);
-    if (mobile) openMap(entry.clientKey);
-  };
-  const deleteEntry = (key: string) => {
-    const left = report.entries.filter(entry => entry.clientKey !== key);
-    setReport(current => ({
-      ...current,
-      entries: current.entries.filter(entry => entry.clientKey !== key),
-    }));
-    setOpenKeys(current => current.filter(item => item !== key));
-    if (activeKey === key) setActiveKey(left[0]?.clientKey ?? null);
-  };
-  const desktopMapSelect = useCallback(
-    (target: ReportMapTarget) => {
-      if (mobile || mapOpen) {
-        setMapTarget(target);
-        return;
-      }
-      if (target.kind === "POINT") {
-        if (activeKey)
-          patchEntry(activeKey, {
-            latitude: target.coordinates[1],
-            longitude: target.coordinates[0],
-            courseId: target.courseId,
-          });
-        return;
-      }
-      const kind = target.kind;
-      const active = report.entries.find(
-        entry => entry.clientKey === activeKey,
-      );
-      const existing = report.entries.find(
-        entry =>
-          entry.kind === kind &&
-          (kind === "COURSE" ? entry.courseId : entry.liftId) === target.id,
-      );
-      if (existing) {
-        if (
-          active &&
-          active.clientKey !== existing.clientKey &&
-          active.kind === kind &&
-          !active.courseId &&
-          !active.liftId &&
-          !active.body &&
-          !active.snowQualities.length &&
-          !active.conditions.length &&
-          !active.crowding &&
-          active.rating == null &&
-          active.waitMinutes == null
-        ) {
-          setReport(current => ({
-            ...current,
-            entries: current.entries.filter(
-              entry => entry.clientKey !== active.clientKey,
-            ),
-          }));
-          setOpenKeys(current =>
-            current.filter(key => key !== active.clientKey),
-          );
-        }
-        setActiveKey(existing.clientKey);
-        setOpenKeys(current => [...new Set([...current, existing.clientKey])]);
-        return;
-      }
-      if (active?.kind === kind) {
-        patchEntry(active.clientKey, {
-          ...(kind === "COURSE"
-            ? { courseId: target.id }
-            : { liftId: target.id }),
-        });
-        return;
-      }
-      if (report.entries.length >= MAX_REPORT_ENTRIES) return;
-      const entry = {
-        ...blankEntry(kind),
-        ...(kind === "COURSE"
-          ? { courseId: target.id }
-          : { liftId: target.id }),
+    setStep("edit");
+  }, []);
+
+  // 地点が決まったら、コース・リフトの項目は未選択のときだけ近いものを選ぶ。
+  // コブ・アイテムのコースは地点に付随する情報なので、地点に合わせて選び直す。
+  const applyPoint = useCallback(
+    (point: [number, number], courseId?: string | null) => {
+      const current = reportRef.current.entries[0];
+      if (!current || !mapData) return;
+      const patch: Partial<ReportEntryDraft> = {
+        longitude: point[0],
+        latitude: point[1],
       };
-      setReport(current => ({
-        ...current,
-        entries: [...current.entries, entry],
-      }));
-      setActiveKey(entry.clientKey);
-      setOpenKeys(current => [...current, entry.clientKey]);
+      if (isPointKind(current.kind))
+        patch.courseId = courseId ?? nearestCourseId(point, mapData.courses);
+      else if (current.kind === "COURSE" && !current.courseId)
+        patch.courseId = courseId ?? nearestCourseId(point, mapData.courses);
+      else if (current.kind === "LIFT" && !current.liftId)
+        patch.liftId = nearestCourseId(point, mapData.lifts);
+      patchEntry(patch);
     },
-    [activeKey, mapOpen, mobile, patchEntry, report.entries],
+    [mapData, patchEntry],
   );
-  const selectTarget = (key: string, target: ReportMapTarget) => {
-    if (target.kind === "POINT")
-      patchEntry(key, {
-        latitude: target.coordinates[1],
-        longitude: target.coordinates[0],
-        courseId: target.courseId,
-        liftId: null,
-      });
-    else if (target.kind === "COURSE")
-      patchEntry(key, {
-        kind: "COURSE",
-        courseId: target.id,
-        liftId: null,
-        latitude: null,
-        longitude: null,
-        present: null,
-        itemType: null,
-        size: null,
-        waitMinutes: null,
-      });
-    else
-      patchEntry(key, {
-        kind: "LIFT",
-        liftId: target.id,
-        courseId: null,
-        latitude: null,
-        longitude: null,
-        present: null,
-        itemType: null,
-        size: null,
-        waitMinutes: null,
-      });
-    setMapTarget(target);
-  };
-  function openMap(key?: string) {
-    if (key) setActiveKey(key);
-    if (!mobile) {
-      setMapOpen(false);
-      return;
-    }
-    scrollPosition.current = mainRef.current?.scrollTop ?? 0;
-    setMapTarget(null);
-    setMapOpen(true);
-  }
-  const closeMap = (open: boolean) => {
-    setMapOpen(open);
-    if (!open)
-      requestAnimationFrame(() => {
-        if (mainRef.current) mainRef.current.scrollTop = scrollPosition.current;
-      });
-  };
-  const beginReview = () => {
-    const parsed = reportDraftSchema.safeParse(report);
-    if (!parsed.success) {
-      const errors: Record<string, string> = {};
-      for (const issue of parsed.error.issues) {
-        const path = issue.path.join(".");
-        errors[path] ??= issue.message;
-        const idx = Number(issue.path[1]);
-        if (Number.isInteger(idx) && report.entries[idx]) {
-          if (!pendingErrorEntry)
-            setPendingErrorEntry(report.entries[idx].clientKey);
-          setActiveKey(report.entries[idx].clientKey);
-          setOpenKeys(current => [
-            ...new Set([...current, report.entries[idx].clientKey]),
-          ]);
-        }
-      }
-      setFieldErrors(errors);
-      setError("入力内容を確認してください。");
-      return;
-    }
-    setFieldErrors({});
-    setError("");
-    setStep("review");
-  };
-  const save = () => {
-    const form = new FormData();
-    for (const file of newPhotos) form.append("photos", file);
-    startTransition(async () => {
-      const result =
-        postId && version != null
-          ? await updateReport(postId, version, report, form, removedPhotoIds)
-          : await publishReport(
-              { resortId, report, idempotencyKey: idempotencyKey.current },
-              form,
-            );
-      if (!result.ok) {
-        setError(result.error);
-        setStep("review");
+
+  const applyMapTarget = useCallback(
+    (target: ReportMapTarget) => {
+      const current = reportRef.current.entries[0];
+      if (target.kind === "POINT") {
+        if (!current) return;
+        applyPoint(target.coordinates, target.courseId);
+        setPickingPoint(false);
         return;
       }
-      setSavedPostId(result.data.id);
-      setStep("done");
+      if (!current) {
+        startEntry(
+          target.kind,
+          target.kind === "COURSE"
+            ? { courseId: target.id }
+            : { liftId: target.id },
+        );
+        return;
+      }
+      if (current.kind === target.kind)
+        patchEntry(
+          target.kind === "COURSE"
+            ? { courseId: target.id }
+            : { liftId: target.id },
+        );
+    },
+    [applyPoint, patchEntry, startEntry],
+  );
+
+  useEffect(() => {
+    if (!selectedMapTarget) {
+      lastExternalTarget.current = null;
+      return;
+    }
+    if (step !== "choose" && step !== "edit") return;
+    if (lastExternalTarget.current === selectedMapTarget) return;
+    lastExternalTarget.current = selectedMapTarget;
+    applyMapTarget(selectedMapTarget);
+  }, [applyMapTarget, selectedMapTarget, step]);
+
+  const entryKey = entry?.clientKey;
+  const editBaseline = useRef("");
+  useEffect(() => {
+    if (step === "edit" && entryKey)
+      editBaseline.current = JSON.stringify(reportRef.current);
+  }, [entryKey, step]);
+  useEffect(() => {
+    const current = reportRef.current.entries.find(
+      item => item.clientKey === entryKey,
+    );
+    const speed = current?.liftSpeed;
+    setLiftSpeedText(speed?.toString() ?? "");
+    setKmhText(speed == null ? "" : (speed * 3.6).toFixed(1));
+    setShowErrors(false);
+  }, [entryKey]);
+
+  const pointMode =
+    step === "edit" && !!entry && (isPointKind(entry.kind) || pickingPoint);
+  useEffect(() => {
+    onMapPickModeChange?.(pointMode ? "POINT" : null);
+  }, [onMapPickModeChange, pointMode]);
+  useEffect(() => {
+    onMapPointChange?.(
+      step === "edit" && entry?.latitude != null && entry.longitude != null
+        ? [entry.longitude, entry.latitude]
+        : null,
+    );
+  }, [entry?.latitude, entry?.longitude, onMapPointChange, step]);
+  // コブ・アイテムのコースは地点から決まるので、地図の選択は動かさない。
+  const featureTarget =
+    step !== "edit"
+      ? null
+      : entry?.kind === "LIFT" && entry.liftId
+        ? `LIFT:${entry.liftId}`
+        : entry?.kind === "COURSE" && entry.courseId
+          ? `COURSE:${entry.courseId}`
+          : null;
+  const sentFeatureTarget = useRef(false);
+  useEffect(() => {
+    // 選ばせた分だけ外す。投稿前から地図で選んでいたものはそのまま残す。
+    if (!featureTarget) {
+      if (sentFeatureTarget.current) onTargetChange?.(null);
+      sentFeatureTarget.current = false;
+      return;
+    }
+    sentFeatureTarget.current = true;
+    const separator = featureTarget.indexOf(":");
+    onTargetChange?.({
+      kind: featureTarget.slice(0, separator) as FeatureTarget["kind"],
+      id: featureTarget.slice(separator + 1),
     });
+  }, [featureTarget, onTargetChange]);
+
+  const clearNewPhotos = () => {
+    for (const photo of newPhotosRef.current) URL.revokeObjectURL(photo.url);
+    setNewPhotos([]);
   };
-  const chooseFiles = (files: FileList | null) => {
-    if (!files) return;
+  const resetForNext = () => {
+    clearNewPhotos();
+    setSavedPhotos([]);
+    setRemovedPhotoIds([]);
+    setEditingPostId(null);
+    setVersion(null);
+    setReport(blankReport());
+    setPickingPoint(false);
+    setError("");
+    timeEdited.current = false;
+    idempotencyKey.current = crypto.randomUUID();
+    setStep("choose");
+  };
+
+  const addPhotos = async (files: FileList | null) => {
+    if (!files?.length || processingPhotos) return;
     const selected = [...files];
-    if (selected.some(file => file.size > 8 * 1024 * 1024)) {
+    if (selected.some(file => file.size > MAX_PHOTO_BYTES)) {
       setError("写真は1枚8MB以下にしてください。");
       return;
     }
-    const allSize = [...newPhotos, ...selected].reduce(
-      (sum, file) => sum + file.size,
-      0,
-    );
+    const totalBytes = [...newPhotos.map(photo => photo.file), ...selected]
+      .map(file => file.size)
+      .reduce((sum, size) => sum + size, 0);
     if (
-      newPhotos.length +
-        existingPhotos.length -
-        removedPhotoIds.length +
-        selected.length >
-        6 ||
-      allSize > 48 * 1024 * 1024
+      photoCount + selected.length > MAX_PHOTOS ||
+      totalBytes > MAX_TOTAL_BYTES
     ) {
       setError("写真は合計6枚、合計48MBまでです。");
       return;
     }
-    setNewPhotos(current => [...current, ...selected]);
+    const entryKey = reportRef.current.entries[0]?.clientKey;
+    setProcessingPhotos(true);
     setError("");
+    try {
+      const accepted: { file: File; url: string }[] = [];
+      let takenAt: { observedOn: string; observedTime: string | null } | null =
+        null;
+      let gps: [number, number] | null = null;
+      for (const original of selected) {
+        const metadata = await readPhotoMetadata(original);
+        takenAt ??= metadata.observedOn
+          ? {
+              observedOn: metadata.observedOn,
+              observedTime: metadata.observedTime,
+            }
+          : null;
+        gps ??= metadata.gps
+          ? [metadata.gps.longitude, metadata.gps.latitude]
+          : null;
+        let file = original;
+        if (
+          /^image\/hei[cf]/i.test(original.type) ||
+          /\.(?:heic|heif)$/i.test(original.name)
+        ) {
+          const form = new FormData();
+          form.append("photo", original);
+          const result = await prepareCommunityPhoto(form);
+          if (!result.ok) throw new Error(result.error);
+          const bytes = Uint8Array.from(atob(result.data.base64), character =>
+            character.charCodeAt(0),
+          );
+          const name =
+            original.name.replace(/\.(?:heic|heif)$/i, "") || "photo";
+          file = new File([bytes], `${name}.webp`, { type: "image/webp" });
+        }
+        accepted.push({ file, url: URL.createObjectURL(file) });
+      }
+      // 準備中に種類を選び直したら、別の項目には付けない。
+      if (reportRef.current.entries[0]?.clientKey !== entryKey) {
+        for (const photo of accepted) URL.revokeObjectURL(photo.url);
+        return;
+      }
+      setNewPhotos(current => [...current, ...accepted]);
+      if (takenAt && !timeEdited.current) {
+        timeEdited.current = true;
+        const { observedOn, observedTime } = takenAt;
+        setReport(current => ({ ...current, observedOn, observedTime }));
+      }
+      const current = reportRef.current.entries[0];
+      if (gps && current && current.latitude == null) applyPoint(gps);
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : "写真を準備できませんでした。",
+      );
+    } finally {
+      setProcessingPhotos(false);
+    }
   };
-  const link = `/community/${encodeURIComponent(resortId)}`;
+
+  const save = () => {
+    if (processingPhotos || !entry) return;
+    if (Object.keys(missing).length) {
+      setShowErrors(true);
+      setError("未入力の必須項目があります。");
+      requestAnimationFrame(() =>
+        document
+          .querySelector("[data-field-error]")
+          ?.scrollIntoView({ behavior: "smooth", block: "center" }),
+      );
+      return;
+    }
+    setShowErrors(false);
+    if (previewOnly) {
+      setError("プレビューでは送信できません。");
+      return;
+    }
+    const draft = {
+      observedOn: report.observedOn,
+      observedTime: report.observedTime,
+      entries: [{ ...entry, body: entry.body.trim() }],
+    };
+    const parsed = reportDraftSchema.safeParse(draft);
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "入力を確認してください。");
+      return;
+    }
+    const form = new FormData();
+    for (const { file } of newPhotos)
+      form.append(`photos:${entry.clientKey}`, file);
+    startTransition(async () => {
+      const result =
+        editingPostId && version != null
+          ? await updateReport(
+              editingPostId,
+              version,
+              parsed.data,
+              form,
+              removedPhotoIds,
+            )
+          : await publishReport(
+              {
+                resortId,
+                report: parsed.data,
+                idempotencyKey: idempotencyKey.current,
+              },
+              form,
+            );
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setError("");
+      rememberCommunityPost(resortId);
+      setStep("done");
+    });
+  };
+
+  const close = () => {
+    onMapPickModeChange?.(null);
+    onMapPointChange?.(null);
+    onClose?.();
+  };
+  // 入力を始めた時点の内容と比べ、写真の追加・削除か入力の変更があれば確かめる
+  const requestClose = () => {
+    const dirty =
+      step === "edit" &&
+      (newPhotos.length > 0 ||
+        removedPhotoIds.length > 0 ||
+        JSON.stringify(report) !== editBaseline.current);
+    if (dirty) setConfirmClose(true);
+    else close();
+  };
+  const header = (title: string, onBack?: () => void) => (
+    <div className="flex shrink-0 items-center justify-between gap-2 border-b border-gray-200 py-2 pr-2 pl-3 md:pr-3 md:pl-4">
+      <div className="flex min-w-0 items-center gap-1">
+        {onBack && (
+          <Button
+            type="button"
+            aria-label="投稿の種類に戻る"
+            variant="ghost"
+            className="-ml-1.5 size-7 min-w-7 rounded-full p-0 text-gray-600 hover:bg-gray-100 hover:text-gray-900 md:size-8 md:min-w-8"
+            onClick={onBack}
+          >
+            <ChevronLeft size={20} strokeWidth={2.5} />
+          </Button>
+        )}
+        <h2 className="min-w-0 truncate text-base leading-snug font-bold text-gray-900 font-[var(--font-heading)] md:text-lg">
+          {title}
+        </h2>
+      </div>
+      {embedded && onClose && (
+        <Button
+          type="button"
+          aria-label="投稿を閉じる"
+          variant="ghost"
+          className="flex size-7 min-h-7 shrink-0 items-center justify-center rounded-full border border-gray-200 p-0 text-gray-500 shadow-sm hover:bg-gray-50 hover:text-gray-900 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10 md:size-8 md:min-h-8"
+          onClick={requestClose}
+        >
+          <X size={18} strokeWidth={2.5} />
+        </Button>
+      )}
+    </div>
+  );
+  const shell = (title: string, body: ReactNode, footer?: ReactNode) => (
+    <main
+      className={cn(
+        "flex min-h-0 flex-col bg-white",
+        embedded ? "h-full" : "h-dvh",
+      )}
+    >
+      {header(
+        title,
+        step === "edit" && !editingPostId
+          ? () => {
+              clearNewPhotos();
+              setPickingPoint(false);
+              setError("");
+              setReport(current => ({ ...current, entries: [] }));
+              setStep("choose");
+            }
+          : undefined,
+      )}
+      <div className="min-h-0 flex-1 overflow-y-auto">{body}</div>
+      {footer}
+      <AlertDialog open={confirmClose} onOpenChange={setConfirmClose}>
+        <AlertDialogContent overlayClassName="z-[900]" className="z-[901]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              入力した内容は消えますが、閉じますか？
+            </AlertDialogTitle>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>入力に戻る</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                setConfirmClose(false);
+                close();
+              }}
+            >
+              閉じる
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </main>
+  );
 
   if (step === "loading")
-    return (
-      <main className="h-dvh overflow-y-auto p-4">
-        {loadingError || "投稿の準備中…"}
-      </main>
-    );
-  if (step === "profile")
-    return (
-      <main className="mx-auto h-dvh max-w-lg space-y-3 overflow-y-auto p-4">
-        <Link className="text-sm underline" href={link}>
-          ← 投稿一覧
-        </Link>
-        <h1 className="text-xl font-bold">公開名を設定</h1>
-        <p className="text-sm text-gray-600">
-          投稿に表示する名前を選んでください。Googleアカウントの名前は、選択した場合だけ公開されます。
+    return shell(
+      "現地レポート",
+      loadingError ? (
+        <p className="p-3 text-sm text-gray-700 md:p-4 md:text-base">
+          {loadingError}
         </p>
+      ) : (
+        <LoadingSpinner className="h-full bg-white" />
+      ),
+    );
+
+  if (step === "profile")
+    return shell(
+      "公開名を設定",
+      <div className="space-y-2 p-3 md:p-4">
         {(
           [
             ["GOOGLE", "Googleアカウントと同じ名前"],
@@ -511,644 +842,503 @@ export function CommunityComposer({ resortId, postId }: Props) {
         ).map(([value, label]) => (
           <label
             key={value}
-            className="flex items-center gap-2 rounded border p-3"
+            className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm md:text-base"
           >
             <input
               type="radio"
-              checked={mode === value}
-              onChange={() => setMode(value)}
+              checked={nameMode === value}
+              onChange={() => setNameMode(value)}
             />
             {label}
           </label>
         ))}
-        {mode === "NICKNAME" && (
-          <input
-            className={inputClass}
+        {nameMode === "NICKNAME" && (
+          <Input
             maxLength={40}
             value={nickname}
             onChange={event => setNickname(event.target.value)}
             placeholder="ニックネーム"
           />
         )}
+        {error && <p className="text-sm text-red-700">{error}</p>}
         <Button
-          disabled={busy || (mode === "NICKNAME" && !nickname.trim())}
+          className="w-full"
+          disabled={busy || (nameMode === "NICKNAME" && !nickname.trim())}
           onClick={() =>
             startTransition(async () => {
-              const result = await saveCommunityProfile(mode, nickname);
-              if (result.ok) {
-                setAccount(result.data);
-                setStep("edit");
-              } else setError(result.error);
+              const result = await saveCommunityProfile(nameMode, nickname);
+              if (!result.ok) {
+                setError(result.error);
+                return;
+              }
+              setError("");
+              setStep(reportRef.current.entries.length ? "edit" : "choose");
             })
           }
         >
-          保存して投稿へ
+          保存
         </Button>
-        {error && <p className="text-sm text-red-700">{error}</p>}
-      </main>
-    );
-  if (step === "done")
-    return (
-      <main className="mx-auto h-dvh max-w-lg space-y-4 overflow-y-auto p-4">
-        <h1 className="text-xl font-bold">
-          {postId ? "投稿を更新しました" : "投稿しました"}
-        </h1>
-        {savedPostId && (
-          <Link
-            className="block text-sky-800 underline"
-            href={`/community/post/${encodeURIComponent(savedPostId)}`}
-          >
-            投稿を確認する
-          </Link>
-        )}
-        <Link className="text-sky-800 underline" href={link}>
-          みんなの投稿へ
-        </Link>
-      </main>
-    );
-  if (!mapData)
-    return (
-      <main className="h-dvh overflow-y-auto p-4 text-sm text-red-700">
-        {loadingError || "地図データを読み込めませんでした。"}
-      </main>
+      </div>,
     );
 
-  const mapSelection =
-    mapTarget && activeKey
-      ? mapTarget.kind === "POINT"
-        ? {
-            ...(selectedEntry ?? blankEntry("MOGUL")),
-            latitude: mapTarget.coordinates[1],
-            longitude: mapTarget.coordinates[0],
-            courseId: mapTarget.courseId,
+  if (step === "done")
+    return shell(
+      "現地レポート",
+      <div className="space-y-3 p-3 md:p-4">
+        <p className="text-base font-semibold text-gray-900 md:text-lg">
+          {version != null ? "更新しました" : "投稿ありがとうございます"}
+        </p>
+        <Button variant="outline" className="w-full" onClick={resetForNext}>
+          別の投稿をする
+        </Button>
+      </div>,
+    );
+
+  if (!mapData) return null;
+
+  if (step === "choose" || !entry)
+    return shell(
+      "現地レポート",
+      <div className="space-y-2 p-3 md:p-4">
+        <p className="text-sm text-gray-600 @min-[30rem]/resort-detail:text-base">
+          どの項目についてレポートしますか？
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          {KINDS.map(kind => (
+            <Button
+              key={kind}
+              type="button"
+              variant="outline"
+              className="h-12 text-sm font-semibold text-gray-800 md:text-base"
+              onClick={() => startEntry(kind)}
+            >
+              {ENTRY_KINDS[kind]}
+            </Button>
+          ))}
+        </div>
+      </div>,
+    );
+
+  const hasLocation = entry.latitude != null && entry.longitude != null;
+
+  // コース・リフトは地図のタップで選ぶ。場所はボタンで地点の指定に切り替える。
+  const pointButton = (
+    <Button
+      type="button"
+      variant="outline"
+      aria-pressed={pickingPoint}
+      className={cn(
+        "h-8 shrink-0 px-2 text-xs md:text-sm",
+        pickingPoint && chipClass(true),
+        pickingPoint && "h-8 md:text-sm",
+      )}
+      onClick={() => setPickingPoint(current => !current)}
+    >
+      地図で選ぶ
+    </Button>
+  );
+  const targetSelect = (lift: boolean, optional: boolean) => {
+    const options = lift ? mapData.lifts : mapData.courses;
+    const value = (lift ? entry.liftId : entry.courseId) ?? "";
+    const placeholder = optional ? "指定なし" : "選択してください";
+    return (
+      <div className="flex gap-1.5">
+        <Select
+          value={value}
+          items={[
+            { value: "", label: placeholder },
+            ...options.map(item => ({ value: item.id, label: item.name })),
+          ]}
+          onValueChange={next =>
+            patchEntry(
+              lift ? { liftId: next || null } : { courseId: next || null },
+            )
           }
-        : mapTarget.kind === "COURSE"
-          ? {
-              ...(selectedEntry ?? blankEntry("COURSE")),
-              kind: "COURSE" as const,
-              courseId: mapTarget.id,
-              liftId: null,
-            }
-          : {
-              ...(selectedEntry ?? blankEntry("LIFT")),
-              kind: "LIFT" as const,
-              liftId: mapTarget.id,
-              courseId: null,
-            }
-      : selectedEntry;
-  const mapPane = (
-    <ReportSelectionMap
-      data={mapData}
-      selection={mapSelection}
-      onSelect={desktopMapSelect}
-    />
-  );
-  const canConfirmMapTarget =
-    !!mapTarget &&
-    !!selectedEntry &&
-    ((mapTarget.kind === "POINT" &&
-      (selectedEntry.kind === "MOGUL" || selectedEntry.kind === "ITEM")) ||
-      (mapTarget.kind === "COURSE" && selectedEntry.kind === "COURSE") ||
-      (mapTarget.kind === "LIFT" && selectedEntry.kind === "LIFT"));
-  const rating = (
-    value: number | null,
-    onChange: (value: number | null) => void,
-    title: string,
-  ) => (
-    <fieldset>
-      <legend className="text-sm font-medium">{title}</legend>
-      <div className="flex gap-1">
-        {[1, 2, 3, 4, 5].map(n => (
-          <button
-            type="button"
-            key={n}
-            className={`px-1 text-xl ${value && n <= value ? "text-amber-500" : "text-gray-300"}`}
-            aria-label={`${n}つ星`}
-            onClick={() => onChange(value === n ? null : n)}
+        >
+          <SelectTrigger
+            aria-label={lift ? "リフト" : "コース"}
+            className="h-8 min-w-0 flex-1"
           >
-            ★
-          </button>
-        ))}
-      </div>
-    </fieldset>
-  );
-  const choice = (
-    title: string,
-    values: readonly string[],
-    selected: readonly string[],
-    onChange: (values: string[]) => void,
-  ) => (
-    <fieldset>
-      <legend className="mb-1 text-sm font-medium">{title}</legend>
-      <div className="flex flex-wrap gap-1.5">
-        {values.map(value => (
-          <button
-            type="button"
-            key={value}
-            className={`rounded-full border px-2 py-1 text-xs whitespace-nowrap ${selected.includes(value) ? "border-sky-700 bg-sky-50 text-sky-900" : ""}`}
-            onClick={() =>
-              onChange(
-                selected.includes(value)
-                  ? selected.filter(item => item !== value)
-                  : [...selected, value],
-              )
-            }
-          >
-            {value}
-          </button>
-        ))}
-      </div>
-    </fieldset>
-  );
-  const nameOf = (entry: ReportEntryDraft) =>
-    entry.kind === "LIFT"
-      ? mapData.lifts.find(item => item.id === entry.liftId)?.name
-      : mapData.courses.find(item => item.id === entry.courseId)?.name;
-  const targetSelect = (entry: ReportEntryDraft) => (
-    <label className={labelClass}>
-      {entry.kind === "LIFT" ? "対象リフト" : "対象コース"}
-      <Select
-        value={
-          entry.kind === "LIFT" ? (entry.liftId ?? "") : (entry.courseId ?? "")
-        }
-        items={[
-          { value: "", label: "選択してください" },
-          ...(entry.kind === "LIFT" ? mapData.lifts : mapData.courses).map(
-            item => ({ value: item.id, label: item.name }),
-          ),
-        ]}
-        onValueChange={value =>
-          patchEntry(
-            entry.clientKey,
-            entry.kind === "LIFT"
-              ? { liftId: value || null }
-              : { courseId: value || null },
-          )
-        }
-      >
-        <SelectTrigger className="h-9 w-full">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="">選択してください</SelectItem>
-          {(entry.kind === "LIFT" ? mapData.lifts : mapData.courses).map(
-            item => (
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">{placeholder}</SelectItem>
+            {options.map(item => (
               <SelectItem key={item.id} value={item.id}>
                 {item.name}
               </SelectItem>
-            ),
-          )}
-        </SelectContent>
-      </Select>
-    </label>
-  );
-  const entryEditor = (entry: ReportEntryDraft) => {
-    const entryIndex = report.entries.findIndex(
-      item => item.clientKey === entry.clientKey,
-    );
-    const issues = Object.entries(fieldErrors).filter(([path]) =>
-      path.startsWith(`entries.${entryIndex}.`),
-    );
-    return (
-      <div className="space-y-3 border-t pt-3">
-        {issues.length > 0 && (
-          <ul
-            className="list-inside list-disc rounded bg-red-50 p-2 text-xs text-red-800"
-            role="alert"
-          >
-            {issues.map(([path, message]) => (
-              <li key={path}>{message}</li>
             ))}
-          </ul>
-        )}
-        {(entry.kind === "COURSE" || entry.kind === "LIFT") && (
-          <>
-            {targetSelect(entry)}
-            <button
-              type="button"
-              className="h-8 rounded border px-2 text-xs"
-              onClick={() => openMap(entry.clientKey)}
-            >
-              地図で選ぶ
-            </button>
-          </>
-        )}
-        {(entry.kind === "MOGUL" || entry.kind === "ITEM") && (
-          <>
-            <button
-              type="button"
-              className="h-8 rounded border px-2 text-xs"
-              onClick={() => openMap(entry.clientKey)}
-            >
-              地図で場所を選ぶ
-            </button>
-            {entry.latitude != null && entry.longitude != null && (
-              <p className="text-xs text-gray-600">場所を指定済み</p>
-            )}
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={entry.present ?? false}
-                onChange={event =>
-                  patchEntry(entry.clientKey, { present: event.target.checked })
-                }
-              />
-              {entry.kind === "MOGUL" ? "コブあり" : "設置中"}
-            </label>
-          </>
-        )}
-        {entry.kind === "ITEM" && (
-          <>
-            <label className={labelClass}>
-              設備の種類
-              <Select
-                value={entry.itemType ?? ""}
-                items={[
-                  { value: "", label: "選択してください" },
-                  ...ITEM_TYPES.map(item => ({ value: item, label: item })),
-                ]}
-                onValueChange={value =>
-                  patchEntry(entry.clientKey, {
-                    itemType: (value || null) as ReportEntryDraft["itemType"],
-                  })
-                }
-              >
-                <SelectTrigger className="h-9 w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">選択してください</SelectItem>
-                  {ITEM_TYPES.map(item => (
-                    <SelectItem key={item} value={item}>
-                      {item}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
-            <label className={labelClass}>
-              サイズ
-              <input
-                className={inputClass}
-                value={entry.size ?? ""}
-                onChange={event =>
-                  patchEntry(entry.clientKey, {
-                    size: event.target.value || null,
-                  })
-                }
-              />
-            </label>
-          </>
-        )}
-        {entry.kind === "COURSE" && (
-          <>
-            {choice("雪質", SNOW_QUALITIES, entry.snowQualities, values =>
-              patchEntry(entry.clientKey, {
-                snowQualities: values as ReportEntryDraft["snowQualities"],
-              }),
-            )}
-            {choice("コース状態", COURSE_CONDITIONS, entry.conditions, values =>
-              patchEntry(entry.clientKey, {
-                conditions: values as ReportEntryDraft["conditions"],
-              }),
-            )}
-          </>
-        )}
-        {entry.kind === "MOGUL" &&
-          choice("コブの雪質", MOGUL_SNOW, entry.snowQualities, values =>
-            patchEntry(entry.clientKey, {
-              snowQualities: values as ReportEntryDraft["snowQualities"],
-            }),
-          )}
-        {(entry.kind === "COURSE" || entry.kind === "LIFT") && (
-          <>
-            <label className={labelClass}>
-              混雑状況
-              <Select
-                value={entry.crowding ?? ""}
-                items={[
-                  { value: "", label: "選択なし" },
-                  ...["空いている", "普通", "混雑"].map(item => ({
-                    value: item,
-                    label: item,
-                  })),
-                ]}
-                onValueChange={value =>
-                  patchEntry(entry.clientKey, {
-                    crowding: (value || null) as ReportEntryDraft["crowding"],
-                  })
-                }
-              >
-                <SelectTrigger className="h-9 w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">選択なし</SelectItem>
-                  {["空いている", "普通", "混雑"].map(item => (
-                    <SelectItem key={item} value={item}>
-                      {item}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
-            {entry.kind === "LIFT" && (
-              <label className={labelClass}>
-                待ち時間（分）
-                <input
-                  className={inputClass}
-                  type="number"
-                  min="0"
-                  max="240"
-                  value={entry.waitMinutes ?? ""}
-                  onChange={event =>
-                    patchEntry(entry.clientKey, {
-                      waitMinutes: event.target.value
-                        ? Number(event.target.value)
-                        : null,
-                    })
-                  }
-                />
-              </label>
-            )}
-            {rating(
-              entry.rating,
-              value => patchEntry(entry.clientKey, { rating: value }),
-              "項目の評価",
-            )}
-          </>
-        )}
-        <label className={labelClass}>
-          項目の感想
-          <textarea
-            className="min-h-20 w-full rounded-md border border-input bg-background p-2 text-sm"
-            maxLength={4000}
-            value={entry.body}
-            onChange={event =>
-              patchEntry(entry.clientKey, { body: event.target.value })
-            }
-          />
-        </label>
+          </SelectContent>
+        </Select>
       </div>
     );
   };
-  const content = (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <Link className="text-xs underline" href={link}>
-          ← 投稿一覧
-        </Link>
-        <span className="text-xs text-gray-500">
-          公開名: {account?.publicName}
-        </span>
-      </div>
-      <h1 className="text-lg font-bold">
-        {postId ? "レポートを編集" : "滑走レポートを投稿"}
-      </h1>
-      <p className="text-sm font-semibold text-slate-600">{mapData.name}</p>
-      <div className="space-y-1">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold">レポート項目</h2>
-          <span className="shrink-0 text-xs text-gray-500">
-            {report.entries.length}/{MAX_REPORT_ENTRIES}
-          </span>
-        </div>
-        <div className="flex min-w-0 flex-wrap gap-1">
-          {kinds.map(kind => (
-            <button
+  const statusField = (values: readonly (keyof typeof STATUS_STYLES)[]) => (
+    <Field label="状況" required error={fieldError("状況")}>
+      <fieldset className="flex flex-wrap gap-1">
+        <legend className="sr-only">状況</legend>
+        {values.map(status => {
+          const checked = entry.status === status;
+          const style = STATUS_STYLES[status];
+          return (
+            <Button
               type="button"
-              key={kind}
-              disabled={report.entries.length >= MAX_REPORT_ENTRIES}
-              className="h-7 rounded border px-2 text-xs whitespace-nowrap disabled:opacity-50"
-              onClick={() => addEntry(kind)}
+              key={status}
+              variant="outline"
+              aria-pressed={checked}
+              className={cn(
+                "h-7 gap-0.5 rounded-md border px-1 text-xs font-medium whitespace-nowrap",
+                checked
+                  ? cn(style.selected, "font-bold hover:brightness-95")
+                  : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+              )}
+              onClick={() => patchEntry({ status: checked ? null : status })}
             >
-              ＋{ENTRY_KINDS[kind]}
-            </button>
-          ))}
-        </div>
-      </div>
-      <label className={labelClass}>
-        訪問日
+              {style.mark ? (
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "flex size-3.5 items-center justify-center rounded-full [&_svg]:!size-2",
+                    style.mark,
+                  )}
+                >
+                  {style.icon}
+                </span>
+              ) : (
+                <span aria-hidden="true" className="flex">
+                  {style.icon}
+                </span>
+              )}
+              {status}
+            </Button>
+          );
+        })}
+      </fieldset>
+    </Field>
+  );
+  const snowField =
+    entry.kind === "LIFT" ? null : (
+      <Field label="雪質">
+        <Chips
+          label="雪質"
+          multiple
+          values={SNOW_QUALITIES}
+          selected={entry.snowQualities.filter(
+            (value): value is (typeof SNOW_QUALITIES)[number] =>
+              (SNOW_QUALITIES as readonly string[]).includes(value),
+          )}
+          onChange={snowQualities => patchEntry({ snowQualities })}
+        />
+      </Field>
+    );
+
+  const allPhotos = [
+    ...visibleSavedPhotos.map(photo => ({
+      key: photo.id,
+      src: photoUrl(photo.id),
+      remove: () => setRemovedPhotoIds(current => [...current, photo.id]),
+    })),
+    ...newPhotos.map(photo => ({
+      key: photo.url,
+      src: photo.url,
+      remove: () => {
+        URL.revokeObjectURL(photo.url);
+        setNewPhotos(current => current.filter(item => item !== photo));
+      },
+    })),
+  ];
+
+  const form = (
+    <div className="space-y-3 p-3 md:p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          className="h-16 w-16 flex-col gap-0 px-0 text-[11px] text-gray-600"
+          disabled={processingPhotos || photoCount >= MAX_PHOTOS}
+          onClick={() => document.getElementById("community-photo")?.click()}
+        >
+          {processingPhotos ? (
+            <Spinner className="size-5" />
+          ) : (
+            <Camera className="size-5" />
+          )}
+          写真を追加
+          <span className="text-[10px] leading-3 text-gray-400">任意</span>
+        </Button>
         <input
-          type="date"
-          max={today()}
-          className={inputClass}
-          value={report.observedOn}
-          onChange={event => patchReport({ observedOn: event.target.value })}
+          id="community-photo"
+          type="file"
+          accept="image/*,image/heic,image/heif,.heic,.heif"
+          multiple
+          className="hidden"
+          onChange={event => {
+            void addPhotos(event.currentTarget.files);
+            event.currentTarget.value = "";
+          }}
         />
-      </label>
-      <label className={labelClass}>
-        全体の感想
-        <textarea
-          className="min-h-24 w-full rounded-md border border-input bg-background p-2 text-sm"
-          maxLength={4000}
-          value={report.body}
-          onChange={event => patchReport({ body: event.target.value })}
-        />
-      </label>
-      {rating(
-        report.rating,
-        value => patchReport({ rating: value }),
-        "全体の評価",
-      )}
-      <section className="space-y-2">
-        {liveEntries.map((entry, index) => (
-          <article
-            key={entry.clientKey}
-            data-entry-key={entry.clientKey}
-            aria-label={`${ENTRY_KINDS[entry.kind]}の項目${index + 1}`}
-            className={`rounded-lg border p-3 ${activeKey === entry.clientKey ? "border-sky-600" : ""}`}
-          >
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                aria-expanded={openKeys.includes(entry.clientKey)}
-                className="min-w-0 flex-1 truncate text-left text-sm font-semibold"
-                onClick={() => {
-                  setActiveKey(entry.clientKey);
-                  setOpenKeys(current =>
-                    current.includes(entry.clientKey)
-                      ? current.filter(item => item !== entry.clientKey)
-                      : [...current, entry.clientKey],
-                  );
-                }}
-              >
-                {ENTRY_KINDS[entry.kind]}
-                {nameOf(entry) ? ` · ${nameOf(entry)}` : ` · 項目${index + 1}`}{" "}
-                {openKeys.includes(entry.clientKey) ? "⌃" : "⌄"}
-              </button>
-              {Object.keys(fieldErrors).some(key =>
-                key.startsWith(`entries.${index}.`),
-              ) && <span className="text-xs text-red-700">要確認</span>}
-              <button
-                type="button"
-                className="h-7 rounded px-2 text-xs text-red-700"
-                onClick={() => deleteEntry(entry.clientKey)}
-              >
-                削除
-              </button>
-            </div>
-            {openKeys.includes(entry.clientKey) && entryEditor(entry)}
-          </article>
+        {allPhotos.map(photo => (
+          <div key={photo.key} className="relative">
+            <Image
+              src={photo.src}
+              alt="追加した写真"
+              width={64}
+              height={64}
+              unoptimized
+              className="size-16 rounded-lg border border-gray-200 object-cover"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              aria-label="写真を削除"
+              className="absolute -top-1.5 -right-1.5 size-5 min-w-5 rounded-full border border-gray-200 bg-white p-0 text-gray-600 shadow-sm hover:bg-gray-50"
+              onClick={photo.remove}
+            >
+              <X size={12} strokeWidth={2.5} />
+            </Button>
+          </div>
         ))}
-      </section>
-      <section className="space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">写真（全体で6枚まで）</span>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            写真を追加
-          </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
+      </div>
+      <Field label="日時" required error={fieldError("日時")}>
+        <div className="grid grid-cols-[minmax(0,1fr)_6.5rem] gap-1.5">
+          <Input
+            type="date"
+            aria-label="日付"
+            className="h-8 min-w-0"
+            max={today()}
+            value={report.observedOn}
             onChange={event => {
-              chooseFiles(event.target.files);
-              event.currentTarget.value = "";
+              timeEdited.current = true;
+              setReport(current => ({
+                ...current,
+                observedOn: event.target.value,
+              }));
+            }}
+          />
+          <Input
+            type="time"
+            aria-label="時刻"
+            className="h-8 min-w-0"
+            value={report.observedTime ?? ""}
+            onChange={event => {
+              timeEdited.current = true;
+              setReport(current => ({
+                ...current,
+                observedTime: event.target.value || null,
+              }));
             }}
           />
         </div>
-        <div className="space-y-1 text-xs">
-          {existingPhotos
-            .filter(photo => !removedPhotoIds.includes(photo.id))
-            .map(photo => (
-              <div
-                key={photo.id}
-                className="flex items-center justify-between rounded border p-2"
-              >
-                既存の写真{" "}
-                <button
-                  type="button"
-                  className="text-red-700 underline"
-                  onClick={() =>
-                    setRemovedPhotoIds(current => [...current, photo.id])
-                  }
-                >
-                  削除
-                </button>
-              </div>
-            ))}
-          {newPhotos.map((photo, index) => (
-            <div
-              key={photoKey(photo)}
-              className="flex items-center justify-between rounded border p-2"
-            >
-              <span className="truncate">{photo.name}</span>
+      </Field>
+      <Field
+        label="場所"
+        required={isPointKind(entry.kind)}
+        error={fieldError("場所")}
+      >
+        <div className="flex items-center gap-1.5">
+          <span
+            className={cn(
+              "flex h-8 min-w-0 flex-1 items-center gap-1 rounded-lg border border-gray-200 px-2 text-xs tabular-nums md:text-sm",
+              hasLocation ? "text-gray-700" : "text-gray-400",
+            )}
+          >
+            <span className="min-w-0 truncate">
+              {hasLocation
+                ? `${entry.latitude?.toFixed(5)}, ${entry.longitude?.toFixed(5)}`
+                : pointMode
+                  ? "地図で指定"
+                  : "未指定"}
+            </span>
+            {hasLocation && !isPointKind(entry.kind) && (
               <button
                 type="button"
-                className="text-red-700 underline"
-                onClick={() =>
-                  setNewPhotos(current => current.filter((_, i) => i !== index))
-                }
+                aria-label="場所を消す"
+                className="ml-auto shrink-0 text-gray-400 hover:text-gray-700"
+                onClick={() => patchEntry({ latitude: null, longitude: null })}
               >
-                削除
+                <X size={14} />
               </button>
-            </div>
-          ))}
+            )}
+          </span>
+          {!isPointKind(entry.kind) && pointButton}
         </div>
-        <p className="text-xs text-gray-500">1枚8MB、合計48MBまで</p>
-      </section>
-      {error && (
-        <p role="alert" className="text-sm text-red-700">
-          {error}
-        </p>
+      </Field>
+      {entry.kind === "COURSE" && (
+        <>
+          <Field label="コース" required error={fieldError("コース")}>
+            {targetSelect(false, false)}
+          </Field>
+          {statusField(COURSE_STATUSES)}
+          {snowField}
+          <Field label="混雑状況">
+            <Chips
+              label="混雑状況"
+              values={CROWDING}
+              selected={entry.crowding ? [entry.crowding] : []}
+              onChange={([crowding]) =>
+                patchEntry({ crowding: crowding ?? null })
+              }
+            />
+          </Field>
+        </>
       )}
-      <Button className="w-full" disabled={busy} onClick={beginReview}>
-        内容を確認
-      </Button>
+      {entry.kind === "LIFT" && (
+        <>
+          <Field label="リフト" required error={fieldError("リフト")}>
+            {targetSelect(true, false)}
+          </Field>
+          {statusField(LIFT_STATUSES)}
+          <Field label="待ち時間">
+            <div className="flex items-center gap-1.5 text-sm text-gray-700 md:text-base">
+              <Input
+                inputMode="numeric"
+                aria-label="待ち時間（分）"
+                placeholder="任意"
+                className="h-8 w-16 placeholder:text-xs placeholder:text-gray-300"
+                value={entry.waitMinutes ?? ""}
+                onChange={event => {
+                  const text = event.target.value;
+                  if (!/^\d{0,3}$/.test(text)) return;
+                  patchEntry({
+                    waitMinutes:
+                      text === "" ? null : Math.min(240, Number(text)),
+                  });
+                }}
+              />
+              分
+            </div>
+          </Field>
+          <Field label="速度">
+            <div className="space-y-1.5 text-sm text-gray-700 md:text-base">
+              <Chips
+                label="速度"
+                values={LIFT_SPEED_LEVELS}
+                selected={entry.liftSpeedLevel ? [entry.liftSpeedLevel] : []}
+                onChange={([liftSpeedLevel]) =>
+                  patchEntry({ liftSpeedLevel: liftSpeedLevel ?? null })
+                }
+              />
+              {/* m/s と km/h のどちらを入れても、もう片方を換算して埋める */}
+              <div className="flex items-center gap-1 whitespace-nowrap">
+                <Input
+                  inputMode="decimal"
+                  aria-label="速度（m/s）"
+                  placeholder="任意"
+                  className="h-8 w-14 placeholder:text-xs placeholder:text-gray-300"
+                  value={liftSpeedText}
+                  onChange={event => {
+                    const text = event.target.value;
+                    if (!DECIMAL_1.test(text)) return;
+                    const value = toSpeedNumber(text);
+                    setLiftSpeedText(text);
+                    setKmhText(value == null ? "" : (value * 3.6).toFixed(1));
+                    patchEntry({ liftSpeed: value });
+                  }}
+                />
+                m/s
+                <span className="px-0.5 text-gray-400">=</span>
+                <Input
+                  inputMode="decimal"
+                  aria-label="速度（km/h）"
+                  placeholder="任意"
+                  className="h-8 w-14 placeholder:text-xs placeholder:text-gray-300"
+                  value={kmhText}
+                  onChange={event => {
+                    const text = event.target.value;
+                    if (!DECIMAL_1.test(text)) return;
+                    const value = toSpeedNumber(text);
+                    const metres = value == null ? null : round1(value / 3.6);
+                    setKmhText(text);
+                    setLiftSpeedText(metres == null ? "" : metres.toFixed(1));
+                    patchEntry({ liftSpeed: metres });
+                  }}
+                />
+                km/h
+              </div>
+            </div>
+          </Field>
+        </>
+      )}
+      {isPointKind(entry.kind) && (
+        <Field label="コース">{targetSelect(false, true)}</Field>
+      )}
+      {entry.kind === "ITEM" && (
+        <>
+          <Field label="アイテム" required error={fieldError("アイテム")}>
+            <Chips
+              label="アイテム"
+              values={ITEM_TYPES}
+              selected={entry.itemType ? [entry.itemType] : []}
+              onChange={([itemType]) =>
+                patchEntry({
+                  itemType: itemType ?? null,
+                  ...(itemType && SIZED_ITEM_TYPES.includes(itemType)
+                    ? {}
+                    : { size: null }),
+                })
+              }
+            />
+          </Field>
+          {entry.itemType && SIZED_ITEM_TYPES.includes(entry.itemType) && (
+            <Field label="サイズ">
+              <Input
+                aria-label="サイズ"
+                className="h-8 placeholder:text-xs placeholder:text-gray-300"
+                maxLength={100}
+                placeholder="任意（例：5m）"
+                value={entry.size ?? ""}
+                onChange={event =>
+                  patchEntry({ size: event.target.value || null })
+                }
+              />
+            </Field>
+          )}
+        </>
+      )}
+      {isPointKind(entry.kind) && snowField}
+      {entry.kind === "MOGUL" && (
+        <Field label="深さ">
+          <Chips
+            label="深さ"
+            values={MOGUL_DEPTHS}
+            selected={entry.depth ? [entry.depth] : []}
+            onChange={([depth]) => patchEntry({ depth: depth ?? null })}
+          />
+        </Field>
+      )}
+      <Field label="自由記述">
+        <Textarea
+          aria-label="自由記述"
+          className="min-h-20 text-sm md:text-base"
+          maxLength={4000}
+          value={entry.body}
+          onChange={event => patchEntry({ body: event.target.value })}
+        />
+      </Field>
     </div>
   );
-  const review = (
-    <div className="space-y-3">
-      <h2 className="text-lg font-bold">投稿内容の確認</h2>
-      <p className="text-sm font-semibold">{mapData.name}</p>
-      <p className="text-sm">
-        {report.observedOn} · {report.entries.length}項目 · 写真
-        {existingPhotos.length - removedPhotoIds.length + newPhotos.length}枚
-      </p>
-      {report.body && (
-        <p className="whitespace-pre-wrap text-sm">{report.body}</p>
-      )}
-      {report.rating != null && (
-        <p className="text-sm">全体の評価：★ {report.rating}</p>
-      )}
-      <ReportSections
-        entries={report.entries.map(entry => ({
-          ...entry,
-          id: entry.clientKey,
-          targetName: nameOf(entry) ?? ENTRY_KINDS[entry.kind],
-        }))}
-      />
+
+  const footer = (
+    <div className="shrink-0 space-y-1.5 border-t border-gray-200 p-3 md:px-4">
       {error && (
         <p role="alert" className="text-sm text-red-700">
           {error}
         </p>
       )}
-      <Button className="w-full" disabled={busy} onClick={save}>
-        {busy ? "保存中…" : postId ? "更新する" : "投稿する"}
-      </Button>
+      {previewOnly && (
+        <p role="status" className="text-xs text-amber-700">
+          プレビュー中（送信できません）
+        </p>
+      )}
       <Button
-        variant="outline"
-        className="w-full"
-        disabled={busy}
-        onClick={() => setStep("edit")}
+        className="h-9 w-full"
+        disabled={busy || processingPhotos}
+        onClick={save}
       >
-        入力に戻る
+        {busy ? "送信中…" : editingPostId ? "更新する" : "投稿する"}
       </Button>
     </div>
   );
 
-  return (
-    <main
-      ref={mainRef}
-      className="h-dvh min-h-0 overflow-y-auto md:overflow-hidden"
-    >
-      <div className="grid min-h-full md:h-full md:grid-cols-[minmax(0,1fr)_minmax(480px,560px)]">
-        {!mobile && <div className="hidden min-h-0 md:block">{mapPane}</div>}
-        <div className="min-h-0 md:overflow-y-auto">
-          <div className="mx-auto max-w-2xl space-y-3 p-3 pb-8 md:p-5">
-            {step === "review" ? review : content}
-          </div>
-        </div>
-      </div>
-      {mobile && (
-        <Dialog open={mapOpen} onOpenChange={closeMap}>
-          <DialogContent className="flex h-[min(88dvh,760px)] max-w-5xl flex-col gap-2 p-3 sm:max-w-5xl">
-            <DialogTitle>地図から項目を選択</DialogTitle>
-            <DialogDescription className="text-xs text-gray-600">
-              対象をタップして選び、「選択を確定」を押してください。
-            </DialogDescription>
-            <div className="min-h-0 flex-1">{mapPane}</div>
-            <DialogFooter className="flex-row justify-between">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => closeMap(false)}
-              >
-                キャンセル
-              </Button>
-              <Button
-                type="button"
-                disabled={!mapTarget || !activeKey || !canConfirmMapTarget}
-                onClick={() => {
-                  if (mapTarget && activeKey)
-                    selectTarget(activeKey, mapTarget);
-                  closeMap(false);
-                }}
-              >
-                選択を確定
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
-    </main>
-  );
+  return shell(ENTRY_KINDS[entry.kind], form, footer);
 }

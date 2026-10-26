@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { type ReactNode, useEffect, useState } from "react";
 import {
@@ -11,12 +10,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getCommunityFeed } from "@/features/community/actions";
-import type {
-  FeedInput,
-  PublicPost,
-  RatingSummary,
-} from "@/features/community/contract";
+import type { FeedInput, PublicPost } from "@/features/community/contract";
 import { CorrectionLink } from "@/features/corrections/CorrectionLink";
+import {
+  communityComposerUrl,
+  requestCommunityComposer,
+} from "./composerEvents";
 import { ReportSections } from "./ReportSections";
 
 export function CommunityFeed({
@@ -35,7 +34,6 @@ export function CommunityFeed({
   headerActions?: ReactNode;
 }) {
   const [posts, setPosts] = useState<PublicPost[]>([]);
-  const [ratings, setRatings] = useState<RatingSummary[]>([]);
   const [sort, setSort] = useState<"observed" | "created">("observed");
   const [kind, setKind] = useState<FeedInput["kind"]>();
   const [from, setFrom] = useState("");
@@ -57,7 +55,6 @@ export function CommunityFeed({
       if (!active) return;
       if (result.ok) {
         setPosts(result.data.posts);
-        setRatings(result.data.ratings);
         setNextCursor(result.data.nextCursor);
       }
       setBusy(false);
@@ -87,22 +84,7 @@ export function CommunityFeed({
   return (
     <section className="space-y-2" aria-label="みんなの投稿">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        {!hideHeading && (
-          <h3 className="font-semibold">
-            みんなの投稿
-            {(() => {
-              if (liftId) return null;
-              const summary = ratings.find(
-                rating => rating.courseId === (courseId ?? null),
-              );
-              return summary ? (
-                <span className="ml-2 text-xs font-normal text-gray-600">
-                  ★ {summary.average.toFixed(1)} · {summary.count}人
-                </span>
-              ) : null;
-            })()}
-          </h3>
-        )}
+        {!hideHeading && <h3 className="font-semibold">みんなの投稿</h3>}
         {compact && !courseId && !liftId && (
           <CorrectionLink resortId={resortId} />
         )}
@@ -122,8 +104,8 @@ export function CommunityFeed({
                 value={kind ?? ""}
                 items={[
                   { value: "", label: "すべて" },
-                  { value: "COURSE", label: "コースを含む" },
-                  { value: "LIFT", label: "リフトを含む" },
+                  { value: "COURSE", label: "コース" },
+                  { value: "LIFT", label: "リフト" },
                   { value: "MOGUL", label: "コブ" },
                   { value: "ITEM", label: "パーク" },
                 ]}
@@ -136,8 +118,8 @@ export function CommunityFeed({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">すべて</SelectItem>
-                  <SelectItem value="COURSE">コースを含む</SelectItem>
-                  <SelectItem value="LIFT">リフトを含む</SelectItem>
+                  <SelectItem value="COURSE">コース</SelectItem>
+                  <SelectItem value="LIFT">リフト</SelectItem>
                   <SelectItem value="MOGUL">コブ</SelectItem>
                   <SelectItem value="ITEM">パーク</SelectItem>
                 </SelectContent>
@@ -188,7 +170,34 @@ export function CommunityFeed({
           </Link>
           <Link
             className="rounded-md border border-slate-300 bg-white px-2 py-1.5 font-medium whitespace-nowrap text-slate-700 hover:bg-slate-50"
-            href={`/community/${encodeURIComponent(resortId)}/new${courseId ? `?courseId=${encodeURIComponent(courseId)}` : liftId ? `?liftId=${encodeURIComponent(liftId)}` : ""}`}
+            href={communityComposerUrl({
+              resortId,
+              target: courseId
+                ? { kind: "COURSE", id: courseId }
+                : liftId
+                  ? { kind: "LIFT", id: liftId }
+                  : undefined,
+            })}
+            onClick={event => {
+              if (
+                event.metaKey ||
+                event.ctrlKey ||
+                event.shiftKey ||
+                event.altKey
+              )
+                return;
+              if (
+                requestCommunityComposer({
+                  resortId,
+                  target: courseId
+                    ? { kind: "COURSE", id: courseId }
+                    : liftId
+                      ? { kind: "LIFT", id: liftId }
+                      : undefined,
+                })
+              )
+                event.preventDefault();
+            }}
           >
             ＋投稿
           </Link>
@@ -223,12 +232,14 @@ export function PostCard({ post }: { post: PublicPost }) {
     <article className="rounded-lg border p-3 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-1">
         <div className="font-semibold">
-          {post.observedOn}の滑走レポート
+          現地レポート
           <span className="ml-1 text-xs font-normal text-slate-500">
             {post.resortName}
           </span>
         </div>
-        <time className="text-xs text-gray-500">{post.observedOn}</time>
+        <time className="text-xs text-gray-500">
+          {post.observedOn} {post.observedTime}
+        </time>
       </div>
       <p className="mt-1 text-xs text-gray-600">
         <Link
@@ -237,33 +248,10 @@ export function PostCard({ post }: { post: PublicPost }) {
         >
           {post.author.publicName}
         </Link>{" "}
-        · ★ {post.rating ?? "—"} · ♡ {post.likeCount} · コメント{" "}
-        {post.commentCount}
+        · ♡ {post.likeCount} · コメント {post.commentCount}
       </p>
-      {post.body && (
-        <p className="mt-2 whitespace-pre-wrap break-words">{post.body}</p>
-      )}
-      {post.entries.length > 0 && (
-        <div className="mt-2">
-          <ReportSections entries={post.entries} compact />
-        </div>
-      )}
-      <div className="mt-2 flex gap-2 overflow-x-auto">
-        {post.photos.map(photo => (
-          <Link
-            key={photo.id}
-            href={`/community/post/${encodeURIComponent(post.id)}`}
-          >
-            <Image
-              className="size-20 rounded object-cover"
-              src={`/rusutsu/api/community/photos/${encodeURIComponent(photo.id)}`}
-              alt="投稿写真"
-              width={photo.width}
-              height={photo.height}
-              unoptimized
-            />
-          </Link>
-        ))}
+      <div className="mt-2">
+        <ReportSections entries={post.entries} />
       </div>
       <Link
         className="mt-2 inline-block text-xs font-medium text-sky-800 underline"

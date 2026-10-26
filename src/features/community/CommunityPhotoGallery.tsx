@@ -27,7 +27,7 @@ export function CommunityPhotoGallery({
           sort: "observed",
         });
         if (!result.ok) break;
-        all.push(...result.data.posts.filter(post => post.photos.length > 0));
+        all.push(...result.data.posts);
         cursor = result.data.nextCursor ?? undefined;
       } while (cursor);
       if (active) setPosts(all);
@@ -54,25 +54,28 @@ export function CommunityPhotoGallery({
       </p>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
         {posts.flatMap(post =>
-          post.photos.map(photo => (
-            <Link
-              key={photo.id}
-              href={`/community/post/${encodeURIComponent(post.id)}`}
-              className="overflow-hidden rounded-lg border"
-            >
-              <Image
-                className="aspect-square w-full object-cover"
-                src={`/rusutsu/api/community/photos/${encodeURIComponent(photo.id)}`}
-                alt={`${post.observedOn}の投稿写真`}
-                width={photo.width}
-                height={photo.height}
-                unoptimized
-              />
-              <span className="block truncate px-2 py-1 text-xs">
-                {post.author.publicName} · {post.observedOn}
-              </span>
-            </Link>
-          )),
+          post.entries
+            .filter(entry => !courseId || entry.courseId === courseId)
+            .flatMap(entry => entry.photos)
+            .map(photo => (
+              <Link
+                key={photo.id}
+                href={`/community/post/${encodeURIComponent(post.id)}`}
+                className="overflow-hidden rounded-lg border"
+              >
+                <Image
+                  className="aspect-square w-full object-cover"
+                  src={`/rusutsu/api/community/photos/${encodeURIComponent(photo.id)}`}
+                  alt={`${post.observedOn}の投稿写真`}
+                  width={photo.width}
+                  height={photo.height}
+                  unoptimized
+                />
+                <span className="block truncate px-2 py-1 text-xs">
+                  {post.author.publicName} · {post.observedOn}
+                </span>
+              </Link>
+            )),
         )}
       </div>
     </main>

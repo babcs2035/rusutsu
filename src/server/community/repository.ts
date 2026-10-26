@@ -1,5 +1,5 @@
 import "server-only";
-import { Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 import type {
   CommunityAccount,
@@ -8,14 +8,18 @@ import type {
   FeedInput,
   PublicMapEntry,
   PublicPost,
-  RatingSummary,
   ReportEntryDraft,
 } from "@/features/community/contract";
 import { getFinalizedResortMapData } from "@/lib/finalizedResortGeojson";
+import { usesRemoteDataApi } from "@/lib/internalDataApiClient";
 import { prisma } from "@/lib/prisma";
+import { readSkiResortById } from "@/lib/skiResortData";
+import { internalCommunityActor } from "./actorContext";
 
 export type Tx = Prisma.TransactionClient;
 export async function viewerId() {
+  const internal = internalCommunityActor();
+  if (internal) return internal.userId;
   const session = await auth();
   return session?.user?.id ?? null;
 }
@@ -38,10 +42,14 @@ export async function writableUser(tx: Tx, id: string, needsProfile = true) {
 export const publicPostInclude = {
   author: { select: { id: true, publicName: true } },
   resort: { select: { nameJa: true } },
-  entries: { orderBy: { position: "asc" as const } },
-  photos: {
-    select: { id: true, width: true, height: true },
-    orderBy: { createdAt: "asc" as const },
+  entries: {
+    orderBy: { position: "asc" as const },
+    include: {
+      photos: {
+        select: { id: true, width: true, height: true },
+        orderBy: { createdAt: "asc" as const },
+      },
+    },
   },
   _count: {
     select: { likes: true, comments: { where: { status: "VISIBLE" } } },
@@ -54,10 +62,12 @@ type IncludedPost = Prisma.CommunityPostGetPayload<{
 export async function courseOptions(
   resortId: string,
 ): Promise<CommunityMapData> {
-  const resort = await prisma.skiResort.findFirst({
-    where: { id: resortId, isActive: true },
-    select: { nameJa: true, longitude: true, latitude: true },
-  });
+  const resort = usesRemoteDataApi()
+    ? await readSkiResortById(resortId)
+    : await prisma.skiResort.findFirst({
+        where: { id: resortId, isActive: true },
+        select: { nameJa: true, longitude: true, latitude: true },
+      });
   if (!resort) throw new Error("スキー場が見つかりません。");
   const data = await getFinalizedResortMapData(resortId);
   const courses = new Map<string, CourseOption>();
@@ -121,8 +131,7 @@ export async function serializePosts(
     resortId: row.resortId,
     resortName: row.resort.nameJa,
     observedOn: row.observedOn,
-    body: row.body,
-    rating: row.rating,
+    observedTime: row.observedTime,
     version: row.version,
     entries: row.entries.map(entry => ({
       id: entry.id,
@@ -133,47 +142,26 @@ export async function serializePosts(
       targetName: entry.targetName,
       body: entry.body,
       snowQualities: entry.snowQualities as ReportEntryDraft["snowQualities"],
-      conditions: entry.conditions as ReportEntryDraft["conditions"],
+      status: entry.status as ReportEntryDraft["status"],
       crowding: entry.crowding as ReportEntryDraft["crowding"],
-      rating: entry.rating,
       latitude: entry.latitude,
       longitude: entry.longitude,
-      present: entry.present,
       itemType: entry.itemType as ReportEntryDraft["itemType"],
       size: entry.size,
       waitMinutes: entry.waitMinutes,
+      liftSpeed: entry.liftSpeed,
+      liftSpeedLevel:
+        entry.liftSpeedLevel as ReportEntryDraft["liftSpeedLevel"],
+      depth: entry.depth as ReportEntryDraft["depth"],
+      photos: entry.photos,
     })),
     author: { id: row.author.id, publicName: row.author.publicName ?? "匿名" },
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
-    photos: row.photos,
     likeCount: row._count.likes,
     commentCount: row._count.comments,
     liked: likedIds.has(row.id),
   }));
-}
-
-export async function ratingSummaries(
-  resortId: string,
-  courseId?: string,
-): Promise<RatingSummary[]> {
-  const rows = await prisma.$queryRaw<
-    Array<{ courseId: string | null; average: number; count: bigint }>
-  >(Prisma.sql`
-    WITH rated AS (
-      SELECT p."authorId", NULL::text AS "courseId", p.rating, p."createdAt", p.id
-      FROM community_posts p WHERE p."resortId" = ${resortId} AND p.status = 'VISIBLE' AND p.rating IS NOT NULL
-      UNION ALL
-      SELECT p."authorId", e."courseId", e.rating, p."createdAt", e.id
-      FROM community_entries e JOIN community_posts p ON p.id = e."postId"
-      WHERE p."resortId" = ${resortId} AND p.status = 'VISIBLE' AND e.kind = 'COURSE' AND e.rating IS NOT NULL
-    ), latest AS (
-      SELECT DISTINCT ON ("authorId", "courseId") "courseId", rating FROM rated
-      ${courseId ? Prisma.sql`WHERE "courseId" = ${courseId}` : Prisma.empty}
-      ORDER BY "authorId", "courseId", "createdAt" DESC, id DESC
-    ) SELECT "courseId", AVG(rating)::float8 AS average, COUNT(*) AS count FROM latest GROUP BY "courseId"
-  `);
-  return rows.map(row => ({ ...row, count: Number(row.count) }));
 }
 
 export async function readFeed(input: FeedInput) {
@@ -213,7 +201,6 @@ export async function readFeed(input: FeedInput) {
   });
   return {
     posts: await serializePosts(rows.slice(0, 50), id),
-    ratings: await ratingSummaries(input.resortId, input.courseId),
     viewerId: id,
     nextCursor: rows.length > 50 ? rows[49].id : null,
   };
@@ -252,7 +239,7 @@ export async function readMapEntries(input: {
     },
   });
   const entries: PublicMapEntry[] = rows.slice(0, 100).flatMap(row =>
-    row.latitude == null || row.longitude == null || row.present == null
+    row.latitude == null || row.longitude == null
       ? []
       : [
           {
@@ -263,7 +250,6 @@ export async function readMapEntries(input: {
             body: row.body,
             latitude: row.latitude,
             longitude: row.longitude,
-            present: row.present,
             itemType: row.itemType,
             size: row.size,
             targetName: row.targetName,

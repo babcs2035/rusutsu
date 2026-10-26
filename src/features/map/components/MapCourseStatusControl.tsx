@@ -76,7 +76,7 @@ export function MapCourseStatusControl({
           placement === "bottom" ? "flex-col-reverse" : "flex-col",
         )}
       >
-        {enabled || inline ? (
+        {enabled || inline || placement === "bottom" ? (
           <button
             type="button"
             aria-pressed={active}
@@ -98,6 +98,7 @@ export function MapCourseStatusControl({
               "pointer-events-auto flex h-9 shrink-0 items-center gap-1 rounded-md border border-slate-300 bg-white px-2 text-[13px] font-bold whitespace-nowrap text-slate-700 shadow-sm hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-blue-600 md:h-10 md:gap-1.5 md:px-3 md:text-base",
               compact &&
                 "h-9 gap-1 px-1.5 text-sm font-semibold md:h-[34px] md:gap-1 md:px-1.5 md:text-[13px]",
+              placement === "bottom" && "disabled:opacity-50",
               inline &&
                 "h-9 gap-1 px-1 text-sm font-semibold min-[375px]:px-1.5 md:h-8 md:gap-1 md:px-1.5 md:text-[13px] disabled:opacity-50",
             )}

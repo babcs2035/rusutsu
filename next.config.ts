@@ -38,6 +38,7 @@ const nextConfig: NextConfig = {
     },
   },
   serverExternalPackages: [
+    "heic-decode",
     "@prisma/client",
     "@prisma/config",
     "playwright",

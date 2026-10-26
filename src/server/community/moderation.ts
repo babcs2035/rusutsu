@@ -1,6 +1,7 @@
 import "server-only";
 import cron from "node-cron";
 import { z } from "zod";
+import { usesRemoteDataApi } from "@/lib/internalDataApiClient";
 import { prisma, withPostgresAdvisoryLock } from "@/lib/prisma";
 import { privateModerationEndpoint } from "./moderationEndpoint";
 
@@ -83,16 +84,14 @@ export async function drainModerationJobs() {
           {
             type: "text",
             text:
-              [
-                target.body,
-                ...("entries" in target
-                  ? target.entries.flatMap(entry => [
-                      entry.targetName,
-                      entry.body,
-                      entry.size ?? "",
-                    ])
-                  : []),
-              ]
+              ("entries" in target
+                ? target.entries.flatMap(entry => [
+                    entry.targetName,
+                    entry.body,
+                    entry.size ?? "",
+                  ])
+                : [target.body]
+              )
                 .filter(Boolean)
                 .join("\n") || "スキー場の現地情報",
           },
@@ -200,6 +199,7 @@ const globalState = globalThis as unknown as {
 export function startCommunityModerationScheduler() {
   if (
     globalState.communitySchedulerStarted ||
+    usesRemoteDataApi() ||
     process.env.DISABLE_COMMUNITY_MODERATION === "true"
   )
     return;
