@@ -9,9 +9,9 @@
  * 拡大しても近くに必ず名前と方向がある。
  */
 
-import type { FinalizedFeatureStatus } from "../types";
 import {
   createProjectedLine,
+  getBendAngle,
   getLabelDistances,
   getPointAtDistance,
   getSpacedDistances,
@@ -33,8 +33,7 @@ export type LabelSource = {
   /** クリックで選択する代表 id */
   primaryId: string;
   name: string;
-  status: FinalizedFeatureStatus;
-  /** 種別の重み（リフトはゴンドラを優先） */
+  /** 種別の重み（リフトはゴンドラ・高速リフトを優先） */
   weight: number;
   points: LayoutPoint[];
   isSelected: boolean;
@@ -78,12 +77,12 @@ export type DirectionMark = {
 const COURSE_SECTION_SUFFIX_RE = /_#?(上部|中部|下部)$/u;
 const COURSE_INDEX_SUFFIX_RE = /_\d+$/u;
 
-export const STATUS_LABEL_WEIGHT: Record<FinalizedFeatureStatus, number> = {
-  open: 1,
-  limited: 0.8,
-  closed: 0.55,
-  unknown: 0.7,
-};
+/** 名前が線の長さに占める割合の上限。線の色（斜度）を名前で隠しすぎない */
+const MAX_LABEL_LINE_RATIO = 0.5;
+/** 名前の範囲で、線が直線から離れてよい距離（文字高さに対する割合） */
+const MAX_LABEL_DEVIATION_RATIO = 0.5;
+/** 名前の範囲で、線が曲がってよい角度（度） */
+const MAX_LABEL_BEND_DEG = 20;
 
 export const getLabelFontSize = (zoom: number) => (zoom >= 16 ? 12 : 11);
 
@@ -133,7 +132,7 @@ export const collectLabelCandidates = ({
     if (!line) continue;
 
     const labelWidth = measureWidth(source.name, fontSize) + 2;
-    if (line.length < labelWidth * 1.05) continue;
+    if (labelWidth > line.length * MAX_LABEL_LINE_RATIO) continue;
 
     const distances = getLabelDistances({
       length: line.length,
@@ -142,7 +141,7 @@ export const collectLabelCandidates = ({
     });
     const score = source.isSelected
       ? Number.POSITIVE_INFINITY
-      : line.length * STATUS_LABEL_WEIGHT[source.status] * source.weight;
+      : line.length * source.weight;
 
     distances.forEach((distance, index) => {
       // 探索半径を狭くして、1/4・1/2・3/4 から大きくずれないようにする
@@ -152,6 +151,16 @@ export const collectLabelCandidates = ({
         span: labelWidth,
         searchRadius: Math.min(line.length * 0.06, 36),
       });
+      // まっすぐな場所が見つからなければ名前を出さない。曲がった線の上に
+      // まっすぐな文字を置くと、どの線の名前か分からなくなる
+      const half = labelWidth / 2;
+      if (
+        anchor.deviation > labelHeight * MAX_LABEL_DEVIATION_RATIO ||
+        getBendAngle(line, anchor.distance - half, anchor.distance + half) >
+          MAX_LABEL_BEND_DEG
+      ) {
+        return;
+      }
       // 文字は線の向きに沿わせる。呼び出し側が山頂側を始点にした点列を渡すので、
       // コースもリフトも山頂側から書き始まる。ただし地図を回すと画面上で
       // 天地が逆になることがあるので、そこだけ 180° 折り返す。

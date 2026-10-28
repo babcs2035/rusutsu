@@ -475,30 +475,25 @@ export const getCoordinatesElevationDrop = (
   return Math.abs(first - last);
 };
 
-export type LiftClass = "gondola" | "highSpeedQuad" | "quad" | "pair" | "other";
+export type LiftClass = "gondola" | "highSpeed" | "other";
 
 const GONDOLA_RE = /ゴンドラ|ロープウェイ|gondola|cabin/iu;
 
-/** ラベル優先度と種別アイコンに使うリフト種別。 */
+/** ラベル優先度に使うリフト種別。 */
 export const getLiftClass = (
   lift: Pick<FinalizedLiftFeature, "name" | "properties">,
 ): LiftClass => {
   const source = `${lift.name} ${lift.properties.type ?? ""}`;
   if (GONDOLA_RE.test(source)) return "gondola";
 
-  const capacity = lift.properties.capacity ?? 0;
   const isHighSpeed = /高速|express|fast/iu.test(
     `${lift.properties.speed ?? ""} ${lift.name}`,
   );
-  if (capacity >= 4) return isHighSpeed ? "highSpeedQuad" : "quad";
-  if (capacity >= 2) return "pair";
-  return "other";
+  return isHighSpeed ? "highSpeed" : "other";
 };
 
 export const LIFT_CLASS_LABEL_WEIGHT: Record<LiftClass, number> = {
   gondola: 1.6,
-  highSpeedQuad: 1.4,
-  quad: 1.25,
-  pair: 1,
-  other: 0.9,
+  highSpeed: 1.5,
+  other: 1,
 };

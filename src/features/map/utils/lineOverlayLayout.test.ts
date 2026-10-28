@@ -249,7 +249,6 @@ const createSource = (
   kind: "course",
   sourceIds: ["a"],
   primaryId: "a",
-  status: "open",
   weight: 1,
   isSelected: false,
   isMuted: false,
@@ -322,16 +321,15 @@ test("placeLabelCandidates はスコアの高い方を残す", () => {
   const candidates = collectLabelCandidates({
     sources: [
       createSource({
-        name: "クローズ",
+        name: "ペア",
         points: horizontalPoints(400, 0),
-        primaryId: "closed",
-        status: "closed",
+        primaryId: "pair",
       }),
       createSource({
-        name: "営業中",
+        name: "ゴンドラ",
         points: horizontalPoints(400, 4),
-        primaryId: "open",
-        status: "open",
+        primaryId: "gondola",
+        weight: 1.6,
       }),
     ],
     zoom: 16,
@@ -340,11 +338,67 @@ test("placeLabelCandidates はスコアの高い方を残す", () => {
   });
   const placements = placeLabelCandidates(candidates, [], 4);
 
-  // ほぼ重なった 2 本なので、残るのは営業中のほうだけ
+  // ほぼ重なった 2 本なので、残るのは重みの大きいゴンドラだけ
   assert.ok(placements.length > 0);
   assert.deepEqual(
     [...new Set(placements.map(placement => placement.selectId))],
-    ["open"],
+    ["gondola"],
+  );
+});
+
+test("collectLabelCandidates は線の半分を超える名前を出さない", () => {
+  // measureWidth は 1 文字 = fontSize px。6 文字 × 12px + 2 = 74px
+  const collect = (length: number) =>
+    collectLabelCandidates({
+      sources: [
+        createSource({
+          name: "ダイナミック",
+          points: horizontalPoints(length),
+        }),
+      ],
+      zoom: 16,
+      twoLabelMinLength: 640,
+      measureWidth,
+    });
+
+  assert.equal(collect(140).length, 0);
+  assert.equal(collect(160).length, 1);
+});
+
+test("collectLabelCandidates は曲がった区間に名前を出さない", () => {
+  const collect = (points: LayoutPoint[]) =>
+    collectLabelCandidates({
+      sources: [createSource({ name: "ダイナミック", points })],
+      zoom: 16,
+      twoLabelMinLength: 640,
+      measureWidth,
+    });
+
+  // 細かく折り返すつづら折りには、まっすぐな置き場がない
+  const zigzag = Array.from({ length: 13 }, (_, index) => ({
+    x: index * 20,
+    y: index % 2 === 0 ? 0 : 30,
+  }));
+  assert.equal(collect(zigzag).length, 0);
+
+  // 中央で 90° 曲がる線も、名前の範囲が角にかかるので出さない
+  assert.equal(
+    collect([
+      { x: 0, y: 0 },
+      { x: 90, y: 0 },
+      { x: 90, y: 90 },
+    ]).length,
+    0,
+  );
+
+  // 片側が十分長くまっすぐなら、その区間に置く
+  assert.equal(
+    collect([
+      { x: 0, y: 0 },
+      { x: 300, y: 0 },
+      { x: 300, y: 40 },
+    ]).length,
+    1,
   );
 });
 

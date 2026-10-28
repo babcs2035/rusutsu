@@ -32,6 +32,8 @@ import {
   CommunityMapOverlay,
 } from "@/features/community/CommunityMapOverlay";
 import {
+  type CommunityMapHighlight,
+  MAP_HIGHLIGHT_EVENT,
   MAP_PICK_MODE_EVENT,
   MAP_POINT_EVENT,
   selectCommunityMapTarget,
@@ -69,6 +71,7 @@ import { MapAttributionSlot } from "./maplibre/MapAttributionSlot";
 import { MapLibreControls } from "./maplibre/MapLibreControls";
 import { MapLibreResortActionPopup } from "./maplibre/MapLibreResortActionPopup";
 import { MapLocationControl } from "./maplibre/MapLocationControl";
+import { MapScaleSlot } from "./maplibre/MapScaleSlot";
 import {
   applyResortPointTileVariant,
   RESORT_POINT_LAYER,
@@ -198,9 +201,14 @@ function MapLibreResortMapContent({
   const [pickedCommunityPoint, setPickedCommunityPoint] = useState<
     [number, number] | null
   >(null);
+  // seq: 投稿を押すたびに増やし、同じコース・リフトの投稿でも寄せ直す
+  const [communityHighlight, setCommunityHighlight] = useState<
+    (CommunityMapHighlight & { seq: number }) | null
+  >(null);
   useEffect(() => {
     setCommunityPointMode(false);
     setPickedCommunityPoint(null);
+    setCommunityHighlight(null);
     const handle = (event: Event) => {
       const detail = (
         event as CustomEvent<{ resortId: string; mode: "POINT" | null }>
@@ -222,9 +230,25 @@ function MapLibreResortMapContent({
         setPickedCommunityPoint(detail.point);
     };
     window.addEventListener(MAP_POINT_EVENT, point);
+    const highlight = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{
+          resortId: string;
+          highlight: CommunityMapHighlight | null;
+        }>
+      ).detail;
+      if (detail?.resortId === selectedResortId)
+        setCommunityHighlight(current =>
+          detail.highlight
+            ? { ...detail.highlight, seq: (current?.seq ?? 0) + 1 }
+            : null,
+        );
+    };
+    window.addEventListener(MAP_HIGHLIGHT_EVENT, highlight);
     return () => {
       window.removeEventListener(MAP_PICK_MODE_EVENT, handle);
       window.removeEventListener(MAP_POINT_EVENT, point);
+      window.removeEventListener(MAP_HIGHLIGHT_EVENT, highlight);
     };
   }, [selectedResortId]);
   // プレビュー地図（拡大していない小さい地図）は常に同じ見え方（北が上・
@@ -347,6 +371,9 @@ function MapLibreResortMapContent({
     controlledSelectedFinalizedFeature === undefined
       ? uncontrolledSelected
       : controlledSelectedFinalizedFeature;
+  // 見た目と表示範囲は、選択がなければ投稿一覧で選んだ投稿の対象を使う
+  const displayedFinalizedFeature =
+    selectedFinalizedFeature ?? communityHighlight?.feature ?? null;
   const setSelectedFinalizedFeature = useCallback(
     (feature: SelectedMapFeature | null) => {
       setUncontrolledSelected(feature);
@@ -453,13 +480,14 @@ function MapLibreResortMapContent({
   });
   const { failed, retry } = useMapRecovery(map, onRecover, onAutoRecover);
   useEffect(() => {
-    const point = communityPoint ?? pickedCommunityPoint;
+    const point =
+      communityPoint ?? pickedCommunityPoint ?? communityHighlight?.point;
     if (!map || !isReady || !point) return;
     const marker = new Marker({ color: "#0284c7" }).setLngLat(point).addTo(map);
     return () => {
       marker.remove();
     };
-  }, [communityPoint, pickedCommunityPoint, map, isReady]);
+  }, [communityPoint, pickedCommunityPoint, communityHighlight, map, isReady]);
 
   useEffect(() => {
     if (
@@ -523,7 +551,7 @@ function MapLibreResortMapContent({
     courseColorMode,
     finalizedMapData,
     interactionMode,
-    selectedFinalizedFeature,
+    selectedFinalizedFeature: displayedFinalizedFeature,
   });
   useEffect(() => {
     if (
@@ -579,7 +607,7 @@ function MapLibreResortMapContent({
       courseColorMode,
       showOpenOnly,
       showUngroomed: mapDisplaySettings.showUngroomed,
-      selectedFeature: selectedFinalizedFeature,
+      selectedFeature: displayedFinalizedFeature,
       isFocusMode: isFinalizedFocusMode,
       tileVariant: mapTileVariant,
     }),
@@ -588,7 +616,7 @@ function MapLibreResortMapContent({
       mapDisplaySettings.showUngroomed,
       isFinalizedFocusMode,
       mapTileVariant,
-      selectedFinalizedFeature,
+      displayedFinalizedFeature,
       showOpenOnly,
     ],
   );
@@ -1006,7 +1034,7 @@ function MapLibreResortMapContent({
     isReady,
     courses: finalizedCourses,
     lifts: finalizedLifts,
-    selectedFeature: selectedFinalizedFeature,
+    selectedFeature: displayedFinalizedFeature,
     showCourseNames: mapDisplaySettings.showCourseNames,
     showLiftNames: mapDisplaySettings.showLiftNames,
     showContextLabels,
@@ -1082,14 +1110,47 @@ function MapLibreResortMapContent({
     restoreViewRequest,
     animate: animateViewport,
   });
+  // コース・リフトがない投稿（場所だけのコブ・パーク）や、投稿のコースが今の地図データに
+  // ないときは、投稿の場所へ寄せる。選択中のものがあるときは動かさない。
+  const highlightFeatureFound =
+    communityHighlight?.feature?.kind === "course"
+      ? Boolean(selectedCourses?.length)
+      : communityHighlight?.feature?.kind === "lift"
+        ? Boolean(selectedLift)
+        : false;
+  useEffect(() => {
+    const point = communityHighlight?.point;
+    if (
+      !map ||
+      !isReady ||
+      !point ||
+      selectedFinalizedFeature ||
+      highlightFeatureFound
+    )
+      return;
+    map.easeTo({
+      center: point,
+      zoom: Math.max(map.getZoom(), 15),
+      duration: animateViewport ? 500 : 0,
+    });
+  }, [
+    animateViewport,
+    communityHighlight,
+    highlightFeatureFound,
+    isReady,
+    map,
+    selectedFinalizedFeature,
+  ]);
   useSelectedFeatureViewport({
     map,
     isReady,
-    selectedFeature: selectedFinalizedFeature,
+    selectedFeature: displayedFinalizedFeature,
     selectedCourses: selectedCourses ?? [],
     selectedLift: selectedLift ?? null,
     // モバイルは詳細を開くと表示領域が変わるため、保存位置より全体表示を優先する。
-    preserveViewport: preserveViewport && !isMobile,
+    // 保存した表示範囲を保つのは詳細を開いた直後だけ。投稿を押したときは必ず寄せる
+    preserveViewport: preserveViewport && !isMobile && !communityHighlight,
+    fitKey: communityHighlight ? String(communityHighlight.seq) : "",
     bottomPaddingRatio: selectedViewportBottomPaddingRatio,
     animate: animateViewport,
   });
@@ -1239,7 +1300,8 @@ function MapLibreResortMapContent({
               ) : undefined
             }
           />
-          <div className="pointer-events-auto ml-auto">
+          <div className="pointer-events-auto ml-auto flex flex-col items-end gap-0.5">
+            <MapScaleSlot map={isReady ? map : null} />
             <MapAttributionSlot map={isReady ? map : null} />
           </div>
         </div>
@@ -1290,7 +1352,10 @@ function MapLibreResortMapContent({
                   onEnabledChange={setShowCommunityPosts}
                 />
               )}
-              <MapAttributionSlot map={isReady ? map : null} />
+              <div className="ml-auto flex shrink-0 flex-col items-end gap-0.5">
+                <MapScaleSlot map={isReady ? map : null} />
+                <MapAttributionSlot map={isReady ? map : null} />
+              </div>
             </div>
             <FinalizedMapToolbar
               showOpenOnly={

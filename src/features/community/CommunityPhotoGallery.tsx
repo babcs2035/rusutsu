@@ -65,7 +65,7 @@ export function CommunityPhotoGallery({
               >
                 <Image
                   className="aspect-square w-full object-cover"
-                  src={`/rusutsu/api/community/photos/${encodeURIComponent(photo.id)}`}
+                  src={`/rusutsu/api/community/photos/${encodeURIComponent(photo.id)}?size=thumb`}
                   alt={`${post.observedOn}の投稿写真`}
                   width={photo.width}
                   height={photo.height}

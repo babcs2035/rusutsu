@@ -20,8 +20,9 @@ export function getPeriodStart(
         month: "2-digit",
       }).format(now),
     );
-    const seasonYear = month >= 7 ? year : year - 1;
-    return `${seasonYear}-07-01`;
+    // シーズンは9月末で区切る（10月1日〜翌9月30日）
+    const seasonYear = month >= 10 ? year : year - 1;
+    return `${seasonYear}-10-01`;
   }
   const japanDate = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Tokyo",
@@ -34,6 +35,16 @@ export function getPeriodStart(
     Date.UTC(year, month - 1, day - (period === "3d" ? 2 : 6)),
   );
   return start.toISOString().slice(0, 10);
+}
+
+/** 日本時間の今日（YYYY-MM-DD） */
+export function todayInJapan(now = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
 }
 
 export function groupExactCoordinates(posts: PublicMapEntry[]) {

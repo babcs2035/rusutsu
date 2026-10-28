@@ -18,7 +18,6 @@ import {
   DIRECTION_MARK_SPACING_BY_ZOOM,
   FINALIZED_LABEL_PANE,
   LIFT_LABEL_MIN_ZOOM,
-  LIFT_LABEL_MIN_ZOOM_BY_CLASS,
   LINE_LABEL_TWO_LABEL_MIN_LENGTH_PX,
 } from "../constants";
 import type { FinalizedFeatureStatus, SelectedMapFeature } from "../types";
@@ -213,19 +212,13 @@ export const FinalizedLineOverlay = ({
 
         const status = getFeatureStatusKind(lift.properties.status);
         const isSelected = isSelectedId("lift", [lift.id]);
-        const liftClass = getLiftClass(lift);
-        if (!isSelected && zoom < LIFT_LABEL_MIN_ZOOM_BY_CLASS[liftClass]) {
-          return [];
-        }
-
         return [
           {
             kind: "lift",
             sourceIds: [lift.id],
             primaryId: lift.id,
             name: lift.name,
-            status,
-            weight: LIFT_CLASS_LABEL_WEIGHT[liftClass],
+            weight: LIFT_CLASS_LABEL_WEIGHT[getLiftClass(lift)],
             // 表示用の座標は下→上なので、名前は山頂側から始まるよう反転する
             points: [...(liftPoints.get(lift.id) ?? [])].reverse(),
             isSelected,
@@ -285,7 +278,6 @@ export const FinalizedLineOverlay = ({
             sourceIds: group.sourceIds,
             primaryId: longest.course.groupId,
             name: group.name,
-            status,
             weight: 1,
             points: longest.points,
             isSelected,

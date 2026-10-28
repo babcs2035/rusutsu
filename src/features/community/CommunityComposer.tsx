@@ -9,6 +9,7 @@ import {
   X,
 } from "lucide-react";
 import Image from "next/image";
+import { useSession } from "next-auth/react";
 import {
   type ReactNode,
   useCallback,
@@ -39,7 +40,6 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import {
   getCommunityAccount,
-  getCommunityCourses,
   getPostDetail,
   prepareCommunityPhoto,
   publishReport,
@@ -67,6 +67,7 @@ import {
 import { cn } from "@/lib/utils";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
 import { rememberCommunityPost } from "./CommunityMapOverlay";
+import { onLoginWindowDone, openLoginWindow } from "./LoginWindow";
 import { nearestCourseId } from "./location";
 import { readPhotoMetadata } from "./photoGps";
 
@@ -82,6 +83,8 @@ type FeatureTarget = { kind: "COURSE" | "LIFT"; id: string };
 
 type Props = {
   resortId: string;
+  /** 詳細の地図で読み込み済みのコース・リフト。投稿画面では取り直さない */
+  mapData: CommunityMapData;
   postId?: string;
   allowPreview?: boolean;
   embedded?: boolean;
@@ -157,7 +160,7 @@ const blankReport = (): ComposerDraft => ({
 });
 const isPointKind = (kind: Kind) => kind === "MOGUL" || kind === "ITEM";
 const photoUrl = (id: string) =>
-  `/rusutsu/api/community/photos/${encodeURIComponent(id)}`;
+  `/rusutsu/api/community/photos/${encodeURIComponent(id)}?size=thumb`;
 
 // 項目名の下に「必須」「任意」を小さく添える。欄の高さ（h-8）に収まるよう行送りを詰める
 const labelClass =
@@ -260,6 +263,7 @@ function Chips<T extends string>({
 
 export function CommunityComposer({
   resortId,
+  mapData,
   postId,
   allowPreview = false,
   embedded = false,
@@ -270,9 +274,8 @@ export function CommunityComposer({
   initialTarget,
   selectedMapTarget = null,
 }: Props) {
-  const [mapData, setMapData] = useState<CommunityMapData | null>(null);
   const [step, setStep] = useState<
-    "loading" | "profile" | "choose" | "edit" | "done"
+    "loading" | "login" | "profile" | "choose" | "edit" | "done"
   >("loading");
   const [loadingError, setLoadingError] = useState("");
   const [previewOnly, setPreviewOnly] = useState(false);
@@ -300,6 +303,8 @@ export function CommunityComposer({
   const timeEdited = useRef(false);
   const lastExternalTarget = useRef<ReportMapTarget | null>(null);
   const initialTargetRef = useRef(initialTarget);
+  const mapDataRef = useRef(mapData);
+  mapDataRef.current = mapData;
   const newPhotosRef = useRef(newPhotos);
   newPhotosRef.current = newPhotos;
   const reportRef = useRef(report);
@@ -342,37 +347,47 @@ export function CommunityComposer({
     [],
   );
 
+  // ログインしているかはブラウザが持つセッションで先に分かるので、
+  // 未ログインならサーバーに問い合わせずにログインの案内を出す。
+  const { status: sessionStatus, update: refreshSession } = useSession();
+  // 別ウィンドウでログインしたら、ログイン状態だけ読み直して入力画面へ進む
+  useEffect(
+    () => onLoginWindowDone(() => void refreshSession()),
+    [refreshSession],
+  );
+  const signedOut = sessionStatus === "unauthenticated";
   useEffect(() => {
+    if (sessionStatus === "loading") return;
     let alive = true;
     void (async () => {
       try {
-        const [accountSettled, coursesSettled] = await Promise.allSettled([
-          getCommunityAccount(),
-          getCommunityCourses(resortId),
-        ]);
+        // 開発中の確認用。未ログインでも、このブラウザで有効にしたときだけ入力画面を開く
+        let canPreview = false;
+        try {
+          canPreview =
+            allowPreview &&
+            !postId &&
+            localStorage.getItem("rusutsu:composer-preview") === "1";
+        } catch {
+          /* Preview stays off. */
+        }
+        const accountResult =
+          signedOut && !canPreview
+            ? null
+            : await getCommunityAccount().catch(() => undefined);
         if (!alive) return;
-        if (coursesSettled.status === "rejected" || !coursesSettled.value.ok) {
-          setLoadingError(
-            coursesSettled.status === "fulfilled" && !coursesSettled.value.ok
-              ? coursesSettled.value.error
-              : "地図データを読み込めませんでした。",
-          );
+        if (accountResult === undefined) {
+          setLoadingError("投稿の準備に失敗しました。");
           return;
         }
-        const courses = coursesSettled.value.data;
-        const accountResult =
-          accountSettled.status === "fulfilled" ? accountSettled.value : null;
-        const account = accountResult?.ok ? accountResult.data : null;
-        const canPreview = allowPreview && !postId;
+        if (accountResult && !accountResult.ok) {
+          setLoadingError(accountResult.error);
+          return;
+        }
+        const courses = mapDataRef.current;
+        const account = accountResult?.data ?? null;
         if (!account && !canPreview) {
-          if (accountResult && !accountResult.ok)
-            setLoadingError(accountResult.error);
-          else if (accountSettled.status === "rejected")
-            setLoadingError("投稿の準備に失敗しました。");
-          else
-            void startCommunityLogin(
-              `${window.location.pathname}${window.location.search}`,
-            );
+          setStep("login");
           return;
         }
         if (account) {
@@ -380,7 +395,6 @@ export function CommunityComposer({
           setNickname(account.publicName ?? "");
         }
         setPreviewOnly(canPreview && !account?.publicName);
-        setMapData(courses);
         const initial = blankReport();
         const target = initialTargetRef.current;
         if (
@@ -441,7 +455,7 @@ export function CommunityComposer({
     return () => {
       alive = false;
     };
-  }, [allowPreview, resortId, postId]);
+  }, [allowPreview, resortId, postId, sessionStatus, signedOut]);
 
   const patchEntry = useCallback(
     (patch: Partial<ReportEntryDraft>) =>
@@ -466,7 +480,7 @@ export function CommunityComposer({
   const applyPoint = useCallback(
     (point: [number, number], courseId?: string | null) => {
       const current = reportRef.current.entries[0];
-      if (!current || !mapData) return;
+      if (!current) return;
       const patch: Partial<ReportEntryDraft> = {
         longitude: point[0],
         latitude: point[1],
@@ -829,6 +843,38 @@ export function CommunityComposer({
       ),
     );
 
+  if (step === "login")
+    return shell(
+      "現地レポート",
+      <div className="space-y-3 p-3 md:p-4">
+        <p className="text-sm text-gray-900 md:text-base">
+          現地レポートを投稿するにはログインが必要です
+        </p>
+        <Button
+          className="w-full"
+          disabled={busy}
+          onClick={() => {
+            // ログイン後は投稿画面を開いた状態で戻る（別ウィンドウを開けないときの戻り先）
+            const back = new URL(window.location.href);
+            back.searchParams.set("compose", "1");
+            const target = initialTargetRef.current;
+            if (target)
+              back.searchParams.set(
+                target.kind === "COURSE" ? "courseId" : "liftId",
+                target.id,
+              );
+            const returnTo = `${back.pathname}${back.search}`;
+            if (openLoginWindow(returnTo)) return;
+            startTransition(async () => {
+              await startCommunityLogin(returnTo);
+            });
+          }}
+        >
+          Googleでログイン
+        </Button>
+      </div>,
+    );
+
   if (step === "profile")
     return shell(
       "公開名を設定",
@@ -893,8 +939,6 @@ export function CommunityComposer({
         </Button>
       </div>,
     );
-
-  if (!mapData) return null;
 
   if (step === "choose" || !entry)
     return shell(

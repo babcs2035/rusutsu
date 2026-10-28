@@ -65,11 +65,12 @@ test("community reports: atomic daily report lifecycle and privacy", {
           );
           builder.onLoad({ filter: /.*/, namespace: "test" }, args => ({
             loader: "js",
+            resolveDir: process.cwd(),
             contents:
               args.path === "server-only"
                 ? "export {}"
                 : args.path === "@/lib/skiResortData"
-                  ? `export async function readSkiResortById(){throw new Error('Unexpected legacy catalogue call in isolated workflow test');}`
+                  ? `import {prisma} from '@/lib/prisma'; export async function readSkiResortById(id){const resort=await prisma.skiResort.findFirst({where:{id,isActive:true},select:{id:true,nameJa:true,longitude:true,latitude:true}});return resort&&{...resort,linkedArea:null};}`
                   : args.path === "community-test-runtime"
                     ? `import {AsyncLocalStorage} from 'node:async_hooks'; export const runtime=new AsyncLocalStorage();`
                     : args.path === "@/auth"

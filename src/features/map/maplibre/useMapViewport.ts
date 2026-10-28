@@ -278,6 +278,7 @@ export const useSelectedFeatureViewport = ({
   bottomPaddingRatio,
   animate,
   preserveViewport = false,
+  fitKey = "",
 }: {
   map: MapLibreMap | null;
   isReady: boolean;
@@ -287,6 +288,8 @@ export const useSelectedFeatureViewport = ({
   bottomPaddingRatio: number;
   animate: boolean;
   preserveViewport?: boolean;
+  /** 変わるたびに、同じものを選んでいても寄せ直す（投稿一覧で押し直したときなど） */
+  fitKey?: string;
 }) => {
   const lastSelectedRef = useRef<string | null>(null);
 
@@ -330,7 +333,7 @@ export const useSelectedFeatureViewport = ({
     // 同じものを選び直したときに動かさないよう、キーで覚えておく
     const routeId =
       selectedFeature.kind === "course" ? (selectedFeature.routeId ?? "") : "";
-    const key = `${selectedFeature.kind}:${selectedFeature.id}:${routeId}`;
+    const key = `${selectedFeature.kind}:${selectedFeature.id}:${routeId}:${fitKey}`;
     if (lastSelectedRef.current !== key) {
       lastSelectedRef.current = key;
       fitToFeature(animate);
@@ -346,6 +349,7 @@ export const useSelectedFeatureViewport = ({
   }, [
     animate,
     preserveViewport,
+    fitKey,
     bottomPaddingRatio,
     isReady,
     map,

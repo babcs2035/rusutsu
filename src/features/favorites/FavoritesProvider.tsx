@@ -163,8 +163,9 @@ function FavoritesState({
           if (request !== generation.current || currentUser.current !== userId)
             return;
           // Consume guest data after a successful merge. Account data never goes into localStorage.
+          // 「このブラウザに保存」の選択も消し、ログアウト後に初めて追加するときにもう一度選んでもらう。
           try {
-            persist({ ...local.current, ids: [] });
+            persist({ ...local.current, method: null, ids: [] });
           } catch {
             /* Retry the idempotent merge later. */
           }
@@ -251,8 +252,11 @@ function FavoritesState({
       try {
         persist({ version: 1, method: "browser", ids: next });
         setSnapshot({ userId: null, ids: next, ready: true });
+        // ログイン中の保存と見分けられるよう、保存先を文言に出す
         toast.success(
-          added ? "お気に入りに追加しました" : "お気に入りから解除しました",
+          added
+            ? "このブラウザにお気に入りを保存しました"
+            : "このブラウザのお気に入りから解除しました",
           { duration: 1000 },
         );
       } catch {

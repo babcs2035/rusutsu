@@ -84,7 +84,8 @@ export async function startCommunityLogin(returnTo: string) {
   );
   if (
     destination.origin !== "https://return.invalid" ||
-    !/^\/rusutsu\/(community|account)(\/|$)/.test(destination.pathname)
+    // サイト内の画面（スキー場の詳細など）にだけ戻す
+    !/^\/rusutsu(\/|$)/.test(destination.pathname)
   )
     throw new Error("ログイン先を確認してください。");
   await signIn("google", {
@@ -92,11 +93,6 @@ export async function startCommunityLogin(returnTo: string) {
   });
 }
 
-// The map catalogue already uses the existing canonical map/resort APIs. This
-// also lets the local form load before the new posting API is deployed.
-export async function getCommunityCourses(resortId: string) {
-  return direct.getCommunityCourses(resortId);
-}
 export async function getCommunityFeed(input: FeedInput) {
   return execute({ operation: "feed", input }, () =>
     direct.getCommunityFeed(input),

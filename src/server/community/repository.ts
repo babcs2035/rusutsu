@@ -4,14 +4,13 @@ import { auth } from "@/auth";
 import type {
   CommunityAccount,
   CommunityMapData,
-  CourseOption,
   FeedInput,
   PublicMapEntry,
   PublicPost,
   ReportEntryDraft,
 } from "@/features/community/contract";
+import { communityMapData } from "@/features/community/mapData";
 import { getFinalizedResortMapData } from "@/lib/finalizedResortGeojson";
-import { usesRemoteDataApi } from "@/lib/internalDataApiClient";
 import { prisma } from "@/lib/prisma";
 import { readSkiResortById } from "@/lib/skiResortData";
 import { internalCommunityActor } from "./actorContext";
@@ -62,37 +61,17 @@ type IncludedPost = Prisma.CommunityPostGetPayload<{
 export async function courseOptions(
   resortId: string,
 ): Promise<CommunityMapData> {
-  const resort = usesRemoteDataApi()
-    ? await readSkiResortById(resortId)
-    : await prisma.skiResort.findFirst({
-        where: { id: resortId, isActive: true },
-        select: { nameJa: true, longitude: true, latitude: true },
-      });
+  const resort = await readSkiResortById(resortId);
   if (!resort) throw new Error("スキー場が見つかりません。");
-  const data = await getFinalizedResortMapData(resortId);
-  const courses = new Map<string, CourseOption>();
-  for (const feature of data?.courses?.features ?? []) {
-    const group = courses.get(feature.groupId);
-    if (group) group.lines.push(feature.coordinates);
-    else
-      courses.set(feature.groupId, {
-        id: feature.groupId,
-        name: feature.displayName,
-        coordinates: feature.coordinates,
-        lines: [feature.coordinates],
-      });
-  }
-  return {
-    name: resort.nameJa,
-    courses: [...courses.values()],
-    lifts: (data?.lifts?.features ?? []).map(feature => ({
-      id: feature.id,
-      name: feature.name,
-      coordinates: feature.coordinates,
-      lines: [feature.coordinates],
-    })),
-    center: [resort.longitude, resort.latitude],
-  };
+  // 詳細の地図と同じく、連携エリアの子は親の地図のコース・リフトを使う
+  const data = await getFinalizedResortMapData(
+    resort.linkedArea?.id ?? resort.id,
+  );
+  return communityMapData(
+    resort.nameJa,
+    [resort.longitude, resort.latitude],
+    data,
+  );
 }
 
 export function accountDto(user: {

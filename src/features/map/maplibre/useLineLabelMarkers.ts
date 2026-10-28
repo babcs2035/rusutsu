@@ -11,14 +11,10 @@ import {
 import {
   COURSE_LABEL_MIN_ZOOM,
   LIFT_LABEL_MIN_ZOOM,
-  LIFT_LABEL_MIN_ZOOM_BY_CLASS,
   LINE_LABEL_TWO_LABEL_MIN_LENGTH_PX,
 } from "../constants";
-import type { FinalizedFeatureStatus, SelectedMapFeature } from "../types";
-import {
-  getFeatureStatusKind,
-  getLiftDisplayCoordinates,
-} from "../utils/finalizedMapData";
+import type { SelectedMapFeature } from "../types";
+import { getLiftDisplayCoordinates } from "../utils/finalizedMapData";
 import { measureCanvasTextWidth } from "../utils/labelMeasure";
 import type { LayoutPoint, OrientedRect } from "../utils/lineLayout";
 import {
@@ -160,19 +156,13 @@ export const useLineLabelMarkers = ({
           if (lift.name.length === 0) return [];
           if (selectedIds.has(lift.id)) return [];
 
-          const status = getFeatureStatusKind(lift.properties.status);
-
-          const liftClass = getLiftClass(lift);
-          if (zoom < LIFT_LABEL_MIN_ZOOM_BY_CLASS[liftClass]) return [];
-
           return [
             {
               kind: "lift",
               sourceIds: [lift.id],
               primaryId: lift.id,
               name: lift.name,
-              status,
-              weight: LIFT_CLASS_LABEL_WEIGHT[liftClass],
+              weight: LIFT_CLASS_LABEL_WEIGHT[getLiftClass(lift)],
               // 表示用の座標は下→上なので、名前は山頂側から始まるよう反転する
               points: project(
                 getLiftDisplayCoordinates(lift) as number[][],
@@ -200,29 +190,20 @@ export const useLineLabelMarkers = ({
       if (showCourseNames && zoom >= COURSE_LABEL_MIN_ZOOM) {
         const groups = new Map<
           string,
-          {
-            name: string;
-            statuses: FinalizedFeatureStatus[];
-            lines: FinalizedCourseFeature[];
-          }
+          { name: string; lines: FinalizedCourseFeature[] }
         >();
         for (const course of courses) {
           if (selectedIds.has(course.id)) continue;
           const name = getCourseLabelName(course.displayName);
           if (shouldSkipCourseLabel(name)) continue;
 
-          const group = groups.get(name) ?? { name, statuses: [], lines: [] };
-          group.statuses.push(getFeatureStatusKind(course.properties.status));
+          const group = groups.get(name) ?? { name, lines: [] };
           group.lines.push(course);
           groups.set(name, group);
         }
 
         const courseSources = [...groups.values()].flatMap<LabelSource>(
           group => {
-            const status = group.statuses.includes("open")
-              ? "open"
-              : (group.statuses[0] ?? "unknown");
-
             // 同名のコースが複数線に分かれている場合はもっとも長い線に名前を置く
             const longest = group.lines
               .map(course => {
@@ -248,7 +229,6 @@ export const useLineLabelMarkers = ({
                 sourceIds: [longest.course.groupId],
                 primaryId: longest.course.groupId,
                 name: group.name,
-                status,
                 weight: 1,
                 points: longest.points,
                 isSelected: false,

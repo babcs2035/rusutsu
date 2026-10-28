@@ -45,11 +45,20 @@ test("calculates date windows from observed date", () => {
   );
   assert.equal(
     getPeriodStart("season", new Date("2027-01-10T00:00:00Z")),
-    "2026-07-01",
+    "2026-10-01",
   );
   assert.equal(
     getPeriodStart("season", new Date("2026-11-15T03:00:00Z")),
-    "2026-07-01",
+    "2026-10-01",
+  );
+  // 9月末で区切る（日本時間）
+  assert.equal(
+    getPeriodStart("season", new Date("2026-09-30T14:00:00Z")),
+    "2025-10-01",
+  );
+  assert.equal(
+    getPeriodStart("season", new Date("2026-09-30T15:00:00Z")),
+    "2026-10-01",
   );
   assert.equal(
     getPeriodStart("all", new Date("2027-01-10T00:00:00Z")),

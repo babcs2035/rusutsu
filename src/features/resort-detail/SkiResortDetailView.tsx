@@ -2,7 +2,7 @@
 
 import { Portal } from "@radix-ui/react-portal";
 import type { ComponentType } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { CommunityComposer } from "@/features/community/CommunityComposer";
 import { CommunityFeed } from "@/features/community/CommunityFeed";
@@ -15,7 +15,7 @@ import {
   setCommunityMapPoint,
 } from "@/features/community/composerEvents";
 import type { ReportMapTarget } from "@/features/community/contract";
-import { CorrectionLink } from "@/features/corrections/CorrectionLink";
+import { communityMapData } from "@/features/community/mapData";
 import { useScreenState } from "@/features/map/session/useScreenState";
 import type {
   ElevationProfileMapPoint,
@@ -271,6 +271,18 @@ export const SkiResortDetailView = ({
       ? `${selectedFinalizedFeature.kind}:${selectedFinalizedFeature.id}`
       : null;
   const composeCourseFeatures = resortData?.finalizedMapData?.courses?.features;
+  // 投稿で選べるコース・リフトは、詳細の地図で読み込み済みのものから作る
+  const composeMapData = useMemo(
+    () =>
+      resortData
+        ? communityMapData(
+            resortData.nameJa,
+            [resortData.longitude, resortData.latitude],
+            resortData.finalizedMapData,
+          )
+        : null,
+    [resortData],
+  );
   useEffect(() => {
     if (!composeFeatureKey) return;
     const feature = latestSelection.current;
@@ -529,19 +541,15 @@ export const SkiResortDetailView = ({
       </div>
       {activeTab === "料金" && <TicketsTab resort={resort} />}
       {activeTab === "天気" && <WeatherTab resort={resort} />}
+      {/* 外側の余白はほかのタブと同じ（タブ本文の枠が持つ） */}
       {activeTab === "投稿" && (
-        <div className="p-3 text-gray-700 md:p-4">
-          <CommunityFeed
-            resortId={resort.id}
-            headerActions={<CorrectionLink resortId={resort.id} />}
-          />
-        </div>
+        <CommunityFeed resortId={resort.id} highlightOnMap />
       )}
     </div>
   );
 
   const composer =
-    composeRequest?.resortId === resort.id ? (
+    composeRequest?.resortId === resort.id && composeMapData ? (
       <div
         className="flex h-full min-h-0 flex-col"
         role="region"
@@ -551,6 +559,7 @@ export const SkiResortDetailView = ({
           <CommunityComposer
             key={`${resort.id}:${composeRequest.postId ?? "new"}`}
             resortId={resort.id}
+            mapData={composeMapData}
             postId={composeRequest.postId}
             embedded
             onClose={closeComposer}
@@ -615,10 +624,13 @@ export const SkiResortDetailView = ({
           onTabChange={setActiveTab}
         />
       )}
-      {/* 地図は「ゲレンデ」タブ（とそこから選んだコース・リフトの詳細）だけで使う。
-          他のタブでは表示領域を無駄にしないよう出さない。 */}
-      {(mobileFeatureDetail || activeTab === "ゲレンデ") &&
+      {/* 地図は「ゲレンデ」タブ（とそこから選んだコース・リフトの詳細）と、
+          投稿の場所を示す「投稿」タブで使う。他のタブでは表示領域を無駄にしないよう出さない。 */}
+      {(mobileFeatureDetail ||
+        activeTab === "ゲレンデ" ||
+        activeTab === "投稿") &&
         (!mobileFeatureDetail &&
+        activeTab === "ゲレンデ" &&
         hasTrailMap &&
         mapAreaView === "ゲレンデマップ" ? (
           // 静止画なので、タブとは重ならない専用の帯を上に置く
@@ -644,7 +656,11 @@ export const SkiResortDetailView = ({
             className={
               mobileFeatureDetail
                 ? "relative isolate flex min-h-0 flex-1 flex-col"
-                : "relative isolate h-[clamp(200px,41dvh,396px)] shrink-0"
+                : activeTab === "投稿"
+                  ? // 投稿を押すと地図に場所が出るので、一覧をスクロールしても
+                    // タブ（h-9）の下に貼り付けて見えるようにする
+                    "sticky top-9 isolate z-10 h-[clamp(180px,34dvh,320px)] shrink-0 bg-white"
+                  : "relative isolate h-[clamp(200px,41dvh,396px)] shrink-0"
             }
           >
             <div
@@ -655,7 +671,9 @@ export const SkiResortDetailView = ({
               <ResortMapSection
                 DynamicMap={DynamicMap}
                 mapTopControls={
-                  hasTrailMap && !mobileFeatureDetail ? (
+                  hasTrailMap &&
+                  !mobileFeatureDetail &&
+                  activeTab === "ゲレンデ" ? (
                     <MapAreaTabs
                       tabs={MAP_AREA_TABS}
                       activeTab={mapAreaView}
@@ -675,7 +693,11 @@ export const SkiResortDetailView = ({
                   onSelectedElevationProfilePointChange
                 }
                 featureDetail={mobileFeatureDetail}
-                minimalControls={Boolean(composer)}
+                // 投稿中と投稿タブの地図は場所を見るためのもの。地図の操作ボタンは出さない
+                minimalControls={
+                  Boolean(composer) ||
+                  (!mobileFeatureDetail && activeTab === "投稿")
+                }
                 detailViewportResetKey={detailViewportResetKey}
               />
             </div>

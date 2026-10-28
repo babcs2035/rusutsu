@@ -1,3 +1,4 @@
+import type { SelectedMapFeature } from "@/features/map/types";
 import type { ReportMapTarget } from "./contract";
 
 export const COMPOSE_EVENT = "rusutsu:community-compose";
@@ -5,6 +6,7 @@ export const COMPOSE_STATE_EVENT = "rusutsu:community-compose-state";
 export const MAP_PICK_MODE_EVENT = "rusutsu:community-map-pick-mode";
 export const MAP_TARGET_EVENT = "rusutsu:community-map-target";
 export const MAP_POINT_EVENT = "rusutsu:community-map-point";
+export const MAP_HIGHLIGHT_EVENT = "rusutsu:community-map-highlight";
 export type ComposeRequest = {
   resortId: string;
   target?: { kind: "COURSE" | "LIFT"; id: string };
@@ -54,5 +56,20 @@ export function setCommunityMapPoint(
 ) {
   window.dispatchEvent(
     new CustomEvent(MAP_POINT_EVENT, { detail: { resortId, point } }),
+  );
+}
+
+// 投稿一覧で選んだ投稿の対象と場所を、詳細のコース選択とは別に地図で強調する。
+// 選択に使うと PC の右パネルがコース詳細に切り替わってしまうため。
+export type CommunityMapHighlight = {
+  feature: SelectedMapFeature | null;
+  point: [number, number] | null;
+};
+export function highlightCommunityPost(
+  resortId: string,
+  highlight: CommunityMapHighlight | null,
+) {
+  window.dispatchEvent(
+    new CustomEvent(MAP_HIGHLIGHT_EVENT, { detail: { resortId, highlight } }),
   );
 }

@@ -128,6 +128,21 @@ export const getChordDeviation = (
   return deviation;
 };
 
+/** start..end 区間の前半と後半の向きの差（度）。区間内でどれだけ曲がるか */
+export const getBendAngle = (
+  line: ProjectedLine,
+  startDistance: number,
+  endDistance: number,
+): number => {
+  const start = getPointAtDistance(line, startDistance);
+  const middle = getPointAtDistance(line, (startDistance + endDistance) / 2);
+  const end = getPointAtDistance(line, endDistance);
+  const first = Math.atan2(middle.y - start.y, middle.x - start.x);
+  const second = Math.atan2(end.y - middle.y, end.x - middle.x);
+  const diff = Math.abs(((second - first) * 180) / Math.PI) % 360;
+  return diff > 180 ? 360 - diff : diff;
+};
+
 /** 度。画面座標系（y が下向き）での接線方向 */
 export const getTangentAngle = (
   line: ProjectedLine,

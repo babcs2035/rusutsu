@@ -117,19 +117,10 @@ export const MARKER_VIEWPORT_PADDING_RATIO = 0.35;
 
 export const LABEL_MEASURE_ELEMENT_ATTRIBUTE =
   "data-resort-label-measure-probe";
-// R7 の LOD テーブル。優先度スコアと繰り返し配置が入ったので、
-// 「z14 でスキー場全体を見たときに名前が 1 つも出ない」状態を解消する（FR-7.1）。
-export const COURSE_LABEL_MIN_ZOOM = 13;
-// リフト名は種別で出し始めるズームを変える。スキー場全体が 1 画面に入る
-// z12〜13 では、まずゴンドラと高速クワッドだけを出す。
-export const LIFT_LABEL_MIN_ZOOM_BY_CLASS = {
-  gondola: 12,
-  highSpeedQuad: 13,
-  quad: 14,
-  pair: 14,
-  other: 14,
-} as const;
-export const LIFT_LABEL_MIN_ZOOM = 12;
+// 縮小して全体を見ているときは名前を出さず、斜度の色と形を見せる。
+// 少し寄るとリフト名だけ、さらに寄るとコース名も出す。
+export const LIFT_LABEL_MIN_ZOOM = 12.5;
+export const COURSE_LABEL_MIN_ZOOM = 13.5;
 // 同上の理由で 1 引いてある（元は 12）
 export const FINALIZED_RESORT_LABEL_HIDE_MIN_ZOOM = 11;
 

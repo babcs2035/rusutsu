@@ -1,5 +1,10 @@
+"use client";
+
 import Image from "next/image";
+import { useState } from "react";
+import { cn } from "@/lib/utils";
 import { ENTRY_KINDS, type PublicReportEntry } from "./contract";
+import { PhotoLightbox } from "./PhotoLightbox";
 
 export function reportEntryTitle(entry: PublicReportEntry) {
   if (entry.kind === "COURSE" || entry.kind === "LIFT") return entry.targetName;
@@ -8,14 +13,31 @@ export function reportEntryTitle(entry: PublicReportEntry) {
 }
 
 // 1件の投稿は1項目。ここでは項目の内容をそのまま並べる。
-export function ReportSections({ entries }: { entries: PublicReportEntry[] }) {
+export function ReportSections({
+  entries,
+  bare = false,
+}: {
+  entries: PublicReportEntry[];
+  /** 投稿カードの中では枠を重ねず、カードの余白だけで並べる */
+  bare?: boolean;
+}) {
+  const [opened, setOpened] = useState<{
+    entryId: string;
+    index: number;
+    anchor: HTMLElement;
+  } | null>(null);
+  const openedEntry = entries.find(entry => entry.id === opened?.entryId);
   return (
     <div className="space-y-2" role="group" aria-label="レポートの内容">
       {entries.map(entry => (
         <section
           key={entry.id}
           id={`entry-${entry.clientKey}`}
-          className="rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2"
+          className={
+            bare
+              ? ""
+              : "rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2"
+          }
         >
           <h4 className="text-sm font-semibold text-slate-800">
             <span className="mr-1.5 text-xs font-medium text-slate-500">
@@ -23,7 +45,12 @@ export function ReportSections({ entries }: { entries: PublicReportEntry[] }) {
             </span>
             {reportEntryTitle(entry)}
           </h4>
-          <div className="mt-2 space-y-1 text-sm text-slate-700">
+          <div
+            className={cn(
+              "space-y-1 text-sm text-slate-700",
+              bare ? "mt-1" : "mt-2",
+            )}
+          >
             {entry.status && <p>状況：{entry.status}</p>}
             {entry.snowQualities.length > 0 && (
               <p>雪質：{entry.snowQualities.join("・")}</p>
@@ -52,22 +79,45 @@ export function ReportSections({ entries }: { entries: PublicReportEntry[] }) {
             )}
             {entry.photos.length > 0 && (
               <div className="grid grid-cols-3 gap-1.5 pt-1">
-                {entry.photos.map(photo => (
-                  <Image
+                {entry.photos.map((photo, index) => (
+                  <button
+                    type="button"
                     key={photo.id}
-                    className="aspect-square w-full rounded object-cover"
-                    src={`/rusutsu/api/community/photos/${encodeURIComponent(photo.id)}`}
-                    alt={`${reportEntryTitle(entry)}の写真`}
-                    width={photo.width}
-                    height={photo.height}
-                    unoptimized
-                  />
+                    aria-label={`${reportEntryTitle(entry)}の写真を拡大`}
+                    className="block overflow-hidden rounded"
+                    onClick={event =>
+                      setOpened({
+                        entryId: entry.id,
+                        index,
+                        anchor: event.currentTarget,
+                      })
+                    }
+                  >
+                    <Image
+                      className="aspect-square w-full object-cover"
+                      src={`/rusutsu/api/community/photos/${encodeURIComponent(photo.id)}?size=thumb`}
+                      alt={`${reportEntryTitle(entry)}の写真`}
+                      width={photo.width}
+                      height={photo.height}
+                      unoptimized
+                    />
+                  </button>
                 ))}
               </div>
             )}
           </div>
         </section>
       ))}
+      {opened && openedEntry && (
+        <PhotoLightbox
+          photos={openedEntry.photos}
+          index={opened.index}
+          anchor={opened.anchor}
+          alt={`${reportEntryTitle(openedEntry)}の写真`}
+          onIndexChange={index => setOpened({ ...opened, index })}
+          onClose={() => setOpened(null)}
+        />
+      )}
     </div>
   );
 }
