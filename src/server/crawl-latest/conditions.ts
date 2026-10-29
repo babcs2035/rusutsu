@@ -3,9 +3,12 @@ import {
   type ResortConditions,
   sourceUrls,
 } from "@/features/resort-detail/utils/currentConditions";
-import { readBundledResortConditions } from "@/lib/bundledResortConditions";
 import { prisma } from "@/lib/prisma";
 
+/**
+ * 公開画面の天気・コメント。採用済みの現在値だけを使い、掲載なし（EMPTY）は
+ * 出さない。Git管理の過去の取得結果では補わない。
+ */
 export async function readAvailableConditions(
   resortId: string,
 ): Promise<ResortConditions> {
@@ -23,6 +26,7 @@ export async function readAvailableConditions(
       kind: true,
       snapshot: {
         select: {
+          state: true,
           data: true,
           sourceUrls: true,
           run: { select: { observedAt: true } },
@@ -31,6 +35,7 @@ export async function readAvailableConditions(
     },
   });
   for (const row of rows) {
+    if (row.snapshot.state !== "SUCCESS") continue;
     const key =
       row.kind === "WEATHER"
         ? "weather"
@@ -43,10 +48,5 @@ export async function readAvailableConditions(
       time: row.snapshot.run.observedAt.toISOString(),
     };
   }
-  if (result.weather && result.comment && result.news) return result;
-  const captured = await readBundledResortConditions(resortId);
-  result.weather ??= captured.weather;
-  result.comment ??= captured.comment;
-  result.news ??= captured.news;
   return result;
 }

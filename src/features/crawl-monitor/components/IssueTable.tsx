@@ -40,7 +40,7 @@ export function IssueTable({
             <tr key={issue.id} className="border-t border-gray-100">
               <td className="px-3 py-2 align-top whitespace-nowrap">
                 <Link
-                  href={`/admin/crawl/${issue.resortId}/runs/${issue.runId}`}
+                  href={`/admin/crawl/${issue.resortId}/runs/${issue.runId}?issue=${issue.id}`}
                   className="text-gray-900 underline-offset-2 hover:underline"
                 >
                   {formatJst(issue.observedAt)}

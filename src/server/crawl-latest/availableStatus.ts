@@ -30,8 +30,8 @@ const temporaryRoot = path.join(
 
 /**
  * 管理画面と内部APIで共通の参照規則を使う。
- * DBに採用済みの結果があれば優先し、なければ同梱の過去の取得結果を読む。
- * ファイルをDBへ登録したり、現在の営業情報として採用したりはしない。
+ * 公開表示はDBに採用済みの結果だけを使う。名称対応の編集（includeArchives）では、
+ * Waybackの記録と同梱の過去の取得結果も候補として読む。
  */
 export async function findAvailableCrawlLatestStatusDirect(
   resortId: string,
@@ -45,14 +45,14 @@ export async function findAvailableCrawlLatestStatusDirect(
     resortId,
     kind,
   );
-  if (current) return current;
-  if (includeArchives) {
-    const archived = await database.findArchivedCrawlLatestStatusDirect?.(
-      resortId,
-      kind,
-    );
-    if (archived) return archived;
-  }
+  if (!includeArchives) return current;
+  // 名称対応には名前が要るので、掲載なしの現在値なら過去の記録を候補にする。
+  if (current && current.items.length > 0) return current;
+  const archived = await database.findArchivedCrawlLatestStatusDirect?.(
+    resortId,
+    kind,
+  );
+  if (archived) return archived;
   return loadLatestSuccessfulStatus(root, resortId, kind);
 }
 
@@ -65,7 +65,9 @@ export async function listAvailableCrawlLatestResortIdsDirect(
   const database = reader ?? (await import("./current"));
   const [databaseIds, bundledIds, archiveIds] = await Promise.all([
     database.listCurrentCrawlLatestResortIdsDirect(kind),
-    listResortIdsWithLatestStatus(root),
+    includeArchives
+      ? listResortIdsWithLatestStatus(root)
+      : { courses: new Set<string>(), lifts: new Set<string>() },
     includeArchives
       ? (database.listArchivedCrawlLatestResortIdsDirect?.(kind) ?? [])
       : [],

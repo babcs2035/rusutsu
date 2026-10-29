@@ -226,6 +226,7 @@ export async function writeLiftBeforeGeojson(
 
 const EMPTY_RESORT_LINKS: ResortLinks = {
   officialSiteUrls: [],
+  newsUrls: [],
   mapUrls: [],
   mapPageUrls: [],
   googleMapsUrls: [],
@@ -268,6 +269,7 @@ const normalizeResortLinks = (value: unknown): ResortLinks => {
   const raw = (value ?? {}) as Record<string, unknown>;
   return {
     officialSiteUrls: toLinkList(raw.officialSiteUrls),
+    newsUrls: toLinkList(raw.newsUrls),
     mapUrls: toLinkList(raw.mapUrls),
     mapPageUrls: toLinkList(raw.mapPageUrls),
     googleMapsUrls: toLinkList(raw.googleMapsUrls),

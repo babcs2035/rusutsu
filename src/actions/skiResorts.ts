@@ -20,7 +20,10 @@ import {
   type TicketBundleResult,
 } from "@/features/lift-ticket/utils/rentalBundle";
 import { collectSocialAccounts } from "@/features/resort-detail/utils/socialAccounts";
-import { collectTrailMapLinks } from "@/features/resort-detail/utils/trailMapLinks";
+import {
+  collectNewsLinks,
+  collectTrailMapLinks,
+} from "@/features/resort-detail/utils/trailMapLinks";
 import { readCurrentResortConditions } from "@/lib/crawlLatestCurrent";
 import { getFinalizedResortMapData } from "@/lib/finalizedResortGeojson";
 import type {
@@ -432,6 +435,7 @@ export async function getSkiResortById(id: string) {
     ),
     socialAccounts: collectSocialAccounts(linksMap, [dataId, ...sourceIds]),
     trailMapLinks: collectTrailMapLinks(linksMap, [dataId, ...sourceIds]),
+    newsLinks: collectNewsLinks(linksMap, [dataId, ...sourceIds]),
     weatherIds,
     memberWeatherIds,
     finalizedMapData,

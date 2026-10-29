@@ -14,12 +14,12 @@ import {
   InternalDataApiError,
   usesRemoteDataApi,
 } from "@/lib/internalDataApiClient";
+import { toSourceLabels } from "@/lib/latestStatusFiles";
 import { combineLatestStatuses } from "@/lib/linkedAreaStatus";
 import { prisma } from "@/lib/prisma";
 import { adjustCourseName } from "@/lib/resortMapMerge";
 import { entityFeature, record } from "./canonicalCodec";
 import { canonicalMapsEnabled } from "./canonicalDocuments";
-import { readLegacyOperationStatus } from "./legacyStatus";
 
 export async function findCanonicalResortMap(
   tx: Prisma.TransactionClient,
@@ -104,11 +104,15 @@ export async function findCanonicalResortMap(
             fileName: snapshot.id,
             time: snapshot.run.observedAt.toISOString(),
             sourceUrls: snapshot.sourceUrls,
+            sourceLabels: toSourceLabels(
+              snapshot.sourceUrls,
+              snapshot.sourceLabels,
+            ),
             items: Array.isArray(snapshot.data)
               ? snapshot.data.map(record)
               : [],
           }
-        : readLegacyOperationStatus(id, "courses");
+        : null;
     }),
   );
   const courseStatus = combineLatestStatuses(

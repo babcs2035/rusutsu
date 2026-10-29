@@ -12,11 +12,14 @@ export const metadata: Metadata = { title: "クロール結果の詳細 | 管理
 
 export default async function CrawlMonitorRunPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ resortId: string; runId: string }>;
+  searchParams: Promise<{ issue?: string | string[] }>;
 }) {
   await requireAdminPage();
   const { resortId, runId } = await params;
+  const { issue } = await searchParams;
   const detail = await fetchCrawlMonitorRunDetail(resortId, runId);
   if (!detail) notFound();
 
@@ -46,7 +49,10 @@ export default async function CrawlMonitorRunPage({
       <h1 className="mb-6 font-[var(--font-heading)] text-2xl font-bold text-gray-900 md:text-3xl">
         {resortName} の取得結果
       </h1>
-      <RunDetailView detail={detail} />
+      <RunDetailView
+        detail={detail}
+        initialIssueId={typeof issue === "string" ? issue : null}
+      />
     </div>
   );
 }

@@ -420,7 +420,6 @@ model CrawlLatestRun {
   crawlerFile       String?               @db.VarChar(500)
   crawlerRevision   String?               @db.VarChar(128)
   crawlerSourceHash String?               @db.Char(64)
-  rawPayload        Json
   requestHash       String                @db.Char(64)
   outcome           CrawlLatestRunOutcome
   createdAt         DateTime              @default(now()) @db.Timestamptz(3)
@@ -448,6 +447,7 @@ model CrawlLatestCategorySnapshot {
   eligibleForCurrent Boolean
   data               Json?
   sourceUrls         String[]
+  sourceLabels       String[]                   @default([])
   itemCount          Int
   usableItemCount    Int
   contentHash        String?                    @db.Char(64)

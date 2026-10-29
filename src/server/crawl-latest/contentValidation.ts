@@ -36,6 +36,8 @@ export type CrawlLatestServerValidationIssue = CrawlLatestIssue & {
 export type CrawlLatestPersistenceValidation = {
   categories: CrawlLatestCategoryValidation[];
   serverIssues: CrawlLatestServerValidationIssue[];
+  /** 保存する警告。全面休止の実行では天気・コメントの警告を含めない。 */
+  issues: CrawlLatestIssue[];
   outcome: "SUCCESS" | "PARTIAL" | "FAILED";
 };
 
@@ -56,60 +58,40 @@ const issue = (
   options: {
     occurrences?: number;
     details?: CrawlLatestIssueDetails;
+    /** 表示は続けて、人が見直すためだけに残す警告。 */
+    notice?: boolean;
   } = {},
 ): CrawlLatestServerValidationIssue => ({
   categoryKind,
-  severity: "ERROR",
+  severity: options.notice ? "WARNING" : "ERROR",
   code,
   message,
   occurrences: options.occurrences ?? 1,
-  blocksPromotion: true,
+  blocksPromotion: !options.notice,
   ...(options.details === undefined ? {} : { details: options.details }),
 });
 
+/**
+ * ページは開けたが掲載がない状態は失敗ではない。空の結果も現在値にして、
+ * 前回の値を出し続けないようにする。
+ */
+const notPublished = (
+  itemCount: number,
+  names: string[] = [],
+): ContentInspection => ({
+  state: "EMPTY",
+  itemCount,
+  usableItemCount: 0,
+  names,
+  issues: [],
+});
+
 const inspectComment = (category: CrawlLatestCategory): ContentInspection => {
-  if (!isRecord(category.data)) {
-    return {
-      state: "EMPTY",
-      itemCount: 0,
-      usableItemCount: 0,
-      names: [],
-      issues: [
-        issue(
-          "COMMENT",
-          "SERVER_VALIDATION.COMMENT_EMPTY",
-          "The comment category must contain a non-empty string value.",
-          { details: { reason: "missing_or_invalid_data" } },
-        ),
-      ],
-    };
-  }
+  if (!isRecord(category.data)) return notPublished(0);
 
   const value = category.data.value;
   if (typeof value !== "string" || value.trim() === "") {
-    return {
-      state: "EMPTY",
-      itemCount: typeof value === "string" ? 1 : 0,
-      usableItemCount: 0,
-      names: [],
-      issues: [
-        issue(
-          "COMMENT",
-          "SERVER_VALIDATION.COMMENT_EMPTY",
-          "The comment category must contain a non-empty string value.",
-          {
-            details: {
-              reason:
-                value === null
-                  ? "null_value"
-                  : typeof value === "string"
-                    ? "blank_value"
-                    : "missing_or_invalid_value",
-            },
-          },
-        ),
-      ],
-    };
+    return notPublished(typeof value === "string" ? 1 : 0);
   }
 
   return {
@@ -135,22 +117,7 @@ const isActualWeatherValue = (value: unknown): boolean =>
   (typeof value === "string" && value.trim() !== "");
 
 const inspectWeather = (category: CrawlLatestCategory): ContentInspection => {
-  if (!isRecord(category.data)) {
-    return {
-      state: "EMPTY",
-      itemCount: 0,
-      usableItemCount: 0,
-      names: [],
-      issues: [
-        issue(
-          "WEATHER",
-          "SERVER_VALIDATION.WEATHER_NO_ACTUAL_VALUE",
-          "The weather category must contain at least one actual weather value.",
-          { details: { reason: "missing_or_invalid_data" } },
-        ),
-      ],
-    };
-  }
+  if (!isRecord(category.data)) return notPublished(0);
 
   const entries = Object.entries(category.data);
   const usablePointNames = entries.flatMap(([name, point]) => {
@@ -160,25 +127,10 @@ const inspectWeather = (category: CrawlLatestCategory): ContentInspection => {
       : [];
   });
   if (usablePointNames.length === 0) {
-    return {
-      state: "EMPTY",
-      itemCount: entries.length,
-      usableItemCount: 0,
-      names: entries.map(([name]) => name),
-      issues: [
-        issue(
-          "WEATHER",
-          "SERVER_VALIDATION.WEATHER_NO_ACTUAL_VALUE",
-          "The weather category must contain at least one actual weather value.",
-          {
-            details: {
-              pointCount: entries.length,
-              checkedFields: [...WEATHER_VALUE_KEYS],
-            },
-          },
-        ),
-      ],
-    };
+    return notPublished(
+      entries.length,
+      entries.map(([name]) => name),
+    );
   }
 
   return {
@@ -201,36 +153,8 @@ const inspectOperations = (
   if (kind !== "COURSES" && kind !== "LIFTS") {
     throw new TypeError(`Unexpected operation category: ${kind}`);
   }
-  if (!Array.isArray(category.data)) {
-    return {
-      state: "EMPTY",
-      itemCount: 0,
-      usableItemCount: 0,
-      names: [],
-      issues: [
-        issue(
-          kind,
-          "SERVER_VALIDATION.OPERATION_EMPTY",
-          `The ${kind.toLowerCase()} category must contain at least one item.`,
-          { details: { reason: "missing_or_invalid_data" } },
-        ),
-      ],
-    };
-  }
-  if (category.data.length === 0) {
-    return {
-      state: "EMPTY",
-      itemCount: 0,
-      usableItemCount: 0,
-      names: [],
-      issues: [
-        issue(
-          kind,
-          "SERVER_VALIDATION.OPERATION_EMPTY",
-          `The ${kind.toLowerCase()} category must contain at least one item.`,
-        ),
-      ],
-    };
+  if (!Array.isArray(category.data) || category.data.length === 0) {
+    return notPublished(0);
   }
 
   const emptyNameIndexes: number[] = [];
@@ -261,10 +185,12 @@ const inspectOperations = (
       unknownStatuses.push({ index, status: String(status) });
     }
 
+    // 状態が読めない項目は「不明」として表示するので、名前があれば使える。
     if (
       name !== "" &&
-      typeof status === "string" &&
-      KNOWN_OPERATION_STATUSES.has(status)
+      (status === null ||
+        status === undefined ||
+        (typeof status === "string" && KNOWN_OPERATION_STATUSES.has(status)))
     ) {
       individuallyValidIndexes.add(index);
     }
@@ -323,10 +249,11 @@ const inspectOperations = (
       issue(
         kind,
         "SERVER_VALIDATION.OPERATION_STATUS_MISSING",
-        `Every ${kind.toLowerCase()} item must have a non-null status.`,
+        `Some ${kind.toLowerCase()} items have no readable status and are shown as unknown.`,
         {
           occurrences: missingStatusIndexes.length,
           details: { indexes: missingStatusIndexes },
+          notice: true,
         },
       ),
     );
@@ -471,6 +398,32 @@ export const buildCapabilityGapIssues = (
   }));
 };
 
+const CLOSED_STATUSES = new Set(["×", "✕"]);
+
+/**
+ * コースかリフトが1件以上あり、すべて休止の実行。シーズン外や全面休業の日は
+ * 天気・コメントが空や仮の値になりやすいので、その警告は出さない。
+ */
+export const isFullyClosedRun = (input: CrawlLatestRunInput): boolean =>
+  input.categories.some(
+    category =>
+      (category.kind === "COURSES" || category.kind === "LIFTS") &&
+      category.state === "SUCCESS" &&
+      Array.isArray(category.data) &&
+      category.data.length > 0 &&
+      category.data.every(
+        item =>
+          isRecord(item) &&
+          typeof item.status === "string" &&
+          CLOSED_STATUSES.has(item.status),
+      ),
+  );
+
+const SUPPRESSED_WHEN_CLOSED = new Set<CrawlLatestCategoryKind>([
+  "WEATHER",
+  "COMMENT",
+]);
+
 export const buildCrawlLatestPersistenceValidation = (
   input: CrawlLatestRunInput,
   capability: LatestStatusCapabilityFile | null = null,
@@ -493,7 +446,18 @@ export const buildCrawlLatestPersistenceValidation = (
     serverIssues.push(...inspection.issues);
   }
 
-  const allIssues: CrawlLatestIssue[] = [...input.issues, ...serverIssues];
+  const closed = isFullyClosedRun(input);
+  const keep = (candidate: CrawlLatestIssue) =>
+    !(
+      closed &&
+      candidate.categoryKind !== undefined &&
+      SUPPRESSED_WHEN_CLOSED.has(candidate.categoryKind)
+    );
+  const keptServerIssues = serverIssues.filter(keep);
+  const allIssues: CrawlLatestIssue[] = [
+    ...input.issues,
+    ...keptServerIssues,
+  ].filter(keep);
   const categories = input.categories.map(category => {
     const inspection = inspections.get(category.kind);
     if (!inspection) {
@@ -516,11 +480,11 @@ export const buildCrawlLatestPersistenceValidation = (
         : applicableIssues.length > 0
           ? "WARNING"
           : "VALID";
+    // 掲載なし（EMPTY）や非対応も現在値にして、前回の値を残さない。
     const eligibleForCurrent =
       input.sourceMode === "LIVE" &&
-      inspection.state === "SUCCESS" &&
-      validationState !== "INVALID" &&
-      inspection.usableItemCount > 0;
+      inspection.state !== "FAILED" &&
+      validationState !== "INVALID";
 
     return {
       kind: category.kind,
@@ -535,7 +499,8 @@ export const buildCrawlLatestPersistenceValidation = (
 
   return {
     categories,
-    serverIssues,
+    serverIssues: keptServerIssues,
+    issues: allIssues,
     outcome: getRunOutcome(categories),
   };
 };

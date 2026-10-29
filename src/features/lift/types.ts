@@ -145,6 +145,8 @@ export type ResortLink = {
 // 各項目とも複数リンクを持ちうるため配列で保持する
 export type ResortLinks = {
   officialSiteUrls: ResortLink[];
+  /** お知らせ・ニュースの一覧ページ。クローラーでは読まず、案内リンクとして出す。 */
+  newsUrls: ResortLink[];
   mapUrls: ResortLink[];
   mapPageUrls: ResortLink[];
   googleMapsUrls: ResortLink[];

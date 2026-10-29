@@ -30,6 +30,14 @@ export function combineLatestStatuses(
       null,
     items: available.flatMap(status => status.items),
     sourceUrls: [...new Set(available.flatMap(status => status.sourceUrls))],
+    ...(available.some(status => status.sourceLabels)
+      ? {
+          sourceLabels: Object.assign(
+            {},
+            ...available.map(status => status.sourceLabels ?? {}),
+          ),
+        }
+      : {}),
   };
 }
 

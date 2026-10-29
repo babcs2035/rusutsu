@@ -21,6 +21,7 @@ export function SourceLine({
   label,
   time,
   urls,
+  urlLabels,
   updates = [],
   showFetched = true,
   showLabel = true,
@@ -31,6 +32,8 @@ export function SourceLine({
   label: string;
   time?: string | null;
   urls?: string[];
+  /** 出典URLごとの短いラベル。あると「出典1(コース)」のように出す */
+  urlLabels?: Record<string, string>;
   updates?: Array<string | PublishedTime>;
   showFetched?: boolean;
   showLabel?: boolean;
@@ -68,6 +71,7 @@ export function SourceLine({
               aria-label={`${label}の出典を開く${links.length > 1 ? `（${index + 1}）` : ""}`}
             >
               出典{links.length > 1 ? index + 1 : ""}
+              {urlLabels?.[url] ? `(${urlLabels[url]})` : ""}
               {highlights.length > 0
                 ? `（表記：${[...new Set(highlights)].join("・")}）`
                 : ""}

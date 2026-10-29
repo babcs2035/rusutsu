@@ -102,6 +102,7 @@ export { RESORT_INITIAL_ZOOM } from "@/features/slope/constants";
 // 表示・入力順。読み込み・保存側もこの一覧を正とする
 export const RESORT_LINK_KEYS: Array<keyof ResortLinks> = [
   "officialSiteUrls",
+  "newsUrls",
   "mapUrls",
   "mapPageUrls",
   "googleMapsUrls",
@@ -120,6 +121,7 @@ export const RESORT_LINK_KEYS: Array<keyof ResortLinks> = [
 
 export const EMPTY_RESORT_LINKS: ResortLinks = {
   officialSiteUrls: [],
+  newsUrls: [],
   mapUrls: [],
   mapPageUrls: [],
   googleMapsUrls: [],
@@ -138,6 +140,7 @@ export const EMPTY_RESORT_LINKS: ResortLinks = {
 
 export const RESORT_LINK_LABELS: Record<keyof ResortLinks, string> = {
   officialSiteUrls: "公式サイト",
+  newsUrls: "お知らせ一覧",
   mapUrls: "ゲレンデマップ（画像・PDF）",
   mapPageUrls: "ゲレンデマップ掲載ページ",
   googleMapsUrls: "Google Maps（所在地）",

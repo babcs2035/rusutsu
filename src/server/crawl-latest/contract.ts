@@ -153,6 +153,8 @@ const categoryInputSchema = z.strictObject({
   state: categoryStateSchema,
   data: z.json().optional(),
   sourceUrls: sourceUrlsSchema.default([]),
+  /** sourceUrls と同じ並びの短いラベル（例: コース、パーク）。離れた欄を分けて示す。 */
+  sourceLabels: z.array(z.string().trim().max(40)).max(20).optional(),
 });
 
 const issueInputSchema = z.strictObject({
@@ -327,6 +329,17 @@ export const crawlLatestRunInputSchema = z
         });
       }
       seenKinds.add(category.kind);
+
+      if (
+        category.sourceLabels !== undefined &&
+        category.sourceLabels.length !== category.sourceUrls.length
+      ) {
+        context.addIssue({
+          code: "custom",
+          message: "sourceLabels must match sourceUrls",
+          path: ["categories", index, "sourceLabels"],
+        });
+      }
 
       if (category.kind === "NEWS") {
         if (category.data !== undefined && category.data !== null) {

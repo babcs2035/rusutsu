@@ -9,6 +9,8 @@ export type CourseStatusSummary = {
   unknown: number;
   observedAt: string | null;
   sourceUrls: string[];
+  /** 出典URLごとのラベル（例: コース、パーク） */
+  sourceLabels?: Record<string, string>;
   updates: string[];
 };
 
@@ -37,6 +39,7 @@ export function createCourseStatusSummary(
     unknown: 0,
     observedAt: snapshot.time,
     sourceUrls: snapshot.sourceUrls,
+    ...(snapshot.sourceLabels ? { sourceLabels: snapshot.sourceLabels } : {}),
     updates: [],
   };
   for (const item of items) {

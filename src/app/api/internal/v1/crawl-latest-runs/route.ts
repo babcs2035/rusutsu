@@ -28,12 +28,7 @@ const NO_STORE_HEADERS = {
   "Cache-Control": "no-store",
   Vary: "Authorization",
 } as const;
-const RUN_INCLUDES = new Set([
-  "rawPayload",
-  "categoryData",
-  "issues",
-  "artifacts",
-]);
+const RUN_INCLUDES = new Set(["categoryData", "issues", "artifacts"]);
 const GET_QUERY_KEYS = new Set([
   "runId",
   "artifactId",
@@ -192,7 +187,6 @@ const parseIncludes = (raw: string | null) => {
   if (invalid.length > 0) return null;
   const included = new Set(values);
   return {
-    rawPayload: included.has("rawPayload"),
     categoryData: included.has("categoryData"),
     issues: included.has("issues"),
     artifacts: included.has("artifacts"),

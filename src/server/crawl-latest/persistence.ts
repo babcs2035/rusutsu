@@ -43,6 +43,7 @@ type CategoryPersistenceData = {
   eligibleForCurrent: boolean;
   data: Prisma.InputJsonValue | Prisma.NullTypes.DbNull;
   sourceUrls: string[];
+  sourceLabels: string[];
   itemCount: number;
   usableItemCount: number;
   contentHash: string | null;
@@ -83,12 +84,27 @@ const toPrismaJsonOrDbNull = (
   return value as Prisma.InputJsonValue;
 };
 
+/** 重複を除いた sourceUrls と同じ並びのラベル。ラベルがなければ空。 */
+const sourceLabelsFor = (
+  category: CrawlLatestRunInput["categories"][number],
+  usableItemCount: number,
+): string[] => {
+  if (!category.sourceLabels?.some(Boolean)) return [];
+  if (category.kind === "COMMENT" && usableItemCount === 0) return [];
+  const labels = new Map<string, string>();
+  category.sourceUrls.forEach((url, index) => {
+    if (!labels.has(url)) labels.set(url, category.sourceLabels?.[index] ?? "");
+  });
+  return [...labels.values()];
+};
+
 const buildCategoryPersistenceData = (
   input: CrawlLatestRunInput,
   capability: LatestStatusCapabilityFile | null,
 ): {
   categories: CategoryPersistenceData[];
   serverIssues: CrawlLatestServerValidationIssue[];
+  issues: CrawlLatestRunInput["issues"];
   outcome: PersistResult["outcome"];
 } => {
   const validation = buildCrawlLatestPersistenceValidation(input, capability);
@@ -108,7 +124,15 @@ const buildCategoryPersistenceData = (
       validationState: validatedCategory.validationState,
       eligibleForCurrent: validatedCategory.eligibleForCurrent,
       data: toPrismaJsonOrDbNull(category.data),
-      sourceUrls: [...new Set(category.sourceUrls)],
+      // コメントは本文を取れた回だけ出典を持つ。
+      sourceUrls:
+        category.kind === "COMMENT" && validatedCategory.usableItemCount === 0
+          ? []
+          : [...new Set(category.sourceUrls)],
+      sourceLabels: sourceLabelsFor(
+        category,
+        validatedCategory.usableItemCount,
+      ),
       itemCount: validatedCategory.itemCount,
       usableItemCount: validatedCategory.usableItemCount,
       contentHash:
@@ -121,6 +145,7 @@ const buildCategoryPersistenceData = (
   return {
     categories,
     serverIssues: validation.serverIssues,
+    issues: validation.issues,
     outcome: validation.outcome,
   };
 };
@@ -145,6 +170,15 @@ const existingResult = async (
 
 const isKnownPrismaError = (error: unknown, code: string): boolean =>
   error instanceof Prisma.PrismaClientKnownRequestError && error.code === code;
+
+/**
+ * 取得に失敗した種類で、前回の値を表示し続けてよい時間。既定の0時間では、
+ * 最新の実行が失敗した時点で表示をやめる。クロール頻度に合わせて設定で変える。
+ */
+const staleAfterMs = () => {
+  const hours = Number(process.env.CRAWL_LATEST_STALE_AFTER_HOURS ?? "0");
+  return Number.isFinite(hours) && hours > 0 ? hours * 3_600_000 : 0;
+};
 
 const shouldReplaceCurrent = (
   existingObservedAt: Date | null,
@@ -188,7 +222,7 @@ export async function persistCrawlLatestRun(
     input,
     await readCapabilityForRun(input),
   );
-  const { categories, serverIssues } = validation;
+  const { categories } = validation;
   const isYukiMagi =
     input.producerId === "yuki_magi" && input.resortId === "yuki-magi";
   const outcome = isYukiMagi
@@ -198,7 +232,14 @@ export async function persistCrawlLatestRun(
         ? "PARTIAL"
         : "SUCCESS"
     : validation.outcome;
-  const issues = [...input.issues, ...serverIssues];
+  const issues = isYukiMagi ? input.issues : validation.issues;
+  const keptIssueIds = new Set(issues.map(issue => issue.externalId));
+  // 出さないことにした警告だけのために撮ったDOMは保存しない。
+  const artifacts = input.artifacts.filter(
+    artifact =>
+      artifact.issueExternalIds.length === 0 ||
+      artifact.issueExternalIds.some(id => keptIssueIds.has(id)),
+  );
   const observedAt = new Date(input.observedAt);
   const completedAt = new Date(input.completedAt);
 
@@ -233,7 +274,6 @@ export async function persistCrawlLatestRun(
               crawlerFile: input.crawler.file,
               crawlerRevision: input.crawler.revision,
               crawlerSourceHash: input.crawler.sourceSha256,
-              rawPayload: input.rawPayload as Prisma.InputJsonObject,
               requestHash,
               outcome,
             },
@@ -253,6 +293,7 @@ export async function persistCrawlLatestRun(
                   eligibleForCurrent: category.eligibleForCurrent,
                   data: category.data,
                   sourceUrls: category.sourceUrls,
+                  sourceLabels: category.sourceLabels,
                   itemCount: category.itemCount,
                   usableItemCount: category.usableItemCount,
                   contentHash: category.contentHash,
@@ -292,9 +333,9 @@ export async function persistCrawlLatestRun(
             });
           }
 
-          if (input.artifacts.length > 0) {
+          if (artifacts.length > 0) {
             await transaction.crawlLatestArtifact.createMany({
-              data: input.artifacts.map(artifact => ({
+              data: artifacts.map(artifact => ({
                 runId: run.id,
                 categoryKind: artifact.categoryKind,
                 kind: artifact.kind,
@@ -361,10 +402,47 @@ export async function persistCrawlLatestRun(
             });
           }
 
+          // 失敗した種類は、許容時間を過ぎた前回の値を表示から外す。
+          const clearedKinds = new Set<string>();
+          if (input.sourceMode === "LIVE") {
+            for (const snapshot of snapshots) {
+              if (snapshot.eligibleForCurrent) continue;
+              const current = await transaction.crawlLatestCurrent.findUnique({
+                where: {
+                  skiResortId_kind: {
+                    skiResortId: input.resortId,
+                    kind: snapshot.kind,
+                  },
+                },
+                select: {
+                  snapshot: {
+                    select: { run: { select: { observedAt: true } } },
+                  },
+                },
+              });
+              if (!current) continue;
+              const age =
+                observedAt.getTime() -
+                current.snapshot.run.observedAt.getTime();
+              if (age < staleAfterMs()) continue;
+              await transaction.crawlLatestCurrent.delete({
+                where: {
+                  skiResortId_kind: {
+                    skiResortId: input.resortId,
+                    kind: snapshot.kind,
+                  },
+                },
+              });
+              clearedKinds.add(snapshot.kind);
+            }
+          }
+
           let finalOutcome = outcome;
           if (
             !isYukiMagi &&
-            (adoptedKinds.has("COURSES") || adoptedKinds.has("LIFTS"))
+            ["COURSES", "LIFTS"].some(
+              kind => adoptedKinds.has(kind) || clearedKinds.has(kind),
+            )
           ) {
             const projection = await refreshMapOperations(
               transaction,
@@ -414,7 +492,6 @@ export async function persistCrawlLatestRun(
 }
 
 type RunIncludes = {
-  rawPayload: boolean;
   categoryData: boolean;
   issues: boolean;
   artifacts: boolean;
@@ -507,7 +584,7 @@ export async function getCrawlLatestRun(runId: string, includes: RunIncludes) {
   });
   if (!run) return null;
 
-  const [categorySummaries, categoryData, rawPayload, issues, artifacts] =
+  const [categorySummaries, categoryData, issues, artifacts] =
     await Promise.all([
       includes.categoryData
         ? Promise.resolve([])
@@ -527,12 +604,6 @@ export async function getCrawlLatestRun(runId: string, includes: RunIncludes) {
             },
           })
         : Promise.resolve([]),
-      includes.rawPayload
-        ? prisma.crawlLatestRun.findUnique({
-            where: { id: runId },
-            select: { rawPayload: true },
-          })
-        : Promise.resolve(null),
       includes.issues
         ? prisma.crawlLatestIssue.findMany({
             where: { runId },
@@ -572,7 +643,6 @@ export async function getCrawlLatestRun(runId: string, includes: RunIncludes) {
   return {
     ...toRunMetadataDto(run),
     categories,
-    ...(rawPayload ? { rawPayload: rawPayload.rawPayload } : {}),
     ...(includes.issues
       ? {
           issues: issues.map(issue => ({

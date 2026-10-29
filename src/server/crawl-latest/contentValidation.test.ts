@@ -92,7 +92,7 @@ test("promotes every valid LIVE category without trusting producer issues", () =
   assert.deepEqual(input, before);
 });
 
-test("turns a null successful comment into an invalid empty snapshot", () => {
+test("adopts a missing comment as a not-published current", () => {
   const input = validInput();
   const comment = input.categories.find(
     candidate => candidate.kind === "COMMENT",
@@ -104,18 +104,14 @@ test("turns a null successful comment into an invalid empty snapshot", () => {
   const result = category(validation, "COMMENT");
 
   assert.equal(result.state, "EMPTY");
-  assert.equal(result.validationState, "INVALID");
-  assert.equal(result.eligibleForCurrent, false);
+  assert.equal(result.validationState, "VALID");
+  assert.equal(result.eligibleForCurrent, true);
   assert.equal(result.usableItemCount, 0);
-  assert.equal(validation.outcome, "PARTIAL");
-  assert.equal(category(validation, "WEATHER").eligibleForCurrent, true);
-  assert.deepEqual(
-    validation.serverIssues.map(candidate => candidate.code),
-    ["SERVER_VALIDATION.COMMENT_EMPTY"],
-  );
+  assert.equal(validation.outcome, "SUCCESS");
+  assert.deepEqual(validation.serverIssues, []);
 });
 
-test("does not count an update timestamp as actual weather data", () => {
+test("treats weather with only an update timestamp as not published", () => {
   const input = validInput();
   const weather = input.categories.find(
     candidate => candidate.kind === "WEATHER",
@@ -137,14 +133,11 @@ test("does not count an update timestamp as actual weather data", () => {
   const result = category(validation, "WEATHER");
 
   assert.equal(result.state, "EMPTY");
-  assert.equal(result.validationState, "INVALID");
-  assert.equal(result.eligibleForCurrent, false);
+  assert.equal(result.validationState, "VALID");
+  assert.equal(result.eligibleForCurrent, true);
   assert.equal(result.itemCount, 1);
   assert.equal(result.usableItemCount, 0);
-  assert.equal(
-    validation.serverIssues[0]?.code,
-    "SERVER_VALIDATION.WEATHER_NO_ACTUAL_VALUE",
-  );
+  assert.deepEqual(validation.serverIssues, []);
 });
 
 test("accepts zero as an actual weather value", () => {
@@ -170,7 +163,7 @@ test("accepts zero as an actual weather value", () => {
   assert.deepEqual(validation.serverIssues, []);
 });
 
-test("invalidates operations with empty names, statuses, unknown statuses, or duplicates", () => {
+test("invalidates operations with empty names, unknown statuses, or duplicates", () => {
   const input = validInput();
   const courses = input.categories.find(
     candidate => candidate.kind === "COURSES",
@@ -190,7 +183,8 @@ test("invalidates operations with empty names, statuses, unknown statuses, or du
   assert.equal(result.state, "SUCCESS");
   assert.equal(result.validationState, "INVALID");
   assert.equal(result.eligibleForCurrent, false);
-  assert.equal(result.usableItemCount, 0);
+  // B（状態なし）は「不明」として数える。
+  assert.equal(result.usableItemCount, 1);
   assert.deepEqual(
     validation.serverIssues.map(candidate => candidate.code).sort(),
     [
@@ -200,16 +194,14 @@ test("invalidates operations with empty names, statuses, unknown statuses, or du
       "SERVER_VALIDATION.OPERATION_STATUS_UNKNOWN",
     ],
   );
-  assert.equal(
-    validation.serverIssues.every(
-      candidate =>
-        candidate.categoryKind === "COURSES" &&
-        candidate.severity === "ERROR" &&
-        candidate.blocksPromotion &&
-        candidate.externalId === undefined,
-    ),
-    true,
-  );
+  for (const candidate of validation.serverIssues) {
+    const notice =
+      candidate.code === "SERVER_VALIDATION.OPERATION_STATUS_MISSING";
+    assert.equal(candidate.categoryKind, "COURSES");
+    assert.equal(candidate.severity, notice ? "WARNING" : "ERROR");
+    assert.equal(candidate.blocksPromotion, !notice);
+    assert.equal(candidate.externalId, undefined);
+  }
 });
 
 test("keeps valid Wayback categories out of current", () => {
@@ -226,7 +218,7 @@ test("keeps valid Wayback categories out of current", () => {
   );
 });
 
-test("keeps server validation category-scoped for partial success", () => {
+test("shows unreadable statuses as unknown without blocking the category", () => {
   const input = validInput();
   const lifts = input.categories.find(candidate => candidate.kind === "LIFTS");
   assert.ok(lifts);
@@ -235,7 +227,8 @@ test("keeps server validation category-scoped for partial success", () => {
   const validation = buildCrawlLatestPersistenceValidation(input);
 
   assert.equal(validation.outcome, "PARTIAL");
-  assert.equal(category(validation, "LIFTS").eligibleForCurrent, false);
+  assert.equal(category(validation, "LIFTS").validationState, "WARNING");
+  assert.equal(category(validation, "LIFTS").eligibleForCurrent, true);
   assert.equal(category(validation, "COMMENT").eligibleForCurrent, true);
   assert.equal(category(validation, "WEATHER").eligibleForCurrent, true);
   assert.equal(category(validation, "COURSES").eligibleForCurrent, true);
@@ -258,7 +251,7 @@ test("a successful NEWS category is driven entirely by sourceUrls, with no data"
   assert.deepEqual(result.names, []);
 });
 
-test("an EMPTY NEWS category with no sourceUrls is never eligible for current", () => {
+test("an EMPTY NEWS category replaces the previous current", () => {
   const input = validInput();
   const news = input.categories.find(candidate => candidate.kind === "NEWS");
   assert.ok(news);
@@ -270,9 +263,83 @@ test("an EMPTY NEWS category with no sourceUrls is never eligible for current", 
   const result = category(validation, "NEWS");
 
   assert.equal(result.state, "EMPTY");
-  assert.equal(result.eligibleForCurrent, false);
+  assert.equal(result.eligibleForCurrent, true);
   assert.equal(result.itemCount, 0);
   assert.equal(result.usableItemCount, 0);
+});
+
+test("does not promote a category the crawler could not fetch", () => {
+  const input = validInput();
+  const weather = input.categories.find(
+    candidate => candidate.kind === "WEATHER",
+  );
+  assert.ok(weather);
+  weather.state = "FAILED";
+  weather.data = null;
+
+  const validation = buildCrawlLatestPersistenceValidation(input);
+  assert.equal(category(validation, "WEATHER").validationState, "INVALID");
+  assert.equal(category(validation, "WEATHER").eligibleForCurrent, false);
+});
+
+test("drops weather and comment warnings when every lift is closed", () => {
+  const input = validInput();
+  const lifts = input.categories.find(candidate => candidate.kind === "LIFTS");
+  const weather = input.categories.find(
+    candidate => candidate.kind === "WEATHER",
+  );
+  assert.ok(lifts && weather);
+  lifts.data = [
+    { name: "Lift 1", status: "×", update: null, note: null },
+    { name: "Lift 2", status: "×", update: null, note: null },
+  ];
+  input.issues = [
+    {
+      externalId: "issue-1",
+      categoryKind: "WEATHER",
+      severity: "WARNING",
+      code: "CRAWLER.VALIDATION",
+      message: "Weather temperature is null",
+      occurrences: 1,
+      blocksPromotion: true,
+    },
+    {
+      externalId: "issue-2",
+      categoryKind: "LIFTS",
+      severity: "WARNING",
+      code: "CRAWLER.VALIDATION",
+      message: "Lift note changed",
+      occurrences: 1,
+      blocksPromotion: false,
+    },
+  ];
+
+  const validation = buildCrawlLatestPersistenceValidation(input);
+  assert.deepEqual(
+    validation.issues.map(candidate => candidate.externalId),
+    ["issue-2"],
+  );
+  assert.equal(category(validation, "WEATHER").validationState, "VALID");
+  assert.equal(category(validation, "WEATHER").eligibleForCurrent, true);
+});
+
+test("keeps weather warnings while any lift or course is open", () => {
+  const input = validInput();
+  input.issues = [
+    {
+      externalId: "issue-1",
+      categoryKind: "WEATHER",
+      severity: "WARNING",
+      code: "CRAWLER.VALIDATION",
+      message: "Weather temperature is null",
+      occurrences: 1,
+      blocksPromotion: true,
+    },
+  ];
+
+  const validation = buildCrawlLatestPersistenceValidation(input);
+  assert.equal(validation.issues.length, 1);
+  assert.equal(category(validation, "WEATHER").eligibleForCurrent, false);
 });
 
 const coursesOnlyCapability: LatestStatusCapabilityFile = {

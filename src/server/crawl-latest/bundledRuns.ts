@@ -325,6 +325,5 @@ export const readBundledRunDetail = async (
     categories,
     issues: [],
     artifacts: [],
-    rawPayload: parsed,
   };
 };

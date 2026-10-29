@@ -9,6 +9,19 @@ export type LatestSuccessfulStatus = {
   time: string | null;
   items: Record<string, unknown>[];
   sourceUrls: string[];
+  /** 出典URLごとの短いラベル（例: コース、パーク）。ないURLは載せない。 */
+  sourceLabels?: Record<string, string>;
+};
+
+/** sourceUrls と同じ並びのラベル配列を、URLごとの対応表にする。 */
+export const toSourceLabels = (
+  urls: string[],
+  labels: string[] | null | undefined,
+): Record<string, string> | undefined => {
+  const entries = urls.flatMap((url, index) =>
+    labels?.[index] ? [[url, labels[index]] as const] : [],
+  );
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
 };
 
 const TIMESTAMPED_STATUS_FILE_RE =

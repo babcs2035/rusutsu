@@ -5,6 +5,7 @@ const LABELS: Record<string, string> = {
   resortId: "スキー場ID",
   targetSkiId: "編集対象のスキー場ID",
   officialSiteUrls: "公式サイト",
+  newsUrls: "お知らせ一覧",
   mapUrls: "コースマップ",
   request: "変更内容",
   data: "データ",

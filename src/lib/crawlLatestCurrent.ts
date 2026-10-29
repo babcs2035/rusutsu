@@ -218,17 +218,14 @@ export async function readCurrentResortConditions(
     );
     return parseObjectEnvelope(response, "conditions");
   } catch (error) {
-    // Allow the web app and data API to be deployed separately. Historical
-    // captures retain their original source URLs, timestamp and archive label.
+    // Allow the web app and data API to be deployed separately. Without the
+    // API endpoint there is no current value to show.
     if (
       !(error instanceof InternalDataApiError) ||
       ![400, 404].includes(error.status ?? 0)
     )
       throw error;
-    const { readBundledResortConditions } = await import(
-      "./bundledResortConditions"
-    );
-    return readBundledResortConditions(resortId);
+    return { weather: null, comment: null, news: null };
   }
 }
 

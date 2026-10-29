@@ -438,7 +438,6 @@ export async function fetchCrawlMonitorRunDetailDirect(
       producerId: true,
       requestHash: true,
       crawlerSourceHash: true,
-      rawPayload: true,
     },
   });
   if (!run || run.skiResortId !== resortId) return null;
@@ -454,6 +453,7 @@ export async function fetchCrawlMonitorRunDetailDirect(
       orderBy: [{ severity: "asc" }, { createdAt: "asc" }, { id: "asc" }],
       select: {
         id: true,
+        externalId: true,
         categoryKind: true,
         severity: true,
         code: true,
@@ -480,6 +480,7 @@ export async function fetchCrawlMonitorRunDetailDirect(
         storageKey: true,
         captureError: true,
         capturedAt: true,
+        issueExternalIds: true,
       },
     }),
     collectRunDecorations([runId]),
@@ -523,8 +524,8 @@ export async function fetchCrawlMonitorRunDetailDirect(
       capturedAt: artifact.capturedAt.toISOString(),
       hasContent:
         artifact.state === "AVAILABLE" && artifact.storageKey !== null,
+      issueExternalIds: artifact.issueExternalIds,
     })),
-    rawPayload: run.rawPayload ?? null,
   };
 }
 

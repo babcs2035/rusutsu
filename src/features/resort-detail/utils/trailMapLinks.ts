@@ -29,3 +29,13 @@ export function collectTrailMapLinks(
     mapPageUrls: dedupe(ids.flatMap(id => links[id]?.mapPageUrls ?? [])),
   };
 }
+
+/** 名寄せ元のIDもまとめて、お知らせ一覧のリンクを集める */
+export function collectNewsLinks(
+  links: Record<string, ResortLinks>,
+  resortIds: string[],
+): ResortLink[] {
+  return dedupe(
+    [...new Set(resortIds)].flatMap(id => links[id]?.newsUrls ?? []),
+  );
+}

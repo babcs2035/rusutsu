@@ -1,9 +1,10 @@
 import "server-only";
 
 import type { CrawlLatestCategoryKind } from "@prisma/client";
-import type {
-  LatestStatusKind,
-  LatestSuccessfulStatus,
+import {
+  type LatestStatusKind,
+  type LatestSuccessfulStatus,
+  toSourceLabels,
 } from "@/lib/latestStatusFiles";
 import { prisma } from "@/lib/prisma";
 
@@ -40,6 +41,7 @@ export async function findCurrentCrawlLatestStatusDirect(
           id: true,
           data: true,
           sourceUrls: true,
+          sourceLabels: true,
           run: { select: { observedAt: true } },
         },
       },
@@ -48,7 +50,10 @@ export async function findCurrentCrawlLatestStatusDirect(
   if (!current) return null;
 
   const items = normalizeItems(current.snapshot.data);
-  if (items.length === 0) return null;
+  // 掲載なしでもページは開けているので、出典だけの空の結果として返す。
+  if (items.length === 0 && current.snapshot.sourceUrls.length === 0) {
+    return null;
+  }
   return {
     fileName: `db-${current.snapshot.run.observedAt
       .toISOString()
@@ -56,6 +61,10 @@ export async function findCurrentCrawlLatestStatusDirect(
     time: current.snapshot.run.observedAt.toISOString(),
     items,
     sourceUrls: current.snapshot.sourceUrls,
+    sourceLabels: toSourceLabels(
+      current.snapshot.sourceUrls,
+      current.snapshot.sourceLabels,
+    ),
   };
 }
 

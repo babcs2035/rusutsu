@@ -1,10 +1,8 @@
 import type { Prisma } from "@prisma/client";
-import type { LatestSuccessfulStatus } from "@/lib/latestStatusFiles";
 import { combineLatestStatuses } from "@/lib/linkedAreaStatus";
 import { normalizeCrawledName } from "@/lib/resortMapMerge";
 import { record } from "./canonicalCodec";
 import { canonicalMapsEnabled } from "./canonicalDocuments";
-import { readLegacyOperationStatus } from "./legacyStatus";
 
 type Tx = Prisma.TransactionClient;
 export type OperationEntity = {
@@ -71,7 +69,7 @@ export function summarizeOperationEntities(
   };
 }
 
-/** Adopted snapshots take priority over the existing legacy-file fallback. */
+/** 地図の各線へ、現在値の営業状態を写す。現在値がない種類は「不明」にする。 */
 export async function refreshMapOperations(
   tx: Tx,
   changedIds: readonly string[],
@@ -117,7 +115,6 @@ export async function refreshMapOperations(
       snapshot: { include: { run: { select: { observedAt: true } } } },
     },
   });
-  const legacy = new Map<string, Promise<LatestSuccessfulStatus | null>>();
   for (const id of targets) {
     const members = membersFor(id);
     for (const [kind, category] of [
@@ -129,18 +126,8 @@ export async function refreshMapOperations(
           const current = currents.find(
             row => row.skiResortId === member && row.kind === category,
           );
-          if (!current) {
-            const key = `${member}:${category}`;
-            let status = legacy.get(key);
-            if (!status) {
-              status = readLegacyOperationStatus(
-                member,
-                kind === "course" ? "courses" : "lifts",
-              );
-              legacy.set(key, status);
-            }
-            return status;
-          }
+          // 現在値がなければ「不明」にする。Git管理の古いファイルでは補わない。
+          if (!current) return null;
           const snapshot = current.snapshot;
           const items = Array.isArray(snapshot.data)
             ? snapshot.data.map(item => ({

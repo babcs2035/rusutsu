@@ -37,12 +37,26 @@ before(async () => {
 
 after(async () => fs.rm(root, { recursive: true, force: true }));
 
-test("empty DB still exposes bundled results in both the list and mapping detail", async () => {
+test("bundled results are only exposed to the mapping editor", async () => {
   for (const kind of ["courses", "lifts"] as const) {
+    assert.deepEqual(
+      await listAvailableCrawlLatestResortIdsDirect(kind, emptyDatabase, root),
+      [],
+    );
+    assert.equal(
+      await findAvailableCrawlLatestStatusDirect(
+        `${kind}-only`,
+        kind,
+        emptyDatabase,
+        root,
+      ),
+      null,
+    );
     const ids = await listAvailableCrawlLatestResortIdsDirect(
       kind,
       emptyDatabase,
       root,
+      true,
     );
     assert.deepEqual(ids, [`${kind}-only`]);
     const status = await findAvailableCrawlLatestStatusDirect(
@@ -50,37 +64,27 @@ test("empty DB still exposes bundled results in both the list and mapping detail
       kind,
       emptyDatabase,
       root,
+      true,
     );
     assert.equal(status?.items.length, 1);
     assert.equal(status?.fileName, "2026_0101_100000.json");
   }
-  assert.equal(
-    await findAvailableCrawlLatestStatusDirect(
-      "missing",
-      "courses",
-      emptyDatabase,
-      root,
-    ),
-    null,
-  );
-  assert.equal(
-    await findAvailableCrawlLatestStatusDirect(
-      "nameless",
-      "courses",
-      emptyDatabase,
-      root,
-    ),
-    null,
-  );
-  assert.equal(
-    await findAvailableCrawlLatestStatusDirect(
-      "courses-only",
-      "lifts",
-      emptyDatabase,
-      root,
-    ),
-    null,
-  );
+  for (const [id, kind] of [
+    ["missing", "courses"],
+    ["nameless", "courses"],
+    ["courses-only", "lifts"],
+  ] as const) {
+    assert.equal(
+      await findAvailableCrawlLatestStatusDirect(
+        id,
+        kind,
+        emptyDatabase,
+        root,
+        true,
+      ),
+      null,
+    );
+  }
 });
 
 test("adopted DB results take priority over bundled results", async () => {
@@ -119,7 +123,21 @@ test("available IDs merge DB and file results without duplicates and preserve ca
     ["courses-only", "db-only"],
   );
   assert.deepEqual(
-    await listAvailableCrawlLatestResortIdsDirect("lifts", database, root),
+    await listAvailableCrawlLatestResortIdsDirect(
+      "courses",
+      database,
+      root,
+      true,
+    ),
+    ["courses-only", "db-only"],
+  );
+  assert.deepEqual(
+    await listAvailableCrawlLatestResortIdsDirect(
+      "lifts",
+      database,
+      root,
+      true,
+    ),
     ["lifts-only"],
   );
 });
@@ -219,7 +237,7 @@ test("mapping uses archived results only when current is absent; public readers 
   );
   assert.deepEqual(
     await listAvailableCrawlLatestResortIdsDirect("courses", database, root),
-    ["courses-only"],
+    [],
   );
   assert.deepEqual(
     await listAvailableCrawlLatestResortIdsDirect(

@@ -189,6 +189,8 @@ export const crawlMonitorArtifactSchema = z.object({
   captureError: z.string().nullable(),
   capturedAt: isoDateTimeSchema,
   hasContent: z.boolean(),
+  /** この DOM を保存するきっかけになった警告（issue の externalId）。 */
+  issueExternalIds: z.array(z.string()).default([]),
 });
 export type CrawlMonitorArtifact = z.infer<typeof crawlMonitorArtifactSchema>;
 
@@ -207,6 +209,7 @@ export const crawlMonitorRunDetailSchema = z.object({
   issues: z.array(
     z.object({
       id: z.string(),
+      externalId: z.string().nullable().default(null),
       categoryKind: categoryKindSchema.nullable(),
       severity: severitySchema,
       code: z.string(),
@@ -218,7 +221,6 @@ export const crawlMonitorRunDetailSchema = z.object({
     }),
   ),
   artifacts: z.array(crawlMonitorArtifactSchema),
-  rawPayload: z.unknown(),
 });
 export type CrawlMonitorRunDetail = z.infer<typeof crawlMonitorRunDetailSchema>;
 
