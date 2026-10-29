@@ -17,7 +17,6 @@ const required = [
   "src/private/scripts/migrateCanonicalMaps.ts",
   "src/server/course-lift/canonicalDocuments.ts",
   "src/server/course-lift/operations.ts",
-  "src/server/course-lift/legacyStatus.ts",
   "src/server/course-recommendations/projection.ts",
   "src/features/course-recommendations/algorithm.ts",
   "src/features/latest-status-mapping/server/mappingFiles.ts",
