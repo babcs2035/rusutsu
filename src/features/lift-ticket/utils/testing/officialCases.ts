@@ -1,4 +1,4 @@
-import type { TicketPartyCategory } from "../../types";
+import type { LiftTicketSearchInput, TicketPartyCategory } from "../../types";
 
 /** 券種を変えても学校区分・資格が保持されることを公式表で照合する。 */
 export const OFFICIAL_AUDIENCE_TICKETS: Record<
@@ -12,6 +12,393 @@ export const OFFICIAL_AUDIENCE_TICKETS: Record<
     ]
   >
 > = {
+  // BEGIN 2026-10-30 audiences
+  "ski-jam-katsuyama@2026-2027": [
+    ["prod-day", "preschool", 5, 0],
+    ["prod-day", "elementary", null, 2900],
+    ["prod-day", "junior_high", null, 6200],
+    ["prod-day", "high_school", null, 6200],
+    ["prod-day", "university", null, 6200],
+    ["prod-day", "adult", 30, 6200],
+    ["prod-day", "adult", 59, 6200],
+    ["prod-day", "adult", 60, 5700],
+    ["prod-variety", "adult", 30, 5200],
+    ["prod-variety", "elementary", null, 2800],
+    ["prod-day", "elementary", 12, 2900],
+    ["prod-ride", "preschool", 5, 1000],
+    ["prod-ride", "elementary", null, 1000],
+    ["prod-ride", "adult", 30, 1000],
+    ["prod-ride", "adult", 60, 1000],
+    ["prod-day", "disabled", 30, 3100],
+    ["prod-day", "disabled", 60, 2850],
+  ],
+  "hounokidaira@2026-2027": [
+    ["prod-day", "preschool", 5, 2500],
+    ["prod-day", "elementary", null, 2500],
+    ["prod-day", "junior_high", null, 2500],
+    ["prod-day", "high_school", null, 4000],
+    ["prod-day", "university", null, 4000],
+    ["prod-day", "adult", 30, 4000],
+    ["prod-day", "adult", 59, 4000],
+    ["prod-day", "adult", 60, 3500],
+    ["prod-afternoon", "adult", 30, null],
+    ["prod-afternoon", "junior_high", null, null],
+    ["prod-afternoon", "adult", 60, null],
+    ["prod-2ride", "preschool", 5, 800],
+    ["prod-2ride", "elementary", null, 800],
+    ["prod-2ride", "junior_high", null, 800],
+    ["prod-2ride", "adult", 30, 800],
+    ["prod-2ride", "adult", 60, 800],
+    ["prod-10ride", "preschool", 5, 3600],
+    ["prod-10ride", "elementary", null, 3600],
+    ["prod-10ride", "junior_high", null, 3600],
+    ["prod-10ride", "adult", 30, 3600],
+    ["prod-10ride", "adult", 60, 3600],
+    ["prod-pack", "adult", 30, 12100],
+    ["prod-pack", "junior_high", null, 9000],
+  ],
+  "gransnow-okuibuki@2026-2027": [
+    ["prod-day", "preschool", 5, 3500],
+    ["prod-day", "elementary", null, 3500],
+    ["prod-day", "junior_high", null, 4000],
+    ["prod-day", "high_school", null, 4000],
+    ["prod-day", "adult", 30, 6500],
+    ["prod-day", "adult", 59, 6500],
+    ["prod-day", "adult", 60, 6000],
+    ["prod-day", "university", null, 6500],
+    ["prod-pm", "preschool", 5, 2500],
+    ["prod-pm", "elementary", null, 2500],
+    ["prod-pm", "junior_high", null, 3000],
+    ["prod-pm", "high_school", null, 3000],
+    ["prod-pm", "adult", 30, 5500],
+    ["prod-pm", "adult", 59, 5500],
+    ["prod-pm", "adult", 60, 5000],
+    ["prod-pm", "university", null, 5500],
+    ["prod-kids", "preschool", 5, 2000],
+    ["prod-kids", "elementary", null, 2000],
+    ["prod-kids", "junior_high", null, 2000],
+    ["prod-kids", "high_school", null, 2000],
+    ["prod-kids", "university", null, 2000],
+    ["prod-kids", "adult", 30, 2000],
+    ["prod-10ride", "preschool", 5, 4500],
+    ["prod-ride", "preschool", 5, 500],
+    ["prod-10ride", "elementary", null, 4500],
+    ["prod-ride", "elementary", null, 500],
+    ["prod-10ride", "junior_high", null, 4500],
+    ["prod-ride", "junior_high", null, 500],
+    ["prod-10ride", "high_school", null, 4500],
+    ["prod-ride", "high_school", null, 500],
+    ["prod-10ride", "university", null, 4500],
+    ["prod-ride", "university", null, 500],
+    ["prod-10ride", "adult", 30, 4500],
+    ["prod-ride", "adult", 30, 500],
+    ["prod-10ride", "adult", 60, 4500],
+    ["prod-ride", "adult", 60, 500],
+  ],
+  "gunma-minakami-houdaigi@2026-2027": [
+    ["prod-5h", "preschool", 5, 6900],
+    ["prod-5h", "elementary", null, 6900],
+    ["prod-5h", "junior_high", null, 6900],
+    ["prod-5h", "high_school", null, 6900],
+    ["prod-5h", "university", null, 6900],
+    ["prod-5h", "adult", 30, 6900],
+    ["prod-5h", "adult", 55, 6900],
+    ["prod-5h", "disabled", null, 6900],
+    ["prod-ride", "preschool", 5, 1100],
+    ["prod-ride", "elementary", null, 1100],
+    ["prod-ride", "junior_high", null, 1100],
+    ["prod-ride", "high_school", null, 1100],
+    ["prod-ride", "university", null, 1100],
+    ["prod-ride", "adult", 30, 1100],
+    ["prod-ride", "adult", 55, 1100],
+    ["prod-ride", "disabled", null, 1100],
+  ],
+  // END 2026-10-30 audiences
+  // BEGIN kawaba audiences
+  "kawaba@2026-2027": [
+    ["prod-day", "preschool", 2, 0],
+    ["prod-day", "preschool", 3, 2500],
+    ["prod-day", "preschool", 4, 2500],
+    ["prod-day", "elementary", null, 5000],
+    ["prod-day", "junior_high", null, 5000],
+    ["prod-day", "high_school", null, 7600],
+    ["prod-day", "university", null, 7600],
+    ["prod-day", "adult", 30, 7600],
+    ["prod-day", "adult", 49, 7600],
+    ["prod-day", "adult", 50, 7100],
+    ["prod-day", "disabled", 30, 7600],
+    ["prod-tenfive", "elementary", null, 5000],
+    ["prod-tenfive", "junior_high", null, 5000],
+    ["prod-tenfive", "high_school", null, 7000],
+    ["prod-tenfive", "university", null, 7000],
+    ["prod-tenfive", "adult", 30, 7000],
+    ["prod-tenfive", "adult", 49, 7000],
+    ["prod-tenfive", "adult", 50, 6000],
+    ["prod-20h", "adult", 30, 25000],
+    ["prod-20h", "high_school", null, 25000],
+    ["prod-ride1", "preschool", 2, 0],
+    ["prod-tenfive", "preschool", 2, 0],
+    ["prod-20h", "preschool", 2, 0],
+    ["prod-ride1", "preschool", 3, 1200],
+    ["prod-ride1", "elementary", null, 1200],
+    ["prod-ride1", "junior_high", null, 1200],
+    ["prod-ride1", "high_school", null, 1200],
+    ["prod-ride1", "adult", 30, 1200],
+    ["prod-ride1", "adult", 50, 1200],
+  ],
+  // END kawaba audiences
+  // BEGIN shirakaba-2-in-1 audiences
+  "shirakaba-2-in-1@2026-2027": [
+    ["prod-day", "adult", 30, 5470],
+    ["prod-day", "adult", 22, 4750],
+    ["prod-day", "adult", 23, 5470],
+    ["prod-day", "adult", 59, 5470],
+    ["prod-day", "adult", 60, 4920],
+    ["prod-day", "adult", 69, 4920],
+    ["prod-day", "adult", 70, 4100],
+    ["prod-day", "preschool", 4, 3000],
+    ["prod-day", "elementary", null, 3000],
+    ["prod-day", "junior_high", null, 4750],
+    ["prod-day", "high_school", null, 4750],
+    ["prod-4h", "adult", 30, 5470],
+    ["prod-4h", "adult", 22, 4750],
+    ["prod-4h", "adult", 23, 5470],
+    ["prod-4h", "adult", 59, 5470],
+    ["prod-4h", "adult", 60, 4920],
+    ["prod-4h", "adult", 69, 4920],
+    ["prod-4h", "adult", 70, 4100],
+    ["prod-4h", "preschool", 4, 3000],
+    ["prod-4h", "elementary", null, 3000],
+    ["prod-4h", "junior_high", null, 4750],
+    ["prod-4h", "high_school", null, 4750],
+    ["prod-pm-b", "adult", 30, 3950],
+    ["prod-pm-b", "adult", 22, 3430],
+    ["prod-pm-b", "adult", 23, 3950],
+    ["prod-pm-b", "adult", 59, 3950],
+    ["prod-pm-b", "adult", 60, 3550],
+    ["prod-pm-b", "adult", 69, 3550],
+    ["prod-pm-b", "adult", 70, 2960],
+    ["prod-pm-b", "preschool", 4, 2160],
+    ["prod-pm-b", "elementary", null, 2160],
+    ["prod-pm-b", "junior_high", null, 3430],
+    ["prod-pm-b", "high_school", null, 3430],
+    ["prod-ride", "adult", 30, 1100],
+    ["prod-ride", "adult", 22, 990],
+    ["prod-ride", "adult", 23, 1100],
+    ["prod-ride", "adult", 59, 1100],
+    ["prod-ride", "adult", 60, 990],
+    ["prod-ride", "adult", 69, 990],
+    ["prod-ride", "adult", 70, 660],
+    ["prod-ride", "preschool", 4, 660],
+    ["prod-ride", "elementary", null, 660],
+    ["prod-ride", "junior_high", null, 990],
+    ["prod-ride", "high_school", null, 990],
+    ["prod-day", "adult", 13, 4750],
+    ["prod-day", "adult", 12, 3000],
+  ],
+  // END shirakaba-2-in-1 audiences
+  // BEGIN wassamu-higashiyama audiences
+  "wassamu-higashiyama@2026-2027": [
+    ["prod-ride1", "preschool", 5, 100],
+    ["prod-ride1", "elementary", null, 100],
+    ["prod-ride1", "junior_high", null, 160],
+    ["prod-ride1", "high_school", null, 160],
+    ["prod-ride1", "university", null, 160],
+    ["prod-ride1", "adult", 30, 160],
+    ["prod-ride1", "adult", 60, 160],
+    ["prod-ride1", "disabled", null, 160],
+    ["prod-ticket11", "preschool", 5, 1000],
+    ["prod-ticket11", "elementary", null, 1000],
+    ["prod-ticket11", "junior_high", null, 1600],
+    ["prod-ticket11", "high_school", null, 1600],
+    ["prod-ticket11", "university", null, 1600],
+    ["prod-ticket11", "adult", 30, 1600],
+    ["prod-ticket11", "adult", 60, 1600],
+    ["prod-ticket11", "disabled", null, 1600],
+    ["prod-day", "preschool", 5, 1400],
+    ["prod-day", "elementary", null, 1400],
+    ["prod-day", "junior_high", null, 2400],
+    ["prod-day", "high_school", null, 2400],
+    ["prod-day", "university", null, 2400],
+    ["prod-day", "adult", 30, 2400],
+    ["prod-day", "adult", 60, 2400],
+    ["prod-day", "disabled", null, 2400],
+    ["prod-night", "preschool", 5, 600],
+    ["prod-night", "elementary", null, 600],
+    ["prod-night", "junior_high", null, 800],
+    ["prod-night", "high_school", null, 800],
+    ["prod-night", "university", null, 800],
+    ["prod-night", "adult", 30, 800],
+    ["prod-night", "adult", 60, 800],
+    ["prod-night", "disabled", null, 800],
+    ["prod-4h", "preschool", 5, 800],
+    ["prod-4h", "elementary", null, 800],
+    ["prod-4h", "junior_high", null, 1500],
+    ["prod-4h", "high_school", null, 1500],
+    ["prod-4h", "university", null, 1500],
+    ["prod-4h", "adult", 30, 1500],
+    ["prod-4h", "adult", 60, 1500],
+    ["prod-4h", "disabled", null, 1500],
+  ],
+  // END wassamu-higashiyama audiences
+  // BEGIN oku-kannabe audiences
+  "oku-kannabe@2026-2027": [
+    ["prod-day", "preschool", 5, 3500],
+    ["prod-day", "elementary", null, 3500],
+    ["prod-day", "junior_high", null, 3500],
+    ["prod-day", "high_school", null, 5800],
+    ["prod-day", "university", null, 5800],
+    ["prod-day", "adult", 30, 5800],
+    ["prod-day", "adult", 59, 5800],
+    ["prod-day", "adult", 60, 5000],
+    ["prod-day", "disabled", 30, 5800],
+    ["prod-am", "adult", 30, 5200],
+    ["prod-pm", "adult", 30, 5200],
+    ["prod-2day", "adult", 30, 9800],
+    ["prod-once", "preschool", 5, 600],
+    ["prod-once", "elementary", null, 600],
+    ["prod-once", "adult", 30, 600],
+    ["prod-once", "adult", 60, 600],
+    ["prod-am", "adult", 60, 5200],
+    ["prod-pm", "adult", 60, 5200],
+    ["prod-2day", "adult", 60, 9800],
+  ],
+  // END oku-kannabe audiences
+  // BEGIN naspa-ski-garden audiences
+  "naspa-ski-garden@2026-2027": [
+    ["prod-1day", "preschool", 5, 4800],
+    ["prod-1day", "elementary", null, 4800],
+    ["prod-1day", "junior_high", null, 7000],
+    ["prod-1day", "high_school", null, 7000],
+    ["prod-1day", "university", null, 7000],
+    ["prod-1day", "adult", 30, 7000],
+    ["prod-1day", "adult", 60, 7000],
+    ["prod-1day", "disabled", 30, 3300],
+    ["prod-5h", "preschool", 5, 3800],
+    ["prod-5h", "elementary", null, 3800],
+    ["prod-5h", "junior_high", null, 5800],
+    ["prod-5h", "high_school", null, 5800],
+    ["prod-5h", "university", null, 5800],
+    ["prod-5h", "adult", 30, 5800],
+    ["prod-5h", "adult", 60, 5800],
+    ["prod-5h", "disabled", 30, 5800],
+    ["prod-2day", "preschool", 5, 7300],
+    ["prod-2day", "elementary", null, 7300],
+    ["prod-2day", "junior_high", null, 10000],
+    ["prod-2day", "adult", 30, 10000],
+    ["prod-2day", "disabled", 30, 10000],
+    ["prod-1ride", "preschool", 5, 700],
+    ["prod-1ride", "elementary", null, 700],
+    ["prod-1ride", "adult", 30, 700],
+    ["prod-1ride", "disabled", 30, 700],
+  ],
+  // END naspa-ski-garden audiences
+  // BEGIN niseko-moiwa-ski-resort audiences
+  "niseko-moiwa-ski-resort@2026-2027": [
+    ["p-1d", "preschool", 4, 0],
+    ["p-1d", "elementary", null, 2700],
+    ["p-1d", "junior_high", null, 2700],
+    ["p-1d", "high_school", null, 9900],
+    ["p-1d", "university", null, 11700],
+    ["p-1d", "adult", 30, 11700],
+    ["p-1d", "adult", 64, 11700],
+    ["p-1d", "adult", 65, 10800],
+    ["p-1d", "disabled", 30, 11700],
+    ["p-2d", "preschool", 4, 0],
+    ["p-2d", "elementary", null, 5100],
+    ["p-2d", "junior_high", null, 5100],
+    ["p-2d", "high_school", null, 18800],
+    ["p-2d", "university", null, 22200],
+    ["p-2d", "adult", 30, 22200],
+    ["p-2d", "adult", 64, 22200],
+    ["p-2d", "adult", 65, 20500],
+    ["p-2d", "disabled", 30, 22200],
+    ["p-3d", "preschool", 4, 0],
+    ["p-3d", "elementary", null, 7400],
+    ["p-3d", "junior_high", null, 7400],
+    ["p-3d", "high_school", null, 27500],
+    ["p-3d", "university", null, 32500],
+    ["p-3d", "adult", 30, 32500],
+    ["p-3d", "adult", 64, 32500],
+    ["p-3d", "adult", 65, 30000],
+    ["p-3d", "disabled", 30, 32500],
+    ["p-4h", "preschool", 4, 0],
+    ["p-4h", "elementary", null, 2000],
+    ["p-4h", "junior_high", null, 2000],
+    ["p-4h", "high_school", null, 9000],
+    ["p-4h", "university", null, 12000],
+    ["p-4h", "adult", 30, 12000],
+    ["p-4h", "adult", 64, 12000],
+    ["p-4h", "adult", 65, 11000],
+    ["p-12pt", "preschool", 4, 0],
+    ["p-12pt", "elementary", null, 8000],
+    ["p-12pt", "junior_high", null, 8000],
+    ["p-12pt", "high_school", null, 9000],
+    ["p-12pt", "university", null, 10000],
+    ["p-12pt", "adult", 30, 10000],
+    ["p-12pt", "adult", 64, 10000],
+    ["p-12pt", "adult", 65, 9000],
+    ["p-30h", "adult", 30, 52000],
+    ["p-30h", "adult", 65, 52000],
+    ["p-30h", "high_school", null, 52000],
+    ["p-30h", "elementary", null, null],
+    ["p-30h", "junior_high", null, null],
+  ],
+  // END niseko-moiwa-ski-resort audiences
+  // BEGIN shirakaba-kogen-kokusai audiences
+  "shirakaba-kogen-kokusai@2026-2027": [
+    ["prod-day", "adult", 30, 5470],
+    ["prod-day", "adult", 22, 4750],
+    ["prod-day", "adult", 23, 5470],
+    ["prod-day", "adult", 59, 5470],
+    ["prod-day", "adult", 60, 4920],
+    ["prod-day", "adult", 69, 4920],
+    ["prod-day", "adult", 70, 4100],
+    ["prod-day", "preschool", 4, 3000],
+    ["prod-day", "elementary", null, 3000],
+    ["prod-day", "junior_high", null, 4750],
+    ["prod-day", "high_school", null, 4750],
+    ["prod-day", "university", null, 5470],
+    ["prod-day", "adult", 12, 3000],
+    ["prod-day", "adult", 13, 4750],
+    ["prod-4h", "adult", 30, 5470],
+    ["prod-4h", "adult", 22, 4750],
+    ["prod-4h", "adult", 23, 5470],
+    ["prod-4h", "adult", 59, 5470],
+    ["prod-4h", "adult", 60, 4920],
+    ["prod-4h", "adult", 69, 4920],
+    ["prod-4h", "adult", 70, 4100],
+    ["prod-4h", "preschool", 4, 3000],
+    ["prod-4h", "elementary", null, 3000],
+    ["prod-4h", "junior_high", null, 4750],
+    ["prod-4h", "high_school", null, 4750],
+    ["prod-4h", "university", null, 5470],
+    ["prod-4h", "adult", 12, 3000],
+    ["prod-4h", "adult", 13, 4750],
+    ["prod-pm-b", "adult", 30, 3950],
+    ["prod-pm-b", "adult", 22, 3430],
+    ["prod-pm-b", "adult", 23, 3950],
+    ["prod-pm-b", "adult", 60, 3550],
+    ["prod-pm-b", "adult", 70, 2960],
+    ["prod-pm-b", "preschool", 4, 2160],
+    ["prod-pm-b", "elementary", null, 2160],
+    ["prod-pm-b", "junior_high", null, 3430],
+    ["prod-pm-b", "high_school", null, 3430],
+    ["prod-ride", "adult", 30, 1100],
+    ["prod-ride", "adult", 22, 990],
+    ["prod-ride", "adult", 60, 990],
+    ["prod-ride", "adult", 70, 660],
+    ["prod-ride", "preschool", 4, 660],
+    ["prod-ride", "elementary", null, 660],
+    ["prod-ride", "junior_high", null, 990],
+    ["prod-ride", "high_school", null, 990],
+    ["prod-ride", "university", null, 1100],
+    ["prod-meal-day", "adult", 30, 6800],
+    ["prod-meal-day", "preschool", 4, null],
+    ["prod-meal-day", "elementary", null, null],
+  ],
+  // END shirakaba-kogen-kokusai audiences
+
   "hakuba-cortina@2026-2027": [
     ["prod-1day", "preschool", 6, 0],
     ["prod-1day", "adult", 30, 6100],
@@ -2126,9 +2513,12527 @@ export type OfficialCase = {
   hourAudiences?: Array<
     [TicketPartyCategory, number | null, number, number, string]
   >;
+  partyQueries?: Array<{
+    name: string;
+    input: LiftTicketSearchInput;
+    product?: string;
+    amount: number | null;
+  }>;
+  rentalQueries?: Array<{
+    name: string;
+    input: LiftTicketSearchInput;
+    amount: number | null;
+  }>;
 };
 
 export const OFFICIAL_CASES: OfficialCase[] = [
+  // BEGIN 2026-10-30 cases
+  {
+    resort: "ski-jam-katsuyama",
+    season: "2026-2027",
+    date: "2027-02-14",
+    urls: [
+      "https://jamresort.jp/activity-white/lift-ticket/",
+      "https://jamresort.jp/hayawari2026/",
+    ],
+    categories: {
+      preschool: 0,
+      elementary: 2900,
+      junior_high: 6200,
+      high_school: 6200,
+      university: 6200,
+      adult: 6200,
+      disabled: 3100,
+    },
+    ages: [
+      ["adult", 59, 6200],
+      ["adult", 60, 5700],
+      ["adult", 13, 6200],
+      ["disabled", 30, 3100],
+      ["elementary", 12, 2900],
+      ["junior_high", 12, 6200],
+      ["disabled", 60, 2850],
+    ],
+    disabilityAmounts: {
+      adult: 3100,
+      elementary: 1450,
+    },
+    dates: [
+      ["2026-12-19", 4500],
+      ["2026-12-25", 4500],
+      ["2026-12-26", 6200],
+      ["2026-12-29", 5500],
+      ["2027-01-01", 6200],
+      ["2027-01-02", 6500],
+      ["2027-01-03", 6500],
+      ["2027-01-09", 6500],
+      ["2027-01-10", 6500],
+      ["2027-02-01", 5500],
+      ["2027-02-06", 6200],
+      ["2027-02-13", 6500],
+      ["2027-02-14", 6200],
+      ["2027-03-29", 4500],
+      ["2027-04-04", 4500],
+      ["2027-04-04", 4500],
+    ],
+    products: [
+      ["prod-day", 6200],
+      ["prod-variety", 5200],
+      ["prod-ride", 1000],
+    ],
+    productQueries: [
+      {
+        product: "prod-day",
+        date: "2027-02-14",
+        today: "2026-08-30",
+        amount: 6200,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-day",
+        date: "2027-02-14",
+        today: "2026-08-31",
+        amount: 4500,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-day",
+        date: "2027-02-14",
+        today: "2026-12-18",
+        amount: 4500,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-day",
+        date: "2027-02-14",
+        today: "2026-12-19",
+        amount: 6200,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-day",
+        date: "2027-02-01",
+        today: "2026-10-30",
+        amount: 4000,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-day",
+        date: "2027-02-01",
+        today: "2026-12-19",
+        amount: 5500,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-day",
+        date: "2027-02-14",
+        today: "2026-10-30",
+        amount: 2000,
+        category: "elementary",
+      },
+      {
+        product: "prod-day",
+        date: "2027-02-14",
+        today: "2026-12-19",
+        amount: 2900,
+        category: "elementary",
+      },
+      {
+        product: "prod-day",
+        date: "2027-02-14",
+        today: "2026-10-30",
+        amount: 4500,
+        category: "adult",
+        age: 60,
+      },
+      {
+        product: "prod-day",
+        date: "2027-02-13",
+        today: "2026-10-30",
+        amount: 4500,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-day",
+        date: "2027-02-13",
+        today: "2026-12-19",
+        amount: 6500,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-day",
+        date: "2027-02-01",
+        today: "2026-08-31",
+        amount: 4000,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-day",
+        date: "2027-02-01",
+        today: "2026-12-18",
+        amount: 4000,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-day",
+        date: "2027-02-01",
+        today: "2026-12-20",
+        amount: 5500,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-ride",
+        date: "2027-02-14",
+        today: "2026-10-30",
+        amount: 1000,
+        category: "preschool",
+        age: 5,
+      },
+      {
+        product: "prod-ride",
+        date: "2027-02-14",
+        today: "2026-10-30",
+        amount: 1000,
+        category: "elementary",
+      },
+      {
+        product: "prod-ride",
+        date: "2027-02-14",
+        today: "2026-10-30",
+        amount: 1000,
+        category: "adult",
+        age: 60,
+      },
+    ],
+    multiDays: [],
+    audienceDates: [
+      ["adult", 60, "2027-02-14", 5700],
+      ["adult", 59, "2027-02-14", 6200],
+      ["elementary", null, "2027-02-14", 2900],
+      ["preschool", 5, "2027-02-14", 0],
+      ["preschool", 5, "2027-02-14", 0],
+    ],
+    hours: [
+      [4, 6200],
+      [8, 6200],
+      [9, null],
+    ],
+    noPriceCategories: ["other"],
+    nightUnknown: true,
+    ambiguousAges: [],
+    partyQueries: [
+      {
+        name: "C日曜 大人1+小学生1",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "adult",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+            {
+              id: "child",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 9100,
+      },
+      {
+        name: "D特定日 大人1+シニア1",
+        input: {
+          visitDate: "2027-02-13",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "adult",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+            {
+              id: "senior",
+              category: "adult",
+              age: 60,
+              count: 1,
+            },
+          ],
+        },
+        amount: 12500,
+      },
+      {
+        name: "未就学児のみ 乗車条件あり",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "preschool",
+              category: "preschool",
+              age: 5,
+              count: 1,
+            },
+          ],
+        },
+        amount: 0,
+      },
+      {
+        name: "平日券購入期間前は通常価格",
+        input: {
+          visitDate: "2027-02-01",
+          today: "2026-08-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "adult",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 5500,
+      },
+      {
+        name: "早割平日券販売中",
+        input: {
+          visitDate: "2027-02-01",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "adult",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 4000,
+      },
+      {
+        name: "早割締切翌日 通常価格",
+        input: {
+          visitDate: "2027-02-01",
+          today: "2026-12-19",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "adult",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 5500,
+      },
+      {
+        name: "早割全日券 土日祝/特定日利用",
+        input: {
+          visitDate: "2027-02-13",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "adult",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 4500,
+      },
+      {
+        name: "2027-02-13から2日間 標準大人各日公式価格合計",
+        input: {
+          visitDate: "2027-02-13",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "day1",
+              date: "2027-02-13",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+            {
+              id: "day2",
+              date: "2027-02-14",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "adult",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 12700,
+      },
+      {
+        name: "2027-03-28から2日間 標準大人各日公式価格合計",
+        input: {
+          visitDate: "2027-03-28",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "day1",
+              date: "2027-03-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+            {
+              id: "day2",
+              date: "2027-03-29",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "adult",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 10700,
+      },
+      {
+        name: "障害者小学生本人 1日券C日",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "child-disabled",
+              category: "disabled",
+              baseCategory: "elementary",
+              age: 10,
+              count: 1,
+            },
+          ],
+        },
+        amount: 1450,
+      },
+      {
+        name: "障害者本人 1日券A日",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-19",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "disabled-adult",
+              category: "disabled",
+              baseCategory: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 2250,
+      },
+    ],
+    rentalQueries: [
+      {
+        name: "大人スキーセット",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+        },
+        amount: 5500,
+      },
+      {
+        name: "大人スキーセット+ウェア",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles", "wear"],
+              },
+            },
+          ],
+        },
+        amount: 10000,
+      },
+      {
+        name: "子供スキーセット+ウェア",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "c",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles", "wear"],
+              },
+            },
+          ],
+        },
+        amount: 7000,
+      },
+      {
+        name: "大人スノーボードセット",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard", "snowboard_boots"],
+              },
+            },
+          ],
+        },
+        amount: 5500,
+      },
+      {
+        name: "子供スノーボードセット",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "c",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard", "snowboard_boots"],
+              },
+            },
+          ],
+        },
+        amount: 4000,
+      },
+      {
+        name: "大人ボード板単品",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard"],
+              },
+            },
+          ],
+        },
+        amount: 3500,
+      },
+      {
+        name: "大人ボードブーツ単品",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard_boots"],
+              },
+            },
+          ],
+        },
+        amount: 3500,
+      },
+      {
+        name: "大人フルセット（公式一括商品）",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: [
+                  "skis",
+                  "ski_boots",
+                  "poles",
+                  "wear",
+                  "goggles",
+                  "gloves",
+                ],
+              },
+            },
+          ],
+        },
+        amount: 13000,
+      },
+      {
+        name: "子供フルセット（公式一括商品）",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "c",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: [
+                  "skis",
+                  "ski_boots",
+                  "poles",
+                  "wear",
+                  "goggles",
+                  "gloves",
+                ],
+              },
+            },
+          ],
+        },
+        amount: 9000,
+      },
+      {
+        name: "大人ヘルメット付きスキーセット",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles", "helmet"],
+              },
+            },
+          ],
+        },
+        amount: 6000,
+      },
+      {
+        name: "子供ヘルメット付きスキーセット",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "c",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles", "helmet"],
+              },
+            },
+          ],
+        },
+        amount: 4500,
+      },
+      {
+        name: "大人ヘルメット単品",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["helmet"],
+              },
+            },
+          ],
+        },
+        amount: 1500,
+      },
+      {
+        name: "子供ヘルメット単品",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "c",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["helmet"],
+              },
+            },
+          ],
+        },
+        amount: 1000,
+      },
+      {
+        name: "大人ボードフルセット",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: [
+                  "snowboard",
+                  "snowboard_boots",
+                  "wear",
+                  "goggles",
+                  "gloves",
+                ],
+              },
+            },
+          ],
+        },
+        amount: 13000,
+      },
+      {
+        name: "子供ボードフルセット",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "c",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: [
+                  "snowboard",
+                  "snowboard_boots",
+                  "wear",
+                  "goggles",
+                  "gloves",
+                ],
+              },
+            },
+          ],
+        },
+        amount: 9000,
+      },
+      {
+        name: "中学生 スキーセット（公式表の大人区分）",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "junior_high",
+              age: 13,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+        },
+        amount: 5500,
+      },
+      {
+        name: "中学生 ウェア（公式表の大人区分）",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "junior_high",
+              age: 13,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["wear"],
+              },
+            },
+          ],
+        },
+        amount: 4500,
+      },
+      {
+        name: "中学生 ボードセット（公式表の大人区分）",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "junior_high",
+              age: 13,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard", "snowboard_boots"],
+              },
+            },
+          ],
+        },
+        amount: 5500,
+      },
+      {
+        name: "高校生 スキーセット（公式表の大人区分）",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "high_school",
+              age: 16,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+        },
+        amount: 5500,
+      },
+      {
+        name: "高校生 ウェア（公式表の大人区分）",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "high_school",
+              age: 16,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["wear"],
+              },
+            },
+          ],
+        },
+        amount: 4500,
+      },
+      {
+        name: "高校生 ボードセット（公式表の大人区分）",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "high_school",
+              age: 16,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard", "snowboard_boots"],
+              },
+            },
+          ],
+        },
+        amount: 5500,
+      },
+      {
+        name: "60歳以上 スキーセット（公式表の大人区分）",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 60,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+        },
+        amount: 5500,
+      },
+      {
+        name: "60歳以上 ウェア（公式表の大人区分）",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 60,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["wear"],
+              },
+            },
+          ],
+        },
+        amount: 4500,
+      },
+      {
+        name: "60歳以上 ボードセット（公式表の大人区分）",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 60,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard", "snowboard_boots"],
+              },
+            },
+          ],
+        },
+        amount: 5500,
+      },
+    ],
+  },
+  {
+    resort: "hounokidaira",
+    season: "2026-2027",
+    date: "2027-01-05",
+    urls: [
+      "https://hounoki-daira.com/price/",
+      "https://hounoki-daira.com/",
+      "https://hounoki-daira.com/faq/",
+      "https://tenki.jp/season/ski/5/24/15609/",
+    ],
+    categories: {
+      preschool: 2500,
+      elementary: 2500,
+      junior_high: 2500,
+      high_school: 4000,
+      university: 4000,
+      adult: 4000,
+      disabled: 2000,
+    },
+    ages: [
+      ["adult", 59, 4000],
+      ["adult", 60, 3500],
+      ["disabled", 30, 2000],
+      ["disabled", 65, 1750],
+    ],
+    disabilityAmounts: {
+      preschool: 1250,
+      elementary: 1250,
+      junior_high: 1250,
+      high_school: 2000,
+      university: 2000,
+      adult: 2000,
+    },
+    dates: [
+      ["2026-12-28", 4000],
+      ["2026-12-29", 5000],
+      ["2027-01-01", 5000],
+      ["2027-01-05", 4000],
+      ["2027-01-09", 5000],
+      ["2027-03-28", 5000],
+    ],
+    products: [
+      ["prod-day", 4000],
+      ["prod-afternoon", null],
+      ["prod-2ride", 800],
+      ["prod-10ride", 3600],
+      ["prod-pack", 12100],
+    ],
+    productQueries: [
+      {
+        product: "prod-afternoon",
+        date: "2027-01-09",
+        today: "2026-10-30",
+        amount: 4500,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-afternoon",
+        date: "2027-01-09",
+        today: "2026-10-30",
+        amount: 2500,
+        category: "junior_high",
+      },
+      {
+        product: "prod-day",
+        date: "2027-01-05",
+        today: "2026-10-30",
+        amount: 2000,
+        category: "disabled",
+        age: 30,
+      },
+      {
+        product: "prod-afternoon",
+        date: "2027-01-09",
+        today: "2026-10-30",
+        amount: 2250,
+        category: "disabled",
+        age: 30,
+      },
+      {
+        product: "prod-2ride",
+        date: "2027-01-05",
+        today: "2026-10-30",
+        amount: 800,
+        category: "elementary",
+      },
+      {
+        product: "prod-10ride",
+        date: "2027-01-05",
+        today: "2026-10-30",
+        amount: 3600,
+        category: "adult",
+        age: 60,
+      },
+      {
+        product: "prod-pack",
+        date: "2027-01-05",
+        today: "2026-10-30",
+        amount: 12100,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-pack",
+        date: "2027-01-05",
+        today: "2026-10-30",
+        amount: 9000,
+        category: "junior_high",
+      },
+      {
+        product: "prod-afternoon",
+        date: "2027-01-09",
+        today: "2026-10-30",
+        amount: 4000,
+        category: "adult",
+        age: 60,
+      },
+    ],
+    hours: [
+      [4, 4000],
+      [8, 4000],
+      [9, null],
+    ],
+    noPriceCategories: ["other"],
+    dayWithNight: 4000,
+    nightUnknown: false,
+    partyQueries: [
+      {
+        name: "平日 大人・中学生・シニア各1人",
+        input: {
+          visitDate: "2027-01-05",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d",
+              date: "2027-01-05",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "a",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+            {
+              id: "j",
+              category: "junior_high",
+              age: null,
+              count: 1,
+            },
+            {
+              id: "s",
+              category: "adult",
+              age: 60,
+              count: 1,
+            },
+          ],
+        },
+        amount: 10000,
+      },
+      {
+        name: "特日 大人・中学生・シニア各1人",
+        input: {
+          visitDate: "2027-01-09",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d",
+              date: "2027-01-09",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "a",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+            {
+              id: "j",
+              category: "junior_high",
+              age: null,
+              count: 1,
+            },
+            {
+              id: "s",
+              category: "adult",
+              age: 60,
+              count: 1,
+            },
+          ],
+        },
+        amount: 12500,
+      },
+      {
+        name: "平日と特日の通常1日券を別日に購入",
+        input: {
+          visitDate: "2027-01-05",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2027-01-05",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+            {
+              id: "d2",
+              date: "2027-01-09",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "a",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 9000,
+      },
+      {
+        name: "障がい者本人の中学生基準区分 平日",
+        input: {
+          visitDate: "2027-01-05",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d",
+              date: "2027-01-05",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p",
+              category: "disabled",
+              baseCategory: "junior_high",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 1250,
+      },
+    ],
+    rentalQueries: [
+      {
+        name: "大人 スキー3点セット 1日",
+        input: {
+          visitDate: "2027-01-05",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d",
+              date: "2027-01-05",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "a",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+        },
+        amount: 4500,
+      },
+      {
+        name: "子供 スノーボードセット 1日",
+        input: {
+          visitDate: "2027-01-05",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d",
+              date: "2027-01-05",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "c",
+              category: "junior_high",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard", "snowboard_boots"],
+              },
+            },
+          ],
+        },
+        amount: 3500,
+      },
+      {
+        name: "大人 スキー3点+ウェア（フルセットが適用）",
+        input: {
+          visitDate: "2027-01-05",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d",
+              date: "2027-01-05",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "a",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles", "wear"],
+              },
+            },
+          ],
+        },
+        amount: 7400,
+      },
+      {
+        name: "大人 ヘルメット1日",
+        input: {
+          visitDate: "2027-01-05",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d",
+              date: "2027-01-05",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "a",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["helmet"],
+              },
+            },
+          ],
+        },
+        amount: 1000,
+      },
+      {
+        name: "大人 スキー板だけ（セット料金で充足）",
+        input: {
+          visitDate: "2027-01-05",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2027-01-05",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "r",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis"],
+              },
+            },
+          ],
+        },
+        amount: 4500,
+      },
+      {
+        name: "大人 ボード板だけ（セット料金で充足）",
+        input: {
+          visitDate: "2027-01-05",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2027-01-05",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "r",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard"],
+              },
+            },
+          ],
+        },
+        amount: 4500,
+      },
+      {
+        name: "大人 ボード板+ブーツ",
+        input: {
+          visitDate: "2027-01-05",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2027-01-05",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "r",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard", "snowboard_boots"],
+              },
+            },
+          ],
+        },
+        amount: 4500,
+      },
+      {
+        name: "小学生 スキーセット",
+        input: {
+          visitDate: "2027-01-05",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2027-01-05",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "r",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+        },
+        amount: 3500,
+      },
+      {
+        name: "シニア年齢の大人 スキーセット（レンタル大人用）",
+        input: {
+          visitDate: "2027-01-05",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2027-01-05",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "r",
+              category: "adult",
+              age: 60,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+        },
+        amount: 4500,
+      },
+      {
+        name: "大人 ウェア単品",
+        input: {
+          visitDate: "2027-01-05",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2027-01-05",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "r",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["wear"],
+              },
+            },
+          ],
+        },
+        amount: 4000,
+      },
+      {
+        name: "中学生 ウェア単品（子供用）",
+        input: {
+          visitDate: "2027-01-05",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2027-01-05",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "r",
+              category: "junior_high",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["wear"],
+              },
+            },
+          ],
+        },
+        amount: 3500,
+      },
+      {
+        name: "大人 ゴーグル単品（個別額未掲載）",
+        input: {
+          visitDate: "2027-01-05",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2027-01-05",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "r",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["goggles"],
+              },
+            },
+          ],
+        },
+        amount: null,
+      },
+      {
+        name: "大人 スキーセットを連続2日借りる",
+        input: {
+          visitDate: "2027-01-05",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2027-01-05",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+            {
+              id: "d2",
+              date: "2027-01-06",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "r",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+        },
+        amount: 9000,
+      },
+      {
+        name: "大人 スキー板+ブーツ（セット料金で充足）",
+        input: {
+          visitDate: "2027-01-05",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d",
+              date: "2027-01-05",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "r",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots"],
+              },
+            },
+          ],
+        },
+        amount: 4500,
+      },
+      {
+        name: "大人 ボードセット+ウェア（フルセット）",
+        input: {
+          visitDate: "2027-01-05",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d",
+              date: "2027-01-05",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "r",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard", "snowboard_boots", "wear"],
+              },
+            },
+          ],
+        },
+        amount: 7400,
+      },
+    ],
+  },
+  {
+    resort: "gransnow-okuibuki",
+    season: "2026-2027",
+    date: "2026-12-19",
+    urls: [
+      "https://www.okuibuki.co.jp/charge/",
+      "https://www.okuibuki.co.jp/rental/",
+    ],
+    categories: {
+      preschool: 3500,
+      elementary: 3500,
+      junior_high: 4000,
+      high_school: 4000,
+      university: 6500,
+      adult: 6500,
+      disabled: 6500,
+    },
+    ages: [
+      ["adult", 59, 6500],
+      ["adult", 60, 6000],
+    ],
+    disabilityAmounts: {
+      preschool: 3500,
+      elementary: 3500,
+      junior_high: 4000,
+      high_school: 4000,
+      university: 6500,
+      adult: 6500,
+    },
+    dates: [
+      ["2026-11-13", 4200],
+      ["2026-11-14", 5200],
+      ["2026-12-19", 6500],
+      ["2027-01-01", 6500],
+      ["2027-01-10", 7000],
+      ["2027-02-11", 7000],
+      ["2027-02-21", 7000],
+      ["2027-02-23", 7000],
+      ["2027-03-29", 4200],
+      ["2027-04-11", 5200],
+    ],
+    products: [
+      ["prod-day", 6500],
+      ["prod-pm", 5500],
+      ["prod-10ride", 4500],
+      ["prod-ride", 500],
+      ["prod-kids", 2000],
+    ],
+    productQueries: [
+      {
+        product: "prod-day",
+        date: "2026-11-13",
+        today: "2026-10-30",
+        amount: 4200,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-day",
+        date: "2026-11-14",
+        today: "2026-10-30",
+        amount: 5200,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-day",
+        date: "2026-12-19",
+        today: "2026-10-30",
+        amount: 6500,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-day",
+        date: "2027-01-10",
+        today: "2026-10-30",
+        amount: 7000,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-day",
+        date: "2026-12-19",
+        today: "2026-10-30",
+        amount: 6000,
+        category: "adult",
+        age: 60,
+      },
+      {
+        product: "prod-pm",
+        date: "2026-11-13",
+        today: "2026-10-30",
+        amount: 3200,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-pm",
+        date: "2026-11-14",
+        today: "2026-10-30",
+        amount: 4200,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-pm",
+        date: "2026-12-19",
+        today: "2026-10-30",
+        amount: 5500,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-pm",
+        date: "2027-01-10",
+        today: "2026-10-30",
+        amount: 6000,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-10ride",
+        date: "2026-12-19",
+        today: "2026-10-30",
+        amount: 4500,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-10ride",
+        date: "2027-01-10",
+        today: "2026-10-30",
+        amount: null,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-ride",
+        date: "2027-01-10",
+        today: "2026-10-30",
+        amount: 500,
+        category: "preschool",
+        age: 5,
+      },
+      {
+        product: "prod-kids",
+        date: "2026-11-13",
+        today: "2026-10-30",
+        amount: 1500,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-kids",
+        date: "2027-01-10",
+        today: "2026-10-30",
+        amount: 2000,
+        category: "adult",
+        age: 30,
+      },
+    ],
+    multiDays: [],
+    audienceDates: [
+      ["adult", 59, "2026-12-19", 6500],
+      ["adult", 60, "2026-12-19", 6000],
+      ["preschool", 5, "2026-12-19", 3500],
+      ["elementary", null, "2026-12-19", 3500],
+      ["junior_high", null, "2026-12-19", 4000],
+      ["high_school", null, "2026-12-19", 4000],
+    ],
+    hours: [
+      [5, 6500],
+      [6, 6500],
+      [9, 6500],
+      [10, null],
+    ],
+    noPriceCategories: ["other"],
+    nightUnknown: false,
+    closed: [],
+    ambiguousAges: [],
+    openExceptions: [],
+    hourAudiences: [
+      ["junior_high", null, 5, 4000, "prod-day"],
+      ["adult", 60, 5, 6000, "prod-day"],
+      ["elementary", null, 5, 3500, "prod-day"],
+    ],
+    partyQueries: [
+      {
+        name: "A日程 1日券 子ども1人（グループ一括）",
+        input: {
+          visitDate: "2026-11-13",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 3000,
+      },
+      {
+        name: "A日程 1日券 子ども1人（通常購入）",
+        input: {
+          visitDate: "2026-11-13",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 3000,
+      },
+      {
+        name: "A日程 1日券 子ども2人（グループ一括）",
+        input: {
+          visitDate: "2026-11-13",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 2,
+            },
+          ],
+        },
+        amount: 5500,
+      },
+      {
+        name: "A日程 1日券 子ども3人（グループ一括）",
+        input: {
+          visitDate: "2026-11-13",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 3,
+            },
+          ],
+        },
+        amount: 7500,
+      },
+      {
+        name: "A日程 1日券 子ども4人（グループ一括）",
+        input: {
+          visitDate: "2026-11-13",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 4,
+            },
+          ],
+        },
+        amount: 9000,
+      },
+      {
+        name: "A日程 1日券 子ども5人（グループ一括）",
+        input: {
+          visitDate: "2026-11-13",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 5,
+            },
+          ],
+        },
+        amount: 10000,
+      },
+      {
+        name: "A日程 1日券 子ども6人（グループ一括）",
+        input: {
+          visitDate: "2026-11-13",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 6,
+            },
+          ],
+        },
+        amount: 13000,
+      },
+      {
+        name: "A日程 1日券 子ども7人（グループ一括）",
+        input: {
+          visitDate: "2026-11-13",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 7,
+            },
+          ],
+        },
+        amount: 16000,
+      },
+      {
+        name: "B日程 1日券 子ども1人（グループ一括）",
+        input: {
+          visitDate: "2026-11-14",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 3000,
+      },
+      {
+        name: "B日程 1日券 子ども1人（通常購入）",
+        input: {
+          visitDate: "2026-11-14",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 3000,
+      },
+      {
+        name: "B日程 1日券 子ども2人（グループ一括）",
+        input: {
+          visitDate: "2026-11-14",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 2,
+            },
+          ],
+        },
+        amount: 5500,
+      },
+      {
+        name: "B日程 1日券 子ども3人（グループ一括）",
+        input: {
+          visitDate: "2026-11-14",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 3,
+            },
+          ],
+        },
+        amount: 7500,
+      },
+      {
+        name: "B日程 1日券 子ども4人（グループ一括）",
+        input: {
+          visitDate: "2026-11-14",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 4,
+            },
+          ],
+        },
+        amount: 9000,
+      },
+      {
+        name: "B日程 1日券 子ども5人（グループ一括）",
+        input: {
+          visitDate: "2026-11-14",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 5,
+            },
+          ],
+        },
+        amount: 10000,
+      },
+      {
+        name: "B日程 1日券 子ども6人（グループ一括）",
+        input: {
+          visitDate: "2026-11-14",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 6,
+            },
+          ],
+        },
+        amount: 13000,
+      },
+      {
+        name: "B日程 1日券 子ども7人（グループ一括）",
+        input: {
+          visitDate: "2026-11-14",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 7,
+            },
+          ],
+        },
+        amount: 16000,
+      },
+      {
+        name: "C日程 1日券 子ども1人（グループ一括）",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 3500,
+      },
+      {
+        name: "C日程 1日券 子ども1人（通常購入）",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 3500,
+      },
+      {
+        name: "C日程 1日券 子ども2人（グループ一括）",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 2,
+            },
+          ],
+        },
+        amount: 6500,
+      },
+      {
+        name: "C日程 1日券 子ども3人（グループ一括）",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 3,
+            },
+          ],
+        },
+        amount: 9000,
+      },
+      {
+        name: "C日程 1日券 子ども4人（グループ一括）",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 4,
+            },
+          ],
+        },
+        amount: 11000,
+      },
+      {
+        name: "C日程 1日券 子ども5人（グループ一括）",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 5,
+            },
+          ],
+        },
+        amount: 12500,
+      },
+      {
+        name: "C日程 1日券 子ども6人（グループ一括）",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 6,
+            },
+          ],
+        },
+        amount: 16000,
+      },
+      {
+        name: "C日程 1日券 子ども7人（グループ一括）",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 7,
+            },
+          ],
+        },
+        amount: 19500,
+      },
+      {
+        name: "D日程 1日券 子ども1人（グループ一括）",
+        input: {
+          visitDate: "2027-01-10",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 3500,
+      },
+      {
+        name: "D日程 1日券 子ども1人（通常購入）",
+        input: {
+          visitDate: "2027-01-10",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 3500,
+      },
+      {
+        name: "D日程 1日券 子ども2人（グループ一括）",
+        input: {
+          visitDate: "2027-01-10",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 2,
+            },
+          ],
+        },
+        amount: 6500,
+      },
+      {
+        name: "D日程 1日券 子ども3人（グループ一括）",
+        input: {
+          visitDate: "2027-01-10",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 3,
+            },
+          ],
+        },
+        amount: 9000,
+      },
+      {
+        name: "D日程 1日券 子ども4人（グループ一括）",
+        input: {
+          visitDate: "2027-01-10",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 4,
+            },
+          ],
+        },
+        amount: 11000,
+      },
+      {
+        name: "D日程 1日券 子ども5人（グループ一括）",
+        input: {
+          visitDate: "2027-01-10",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 5,
+            },
+          ],
+        },
+        amount: 12500,
+      },
+      {
+        name: "D日程 1日券 子ども6人（グループ一括）",
+        input: {
+          visitDate: "2027-01-10",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 6,
+            },
+          ],
+        },
+        amount: 16000,
+      },
+      {
+        name: "D日程 1日券 子ども7人（グループ一括）",
+        input: {
+          visitDate: "2027-01-10",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 7,
+            },
+          ],
+        },
+        amount: 19500,
+      },
+      {
+        name: "A日程 午後券 子ども1人（グループ一括、5人目は詳細表の最大4人割引採用）",
+        input: {
+          visitDate: "2026-11-13",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 2000,
+        product: "prod-pm",
+      },
+      {
+        name: "A日程 午後券 子ども2人（グループ一括、5人目は詳細表の最大4人割引採用）",
+        input: {
+          visitDate: "2026-11-13",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 2,
+            },
+          ],
+        },
+        amount: 3500,
+        product: "prod-pm",
+      },
+      {
+        name: "A日程 午後券 子ども3人（グループ一括、5人目は詳細表の最大4人割引採用）",
+        input: {
+          visitDate: "2026-11-13",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 3,
+            },
+          ],
+        },
+        amount: 4500,
+        product: "prod-pm",
+      },
+      {
+        name: "A日程 午後券 子ども4人（グループ一括、5人目は詳細表の最大4人割引採用）",
+        input: {
+          visitDate: "2026-11-13",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 4,
+            },
+          ],
+        },
+        amount: 5500,
+        product: "prod-pm",
+      },
+      {
+        name: "A日程 午後券 子ども5人（グループ一括、5人目は詳細表の最大4人割引採用）",
+        input: {
+          visitDate: "2026-11-13",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 5,
+            },
+          ],
+        },
+        amount: 7500,
+        product: "prod-pm",
+      },
+      {
+        name: "B日程 午後券 子ども1人（グループ一括、5人目は詳細表の最大4人割引採用）",
+        input: {
+          visitDate: "2026-11-14",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 2000,
+        product: "prod-pm",
+      },
+      {
+        name: "B日程 午後券 子ども2人（グループ一括、5人目は詳細表の最大4人割引採用）",
+        input: {
+          visitDate: "2026-11-14",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 2,
+            },
+          ],
+        },
+        amount: 3500,
+        product: "prod-pm",
+      },
+      {
+        name: "B日程 午後券 子ども3人（グループ一括、5人目は詳細表の最大4人割引採用）",
+        input: {
+          visitDate: "2026-11-14",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 3,
+            },
+          ],
+        },
+        amount: 4500,
+        product: "prod-pm",
+      },
+      {
+        name: "B日程 午後券 子ども4人（グループ一括、5人目は詳細表の最大4人割引採用）",
+        input: {
+          visitDate: "2026-11-14",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 4,
+            },
+          ],
+        },
+        amount: 5500,
+        product: "prod-pm",
+      },
+      {
+        name: "B日程 午後券 子ども5人（グループ一括、5人目は詳細表の最大4人割引採用）",
+        input: {
+          visitDate: "2026-11-14",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 5,
+            },
+          ],
+        },
+        amount: 7500,
+        product: "prod-pm",
+      },
+      {
+        name: "C日程 午後券 子ども1人（グループ一括、5人目は詳細表の最大4人割引採用）",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 2500,
+        product: "prod-pm",
+      },
+      {
+        name: "C日程 午後券 子ども2人（グループ一括、5人目は詳細表の最大4人割引採用）",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 2,
+            },
+          ],
+        },
+        amount: 4500,
+        product: "prod-pm",
+      },
+      {
+        name: "C日程 午後券 子ども3人（グループ一括、5人目は詳細表の最大4人割引採用）",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 3,
+            },
+          ],
+        },
+        amount: 6000,
+        product: "prod-pm",
+      },
+      {
+        name: "C日程 午後券 子ども4人（グループ一括、5人目は詳細表の最大4人割引採用）",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 4,
+            },
+          ],
+        },
+        amount: 7000,
+        product: "prod-pm",
+      },
+      {
+        name: "C日程 午後券 子ども5人（グループ一括、5人目は詳細表の最大4人割引採用）",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 5,
+            },
+          ],
+        },
+        amount: 9500,
+        product: "prod-pm",
+      },
+      {
+        name: "D日程 午後券 子ども1人（グループ一括、5人目は詳細表の最大4人割引採用）",
+        input: {
+          visitDate: "2027-01-10",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 2500,
+        product: "prod-pm",
+      },
+      {
+        name: "D日程 午後券 子ども2人（グループ一括、5人目は詳細表の最大4人割引採用）",
+        input: {
+          visitDate: "2027-01-10",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 2,
+            },
+          ],
+        },
+        amount: 4500,
+        product: "prod-pm",
+      },
+      {
+        name: "D日程 午後券 子ども3人（グループ一括、5人目は詳細表の最大4人割引採用）",
+        input: {
+          visitDate: "2027-01-10",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 3,
+            },
+          ],
+        },
+        amount: 6000,
+        product: "prod-pm",
+      },
+      {
+        name: "D日程 午後券 子ども4人（グループ一括、5人目は詳細表の最大4人割引採用）",
+        input: {
+          visitDate: "2027-01-10",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 4,
+            },
+          ],
+        },
+        amount: 7000,
+        product: "prod-pm",
+      },
+      {
+        name: "D日程 午後券 子ども5人（グループ一括、5人目は詳細表の最大4人割引採用）",
+        input: {
+          visitDate: "2027-01-10",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 5,
+            },
+          ],
+        },
+        amount: 9500,
+        product: "prod-pm",
+      },
+      {
+        name: "A日程 1日券 大人",
+        input: {
+          visitDate: "2026-11-13",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 4200,
+      },
+      {
+        name: "A日程 1日券 中学生",
+        input: {
+          visitDate: "2026-11-13",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "junior_high",
+              age: 14,
+              count: 1,
+            },
+          ],
+        },
+        amount: 3500,
+      },
+      {
+        name: "A日程 1日券 高校生",
+        input: {
+          visitDate: "2026-11-13",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "high_school",
+              age: 16,
+              count: 1,
+            },
+          ],
+        },
+        amount: 3500,
+      },
+      {
+        name: "A日程 1日券 小学生1人通常",
+        input: {
+          visitDate: "2026-11-13",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 3000,
+      },
+      {
+        name: "A日程 1日券 シニア60歳",
+        input: {
+          visitDate: "2026-11-13",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 60,
+              count: 1,
+            },
+          ],
+        },
+        amount: 3700,
+      },
+      {
+        name: "B日程 1日券 大人",
+        input: {
+          visitDate: "2026-11-14",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 5200,
+      },
+      {
+        name: "B日程 1日券 中学生",
+        input: {
+          visitDate: "2026-11-14",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "junior_high",
+              age: 14,
+              count: 1,
+            },
+          ],
+        },
+        amount: 3500,
+      },
+      {
+        name: "B日程 1日券 高校生",
+        input: {
+          visitDate: "2026-11-14",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "high_school",
+              age: 16,
+              count: 1,
+            },
+          ],
+        },
+        amount: 3500,
+      },
+      {
+        name: "B日程 1日券 小学生1人通常",
+        input: {
+          visitDate: "2026-11-14",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 3000,
+      },
+      {
+        name: "B日程 1日券 シニア60歳",
+        input: {
+          visitDate: "2026-11-14",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 60,
+              count: 1,
+            },
+          ],
+        },
+        amount: 4700,
+      },
+      {
+        name: "C日程 1日券 大人",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 6500,
+      },
+      {
+        name: "C日程 1日券 中学生",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "junior_high",
+              age: 14,
+              count: 1,
+            },
+          ],
+        },
+        amount: 4000,
+      },
+      {
+        name: "C日程 1日券 高校生",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "high_school",
+              age: 16,
+              count: 1,
+            },
+          ],
+        },
+        amount: 4000,
+      },
+      {
+        name: "C日程 1日券 小学生1人通常",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 3500,
+      },
+      {
+        name: "C日程 1日券 シニア60歳",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 60,
+              count: 1,
+            },
+          ],
+        },
+        amount: 6000,
+      },
+      {
+        name: "D日程 1日券 大人",
+        input: {
+          visitDate: "2027-01-10",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 7000,
+      },
+      {
+        name: "D日程 1日券 中学生",
+        input: {
+          visitDate: "2027-01-10",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "junior_high",
+              age: 14,
+              count: 1,
+            },
+          ],
+        },
+        amount: 4000,
+      },
+      {
+        name: "D日程 1日券 高校生",
+        input: {
+          visitDate: "2027-01-10",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "high_school",
+              age: 16,
+              count: 1,
+            },
+          ],
+        },
+        amount: 4000,
+      },
+      {
+        name: "D日程 1日券 小学生1人通常",
+        input: {
+          visitDate: "2027-01-10",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 3500,
+      },
+      {
+        name: "D日程 1日券 シニア60歳",
+        input: {
+          visitDate: "2027-01-10",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 60,
+              count: 1,
+            },
+          ],
+        },
+        amount: 6500,
+      },
+      {
+        name: "平日子ども2人まとめ割 A/B",
+        input: {
+          visitDate: "2026-11-13",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 2,
+            },
+          ],
+        },
+        amount: 5500,
+      },
+      {
+        name: "休日子ども5人まとめ割 C/D",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 5,
+            },
+          ],
+        },
+        amount: 12500,
+      },
+      {
+        name: "子ども7人（5人目まで割引、6・7人目は通常料金）",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 7,
+            },
+          ],
+        },
+        amount: 19500,
+      },
+      {
+        name: "A日程 午後券 子ども6人（詳細表の最大4人割引、5・6人目は通常料金）",
+        input: {
+          visitDate: "2026-11-13",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 6,
+            },
+          ],
+        },
+        amount: 9500,
+        product: "prod-pm",
+      },
+      {
+        name: "B日程 午後券 子ども6人（詳細表の最大4人割引、5・6人目は通常料金）",
+        input: {
+          visitDate: "2026-11-14",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 6,
+            },
+          ],
+        },
+        amount: 9500,
+        product: "prod-pm",
+      },
+      {
+        name: "C日程 午後券 子ども6人（詳細表の最大4人割引、5・6人目は通常料金）",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 6,
+            },
+          ],
+        },
+        amount: 12000,
+        product: "prod-pm",
+      },
+      {
+        name: "D日程 午後券 子ども6人（詳細表の最大4人割引、5・6人目は通常料金）",
+        input: {
+          visitDate: "2027-01-10",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 6,
+            },
+          ],
+        },
+        amount: 12000,
+        product: "prod-pm",
+      },
+    ],
+    rentalQueries: [
+      {
+        name: "大人 1日 スキーセット",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+        },
+        amount: 5000,
+      },
+      {
+        name: "大人 1日 スキー板単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis"],
+              },
+            },
+          ],
+        },
+        amount: 3500,
+      },
+      {
+        name: "大人 1日 スキーブーツ単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["ski_boots"],
+              },
+            },
+          ],
+        },
+        amount: 2000,
+      },
+      {
+        name: "大人 1日 スノーボードセット",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard", "snowboard_boots"],
+              },
+            },
+          ],
+        },
+        amount: 5000,
+      },
+      {
+        name: "大人 1日 スノーボード板単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard"],
+              },
+            },
+          ],
+        },
+        amount: 3500,
+      },
+      {
+        name: "大人 1日 スノーボードブーツ単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard_boots"],
+              },
+            },
+          ],
+        },
+        amount: 2000,
+      },
+      {
+        name: "大人 1日 スキー用具+ウェアフルセット",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles", "wear"],
+              },
+            },
+          ],
+        },
+        amount: 8500,
+      },
+      {
+        name: "大人 1日 ボード用具+ウェアフルセット",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard", "snowboard_boots", "wear"],
+              },
+            },
+          ],
+        },
+        amount: 8500,
+      },
+      {
+        name: "大人 1日 ウェア上下",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["wear"],
+              },
+            },
+          ],
+        },
+        amount: 4500,
+      },
+      {
+        name: "大人 1日 ヘルメット単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["helmet"],
+              },
+            },
+          ],
+        },
+        amount: 500,
+      },
+      {
+        name: "大人 午後 スキーセット",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+        },
+        amount: 4000,
+      },
+      {
+        name: "大人 午後 スキー板単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+        },
+        amount: 2500,
+      },
+      {
+        name: "大人 午後 スキーブーツ単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["ski_boots"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+        },
+        amount: 2000,
+      },
+      {
+        name: "大人 午後 スノーボードセット",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard", "snowboard_boots"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+        },
+        amount: 4000,
+      },
+      {
+        name: "大人 午後 スノーボード板単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+        },
+        amount: 2500,
+      },
+      {
+        name: "大人 午後 スノーボードブーツ単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard_boots"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+        },
+        amount: 2000,
+      },
+      {
+        name: "大人 午後 ウェア上下",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["wear"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+        },
+        amount: 4500,
+      },
+      {
+        name: "大人 午後 ヘルメット単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["helmet"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+        },
+        amount: 500,
+      },
+      {
+        name: "小学生以下 1日 スキーセット",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+        },
+        amount: 3500,
+      },
+      {
+        name: "小学生以下 1日 スキー板単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis"],
+              },
+            },
+          ],
+        },
+        amount: 2500,
+      },
+      {
+        name: "小学生以下 1日 スキーブーツ単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["ski_boots"],
+              },
+            },
+          ],
+        },
+        amount: 1500,
+      },
+      {
+        name: "小学生以下 1日 スノーボードセット",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard", "snowboard_boots"],
+              },
+            },
+          ],
+        },
+        amount: 3500,
+      },
+      {
+        name: "小学生以下 1日 スノーボード板単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard"],
+              },
+            },
+          ],
+        },
+        amount: 2500,
+      },
+      {
+        name: "小学生以下 1日 スノーボードブーツ単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard_boots"],
+              },
+            },
+          ],
+        },
+        amount: 1500,
+      },
+      {
+        name: "小学生以下 1日 スキー用具+ウェアフルセット",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles", "wear"],
+              },
+            },
+          ],
+        },
+        amount: 6000,
+      },
+      {
+        name: "小学生以下 1日 ボード用具+ウェアフルセット",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard", "snowboard_boots", "wear"],
+              },
+            },
+          ],
+        },
+        amount: 6000,
+      },
+      {
+        name: "小学生以下 1日 ウェア上下",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["wear"],
+              },
+            },
+          ],
+        },
+        amount: 3000,
+      },
+      {
+        name: "小学生以下 1日 ヘルメット単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["helmet"],
+              },
+            },
+          ],
+        },
+        amount: 500,
+      },
+      {
+        name: "小学生以下 午後 スキーセット",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+        },
+        amount: 2500,
+      },
+      {
+        name: "小学生以下 午後 スキー板単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+        },
+        amount: 1500,
+      },
+      {
+        name: "小学生以下 午後 スキーブーツ単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["ski_boots"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+        },
+        amount: 1500,
+      },
+      {
+        name: "小学生以下 午後 スノーボードセット",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard", "snowboard_boots"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+        },
+        amount: 2500,
+      },
+      {
+        name: "小学生以下 午後 スノーボード板単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+        },
+        amount: 1500,
+      },
+      {
+        name: "小学生以下 午後 スノーボードブーツ単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard_boots"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+        },
+        amount: 1500,
+      },
+      {
+        name: "小学生以下 午後 ウェア上下",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["wear"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+        },
+        amount: 3000,
+      },
+      {
+        name: "小学生以下 午後 ヘルメット単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["helmet"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+        },
+        amount: 500,
+      },
+      {
+        name: "中学生 1日 スキーセット",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "junior_high",
+              age: 14,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+        },
+        amount: 5000,
+      },
+      {
+        name: "中学生 1日 スキー板単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "junior_high",
+              age: 14,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis"],
+              },
+            },
+          ],
+        },
+        amount: 3500,
+      },
+      {
+        name: "中学生 1日 スキーブーツ単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "junior_high",
+              age: 14,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["ski_boots"],
+              },
+            },
+          ],
+        },
+        amount: 2000,
+      },
+      {
+        name: "中学生 1日 スノーボードセット",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "junior_high",
+              age: 14,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard", "snowboard_boots"],
+              },
+            },
+          ],
+        },
+        amount: 5000,
+      },
+      {
+        name: "中学生 1日 スノーボード板単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "junior_high",
+              age: 14,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard"],
+              },
+            },
+          ],
+        },
+        amount: 3500,
+      },
+      {
+        name: "中学生 1日 スノーボードブーツ単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "junior_high",
+              age: 14,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard_boots"],
+              },
+            },
+          ],
+        },
+        amount: 2000,
+      },
+      {
+        name: "中学生 1日 スキー用具+ウェアフルセット",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "junior_high",
+              age: 14,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles", "wear"],
+              },
+            },
+          ],
+        },
+        amount: 8500,
+      },
+      {
+        name: "中学生 1日 ボード用具+ウェアフルセット",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "junior_high",
+              age: 14,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard", "snowboard_boots", "wear"],
+              },
+            },
+          ],
+        },
+        amount: 8500,
+      },
+      {
+        name: "中学生 1日 ウェア上下",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "junior_high",
+              age: 14,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["wear"],
+              },
+            },
+          ],
+        },
+        amount: 4500,
+      },
+      {
+        name: "中学生 1日 ヘルメット単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "junior_high",
+              age: 14,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["helmet"],
+              },
+            },
+          ],
+        },
+        amount: 500,
+      },
+      {
+        name: "中学生 午後 スキーセット",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "junior_high",
+              age: 14,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+        },
+        amount: 4000,
+      },
+      {
+        name: "中学生 午後 スキー板単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "junior_high",
+              age: 14,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+        },
+        amount: 2500,
+      },
+      {
+        name: "中学生 午後 スキーブーツ単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "junior_high",
+              age: 14,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["ski_boots"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+        },
+        amount: 2000,
+      },
+      {
+        name: "中学生 午後 スノーボードセット",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "junior_high",
+              age: 14,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard", "snowboard_boots"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+        },
+        amount: 4000,
+      },
+      {
+        name: "中学生 午後 スノーボード板単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "junior_high",
+              age: 14,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+        },
+        amount: 2500,
+      },
+      {
+        name: "中学生 午後 スノーボードブーツ単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "junior_high",
+              age: 14,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard_boots"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+        },
+        amount: 2000,
+      },
+      {
+        name: "中学生 午後 ウェア上下",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "junior_high",
+              age: 14,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["wear"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+        },
+        amount: 4500,
+      },
+      {
+        name: "中学生 午後 ヘルメット単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "junior_high",
+              age: 14,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["helmet"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+        },
+        amount: 500,
+      },
+      {
+        name: "シニア60歳以上 1日 スキーセット",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 60,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+        },
+        amount: 5000,
+      },
+      {
+        name: "シニア60歳以上 1日 スキー板単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 60,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis"],
+              },
+            },
+          ],
+        },
+        amount: 3500,
+      },
+      {
+        name: "シニア60歳以上 1日 スキーブーツ単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 60,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["ski_boots"],
+              },
+            },
+          ],
+        },
+        amount: 2000,
+      },
+      {
+        name: "シニア60歳以上 1日 スノーボードセット",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 60,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard", "snowboard_boots"],
+              },
+            },
+          ],
+        },
+        amount: 5000,
+      },
+      {
+        name: "シニア60歳以上 1日 スノーボード板単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 60,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard"],
+              },
+            },
+          ],
+        },
+        amount: 3500,
+      },
+      {
+        name: "シニア60歳以上 1日 スノーボードブーツ単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 60,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard_boots"],
+              },
+            },
+          ],
+        },
+        amount: 2000,
+      },
+      {
+        name: "シニア60歳以上 1日 スキー用具+ウェアフルセット",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 60,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles", "wear"],
+              },
+            },
+          ],
+        },
+        amount: 8500,
+      },
+      {
+        name: "シニア60歳以上 1日 ボード用具+ウェアフルセット",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 60,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard", "snowboard_boots", "wear"],
+              },
+            },
+          ],
+        },
+        amount: 8500,
+      },
+      {
+        name: "シニア60歳以上 1日 ウェア上下",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 60,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["wear"],
+              },
+            },
+          ],
+        },
+        amount: 4500,
+      },
+      {
+        name: "シニア60歳以上 1日 ヘルメット単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 60,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["helmet"],
+              },
+            },
+          ],
+        },
+        amount: 500,
+      },
+      {
+        name: "シニア60歳以上 午後 スキーセット",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 60,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+        },
+        amount: 4000,
+      },
+      {
+        name: "シニア60歳以上 午後 スキー板単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 60,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+        },
+        amount: 2500,
+      },
+      {
+        name: "シニア60歳以上 午後 スキーブーツ単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 60,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["ski_boots"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+        },
+        amount: 2000,
+      },
+      {
+        name: "シニア60歳以上 午後 スノーボードセット",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 60,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard", "snowboard_boots"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+        },
+        amount: 4000,
+      },
+      {
+        name: "シニア60歳以上 午後 スノーボード板単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 60,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+        },
+        amount: 2500,
+      },
+      {
+        name: "シニア60歳以上 午後 スノーボードブーツ単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 60,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard_boots"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+        },
+        amount: 2000,
+      },
+      {
+        name: "シニア60歳以上 午後 ウェア上下",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 60,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["wear"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+        },
+        amount: 4500,
+      },
+      {
+        name: "シニア60歳以上 午後 ヘルメット単品",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 60,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["helmet"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+        },
+        amount: 500,
+      },
+    ],
+    dayWithNight: 6500,
+  },
+  {
+    resort: "gunma-minakami-houdaigi",
+    season: "2026-2027",
+    date: "2026-12-28",
+    urls: [
+      "https://hodaigi.jp/lift-price/",
+      "https://hodaigi.jp/rental/",
+      "https://ticket.nippon-ski.com/ja/hodaigi.html",
+      "https://cloud.wp.winterplus.jp/powder5",
+      "https://www.nippon-ski.jp/powder5/",
+      "https://hodaigi.jp/wp-content/uploads/2026/10/FIX26-27%E3%83%91%E3%83%B3%E3%83%95%E3%83%AC%E3%83%83%E3%83%88%E3%83%9E%E3%83%83%E3%83%97OL.pdf",
+    ],
+    categories: {
+      preschool: 0,
+      elementary: 4400,
+      junior_high: 5400,
+      high_school: 5400,
+      university: 7100,
+      adult: 7100,
+      disabled: 6400,
+    },
+    ages: [
+      ["preschool", 5, 0],
+      ["elementary", 12, 4400],
+      ["junior_high", 12, 5400],
+      ["high_school", 18, 5400],
+      ["university", 18, 7100],
+      ["adult", 20, 7100],
+      ["adult", 54, 7100],
+      ["adult", 55, 6500],
+      ["adult", 60, 6500],
+    ],
+    disabilityAmounts: {
+      preschool: 0,
+      elementary: 4100,
+      junior_high: 4900,
+      high_school: 4900,
+      university: 6400,
+      adult: 6400,
+    },
+    dates: [
+      ["2026-12-12", 4500],
+      ["2026-12-14", 4500],
+      ["2026-12-18", 4500],
+      ["2026-12-19", 7400],
+      ["2026-12-20", 7400],
+      ["2026-12-21", 7100],
+      ["2026-12-26", 7400],
+      ["2026-12-28", 7100],
+      ["2026-12-29", 7400],
+      ["2026-12-31", 7400],
+      ["2027-01-01", 7400],
+      ["2027-01-03", 7400],
+      ["2027-01-04", 7100],
+      ["2027-01-11", 7400],
+      ["2027-03-26", 7100],
+      ["2027-03-27", 7400],
+      ["2027-03-28", 7400],
+    ],
+    products: [
+      ["prod-day", 7100],
+      ["prod-5h", 6900],
+      ["prod-10h", 12200],
+      ["prod-20h", 22500],
+      ["prod-ride", 1100],
+      ["prod-shared-10h", 16500],
+      ["prod-shared-20h", 30000],
+    ],
+    productQueries: [],
+    multiDays: [],
+    audienceDates: [
+      ["adult", 55, "2026-12-29", 6800],
+      ["elementary", null, "2026-12-29", 4700],
+      ["junior_high", null, "2026-12-29", 5700],
+      ["high_school", null, "2026-12-31", 5700],
+      ["elementary", null, "2026-12-19", 2000],
+      ["elementary", null, "2027-01-16", 2000],
+      ["elementary", null, "2027-02-20", 2000],
+      ["elementary", null, "2027-03-20", 2000],
+      ["elementary", null, "2026-12-26", 4700],
+      ["elementary", null, "2027-01-09", 4700],
+      ["elementary", null, "2027-01-23", 4700],
+      ["elementary", null, "2027-02-13", 4700],
+      ["junior_high", null, "2026-12-19", 5700],
+      ["adult", 30, "2027-01-16", 7400],
+      ["adult", 55, "2027-01-11", 6800],
+      ["adult", 55, "2027-01-12", 6500],
+      ["elementary", null, "2026-12-12", 3000],
+      ["elementary", null, "2026-12-18", 3000],
+      ["junior_high", null, "2026-12-12", 4500],
+      ["adult", 55, "2026-12-12", 4500],
+      ["preschool", 5, "2026-12-12", 0],
+      ["disabled", null, "2026-12-19", 6400],
+      ["disabled", null, "2026-12-12", 4500],
+    ],
+    hours: [
+      [1, 6900],
+      [2, 6900],
+      [3, 6900],
+      [4, 6900],
+      [5, 6900],
+      [6, 7100],
+      [7, 7100],
+      [8, 7100],
+      [9, null],
+      [10, null],
+      [11, null],
+      [12, null],
+    ],
+    noPriceCategories: ["other"],
+    nightUnknown: true,
+    closed: [],
+    ambiguousAges: [],
+    openExceptions: [],
+    hourAudiences: [
+      ["preschool", 5, 3, 0, "prod-day"],
+      ["elementary", null, 3, 4400, "prod-day"],
+      ["junior_high", null, 5, 5400, "prod-day"],
+      ["adult", 54, 5, 6900, "prod-5h"],
+      ["adult", 55, 5, 6500, "prod-day"],
+      ["adult", 55, 8, 6500, "prod-day"],
+    ],
+    partyQueries: [
+      {
+        name: "平日 大人 12/28",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 7100,
+      },
+      {
+        name: "特定日 大人 12/29",
+        input: {
+          visitDate: "2026-12-29",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-29",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 7400,
+      },
+      {
+        name: "特定日 大人 1/1",
+        input: {
+          visitDate: "2027-01-01",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2027-01-01",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 7400,
+      },
+      {
+        name: "特定日 大人 1/3（最終日）",
+        input: {
+          visitDate: "2027-01-03",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2027-01-03",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 7400,
+      },
+      {
+        name: "特定日の翌日 平日 1/4",
+        input: {
+          visitDate: "2027-01-04",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2027-01-04",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 7100,
+      },
+      {
+        name: "祝日 成人の日 1/11",
+        input: {
+          visitDate: "2027-01-11",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2027-01-11",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 7400,
+      },
+      {
+        name: "シーズン最終日 大人",
+        input: {
+          visitDate: "2027-03-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2027-03-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 7400,
+      },
+      {
+        name: "営業期間翌日 大人",
+        input: {
+          visitDate: "2027-03-29",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2027-03-29",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: null,
+      },
+      {
+        name: "開業日前日 大人",
+        input: {
+          visitDate: "2026-12-11",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-11",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: null,
+      },
+      {
+        name: "開幕週初日 大人",
+        input: {
+          visitDate: "2026-12-12",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-12",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 4500,
+      },
+      {
+        name: "開幕週平日 大人",
+        input: {
+          visitDate: "2026-12-14",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-14",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 4500,
+      },
+      {
+        name: "開幕週最終日 大人",
+        input: {
+          visitDate: "2026-12-18",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-18",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 4500,
+      },
+      {
+        name: "開幕週翌日 土曜 大人",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 7400,
+      },
+      {
+        name: "開幕週 小学生（こども）",
+        input: {
+          visitDate: "2026-12-12",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-12",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 3000,
+      },
+      {
+        name: "開幕週平日 小学生（こども）",
+        input: {
+          visitDate: "2026-12-14",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-14",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 3000,
+      },
+      {
+        name: "開幕週 中高生は大人料金",
+        input: {
+          visitDate: "2026-12-12",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-12",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "junior_high",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 4500,
+      },
+      {
+        name: "開幕週平日 高校生は大人料金",
+        input: {
+          visitDate: "2026-12-15",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-15",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "high_school",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 4500,
+      },
+      {
+        name: "開幕週 シニア55歳は大人料金",
+        input: {
+          visitDate: "2026-12-12",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-12",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 55,
+              count: 1,
+            },
+          ],
+        },
+        amount: 4500,
+      },
+      {
+        name: "開幕週 未就学児は1日券無料",
+        input: {
+          visitDate: "2026-12-12",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-12",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "preschool",
+              age: 5,
+              count: 1,
+            },
+          ],
+        },
+        amount: 0,
+      },
+      {
+        name: "開幕週 障がい者大人は安い開幕週料金",
+        input: {
+          visitDate: "2026-12-12",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-12",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "disabled",
+              age: 30,
+              count: 1,
+              baseCategory: "adult",
+            },
+          ],
+        },
+        amount: 4500,
+      },
+      {
+        name: "開幕週 障がい者小学生は安いこども料金",
+        input: {
+          visitDate: "2026-12-12",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-12",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "disabled",
+              age: 10,
+              count: 1,
+              baseCategory: "elementary",
+            },
+          ],
+        },
+        amount: 3000,
+      },
+      {
+        name: "スキーこどもの日 小学生",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 2000,
+      },
+      {
+        name: "スキーこどもの日 1/16 小学生",
+        input: {
+          visitDate: "2027-01-16",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2027-01-16",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 2000,
+      },
+      {
+        name: "スキーこどもの日 3/20 小学生",
+        input: {
+          visitDate: "2027-03-20",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2027-03-20",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 2000,
+      },
+      {
+        name: "こどもの日でない土曜 1/9 小学生",
+        input: {
+          visitDate: "2027-01-09",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2027-01-09",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 4700,
+      },
+      {
+        name: "スキーこどもの日 中学生は対象外",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "junior_high",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 5700,
+      },
+      {
+        name: "スキーこどもの日 大人は対象外",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 7400,
+      },
+      {
+        name: "スキーこどもの日 障がい者小学生",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "disabled",
+              age: 10,
+              count: 1,
+              baseCategory: "elementary",
+            },
+          ],
+        },
+        amount: 2000,
+      },
+      {
+        name: "障がい者 年齢未入力の成人基準",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "disabled",
+              age: null,
+              count: 1,
+              baseCategory: "adult",
+            },
+          ],
+        },
+        amount: 6400,
+      },
+      {
+        name: "障がい者 シニア相当",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "disabled",
+              age: 55,
+              count: 1,
+              baseCategory: "adult",
+            },
+          ],
+        },
+        amount: 5900,
+      },
+      {
+        name: "障がい者 中学生",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "disabled",
+              age: 15,
+              count: 1,
+              baseCategory: "junior_high",
+            },
+          ],
+        },
+        amount: 4900,
+      },
+      {
+        name: "障がい者 高校生",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "disabled",
+              age: 17,
+              count: 1,
+              baseCategory: "high_school",
+            },
+          ],
+        },
+        amount: 4900,
+      },
+      {
+        name: "障がい者 小学生",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "disabled",
+              age: 10,
+              count: 1,
+              baseCategory: "elementary",
+            },
+          ],
+        },
+        amount: 4100,
+      },
+      {
+        name: "障がい者 大学生は大人料金",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "disabled",
+              age: 21,
+              count: 1,
+              baseCategory: "university",
+            },
+          ],
+        },
+        amount: 6400,
+      },
+      {
+        name: "障がい者 未就学児は無料",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "disabled",
+              age: 5,
+              count: 1,
+              baseCategory: "preschool",
+            },
+          ],
+        },
+        amount: 0,
+      },
+      {
+        name: "障がい者 土日でも専用料金",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "disabled",
+              age: 30,
+              count: 1,
+              baseCategory: "adult",
+            },
+          ],
+        },
+        amount: 6400,
+      },
+      {
+        name: "55歳未満 通常大人",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 54,
+              count: 1,
+            },
+          ],
+        },
+        amount: 7100,
+      },
+      {
+        name: "55歳以上 シニア平日",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 55,
+              count: 1,
+            },
+          ],
+        },
+        amount: 6500,
+      },
+      {
+        name: "55歳以上 シニア休日",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 55,
+              count: 1,
+            },
+          ],
+        },
+        amount: 6800,
+      },
+      {
+        name: "中学生 平日",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "junior_high",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 5400,
+      },
+      {
+        name: "高校生 休日",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "high_school",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 5700,
+      },
+      {
+        name: "小学生 特定日",
+        input: {
+          visitDate: "2027-01-01",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2027-01-01",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 4700,
+      },
+      {
+        name: "未就学児 1日リフト券無料",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "preschool",
+              age: 5,
+              count: 1,
+            },
+          ],
+        },
+        amount: 0,
+      },
+      {
+        name: "未就学児 5時間券は一律料金",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "hours",
+                hours: 5,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "preschool",
+              age: 5,
+              count: 1,
+            },
+          ],
+        },
+        amount: 6900,
+        product: "prod-5h",
+      },
+      {
+        name: "成人 5時間券",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "hours",
+                hours: 5,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 6900,
+        product: "prod-5h",
+      },
+      {
+        name: "中学生 10時間券は一律料金",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "hours",
+                hours: 5,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "junior_high",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 12200,
+        product: "prod-10h",
+      },
+      {
+        name: "シニア 20時間券は一律料金",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "hours",
+                hours: 5,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 55,
+              count: 1,
+            },
+          ],
+        },
+        amount: 22500,
+        product: "prod-20h",
+      },
+      {
+        name: "未就学児 10時間券は一律料金",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "hours",
+                hours: 5,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "preschool",
+              age: 5,
+              count: 1,
+            },
+          ],
+        },
+        amount: 12200,
+        product: "prod-10h",
+      },
+      {
+        name: "未就学児 20時間券は一律料金",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "hours",
+                hours: 5,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "preschool",
+              age: 5,
+              count: 1,
+            },
+          ],
+        },
+        amount: 22500,
+        product: "prod-20h",
+      },
+      {
+        name: "未就学児 1回券は一律料金",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "preschool",
+              age: 5,
+              count: 1,
+            },
+          ],
+        },
+        amount: 1100,
+        product: "prod-ride",
+      },
+      {
+        name: "5時間探索 未就学児は無料の1日券",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "hours",
+                hours: 5,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "preschool",
+              age: 5,
+              count: 1,
+            },
+          ],
+        },
+        amount: 0,
+      },
+      {
+        name: "Web超早割販売前 土曜",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-08-31",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 7400,
+      },
+      {
+        name: "Web超早割販売前 平日",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-08-31",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 7100,
+      },
+      {
+        name: "Web超早割販売開始日",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-09-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 5300,
+      },
+      {
+        name: "Web超早割販売中",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-09-15",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 5300,
+      },
+      {
+        name: "Web超早割最終日",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-09-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 5300,
+      },
+      {
+        name: "Web10月早割開始日",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 5400,
+      },
+      {
+        name: "Web10月早割販売中",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-15",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 5400,
+      },
+      {
+        name: "Web10月早割最終日",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-31",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 5400,
+      },
+      {
+        name: "Web11月早割開始日",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-11-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 5500,
+      },
+      {
+        name: "Web11月早割販売中",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-11-15",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 5500,
+      },
+      {
+        name: "Web11月早割最終日",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-11-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 5500,
+      },
+      {
+        name: "Web早割終了後 土曜",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 7400,
+      },
+      {
+        name: "Web早割は特定日にも使える",
+        input: {
+          visitDate: "2027-01-01",
+          today: "2026-10-15",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2027-01-01",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 5400,
+      },
+      {
+        name: "Web早割より開幕週料金が安い",
+        input: {
+          visitDate: "2026-12-12",
+          today: "2026-10-15",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-12",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 4500,
+      },
+      {
+        name: "Web早割 シニアも大人券を購入（10月早割）",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-10-15",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 55,
+              count: 1,
+            },
+          ],
+        },
+        amount: 5400,
+      },
+      {
+        name: "Web早割 中高生も大人券を購入（9月超早割）",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-09-15",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "junior_high",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 5300,
+      },
+      {
+        name: "Web早割中でも小学生は窓口料金が安い",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-10-15",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 4400,
+      },
+      {
+        name: "Web早割中でも未就学児は無料",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-10-15",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "preschool",
+              age: 5,
+              count: 1,
+            },
+          ],
+        },
+        amount: 0,
+      },
+      {
+        name: "POWDER5共通10h 早割開始日 12/28",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-10-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 13500,
+        product: "prod-shared-10h",
+      },
+      {
+        name: "POWDER5共通10h 早割販売中 12/28",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-10-15",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 13500,
+        product: "prod-shared-10h",
+      },
+      {
+        name: "POWDER5共通10h 早割最終日 12/28",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-11-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 13500,
+        product: "prod-shared-10h",
+      },
+      {
+        name: "POWDER5共通10h 通常 12/28",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 16500,
+        product: "prod-shared-10h",
+      },
+      {
+        name: "POWDER5共通20h 早割開始日 12/28",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-10-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 25000,
+        product: "prod-shared-20h",
+      },
+      {
+        name: "POWDER5共通20h 早割販売中 12/28",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-10-15",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 25000,
+        product: "prod-shared-20h",
+      },
+      {
+        name: "POWDER5共通20h 早割最終日 12/28",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-11-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 25000,
+        product: "prod-shared-20h",
+      },
+      {
+        name: "POWDER5共通20h 通常 12/28",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 30000,
+        product: "prod-shared-20h",
+      },
+      {
+        name: "POWDER5共通10h 小学生も同額 12/28",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 16500,
+        product: "prod-shared-10h",
+      },
+      {
+        name: "POWDER5共通10h 未就学児も同額 12/28",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "preschool",
+              age: 5,
+              count: 1,
+            },
+          ],
+        },
+        amount: 16500,
+        product: "prod-shared-10h",
+      },
+      {
+        name: "POWDER5共通10h 中学生も同額 12/28",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "junior_high",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 16500,
+        product: "prod-shared-10h",
+      },
+      {
+        name: "POWDER5共通10h シニアも同額 12/28",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 55,
+              count: 1,
+            },
+          ],
+        },
+        amount: 16500,
+        product: "prod-shared-10h",
+      },
+      {
+        name: "POWDER5共通10h 障がい者も同額 12/28",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "disabled",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 16500,
+        product: "prod-shared-10h",
+      },
+      {
+        name: "POWDER5共通20h 小学生も同額 12/28",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 30000,
+        product: "prod-shared-20h",
+      },
+      {
+        name: "POWDER5共通20h 未就学児も同額 12/28",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "preschool",
+              age: 5,
+              count: 1,
+            },
+          ],
+        },
+        amount: 30000,
+        product: "prod-shared-20h",
+      },
+      {
+        name: "POWDER5共通20h 高校生も同額 12/28",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "high_school",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 30000,
+        product: "prod-shared-20h",
+      },
+      {
+        name: "POWDER5共通20h シニアも同額 12/28",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 55,
+              count: 1,
+            },
+          ],
+        },
+        amount: 30000,
+        product: "prod-shared-20h",
+      },
+      {
+        name: "POWDER5共通10h 早割 12/19（こどもの日）",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-15",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 13500,
+        product: "prod-shared-10h",
+      },
+      {
+        name: "POWDER5共通20h 通常 12/19（こどもの日）",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 30000,
+        product: "prod-shared-20h",
+      },
+      {
+        name: "POWDER5共通10h 通常 12/12（開幕週）",
+        input: {
+          visitDate: "2026-12-12",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-12",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 16500,
+        product: "prod-shared-10h",
+      },
+      {
+        name: "10時間券 小学生 12/28",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 12200,
+        product: "prod-10h",
+      },
+      {
+        name: "10時間券 高校生 12/28",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "high_school",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 12200,
+        product: "prod-10h",
+      },
+      {
+        name: "10時間券 大学生 12/28",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "university",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 12200,
+        product: "prod-10h",
+      },
+      {
+        name: "10時間券 シニア 12/28",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 55,
+              count: 1,
+            },
+          ],
+        },
+        amount: 12200,
+        product: "prod-10h",
+      },
+      {
+        name: "10時間券 障がい者 12/28",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "disabled",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 12200,
+        product: "prod-10h",
+      },
+      {
+        name: "20時間券 小学生 12/28",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 22500,
+        product: "prod-20h",
+      },
+      {
+        name: "20時間券 高校生 12/28",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "high_school",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 22500,
+        product: "prod-20h",
+      },
+      {
+        name: "20時間券 大学生 12/28",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "university",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 22500,
+        product: "prod-20h",
+      },
+      {
+        name: "20時間券 シニア 12/28",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 55,
+              count: 1,
+            },
+          ],
+        },
+        amount: 22500,
+        product: "prod-20h",
+      },
+      {
+        name: "20時間券 障がい者 12/28",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "disabled",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 22500,
+        product: "prod-20h",
+      },
+      {
+        name: "10時間券 12/19（こどもの日）",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 12200,
+        product: "prod-10h",
+      },
+      {
+        name: "20時間券 12/12（開幕週）",
+        input: {
+          visitDate: "2026-12-12",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-12",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 22500,
+        product: "prod-20h",
+      },
+      {
+        name: "通常券を平日と特定日の2日に分けて利用",
+        input: {
+          visitDate: "2026-12-28",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-28",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+            {
+              id: "d2",
+              date: "2026-12-29",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 14500,
+      },
+      {
+        name: "10時間券で2日（5時間ずつ・平日）",
+        input: {
+          visitDate: "2026-12-21",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-21",
+              duration: {
+                kind: "hours",
+                hours: 5,
+              },
+            },
+            {
+              id: "d2",
+              date: "2026-12-22",
+              duration: {
+                kind: "hours",
+                hours: 5,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 12200,
+      },
+      {
+        name: "20時間券で4日（5時間ずつ・平日）",
+        input: {
+          visitDate: "2026-12-21",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-21",
+              duration: {
+                kind: "hours",
+                hours: 5,
+              },
+            },
+            {
+              id: "d2",
+              date: "2026-12-22",
+              duration: {
+                kind: "hours",
+                hours: 5,
+              },
+            },
+            {
+              id: "d3",
+              date: "2026-12-23",
+              duration: {
+                kind: "hours",
+                hours: 5,
+              },
+            },
+            {
+              id: "d4",
+              date: "2026-12-24",
+              duration: {
+                kind: "hours",
+                hours: 5,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 22500,
+      },
+      {
+        name: "10時間券を別日に分割（特別日を避けた土曜2日・4時間+6時間）",
+        input: {
+          visitDate: "2026-12-26",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-26",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+            {
+              id: "d2",
+              date: "2027-01-09",
+              duration: {
+                kind: "hours",
+                hours: 6,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 12200,
+      },
+      {
+        name: "10時間券を別日に分割（初日がこどもの日・4時間+6時間）",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+            {
+              id: "d2",
+              date: "2027-01-16",
+              duration: {
+                kind: "hours",
+                hours: 6,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 12200,
+      },
+      {
+        name: "1日いっぱい3日は1日券の方が安い（平日）",
+        input: {
+          visitDate: "2026-12-21",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-21",
+              duration: {
+                kind: "hours",
+                hours: 8,
+              },
+            },
+            {
+              id: "d2",
+              date: "2026-12-22",
+              duration: {
+                kind: "hours",
+                hours: 8,
+              },
+            },
+            {
+              id: "d3",
+              date: "2026-12-23",
+              duration: {
+                kind: "hours",
+                hours: 8,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+        },
+        amount: 21300,
+      },
+    ],
+    rentalQueries: [
+      {
+        name: "大人スキーセット1日",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+        },
+        amount: 6000,
+      },
+      {
+        name: "小学生以下スキーセット1日",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "elementary",
+              age: 10,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+        },
+        amount: 4700,
+      },
+      {
+        name: "55歳シニア スキーセット1日",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 55,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+        },
+        amount: 5400,
+      },
+      {
+        name: "大人スキーセット午後",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+        },
+        amount: 5400,
+      },
+      {
+        name: "小学生以下スキーセット午後",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "elementary",
+              age: 10,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+        },
+        amount: 4000,
+      },
+      {
+        name: "中高生相当スキーセット1日（レンタル年齢区分は成人側）",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "junior_high",
+              age: 15,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+        },
+        amount: 6000,
+      },
+      {
+        name: "大人スキー板のみ午後",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis"],
+              },
+            },
+          ],
+        },
+        amount: 4200,
+      },
+      {
+        name: "こどもスキーブーツのみ1日",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "elementary",
+              age: 10,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["ski_boots"],
+              },
+            },
+          ],
+        },
+        amount: 2700,
+      },
+      {
+        name: "シニアポールのみ午後",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 55,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["poles"],
+              },
+            },
+          ],
+        },
+        amount: 1500,
+      },
+      {
+        name: "大人ボードセット1日",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard", "snowboard_boots"],
+              },
+            },
+          ],
+        },
+        amount: 6000,
+      },
+      {
+        name: "小学生以下ボードセット午後",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "elementary",
+              age: 10,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard", "snowboard_boots"],
+              },
+            },
+          ],
+        },
+        amount: 4000,
+      },
+      {
+        name: "シニアボード単品1日",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 55,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard"],
+              },
+            },
+          ],
+        },
+        amount: 4200,
+      },
+      {
+        name: "大人ボードブーツ単品午後",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard_boots"],
+              },
+            },
+          ],
+        },
+        amount: 3300,
+      },
+      {
+        name: "大人ウェア1日",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["wear"],
+              },
+            },
+          ],
+        },
+        amount: 5500,
+      },
+      {
+        name: "小学生以下ウェア1日",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "elementary",
+              age: 10,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["wear"],
+              },
+            },
+          ],
+        },
+        amount: 4000,
+      },
+      {
+        name: "中高生相当ウェア1日（レンタル区分大人）",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "junior_high",
+              age: 15,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["wear"],
+              },
+            },
+          ],
+        },
+        amount: 5500,
+      },
+      {
+        name: "小学生ヘルメット1日",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "elementary",
+              age: 10,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["helmet"],
+              },
+            },
+          ],
+        },
+        amount: 1500,
+      },
+      {
+        name: "シニア スキーセット午後",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "half_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 55,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+        },
+        amount: 4700,
+      },
+      {
+        name: "子ども スキー板午後",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "half_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "elementary",
+              age: 10,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis"],
+              },
+            },
+          ],
+        },
+        amount: 3500,
+      },
+      {
+        name: "シニア スキー板1日",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 55,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis"],
+              },
+            },
+          ],
+        },
+        amount: 4200,
+      },
+      {
+        name: "成人 スキー板午後",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "half_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis"],
+              },
+            },
+          ],
+        },
+        amount: 4200,
+      },
+      {
+        name: "成人 スキーブーツ1日",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["ski_boots"],
+              },
+            },
+          ],
+        },
+        amount: 3300,
+      },
+      {
+        name: "シニア スキーブーツ1日",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 55,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["ski_boots"],
+              },
+            },
+          ],
+        },
+        amount: 3300,
+      },
+      {
+        name: "シニア スキーブーツ午後",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "half_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 55,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["ski_boots"],
+              },
+            },
+          ],
+        },
+        amount: 3300,
+      },
+      {
+        name: "成人 ポール1日",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["poles"],
+              },
+            },
+          ],
+        },
+        amount: 1500,
+      },
+      {
+        name: "子ども ポール1日",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "elementary",
+              age: 10,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["poles"],
+              },
+            },
+          ],
+        },
+        amount: 1500,
+      },
+      {
+        name: "子ども ポール午後",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "half_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "elementary",
+              age: 10,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["poles"],
+              },
+            },
+          ],
+        },
+        amount: 1500,
+      },
+      {
+        name: "シニア ボードセット午後",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "half_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 55,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard", "snowboard_boots"],
+              },
+            },
+          ],
+        },
+        amount: 4700,
+      },
+      {
+        name: "成人 ボード単品1日",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard"],
+              },
+            },
+          ],
+        },
+        amount: 4200,
+      },
+      {
+        name: "成人 ボード単品午後",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "half_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard"],
+              },
+            },
+          ],
+        },
+        amount: 4200,
+      },
+      {
+        name: "子ども ボード単品午後",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "half_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "elementary",
+              age: 10,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard"],
+              },
+            },
+          ],
+        },
+        amount: 3500,
+      },
+      {
+        name: "シニア ボード単品午後",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "half_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 55,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard"],
+              },
+            },
+          ],
+        },
+        amount: 4200,
+      },
+      {
+        name: "子ども ボードブーツ1日",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "elementary",
+              age: 10,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard_boots"],
+              },
+            },
+          ],
+        },
+        amount: 2700,
+      },
+      {
+        name: "シニア ボードブーツ1日",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 55,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard_boots"],
+              },
+            },
+          ],
+        },
+        amount: 3300,
+      },
+      {
+        name: "シニア ボードブーツ午後",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "half_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 55,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard_boots"],
+              },
+            },
+          ],
+        },
+        amount: 3300,
+      },
+      {
+        name: "シニア ウェア1日",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 55,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["wear"],
+              },
+            },
+          ],
+        },
+        amount: 5500,
+      },
+      {
+        name: "成人 ヘルメット午後",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "half_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["helmet"],
+              },
+            },
+          ],
+        },
+        amount: 1500,
+      },
+      {
+        name: "シニア ヘルメット1日",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "adult",
+              age: 55,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["helmet"],
+              },
+            },
+          ],
+        },
+        amount: 1500,
+      },
+      {
+        name: "子ども スキー板1日",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "elementary",
+              age: 10,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis"],
+              },
+            },
+          ],
+        },
+        amount: 3500,
+      },
+      {
+        name: "未就学児（こども=小学生以下）スキーセット1日",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "preschool",
+              age: 5,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+        },
+        amount: 4700,
+      },
+      {
+        name: "未就学児（こども=小学生以下）ボードセット午後",
+        input: {
+          visitDate: "2026-12-19",
+          today: "2026-10-30",
+          usePreference: "half_day",
+          days: [
+            {
+              id: "d1",
+              date: "2026-12-19",
+              duration: {
+                kind: "hours",
+                hours: 4,
+              },
+            },
+          ],
+          party: [
+            {
+              id: "p1",
+              category: "preschool",
+              age: 5,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard", "snowboard_boots"],
+              },
+            },
+          ],
+        },
+        amount: 4000,
+      },
+    ],
+  },
+  {
+    resort: "gunma-minakami-houdaigi",
+    season: "2026-2027",
+    date: "2026-12-19",
+    urls: [
+      "https://hodaigi.jp/lift-price/",
+      "https://hodaigi.jp/rental/",
+      "https://ticket.nippon-ski.com/ja/hodaigi.html",
+      "https://cloud.wp.winterplus.jp/powder5",
+      "https://www.nippon-ski.jp/powder5/",
+      "https://hodaigi.jp/wp-content/uploads/2026/10/FIX26-27%E3%83%91%E3%83%B3%E3%83%95%E3%83%AC%E3%83%83%E3%83%88%E3%83%9E%E3%83%83%E3%83%97OL.pdf",
+    ],
+    categories: {
+      preschool: 0,
+      elementary: 2000,
+      junior_high: 5700,
+      high_school: 5700,
+      university: 7400,
+      adult: 7400,
+      disabled: 6400,
+    },
+    ages: [
+      ["preschool", 5, 0],
+      ["elementary", 12, 2000],
+      ["junior_high", 12, 5700],
+      ["high_school", 18, 5700],
+      ["university", 18, 7400],
+      ["adult", 20, 7400],
+      ["adult", 54, 7400],
+      ["adult", 55, 6800],
+      ["adult", 60, 6800],
+    ],
+    disabilityAmounts: {
+      preschool: 0,
+      elementary: 2000,
+      junior_high: 4900,
+      high_school: 4900,
+      university: 6400,
+      adult: 6400,
+    },
+    dates: [],
+    products: [
+      ["prod-day", 7400],
+      ["prod-5h", 6900],
+      ["prod-10h", 12200],
+      ["prod-20h", 22500],
+      ["prod-ride", 1100],
+      ["prod-shared-10h", 16500],
+      ["prod-shared-20h", 30000],
+    ],
+    productQueries: [],
+    multiDays: [],
+    audienceDates: [],
+    hours: [
+      [1, 6900],
+      [2, 6900],
+      [3, 6900],
+      [4, 6900],
+      [5, 6900],
+      [6, 7400],
+      [7, 7400],
+      [8, 7400],
+      [9, null],
+      [10, null],
+      [11, null],
+      [12, null],
+    ],
+    noPriceCategories: ["other"],
+    nightUnknown: true,
+    closed: [],
+    ambiguousAges: [],
+    openExceptions: [],
+    hourAudiences: [
+      ["preschool", 5, 3, 0, "prod-day"],
+      ["elementary", null, 4, 2000, "prod-day"],
+      ["junior_high", null, 4, 5700, "prod-day"],
+      ["adult", 55, 4, 6800, "prod-day"],
+      ["adult", 54, 4, 6900, "prod-5h"],
+    ],
+    partyQueries: [],
+    rentalQueries: [],
+  },
+  {
+    resort: "gunma-minakami-houdaigi",
+    season: "2026-2027",
+    date: "2027-01-01",
+    urls: [
+      "https://hodaigi.jp/lift-price/",
+      "https://hodaigi.jp/rental/",
+      "https://ticket.nippon-ski.com/ja/hodaigi.html",
+      "https://cloud.wp.winterplus.jp/powder5",
+      "https://www.nippon-ski.jp/powder5/",
+      "https://hodaigi.jp/wp-content/uploads/2026/10/FIX26-27%E3%83%91%E3%83%B3%E3%83%95%E3%83%AC%E3%83%83%E3%83%88%E3%83%9E%E3%83%83%E3%83%97OL.pdf",
+    ],
+    categories: {
+      preschool: 0,
+      elementary: 4700,
+      junior_high: 5700,
+      high_school: 5700,
+      university: 7400,
+      adult: 7400,
+      disabled: 6400,
+    },
+    ages: [
+      ["preschool", 5, 0],
+      ["elementary", 12, 4700],
+      ["junior_high", 12, 5700],
+      ["high_school", 18, 5700],
+      ["university", 18, 7400],
+      ["adult", 20, 7400],
+      ["adult", 54, 7400],
+      ["adult", 55, 6800],
+      ["adult", 60, 6800],
+    ],
+    disabilityAmounts: {
+      preschool: 0,
+      elementary: 4100,
+      junior_high: 4900,
+      high_school: 4900,
+      university: 6400,
+      adult: 6400,
+    },
+    dates: [],
+    products: [
+      ["prod-day", 7400],
+      ["prod-5h", 6900],
+      ["prod-10h", 12200],
+      ["prod-20h", 22500],
+      ["prod-ride", 1100],
+      ["prod-shared-10h", 16500],
+      ["prod-shared-20h", 30000],
+    ],
+    productQueries: [],
+    multiDays: [],
+    audienceDates: [],
+    hours: [
+      [1, 6900],
+      [2, 6900],
+      [3, 6900],
+      [4, 6900],
+      [5, 6900],
+      [6, 7400],
+      [7, 7400],
+      [8, 7400],
+      [9, null],
+      [10, null],
+      [11, null],
+      [12, null],
+    ],
+    noPriceCategories: ["other"],
+    nightUnknown: true,
+    closed: [],
+    ambiguousAges: [],
+    openExceptions: [],
+    hourAudiences: [
+      ["preschool", 5, 3, 0, "prod-day"],
+      ["elementary", null, 4, 4700, "prod-day"],
+      ["adult", 55, 4, 6800, "prod-day"],
+      ["adult", 54, 4, 6900, "prod-5h"],
+    ],
+    partyQueries: [],
+    rentalQueries: [],
+  },
+  {
+    resort: "gunma-minakami-houdaigi",
+    season: "2026-2027",
+    date: "2026-12-12",
+    urls: [
+      "https://hodaigi.jp/lift-price/",
+      "https://hodaigi.jp/rental/",
+      "https://ticket.nippon-ski.com/ja/hodaigi.html",
+      "https://cloud.wp.winterplus.jp/powder5",
+      "https://www.nippon-ski.jp/powder5/",
+      "https://hodaigi.jp/wp-content/uploads/2026/10/FIX26-27%E3%83%91%E3%83%B3%E3%83%95%E3%83%AC%E3%83%83%E3%83%88%E3%83%9E%E3%83%83%E3%83%97OL.pdf",
+    ],
+    categories: {
+      preschool: 0,
+      elementary: 3000,
+      junior_high: 4500,
+      high_school: 4500,
+      university: 4500,
+      adult: 4500,
+      disabled: 4500,
+    },
+    ages: [
+      ["preschool", 5, 0],
+      ["elementary", 12, 3000],
+      ["junior_high", 12, 4500],
+      ["high_school", 18, 4500],
+      ["university", 18, 4500],
+      ["adult", 20, 4500],
+      ["adult", 54, 4500],
+      ["adult", 55, 4500],
+      ["adult", 60, 4500],
+    ],
+    disabilityAmounts: {
+      preschool: 0,
+      elementary: 3000,
+      junior_high: 4500,
+      high_school: 4500,
+      university: 4500,
+      adult: 4500,
+    },
+    dates: [],
+    products: [
+      ["prod-day", 4500],
+      ["prod-5h", 6900],
+      ["prod-10h", 12200],
+      ["prod-20h", 22500],
+      ["prod-ride", 1100],
+      ["prod-shared-10h", 16500],
+      ["prod-shared-20h", 30000],
+    ],
+    productQueries: [],
+    multiDays: [],
+    audienceDates: [],
+    hours: [
+      [1, 4500],
+      [2, 4500],
+      [3, 4500],
+      [4, 4500],
+      [5, 4500],
+      [6, 4500],
+      [7, 4500],
+      [8, 4500],
+      [9, null],
+      [10, null],
+      [11, null],
+      [12, null],
+    ],
+    noPriceCategories: ["other"],
+    nightUnknown: true,
+    closed: [],
+    ambiguousAges: [],
+    openExceptions: [],
+    hourAudiences: [
+      ["preschool", 5, 3, 0, "prod-day"],
+      ["elementary", null, 2, 3000, "prod-day"],
+      ["junior_high", null, 5, 4500, "prod-day"],
+      ["adult", 55, 5, 4500, "prod-day"],
+    ],
+    partyQueries: [],
+    rentalQueries: [],
+  },
+  // END 2026-10-30 cases
+  // BEGIN kawaba cases
+  {
+    resort: "kawaba",
+    season: "2026-2027",
+    date: "2027-02-10",
+    urls: [
+      "https://www.kawaba.co.jp/webadmin/wp-content/uploads/2026/09/tc-2.jpg",
+      "https://www.kawaba.co.jp/topics/9686/",
+      "https://www.kawaba.co.jp/lift-prices/",
+      "https://kawaba.nippon-ski.com/ja/earlybird.html",
+      "https://kawaba.nippon-ski.com/ja/26-27earlybirdticket.html",
+      "https://kawaba.nippon-ski.com/ja/26-27earlybirdticket-meal.html",
+    ],
+    categories: {
+      preschool: null,
+      elementary: 5000,
+      junior_high: 5000,
+      high_school: 7600,
+      university: 7600,
+      adult: 7600,
+      disabled: 7600,
+    },
+    ages: [
+      ["preschool", 2, 0],
+      ["preschool", 3, 2500],
+      ["preschool", 4, 2500],
+      ["adult", 49, 7600],
+      ["adult", 50, 7100],
+      ["adult", 60, 7100],
+      ["elementary", 12, 5000],
+      ["junior_high", 12, 5000],
+      ["junior_high", 15, 5000],
+      ["high_school", 16, 7600],
+      ["disabled", 30, 7600],
+    ],
+    disabilityAmounts: {
+      preschool: 2500,
+      elementary: 5000,
+      junior_high: 5000,
+      high_school: 7600,
+      university: 7600,
+      adult: 7600,
+    },
+    dates: [
+      ["2026-12-29", 7600],
+      ["2026-12-30", 8400],
+      ["2026-12-31", 7600],
+      ["2027-01-01", 7900],
+      ["2027-01-02", 8400],
+      ["2027-01-03", 7900],
+      ["2027-01-09", 8400],
+      ["2027-01-10", 8400],
+      ["2027-01-11", 7900],
+      ["2027-01-31", 7900],
+      ["2027-02-06", 8400],
+      ["2027-02-07", 7900],
+      ["2027-02-10", 7600],
+      ["2027-02-11", 7900],
+      ["2027-02-13", 8400],
+      ["2027-02-14", 7900],
+      ["2027-02-20", 8400],
+      ["2027-02-22", 7600],
+      ["2027-02-27", 8400],
+      ["2027-02-28", 7900],
+    ],
+    products: [
+      ["prod-day", 7600],
+      ["prod-tenfive", 7000],
+      ["prod-20h", 25000],
+      ["prod-ride1", 1200],
+    ],
+    productQueries: [
+      {
+        product: "prod-day",
+        date: "2027-02-10",
+        today: "2026-10-30",
+        amount: 5800,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-day",
+        date: "2027-02-10",
+        today: "2026-11-30",
+        amount: 5800,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-day",
+        date: "2027-02-10",
+        today: "2026-12-01",
+        amount: 7600,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-day",
+        date: "2027-02-13",
+        today: "2026-10-30",
+        amount: 5800,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-day",
+        date: "2027-02-13",
+        today: "2026-12-01",
+        amount: 8400,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-day",
+        date: "2027-02-10",
+        today: "2026-10-30",
+        amount: 5000,
+        category: "elementary",
+      },
+      {
+        product: "prod-day",
+        date: "2027-02-10",
+        today: "2026-10-30",
+        amount: 5800,
+        category: "adult",
+        age: 60,
+      },
+      {
+        product: "prod-day",
+        date: "2027-02-10",
+        today: "2026-12-01",
+        amount: 7100,
+        category: "adult",
+        age: 60,
+      },
+      {
+        product: "prod-early-pack",
+        date: "2027-02-10",
+        today: "2026-10-30",
+        amount: 6700,
+        category: "adult",
+        age: 60,
+      },
+      {
+        product: "prod-early-pack",
+        date: "2027-02-10",
+        today: "2026-10-30",
+        amount: 6700,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-early-pack",
+        date: "2027-02-10",
+        today: "2026-12-01",
+        amount: null,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-pack",
+        date: "2027-02-10",
+        today: "2026-10-30",
+        amount: null,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-pack",
+        date: "2027-02-14",
+        today: "2026-10-30",
+        amount: 9300,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-pack",
+        date: "2027-02-14",
+        today: "2026-10-30",
+        amount: 6600,
+        category: "elementary",
+      },
+      {
+        product: "prod-pack",
+        date: "2027-02-14",
+        today: "2026-10-30",
+        amount: 8700,
+        category: "adult",
+        age: 60,
+      },
+    ],
+    audienceDates: [
+      ["elementary", null, "2027-02-13", 5800],
+      ["junior_high", null, "2027-02-13", 5800],
+      ["adult", 50, "2027-02-13", 7900],
+      ["preschool", 4, "2027-02-13", 2500],
+      ["elementary", null, "2027-02-14", 5200],
+      ["adult", 60, "2027-02-14", 7300],
+      ["elementary", null, "2027-02-10", 5000],
+      ["adult", 60, "2027-02-10", 7100],
+      ["adult", 50, "2026-12-30", 7900],
+      ["elementary", null, "2026-12-30", 5800],
+      ["high_school", null, "2027-01-09", 8400],
+      ["university", null, "2027-02-14", 7900],
+    ],
+    hours: [
+      [1, 7000],
+      [3, 7000],
+      [5, 7000],
+      [6, 7600],
+      [8, 7600],
+    ],
+    hourAudiences: [
+      ["adult", 30, 5, 7000, "prod-tenfive"],
+      ["adult", 50, 5, 6000, "prod-tenfive"],
+    ],
+    nightUnknown: true,
+    partyQueries: [
+      {
+        name: "早割 大人6名(5枚+単券)",
+        input: {
+          visitDate: "2027-02-10",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [{ id: "p0", category: "adult", age: 30, count: 6 }],
+        },
+        amount: 33800,
+      },
+      {
+        name: "早割 大人7名(5枚+2枚)",
+        input: {
+          visitDate: "2027-02-10",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [{ id: "p0", category: "adult", age: 30, count: 7 }],
+        },
+        amount: 39500,
+      },
+      {
+        name: "早割 大人8名(5枚+3枚)",
+        input: {
+          visitDate: "2027-02-10",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [{ id: "p0", category: "adult", age: 30, count: 8 }],
+        },
+        amount: 45100,
+      },
+      {
+        name: "早割 大人4+シニア3(5枚+2枚)",
+        input: {
+          visitDate: "2027-02-10",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            { id: "p0", category: "adult", age: 30, count: 4 },
+            { id: "p1", category: "adult", age: 60, count: 3 },
+          ],
+        },
+        amount: 39500,
+      },
+      {
+        name: "早割 大人2名",
+        input: {
+          visitDate: "2027-02-10",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p0",
+              category: "adult",
+              age: 30,
+              count: 2,
+            },
+          ],
+        },
+        amount: 11500,
+      },
+      {
+        name: "早割 大人3名",
+        input: {
+          visitDate: "2027-02-10",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p0",
+              category: "adult",
+              age: 30,
+              count: 3,
+            },
+          ],
+        },
+        amount: 17100,
+      },
+      {
+        name: "早割 大人4名",
+        input: {
+          visitDate: "2027-02-10",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p0",
+              category: "adult",
+              age: 30,
+              count: 4,
+            },
+          ],
+        },
+        amount: 22600,
+      },
+      {
+        name: "早割 大人5名",
+        input: {
+          visitDate: "2027-02-10",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p0",
+              category: "adult",
+              age: 30,
+              count: 5,
+            },
+          ],
+        },
+        amount: 28000,
+      },
+      {
+        name: "早割 シニア2名",
+        input: {
+          visitDate: "2027-02-10",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p0",
+              category: "adult",
+              age: 60,
+              count: 2,
+            },
+          ],
+        },
+        amount: 11500,
+      },
+      {
+        name: "早割 大人1+シニア1",
+        input: {
+          visitDate: "2027-02-10",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p0",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+            {
+              id: "p1",
+              category: "adult",
+              age: 60,
+              count: 1,
+            },
+          ],
+        },
+        amount: 11500,
+      },
+      {
+        name: "早割終了後 シニア2名",
+        input: {
+          visitDate: "2027-02-10",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p0",
+              category: "adult",
+              age: 60,
+              count: 2,
+            },
+          ],
+        },
+        amount: 14200,
+      },
+      {
+        name: "早割終了後 大人2名",
+        input: {
+          visitDate: "2027-02-10",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p0",
+              category: "adult",
+              age: 30,
+              count: 2,
+            },
+          ],
+        },
+        amount: 15200,
+      },
+      {
+        name: "早割 大人1+小学生1",
+        input: {
+          visitDate: "2027-02-10",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p0",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+            {
+              id: "p1",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 10800,
+      },
+      {
+        name: "早割終了後 大人1+小学生1",
+        input: {
+          visitDate: "2027-02-10",
+          today: "2026-12-01",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p0",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+            {
+              id: "p1",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 12600,
+      },
+      {
+        name: "日曜 早割 大人2+小学生1",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p0",
+              category: "adult",
+              age: 30,
+              count: 2,
+            },
+            {
+              id: "p1",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 16700,
+      },
+    ],
+  },
+  // END kawaba cases
+  // BEGIN shirakaba-2-in-1 cases
+  {
+    resort: "shirakaba-2-in-1",
+    season: "2026-2027",
+    date: "2027-01-20",
+    urls: [
+      "https://whitebirch.co.jp/ski-price2023-24/",
+      "https://whitebirch.co.jp/webticket/",
+    ],
+    categories: {
+      preschool: 3000,
+      elementary: 3000,
+      junior_high: 4750,
+      high_school: 4750,
+      university: 5470,
+      adult: 5470,
+      disabled: 5470,
+    },
+    ages: [
+      ["preschool", 4, 3000],
+      ["preschool", 6, 3000],
+      ["elementary", 7, 3000],
+      ["elementary", 12, 3000],
+      ["junior_high", 12, 3000],
+      ["junior_high", 13, 4750],
+      ["high_school", 18, 4750],
+      ["university", 18, 4750],
+      ["university", 22, 4750],
+      ["university", 23, 5470],
+      ["adult", 22, 4750],
+      ["adult", 23, 5470],
+      ["adult", 59, 5470],
+      ["adult", 60, 4920],
+      ["adult", 69, 4920],
+      ["adult", 70, 4100],
+    ],
+    disabilityAmounts: {
+      elementary: 3000,
+      junior_high: 4750,
+      high_school: 4750,
+      university: 4750,
+      adult: 5470,
+    },
+    dates: [
+      ["2026-11-21", 3800],
+      ["2026-11-23", 3800],
+      ["2026-12-11", 3800],
+      ["2026-12-12", 6080],
+      ["2026-12-14", 5470],
+      ["2026-12-25", 5470],
+      ["2026-12-28", 5470],
+      ["2026-12-29", 6080],
+      ["2027-01-03", 6080],
+      ["2027-01-04", 5470],
+      ["2027-01-11", 6080],
+      ["2027-02-11", 6080],
+      ["2027-02-23", 6080],
+      ["2027-03-22", 6080],
+      ["2027-03-27", 6080],
+      ["2027-03-28", 6080],
+      ["2027-03-29", 3800],
+    ],
+    products: [
+      ["prod-day", 5470],
+      ["prod-4h", 5470],
+      ["prod-pm-b", 3950],
+      ["prod-ride", 1100],
+      ["prod-meal-day", 6800],
+      ["prod-first", null],
+      ["prod-spring", null],
+    ],
+    productQueries: [
+      {
+        product: "prod-first",
+        date: "2026-11-21",
+        today: "2026-11-21",
+        amount: 3800,
+      },
+      {
+        product: "prod-first",
+        date: "2026-12-12",
+        today: "2026-12-12",
+        amount: null,
+      },
+      {
+        product: "prod-spring",
+        date: "2027-03-29",
+        today: "2027-03-29",
+        amount: 3800,
+      },
+      {
+        product: "prod-spring",
+        date: "2027-03-28",
+        today: "2027-03-28",
+        amount: null,
+      },
+      {
+        product: "prod-day",
+        date: "2026-11-21",
+        today: "2026-11-21",
+        amount: null,
+      },
+      {
+        product: "prod-day",
+        date: "2027-01-16",
+        today: "2027-01-16",
+        amount: 6080,
+      },
+      {
+        product: "prod-meal-day",
+        date: "2027-01-16",
+        today: "2027-01-16",
+        amount: 7400,
+      },
+      {
+        product: "prod-4h",
+        date: "2027-01-16",
+        today: "2027-01-16",
+        amount: 5470,
+      },
+      {
+        product: "prod-first",
+        date: "2026-11-21",
+        today: "2026-11-21",
+        category: "adult",
+        age: 22,
+        amount: 3300,
+      },
+      {
+        product: "prod-first",
+        date: "2026-11-21",
+        today: "2026-11-21",
+        category: "adult",
+        age: 65,
+        amount: 3420,
+      },
+      {
+        product: "prod-first",
+        date: "2026-11-21",
+        today: "2026-11-21",
+        category: "adult",
+        age: 70,
+        amount: 2850,
+      },
+      {
+        product: "prod-first",
+        date: "2026-11-21",
+        today: "2026-11-21",
+        category: "elementary",
+        age: null,
+        amount: 2090,
+      },
+      {
+        product: "prod-spring",
+        date: "2027-03-29",
+        today: "2027-03-29",
+        category: "adult",
+        age: 65,
+        amount: 3420,
+      },
+      {
+        product: "prod-spring",
+        date: "2027-03-29",
+        today: "2027-03-29",
+        category: "adult",
+        age: 70,
+        amount: 2850,
+      },
+    ],
+    hours: [
+      [4, 5470],
+      [5, 5470],
+    ],
+    nightUnknown: true,
+    closed: [],
+    audienceDates: [
+      ["adult", 22, "2027-01-16", 5290],
+      ["adult", 65, "2027-01-16", 5470],
+      ["adult", 70, "2027-01-16", 4560],
+      ["elementary", null, "2027-01-16", 3340],
+      ["adult", 70, "2026-12-29", 4560],
+      ["elementary", null, "2027-03-29", 2090],
+    ],
+    hourAudiences: [
+      ["adult", 70, 4, 4100, "prod-4h"],
+      ["elementary", null, 4, 3000, "prod-4h"],
+    ],
+    partyQueries: [
+      {
+        name: "大人1+未就学児1（幼児パック）",
+        input: {
+          visitDate: "2027-01-20",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            { id: "p0", category: "adult", age: 30, count: 1 },
+            { id: "p1", category: "preschool", age: 4, count: 1 },
+          ],
+        },
+        amount: 5470,
+      },
+      {
+        name: "大人1+未就学児2（1名は子供料金）",
+        input: {
+          visitDate: "2027-01-20",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            { id: "p0", category: "adult", age: 30, count: 1 },
+            { id: "p1", category: "preschool", age: 4, count: 2 },
+          ],
+        },
+        amount: 8470,
+      },
+      {
+        name: "大人2+未就学児2",
+        input: {
+          visitDate: "2027-01-20",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            { id: "p0", category: "adult", age: 30, count: 2 },
+            { id: "p1", category: "preschool", age: 4, count: 2 },
+          ],
+        },
+        amount: 10940,
+      },
+      {
+        name: "大人1+未就学児1 4時間券",
+        input: {
+          visitDate: "2027-01-20",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            { id: "p0", category: "adult", age: 30, count: 1 },
+            { id: "p1", category: "preschool", age: 4, count: 1 },
+          ],
+        },
+        amount: 5470,
+        product: "prod-4h",
+      },
+      {
+        name: "大人1+未就学児1 午後B券（幼児パック対象外）",
+        input: {
+          visitDate: "2027-01-20",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            { id: "p0", category: "adult", age: 30, count: 1 },
+            { id: "p1", category: "preschool", age: 4, count: 1 },
+          ],
+        },
+        amount: 6110,
+        product: "prod-pm-b",
+      },
+      {
+        name: "ユース1+未就学児1（保護者は大人のみ）",
+        input: {
+          visitDate: "2027-01-20",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            { id: "p0", category: "adult", age: 20, count: 1 },
+            { id: "p1", category: "preschool", age: 4, count: 1 },
+          ],
+        },
+        amount: 7750,
+      },
+      {
+        name: "シニア1+未就学児1（保護者は大人のみ）",
+        input: {
+          visitDate: "2027-01-20",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            { id: "p0", category: "adult", age: 75, count: 1 },
+            { id: "p1", category: "preschool", age: 4, count: 1 },
+          ],
+        },
+        amount: 7100,
+      },
+      {
+        name: "大人1+小学生1",
+        input: {
+          visitDate: "2027-01-20",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            { id: "p0", category: "adult", age: 30, count: 1 },
+            { id: "p1", category: "elementary", age: 10, count: 1 },
+          ],
+        },
+        amount: 8470,
+      },
+      {
+        name: "未就学児のみ",
+        input: {
+          visitDate: "2027-01-20",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [{ id: "p0", category: "preschool", age: 4, count: 1 }],
+        },
+        amount: 3000,
+      },
+    ],
+  },
+  // END shirakaba-2-in-1 cases
+  // BEGIN wassamu-higashiyama cases
+  {
+    resort: "wassamu-higashiyama",
+    season: "2026-2027",
+    date: "2027-02-10",
+    urls: [
+      "https://www.town.wassamu.hokkaido.jp/school-board/facility/ski-resort/",
+    ],
+    categories: {
+      preschool: 1400,
+      elementary: 1400,
+      junior_high: 2400,
+      high_school: 2400,
+      university: 2400,
+      adult: 2400,
+      disabled: 2400,
+    },
+    ages: [
+      ["preschool", 5, 1400],
+      ["elementary", 12, 1400],
+      ["junior_high", 12, 2400],
+      ["adult", 30, 2400],
+      ["adult", 60, 2400],
+    ],
+    disabilityAmounts: {
+      preschool: 1400,
+      elementary: 1400,
+      junior_high: 2400,
+      high_school: 2400,
+      university: 2400,
+      adult: 2400,
+    },
+    dates: [
+      ["2027-01-02", 2400],
+      ["2027-02-10", 2400],
+    ],
+    products: [
+      ["prod-ride1", 160],
+      ["prod-ticket11", 1600],
+      ["prod-day", 2400],
+      ["prod-night", 800],
+      ["prod-4h", 1500],
+    ],
+    hours: [
+      [1, 1500],
+      [3, 1500],
+      [4, 1500],
+      [5, 2400],
+      [8, 2400],
+    ],
+    hourAudiences: [
+      ["elementary", null, 4, 800, "prod-4h"],
+      ["preschool", 5, 4, 800, "prod-4h"],
+      ["elementary", null, 5, 1400, "prod-day"],
+    ],
+    noPriceCategories: [],
+    nightUnknown: true,
+  },
+  // END wassamu-higashiyama cases
+  // BEGIN oku-kannabe cases
+  {
+    resort: "oku-kannabe",
+    season: "2026-2027",
+    date: "2027-02-14",
+    urls: [
+      "https://okukan.com/price/",
+      "https://okukan.com/gelande/",
+      "https://okukan.snow-one.com/pc/tpc100.php",
+    ],
+    categories: {
+      preschool: 3500,
+      elementary: 3500,
+      junior_high: 3500,
+      high_school: 5800,
+      university: 5800,
+      adult: 5800,
+      disabled: 5800,
+    },
+    ages: [
+      ["adult", 59, 5800],
+      ["adult", 60, 5000],
+      ["preschool", 5, 3500],
+      ["elementary", 12, 3500],
+      ["junior_high", 15, 3500],
+      ["high_school", 16, 5800],
+      ["disabled", 30, 5800],
+    ],
+    disabilityAmounts: {
+      preschool: 3500,
+      elementary: 3500,
+      junior_high: 3500,
+      high_school: 5800,
+      university: 5800,
+      adult: 5800,
+    },
+    dates: [
+      ["2026-12-19", 5800],
+      ["2026-12-29", 5800],
+      ["2027-01-01", 5800],
+      ["2027-01-02", 5800],
+      ["2027-02-13", 5800],
+      ["2027-03-22", 5800],
+    ],
+    products: [
+      ["prod-day", 5800],
+      ["prod-am", 5200],
+      ["prod-pm", 5200],
+      ["prod-2day", 9800],
+      ["prod-once", 600],
+    ],
+    productQueries: [
+      {
+        product: "prod-early-day",
+        date: "2026-12-19",
+        today: "2026-10-30",
+        amount: 3800,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-early-day",
+        date: "2027-02-14",
+        today: "2026-11-30",
+        amount: 3800,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-early-day",
+        date: "2026-12-19",
+        today: "2026-10-30",
+        amount: 3800,
+        category: "adult",
+        age: 60,
+      },
+      {
+        product: "prod-early-day",
+        date: "2026-12-19",
+        today: "2026-10-30",
+        amount: 2500,
+        category: "elementary",
+        age: null,
+      },
+      {
+        product: "prod-early-day",
+        date: "2026-12-19",
+        today: "2026-10-30",
+        amount: 2500,
+        category: "preschool",
+        age: 5,
+      },
+      {
+        product: "prod-early-day",
+        date: "2026-12-19",
+        today: "2026-10-30",
+        amount: 2500,
+        category: "junior_high",
+        age: null,
+      },
+      {
+        product: "prod-early-day",
+        date: "2026-12-19",
+        today: "2026-10-30",
+        amount: 3800,
+        category: "high_school",
+        age: null,
+      },
+      {
+        product: "prod-early-day",
+        date: "2027-02-14",
+        today: "2026-12-01",
+        amount: null,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-early-day",
+        date: "2027-02-14",
+        today: "2026-10-15",
+        amount: null,
+        category: "adult",
+        age: 30,
+      },
+      {
+        product: "prod-day",
+        date: "2026-12-19",
+        today: "2026-10-30",
+        amount: 5000,
+        category: "adult",
+        age: 60,
+      },
+    ],
+    multiDays: [],
+    audienceDates: [
+      ["adult", 59, "2026-12-19", 5800],
+      ["adult", 60, "2026-12-19", 5000],
+      ["preschool", 5, "2026-12-19", 3500],
+      ["elementary", null, "2027-01-02", 3500],
+      ["junior_high", null, "2027-01-02", 3500],
+      ["high_school", null, "2027-01-02", 5800],
+    ],
+    hours: [
+      [8, 5800],
+      [9, null],
+    ],
+    nightUnknown: false,
+    dayWithNight: 5800,
+    closed: [],
+    ambiguousAges: [],
+    openExceptions: [],
+    hourAudiences: [
+      ["elementary", null, 5, 3500, "prod-day"],
+      ["adult", 60, 5, 5000, "prod-day"],
+      ["junior_high", null, 5, 3500, "prod-day"],
+    ],
+    partyQueries: [
+      {
+        name: "2日券 大人1人（連続2日）",
+        input: {
+          visitDate: "2027-02-13",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+          ],
+          days: [
+            {
+              id: "0",
+              date: "2027-02-13",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+            {
+              id: "1",
+              date: "2027-02-14",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+        },
+        amount: 9800,
+      },
+      {
+        name: "2日 シニア1人（2日券は大人券を購入）",
+        input: {
+          visitDate: "2027-02-13",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "adult",
+              age: 60,
+              count: 1,
+            },
+          ],
+          days: [
+            {
+              id: "0",
+              date: "2027-02-13",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+            {
+              id: "1",
+              date: "2027-02-14",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+        },
+        amount: 9800,
+      },
+      {
+        name: "2日 こども1人（1日券x2）",
+        input: {
+          visitDate: "2027-02-13",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+          days: [
+            {
+              id: "0",
+              date: "2027-02-13",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+            {
+              id: "1",
+              date: "2027-02-14",
+              duration: {
+                kind: "day",
+                withNight: false,
+              },
+            },
+          ],
+        },
+        amount: 7000,
+      },
+      {
+        name: "1日 大人1+こども1",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+            {
+              id: "c",
+              category: "elementary",
+              age: null,
+              count: 1,
+            },
+          ],
+        },
+        amount: 9300,
+      },
+      {
+        name: "1日 シニア1+こども2",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "adult",
+              age: 60,
+              count: 1,
+            },
+            {
+              id: "c",
+              category: "elementary",
+              age: null,
+              count: 2,
+            },
+          ],
+        },
+        amount: 12000,
+      },
+    ],
+    rentalQueries: [
+      {
+        name: "大人スキーセット",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+        },
+        amount: 3500,
+      },
+      {
+        name: "シニアスキーセット",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 60,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+        },
+        amount: 3500,
+      },
+      {
+        name: "大人ボードセット",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard", "snowboard_boots"],
+              },
+            },
+          ],
+        },
+        amount: 3500,
+      },
+      {
+        name: "こどもスキーセット",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+        },
+        amount: 2500,
+      },
+      {
+        name: "こどもボードセット",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard", "snowboard_boots"],
+              },
+            },
+          ],
+        },
+        amount: 2500,
+      },
+      {
+        name: "大人スキーセット+ウェア（マックス3,500+3,000）",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles", "wear"],
+              },
+            },
+          ],
+        },
+        amount: 6500,
+      },
+      {
+        name: "大人スキーセット+ウェア+グローブ（ニューみちやオールセット7,000）",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles", "wear", "gloves"],
+              },
+            },
+          ],
+        },
+        amount: 7000,
+      },
+      {
+        name: "こどもスキーセット+ウェア（ニューみちや2,500+2,500）",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles", "wear"],
+              },
+            },
+          ],
+        },
+        amount: 5000,
+      },
+      {
+        name: "こどもウェアのみ",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["wear"],
+              },
+            },
+          ],
+        },
+        amount: 2500,
+      },
+      {
+        name: "大人ゴーグルのみ",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["goggles"],
+              },
+            },
+          ],
+        },
+        amount: 1000,
+      },
+      {
+        name: "こどもゴーグルのみ",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2026-10-30",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["goggles"],
+              },
+            },
+          ],
+        },
+        amount: 500,
+      },
+    ],
+  },
+  // END oku-kannabe cases
+  // BEGIN naspa-ski-garden cases
+  {
+    resort: "naspa-ski-garden",
+    season: "2026-2027",
+    date: "2027-02-13",
+    urls: [
+      "https://www.naspa.co.jp/ski/lift/",
+      "https://www.naspa.co.jp/ski/events/",
+      "https://www.naspa.co.jp/ski/rental/",
+      "https://webket.jp/pc/ticket/index?fc=00095&ac=0000",
+    ],
+    categories: {
+      preschool: 4800,
+      elementary: 4800,
+      junior_high: 7000,
+      high_school: 7000,
+      university: 7000,
+      adult: 7000,
+      disabled: 3300,
+    },
+    ages: [
+      ["preschool", 4, 4800],
+      ["elementary", 12, 4800],
+      ["junior_high", 13, 7000],
+      ["high_school", 18, 7000],
+      ["adult", 19, 7000],
+      ["adult", 60, 7000],
+      ["adult", 65, 7000],
+      ["disabled", 30, 3300],
+    ],
+    disabilityAmounts: {
+      preschool: 3300,
+      elementary: 3300,
+      junior_high: 3300,
+      high_school: 3300,
+      university: 3300,
+      adult: 3300,
+    },
+    dates: [
+      ["2026-12-24", 7000],
+      ["2027-01-06", 7000],
+      ["2027-01-12", 7000],
+      ["2027-01-13", 4500],
+      ["2027-01-17", 7000],
+      ["2027-01-20", 4500],
+      ["2027-02-17", 4500],
+      ["2027-03-10", 4500],
+      ["2027-03-17", 4500],
+      ["2027-03-21", 7000],
+      ["2027-03-22", 7000],
+      ["2027-03-23", 5000],
+      ["2027-03-24", 5000],
+      ["2027-03-28", 5000],
+    ],
+    products: [
+      ["prod-1day", 7000],
+      ["prod-5h", 5800],
+      ["prod-2day", 10000],
+      ["prod-1ride", 700],
+      ["prod-night-0109", null],
+    ],
+    productQueries: [
+      {
+        product: "prod-1day",
+        date: "2027-02-13",
+        today: "2026-10-30",
+        category: "adult",
+        age: 30,
+        amount: 4800,
+      },
+      {
+        product: "prod-1day",
+        date: "2027-02-13",
+        today: "2026-10-30",
+        category: "elementary",
+        age: null,
+        amount: 3200,
+      },
+      {
+        product: "prod-1day",
+        date: "2027-02-13",
+        today: "2026-10-30",
+        category: "preschool",
+        age: 4,
+        amount: 3200,
+      },
+      {
+        product: "prod-1day",
+        date: "2027-02-13",
+        today: "2026-12-23",
+        category: "adult",
+        age: 30,
+        amount: 4800,
+      },
+      {
+        product: "prod-1day",
+        date: "2027-02-13",
+        today: "2026-12-24",
+        category: "adult",
+        age: 30,
+        amount: 7000,
+      },
+      {
+        product: "prod-1day",
+        date: "2027-02-13",
+        today: "2026-12-24",
+        category: "elementary",
+        age: null,
+        amount: 4800,
+      },
+      {
+        product: "prod-1day",
+        date: "2027-02-10",
+        today: "2026-10-30",
+        category: "adult",
+        age: 30,
+        amount: 4500,
+      },
+      {
+        product: "prod-1day",
+        date: "2027-03-24",
+        today: "2026-10-30",
+        category: "adult",
+        age: 30,
+        amount: 4800,
+      },
+      {
+        product: "prod-1day",
+        date: "2027-01-17",
+        today: "2026-10-30",
+        category: "elementary",
+        age: null,
+        amount: 0,
+      },
+      {
+        product: "prod-night-0109",
+        date: "2027-01-09",
+        today: "2026-10-30",
+        category: "adult",
+        age: 30,
+        amount: 2000,
+      },
+      {
+        product: "prod-night-0109",
+        date: "2027-01-09",
+        today: "2026-10-30",
+        category: "elementary",
+        age: null,
+        amount: 2000,
+      },
+      {
+        product: "prod-night-0109",
+        date: "2027-01-09",
+        today: "2026-10-30",
+        category: "preschool",
+        age: 4,
+        amount: 2000,
+      },
+      {
+        product: "prod-night-0220",
+        date: "2027-02-20",
+        today: "2026-10-30",
+        category: "adult",
+        age: 30,
+        amount: 2000,
+      },
+    ],
+    audienceDates: [
+      ["elementary", null, "2027-01-17", 0],
+      ["elementary", null, "2027-02-21", 0],
+      ["elementary", null, "2027-03-21", 0],
+      ["preschool", 4, "2027-01-17", 0],
+      ["elementary", null, "2027-01-10", 4800],
+      ["elementary", null, "2027-01-13", 4500],
+      ["elementary", null, "2027-03-23", 3300],
+      ["preschool", 4, "2027-03-28", 3300],
+      ["junior_high", null, "2027-01-17", 7000],
+      ["adult", 30, "2027-01-17", 7000],
+      ["disabled", 30, "2027-01-13", 3300],
+    ],
+    hours: [
+      [5, 5800],
+      [6, 7000],
+      [8, 7000],
+      [9, null],
+    ],
+    rentalQueries: [
+      {
+        name: "大人スキーセット",
+        input: {
+          visitDate: "2027-02-13",
+          today: "2027-02-13",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+        },
+        amount: 6000,
+      },
+      {
+        name: "小学生スキーセット",
+        input: {
+          visitDate: "2027-02-13",
+          today: "2027-02-13",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "elementary",
+              age: 10,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+        },
+        amount: 5000,
+      },
+      {
+        name: "未就学児スキーセット",
+        input: {
+          visitDate: "2027-02-13",
+          today: "2027-02-13",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "preschool",
+              age: 5,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+        },
+        amount: 5000,
+      },
+      {
+        name: "大人スキー板のみ",
+        input: {
+          visitDate: "2027-02-13",
+          today: "2027-02-13",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis"],
+              },
+            },
+          ],
+        },
+        amount: 3500,
+      },
+      {
+        name: "小学生ストックのみ",
+        input: {
+          visitDate: "2027-02-13",
+          today: "2027-02-13",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "elementary",
+              age: 10,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["poles"],
+              },
+            },
+          ],
+        },
+        amount: 1000,
+      },
+    ],
+  },
+  // END naspa-ski-garden cases
+  // BEGIN niseko-moiwa-ski-resort cases
+  {
+    resort: "niseko-moiwa-ski-resort",
+    season: "2026-2027",
+    date: "2027-02-14",
+    urls: [
+      "https://niseko-moiwa.jp/ja/lift-pass/",
+      "https://niseko-moiwa.jp/ja/news/2026/10/17/3257/",
+    ],
+    categories: {
+      preschool: 0,
+      elementary: 2700,
+      junior_high: 2700,
+      high_school: 9900,
+      university: 11700,
+      adult: 11700,
+      disabled: 11700,
+    },
+    ages: [
+      ["preschool", 3, 0],
+      ["preschool", 6, 0],
+      ["elementary", 6, 2700],
+      ["elementary", 12, 2700],
+      ["junior_high", 12, 2700],
+      ["junior_high", 15, 2700],
+      ["high_school", 15, 9900],
+      ["high_school", 18, 9900],
+      ["university", 19, 11700],
+      ["adult", 19, 11700],
+      ["adult", 64, 11700],
+      ["adult", 65, 10800],
+      ["adult", 90, 10800],
+      ["disabled", 30, 11700],
+    ],
+    disabilityAmounts: {},
+    dates: [
+      ["2026-11-28", 9300],
+      ["2026-12-18", 9300],
+      ["2026-12-19", 11700],
+      ["2026-12-31", 11700],
+      ["2027-01-01", 11700],
+      ["2027-02-28", 11700],
+      ["2027-03-01", 7500],
+      ["2027-04-04", 7500],
+    ],
+    products: [
+      ["p-1d", 11700],
+      ["p-2d", 22200],
+      ["p-3d", 32500],
+      ["p-4h", 12000],
+      ["p-12pt", 10000],
+      ["p-30h", 52000],
+    ],
+    audienceDates: [
+      ["elementary", null, "2026-12-18", 2100],
+      ["elementary", null, "2026-12-19", 2700],
+      ["elementary", null, "2027-02-28", 2700],
+      ["elementary", null, "2027-03-01", 1700],
+      ["high_school", null, "2026-11-28", 7900],
+      ["high_school", null, "2027-03-01", 6300],
+      ["adult", 65, "2026-12-18", 8600],
+      ["adult", 65, "2026-12-19", 10800],
+      ["adult", 65, "2027-03-01", 7000],
+      ["preschool", 4, "2027-03-01", 0],
+    ],
+    hours: [
+      [1, 11700],
+      [2, 11700],
+      [3, 11700],
+      [4, 11700],
+      [5, 11700],
+      [6, 11700],
+      [7, 11700],
+      [8, 11700],
+    ],
+    hourAudiences: [
+      ["adult", 30, 4, 11700, "p-1d"],
+      ["adult", 65, 4, 10800, "p-1d"],
+      ["high_school", null, 4, 9000, "p-4h"],
+      ["elementary", null, 4, 2000, "p-4h"],
+      ["elementary", null, 5, 2700, "p-1d"],
+    ],
+    nightUnknown: true,
+    partyQueries: [
+      {
+        name: "大人＋未就学（無料）＋小学生1日",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-02-14",
+          usePreference: "full_day",
+          party: [
+            { id: "a", category: "adult", age: 30, count: 1 },
+            { id: "p", category: "preschool", age: 4, count: 1 },
+            { id: "e", category: "elementary", age: null, count: 1 },
+          ],
+        },
+        amount: 14400,
+      },
+      {
+        name: "大人2日連続（2日券）",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-02-14",
+          usePreference: "full_day",
+          party: [{ id: "a", category: "adult", age: 30, count: 1 }],
+          days: [
+            {
+              id: "d0",
+              date: "2027-02-14",
+              duration: { kind: "day", withNight: false },
+            },
+            {
+              id: "d1",
+              date: "2027-02-15",
+              duration: { kind: "day", withNight: false },
+            },
+          ],
+        },
+        amount: 22200,
+      },
+      {
+        name: "大人3日連続（3日券）",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-02-14",
+          usePreference: "full_day",
+          party: [{ id: "a", category: "adult", age: 30, count: 1 }],
+          days: [
+            {
+              id: "d0",
+              date: "2027-02-14",
+              duration: { kind: "day", withNight: false },
+            },
+            {
+              id: "d1",
+              date: "2027-02-15",
+              duration: { kind: "day", withNight: false },
+            },
+            {
+              id: "d2",
+              date: "2027-02-16",
+              duration: { kind: "day", withNight: false },
+            },
+          ],
+        },
+        amount: 32500,
+      },
+      {
+        name: "大人2日が離れている場合は1日券2枚（連続日扱い）",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-02-14",
+          usePreference: "full_day",
+          party: [{ id: "a", category: "adult", age: 30, count: 1 }],
+          days: [
+            {
+              id: "d0",
+              date: "2027-02-14",
+              duration: { kind: "day", withNight: false },
+            },
+            {
+              id: "d1",
+              date: "2027-02-20",
+              duration: { kind: "day", withNight: false },
+            },
+          ],
+        },
+        amount: 23400,
+      },
+      {
+        name: "未就学のみ1日",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-02-14",
+          usePreference: "full_day",
+          party: [{ id: "p", category: "preschool", age: 4, count: 1 }],
+        },
+        amount: 0,
+      },
+    ],
+    rentalQueries: [
+      {
+        name: "大人スキーセット1日",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: { sport: "ski", items: ["skis", "ski_boots", "poles"] },
+            },
+          ],
+        },
+        amount: 8300,
+      },
+      {
+        name: "大人スキーセット+ウェア1日",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles", "wear"],
+              },
+            },
+          ],
+        },
+        amount: 12800,
+      },
+      {
+        name: "小学生スキーセット1日",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: { sport: "ski", items: ["skis", "ski_boots", "poles"] },
+            },
+          ],
+        },
+        amount: 6100,
+      },
+      {
+        name: "中学生スキーセット+ウェア1日",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "junior_high",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles", "wear"],
+              },
+            },
+          ],
+        },
+        amount: 9700,
+      },
+      {
+        name: "高校生スキーセット1日（アダルト列）",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "high_school",
+              age: null,
+              count: 1,
+              rental: { sport: "ski", items: ["skis", "ski_boots", "poles"] },
+            },
+          ],
+        },
+        amount: 8300,
+      },
+      {
+        name: "大人スノーボードセット1日",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard", "snowboard_boots"],
+              },
+            },
+          ],
+        },
+        amount: 8300,
+      },
+      {
+        name: "大人スノーボードセット+ウェア1日",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard", "snowboard_boots", "wear"],
+              },
+            },
+          ],
+        },
+        amount: 12800,
+      },
+      {
+        name: "小学生スノーボードセット1日",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard", "snowboard_boots"],
+              },
+            },
+          ],
+        },
+        amount: 6100,
+      },
+      {
+        name: "大人スキー板のみ1日",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: { sport: "ski", items: ["skis"] },
+            },
+          ],
+        },
+        amount: 5800,
+      },
+      {
+        name: "小学生ブーツのみ1日",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: { sport: "ski", items: ["ski_boots"] },
+            },
+          ],
+        },
+        amount: 3000,
+      },
+      {
+        name: "大人スキーセット2日",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: { sport: "ski", items: ["skis", "ski_boots", "poles"] },
+            },
+          ],
+          days: [
+            {
+              id: "d0",
+              date: "2027-02-14",
+              duration: { kind: "day", withNight: false },
+            },
+            {
+              id: "d1",
+              date: "2027-02-15",
+              duration: { kind: "day", withNight: false },
+            },
+          ],
+        },
+        amount: 15000,
+      },
+      {
+        name: "小学生スキーセット3日",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: { sport: "ski", items: ["skis", "ski_boots", "poles"] },
+            },
+          ],
+          days: [
+            {
+              id: "d0",
+              date: "2027-02-14",
+              duration: { kind: "day", withNight: false },
+            },
+            {
+              id: "d1",
+              date: "2027-02-15",
+              duration: { kind: "day", withNight: false },
+            },
+            {
+              id: "d2",
+              date: "2027-02-16",
+              duration: { kind: "day", withNight: false },
+            },
+          ],
+        },
+        amount: 14300,
+      },
+      {
+        name: "大人スキーセット+ウェア5日",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles", "wear"],
+              },
+            },
+          ],
+          days: [
+            {
+              id: "d0",
+              date: "2027-02-14",
+              duration: { kind: "day", withNight: false },
+            },
+            {
+              id: "d1",
+              date: "2027-02-15",
+              duration: { kind: "day", withNight: false },
+            },
+            {
+              id: "d2",
+              date: "2027-02-16",
+              duration: { kind: "day", withNight: false },
+            },
+            {
+              id: "d3",
+              date: "2027-02-17",
+              duration: { kind: "day", withNight: false },
+            },
+            {
+              id: "d4",
+              date: "2027-02-18",
+              duration: { kind: "day", withNight: false },
+            },
+          ],
+        },
+        amount: 41000,
+      },
+    ],
+  },
+  // END niseko-moiwa-ski-resort cases
+  // BEGIN shirakaba-kogen-kokusai cases
+  {
+    resort: "shirakaba-kogen-kokusai",
+    season: "2026-2027",
+    date: "2027-01-20",
+    urls: [
+      "https://whitebirch.co.jp/ski-price2023-24/",
+      "https://whitebirch.co.jp/webticket/",
+      "https://kogen.ikenotaira-resort.co.jp/shirakabakokusai/ski-course.html",
+      "https://stream-tateshina.com/?page_id=98",
+    ],
+    categories: {
+      preschool: 3000,
+      elementary: 3000,
+      junior_high: 4750,
+      high_school: 4750,
+      university: 5470,
+      adult: 5470,
+      disabled: 5470,
+    },
+    ages: [
+      ["preschool", 4, 3000],
+      ["preschool", 6, 3000],
+      ["elementary", 7, 3000],
+      ["elementary", 12, 3000],
+      ["junior_high", 12, 3000],
+      ["junior_high", 13, 4750],
+      ["high_school", 18, 4750],
+      ["university", 18, 4750],
+      ["university", 22, 4750],
+      ["university", 23, 5470],
+      ["adult", 22, 4750],
+      ["adult", 23, 5470],
+      ["adult", 59, 5470],
+      ["adult", 60, 4920],
+      ["adult", 69, 4920],
+      ["adult", 70, 4100],
+      ["disabled", 30, 5470],
+      ["disabled", 60, 4920],
+    ],
+    disabilityAmounts: {
+      elementary: 3000,
+      junior_high: 4750,
+      high_school: 4750,
+      university: 4750,
+      adult: 5470,
+    },
+    dates: [
+      ["2026-12-12", 6080],
+      ["2026-12-14", 5470],
+      ["2026-12-25", 5470],
+      ["2026-12-28", 5470],
+      ["2026-12-29", 6080],
+      ["2027-01-01", 6080],
+      ["2027-01-03", 6080],
+      ["2027-01-04", 5470],
+      ["2027-01-11", 6080],
+      ["2027-02-11", 6080],
+      ["2027-02-23", 6080],
+      ["2027-03-22", 6080],
+      ["2027-03-26", 5470],
+      ["2027-03-27", 6080],
+      ["2027-03-28", 6080],
+    ],
+    products: [
+      ["prod-day", 5470],
+      ["prod-4h", 5470],
+      ["prod-pm-b", 3950],
+      ["prod-ride", 1100],
+      ["prod-meal-day", 6800],
+    ],
+    productQueries: [
+      {
+        product: "prod-day",
+        date: "2027-01-16",
+        today: "2027-01-16",
+        amount: 6080,
+      },
+      {
+        product: "prod-meal-day",
+        date: "2027-01-16",
+        today: "2027-01-16",
+        amount: 7400,
+      },
+      {
+        product: "prod-4h",
+        date: "2027-01-16",
+        today: "2027-01-16",
+        amount: 5470,
+      },
+      {
+        product: "prod-pm-b",
+        date: "2027-01-16",
+        today: "2027-01-16",
+        amount: 3950,
+      },
+      {
+        product: "prod-day",
+        date: "2026-12-11",
+        today: "2026-12-11",
+        amount: null,
+      },
+      {
+        product: "prod-day",
+        date: "2027-03-29",
+        today: "2027-03-29",
+        amount: null,
+      },
+      {
+        product: "prod-day",
+        date: "2027-01-20",
+        today: "2027-01-20",
+        category: "adult",
+        age: 70,
+        amount: 4100,
+      },
+      {
+        product: "prod-day",
+        date: "2027-01-20",
+        today: "2027-01-20",
+        category: "elementary",
+        age: null,
+        amount: 3000,
+      },
+    ],
+    hours: [
+      [4, 5470],
+      [5, 5470],
+    ],
+    closed: [],
+    audienceDates: [
+      ["adult", 22, "2027-01-16", 5290],
+      ["adult", 65, "2027-01-16", 5470],
+      ["adult", 70, "2027-01-16", 4560],
+      ["elementary", null, "2027-01-16", 3340],
+      ["adult", 70, "2026-12-29", 4560],
+      ["adult", 30, "2027-03-28", 6080],
+    ],
+    hourAudiences: [
+      ["adult", 70, 4, 4100, "prod-4h"],
+      ["elementary", null, 4, 3000, "prod-4h"],
+    ],
+    partyQueries: [
+      {
+        name: "大人1+未就学児1（幼児パック）",
+        input: {
+          visitDate: "2027-01-20",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p0",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+            {
+              id: "p1",
+              category: "preschool",
+              age: 4,
+              count: 1,
+            },
+          ],
+        },
+        amount: 5470,
+      },
+      {
+        name: "大人1+未就学児2（1名は子供料金）",
+        input: {
+          visitDate: "2027-01-20",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p0",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+            {
+              id: "p1",
+              category: "preschool",
+              age: 4,
+              count: 2,
+            },
+          ],
+        },
+        amount: 8470,
+      },
+      {
+        name: "大人2+未就学児2",
+        input: {
+          visitDate: "2027-01-20",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p0",
+              category: "adult",
+              age: 30,
+              count: 2,
+            },
+            {
+              id: "p1",
+              category: "preschool",
+              age: 4,
+              count: 2,
+            },
+          ],
+        },
+        amount: 10940,
+      },
+      {
+        name: "大人1+未就学児1 4時間券",
+        input: {
+          visitDate: "2027-01-20",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p0",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+            {
+              id: "p1",
+              category: "preschool",
+              age: 4,
+              count: 1,
+            },
+          ],
+        },
+        amount: 5470,
+        product: "prod-4h",
+      },
+      {
+        name: "大人1+未就学児1 午後B券（幼児パック対象外）",
+        input: {
+          visitDate: "2027-01-20",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p0",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+            {
+              id: "p1",
+              category: "preschool",
+              age: 4,
+              count: 1,
+            },
+          ],
+        },
+        amount: 6110,
+        product: "prod-pm-b",
+      },
+      {
+        name: "ユース1+未就学児1（保護者は大人のみ）",
+        input: {
+          visitDate: "2027-01-20",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p0",
+              category: "adult",
+              age: 20,
+              count: 1,
+            },
+            {
+              id: "p1",
+              category: "preschool",
+              age: 4,
+              count: 1,
+            },
+          ],
+        },
+        amount: 7750,
+      },
+      {
+        name: "シニア1+未就学児1（保護者は大人のみ）",
+        input: {
+          visitDate: "2027-01-20",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p0",
+              category: "adult",
+              age: 75,
+              count: 1,
+            },
+            {
+              id: "p1",
+              category: "preschool",
+              age: 4,
+              count: 1,
+            },
+          ],
+        },
+        amount: 7100,
+      },
+      {
+        name: "ミドル1+未就学児1（保護者は大人のみ）",
+        input: {
+          visitDate: "2027-01-20",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p0",
+              category: "adult",
+              age: 65,
+              count: 1,
+            },
+            {
+              id: "p1",
+              category: "preschool",
+              age: 4,
+              count: 1,
+            },
+          ],
+        },
+        amount: 7920,
+      },
+      {
+        name: "大人1+小学生1",
+        input: {
+          visitDate: "2027-01-20",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p0",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+            {
+              id: "p1",
+              category: "elementary",
+              age: 10,
+              count: 1,
+            },
+          ],
+        },
+        amount: 8470,
+      },
+      {
+        name: "未就学児のみ",
+        input: {
+          visitDate: "2027-01-20",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p0",
+              category: "preschool",
+              age: 4,
+              count: 1,
+            },
+          ],
+        },
+        amount: 3000,
+      },
+      {
+        name: "大人1+未就学児1 休日（土曜）",
+        input: {
+          visitDate: "2027-01-16",
+          today: "2027-01-16",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "p0",
+              category: "adult",
+              age: 30,
+              count: 1,
+            },
+            {
+              id: "p1",
+              category: "preschool",
+              age: 4,
+              count: 1,
+            },
+          ],
+        },
+        amount: 6080,
+      },
+    ],
+    rentalQueries: [
+      {
+        name: "大人スキーセット 1日（ストリーム予約）",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+        },
+        amount: 3800,
+      },
+      {
+        name: "大人スキーセット+ウェア 1日（フルセット予約が最安）",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles", "wear"],
+              },
+            },
+          ],
+        },
+        amount: 6500,
+      },
+      {
+        name: "小学生スキーセット 1日（ストリーム予約）",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "elementary",
+              age: 10,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+        },
+        amount: 2800,
+      },
+      {
+        name: "小学生スキーセット+ウェア 1日（フルセット予約が最安）",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-01-20",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "elementary",
+              age: 10,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles", "wear"],
+              },
+            },
+          ],
+        },
+        amount: 5000,
+      },
+      {
+        name: "大人スキーセット 前日16時過ぎの当日料金（ストリーム店頭）",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-02-14",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+        },
+        amount: 4300,
+      },
+      {
+        name: "大人スキーセット+ウェア 当日（ストリーム店頭フルセット）",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-02-14",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles", "wear"],
+              },
+            },
+          ],
+        },
+        amount: 7500,
+      },
+      {
+        name: "大人ヘルメット 1日（ストリーム1,000円が最安）",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-02-14",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["helmet"],
+              },
+            },
+          ],
+        },
+        amount: 1000,
+      },
+      {
+        name: "大人ゴーグル 1日（ストリーム550円）",
+        input: {
+          visitDate: "2027-02-14",
+          today: "2027-02-14",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["goggles"],
+              },
+            },
+          ],
+        },
+        amount: 550,
+      },
+    ],
+  },
+  // END shirakaba-kogen-kokusai cases
+
   {
     resort: "hoshino-resorts-tomamu",
     season: "2026-2027",
@@ -4835,7 +17740,7 @@ export const OFFICIAL_CASES: OfficialCase[] = [
         product: "prod-day-plus-8set",
         date: "2027-02-03",
         today: "2026-09-30",
-        amount: 30400,
+        amount: null,
       },
       {
         product: "prod-day-plus-8set",
@@ -5954,7 +18859,7 @@ export const OFFICIAL_CASES: OfficialCase[] = [
         product: "prod-day",
         date: "2027-01-15",
         today: "2026-12-07",
-        amount: 7500,
+        amount: 8500,
       },
       {
         product: "prod-2h",
@@ -6516,7 +19421,7 @@ export const OFFICIAL_CASES: OfficialCase[] = [
         product: "prod-1day",
         date: "2027-02-04",
         today: "2026-08-31",
-        amount: 5500,
+        amount: 6100,
       },
       {
         product: "prod-1day",
@@ -6627,7 +19532,7 @@ export const OFFICIAL_CASES: OfficialCase[] = [
         product: "dt-day",
         date: "2027-01-20",
         today: "2026-09-30",
-        amount: 5400,
+        amount: 6200,
       },
       {
         product: "dt-day",
@@ -9152,7 +22057,7 @@ export const OFFICIAL_CASES: OfficialCase[] = [
         product: "prod-day",
         date: "2027-01-16",
         today: "2026-10-23",
-        amount: 6600,
+        amount: 7000,
       },
       {
         product: "prod-friendly",
@@ -10752,7 +23657,7 @@ export const OFFICIAL_CASES: OfficialCase[] = [
         product: "prod-day",
         date: "2027-01-20",
         today: "2026-10-24",
-        amount: 5200,
+        amount: 5300,
       },
       {
         product: "prod-day",
@@ -10766,7 +23671,7 @@ export const OFFICIAL_CASES: OfficialCase[] = [
         today: "2026-10-24",
         category: "elementary",
         age: 10,
-        amount: 3700,
+        amount: 3800,
       },
       {
         product: "prod-early",

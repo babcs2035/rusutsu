@@ -189,6 +189,14 @@ test("community reports: atomic daily report lifecycle and privacy", {
     );
     return form;
   };
+  const twoPhotoForm = (entryKey: string, image: Buffer) => {
+    const form = photoForm(entryKey, image, "first.jpg");
+    form.append(
+      `photos:${entryKey}`,
+      new File([new Uint8Array(image)], "second.jpg", { type: "image/jpeg" }),
+    );
+    return form;
+  };
   const publish = (
     actor: ReturnType<typeof account>,
     report: ReportDraft,
@@ -300,6 +308,18 @@ test("community reports: atomic daily report lifecycle and privacy", {
       await db.communityPost.count({ where: { authorId: owner } }),
       1,
     );
+    const twoPhotoKey = randomUUID();
+    assertFailure(
+      await publish(
+        a,
+        draft(course(twoPhotoKey, "test-course-a")),
+        twoPhotoForm(twoPhotoKey, image),
+      ),
+    );
+    assert.equal(
+      await db.communityPost.count({ where: { authorId: owner } }),
+      1,
+    );
     assert.equal(
       await db.communityEntry.count({ where: { postId: created.id } }),
       1,
@@ -334,6 +354,14 @@ test("community reports: atomic daily report lifecycle and privacy", {
     assert.equal(singlePost?.entries.length, 1);
     assert.equal(singlePost?.entries[0].status, "減速中");
     assert.equal(singlePost?.entries[0].liftSpeed, 2.3);
+    const liftMap = assertSuccess(
+      await run(g, () =>
+        api.getCommunityMapEntries({ resortId, kind: "LIFT" }),
+      ),
+    );
+    assert.equal(liftMap.entries[0].postId, single.id);
+    assert.equal(liftMap.entries[0].latitude, null);
+    assert.equal(liftMap.entries[0].liftId, "test-lift-a");
     assert.equal(
       assertSuccess(
         await run(g, () =>
@@ -372,6 +400,96 @@ test("community reports: atomic daily report lifecycle and privacy", {
     const metadata = await sharp(Buffer.from(photo.bytes)).metadata();
     assert.equal(metadata.exif, undefined);
     assert.equal(metadata.format, "webp");
+    assert.ok(photo.thumbBytes);
+    assert.ok(photo.mapBytes);
+    for (const size of ["thumb", "map"] as const) {
+      const response = await run(g, () =>
+        api.photoGET(new Request(`http://localhost?size=${size}`), {
+          params: Promise.resolve({ photoId }),
+        }),
+      );
+      assert.equal(response.status, 200);
+      const bytes = Buffer.from(await response.arrayBuffer());
+      assert.deepEqual(
+        bytes,
+        Buffer.from(size === "map" ? photo.mapBytes : photo.thumbBytes),
+      );
+      const preview = await sharp(bytes).metadata();
+      assert.ok((preview.width ?? Infinity) <= (size === "map" ? 160 : 320));
+      assert.equal(preview.exif, undefined);
+    }
+    // 変更前の写真も最初の配信時に派生画像を保存する。
+    await db.contributionPhoto.update({
+      where: { id: photoId },
+      data: { mapBytes: null },
+    });
+    assert.equal(
+      (
+        await run(g, () =>
+          api.photoGET(new Request("http://localhost?size=map"), {
+            params: Promise.resolve({ photoId }),
+          }),
+        )
+      ).status,
+      200,
+    );
+    assert.ok(
+      (
+        await db.contributionPhoto.findUniqueOrThrow({
+          where: { id: photoId },
+          select: { mapBytes: true },
+        })
+      ).mapBytes,
+    );
+    const map = assertSuccess(
+      await run(g, () => api.getCommunityMapEntries({ resortId })),
+    );
+    assert.equal(map.entries[0].kind, "COURSE");
+    assert.equal(map.entries[0].photo?.id, photoId);
+    assert.equal(map.entries[0].photoCount, 1);
+    assert.equal("body" in map.entries[0], false);
+    assert.equal("author" in map.entries[0], false);
+    await db.communityEntry.update({
+      where: { id: map.entries[0].id },
+      data: { latitude: null, longitude: null },
+    });
+    assert.equal(
+      assertSuccess(
+        await run(g, () => api.getCommunityMapEntries({ resortId })),
+      ).entries.length,
+      1,
+    );
+    assert.deepEqual(
+      assertSuccess(await run(g, () => api.getCommunityMapSummary(resortId))),
+      { total: 1, latestObservedOn: report.observedOn },
+    );
+    assert.equal(
+      assertSuccess(
+        await run(g, () =>
+          api.getCommunityMapEntries({ resortId, to: "2025-01-01" }),
+        ),
+      ).entries.length,
+      0,
+    );
+    await db.communityEntry.update({
+      where: { id: map.entries[0].id },
+      data: { courseId: "removed-course" },
+    });
+    assert.equal(
+      assertSuccess(
+        await run(g, () => api.getCommunityMapEntries({ resortId })),
+      ).entries.length,
+      0,
+    );
+    assert.equal(
+      assertSuccess(await run(g, () => api.getCommunityMapSummary(resortId)))
+        .total,
+      0,
+    );
+    await db.communityEntry.update({
+      where: { id: map.entries[0].id },
+      data: { courseId: "test-course-a" },
+    });
     assert.equal(
       (
         await run(g, () =>
@@ -388,6 +506,17 @@ test("community reports: atomic daily report lifecycle and privacy", {
     });
     const invalid = draft(course(randomUUID(), "missing-course"));
     assertFailure(await publish(a, invalid));
+    const distant = draft({
+      ...course(randomUUID(), "test-course-a"),
+      latitude: 35.68,
+      longitude: 139.76,
+    });
+    assertFailure(await publish(a, distant));
+    assertFailure(
+      await run(a, () =>
+        api.updateReport(created.id, 1, distant, new FormData(), []),
+      ),
+    );
     assert.equal(
       await db.communityPost.count({ where: { authorId: owner } }),
       beforeInvalid,
@@ -463,9 +592,37 @@ test("community reports: atomic daily report lifecycle and privacy", {
       status: "クローズ",
       body: "部分編集後",
     });
+    assertFailure(
+      await run(a, () =>
+        api.updateReport(
+          created.id,
+          1,
+          revised,
+          photoForm(courseKey, image, "extra.jpg"),
+          [],
+        ),
+      ),
+    );
+    assertFailure(
+      await run(a, () =>
+        api.updateReport(
+          created.id,
+          1,
+          revised,
+          twoPhotoForm(courseKey, image),
+          [photoId],
+        ),
+      ),
+    );
     const updated = assertSuccess(
       await run(a, () =>
-        api.updateReport(created.id, 1, revised, new FormData(), [photoId]),
+        api.updateReport(
+          created.id,
+          1,
+          revised,
+          photoForm(courseKey, image, "replacement.jpg"),
+          [photoId],
+        ),
       ),
     );
     assert.equal(updated.id, created.id);
@@ -482,8 +639,13 @@ test("community reports: atomic daily report lifecycle and privacy", {
     assert.equal(entryAfter.status, "クローズ");
     assert.equal(
       await db.contributionPhoto.count({ where: { postId: created.id } }),
-      0,
+      1,
     );
+    const replacementDetail = assertSuccess(
+      await run(g, () => api.getPostDetail(created.id)),
+    );
+    const replacementPhotoId = replacementDetail.post.entries[0].photos[0].id;
+    assert.notEqual(replacementPhotoId, photoId);
     assert.equal(
       (
         await run(g, () =>

@@ -1653,12 +1653,14 @@ console.log("== 分類フィールドの廃止（product_type / offer_type） ==
     representativeOn("2026-01-08"),
   );
 
-  // ★販売期間は利用日ではなく照会日と比べる（12/20まで販売の早割で1/8に滑る）
+  // ★販売期間は利用日ではなく照会日と比べ、開始前は購入不可。
+  // 12/16〜12/20販売の早割で1/8に滑るケース。
   const salesDir = fs.mkdtempSync(path.join(os.tmpdir(), "lift-ticket-sales-"));
   try {
     const early = JSON.parse(fs.readFileSync(YUKI, "utf8"));
-    early.offers.find((o) => o.id === "offer-adult-day-web-advance").sales_period.end =
-      "2025-12-20";
+    const earlyOffer = early.offers.find((o) => o.id === "offer-adult-day-web-advance");
+    earlyOffer.sales_period.start = "2025-12-16";
+    earlyOffer.sales_period.end = "2025-12-20";
     const earlyFile = path.join(salesDir, "early-bird.json");
     fs.writeFileSync(earlyFile, JSON.stringify(early));
     const offerIdsOn = (today) => {
@@ -1669,8 +1671,16 @@ console.log("== 分類フィールドの廃止（product_type / offer_type） ==
       return JSON.parse(r.stdout).offers.map((o) => o.id);
     };
     assert(
+      "販売開始前に照会すると、早割は出ない",
+      !offerIdsOn("2025-12-15").includes("offer-adult-day-web-advance"),
+    );
+    assert(
+      "販売開始日に照会すれば、早割が出る",
+      offerIdsOn("2025-12-16").includes("offer-adult-day-web-advance"),
+    );
+    assert(
       "販売期間中に照会すれば、利用日が販売期間の後でも早割が出る",
-      offerIdsOn("2025-12-15").includes("offer-adult-day-web-advance"),
+      offerIdsOn("2025-12-18").includes("offer-adult-day-web-advance"),
     );
     assert(
       "販売期間を過ぎて照会すると、早割は一切出ない",
@@ -2169,6 +2179,91 @@ console.log("== パーティ構成での料金計算（繰り返しと組み合�
       single.party_calculation?.best?.total_amount === 6000 &&
         ruleSteps(single.party_calculation).length === 0,
       JSON.stringify(single.party_calculation?.best),
+    );
+
+    // 人数別の代替割引は排他グループにまとめ、最初に適用できる1ルールだけ使う。
+    const exclusive = JSON.parse(JSON.stringify(base));
+    const childRule = (id, name_ja, count, amount) => ({
+      id,
+      name_ja,
+      official_label_ja: name_ja,
+      description_ja: name_ja,
+      exclusive_group_id: "child-count-discount",
+      calendar_ids: [],
+      channel_ids: [],
+      target_genders: null,
+      target_qualification: null,
+      components: [
+        {
+          role_ja: "小学生",
+          audience_ids: ["elementary"],
+          product_ids: [],
+          offer_ids: [],
+          min_count: count,
+          max_count: count,
+          per_qualifying_count: null,
+          price_effect: {
+            type: "fixed_total",
+            amount,
+            percent: null,
+            notes_ja: null,
+          },
+          notes_ja: null,
+        },
+      ],
+      sales_period: null,
+      use_period: null,
+      requirements: [],
+      source_refs: ["src-page-ryokin"],
+      source_quotes: [],
+      notes_ja: null,
+    });
+    exclusive.party_rules.push(
+      childRule("rule-child-five", "小学生5人セット", 5, 10000),
+      childRule("rule-child-two", "小学生2人セット", 2, 3000),
+    );
+    const exclusiveFile = path.join(pairDir, "exclusive-child-pack.json");
+    fs.writeFileSync(exclusiveFile, JSON.stringify(exclusive));
+    const exclusiveSchema = run(SCRIPTS.schema, [exclusiveFile]);
+    assert(
+      "party_rule.exclusive_group_id は任意の文字列としてschemaを通る",
+      exclusiveSchema.status === 0,
+      `${exclusiveSchema.stdout}${exclusiveSchema.stderr}`,
+    );
+    const badExclusive = JSON.parse(JSON.stringify(exclusive));
+    badExclusive.party_rules.at(-1).exclusive_group_id = 7;
+    const badExclusiveFile = path.join(pairDir, "exclusive-child-pack-invalid.json");
+    fs.writeFileSync(badExclusiveFile, JSON.stringify(badExclusive));
+    const badExclusiveSchema = run(SCRIPTS.schema, [badExclusiveFile]);
+    assert(
+      "party_rule.exclusive_group_id に文字列以外を許可しない",
+      badExclusiveSchema.status !== 0 && /exclusive_group_id/.test(`${badExclusiveSchema.stdout}${badExclusiveSchema.stderr}`),
+      `${badExclusiveSchema.stdout}${badExclusiveSchema.stderr}`,
+    );
+    const seven = q(
+      ["--date", "2026-01-14", "--party", "elementary:7"],
+      exclusiveFile,
+    ).party_calculation;
+    assert(
+      "排他グループは5人セットだけを1回適用し、残り2人を個別料金にする",
+      seven?.best?.total_amount === 16400 &&
+        ruleSteps(seven).length === 1 &&
+        ruleSteps(seven)[0]?.rule_id === "rule-child-five" &&
+        individualStep(seven)?.breakdown?.some(
+          (b) => b.audience_id === "elementary" && b.count === 2,
+        ),
+      JSON.stringify(seven?.best),
+    );
+    const twoKids = q(
+      ["--date", "2026-01-14", "--party", "elementary:2"],
+      exclusiveFile,
+    ).party_calculation;
+    assert(
+      "5人セットが適用できないときは同じ排他グループの2人セットを1回使う",
+      twoKids?.best?.total_amount === 3000 &&
+        ruleSteps(twoKids).length === 1 &&
+        ruleSteps(twoKids)[0]?.rule_id === "rule-child-two",
+      JSON.stringify(twoKids?.best),
     );
   } finally {
     fs.rmSync(pairDir, { recursive: true, force: true });

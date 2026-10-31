@@ -17,6 +17,7 @@ import {
   calculateLiftTicketPlan,
   skiableHoursOf,
 } from "./calculateLiftTicket";
+import { calculateRentalPlan } from "./rental";
 import {
   OFFICIAL_AUDIENCE_TICKETS,
   OFFICIAL_CASES,
@@ -215,6 +216,33 @@ for (const spec of OFFICIAL_CASES.filter(c =>
       const result = plan(category, age, date);
       assert.equal(result.total, amount);
       assertPrice(result.days[0].result, amount);
+    });
+  }
+  for (const query of spec.partyQueries ?? []) {
+    test(`${spec.resort}: 同行者構成 ${query.name}`, () => {
+      const queryInput = {
+        ...query.input,
+        days: query.input.days ?? [
+          { id: "day", date: query.input.visitDate, duration: DAY },
+        ],
+      };
+      assert.equal(
+        query.product
+          ? calculateLiftTicket(data, queryInput, query.product).ticketTotal
+          : calculateLiftTicketPlan(data, queryInput).total,
+        query.amount,
+      );
+    });
+  }
+  for (const query of spec.rentalQueries ?? []) {
+    test(`${spec.resort}: レンタル ${query.name}`, () => {
+      const queryInput = {
+        ...query.input,
+        days: query.input.days ?? [
+          { id: "day", date: query.input.visitDate, duration: DAY },
+        ],
+      };
+      assert.equal(calculateRentalPlan(data, queryInput).total, query.amount);
     });
   }
   for (const [category, age] of spec.ambiguousAges ?? []) {

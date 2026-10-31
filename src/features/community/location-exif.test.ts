@@ -1,7 +1,19 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { parseExifGpsJpeg } from "./exifGps";
-import { nearestCourseId } from "./location";
+import {
+  MAX_REPORT_DISTANCE_METERS,
+  nearestCourseId,
+  nearestFeature,
+  reportLocationError,
+} from "./location";
+
+const METERS_PER_DEGREE = (Math.PI * 6371008.8) / 180;
+const line = (id: string, coordinates: number[][]) => ({
+  id,
+  coordinates,
+  lines: [coordinates],
+});
 
 function jpegWithGps({ zeroDenominator = false } = {}) {
   const tiffLength = 140;
@@ -122,6 +134,78 @@ test("nearest course handles singleton lines and absent geometry", () => {
   );
   assert.equal(
     nearestCourseId([1, 1], [{ id: "empty", coordinates: [], lines: [] }]),
+    null,
+  );
+});
+
+test("500 meters is accepted while a point just beyond it is rejected", () => {
+  const course = line("course", [
+    [0, 0],
+    [0.01, 0],
+  ]);
+  const atLimit: [number, number] = [
+    0.005,
+    MAX_REPORT_DISTANCE_METERS / METERS_PER_DEGREE,
+  ];
+  const beyondLimit: [number, number] = [
+    0.005,
+    (MAX_REPORT_DISTANCE_METERS + 0.01) / METERS_PER_DEGREE,
+  ];
+
+  assert.equal(nearestCourseId(atLimit, [course]), "course");
+  assert.equal(
+    reportLocationError(atLimit, { courses: [course], lifts: [] }),
+    null,
+  );
+  assert.equal(nearestCourseId(beyondLimit, [course]), null);
+  assert.match(
+    reportLocationError(beyondLimit, { courses: [course], lifts: [] }) ?? "",
+    /500mより離れ/u,
+  );
+});
+
+test("nearest geometry uses line segments rather than vertices or its bbox", () => {
+  const nearSegment = line("segment", [
+    [0, 0],
+    [0.01, 0],
+  ]);
+  const nearerVertex = line("point", [[0.005, 0.0005]]);
+  const point: [number, number] = [0.005, 0.0002];
+  const nearest = nearestFeature(point, [nearSegment, nearerVertex]);
+
+  assert.equal(nearest?.id, "segment");
+  assert.ok(
+    nearest && nearest.distanceMeters > 22 && nearest.distanceMeters < 23,
+  );
+});
+
+test("location validation accepts lifts-only geometry and reports missing geometry", () => {
+  const lift = line("lift", [
+    [0, 0],
+    [0.01, 0],
+  ]);
+  assert.equal(
+    reportLocationError([0.005, 0.001], { courses: [], lifts: [lift] }),
+    null,
+  );
+  assert.match(
+    reportLocationError([0, 0], {
+      courses: [{ id: "empty", coordinates: [], lines: [] }],
+      lifts: [],
+    }) ?? "",
+    /地図情報/u,
+  );
+});
+
+test("bounded nearest lookup rejects distant and invalid points", () => {
+  const course = line("course", [
+    [0, 0],
+    [0.01, 0],
+  ]);
+  assert.equal(nearestCourseId([0.005, 0.01], [course]), null);
+  assert.equal(nearestCourseId([Number.NaN, 0], [course]), null);
+  assert.equal(
+    nearestCourseId([0.005, Number.POSITIVE_INFINITY], [course]),
     null,
   );
 });

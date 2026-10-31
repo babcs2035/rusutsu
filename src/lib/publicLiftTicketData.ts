@@ -184,6 +184,7 @@ export const publicLiftTicketDataSchema = z.object({
     z.object({
       ...named,
       description_ja: optionalText,
+      exclusive_group_id: text.optional(),
       calendar_ids: strings,
       channel_ids: strings,
       target_genders: target,

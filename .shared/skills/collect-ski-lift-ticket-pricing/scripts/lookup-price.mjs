@@ -284,6 +284,34 @@ function periodContains(period, date = opts.date) {
   return true;
 }
 
+/**
+ * 利用日に現地の窓口で買える券か（前売・WEB割引ではなく、URLの無い販売経路がある）。
+ * 販売経路が未記録なら窓口とみなす
+ */
+function soldOnVisitDay(item) {
+  const reasons = item.discount_reasons ?? [];
+  if (reasons.some((r) => r === "online_purchase" || r === "advance_purchase")) {
+    return false;
+  }
+  const ids = item.channel_ids ?? [];
+  return ids.length === 0 || ids.some((id) => !channelById.get(id)?.url);
+}
+
+/**
+ * 販売期間内に買えるか。前売・WEBの券は照会日 (today) が販売期間内であること。
+ * 窓口で買える券は、照会日から利用日までの間に販売期間があればよい
+ */
+function salesOpen(item) {
+  const period = item.sales_period;
+  if (!soldOnVisitDay(item)) return periodContains(period, today);
+  if (!period) return true;
+  const first =
+    typeof period.start === "string" && period.start > today ? period.start : today;
+  const last =
+    typeof period.end === "string" && period.end < opts.date ? period.end : opts.date;
+  return first <= last;
+}
+
 function resolvePrice(offer, depth = 0) {
   const p = offer.price ?? {};
   const mode = priceModeOf(p);
@@ -698,7 +726,7 @@ for (const offer of data.offers ?? []) {
   if (opts.channel && (offer.channel_ids ?? []).length > 0 && !offer.channel_ids.includes(opts.channel)) continue;
   // ★販売期間は利用日ではなく照会日 (today) と比べる。「11/30まで販売の早割」は
   // 1月に滑る分でも11/30を過ぎたら買えない。販売期間外・販売期限切れの券は一切出さない
-  if (!periodContains(offer.sales_period, today)) continue;
+  if (!salesOpen(offer)) continue;
   if (
     hasTextValue(offer.purchase_deadline?.deadline_date) &&
     today > offer.purchase_deadline.deadline_date
@@ -1118,7 +1146,13 @@ function cheapestPerPerson(audienceId) {
     if ((o.validity_days ?? 1) > 1) return false;
     // NARROWING_CONSTRAINTS を共有する。かつてここに独自のコピーがあり
     // qualification_required が漏れていて、道民割がパーティ合計に混入した
-    if (o.constraints.some((c) => NARROWING_CONSTRAINTS.has(c.type))) return false;
+    // --product で午後券などの時間帯固定券を指定したときは、その券で計算する
+    const narrowing = o.constraints.filter(
+      (c) =>
+        NARROWING_CONSTRAINTS.has(c.type) &&
+        !(opts.product && c.type === "time_window_fixed"),
+    );
+    if (narrowing.length > 0) return false;
     if (wantDayPass && !isDayPass(productById.get(o.product_id))) return false;
     if (wantHours != null) {
       if (!o.time_comparable || o.skiable_hours == null) return false;
@@ -1139,7 +1173,16 @@ function applicablePartyRules() {
     const dateOk =
       ids.length === 0 ||
       ids.some((id) => calendarMatches(calendarById.get(id)));
-    return dateOk && periodContains(rule.use_period) && periodContains(rule.sales_period);
+    // 券種を指定したルールは、その券種を買うときだけ使う（午後券の割引を1日券に混ぜない）
+    const productIds = (rule.components ?? []).flatMap((c) => c.product_ids ?? []);
+    const productOk =
+      !opts.product || productIds.length === 0 || productIds.includes(opts.product);
+    return (
+      dateOk &&
+      productOk &&
+      periodContains(rule.use_period, opts.date) &&
+      salesOpen(rule)
+    );
   });
 }
 
@@ -1300,8 +1343,15 @@ function individualPlan(party) {
  * 「何回まで適用できるか」という情報を持たなくてよい
  * （1回の適用が必ず1人以上を消費するので停止する）。
  */
-function bestPartyPlan(party, rules, memo = new Map(), fullParty = party, usedRatio = new Set()) {
-  const key = `${partyKey(party)}|${[...usedRatio].sort().join(",")}`;
+function bestPartyPlan(
+  party,
+  rules,
+  memo = new Map(),
+  fullParty = party,
+  usedRatio = new Set(),
+  usedExclusive = new Set(),
+) {
+  const key = `${partyKey(party)}|ratio:${[...usedRatio].sort().join(",")}|exclusive:${[...usedExclusive].sort().join(",")}`;
   if (key === "") return { total: 0, steps: [] };
   if (memo.has(key)) return memo.get(key);
   memo.set(key, null); // 再入防止
@@ -1315,15 +1365,34 @@ function bestPartyPlan(party, rules, memo = new Map(), fullParty = party, usedRa
     };
   }
 
+  const triedExclusive = new Set();
   for (const rule of rules) {
     // 「〇名につき」の比率ルールは1回の適用で上限まで取るので、
     // 同じプランで2回適用すると上限（大人1名につき2名まで）を超えてしまう
     const ratioRule = hasQualifyingRatio(rule);
     if (ratioRule && usedRatio.has(rule.id)) continue;
+    const exclusiveGroupId = rule.exclusive_group_id;
+    if (
+      exclusiveGroupId &&
+      (usedExclusive.has(exclusiveGroupId) || triedExclusive.has(exclusiveGroupId))
+    ) {
+      continue;
+    }
     const applied = applyRuleOnce(rule, party, fullParty);
     if (!applied) continue;
+    if (exclusiveGroupId) triedExclusive.add(exclusiveGroupId);
     const nextUsed = ratioRule ? new Set([...usedRatio, rule.id]) : usedRatio;
-    const rest = bestPartyPlan(applied.remaining, rules, memo, fullParty, nextUsed);
+    const nextExclusive = exclusiveGroupId
+      ? new Set([...usedExclusive, exclusiveGroupId])
+      : usedExclusive;
+    const rest = bestPartyPlan(
+      applied.remaining,
+      rules,
+      memo,
+      fullParty,
+      nextUsed,
+      nextExclusive,
+    );
     if (!rest) continue;
     const total = applied.cost + rest.total;
     if (best != null && total >= best.total) continue;

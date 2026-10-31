@@ -105,12 +105,17 @@ test("同じ区分を別の行に分けて入力しても、セットの中身�
 });
 
 test("スプリング期間は7,500円の親子パックを使う", () => {
+  // FixtureのWEB親子パックは3/31〜5/5販売、固定合計7,500円。
   const result = calculateLiftTicket(
     data,
-    input("2027-04-10", [
-      { category: "adult", count: 1 },
-      { category: "elementary", count: 1 },
-    ]),
+    input(
+      "2027-04-10",
+      [
+        { category: "adult", count: 1 },
+        { category: "elementary", count: 1 },
+      ],
+      "2027-03-31",
+    ),
   );
 
   assert.equal(result.ticketTotal, 7500);
@@ -145,7 +150,7 @@ test("1日券以外の券種では親子パックを当てない", () => {
   assert.equal(packLine(result.lines), undefined);
 });
 
-test("販売開始前に照会したら、販売開始日を添えて親子パックを出す", () => {
+test("販売開始前の親子パックを使わず、窓口料金を出す", () => {
   const result = calculateLiftTicket(
     data,
     input(
@@ -158,6 +163,65 @@ test("販売開始前に照会したら、販売開始日を添えて親子パ�
     ),
   );
 
-  assert.equal(result.ticketTotal, 8000);
-  assert.deepEqual(result.lines[0].warnings, ["11/19から販売開始です"]);
+  assert.equal(result.ticketTotal, 9800);
+  assert.equal(packLine(result.lines), undefined);
+});
+
+test("排他グループは最初の人数別ルールを1回だけ適用し、残りは通常料金にする", () => {
+  const childRule = (
+    id: string,
+    name_ja: string,
+    count: number,
+    amount: number,
+  ) => ({
+    id,
+    name_ja,
+    exclusive_group_id: "child-count-discount",
+    components: [
+      {
+        role_ja: "小学生",
+        audience_ids: ["elementary"],
+        min_count: count,
+        max_count: count,
+        price_effect: { type: "fixed_total", amount },
+      },
+    ],
+  });
+  const raw = JSON.parse(fs.readFileSync(SAPPORO_KOKUSAI, "utf8"));
+  raw.party_rules = [
+    childRule("rule-child-five", "小学生5人セット", 5, 10000),
+    childRule("rule-child-two", "小学生2人セット", 2, 3000),
+  ];
+  const exclusiveData = toClientLiftTicketData(raw);
+
+  const five = calculateLiftTicket(
+    exclusiveData,
+    input("2027-01-13", [{ category: "elementary", count: 5 }], "2026-11-18"),
+  );
+  assert.equal(five.ticketTotal, 10000);
+  assert.equal(packLine(five.lines)?.groupId, "party-rule:rule-child-five");
+  assert.equal(packLine(five.lines)?.partySet?.setCount, 1);
+
+  const seven = calculateLiftTicket(
+    exclusiveData,
+    input("2027-01-13", [{ category: "elementary", count: 7 }], "2026-11-18"),
+  );
+  assert.equal(seven.ticketTotal, 15600);
+  assert.equal(packLine(seven.lines)?.groupId, "party-rule:rule-child-five");
+  assert.equal(packLine(seven.lines)?.count, 5);
+  assert.equal(packLine(seven.lines)?.partySet?.setCount, 1);
+  assert.ok(
+    !seven.lines.some(line => line.groupId === "party-rule:rule-child-two"),
+  );
+  const residual = seven.lines.find(line => line.groupId === "group-0");
+  assert.equal(residual?.count, 2);
+  assert.equal(residual?.subtotal, 5600);
+
+  const two = calculateLiftTicket(
+    exclusiveData,
+    input("2027-01-13", [{ category: "elementary", count: 2 }], "2026-11-18"),
+  );
+  assert.equal(two.ticketTotal, 3000);
+  assert.equal(packLine(two.lines)?.groupId, "party-rule:rule-child-two");
+  assert.equal(packLine(two.lines)?.partySet?.setCount, 1);
 });

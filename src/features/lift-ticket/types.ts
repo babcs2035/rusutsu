@@ -358,6 +358,8 @@ export type LiftTicketPartyRule = {
   name_ja: string;
   official_label_ja?: string | null;
   description_ja?: string | null;
+  /** 同じIDのルール群から1パーティにつき最大1ルールだけ適用する */
+  exclusive_group_id?: string;
   calendar_ids?: string[];
   channel_ids?: string[];
   target_genders?: LiftTicketTarget | null;

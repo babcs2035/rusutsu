@@ -177,15 +177,27 @@ export type PublicPost = Omit<ReportDraft, "entries"> & {
 export type PublicMapEntry = {
   id: string;
   postId: string;
-  kind: "MOGUL" | "ITEM";
+  kind: keyof typeof ENTRY_KINDS;
   observedOn: string;
-  body: string;
-  latitude: number;
-  longitude: number;
-  itemType: string | null;
-  size: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  courseId: string | null;
+  liftId: string | null;
   targetName: string;
-  author: PublicAuthor;
+  photo: PublicPhoto | null;
+  photoCount: number;
+};
+export const mapEntriesInputSchema = z.strictObject({
+  resortId: idSchema,
+  kind: z.enum(["COURSE", "LIFT", "MOGUL", "ITEM"]).optional(),
+  from: observedOnSchema.optional(),
+  to: observedOnSchema.optional(),
+  cursor: idSchema.optional(),
+});
+export type MapEntriesInput = z.infer<typeof mapEntriesInputSchema>;
+export type CommunityMapSummary = {
+  total: number;
+  latestObservedOn: string | null;
 };
 export type PublicComment = {
   id: string;

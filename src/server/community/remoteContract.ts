@@ -4,6 +4,7 @@ import {
   type CommunityMapData,
   type CommunityNotificationDto,
   idSchema,
+  mapEntriesInputSchema,
   observedOnSchema,
   type PublicComment,
   type PublicMapEntry,
@@ -14,7 +15,7 @@ import {
 
 export const COMMUNITY_API_PATH = "/api/internal/v1/community";
 export const MAX_COMMAND_JSON_BYTES = 1024 * 1024;
-export const MAX_MULTIPART_BYTES = 6 * 8 * 1024 * 1024 + 1024 * 1024;
+export const MAX_MULTIPART_BYTES = 8 * 1024 * 1024 + 1024 * 1024;
 
 const versionSchema = z.number().int().positive();
 const operationKeySchema = z.string().uuid();
@@ -43,12 +44,6 @@ const feedInputSchema = z.strictObject({
   authorId: idSchema.optional(),
   cursor: idSchema.optional(),
 });
-const mapInputSchema = z.strictObject({
-  resortId: idSchema,
-  kind: z.enum(["MOGUL", "ITEM"]),
-  from: observedOnSchema.optional(),
-  cursor: idSchema.optional(),
-});
 const publishInputSchema = z.strictObject({
   resortId: idSchema,
   report: reportDraftSchema,
@@ -63,7 +58,11 @@ const updateInputSchema = z.strictObject({
 const commandSchemaBase = z.discriminatedUnion("operation", [
   z.strictObject({ operation: z.literal("courses"), resortId: idSchema }),
   z.strictObject({ operation: z.literal("feed"), input: feedInputSchema }),
-  z.strictObject({ operation: z.literal("mapEntries"), input: mapInputSchema }),
+  z.strictObject({
+    operation: z.literal("mapEntries"),
+    input: mapEntriesInputSchema,
+  }),
+  z.strictObject({ operation: z.literal("mapSummary"), resortId: idSchema }),
   z.strictObject({ operation: z.literal("account") }),
   z.strictObject({
     operation: z.literal("profile"),
@@ -114,7 +113,11 @@ const commandSchemaBase = z.discriminatedUnion("operation", [
     operation: z.literal("deleteAccount"),
     confirm: z.literal("削除"),
   }),
-  z.strictObject({ operation: z.literal("photo"), photoId: idSchema }),
+  z.strictObject({
+    operation: z.literal("photo"),
+    photoId: idSchema,
+    size: z.enum(["thumb", "map"]).optional(),
+  }),
 ]);
 
 export const commandSchema = commandSchemaBase;
@@ -185,15 +188,15 @@ const commentSchema: z.ZodType<PublicComment> = z.strictObject({
 const mapEntrySchema: z.ZodType<PublicMapEntry> = z.strictObject({
   id: z.string(),
   postId: z.string(),
-  kind: z.enum(["MOGUL", "ITEM"]),
+  kind: z.enum(["COURSE", "LIFT", "MOGUL", "ITEM"]),
   observedOn: z.string(),
-  body: z.string(),
-  latitude: z.number(),
-  longitude: z.number(),
-  itemType: z.string().nullable(),
-  size: z.string().nullable(),
+  latitude: z.number().nullable(),
+  longitude: z.number().nullable(),
+  courseId: z.string().nullable(),
+  liftId: z.string().nullable(),
   targetName: z.string(),
-  author: authorSchema,
+  photo: photoSchema.nullable(),
+  photoCount: z.number().int().nonnegative(),
 });
 const notificationSchema: z.ZodType<CommunityNotificationDto> = z.strictObject({
   id: z.string(),
@@ -213,6 +216,10 @@ export const successPayloadSchemas = {
   mapEntries: z.strictObject({
     entries: z.array(mapEntrySchema),
     nextCursor: z.string().nullable(),
+  }),
+  mapSummary: z.strictObject({
+    total: z.number().int().nonnegative(),
+    latestObservedOn: z.string().nullable(),
   }),
   account: accountSchema.nullable(),
   profile: accountSchema,

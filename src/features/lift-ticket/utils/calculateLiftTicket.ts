@@ -343,24 +343,49 @@ const isPurchaseMethodOffer = (offer: LiftTicketOffer) => {
 };
 
 /**
- * 照会日（today）から利用日までの間に、その利用日の分を買える日があるか。
+ * 利用日に現地の窓口で買える券か（前売・WEB割引ではなく、URLの無い販売経路がある）。
+ * 販売経路が未記録なら窓口とみなす
+ */
+const isSoldOnVisitDay = (
+  data: LiftTicketData,
+  item: Pick<LiftTicketOffer, "discount_reasons" | "channel_ids">,
+) => {
+  if (
+    (item.discount_reasons ?? []).some(reason =>
+      PURCHASE_METHOD_REASONS.includes(reason),
+    )
+  ) {
+    return false;
+  }
+  const channelIds = item.channel_ids ?? [];
+  return (
+    channelIds.length === 0 ||
+    channelIds.some(
+      channelId =>
+        !data.channels.find(channel => channel.id === channelId)?.url,
+    )
+  );
+};
+
+/**
+ * 照会日（today）に販売中で、その利用日の購入期限に間に合うか。
  *
  * ★**販売期間は利用日ではなく購入する日と比べる。** 「11/30まで販売の早割」は
  * 1月に滑る分でも11/30を過ぎたら買えない。販売期間外・販売期限切れ・
  * 「利用日の〇日前まで」を過ぎた券は、計算にも候補にも出さない。
  *
- * ★**販売開始前の券も、利用日までに販売が始まるなら買える。**
- * 「12/19から販売開始」のWeb券は、9月に照会しても12/24に滑る分は
- * 12/19〜12/24の間に買える。今日だけで判定すると、販売開始前の時期に
- * 照会した利用者にWeb料金が一切出なくなる。
+ * 販売開始前の前売・WEB料金はまだ購入できないので、計算には使わない。
+ * 当日に窓口で買える券（`soldOnVisitDay`）は、利用日までに販売が始まれば買える。
  */
 export const isPurchasableOn = (
   offer: Pick<LiftTicketOffer, "sales_period" | "purchase_deadline">,
   visitDate: string,
   today: string,
+  soldOnVisitDay = false,
 ) => {
   const sales = offer.sales_period;
   const deadline = offer.purchase_deadline;
+  if (sales?.start && today < sales.start && !soldOnVisitDay) return false;
   if (!sales?.start && !sales?.end && !deadline) return true;
 
   // 買える最初の日: 今日と販売開始日の遅いほう
@@ -994,9 +1019,12 @@ const resolvePrice = (
   }
 };
 
+// 何日にも分けて使う時間プール券（10時間券など）は1日券の代わりではない。
+// 特別日の1日券料金を混ぜると、時間券の単価が1日券の額になってしまう
 const isFullDayLike = (product: LiftTicketProduct) =>
   product.validity?.mode === "calendar_day" ||
-  (durationHours(product) ?? 0) >= 6;
+  (product.validity?.mode !== "hours_pool" &&
+    (durationHours(product) ?? 0) >= 6);
 
 const getAutomaticSpecialProductIds = (
   data: LiftTicketData,
@@ -1404,7 +1432,16 @@ const calculateGroupLine = (
       if (!allowedProductIds.has(offer.product_id)) return false;
       if (!offerMatchesDate(data, offer, dateString)) return false;
       // 今日の時点で買えない券（販売終了の早割など）は、計算にも候補にも出さない
-      if (!isPurchasableOn(offer, dateString, today)) return false;
+      if (
+        !isPurchasableOn(
+          offer,
+          dateString,
+          today,
+          isSoldOnVisitDay(data, offer),
+        )
+      ) {
+        return false;
+      }
       const audienceIds = offer.audience_ids ?? [];
       if (audienceIds.length === 0) return true;
       return audienceIds.some(audienceId => {
@@ -1625,7 +1662,8 @@ const isApplicablePartyRule = (
     return false;
   }
   if (!periodContains(rule.use_period, dateString)) return false;
-  if (!isPurchasableOn(rule, dateString, today)) return false;
+  if (!isPurchasableOn(rule, dateString, today, isSoldOnVisitDay(data, rule)))
+    return false;
   const calendarById = new Map(
     data.calendars.map(calendar => [calendar.id, calendar]),
   );
@@ -1775,8 +1813,15 @@ const applyPartyRules = (
   const remaining = lines.map(line => line.count);
   const unitAmounts = lines.map(line => line.unitAmount);
   const ruleLines: TicketCalculationLine[] = [];
+  const usedExclusiveGroups = new Set<string>();
 
   for (const rule of data.party_rules ?? []) {
+    if (
+      rule.exclusive_group_id &&
+      usedExclusiveGroups.has(rule.exclusive_group_id)
+    ) {
+      continue;
+    }
     if (!isApplicablePartyRule(data, rule, baseProduct, dateString, today)) {
       continue;
     }
@@ -1795,8 +1840,9 @@ const applyPartyRules = (
     let setCount = 0;
     let total = 0;
     let individualTotal = 0;
-    // 人数が残る限り繰り返す（親子2組なら親子パック2セット）
-    for (let guard = 0; guard < 100; guard += 1) {
+    // 排他グループは1回だけ。未指定の親子パック等は従来どおり繰り返す。
+    const applicationLimit = rule.exclusive_group_id ? 1 : 100;
+    for (let guard = 0; guard < applicationLimit; guard += 1) {
       const application = applyPartyRuleOnce(
         rule,
         groups,
@@ -1828,6 +1874,9 @@ const applyPartyRules = (
         break;
     }
     if (setCount === 0) continue;
+    if (rule.exclusive_group_id) {
+      usedExclusiveGroups.add(rule.exclusive_group_id);
+    }
 
     const consumedGroups = [...consumed.entries()].sort(
       ([left], [right]) => left - right,

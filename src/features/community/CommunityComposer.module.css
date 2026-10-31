@@ -1,0 +1,22 @@
+.nativeDateTime {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.nativeDateTime::-webkit-date-and-time-value {
+  min-width: 0;
+  min-height: 1.25em;
+  text-align: left;
+}
+
+.nativeDateTime::-webkit-datetime-edit,
+.nativeDateTime::-webkit-datetime-edit-fields-wrapper {
+  min-width: 0;
+  padding: 0;
+}

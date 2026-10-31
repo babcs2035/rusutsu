@@ -1,10 +1,13 @@
 "use client";
 
 import {
-  Camera,
   Check,
   ChevronLeft,
+  Clock3,
+  Images,
+  LocateFixed,
   Minus,
+  Trash2,
   TriangleAlert,
   X,
 } from "lucide-react";
@@ -66,9 +69,21 @@ import {
 } from "@/features/community/contract";
 import { cn } from "@/lib/utils";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
+import styles from "./CommunityComposer.module.css";
 import { rememberCommunityPost } from "./CommunityMapOverlay";
+import {
+  composerDraftSchema,
+  currentTokyoDateTime,
+  geolocationMessage,
+} from "./composerDraft";
+import {
+  type DraftScope,
+  deleteDraft,
+  loadDraft,
+  saveDraft,
+} from "./draftStorage";
 import { onLoginWindowDone, openLoginWindow } from "./LoginWindow";
-import { nearestCourseId } from "./location";
+import { nearestCourseId, reportLocationError } from "./location";
 import { readPhotoMetadata } from "./photoGps";
 
 type Kind = ReportEntryDraft["kind"];
@@ -89,6 +104,7 @@ type Props = {
   allowPreview?: boolean;
   embedded?: boolean;
   onClose?: () => void;
+  onStartNew?: () => void;
   /** PCの背後の地図で、クリックを地点の指定に使うかどうか */
   onMapPickModeChange?: (mode: "POINT" | null) => void;
   onMapPointChange?: (point: [number, number] | null) => void;
@@ -127,9 +143,8 @@ const STATUS_STYLES: Record<
     selected: "border-red-600 bg-red-50 text-red-800",
   },
 };
-const MAX_PHOTOS = 6;
 const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
-const MAX_TOTAL_BYTES = 48 * 1024 * 1024;
+const MAX_PHOTOS = 1;
 
 const today = () =>
   new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo" }).format(
@@ -188,7 +203,7 @@ function Field({
   return (
     <div className="flex items-start gap-2">
       <span className={labelClass}>
-        {label}
+        <span className="flex items-center gap-1">{label}</span>
         <span
           className={cn(
             "text-[10px] leading-3 font-normal",
@@ -268,6 +283,7 @@ export function CommunityComposer({
   allowPreview = false,
   embedded = false,
   onClose,
+  onStartNew,
   onMapPickModeChange,
   onMapPointChange,
   onTargetChange,
@@ -291,16 +307,32 @@ export function CommunityComposer({
   const [removedPhotoIds, setRemovedPhotoIds] = useState<string[]>([]);
   const [newPhotos, setNewPhotos] = useState<{ file: File; url: string }[]>([]);
   const [processingPhotos, setProcessingPhotos] = useState(false);
-  const [pickingPoint, setPickingPoint] = useState(false);
+  const [pinOnly, setPinOnly] = useState(false);
   // 「2.」のような入力途中の文字を残すため、数値とは別に持つ。
   const [liftSpeedText, setLiftSpeedText] = useState("");
   const [kmhText, setKmhText] = useState("");
   const [showErrors, setShowErrors] = useState(false);
   const [error, setError] = useState("");
   const [confirmClose, setConfirmClose] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
+  const [draftNotice, setDraftNotice] = useState("");
+  const [restoredNotice, setRestoredNotice] = useState("");
+  const [activeIdentity, setActiveIdentity] = useState<string | null>(null);
   const [busy, startTransition] = useTransition();
   const idempotencyKey = useRef(crypto.randomUUID());
   const timeEdited = useRef(false);
+  const locationEdited = useRef(false);
+  const targetEdited = useRef(false);
+  const geoRequest = useRef(0);
+  const draftScope = useRef<DraftScope | null>(null);
+  const draftEnabled = useRef(false);
+  const photosMissing = useRef(false);
+  const restoredSpeed = useRef<{
+    liftSpeedText: string;
+    kmhText: string;
+  } | null>(null);
+  const mounted = useRef(true);
   const lastExternalTarget = useRef<ReportMapTarget | null>(null);
   const initialTargetRef = useRef(initialTarget);
   const mapDataRef = useRef(mapData);
@@ -330,6 +362,13 @@ export function CommunityComposer({
       missing.状況 = "状況を選択してください。";
     if (entry.kind === "ITEM" && !entry.itemType)
       missing.アイテム = "アイテムを選択してください。";
+    if (entry.longitude != null && entry.latitude != null) {
+      const locationError = reportLocationError(
+        [entry.longitude, entry.latitude],
+        mapData,
+      );
+      if (locationError) missing.場所 = locationError;
+    }
   }
   const fieldError = (label: string) =>
     showErrors ? missing[label] : undefined;
@@ -338,18 +377,25 @@ export function CommunityComposer({
   );
   const photoCount = visibleSavedPhotos.length + newPhotos.length;
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      geoRequest.current++;
       for (const photo of newPhotosRef.current) URL.revokeObjectURL(photo.url);
       callbacks.current.onMapPickModeChange?.(null);
       callbacks.current.onMapPointChange?.(null);
-    },
-    [],
-  );
+    };
+  }, []);
 
   // ログインしているかはブラウザが持つセッションで先に分かるので、
   // 未ログインならサーバーに問い合わせずにログインの案内を出す。
-  const { status: sessionStatus, update: refreshSession } = useSession();
+  const {
+    data: session,
+    status: sessionStatus,
+    update: refreshSession,
+  } = useSession();
+  const sessionIdentity = session?.user?.id ?? "";
   // 別ウィンドウでログインしたら、ログイン状態だけ読み直して入力画面へ進む
   useEffect(
     () => onLoginWindowDone(() => void refreshSession()),
@@ -359,6 +405,25 @@ export function CommunityComposer({
   useEffect(() => {
     if (sessionStatus === "loading") return;
     let alive = true;
+    draftEnabled.current = false;
+    draftScope.current = null;
+    geoRequest.current++;
+    setLocating(false);
+    setStep("loading");
+    setLoadingError("");
+    setDraftNotice("");
+    setRestoredNotice("");
+    for (const photo of newPhotosRef.current) URL.revokeObjectURL(photo.url);
+    setNewPhotos([]);
+    setSavedPhotos([]);
+    setRemovedPhotoIds([]);
+    setVersion(null);
+    setEditingPostId(postId ?? null);
+    timeEdited.current = false;
+    locationEdited.current = false;
+    targetEdited.current = false;
+    setPinOnly(false);
+    photosMissing.current = false;
     void (async () => {
       try {
         // 開発中の確認用。未ログインでも、このブラウザで有効にしたときだけ入力画面を開く
@@ -387,6 +452,7 @@ export function CommunityComposer({
         const courses = mapDataRef.current;
         const account = accountResult?.data ?? null;
         if (!account && !canPreview) {
+          setActiveIdentity(sessionIdentity);
           setStep("login");
           return;
         }
@@ -402,7 +468,8 @@ export function CommunityComposer({
           (target.kind === "COURSE" ? courses.courses : courses.lifts).some(
             item => item.id === target.id,
           )
-        )
+        ) {
+          targetEdited.current = true;
           initial.entries = [
             {
               ...blankEntry(target.kind),
@@ -411,6 +478,9 @@ export function CommunityComposer({
                 : { liftId: target.id }),
             },
           ];
+        }
+        let currentVersion: number | null = null;
+        let currentPhotos: PublicPhoto[] = [];
         if (postId) {
           const detail = await getPostDetail(postId);
           if (!alive) return;
@@ -432,14 +502,84 @@ export function CommunityComposer({
             ({ id: _id, targetName: _name, photos: _photos, ...item }) => item,
           );
           timeEdited.current = true;
+          locationEdited.current = true;
+          targetEdited.current = true;
+          currentVersion = post.version;
+          currentPhotos = post.entries[0]?.photos ?? [];
           setSavedPhotos(post.entries[0]?.photos ?? []);
           setVersion(post.version);
         }
-        setReport(initial);
+        const scope: DraftScope = {
+          userId: sessionIdentity || account?.id || "development-preview",
+          resortId,
+          postId,
+        };
+        let restoredReport = initial;
+        try {
+          const stored = await loadDraft(scope);
+          if (!alive) return;
+          if (stored) {
+            const parsed = composerDraftSchema.safeParse(stored.data);
+            if (parsed.success && parsed.data.version === currentVersion) {
+              const saved = parsed.data;
+              restoredReport = saved.report;
+              timeEdited.current = saved.timeEdited;
+              locationEdited.current = saved.locationEdited;
+              targetEdited.current = saved.targetEdited;
+              setPinOnly(saved.pinOnly);
+              idempotencyKey.current = saved.idempotencyKey;
+              setRemovedPhotoIds(
+                saved.removedPhotoIds.filter(id =>
+                  currentPhotos.some(photo => photo.id === id),
+                ),
+              );
+              // Preserve legacy drafts visibly; require removing extra photos
+              // before submission rather than silently discarding their data.
+              const validFiles = stored.files.filter(
+                file => file.size > 0 && file.size <= MAX_PHOTO_BYTES,
+              );
+              setNewPhotos(
+                validFiles.map(file => ({
+                  file,
+                  url: URL.createObjectURL(file),
+                })),
+              );
+              photosMissing.current =
+                stored.photosMissing ||
+                saved.photosMissing ||
+                validFiles.length !== stored.files.length;
+              if (photosMissing.current)
+                setDraftNotice(
+                  "下書きの写真を復元できませんでした。写真を再選択してください。",
+                );
+              restoredSpeed.current = {
+                liftSpeedText: saved.liftSpeedText,
+                kmhText: saved.kmhText,
+              };
+              setRestoredNotice("下書きを復元しました。");
+            } else {
+              setRestoredNotice(
+                postId
+                  ? "投稿が更新されているため、以前の下書きは復元していません。"
+                  : "下書きを読み込めませんでした。",
+              );
+            }
+          }
+        } catch {
+          if (alive)
+            setDraftNotice(
+              "下書きを読み込めません。このブラウザでは自動保存を利用できない可能性があります。",
+            );
+        }
+        if (!alive) return;
+        draftScope.current = scope;
+        draftEnabled.current = true;
+        setReport(restoredReport);
+        setActiveIdentity(sessionIdentity);
         setStep(
           !account?.publicName && !canPreview
             ? "profile"
-            : initial.entries.length
+            : restoredReport.entries.length
               ? "edit"
               : "choose",
         );
@@ -455,7 +595,14 @@ export function CommunityComposer({
     return () => {
       alive = false;
     };
-  }, [allowPreview, resortId, postId, sessionStatus, signedOut]);
+  }, [
+    allowPreview,
+    resortId,
+    postId,
+    sessionStatus,
+    signedOut,
+    sessionIdentity,
+  ]);
 
   const patchEntry = useCallback(
     (patch: Partial<ReportEntryDraft>) =>
@@ -467,33 +614,48 @@ export function CommunityComposer({
       })),
     [],
   );
-  const startEntry = useCallback((kind: Kind, patch = {}) => {
-    setReport(current => ({
-      ...current,
-      entries: [{ ...blankEntry(kind), ...patch }],
-    }));
-    setStep("edit");
-  }, []);
+  const startEntry = useCallback(
+    (kind: Kind, patch: Partial<ReportEntryDraft> = {}) => {
+      locationEdited.current = false;
+      targetEdited.current = Boolean(patch.courseId || patch.liftId);
+      setPinOnly(false);
+      geoRequest.current++;
+      setLocating(false);
+      setReport(current => ({
+        ...current,
+        entries: [{ ...blankEntry(kind), ...patch }],
+      }));
+      setStep("edit");
+    },
+    [],
+  );
 
-  // 地点が決まったら、コース・リフトの項目は未選択のときだけ近いものを選ぶ。
-  // コブ・アイテムのコースは地点に付随する情報なので、地点に合わせて選び直す。
+  // 地点から近い対象を補完する。手動で選んだ対象は保ち、
+  // 自動補完した対象は地点の変更に合わせて更新する。
   const applyPoint = useCallback(
-    (point: [number, number], courseId?: string | null) => {
+    (point: [number, number], courseId?: string | null, manual = true) => {
       const current = reportRef.current.entries[0];
       if (!current) return;
+      if (manual) {
+        locationEdited.current = true;
+        setPinOnly(true);
+        onTargetChange?.(null);
+        geoRequest.current++;
+        setLocating(false);
+        setLocationAccuracy(null);
+        setError("");
+      }
       const patch: Partial<ReportEntryDraft> = {
         longitude: point[0],
         latitude: point[1],
       };
-      if (isPointKind(current.kind))
+      if (current.kind !== "LIFT" && !targetEdited.current)
         patch.courseId = courseId ?? nearestCourseId(point, mapData.courses);
-      else if (current.kind === "COURSE" && !current.courseId)
-        patch.courseId = courseId ?? nearestCourseId(point, mapData.courses);
-      else if (current.kind === "LIFT" && !current.liftId)
+      else if (current.kind === "LIFT" && !targetEdited.current)
         patch.liftId = nearestCourseId(point, mapData.lifts);
       patchEntry(patch);
     },
-    [mapData, patchEntry],
+    [mapData, patchEntry, onTargetChange],
   );
 
   const applyMapTarget = useCallback(
@@ -501,11 +663,12 @@ export function CommunityComposer({
       const current = reportRef.current.entries[0];
       if (target.kind === "POINT") {
         if (!current) return;
-        applyPoint(target.coordinates, target.courseId);
-        setPickingPoint(false);
+        // Keep the map in pin mode while filling the nearby target in the form.
+        applyPoint(target.coordinates);
         return;
       }
       if (!current) {
+        targetEdited.current = true;
         startEntry(
           target.kind,
           target.kind === "COURSE"
@@ -514,12 +677,15 @@ export function CommunityComposer({
         );
         return;
       }
-      if (current.kind === target.kind)
+      if (current.kind === target.kind) {
+        setPinOnly(false);
+        targetEdited.current = true;
         patchEntry(
           target.kind === "COURSE"
             ? { courseId: target.id }
             : { liftId: target.id },
         );
+      }
     },
     [applyPoint, patchEntry, startEntry],
   );
@@ -536,26 +702,164 @@ export function CommunityComposer({
   }, [applyMapTarget, selectedMapTarget, step]);
 
   const entryKey = entry?.clientKey;
-  const editBaseline = useRef("");
-  useEffect(() => {
-    if (step === "edit" && entryKey)
-      editBaseline.current = JSON.stringify(reportRef.current);
-  }, [entryKey, step]);
   useEffect(() => {
     const current = reportRef.current.entries.find(
       item => item.clientKey === entryKey,
     );
     const speed = current?.liftSpeed;
-    setLiftSpeedText(speed?.toString() ?? "");
-    setKmhText(speed == null ? "" : (speed * 3.6).toFixed(1));
+    setLiftSpeedText(
+      restoredSpeed.current?.liftSpeedText ?? speed?.toString() ?? "",
+    );
+    setKmhText(
+      restoredSpeed.current?.kmhText ??
+        (speed == null ? "" : (speed * 3.6).toFixed(1)),
+    );
+    restoredSpeed.current = null;
     setShowErrors(false);
   }, [entryKey]);
 
-  const pointMode =
-    step === "edit" && !!entry && (isPointKind(entry.kind) || pickingPoint);
+  const draftState = useRef({
+    pinOnly,
+    report,
+    version,
+    removedPhotoIds,
+    liftSpeedText,
+    kmhText,
+  });
+  draftState.current = {
+    pinOnly,
+    report,
+    version,
+    removedPhotoIds,
+    liftSpeedText,
+    kmhText,
+  };
+  const persistDraft = useCallback(async () => {
+    const scope = draftScope.current;
+    if (!scope || !draftEnabled.current) return true;
+    const data = {
+      ...draftState.current,
+      idempotencyKey: idempotencyKey.current,
+      timeEdited: timeEdited.current,
+      locationEdited: locationEdited.current,
+      targetEdited: targetEdited.current,
+      photosMissing: photosMissing.current,
+    };
+    try {
+      const result = await saveDraft(
+        scope,
+        data,
+        newPhotosRef.current.map(photo => photo.file),
+      );
+      if (
+        mounted.current &&
+        draftScope.current === scope &&
+        draftEnabled.current
+      )
+        setDraftNotice(
+          result.photosSaved
+            ? photosMissing.current
+              ? "下書きの写真を復元できませんでした。写真を再選択してください。"
+              : ""
+            : "写真を下書きに保存できませんでした。画面を開き直した際は写真を再選択してください。",
+        );
+      return result.photosSaved;
+    } catch {
+      if (
+        mounted.current &&
+        draftScope.current === scope &&
+        draftEnabled.current
+      )
+        setDraftNotice(
+          "下書きを保存できませんでした。ブラウザの空き容量や保存設定を確認してください。",
+        );
+      return false;
+    }
+  }, []);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Persist each input change through refs, including raw numeric text and photo selection.
   useEffect(() => {
-    onMapPickModeChange?.(pointMode ? "POINT" : null);
-  }, [onMapPickModeChange, pointMode]);
+    if (
+      (step === "edit" || step === "choose") &&
+      activeIdentity === sessionIdentity
+    )
+      void persistDraft();
+  }, [
+    report,
+    pinOnly,
+    version,
+    removedPhotoIds,
+    newPhotos,
+    liftSpeedText,
+    kmhText,
+    step,
+    activeIdentity,
+    sessionIdentity,
+    persistDraft,
+  ]);
+  useEffect(() => {
+    const flush = () => void persistDraft();
+    const hidden = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", hidden);
+    return () => {
+      flush();
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", hidden);
+    };
+  }, [persistDraft]);
+
+  const acquireLocation = () => {
+    if (!navigator.geolocation) {
+      setError(
+        "このブラウザでは現在位置を取得できません。地図で場所を選んでください。",
+      );
+      return;
+    }
+    const request = ++geoRequest.current;
+    const key = reportRef.current.entries[0]?.clientKey;
+    setLocating(true);
+    setError("");
+    try {
+      navigator.geolocation.getCurrentPosition(
+        position => {
+          if (
+            !mounted.current ||
+            request !== geoRequest.current ||
+            reportRef.current.entries[0]?.clientKey !== key
+          )
+            return;
+          const { longitude, latitude, accuracy } = position.coords;
+          if (
+            !Number.isFinite(longitude) ||
+            !Number.isFinite(latitude) ||
+            Math.abs(longitude) > 180 ||
+            Math.abs(latitude) > 90
+          ) {
+            setLocating(false);
+            setError(geolocationMessage(2));
+            return;
+          }
+          applyPoint([longitude, latitude]);
+          setLocationAccuracy(Number.isFinite(accuracy) ? accuracy : null);
+        },
+        cause => {
+          if (!mounted.current || request !== geoRequest.current) return;
+          setLocating(false);
+          setError(geolocationMessage(cause.code));
+        },
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 },
+      );
+    } catch {
+      setLocating(false);
+      setError(geolocationMessage(2));
+    }
+  };
+
+  useEffect(() => {
+    onMapPickModeChange?.(null);
+  }, [onMapPickModeChange]);
   useEffect(() => {
     onMapPointChange?.(
       step === "edit" && entry?.latitude != null && entry.longitude != null
@@ -565,7 +869,7 @@ export function CommunityComposer({
   }, [entry?.latitude, entry?.longitude, onMapPointChange, step]);
   // コブ・アイテムのコースは地点から決まるので、地図の選択は動かさない。
   const featureTarget =
-    step !== "edit"
+    step !== "edit" || pinOnly
       ? null
       : entry?.kind === "LIFT" && entry.liftId
         ? `LIFT:${entry.liftId}`
@@ -593,41 +897,48 @@ export function CommunityComposer({
     setNewPhotos([]);
   };
   const resetForNext = () => {
+    if (editingPostId && onStartNew) {
+      onStartNew();
+      return;
+    }
+    if (draftScope.current)
+      draftScope.current = { ...draftScope.current, postId: undefined };
     clearNewPhotos();
     setSavedPhotos([]);
     setRemovedPhotoIds([]);
     setEditingPostId(null);
     setVersion(null);
     setReport(blankReport());
-    setPickingPoint(false);
     setError("");
     timeEdited.current = false;
     idempotencyKey.current = crypto.randomUUID();
+    locationEdited.current = false;
+    targetEdited.current = false;
+    setPinOnly(false);
+    photosMissing.current = false;
+    draftEnabled.current = true;
+    setDraftNotice("");
+    setRestoredNotice("");
     setStep("choose");
   };
 
   const addPhotos = async (files: FileList | null) => {
     if (!files?.length || processingPhotos) return;
     const selected = [...files];
+    if (selected.length !== MAX_PHOTOS) {
+      setError("写真は1枚だけ選択してください。");
+      return;
+    }
     if (selected.some(file => file.size > MAX_PHOTO_BYTES)) {
       setError("写真は1枚8MB以下にしてください。");
       return;
     }
-    const totalBytes = [...newPhotos.map(photo => photo.file), ...selected]
-      .map(file => file.size)
-      .reduce((sum, size) => sum + size, 0);
-    if (
-      photoCount + selected.length > MAX_PHOTOS ||
-      totalBytes > MAX_TOTAL_BYTES
-    ) {
-      setError("写真は合計6枚、合計48MBまでです。");
-      return;
-    }
     const entryKey = reportRef.current.entries[0]?.clientKey;
+    const scope = draftScope.current;
     setProcessingPhotos(true);
     setError("");
+    const accepted: { file: File; url: string }[] = [];
     try {
-      const accepted: { file: File; url: string }[] = [];
       let takenAt: { observedOn: string; observedTime: string | null } | null =
         null;
       let gps: [number, number] | null = null;
@@ -661,29 +972,46 @@ export function CommunityComposer({
         accepted.push({ file, url: URL.createObjectURL(file) });
       }
       // 準備中に種類を選び直したら、別の項目には付けない。
-      if (reportRef.current.entries[0]?.clientKey !== entryKey) {
+      if (
+        !mounted.current ||
+        draftScope.current !== scope ||
+        reportRef.current.entries[0]?.clientKey !== entryKey
+      ) {
         for (const photo of accepted) URL.revokeObjectURL(photo.url);
         return;
       }
-      setNewPhotos(current => [...current, ...accepted]);
+      for (const photo of newPhotosRef.current) URL.revokeObjectURL(photo.url);
+      setNewPhotos(accepted);
+      setRemovedPhotoIds(savedPhotos.map(photo => photo.id));
+      photosMissing.current = false;
       if (takenAt && !timeEdited.current) {
         timeEdited.current = true;
         const { observedOn, observedTime } = takenAt;
         setReport(current => ({ ...current, observedOn, observedTime }));
       }
       const current = reportRef.current.entries[0];
-      if (gps && current && current.latitude == null) applyPoint(gps);
+      if (gps && current && !locationEdited.current && current.latitude == null)
+        applyPoint(gps, undefined, false);
     } catch (cause) {
+      for (const photo of accepted) URL.revokeObjectURL(photo.url);
+      if (!mounted.current || draftScope.current !== scope) return;
       setError(
         cause instanceof Error ? cause.message : "写真を準備できませんでした。",
       );
     } finally {
-      setProcessingPhotos(false);
+      if (mounted.current && draftScope.current === scope)
+        setProcessingPhotos(false);
     }
   };
 
   const save = () => {
-    if (processingPhotos || !entry) return;
+    if (processingPhotos || locating || !entry) return;
+    if (photoCount > MAX_PHOTOS) {
+      setError(
+        "写真は1件の投稿で1枚までです。不要な写真を削除するか、選び直してください。",
+      );
+      return;
+    }
     if (Object.keys(missing).length) {
       setShowErrors(true);
       setError("未入力の必須項目があります。");
@@ -713,47 +1041,69 @@ export function CommunityComposer({
     for (const { file } of newPhotos)
       form.append(`photos:${entry.clientKey}`, file);
     startTransition(async () => {
-      const result =
-        editingPostId && version != null
-          ? await updateReport(
-              editingPostId,
-              version,
-              parsed.data,
-              form,
-              removedPhotoIds,
-            )
-          : await publishReport(
-              {
-                resortId,
-                report: parsed.data,
-                idempotencyKey: idempotencyKey.current,
-              },
-              form,
-            );
-      if (!result.ok) {
-        setError(result.error);
-        return;
+      const submittingScope = draftScope.current;
+      try {
+        const result =
+          editingPostId && version != null
+            ? await updateReport(
+                editingPostId,
+                version,
+                parsed.data,
+                form,
+                removedPhotoIds,
+              )
+            : await publishReport(
+                {
+                  resortId,
+                  report: parsed.data,
+                  idempotencyKey: idempotencyKey.current,
+                },
+                form,
+              );
+        if (!result.ok) {
+          if (!mounted.current || draftScope.current !== submittingScope)
+            return;
+          setError(result.error);
+          return;
+        }
+        if (!mounted.current || draftScope.current !== submittingScope) return;
+        geoRequest.current++;
+        setLocating(false);
+        if (submittingScope) {
+          if (draftScope.current === submittingScope)
+            draftEnabled.current = false;
+          await deleteDraft(submittingScope).catch(() => {
+            if (mounted.current)
+              setDraftNotice(
+                "投稿は完了しましたが、端末の下書きを削除できませんでした。",
+              );
+          });
+        }
+        if (!mounted.current || draftScope.current !== submittingScope) return;
+        setError("");
+        rememberCommunityPost(resortId);
+        setStep("done");
+      } catch {
+        if (mounted.current && draftScope.current === submittingScope)
+          setError(
+            "送信できませんでした。写真の容量や通信状況を確認して、もう一度お試しください。",
+          );
       }
-      setError("");
-      rememberCommunityPost(resortId);
-      setStep("done");
     });
   };
 
   const close = () => {
+    geoRequest.current++;
     onMapPickModeChange?.(null);
     onMapPointChange?.(null);
     onClose?.();
   };
-  // 入力を始めた時点の内容と比べ、写真の追加・削除か入力の変更があれば確かめる
-  const requestClose = () => {
-    const dirty =
-      step === "edit" &&
-      (newPhotos.length > 0 ||
-        removedPhotoIds.length > 0 ||
-        JSON.stringify(report) !== editBaseline.current);
-    if (dirty) setConfirmClose(true);
-    else close();
+  const requestClose = async () => {
+    const scope = draftScope.current;
+    const saved = await persistDraft();
+    if (!mounted.current || draftScope.current !== scope) return;
+    if (saved) close();
+    else setConfirmClose(true);
   };
   const header = (title: string, onBack?: () => void) => (
     <div className="flex shrink-0 items-center justify-between gap-2 border-b border-gray-200 py-2 pr-2 pl-3 md:pr-3 md:pl-4">
@@ -773,23 +1123,40 @@ export function CommunityComposer({
           {title}
         </h2>
       </div>
-      {embedded && onClose && (
-        <Button
-          type="button"
-          aria-label="投稿を閉じる"
-          variant="ghost"
-          className="flex size-7 min-h-7 shrink-0 items-center justify-center rounded-full border border-gray-200 p-0 text-gray-500 shadow-sm hover:bg-gray-50 hover:text-gray-900 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10 md:size-8 md:min-h-8"
-          onClick={requestClose}
-        >
-          <X size={18} strokeWidth={2.5} />
-        </Button>
-      )}
+      <div className="flex shrink-0 items-center gap-1">
+        {(step === "edit" || step === "choose") && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="下書きを破棄"
+            title="下書きを破棄"
+            className="size-7 text-gray-500 md:size-8"
+            disabled={busy || processingPhotos}
+            onClick={() => setConfirmClose(true)}
+          >
+            <Trash2 size={16} />
+          </Button>
+        )}
+        {embedded && onClose && (
+          <Button
+            type="button"
+            aria-label="投稿を閉じる"
+            variant="ghost"
+            className="flex size-7 min-h-7 shrink-0 items-center justify-center rounded-full border border-gray-200 p-0 text-gray-500 shadow-sm hover:bg-gray-50 hover:text-gray-900 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10 md:size-8 md:min-h-8"
+            disabled={busy || processingPhotos}
+            onClick={() => void requestClose()}
+          >
+            <X size={18} strokeWidth={2.5} />
+          </Button>
+        )}
+      </div>
     </div>
   );
   const shell = (title: string, body: ReactNode, footer?: ReactNode) => (
     <main
       className={cn(
-        "flex min-h-0 flex-col bg-white",
+        "@container/composer flex w-full min-w-0 min-h-0 flex-col overflow-hidden bg-white",
         embedded ? "h-full" : "h-dvh",
       )}
     >
@@ -798,32 +1165,64 @@ export function CommunityComposer({
         step === "edit" && !editingPostId
           ? () => {
               clearNewPhotos();
-              setPickingPoint(false);
               setError("");
               setReport(current => ({ ...current, entries: [] }));
               setStep("choose");
             }
           : undefined,
       )}
-      <div className="min-h-0 flex-1 overflow-y-auto">{body}</div>
+      <div className="min-w-0 min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">
+        {restoredNotice && (
+          <p role="status" className="px-3 pt-2 text-xs text-gray-600 md:px-4">
+            {restoredNotice}
+          </p>
+        )}
+        {draftNotice && (
+          <p role="status" className="px-3 pt-2 text-xs text-amber-800 md:px-4">
+            {draftNotice}
+          </p>
+        )}
+        {body}
+      </div>
       {footer}
       <AlertDialog open={confirmClose} onOpenChange={setConfirmClose}>
         <AlertDialogContent overlayClassName="z-[900]" className="z-[901]">
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              入力した内容は消えますが、閉じますか？
-            </AlertDialogTitle>
+            <AlertDialogTitle>下書きを破棄して閉じますか？</AlertDialogTitle>
           </AlertDialogHeader>
+          {draftNotice && (
+            <p className="text-sm text-amber-800">{draftNotice}</p>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>入力に戻る</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
-              onClick={() => {
+              onClick={async event => {
+                event.preventDefault();
+                const scope = draftScope.current;
+                draftEnabled.current = false;
+                geoRequest.current++;
+                try {
+                  if (scope) await deleteDraft(scope);
+                } catch {
+                  if (!mounted.current || draftScope.current !== scope) return;
+                  draftEnabled.current = true;
+                  setDraftNotice(
+                    "下書きを削除できませんでした。ブラウザの保存設定を確認してください。",
+                  );
+                  return;
+                }
+                if (!mounted.current || draftScope.current !== scope) return;
                 setConfirmClose(false);
+                clearNewPhotos();
+                setReport(blankReport());
+                setDraftNotice("");
+                setRestoredNotice("");
+                if (!onClose) setStep("choose");
                 close();
               }}
             >
-              閉じる
+              破棄して閉じる
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -831,7 +1230,11 @@ export function CommunityComposer({
     </main>
   );
 
-  if (step === "loading")
+  if (
+    step === "loading" ||
+    sessionStatus === "loading" ||
+    activeIdentity !== sessionIdentity
+  )
     return shell(
       "現地レポート",
       loadingError ? (
@@ -965,22 +1368,6 @@ export function CommunityComposer({
 
   const hasLocation = entry.latitude != null && entry.longitude != null;
 
-  // コース・リフトは地図のタップで選ぶ。場所はボタンで地点の指定に切り替える。
-  const pointButton = (
-    <Button
-      type="button"
-      variant="outline"
-      aria-pressed={pickingPoint}
-      className={cn(
-        "h-8 shrink-0 px-2 text-xs md:text-sm",
-        pickingPoint && chipClass(true),
-        pickingPoint && "h-8 md:text-sm",
-      )}
-      onClick={() => setPickingPoint(current => !current)}
-    >
-      地図で選ぶ
-    </Button>
-  );
   const targetSelect = (lift: boolean, optional: boolean) => {
     const options = lift ? mapData.lifts : mapData.courses;
     const value = (lift ? entry.liftId : entry.courseId) ?? "";
@@ -993,11 +1380,13 @@ export function CommunityComposer({
             { value: "", label: placeholder },
             ...options.map(item => ({ value: item.id, label: item.name })),
           ]}
-          onValueChange={next =>
+          onValueChange={next => {
+            setPinOnly(false);
+            targetEdited.current = true;
             patchEntry(
               lift ? { liftId: next || null } : { courseId: next || null },
-            )
-          }
+            );
+          }}
         >
           <SelectTrigger
             aria-label={lift ? "リフト" : "コース"}
@@ -1093,28 +1482,27 @@ export function CommunityComposer({
   ];
 
   const form = (
-    <div className="space-y-3 p-3 md:p-4">
+    <div className="w-full min-w-0 space-y-3 p-3 md:p-4">
       <div className="flex flex-wrap items-center gap-2">
         <Button
           type="button"
           variant="outline"
           className="h-16 w-16 flex-col gap-0 px-0 text-[11px] text-gray-600"
-          disabled={processingPhotos || photoCount >= MAX_PHOTOS}
+          disabled={processingPhotos}
           onClick={() => document.getElementById("community-photo")?.click()}
         >
           {processingPhotos ? (
             <Spinner className="size-5" />
           ) : (
-            <Camera className="size-5" />
+            <Images className="size-5" />
           )}
-          写真を追加
+          {photoCount > 0 ? "写真を変更" : "写真を選択"}
           <span className="text-[10px] leading-3 text-gray-400">任意</span>
         </Button>
         <input
           id="community-photo"
           type="file"
           accept="image/*,image/heic,image/heif,.heic,.heif"
-          multiple
           className="hidden"
           onChange={event => {
             void addPhotos(event.currentTarget.files);
@@ -1143,35 +1531,59 @@ export function CommunityComposer({
           </div>
         ))}
       </div>
+      {photoCount > MAX_PHOTOS && (
+        <p role="alert" className="text-xs text-red-600">
+          写真は1枚までです。不要な写真を削除するか、選び直してください。
+        </p>
+      )}
       <Field label="日時" required error={fieldError("日時")}>
-        <div className="grid grid-cols-[minmax(0,1fr)_6.5rem] gap-1.5">
-          <Input
-            type="date"
-            aria-label="日付"
-            className="h-8 min-w-0"
-            max={today()}
-            value={report.observedOn}
-            onChange={event => {
+        <div className="grid min-w-0 grid-cols-1 gap-1 @min-[21rem]/composer:grid-cols-[minmax(0,1fr)_6.5rem]">
+          <div className="min-w-0 max-w-full overflow-hidden">
+            <Input
+              type="date"
+              aria-label="日付"
+              className={cn("h-8 min-w-0", styles.nativeDateTime)}
+              max={today()}
+              value={report.observedOn}
+              onChange={event => {
+                timeEdited.current = true;
+                setReport(current => ({
+                  ...current,
+                  observedOn: event.target.value,
+                }));
+              }}
+            />
+          </div>
+          <div className="min-w-0 max-w-full overflow-hidden">
+            <Input
+              type="time"
+              aria-label="時刻"
+              className={cn("h-8 min-w-0", styles.nativeDateTime)}
+              value={report.observedTime ?? ""}
+              onChange={event => {
+                timeEdited.current = true;
+                setReport(current => ({
+                  ...current,
+                  observedTime: event.target.value || null,
+                }));
+              }}
+            />
+          </div>
+        </div>
+        <div className="mt-1 flex justify-start">
+          <Button
+            type="button"
+            variant="outline"
+            aria-label="現在時刻を取得"
+            className="h-8 shrink-0 px-2 text-xs whitespace-nowrap md:text-sm"
+            onClick={() => {
               timeEdited.current = true;
-              setReport(current => ({
-                ...current,
-                observedOn: event.target.value,
-              }));
+              setReport(current => ({ ...current, ...currentTokyoDateTime() }));
             }}
-          />
-          <Input
-            type="time"
-            aria-label="時刻"
-            className="h-8 min-w-0"
-            value={report.observedTime ?? ""}
-            onChange={event => {
-              timeEdited.current = true;
-              setReport(current => ({
-                ...current,
-                observedTime: event.target.value || null,
-              }));
-            }}
-          />
+          >
+            <Clock3 size={14} />
+            現在時刻を取得
+          </Button>
         </div>
       </Field>
       <Field
@@ -1180,32 +1592,79 @@ export function CommunityComposer({
         error={fieldError("場所")}
       >
         <div className="flex items-center gap-1.5">
-          <span
-            className={cn(
-              "flex h-8 min-w-0 flex-1 items-center gap-1 rounded-lg border border-gray-200 px-2 text-xs tabular-nums md:text-sm",
-              hasLocation ? "text-gray-700" : "text-gray-400",
-            )}
-          >
-            <span className="min-w-0 truncate">
+          <div className="flex min-h-8 min-w-0 flex-1 items-center gap-1 rounded-lg border border-input px-1 py-0.5">
+            <span
+              title={
+                hasLocation
+                  ? `${entry.latitude?.toFixed(5)}, ${entry.longitude?.toFixed(5)}`
+                  : undefined
+              }
+              className={cn(
+                "min-w-0 flex-1 text-[11px] leading-3 tabular-nums break-words md:text-xs md:leading-3",
+                hasLocation ? "text-gray-500" : "text-gray-400",
+              )}
+            >
               {hasLocation
                 ? `${entry.latitude?.toFixed(5)}, ${entry.longitude?.toFixed(5)}`
-                : pointMode
-                  ? "地図で指定"
-                  : "未指定"}
+                : "未指定"}
             </span>
             {hasLocation && !isPointKind(entry.kind) && (
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 aria-label="場所を消す"
-                className="ml-auto shrink-0 text-gray-400 hover:text-gray-700"
-                onClick={() => patchEntry({ latitude: null, longitude: null })}
+                className="size-5 min-w-5 shrink-0 rounded-full p-0 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                onClick={() => {
+                  locationEdited.current = true;
+                  geoRequest.current++;
+                  setLocating(false);
+                  setLocationAccuracy(null);
+                  patchEntry({ latitude: null, longitude: null });
+                }}
               >
                 <X size={14} />
-              </button>
+              </Button>
             )}
-          </span>
-          {!isPointKind(entry.kind) && pointButton}
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            aria-label="現在位置を取得"
+            className="h-8 shrink-0 gap-1 px-1.5 text-xs whitespace-nowrap md:text-sm"
+            disabled={locating}
+            aria-busy={locating}
+            onClick={acquireLocation}
+          >
+            {locating ? (
+              <Spinner className="size-4" />
+            ) : (
+              <LocateFixed size={14} />
+            )}
+            現在位置を取得
+          </Button>
         </div>
+        {locating && (
+          <p role="status" className="mt-1 text-xs text-gray-500">
+            現在位置を取得中…
+          </p>
+        )}
+        {locationAccuracy != null && locationAccuracy > 100 && (
+          <p role="status" className="mt-1 text-xs text-amber-800">
+            位置の精度は約{Math.round(locationAccuracy)}
+            mです。地図で確認してください。
+          </p>
+        )}
+        {!showErrors &&
+          entry.longitude != null &&
+          entry.latitude != null &&
+          missing.場所 && (
+            <p role="alert" className="mt-1 text-xs text-red-600">
+              {missing.場所}
+            </p>
+          )}
+        <p className="mt-1 text-[11px] text-gray-500">
+          地図を長押しして場所を追加・変更
+        </p>
       </Field>
       {entry.kind === "COURSE" && (
         <>
@@ -1376,7 +1835,7 @@ export function CommunityComposer({
       )}
       <Button
         className="h-9 w-full"
-        disabled={busy || processingPhotos}
+        disabled={busy || processingPhotos || locating}
         onClick={save}
       >
         {busy ? "送信中…" : editingPostId ? "更新する" : "投稿する"}

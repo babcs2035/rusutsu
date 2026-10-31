@@ -8,10 +8,13 @@ import {
   type CommunityMapData,
   type FeedInput,
   idSchema,
+  type MapEntriesInput,
+  mapEntriesInputSchema,
   observedOnSchema,
   type ReportDraft,
   reportDraftSchema,
 } from "@/features/community/contract";
+import { reportLocationError } from "@/features/community/location";
 import type { AnonymousProof } from "@/features/corrections/anonymousCheck";
 import { prisma } from "@/lib/prisma";
 import { drainModerationJobs } from "@/server/community/moderation";
@@ -27,6 +30,7 @@ import {
   publicPostInclude,
   readFeed,
   readMapEntries,
+  readMapSummary,
   requireUserId,
   serializePosts,
   type Tx,
@@ -99,24 +103,11 @@ export async function getCommunityFeed(input: FeedInput) {
     ),
   );
 }
-export async function getCommunityMapEntries(input: {
-  resortId: string;
-  kind: "MOGUL" | "ITEM";
-  from?: string;
-  cursor?: string;
-}) {
-  return result(() =>
-    readMapEntries(
-      z
-        .strictObject({
-          resortId: idSchema,
-          kind: z.enum(["MOGUL", "ITEM"]),
-          from: observedOnSchema.optional(),
-          cursor: idSchema.optional(),
-        })
-        .parse(input),
-    ),
-  );
+export async function getCommunityMapEntries(input: MapEntriesInput) {
+  return result(() => readMapEntries(mapEntriesInputSchema.parse(input)));
+}
+export async function getCommunityMapSummary(resortId: string) {
+  return result(() => readMapSummary(idSchema.parse(resortId)));
 }
 export async function getCommunityAccount() {
   return result(async () => {
@@ -180,6 +171,13 @@ async function notify(
 }
 function prepareEntry(report: ReportDraft, options: CommunityMapData) {
   const [entry] = report.entries;
+  if (entry.longitude != null && entry.latitude != null) {
+    const locationError = reportLocationError(
+      [entry.longitude, entry.latitude],
+      options,
+    );
+    if (locationError) throw new Error(locationError);
+  }
   const course = entry.courseId
     ? options.courses.find(item => item.id === entry.courseId)
     : null;
@@ -312,8 +310,8 @@ export async function updateReport(
       const retained = await tx.contributionPhoto.count({
         where: { postId, id: { notIn: remove } },
       });
-      if (retained + uploaded.length > 6)
-        throw new Error("写真は1件の投稿で6枚までです。");
+      if (retained + uploaded.length > 1)
+        throw new Error("写真は1件の投稿で1枚までです。");
       const updated = await tx.communityPost.updateMany({
         where: { id: postId, authorId: id, version, status: "VISIBLE" },
         data: {

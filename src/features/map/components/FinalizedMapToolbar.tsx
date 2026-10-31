@@ -88,7 +88,7 @@ export const FinalizedMapToolbar = ({
   /** "floating" は地図に浮かせるカード、"bar" は白い帯に並べる中身だけ */
   presentation?: "floating" | "bar";
   showOpenOnly?: boolean;
-  communityFilters?: React.ReactNode;
+  communityFilters?: (settings: React.ReactNode) => React.ReactNode;
   className?: string;
 }) => {
   if (!hasCourses && !hasLifts && !communityFilters) return null;
@@ -116,6 +116,38 @@ export const FinalizedMapToolbar = ({
   const rowAlignClass =
     presentation === "bar" ? "justify-start" : "justify-end";
 
+  const settingsControl = (
+    <MapSettingsDialog
+      settings={mapDisplaySettings}
+      onChange={changeSettings}
+      variant={mapTileVariant}
+      onBackgroundChange={changeBackground}
+      onStatusChange={changeStatus}
+      courseColorMode={mode}
+      onCourseColorModeChange={onModeChange}
+    />
+  );
+  const wrapContent = (content: React.ReactNode) =>
+    presentation === "bar" ? (
+      content
+    ) : (
+      <Card className="w-[min(27rem,100%)] gap-0 overflow-hidden p-0">
+        <CardContent className="p-0">{content}</CardContent>
+      </Card>
+    );
+  if (communityFilters)
+    return wrapContent(
+      <div
+        className={cn(
+          "@container flex w-full flex-col gap-1",
+          presentation === "floating" && "p-1.5",
+          className,
+        )}
+      >
+        {communityFilters(settingsControl)}
+      </div>,
+    );
+
   const content = (
     <div
       className={cn(
@@ -125,54 +157,46 @@ export const FinalizedMapToolbar = ({
       )}
     >
       <div className="flex min-w-0 items-stretch gap-2" data-map-legends="true">
-        {communityFilters ? (
+        {hasCourses && (
           <div className="flex min-w-0 flex-1 items-center">
-            {communityFilters}
+            {showOpenOnly && onMapDisplaySettingsChange ? (
+              <MapCourseStatusOptions
+                settings={mapDisplaySettings}
+                onChange={onMapDisplaySettingsChange}
+              />
+            ) : mode === "slope" ? (
+              <SlopeColorScale />
+            ) : (
+              <div className="grid w-full grid-cols-5 gap-0.5 text-[8px] leading-none text-gray-600 @[25rem]:text-[9px]">
+                {DIFFICULTY_KEYS.map(key => (
+                  <LegendItem
+                    key={key}
+                    sample={
+                      <span
+                        className="h-2 w-full rounded-sm"
+                        style={{
+                          background: COURSE_DIFFICULTY_META[key].color,
+                        }}
+                      />
+                    }
+                  >
+                    <span title={COURSE_DIFFICULTY_META[key].label}>
+                      {key === "beginnerIntermediate"
+                        ? "初中級"
+                        : key === "intermediateAdvanced"
+                          ? "中上級"
+                          : COURSE_DIFFICULTY_META[key].label}
+                    </span>
+                  </LegendItem>
+                ))}
+              </div>
+            )}
           </div>
-        ) : (
-          hasCourses && (
-            <div className="flex min-w-0 flex-1 items-center">
-              {showOpenOnly && onMapDisplaySettingsChange ? (
-                <MapCourseStatusOptions
-                  settings={mapDisplaySettings}
-                  onChange={onMapDisplaySettingsChange}
-                />
-              ) : mode === "slope" ? (
-                <SlopeColorScale />
-              ) : (
-                <div className="grid w-full grid-cols-5 gap-0.5 text-[8px] leading-none text-gray-600 @[25rem]:text-[9px]">
-                  {DIFFICULTY_KEYS.map(key => (
-                    <LegendItem
-                      key={key}
-                      sample={
-                        <span
-                          className="h-2 w-full rounded-sm"
-                          style={{
-                            background: COURSE_DIFFICULTY_META[key].color,
-                          }}
-                        />
-                      }
-                    >
-                      <span title={COURSE_DIFFICULTY_META[key].label}>
-                        {key === "beginnerIntermediate"
-                          ? "初中級"
-                          : key === "intermediateAdvanced"
-                            ? "中上級"
-                            : COURSE_DIFFICULTY_META[key].label}
-                      </span>
-                    </LegendItem>
-                  ))}
-                </div>
-              )}
-            </div>
-          )
         )}
         {hasLifts && (
           <div
             className={cn(
-              communityFilters
-                ? "hidden shrink-0 items-center gap-1 @[25rem]:flex"
-                : "flex shrink-0 items-center gap-1",
+              "flex shrink-0 items-center gap-1",
               hasCourses && "border-l border-gray-200 pl-2",
             )}
           >
@@ -186,16 +210,10 @@ export const FinalizedMapToolbar = ({
                 </div>
               ))}
             </div>
-            <MapLineLegendDialog
-              showUngroomed={mapDisplaySettings.showUngroomed}
-            />
+            <MapLineLegendDialog />
           </div>
         )}
-        {!hasLifts && !communityFilters && (
-          <MapLineLegendDialog
-            showUngroomed={mapDisplaySettings.showUngroomed}
-          />
-        )}
+        {!hasLifts && <MapLineLegendDialog />}
       </div>
       <div className={cn("flex flex-nowrap items-center gap-1", rowAlignClass)}>
         {hasCourses && (
@@ -219,24 +237,10 @@ export const FinalizedMapToolbar = ({
           itemClassName={SEGMENT_ITEM_CLASS}
           ariaLabel={option => `${option.label}に切り替え`}
         />
-        <MapSettingsDialog
-          settings={mapDisplaySettings}
-          onChange={changeSettings}
-          variant={mapTileVariant}
-          onBackgroundChange={changeBackground}
-          onStatusChange={changeStatus}
-          courseColorMode={mode}
-          onCourseColorModeChange={onModeChange}
-        />
+        {settingsControl}
       </div>
     </div>
   );
 
-  if (presentation === "bar") return content;
-
-  return (
-    <Card className="w-[min(27rem,100%)] gap-0 overflow-hidden p-0">
-      <CardContent className="p-0">{content}</CardContent>
-    </Card>
-  );
+  return wrapContent(content);
 };

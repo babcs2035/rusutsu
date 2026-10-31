@@ -250,8 +250,8 @@ export async function verifyRemoteCommunity(
           liftId: null,
           body,
           snowQualities: ["硬め"],
-          latitude: 43.5,
-          longitude: 142.8,
+          latitude: 43.001,
+          longitude: 140.001,
           depth: "深い",
         },
       ],
@@ -355,6 +355,33 @@ export async function verifyRemoteCommunity(
     const photoResponse = await request({ operation: "photo", photoId }, key);
     assert.equal(photoResponse.status, 200);
     assert.match(photoResponse.headers.get("content-type") ?? "", /image\//);
+    const mapResponse = await request(
+      { operation: "mapEntries", input: { resortId: ids.resortId } },
+      null,
+    );
+    const map = (await mapResponse.json()).result;
+    assert.equal(map.ok, true);
+    assert.equal(map.data.entries[0].photo.id, photoId);
+    const summary = (
+      await (
+        await request({ operation: "mapSummary", resortId: ids.resortId }, null)
+      ).json()
+    ).result;
+    assert.deepEqual(summary.data, {
+      total: 1,
+      latestObservedOn: "2026-10-25",
+    });
+    for (const size of ["thumb", "map"]) {
+      const preview = await request(
+        { operation: "photo", photoId, size },
+        null,
+      );
+      assert.equal(preview.status, 200);
+      const metadata = await sharp(
+        Buffer.from(await preview.arrayBuffer()),
+      ).metadata();
+      assert.ok((metadata.width ?? Infinity) <= (size === "map" ? 160 : 320));
+    }
 
     const current = feed.result.data.posts[0];
     const {
@@ -422,6 +449,11 @@ export async function verifyRemoteCommunity(
     );
     const hiddenPhoto = await request({ operation: "photo", photoId }, key);
     assert.equal(hiddenPhoto.status, 404);
+    assert.equal(
+      (await request({ operation: "photo", photoId, size: "map" }, null))
+        .status,
+      404,
+    );
 
     const liked = await request(
       { operation: "like", postId, liked: true },

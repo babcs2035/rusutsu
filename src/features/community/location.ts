@@ -4,6 +4,10 @@ export type CourseGeometryOption = {
   lines?: number[][][];
 };
 
+export const MAX_REPORT_DISTANCE_METERS = 500;
+const METERS_PER_DEGREE = (Math.PI * 6371008.8) / 180;
+const DISTANCE_EPSILON = 0.000001;
+
 function distanceToSegmentSquared(
   point: [number, number],
   start: number[],
@@ -32,10 +36,16 @@ function distanceToSegmentSquared(
   return (px - nearestX) ** 2 + (py - nearestY) ** 2;
 }
 
-export function nearestCourseId(
+export function nearestFeature(
   point: [number, number],
   courses: CourseGeometryOption[],
 ) {
+  if (
+    !point.every(Number.isFinite) ||
+    Math.abs(point[0]) > 180 ||
+    Math.abs(point[1]) > 90
+  )
+    return null;
   let nearest: { id: string; distance: number } | null = null;
   for (const course of courses) {
     const lines = course.lines?.length ? course.lines : [course.coordinates];
@@ -69,5 +79,34 @@ export function nearestCourseId(
       }
     }
   }
-  return nearest?.id ?? null;
+  return nearest
+    ? {
+        id: nearest.id,
+        distanceMeters: Math.sqrt(nearest.distance) * METERS_PER_DEGREE,
+      }
+    : null;
+}
+
+export function nearestCourseId(
+  point: [number, number],
+  courses: CourseGeometryOption[],
+  maxDistanceMeters = MAX_REPORT_DISTANCE_METERS,
+) {
+  const nearest = nearestFeature(point, courses);
+  return nearest &&
+    nearest.distanceMeters <= maxDistanceMeters + DISTANCE_EPSILON
+    ? nearest.id
+    : null;
+}
+
+export function reportLocationError(
+  point: [number, number],
+  data: { courses: CourseGeometryOption[]; lifts: CourseGeometryOption[] },
+) {
+  const nearest = nearestFeature(point, [...data.courses, ...data.lifts]);
+  if (!nearest)
+    return "地図情報を取得できないため場所を確認できません。時間を置いて再度お試しください。";
+  return nearest.distanceMeters > MAX_REPORT_DISTANCE_METERS + DISTANCE_EPSILON
+    ? "場所がコースマップから500mより離れています。地図で場所を修正してください。"
+    : null;
 }

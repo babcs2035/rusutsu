@@ -9,6 +9,7 @@ import {
 } from "@/lib/internalDataApiClient";
 import { prisma } from "@/lib/prisma";
 import { communityPhotoResponse } from "./photoResponse";
+import type { PhotoPreviewSize } from "./photos";
 import { anonymousSubmissionKey } from "./rateLimit";
 import {
   COMMUNITY_API_PATH,
@@ -48,7 +49,7 @@ async function remoteRequest(command: CommunityCommand, photos?: FormData) {
     form.set("command", payload);
     const files = [...photos.entries()];
     if (
-      files.length > 6 ||
+      files.length > 1 ||
       files.some(
         ([key, file]) =>
           !/^photos:[a-f0-9-]{36}$/i.test(key) ||
@@ -57,7 +58,7 @@ async function remoteRequest(command: CommunityCommand, photos?: FormData) {
           file.size > 8 * 1024 * 1024,
       )
     )
-      throw new Error("写真は1枚8MB以内、全体で6枚まで選んでください。");
+      throw new Error("写真は1枚8MB以内、投稿ごとに1枚までです。");
     for (const [key, file] of files) form.append(key, file);
     body = form;
   }
@@ -130,10 +131,17 @@ export async function remoteCommunity<K extends keyof CommunitySuccessPayloads>(
   }
 }
 
-export async function getCommunityPhoto(photoId: string): Promise<Response> {
-  if (!usesRemoteDataApi()) return communityPhotoResponse(photoId);
+export async function getCommunityPhoto(
+  photoId: string,
+  size?: PhotoPreviewSize,
+): Promise<Response> {
+  if (!usesRemoteDataApi()) return communityPhotoResponse(photoId, size);
   try {
-    const response = await remoteRequest({ operation: "photo", photoId });
+    const response = await remoteRequest({
+      operation: "photo",
+      photoId,
+      ...(size ? { size } : {}),
+    });
     if (response.status === 404) return new Response(null, { status: 404 });
     if (response.headers.get("content-type") !== "image/webp")
       return new Response(null, { status: 502 });

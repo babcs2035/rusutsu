@@ -1651,6 +1651,10 @@
           "type": "string",
           "minLength": 1
         },
+        "exclusive_group_id": {
+          "type": "string",
+          "minLength": 1
+        },
         "calendar_ids": {
           "type": "array",
           "items": {

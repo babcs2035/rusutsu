@@ -12,7 +12,7 @@ import type {
   CommunityCommand,
   CommunitySuccessPayloads,
 } from "@/server/community/remoteContract";
-import type { ActionResult, FeedInput } from "./contract";
+import type { ActionResult, FeedInput, MapEntriesInput } from "./contract";
 
 // Local image preparation only. No database writes and no third-party upload.
 export async function prepareCommunityPhoto(form: FormData): Promise<
@@ -67,6 +67,7 @@ async function execute<K extends keyof CommunitySuccessPayloads>(
       "courses",
       "feed",
       "mapEntries",
+      "mapSummary",
       "account",
       "detail",
       "publicProfile",
@@ -98,14 +99,14 @@ export async function getCommunityFeed(input: FeedInput) {
     direct.getCommunityFeed(input),
   );
 }
-export async function getCommunityMapEntries(input: {
-  resortId: string;
-  kind: "MOGUL" | "ITEM";
-  from?: string;
-  cursor?: string;
-}) {
+export async function getCommunityMapEntries(input: MapEntriesInput) {
   return execute({ operation: "mapEntries", input }, () =>
     direct.getCommunityMapEntries(input),
+  );
+}
+export async function getCommunityMapSummary(resortId: string) {
+  return execute({ operation: "mapSummary", resortId }, () =>
+    direct.getCommunityMapSummary(resortId),
   );
 }
 export async function getCommunityAccount() {

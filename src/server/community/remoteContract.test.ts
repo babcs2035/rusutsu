@@ -117,8 +117,8 @@ test("report carries one item and rejects old multi-item fields", () => {
 
 test("command size limits allow the stated multipart envelope", () => {
   assert.equal(MAX_COMMAND_JSON_BYTES, 1024 * 1024);
-  assert.equal(MAX_MULTIPART_BYTES, 49 * 1024 * 1024);
-  assert.ok(MAX_MULTIPART_BYTES > 6 * 8 * 1024 * 1024);
+  assert.equal(MAX_MULTIPART_BYTES, 9 * 1024 * 1024);
+  assert.ok(MAX_MULTIPART_BYTES > 8 * 1024 * 1024);
 });
 
 test("feed and map entries response schemas require their wrapper shapes", () => {
@@ -184,4 +184,66 @@ test("public report entries require their attached photo list", () => {
     successPayloadSchemas.feed.safeParse(missingPhotos).success,
     false,
   );
+});
+
+test("map reads accept all four kinds and target-only photo entries without private payloads", () => {
+  for (const kind of [undefined, "COURSE", "LIFT", "MOGUL", "ITEM"]) {
+    assert.equal(
+      requestSchema.safeParse({
+        googleAccountId: null,
+        command: {
+          operation: "mapEntries",
+          input: {
+            resortId: "resort-1",
+            ...(kind ? { kind } : {}),
+            from: "2026-01-01",
+            to: "2026-10-31",
+          },
+        },
+      }).success,
+      true,
+    );
+  }
+  const entry = {
+    id: "entry-1",
+    postId: "post-1",
+    kind: "COURSE",
+    observedOn: "2026-10-25",
+    latitude: null,
+    longitude: null,
+    courseId: "course-1",
+    liftId: null,
+    targetName: "Aコース",
+    photo: { id: "photo-1", width: 120, height: 80 },
+    photoCount: 2,
+  };
+  assert.equal(
+    successPayloadSchemas.mapEntries.safeParse({
+      entries: [entry],
+      nextCursor: null,
+    }).success,
+    true,
+  );
+  assert.equal(
+    successPayloadSchemas.mapEntries.safeParse({
+      entries: [{ ...entry, body: "unused full text" }],
+      nextCursor: null,
+    }).success,
+    false,
+  );
+  assert.equal(
+    successPayloadSchemas.mapSummary.safeParse({
+      total: 1,
+      latestObservedOn: "2026-10-25",
+    }).success,
+    true,
+  );
+  for (const size of ["thumb", "map"])
+    assert.equal(
+      requestSchema.safeParse({
+        googleAccountId: null,
+        command: { operation: "photo", photoId: "photo-1", size },
+      }).success,
+      true,
+    );
 });

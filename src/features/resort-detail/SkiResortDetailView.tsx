@@ -8,9 +8,9 @@ import { CommunityComposer } from "@/features/community/CommunityComposer";
 import { CommunityFeed } from "@/features/community/CommunityFeed";
 import {
   COMPOSE_EVENT,
-  COMPOSE_STATE_EVENT,
   type ComposeRequest,
   MAP_TARGET_EVENT,
+  setCommunityComposeActive,
   setCommunityMapPickMode,
   setCommunityMapPoint,
 } from "@/features/community/composerEvents";
@@ -243,13 +243,6 @@ export const SkiResortDetailView = ({
             ? { kind: "LIFT", id: liftId }
             : undefined,
       });
-      for (const key of ["compose", "edit", "courseId", "liftId"])
-        url.searchParams.delete(key);
-      window.history.replaceState(
-        window.history.state,
-        "",
-        url.pathname + url.search + url.hash,
-      );
     }
     return () => {
       window.removeEventListener(COMPOSE_EVENT, open);
@@ -311,6 +304,14 @@ export const SkiResortDetailView = ({
     [onSelectedFinalizedFeatureChange],
   );
   const closeComposer = () => {
+    const url = new URL(window.location.href);
+    for (const key of ["compose", "edit", "courseId", "liftId"])
+      url.searchParams.delete(key);
+    window.history.replaceState(
+      window.history.state,
+      "",
+      url.pathname + url.search + url.hash,
+    );
     handlePickMode(null);
     setComposeRequest(null);
     setComposeTarget(null);
@@ -318,19 +319,30 @@ export const SkiResortDetailView = ({
   };
   const activeComposerResortId = composeRequest?.resortId;
   useEffect(() => {
+    if (!composeRequest) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("compose", "1");
+    for (const key of ["edit", "courseId", "liftId"])
+      url.searchParams.delete(key);
+    if (composeRequest.postId)
+      url.searchParams.set("edit", composeRequest.postId);
+    if (composeRequest.target)
+      url.searchParams.set(
+        composeRequest.target.kind === "COURSE" ? "courseId" : "liftId",
+        composeRequest.target.id,
+      );
+    window.history.replaceState(
+      window.history.state,
+      "",
+      url.pathname + url.search + url.hash,
+    );
+  }, [composeRequest]);
+  useEffect(() => {
     if (!activeComposerResortId) return;
     const resortId = activeComposerResortId;
-    window.dispatchEvent(
-      new CustomEvent(COMPOSE_STATE_EVENT, {
-        detail: { resortId, active: true },
-      }),
-    );
+    setCommunityComposeActive(resortId, true);
     return () => {
-      window.dispatchEvent(
-        new CustomEvent(COMPOSE_STATE_EVENT, {
-          detail: { resortId, active: false },
-        }),
-      );
+      setCommunityComposeActive(resortId, false);
     };
   }, [activeComposerResortId]);
 
@@ -563,6 +575,7 @@ export const SkiResortDetailView = ({
             postId={composeRequest.postId}
             embedded
             onClose={closeComposer}
+            onStartNew={() => setComposeRequest({ resortId: resort.id })}
             initialTarget={composeRequest.target}
             selectedMapTarget={composeTarget}
             onMapPickModeChange={handlePickMode}
@@ -698,6 +711,7 @@ export const SkiResortDetailView = ({
                   Boolean(composer) ||
                   (!mobileFeatureDetail && activeTab === "投稿")
                 }
+                resizableFeatureDetail={Boolean(composer)}
                 detailViewportResetKey={detailViewportResetKey}
               />
             </div>

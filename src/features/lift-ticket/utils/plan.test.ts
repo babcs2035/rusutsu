@@ -191,16 +191,16 @@ const rusutsuPlan = (dates: string[], hours: number, today: string) =>
     })),
   });
 
-test("販売開始前のWeb券も、利用日までに販売が始まるなら料金に使う", () => {
-  // Web販売は12/19開始。9月に照会しても12/24の分は12/19以降に買える
+test("販売開始前のWeb券を使わず、窓口料金を出す", () => {
+  // Web販売は12/19開始。販売開始前は窓口の5時間券を使う。
   const result = rusutsuPlan(["2026-12-24"], 5, "2026-09-25");
-  assert.equal(result.total, 11600, "Web料金の5時間券が選ばれていない");
+  assert.equal(result.total, 14500);
 });
 
 test("利用日より後に販売が始まるWeb券は使わない", () => {
   // 初滑りシーズン（12/5）はWeb販売開始（12/19）より前。5時間券も無いので
   // 窓口の1日券（初滑りシーズン①）になる
-  const result = rusutsuPlan(["2026-12-05"], 5, "2026-09-25");
+  const result = rusutsuPlan(["2026-12-05"], 5, "2026-12-19");
   assert.equal(result.multiDay, null);
   assert.equal(result.total, 7900);
   assert.ok(
@@ -216,7 +216,7 @@ test("ルスツの連続2日券は、連続した2日なら1日券×2より安�
     visitDate: "2027-01-14",
     usePreference: "full_day",
     party: PARTY,
-    today: "2026-09-25",
+    today: "2026-12-19",
     days: ["2027-01-14", "2027-01-15"].map((date, index) => ({
       id: `day-${index + 1}`,
       date,
@@ -232,7 +232,7 @@ test("5時間×4日なら25時間券1枚で全日をまかなう", () => {
   const result = rusutsuPlan(
     ["2026-12-24", "2027-01-10", "2027-01-11", "2027-01-12"],
     5,
-    "2026-09-25",
+    "2026-12-19",
   );
   assert.equal(result.perDayTotal, 11600 * 4, "1日ずつ買うとWeb5時間券×4");
   assert.equal(result.multiDay?.kind, "hours_pool");
@@ -247,7 +247,7 @@ test("時間の合計が25時間を超えるなら、足りない時間はトッ
   const result = rusutsuPlan(
     ["2027-01-10", "2027-01-11", "2027-01-12", "2027-01-13", "2027-01-14"],
     7,
-    "2026-09-25",
+    "2026-12-19",
   );
   assert.equal(result.perDayTotal, 13200 * 5);
   assert.equal(result.multiDay?.kind, "hours_pool");
@@ -267,7 +267,7 @@ test("トップアップ5時間は、それが要る日までの利用日のう�
     visitDate: "2027-03-08",
     usePreference: "full_day",
     party: PARTY,
-    today: "2026-09-25",
+    today: "2026-12-19",
     days: [
       ["2027-03-08", 8],
       ["2027-03-09", 8],
@@ -296,7 +296,7 @@ test("トップアップ5時間は、それが要る日までの利用日のう�
 });
 
 test("トップアップ5時間は単独では選ばない（25時間券を買った人だけの券）", () => {
-  const result = rusutsuPlan(["2027-01-10"], 5, "2026-09-25");
+  const result = rusutsuPlan(["2027-01-10"], 5, "2026-12-19");
   assert.ok(
     !result.days[0].result.lines.some(line =>
       line.offerName?.includes("トップアップ"),
@@ -320,7 +320,7 @@ test("時間の合計が25時間を超え、25時間券のほうが安ければ�
       "2027-01-18",
     ],
     6,
-    "2026-09-25",
+    "2026-12-19",
   );
   assert.equal(result.multiDay?.kind, "hours_pool");
   assert.equal(result.multiDay?.ticketCount, 2);
@@ -330,9 +330,11 @@ test("時間の合計が25時間を超え、25時間券のほうが安ければ�
 
 test("営業時間が未掲載でも、時間指定なら1日券を選び、営業時間の注意は出さない", () => {
   // 初滑りシーズン②（12/16）は5時間券が無く、1日券10,500円と25時間券だけ。
+  // 照会日は利用日前の12/1。25時間WEB券（12/19販売開始）はまだ買えない。
+  // 窓口25時間券は39,000円。
   // 営業時間が未掲載でも4時間なら1日券で足りる（25時間券39,000円にしない）。
   // 営業時間の話は料金の内訳に要らない（公式ページで見てもらう）
-  const result = rusutsuPlan(["2026-12-16"], 4, "2026-09-25");
+  const result = rusutsuPlan(["2026-12-16"], 4, "2026-12-01");
   assert.equal(result.multiDay, null);
   assert.equal(result.total, 10500);
   assert.ok(
@@ -353,7 +355,7 @@ const sapporoDay = (group: Omit<TicketPartyGroup, "id" | "count">) =>
     visitDate: "2027-01-15",
     usePreference: "full_day",
     party: [{ id: "a", count: 1, ...group }],
-    today: "2026-09-25",
+    today: "2026-12-19",
     days: [{ id: "day-1", date: "2027-01-15", duration: DAY }],
   });
 
@@ -386,7 +388,7 @@ test("基準区分の年齢範囲外の人には基準区分の料金を当て�
     visitDate: "2027-01-15",
     usePreference: "full_day",
     party: [{ id: "a", category: "other", age: 70, count: 1 }],
-    today: "2026-09-25",
+    today: "2026-12-19",
     days: [{ id: "day-1", date: "2027-01-15", duration: DAY }],
   });
   assert.equal(result.total, 9800);
@@ -397,7 +399,7 @@ test("ルスツの1日券はナイターも滑れるので、ナイター込み�
     visitDate: "2027-03-08",
     usePreference: "full_day",
     party: PARTY,
-    today: "2026-09-25",
+    today: "2026-12-19",
     days: [
       {
         id: "day-1",
@@ -417,11 +419,12 @@ test("ルスツの1日券はナイターも滑れるので、ナイター込み�
 
 test("年齢制の料金は小学生でも入力した年齢で判定する", () => {
   // ルスツの小人は「4〜12歳」。学校区分から年齢を推測しない。
+  // 5時間WEB券は12/19販売開始のため、同日を照会日にして原典の4,700円を検証する。
   const result = calculateLiftTicketPlan(load(RUSUTSU), {
     visitDate: "2027-01-27",
     usePreference: "full_day",
     party: [{ id: "c", category: "elementary", age: 10, count: 1 }],
-    today: "2026-09-26",
+    today: "2026-12-19",
     days: [
       {
         id: "day-1",
@@ -435,12 +438,13 @@ test("年齢制の料金は小学生でも入力した年齢で判定する", ()
 
 test("営業時間が不明な「1日」の日は1日券にし、残りの日を25時間券でまかなう", () => {
   // 1日＋ナイター（時間不明）→1日券13,200円、5+10+6=21時間→25時間券36,000円。
+  // 25時間WEB券は12/19販売開始。1月利用分を販売開始日に照会する。
   // 全日を1日ずつ買うより安い
   const result = calculateLiftTicketPlan(load(RUSUTSU), {
     visitDate: "2027-01-26",
     usePreference: "full_day",
     party: PARTY,
-    today: "2026-09-26",
+    today: "2026-12-19",
     days: [
       {
         id: "1",

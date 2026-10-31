@@ -7,6 +7,31 @@ export const MAP_PICK_MODE_EVENT = "rusutsu:community-map-pick-mode";
 export const MAP_TARGET_EVENT = "rusutsu:community-map-target";
 export const MAP_POINT_EVENT = "rusutsu:community-map-point";
 export const MAP_HIGHLIGHT_EVENT = "rusutsu:community-map-highlight";
+type ComposeMapState = {
+  active: boolean;
+  mode: "POINT" | null;
+  point: [number, number] | null;
+};
+const mapStates = new Map<string, ComposeMapState>();
+export function getCommunityMapState(
+  resortId?: string | null,
+): ComposeMapState {
+  return (
+    (resortId && mapStates.get(resortId)) || {
+      active: false,
+      mode: null,
+      point: null,
+    }
+  );
+}
+export function setCommunityComposeActive(resortId: string, active: boolean) {
+  if (active)
+    mapStates.set(resortId, { ...getCommunityMapState(resortId), active });
+  else mapStates.delete(resortId);
+  window.dispatchEvent(
+    new CustomEvent(COMPOSE_STATE_EVENT, { detail: { resortId, active } }),
+  );
+}
 export type ComposeRequest = {
   resortId: string;
   target?: { kind: "COURSE" | "LIFT"; id: string };
@@ -37,6 +62,7 @@ export function setCommunityMapPickMode(
   resortId: string,
   mode: "POINT" | null,
 ) {
+  mapStates.set(resortId, { ...getCommunityMapState(resortId), mode });
   window.dispatchEvent(
     new CustomEvent(MAP_PICK_MODE_EVENT, { detail: { resortId, mode } }),
   );
@@ -54,6 +80,7 @@ export function setCommunityMapPoint(
   resortId: string,
   point: [number, number] | null,
 ) {
+  mapStates.set(resortId, { ...getCommunityMapState(resortId), point });
   window.dispatchEvent(
     new CustomEvent(MAP_POINT_EVENT, { detail: { resortId, point } }),
   );

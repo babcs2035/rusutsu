@@ -3,7 +3,7 @@
 import { Portal } from "@radix-ui/react-portal";
 import { Maximize2, X } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { ResortFinalizedMap } from "@/features/map/components/ResortFinalizedMap";
@@ -83,6 +83,8 @@ type Props = {
    * 比較（デスクトップ）は上の帯に同じものをまとめているので出さない。
    */
   showInlineMapToolbar?: boolean;
+  /** 投稿中は地図を固定し、下部パネルをドラッグで伸縮する */
+  resizableFeatureDetail?: boolean;
   mapTopControls?: ReactNode;
   detailViewportResetKey?: number;
   /** 表示設定を呼び出し側で持つ場合に渡す（比較のゲレンデ一覧など） */
@@ -127,6 +129,7 @@ export const ResortMapSection = ({
   expandable = true,
   minimalControls = false,
   showInlineMapToolbar = true,
+  resizableFeatureDetail = false,
   mapTopControls,
   detailViewportResetKey = 0,
   courseColorMode: controlledCourseColorMode,
@@ -138,6 +141,17 @@ export const ResortMapSection = ({
   mapTileVariant: controlledMapTileVariant,
   onMapTileVariantChange,
 }: Props) => {
+  const [mobilePanelHeight, setMobilePanelHeight] = useState<number | null>(
+    null,
+  );
+  const mobilePanelRef = useRef<HTMLDivElement>(null);
+  const panelDrag = useRef<{
+    pointerId: number;
+    startY: number;
+    startHeight: number;
+    areaHeight: number;
+  } | null>(null);
+  const blockedPanelPointer = useRef<number | null>(null);
   const [localMapDisplaySettings, setLocalMapDisplaySettings] = useState(
     DEFAULT_MAP_DISPLAY_SETTINGS,
   );
@@ -288,10 +302,146 @@ export const ResortMapSection = ({
   const inlinePresentation =
     allowPreviewInteraction || hasSelection ? "expanded" : "preview";
   // 地図の下に積む形のときだけ、選んだら地図を縮めて場所を空ける
-  const inlineHeightClassName =
-    hasSelection && isBelowDetail
+  const inlineHeightClassName = resizableFeatureDetail
+    ? "absolute inset-0 h-auto"
+    : hasSelection && isBelowDetail
       ? selectedHeightClassName
       : previewHeightClassName;
+
+  const finishPanelDrag = useCallback((pointerId: number) => {
+    const drag = panelDrag.current;
+    const panel = mobilePanelRef.current;
+    if (!drag || drag.pointerId !== pointerId || !panel) return;
+    panelDrag.current = null;
+    setMobilePanelHeight(
+      (panel.getBoundingClientRect().height / drag.areaHeight) * 100,
+    );
+  }, []);
+  const adjustPanelHeight = useCallback((height: number) => {
+    const panel = mobilePanelRef.current;
+    const areaHeight =
+      panel?.parentElement?.getBoundingClientRect().height ?? 0;
+    if (!panel || areaHeight <= 0) return;
+    const minHeight = Math.min(260, areaHeight * 0.42);
+    const maxHeight = Math.max(minHeight, areaHeight - 120);
+    const bounded = Math.max(minHeight, Math.min(maxHeight, height));
+    setMobilePanelHeight((bounded / areaHeight) * 100);
+  }, []);
+  useEffect(() => {
+    if (!resizableFeatureDetail) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const drag = panelDrag.current;
+      if (!drag || drag.pointerId === event.pointerId) return;
+      blockedPanelPointer.current = event.pointerId;
+      const handle =
+        mobilePanelRef.current?.querySelector<HTMLElement>('[role="slider"]');
+      if (handle?.hasPointerCapture(drag.pointerId))
+        handle.releasePointerCapture(drag.pointerId);
+      finishPanelDrag(drag.pointerId);
+    };
+    const onPointerEnd = (event: PointerEvent) => {
+      if (blockedPanelPointer.current === event.pointerId)
+        blockedPanelPointer.current = null;
+    };
+    window.addEventListener("pointerdown", onPointerDown, true);
+    window.addEventListener("pointerup", onPointerEnd, true);
+    window.addEventListener("pointercancel", onPointerEnd, true);
+    return () => {
+      window.removeEventListener("pointerdown", onPointerDown, true);
+      window.removeEventListener("pointerup", onPointerEnd, true);
+      window.removeEventListener("pointercancel", onPointerEnd, true);
+      const drag = panelDrag.current;
+      const handle =
+        mobilePanelRef.current?.querySelector<HTMLElement>('[role="slider"]');
+      panelDrag.current = null;
+      if (drag && handle?.hasPointerCapture(drag.pointerId))
+        handle.releasePointerCapture(drag.pointerId);
+      blockedPanelPointer.current = null;
+    };
+  }, [finishPanelDrag, resizableFeatureDetail]);
+  const renderResizableDetail = () =>
+    resizableFeatureDetail && hasSelection ? (
+      <div
+        ref={mobilePanelRef}
+        data-mobile-composer-panel
+        className="absolute inset-x-0 bottom-0 z-[770] flex min-h-0 flex-col overflow-hidden rounded-t-xl border-t border-gray-200 bg-white shadow-[0_-8px_24px_rgba(15,23,42,0.12)]"
+        style={{ height: `${mobilePanelHeight ?? 55}%` }}
+      >
+        <div className="flex h-8 shrink-0 items-center justify-center border-b border-gray-100">
+          <div
+            role="slider"
+            tabIndex={0}
+            aria-label="投稿パネルの高さ"
+            aria-orientation="vertical"
+            aria-valuemin={30}
+            aria-valuemax={85}
+            aria-valuenow={Math.round(mobilePanelHeight ?? 55)}
+            className="flex h-8 w-full touch-none cursor-row-resize items-center justify-center outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600"
+            onPointerDown={event => {
+              if (blockedPanelPointer.current === event.pointerId) return;
+              if (event.button !== 0 && event.pointerType !== "touch") return;
+              const panel = mobilePanelRef.current;
+              const areaHeight =
+                panel?.parentElement?.getBoundingClientRect().height ?? 0;
+              if (!panel || areaHeight <= 0) return;
+              event.preventDefault();
+              event.currentTarget.setPointerCapture(event.pointerId);
+              panelDrag.current = {
+                pointerId: event.pointerId,
+                startY: event.clientY,
+                startHeight: panel.getBoundingClientRect().height,
+                areaHeight,
+              };
+            }}
+            onPointerMove={event => {
+              const drag = panelDrag.current;
+              const panel = mobilePanelRef.current;
+              if (!drag || drag.pointerId !== event.pointerId || !panel) return;
+              const minHeight = Math.min(260, drag.areaHeight * 0.42);
+              const maxHeight = Math.max(minHeight, drag.areaHeight - 120);
+              const height = Math.max(
+                minHeight,
+                Math.min(
+                  maxHeight,
+                  drag.startHeight + drag.startY - event.clientY,
+                ),
+              );
+              const percent = (height / drag.areaHeight) * 100;
+              panel.style.height = `${percent}%`;
+              event.currentTarget.setAttribute(
+                "aria-valuenow",
+                String(Math.round(percent)),
+              );
+            }}
+            onPointerUp={event => finishPanelDrag(event.pointerId)}
+            onPointerCancel={event => finishPanelDrag(event.pointerId)}
+            onLostPointerCapture={event => finishPanelDrag(event.pointerId)}
+            onKeyDown={event => {
+              if (!["ArrowUp", "ArrowDown", "Home", "End"].includes(event.key))
+                return;
+              event.preventDefault();
+              const panel = mobilePanelRef.current;
+              const areaHeight =
+                panel?.parentElement?.getBoundingClientRect().height ?? 0;
+              if (!panel || areaHeight <= 0) return;
+              const minHeight = Math.min(260, areaHeight * 0.42);
+              const maxHeight = Math.max(minHeight, areaHeight - 120);
+              const current = panel.getBoundingClientRect().height;
+              adjustPanelHeight(
+                event.key === "Home"
+                  ? minHeight
+                  : event.key === "End"
+                    ? maxHeight
+                    : current + (event.key === "ArrowUp" ? 32 : -32),
+              );
+            }}
+          >
+            <span className="h-1 w-10 rounded-full bg-gray-400" />
+          </div>
+        </div>
+        <div className="min-h-0 flex-1">{featureDetail}</div>
+      </div>
+    ) : null;
 
   return (
     <>
@@ -329,11 +479,16 @@ export const ResortMapSection = ({
         )}
       </div>
 
-      {hasSelection && !isExpanded && isBelowDetail && (
-        <div className="min-h-0 flex-1 border-t border-gray-200">
-          {featureDetail}
-        </div>
-      )}
+      {hasSelection &&
+        !isExpanded &&
+        isBelowDetail &&
+        !resizableFeatureDetail && (
+          <div className="min-h-0 flex-1 border-t border-gray-200">
+            {featureDetail}
+          </div>
+        )}
+
+      {!isExpanded && renderResizableDetail()}
 
       {isExpanded && (
         <Portal>
@@ -341,13 +496,16 @@ export const ResortMapSection = ({
             <div
               className={cn(
                 "relative w-full",
-                hasSelection && isBelowDetail
-                  ? expandedSelectedHeightClassName
-                  : "h-full",
+                resizableFeatureDetail
+                  ? "h-full"
+                  : hasSelection && isBelowDetail
+                    ? expandedSelectedHeightClassName
+                    : "h-full",
               )}
             >
               {renderMap("expanded", !hasSelection)}
               {renderOverlayDetail()}
+              {renderResizableDetail()}
               {/* 選択中は詳細パネル側の × が「選択解除」を担うため出さない */}
               {(!hasSelection || !isBelowDetail) && (
                 <Button
@@ -367,7 +525,7 @@ export const ResortMapSection = ({
                 </Button>
               )}
             </div>
-            {hasSelection && isBelowDetail && (
+            {hasSelection && isBelowDetail && !resizableFeatureDetail && (
               <div className="min-h-0 flex-1 border-t border-gray-200">
                 {featureDetail}
               </div>

@@ -32,14 +32,16 @@ import {
   CommunityMapOverlay,
 } from "@/features/community/CommunityMapOverlay";
 import {
+  COMPOSE_STATE_EVENT,
   type CommunityMapHighlight,
+  getCommunityMapState,
   MAP_HIGHLIGHT_EVENT,
   MAP_PICK_MODE_EVENT,
   MAP_POINT_EVENT,
   selectCommunityMapTarget,
 } from "@/features/community/composerEvents";
 import { nearestCourseId } from "@/features/community/location";
-import type { CommunityPeriod } from "@/features/community/mapOverlay";
+import { useCommunityMapLayer } from "@/features/community/mapPostStore";
 import { FinalizedMapToolbar } from "./components/FinalizedMapToolbar";
 import { MapCourseStatusControl } from "./components/MapCourseStatusControl";
 import { MapErrorBoundary } from "./components/MapErrorBoundary";
@@ -198,6 +200,11 @@ function MapLibreResortMapContent({
   const sessionEnabled = useMapSession() !== null && !embedded;
   const storageKey = `${mapSessionKey(selectedResortId)}${mapPresentation === "expanded" ? ":expanded" : ""}`;
   const [communityPointMode, setCommunityPointMode] = useState(false);
+  const [communityComposeActive, setCommunityComposeActive] = useState(false);
+  const suppressCommunityClick = useRef(false);
+  const suppressCommunityClickTimer = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null);
   const [pickedCommunityPoint, setPickedCommunityPoint] = useState<
     [number, number] | null
   >(null);
@@ -206,8 +213,9 @@ function MapLibreResortMapContent({
     (CommunityMapHighlight & { seq: number }) | null
   >(null);
   useEffect(() => {
-    setCommunityPointMode(false);
-    setPickedCommunityPoint(null);
+    const state = getCommunityMapState(selectedResortId);
+    setCommunityPointMode(state.mode === "POINT");
+    setPickedCommunityPoint(state.point);
     setCommunityHighlight(null);
     const handle = (event: Event) => {
       const detail = (
@@ -251,6 +259,33 @@ function MapLibreResortMapContent({
       window.removeEventListener(MAP_HIGHLIGHT_EVENT, highlight);
     };
   }, [selectedResortId]);
+  useEffect(() => {
+    setCommunityComposeActive(getCommunityMapState(selectedResortId).active);
+    const handle = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{ resortId: string; active: boolean }>
+      ).detail;
+      if (detail?.resortId !== selectedResortId) return;
+      setCommunityComposeActive(detail.active);
+      if (!detail.active) {
+        setPickedCommunityPoint(null);
+        suppressCommunityClick.current = false;
+        if (suppressCommunityClickTimer.current) {
+          clearTimeout(suppressCommunityClickTimer.current);
+          suppressCommunityClickTimer.current = null;
+        }
+      }
+    };
+    window.addEventListener(COMPOSE_STATE_EVENT, handle);
+    return () => window.removeEventListener(COMPOSE_STATE_EVENT, handle);
+  }, [selectedResortId]);
+  useEffect(
+    () => () => {
+      if (suppressCommunityClickTimer.current)
+        clearTimeout(suppressCommunityClickTimer.current);
+    },
+    [],
+  );
   // プレビュー地図（拡大していない小さい地図）は常に同じ見え方（北が上・
   // スキー場全体が入る大きさ）にしたいので、保存された表示位置は読まない。
   const [savedMap] = useState(() =>
@@ -297,9 +332,18 @@ function MapLibreResortMapContent({
       ? true
       : window.matchMedia(COARSE_POINTER_MEDIA_QUERY).matches,
   );
-  const [showCommunityPosts, setShowCommunityPosts] = useState(false);
-  const [communityPeriod, setCommunityPeriod] = useState<CommunityPeriod>("7d");
-  const [communityKind, setCommunityKind] = useState<"MOGUL" | "ITEM">("MOGUL");
+  const communityLayer = useCommunityMapLayer(
+    selectedResortId,
+    !embedded && interactionMode !== "compare",
+  );
+  const showCommunityPosts = communityLayer.enabled;
+  const communityPosts = useMemo(
+    () =>
+      communityLayer.entries.filter(post =>
+        communityLayer.kinds.includes(post.kind),
+      ),
+    [communityLayer.entries, communityLayer.kinds],
+  );
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [isInteracting, setIsInteracting] = useState(false);
   // 詳細地図は最初のフレームから写真＋斜度で作る。
@@ -769,11 +813,133 @@ function MapLibreResortMapContent({
 
   // --- コース・リフトの選択 ------------------------------------------------
   useEffect(() => {
+    if (!map || !isReady || !communityComposeActive || embedded) return;
+    const canvas = map.getCanvas();
+    const pointers = new Set<number>();
+    let pointerId: number | null = null;
+    let start: { x: number; y: number } | null = null;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let triggered = false;
+    let restoreDragPan = false;
+    let restoreTouchZoom = false;
+
+    const clearTimer = () => {
+      if (timer) clearTimeout(timer);
+      timer = null;
+    };
+    const restoreHandlers = () => {
+      if (restoreDragPan) map.dragPan.enable();
+      if (restoreTouchZoom) map.touchZoomRotate.enable();
+      restoreDragPan = false;
+      restoreTouchZoom = false;
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      pointers.add(event.pointerId);
+      if (pointers.size > 1) {
+        if (!triggered) clearTimer();
+        return;
+      }
+      pointerId = event.pointerId;
+      start = { x: event.clientX, y: event.clientY };
+      timer = setTimeout(() => {
+        if (pointers.size !== 1 || pointerId !== event.pointerId || !start)
+          return;
+        const rect = canvas.getBoundingClientRect();
+        const screenPoint: [number, number] = [
+          event.clientX - rect.left,
+          event.clientY - rect.top,
+        ];
+        const lngLat = map.unproject(screenPoint);
+        const coordinates: [number, number] = [lngLat.lng, lngLat.lat];
+        triggered = true;
+        restoreDragPan = map.dragPan.isEnabled();
+        restoreTouchZoom = map.touchZoomRotate.isEnabled();
+        map.dragPan.disable();
+        map.touchZoomRotate.disable();
+        map.stop();
+        suppressCommunityClick.current = true;
+        if (suppressCommunityClickTimer.current)
+          clearTimeout(suppressCommunityClickTimer.current);
+        suppressCommunityClickTimer.current = null;
+        setPickedCommunityPoint(coordinates);
+        if (selectedResortId)
+          selectCommunityMapTarget(selectedResortId, {
+            kind: "POINT",
+            coordinates,
+            courseId: nearestCourseId(
+              coordinates,
+              (finalizedMapData?.courses?.features ?? []).map(feature => ({
+                id: feature.groupId,
+                coordinates: feature.coordinates,
+                lines: [feature.coordinates],
+              })),
+            ),
+          });
+      }, 600);
+    };
+    const onPointerMove = (event: PointerEvent) => {
+      if (event.pointerId !== pointerId || !start || triggered) return;
+      if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 12)
+        clearTimer();
+    };
+    const onPointerEnd = (event: PointerEvent) => {
+      pointers.delete(event.pointerId);
+      if (event.pointerId === pointerId) {
+        clearTimer();
+        pointerId = null;
+        start = null;
+      }
+      if (pointers.size === 0 && triggered) {
+        triggered = false;
+        restoreHandlers();
+        suppressCommunityClickTimer.current = setTimeout(() => {
+          suppressCommunityClick.current = false;
+          suppressCommunityClickTimer.current = null;
+        }, 1200);
+      }
+    };
+    const onContextMenu = (event: MouseEvent) => {
+      if (triggered) event.preventDefault();
+    };
+
+    canvas.addEventListener("pointerdown", onPointerDown, true);
+    canvas.addEventListener("pointermove", onPointerMove, true);
+    canvas.addEventListener("pointerup", onPointerEnd, true);
+    canvas.addEventListener("pointercancel", onPointerEnd, true);
+    canvas.addEventListener("contextmenu", onContextMenu, true);
+    return () => {
+      clearTimer();
+      restoreHandlers();
+      canvas.removeEventListener("pointerdown", onPointerDown, true);
+      canvas.removeEventListener("pointermove", onPointerMove, true);
+      canvas.removeEventListener("pointerup", onPointerEnd, true);
+      canvas.removeEventListener("pointercancel", onPointerEnd, true);
+      canvas.removeEventListener("contextmenu", onContextMenu, true);
+    };
+  }, [
+    communityComposeActive,
+    embedded,
+    finalizedMapData,
+    isReady,
+    map,
+    selectedResortId,
+  ]);
+
+  useEffect(() => {
     if (!map || !isReady) return;
 
     const hitLayers = [FINALIZED_LAYER.courseHit, FINALIZED_LAYER.liftHit];
     const handleClick = (event: MapMouseEvent) => {
       if (event.defaultPrevented) return;
+      if (suppressCommunityClick.current) {
+        suppressCommunityClick.current = false;
+        if (suppressCommunityClickTimer.current)
+          clearTimeout(suppressCommunityClickTimer.current);
+        suppressCommunityClickTimer.current = null;
+        event.preventDefault();
+        return;
+      }
       if (onCommunityPointPick || (!embedded && communityPointMode)) {
         const coordinates: [number, number] = [
           event.lngLat.lng,
@@ -1161,7 +1327,9 @@ function MapLibreResortMapContent({
     !isPreviewMap &&
     interactionMode !== "compare";
   const hasBottomToolbar =
-    !isPreviewMap && showMapToolbar && hasFinalizedFeatures;
+    !isPreviewMap &&
+    showMapToolbar &&
+    (hasFinalizedFeatures || (showCommunityControls && showCommunityPosts));
   const showBottomToolbar = hasBottomToolbar && isReady;
   const showBottomPreviewStatus =
     isMobile &&
@@ -1295,7 +1463,10 @@ function MapLibreResortMapContent({
                 <CommunityMapControls
                   resortId={selectedResortId}
                   enabled={showCommunityPosts}
-                  onEnabledChange={setShowCommunityPosts}
+                  onEnabledChange={communityLayer.setEnabled}
+                  available={communityLayer.available}
+                  error={communityLayer.summaryError}
+                  onRetry={communityLayer.retry}
                 />
               ) : undefined
             }
@@ -1316,8 +1487,9 @@ function MapLibreResortMapContent({
             map={map}
             resortId={selectedResortId}
             enabled={showCommunityPosts}
-            period={communityPeriod}
-            kind={communityKind}
+            posts={communityPosts}
+            mapData={finalizedMapData}
+            filterKey={`${communityLayer.period}:${communityLayer.kinds.join(",")}`}
           />
         )}
       {showBottomToolbar && (
@@ -1349,7 +1521,10 @@ function MapLibreResortMapContent({
                 <CommunityMapControls
                   resortId={selectedResortId}
                   enabled={showCommunityPosts}
-                  onEnabledChange={setShowCommunityPosts}
+                  onEnabledChange={communityLayer.setEnabled}
+                  available={communityLayer.available}
+                  error={communityLayer.summaryError}
+                  onRetry={communityLayer.retry}
                 />
               )}
               <div className="ml-auto flex shrink-0 flex-col items-end gap-0.5">
@@ -1362,14 +1537,25 @@ function MapLibreResortMapContent({
                 showOpenOnly && hasCourseOperatingData(finalizedMapData)
               }
               communityFilters={
-                showCommunityControls && showCommunityPosts ? (
-                  <CommunityMapFilters
-                    period={communityPeriod}
-                    onPeriodChange={setCommunityPeriod}
-                    kind={communityKind}
-                    onKindChange={setCommunityKind}
-                  />
-                ) : undefined
+                showCommunityControls && showCommunityPosts
+                  ? settings => (
+                      <CommunityMapFilters
+                        period={communityLayer.period}
+                        onPeriodChange={communityLayer.setPeriod}
+                        kinds={communityLayer.kinds}
+                        onKindsChange={communityLayer.setKinds}
+                        count={communityPosts.length}
+                        periodCount={communityLayer.entries.length}
+                        loading={communityLayer.loading}
+                        error={communityLayer.error}
+                        onRetry={communityLayer.retry}
+                        latestObservedOn={
+                          communityLayer.summary?.latestObservedOn ?? null
+                        }
+                        settings={settings}
+                      />
+                    )
+                  : undefined
               }
               mode={courseColorMode}
               onModeChange={setCourseColorMode}

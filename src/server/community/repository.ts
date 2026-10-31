@@ -4,12 +4,15 @@ import { auth } from "@/auth";
 import type {
   CommunityAccount,
   CommunityMapData,
+  CommunityMapSummary,
   FeedInput,
+  MapEntriesInput,
   PublicMapEntry,
   PublicPost,
   ReportEntryDraft,
 } from "@/features/community/contract";
 import { communityMapData } from "@/features/community/mapData";
+import { todayInJapan } from "@/features/community/mapOverlay";
 import { getFinalizedResortMapData } from "@/lib/finalizedResortGeojson";
 import { prisma } from "@/lib/prisma";
 import { readSkiResortById } from "@/lib/skiResortData";
@@ -185,21 +188,53 @@ export async function readFeed(input: FeedInput) {
   };
 }
 
-export async function readMapEntries(input: {
-  resortId: string;
-  kind: "MOGUL" | "ITEM";
-  from?: string;
-  cursor?: string;
-}) {
-  const rows = await prisma.communityEntry.findMany({
-    where: {
-      kind: input.kind,
-      post: {
-        resortId: input.resortId,
-        status: "VISIBLE",
-        ...(input.from ? { observedOn: { gte: input.from } } : {}),
+// 有無・初期期間の判定と地図の取得で、表示できる対象を揃える。
+async function mapEntryWhere(input: MapEntriesInput) {
+  const data = await courseOptions(input.resortId);
+  const usable = (target: CommunityMapData["courses"][number]) =>
+    target.lines.some(line => line.length >= 2);
+  return {
+    ...(input.kind ? { kind: input.kind } : {}),
+    OR: [
+      { latitude: { not: null }, longitude: { not: null } },
+      {
+        kind: "COURSE",
+        courseId: { in: data.courses.filter(usable).map(course => course.id) },
+      },
+      {
+        kind: "LIFT",
+        liftId: { in: data.lifts.filter(usable).map(lift => lift.id) },
+      },
+    ],
+    post: {
+      resortId: input.resortId,
+      status: "VISIBLE",
+      observedOn: {
+        ...(input.from ? { gte: input.from } : {}),
+        lte: input.to ?? todayInJapan(),
       },
     },
+  } satisfies Prisma.CommunityEntryWhereInput;
+}
+
+export async function readMapSummary(
+  resortId: string,
+): Promise<CommunityMapSummary> {
+  const where = await mapEntryWhere({ resortId });
+  const [total, latest] = await Promise.all([
+    prisma.communityEntry.count({ where }),
+    prisma.communityEntry.findFirst({
+      where,
+      orderBy: { post: { observedOn: "desc" } },
+      select: { post: { select: { observedOn: true } } },
+    }),
+  ]);
+  return { total, latestObservedOn: latest?.post.observedOn ?? null };
+}
+
+export async function readMapEntries(input: MapEntriesInput) {
+  const rows = await prisma.communityEntry.findMany({
+    where: await mapEntryWhere(input),
     orderBy: [
       { post: { observedOn: "desc" } },
       { post: { createdAt: "desc" } },
@@ -207,37 +242,38 @@ export async function readMapEntries(input: {
     ],
     take: 101,
     ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
-    include: {
+    select: {
+      id: true,
+      postId: true,
+      kind: true,
+      latitude: true,
+      longitude: true,
+      courseId: true,
+      liftId: true,
+      targetName: true,
+      photos: {
+        select: { id: true, width: true, height: true },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        take: 1,
+      },
+      _count: { select: { photos: true } },
       post: {
-        select: {
-          id: true,
-          observedOn: true,
-          author: { select: { id: true, publicName: true } },
-        },
+        select: { observedOn: true },
       },
     },
   });
-  const entries: PublicMapEntry[] = rows.slice(0, 100).flatMap(row =>
-    row.latitude == null || row.longitude == null
-      ? []
-      : [
-          {
-            id: row.id,
-            postId: row.postId,
-            kind: row.kind as "MOGUL" | "ITEM",
-            observedOn: row.post.observedOn,
-            body: row.body,
-            latitude: row.latitude,
-            longitude: row.longitude,
-            itemType: row.itemType,
-            size: row.size,
-            targetName: row.targetName,
-            author: {
-              id: row.post.author.id,
-              publicName: row.post.author.publicName ?? "匿名",
-            },
-          },
-        ],
-  );
+  const entries: PublicMapEntry[] = rows.slice(0, 100).map(row => ({
+    id: row.id,
+    postId: row.postId,
+    kind: row.kind as PublicMapEntry["kind"],
+    observedOn: row.post.observedOn,
+    latitude: row.latitude,
+    longitude: row.longitude,
+    courseId: row.courseId,
+    liftId: row.liftId,
+    targetName: row.targetName,
+    photo: row.photos[0] ?? null,
+    photoCount: row._count.photos,
+  }));
   return { entries, nextCursor: rows.length > 100 ? rows[99].id : null };
 }

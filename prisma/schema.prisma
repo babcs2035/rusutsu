@@ -888,6 +888,8 @@ model ContributionPhoto {
   ownerId String?
   owner User? @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   bytes Bytes
+  thumbBytes Bytes?
+  mapBytes Bytes?
   mimeType String @db.VarChar(40)
   width Int
   height Int

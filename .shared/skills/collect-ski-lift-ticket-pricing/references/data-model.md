@@ -516,6 +516,9 @@ products / offers / party_rules のいずれにも記録しない。
   `nominal_age` に保存する。厳密な条件は必ず公式の生年月日範囲で警告する
   行き先の正本は `taxonomy.json` の `moved_elsewhere.target_restrictions`
 - `sales_period` / `use_period`: 販売期間と利用期間を分離する
+  - 前売・WEB（`advance_purchase` / `online_purchase`、またはURLのある販売経路だけ）の券は、
+    照会日が販売期間内のときだけ計算に使う（販売開始前は窓口料金）
+  - 窓口で当日買える券は、利用日までに販売が始まれば計算に使う
 - `purchase_deadline`: **いつまでに買う必要があるか**
   - `same_day_allowed`: 利用日当日に買えるか。`true`（「当日OK」「利用15分前まで」）/
     `false`（前日以前＝前売り）/ `null`（**公式に記載なし**。推測しない）
@@ -618,6 +621,11 @@ products / offers / party_rules のいずれにも記録しない。
 `components` に役割ごとの人数条件（`min_count` / `max_count` /
 `per_qualifying_count`）と `price_effect`（`free | fixed_total |
 fixed_per_person | discount_amount | discount_percent`）を持たせる。
+
+`exclusive_group_id` は任意。複数の人数別代替ルールをひとつのグループにまとめると、
+パーティ計算では同じグループから最初に適用できたルールを1回だけ使う。
+大人数用ルールを先に並べれば、上限人数までセット料金を適用し、残りを通常料金にできる。
+未指定のルールは従来どおり繰り返し適用できる（例: 親子ペア券×2）。
 
 **この構造は実際に料金計算に使われる。**
 `lookup-price.mjs --party "adult:2,elementary:2"` がパーティ構成に

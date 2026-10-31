@@ -3,6 +3,22 @@ import decodeHeic from "heic-decode";
 import sharp, { type Sharp } from "sharp";
 
 export const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
+export type PhotoPreviewSize = "thumb" | "map";
+
+export async function createPhotoPreview(
+  bytes: Uint8Array,
+  size: PhotoPreviewSize,
+) {
+  return sharp(Buffer.from(bytes))
+    .resize({
+      width: size === "map" ? 160 : 320,
+      height: size === "map" ? 160 : 320,
+      fit: size === "map" ? "cover" : "inside",
+      withoutEnlargement: true,
+    })
+    .webp({ quality: size === "map" ? 68 : 72 })
+    .toBuffer();
+}
 export async function normalizePhoto(file: File) {
   if (!(file instanceof File) || file.size === 0 || file.size > MAX_PHOTO_BYTES)
     throw new Error("写真は1枚8MB以内で選んでください。");
@@ -65,8 +81,14 @@ export async function normalizePhoto(file: File) {
       })
       .webp({ quality: 82 })
       .toBuffer({ resolveWithObject: true });
+    const [thumbBytes, mapBytes] = await Promise.all([
+      createPhotoPreview(data, "thumb"),
+      createPhotoPreview(data, "map"),
+    ]);
     return {
       bytes: data,
+      thumbBytes,
+      mapBytes,
       mimeType: "image/webp",
       width: info.width,
       height: info.height,
@@ -82,7 +104,7 @@ export async function readReportPhotos(form: FormData, entryKey: string) {
   if (!(form instanceof FormData))
     throw new Error("写真の形式を確認してください。");
   const files = [...form.entries()];
-  if (files.length > 6) throw new Error("写真は1件の投稿で6枚までです。");
+  if (files.length > 1) throw new Error("写真は1件の投稿で1枚までです。");
   const results = [];
   for (const [key, file] of files) {
     // 写真は必ず投稿する項目に付ける。項目に紐づかない写真は受け付けない。

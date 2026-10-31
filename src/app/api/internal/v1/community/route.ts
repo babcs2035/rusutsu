@@ -29,6 +29,7 @@ const publicOperations = new Set<CommunityCommand["operation"]>([
   "courses",
   "feed",
   "mapEntries",
+  "mapSummary",
   "detail",
   "publicProfile",
   "report",
@@ -96,7 +97,7 @@ async function readCommand(request: Request) {
       );
     const files = [...form.entries()].filter(([key]) => key !== "command");
     if (
-      files.length > 6 ||
+      files.length > 1 ||
       files.some(
         ([, file]) =>
           !(file instanceof File) || !file.size || file.size > 8 * 1024 * 1024,
@@ -105,7 +106,7 @@ async function readCommand(request: Request) {
       throw new RequestBodyError(
         413,
         "PAYLOAD_TOO_LARGE",
-        "写真は1枚8MB以内、全体で6枚までです。",
+        "写真は1枚8MB以内、投稿ごとに1枚までです。",
       );
     for (const [key, file] of files) photos.append(key, file);
     return { parsed, photos };
@@ -129,6 +130,8 @@ async function dispatch(
       return operations.getCommunityFeed(command.input);
     case "mapEntries":
       return operations.getCommunityMapEntries(command.input);
+    case "mapSummary":
+      return operations.getCommunityMapSummary(command.resortId);
     case "account":
       return operations.getCommunityAccount();
     case "profile":
@@ -228,7 +231,7 @@ export async function POST(request: Request) {
       { userId, anonymousIdentity },
       async () => {
         if (command.operation === "photo")
-          return communityPhotoResponse(command.photoId);
+          return communityPhotoResponse(command.photoId, command.size);
         return internalApiJson({ result: await dispatch(command, photos) });
       },
     );

@@ -14,6 +14,7 @@ import {
   getLiftDisplayCoordinates,
   isUngroomedPiste,
 } from "../utils/finalizedMapData";
+import { LIFT_PALETTE } from "../utils/liftPalette";
 
 export type LiftFlowSpeed = "slow" | "normal" | "fast";
 
@@ -159,22 +160,6 @@ export const buildCourseOutlineCollection = (
     });
   }),
 });
-
-/**
- * リフトの色。営業状態はすべて「流れる破線」で動かすので、
- * 状態の違いは色の系統で読ませる。
- * 運行中は青×水色、待機中は赤系統、運休は薄いグレー、
- * 不明は運休と取り違えないよう紫系統にする。
- */
-const LIFT_PALETTE: Record<
-  FinalizedFeatureStatus,
-  { color: string; flowColor: string }
-> = {
-  open: { color: "#1E40AF", flowColor: "#00E1FF" },
-  limited: { color: "#B91C1C", flowColor: "#FECACA" },
-  closed: { color: "#64748B", flowColor: "#FFFFFF" },
-  unknown: { color: "#7C3AED", flowColor: "#EDE9FE" },
-};
 
 /** 「高速」「低速」の表記から流れの速さを決める */
 const getLiftFlowSpeed = (speed: string | null | undefined): LiftFlowSpeed => {

@@ -70,7 +70,7 @@ export type FinalizedStyleState = {
 
 /** ズーム別の線幅。難易度モードと斜度モードで同じ太さにする */
 const widthByZoom = (
-  stops: [number, number][],
+  stops: readonly (readonly [number, number])[],
 ): DataDrivenPropertyValueSpecification<number> =>
   [
     "interpolate",
@@ -79,22 +79,28 @@ const widthByZoom = (
     ...stops.flat(),
   ] as unknown as DataDrivenPropertyValueSpecification<number>;
 
-const COURSE_WIDTH: [number, number][] = [
-  [12, 2],
-  [14, 3],
-  [16, 4.4],
-  [18, 6],
-];
-// コースに埋もれないよう、リフトはコースと同じくらいの太さにする
-const LIFT_WIDTH: [number, number][] = [
-  [12, 2.2],
-  [14, 3.1],
-  [16, 4.4],
-  [18, 5.8],
-];
+export const FINALIZED_LINE_WIDTH_STOPS = {
+  course: [
+    [12, 2],
+    [14, 3],
+    [16, 4.4],
+    [18, 6],
+  ],
+  // コースに埋もれないよう、リフトはコースと同じくらいの太さにする
+  lift: [
+    [12, 2.2],
+    [14, 3.1],
+    [16, 4.4],
+    [18, 5.8],
+  ],
+} as const;
+export const FINALIZED_CASING_EXTRA = { pale: 1.8, photo: 2.2 } as const;
+export const FINALIZED_NIGHT_EXTRA = { course: 3, lift: 5 } as const;
+const COURSE_WIDTH = FINALIZED_LINE_WIDTH_STOPS.course;
+const LIFT_WIDTH = FINALIZED_LINE_WIDTH_STOPS.lift;
 
 /** 流れる破線の太さ。細すぎると動きが読めないので、線幅の 3/4 で描く */
-const LIFT_FLOW_WIDTH_FACTOR = 0.74;
+export const LIFT_FLOW_WIDTH_FACTOR = 0.74;
 
 /**
  * 流れる破線のコマ。単位は線幅なので、線幅を変えても見え方が揃う。
@@ -174,7 +180,7 @@ const LINE_STATUS_OPACITY: ExpressionSpecification = [
 ];
 
 const scaleWidth = (
-  stops: [number, number][],
+  stops: readonly (readonly [number, number])[],
   factor: number,
   extra = 0,
 ): DataDrivenPropertyValueSpecification<number> =>
@@ -241,7 +247,7 @@ export const getLineColor = (
  * interpolate を外側、case を内側にする。
  */
 const widthByZoomAndCase = (
-  stops: [number, number][],
+  stops: readonly (readonly [number, number])[],
   toValue: (width: number) => ExpressionSpecification,
 ): DataDrivenPropertyValueSpecification<number> =>
   [
@@ -301,7 +307,9 @@ export const getCasingWidth = (
 ): DataDrivenPropertyValueSpecification<number> => {
   const stops = kind === "course" ? COURSE_WIDTH : LIFT_WIDTH;
   const isPhoto = state.tileVariant === "photo";
-  const extra = (state.isFocusMode ? 0.3 : 0) + (isPhoto ? 2.2 : 1.8);
+  const extra =
+    (state.isFocusMode ? 0.3 : 0) +
+    (isPhoto ? FINALIZED_CASING_EXTRA.photo : FINALIZED_CASING_EXTRA.pale);
   // 選択時の芯線の拡幅に追従し、白い縁の幅を保つ。
   return widthByZoomAndCase(stops, width => [
     "case",
@@ -328,8 +336,10 @@ const getNightCasingWidth = (
 ): DataDrivenPropertyValueSpecification<number> => {
   const stops = kind === "course" ? COURSE_WIDTH : LIFT_WIDTH;
   const isPhoto = state.tileVariant === "photo";
-  const casingExtra = (state.isFocusMode ? 0.3 : 0) + (isPhoto ? 2.2 : 1.8);
-  const nightExtra = kind === "lift" ? 5 : 3;
+  const casingExtra =
+    (state.isFocusMode ? 0.3 : 0) +
+    (isPhoto ? FINALIZED_CASING_EXTRA.photo : FINALIZED_CASING_EXTRA.pale);
+  const nightExtra = FINALIZED_NIGHT_EXTRA[kind];
   return widthByZoomAndCase(stops, width => [
     "case",
     isSelectedExpression(state.selectedFeature, kind),
@@ -393,6 +403,9 @@ const getNightAwareCasingOpacity = (
  * 先頭の 0 は「塗らない区間」から始める指定。[0, 描く, 空ける] の並びで、
  * 元の破線とちょうど裏返しの位置（＝隙間になるところ）だけを白く塗る。
  */
+export const UNGROOMED_MASK_DASH_AT_ZOOM_16 = [0, 1.5, 1.1] as const;
+export const VARIABLE_MASK_DASH_AT_ZOOM_16 = [0, 3, 1.1] as const;
+
 export const UNGROOMED_MASK_DASH: DataDrivenPropertyValueSpecification<
   number[]
 > = [
@@ -408,7 +421,7 @@ export const UNGROOMED_MASK_DASH: DataDrivenPropertyValueSpecification<
   15,
   ["literal", [0, 1.7, 1.25]],
   16,
-  ["literal", [0, 1.5, 1.1]],
+  ["literal", [...UNGROOMED_MASK_DASH_AT_ZOOM_16]],
   17,
   ["literal", [0, 1.3, 0.95]],
 ] as unknown as DataDrivenPropertyValueSpecification<number[]>;
@@ -426,7 +439,7 @@ export const VARIABLE_MASK_DASH: DataDrivenPropertyValueSpecification<
   15,
   ["literal", [0, 3.4, 1.25]],
   16,
-  ["literal", [0, 3, 1.1]],
+  ["literal", [...VARIABLE_MASK_DASH_AT_ZOOM_16]],
   17,
   ["literal", [0, 2.6, 0.95]],
 ] as unknown as DataDrivenPropertyValueSpecification<number[]>;
