@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { getWeathernewsLinks } from "@/features/weather/weatherLinks";
 import type { Elevation, Resort, SnowForecastLink, WeatherLink } from "./types";
 
 export function useWeatherLinks(
@@ -11,7 +12,7 @@ export function useWeatherLinks(
       snowForecastElevation,
     );
     const tenkiJpLinks = getTenkiJpLinks(resort);
-    const weathernewsSpotId = resort.weatherIds?.weathernewsSpotId;
+    const weathernewsLinks = getWeathernewsLinks(resort.weatherIds);
     const hasCoords =
       typeof resort.latitude === "number" &&
       typeof resort.longitude === "number";
@@ -42,17 +43,18 @@ export function useWeatherLinks(
         hoverBg: "hover:bg-blue-100",
         color: "text-blue-700",
       })),
-      {
+      ...weathernewsLinks.map(link => ({
         kind: "weathernews" as const,
-        id: weathernewsSpotId ?? "weathernews",
-        label: "ウェザーニュース",
-        url: weathernewsSpotId
-          ? `https://weathernews.jp/ski/spot/${weathernewsSpotId}/`
-          : null,
+        id: link.id,
+        label:
+          weathernewsLinks.length === 1
+            ? "ウェザーニュース"
+            : `ウェザーニュース ${link.displayName}`,
+        url: link.url,
         bg: "bg-blue-50",
         hoverBg: "hover:bg-blue-100",
         color: "text-blue-800",
-      },
+      })),
       {
         kind: "windy" as const,
         id: `${resort.latitude},${resort.longitude}`,

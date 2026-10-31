@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import type { AdminSkiResortRecord } from "@/server/ski-resorts/adminContract";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { StepIndicator } from "@/shared/components/StepIndicator";
+import { ResortDisplayGroupPanel } from "./ResortDisplayGroupPanel";
 import { ResortEditForm } from "./ResortEditForm";
 import { ResortMergeForm } from "./ResortMergeForm";
 import { ResortRelationPanel } from "./ResortRelationPanel";
@@ -176,6 +177,16 @@ export function ResortAdminClient({
                 replaceResorts(updated);
                 adminToaster.create({ title: message, type: "success" });
               }}
+            />
+          )}
+          {isAdmin && (
+            <ResortDisplayGroupPanel
+              key={selectedResort.id}
+              resort={selectedResort}
+              resorts={resorts}
+              onMessage={message =>
+                adminToaster.create({ title: message, type: "success" })
+              }
             />
           )}
           <ResortEditForm

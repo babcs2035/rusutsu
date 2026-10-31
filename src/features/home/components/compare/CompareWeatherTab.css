@@ -113,6 +113,16 @@
     text-overflow: ellipsis;
   }
 
+  .weather-panel-container .weather-links-multiple {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+
+  .weather-panel-container .weather-links-multiple .weather-link {
+    flex: 0 0 auto;
+    max-width: 100%;
+  }
+
   .weather-panel-container .weather-info-name {
     margin-bottom: 0.375rem;
   }

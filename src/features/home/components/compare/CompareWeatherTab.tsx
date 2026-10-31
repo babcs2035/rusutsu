@@ -110,6 +110,8 @@ const ResortWeatherPanel = ({
   const availableLinks = links.filter(
     (link): link is WeatherLink & { url: string } => Boolean(link.url),
   );
+  const hasMultipleLinks =
+    new Set(availableLinks.map(link => link.kind)).size < availableLinks.length;
 
   useEffect(() => {
     if (snowForecastLinks.length === 0) {
@@ -154,7 +156,12 @@ const ResortWeatherPanel = ({
           </h3>
 
           {availableLinks.length > 0 && (
-            <div className="weather-links scroll-touch flex gap-4">
+            <div
+              className={cn(
+                "weather-links scroll-touch flex gap-4",
+                hasMultipleLinks && "weather-links-multiple",
+              )}
+            >
               {availableLinks.map(link => (
                 <WeatherLinkButton
                   key={`${link.kind}-${link.id}`}
@@ -207,6 +214,6 @@ const WeatherLinkButton = ({
       link.color,
     )}
   >
-    {link.label}
+    <span className="min-w-0 truncate">{link.label}</span>
   </ExternalLinkComponent>
 );

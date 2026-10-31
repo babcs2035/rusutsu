@@ -56,12 +56,6 @@ export const linkSaveSchema = z
     expectedLinks: z.array(linkSchema).max(100),
   })
   .superRefine((request, context) => {
-    if (request.platform === "weathernewsUrls" && request.links.length > 1)
-      context.addIssue({
-        code: "custom",
-        message: "ウェザーニュースは代表地点を1件登録してください。",
-        path: ["links"],
-      });
     const seen = new Set<string>();
     for (const [index, link] of request.links.entries()) {
       if (!isValidLinkUrl(request.platform, link.url)) {

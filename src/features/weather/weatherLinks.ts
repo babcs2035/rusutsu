@@ -101,6 +101,10 @@ export type ResortWeatherIds = {
     snowForecastName: string | null;
     displayName: string | null;
   }>;
+  weathernews: Array<{
+    weathernewsSpotId: string;
+    displayName: string | null;
+  }>;
   weathernewsSpotId: string | null;
   SnowForecastId: null;
   SnowForecastName: null;
@@ -132,6 +136,10 @@ export function weatherIdsFromLinks(
       snowForecastName: name,
       displayName: name,
     })),
+    weathernews: entries("weathernewsUrls").map(({ id, name }) => ({
+      weathernewsSpotId: id,
+      displayName: name,
+    })),
     weathernewsSpotId: entries("weathernewsUrls")[0]?.id ?? null,
     SnowForecastId: null,
     SnowForecastName: null,
@@ -152,6 +160,7 @@ export function resolveResortWeatherIds(
   if (!sources.length) return null;
   const tenkijp = sources.flatMap(entry => entry.tenkijp);
   const snowForecast = sources.flatMap(entry => entry.snowForecast);
+  const weathernews = sources.flatMap(entry => entry.weathernews);
   return {
     tenkijp: tenkijp.filter(
       (entry, index) =>
@@ -163,8 +172,39 @@ export function resolveResortWeatherIds(
           item => item.snowForecastId === entry.snowForecastId,
         ) === index,
     ),
-    weathernewsSpotId: sources[0].weathernewsSpotId,
+    weathernews: weathernews.filter(
+      (entry, index) =>
+        weathernews.findIndex(
+          item => item.weathernewsSpotId === entry.weathernewsSpotId,
+        ) === index,
+    ),
+    weathernewsSpotId: weathernews[0]?.weathernewsSpotId ?? null,
     SnowForecastId: null,
     SnowForecastName: null,
   };
+}
+
+export function getWeathernewsLinks(
+  weatherIds:
+    | {
+        weathernews?: Array<{
+          weathernewsSpotId: string;
+          displayName: string | null;
+        }>;
+        weathernewsSpotId?: string | null;
+      }
+    | null
+    | undefined,
+): Array<{ id: string; displayName: string; url: string }> {
+  if (!weatherIds) return [];
+  const entries =
+    weatherIds.weathernews ??
+    (weatherIds.weathernewsSpotId
+      ? [{ weathernewsSpotId: weatherIds.weathernewsSpotId, displayName: null }]
+      : []);
+  return entries.map(({ weathernewsSpotId, displayName }) => ({
+    id: weathernewsSpotId,
+    displayName: displayName || weathernewsSpotId,
+    url: weatherLinkUrl("weathernewsUrls", weathernewsSpotId),
+  }));
 }

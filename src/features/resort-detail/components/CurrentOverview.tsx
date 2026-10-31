@@ -16,7 +16,10 @@ import { NotFetchedBadge, SourceLine } from "./CompactInfo";
 import { ConditionTable } from "./ConditionTable";
 import { CourseStatusTable } from "./CourseStatusTable";
 import { LinkedMemberTabs, useLinkedMember } from "./LinkedArea";
-import { LinkedAreaMapToggle, useLinkedAreaShown } from "./LinkedAreaMapToggle";
+import {
+  LinkedAreaMapToggle,
+  useSimultaneousView,
+} from "./LinkedAreaMapToggle";
 import { ObservationTimes } from "./ObservationTimes";
 import { ResortComment } from "./ResortComment";
 
@@ -57,20 +60,27 @@ export function CurrentOverview({
   const courseStatus = resort.finalizedMapData?.courseStatusSummary;
   // 連携エリアのコンディション・コメントはスキー場ごとのタブで切り替える。
   // コースとリフトの営業状況はエリア全体で共通。
-  // 「〇〇も同時に表示」中は、つながったスキー場のコンディションもまとめて出す。
+  // 「〇〇も同時に表示」中は、相手のスキー場のコンディションもまとめて出す。
   const {
     members: linkedMembers,
     activeId,
     setActiveId,
   } = useLinkedMember(resort);
-  const showLinkedArea = useLinkedAreaShown(resort);
-  const members = showLinkedArea ? [] : linkedMembers;
-  const conditions = (resort.currentConditions ?? []).filter(
-    item =>
-      (showLinkedArea && linkedMembers.some(member => member.id === item.id)) ||
-      members.length < 2 ||
-      item.id === activeId,
-  );
+  const simultaneous = useSimultaneousView(resort);
+  const showLinkedArea =
+    simultaneous.active !== null && simultaneous.active.groupId === null;
+  // 同時表示中はスキー場ごとのタブを出さずに並べる
+  const members = simultaneous.active ? [] : linkedMembers;
+  const isOwnCondition = (id: string) =>
+    showLinkedArea
+      ? linkedMembers.some(member => member.id === id)
+      : simultaneous.active
+        ? linkedMembers.length < 2 || id === resort.id
+        : linkedMembers.length < 2 || id === activeId;
+  const conditions = [
+    ...(resort.currentConditions ?? []).filter(item => isOwnCondition(item.id)),
+    ...simultaneous.conditions,
+  ];
   // 「未取得」は出典が1つも登録されていないこと。出典があって中身が空のときは
   // 取得はできているので、件数を「不明」として出す。
   const hasCourseSource = hasSourceUrl(
@@ -135,6 +145,14 @@ export function CurrentOverview({
           <NotFetchedBadge title="営業状況はまだ取得できていません" />
         )}
       </div>
+      {!summaryOnly && (
+        <LinkedAreaMapToggle
+          resort={resort}
+          onSelectResort={onSelectResort}
+          size="section"
+          className="shadow-none"
+        />
+      )}
       {/* コースとリフトは常に横に並べ、縦の場所を取らないようにする */}
       <div className="grid grid-cols-2 gap-1.5 @min-[28rem]/overview:gap-2">
         <div className="min-w-0">
@@ -181,9 +199,6 @@ export function CurrentOverview({
           />
         </div>
       </div>
-      {!summaryOnly && (
-        <LinkedAreaMapToggle resort={resort} onSelectResort={onSelectResort} />
-      )}
       {!summaryOnly && newsLinks.length > 0 && (
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-700">
           <span className="font-semibold text-slate-900">お知らせ</span>

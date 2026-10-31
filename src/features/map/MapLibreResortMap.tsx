@@ -44,6 +44,7 @@ import {
 import { nearestCourseId } from "@/features/community/location";
 import { COMMUNITY_KIND_COLORS } from "@/features/community/mapOverlay";
 import { useCommunityMapLayer } from "@/features/community/mapPostStore";
+import { cn } from "@/lib/utils";
 import { FinalizedMapToolbar } from "./components/FinalizedMapToolbar";
 import { MapCourseStatusControl } from "./components/MapCourseStatusControl";
 import { MapErrorBoundary } from "./components/MapErrorBoundary";
@@ -1537,7 +1538,11 @@ function MapLibreResortMapContent({
               <div className="-mb-[3px] flex min-w-0">{linkedAreaControl}</div>
             )}
             <div
-              className="flex min-h-7 w-full flex-nowrap items-center gap-1"
+              // 「〇〇も同時に表示」と間が空かないよう、ボタンは上で揃える
+              className={cn(
+                "flex min-h-7 w-full flex-nowrap gap-1",
+                linkedAreaControl ? "items-start" : "items-center",
+              )}
               data-map-action-row="true"
             >
               {showMapOpenOnlyControl && !embedded && (

@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { linkSaveSchema } from "@/features/links/model";
 import {
+  linkSaveSchema,
+  linksFromDocument,
+  patchLinksDocument,
+} from "@/features/links/model";
+import {
+  getWeathernewsLinks,
   parseWeatherLinkId,
   resolveResortWeatherIds,
   weatherIdsFromLinks,
@@ -78,7 +83,7 @@ test("天気サイトの地点URLを検証し、偽装ホストや地点のな�
       ],
       expectedLinks: [],
     }).success,
-    false,
+    true,
   );
 });
 
@@ -92,6 +97,9 @@ test("親の代表地点を優先し、明示的な空設定は子地点で補�
   assert.equal(ids?.snowForecast[0].snowForecastId, "IchinoseFamily");
   assert.equal(ids?.tenkijp[0].tenkijpId, "3/23/10239");
   assert.equal(ids?.weathernewsSpotId, "34820");
+  assert.deepEqual(ids?.weathernews, [
+    { weathernewsSpotId: "34820", displayName: null },
+  ]);
   const map = {
     family,
     central: family,
@@ -117,6 +125,70 @@ test("親の代表地点を優先し、明示的な空設定は子地点で補�
     [],
   );
   assert.equal(resolveResortWeatherIds(map, "missing"), null);
+});
+
+test("Weathernews links retain labels, merge by ID, and support legacy cached IDs", () => {
+  const parent = {
+    weathernewsUrls: [
+      { url: "https://weathernews.jp/ski/spot/34820/", description: "Family" },
+      { url: "https://weathernews.jp/ski/spot/55/", description: "Yakebitai" },
+    ],
+  };
+  const child = {
+    weathernewsUrls: [
+      { url: "https://weathernews.jp/ski/spot/55/", description: "duplicate" },
+      { url: "https://weathernews.jp/ski/spot/77/", description: "Okushiga" },
+    ],
+  };
+  assert.deepEqual(weatherIdsFromLinks(parent)?.weathernews, [
+    { weathernewsSpotId: "34820", displayName: "Family" },
+    { weathernewsSpotId: "55", displayName: "Yakebitai" },
+  ]);
+  assert.deepEqual(
+    resolveResortWeatherIds({ parent, child }, "missing", ["parent", "child"])
+      ?.weathernews,
+    [
+      { weathernewsSpotId: "34820", displayName: "Family" },
+      { weathernewsSpotId: "55", displayName: "Yakebitai" },
+      { weathernewsSpotId: "77", displayName: "Okushiga" },
+    ],
+  );
+  assert.deepEqual(
+    resolveResortWeatherIds(
+      { parent, empty: { weathernewsUrls: [] } },
+      "empty",
+      ["parent"],
+    )?.weathernews,
+    [],
+  );
+  assert.deepEqual(getWeathernewsLinks({ weathernewsSpotId: "34820" }), [
+    {
+      id: "34820",
+      displayName: "34820",
+      url: "https://weathernews.jp/ski/spot/34820/",
+    },
+  ]);
+  assert.deepEqual(
+    getWeathernewsLinks({ weathernewsSpotId: "34820", weathernews: [] }),
+    [],
+  );
+});
+
+test("複数のWeathernewsリンクを保存して順序と地点名を維持する", () => {
+  const request = {
+    resortId: "family",
+    platform: "weathernewsUrls" as const,
+    links: [
+      { url: "https://weathernews.jp/ski/spot/34820/", description: "Family" },
+      { url: "https://weathernews.jp/ski/spot/55/", description: "Yakebitai" },
+    ],
+    expectedLinks: [],
+  };
+  const saved = patchLinksDocument(null, request);
+  assert.deepEqual(
+    linksFromDocument(saved).family?.weathernewsUrls,
+    request.links,
+  );
 });
 
 test("移行は既存URL・他項目を保持し、再実行や空設定でリンクを復活させない", () => {

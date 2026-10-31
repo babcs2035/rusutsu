@@ -12,25 +12,26 @@ datasource db {
 // =====================================
 
 model SkiResort {
-  id        String   @id // e.g., "able-hakuba-goryu"
-  nameJa    String
-  nameEn    String
-  shortName String?
-  nameRuby SkiResortRubySegment[]
-  formerNames SkiResortFormerName[]
-  readingNeedsReview Boolean @default(false)
-  isActive  Boolean  @default(true)
-  mergedIntoId String?
-  mergedInto SkiResort? @relation("ResortMerge", fields: [mergedIntoId], references: [id], onDelete: Restrict)
-  mergedMembers SkiResort[] @relation("ResortMerge")
-  sourceResortIds String[] @default([])
+  id                 String                     @id // e.g., "able-hakuba-goryu"
+  nameJa             String
+  nameEn             String
+  shortName          String?
+  nameRuby           SkiResortRubySegment[]
+  formerNames        SkiResortFormerName[]
+  displayGroups      ResortDisplayGroupMember[]
+  readingNeedsReview Boolean                    @default(false)
+  isActive           Boolean                    @default(true)
+  mergedIntoId       String?
+  mergedInto         SkiResort?                 @relation("ResortMerge", fields: [mergedIntoId], references: [id], onDelete: Restrict)
+  mergedMembers      SkiResort[]                @relation("ResortMerge")
+  sourceResortIds    String[]                   @default([])
   // 結合元を持つ親の結合方法。MERGED は親だけを公開し、LINKED は子を公開して
   // 地図・コース・リフト・料金・レビューを親で共有する。DB CHECKで制限。
-  linkKind String @default("MERGED")
+  linkKind           String                     @default("MERGED")
   // 同じ値のスキー場どうしは共通券で滑走できる（地図や詳細は統合しない）。
-  ticketGroupId String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  ticketGroupId      String?
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
 
   // Location
   prefecture String
@@ -105,12 +106,12 @@ model SkiResort {
   latestReports       LatestReport[]
   crawlLatestRuns     CrawlLatestRun[]
   crawlLatestCurrents CrawlLatestCurrent[]
-  operationSummary SkiResortOperationSummary?
-  communityPosts CommunityPost[]
+  operationSummary    SkiResortOperationSummary?
+  communityPosts      CommunityPost[]
 
-  @@map("ski_resorts")
   @@index([mergedIntoId])
   @@index([ticketGroupId])
+  @@map("ski_resorts")
 }
 
 model Course {
@@ -289,23 +290,23 @@ model YukiMagi {
 // =====================================
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  role          String    @default("viewer") // "viewer" | "editor" | "admin"; DB CHECKで制限
-  favorites     Favorite[]
-  accounts      Account[]
-  sessions      Session[]
-  publicName    String? @db.VarChar(40)
-  nameMode      String? @db.VarChar(16)
-  suspendedAt   DateTime?
-  communityPosts CommunityPost[]
-  communityComments CommunityComment[]
-  communityLikes CommunityLike[]
+  id                     String                  @id @default(cuid())
+  name                   String?
+  email                  String?                 @unique
+  emailVerified          DateTime?
+  image                  String?
+  role                   String                  @default("viewer") // "viewer" | "editor" | "admin"; DB CHECKで制限
+  favorites              Favorite[]
+  accounts               Account[]
+  sessions               Session[]
+  publicName             String?                 @db.VarChar(40)
+  nameMode               String?                 @db.VarChar(16)
+  suspendedAt            DateTime?
+  communityPosts         CommunityPost[]
+  communityComments      CommunityComment[]
+  communityLikes         CommunityLike[]
   communityNotifications CommunityNotification[]
-  contributionPhotos ContributionPhoto[]
+  contributionPhotos     ContributionPhoto[]
 
   @@map("users")
 }
@@ -557,22 +558,47 @@ model CanonicalDataMigration {
 // Ordered name segments retain per-word ruby without storing a JSON document.
 model SkiResortRubySegment {
   skiResortId String
-  position Int
-  text String @db.VarChar(300)
-  ruby String? @db.VarChar(300)
-  skiResort SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  position    Int
+  text        String    @db.VarChar(300)
+  ruby        String?   @db.VarChar(300)
+  skiResort   SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   @@id([skiResortId, position])
   @@map("ski_resort_ruby_segments")
 }
 
+// 詳細画面の「〇〇も同時に表示」で、地図・営業状況などを合わせて見るスキー場の組。
+// 1つのスキー場が複数の組に入れる（例: 五竜・47 と Hakuba Valley 全山）。
+model ResortDisplayGroup {
+  id        String                     @id @default(cuid())
+  // 「ニセコ全山」など。未設定なら相手のスキー場名で「〇〇も同時に表示」と出す
+  label     String?                    @db.VarChar(100)
+  members   ResortDisplayGroupMember[]
+  createdAt DateTime                   @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime                   @updatedAt @db.Timestamptz(3)
+
+  @@map("resort_display_groups")
+}
+
+model ResortDisplayGroupMember {
+  groupId     String
+  skiResortId String
+  position    Int
+  group       ResortDisplayGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  skiResort   SkiResort          @relation(fields: [skiResortId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([groupId, skiResortId])
+  @@index([skiResortId])
+  @@map("resort_display_group_members")
+}
+
 model SkiResortFormerName {
   skiResortId String
-  position Int
-  name String @db.VarChar(300)
-  reading String? @db.VarChar(300)
-  nameRuby SkiResortFormerNameRubySegment[]
-  skiResort SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  position    Int
+  name        String                           @db.VarChar(300)
+  reading     String?                          @db.VarChar(300)
+  nameRuby    SkiResortFormerNameRubySegment[]
+  skiResort   SkiResort                        @relation(fields: [skiResortId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   @@id([skiResortId, position])
   @@index([name])
@@ -581,12 +607,12 @@ model SkiResortFormerName {
 }
 
 model SkiResortFormerNameRubySegment {
-  skiResortId String
+  skiResortId        String
   formerNamePosition Int
-  position Int
-  text String @db.VarChar(300)
-  ruby String? @db.VarChar(300)
-  formerName SkiResortFormerName @relation(fields: [skiResortId, formerNamePosition], references: [skiResortId, position], onDelete: Cascade, onUpdate: Cascade, map: "ski_resort_former_name_ruby_segments_former_name_fkey")
+  position           Int
+  text               String              @db.VarChar(300)
+  ruby               String?             @db.VarChar(300)
+  formerName         SkiResortFormerName @relation(fields: [skiResortId, formerNamePosition], references: [skiResortId, position], onDelete: Cascade, onUpdate: Cascade, map: "ski_resort_former_name_ruby_segments_former_name_fkey")
 
   @@id([skiResortId, formerNamePosition, position])
   @@map("ski_resort_former_name_ruby_segments")
@@ -595,70 +621,72 @@ model SkiResortFormerNameRubySegment {
 // Individually addressable map entities. Legacy SurfSnow Course/Lift are untouched.
 // resortId deliberately accepts historical/virtual resort IDs kept in map documents.
 model MapCourseGroup {
-  id String @id
-  resortId String
+  id         String      @id
+  resortId   String
   sourceKind String
-  name String
-  kind String
-  courses MapCourse[]
+  name       String
+  kind       String
+  courses    MapCourse[]
+
   @@unique([id, resortId, sourceKind])
   @@map("map_course_groups")
 }
 
 model MapCourse {
-  id String @id
-  resortId String
-  sourceKind String
-  documentKey String
-  sourceIndex Int
-  name String?
-  groupId String?
-  group MapCourseGroup? @relation(fields: [groupId, resortId, sourceKind], references: [id, resortId, sourceKind], onDelete: Restrict)
-  sectionOrder Int?
-  difficulty String?
-  distance Float?
-  angleAvg Float?
-  angleMax Float?
-  piste String?
-  snowboard String?
-  morning String?
-  night String?
-  note String?
-  image String?
-  youtubeUrl String?
-  searchWord String?
-  maxWidth Float?
-  minWidth Float?
-  properties Json
-  geometry Json?
+  id                     String          @id
+  resortId               String
+  sourceKind             String
+  documentKey            String
+  sourceIndex            Int
+  name                   String?
+  groupId                String?
+  group                  MapCourseGroup? @relation(fields: [groupId, resortId, sourceKind], references: [id, resortId, sourceKind], onDelete: Restrict)
+  sectionOrder           Int?
+  difficulty             String?
+  distance               Float?
+  angleAvg               Float?
+  angleMax               Float?
+  piste                  String?
+  snowboard              String?
+  morning                String?
+  night                  String?
+  note                   String?
+  image                  String?
+  youtubeUrl             String?
+  searchWord             String?
+  maxWidth               Float?
+  minWidth               Float?
+  properties             Json
+  geometry               Json?
   // Legacy caches for rolling migration only. Canonical v2 leaves these NULL.
-  feature Json?
-  derivedFeature Json?
+  feature                Json?
+  derivedFeature         Json?
   // Canonical geometry/attributes. Legacy Feature columns are cleared on migration.
-  derivedGeometry Json?
-  geometryType String?
-  featureMetadata Json @default("{}")
-  derivedMetadata Json @default("{}")
-  derivedProperties Json @default("{}")
-  derivedIndex Int?
-  horizontalDistance Float?
-  slopeDistance Float?
-  elevationDifference Float?
+  derivedGeometry        Json?
+  geometryType           String?
+  featureMetadata        Json            @default("{}")
+  derivedMetadata        Json            @default("{}")
+  derivedProperties      Json            @default("{}")
+  derivedIndex           Int?
+  horizontalDistance     Float?
+  slopeDistance          Float?
+  elevationDifference    Float?
   calculatedAverageSlope Float?
-  calculatedMaxSlope Float?
-  elevationReady Boolean @default(false)
-  crawledNames String[] @default([])
-  mappingAssigned Boolean @default(false)
-  status String?
-  latestNote String?
-  officialUpdatedAt String?
-  statusObservedAt DateTime? @db.Timestamptz(3)
-  statusSnapshotId String?
-  statusName String?
-  statusSourceUrls String[] @default([])
-  hasStatusSource Boolean @default(false)
-  archivedAt DateTime?
-  updatedAt DateTime @updatedAt
+  calculatedMaxSlope     Float?
+  elevationReady         Boolean         @default(false)
+  crawledNames           String[]        @default([])
+  mappingAssigned        Boolean         @default(false)
+  status                 String?
+  latestNote             String?
+  officialUpdatedAt      String?
+  statusObservedAt       DateTime?       @db.Timestamptz(3)
+  statusSnapshotId       String?
+  statusName             String?
+  statusSourceUrls       String[]        @default([])
+  hasStatusSource        Boolean         @default(false)
+  archivedAt             DateTime?
+  updatedAt              DateTime        @updatedAt
+
   @@index([resortId, sourceKind, archivedAt])
   @@index([documentKey, sourceIndex])
   @@index([groupId, sectionOrder])
@@ -666,87 +694,90 @@ model MapCourse {
 }
 
 model MapLift {
-  id String @id
-  resortId String
-  documentKey String
-  sourceIndex Int
-  name String?
-  type String?
-  capacity Int?
-  distance Float?
-  speed String?
-  hood String?
-  footrest String?
-  towers String?
-  signal String?
-  oilShield String?
-  maker String?
-  year String?
-  note String?
-  searchWord String?
-  link String?
-  image String?
-  youtubeUrl String?
-  morning String?
-  night String?
-  vertical Float?
-  top Float?
-  bottom Float?
-  properties Json
-  geometry Json?
-  feature Json?
-  derivedFeature Json?
+  id                     String    @id
+  resortId               String
+  documentKey            String
+  sourceIndex            Int
+  name                   String?
+  type                   String?
+  capacity               Int?
+  distance               Float?
+  speed                  String?
+  hood                   String?
+  footrest               String?
+  towers                 String?
+  signal                 String?
+  oilShield              String?
+  maker                  String?
+  year                   String?
+  note                   String?
+  searchWord             String?
+  link                   String?
+  image                  String?
+  youtubeUrl             String?
+  morning                String?
+  night                  String?
+  vertical               Float?
+  top                    Float?
+  bottom                 Float?
+  properties             Json
+  geometry               Json?
+  feature                Json?
+  derivedFeature         Json?
   // Canonical geometry/attributes. Legacy Feature columns are cleared on migration.
-  derivedGeometry Json?
-  geometryType String?
-  featureMetadata Json @default("{}")
-  derivedMetadata Json @default("{}")
-  derivedProperties Json @default("{}")
-  derivedIndex Int?
-  horizontalDistance Float?
-  slopeDistance Float?
-  elevationDifference Float?
+  derivedGeometry        Json?
+  geometryType           String?
+  featureMetadata        Json      @default("{}")
+  derivedMetadata        Json      @default("{}")
+  derivedProperties      Json      @default("{}")
+  derivedIndex           Int?
+  horizontalDistance     Float?
+  slopeDistance          Float?
+  elevationDifference    Float?
   calculatedAverageSlope Float?
-  calculatedMaxSlope Float?
-  elevationReady Boolean @default(false)
-  crawledNames String[] @default([])
-  mappingAssigned Boolean @default(false)
-  status String?
-  latestNote String?
-  officialUpdatedAt String?
-  statusObservedAt DateTime? @db.Timestamptz(3)
-  statusSnapshotId String?
-  statusName String?
-  statusSourceUrls String[] @default([])
-  hasStatusSource Boolean @default(false)
-  archivedAt DateTime?
-  updatedAt DateTime @updatedAt
+  calculatedMaxSlope     Float?
+  elevationReady         Boolean   @default(false)
+  crawledNames           String[]  @default([])
+  mappingAssigned        Boolean   @default(false)
+  status                 String?
+  latestNote             String?
+  officialUpdatedAt      String?
+  statusObservedAt       DateTime? @db.Timestamptz(3)
+  statusSnapshotId       String?
+  statusName             String?
+  statusSourceUrls       String[]  @default([])
+  hasStatusSource        Boolean   @default(false)
+  archivedAt             DateTime?
+  updatedAt              DateTime  @updatedAt
+
   @@index([resortId, archivedAt])
   @@index([documentKey, sourceIndex])
   @@map("map_lifts")
 }
 
 model MapDocumentState {
-  key String @id
-  hash String @db.Char(64)
+  key          String   @id
+  hash         String   @db.Char(64)
   featureCount Int
-  metadata Json @default("{}")
-  mediaType String @default("application/geo+json")
-  version Int @default(1)
-  relational Boolean @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  metadata     Json     @default("{}")
+  mediaType    String   @default("application/geo+json")
+  version      Int      @default(1)
+  relational   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
   @@map("map_document_states")
 }
 
 // Immutable pre-migration copies, including detail/mapping documents and derived-only lines.
 model MapDocumentBackup {
-  key String
-  hash String @db.Char(64)
-  content String @db.Text
+  key       String
+  hash      String   @db.Char(64)
+  content   String   @db.Text
   mediaType String
-  version Int
+  version   Int
   createdAt DateTime @default(now())
+
   @@id([key, hash])
   @@map("map_document_backups")
 }
@@ -754,26 +785,27 @@ model MapDocumentBackup {
 // 提出した内容は不変。管理者の修正案と実際の反映内容を別々に保持する。
 // 利用者IDは外部キーにせず、利用者削除後も履歴を保持する。
 model EditRequest {
-  id String @id @default(cuid())
-  submissionKey String? @unique @db.VarChar(64)
-  authorId String
-  authorName String
-  kind String
-  resortId String
-  status String @default("PENDING")
-  version Int @default(1)
-  submittedPayload Json @db.Json
-  submittedPlan Json @db.Json
-  candidatePayload Json @db.Json
-  candidatePlan Json @db.Json
-  reviewedById String?
-  reviewComment String?
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt DateTime @updatedAt @db.Timestamptz(3)
-  resolvedAt DateTime? @db.Timestamptz(3)
-  events EditRequestEvent[]
-  jobs EditRequestJob[]
-  photos ContributionPhoto[]
+  id               String              @id @default(cuid())
+  submissionKey    String?             @unique @db.VarChar(64)
+  authorId         String
+  authorName       String
+  kind             String
+  resortId         String
+  status           String              @default("PENDING")
+  version          Int                 @default(1)
+  submittedPayload Json                @db.Json
+  submittedPlan    Json                @db.Json
+  candidatePayload Json                @db.Json
+  candidatePlan    Json                @db.Json
+  reviewedById     String?
+  reviewComment    String?
+  createdAt        DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime            @updatedAt @db.Timestamptz(3)
+  resolvedAt       DateTime?           @db.Timestamptz(3)
+  events           EditRequestEvent[]
+  jobs             EditRequestJob[]
+  photos           ContributionPhoto[]
+
   @@index([authorId, createdAt])
   @@index([status, createdAt])
   @@map("edit_requests")
@@ -781,23 +813,24 @@ model EditRequest {
 
 // One visit report owns all course, lift, mogul and park observations.
 model CommunityPost {
-  id String @id @default(cuid())
-  authorId String
-  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  resortId String
-  resort SkiResort @relation(fields: [resortId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  observedOn String @db.VarChar(10)
-  observedTime String @db.VarChar(5)
-  status String @default("VISIBLE") @db.VarChar(16)
-  version Int @default(1)
-  submissionKey String @db.VarChar(64)
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt DateTime @updatedAt @db.Timestamptz(3)
-  photos ContributionPhoto[]
-  comments CommunityComment[]
-  likes CommunityLike[]
+  id            String                  @id @default(cuid())
+  authorId      String
+  author        User                    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  resortId      String
+  resort        SkiResort               @relation(fields: [resortId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  observedOn    String                  @db.VarChar(10)
+  observedTime  String                  @db.VarChar(5)
+  status        String                  @default("VISIBLE") @db.VarChar(16)
+  version       Int                     @default(1)
+  submissionKey String                  @db.VarChar(64)
+  createdAt     DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime                @updatedAt @db.Timestamptz(3)
+  photos        ContributionPhoto[]
+  comments      CommunityComment[]
+  likes         CommunityLike[]
   notifications CommunityNotification[]
-  entries CommunityEntry[]
+  entries       CommunityEntry[]
+
   @@unique([authorId, submissionKey])
   @@index([resortId, status, observedOn])
   @@index([authorId, createdAt])
@@ -805,28 +838,29 @@ model CommunityPost {
 }
 
 model CommunityEntry {
-  id String @id @default(cuid())
-  postId String
-  post CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  clientKey String @db.VarChar(36)
-  position Int
-  kind String @db.VarChar(16)
-  courseId String?
-  liftId String?
-  targetName String @db.VarChar(500)
-  body String @default("") @db.VarChar(4000)
-  snowQualities String[] @default([])
-  status String? @db.VarChar(16)
-  crowding String? @db.VarChar(16)
-  latitude Float?
-  longitude Float?
-  itemType String? @db.VarChar(30)
-  size String? @db.VarChar(100)
-  waitMinutes Int?
-  liftSpeed Float?
-  liftSpeedLevel String? @db.VarChar(16)
-  depth String? @db.VarChar(16)
-  photos ContributionPhoto[]
+  id             String              @id @default(cuid())
+  postId         String
+  post           CommunityPost       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  clientKey      String              @db.VarChar(36)
+  position       Int
+  kind           String              @db.VarChar(16)
+  courseId       String?
+  liftId         String?
+  targetName     String              @db.VarChar(500)
+  body           String              @default("") @db.VarChar(4000)
+  snowQualities  String[]            @default([])
+  status         String?             @db.VarChar(16)
+  crowding       String?             @db.VarChar(16)
+  latitude       Float?
+  longitude      Float?
+  itemType       String?             @db.VarChar(30)
+  size           String?             @db.VarChar(100)
+  waitMinutes    Int?
+  liftSpeed      Float?
+  liftSpeedLevel String?             @db.VarChar(16)
+  depth          String?             @db.VarChar(16)
+  photos         ContributionPhoto[]
+
   @@unique([postId, clientKey])
   @@unique([postId, position])
   @@index([kind, courseId, postId])
@@ -835,42 +869,45 @@ model CommunityEntry {
 }
 
 model CommunityComment {
-  id String @id @default(cuid())
-  postId String
-  post CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  authorId String
-  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  body String @db.VarChar(2000)
-  status String @default("VISIBLE") @db.VarChar(16)
-  version Int @default(1)
-  operationKey String @db.VarChar(64)
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  id           String        @id @default(cuid())
+  postId       String
+  post         CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId     String
+  author       User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  body         String        @db.VarChar(2000)
+  status       String        @default("VISIBLE") @db.VarChar(16)
+  version      Int           @default(1)
+  operationKey String        @db.VarChar(64)
+  createdAt    DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime      @updatedAt @db.Timestamptz(3)
+
   @@unique([authorId, operationKey])
   @@index([postId, status, createdAt])
   @@map("community_comments")
 }
 
 model CommunityLike {
-  postId String
-  userId String
-  post CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  postId    String
+  userId    String
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now()) @db.Timestamptz(3)
+
   @@id([postId, userId])
   @@map("community_likes")
 }
 
 model CommunityNotification {
-  id String @id @default(cuid())
-  userId String
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  postId String
-  post CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  kind String @db.VarChar(16)
-  readAt DateTime?
-  dedupeKey String @unique @db.VarChar(200)
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  id        String        @id @default(cuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  kind      String        @db.VarChar(16)
+  readAt    DateTime?
+  dedupeKey String        @unique @db.VarChar(200)
+  createdAt DateTime      @default(now()) @db.Timestamptz(3)
+
   @@index([userId, readAt, createdAt])
   @@map("community_notifications")
 }
@@ -878,22 +915,23 @@ model CommunityNotification {
 // Re-encoded bytes have no EXIF. No public directory, external image URL or
 // immutable CDN cache can outlive a deletion or moderation decision.
 model ContributionPhoto {
-  id String @id @default(cuid())
-  postId String?
-  post CommunityPost? @relation(fields: [postId], references: [id], onDelete: Cascade)
-  entryId String?
-  entry CommunityEntry? @relation(fields: [entryId], references: [id], onDelete: Cascade)
-  requestId String?
-  request EditRequest? @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  ownerId String?
-  owner User? @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  bytes Bytes
+  id         String          @id @default(cuid())
+  postId     String?
+  post       CommunityPost?  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  entryId    String?
+  entry      CommunityEntry? @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  requestId  String?
+  request    EditRequest?    @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  ownerId    String?
+  owner      User?           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  bytes      Bytes
   thumbBytes Bytes?
-  mapBytes Bytes?
-  mimeType String @db.VarChar(40)
-  width Int
-  height Int
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  mapBytes   Bytes?
+  mimeType   String          @db.VarChar(40)
+  width      Int
+  height     Int
+  createdAt  DateTime        @default(now()) @db.Timestamptz(3)
+
   @@index([postId])
   @@index([entryId])
   @@index([requestId])
@@ -901,15 +939,16 @@ model ContributionPhoto {
 }
 
 model CommunityReport {
-  id String @id @default(cuid())
-  targetKind String @db.VarChar(16)
-  targetId String
-  reason String @db.VarChar(40)
-  body String @db.VarChar(2000)
-  status String @default("PENDING") @db.VarChar(16)
+  id           String    @id @default(cuid())
+  targetKind   String    @db.VarChar(16)
+  targetId     String
+  reason       String    @db.VarChar(40)
+  body         String    @db.VarChar(2000)
+  status       String    @default("PENDING") @db.VarChar(16)
   reviewedById String?
-  reviewedAt DateTime?
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  reviewedAt   DateTime?
+  createdAt    DateTime  @default(now()) @db.Timestamptz(3)
+
   @@index([status, createdAt])
   @@map("community_reports")
 }
@@ -917,65 +956,70 @@ model CommunityReport {
 // Durable asynchronous moderation queue; version guards prevent stale scans
 // from hiding a newer edit. AI never changes account permissions.
 model CommunityModerationJob {
-  id String @id @default(cuid())
-  targetKind String @db.VarChar(16)
-  targetId String
+  id            String    @id @default(cuid())
+  targetKind    String    @db.VarChar(16)
+  targetId      String
   targetVersion Int
-  status String @default("PENDING") @db.VarChar(16)
-  attempts Int @default(0)
-  nextAttemptAt DateTime @default(now())
-  lockedAt DateTime?
-  result Json?
-  lastError String? @db.VarChar(500)
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  status        String    @default("PENDING") @db.VarChar(16)
+  attempts      Int       @default(0)
+  nextAttemptAt DateTime  @default(now())
+  lockedAt      DateTime?
+  result        Json?
+  lastError     String?   @db.VarChar(500)
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime  @updatedAt @db.Timestamptz(3)
+
   @@unique([targetKind, targetId, targetVersion])
   @@index([status, nextAttemptAt])
   @@map("community_moderation_jobs")
 }
 
 model ContributionRateBucket {
-  key String @id @db.VarChar(100)
-  count Int
+  key       String   @id @db.VarChar(100)
+  count     Int
   expiresAt DateTime
+
   @@index([expiresAt])
   @@map("contribution_rate_buckets")
 }
 
 model EditRequestEvent {
-  id String @id @default(cuid())
+  id        String      @id @default(cuid())
   requestId String
-  request EditRequest @relation(fields: [requestId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  actorId String
-  action String
-  payload Json? @db.Json
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  request   EditRequest @relation(fields: [requestId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  actorId   String
+  action    String
+  payload   Json?       @db.Json
+  createdAt DateTime    @default(now()) @db.Timestamptz(3)
+
   @@index([requestId, createdAt])
   @@map("edit_request_events")
 }
 
 // 承認と同じトランザクションで登録し、再起動後も標高取得を再試行する。
 model EditRequestJob {
-  id String @id @default(cuid())
+  id        String      @id @default(cuid())
   requestId String
-  request EditRequest @relation(fields: [requestId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  payload Json @db.Json
-  status String @default("PENDING")
-  attempts Int @default(0)
+  request   EditRequest @relation(fields: [requestId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  payload   Json        @db.Json
+  status    String      @default("PENDING")
+  attempts  Int         @default(0)
   lastError String?
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  createdAt DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime    @updatedAt @db.Timestamptz(3)
+
   @@index([status, updatedAt])
   @@map("edit_request_jobs")
 }
 
 // Browser favorites are merged once into these account-owned rows.
 model Favorite {
-  userId String
+  userId      String
   skiResortId String
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  skiResort SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  createdAt DateTime @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skiResort   SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  createdAt   DateTime  @default(now())
+
   @@id([userId, skiResortId])
   @@index([skiResortId])
   @@map("favorites")
@@ -983,22 +1027,23 @@ model Favorite {
 
 // Rebuilt transactionally from canonical map documents; no GeoJSON at query time.
 model CourseRecommendationFeature {
-  resortId String
-  key String
-  groupId String
-  courseIds String[]
-  name String
-  routeKey String?
-  distance Float
-  logDistance Float
-  maxSlope Float
-  slopeDistances Float[]
-  shape String
-  grooming String
-  geometryHash String @db.Char(64)
-  sourceHash String @db.Char(64)
+  resortId           String
+  key                String
+  groupId            String
+  courseIds          String[]
+  name               String
+  routeKey           String?
+  distance           Float
+  logDistance        Float
+  maxSlope           Float
+  slopeDistances     Float[]
+  shape              String
+  grooming           String
+  geometryHash       String   @db.Char(64)
+  sourceHash         String   @db.Char(64)
   calculationVersion Int
-  updatedAt DateTime @default(now()) @updatedAt
+  updatedAt          DateTime @default(now()) @updatedAt
+
   @@id([resortId, key])
   @@index([resortId, calculationVersion])
   @@map("course_recommendation_features")
@@ -1006,16 +1051,17 @@ model CourseRecommendationFeature {
 
 // Read model for search results. No geometry or crawler payload is read by lists.
 model SkiResortOperationSummary {
-  skiResortId String @id
-  skiResort SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "summary_resort_fk")
-  hasMap Boolean
-  courseTotal Int?
-  courseActive Int?
-  liftTotal Int?
-  liftActive Int?
-  courseCountSource String
-  liftCountSource String
-  calculationVersion Int @default(1)
-  updatedAt DateTime @updatedAt
+  skiResortId        String    @id
+  skiResort          SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "summary_resort_fk")
+  hasMap             Boolean
+  courseTotal        Int?
+  courseActive       Int?
+  liftTotal          Int?
+  liftActive         Int?
+  courseCountSource  String
+  liftCountSource    String
+  calculationVersion Int       @default(1)
+  updatedAt          DateTime  @updatedAt
+
   @@map("ski_resort_operation_summaries")
 }

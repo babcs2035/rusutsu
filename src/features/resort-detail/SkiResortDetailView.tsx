@@ -285,7 +285,9 @@ export const SkiResortDetailView = ({
             resortData.nameJa,
             [resortData.longitude, resortData.latitude],
             // 投稿は連携エリアでまとめて扱うので、つながったスキー場の線も選べる
-            resortData.linkedAreaMapData ?? resortData.finalizedMapData,
+            resortData.linkedArea
+              ? (resortData.linkedAreaMapData ?? resortData.finalizedMapData)
+              : resortData.finalizedMapData,
           )
         : null,
     [resortData],

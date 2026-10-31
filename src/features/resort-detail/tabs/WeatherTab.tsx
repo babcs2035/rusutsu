@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { SnowForecastEmbed } from "@/features/weather/WeatherChart";
+import { getWeathernewsLinks } from "@/features/weather/weatherLinks";
 import { cn } from "@/lib/utils";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import { LinkedMemberTabs, useLinkedMember } from "../components/LinkedArea";
@@ -79,7 +80,7 @@ export const WeatherTab = ({ resort }: { resort: Resort }) => {
     }));
   }, [weatherIds]);
 
-  const weathernewsSpotId = weatherIds?.weathernewsSpotId ?? null;
+  const weathernewsLinks = getWeathernewsLinks(weatherIds);
 
   const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if ((e as unknown as { detail: number }).detail > 0) {
@@ -145,10 +146,6 @@ export const WeatherTab = ({ resort }: { resort: Resort }) => {
             ))}
 
           {(() => {
-            const weathernewsUrl = weathernewsSpotId
-              ? `https://weathernews.jp/ski/spot/${weathernewsSpotId}/`
-              : null;
-
             const lat = latitude;
             const lon = longitude;
             const hasCoords =
@@ -159,16 +156,18 @@ export const WeatherTab = ({ resort }: { resort: Resort }) => {
 
             return (
               <>
-                {weathernewsUrl && (
+                {weathernewsLinks.map(link => (
                   <ExternalLinkComponent
-                    key="weathernews"
-                    href={weathernewsUrl}
+                    key={`weathernews-${link.id}`}
+                    href={link.url}
                     onClick={handleLinkClick}
                     className={blueWeatherLinkClassName}
                   >
-                    ウェザーニュース
+                    {weathernewsLinks.length === 1
+                      ? "ウェザーニュース"
+                      : `ウェザーニュース ${link.displayName}`}
                   </ExternalLinkComponent>
-                )}
+                ))}
 
                 {windyUrl && (
                   <ExternalLinkComponent

@@ -585,6 +585,7 @@ export const HomeLayout = ({
                     <LinkedAreaMapToggle
                       resort={selectedResortData}
                       onSelectResort={onSelectResort}
+                      size="inline"
                     />
                   ) : undefined
                 }
