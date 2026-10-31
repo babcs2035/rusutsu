@@ -16,6 +16,7 @@ import { NotFetchedBadge, SourceLine } from "./CompactInfo";
 import { ConditionTable } from "./ConditionTable";
 import { CourseStatusTable } from "./CourseStatusTable";
 import { LinkedMemberTabs, useLinkedMember } from "./LinkedArea";
+import { LinkedAreaMapToggle, useLinkedAreaShown } from "./LinkedAreaMapToggle";
 import { ObservationTimes } from "./ObservationTimes";
 import { ResortComment } from "./ResortComment";
 
@@ -41,9 +42,11 @@ export function CurrentOverview({
   summaryOnly = false,
   onShowCourseDetail,
   onShowLiftDetail,
+  onSelectResort,
 }: {
   resort: Resort;
   summaryOnly?: boolean;
+  onSelectResort?: (id: string) => void;
   /** 渡すと、コース／リフトのブロックにそれぞれ「詳細」ボタンを出す */
   onShowCourseDetail?: () => void;
   onShowLiftDetail?: () => void;
@@ -54,9 +57,19 @@ export function CurrentOverview({
   const courseStatus = resort.finalizedMapData?.courseStatusSummary;
   // 連携エリアのコンディション・コメントはスキー場ごとのタブで切り替える。
   // コースとリフトの営業状況はエリア全体で共通。
-  const { members, activeId, setActiveId } = useLinkedMember(resort);
+  // 「〇〇も同時に表示」中は、つながったスキー場のコンディションもまとめて出す。
+  const {
+    members: linkedMembers,
+    activeId,
+    setActiveId,
+  } = useLinkedMember(resort);
+  const showLinkedArea = useLinkedAreaShown(resort);
+  const members = showLinkedArea ? [] : linkedMembers;
   const conditions = (resort.currentConditions ?? []).filter(
-    item => members.length < 2 || item.id === activeId,
+    item =>
+      (showLinkedArea && linkedMembers.some(member => member.id === item.id)) ||
+      members.length < 2 ||
+      item.id === activeId,
   );
   // 「未取得」は出典が1つも登録されていないこと。出典があって中身が空のときは
   // 取得はできているので、件数を「不明」として出す。
@@ -168,6 +181,9 @@ export function CurrentOverview({
           />
         </div>
       </div>
+      {!summaryOnly && (
+        <LinkedAreaMapToggle resort={resort} onSelectResort={onSelectResort} />
+      )}
       {!summaryOnly && newsLinks.length > 0 && (
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-700">
           <span className="font-semibold text-slate-900">お知らせ</span>

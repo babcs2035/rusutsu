@@ -1,14 +1,35 @@
+import path from "node:path";
+import { prepareWeatherLinksMigration } from "../src/features/weather/weatherLinksMigration";
 import {
   DATA_DOCUMENT_INITIALIZATION_KEY,
   runOneTimeImport,
 } from "../src/server/data-documents/initialization";
 import { readImportMode, withImportDatabase } from "./canonicalImportRuntime";
-import { collectImportDocuments, hashContent } from "./canonicalImportSources";
+import {
+  collectImportDocuments,
+  DATA_ROOT,
+  hashContent,
+  readValidatedJsonFile,
+} from "./canonicalImportSources";
 
 async function main() {
   const mode = readImportMode();
   // Validate every source before starting a DB transaction, even existing keys.
   const documents = await collectImportDocuments();
+  // 初回作成時も天気URLを同じリンク文書に含める。以後の正本はDBだけ。
+  const weatherSource = JSON.parse(
+    await readValidatedJsonFile(
+      path.join(DATA_ROOT, "SkiResortWeatherIds.json"),
+    ),
+  );
+  for (const document of documents) {
+    if (document.key !== "SkiResortLinks.json") continue;
+    document.content = prepareWeatherLinksMigration(
+      document.content,
+      weatherSource,
+    ).content;
+    document.hash = hashContent(document.content);
+  }
   const sourceHash = hashContent(
     JSON.stringify(documents.map(({ key, hash }) => [key, hash])),
   );

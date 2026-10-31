@@ -44,6 +44,9 @@ test("preserves location links and notes separately from course maps", () => {
         { url: "https://example.com/courses/", description: "掲載元" },
       ],
       instagramUrls: [{ url: "https://www.instagram.com/example/" }],
+      tenkijpUrls: ["https://tenki.jp/season/ski/1/2/3/"],
+      snowForecastUrls: [{ url: "https://ja.snow-forecast.com/resorts/Test" }],
+      weathernewsUrls: [{ url: "https://weathernews.jp/ski/spot/123/" }],
     },
     legacy: { officialSiteUrls: ["https://example.com/"] },
   };
@@ -55,6 +58,17 @@ test("preserves location links and notes separately from course maps", () => {
   assert.deepEqual(parsed.sample.mapPageUrls, original.sample.mapPageUrls);
   assert.deepEqual(parsed.legacy.mapPageUrls, []);
   assert.deepEqual(parsed.sample.instagramUrls, original.sample.instagramUrls);
+  assert.deepEqual(parsed.sample.tenkijpUrls, [
+    { url: "https://tenki.jp/season/ski/1/2/3/" },
+  ]);
+  assert.deepEqual(
+    parsed.sample.snowForecastUrls,
+    original.sample.snowForecastUrls,
+  );
+  assert.deepEqual(
+    parsed.sample.weathernewsUrls,
+    original.sample.weathernewsUrls,
+  );
   assert.deepEqual(parsed.legacy.googleMapsUrls, []);
   assert.deepEqual(parseResortLinksMap(JSON.stringify(parsed)), parsed);
 });

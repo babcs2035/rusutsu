@@ -1,5 +1,5 @@
 import type { SelectedMapFeature } from "@/features/map/types";
-import type { ReportMapTarget } from "./contract";
+import type { ENTRY_KINDS, ReportMapTarget } from "./contract";
 
 export const COMPOSE_EVENT = "rusutsu:community-compose";
 export const COMPOSE_STATE_EVENT = "rusutsu:community-compose-state";
@@ -91,6 +91,8 @@ export function setCommunityMapPoint(
 export type CommunityMapHighlight = {
   feature: SelectedMapFeature | null;
   point: [number, number] | null;
+  /** 地点の点の色に使う投稿の種類 */
+  kind: keyof typeof ENTRY_KINDS;
 };
 export function highlightCommunityPost(
   resortId: string,

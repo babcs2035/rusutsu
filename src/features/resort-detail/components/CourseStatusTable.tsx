@@ -169,7 +169,7 @@ export function CourseStatusTable({
           <div key={column.label} className="flex items-center gap-0.5">
             {column.label === "不明" ? (
               <span
-                className={`whitespace-nowrap text-[11px] font-semibold @min-[12rem]/status-summary:text-xs ${column.tone}`}
+                className={`inline-flex h-3.5 items-center whitespace-nowrap text-[11px] leading-none font-semibold @min-[12rem]/status-summary:h-4 @min-[12rem]/status-summary:text-xs ${column.tone}`}
               >
                 不明
               </span>
@@ -180,7 +180,7 @@ export function CourseStatusTable({
                 size="sm"
               />
             )}
-            <span className="text-base leading-6 font-bold tabular-nums text-slate-900 @min-[12rem]/status-summary:text-lg @min-[12rem]/status-summary:leading-7">
+            <span className="inline-flex h-6 items-center text-base leading-none font-bold tabular-nums text-slate-900 @min-[12rem]/status-summary:h-7 @min-[12rem]/status-summary:text-lg">
               {column.count ?? "—"}
             </span>
           </div>

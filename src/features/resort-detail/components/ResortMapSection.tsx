@@ -86,6 +86,8 @@ type Props = {
   /** 投稿中は地図を固定し、下部パネルをドラッグで伸縮する */
   resizableFeatureDetail?: boolean;
   mapTopControls?: ReactNode;
+  /** 連携エリアの「〇〇も同時に表示」。小さい地図と拡大地図で大きさを変える */
+  linkedAreaControl?: (size: "compact" | "inline") => ReactNode;
   detailViewportResetKey?: number;
   /** 表示設定を呼び出し側で持つ場合に渡す（比較のゲレンデ一覧など） */
   courseColorMode?: CourseColorMode;
@@ -131,6 +133,7 @@ export const ResortMapSection = ({
   showInlineMapToolbar = true,
   resizableFeatureDetail = false,
   mapTopControls,
+  linkedAreaControl,
   detailViewportResetKey = 0,
   courseColorMode: controlledCourseColorMode,
   onCourseColorModeChange,
@@ -261,6 +264,13 @@ export const ResortMapSection = ({
       showOpenOnlyControl={!minimalControls}
       showLocationControl={!minimalControls}
       mapTopControls={presentation === "preview" ? mapTopControls : undefined}
+      linkedAreaControl={
+        minimalControls
+          ? undefined
+          : linkedAreaControl?.(
+              presentation === "preview" ? "compact" : "inline",
+            )
+      }
       mapStatusFilterShared={controlledShowOpenOnly !== undefined}
       courseColorMode={courseColorMode}
       onCourseColorModeChange={setCourseColorMode}

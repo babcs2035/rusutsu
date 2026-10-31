@@ -261,6 +261,7 @@ export async function refreshMapOperations(
       status: true,
       elevationReady: true,
       hasStatusSource: true,
+      properties: true,
     },
   });
   const lifts = await tx.mapLift.findMany({
@@ -276,6 +277,7 @@ export async function refreshMapOperations(
       crawledNames: true,
       status: true,
       hasStatusSource: true,
+      properties: true,
     },
   });
   for (const id of targets) {
@@ -286,13 +288,28 @@ export async function refreshMapOperations(
       id,
       ...resort.sourceResortIds,
     ].filter((candidate): candidate is string => Boolean(candidate));
+    // 連携エリアの子は、親の地図のうち自分に振り分けた線（未振り分けを含む）だけを数える
+    const linkedParent =
+      resort.mergedIntoId &&
+      byId.get(resort.mergedIntoId)?.linkKind === "LINKED"
+        ? resort.mergedIntoId
+        : null;
+    const isOwnRow = (row: { resortId: string; properties: unknown }) => {
+      if (row.resortId !== linkedParent) return true;
+      const owner = record(row.properties).memberResortId;
+      return typeof owner !== "string" || owner === id;
+    };
     const courseRows =
       candidates
-        .map(candidate => courses.filter(row => row.resortId === candidate))
+        .map(candidate =>
+          courses.filter(row => row.resortId === candidate && isOwnRow(row)),
+        )
         .find(rows => rows.length) ?? [];
     const liftRows =
       candidates
-        .map(candidate => lifts.filter(row => row.resortId === candidate))
+        .map(candidate =>
+          lifts.filter(row => row.resortId === candidate && isOwnRow(row)),
+        )
         .find(rows => rows.length) ?? [];
     const course = summarizeOperationEntities(
       courseRows,

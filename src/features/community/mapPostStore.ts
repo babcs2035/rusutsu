@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useSyncExternalStore } from "react";
+import { highlightCommunityPost } from "./composerEvents";
 import {
   type ActionResult,
   type CommunityMapSummary,
@@ -238,4 +239,78 @@ export function rememberCommunityPost(resortId: string) {
     updatedAt: 0,
   }));
   void loadSummary(resortId, true);
+}
+
+/**
+ * 地図で開いた投稿。スキー場詳細はコースを選んだときと同じ場所
+ * （スマホは地図の下、PCは右パネル）に出す。詳細が出ていない地図では、
+ * 地図の上に重ねて出す。
+ */
+export type OpenCommunityPosts = { key: string; posts: PublicMapEntry[] };
+const openPosts = new Map<string, OpenCommunityPosts>();
+const postHosts = new Map<string, number>();
+
+export function openCommunityMapPosts(
+  resortId: string,
+  open: OpenCommunityPosts | null,
+) {
+  if (!open && !openPosts.has(resortId)) return;
+  if (open) openPosts.set(resortId, open);
+  else {
+    openPosts.delete(resortId);
+    highlightCommunityPost(resortId, null);
+  }
+  for (const listener of listeners) listener();
+}
+
+/** 一覧から1件を選んだときに、対象のコース・リフトと地点を地図で強調する。 */
+export function highlightCommunityMapEntry(
+  resortId: string,
+  entry: PublicMapEntry,
+) {
+  highlightCommunityPost(resortId, {
+    kind: entry.kind,
+    feature:
+      entry.kind === "LIFT" && entry.liftId
+        ? { kind: "lift", id: entry.liftId }
+        : entry.courseId
+          ? { kind: "course", id: entry.courseId }
+          : null,
+    point:
+      entry.latitude != null && entry.longitude != null
+        ? [entry.longitude, entry.latitude]
+        : null,
+  });
+}
+
+export function useOpenCommunityMapPosts(resortId: string | null | undefined) {
+  const open = useSyncExternalStore(
+    subscribe,
+    () => (resortId ? (openPosts.get(resortId) ?? null) : null),
+    () => null,
+  );
+  const hosted = useSyncExternalStore(
+    subscribe,
+    () => (resortId ? (postHosts.get(resortId) ?? 0) > 0 : false),
+    () => false,
+  );
+  return { open, hosted };
+}
+
+/** 開いた投稿を自分のパネルに出す画面（スキー場詳細）が表示中であることを知らせる。 */
+export function useCommunityMapPostHost(
+  resortId: string | null | undefined,
+  active: boolean,
+) {
+  useEffect(() => {
+    if (!resortId || !active) return;
+    postHosts.set(resortId, (postHosts.get(resortId) ?? 0) + 1);
+    for (const listener of listeners) listener();
+    return () => {
+      const count = (postHosts.get(resortId) ?? 1) - 1;
+      if (count > 0) postHosts.set(resortId, count);
+      else postHosts.delete(resortId);
+      for (const listener of listeners) listener();
+    };
+  }, [resortId, active]);
 }

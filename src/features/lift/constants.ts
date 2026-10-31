@@ -117,6 +117,9 @@ export const RESORT_LINK_KEYS: Array<keyof ResortLinks> = [
   "threadsUrls",
   "instagramUrls",
   "facebookUrls",
+  "tenkijpUrls",
+  "snowForecastUrls",
+  "weathernewsUrls",
 ];
 
 export const EMPTY_RESORT_LINKS: ResortLinks = {
@@ -136,6 +139,9 @@ export const EMPTY_RESORT_LINKS: ResortLinks = {
   threadsUrls: [],
   instagramUrls: [],
   facebookUrls: [],
+  tenkijpUrls: [],
+  snowForecastUrls: [],
+  weathernewsUrls: [],
 };
 
 export const RESORT_LINK_LABELS: Record<keyof ResortLinks, string> = {
@@ -155,4 +161,7 @@ export const RESORT_LINK_LABELS: Record<keyof ResortLinks, string> = {
   threadsUrls: "Threads",
   instagramUrls: "Instagram",
   facebookUrls: "Facebook",
+  tenkijpUrls: "tenki.jp",
+  snowForecastUrls: "Snow Forecast",
+  weathernewsUrls: "ウェザーニュース",
 };

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeftRight, Ticket } from "lucide-react";
+import { Ticket } from "lucide-react";
 import { Fragment, useState } from "react";
 import { getResortLabelName } from "@/lib/resortAliases";
 import type { Resort } from "../types";
@@ -40,8 +40,8 @@ function ResortLinks({
 }
 
 /**
- * ゲレンデがつながっているスキー場と、共通券で滑れるスキー場を1行ずつ出す。
- * 名前を押すと、そのスキー場の詳細に移る。
+ * 共通券で滑れるスキー場を出す。名前を押すと、そのスキー場の詳細に移る。
+ * ゲレンデがつながっているスキー場は、地図と営業状況の「〇〇も同時に表示」で案内する。
  */
 export function ResortRelations({
   resort,
@@ -50,37 +50,27 @@ export function ResortRelations({
   resort: Resort;
   onSelectResort?: (id: string) => void;
 }) {
-  const linked = linkedPartnersOf(resort);
-  const linkedIds = new Set(linked.map(partner => partner.id));
+  const linkedIds = new Set(
+    linkedPartnersOf(resort).map(partner => partner.id),
+  );
   // つながっているスキー場は共通券の案内に重ねて出さない
   const ticketPartners = (resort.ticketPartners ?? []).filter(
     partner => !linkedIds.has(partner.id),
   );
-  if (!linked.length && !ticketPartners.length) return null;
+  if (!ticketPartners.length) return null;
   return (
     <div className="mb-3 flex flex-wrap gap-1.5 text-xs leading-5">
-      {linked.length > 0 && (
-        <p className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2.5 py-1 text-sky-800">
-          <ArrowLeftRight className="size-3.5 shrink-0" aria-hidden="true" />
-          <span>
-            <ResortLinks resorts={linked} onSelectResort={onSelectResort} />{" "}
-            とつながっています
-          </span>
-        </p>
-      )}
-      {ticketPartners.length > 0 && (
-        <p className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-amber-800">
-          <Ticket className="size-3.5 shrink-0" aria-hidden="true" />
-          <span>
-            共通券で{" "}
-            <ResortLinks
-              resorts={ticketPartners}
-              onSelectResort={onSelectResort}
-            />{" "}
-            も滑走可
-          </span>
-        </p>
-      )}
+      <p className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-amber-800">
+        <Ticket className="size-3.5 shrink-0" aria-hidden="true" />
+        <span>
+          共通券で{" "}
+          <ResortLinks
+            resorts={ticketPartners}
+            onSelectResort={onSelectResort}
+          />{" "}
+          も滑走可
+        </span>
+      </p>
     </div>
   );
 }

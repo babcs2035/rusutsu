@@ -15,10 +15,13 @@ import { projectLinkedResort, projectResort } from "./detailProjection";
 import {
   linkedAreaDefaults,
   mergeResortSummary,
+  type ResortLinkConversionRequest,
+  type ResortLinkConversionResult,
   type ResortMergeRequest,
   type ResortMergeResult,
   type ResortUnlinkRequest,
   type ResortUnlinkResult,
+  resortLinkConversionRequestSchema,
   resortMergeRequestSchema,
   resortUnlinkRequestSchema,
   type TicketGroupRequest,
@@ -619,6 +622,58 @@ export async function unlinkAdminSkiResortsDirect(
         ]);
         return {
           status: "unlinked" as const,
+          resort: serializeAdminSkiResort(resort),
+          sources: sources.map(serializeAdminSkiResort),
+        };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+  } catch (error) {
+    if (isRetryableConflict(error)) return { status: "conflict" };
+    throw error;
+  }
+}
+
+/**
+ * 完全統合の親を連携エリアにする。子は別のスキー場として公開に戻り、
+ * 親は地図・料金・レビューの登録先として残す。
+ */
+export async function convertToLinkedAreaDirect(
+  rawRequest: ResortLinkConversionRequest,
+): Promise<ResortLinkConversionResult> {
+  const request = resortLinkConversionRequestSchema.parse(rawRequest);
+  const expected = new Date(request.expectedUpdatedAt);
+  try {
+    return await prisma.$transaction(
+      async transaction => {
+        const parent = await transaction.skiResort.findUnique({
+          where: { id: request.id },
+          select: { linkKind: true, mergedIntoId: true, updatedAt: true },
+        });
+        if (parent?.linkKind !== "MERGED" || parent.mergedIntoId)
+          return { status: "not_merged" as const };
+        if (parent.updatedAt.getTime() !== expected.getTime())
+          return { status: "conflict" as const };
+        const members = await transaction.skiResort.findMany({
+          where: { mergedIntoId: request.id },
+          select: { id: true },
+        });
+        if (!members.length) return { status: "not_merged" as const };
+        const resort = await transaction.skiResort.update({
+          where: { id: request.id },
+          data: { linkKind: "LINKED", updatedAt: bumpedUpdatedAt(expected) },
+          select: adminSkiResortSelect,
+        });
+        const sources = await transaction.skiResort.findMany({
+          where: { id: { in: members.map(member => member.id) } },
+          select: adminSkiResortSelect,
+        });
+        await refreshMapOperations(transaction, [
+          request.id,
+          ...members.map(member => member.id),
+        ]);
+        return {
+          status: "converted" as const,
           resort: serializeAdminSkiResort(resort),
           sources: sources.map(serializeAdminSkiResort),
         };

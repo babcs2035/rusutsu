@@ -2,7 +2,7 @@
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { ComponentType, CSSProperties, ReactNode } from "react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { FinalizedMapToolbar } from "@/features/map/components/FinalizedMapToolbar";
 import type {
@@ -16,13 +16,17 @@ import {
   DEFAULT_MAP_DISPLAY_SETTINGS,
   type MapDisplaySettings,
 } from "@/features/map/utils/mapDisplaySettings";
+import { StatusMark } from "@/features/resort-detail/components/CompactInfo";
 import { FinalizedFeatureDetail } from "@/features/resort-detail/components/FinalizedFeatureDetail";
 import type { FeatureDetailPlacement } from "@/features/resort-detail/components/ResortMapSection";
 import { ResortMapSection } from "@/features/resort-detail/components/ResortMapSection";
+import { hasSourceUrl } from "@/features/resort-detail/utils/currentConditions";
 import {
   createFinalizedCourseGroups,
   findSelectedCourseGroup,
 } from "@/features/resort-detail/utils/detailMetrics";
+import { createLiftStatusSummary } from "@/features/resort-detail/utils/liftStatusSummary";
+import type { CourseStatusSummary } from "@/lib/courseStatusSummary";
 import { getResortSearchName } from "@/lib/resortAliases";
 import { cn } from "@/lib/utils";
 import type { MapSkiResort } from "@/types/skiResorts";
@@ -48,47 +52,129 @@ export type CompareSlopeSelection = {
   elevationPoint: ElevationProfileMapPoint | null;
 };
 
-type OperationCountSummary = Resort["finalizedOperationSummary"]["courses"];
+const unknownSummary = (total: number): CourseStatusSummary => ({
+  total,
+  open: 0,
+  partial: 0,
+  closed: 0,
+  unknown: total,
+  observedAt: null,
+  sourceUrls: [],
+  updates: [],
+});
 
-/** 見出し（営業状況・標高差）。値より一段弱く出す */
-const StatGroupLabel = ({ children }: { children: ReactNode }) => (
-  <span className="shrink-0 text-[11px] font-semibold text-gray-400">
-    {children}
-  </span>
-);
+const getCourseSummary = (resort: Resort): CourseStatusSummary => {
+  const mapData = resort.finalizedMapData;
+  const statusSummary = mapData?.courseStatusSummary;
+  const hasSource = hasSourceUrl(
+    statusSummary?.sourceUrls ?? mapData?.courses?.sourceUrls,
+  );
+  if (hasSource && statusSummary) return statusSummary;
+  const groupCount = mapData?.courses
+    ? createFinalizedCourseGroups(mapData.courses.features).length
+    : (resort.numberOfCourses ?? 0);
+  return unknownSummary(groupCount);
+};
 
-/**
- * 「開いている数 / 全体」。
- * 開いている数が取れていないところは「0 だから閉まっている」と
- * 読み違えられないよう、数字ではなく「不明」と書く。
- */
-const OperationCount = ({
-  label,
-  summary,
-  fallbackTotal,
+const getLiftSummary = (resort: Resort): CourseStatusSummary => {
+  const section = resort.finalizedMapData?.lifts;
+  if (!hasSourceUrl(section?.sourceUrls)) {
+    return unknownSummary(
+      section?.features.length ?? resort.numberOfLifts ?? 0,
+    );
+  }
+  return createLiftStatusSummary(section) ?? unknownSummary(0);
+};
+
+/** 行ボックス内の余白が異なる数字・日本語も、描画される文字の中心で揃える。 */
+const CenteredStatusText = ({
+  children,
+  className,
 }: {
-  label: string;
-  summary: OperationCountSummary;
-  fallbackTotal: number | null | undefined;
+  children: string | number;
+  className?: string;
 }) => {
-  const total = summary?.total || fallbackTotal || null;
-  const isKnown = Boolean(summary && summary.total > 0);
-
+  const textRef = useRef<HTMLSpanElement>(null);
+  const baselineRef = useRef<HTMLSpanElement>(null);
+  useLayoutEffect(() => {
+    let active = true;
+    const align = () => {
+      const element = textRef.current;
+      const baseline = baselineRef.current;
+      if (!active || !element || !baseline) return;
+      const context = document.createElement("canvas").getContext("2d");
+      if (!context) return;
+      const style = getComputedStyle(element);
+      context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+      const metrics = context.measureText(String(children));
+      const box = element.getBoundingClientRect();
+      const inkCenter =
+        baseline.getBoundingClientRect().top +
+        (metrics.actualBoundingBoxDescent - metrics.actualBoundingBoxAscent) /
+          2;
+      const offset = box.top + box.height / 2 - inkCenter;
+      element.style.transform = `translateY(${offset}px)`;
+    };
+    align();
+    void document.fonts.ready.then(align);
+    document.fonts.addEventListener("loadingdone", align);
+    return () => {
+      active = false;
+      document.fonts.removeEventListener("loadingdone", align);
+    };
+  }, [children]);
   return (
-    <span className="inline-flex shrink-0 items-baseline gap-1">
-      <span className="text-xs font-medium text-gray-500">{label}</span>
-      <span className="text-sm font-bold text-blue-600 tabular-nums">
-        {isKnown ? summary?.open : "不明"}
-        {total !== null && (
-          <>
-            <span className="mx-px text-blue-300">/</span>
-            {total}
-          </>
-        )}
-      </span>
+    <span ref={textRef} className={cn("leading-none", className)}>
+      {children}
+      <span
+        ref={baselineRef}
+        aria-hidden="true"
+        className="inline-block h-0 w-0 align-baseline"
+      />
     </span>
   );
 };
+
+/** 比較の見出しは、元の件数表示と同じ14pxの1行に収める。 */
+const OperationCount = ({
+  label,
+  summary,
+  lift = false,
+}: {
+  label: string;
+  summary: CourseStatusSummary;
+  lift?: boolean;
+}) => (
+  <span
+    role="group"
+    aria-label={label}
+    className="inline-flex h-5 shrink-0 items-center gap-1 whitespace-nowrap"
+  >
+    <CenteredStatusText className="text-xs font-semibold text-gray-500">
+      {label}
+    </CenteredStatusText>
+    <span className="inline-flex items-center gap-0.5 text-sm leading-none font-bold tabular-nums text-slate-900 [&_[role=img]]:size-3 [&_svg]:size-3">
+      {(
+        [
+          ["○", summary.open],
+          ["△", summary.partial],
+          ["×", summary.closed],
+        ] as const
+      ).map(([symbol, count]) => (
+        <span key={symbol} className="inline-flex items-center gap-0.5">
+          <StatusMark symbol={symbol} lift={lift} size="sm" />
+          <CenteredStatusText>{count}</CenteredStatusText>
+        </span>
+      ))}
+      <span className="inline-flex items-center gap-0.5">
+        <CenteredStatusText className="text-[11px] font-semibold text-slate-700">
+          不明
+        </CenteredStatusText>
+        <CenteredStatusText>{summary.unknown}</CenteredStatusText>
+      </span>
+    </span>
+  </span>
+);
 
 const useSlopeMapSelection = () => {
   const [selectionByResortId, setSelectionByResortId] = useState<
@@ -454,35 +540,9 @@ const SlopeMapCardShell = ({
       <p className="text-sm leading-tight font-bold break-words text-gray-900 font-[var(--font-heading)]">
         {resort.nameJa}
       </p>
-      {/*
-        「営業状況（コース・リフト）」と「標高差」の 2 つのまとまり。
-        数字を読ませたいので、見出しは小さく、値は大きく色を付ける。
-      */}
-      <div className="mt-1 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-        <span className="inline-flex shrink-0 items-baseline gap-1.5">
-          <StatGroupLabel>営業</StatGroupLabel>
-          <OperationCount
-            label="コース"
-            summary={resort.finalizedOperationSummary.courses}
-            fallbackTotal={resort.numberOfCourses}
-          />
-          <OperationCount
-            label="リフト"
-            summary={resort.finalizedOperationSummary.lifts}
-            fallbackTotal={resort.numberOfLifts}
-          />
-        </span>
-        <span className="inline-flex shrink-0 items-baseline gap-1.5">
-          <StatGroupLabel>標高差</StatGroupLabel>
-          <span className="text-sm font-bold text-gray-900 tabular-nums">
-            {resort.verticalDrop.toLocaleString()}m
-          </span>
-          {/* 内訳は幅に余裕があるときだけ。狭いと 2 行になってしまう */}
-          <span className="hidden text-[11px] font-medium text-gray-400 tabular-nums @[25rem]:inline">
-            {resort.topElevation.toLocaleString()}–
-            {resort.baseElevation.toLocaleString()}m
-          </span>
-        </span>
+      <div className="mt-1 flex items-center gap-2">
+        <OperationCount label="コース" summary={getCourseSummary(resort)} />
+        <OperationCount label="リフト" summary={getLiftSummary(resort)} lift />
       </div>
     </div>
     {children}

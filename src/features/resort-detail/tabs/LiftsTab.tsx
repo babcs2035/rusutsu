@@ -233,9 +233,19 @@ export const LiftsTab = ({
             ))}
           </select>
         </div>
-        <p className="my-2 text-sm text-slate-600">
-          <StatusMark symbol="○" lift /> 運行 <StatusMark symbol="△" lift />{" "}
-          待機 <StatusMark symbol="×" lift /> 運休 · 横スクロールで設備情報 →
+        <p className="my-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-600">
+          <span className="inline-flex items-center gap-1 leading-none">
+            <StatusMark symbol="○" lift /> 運行
+          </span>
+          <span className="inline-flex items-center gap-1 leading-none">
+            <StatusMark symbol="△" lift /> 待機
+          </span>
+          <span className="inline-flex items-center gap-1 leading-none">
+            <StatusMark symbol="×" lift /> 運休
+          </span>
+          <span className="inline-flex items-center leading-none">
+            · 横スクロールで設備情報 →
+          </span>
         </p>
         <div
           className="isolate overflow-x-auto rounded-lg border"
@@ -270,7 +280,12 @@ export const LiftsTab = ({
                     <td
                       className={`sticky left-0 z-10 w-10 min-w-10 max-w-10 border-b px-1 py-2 text-center ${bg}`}
                     >
-                      <StatusMark symbol={normalizeIconSymbol(p.status)} lift />
+                      <span className="flex items-center justify-center">
+                        <StatusMark
+                          symbol={normalizeIconSymbol(p.status)}
+                          lift
+                        />
+                      </span>
                     </td>
                     <th
                       scope="row"

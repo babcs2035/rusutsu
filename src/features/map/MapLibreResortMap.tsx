@@ -30,6 +30,7 @@ import {
   CommunityMapControls,
   CommunityMapFilters,
   CommunityMapOverlay,
+  communityDotElement,
 } from "@/features/community/CommunityMapOverlay";
 import {
   COMPOSE_STATE_EVENT,
@@ -41,6 +42,7 @@ import {
   selectCommunityMapTarget,
 } from "@/features/community/composerEvents";
 import { nearestCourseId } from "@/features/community/location";
+import { COMMUNITY_KIND_COLORS } from "@/features/community/mapOverlay";
 import { useCommunityMapLayer } from "@/features/community/mapPostStore";
 import { FinalizedMapToolbar } from "./components/FinalizedMapToolbar";
 import { MapCourseStatusControl } from "./components/MapCourseStatusControl";
@@ -175,6 +177,7 @@ function MapLibreResortMapContent({
   showMapOpenOnlyControl = showMapToolbar,
   showLocationControl = true,
   mapTopControls,
+  linkedAreaControl,
   mapStatusFilterShared = false,
   showContextLabels = false,
   embedded = false,
@@ -524,14 +527,33 @@ function MapLibreResortMapContent({
   });
   const { failed, retry } = useMapRecovery(map, onRecover, onAutoRecover);
   useEffect(() => {
-    const point =
-      communityPoint ?? pickedCommunityPoint ?? communityHighlight?.point;
+    const point = communityPoint ?? pickedCommunityPoint;
     if (!map || !isReady || !point) return;
     const marker = new Marker({ color: "#0284c7" }).setLngLat(point).addTo(map);
     return () => {
       marker.remove();
     };
-  }, [communityPoint, pickedCommunityPoint, communityHighlight, map, isReady]);
+  }, [communityPoint, pickedCommunityPoint, map, isReady]);
+  // 開いた投稿の地点。投稿を地図に出しているときはその点がすでにあるので重ねない。
+  const communityHighlightDot =
+    showCommunityPosts && !embedded && interactionMode !== "compare"
+      ? null
+      : communityHighlight;
+  useEffect(() => {
+    const point = communityHighlightDot?.point;
+    if (!map || !isReady || !point) return;
+    const marker = new Marker({
+      element: communityDotElement(
+        COMMUNITY_KIND_COLORS[communityHighlightDot.kind],
+      ),
+      anchor: "center",
+    })
+      .setLngLat(point)
+      .addTo(map);
+    return () => {
+      marker.remove();
+    };
+  }, [communityHighlightDot, map, isReady]);
 
   useEffect(() => {
     if (
@@ -654,9 +676,14 @@ function MapLibreResortMapContent({
       selectedFeature: displayedFinalizedFeature,
       isFocusMode: isFinalizedFocusMode,
       tileVariant: mapTileVariant,
+      showCommunityPosts:
+        showCommunityPosts && !embedded && interactionMode !== "compare",
     }),
     [
       courseColorMode,
+      embedded,
+      interactionMode,
+      showCommunityPosts,
       mapDisplaySettings.showUngroomed,
       isFinalizedFocusMode,
       mapTileVariant,
@@ -1432,6 +1459,7 @@ function MapLibreResortMapContent({
               onSettingsChange={setMapDisplaySettings}
               shared={mapStatusFilterShared}
               leading={mapTopControls}
+              stacked={linkedAreaControl}
               compact={isPreviewMap}
               className={
                 isDetailMap && mapPresentation === "default"
@@ -1458,6 +1486,7 @@ function MapLibreResortMapContent({
             settings={mapDisplaySettings}
             onCheckedChange={setShowOpenOnly}
             onSettingsChange={setMapDisplaySettings}
+            stacked={linkedAreaControl}
             trailing={
               selectedResortId && interactionMode !== "compare" ? (
                 <CommunityMapControls
@@ -1503,6 +1532,10 @@ function MapLibreResortMapContent({
             className="pointer-events-auto flex w-full max-w-[27rem] flex-col gap-1"
             data-map-bottom-panel="true"
           >
+            {linkedAreaControl && (
+              // パネルの行間（gap-1）を打ち消し、「営業中のみ」の行に寄せる
+              <div className="-mb-[3px] flex min-w-0">{linkedAreaControl}</div>
+            )}
             <div
               className="flex min-h-7 w-full flex-nowrap items-center gap-1"
               data-map-action-row="true"

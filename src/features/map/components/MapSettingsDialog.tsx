@@ -121,7 +121,10 @@ export function MapSettingsDialog({
                               onStatusChange(option.value, checked === true)
                             }
                           />
-                          <span aria-hidden="true">
+                          <span
+                            aria-hidden="true"
+                            className="inline-flex items-center leading-none"
+                          >
                             {option.value === "unknown" ? (
                               <span className="font-semibold text-slate-700">
                                 不明

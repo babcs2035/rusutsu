@@ -70,13 +70,15 @@ export function StatusBreakdownTable({
               {!unavailable &&
                 (["○", "△", "×"] as const).map(symbol => (
                   <th key={symbol} scope="col" className="px-2 py-1.5">
-                    <span className="flex justify-center">
+                    <span className="flex h-5 items-center justify-center leading-none">
                       <StatusMark symbol={symbol} lift={isLift} />
                     </span>
                   </th>
                 ))}
               <th scope="col" className="px-2 py-1.5 text-center font-medium">
-                不明
+                <span className="inline-flex h-5 items-center justify-center whitespace-nowrap leading-none">
+                  不明
+                </span>
               </th>
               <th
                 scope="col"

@@ -26,6 +26,7 @@ export function MapCourseStatusControl({
   shared = false,
   leading,
   trailing,
+  stacked,
   compact = false,
   inline = false,
   placement = "top",
@@ -39,6 +40,8 @@ export function MapCourseStatusControl({
   shared?: boolean;
   leading?: ReactNode;
   trailing?: ReactNode;
+  /** 「営業中のみ」と縦に並べる操作。上部では下に、下部では上に出る */
+  stacked?: ReactNode;
   compact?: boolean;
   inline?: boolean;
   placement?: "top" | "bottom";
@@ -72,7 +75,9 @@ export function MapCourseStatusControl({
       {leading && <div className="pointer-events-auto shrink-0">{leading}</div>}
       <div
         className={cn(
-          "flex min-w-0 flex-1 items-start gap-1",
+          // 縦に並べる操作は「営業中のみ」と1組に見えるよう、間を詰める
+          "flex min-w-0 flex-1 items-start",
+          stacked ? "gap-px" : "gap-1",
           placement === "bottom" ? "flex-col-reverse" : "flex-col",
         )}
       >
@@ -129,6 +134,7 @@ export function MapCourseStatusControl({
             コース状況不明
           </span>
         )}
+        {stacked}
         {active && !inline && (
           <div
             role="group"
@@ -164,7 +170,7 @@ export function MapCourseStatusControl({
                 </span>
                 <span
                   aria-hidden="true"
-                  className="[&_[role=img]]:size-3 md:[&_[role=img]]:size-3.5"
+                  className="inline-flex items-center leading-none [&_[role=img]]:size-3 md:[&_[role=img]]:size-3.5"
                 >
                   {option.value === "unknown" ? (
                     "不明"
@@ -231,11 +237,13 @@ export function MapCourseStatusOptions({
               }
               className="size-3.5"
             />
-            {option.value === "unknown" ? (
-              "不明"
-            ) : (
-              <StatusMark size="sm" symbol={option.symbol as "○" | "△"} />
-            )}
+            <span className="inline-flex items-center leading-none">
+              {option.value === "unknown" ? (
+                "不明"
+              ) : (
+                <StatusMark size="sm" symbol={option.symbol as "○" | "△"} />
+              )}
+            </span>
           </label>
         ),
       )}

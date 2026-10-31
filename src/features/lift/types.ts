@@ -161,6 +161,9 @@ export type ResortLinks = {
   threadsUrls: ResortLink[];
   instagramUrls: ResortLink[];
   facebookUrls: ResortLink[];
+  tenkijpUrls: ResortLink[];
+  snowForecastUrls: ResortLink[];
+  weathernewsUrls: ResortLink[];
 };
 
 // 保存時にサーバーへ送る 1 リフト分のデータ

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { CommunityComposer } from "@/features/community/CommunityComposer";
 import { CommunityFeed } from "@/features/community/CommunityFeed";
+import { CommunityMapPreview } from "@/features/community/CommunityMapPreview";
 import {
   COMPOSE_EVENT,
   type ComposeRequest,
@@ -16,6 +17,12 @@ import {
 } from "@/features/community/composerEvents";
 import type { ReportMapTarget } from "@/features/community/contract";
 import { communityMapData } from "@/features/community/mapData";
+import {
+  highlightCommunityMapEntry,
+  openCommunityMapPosts,
+  useCommunityMapPostHost,
+  useOpenCommunityMapPosts,
+} from "@/features/community/mapPostStore";
 import { useScreenState } from "@/features/map/session/useScreenState";
 import type {
   ElevationProfileMapPoint,
@@ -31,6 +38,10 @@ import type { MapSkiResort, NullableSkiResortDetail } from "@/types/skiResorts";
 import { DetailTabs } from "./components/DetailTabs";
 import { FinalizedFeatureDetail } from "./components/FinalizedFeatureDetail";
 import { ResortRelations } from "./components/LinkedArea";
+import {
+  LinkedAreaMapToggle,
+  useDisplayedResortMapData,
+} from "./components/LinkedAreaMapToggle";
 import { MapAreaTabs } from "./components/MapAreaTabs";
 import { ResortMapSection } from "./components/ResortMapSection";
 import { TrailMapPanel } from "./components/TrailMapPanel";
@@ -157,6 +168,8 @@ export const SkiResortDetailView = ({
   hideMobileInfoSection = false,
   isDesktopMapExpanded = false,
 }: Props) => {
+  // 「〇〇も同時に表示」中は、地図と地図で選んだ線の詳細を連携エリア全体で扱う
+  const displayedMapData = useDisplayedResortMapData(resortData ?? null);
   const stateKey = `rusutsu:detail:v1:${resortData?.id ?? "loading"}`;
   const [activeTab, setActiveTab] = useScreenState<string>(
     `${stateKey}:tab`,
@@ -271,7 +284,8 @@ export const SkiResortDetailView = ({
         ? communityMapData(
             resortData.nameJa,
             [resortData.longitude, resortData.latitude],
-            resortData.finalizedMapData,
+            // 投稿は連携エリアでまとめて扱うので、つながったスキー場の線も選べる
+            resortData.linkedAreaMapData ?? resortData.finalizedMapData,
           )
         : null,
     [resortData],
@@ -345,6 +359,23 @@ export const SkiResortDetailView = ({
       setCommunityComposeActive(resortId, false);
     };
   }, [activeComposerResortId]);
+
+  // 地図で開いた投稿は、コースを選んだときと同じ場所（スマホは地図の下、
+  // PCは右パネル）に出す。コースの選択・投稿の開始とは同時に開かない。
+  const { open: openPosts } = useOpenCommunityMapPosts(composeResortId);
+  useCommunityMapPostHost(
+    composeResortId,
+    isSidePanel || mobileContentTab === "info",
+  );
+  const openPostsKey = openPosts?.key;
+  useEffect(() => {
+    if (openPostsKey && latestSelection.current)
+      onSelectedFinalizedFeatureChange(null);
+  }, [onSelectedFinalizedFeatureChange, openPostsKey]);
+  useEffect(() => {
+    if (composeResortId && (selectedFinalizedFeature || composing))
+      openCommunityMapPosts(composeResortId, null);
+  }, [composeResortId, composing, selectedFinalizedFeature]);
 
   const selectFeatureFromMap = useCallback(
     (feature: SelectedMapFeature | null) => {
@@ -444,7 +475,7 @@ export const SkiResortDetailView = ({
     />
   );
   const finalizedCourseGroups = createFinalizedCourseGroups(
-    resort.finalizedMapData?.courses?.features ?? [],
+    displayedMapData?.courses?.features ?? [],
   );
   const selectedCourseGroup = findSelectedCourseGroup(
     finalizedCourseGroups,
@@ -452,7 +483,7 @@ export const SkiResortDetailView = ({
   );
   const selectedLift =
     selectedFinalizedFeature?.kind === "lift"
-      ? (resort.finalizedMapData?.lifts?.features.find(
+      ? (displayedMapData?.lifts?.features.find(
           lift => lift.id === selectedFinalizedFeature.id,
         ) ?? null)
       : null;
@@ -472,7 +503,7 @@ export const SkiResortDetailView = ({
     selectedCourseGroup || selectedLift ? (
       <FinalizedFeatureDetail
         resortId={resort.id}
-        mapData={resort.finalizedMapData ?? null}
+        mapData={displayedMapData}
         courseGroup={selectedCourseGroup}
         lift={selectedLift}
         resortLabelName={getResortSearchName(
@@ -480,13 +511,11 @@ export const SkiResortDetailView = ({
           resort.nameJa,
           resort.shortName,
         )}
-        courseObservedAt={resort.finalizedMapData?.courses?.observedAt}
-        liftObservedAt={resort.finalizedMapData?.lifts?.observedAt}
-        courseSourceUrls={resort.finalizedMapData?.courses?.sourceUrls ?? []}
-        courseVerificationStatus={
-          resort.finalizedMapData?.courses?.verificationStatus
-        }
-        liftSourceUrls={resort.finalizedMapData?.lifts?.sourceUrls ?? []}
+        courseObservedAt={displayedMapData?.courses?.observedAt}
+        liftObservedAt={displayedMapData?.lifts?.observedAt}
+        courseSourceUrls={displayedMapData?.courses?.sourceUrls ?? []}
+        courseVerificationStatus={displayedMapData?.courses?.verificationStatus}
+        liftSourceUrls={displayedMapData?.lifts?.sourceUrls ?? []}
         selectedElevationProfilePoint={selectedElevationProfilePoint}
         onSelectedElevationProfilePointChange={
           onSelectedElevationProfilePointChange
@@ -529,6 +558,7 @@ export const SkiResortDetailView = ({
       {activeTab === "ゲレンデ" && (
         <OverviewTab
           resort={resort}
+          onSelectResort={onSelectResort}
           showTerrainDetail={showTerrainDetail}
           terrainTab={terrainTab}
           onShowTerrainDetail={tab => {
@@ -586,15 +616,24 @@ export const SkiResortDetailView = ({
         </div>
       </div>
     ) : null;
+  const postDetail = openPosts ? (
+    <CommunityMapPreview
+      key={openPosts.key}
+      posts={openPosts.posts}
+      onSelect={entry => highlightCommunityMapEntry(resort.id, entry)}
+      onClose={() => openCommunityMapPosts(resort.id, null)}
+    />
+  ) : null;
   // スマホの投稿はコース詳細と同じく、上の地図をそのまま使い下だけを差し替える。
   const mobileFeatureDetail =
-    composer && !isSidePanel ? composer : renderFeatureDetail();
+    composer && !isSidePanel ? composer : (renderFeatureDetail() ?? postDetail);
 
   // スマホは地図を常に同じ位置に置いたまま、その下だけを詳細に差し替える。
   // 位置が変わると地図が作り直され、選択状態が失われる。
   // デスクトップはパネル全体を詳細に切り替える。
   const detailPanelContent = isSidePanel ? (
-    (renderFeatureDetail({ withOpenList: true }) ?? (
+    (renderFeatureDetail({ withOpenList: true }) ??
+    postDetail ?? (
       <div
         data-session-scroll={`${stateKey}:desktop:${activeTab}`}
         className="flex-1 overflow-y-auto"
@@ -697,7 +736,14 @@ export const SkiResortDetailView = ({
                 resortId={resort.id}
                 previewHeightClassName="h-full shrink-0"
                 selectedHeightClassName="h-[38%] min-h-[180px] shrink-0"
-                finalizedMapData={resort.finalizedMapData ?? null}
+                finalizedMapData={displayedMapData}
+                linkedAreaControl={size => (
+                  <LinkedAreaMapToggle
+                    resort={resort}
+                    onSelectResort={onSelectResort}
+                    size={size}
+                  />
+                )}
                 mapResorts={mapResorts}
                 selectedFinalizedFeature={selectedFinalizedFeature}
                 selectedElevationProfilePoint={selectedElevationProfilePoint}
@@ -709,6 +755,7 @@ export const SkiResortDetailView = ({
                 // 投稿中と投稿タブの地図は場所を見るためのもの。地図の操作ボタンは出さない
                 minimalControls={
                   Boolean(composer) ||
+                  Boolean(postDetail) ||
                   (!mobileFeatureDetail && activeTab === "投稿")
                 }
                 resizableFeatureDetail={Boolean(composer)}
@@ -724,9 +771,10 @@ export const SkiResortDetailView = ({
   );
 
   // 全画面地図では一覧が見えていないので、「一覧へ」の導線は出さない
-  const desktopFeatureDetail = renderFeatureDetail({
-    withOpenList: !isDesktopMapExpanded,
-  });
+  const desktopFeatureDetail =
+    renderFeatureDetail({
+      withOpenList: !isDesktopMapExpanded,
+    }) ?? postDetail;
   // 全画面地図では、選択中のコースだけを右に重ねる。
   // 何も選んでいなければパネルごと畳んで地図を邪魔しない。
   const shouldRenderDesktopPanel =

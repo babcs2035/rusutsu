@@ -3,8 +3,9 @@
 import { X } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { type CSSProperties, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { DetailButton } from "@/shared/components/DetailButton";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
 import {
@@ -22,12 +23,15 @@ export function CommunityMapPreview({
   posts,
   onSelect,
   onClose,
-  maxHeight = 400,
+  className,
+  style,
 }: {
   posts: PublicMapEntry[];
   onSelect: (entry: PublicMapEntry) => void;
   onClose: () => void;
-  maxHeight?: number;
+  /** 既定はコース詳細と同じく、置かれた場所いっぱいのパネル */
+  className?: string;
+  style?: CSSProperties;
 }) {
   const router = useRouter();
   const [selected, setSelected] = useState<PublicMapEntry | null>(null);
@@ -110,10 +114,14 @@ export function CommunityMapPreview({
     <section
       role="dialog"
       aria-label="地図の投稿"
-      className="flex w-[min(320px,calc(100vw-1.5rem))] max-w-full min-w-0 flex-col overflow-hidden rounded-lg border bg-white shadow-xl"
-      style={{ maxHeight }}
+      className={cn(
+        "flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-white",
+        className,
+      )}
+      style={style}
     >
-      <header className="flex shrink-0 min-w-0 items-center gap-1 border-b px-2 py-1.5">
+      {/* 見出しと × はコース・リフトの詳細（FinalizedFeatureDetail）と揃える */}
+      <header className="flex shrink-0 min-w-0 items-center gap-1.5 border-b border-gray-200 py-2 pr-2 pl-3 md:pr-3 md:pl-4">
         {selected && posts.length > 1 && (
           <Button
             type="button"
@@ -126,7 +134,7 @@ export function CommunityMapPreview({
             ‹
           </Button>
         )}
-        <h2 className="min-w-0 flex-1 truncate text-sm font-semibold">
+        <h2 className="min-w-0 flex-1 truncate text-base leading-snug font-bold text-gray-900 font-[var(--font-heading)] md:text-lg">
           {showingList ? "この場所の投稿" : "現地レポート"}
         </h2>
         {!showingList && effectiveSelected && (
@@ -143,27 +151,26 @@ export function CommunityMapPreview({
         <Button
           type="button"
           variant="ghost"
-          size="icon-sm"
-          className="size-7 shrink-0 md:size-8"
+          className="size-7 min-w-7 shrink-0 rounded-full border border-gray-200 p-0 text-gray-600 hover:bg-gray-100 hover:text-gray-900 md:size-8 md:min-w-8"
           aria-label="閉じる"
           onClick={onClose}
         >
-          <X className="size-[18px]" strokeWidth={2.5} />
+          <X size={16} strokeWidth={2.5} />
         </Button>
       </header>
 
       {showingList ? (
-        <div className="min-h-0 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           {posts.map(entry => (
             <button
               type="button"
               key={entry.id}
-              className="flex w-full min-w-0 items-center gap-2 border-b px-2 py-2 text-left last:border-b-0 hover:bg-slate-50"
+              className="flex w-full min-w-0 items-center gap-2 border-b border-gray-200 px-3 py-2 text-left last:border-b-0 hover:bg-slate-50 md:px-4"
               onClick={() => choose(entry)}
             >
               {entry.photo && (
                 <Image
-                  className="size-10 shrink-0 rounded border-2 object-cover"
+                  className="size-10 shrink-0 rounded border-[3px] object-cover"
                   style={{ borderColor: COMMUNITY_KIND_COLORS[entry.kind] }}
                   src={`/rusutsu/api/community/photos/${encodeURIComponent(entry.photo.id)}?size=thumb`}
                   alt=""
@@ -179,7 +186,7 @@ export function CommunityMapPreview({
                 />
               )}
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-xs font-semibold text-slate-800">
+                <span className="block truncate text-sm font-semibold text-slate-800 md:text-base">
                   {ENTRY_KINDS[entry.kind]}・{entry.targetName}
                   {(entry.kind === "COURSE" || entry.kind === "LIFT") &&
                   entry.latitude === null &&
@@ -188,7 +195,7 @@ export function CommunityMapPreview({
                     : ""}
                   {entry.photoCount > 1 && ` · 写真${entry.photoCount}枚`}
                 </span>
-                <span className="block text-xs text-slate-500">
+                <span className="block text-xs text-slate-500 md:text-sm">
                   {entry.observedOn}
                 </span>
               </span>
@@ -199,7 +206,7 @@ export function CommunityMapPreview({
           ))}
         </div>
       ) : (
-        <div className="min-h-0 min-w-0 overflow-y-auto p-2">
+        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto p-3 md:p-4">
           {effectiveSelected && loading && (
             <LoadingSpinner
               text="読み込み中…"
@@ -222,14 +229,14 @@ export function CommunityMapPreview({
           {effectiveSelected && activePost && !loading && !error && (
             <div className="space-y-2">
               <div className="min-w-0">
-                <p className="truncate text-xs font-semibold text-slate-800">
+                <p className="truncate text-sm font-semibold text-slate-800 md:text-base">
                   {targetOnly
                     ? effectiveSelected.kind === "COURSE"
                       ? "コース全体"
                       : "リフト全体"
                     : effectiveSelected.targetName}
                 </p>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 md:text-sm">
                   {activePost.author.publicName} · 滑走日時{" "}
                   {activePost.observedOn} {activePost.observedTime}
                 </p>

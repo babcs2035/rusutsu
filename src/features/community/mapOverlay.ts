@@ -3,10 +3,10 @@ import type { CommunityMapData, PublicMapEntry } from "./contract";
 export type CommunityPeriod = "3d" | "7d" | "season" | "all";
 // 写真の枠・地点・表示項目ボタンで、同じ種類には同じ色を使う。
 export const COMMUNITY_KIND_COLORS = {
-  COURSE: "#2563eb",
-  LIFT: "#0e7490",
-  MOGUL: "#c026d3",
-  ITEM: "#b45309",
+  COURSE: "#0A7CFF",
+  LIFT: "#00C26E",
+  MOGUL: "#FF2E9A",
+  ITEM: "#FF8A00",
 } satisfies Record<PublicMapEntry["kind"], string>;
 
 export type ResolvedMapEntry = {

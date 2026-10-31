@@ -37,7 +37,8 @@ export const useLiftAnimation = ({
   useEffect(() => {
     if (!map || !isReady || isInteracting || prefersReducedMotion) return;
 
-    const hasStateFilter = styleState.selectedFeature !== null;
+    const hasStateFilter =
+      styleState.selectedFeature !== null || !!styleState.showCommunityPosts;
 
     // MapLibre は line-dasharray を「前の柄と次の柄のクロスフェード」で補間する。
     // 既定の 300ms のままコマ送りすると、常に 2 つの柄が混ざった状態が描かれ、

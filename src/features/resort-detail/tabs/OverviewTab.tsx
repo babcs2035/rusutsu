@@ -10,6 +10,7 @@ import type { SelectedMapFeature } from "@/features/map/types";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import { NotFetchedBadge } from "../components/CompactInfo";
 import { CurrentOverview } from "../components/CurrentOverview";
+import { useDisplayedResortMapData } from "../components/LinkedAreaMapToggle";
 import { ObservationTimes } from "../components/ObservationTimes";
 import type { XProfile } from "../server/xProfile";
 import type { Resort } from "../types";
@@ -228,13 +229,14 @@ function PlatformAccounts({
 }
 
 export function OverviewTab({
-  resort,
+  resort: sourceResort,
   showTerrainDetail,
   terrainTab,
   onShowTerrainDetail,
   onCloseTerrainDetail,
   selectedFinalizedFeature,
   onSelectedFinalizedFeatureChange,
+  onSelectResort,
 }: {
   resort: Resort;
   /** コース／リフトの一覧・詳細を見せているか（false のときは概要） */
@@ -246,7 +248,14 @@ export function OverviewTab({
   onSelectedFinalizedFeatureChange: (
     feature: SelectedMapFeature | null,
   ) => void;
+  onSelectResort?: (id: string) => void;
 }) {
+  // 「〇〇も同時に表示」中は、件数と一覧をつながったスキー場と合わせて出す
+  const displayedMapData = useDisplayedResortMapData(sourceResort);
+  const resort =
+    displayedMapData === (sourceResort.finalizedMapData ?? null)
+      ? sourceResort
+      : { ...sourceResort, finalizedMapData: displayedMapData };
   if (showTerrainDetail) {
     const isCourse = terrainTab === "コース";
     const section = isCourse
@@ -293,6 +302,7 @@ export function OverviewTab({
   return (
     <CurrentOverview
       resort={resort}
+      onSelectResort={onSelectResort}
       onShowCourseDetail={() => onShowTerrainDetail("コース")}
       onShowLiftDetail={() => onShowTerrainDetail("リフト")}
     />

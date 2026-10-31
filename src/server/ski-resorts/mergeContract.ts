@@ -99,6 +99,26 @@ const expectedResortSchema = z.strictObject({
 
 /** 連携エリアの親を指定する。子は切り離し、親は非公開にしてデータを残す。 */
 export const resortUnlinkRequestSchema = expectedResortSchema;
+
+/**
+ * 完全統合（MERGED）の親を連携エリア（LINKED）にする。子は別のスキー場として
+ * 一覧・全国地図に戻り、地図・料金・レビューは親のデータを共有する。
+ */
+export const resortLinkConversionRequestSchema = expectedResortSchema;
+export type ResortLinkConversionRequest = z.infer<
+  typeof resortLinkConversionRequestSchema
+>;
+export const resortLinkConversionResultSchema = z.discriminatedUnion("status", [
+  z.object({
+    status: z.literal("converted"),
+    resort: adminSkiResortRecordSchema,
+    sources: z.array(adminSkiResortRecordSchema),
+  }),
+  z.object({ status: z.enum(["conflict", "not_merged"]) }),
+]);
+export type ResortLinkConversionResult = z.infer<
+  typeof resortLinkConversionResultSchema
+>;
 export type ResortUnlinkRequest = z.infer<typeof resortUnlinkRequestSchema>;
 export const resortUnlinkResultSchema = z.discriminatedUnion("status", [
   z.object({

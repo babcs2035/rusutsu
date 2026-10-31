@@ -8,6 +8,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,6 @@ import type { FinalizedResortMapData } from "@/lib/finalizedResortGeojsonShared"
 import { CommunityMapPreview } from "./CommunityMapPreview";
 import {
   communityComposerUrl,
-  highlightCommunityPost,
   requestCommunityComposer,
 } from "./composerEvents";
 import { ENTRY_KINDS, type PublicMapEntry } from "./contract";
@@ -35,7 +35,12 @@ import {
   type MapEntryGroup,
   resolveMapEntries,
 } from "./mapOverlay";
-import { ALL_COMMUNITY_KINDS } from "./mapPostStore";
+import {
+  ALL_COMMUNITY_KINDS,
+  highlightCommunityMapEntry,
+  openCommunityMapPosts,
+  useOpenCommunityMapPosts,
+} from "./mapPostStore";
 
 export { rememberCommunityPost } from "./mapPostStore";
 
@@ -249,73 +254,89 @@ export function CommunityMapFilters({
   );
 }
 
-function markerElement(group: MapEntryGroup, onClick: () => void) {
-  const primary = group.posts.find(post => post.entry.photo) ?? group.posts[0];
+/** 投稿の写真・点。コース名などのラベル（同じ地図のマーカー）より必ず上に出す。 */
+const MARKER_Z_INDEX = "5";
+
+/** 投稿を表す点。複数あれば件数を中に書く。 */
+export function communityDotElement(color: string, count = 1) {
+  const element = document.createElement("span");
+  element.className =
+    "flex items-center justify-center rounded-full text-[11px] leading-none font-bold text-white shadow-md";
+  const size = count > 1 ? "24px" : "18px";
+  element.style.width = size;
+  element.style.height = size;
+  element.style.border = "2px solid white";
+  element.style.backgroundColor = color;
+  if (count > 1) element.textContent = String(count);
+  return element;
+}
+
+/**
+ * 位置情報のない投稿と写真のない投稿は点にする。
+ * 開いている投稿も、写真は下のプレビューに出るので点にする。
+ */
+function setMarkerContent(
+  button: HTMLButtonElement,
+  group: MapEntryGroup,
+  opened: boolean,
+) {
+  const primary =
+    group.posts.find(post => post.entry.photo && !post.targetOnly) ??
+    group.posts[0];
   const { entry, targetOnly } = primary;
+  const count = group.posts.length;
+  const color = group.posts.every(post => post.entry.kind === entry.kind)
+    ? COMMUNITY_KIND_COLORS[entry.kind]
+    : "#334155";
+  const setDot = () => {
+    button.className =
+      "rounded-full outline-offset-2 focus-visible:outline-2 focus-visible:outline-blue-600";
+    button.style.border = "";
+    button.replaceChildren(communityDotElement(color, count));
+  };
+  if (opened || !entry.photo || targetOnly) {
+    setDot();
+    return;
+  }
+  button.className =
+    "relative flex rounded-md bg-white shadow-md outline-offset-2 focus-visible:outline-2 focus-visible:outline-blue-600";
+  button.style.border = `3px solid ${COMMUNITY_KIND_COLORS[entry.kind]}`;
+  const image = document.createElement("img");
+  image.src = `/rusutsu/api/community/photos/${encodeURIComponent(entry.photo.id)}?size=map`;
+  image.alt = "";
+  image.width = 40;
+  image.height = 40;
+  image.decoding = "async";
+  image.className = "size-10 rounded-[3px] object-cover";
+  image.addEventListener("error", setDot, { once: true });
+  button.replaceChildren(image);
+  if (count > 1 || entry.photoCount > 1) {
+    const badge = document.createElement("span");
+    badge.className =
+      "absolute -top-2 -right-2 min-w-5 rounded-full border border-white px-1 text-center text-[11px] leading-[18px] font-bold text-white";
+    badge.textContent = count > 1 ? String(count) : `＋${entry.photoCount - 1}`;
+    badge.style.backgroundColor = count > 1 ? color : "rgba(0,0,0,0.65)";
+    button.append(badge);
+  }
+}
+
+function markerElement(
+  group: MapEntryGroup,
+  opened: boolean,
+  onClick: () => void,
+) {
+  const { entry, targetOnly } = group.posts[0];
+  const count = group.posts.length;
   const button = document.createElement("button");
   button.type = "button";
   button.dataset.communityMarker = "true";
   button.setAttribute(
     "aria-label",
-    `${entry.targetName}・${ENTRY_KINDS[entry.kind]}・${group.posts.length}件の投稿`,
+    `${entry.targetName}・${ENTRY_KINDS[entry.kind]}・${count}件の投稿`,
   );
   button.title = `${entry.targetName} · 滑走日 ${entry.observedOn}${targetOnly ? " · 対象全体の投稿" : ""}`;
-  button.className =
-    "relative flex flex-col items-center rounded-md bg-white shadow-md outline-offset-2 focus-visible:outline-2 focus-visible:outline-blue-600";
-  button.style.border = `2px solid ${COMMUNITY_KIND_COLORS[entry.kind]}`;
-  const setDot = () => {
-    button.classList.add("rounded-full");
-    button.style.width = "22px";
-    button.style.height = "22px";
-    button.style.backgroundColor = COMMUNITY_KIND_COLORS[entry.kind];
-    button.style.borderColor = "white";
-  };
-  if (entry.photo) {
-    const image = document.createElement("img");
-    image.src = `/rusutsu/api/community/photos/${encodeURIComponent(entry.photo.id)}?size=map`;
-    image.alt = "";
-    image.width = 64;
-    image.height = 64;
-    image.decoding = "async";
-    image.className = "size-16 rounded-sm object-cover";
-    image.addEventListener(
-      "error",
-      () => {
-        image.remove();
-        if (!targetOnly) setDot();
-      },
-      { once: true },
-    );
-    button.append(image);
-    if (entry.photoCount > 1 && group.posts.length === 1) {
-      const count = document.createElement("span");
-      count.className =
-        "absolute right-0 bottom-0 rounded-tl bg-black/65 px-1 text-[10px] font-bold text-white";
-      count.textContent = `＋${entry.photoCount - 1}`;
-      button.append(count);
-    }
-  } else if (!targetOnly) setDot();
-  if (targetOnly) {
-    const label = document.createElement("span");
-    label.className =
-      "max-w-28 truncate px-1.5 py-1 text-[11px] leading-tight font-semibold text-slate-800";
-    label.textContent = entry.targetName;
-    button.append(label);
-    // 代表位置に付く対象名の札。地点を示す丸いピンとは形を分ける。
-    button.style.borderStyle = "dashed";
-  }
-  if (group.posts.length > 1) {
-    const count = document.createElement("span");
-    count.className =
-      "absolute -top-2 -right-2 min-w-5 rounded-full border border-white bg-sky-700 px-1 text-[11px] leading-5 font-bold text-white";
-    count.textContent = String(group.posts.length);
-    count.style.backgroundColor = group.posts.every(
-      post => post.entry.kind === entry.kind,
-    )
-      ? COMMUNITY_KIND_COLORS[entry.kind]
-      : "#334155";
-    button.append(count);
-  }
+  button.style.zIndex = MARKER_Z_INDEX;
+  setMarkerContent(button, group, opened);
   button.addEventListener("click", event => {
     event.stopPropagation();
     onClick();
@@ -338,7 +359,11 @@ export function CommunityMapOverlay({
   mapData: FinalizedResortMapData | null;
   filterKey: string;
 }) {
-  const [selected, setSelected] = useState<MapEntryGroup | null>(null);
+  const { open, hosted } = useOpenCommunityMapPosts(resortId);
+  const markersRef = useRef(
+    new Map<string, { marker: Marker; group: MapEntryGroup }>(),
+  );
+  const openKeyRef = useRef<string | null>(null);
   const [previewSize, setPreviewSize] = useState({ height: 320, small: false });
   useEffect(() => {
     const updateSize = () => {
@@ -372,34 +397,20 @@ export function CommunityMapOverlay({
     () => resolveMapEntries(posts, communityMapData("", [0, 0], mapData)),
     [posts, mapData],
   );
-  const close = useCallback(() => {
-    setSelected(null);
-    highlightCommunityPost(resortId, null);
-  }, [resortId]);
-  const select = useCallback(
-    (entry: PublicMapEntry) => {
-      highlightCommunityPost(resortId, {
-        feature:
-          entry.kind === "LIFT" && entry.liftId
-            ? { kind: "lift", id: entry.liftId }
-            : entry.courseId
-              ? { kind: "course", id: entry.courseId }
-              : null,
-        point:
-          entry.latitude != null && entry.longitude != null
-            ? [entry.longitude, entry.latitude]
-            : null,
-      });
-    },
+  const close = useCallback(
+    () => openCommunityMapPosts(resortId, null),
     [resortId],
   );
+  // フィルターの変更・レイヤー終了時だけ閉じ、後続ページの到着や
+  // 地図の作り直し（スマホで詳細を開くと地図が縮む）では閉じない。
+  const previousFilterKey = useRef(filterKey);
   useEffect(() => {
-    // フィルターの変更・レイヤー終了時だけ閉じ、後続ページの到着では閉じない。
-    if (filterKey || !enabled) close();
+    if (previousFilterKey.current !== filterKey || !enabled) close();
+    previousFilterKey.current = filterKey;
   }, [close, enabled, filterKey]);
   useEffect(() => {
     if (!enabled) return;
-    const markers = new Map<string, Marker>();
+    const markers = markersRef.current;
     const render = () => {
       const canvas = map.getCanvas();
       const groups = groupMapEntries(
@@ -409,23 +420,28 @@ export function CommunityMapOverlay({
         80,
       );
       const keys = new Set(groups.map(group => group.key));
-      for (const [key, marker] of markers)
+      for (const [key, { marker }] of markers)
         if (!keys.has(key)) {
           marker.remove();
           markers.delete(key);
         }
       for (const group of groups) {
         if (markers.has(group.key)) continue;
-        const element = markerElement(group, () => {
-          setSelected(group);
-          if (group.posts.length === 1) select(group.posts[0].entry);
+        const opened = group.key === openKeyRef.current;
+        const element = markerElement(group, opened, () => {
+          openCommunityMapPosts(resortId, {
+            key: group.key,
+            posts: group.posts.map(post => post.entry),
+          });
+          if (group.posts.length === 1)
+            highlightCommunityMapEntry(resortId, group.posts[0].entry);
         });
-        markers.set(
-          group.key,
-          new Marker({ element, anchor: "center" })
+        markers.set(group.key, {
+          group,
+          marker: new Marker({ element, anchor: "center" })
             .setLngLat(group.coordinates)
             .addTo(map),
-        );
+        });
       }
     };
     render();
@@ -436,10 +452,27 @@ export function CommunityMapOverlay({
       map.off("moveend", render);
       map.off("resize", render);
       map.off("click", close);
-      for (const marker of markers.values()) marker.remove();
+      for (const { marker } of markers.values()) marker.remove();
+      markers.clear();
     };
-  }, [enabled, map, resolved, close, select]);
-  if (!enabled || !selected) return null;
+  }, [enabled, map, resolved, close, resortId]);
+  // 開いた投稿だけ写真をやめて点にし、閉じたら写真に戻す。
+  const openKey = open?.key ?? null;
+  useEffect(() => {
+    const previous = openKeyRef.current;
+    openKeyRef.current = openKey;
+    for (const key of [previous, openKey]) {
+      const item = key ? markersRef.current.get(key) : undefined;
+      if (item)
+        setMarkerContent(
+          item.marker.getElement() as HTMLButtonElement,
+          item.group,
+          key === openKey,
+        );
+    }
+  }, [openKey]);
+  // スキー場詳細が出ていれば、そちらがコース詳細と同じ場所に出す
+  if (!enabled || !open || hosted) return null;
   return (
     <div
       className={
@@ -449,11 +482,12 @@ export function CommunityMapOverlay({
       }
     >
       <CommunityMapPreview
-        key={selected.key}
-        posts={selected.posts.map(post => post.entry)}
-        onSelect={select}
+        key={open.key}
+        posts={open.posts}
+        onSelect={entry => highlightCommunityMapEntry(resortId, entry)}
         onClose={close}
-        maxHeight={previewSize.height}
+        className="w-[min(320px,calc(100vw-1.5rem))] max-w-full rounded-lg border shadow-xl"
+        style={{ maxHeight: previewSize.height }}
       />
     </div>
   );

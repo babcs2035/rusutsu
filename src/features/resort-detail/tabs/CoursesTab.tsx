@@ -321,11 +321,17 @@ export const CoursesTab = ({
               ))}
           </select>
         </div>
-        <div className="my-2 flex flex-wrap gap-2 text-sm text-slate-600">
-          <span>
-            <StatusMark symbol="○" /> 全面 <StatusMark symbol="△" /> 一部{" "}
-            <StatusMark symbol="×" /> 閉鎖 — 不明
+        <div className="my-2 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+          <span className="inline-flex items-center gap-1 leading-none">
+            <StatusMark symbol="○" /> 全面
           </span>
+          <span className="inline-flex items-center gap-1 leading-none">
+            <StatusMark symbol="△" /> 一部
+          </span>
+          <span className="inline-flex items-center gap-1 leading-none">
+            <StatusMark symbol="×" /> 閉鎖
+          </span>
+          <span className="inline-flex items-center leading-none">— 不明</span>
         </div>
         <div
           className="isolate overflow-x-auto rounded-lg border"
@@ -377,7 +383,9 @@ export const CoursesTab = ({
                       } as CSSProperties
                     }
                   >
-                    <StatusMark symbol={row.status} />
+                    <span className="flex items-center justify-center">
+                      <StatusMark symbol={row.status} />
+                    </span>
                   </td>
                   <td
                     className={`${tableCellPadding} sticky left-9 z-20 min-w-24 border-r bg-[var(--row-bg)] font-semibold`}

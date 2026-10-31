@@ -4,12 +4,16 @@ import {
   RESORT_LINK_LABELS,
 } from "@/features/lift/constants";
 import type { ResortLink, ResortLinks } from "@/features/lift/types";
+import {
+  parseWeatherLinkId,
+  WEATHER_LINK_KEYS,
+  type WeatherLinkKey,
+} from "@/features/weather/weatherLinks";
 
 export type LinkKey = keyof ResortLinks;
 
-// Only genuine SNS / platform links are restricted to their official domain.
-// Everything else (official site, map, school, etc.) just needs a valid
-// http(s) URL — there is no fixed host to check against.
+// SNS・天気サイトは各サービスのURLに限定する。
+// 公式サイト・地図・スクールなどは任意の http(s) URLを受け付ける。
 const LINK_DOMAINS: Partial<Record<LinkKey, readonly string[]>> = {
   xUrls: ["x.com", "twitter.com"],
   instagramUrls: ["instagram.com"],
@@ -17,6 +21,9 @@ const LINK_DOMAINS: Partial<Record<LinkKey, readonly string[]>> = {
   youtubeUrls: ["youtube.com", "youtu.be"],
   threadsUrls: ["threads.net", "threads.com"],
   lineUrls: ["line.me", "lin.ee"],
+  tenkijpUrls: ["tenki.jp"],
+  snowForecastUrls: ["snow-forecast.com"],
+  weathernewsUrls: ["weathernews.jp"],
 };
 
 export const LINK_CATEGORIES = RESORT_LINK_KEYS.map(key => ({
@@ -49,6 +56,12 @@ export const linkSaveSchema = z
     expectedLinks: z.array(linkSchema).max(100),
   })
   .superRefine((request, context) => {
+    if (request.platform === "weathernewsUrls" && request.links.length > 1)
+      context.addIssue({
+        code: "custom",
+        message: "ウェザーニュースは代表地点を1件登録してください。",
+        path: ["links"],
+      });
     const seen = new Set<string>();
     for (const [index, link] of request.links.entries()) {
       if (!isValidLinkUrl(request.platform, link.url)) {
@@ -83,6 +96,8 @@ export function isValidLinkUrl(platform: LinkKey, value: string): boolean {
       url.port
     )
       return false;
+    if (WEATHER_LINK_KEYS.includes(platform as WeatherLinkKey))
+      return parseWeatherLinkId(platform as WeatherLinkKey, value) !== null;
     const domains = LINK_DOMAINS[platform];
     if (!domains) return true;
     return domains.some(

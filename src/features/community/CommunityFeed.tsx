@@ -102,7 +102,7 @@ function mapHighlight(entry: PublicReportEntry | undefined) {
     entry.latitude != null && entry.longitude != null
       ? [entry.longitude, entry.latitude]
       : null;
-  return feature || point ? { feature, point } : null;
+  return feature || point ? { feature, point, kind: entry.kind } : null;
 }
 
 export function CommunityFeed({

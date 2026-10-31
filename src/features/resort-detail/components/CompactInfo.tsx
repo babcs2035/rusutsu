@@ -186,12 +186,12 @@ export function StatusMark({
       {Icon ? (
         <Icon
           aria-hidden="true"
-          className={boxClassName}
+          className={`block ${boxClassName}`}
           strokeWidth={size === "sm" ? 3 : 3.25}
         />
       ) : (
         <span
-          className={size === "sm" ? "text-sm font-bold" : "text-lg font-bold"}
+          className={`inline-flex items-center justify-center leading-none ${size === "sm" ? "text-sm font-bold" : "text-lg font-bold"}`}
         >
           —
         </span>

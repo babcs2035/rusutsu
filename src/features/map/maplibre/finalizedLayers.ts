@@ -49,6 +49,8 @@ const DIMMED_STYLE = {
   lift: { color: "#1E293B", opacity: 0.8, casingOpacity: 0.55 },
 } as const;
 export const MUTED_LINE_OPACITY = 0.2;
+/** 投稿を出しているときのコース・リフトの濃さ。選択中の線は薄くしない */
+const COMMUNITY_LINE_OPACITY = 0.5;
 export const ARROW_ICON_ID = "finalized-direction-arrow";
 
 export const EMPTY_STYLE_STATE: FinalizedStyleState = {
@@ -66,6 +68,8 @@ export type FinalizedStyleState = {
   selectedFeature: SelectedMapFeature | null;
   isFocusMode: boolean;
   tileVariant: MapTileVariant;
+  /** 投稿を地図に出しているか。写真や点を目立たせるため、コースとリフトを薄くする */
+  showCommunityPosts?: boolean;
 };
 
 /** ズーム別の線幅。難易度モードと斜度モードで同じ太さにする */
@@ -214,6 +218,10 @@ const isDimmedExpression = (
     ? ["!", isSelectedExpression(state.selectedFeature, kind)]
     : ["literal", false];
 
+/** 投稿を出しているときに、選択中以外の線へ掛ける濃さ */
+const communityFade = (state: FinalizedStyleState) =>
+  state.showCommunityPosts ? COMMUNITY_LINE_OPACITY : 1;
+
 export const getLineOpacity = (
   state: FinalizedStyleState,
   kind: "course" | "lift",
@@ -224,10 +232,26 @@ export const getLineOpacity = (
         isSelectedExpression(state.selectedFeature, "lift"),
         1,
         isDimmedExpression(state, kind),
-        DIMMED_STYLE[kind].opacity,
-        LINE_STATUS_OPACITY,
+        DIMMED_STYLE[kind].opacity * communityFade(state),
+        state.showCommunityPosts
+          ? ["*", LINE_STATUS_OPACITY, COMMUNITY_LINE_OPACITY]
+          : LINE_STATUS_OPACITY,
       ]
-    : ["case", isDimmedExpression(state, kind), DIMMED_STYLE[kind].opacity, 1];
+    : state.showCommunityPosts
+      ? [
+          "case",
+          isSelectedExpression(state.selectedFeature, "course"),
+          1,
+          isDimmedExpression(state, kind),
+          DIMMED_STYLE[kind].opacity * COMMUNITY_LINE_OPACITY,
+          COMMUNITY_LINE_OPACITY,
+        ]
+      : [
+          "case",
+          isDimmedExpression(state, kind),
+          DIMMED_STYLE[kind].opacity,
+          1,
+        ];
 
 export const getLineColor = (
   state: FinalizedStyleState,
@@ -275,15 +299,17 @@ export const getLineWidth = (
 
 /**
  * 流れる破線の濃さ。
- * リフトを選んでいるときのほかのリフトも、流れは止めずに薄くして残す。
+ * リフトを選んでいるときのほかのリフトや投稿を出しているときも、流れは止めずに薄くして残す。
  */
 export const getFlowOpacity = (
   state: FinalizedStyleState,
 ): DataDrivenPropertyValueSpecification<number> => [
   "case",
-  isDimmedExpression(state, "lift"),
-  ["*", FLOW_STATUS_OPACITY, 0.45],
+  isSelectedExpression(state.selectedFeature, "lift"),
   FLOW_STATUS_OPACITY,
+  isDimmedExpression(state, "lift"),
+  ["*", FLOW_STATUS_OPACITY, 0.45 * communityFade(state)],
+  ["*", FLOW_STATUS_OPACITY, communityFade(state)],
 ];
 
 /**
@@ -296,9 +322,11 @@ export const getBlinkOpacity = (
   blink: number,
 ): DataDrivenPropertyValueSpecification<number> => [
   "case",
-  isDimmedExpression(state, "lift"),
-  DIMMED_STYLE.lift.opacity,
+  isSelectedExpression(state.selectedFeature, "lift"),
   blink,
+  isDimmedExpression(state, "lift"),
+  DIMMED_STYLE.lift.opacity * communityFade(state),
+  blink * communityFade(state),
 ];
 
 export const getCasingWidth = (

@@ -241,6 +241,9 @@ const EMPTY_RESORT_LINKS: ResortLinks = {
   threadsUrls: [],
   instagramUrls: [],
   facebookUrls: [],
+  tenkijpUrls: [],
+  snowForecastUrls: [],
+  weathernewsUrls: [],
 };
 
 // 旧形式の文字列URLも読み込み、新形式へ正規化する。
@@ -285,6 +288,9 @@ const normalizeResortLinks = (value: unknown): ResortLinks => {
     threadsUrls: toLinkList(raw.threadsUrls),
     instagramUrls: toLinkList(raw.instagramUrls),
     facebookUrls: toLinkList(raw.facebookUrls),
+    tenkijpUrls: toLinkList(raw.tenkijpUrls),
+    snowForecastUrls: toLinkList(raw.snowForecastUrls),
+    weathernewsUrls: toLinkList(raw.weathernewsUrls),
   };
 };
 
