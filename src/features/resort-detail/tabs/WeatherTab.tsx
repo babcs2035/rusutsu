@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { SnowForecastEmbed } from "@/features/weather/WeatherChart";
 import { getWeathernewsLinks } from "@/features/weather/weatherLinks";
 import { cn } from "@/lib/utils";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
-import { LinkedMemberTabs, useLinkedMember } from "../components/LinkedArea";
+import { ResortTabs } from "../components/ResortTabs";
+import { useSimultaneousView } from "../components/SimultaneousToggle";
 import type { Resort } from "../types";
 
 // 各サイト1件ずつの4リンクはスマホでも横1列。複数地点のリンクは折り返してよい。
@@ -20,16 +21,30 @@ const blueWeatherLinkClassName = cn(
   "bg-blue-50 text-blue-900 hover:bg-blue-100 hover:text-blue-700",
 );
 
+type WeatherMember = Pick<
+  Resort,
+  "id" | "nameJa" | "shortName" | "weatherIds" | "latitude" | "longitude"
+> & { label?: string };
+
+/** 「〇〇も同時に表示」中に、天気を切り替えて見るスキー場。最初は開いたスキー場 */
+const useWeatherMembers = (resort: Resort): WeatherMember[] => {
+  const { active, partners } = useSimultaneousView(resort);
+  if (!partners.length) return [];
+  return [resort, ...partners].map(member => ({
+    ...member,
+    label: active?.memberLabels[member.id],
+  }));
+};
+
 export const WeatherTab = ({ resort }: { resort: Resort }) => {
-  // 連携エリアは、天気・予報をスキー場ごとのタブで切り替える。
-  const { members, activeId, activeMember, setActiveId } =
-    useLinkedMember(resort);
-  const weatherIds = activeMember
-    ? (resort.memberWeatherIds?.[activeMember.id] ?? null)
-    : resort.weatherIds;
-  const latitude = activeMember?.latitude ?? resort.latitude;
-  const longitude = activeMember?.longitude ?? resort.longitude;
-  const resortName = activeMember?.nameJa ?? resort.nameJa;
+  const members = useWeatherMembers(resort);
+  const [selectedId, setSelectedId] = useState(resort.id);
+  const activeMember = members.find(member => member.id === selectedId) ?? null;
+  const shown = activeMember ?? resort;
+  const weatherIds = shown.weatherIds;
+  const latitude = shown.latitude;
+  const longitude = shown.longitude;
+  const resortName = shown.nameJa;
   const snowForecastLinks = useMemo(() => {
     const links: Array<{
       id: string;
@@ -91,10 +106,10 @@ export const WeatherTab = ({ resort }: { resort: Resort }) => {
   return (
     <div className="flex flex-col gap-6">
       {members.length > 1 && (
-        <LinkedMemberTabs
+        <ResortTabs
           members={members}
-          activeId={activeId}
-          onChange={setActiveId}
+          activeId={activeMember?.id ?? resort.id}
+          onChange={setSelectedId}
           label="天気を見るスキー場"
         />
       )}

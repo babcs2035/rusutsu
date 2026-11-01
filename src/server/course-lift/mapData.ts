@@ -15,7 +15,6 @@ import {
   usesRemoteDataApi,
 } from "@/lib/internalDataApiClient";
 import { toSourceLabels } from "@/lib/latestStatusFiles";
-import { combineLatestStatuses } from "@/lib/linkedAreaStatus";
 import { prisma } from "@/lib/prisma";
 import { adjustCourseName } from "@/lib/resortMapMerge";
 import { entityFeature, record } from "./canonicalCodec";
@@ -81,44 +80,26 @@ export async function findCanonicalResortMap(
   const urls = (rows: Array<{ statusSourceUrls: string[] }>) => [
     ...new Set(rows.flatMap(row => row.statusSourceUrls)),
   ];
-  const members = await tx.skiResort.findMany({
-    where: { mergedIntoId: resortId, mergedInto: { linkKind: "LINKED" } },
-    select: { id: true, nameJa: true },
-  });
-  const sourceIds = members.length
-    ? members.map(member => member.id)
-    : [resortId];
-  const currents = await tx.crawlLatestCurrent.findMany({
-    where: { skiResortId: { in: sourceIds }, kind: "COURSES" },
-    include: {
-      snapshot: { include: { run: { select: { observedAt: true } } } },
-    },
-  });
-  const captures = await Promise.all(
-    sourceIds.map(async id => {
-      const snapshot = currents.find(
-        current => current.skiResortId === id,
-      )?.snapshot;
-      return snapshot
-        ? {
-            fileName: snapshot.id,
-            time: snapshot.run.observedAt.toISOString(),
-            sourceUrls: snapshot.sourceUrls,
-            sourceLabels: toSourceLabels(
-              snapshot.sourceUrls,
-              snapshot.sourceLabels,
-            ),
-            items: Array.isArray(snapshot.data)
-              ? snapshot.data.map(record)
-              : [],
-          }
-        : null;
-    }),
-  );
-  const courseStatus = combineLatestStatuses(
-    captures,
-    sourceIds.map(id => members.find(member => member.id === id)?.nameJa),
-  );
+  const snapshot = (
+    await tx.crawlLatestCurrent.findFirst({
+      where: { skiResortId: resortId, kind: "COURSES" },
+      include: {
+        snapshot: { include: { run: { select: { observedAt: true } } } },
+      },
+    })
+  )?.snapshot;
+  const courseStatus = snapshot
+    ? {
+        fileName: snapshot.id,
+        time: snapshot.run.observedAt.toISOString(),
+        sourceUrls: snapshot.sourceUrls,
+        sourceLabels: toSourceLabels(
+          snapshot.sourceUrls,
+          snapshot.sourceLabels,
+        ),
+        items: Array.isArray(snapshot.data) ? snapshot.data.map(record) : [],
+      }
+    : null;
   const courseStatusSummary = createCourseStatusSummary(
     courseStatus,
     courseFeatures.map(feature => feature.latestStatusName),

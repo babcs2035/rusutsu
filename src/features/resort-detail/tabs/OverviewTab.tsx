@@ -2,7 +2,7 @@
 
 import { ChevronLeft, ExternalLink } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useScreenState } from "@/features/map/session/useScreenState";
@@ -10,12 +10,16 @@ import type { SelectedMapFeature } from "@/features/map/types";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import { NotFetchedBadge } from "../components/CompactInfo";
 import { CurrentOverview } from "../components/CurrentOverview";
-import { useDisplayedResortMapData } from "../components/LinkedAreaMapToggle";
 import { ObservationTimes } from "../components/ObservationTimes";
+import {
+  useDisplayedResortMapData,
+  useSimultaneousView,
+} from "../components/SimultaneousToggle";
 import type { XProfile } from "../server/xProfile";
 import type { Resort } from "../types";
 import { hasSourceUrl } from "../utils/currentConditions";
 import {
+  mergeSocialAccounts,
   SOCIAL_PLATFORMS,
   type SocialAccount,
   type SocialPlatform,
@@ -236,7 +240,6 @@ export function OverviewTab({
   onCloseTerrainDetail,
   selectedFinalizedFeature,
   onSelectedFinalizedFeatureChange,
-  onSelectResort,
 }: {
   resort: Resort;
   /** コース／リフトの一覧・詳細を見せているか（false のときは概要） */
@@ -248,7 +251,6 @@ export function OverviewTab({
   onSelectedFinalizedFeatureChange: (
     feature: SelectedMapFeature | null,
   ) => void;
-  onSelectResort?: (id: string) => void;
 }) {
   // 「〇〇も同時に表示」中は、件数と一覧をつながったスキー場と合わせて出す
   const displayedMapData = useDisplayedResortMapData(sourceResort);
@@ -302,7 +304,6 @@ export function OverviewTab({
   return (
     <CurrentOverview
       resort={resort}
-      onSelectResort={onSelectResort}
       onShowCourseDetail={() => onShowTerrainDetail("コース")}
       onShowLiftDetail={() => onShowTerrainDetail("リフト")}
     />
@@ -310,12 +311,24 @@ export function OverviewTab({
 }
 
 export function SnsTab({ resort }: { resort: Resort }) {
+  // 「〇〇も同時に表示」中は、組のスキー場のアカウントも並べる
+  const { partners } = useSimultaneousView(resort);
+  const accounts = useMemo(
+    () =>
+      partners.length
+        ? mergeSocialAccounts([
+            resort.socialAccounts,
+            ...partners.map(partner => partner.socialAccounts),
+          ])
+        : resort.socialAccounts,
+    [partners, resort.socialAccounts],
+  );
   return (
     <section aria-label="SNS">
       <SocialTabs
-        key={resort.id}
+        key={[resort.id, ...partners.map(partner => partner.id)].join(":")}
         resortId={resort.id}
-        accounts={resort.socialAccounts}
+        accounts={accounts}
       />
     </section>
   );

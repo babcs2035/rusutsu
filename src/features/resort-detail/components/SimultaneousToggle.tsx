@@ -25,8 +25,11 @@ import type { Resort } from "../types";
  * 組の別のスキー場へ移っても同じ表示を続ける。
  */
 const shownKeys = new Set<string>();
-/** 同時表示の組の地図・コンディション。チェックしたときに読み、以後は使い回す */
+/** 同時表示の組の地図・相手の詳細。チェックしたときに読み、以後は使い回す */
 type GroupView = NonNullable<Awaited<ReturnType<typeof getSimultaneousView>>>;
+/** 同時表示の組で一緒に出す相手のスキー場（地図を除いた詳細） */
+export type SimultaneousPartner = GroupView["partners"][number];
+const NO_PARTNERS: SimultaneousPartner[] = [];
 const groupViews = new Map<
   string,
   { status: "loading" | "ready" | "error"; data?: GroupView }
@@ -82,11 +85,11 @@ const loadGroupView = async (resortId: string, groupId: string) => {
 
 type MapResort = Pick<
   Resort,
-  "id" | "finalizedMapData" | "linkedAreaMapData" | "simultaneousOptions"
+  "id" | "finalizedMapData" | "simultaneousOptions"
 >;
 
 /**
- * 選んでいる同時表示と、そのときの地図・相手のコンディション。
+ * 選んでいる同時表示と、そのときの地図・相手のコンディション・相手の詳細。
  * 何も選んでいなければ自分の地図だけ。組の地図を読んでいる間も自分の地図を出す。
  */
 export function useSimultaneousView(resort: MapResort | null) {
@@ -104,13 +107,7 @@ export function useSimultaneousView(resort: MapResort | null) {
       active: null,
       mapData: ownMapData,
       conditions: [],
-      loading: false,
-    };
-  if (!active.groupId)
-    return {
-      active,
-      mapData: resort.linkedAreaMapData ?? ownMapData,
-      conditions: [],
+      partners: NO_PARTNERS,
       loading: false,
     };
   const view = groupViews.get(`${resort.id}:${active.groupId}`);
@@ -118,6 +115,7 @@ export function useSimultaneousView(resort: MapResort | null) {
     active,
     mapData: view?.data?.mapData ?? ownMapData,
     conditions: view?.data?.conditions ?? [],
+    partners: view?.data?.partners ?? NO_PARTNERS,
     loading: !view || view.status === "loading",
   };
 }
@@ -128,16 +126,11 @@ export function useDisplayedResortMapData(resort: MapResort | null) {
 }
 
 const SIZE_CLASS = {
-  // 詳細の小さい地図・PCの地図の「営業中のみ」（compact）と同じ大きさ
-  compact:
-    "h-9 gap-1 px-1.5 text-sm font-semibold md:h-[34px] md:gap-1 md:px-1.5 md:text-[13px]",
-  // 拡大地図の下部パネルの「営業中のみ」（inline）と同じ大きさ
+  // PCの地図の「営業中のみ」（inline）と同じ大きさ
   inline:
     "h-9 gap-1 px-1 text-sm font-semibold min-[375px]:px-1.5 md:h-8 md:gap-1 md:px-1.5 md:text-[13px]",
-  default:
-    "h-9 gap-1 px-2 text-[13px] font-bold md:h-10 md:gap-1.5 md:px-3 md:text-base",
-  // 営業状況の欄。「コース」「リフト」の見出しと同じ文字の大きさ
-  section: "h-8 gap-1.5 px-2 text-base font-semibold text-slate-900",
+  // 詳細の見出し（都道府県・市町村の下）
+  header: "h-7 gap-1 px-1.5 text-sm font-semibold md:h-8",
 } as const;
 
 type ToggleProps = {
@@ -152,9 +145,9 @@ type Partner = { id: string; label: string };
 /**
  * 「〇〇も同時に表示」「ニセコ全山で表示」。チェックで相手のスキー場も含めた
  * 地図・営業状況に切り替え、スキー場名を押すと、確認してからその詳細へ移る。
- * 選択肢は連携エリアと、管理画面で作った同時表示の組。
+ * 選択肢は管理画面で作った同時表示の組。
  */
-export function LinkedAreaMapToggle(props: ToggleProps) {
+export function SimultaneousToggle(props: ToggleProps) {
   if (!props.resort.simultaneousOptions?.length) return null;
   return <ToggleList {...props} />;
 }
@@ -162,7 +155,7 @@ export function LinkedAreaMapToggle(props: ToggleProps) {
 function ToggleList({
   resort,
   onSelectResort,
-  size = "compact",
+  size = "header",
   className,
 }: ToggleProps) {
   const router = useRouter();
@@ -177,11 +170,9 @@ function ToggleList({
           const shown = active?.key === option.key;
           const partners = option.partners.map(partner => ({
             id: partner.id,
-            label: getResortLabelName(
-              partner.id,
-              partner.nameJa,
-              partner.shortName,
-            ),
+            label:
+              partner.label ??
+              getResortLabelName(partner.id, partner.nameJa, partner.shortName),
           }));
           const text = option.label
             ? `${option.label}で表示`
@@ -208,7 +199,6 @@ function ToggleList({
                   aria-hidden="true"
                   className={cn(
                     "flex size-4 items-center justify-center rounded-sm border text-xs",
-                    size === "default" && "md:size-5 md:text-sm",
                     size === "inline" && "size-3.5",
                     shown
                       ? "border-blue-500 bg-blue-500 text-white"

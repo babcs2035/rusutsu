@@ -13,6 +13,7 @@ export const TYPE_OPTIONS = [
   "ケーブルカー",
   "シュレップ",
   "ロープトゥ",
+  "エスカレーター",
   "",
 ] as const;
 export const MARK_OPTIONS = ["○", "×", ""] as const;

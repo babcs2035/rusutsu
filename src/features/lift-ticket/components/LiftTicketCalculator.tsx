@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 import { ReportErrorButton } from "@/features/corrections/ReportErrorButton";
 import { filtersSchema } from "@/features/map/session/storage";
 import { useScreenState } from "@/features/map/session/useScreenState";
@@ -20,10 +20,13 @@ export const LiftTicketCalculator = ({
   seasons,
   sessionKey,
   initialInput = DEFAULT_LIFT_TICKET_SEARCH_INPUT,
+  categoryControl,
 }: {
   seasons: LiftTicketData[];
   sessionKey?: string;
   initialInput?: LiftTicketSearchInput;
+  /** 「高鷲のみ」「ダイナランド共通券」など、計算する券の種類の切り替え */
+  categoryControl?: ReactNode;
 }) => {
   const [input, setInput] = useScreenState<LiftTicketSearchInput>(
     sessionKey ?? null,
@@ -65,6 +68,7 @@ export const LiftTicketCalculator = ({
         正確な金額は公式サイトでご確認ください。
       </p>
       <div className="mt-4 flex flex-col gap-4">
+        {categoryControl}
         <TicketPartyEditor
           value={input}
           onChange={setInput}

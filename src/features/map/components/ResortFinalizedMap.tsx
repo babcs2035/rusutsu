@@ -56,7 +56,6 @@ type Props = {
   showOpenOnlyControl?: boolean;
   showLocationControl?: boolean;
   mapTopControls?: ReactNode;
-  linkedAreaControl?: ReactNode;
   mapStatusFilterShared?: boolean;
   /** 選択中もほかのコース・リフト名を薄く出す（コース比較） */
   showContextLabels?: boolean;
@@ -109,7 +108,6 @@ export const ResortFinalizedMap = ({
   showOpenOnlyControl = showToolbar,
   showLocationControl = true,
   mapTopControls,
-  linkedAreaControl,
   mapStatusFilterShared,
   showContextLabels = false,
   embedded = false,
@@ -178,7 +176,6 @@ export const ResortFinalizedMap = ({
         showMapOpenOnlyControl={showOpenOnlyControl}
         showLocationControl={showLocationControl}
         mapTopControls={mapTopControls}
-        linkedAreaControl={linkedAreaControl}
         mapStatusFilterShared={mapStatusFilterShared}
         showContextLabels={showContextLabels}
         embedded={embedded}

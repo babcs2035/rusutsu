@@ -1,7 +1,10 @@
 "use client";
 
 import { ExternalLink } from "lucide-react";
+import { useMemo } from "react";
+import { z } from "zod";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -14,7 +17,14 @@ import {
 import { LiftTicketCalculator } from "@/features/lift-ticket/components/LiftTicketCalculator";
 import { LiftTicketPriceTable } from "@/features/lift-ticket/components/LiftTicketPriceTable";
 import { RentalPriceTable } from "@/features/lift-ticket/components/RentalPriceTable";
+import {
+  type TicketCategory,
+  ticketCategoriesOf,
+} from "@/features/lift-ticket/utils/ticketCategories";
+import { useScreenState } from "@/features/map/session/useScreenState";
+import { cn } from "@/lib/utils";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
+import { useSimultaneousView } from "../components/SimultaneousToggle";
 import type { Resort } from "../types";
 
 const YukiMagiCard = ({ yukiMagi }: { yukiMagi: Resort["yukiMagi"] }) => {
@@ -60,27 +70,101 @@ const YukiMagiCard = ({ yukiMagi }: { yukiMagi: Resort["yukiMagi"] }) => {
   );
 };
 
+/** 「高鷲のみ」「ダイナランド共通券」「TAKASU MOUNTAINS TICKET」の切り替え */
+const TicketCategoryTabs = ({
+  categories,
+  activeKey,
+  onChange,
+}: {
+  categories: TicketCategory[];
+  activeKey: string;
+  onChange: (key: string) => void;
+}) => (
+  <div role="tablist" aria-label="券の種類" className="flex flex-wrap gap-2">
+    {categories.map(category => {
+      const isActive = category.key === activeKey;
+      return (
+        <Button
+          key={category.key}
+          type="button"
+          role="tab"
+          aria-selected={isActive}
+          size="xs"
+          variant={isActive ? "default" : "outline"}
+          className={cn("h-8 rounded-full px-3", !isActive && "text-gray-700")}
+          onClick={() => onChange(category.key)}
+        >
+          {category.label}
+        </Button>
+      );
+    })}
+  </div>
+);
+
 export const TicketsTab = ({ resort }: { resort: Resort }) => {
   const tickets = resort.tickets;
-  const liftTicketData = resort.liftTickets[0] ?? null;
+  // 「〇〇も同時に表示」中は、組のスキー場の券も選べるようにする
+  const { active, partners } = useSimultaneousView(resort);
+  const members = useMemo(() => [resort, ...partners], [resort, partners]);
+  const categories = useMemo(
+    () =>
+      ticketCategoriesOf(
+        members.map(member => ({
+          resortId: member.id,
+          nameJa: member.nameJa,
+          shortName: member.shortName,
+          label: active?.memberLabels[member.id],
+          seasons: member.liftTickets,
+        })),
+      ),
+    [active, members],
+  );
+  const [selectedKey, setSelectedKey] = useScreenState(
+    `rusutsu:detail:v1:${resort.id}:ticketCategory`,
+    z.string(),
+    "",
+  );
+  const category =
+    categories.find(item => item.key === selectedKey) ?? categories[0] ?? null;
+  const liftTicketData = category?.seasons[0] ?? null;
+  // 固有の券しかなければ切り替えは出さない。共通券しかないときは、
+  // 共通券であることが分かるようにその1つを出す。
+  const showCategories =
+    categories.length > 1 || (category !== null && category.kind !== "own");
+  const categoryControl = showCategories ? (
+    <TicketCategoryTabs
+      categories={categories}
+      activeKey={category?.key ?? ""}
+      onChange={setSelectedKey}
+    />
+  ) : undefined;
+  const yukiMagi =
+    members.find(member => member.id === category?.resortId)?.yukiMagi ??
+    resort.yukiMagi;
 
-  if (liftTicketData) {
+  if (category && liftTicketData) {
     return (
       <div className="flex flex-col gap-6">
-        <YukiMagiCard yukiMagi={resort.yukiMagi} />
+        <YukiMagiCard yukiMagi={yukiMagi} />
         <LiftTicketCalculator
-          seasons={resort.liftTickets}
+          key={category.key}
+          seasons={category.seasons}
           sessionKey={`rusutsu:detail:v1:${resort.id}:ticketInput`}
+          categoryControl={categoryControl}
         />
         <section>
           <h2 className="text-lg font-bold text-gray-900 font-[var(--font-heading)]">
             公式リフト料金表
           </h2>
           <p className="mt-2 mb-4 text-gray-600 text-sm">
+            {showCategories && `${category.label}・`}
             {liftTicketData.season.label_ja}
             の券種・対象・適用日を表示しています。
           </p>
-          <LiftTicketPriceTable data={liftTicketData} />
+          <LiftTicketPriceTable
+            data={liftTicketData}
+            scope={category.kind === "own" ? "single" : "shared"}
+          />
         </section>
         {(liftTicketData.rentals?.length ?? 0) > 0 && (
           <section>

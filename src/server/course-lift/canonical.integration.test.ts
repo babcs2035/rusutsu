@@ -627,7 +627,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
       },
     );
     await t.test(
-      "linked parent and child summaries follow member crawls and alias provenance",
+      "non-line map annotations remain editable but do not affect operating counts",
       async () => {
         const original = await db.skiResort.findUniqueOrThrow({
           where: { id: "sample" },
@@ -639,86 +639,12 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
           ...fields
         } = original;
         await db.skiResort.create({
-          data: {
-            ...fields,
-            id: "linked",
-            nameJa: "連携エリア",
-            linkKind: "LINKED",
-            sourceResortIds: ["sample"],
-          },
+          data: { ...fields, id: "annotated", nameJa: "注記つき" },
         });
-        await db.skiResort.update({
-          where: { id: "sample" },
-          data: { mergedIntoId: "linked" },
-        });
-        const parentLine = line("parent-a", "A");
-        const parentElevated = {
-          ...elevated[2],
-          properties: {
-            ...elevated[2].properties,
-            entityId: "parent-a",
-            name: "A",
-          },
-        };
+        const key = "resorts-temporary/slope_before/annotated.geojson";
         await api.writeDataDocumentsDirect([
-          write(
-            "resorts-temporary/slope_before/linked.geojson",
-            collection([parentLine]),
-          ),
-          write(
-            "resorts-temporary/slope_10m/linked.geojson",
-            collection([parentElevated]),
-          ),
-          write("resorts-temporary/latest_status_mapping/linked.json", {
-            version: 1,
-            courses: {
-              sourceFile: "current.json",
-              updatedAt: "2026-10-18T04:00:00Z",
-              rows: [
-                {
-                  geometryId: "parent-a",
-                  geojsonName: "A",
-                  crawledName: "A別名",
-                  crawledNames: ["A別名", "A"],
-                },
-              ],
-            },
-          }),
+          write(key, collection([line("annotated-a", "A")])),
         ]);
-        assert.equal(
-          (await db.mapCourse.findUniqueOrThrow({ where: { id: "parent-a" } }))
-            .statusName,
-          "A",
-        );
-        assert.equal(
-          (await api.getFinalizedResortMapData("linked")).courseStatusSummary
-            .total,
-          1,
-        );
-        await api.persistCrawlLatestRun(
-          crawl("2026-10-18T05:00:00Z", [
-            { name: "A", status: "×", update: null, note: "終了" },
-          ]),
-          "linked-update",
-        );
-        assert.equal(
-          (await db.mapCourse.findUniqueOrThrow({ where: { id: "parent-a" } }))
-            .latestNote,
-          "終了",
-        );
-        for (const id of ["sample", "linked"]) {
-          const summary = await db.skiResortOperationSummary.findUniqueOrThrow({
-            where: { skiResortId: id },
-          });
-          assert.equal(summary.courseTotal, 1);
-          assert.equal(summary.courseActive, 0);
-        }
-      },
-    );
-    await t.test(
-      "non-line map annotations remain editable but do not affect operating counts",
-      async () => {
-        const key = "resorts-temporary/slope_before/linked.geojson";
         const saved = await api.getDataDocumentDirect(key);
         const data = JSON.parse(saved.content);
         data.features.push({
@@ -733,12 +659,12 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
           2,
         );
         const summary = await db.skiResortOperationSummary.findUniqueOrThrow({
-          where: { skiResortId: "linked" },
+          where: { skiResortId: "annotated" },
         });
         assert.equal(summary.courseTotal, 1);
         assert.equal(summary.courseActive, 0);
         assert.equal(
-          (await api.getFinalizedResortMapData("linked")).courses.features
+          (await api.getFinalizedResortMapData("annotated")).courses.features
             .length,
           1,
         );

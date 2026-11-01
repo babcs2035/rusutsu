@@ -1,24 +1,27 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { getResortLabelName } from "@/lib/resortAliases";
 import {
   type AdminSkiResortRecord,
   isMergedSource,
 } from "@/server/ski-resorts/adminContract";
+import type { DisplayGroup } from "@/server/ski-resorts/displayGroupContract";
 import {
-  linkedAreaDefaults,
   mergeResortSummary,
   type ResortMergeResult,
 } from "@/server/ski-resorts/mergeContract";
 import {
-  mergeSkiResortsFromAdmin,
-  updateTicketGroupFromAdmin,
-} from "./mergeActions";
+  listDisplayGroupsFromAdmin,
+  saveDisplayGroupFromAdmin,
+} from "./displayGroupActions";
+import { mergeSkiResortsFromAdmin } from "./mergeActions";
+import { filledLabels, MemberLabelFields } from "./ResortDisplayGroupPanel";
 
-type RelationKind = "LINKED" | "MERGED" | "TICKET";
+type RelationKind = "MERGED" | "DISPLAY";
 
 const RELATION_KINDS: Array<{
   kind: RelationKind;
@@ -26,22 +29,16 @@ const RELATION_KINDS: Array<{
   description: string;
 }> = [
   {
-    kind: "LINKED",
-    label: "連携エリア",
-    description:
-      "全国マップのピンは別々のまま、地図・コース・リフト・料金・レビューを共通にします。天気・予報・積雪はスキー場ごとに切り替えて表示します。",
-  },
-  {
     kind: "MERGED",
     label: "完全統合",
     description:
       "1つのスキー場にまとめます。公開一覧と地図には結合後の1件だけを表示します。",
   },
   {
-    kind: "TICKET",
-    label: "共通券",
+    kind: "DISPLAY",
+    label: "同時表示",
     description:
-      "別々のスキー場のまま、共通券で滑走できることを詳細画面に表示します。地図や詳細はまとめません。",
+      "別々のスキー場のまま、詳細画面の「〇〇も同時に表示」で地図・営業状況・SNS・料金・天気・投稿を一緒に見られるようにします。",
   },
 ];
 
@@ -52,7 +49,7 @@ export function ResortMergeForm({
   onDirtyChange,
   onPendingChange,
   onCreated,
-  onTicketGrouped,
+  onDisplayGrouped,
 }: {
   resorts: AdminSkiResortRecord[];
   initialId: string | null;
@@ -62,16 +59,27 @@ export function ResortMergeForm({
   onCreated: (
     result: Extract<ResortMergeResult, { status: "created" }>,
   ) => void;
-  onTicketGrouped: (resorts: AdminSkiResortRecord[]) => void;
+  onDisplayGrouped: (group: DisplayGroup) => void;
 }) {
-  const [kind, setKind] = useState<RelationKind>("LINKED");
-  const isTicket = kind === "TICKET";
-  // 共通券は公開中の単位（連携エリアの子を含む）どうしを結ぶ。
+  const [kind, setKind] = useState<RelationKind>("MERGED");
+  const isDisplay = kind === "DISPLAY";
+  // 完全統合は統合していないスキー場どうし、同時表示は公開中の単位どうしを結ぶ
   const eligible = resorts.filter(resort =>
-    isTicket
-      ? !isMergedSource(resort, resorts) && !resort.sourceResortIds.length
+    isDisplay
+      ? resort.isActive && !isMergedSource(resort)
       : !resort.mergedIntoId && !resort.sourceResortIds.length,
   );
+  const [label, setLabel] = useState("");
+  const [memberLabels, setMemberLabels] = useState<Record<string, string>>({});
+  const [displayGroups, setDisplayGroups] = useState<DisplayGroup[] | null>(
+    null,
+  );
+  useEffect(() => {
+    if (!isDisplay || displayGroups) return;
+    void listDisplayGroupsFromAdmin().then(result => {
+      if (result.status === "ok") setDisplayGroups(result.groups);
+    });
+  }, [displayGroups, isDisplay]);
   const [selectedIds, setSelectedIds] = useState<string[]>(
     initialId && eligible.some(resort => resort.id === initialId)
       ? [initialId]
@@ -100,21 +108,20 @@ export function ResortMergeForm({
     setError(null);
     onDirtyChange(true);
   };
+  // 同じ顔ぶれの組がすでにあれば作らない
+  const sameGroup = isDisplay
+    ? displayGroups?.find(
+        group =>
+          group.members.length === selected.length &&
+          selected.every(resort =>
+            group.members.some(member => member.id === resort.id),
+          ),
+      )
+    : undefined;
   const canSubmit =
     !pending &&
     selected.length >= 2 &&
-    (kind !== "MERGED" || (Boolean(primary) && !idExists));
-  // 連携エリアの ID・名称はサーバーが同じ規則で決める。ここでは表示だけ。
-  const linkedDefaults =
-    selected.length >= 2 ? linkedAreaDefaults(selected) : null;
-  const linkedPreview = {
-    nameJa: linkedDefaults?.nameJa ?? "",
-    id:
-      linkedDefaults
-        ?.idCandidates(20)
-        .find(candidate => !resorts.some(resort => resort.id === candidate)) ??
-      "",
-  };
+    (isDisplay ? !sameGroup : Boolean(primary) && !idExists);
   const toggle = (id: string) => {
     const next = selectedIds.includes(id)
       ? selectedIds.filter(value => value !== id)
@@ -134,21 +141,21 @@ export function ResortMergeForm({
         onPendingChange(true);
         startTransition(async () => {
           try {
-            if (kind === "TICKET") {
-              const result = await updateTicketGroupFromAdmin({
-                action: "set",
-                resorts: selected.map(resort => ({
-                  id: resort.id,
-                  expectedUpdatedAt: resort.updatedAt,
-                })),
+            if (isDisplay) {
+              const result = await saveDisplayGroupFromAdmin({
+                label: label.trim() || null,
+                memberLabels: filledLabels(selectedIds, memberLabels),
+                resortIds: selected.map(resort => resort.id),
               });
               if (result.status === "error") setError(result.message);
-              else onTicketGrouped(result.resorts);
+              else onDisplayGrouped(result.group);
               return;
             }
             const result = await mergeSkiResortsFromAdmin({
-              kind,
-              ...(kind === "MERGED" ? { id, nameJa, nameEn, primaryId } : {}),
+              id,
+              nameJa,
+              nameEn,
+              primaryId,
               sources: selected.map(resort => ({
                 id: resort.id,
                 expectedUpdatedAt: resort.updatedAt,
@@ -179,11 +186,9 @@ export function ResortMergeForm({
         <Button type="submit" disabled={!canSubmit}>
           {pending
             ? "保存中…"
-            : isTicket
-              ? "共通券として保存"
-              : kind === "LINKED"
-                ? "連携して保存"
-                : "結合して保存"}
+            : isDisplay
+              ? "同時表示の組を保存"
+              : "結合して保存"}
         </Button>
       </div>
       {error && (
@@ -203,7 +208,7 @@ export function ResortMergeForm({
             <h3 id="relation-kind-heading" className="font-bold">
               1. 関係の種類を選ぶ
             </h3>
-            <div className="grid gap-2 md:grid-cols-3">
+            <div className="grid gap-2 md:grid-cols-2">
               {RELATION_KINDS.map(option => (
                 <label
                   key={option.kind}
@@ -292,35 +297,72 @@ export function ResortMergeForm({
               )}
             </div>
           </section>
-          {isTicket ? (
-            <section className="space-y-3 rounded-xl border bg-white p-4">
-              <h3 className="font-bold">3. 保存後の表示</h3>
-              <p className="text-sm leading-6 text-gray-700">
-                選んだスキー場の詳細画面に「共通券で〇〇も滑走可」と表示します。すでに共通券グループに入っているスキー場を選ぶと、そのグループに追加します。
-              </p>
+          {isDisplay ? (
+            <section
+              className="space-y-3 rounded-xl border bg-white p-4"
+              onChange={() => onDirtyChange(true)}
+            >
+              <h3 className="font-bold">3. 表示名を決める</h3>
+              <div className="space-y-1.5">
+                <Label htmlFor="display-group-label">
+                  表示名
+                  <span className="ml-1 font-normal text-gray-600 text-xs">
+                    （空欄なら相手の名前で「〇〇・△△も同時に表示」）
+                  </span>
+                </Label>
+                <Input
+                  id="display-group-label"
+                  maxLength={100}
+                  placeholder="例: ニセコ全山"
+                  value={label}
+                  onChange={event => setLabel(event.target.value)}
+                />
+              </div>
               {selected.length > 0 && (
-                <p className="rounded-lg bg-amber-50 p-3 text-sm">
-                  {selected.map(resort => resort.nameJa).join("・")}
+                <div className="space-y-1.5">
+                  <p className="text-sm font-medium">
+                    スキー場ごとの表示名
+                    <span className="ml-1 font-normal text-gray-600 text-xs">
+                      空欄なら短縮名。志賀高原どうしなど、短縮名で区別できないときに付けます
+                    </span>
+                  </p>
+                  <MemberLabelFields
+                    resorts={selected}
+                    labels={memberLabels}
+                    onLabelChange={(id, value) => {
+                      setMemberLabels(current => ({ ...current, [id]: value }));
+                      onDirtyChange(true);
+                    }}
+                    onRemove={toggle}
+                  />
+                </div>
+              )}
+              {selected.length >= 2 && (
+                <p className="rounded-lg bg-blue-50 p-3 text-sm">
+                  詳細画面では
+                  {label.trim()
+                    ? `「${label.trim()}で表示」`
+                    : "相手の名前で「〇〇も同時に表示」"}
+                  と出します：
+                  {selected
+                    .map(
+                      resort =>
+                        memberLabels[resort.id]?.trim() ||
+                        getResortLabelName(
+                          resort.id,
+                          resort.nameJa,
+                          resort.shortName,
+                        ),
+                    )
+                    .join("・")}
                 </p>
               )}
-            </section>
-          ) : kind === "LINKED" ? (
-            <section className="space-y-3 rounded-xl border bg-white p-4">
-              <h3 className="font-bold">3. 保存後の表示</h3>
-              <p className="text-sm leading-6 text-gray-700">
-                全国マップには各スキー場のピンを残し、地図・コース・リフト・料金・レビューを共通にします。地図は各スキー場の地図をまとめた状態で作成します。
-              </p>
-              {selected.length >= 2 && (
-                <div className="space-y-1 rounded-lg bg-blue-50 p-4 text-sm">
-                  <p>
-                    エリア名：
-                    {linkedPreview.nameJa}
-                  </p>
-                  <p className="break-all text-xs text-gray-600">
-                    ID：{linkedPreview.id}
-                    （コース・リフト編集や料金・レビューの入力ではこの名前で表示します）
-                  </p>
-                </div>
+              {sameGroup && (
+                <p role="alert" className="text-sm text-red-700">
+                  同じスキー場の組がすでにあります
+                  {sameGroup.label ? `（${sameGroup.label}）` : ""}
+                  。表示名を変えるときは、スキー場の関係一覧から編集してください。
+                </p>
               )}
             </section>
           ) : (

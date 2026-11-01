@@ -35,6 +35,7 @@ const anonymousProofSchema = z
 
 const feedInputSchema = z.strictObject({
   resortId: idSchema,
+  resortIds: z.array(idSchema).max(20).optional(),
   courseId: idSchema.optional(),
   liftId: idSchema.optional(),
   kind: z.enum(["COURSE", "MOGUL", "ITEM", "LIFT"]).optional(),

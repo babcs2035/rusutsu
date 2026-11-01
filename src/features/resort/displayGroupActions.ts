@@ -53,6 +53,9 @@ export async function saveDisplayGroupFromAdmin(
           not_found: "この組は削除されています。再読み込みしてください。",
           invalid_resorts:
             "公開中でないスキー場が含まれています。選び直してください。",
+          duplicate: "同じスキー場の組がすでにあります。",
+          unsupported_labels:
+            "この内容は、本番のデータAPIを更新（デプロイ）してから保存できます。スキー場ごとの表示名を空欄にし、3か所以上なら組の表示名を入れると今すぐ保存できます。",
         }[result.status],
       };
     revalidatePath("/", "layout");

@@ -17,6 +17,7 @@ const groupInclude = {
   members: {
     orderBy: { position: "asc" },
     select: {
+      label: true,
       skiResort: { select: { id: true, nameJa: true, shortName: true } },
     },
   },
@@ -29,7 +30,10 @@ type GroupRow = Prisma.ResortDisplayGroupGetPayload<{
 const serialize = (row: GroupRow): DisplayGroup => ({
   id: row.id,
   label: row.label,
-  members: row.members.map(member => member.skiResort),
+  members: row.members.map(member => ({
+    ...member.skiResort,
+    label: member.label,
+  })),
   updatedAt: row.updatedAt.toISOString(),
 });
 
@@ -64,16 +68,35 @@ export async function saveDisplayGroupDirect(
   try {
     return await prisma.$transaction(
       async transaction => {
-        // 公開中の単位（完全統合の子は除き、連携エリアの子は含む）だけを組にできる
+        // 公開中の単位（完全統合の結合元は除く）だけを組にできる
         const resorts = await transaction.skiResort.findMany({
           where: { ...publicResortWhere, id: { in: request.resortIds } },
           select: { id: true },
         });
         if (resorts.length !== request.resortIds.length)
           return { status: "invalid_resorts" as const };
+        // 同じ顔ぶれの組は2つ作らない
+        const candidates = await transaction.resortDisplayGroup.findMany({
+          where: {
+            ...(request.id ? { id: { not: request.id } } : {}),
+            members: { some: { skiResortId: request.resortIds[0] } },
+          },
+          select: { members: { select: { skiResortId: true } } },
+        });
+        if (
+          candidates.some(
+            group =>
+              group.members.length === request.resortIds.length &&
+              group.members.every(member =>
+                request.resortIds.includes(member.skiResortId),
+              ),
+          )
+        )
+          return { status: "duplicate" as const };
         const members = request.resortIds.map((skiResortId, position) => ({
           skiResortId,
           position,
+          label: request.memberLabels[skiResortId] ?? null,
         }));
         if (!request.id) {
           const created = await transaction.resortDisplayGroup.create({

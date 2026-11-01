@@ -2,9 +2,11 @@
 
 import dynamic from "next/dynamic";
 import { useMemo } from "react";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { useScreenState } from "@/features/map/session/useScreenState";
 import { getResortLabelName } from "@/lib/resortAliases";
 import { cn } from "@/lib/utils";
 import {
@@ -51,14 +53,29 @@ export function ResortSelectStep({
   onQueryChange: (query: string) => void;
   onStart: () => void;
 }) {
+  // 一覧と地図に出す公開状態。結合元は一般画面に出ないので公開停止中に数える
+  const [showActive, setShowActive] = useScreenState(
+    "rusutsu:admin:resort:showActive",
+    z.boolean(),
+    true,
+  );
+  const [showInactive, setShowInactive] = useScreenState(
+    "rusutsu:admin:resort:showInactive",
+    z.boolean(),
+    true,
+  );
   const filteredResorts = useMemo(() => {
     const keyword = query.trim().toLocaleLowerCase("ja");
-    return resorts.filter(resort =>
-      `${resort.nameJa} ${resort.nameEn} ${resort.shortName ?? ""} ${resort.id} ${resort.prefecture}`
-        .toLocaleLowerCase("ja")
-        .includes(keyword),
-    );
-  }, [query, resorts]);
+    return resorts.filter(resort => {
+      const isPublic = resort.isActive && !isMergedSource(resort);
+      return (
+        (isPublic ? showActive : showInactive) &&
+        `${resort.nameJa} ${resort.nameEn} ${resort.shortName ?? ""} ${resort.id} ${resort.prefecture}`
+          .toLocaleLowerCase("ja")
+          .includes(keyword)
+      );
+    });
+  }, [query, resorts, showActive, showInactive]);
   const filteredResortIdSet = useMemo(
     () => new Set(filteredResorts.map(resort => resort.id)),
     [filteredResorts],
@@ -91,7 +108,7 @@ export function ResortSelectStep({
           selectedResortId={selectedResortId}
           onSelectResort={onSelectResort}
           filteredResortIdSet={filteredResortIdSet}
-          isFilterActive={query.trim() !== ""}
+          isFilterActive={query.trim() !== "" || !showActive || !showInactive}
         />
       </div>
       <div className="flex min-h-0 min-w-0 flex-col gap-2 overflow-hidden max-md:overflow-y-auto max-md:[&>*]:shrink-0 border-t border-gray-200 bg-white p-3 max-md:h-[60%] md:w-[min(460px,60vw)] md:border-t-0 md:border-l lg:w-[460px] lg:min-w-[460px]">
@@ -109,10 +126,30 @@ export function ResortSelectStep({
           value={query}
           onChange={event => onQueryChange(event.target.value)}
         />
-        <p className="text-xs text-gray-500" role="status">
-          {filteredResorts.length} 件 / 全 {resorts.length}{" "}
-          件（公開停止中も含む）
-        </p>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+          {(
+            [
+              ["公開中", showActive, setShowActive],
+              ["公開停止中", showInactive, setShowInactive],
+            ] as const
+          ).map(([label, checked, onChange]) => (
+            <label
+              key={label}
+              className="flex cursor-pointer items-center gap-1.5 font-medium text-gray-700"
+            >
+              <input
+                type="checkbox"
+                className="size-4"
+                checked={checked}
+                onChange={event => onChange(event.target.checked)}
+              />
+              {label}
+            </label>
+          ))}
+          <p className="ml-auto text-gray-500" role="status">
+            {filteredResorts.length} 件 / 全 {resorts.length} 件
+          </p>
+        </div>
         {selectedResort && (
           <Card className="shrink-0 rounded-md border-2 border-blue-600 bg-blue-50">
             <CardContent className="space-y-2 p-3">
@@ -127,9 +164,7 @@ export function ResortSelectStep({
               </p>
               {selectedResort.mergedIntoId && (
                 <p className="break-all text-xs text-blue-700">
-                  {isMergedSource(selectedResort, resorts)
-                    ? "結合先："
-                    : "連携エリア："}
+                  結合先：
                   {
                     resorts.find(
                       resort => resort.id === selectedResort.mergedIntoId,
@@ -140,9 +175,7 @@ export function ResortSelectStep({
               )}
               {!!selectedResort.sourceResortIds.length && (
                 <p className="text-xs text-blue-700">
-                  {selectedResort.linkKind === "LINKED"
-                    ? "連携しているスキー場："
-                    : "結合元："}
+                  結合元：
                   {selectedResort.sourceResortIds
                     .map(
                       id =>
@@ -186,20 +219,14 @@ export function ResortSelectStep({
                 </span>
               </span>
               {resort.mergedIntoId ? (
-                <span className="text-xs text-blue-700">
-                  {isMergedSource(resort, resorts) ? "結合元" : "連携エリア"}
-                </span>
+                <span className="text-xs text-blue-700">結合元</span>
               ) : resort.sourceResortIds.length ? (
                 <span className="text-xs text-blue-700">
-                  {resort.sourceResortIds.length}件を
-                  {resort.linkKind === "LINKED" ? "連携" : "結合"}
+                  {resort.sourceResortIds.length}件を結合
                 </span>
               ) : null}
-              {resort.ticketGroupId && (
-                <span className="text-xs text-amber-700">共通券</span>
-              )}
               <PublicationBadge
-                isActive={resort.isActive && !isMergedSource(resort, resorts)}
+                isActive={resort.isActive && !isMergedSource(resort)}
               />
             </button>
           ))}

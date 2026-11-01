@@ -66,10 +66,7 @@ export async function courseOptions(
 ): Promise<CommunityMapData> {
   const resort = await readSkiResortById(resortId);
   if (!resort) throw new Error("スキー場が見つかりません。");
-  // 詳細の地図と同じく、連携エリアの子は親の地図のコース・リフトを使う
-  const data = await getFinalizedResortMapData(
-    resort.linkedArea?.id ?? resort.id,
-  );
+  const data = await getFinalizedResortMapData(resort.id);
   return communityMapData(
     resort.nameJa,
     [resort.longitude, resort.latitude],
@@ -150,7 +147,9 @@ export async function readFeed(input: FeedInput) {
   const id = await viewerId();
   const rows = await prisma.communityPost.findMany({
     where: {
-      resortId: input.resortId,
+      resortId: input.resortIds?.length
+        ? { in: [...new Set([input.resortId, ...input.resortIds])] }
+        : input.resortId,
       status: "VISIBLE",
       ...(input.authorId ? { authorId: input.authorId } : {}),
       ...(input.courseId || input.liftId || input.kind

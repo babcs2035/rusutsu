@@ -235,13 +235,8 @@ export async function fetchCrawlMonitorOverviewDirect(
 
   const [resorts, decorations] = await Promise.all([
     prisma.skiResort.findMany({
-      // クローラーの単位。完全統合は親、連携エリアは子ごとに取得する。
-      where: {
-        OR: [
-          { mergedIntoId: null, linkKind: "MERGED" },
-          { mergedInto: { is: { linkKind: "LINKED" } } },
-        ],
-      },
+      // クローラーの単位。完全統合は結合先で取得する。
+      where: { mergedIntoId: null },
       select: { id: true, nameJa: true, prefecture: true },
       orderBy: { id: "asc" },
     }),

@@ -269,8 +269,16 @@ export const tableSourcesOf = (table: PriceTable) =>
     ),
   ].sort((left, right) => left - right);
 
-export const LiftTicketPriceTable = ({ data }: { data: LiftTicketData }) => {
-  const [mode, setMode] = useState<TableMode>("single");
+export const LiftTicketPriceTable = ({
+  data,
+  scope,
+}: {
+  data: LiftTicketData;
+  /** 呼び出し側で券の種類を選んでいるときに渡す。表の中の切り替えは出さない */
+  scope?: TableMode;
+}) => {
+  const [selectedMode, setMode] = useState<TableMode>("single");
+  const mode = scope ?? selectedMode;
   const sharedPartners = useMemo(
     () => sharedResortsOf(data.products),
     [data.products],
@@ -310,7 +318,7 @@ export const LiftTicketPriceTable = ({ data }: { data: LiftTicketData }) => {
 
   return (
     <div className="flex flex-col gap-4">
-      {sharedPartners.length > 0 && (
+      {!scope && sharedPartners.length > 0 && (
         <div className="flex gap-2 flex-wrap">
           {modes.map(([value, label]) => {
             const isActive = mode === value;

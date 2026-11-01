@@ -5,7 +5,6 @@ import { requireAdmin } from "@/lib/requireAdmin";
 import {
   mergeAdminSkiResorts,
   unlinkAdminSkiResorts,
-  updateTicketGroup,
 } from "@/lib/skiResortData";
 import {
   type ResortMergeRequest,
@@ -14,9 +13,6 @@ import {
   type ResortUnlinkResult,
   resortMergeRequestSchema,
   resortUnlinkRequestSchema,
-  type TicketGroupRequest,
-  type TicketGroupResult,
-  ticketGroupRequestSchema,
 } from "@/server/ski-resorts/mergeContract";
 
 export async function mergeSkiResortsFromAdmin(
@@ -74,9 +70,9 @@ export async function unlinkSkiResortsFromAdmin(
         status: "error",
         message: {
           not_linked:
-            "このスキー場は連携エリアではありません。再読み込みして確認してください。",
+            "このスキー場は完全統合の結合先ではありません。再読み込みして確認してください。",
           conflict:
-            "連携エリアが別の操作で更新されました。再読み込みして内容を確認してください。",
+            "結合先が別の操作で更新されました。再読み込みして内容を確認してください。",
         }[result.status],
       };
     revalidatePath("/", "layout");
@@ -85,43 +81,7 @@ export async function unlinkSkiResortsFromAdmin(
     return {
       status: "error",
       message:
-        "連携を解除できませんでした。サーバーの接続状態とDBマイグレーションの適用を確認してください。",
-    };
-  }
-}
-
-export async function updateTicketGroupFromAdmin(
-  request: TicketGroupRequest,
-): Promise<
-  | Extract<TicketGroupResult, { status: "updated" }>
-  | { status: "error"; message: string }
-> {
-  await requireAdmin();
-  const parsed = ticketGroupRequestSchema.safeParse(request);
-  if (!parsed.success)
-    return {
-      status: "error",
-      message: "共通券の対象を2件以上、重複なく選んでください。",
-    };
-  try {
-    const result = await updateTicketGroup(parsed.data);
-    if (result.status !== "updated")
-      return {
-        status: "error",
-        message: {
-          invalid_resorts:
-            "対象が削除済みか、別々の共通券グループに入っています。再読み込みして選び直してください。",
-          conflict:
-            "対象が別の操作で更新されました。再読み込みして内容を確認してください。",
-        }[result.status],
-      };
-    revalidatePath("/", "layout");
-    return result;
-  } catch {
-    return {
-      status: "error",
-      message:
-        "共通券の関係を保存できませんでした。サーバーの接続状態とDBマイグレーションの適用を確認してください。",
+        "完全統合を解除できませんでした。サーバーの接続状態とDBマイグレーションの適用を確認してください。",
     };
   }
 }

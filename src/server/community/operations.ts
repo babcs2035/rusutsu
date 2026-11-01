@@ -90,6 +90,7 @@ export async function getCommunityFeed(input: FeedInput) {
       z
         .strictObject({
           resortId: idSchema,
+          resortIds: z.array(idSchema).max(20).optional(),
           courseId: idSchema.optional(),
           liftId: idSchema.optional(),
           kind: z.enum(["COURSE", "LIFT", "MOGUL", "ITEM"]).optional(),

@@ -323,6 +323,7 @@ node scripts/lookup-price.mjs src/private/data/lift-ticket/yukigaoka/2025-2026.j
 ★**苗場とかぐらのように、そのスキー場だけの券と隣接スキー場との共通券の
 両方が売られている**場合がある。**`shared_with_resorts` が空なら単独券、
 1件以上あれば共通券**（「単独券か共通券か」を表す分類ラベルは持たない）。
+相手の数で料金タブの分け方が決まる（[共通券](data-model.md#共通券)）。
 
 ```json
 {
@@ -344,7 +345,7 @@ node scripts/lookup-price.mjs src/private/data/lift-ticket/yukigaoka/2025-2026.j
           "resort_id": "kagura",
           "name_ja": "かぐらスキー場",
           "official_label_ja": "苗場・かぐら共通",
-          "notes_ja": "共通券のため、かぐら側のJSONにも同じ共通券を記載すること。",
+          "notes_ja": null,
           "source_refs": ["src-page-001"]
         }
       ],
@@ -356,7 +357,10 @@ node scripts/lookup-price.mjs src/private/data/lift-ticket/yukigaoka/2025-2026.j
 
 - `resort_id` は `SkiResort.id` と一致させる（**画面から相手スキー場へ辿るために必須**。
   マスタに無いスキー場なら null にして `human_review_required` に記録する）
-- **相手スキー場側のJSONにも同じ共通券を記載する**（片方だけに書かない）
+- かぐら側のJSONにも同じ共通券を、相手を苗場にして載せる
+- 3か所以上で使える券は、自分以外の全員を相手に書く。高鷲の「TAKASU MOUNTAINS
+  TICKET 1日券」なら、ダイナランド・ホワイトピア高鷲・鷲ヶ岳・ひるがの高原・
+  郡上ヴァカンス村を相手にし、それぞれのJSONにも同じ顔ぶれで載せる
 - `validity` は利用単位のまま（共通1日券なら `calendar_day` / `days: 1`）
 
 照会時は単独券／共通券で絞り込める:
@@ -366,7 +370,8 @@ node scripts/lookup-price.mjs <tickets.json> --date 2026-01-14 --scope single
 node scripts/lookup-price.mjs <tickets.json> --date 2026-01-14 --scope shared
 ```
 
-画面では「このスキー場のみ / 共通券（かぐらスキー場）」の切り替えに使う。
+料金タブでは苗場を開くと「苗場のみ」「かぐら共通券」を選べる。苗場とかぐらを
+同時表示の組にして一緒に見ると、「苗場のみ」「かぐらのみ」「共通券」が並ぶ。
 
 ## 9. 昼食付き・温泉付きなどのセット券（package + included_items）
 

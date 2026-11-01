@@ -26,19 +26,14 @@ async function loadRecommendationPool(resortId: string, favoriteIds: string[]) {
       shortName: true,
       sourceResortIds: true,
       isActive: true,
-      mergedInto: {
-        select: { id: true, linkKind: true, sourceResortIds: true },
-      },
+      mergedInto: { select: { sourceResortIds: true } },
     },
   });
-  const canonical = (r: (typeof resorts)[number]) =>
-    r.mergedInto?.linkKind === "LINKED" ? r.mergedInto.id : r.id;
   const sourceResort = resorts.find(r => r.id === resortId);
   if (!sourceResort) return { status: "source_unavailable" as const };
-  const sourceId = canonical(sourceResort);
+  const sourceId = sourceResort.id;
   const sourceMembers = new Set([
     resortId,
-    sourceId,
     ...sourceResort.sourceResortIds,
     ...(sourceResort.mergedInto?.sourceResortIds ?? []),
   ]);
@@ -48,14 +43,13 @@ async function loadRecommendationPool(resortId: string, favoriteIds: string[]) {
       r.isActive &&
       ![
         r.id,
-        canonical(r),
         ...r.sourceResortIds,
         ...(r.mergedInto?.sourceResortIds ?? []),
       ].some(id => sourceMembers.has(id)),
   );
   const byCanonical = new Map<string, (typeof resorts)[number]>();
   for (const r of candidates.sort((a, b) => a.id.localeCompare(b.id, "en")))
-    if (!byCanonical.has(canonical(r))) byCanonical.set(canonical(r), r);
+    byCanonical.set(r.id, r);
   if (!byCanonical.size) return { status: "no_other_favorites" as const };
   const stored = await prisma.courseRecommendationFeature.findMany({
     where: {

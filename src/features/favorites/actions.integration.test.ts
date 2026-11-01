@@ -119,7 +119,7 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
     });
     await db.skiResort.update({
       where: { id: "linked-parent" },
-      data: { linkKind: "LINKED", sourceResortIds: ["source", "linked-child"] },
+      data: { sourceResortIds: ["source", "linked-child"] },
     });
     await db.skiResort.update({
       where: { id: "linked-child" },

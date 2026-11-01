@@ -10,12 +10,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { getResortLabelName } from "@/lib/resortAliases";
 import type { AdminSkiResortRecord } from "@/server/ski-resorts/adminContract";
 import { isMergedSource } from "@/server/ski-resorts/adminContract";
-import {
-  DISPLAY_GROUP_LABEL_REQUIRED_FROM,
-  type DisplayGroup,
-} from "@/server/ski-resorts/displayGroupContract";
+import type { DisplayGroup } from "@/server/ski-resorts/displayGroupContract";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import {
   deleteDisplayGroupFromAdmin,
@@ -23,7 +21,14 @@ import {
   saveDisplayGroupFromAdmin,
 } from "./displayGroupActions";
 
-type Draft = { id?: string; updatedAt?: string; label: string; ids: string[] };
+export type DisplayGroupDraft = {
+  id?: string;
+  updatedAt?: string;
+  label: string;
+  ids: string[];
+  /** スキー場ごとの表示名（空欄なら短縮名） */
+  labels?: Record<string, string>;
+};
 
 /**
  * 詳細画面の「〇〇も同時に表示」で合わせて見るスキー場の組。
@@ -40,7 +45,7 @@ export function ResortDisplayGroupPanel({
 }) {
   const [groups, setGroups] = useState<DisplayGroup[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [draft, setDraft] = useState<Draft | null>(null);
+  const [draft, setDraft] = useState<DisplayGroupDraft | null>(null);
   const [deleting, setDeleting] = useState<DisplayGroup | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -117,6 +122,7 @@ export function ResortDisplayGroupPanel({
                 updatedAt: group.updatedAt,
                 label: group.label ?? "",
                 ids: group.members.map(member => member.id),
+                labels: memberLabelsOf(group),
               })
             }
           >
@@ -171,31 +177,102 @@ export function ResortDisplayGroupPanel({
   );
 }
 
-function DisplayGroupEditor({
+/** 組の各スキー場に付けた表示名（付けていないものは含めない） */
+export const memberLabelsOf = (group: DisplayGroup) =>
+  Object.fromEntries(
+    group.members.flatMap(member =>
+      member.label ? [[member.id, member.label]] : [],
+    ),
+  );
+
+/**
+ * 組のスキー場と、それぞれの表示名の入力欄。空欄なら短縮名を出す。
+ * 志賀高原どうしのように短縮名が同じになる組で、区別できる名前を付ける。
+ */
+export function MemberLabelFields({
+  resorts,
+  labels,
+  onLabelChange,
+  onRemove,
+}: {
+  resorts: Array<Pick<AdminSkiResortRecord, "id" | "nameJa" | "shortName">>;
+  labels: Record<string, string>;
+  onLabelChange: (id: string, label: string) => void;
+  onRemove: (id: string) => void;
+}) {
+  return (
+    <ul className="divide-y rounded-md border">
+      {resorts.map(resort => (
+        <li key={resort.id} className="flex items-center gap-2 p-2">
+          <span className="w-[40%] min-w-0 shrink-0 text-sm">
+            <span className="block truncate font-medium">{resort.nameJa}</span>
+            <span className="block truncate text-gray-500 text-xs">
+              {resort.id}
+            </span>
+          </span>
+          <Input
+            aria-label={`${resort.nameJa}の表示名`}
+            className="h-8 min-w-0 flex-1"
+            maxLength={100}
+            placeholder={getResortLabelName(
+              resort.id,
+              resort.nameJa,
+              resort.shortName,
+            )}
+            value={labels[resort.id] ?? ""}
+            onChange={event => onLabelChange(resort.id, event.target.value)}
+          />
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="shrink-0"
+            aria-label={`${resort.nameJa}を組から外す`}
+            onClick={() => onRemove(resort.id)}
+          >
+            ×
+          </Button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** 空欄を除いた、保存する表示名 */
+export const filledLabels = (ids: string[], labels: Record<string, string>) =>
+  Object.fromEntries(
+    ids.flatMap(id => (labels[id]?.trim() ? [[id, labels[id].trim()]] : [])),
+  );
+
+export function DisplayGroupEditor({
   draft,
   resorts,
   onClose,
   onSaved,
 }: {
-  draft: Draft;
+  draft: DisplayGroupDraft;
   resorts: AdminSkiResortRecord[];
   onClose: () => void;
   onSaved: (group: DisplayGroup) => void;
 }) {
   const [label, setLabel] = useState(draft.label);
   const [ids, setIds] = useState(draft.ids);
+  const [labels, setLabels] = useState(draft.labels ?? {});
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  // 公開中の単位（完全統合の子と連携エリアの親は除く）だけを選べる
+  // 公開中の単位（完全統合の結合元は除く）だけを選べる
   const eligible = resorts.filter(
-    item =>
-      item.isActive &&
-      !isMergedSource(item, resorts) &&
-      !(item.linkKind === "LINKED" && item.sourceResortIds.length),
+    item => item.isActive && !isMergedSource(item),
   );
-  const nameOf = (id: string) =>
-    resorts.find(item => item.id === id)?.nameJa ?? id;
+  const selected = ids.map(
+    id =>
+      resorts.find(item => item.id === id) ?? {
+        id,
+        nameJa: id,
+        shortName: null,
+      },
+  );
   const keyword = query.trim().toLowerCase();
   const filtered = keyword
     ? eligible.filter(item =>
@@ -204,9 +281,7 @@ function DisplayGroupEditor({
           .includes(keyword),
       )
     : eligible.filter(item => ids.includes(item.id));
-  const needsLabel = ids.length >= DISPLAY_GROUP_LABEL_REQUIRED_FROM;
-  const canSave =
-    !pending && ids.length >= 2 && (!needsLabel || label.trim() !== "");
+  const canSave = !pending && ids.length >= 2;
   const toggle = (id: string) =>
     setIds(current =>
       current.includes(id)
@@ -222,6 +297,7 @@ function DisplayGroupEditor({
           ? { id: draft.id, expectedUpdatedAt: draft.updatedAt }
           : {}),
         label: label.trim() || null,
+        memberLabels: filledLabels(ids, labels),
         resortIds: ids,
       });
       if (result.status === "error") setError(result.message);
@@ -240,9 +316,7 @@ function DisplayGroupEditor({
           <span className="block font-semibold">
             表示名
             <span className="ml-1 font-normal text-gray-600 text-xs">
-              {needsLabel
-                ? "（3か所以上は必須）"
-                : "（空欄なら「〇〇も同時に表示」）"}
+              （空欄なら相手の名前で「〇〇・△△も同時に表示」）
             </span>
           </span>
           <Input
@@ -258,21 +332,22 @@ function DisplayGroupEditor({
           )}
         </label>
         <div className="space-y-1">
-          <p className="font-semibold">スキー場（{ids.length}件、2件以上）</p>
-          <div className="flex flex-wrap gap-1.5">
-            {ids.map(id => (
-              <Button
-                key={id}
-                type="button"
-                size="sm"
-                variant="secondary"
-                aria-label={`${nameOf(id)}を組から外す`}
-                onClick={() => toggle(id)}
-              >
-                {nameOf(id)} ×
-              </Button>
-            ))}
-          </div>
+          <p className="font-semibold">
+            スキー場と表示名（{ids.length}件、2件以上）
+            <span className="ml-1 font-normal text-gray-600 text-xs">
+              空欄なら短縮名
+            </span>
+          </p>
+          {ids.length > 0 && (
+            <MemberLabelFields
+              resorts={selected}
+              labels={labels}
+              onLabelChange={(id, value) =>
+                setLabels(current => ({ ...current, [id]: value }))
+              }
+              onRemove={toggle}
+            />
+          )}
         </div>
         <Input
           type="search"

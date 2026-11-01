@@ -9,7 +9,6 @@ import { skiResortIdSchema } from "@/server/ski-resorts/adminContract";
 import {
   findAdminSkiResortsDirect,
   findExistingSkiResortIdsDirect,
-  findLinkedAreasDirect,
   findSkiResortNamesDirect,
   findSkiResortsDirect,
   findSkiResortsForEditorDirect,
@@ -19,15 +18,7 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const viewSchema = z.enum([
-  "full",
-  "map",
-  "editor",
-  "linkedAreas",
-  "names",
-  "ids",
-  "admin",
-]);
+const viewSchema = z.enum(["full", "map", "editor", "names", "ids", "admin"]);
 
 const parseIds = (raw: string | null) => {
   if (raw === null) return undefined;
@@ -52,7 +43,7 @@ export async function GET(request: Request) {
   }
   if (
     (view.data === "ids" && ids === undefined) ||
-    (["full", "map", "editor", "linkedAreas", "admin"].includes(view.data) &&
+    (["full", "map", "editor", "admin"].includes(view.data) &&
       ids !== undefined)
   ) {
     return internalApiError(400, "INVALID_QUERY", "Invalid ids parameter");
@@ -69,9 +60,6 @@ export async function GET(request: Request) {
       return internalApiJson({
         resorts: await findSkiResortsForEditorDirect(),
       });
-    }
-    if (view.data === "linkedAreas") {
-      return internalApiJson({ areas: await findLinkedAreasDirect() });
     }
     if (view.data === "admin") {
       return internalApiJson({ resorts: await findAdminSkiResortsDirect() });

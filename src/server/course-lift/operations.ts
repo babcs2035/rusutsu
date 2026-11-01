@@ -1,5 +1,4 @@
 import type { Prisma } from "@prisma/client";
-import { combineLatestStatuses } from "@/lib/linkedAreaStatus";
 import { normalizeCrawledName } from "@/lib/resortMapMerge";
 import { record } from "./canonicalCodec";
 import { canonicalMapsEnabled } from "./canonicalDocuments";
@@ -82,7 +81,6 @@ export async function refreshMapOperations(
       id: true,
       nameJa: true,
       mergedIntoId: true,
-      linkKind: true,
       sourceResortIds: true,
       numberOfCourses: true,
       numberOfLifts: true,
@@ -98,17 +96,9 @@ export async function refreshMapOperations(
     )
       targets.add(resort.id);
   }
-  const membersFor = (id: string) => {
-    const resort = byId.get(id);
-    if (resort?.linkKind !== "LINKED") return [id];
-    return resorts
-      .filter(member => member.mergedIntoId === id)
-      .map(member => member.id);
-  };
-  const sourceIds = [...new Set([...targets].flatMap(membersFor))];
   const currents = await tx.crawlLatestCurrent.findMany({
     where: {
-      skiResortId: { in: sourceIds },
+      skiResortId: { in: [...targets] },
       kind: { in: ["COURSES", "LIFTS"] },
     },
     include: {
@@ -116,41 +106,24 @@ export async function refreshMapOperations(
     },
   });
   for (const id of targets) {
-    const members = membersFor(id);
     for (const [kind, category] of [
       ["course", "COURSES"],
       ["lift", "LIFTS"],
     ] as const) {
-      const captures = await Promise.all(
-        members.map(async member => {
-          const current = currents.find(
-            row => row.skiResortId === member && row.kind === category,
-          );
-          // 現在値がなければ「不明」にする。Git管理の古いファイルでは補わない。
-          if (!current) return null;
-          const snapshot = current.snapshot;
-          const items = Array.isArray(snapshot.data)
-            ? snapshot.data.map(item => ({
-                ...record(item),
-                _snapshotId: snapshot.id,
-                _observedAt: snapshot.run.observedAt.toISOString(),
-                _sourceUrls: snapshot.sourceUrls,
-              }))
-            : [];
-          return {
-            fileName: snapshot.id,
-            time: snapshot.run.observedAt.toISOString(),
-            sourceUrls: snapshot.sourceUrls,
-            items,
-          };
-        }),
-      );
-      const combined = combineLatestStatuses(
-        captures,
-        members.map(member => byId.get(member)?.nameJa ?? member),
-      );
+      // 現在値がなければ「不明」にする。Git管理の古いファイルでは補わない。
+      const snapshot = currents.find(
+        row => row.skiResortId === id && row.kind === category,
+      )?.snapshot;
+      const captured: Array<Record<string, unknown>> = snapshot
+        ? (Array.isArray(snapshot.data) ? snapshot.data : []).map(item => ({
+            ...record(item),
+            _snapshotId: snapshot.id,
+            _observedAt: snapshot.run.observedAt.toISOString(),
+            _sourceUrls: snapshot.sourceUrls,
+          }))
+        : [];
       const items = new Map<string, Array<Record<string, unknown>>>();
-      for (const item of combined?.items ?? []) {
+      for (const item of captured) {
         if (typeof item.name !== "string") continue;
         const name = normalizeCrawledName(item.name);
         items.set(name, [...(items.get(name) ?? []), item]);
@@ -184,7 +157,7 @@ export async function refreshMapOperations(
         const match = matches.length === 1 ? matches[0] : null;
         if (
           diagnostic?.adoptedKinds.has(category) &&
-          combined &&
+          snapshot &&
           row.crawledNames.length > 0 &&
           matches.length !== 1
         ) {
@@ -206,7 +179,8 @@ export async function refreshMapOperations(
             },
           });
         }
-        const observedAt = match?._observedAt ?? combined?.time;
+        const observedAt =
+          match?._observedAt ?? snapshot?.run.observedAt.toISOString();
         const observedTime =
           typeof observedAt === "string" ? new Date(observedAt) : null;
         const data = {
@@ -224,8 +198,8 @@ export async function refreshMapOperations(
           statusSourceUrls:
             match && Array.isArray(match._sourceUrls)
               ? (match._sourceUrls as string[])
-              : (combined?.sourceUrls ?? []),
-          hasStatusSource: Boolean(combined?.items.length),
+              : (snapshot?.sourceUrls ?? []),
+          hasStatusSource: captured.length > 0,
         };
         if (kind === "course")
           await tx.mapCourse.update({ where: { id: row.id }, data });
@@ -261,7 +235,6 @@ export async function refreshMapOperations(
       status: true,
       elevationReady: true,
       hasStatusSource: true,
-      properties: true,
     },
   });
   const lifts = await tx.mapLift.findMany({
@@ -277,7 +250,6 @@ export async function refreshMapOperations(
       crawledNames: true,
       status: true,
       hasStatusSource: true,
-      properties: true,
     },
   });
   for (const id of targets) {
@@ -288,28 +260,13 @@ export async function refreshMapOperations(
       id,
       ...resort.sourceResortIds,
     ].filter((candidate): candidate is string => Boolean(candidate));
-    // 連携エリアの子は、親の地図のうち自分に振り分けた線（未振り分けを含む）だけを数える
-    const linkedParent =
-      resort.mergedIntoId &&
-      byId.get(resort.mergedIntoId)?.linkKind === "LINKED"
-        ? resort.mergedIntoId
-        : null;
-    const isOwnRow = (row: { resortId: string; properties: unknown }) => {
-      if (row.resortId !== linkedParent) return true;
-      const owner = record(row.properties).memberResortId;
-      return typeof owner !== "string" || owner === id;
-    };
     const courseRows =
       candidates
-        .map(candidate =>
-          courses.filter(row => row.resortId === candidate && isOwnRow(row)),
-        )
+        .map(candidate => courses.filter(row => row.resortId === candidate))
         .find(rows => rows.length) ?? [];
     const liftRows =
       candidates
-        .map(candidate =>
-          lifts.filter(row => row.resortId === candidate && isOwnRow(row)),
-        )
+        .map(candidate => lifts.filter(row => row.resortId === candidate))
         .find(rows => rows.length) ?? [];
     const course = summarizeOperationEntities(
       courseRows,

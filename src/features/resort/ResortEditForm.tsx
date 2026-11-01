@@ -376,23 +376,22 @@ export function ResortEditForm({
           {resort.mergedIntoId && (
             <p className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
               このスキー場は「{resort.mergedIntoId}
-              」の結合元またはエリア所属です。完全統合の場合、公開設定にかかわらず一般画面では結合先のスキー場として表示されます。
+              」の結合元です。公開設定にかかわらず、一般画面では結合先のスキー場として表示されます。
             </p>
           )}
-          {resort.sourceResortIds.length > 0 &&
-            resort.linkKind !== "LINKED" && (
-              <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
-                <p className="font-bold">
-                  {resort.sourceResortIds.length}件のスキー場を結合しています
-                </p>
-                <p className="mt-1 break-all">
-                  結合元ID：{resort.sourceResortIds.join("、")}
-                </p>
-                <p className="mt-1">
-                  コース・リフトの詳細は元データを参照します。この画面のコース数・リフト数などの基本情報は、結合時の集計値を編集できます。
-                </p>
-              </div>
-            )}
+          {resort.sourceResortIds.length > 0 && (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+              <p className="font-bold">
+                {resort.sourceResortIds.length}件のスキー場を結合しています
+              </p>
+              <p className="mt-1 break-all">
+                結合元ID：{resort.sourceResortIds.join("、")}
+              </p>
+              <p className="mt-1">
+                コース・リフトの詳細は元データを参照します。この画面のコース数・リフト数などの基本情報は、結合時の集計値を編集できます。
+              </p>
+            </div>
+          )}
           <section className="rounded-xl border border-gray-200 bg-white p-4 md:p-5">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>

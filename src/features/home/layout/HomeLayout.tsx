@@ -29,9 +29,9 @@ import type {
 } from "@/features/map/types";
 import { DEFAULT_MAP_DISPLAY_SETTINGS } from "@/features/map/utils/mapDisplaySettings";
 import {
-  LinkedAreaMapToggle,
+  SimultaneousToggle,
   useDisplayedResortMapData,
-} from "@/features/resort-detail/components/LinkedAreaMapToggle";
+} from "@/features/resort-detail/components/SimultaneousToggle";
 import { SkiResortDetailView } from "@/features/resort-detail/SkiResortDetailView";
 import { cn } from "@/lib/utils";
 import { AnimatedPanel } from "@/shared/components/AnimatedPanel";
@@ -242,7 +242,7 @@ export const HomeLayout = ({
   onUserMapZoomInteraction,
 }: Props) => {
   const favorites = useFavorites();
-  // 「〇〇も同時に表示」中は、連携エリア全体の地図を出す
+  // 「〇〇も同時に表示」中は、組のスキー場をまとめた地図を出す
   const selectedMapData = useDisplayedResortMapData(selectedResortData ?? null);
   const [composingResortId, setComposingResortId] = useState<string | null>(
     null,
@@ -582,7 +582,7 @@ export const HomeLayout = ({
                 finalizedMapData={selectedMapData}
                 linkedAreaControl={
                   selectedResortData ? (
-                    <LinkedAreaMapToggle
+                    <SimultaneousToggle
                       resort={selectedResortData}
                       onSelectResort={onSelectResort}
                       size="inline"

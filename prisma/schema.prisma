@@ -25,11 +25,6 @@ model SkiResort {
   mergedInto         SkiResort?                 @relation("ResortMerge", fields: [mergedIntoId], references: [id], onDelete: Restrict)
   mergedMembers      SkiResort[]                @relation("ResortMerge")
   sourceResortIds    String[]                   @default([])
-  // 結合元を持つ親の結合方法。MERGED は親だけを公開し、LINKED は子を公開して
-  // 地図・コース・リフト・料金・レビューを親で共有する。DB CHECKで制限。
-  linkKind           String                     @default("MERGED")
-  // 同じ値のスキー場どうしは共通券で滑走できる（地図や詳細は統合しない）。
-  ticketGroupId      String?
   createdAt          DateTime                   @default(now())
   updatedAt          DateTime                   @updatedAt
 
@@ -110,7 +105,6 @@ model SkiResort {
   communityPosts      CommunityPost[]
 
   @@index([mergedIntoId])
-  @@index([ticketGroupId])
   @@map("ski_resorts")
 }
 
@@ -584,6 +578,8 @@ model ResortDisplayGroupMember {
   groupId     String
   skiResortId String
   position    Int
+  /// 「〇〇も同時に表示」などで出す名前。null なら短縮名
+  label       String?            @db.VarChar(100)
   group       ResortDisplayGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
   skiResort   SkiResort          @relation(fields: [skiResortId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 

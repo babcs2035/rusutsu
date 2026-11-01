@@ -3,9 +3,8 @@ import { skiResortIdSchema } from "./adminContract";
 
 /**
  * 詳細画面の「〇〇も同時に表示」で合わせて見るスキー場の組。
- * 3か所以上の組は名前を並べると長いので、表示名（例: ニセコ全山）を必須にする。
+ * 表示名（例: ニセコ全山）がなければ、相手の名前を並べて出す。
  */
-export const DISPLAY_GROUP_LABEL_REQUIRED_FROM = 3;
 
 const labelSchema = z
   .string()
@@ -18,6 +17,8 @@ export const displayGroupMemberSchema = z.object({
   id: skiResortIdSchema,
   nameJa: z.string(),
   shortName: z.string().nullable(),
+  /** 組の中での表示名（例: 志賀高原どうしなら「焼額山」）。null なら短縮名 */
+  label: z.string().nullable().default(null),
 });
 
 export const displayGroupSchema = z.object({
@@ -34,6 +35,8 @@ export const displayGroupSaveRequestSchema = z
     id: z.string().min(1).optional(),
     expectedUpdatedAt: z.iso.datetime({ offset: true }).optional(),
     label: labelSchema,
+    /** スキー場ごとの表示名。空欄・省略なら短縮名 */
+    memberLabels: z.record(skiResortIdSchema, labelSchema).default({}),
     resortIds: z
       .array(skiResortIdSchema)
       .min(2)
@@ -50,15 +53,6 @@ export const displayGroupSaveRequestSchema = z
         path: ["expectedUpdatedAt"],
         message: "更新には取得時の更新日時が必要です。",
       });
-    if (
-      request.resortIds.length >= DISPLAY_GROUP_LABEL_REQUIRED_FROM &&
-      !request.label
-    )
-      context.addIssue({
-        code: "custom",
-        path: ["label"],
-        message: "3か所以上の組には表示名を入れてください。",
-      });
   });
 export type DisplayGroupSaveRequest = z.input<
   typeof displayGroupSaveRequestSchema
@@ -74,7 +68,15 @@ export type DisplayGroupDeleteRequest = z.infer<
 
 export const displayGroupSaveResultSchema = z.discriminatedUnion("status", [
   z.object({ status: z.literal("saved"), group: displayGroupSchema }),
-  z.object({ status: z.enum(["conflict", "not_found", "invalid_resorts"]) }),
+  z.object({
+    status: z.enum([
+      "conflict",
+      "not_found",
+      "invalid_resorts",
+      "duplicate",
+      "unsupported_labels",
+    ]),
+  }),
 ]);
 export type DisplayGroupSaveResult = z.infer<
   typeof displayGroupSaveResultSchema

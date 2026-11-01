@@ -1,6 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
+import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FavoriteButton } from "@/features/favorites/FavoriteButton";
@@ -23,11 +24,14 @@ export const InfoSection = ({
   isCompareSelected,
   onToggleCompare,
   onClose,
+  children,
 }: {
   resort: ResortInfo;
   isCompareSelected: boolean;
   onToggleCompare: (id: string, selected: boolean) => void;
   onClose: () => void;
+  /** 都道府県・市町村の下に出す操作（「〇〇も同時に表示」） */
+  children?: ReactNode;
 }) => {
   const compareBtnClassName = cn(
     "flex shrink-0 items-center justify-center rounded-lg gap-1 transition-colors",
@@ -85,6 +89,7 @@ export const InfoSection = ({
           onClick={() => onToggleCompare(resort.id, !isCompareSelected)}
         />
       </div>
+      {children && <div className="mt-1.5">{children}</div>}
     </div>
   );
 };

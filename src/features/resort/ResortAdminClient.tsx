@@ -24,14 +24,22 @@ type LeaveDestination = "select" | "admin";
 
 export function ResortAdminClient({
   initialResorts,
+  initialSelectedId = null,
 }: {
   initialResorts: AdminSkiResortRecord[];
+  /** ?id= で開いたスキー場。あればその詳細設定から始める */
+  initialSelectedId?: string | null;
 }) {
   const { isAdmin } = useEditingRole();
   const router = useRouter();
   const [resorts, setResorts] = useState(initialResorts);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
+  const initialResort = initialResorts.find(
+    resort => resort.id === initialSelectedId,
+  );
+  const [selectedId, setSelectedId] = useState<string | null>(
+    initialResort?.id ?? null,
+  );
+  const [isEditing, setIsEditing] = useState(Boolean(initialResort));
   const [isMerging, setIsMerging] = useState(false);
   const [query, setQuery] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
@@ -150,19 +158,15 @@ export function ResortAdminClient({
             setIsMerging(false);
             setIsEditing(true);
             adminToaster.create({
-              title:
-                result.resort.linkKind === "LINKED"
-                  ? "連携エリアを作成しました。詳細設定を確認してください。"
-                  : "スキー場を結合しました。詳細設定を確認してください。",
+              title: "スキー場を結合しました。詳細設定を確認してください。",
               type: "success",
             });
           }}
-          onTicketGrouped={updated => {
-            replaceResorts(updated);
+          onDisplayGrouped={() => {
             setHasChanges(false);
             setIsMerging(false);
             adminToaster.create({
-              title: "共通券の関係を保存しました。",
+              title: "同時表示の組を保存しました。",
               type: "success",
             });
           }}

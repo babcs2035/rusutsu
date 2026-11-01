@@ -32,9 +32,7 @@ export async function saveResortLink(input: unknown): Promise<LinkSaveResult> {
         const resorts = await readAdminSkiResorts();
         if (
           !resorts.some(
-            resort =>
-              resort.id === request.resortId &&
-              !isMergedSource(resort, resorts),
+            resort => resort.id === request.resortId && !isMergedSource(resort),
           )
         )
           return {

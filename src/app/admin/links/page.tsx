@@ -19,7 +19,7 @@ export default async function LinksAdminPage() {
   return (
     <LinksAdminClient
       resorts={resorts
-        .filter(resort => !isMergedSource(resort, resorts))
+        .filter(resort => !isMergedSource(resort))
         .map(resort => ({
           id: resort.id,
           name: resort.nameJa,

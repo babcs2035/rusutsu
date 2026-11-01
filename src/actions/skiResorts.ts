@@ -55,11 +55,7 @@ import {
 import { readOperatingSummaries } from "@/server/course-lift/summaryClient";
 import { getDataDocument } from "@/server/data-documents/client";
 import { listLiftTicketSeasons } from "@/server/lift-tickets/client";
-import {
-  combineResortMaps,
-  filterLinkedAreaMap,
-  readLinkedAreaOwners,
-} from "@/server/ski-resorts/linkedAreaMap";
+import { combineResortMaps } from "@/server/ski-resorts/displayGroupMap";
 import type { SkiResortWithRelations } from "@/types";
 
 type OperationCountSummary = {
@@ -155,12 +151,8 @@ export async function getSkiResortsForMap() {
     liftTicketSeasons.map(season => season.resortId),
   );
   const liftTicketResortIdOf = (resort: (typeof resorts)[number]) => {
-    // 連携エリアの子は、親に登録した共通の料金を使う。
-    const candidates = [
-      resort.mergedIntoId,
-      resort.id,
-      resort.sourceResortIds?.[0],
-    ];
+    // 完全統合で結合先の料金がなければ、引き継ぎ元の料金を使う。
+    const candidates = [resort.id, resort.sourceResortIds?.[0]];
     return (
       candidates.find(
         (id): id is string => Boolean(id) && resortIdsWithTickets.has(id ?? ""),
@@ -346,45 +338,22 @@ export async function getSkiResortById(id: string) {
 
   if (!resort) return null;
 
-  // 連携エリアの子として開いたときは、地図・料金・レビューを親のIDで読む。
-  const dataId = resort.linkedArea?.id ?? resort.id;
   const sourceIds = resort.sourceResortIds?.length
     ? resort.sourceResortIds
     : [resort.id];
-  const [areaMapData, decisionData, primaryDecisionData, linksDocument] =
+  const [finalizedMapData, decisionData, primaryDecisionData, linksDocument] =
     await Promise.all([
-      getFinalizedResortMapData(dataId),
-      getResortDecisionData(dataId),
-      sourceIds[0] !== dataId ? getResortDecisionData(sourceIds[0]) : null,
+      getFinalizedResortMapData(resort.id),
+      getResortDecisionData(resort.id),
+      sourceIds[0] !== resort.id ? getResortDecisionData(sourceIds[0]) : null,
       getDataDocument(SKI_RESORT_LINKS_DOCUMENT_KEY),
     ]);
-  const { finalizedMapData, linkedAreaMapData } = await resolveLinkedMapData(
-    resort.id,
-    dataId,
-    areaMapData,
-  );
-  const simultaneousOptions = await resolveSimultaneousOptions(
-    resort,
-    linkedAreaMapData,
-  );
+  const simultaneousOptions = await resolveSimultaneousOptions(resort.id);
   const linksMap = parseResortLinksMap(linksDocument?.content ?? null);
   const rawLinksMap = weatherLinksMapFromDocument(
     linksDocument?.content ?? null,
   );
-  const weatherIds = resolveResortWeatherIds(
-    rawLinksMap,
-    resort.id,
-    resort.linkedArea ? [] : sourceIds,
-  );
-  // 連携エリアは天気・予報・積雪をスキー場ごとのタブで出す。
-  const memberWeatherIds = resort.linkedArea
-    ? Object.fromEntries(
-        resort.linkedArea.members.map(member => [
-          member.id,
-          resolveResortWeatherIds(rawLinksMap, member.id),
-        ]),
-      )
-    : null;
+  const weatherIds = resolveResortWeatherIds(rawLinksMap, resort.id, sourceIds);
 
   return {
     ...resort,
@@ -401,103 +370,58 @@ export async function getSkiResortById(id: string) {
         ...(await readCurrentResortConditions(id)),
       })),
     ),
-    socialAccounts: collectSocialAccounts(linksMap, [dataId, ...sourceIds]),
-    trailMapLinks: collectTrailMapLinks(linksMap, [dataId, ...sourceIds]),
-    newsLinks: collectNewsLinks(linksMap, [dataId, ...sourceIds]),
+    socialAccounts: collectSocialAccounts(linksMap, [resort.id, ...sourceIds]),
+    trailMapLinks: collectTrailMapLinks(linksMap, [resort.id, ...sourceIds]),
+    newsLinks: collectNewsLinks(linksMap, [resort.id, ...sourceIds]),
     weatherIds,
-    memberWeatherIds,
+    // 同時表示の組の地図は、チェックしたときに読む
     finalizedMapData,
-    // 連携エリア全体の地図。同時表示の組の地図は、チェックしたときに読む
-    linkedAreaMapData,
     simultaneousOptions,
     finalizedOperationSummary:
       createFinalizedOperationSummary(finalizedMapData),
   };
 }
 
-/**
- * 連携エリアの子では、親の地図から自分の線だけを取り出す。
- * 線を振り分けていない地図は、これまでどおり親の地図全体を出す。
- */
-async function resolveLinkedMapData(
-  resortId: string,
-  areaId: string,
-  areaMapData: FinalizedResortMapData | null,
-) {
-  if (areaId === resortId || !areaMapData)
-    return { finalizedMapData: areaMapData, linkedAreaMapData: null };
-  const owners = await readLinkedAreaOwners(areaId);
-  if (!owners.size)
-    return { finalizedMapData: areaMapData, linkedAreaMapData: null };
-  const ownMapData = await getFinalizedResortMapData(resortId);
-  return {
-    finalizedMapData: filterLinkedAreaMap(
-      areaMapData,
-      owners,
-      resortId,
-      ownMapData?.courseStatusSummary,
-    ),
-    linkedAreaMapData: areaMapData,
-  };
-}
-
-type ResortRecord = NonNullable<Awaited<ReturnType<typeof readSkiResortById>>>;
-
-/** 詳細と同じ規則で、そのスキー場自身の地図を読む */
-async function readOwnMapData(id: string) {
-  const resort = await readSkiResortById(id);
-  if (!resort) return null;
-  const dataId = resort.linkedArea?.id ?? resort.id;
-  return (
-    await resolveLinkedMapData(
-      resort.id,
-      dataId,
-      await getFinalizedResortMapData(dataId),
-    )
-  ).finalizedMapData;
-}
-
 export type SimultaneousOption = {
   /** 表示状態を覚えるキー。組のどのスキー場から開いても同じになる */
   key: string;
-  /** 管理画面で作った組のID。連携エリアは null */
-  groupId: string | null;
+  /** 管理画面で作った組のID */
+  groupId: string;
   /** 「ニセコ全山」など。null なら相手の名前で「〇〇も同時に表示」と出す */
   label: string | null;
-  partners: Array<{ id: string; nameJa: string; shortName: string | null }>;
+  partners: Array<{
+    id: string;
+    nameJa: string;
+    shortName: string | null;
+    /** 組の中での表示名。null なら短縮名 */
+    label: string | null;
+  }>;
+  /** 組の全スキー場（開いたスキー場を含む）の表示名。設定したものだけ */
+  memberLabels: Record<string, string>;
 };
 
-/** 「〇〇も同時に表示」の選択肢。連携エリアと、管理画面で作った同時表示の組 */
+/** 「〇〇も同時に表示」の選択肢。管理画面で作った同時表示の組 */
 async function resolveSimultaneousOptions(
-  resort: ResortRecord,
-  linkedAreaMapData: FinalizedResortMapData | null,
+  resortId: string,
 ): Promise<SimultaneousOption[]> {
-  const groups = await readDisplayGroupsForResort(resort.id);
-  return [
-    ...(resort.linkedArea && linkedAreaMapData
-      ? [
-          {
-            key: resort.linkedArea.id,
-            groupId: null,
-            label: null,
-            partners: resort.linkedArea.members
-              .filter(member => member.id !== resort.id)
-              .map(({ id, nameJa, shortName }) => ({ id, nameJa, shortName })),
-          },
-        ]
-      : []),
-    ...groups.map(group => ({
-      key: `group:${group.id}`,
-      groupId: group.id,
-      label: group.label,
-      partners: group.members.filter(member => member.id !== resort.id),
-    })),
-  ];
+  const groups = await readDisplayGroupsForResort(resortId);
+  return groups.map(group => ({
+    key: `group:${group.id}`,
+    groupId: group.id,
+    label: group.label,
+    partners: group.members.filter(member => member.id !== resortId),
+    memberLabels: Object.fromEntries(
+      group.members.flatMap(member =>
+        member.label ? [[member.id, member.label]] : [],
+      ),
+    ),
+  }));
 }
 
 /**
- * 同時表示の組の地図とコンディション。チェックを入れたときに読む。
- * 地図は自分を含む全スキー場分をまとめ、コンディションは相手の分だけ返す。
+ * 同時表示の組の地図と、相手のスキー場の詳細。チェックを入れたときに読む。
+ * 地図は自分を含む全スキー場分をまとめる。相手の詳細は SNS・料金・天気・投稿で
+ * 使うので、重い地図は外して返す。
  */
 export async function getSimultaneousView(resortId: string, groupId: string) {
   const group = (await readDisplayGroupsForResort(resortId)).find(
@@ -505,19 +429,29 @@ export async function getSimultaneousView(resortId: string, groupId: string) {
   );
   if (!group) return null;
   const members = await Promise.all(
-    group.members.map(async member => {
-      const [mapData, conditions] = await Promise.all([
-        readOwnMapData(member.id),
-        member.id === resortId ? null : readCurrentResortConditions(member.id),
-      ]);
-      return { id: member.id, mapData, conditions };
-    }),
-  );
-  return {
-    mapData: combineResortMaps(members.map(member => member.mapData)),
-    conditions: members.flatMap(member =>
-      member.conditions ? [{ id: member.id, ...member.conditions }] : [],
+    group.members.map(async member =>
+      member.id === resortId
+        ? { id: member.id, mapData: await getFinalizedResortMapData(member.id) }
+        : { id: member.id, detail: await getSkiResortById(member.id) },
     ),
+  );
+  const partners = members.flatMap(member => {
+    if (!member.detail) return [];
+    const { finalizedMapData: _map, ...detail } = member.detail;
+    return [detail];
+  });
+  return {
+    mapData: combineResortMaps(
+      members.map(member =>
+        member.detail
+          ? member.detail.finalizedMapData
+          : (member.mapData ?? null),
+      ),
+    ),
+    conditions: partners.flatMap(partner =>
+      (partner.currentConditions ?? []).filter(item => item.id === partner.id),
+    ),
+    partners,
   };
 }
 

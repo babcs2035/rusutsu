@@ -208,6 +208,8 @@ export type PublicComment = {
 };
 export type FeedInput = {
   resortId: string;
+  /** 「〇〇も同時に表示」中に、一緒に並べる組のスキー場 */
+  resortIds?: string[];
   courseId?: string;
   liftId?: string;
   kind?: keyof typeof ENTRY_KINDS;

@@ -70,7 +70,7 @@ test("community reports: atomic daily report lifecycle and privacy", {
               args.path === "server-only"
                 ? "export {}"
                 : args.path === "@/lib/skiResortData"
-                  ? `import {prisma} from '@/lib/prisma'; export async function readSkiResortById(id){const resort=await prisma.skiResort.findFirst({where:{id,isActive:true},select:{id:true,nameJa:true,longitude:true,latitude:true}});return resort&&{...resort,linkedArea:null};}`
+                  ? `import {prisma} from '@/lib/prisma'; export async function readSkiResortById(id){const resort=await prisma.skiResort.findFirst({where:{id,isActive:true},select:{id:true,nameJa:true,longitude:true,latitude:true}});return resort;}`
                   : args.path === "community-test-runtime"
                     ? `import {AsyncLocalStorage} from 'node:async_hooks'; export const runtime=new AsyncLocalStorage();`
                     : args.path === "@/auth"

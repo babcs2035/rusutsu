@@ -61,12 +61,22 @@ export async function saveDisplayGroup(
 ): Promise<DisplayGroupSaveResult> {
   const request = displayGroupSaveRequestSchema.parse(rawRequest);
   if (!usesRemoteDataApi()) return saveDisplayGroupDirect(request);
-  const response = await fetchInternalDataApi(RESOURCE_PATH, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(request),
-  });
-  return displayGroupSaveResultSchema.parse(await response.json());
+  // 表示名を付けていなければ送らない。スキー場ごとの表示名に未対応の旧データAPIでも保存できる
+  const { memberLabels, ...rest } = request;
+  const body = Object.keys(memberLabels).length ? request : rest;
+  try {
+    const response = await fetchInternalDataApi(RESOURCE_PATH, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return displayGroupSaveResultSchema.parse(await response.json());
+  } catch (error) {
+    // 旧データAPIは、スキー場ごとの表示名と、3か所以上で表示名なしの組を受け付けない
+    if (error instanceof InternalDataApiError && error.status === 422)
+      return { status: "unsupported_labels" };
+    throw error;
+  }
 }
 
 export async function deleteDisplayGroup(

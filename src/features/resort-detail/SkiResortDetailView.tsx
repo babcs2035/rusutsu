@@ -37,13 +37,12 @@ import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
 import type { MapSkiResort, NullableSkiResortDetail } from "@/types/skiResorts";
 import { DetailTabs } from "./components/DetailTabs";
 import { FinalizedFeatureDetail } from "./components/FinalizedFeatureDetail";
-import { ResortRelations } from "./components/LinkedArea";
-import {
-  LinkedAreaMapToggle,
-  useDisplayedResortMapData,
-} from "./components/LinkedAreaMapToggle";
 import { MapAreaTabs } from "./components/MapAreaTabs";
 import { ResortMapSection } from "./components/ResortMapSection";
+import {
+  SimultaneousToggle,
+  useSimultaneousView,
+} from "./components/SimultaneousToggle";
 import { TrailMapPanel } from "./components/TrailMapPanel";
 import { useBodyScrollLock } from "./hooks/useBodyScrollLock";
 import {
@@ -168,8 +167,9 @@ export const SkiResortDetailView = ({
   hideMobileInfoSection = false,
   isDesktopMapExpanded = false,
 }: Props) => {
-  // 「〇〇も同時に表示」中は、地図と地図で選んだ線の詳細を連携エリア全体で扱う
-  const displayedMapData = useDisplayedResortMapData(resortData ?? null);
+  // 「〇〇も同時に表示」中は、地図と地図で選んだ線の詳細を組全体で扱う
+  const simultaneous = useSimultaneousView(resortData ?? null);
+  const displayedMapData = simultaneous.mapData;
   const stateKey = `rusutsu:detail:v1:${resortData?.id ?? "loading"}`;
   const [activeTab, setActiveTab] = useScreenState<string>(
     `${stateKey}:tab`,
@@ -284,10 +284,7 @@ export const SkiResortDetailView = ({
         ? communityMapData(
             resortData.nameJa,
             [resortData.longitude, resortData.latitude],
-            // 投稿は連携エリアでまとめて扱うので、つながったスキー場の線も選べる
-            resortData.linkedArea
-              ? (resortData.linkedAreaMapData ?? resortData.finalizedMapData)
-              : resortData.finalizedMapData,
+            resortData.finalizedMapData,
           )
         : null,
     [resortData],
@@ -468,13 +465,24 @@ export const SkiResortDetailView = ({
     town: resort.town,
     yukiMagi: Boolean(resort.yukiMagi),
   };
+  // 「〇〇も同時に表示」は都道府県・市町村とタブの間に置き、すべてのタブに効かせる
+  const simultaneousControl = resort.simultaneousOptions?.length ? (
+    <SimultaneousToggle
+      resort={resort}
+      onSelectResort={onSelectResort}
+      size="header"
+      className="shadow-none"
+    />
+  ) : null;
   const desktopDetailHeader = (
     <InfoSection
       resort={resortInfo}
       isCompareSelected={isCompareSelected}
       onToggleCompare={onToggleCompare}
       onClose={onClose}
-    />
+    >
+      {simultaneousControl}
+    </InfoSection>
   );
   const finalizedCourseGroups = createFinalizedCourseGroups(
     displayedMapData?.courses?.features ?? [],
@@ -553,14 +561,10 @@ export const SkiResortDetailView = ({
 
   const renderTabPanels = () => (
     <div className="relative">
-      {activeTab === "ゲレンデ" && !showTerrainDetail && (
-        <ResortRelations resort={resort} onSelectResort={onSelectResort} />
-      )}
       {activeTab === "ゲレンデ" && isSidePanel && desktopTrailMapSection}
       {activeTab === "ゲレンデ" && (
         <OverviewTab
           resort={resort}
-          onSelectResort={onSelectResort}
           showTerrainDetail={showTerrainDetail}
           terrainTab={terrainTab}
           onShowTerrainDetail={tab => {
@@ -587,7 +591,11 @@ export const SkiResortDetailView = ({
       {activeTab === "天気" && <WeatherTab resort={resort} />}
       {/* 外側の余白はほかのタブと同じ（タブ本文の枠が持つ） */}
       {activeTab === "投稿" && (
-        <CommunityFeed resortId={resort.id} highlightOnMap />
+        <CommunityFeed
+          resortId={resort.id}
+          resortIds={simultaneous.partners.map(partner => partner.id)}
+          highlightOnMap
+        />
       )}
     </div>
   );
@@ -663,13 +671,23 @@ export const SkiResortDetailView = ({
           : "h-full min-h-0 overflow-y-auto overscroll-contain"
       }
     >
-      {hideMobileInfoSection || composer ? null : (
+      {composer ? null : hideMobileInfoSection ? (
+        // 名前と所在地は上の見出しが出すので、同時表示の操作だけをタブの上に置く
+        simultaneousControl &&
+        !mobileFeatureDetail && (
+          <div className="border-b border-gray-200 px-3 py-1.5">
+            {simultaneousControl}
+          </div>
+        )
+      ) : (
         <InfoSection
           resort={resortInfo}
           isCompareSelected={isCompareSelected}
           onToggleCompare={onToggleCompare}
           onClose={onClose}
-        />
+        >
+          {simultaneousControl}
+        </InfoSection>
       )}
       {!mobileFeatureDetail && (
         <DetailTabs
@@ -739,13 +757,6 @@ export const SkiResortDetailView = ({
                 previewHeightClassName="h-full shrink-0"
                 selectedHeightClassName="h-[38%] min-h-[180px] shrink-0"
                 finalizedMapData={displayedMapData}
-                linkedAreaControl={size => (
-                  <LinkedAreaMapToggle
-                    resort={resort}
-                    onSelectResort={onSelectResort}
-                    size={size}
-                  />
-                )}
                 mapResorts={mapResorts}
                 selectedFinalizedFeature={selectedFinalizedFeature}
                 selectedElevationProfilePoint={selectedElevationProfilePoint}

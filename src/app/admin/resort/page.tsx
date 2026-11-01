@@ -9,9 +9,21 @@ export const metadata: Metadata = {
   title: "スキー場マスター編集 | 管理画面",
 };
 
-export default async function ResortAdminPage() {
+export default async function ResortAdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ id?: string | string[] }>;
+}) {
   await requireEditingPage();
-  const resorts = await readAdminSkiResorts();
+  const [resorts, { id }] = await Promise.all([
+    readAdminSkiResorts(),
+    searchParams,
+  ]);
 
-  return <ResortAdminClient initialResorts={resorts} />;
+  return (
+    <ResortAdminClient
+      initialResorts={resorts}
+      initialSelectedId={typeof id === "string" ? id : null}
+    />
+  );
 }

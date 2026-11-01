@@ -61,3 +61,23 @@ export function collectSocialAccounts(
   }
   return result;
 }
+
+/** 同時表示で、組のスキー場のアカウントを並べる（同じアカウントは1つにする） */
+export function mergeSocialAccounts(
+  groups: Array<Partial<Record<SocialPlatform, SocialAccount[]>> | null>,
+): Record<SocialPlatform, SocialAccount[]> {
+  const result: Record<SocialPlatform, SocialAccount[]> = {
+    X: [],
+    Instagram: [],
+    Facebook: [],
+  };
+  for (const platform of SOCIAL_PLATFORMS) {
+    const seen = new Set<string>();
+    for (const account of groups.flatMap(group => group?.[platform] ?? [])) {
+      if (seen.has(account.url.toLowerCase())) continue;
+      seen.add(account.url.toLowerCase());
+      result[platform].push(account);
+    }
+  }
+  return result;
+}

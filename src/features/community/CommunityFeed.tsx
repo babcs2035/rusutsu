@@ -107,6 +107,7 @@ function mapHighlight(entry: PublicReportEntry | undefined) {
 
 export function CommunityFeed({
   resortId,
+  resortIds,
   courseId,
   liftId,
   compact = false,
@@ -114,6 +115,8 @@ export function CommunityFeed({
   highlightOnMap = false,
 }: {
   resortId: string;
+  /** 「〇〇も同時に表示」中に、一緒に並べる組のスキー場 */
+  resortIds?: string[];
   courseId?: string;
   liftId?: string;
   /** コース・リフト詳細の中に出す短い一覧 */
@@ -133,6 +136,7 @@ export function CommunityFeed({
   const period = matchingPeriod(from, to);
   const query: FeedInput = {
     resortId,
+    ...(resortIds?.length ? { resortIds } : {}),
     courseId,
     liftId,
     kind: kind || undefined,
@@ -286,7 +290,7 @@ export function CommunityFeed({
             <PostCard
               key={post.id}
               post={post}
-              showResort={false}
+              showResort={Boolean(resortIds?.length)}
               selected={highlightOnMap && post.id === selectedPostId}
               onSelect={
                 highlightOnMap

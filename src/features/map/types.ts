@@ -208,7 +208,7 @@ export type JapanResortMapProps = {
   /** 現在地ボタンを出すか。投稿中の地図では出さない */
   showLocationControl?: boolean;
   mapTopControls?: ReactNode;
-  /** 連携エリアの「〇〇も同時に表示」。「営業中のみ」の近くに出す */
+  /** 同時表示の組の「〇〇も同時に表示」。「営業中のみ」の近くに出す */
   linkedAreaControl?: ReactNode;
   mapStatusFilterShared?: boolean;
   /**
