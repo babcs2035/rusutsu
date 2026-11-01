@@ -144,7 +144,7 @@ export type CourseOption = {
   coordinates: number[][];
   lines: number[][][];
 };
-export type LiftOption = CourseOption;
+export type LiftOption = CourseOption & { distance: number | null };
 export type CommunityMapData = {
   name: string;
   center: [number, number];

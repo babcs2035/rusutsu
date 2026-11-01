@@ -19,6 +19,7 @@ type TestApi = typeof import("@/features/community/actions") &
   typeof import("@/server/community/admin") &
   typeof import("@/server/community/photos") &
   typeof import("@/lib/prisma") & {
+    revalidations: unknown[];
     runtime: AsyncLocalStorage<{
       session: { user: { id: string } } | null;
       cookies: Map<string, string>;
@@ -43,7 +44,7 @@ test("community reports: atomic daily report lifecycle and privacy", {
   const outfile = path.join(root, "integration.mjs");
   await build({
     stdin: {
-      contents: `export {runtime} from 'community-test-runtime'; export {prisma,disconnectPrisma} from '@/lib/prisma'; export * from '@/features/community/actions'; export * from '@/server/community/moderation'; export {normalizePhoto} from '@/server/community/photos'; export {GET as photoGET} from '@/app/api/community/photos/[photoId]/route'; export {POST as internalCommunityPOST} from '@/app/api/internal/v1/community/route'; export * from '@/server/community/admin';`,
+      contents: `export {revalidations} from 'next/cache'; export {runtime} from 'community-test-runtime'; export {prisma,disconnectPrisma} from '@/lib/prisma'; export * from '@/features/community/actions'; export * from '@/server/community/moderation'; export {normalizePhoto} from '@/server/community/photos'; export {GET as photoGET} from '@/app/api/community/photos/[photoId]/route'; export {POST as internalCommunityPOST} from '@/app/api/internal/v1/community/route'; export * from '@/server/community/admin';`,
       resolveDir: process.cwd(),
       loader: "ts",
     },
@@ -78,10 +79,10 @@ test("community reports: atomic daily report lifecycle and privacy", {
                       : args.path === "next/headers"
                         ? `import {runtime} from 'community-test-runtime'; export async function headers(){return new Headers();} export async function cookies(){const store=runtime.getStore().cookies;return {get:key=>store.has(key)?{value:store.get(key)}:undefined,set:(key,value)=>store.set(key,value)};}`
                         : args.path === "next/cache"
-                          ? `export function revalidatePath(){}`
+                          ? `export const revalidations=[]; export function revalidatePath(...args){revalidations.push(args);}`
                           : args.path === "next/server"
                             ? `export function after(){}`
-                            : `export async function getFinalizedResortMapData(){return {courses:{features:[{groupId:'test-course-a',displayName:'A',coordinates:[[140,43],[140.01,43.01]]},{groupId:'test-course-b',displayName:'B',coordinates:[[140,43],[140.02,43.02]]}]},lifts:{features:[{id:'test-lift-a',name:'第1リフト',coordinates:[[140,43],[140.005,43.005]]}]}};}`,
+                            : `export async function getFinalizedResortMapData(){return {courses:{features:[{groupId:'test-course-a',displayName:'A',coordinates:[[140,43],[140.01,43.01]]},{groupId:'test-course-b',displayName:'B',coordinates:[[140,43],[140.02,43.02]]}]},lifts:{features:[{id:'test-lift-a',name:'第1リフト',properties:{distance:1200},coordinates:[[140,43],[140.005,43.005]]}]}};}`,
           }));
         },
       },
@@ -203,9 +204,19 @@ test("community reports: atomic daily report lifecycle and privacy", {
     photos = new FormData(),
     idempotencyKey = randomUUID(),
   ) =>
-    run(actor, () =>
-      api.publishReport({ resortId, report, idempotencyKey }, photos),
-    );
+    run(actor, async () => {
+      const before = api.revalidations.length;
+      const response = await api.publishReport(
+        { resortId, report, idempotencyKey },
+        photos,
+      );
+      assert.equal(
+        api.revalidations.length,
+        before,
+        "publishing must preserve the composer instead of refreshing the app layout",
+      );
+      return response;
+    });
   const assertSuccess = <T>(result: ActionResult<T>) => {
     assert.ok(result.ok, JSON.stringify(result));
     return result.data;
@@ -614,6 +625,7 @@ test("community reports: atomic daily report lifecycle and privacy", {
         ),
       ),
     );
+    const revalidationsBeforeUpdate = api.revalidations.length;
     const updated = assertSuccess(
       await run(a, () =>
         api.updateReport(
@@ -625,6 +637,7 @@ test("community reports: atomic daily report lifecycle and privacy", {
         ),
       ),
     );
+    assert.equal(api.revalidations.length, revalidationsBeforeUpdate);
     assert.equal(updated.id, created.id);
     assertFailure(
       await run(a, () =>

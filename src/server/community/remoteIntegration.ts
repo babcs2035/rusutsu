@@ -19,6 +19,7 @@ type Runtime = {
 type Api = {
   prisma: typeof import("@/lib/prisma").prisma;
   runtime: Runtime;
+  revalidations: unknown[];
   internalCommunityPOST: (request: Request) => Promise<Response>;
   publishReport: (input: unknown, photos: FormData) => Promise<unknown>;
   getCommunityAccount: () => Promise<unknown>;
@@ -503,6 +504,7 @@ export async function verifyRemoteCommunity(
     assert.equal(actionAccount.ok, true);
     assert.equal(actionAccount.data?.id, canonicalIds.owner);
     const actionPhotos = new FormData();
+    const revalidationsBeforePublish = api.revalidations.length;
     const actionPublish = (await api.runtime.run(
       { session: { user: { id: ids.owner } }, cookies: new Map() },
       () =>
@@ -519,6 +521,7 @@ export async function verifyRemoteCommunity(
         ),
     )) as { ok?: boolean; data?: { id?: string } };
     assert.equal(actionPublish.ok, true);
+    assert.equal(api.revalidations.length, revalidationsBeforePublish);
     const actionPostId = actionPublish.data?.id;
     assert.ok(actionPostId);
     assert.equal(

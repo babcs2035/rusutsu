@@ -273,7 +273,7 @@ export async function publishReport(input: unknown, photos: FormData) {
       },
       { timeout: 20000 },
     );
-    refresh();
+    // The composer updates community data without refreshing the app layout.
     after(() => drainModerationJobs());
     return saved;
   });
@@ -344,7 +344,6 @@ export async function updateReport(
         });
       await queueModeration(tx, "POST", postId, version + 1);
     });
-    refresh();
     after(() => drainModerationJobs());
     return { id: postId };
   });

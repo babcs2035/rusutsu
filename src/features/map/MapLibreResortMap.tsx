@@ -528,6 +528,39 @@ function MapLibreResortMapContent({
   });
   const { failed, retry } = useMapRecovery(map, onRecover, onAutoRecover);
   useEffect(() => {
+    if (!map) return;
+    // Switching to the composer changes the container without a window resize.
+    // The panel itself overlays this fixed map, so dragging never resizes it.
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const container = map.getContainer();
+        const canvas = map.getCanvas();
+        if (
+          !container.clientWidth ||
+          !container.clientHeight ||
+          (canvas.clientWidth === container.clientWidth &&
+            canvas.clientHeight === container.clientHeight)
+        )
+          return;
+        const camera = {
+          center: map.getCenter(),
+          zoom: map.getZoom(),
+          bearing: map.getBearing(),
+          pitch: map.getPitch(),
+        };
+        map.resize();
+        if (communityComposeActive) map.jumpTo(camera);
+      });
+    });
+    observer.observe(map.getContainer());
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+    };
+  }, [map, communityComposeActive]);
+  useEffect(() => {
     const point = communityPoint ?? pickedCommunityPoint;
     if (!map || !isReady || !point) return;
     const marker = new Marker({ color: "#0284c7" }).setLngLat(point).addTo(map);

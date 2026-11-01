@@ -83,6 +83,7 @@ import {
   saveDraft,
 } from "./draftStorage";
 import { onLoginWindowDone, openLoginWindow } from "./LoginWindow";
+import { rideTimeFromSpeed, speedFromRideTime } from "./liftRideTime";
 import { nearestCourseId, reportLocationError } from "./location";
 import { readPhotoMetadata } from "./photoGps";
 
@@ -232,7 +233,6 @@ const toSpeedNumber = (text: string) => {
   return text !== "" && text !== "." && Number.isFinite(value) ? value : null;
 };
 const round1 = (value: number) => Math.round(value * 10) / 10;
-
 function Chips<T extends string>({
   label,
   values,
@@ -311,6 +311,8 @@ export function CommunityComposer({
   // 「2.」のような入力途中の文字を残すため、数値とは別に持つ。
   const [liftSpeedText, setLiftSpeedText] = useState("");
   const [kmhText, setKmhText] = useState("");
+  const [rideMinutesText, setRideMinutesText] = useState("");
+  const [rideSecondsText, setRideSecondsText] = useState("");
   const [showErrors, setShowErrors] = useState(false);
   const [error, setError] = useState("");
   const [confirmClose, setConfirmClose] = useState(false);
@@ -331,6 +333,8 @@ export function CommunityComposer({
   const restoredSpeed = useRef<{
     liftSpeedText: string;
     kmhText: string;
+    rideMinutesText: string;
+    rideSecondsText: string;
   } | null>(null);
   const mounted = useRef(true);
   const lastExternalTarget = useRef<ReportMapTarget | null>(null);
@@ -555,6 +559,8 @@ export function CommunityComposer({
               restoredSpeed.current = {
                 liftSpeedText: saved.liftSpeedText,
                 kmhText: saved.kmhText,
+                rideMinutesText: saved.rideMinutesText,
+                rideSecondsText: saved.rideSecondsText,
               };
               setRestoredNotice("下書きを復元しました。");
             } else {
@@ -702,6 +708,7 @@ export function CommunityComposer({
   }, [applyMapTarget, selectedMapTarget, step]);
 
   const entryKey = entry?.clientKey;
+  const entryLiftId = entry?.liftId;
   useEffect(() => {
     const current = reportRef.current.entries.find(
       item => item.clientKey === entryKey,
@@ -714,9 +721,26 @@ export function CommunityComposer({
       restoredSpeed.current?.kmhText ??
         (speed == null ? "" : (speed * 3.6).toFixed(1)),
     );
+    const selectedLift = mapDataRef.current.lifts.find(
+      lift => lift.id === entryLiftId,
+    );
+    const [minutes, seconds] = rideTimeFromSpeed(
+      selectedLift?.distance ?? null,
+      speed ?? null,
+    );
+    const restoredTime = restoredSpeed.current;
+    const hasRestoredTime =
+      restoredTime?.rideMinutesText !== "" ||
+      restoredTime?.rideSecondsText !== "";
+    setRideMinutesText(
+      hasRestoredTime && restoredTime ? restoredTime.rideMinutesText : minutes,
+    );
+    setRideSecondsText(
+      hasRestoredTime && restoredTime ? restoredTime.rideSecondsText : seconds,
+    );
     restoredSpeed.current = null;
     setShowErrors(false);
-  }, [entryKey]);
+  }, [entryKey, entryLiftId]);
 
   const draftState = useRef({
     pinOnly,
@@ -725,6 +749,8 @@ export function CommunityComposer({
     removedPhotoIds,
     liftSpeedText,
     kmhText,
+    rideMinutesText,
+    rideSecondsText,
   });
   draftState.current = {
     pinOnly,
@@ -733,6 +759,8 @@ export function CommunityComposer({
     removedPhotoIds,
     liftSpeedText,
     kmhText,
+    rideMinutesText,
+    rideSecondsText,
   };
   const persistDraft = useCallback(async () => {
     const scope = draftScope.current;
@@ -791,6 +819,8 @@ export function CommunityComposer({
     newPhotos,
     liftSpeedText,
     kmhText,
+    rideMinutesText,
+    rideSecondsText,
     step,
     activeIdentity,
     sessionIdentity,
@@ -1069,20 +1099,20 @@ export function CommunityComposer({
         if (!mounted.current || draftScope.current !== submittingScope) return;
         geoRequest.current++;
         setLocating(false);
+        draftEnabled.current = false;
+        setError("");
+        setStep("done");
+        onMapPickModeChange?.(null);
+        rememberCommunityPost(resortId);
         if (submittingScope) {
-          if (draftScope.current === submittingScope)
-            draftEnabled.current = false;
-          await deleteDraft(submittingScope).catch(() => {
-            if (mounted.current)
+          // IndexedDB cleanup must not delay the saved confirmation screen.
+          void deleteDraft(submittingScope).catch(() => {
+            if (mounted.current && draftScope.current === submittingScope)
               setDraftNotice(
                 "投稿は完了しましたが、端末の下書きを削除できませんでした。",
               );
           });
         }
-        if (!mounted.current || draftScope.current !== submittingScope) return;
-        setError("");
-        rememberCommunityPost(resortId);
-        setStep("done");
       } catch {
         if (mounted.current && draftScope.current === submittingScope)
           setError(
@@ -1338,8 +1368,13 @@ export function CommunityComposer({
           {version != null ? "更新しました" : "投稿ありがとうございます"}
         </p>
         <Button variant="outline" className="w-full" onClick={resetForNext}>
-          別の投稿をする
+          続けて投稿する
         </Button>
+        {onClose && (
+          <Button className="w-full" onClick={close}>
+            戻る
+          </Button>
+        )}
       </div>,
     );
 
@@ -1736,6 +1771,15 @@ export function CommunityComposer({
                     setLiftSpeedText(text);
                     setKmhText(value == null ? "" : (value * 3.6).toFixed(1));
                     patchEntry({ liftSpeed: value });
+                    const lift = mapData.lifts.find(
+                      option => option.id === entry.liftId,
+                    );
+                    const [minutes, seconds] = rideTimeFromSpeed(
+                      lift?.distance ?? null,
+                      value,
+                    );
+                    setRideMinutesText(minutes);
+                    setRideSecondsText(seconds);
                   }}
                 />
                 m/s
@@ -1750,14 +1794,101 @@ export function CommunityComposer({
                     const text = event.target.value;
                     if (!DECIMAL_1.test(text)) return;
                     const value = toSpeedNumber(text);
-                    const metres = value == null ? null : round1(value / 3.6);
+                    const metres = value == null ? null : value / 3.6;
                     setKmhText(text);
                     setLiftSpeedText(metres == null ? "" : metres.toFixed(1));
                     patchEntry({ liftSpeed: metres });
+                    const lift = mapData.lifts.find(
+                      option => option.id === entry.liftId,
+                    );
+                    const [minutes, seconds] = rideTimeFromSpeed(
+                      lift?.distance ?? null,
+                      metres,
+                    );
+                    setRideMinutesText(minutes);
+                    setRideSecondsText(seconds);
                   }}
                 />
                 km/h
               </div>
+            </div>
+          </Field>
+          <Field label="乗車時間">
+            <div className="space-y-1.5 text-sm text-gray-700 md:text-base">
+              <div className="flex items-center gap-1 whitespace-nowrap">
+                <Input
+                  inputMode="numeric"
+                  aria-label="乗車時間（分）"
+                  placeholder="任意"
+                  className="h-8 w-14 placeholder:text-xs placeholder:text-gray-300"
+                  value={rideMinutesText}
+                  disabled={
+                    !mapData.lifts.find(lift => lift.id === entry.liftId)
+                      ?.distance
+                  }
+                  onChange={event => {
+                    const text = event.target.value;
+                    if (!/^\d{0,3}$/.test(text)) return;
+                    setRideMinutesText(text);
+                    const total =
+                      text === "" && rideSecondsText === ""
+                        ? null
+                        : Number(text || 0) * 60 + Number(rideSecondsText || 0);
+                    const lift = mapData.lifts.find(
+                      option => option.id === entry.liftId,
+                    );
+                    const speed = speedFromRideTime(
+                      lift?.distance ?? null,
+                      total,
+                    );
+                    setLiftSpeedText(
+                      speed == null ? "" : round1(speed).toFixed(1),
+                    );
+                    setKmhText(speed == null ? "" : (speed * 3.6).toFixed(1));
+                    patchEntry({ liftSpeed: speed });
+                  }}
+                />
+                分
+                <Input
+                  inputMode="numeric"
+                  aria-label="乗車時間（秒）"
+                  placeholder="任意"
+                  className="h-8 w-14 placeholder:text-xs placeholder:text-gray-300"
+                  value={rideSecondsText}
+                  disabled={
+                    !mapData.lifts.find(lift => lift.id === entry.liftId)
+                      ?.distance
+                  }
+                  onChange={event => {
+                    const text = event.target.value;
+                    if (!/^\d{0,2}$/.test(text) || Number(text) > 59) return;
+                    setRideSecondsText(text);
+                    const total =
+                      rideMinutesText === "" && text === ""
+                        ? null
+                        : Number(rideMinutesText || 0) * 60 + Number(text || 0);
+                    const lift = mapData.lifts.find(
+                      option => option.id === entry.liftId,
+                    );
+                    const speed = speedFromRideTime(
+                      lift?.distance ?? null,
+                      total,
+                    );
+                    setLiftSpeedText(
+                      speed == null ? "" : round1(speed).toFixed(1),
+                    );
+                    setKmhText(speed == null ? "" : (speed * 3.6).toFixed(1));
+                    patchEntry({ liftSpeed: speed });
+                  }}
+                />
+                秒
+              </div>
+              {!mapData.lifts.find(lift => lift.id === entry.liftId)
+                ?.distance && (
+                <p className="text-xs text-gray-500">
+                  距離データがないため乗車時間から速度を計算できません。
+                </p>
+              )}
             </div>
           </Field>
         </>

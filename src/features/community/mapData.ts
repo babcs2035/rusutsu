@@ -1,5 +1,6 @@
 import type { FinalizedResortMapData } from "@/lib/finalizedResortGeojsonShared";
 import type { CommunityMapData, CourseOption } from "./contract";
+import { getLiftDistance } from "./liftRideTime";
 
 /**
  * 投稿で選べるコース・リフト。詳細の地図と同じデータから作り、
@@ -30,6 +31,10 @@ export function communityMapData(
       name: feature.name,
       coordinates: feature.coordinates,
       lines: [feature.coordinates],
+      distance: getLiftDistance(
+        feature.properties.distance,
+        feature.properties.slopeDistMap,
+      ),
     })),
     center,
   };

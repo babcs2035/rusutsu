@@ -27,6 +27,8 @@ const validIncompleteDraft = {
   targetEdited: false,
   liftSpeedText: "",
   kmhText: "",
+  rideMinutesText: "",
+  rideSecondsText: "",
 };
 
 test("currentTokyoDateTime uses Japan time across a UTC date rollover", () => {

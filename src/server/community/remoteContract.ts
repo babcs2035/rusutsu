@@ -140,6 +140,9 @@ const courseOptionSchema = z.strictObject({
   coordinates: z.array(z.array(z.number())),
   lines: z.array(z.array(z.array(z.number()))),
 });
+const liftOptionSchema = courseOptionSchema.safeExtend({
+  distance: z.number().nullable().default(null),
+});
 const accountSchema: z.ZodType<CommunityAccount> = z.strictObject({
   id: z.string(),
   publicName: z.string().nullable(),
@@ -151,7 +154,7 @@ const mapDataSchema: z.ZodType<CommunityMapData> = z.strictObject({
   name: z.string(),
   center: z.tuple([z.number(), z.number()]),
   courses: z.array(courseOptionSchema),
-  lifts: z.array(courseOptionSchema),
+  lifts: z.array(liftOptionSchema),
 });
 const authorSchema = z.strictObject({ id: z.string(), publicName: z.string() });
 const photoSchema = z.strictObject({

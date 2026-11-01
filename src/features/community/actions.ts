@@ -64,6 +64,10 @@ async function execute<K extends keyof CommunitySuccessPayloads>(
   if (
     result.ok &&
     ![
+      // The composer refreshes its feed/map after saving. A layout refresh
+      // refetches all resort data and can unmount the success screen.
+      "publish",
+      "update",
       "courses",
       "feed",
       "mapEntries",

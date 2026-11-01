@@ -96,6 +96,7 @@ export async function remoteCommunity<K extends keyof CommunitySuccessPayloads>(
   command: Extract<CommunityCommand, { operation: K }> & { operation: K },
   photos?: FormData,
 ): Promise<ActionResult<CommunitySuccessPayloads[K]>> {
+  const startedAt = Date.now();
   try {
     const response = await remoteRequest(command, photos);
     const operation = (command as { operation: K }).operation;
@@ -119,6 +120,12 @@ export async function remoteCommunity<K extends keyof CommunitySuccessPayloads>(
       throw new InternalDataApiError("投稿APIの応答形式が不正です。", 502);
     return parsed.data.result as ActionResult<CommunitySuccessPayloads[K]>;
   } catch (error) {
+    if (error instanceof InternalDataApiError)
+      console.warn("Community API request failed", {
+        operation: (command as { operation: K }).operation,
+        elapsedMs: Date.now() - startedAt,
+        status: error.status,
+      });
     return {
       ok: false,
       error:

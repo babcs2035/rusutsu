@@ -17,6 +17,8 @@ export const composerDraftSchema = z.object({
   pinOnly: z.boolean().default(false),
   liftSpeedText: z.string().max(10),
   kmhText: z.string().max(10),
+  rideMinutesText: z.string().max(4).default(""),
+  rideSecondsText: z.string().max(2).default(""),
   photosMissing: z.boolean().default(false),
 });
 
