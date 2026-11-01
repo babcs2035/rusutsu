@@ -2,7 +2,7 @@
 
 import { ChevronLeft, ExternalLink } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useScreenState } from "@/features/map/session/useScreenState";
@@ -15,6 +15,7 @@ import {
   useDisplayedResortMapData,
   useSimultaneousView,
 } from "../components/SimultaneousToggle";
+import type { FacebookProfile } from "../server/facebookProfile";
 import type { XProfile } from "../server/xProfile";
 import type { Resort } from "../types";
 import { hasSourceUrl } from "../utils/currentConditions";
@@ -47,24 +48,65 @@ const PLATFORM_STYLE = {
   },
 } as const;
 
-function XAccountCard({ account }: { account: SocialAccount }) {
-  const [profile, setProfile] = useState<XProfile | null>(null);
+type CardPlatform = Extract<SocialPlatform, "X" | "Facebook">;
+type CardProfile = { name: string; detail: string | null };
+
+const CARD_PROFILE = {
+  X: {
+    endpoint: (account: SocialAccount) =>
+      `/rusutsu/api/social/x/${encodeURIComponent(account.handle)}`,
+    toProfile: (profile: XProfile): CardProfile => ({
+      name: profile.name,
+      detail: null,
+    }),
+    fallbackName: (account: SocialAccount) => `@${account.handle}`,
+  },
+  Facebook: {
+    endpoint: (account: SocialAccount) =>
+      `/rusutsu/api/social/facebook?${new URLSearchParams({ url: account.url })}`,
+    toProfile: (profile: FacebookProfile): CardProfile => ({
+      name: profile.name,
+      detail: profile.followers,
+    }),
+    fallbackName: (account: SocialAccount) => account.handle,
+  },
+} as const;
+
+function SocialAccountCard({
+  platform,
+  account,
+}: {
+  platform: CardPlatform;
+  account: SocialAccount;
+}) {
+  const [profile, setProfile] = useState<CardProfile | null>(null);
   useEffect(() => {
     const controller = new AbortController();
-    void fetch(`/rusutsu/api/social/x/${encodeURIComponent(account.handle)}`, {
+    void fetch(CARD_PROFILE[platform].endpoint(account), {
       signal: controller.signal,
     })
       .then(async response => (response.ok ? response.json() : null))
       .then(data => {
-        if (!controller.signal.aborted) setProfile(data?.profile ?? null);
+        if (controller.signal.aborted) return;
+        setProfile(
+          data?.profile ? CARD_PROFILE[platform].toProfile(data.profile) : null,
+        );
       })
       .catch(() => {
         /* The registered account remains usable when lookup fails. */
       });
     return () => controller.abort();
-  }, [account.handle]);
-  const name = profile?.name ?? `@${account.handle}`;
-  const note = account.label !== `@${account.handle}` ? account.label : null;
+  }, [platform, account]);
+  const fallbackName = CARD_PROFILE[platform].fallbackName(account);
+  const name = profile?.name ?? fallbackName;
+  const note = account.label !== fallbackName ? account.label : null;
+  // X は表示名の下にハンドル、Facebook はフォロワー数を出す
+  const detail =
+    platform === "X"
+      ? name !== fallbackName
+        ? fallbackName
+        : null
+      : (profile?.detail ?? null);
   return (
     <div className="flex min-w-0 items-center gap-3 rounded-lg border border-border bg-background px-3 py-2.5">
       <div className="min-w-0 flex-1">
@@ -76,16 +118,16 @@ function XAccountCard({ account }: { account: SocialAccount }) {
         <p className="break-words text-sm leading-snug font-semibold text-foreground">
           {name}
         </p>
-        {name !== `@${account.handle}` && (
+        {detail && (
           <p className="mt-0.5 break-all text-sm text-muted-foreground">
-            @{account.handle}
+            {detail}
           </p>
         )}
       </div>
       <ExternalLinkComponent
         href={account.url}
-        aria-label={`${name}（@${account.handle}）をXで見る（新しいタブ）`}
-        title="Xで開く"
+        aria-label={`${name}${platform === "X" ? `（@${account.handle}）` : ""}を${platform}で見る（新しいタブ）`}
+        title={`${platform}で開く`}
         className="size-9 shrink-0 justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
       >
         <ExternalLink aria-hidden="true" className="size-4" />
@@ -94,10 +136,16 @@ function XAccountCard({ account }: { account: SocialAccount }) {
   );
 }
 
-function XAccountCards({ accounts }: { accounts: SocialAccount[] }) {
+function SocialAccountCards({
+  platform,
+  accounts,
+}: {
+  platform: CardPlatform;
+  accounts: SocialAccount[];
+}) {
   return (
     <section
-      aria-label="Xのアカウント一覧"
+      aria-label={`${platform}のアカウント一覧`}
       // biome-ignore lint/a11y/noNoninteractiveTabindex: The scroll region must be reachable for keyboard scrolling.
       tabIndex={0}
       className="max-h-[600px] overflow-y-auto overscroll-contain bg-muted/20 p-3 focus-visible:outline-2 focus-visible:outline-ring sm:p-4"
@@ -105,7 +153,7 @@ function XAccountCards({ accounts }: { accounts: SocialAccount[] }) {
       <ul className="space-y-2">
         {accounts.map(account => (
           <li key={account.url}>
-            <XAccountCard account={account} />
+            <SocialAccountCard platform={platform} account={account} />
           </li>
         ))}
       </ul>
@@ -113,25 +161,7 @@ function XAccountCards({ accounts }: { accounts: SocialAccount[] }) {
   );
 }
 
-function AccountEmbed({
-  platform,
-  account,
-  width,
-}: {
-  platform: Exclude<SocialPlatform, "X">;
-  account: SocialAccount;
-  width: number;
-}) {
-  const params = new URLSearchParams({
-    href: account.url,
-    tabs: "timeline",
-    width: String(width),
-    height: "600",
-    small_header: "false",
-    adapt_container_width: "false",
-    hide_cover: "false",
-    show_facepile: "false",
-  });
+function AccountEmbed({ account }: { account: SocialAccount }) {
   return (
     <div className="min-w-0">
       <div className="flex items-center justify-between gap-2 border-b px-3 py-2 text-sm">
@@ -141,29 +171,17 @@ function AccountEmbed({
           className="shrink-0 text-blue-700 underline"
           icon={<ExternalLink className="size-3" />}
         >
-          {platform}で開く
+          Instagramで開く
         </ExternalLinkComponent>
       </div>
-      <div
-        className={
-          platform === "Facebook"
-            ? "h-[600px] w-full overflow-hidden bg-white"
-            : "w-full overflow-hidden bg-white"
-        }
-      >
-        {platform !== "Facebook" || width > 0 ? (
-          <iframe
-            title={`${platform} · ${account.label}`}
-            src={
-              platform === "Instagram"
-                ? `${account.url}embed/`
-                : `https://www.facebook.com/plugins/page.php?${params}`
-            }
-            className="block h-[600px] w-full border-0"
-            loading="eager"
-            allow="encrypted-media; clipboard-write; picture-in-picture; web-share"
-          />
-        ) : null}
+      <div className="w-full overflow-hidden bg-white">
+        <iframe
+          title={`Instagram · ${account.label}`}
+          src={`${account.url}embed/`}
+          className="block h-[600px] w-full border-0"
+          loading="eager"
+          allow="encrypted-media; clipboard-write; picture-in-picture; web-share"
+        />
       </div>
     </div>
   );
@@ -173,12 +191,10 @@ function PlatformAccounts({
   resortId,
   platform,
   accounts,
-  width,
 }: {
   resortId: string;
   platform: SocialPlatform;
   accounts: SocialAccount[];
-  width: number;
 }) {
   const [active, setActive] = useScreenState(
     `rusutsu:detail:v1:${resortId}:sns:${platform}`,
@@ -191,11 +207,10 @@ function PlatformAccounts({
         {platform}のアカウントは登録されていません。
       </p>
     );
-  if (platform === "X") return <XAccountCards accounts={accounts} />;
-  if (accounts.length === 1)
-    return (
-      <AccountEmbed platform={platform} account={accounts[0]} width={width} />
-    );
+  // 投稿はFacebookにログイン中しか埋め込みに出ないため、Facebook もカードで並べる
+  if (platform !== "Instagram")
+    return <SocialAccountCards platform={platform} accounts={accounts} />;
+  if (accounts.length === 1) return <AccountEmbed account={accounts[0]} />;
   return (
     <Tabs
       value={active}
@@ -225,7 +240,7 @@ function PlatformAccounts({
       </div>
       {accounts.map(account => (
         <TabsContent key={account.url} value={account.url} keepMounted>
-          <AccountEmbed platform={platform} account={account} width={width} />
+          <AccountEmbed account={account} />
         </TabsContent>
       ))}
     </Tabs>
@@ -341,22 +356,6 @@ function SocialTabs({
   resortId: string;
   accounts?: Partial<Resort["socialAccounts"]> | null;
 }) {
-  const container = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(0);
-  useEffect(() => {
-    if (!container.current) return;
-    // Measure the visible shell, never a hidden panel. All accounts can then
-    // create correctly sized widgets before their tabs are selected.
-    const observer = new ResizeObserver(([entry]) => {
-      if (entry.contentRect.width > 0) {
-        setWidth(
-          Math.max(180, Math.min(500, Math.floor(entry.contentRect.width))),
-        );
-      }
-    });
-    observer.observe(container.current);
-    return () => observer.disconnect();
-  }, []);
   const platforms = SOCIAL_PLATFORMS.filter(
     platform => (accounts?.[platform]?.length ?? 0) > 0,
   );
@@ -374,7 +373,6 @@ function SocialTabs({
   }
   return (
     <Tabs
-      ref={container}
       value={active}
       onValueChange={value => {
         if (typeof value === "string") setActive(value);
@@ -416,7 +414,6 @@ function SocialTabs({
             key={platform}
             platform={platform}
             accounts={accounts?.[platform] ?? []}
-            width={width}
           />
         </TabsContent>
       ))}

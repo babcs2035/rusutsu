@@ -50,3 +50,41 @@ test("rejects invalid and foreign URLs and preserves Facebook numeric profile ID
     Facebook: [],
   });
 });
+
+test("normalizes Facebook URLs that point to a numeric ID so the page plugin can embed them", () => {
+  const links = parseResortLinksMap(
+    JSON.stringify({
+      resort: {
+        facebookUrls: [
+          "https://www.facebook.com/people/%E5%8D%94%E5%92%8C%E3%82%B9%E3%82%AD%E3%83%BC%E5%A0%B4/100063713343579/",
+          "https://www.facebook.com/profile.php?id=100063713343579#",
+          "https://www.facebook.com/p/%E9%A3%9B%E9%A8%A8%E9%AB%98%E5%B1%B1%E3%82%B9%E3%82%AD%E3%83%BC%E5%A0%B4-100064025529147/",
+          "https://www.facebook.com/pages/%E3%82%B5%E3%83%9B%E3%83%AD/127748797337702",
+          "https://facebook.com/dogoski/",
+        ],
+      },
+    }),
+  );
+  assert.deepEqual(collectSocialAccounts(links, ["resort"]).Facebook, [
+    {
+      url: "https://www.facebook.com/profile.php?id=100063713343579",
+      handle: "協和スキー場",
+      label: "協和スキー場",
+    },
+    {
+      url: "https://www.facebook.com/profile.php?id=100064025529147",
+      handle: "飛騨高山スキー場",
+      label: "飛騨高山スキー場",
+    },
+    {
+      url: "https://www.facebook.com/profile.php?id=127748797337702",
+      handle: "サホロ",
+      label: "サホロ",
+    },
+    {
+      url: "https://www.facebook.com/dogoski",
+      handle: "dogoski",
+      label: "dogoski",
+    },
+  ]);
+});

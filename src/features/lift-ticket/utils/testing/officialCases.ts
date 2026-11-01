@@ -23939,3 +23939,13 @@ export const OFFICIAL_CASES: OfficialCase[] = [
     nightUnknown: true,
   },
 ];
+
+// 五竜・Hakuba47は子IDにも同じ共通料金表のJSONがあるため、親IDの公式照合ケースで照合する。
+for (const resort of ["able-hakuba-goryu", "hakuba-47-winter-sports-park"]) {
+  OFFICIAL_AUDIENCE_TICKETS[resort] =
+    OFFICIAL_AUDIENCE_TICKETS["able-hakuba-goryu-area"];
+  for (const spec of OFFICIAL_CASES.filter(
+    c => c.resort === "able-hakuba-goryu-area",
+  ))
+    OFFICIAL_CASES.push({ ...spec, resort });
+}

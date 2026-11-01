@@ -10,6 +10,43 @@ const fields = {
   Facebook: "facebookUrls",
 } as const;
 
+/**
+ * Facebook のページプラグインは /people/名前/ID/ 形式を受け付けず空白になるため、
+ * 数値IDで指す URL（/people/, /pages/, /p/名前-ID/, /名前-ID, profile.php?id=）は
+ * profile.php?id=ID に揃える。名前があれば表示名の代わりに使う。
+ */
+function facebookAccount(url: URL): { canonical: string; handle: string } {
+  const segments = url.pathname.split("/").filter(Boolean);
+  const decode = (value: string) => {
+    try {
+      return decodeURIComponent(value);
+    } catch {
+      return value;
+    }
+  };
+  let id: string | null = null;
+  let name: string | null = null;
+  if (segments[0] === "profile.php") id = url.searchParams.get("id");
+  else if (["people", "pages"].includes(segments[0]) && segments.length >= 3) {
+    name = decode(segments[1]);
+    id = segments[2];
+  } else {
+    // /p/名前-ID/ と、旧来の /名前-ID
+    const slug = segments[0] === "p" ? segments[1] : segments[0];
+    const match = slug ? /^(.*)-(\d+)$/.exec(decode(slug)) : null;
+    if (match) [, name, id] = match;
+  }
+  if (id && /^\d+$/.test(id))
+    return {
+      canonical: `https://www.facebook.com/profile.php?id=${id}`,
+      handle: name || id,
+    };
+  return {
+    canonical: `https://www.facebook.com/${segments.join("/")}`,
+    handle: segments[0] ?? "",
+  };
+}
+
 export function collectSocialAccounts(
   links: Record<string, ResortLinks>,
   resortIds: string[],
@@ -34,7 +71,10 @@ export function collectSocialAccounts(
                 ? ["instagram.com"]
                 : ["facebook.com", "fb.com"];
           if (!domains.includes(host)) continue;
-          const handle = url.pathname.split("/").filter(Boolean)[0] ?? "";
+          const facebook =
+            platform === "Facebook" ? facebookAccount(url) : null;
+          const handle =
+            facebook?.handle ?? url.pathname.split("/").filter(Boolean)[0];
           if (!handle) continue;
           if (platform === "X" && !/^[a-zA-Z0-9_]{1,15}$/.test(handle))
             continue;
@@ -43,7 +83,7 @@ export function collectSocialAccounts(
               ? `https://x.com/${handle}`
               : platform === "Instagram"
                 ? `https://www.instagram.com/${handle}/`
-                : `https://www.facebook.com${url.pathname}${url.pathname === "/profile.php" ? url.search : ""}`;
+                : (facebook?.canonical ?? "");
           if (seen.has(canonical.toLowerCase())) continue;
           seen.add(canonical.toLowerCase());
           result[platform].push({
