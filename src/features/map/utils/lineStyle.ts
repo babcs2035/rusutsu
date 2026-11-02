@@ -134,7 +134,11 @@ export const getLineStyle = ({
   const isDimmed = selectedFeature !== null && !isSelected;
   const status = properties.statusKind;
   const isPhotoTile = context.mapTileVariant === "photo";
-  const isUngroomed = properties.ungroomed && context.showUngroomed !== false;
+  // コースを選んでいる間は、圧雪を詳細の名前横と断面図で示すので実線にする
+  const isUngroomed =
+    properties.ungroomed &&
+    context.showUngroomed !== false &&
+    selectedFeature?.kind !== "course";
 
   if (variant === "hit") {
     return { color: "#000000", opacity: 0, weight: hitWeight };

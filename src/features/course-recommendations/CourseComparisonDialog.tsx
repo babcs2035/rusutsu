@@ -596,7 +596,7 @@ export function CourseComparisonDialog({
                   計算方法
                 </summary>
                 <p className="mt-2">
-                  最大斜度は地図と同じ約40m平均の最大値で、10°違うと0%です。急斜面の距離は、選択中のコースの最大斜度の8割（最大斜度との差は最低5°）以上の斜面が続く距離を両コースで測り、比で比べます（3倍で0%）。全体の斜度分布は1°刻みの割合のずれで比べ（平均6°ずれると0%）、滑走距離は全長の比で比べます（3倍で0%）。圧雪状態や曲がり方の近い候補を優先して選んでいます。
+                  最大斜度は地図と同じ約40m平均の最大値で、10°違うと0%です。急斜面の距離は、選択中のコースの最大斜度の8割（最大斜度との差は最低5°）以上の斜面が続く距離を両コースで測り、比で比べます（3倍で0%）。全体の斜度分布は1°刻みの割合のずれで比べ（平均6°ずれると0%）、滑走距離は全長の比で比べます（3倍で0%）。この点数の高い順に候補を選んでいます。
                 </p>
                 <p className="mt-2">
                   得点と合計は小数第1位に丸めています。表示上の合計には最大0.2点の差が生じます。
@@ -605,16 +605,8 @@ export function CourseComparisonDialog({
                   地形データの近さを示す評価です。体感や難易度の一致率ではありません。
                 </p>
               </details>
-              {(candidate.shapeDifferent || candidate.groomingDifferent) && (
-                <p className="text-xs text-amber-900">
-                  {[
-                    candidate.shapeDifferent ? "曲がり方が異なります" : null,
-                    candidate.groomingDifferent ? "圧雪状態が異なります" : null,
-                  ]
-                    .filter(Boolean)
-                    .join("。")}
-                  。
-                </p>
+              {candidate.groomingDifferent && (
+                <p className="text-xs text-amber-900">圧雪状態が異なります。</p>
               )}
             </TabsContent>
           </div>

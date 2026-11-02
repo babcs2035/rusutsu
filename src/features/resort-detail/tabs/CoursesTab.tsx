@@ -1,10 +1,15 @@
 "use client";
 
 import { Circle, Triangle, X } from "lucide-react";
-import type { CSSProperties } from "react";
 import { z } from "zod";
+import { recommendationSelection } from "@/features/course-recommendations/algorithm";
 import { useScreenState } from "@/features/map/session/useScreenState";
 import type { SelectedMapFeature } from "@/features/map/types";
+import {
+  getDetailCourseStatusFilter,
+  useDetailCourseStatus,
+} from "@/features/map/utils/detailCourseStatusFilter";
+import { isCourseStatusVisible } from "@/features/map/utils/mapDisplaySettings";
 import {
   COURSE_DIFFICULTY_META,
   type FinalizedCourseFeature,
@@ -14,59 +19,64 @@ import {
 } from "@/lib/finalizedResortGeojsonShared";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import { SourceLine, StatusMark } from "../components/CompactInfo";
-import { ProportionBar } from "../components/ProportionBar";
-import { StatusBreakdownTable } from "../components/StatusBreakdownTable";
+import { CourseStatusTable } from "../components/CourseStatusTable";
+import { createMapCourseSummary } from "../components/CurrentOverview";
+import { DistributionChart } from "../components/DistributionChart";
+import { ObservationTimes } from "../components/ObservationTimes";
+import { ariaSort, SortableHeader } from "../components/SortableHeader";
 import type { Resort } from "../types";
 import {
   groupSlopeBins,
   slopeDistribution,
   sumKnown,
 } from "../utils/courseDistribution";
+import {
+  type CourseSymbolField,
+  courseDifficultyBands,
+  courseNameBackground,
+  courseSectionSymbols,
+  type SectionSymbol,
+} from "../utils/courseTablePresentation";
 import { hasSourceUrl } from "../utils/currentConditions";
 import {
-  createCourseLevelSummaries,
   createFinalizedCourseGroups,
   formatDegree,
+  formatElevationRange,
   formatMeters,
-  getCourseGroupPisteSymbol,
-  getCourseGroupStatus,
-  maxNullable,
+  getCourseGroupMetrics,
+  getMainCourseGroup,
+  normalizeIconSymbol,
   PISTE_STATUS_DESCRIPTION,
   type StatusSymbol,
-  summarizeCourseStatuses,
 } from "../utils/detailMetrics";
+import {
+  nextTableSort,
+  type SortValue,
+  sortRows,
+  symbolSortValue,
+  tableSortSchema,
+} from "../utils/tableSort";
 
 const colors = {
   beginner: "#15803d",
   beginnerIntermediate: "#9A3412",
   intermediate: "#b91c1c",
-  intermediateAdvanced: "#9a3412",
+  intermediateAdvanced: "#7e22ce",
   advanced: "#1e293b",
   unknown: "#64748b",
 };
-const rowBackgrounds: Record<string, string> = {
-  ...Object.fromEntries(
-    Object.entries(COURSE_DIFFICULTY_META).map(([key, meta]) => [
-      key,
-      `color-mix(in srgb, ${meta.color} 16%, white)`,
-    ]),
-  ),
-  beginnerIntermediate: "#FFEDD5",
-};
+const statusKinds = {
+  "○": "open",
+  "△": "limited",
+  "×": "closed",
+  不明: "unknown",
+} as const;
 const pisteIcons = { "○": Circle, "△": Triangle, "×": X };
 const tableCellPadding =
   "border-b border-slate-200 px-1 py-2 @min-[21rem]/course-list:px-2";
 const hasValue = (value: unknown) =>
   value != null && (typeof value !== "string" || value.trim().length > 0);
-const optionalFields = [
-  ["早朝", "morning"],
-  ["ナイター", "night"],
-  ["最大幅", "maxWidth"],
-  ["最小幅", "minWidth"],
-  ["標高差", "elevationDiffMap"],
-  ["更新", "update"],
-  ["動画", "youtubeUrl"],
-] as const;
+const optionalFields = [["動画", "youtubeUrl"]] as const;
 const courseOptionalValues = (courses: FinalizedCourseFeature[]) =>
   Object.fromEntries(
     optionalFields.map(([label, key]) => [
@@ -80,9 +90,20 @@ const courseOptionalValues = (courses: FinalizedCourseFeature[]) =>
     ]),
   );
 
-function PisteMark({ symbol }: { symbol: StatusSymbol | null }) {
+function PropertyMark({
+  symbol,
+  field,
+}: {
+  symbol: StatusSymbol | null;
+  field: Exclude<CourseSymbolField, "status">;
+}) {
   const Icon = symbol ? pisteIcons[symbol] : null;
-  const label = symbol ? PISTE_STATUS_DESCRIPTION[symbol] : "圧雪不明";
+  const label =
+    field === "piste"
+      ? symbol
+        ? PISTE_STATUS_DESCRIPTION[symbol]
+        : "圧雪不明"
+      : `${field === "morning" ? "早朝" : "ナイター"}: ${symbol ?? "不明"}`;
   return (
     <span
       role="img"
@@ -95,6 +116,35 @@ function PisteMark({ symbol }: { symbol: StatusSymbol | null }) {
       ) : (
         "不明"
       )}
+    </span>
+  );
+}
+
+function SectionMarks({
+  sections,
+  field = "status",
+}: {
+  sections: SectionSymbol[];
+  field?: CourseSymbolField;
+}) {
+  const mark = (symbol: StatusSymbol | null) =>
+    field === "status" ? (
+      <StatusMark symbol={symbol} />
+    ) : (
+      <PropertyMark symbol={symbol} field={field} />
+    );
+  if (sections.length === 1) return mark(sections[0].symbol);
+  return (
+    <span className="inline-flex flex-col items-start gap-y-0.5 text-xs leading-4 text-slate-900 @min-[28rem]/course-list:text-sm">
+      {sections.map(section => (
+        <span
+          key={section.label}
+          className="inline-flex items-center gap-0.5 whitespace-nowrap"
+        >
+          <span>{section.label}</span>
+          {mark(section.symbol)}
+        </span>
+      ))}
     </span>
   );
 }
@@ -137,10 +187,13 @@ export const CoursesTab = ({
     "all",
   );
   const [sort, setSort] = useScreenState(
-    `rusutsu:detail:v1:${resort.id}:CoursesTab:sort`,
-    z.boolean(),
-    false,
+    `rusutsu:detail:v1:${resort.id}:CoursesTab:tableSort`,
+    tableSortSchema,
+    null,
   );
+  // 「営業中のみ」は地図の状態をそのまま使い、ここで切り替えても地図に反映する
+  const statusState = useDetailCourseStatus(resort.id);
+  const statusFilter = getDetailCourseStatusFilter(statusState);
   const courseStatus = finalizedMapData?.courseStatusSummary;
   const section = finalizedMapData?.courses;
   // 出典が未登録なら営業状況そのものが取れていない。区間数は地図のコースで数える。
@@ -151,104 +204,173 @@ export const CoursesTab = ({
   const groups = createFinalizedCourseGroups(features);
   const rows = groups.length
     ? groups.map(group => {
-        const distance = sumKnown(
-          group.courses.map(c => c.properties.slopeDistMap),
-        );
-        const slopes = group.courses.map(c => ({
-          value: c.properties.avgSlopeDegMap,
-          distance: c.properties.slopeDistMap,
-        }));
-        const known = slopes.filter(
-          s => s.value != null && s.distance != null && s.distance > 0,
-        );
-        const weight = known.reduce((sum, s) => sum + (s.distance ?? 0), 0);
+        const main = getMainCourseGroup(group);
+        const metrics = getCourseGroupMetrics(main);
+        const bands = courseDifficultyBands(main);
+        const optional = courseOptionalValues(main.courses);
         return {
           id: group.id,
+          selection: recommendationSelection(group.id, group.courses) ?? {
+            kind: "course" as const,
+            id: group.id,
+          },
           name: group.displayName,
-          difficulty: getCourseDifficulty(group.courses[0]?.properties.level),
-          distance: distance.total,
-          avg: weight
-            ? known.reduce(
-                (sum, s) => sum + (s.value ?? 0) * (s.distance ?? 0),
-                0,
-              ) / weight
-            : group.courses.length === 1
-              ? slopes[0].value
-              : null,
-          max: maxNullable(group.courses.map(c => c.properties.maxSlopeDegMap)),
-          status: getCourseGroupStatus(group).symbol,
-          piste: getCourseGroupPisteSymbol(group),
+          difficulty: bands[0]?.difficulty ?? "unknown",
+          difficulties: [...new Set(bands.map(band => band.difficulty))],
+          nameBackground: courseNameBackground(bands),
+          distance: metrics.distance,
+          avg: metrics.averageSlope,
+          max: metrics.maxSlope,
+          elevationDiff: metrics.elevationDiff,
+          elevationRange: formatElevationRange(metrics.elevationRange),
+          status: courseSectionSymbols(main, "status"),
+          piste: courseSectionSymbols(main, "piste"),
+          morning: courseSectionSymbols(main, "morning"),
+          night: courseSectionSymbols(main, "night"),
           mapped: true,
-          optional: courseOptionalValues(group.courses),
+          optional,
         };
       })
     : resort.courses.map(c => ({
         id: c.id,
+        selection: { kind: "course" as const, id: c.id },
         name: c.name,
         difficulty: getCourseDifficulty(c.difficulty),
+        difficulties: [getCourseDifficulty(c.difficulty)],
+        nameBackground: courseNameBackground([
+          { difficulty: getCourseDifficulty(c.difficulty), fraction: 1 },
+        ]),
         distance: null,
         avg: null,
         max: null,
-        status: null,
-        piste: null,
+        elevationDiff: null,
+        elevationRange: null,
+        status: [{ label: "", symbol: null }],
+        piste: [{ label: "", symbol: null }],
+        morning: [{ label: "", symbol: null }],
+        night: [{ label: "", symbol: null }],
         mapped: false,
         optional: courseOptionalValues([]),
       }));
-  const distance = sumKnown(
-    features.length
-      ? features.map(c => c.properties.slopeDistMap)
-      : rows.map(r => r.distance),
-  );
   const distribution = slopeDistribution(features);
-  const levelDistance = sumKnown(rows.map(row => row.distance)).total ?? 0;
-  const levels = Object.keys(colors).map(key => {
-    const levelRows = rows.filter(row => row.difficulty === key);
-    const rowDistance = sumKnown(levelRows.map(row => row.distance)).total;
-    return {
-      key,
-      // 帯は地図と同じ配色にして、地図で見た印象とそのまま結び付くようにする
-      color: COURSE_DIFFICULTY_META[key as keyof typeof colors].color,
-      label: levelLabel(key),
-      count: levelRows.length,
-      // 距離が1本も分からない区分は 0km ではなく「不明」として扱う
-      distance: rowDistance,
-      percent: levelDistance ? ((rowDistance ?? 0) / levelDistance) * 100 : 0,
-    };
-  });
-  // 全体行と各レベル行は同じ数え方（地図のコース単位）でそろえ、足して合うようにする
-  const levelSummaries = createCourseLevelSummaries(
-    rows.map(row => ({ difficulty: row.difficulty, status: row.status })),
+  const levels = Object.keys(colors).map(key => ({
+    key,
+    label: levelLabel(key),
+    count: rows.filter(row =>
+      row.difficulties.includes(key as keyof typeof colors),
+    ).length,
+  }));
+  // 「営業中のみ」は地図と同じ営業状況で区間を絞る。全体は薄い棒で残す。
+  const isShownFeature = (course: FinalizedCourseFeature) =>
+    !statusFilter ||
+    isCourseStatusVisible(
+      // 地図の getFeatureStatusKind と同じ判定（leaflet を読み込まないよう記号から引く）
+      statusKinds[normalizeIconSymbol(course.properties.status) ?? "不明"],
+      statusFilter,
+    );
+  const levelColumns = Object.keys(colors)
+    .map(key => {
+      const all = features.filter(
+        course => getCourseDifficulty(course.properties.level) === key,
+      );
+      const open = all.filter(isShownFeature);
+      return {
+        key,
+        // 棒は地図と同じ配色にして、地図で見た印象とそのまま結び付くようにする
+        color: COURSE_DIFFICULTY_META[key as keyof typeof colors].color,
+        label: levelLabel(key),
+        distance: sumKnown(all.map(c => c.properties.slopeDistMap)).total ?? 0,
+        hasCourses: all.length > 0,
+        openDistance:
+          sumKnown(open.map(c => c.properties.slopeDistMap)).total ?? 0,
+      };
+    })
+    .filter(column => column.hasCourses);
+  const openSlopeBins = groupSlopeBins(
+    slopeDistribution(features.filter(isShownFeature)).bins,
   );
-  const breakdownRows = [
-    {
-      label: "全体",
-      summary: summarizeCourseStatuses(rows.map(row => row.status)),
-      distance: distance.total,
-    },
-    // レベルが1種類しかないときの内訳は全体行と同じ内容になるので出さない
-    ...(levelSummaries.length > 1
-      ? levelSummaries.map(({ difficulty, summary }) => ({
-          label: levelLabel(difficulty),
-          summary,
-          distance:
-            levels.find(level => level.key === difficulty)?.distance ?? null,
-        }))
-      : []),
-  ];
-  // 帯は地図と同じ配色にして、地図で見た斜度の印象とそのまま結び付くようにする
-  const slopeSegments = groupSlopeBins(distribution.bins).map(bin => ({
+  // 棒は地図と同じ配色にして、地図で見た斜度の印象とそのまま結び付くようにする
+  const slopeColumns = groupSlopeBins(distribution.bins).map((bin, index) => ({
     key: bin.label,
     label: bin.label,
     color: getSlopeColor(bin.sample),
-    percent: bin.percent,
+    distance: bin.distance,
+    openDistance: openSlopeBins[index].distance,
   }));
-  const displayed = rows
-    .filter(row => filter === "all" || row.difficulty === filter)
-    .sort((a, b) => (sort ? (b.distance ?? -1) - (a.distance ?? -1) : 0));
-  const optionalLabels = optionalFields.map(([label]) => label);
-  const optionalColumns = optionalLabels.filter(label =>
-    rows.some(row => row.optional[label].length > 0),
+  // 難易度に加え、該当するコースがあるときだけ圧雪・早朝・ナイターでも絞り込める
+  const hasSymbol = (sections: SectionSymbol[], symbols: StatusSymbol[]) =>
+    sections.some(
+      section => section.symbol !== null && symbols.includes(section.symbol),
+    );
+  const featureFilters = [
+    {
+      value: "ungroomed",
+      label: "非圧雪",
+      match: (row: (typeof rows)[number]) => hasSymbol(row.piste, ["×"]),
+    },
+    {
+      value: "morning",
+      label: "早朝あり",
+      match: (row: (typeof rows)[number]) => hasSymbol(row.morning, ["○", "△"]),
+    },
+    {
+      value: "night",
+      label: "ナイターあり",
+      match: (row: (typeof rows)[number]) => hasSymbol(row.night, ["○", "△"]),
+    },
+  ].filter(option => rows.some(option.match));
+  const activeFeatureFilter = featureFilters.find(
+    option => option.value === filter,
   );
+  const displayed = rows.filter(row =>
+    activeFeatureFilter
+      ? activeFeatureFilter.match(row)
+      : filter === "all" ||
+        row.difficulties.includes(filter as keyof typeof colors),
+  );
+  const optionalLabels = [
+    "早朝",
+    "ナイター",
+    ...optionalFields.map(([label]) => label),
+  ];
+  const optionalColumns = optionalLabels.filter(label => {
+    const field =
+      label === "早朝" ? "morning" : label === "ナイター" ? "night" : null;
+    return field
+      ? rows.some(row => row[field].some(section => section.symbol !== null))
+      : rows.some(row => row.optional[label].length > 0);
+  });
+  // 記号の列は ○（圧雪・営業あり）を上に、数値の列（幅など）は大きい順から始める
+  const symbolColumns = new Set(["状況", "圧雪", "早朝", "ナイター"]);
+  const sortValue = (row: (typeof rows)[number], key: string): SortValue => {
+    const symbols = (sections: SectionSymbol[]) =>
+      symbolSortValue(sections.map(section => section.symbol));
+    if (key === "状況") return symbols(row.status);
+    if (key === "圧雪") return symbols(row.piste);
+    if (key === "早朝") return symbols(row.morning);
+    if (key === "ナイター") return symbols(row.night);
+    if (key === "距離") return row.distance;
+    if (key === "平均") return row.avg;
+    if (key === "最大") return row.max;
+    if (key === "標高差") return row.elevationDiff;
+    const numbers = (row.optional[key] ?? [])
+      .map(entry => Number(entry.value))
+      .filter(Number.isFinite);
+    return numbers.length ? Math.max(...numbers) : null;
+  };
+  // 名前や更新日時・動画のような文字の列は並び替えない
+  const isSortable = (key: string) =>
+    !["コース名", "更新", "動画"].includes(key);
+  const sortedRows = sortRows(displayed, sort, sortValue);
+  const handleSort = (key: string) =>
+    setSort(nextTableSort(sort, key, symbolColumns.has(key) ? "asc" : "desc"));
+  const hasSectionStatuses = rows.some(row => row.status.length > 1);
+  const statusColumnWidth = hasSectionStatuses
+    ? "w-16 min-w-16 max-w-16 @min-[28rem]/course-list:w-18 @min-[28rem]/course-list:min-w-18 @min-[28rem]/course-list:max-w-18"
+    : "w-12 min-w-12 max-w-12";
+  const nameColumnOffset = hasSectionStatuses
+    ? "left-16 @min-[28rem]/course-list:left-18"
+    : "left-12";
   const cellValues = (row: (typeof rows)[number], label: string) => {
     const grouped = new Map<string, { labels: string[]; value: string }>();
     for (const entry of row.optional[label]) {
@@ -263,55 +385,77 @@ export const CoursesTab = ({
     }
     return [...grouped.values()].map(entry => ({
       label: entry.labels.join("・"),
-      value: ["最大幅", "最小幅", "標高差"].includes(label)
-        ? formatMeters(Number(entry.value))
-        : entry.value,
+      value: entry.value,
       showLabel: grouped.size > 1,
     }));
   };
   return (
-    <div className="space-y-4">
-      <StatusBreakdownTable
-        rows={breakdownRows}
-        countLabel="区間"
-        unavailable={!hasSource}
-        source={
-          hasSource ? (
-            <SourceLine
-              label="コース"
-              showLabel={false}
-              showFetched={false}
-              urls={courseStatus?.sourceUrls ?? section?.sourceUrls}
-              updates={
-                courseStatus?.updates ??
-                features.map(c => c.properties.update ?? "")
-              }
-            />
-          ) : undefined
-        }
-      />
-      <ProportionBar
-        title="レベル別割合"
-        note="滑走距離ベース"
-        segments={levels}
+    <div className="space-y-3">
+      <div className="space-y-1">
+        <CourseStatusTable
+          inline
+          summary={
+            hasSource ? courseStatus : createMapCourseSummary(groups.length)
+          }
+          unavailable={!hasSource}
+          observedTime={
+            hasSource ? (
+              <ObservationTimes
+                align="left"
+                entries={[
+                  {
+                    label: "コース",
+                    time: courseStatus?.observedAt ?? section?.observedAt,
+                  },
+                ]}
+              />
+            ) : undefined
+          }
+          source={
+            hasSource ? (
+              <SourceLine
+                compact
+                label="コース"
+                showLabel={false}
+                showFetched={false}
+                urls={courseStatus?.sourceUrls ?? section?.sourceUrls}
+                urlLabels={courseStatus?.sourceLabels}
+                updates={
+                  courseStatus?.updates ??
+                  features.map(c => c.properties.update ?? "")
+                }
+              />
+            ) : undefined
+          }
+        />
+      </div>
+      <DistributionChart
+        title="難易度"
+        columns={levelColumns}
+        filtered={statusFilter !== null}
         emptyText="難易度データなし"
       />
-      <ProportionBar
-        title="斜度別割合"
-        note={`滑走距離ベース${distribution.omitted > 0 ? `・標高不明の${distribution.omitted}区間を除く` : ""}`}
-        segments={slopeSegments}
+      <DistributionChart
+        title="斜度"
+        note={
+          distribution.omitted > 0
+            ? `標高不明の${distribution.omitted}区間を除く`
+            : undefined
+        }
+        columns={slopeColumns}
+        filtered={statusFilter !== null}
         emptyText="標高付きのコースデータがないため集計できません。"
       />
       <section className="@container/course-list">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-bold">コース一覧</h2>
           <select
-            aria-label="難易度で絞り込み"
+            aria-label="コースを絞り込み"
             value={filter}
             onChange={e => setFilter(e.target.value)}
             className="h-8 max-w-36 rounded border px-2 text-sm"
           >
-            <option value="all">すべての難易度</option>
+            <option value="all">すべて</option>
             {levels
               .filter(l => l.count)
               .map(l => (
@@ -319,6 +463,11 @@ export const CoursesTab = ({
                   {l.label}
                 </option>
               ))}
+            {featureFilters.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </div>
         <div className="my-2 flex flex-wrap items-center gap-2 text-sm text-slate-600">
@@ -350,62 +499,56 @@ export const CoursesTab = ({
                   "距離",
                   "平均",
                   "最大",
+                  "標高差",
                   ...optionalColumns,
                 ].map(label => (
                   <th
                     key={label}
                     scope="col"
-                    className={`${label === "状況" ? "border-b border-slate-200 px-1 py-2" : tableCellPadding} sticky top-0 z-10 bg-slate-50 text-left whitespace-nowrap ${label === "状況" ? "left-0 z-30 w-9 min-w-9 max-w-9" : label === "コース名" ? "left-9 z-30 min-w-24 border-r" : ""}`}
+                    aria-sort={ariaSort(sort, label)}
+                    className={`${label === "状況" ? "border-b border-slate-200 px-1 py-2" : tableCellPadding} sticky top-0 z-10 bg-slate-50 text-left whitespace-nowrap ${label === "状況" ? `left-0 z-30 ${statusColumnWidth}` : label === "コース名" ? `${nameColumnOffset} z-30 min-w-24 border-r` : ""}`}
                   >
-                    {label === "距離" ? (
-                      <button type="button" onClick={() => setSort(!sort)}>
-                        距離 {sort ? "↓" : "↕"}
-                      </button>
-                    ) : (
+                    {!isSortable(label) ? (
                       label
+                    ) : (
+                      <SortableHeader
+                        label={label}
+                        sortKey={label}
+                        sort={sort}
+                        onSort={handleSort}
+                      />
                     )}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {displayed.map(row => (
+              {sortedRows.map(row => (
                 <tr
                   key={row.id}
                   className={`border-t ${selectedFinalizedFeature?.id === row.id ? "outline outline-2 -outline-offset-2 outline-blue-600" : ""}`}
-                  style={{ background: rowBackgrounds[row.difficulty] }}
                 >
                   <td
-                    className="sticky left-0 z-20 w-9 min-w-9 max-w-9 border-b border-slate-200 bg-[var(--row-bg)] px-1 py-2 text-center"
-                    style={
-                      {
-                        "--row-bg": rowBackgrounds[row.difficulty],
-                      } as CSSProperties
-                    }
+                    className={`sticky left-0 z-20 ${statusColumnWidth} border-b border-slate-200 bg-white px-0.5 py-2 text-center`}
                   >
                     <span className="flex items-center justify-center">
-                      <StatusMark symbol={row.status} />
+                      <SectionMarks sections={row.status} />
                     </span>
                   </td>
                   <td
-                    className={`${tableCellPadding} sticky left-9 z-20 min-w-24 border-r bg-[var(--row-bg)] font-semibold`}
-                    style={
-                      {
-                        color: colors[row.difficulty],
-                        "--row-bg": rowBackgrounds[row.difficulty],
-                      } as CSSProperties
-                    }
+                    className={`${tableCellPadding} sticky ${nameColumnOffset} z-20 min-w-24 border-r font-semibold text-black`}
+                    style={{ background: row.nameBackground }}
+                    title={row.difficulties
+                      .map(key => COURSE_DIFFICULTY_META[key].label)
+                      .join("・")}
                   >
                     {row.mapped ? (
                       <button
                         type="button"
                         className="min-h-8 text-left underline-offset-2 hover:underline"
-                        aria-label={`${row.name}・${COURSE_DIFFICULTY_META[row.difficulty].label}の詳細`}
+                        aria-label={`${row.name}・${row.difficulties.map(key => COURSE_DIFFICULTY_META[key].label).join("・")}の詳細`}
                         onClick={() =>
-                          onSelectedFinalizedFeatureChange({
-                            kind: "course",
-                            id: row.id,
-                          })
+                          onSelectedFinalizedFeatureChange(row.selection)
                         }
                       >
                         {row.name}
@@ -417,7 +560,7 @@ export const CoursesTab = ({
                   <td
                     className={`${tableCellPadding} text-center font-medium whitespace-nowrap`}
                   >
-                    <PisteMark symbol={row.piste} />
+                    <SectionMarks sections={row.piste} field="piste" />
                   </td>
                   <td
                     className={`${tableCellPadding} whitespace-nowrap tabular-nums`}
@@ -430,36 +573,56 @@ export const CoursesTab = ({
                   <td className={`${tableCellPadding} tabular-nums`}>
                     {row.max == null ? "" : formatDegree(row.max)}
                   </td>
+                  <td className={`${tableCellPadding} tabular-nums`}>
+                    {row.elevationDiff == null
+                      ? ""
+                      : formatMeters(row.elevationDiff)}
+                    {row.elevationRange && (
+                      <div className="text-xs font-normal text-slate-500">
+                        {row.elevationRange}
+                      </div>
+                    )}
+                  </td>
                   {optionalColumns.map(label => (
                     <td
                       key={label}
-                      className={`${tableCellPadding} max-w-64 whitespace-nowrap`}
+                      className={`${tableCellPadding} max-w-64 whitespace-nowrap ${label === "早朝" || label === "ナイター" ? "text-center" : ""}`}
                     >
-                      {cellValues(row, label).map((entry, index) => (
-                        <span
-                          key={`${entry.label}-${entry.value}`}
-                          className="mr-2"
-                        >
-                          {entry.showLabel && (
-                            <span className="text-slate-500">
-                              {entry.label}:{" "}
-                            </span>
-                          )}
-                          {label === "動画" ? (
-                            <ExternalLinkComponent
-                              href={String(entry.value)}
-                              className="text-blue-700 underline"
-                            >
-                              {"動画 ↗"}
-                            </ExternalLinkComponent>
-                          ) : (
-                            <OptionalValue label={label} value={entry.value} />
-                          )}
-                          {index < cellValues(row, label).length - 1
-                            ? " · "
-                            : ""}
-                        </span>
-                      ))}
+                      {label === "早朝" || label === "ナイター" ? (
+                        <SectionMarks
+                          sections={row[label === "早朝" ? "morning" : "night"]}
+                          field={label === "早朝" ? "morning" : "night"}
+                        />
+                      ) : (
+                        cellValues(row, label).map((entry, index) => (
+                          <span
+                            key={`${entry.label}-${entry.value}`}
+                            className="mr-2"
+                          >
+                            {entry.showLabel && (
+                              <span className="text-slate-500">
+                                {entry.label}:{" "}
+                              </span>
+                            )}
+                            {label === "動画" ? (
+                              <ExternalLinkComponent
+                                href={String(entry.value)}
+                                className="text-blue-700 underline"
+                              >
+                                {"動画 ↗"}
+                              </ExternalLinkComponent>
+                            ) : (
+                              <OptionalValue
+                                label={label}
+                                value={entry.value}
+                              />
+                            )}
+                            {index < cellValues(row, label).length - 1
+                              ? " · "
+                              : ""}
+                          </span>
+                        ))
+                      )}
                     </td>
                   ))}
                 </tr>

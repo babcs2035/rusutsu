@@ -113,6 +113,10 @@ import type {
   MapTileVariant,
   SelectedMapFeature,
 } from "./types";
+import {
+  publishDetailCourseStatus,
+  subscribeDetailCourseStatusRequests,
+} from "./utils/detailCourseStatusFilter";
 import { getResortDisplayName } from "./utils/resortLabels";
 import {
   getResortPriority,
@@ -634,6 +638,37 @@ function MapLibreResortMapContent({
     courseColorMode,
     showOpenOnly,
   ]);
+
+  // 詳細パネルの集計と「営業中のみ」も、この地図と同じ状態を使う
+  useEffect(() => {
+    if (!isDetailMap || !selectedResortId) return;
+    publishDetailCourseStatus({
+      resortId: selectedResortId,
+      enabled: hasCourseOperatingData(finalizedMapData),
+      showOpenOnly,
+      settings: mapDisplaySettings,
+    });
+  }, [
+    isDetailMap,
+    selectedResortId,
+    showOpenOnly,
+    mapDisplaySettings,
+    finalizedMapData,
+  ]);
+  const applyDetailCourseStatusRequest = useRef(setShowOpenOnly);
+  applyDetailCourseStatusRequest.current = setShowOpenOnly;
+  const applyDetailDisplaySettingsRequest = useRef(setMapDisplaySettings);
+  applyDetailDisplaySettingsRequest.current = setMapDisplaySettings;
+  useEffect(() => {
+    if (!isDetailMap || !selectedResortId) return;
+    return subscribeDetailCourseStatusRequests((resortId, request) => {
+      if (resortId !== selectedResortId) return;
+      if (request.settings)
+        applyDetailDisplaySettingsRequest.current(request.settings);
+      if (request.showOpenOnly !== undefined)
+        applyDetailCourseStatusRequest.current(request.showOpenOnly);
+    });
+  }, [isDetailMap, selectedResortId]);
 
   const {
     allFinalizedCourses,

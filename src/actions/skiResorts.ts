@@ -39,6 +39,7 @@ import type {
   FinalizedResortMapData,
 } from "@/lib/finalizedResortGeojsonShared";
 import { requireAdmin } from "@/lib/requireAdmin";
+import { getResortLabelName } from "@/lib/resortAliases";
 import {
   getLiftTicketDataMap,
   getResortDecisionData,
@@ -441,6 +442,29 @@ export async function getSimultaneousView(resortId: string, groupId: string) {
     return [detail];
   });
   return {
+    communityResorts: members.map(member => {
+      const map = member.detail?.finalizedMapData ?? member.mapData;
+      return {
+        id: member.id,
+        name: (() => {
+          const item = group.members.find(item => item.id === member.id);
+          return (
+            item?.label ??
+            getResortLabelName(
+              member.id,
+              item?.nameJa ?? member.id,
+              item?.shortName,
+            )
+          );
+        })(),
+        courseIds: [
+          ...new Set(
+            (map?.courses?.features ?? []).map(feature => feature.groupId),
+          ),
+        ],
+        liftIds: (map?.lifts?.features ?? []).map(feature => feature.id),
+      };
+    }),
     mapData: combineResortMaps(
       members.map(member =>
         member.detail

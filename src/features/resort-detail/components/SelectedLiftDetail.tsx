@@ -1,6 +1,5 @@
 "use client";
 
-import { CorrectionLink } from "@/features/corrections/CorrectionLink";
 import type { ElevationProfileMapPoint } from "@/features/map/types";
 import type { FinalizedLiftFeature } from "@/lib/finalizedResortGeojsonShared";
 import {
@@ -113,13 +112,13 @@ export const SelectedLiftDetail = ({
         reportContext={
           resortId ? { resortId, targetIds: [lift.id] } : undefined
         }
+        postTarget={{ kind: "LIFT", id: lift.id }}
+        correctionContext={{
+          kind: "lift",
+          targetKind: "lift",
+          targetId: lift.id,
+        }}
       />
-      {resortId && (
-        <CorrectionLink
-          resortId={resortId}
-          context={{ kind: "lift", targetKind: "lift", targetId: lift.id }}
-        />
-      )}
 
       <LiftMetrics
         key={lift.id}

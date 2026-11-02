@@ -3,7 +3,6 @@
 import { List, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CommunityFeed } from "@/features/community/CommunityFeed";
-import { requestCommunityComposer } from "@/features/community/composerEvents";
 import type { ElevationProfileMapPoint } from "@/features/map/types";
 import type {
   FinalizedLiftFeature,
@@ -63,9 +62,9 @@ export const FinalizedFeatureDetail = ({
   return (
     <div className="flex h-full min-h-0 flex-col bg-white">
       <div className="flex shrink-0 items-start justify-between gap-2 border-b border-gray-200 py-2 pr-2 pl-3 md:pr-3 md:pl-4">
-        {/* 長い名前は2行まで折り返し、レベル・圧雪は名前のすぐ後ろに続ける */}
-        <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 pt-0.5">
-          <h2 className="min-w-0 break-words text-base leading-snug font-bold text-gray-900 font-[var(--font-heading)] md:text-lg">
+        {/* 長い名前は折り返し、チップは名前の文末にそのまま続ける */}
+        <div className="min-w-0 pt-0.5 leading-7 [&>span]:mr-1">
+          <h2 className="mr-1.5 inline break-words align-middle text-base leading-snug font-bold text-gray-900 font-[var(--font-heading)] md:text-lg">
             {title}
           </h2>
           {courseGroup ? (
@@ -106,25 +105,6 @@ export const FinalizedFeatureDetail = ({
       {/* 上余白は内側に置き、sticky タブがスクロール領域の上端まで届くようにする。 */}
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="p-3 md:p-4">
-          {resortId && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="mb-2 h-8"
-              onClick={() =>
-                requestCommunityComposer({
-                  resortId,
-                  target: courseGroup
-                    ? { kind: "COURSE", id: courseGroup.id }
-                    : lift
-                      ? { kind: "LIFT", id: lift.id }
-                      : undefined,
-                })
-              }
-            >
-              この{courseGroup ? "コース" : "リフト"}について投稿
-            </Button>
-          )}
           {courseGroup ? (
             <SelectedCourseDetail
               key={JSON.stringify([

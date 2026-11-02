@@ -34,6 +34,17 @@ test("斜度分布は距離加重し、欠損区間を除く", () => {
   );
   assert.ok(result.total > 268 && result.total < 269);
 });
+test("斜度分布の合計はコースの滑走距離にそろえる", () => {
+  const course = {
+    coordinates: [
+      [0, 0, 0],
+      [0.001, 0, 0],
+      [0.002, 0, 111.195],
+    ],
+    properties: { status: null, slopeDistMap: 300 },
+  } as unknown as FinalizedCourseFeature;
+  assert.ok(Math.abs(slopeDistribution([course]).total - 300) < 1e-8);
+});
 test("5°境界・垂直区間と欠損値を安全に扱う", () => {
   const result = slopeDistribution([
     feature([

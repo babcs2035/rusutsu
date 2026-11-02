@@ -4,14 +4,18 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { FeatureHeadline, FeatureTags } from "./FeatureHeadline";
 
-test("レベル・圧雪はラベルなしの値チップにする", () => {
+test("レベル・圧雪・早朝・ナイターはラベルなしの値チップにする", () => {
   const text = renderToStaticMarkup(
     createElement(FeatureTags, {
       difficulty: { label: "初級", color: "#22C55E" },
-      grooming: "日によって圧雪",
+      grooming: [{ label: "上部 日によって圧雪", value: "日によって圧雪" }],
+      hours: [
+        { label: "早朝", kind: "morning" },
+        { label: "下部 ナイター", kind: "night" },
+      ],
     }),
   ).replace(/<[^>]+>/g, "");
-  assert.equal(text, "初級日によって圧雪");
+  assert.equal(text, "初級上部 日によって圧雪早朝下部 ナイター");
 });
 
 test("営業状況は記号つきチップを一度だけ出し、出典は掲載名の箇所へ飛ばす", () => {
@@ -38,6 +42,6 @@ test("営業状況は記号つきチップを一度だけ出し、出典は掲�
     html,
     /href="https:\/\/example.com\/status#:~:text=%E6%9E%97%E9%96%93A&amp;text=%E6%9E%97%E9%96%93B"/,
   );
-  assert.match(text, /出典（表記：林間A・林間B）/);
+  assert.match(text, /出典表記：林間A・林間B/);
   assert.match(text, /2026\/4\/2 08:04現在/);
 });

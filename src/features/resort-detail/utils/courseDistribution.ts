@@ -1,7 +1,11 @@
 import type { FinalizedCourseFeature } from "@/lib/finalizedResortGeojsonShared";
 import { haversineMeters } from "./detailMetrics";
 
-/** 3D線分長で加重する。標高欠損の区間は分母にも含めない。 */
+/**
+ * 3D線分長で加重する。標高欠損の区間は分母にも含めない。
+ * コースに滑走距離（slopeDistMap）があるときは、線分長をその距離に合わせて
+ * 配り直す。難易度別の合計やコース一覧の距離と、同じ全体距離にそろえるため。
+ */
 export function slopeDistribution(courses: FinalizedCourseFeature[]) {
   const bins = Array.from({ length: 18 }, (_, index) => ({
     label: `${index * 5}–${(index + 1) * 5}°`,
@@ -9,19 +13,36 @@ export function slopeDistribution(courses: FinalizedCourseFeature[]) {
   }));
   let omitted = 0;
   for (const course of courses) {
+    const segments: Array<{ slope: number; distance: number } | null> = [];
+    let measured = 0;
     for (let i = 1; i < course.coordinates.length; i++) {
       const a = course.coordinates[i - 1];
       const b = course.coordinates[i];
+      const horizontal = haversineMeters(a, b);
       if (!Number.isFinite(a[2]) || !Number.isFinite(b[2])) {
         omitted++;
+        // 標高が分からなくても、コース全体の長さの配分には水平距離で数える
+        measured += horizontal;
+        segments.push(null);
         continue;
       }
-      const horizontal = haversineMeters(a, b);
       const vertical = Math.abs((b[2] as number) - (a[2] as number));
       const distance = Math.hypot(horizontal, vertical);
-      if (distance <= 0) continue;
-      const slope = (Math.atan2(vertical, horizontal) * 180) / Math.PI;
-      bins[Math.min(17, Math.floor(slope / 5))].distance += distance;
+      measured += distance;
+      segments.push({
+        slope: (Math.atan2(vertical, horizontal) * 180) / Math.PI,
+        distance,
+      });
+    }
+    const declared = course.properties?.slopeDistMap;
+    const scale =
+      typeof declared === "number" && declared > 0 && measured > 0
+        ? declared / measured
+        : 1;
+    for (const segment of segments) {
+      if (!segment || segment.distance <= 0) continue;
+      bins[Math.min(17, Math.floor(segment.slope / 5))].distance +=
+        segment.distance * scale;
     }
   }
   const total = bins.reduce((sum, bin) => sum + bin.distance, 0);
@@ -61,12 +82,16 @@ export const SLOPE_DISPLAY_BINS = [
 ] as const;
 
 /** slopeDistribution の 5°刻みビンを、表示用の 7 区分へまとめる。 */
-export function groupSlopeBins(bins: Array<{ percent: number }>) {
-  return SLOPE_DISPLAY_BINS.map(bin => ({
-    label: bin.label,
-    sample: bin.sample,
-    percent: bins
-      .slice(bin.from / 5, bin.to / 5)
-      .reduce((sum, item) => sum + item.percent, 0),
-  }));
+export function groupSlopeBins(
+  bins: Array<{ percent: number; distance?: number }>,
+) {
+  return SLOPE_DISPLAY_BINS.map(bin => {
+    const items = bins.slice(bin.from / 5, bin.to / 5);
+    return {
+      label: bin.label,
+      sample: bin.sample,
+      percent: items.reduce((sum, item) => sum + item.percent, 0),
+      distance: items.reduce((sum, item) => sum + (item.distance ?? 0), 0),
+    };
+  });
 }

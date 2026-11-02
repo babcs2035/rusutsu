@@ -89,13 +89,13 @@ const mapData = (
     source: "slope_10m",
     baseSource: "slope_before",
     fileName: "test.geojson",
-    sourceUrls: [],
+    sourceUrls: ["https://example.com/courses"],
   },
   lifts: null,
   courseStatusSummary: null,
 });
 
-test("標高未取得のマップは基本情報のコース数で不明を表示する", () => {
+test("標高未取得でもマップのコースがあればgroupIdで数える", () => {
   const pending = course("A", "○");
   pending.coordinates = [
     [140, 43],
@@ -103,16 +103,19 @@ test("標高未取得のマップは基本情報のコース数で不明を表�
   ];
   assert.deepEqual(summarizeCoursesForList(mapData([pending]), 9), {
     active: null,
-    total: 9,
+    total: 1,
   });
   assert.deepEqual(summarizeCoursesForList(null, 9), {
     active: null,
     total: 9,
   });
-  assert.equal(summarizeCoursesForList(mapData([pending]), 0), null);
+  assert.deepEqual(summarizeCoursesForList(mapData([pending]), 0), {
+    active: null,
+    total: 1,
+  });
 });
 
-test("営業情報がないマップは無名を除き、連続区間・別ルートを各1コースに数える", () => {
+test("営業情報がないマップは標高や名前によらずgroupIdごとに数える", () => {
   const sections = [course("A", null, false), course("A", null, false)];
   sections.forEach((section, index) => {
     section.name = `A_${index + 1}`;
@@ -140,18 +143,29 @@ test("営業情報がないマップは無名を除き、連続区間・別ル�
       ]),
       99,
     ),
-    { active: null, total: 4 },
+    { active: null, total: 8 },
   );
 });
 
-test("無名コースしかないマップは0/0や基本情報の総数に置き換えない", () => {
-  assert.equal(
-    summarizeCoursesForList(mapData([course("無名_1", null, false)]), 9),
-    null,
-  );
+test("summaryのsource URLが空白だけなら地図のgroupIdを使う", () => {
+  const data = mapData([course("unnamed", null, false)]);
+  data.courseStatusSummary = {
+    total: 8,
+    open: 8,
+    partial: 0,
+    closed: 0,
+    unknown: 0,
+    observedAt: null,
+    sourceUrls: ["  "],
+    updates: [],
+  };
+  assert.deepEqual(summarizeCoursesForList(data, 9), {
+    active: null,
+    total: 1,
+  });
 });
 
-test("営業情報がある場合は欠測や対応なしを従来の対応表ルールで集計する", () => {
+test("営業状況の公式項目を線やグループによらず一覧のコース数に使う", () => {
   const data = mapData([
     course("A", "○"),
     course("A", "×"),
@@ -174,15 +188,58 @@ test("営業情報がある場合は欠測や対応なしを従来の対応表�
     closed: 4,
     unknown: 0,
     observedAt: null,
-    sourceUrls: [],
+    sourceUrls: ["https://example.com/courses"],
     updates: [],
   };
-  assert.deepEqual(summarizeCoursesForList(data, 99), { active: 6, total: 9 });
-  const missing = data.courses?.features.find(item => item.groupId === "I");
-  assert.ok(missing);
-  missing.properties.status = null;
+  assert.deepEqual(summarizeCoursesForList(data, 99), { active: 8, total: 12 });
+});
+
+test("標高がなくても営業状況の公式項目を優先する", () => {
+  const pending = course("A", "○");
+  pending.coordinates = [
+    [140, 43],
+    [140.001, 43.001],
+  ];
+  const data = mapData([pending]);
+  data.courseStatusSummary = {
+    total: 4,
+    open: 1,
+    partial: 2,
+    closed: 1,
+    unknown: 0,
+    observedAt: null,
+    sourceUrls: ["https://example.com/courses"],
+    updates: [],
+  };
+  assert.deepEqual(summarizeCoursesForList(data, 99), { active: 3, total: 4 });
+});
+
+test("営業状況に不明項目があれば営業数を不明にし、0件なら非表示にする", () => {
+  const data = mapData([course("A", "○")]);
+  data.courseStatusSummary = {
+    total: 2,
+    open: 1,
+    partial: 0,
+    closed: 0,
+    unknown: 1,
+    observedAt: null,
+    sourceUrls: ["https://example.com/courses"],
+    updates: [],
+  };
   assert.deepEqual(summarizeCoursesForList(data, 99), {
     active: null,
-    total: 9,
+    total: 2,
   });
+
+  data.courseStatusSummary = {
+    total: 0,
+    open: 0,
+    partial: 0,
+    closed: 0,
+    unknown: 0,
+    observedAt: null,
+    sourceUrls: ["https://example.com/courses"],
+    updates: [],
+  };
+  assert.equal(summarizeCoursesForList(data, 99), null);
 });

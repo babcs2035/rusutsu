@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
 import type { MapSkiResort } from "@/types/skiResorts";
 import {
   COMPOSER_PANEL_HEIGHTS,
+  resolveComposerPanelHeight,
   snapComposerPanelHeight,
 } from "../utils/composerPanelHeight";
 
@@ -154,6 +155,9 @@ export const ResortMapSection = ({
     startY: number;
     startHeight: number;
     areaHeight: number;
+    lastY: number;
+    lastTime: number;
+    upwardVelocity: number;
   } | null>(null);
   const blockedPanelPointer = useRef<number | null>(null);
   const [localMapDisplaySettings, setLocalMapDisplaySettings] = useState(
@@ -317,9 +321,12 @@ export const ResortMapSection = ({
     const panel = mobilePanelRef.current;
     if (!drag || drag.pointerId !== pointerId || !panel) return;
     panelDrag.current = null;
-    const height = snapComposerPanelHeight(
+    const height = resolveComposerPanelHeight(
       (panel.getBoundingClientRect().height / drag.areaHeight) * 100,
+      performance.now() - drag.lastTime < 100 ? drag.upwardVelocity : 0,
+      drag.areaHeight,
     );
+    panel.style.removeProperty("transition");
     panel.style.height = `${height}%`;
     setMobilePanelHeight(height);
   }, []);
@@ -360,7 +367,7 @@ export const ResortMapSection = ({
       <div
         ref={mobilePanelRef}
         data-mobile-composer-panel
-        className="absolute inset-x-0 bottom-0 z-[770] flex min-h-0 flex-col overflow-hidden rounded-t-xl border-t border-gray-200 bg-white shadow-[0_-8px_24px_rgba(15,23,42,0.12)]"
+        className="absolute inset-x-0 bottom-0 z-[770] flex min-h-0 flex-col overflow-hidden rounded-t-xl border-t border-gray-200 bg-white shadow-[0_-8px_24px_rgba(15,23,42,0.12)] transition-[height] duration-200 ease-out motion-reduce:transition-none"
         style={{ height: `${mobilePanelHeight ?? 70}%` }}
       >
         <div className="flex h-8 shrink-0 items-center justify-center border-b border-gray-100">
@@ -369,7 +376,7 @@ export const ResortMapSection = ({
             tabIndex={0}
             aria-label="投稿パネルの高さ"
             aria-orientation="vertical"
-            aria-valuemin={30}
+            aria-valuemin={40}
             aria-valuemax={70}
             aria-valuenow={Math.round(mobilePanelHeight ?? 70)}
             aria-valuetext={`入力欄 ${mobilePanelHeight ?? 70}%、地図 ${100 - (mobilePanelHeight ?? 70)}%`}
@@ -382,19 +389,23 @@ export const ResortMapSection = ({
                 panel?.parentElement?.getBoundingClientRect().height ?? 0;
               if (!panel || areaHeight <= 0) return;
               event.preventDefault();
+              panel.style.transition = "none";
               event.currentTarget.setPointerCapture(event.pointerId);
               panelDrag.current = {
                 pointerId: event.pointerId,
                 startY: event.clientY,
                 startHeight: panel.getBoundingClientRect().height,
                 areaHeight,
+                lastY: event.clientY,
+                lastTime: event.timeStamp,
+                upwardVelocity: 0,
               };
             }}
             onPointerMove={event => {
               const drag = panelDrag.current;
               const panel = mobilePanelRef.current;
               if (!drag || drag.pointerId !== event.pointerId || !panel) return;
-              const minHeight = drag.areaHeight * 0.3;
+              const minHeight = drag.areaHeight * 0.4;
               const maxHeight = drag.areaHeight * 0.7;
               const height = Math.max(
                 minHeight,
@@ -403,10 +414,20 @@ export const ResortMapSection = ({
                   drag.startHeight + drag.startY - event.clientY,
                 ),
               );
-              const percent = snapComposerPanelHeight(
-                (height / drag.areaHeight) * 100,
-              );
-              panel.style.height = `${percent}%`;
+              const elapsed = event.timeStamp - drag.lastTime;
+              if (elapsed > 0) {
+                const instantVelocity = (drag.lastY - event.clientY) / elapsed;
+                // Ignore stale samples so a pause at the end of the gesture settles.
+                drag.upwardVelocity =
+                  elapsed < 100
+                    ? Math.max(-1.5, Math.min(1.5, instantVelocity))
+                    : 0;
+              }
+              drag.lastY = event.clientY;
+              drag.lastTime = event.timeStamp;
+              // Keep the panel under the finger; snap only after release.
+              panel.style.height = `${height}px`;
+              const percent = Math.round((height / drag.areaHeight) * 100);
               event.currentTarget.setAttribute(
                 "aria-valuenow",
                 String(Math.round(percent)),
@@ -432,7 +453,7 @@ export const ResortMapSection = ({
                         Math.max(
                           0,
                           Math.min(
-                            2,
+                            1,
                             index + (event.key === "ArrowUp" ? 1 : -1),
                           ),
                         )

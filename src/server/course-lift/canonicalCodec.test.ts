@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { MapCourse } from "@prisma/client";
+import { createCourseStatusSummary } from "@/lib/courseStatusSummary";
 import {
   entityFeature,
   liftAttributes,
@@ -114,7 +115,7 @@ const entity = (id: string, status: string | null, options = {}) => ({
   hasStatusSource: true,
   ...options,
 });
-test("summary counts mapped logical courses once: 6/9, then unknown/9 on missing data", () => {
+test("course status summary counts official items independently of map groups", () => {
   const rows = [
     entity("a1", "○", { groupId: "A" }),
     entity("a2", "×", { groupId: "A" }),
@@ -130,21 +131,99 @@ test("summary counts mapped logical courses once: 6/9, then unknown/9 on missing
     entity("J", "○", { crawledNames: [] }),
     entity("K", "○", { crawledNames: [] }),
   ];
-  assert.deepEqual(summarizeOperationEntities(rows, "course", 99), {
-    active: 6,
-    total: 9,
-    source: "mapping",
-  });
-  const missing = rows.find(row => row.id === "I");
-  assert.ok(missing);
-  missing.status = null;
-  assert.deepEqual(summarizeOperationEntities(rows, "course", 99), {
-    active: null,
-    total: 9,
-    source: "mapping",
-  });
+  const summary = createCourseStatusSummary(
+    {
+      fileName: "status.json",
+      time: null,
+      sourceUrls: ["https://example.com/courses"],
+      items: [
+        { name: "official-a", status: "○" },
+        { name: "official-b", status: "△" },
+        { name: "official-c", status: "×" },
+      ],
+    },
+    ["official-a", "official-b", "official-c"],
+    true,
+  );
+  assert.ok(summary);
+  assert.deepEqual(
+    summarizeOperationEntities(
+      rows.map(row => ({ ...row, elevationReady: false })),
+      "course",
+      99,
+      summary,
+    ),
+    {
+      active: 2,
+      total: 3,
+      source: "mapping",
+    },
+  );
 });
-test("unknown map inventory excludes unnamed lines and deduplicates only explicit groups", () => {
+
+test("multiple map groups mapped to one official item count it once", () => {
+  const summary = createCourseStatusSummary(
+    {
+      fileName: "status.json",
+      time: null,
+      sourceUrls: ["https://example.com/courses"],
+      items: [{ name: "official-a", status: "○" }],
+    },
+    ["official-a", "official-a"],
+    true,
+  );
+  assert.ok(summary);
+  assert.deepEqual(
+    summarizeOperationEntities(
+      [entity("map-a", null), entity("map-b", null)],
+      "course",
+      99,
+      summary,
+    ),
+    { active: 1, total: 1, source: "mapping" },
+  );
+});
+
+test("course unknown status makes active unknown and empty sourced summary hides count", () => {
+  const summary = createCourseStatusSummary(
+    {
+      fileName: "status.json",
+      time: null,
+      sourceUrls: ["https://example.com/courses"],
+      items: [{ name: "official-a", status: "○" }, { name: "official-b" }],
+    },
+    ["official-a", "official-b"],
+    true,
+  );
+  assert.ok(summary);
+  assert.deepEqual(summarizeOperationEntities([], "course", 9, summary), {
+    active: null,
+    total: 2,
+    source: "mapping",
+  });
+  const emptySummary = createCourseStatusSummary(
+    {
+      fileName: "status.json",
+      time: null,
+      sourceUrls: ["https://example.com/courses"],
+      items: [],
+    },
+    [],
+    true,
+  );
+  assert.ok(emptySummary);
+  assert.deepEqual(
+    summarizeOperationEntities(
+      [entity("map-a", null)],
+      "course",
+      9,
+      emptySummary,
+    ),
+    { active: null, total: null, source: "mapping" },
+  );
+});
+
+test("no-source map inventory counts all group IDs regardless of names/elevation", () => {
   const rows = [
     entity("a1", null, { groupId: "A" }),
     entity("a2", null, { groupId: "A" }),
@@ -155,7 +234,7 @@ test("unknown map inventory excludes unnamed lines and deduplicates only explici
   ].map(row => ({ ...row, crawledNames: [], hasStatusSource: false }));
   assert.deepEqual(summarizeOperationEntities(rows, "course", 99), {
     active: null,
-    total: 3,
+    total: 5,
     source: "map",
   });
   assert.deepEqual(
@@ -164,7 +243,7 @@ test("unknown map inventory excludes unnamed lines and deduplicates only explici
       "course",
       9,
     ),
-    { active: null, total: 9, source: "basic" },
+    { active: null, total: 5, source: "map" },
   );
   assert.deepEqual(summarizeOperationEntities([], "course", 0), {
     active: null,

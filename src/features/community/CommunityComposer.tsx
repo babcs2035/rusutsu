@@ -7,7 +7,6 @@ import {
   Images,
   LocateFixed,
   Minus,
-  Trash2,
   TriangleAlert,
   X,
 } from "lucide-react";
@@ -45,10 +44,8 @@ import {
   getCommunityAccount,
   getPostDetail,
   prepareCommunityPhoto,
-  publishReport,
   saveCommunityProfile,
   startCommunityLogin,
-  updateReport,
 } from "@/features/community/actions";
 import {
   COURSE_STATUSES,
@@ -85,7 +82,10 @@ import {
 import { onLoginWindowDone, openLoginWindow } from "./LoginWindow";
 import { rideTimeFromSpeed, speedFromRideTime } from "./liftRideTime";
 import { nearestCourseId, reportLocationError } from "./location";
+import { reportResortId, resortReportMap } from "./mapData";
+import { type LightboxPhoto, PhotoLightbox } from "./PhotoLightbox";
 import { readPhotoMetadata } from "./photoGps";
+import { submitReport } from "./submitReport";
 
 type Kind = ReportEntryDraft["kind"];
 // 入力途中の状態。種類を選ぶ前は項目がなく、時刻も空のことがある。
@@ -306,6 +306,10 @@ export function CommunityComposer({
   const [savedPhotos, setSavedPhotos] = useState<PublicPhoto[]>([]);
   const [removedPhotoIds, setRemovedPhotoIds] = useState<string[]>([]);
   const [newPhotos, setNewPhotos] = useState<{ file: File; url: string }[]>([]);
+  const [photoPreview, setPhotoPreview] = useState<{
+    photo: LightboxPhoto;
+    anchor: HTMLElement;
+  } | null>(null);
   const [processingPhotos, setProcessingPhotos] = useState(false);
   const [pinOnly, setPinOnly] = useState(false);
   // 「2.」のような入力途中の文字を残すため、数値とは別に持つ。
@@ -358,9 +362,15 @@ export function CommunityComposer({
       (entry.latitude == null || entry.longitude == null)
     )
       missing.場所 = "地図で場所を指定してください。";
-    if (entry.kind === "COURSE" && !entry.courseId)
+    if (
+      entry.kind === "COURSE" &&
+      !mapData.courses.some(course => course.id === entry.courseId)
+    )
       missing.コース = "コースを選択してください。";
-    if (entry.kind === "LIFT" && !entry.liftId)
+    if (
+      entry.kind === "LIFT" &&
+      !mapData.lifts.some(lift => lift.id === entry.liftId)
+    )
       missing.リフト = "リフトを選択してください。";
     if ((entry.kind === "COURSE" || entry.kind === "LIFT") && !entry.status)
       missing.状況 = "状況を選択してください。";
@@ -369,7 +379,10 @@ export function CommunityComposer({
     if (entry.longitude != null && entry.latitude != null) {
       const locationError = reportLocationError(
         [entry.longitude, entry.latitude],
-        mapData,
+        resortReportMap(
+          mapData,
+          editingPostId ? resortId : reportResortId(mapData, entry, resortId),
+        ),
       );
       if (locationError) missing.場所 = locationError;
     }
@@ -1073,23 +1086,30 @@ export function CommunityComposer({
     startTransition(async () => {
       const submittingScope = draftScope.current;
       try {
-        const result =
+        const destinationResortId = editingPostId
+          ? resortId
+          : reportResortId(mapData, entry, resortId);
+        const result = await submitReport(
           editingPostId && version != null
-            ? await updateReport(
-                editingPostId,
-                version,
-                parsed.data,
-                form,
-                removedPhotoIds,
-              )
-            : await publishReport(
-                {
-                  resortId,
+            ? {
+                operation: "update",
+                input: {
+                  postId: editingPostId,
+                  version,
+                  report: parsed.data,
+                  removePhotoIds: removedPhotoIds,
+                },
+              }
+            : {
+                operation: "publish",
+                input: {
+                  resortId: destinationResortId,
                   report: parsed.data,
                   idempotencyKey: idempotencyKey.current,
                 },
-                form,
-              );
+              },
+          form,
+        );
         if (!result.ok) {
           if (!mounted.current || draftScope.current !== submittingScope)
             return;
@@ -1101,9 +1121,12 @@ export function CommunityComposer({
         setLocating(false);
         draftEnabled.current = false;
         setError("");
+        setRestoredNotice("");
         setStep("done");
         onMapPickModeChange?.(null);
         rememberCommunityPost(resortId);
+        if (destinationResortId !== resortId)
+          rememberCommunityPost(destinationResortId);
         if (submittingScope) {
           // IndexedDB cleanup must not delay the saved confirmation screen.
           void deleteDraft(submittingScope).catch(() => {
@@ -1116,7 +1139,7 @@ export function CommunityComposer({
       } catch {
         if (mounted.current && draftScope.current === submittingScope)
           setError(
-            "送信できませんでした。写真の容量や通信状況を確認して、もう一度お試しください。",
+            "送信結果を確認できませんでした。入力内容は残っています。投稿一覧を確認してから、もう一度お試しください。",
           );
       }
     });
@@ -1154,21 +1177,7 @@ export function CommunityComposer({
         </h2>
       </div>
       <div className="flex shrink-0 items-center gap-1">
-        {(step === "edit" || step === "choose") && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="下書きを破棄"
-            title="下書きを破棄"
-            className="size-7 text-gray-500 md:size-8"
-            disabled={busy || processingPhotos}
-            onClick={() => setConfirmClose(true)}
-          >
-            <Trash2 size={16} />
-          </Button>
-        )}
-        {embedded && onClose && (
+        {embedded && onClose && step !== "done" && (
           <Button
             type="button"
             aria-label="投稿を閉じる"
@@ -1215,6 +1224,16 @@ export function CommunityComposer({
         {body}
       </div>
       {footer}
+      {photoPreview && (
+        <PhotoLightbox
+          photos={[photoPreview.photo]}
+          index={0}
+          anchor={photoPreview.anchor}
+          alt="投稿する写真"
+          onIndexChange={() => {}}
+          onClose={() => setPhotoPreview(null)}
+        />
+      )}
       <AlertDialog open={confirmClose} onOpenChange={setConfirmClose}>
         <AlertDialogContent overlayClassName="z-[900]" className="z-[901]">
           <AlertDialogHeader>
@@ -1405,15 +1424,29 @@ export function CommunityComposer({
 
   const targetSelect = (lift: boolean, optional: boolean) => {
     const options = lift ? mapData.lifts : mapData.courses;
-    const value = (lift ? entry.liftId : entry.courseId) ?? "";
+    const selectedId = lift ? entry.liftId : entry.courseId;
+    const value = options.some(item => item.id === selectedId)
+      ? (selectedId ?? "")
+      : "";
     const placeholder = optional ? "指定なし" : "選択してください";
+    const optionName = (item: { id: string; name: string }) => {
+      const owner = mapData.resorts?.find(resort =>
+        (lift ? resort.liftIds : resort.courseIds).includes(item.id),
+      );
+      return (mapData.resorts?.length ?? 0) > 1 && owner
+        ? `${owner.name}・${item.name}`
+        : item.name;
+    };
     return (
       <div className="flex gap-1.5">
         <Select
           value={value}
           items={[
             { value: "", label: placeholder },
-            ...options.map(item => ({ value: item.id, label: item.name })),
+            ...options.map(item => ({
+              value: item.id,
+              label: optionName(item),
+            })),
           ]}
           onValueChange={next => {
             setPinOnly(false);
@@ -1433,7 +1466,7 @@ export function CommunityComposer({
             <SelectItem value="">{placeholder}</SelectItem>
             {options.map(item => (
               <SelectItem key={item.id} value={item.id}>
-                {item.name}
+                {optionName(item)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -1546,14 +1579,32 @@ export function CommunityComposer({
         />
         {allPhotos.map(photo => (
           <div key={photo.key} className="relative">
-            <Image
-              src={photo.src}
-              alt="追加した写真"
-              width={64}
-              height={64}
-              unoptimized
-              className="size-16 rounded-lg border border-gray-200 object-cover"
-            />
+            <button
+              type="button"
+              aria-label="写真を拡大"
+              className="block rounded-lg focus-visible:outline-2 focus-visible:outline-blue-600"
+              onClick={event => {
+                const image = event.currentTarget.querySelector("img");
+                setPhotoPreview({
+                  photo: {
+                    id: photo.key,
+                    src: photo.src,
+                    width: image?.naturalWidth || 64,
+                    height: image?.naturalHeight || 64,
+                  },
+                  anchor: event.currentTarget,
+                });
+              }}
+            >
+              <Image
+                src={photo.src}
+                alt="追加した写真"
+                width={64}
+                height={64}
+                unoptimized
+                className="size-16 rounded-lg border border-gray-200 object-cover"
+              />
+            </button>
             <Button
               type="button"
               variant="ghost"

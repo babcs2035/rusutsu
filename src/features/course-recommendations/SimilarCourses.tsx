@@ -139,10 +139,10 @@ export function SimilarCourses({
           }
         : loaded;
   const content = (
-    <section className="min-w-0" aria-label="類似コース">
+    <section className="min-w-0" aria-label="斜度の近いコース">
       {showHeading ? (
         <FeatureSectionTitle aside="お気に入りのスキー場から">
-          類似コース
+          斜度の近いコース
         </FeatureSectionTitle>
       ) : (
         <p className="mb-1 text-xs text-slate-500">お気に入りのスキー場から</p>
@@ -153,7 +153,7 @@ export function SimilarCourses({
         </p>
       ) : current.error || current.status === "api_outdated" ? (
         <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
-          <p>類似コースを取得できませんでした。</p>
+          <p>斜度の近いコースを取得できませんでした。</p>
           <Button
             variant="outline"
             size="sm"

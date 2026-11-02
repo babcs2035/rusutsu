@@ -2,15 +2,20 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import type { ReactNode } from "react";
 
 export function CorrectionLink({
   resortId,
   context,
   returnTo,
+  className = "text-sm text-blue-700 underline underline-offset-2",
+  children = "情報を修正する",
 }: {
   resortId: string;
   context?: unknown;
   returnTo?: string;
+  className?: string;
+  children?: ReactNode;
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -29,9 +34,9 @@ export function CorrectionLink({
   return (
     <Link
       href={`/corrections/${encodeURIComponent(resortId)}${suffix}`}
-      className="text-sm text-blue-700 underline underline-offset-2"
+      className={className}
     >
-      情報を修正する
+      {children}
     </Link>
   );
 }

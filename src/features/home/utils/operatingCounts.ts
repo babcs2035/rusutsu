@@ -1,3 +1,4 @@
+import type { CourseStatusSummary } from "@/lib/courseStatusSummary";
 import type {
   FinalizedCourseFeature,
   FinalizedLiftFeature,
@@ -36,36 +37,32 @@ const summarize = (states: Array<boolean | null>): OperatingCount | null => {
 const unknownCount = (total: number): OperatingCount | null =>
   total > 0 ? { active: null, total } : null;
 
-/** 一覧では、標高未取得なら基本情報、営業情報未取得なら名前付きの地図を使う。 */
+export const summarizeCourseStatusForList = (
+  summary: CourseStatusSummary,
+): OperatingCount | null => {
+  if (summary.total === 0) return null;
+  return {
+    active: summary.unknown === 0 ? summary.open + summary.partial : null,
+    total: summary.total,
+  };
+};
+
+/** 詳細と同じ営業情報の項目数。未取得時は地図のグループ数を使う。 */
 export const summarizeCoursesForList = (
   mapData: FinalizedResortMapData | null,
   fallbackTotal: number,
 ): OperatingCount | null => {
   const courses = mapData?.courses?.features;
-  if (
-    !courses?.length ||
-    courses.some(
-      course =>
-        course.coordinates.length < 2 ||
-        course.coordinates.some(coordinate => !Number.isFinite(coordinate[2])),
-    )
-  ) {
+  const summary = mapData?.courseStatusSummary;
+  if (summary?.sourceUrls.some(url => url.trim() !== "")) {
+    return summarizeCourseStatusForList(summary);
+  }
+
+  if (!courses?.length) {
     return unknownCount(fallbackTotal);
   }
 
-  if (!mapData?.courseStatusSummary) {
-    const namedGroups = new Set(
-      courses
-        .filter(course => {
-          const name = course.name.trim();
-          return name !== "" && !/^(?:無名|名前不明|名称不明)/u.test(name);
-        })
-        .map(course => course.groupId),
-    );
-    return unknownCount(namedGroups.size);
-  }
-
-  return summarizeMappedCourses(courses);
+  return unknownCount(new Set(courses.map(course => course.groupId)).size);
 };
 
 export const summarizeMappedCourses = (

@@ -1033,7 +1033,6 @@ model CourseRecommendationFeature {
   logDistance        Float
   maxSlope           Float
   slopeDistances     Float[]
-  shape              String
   grooming           String
   geometryHash       String   @db.Char(64)
   sourceHash         String   @db.Char(64)

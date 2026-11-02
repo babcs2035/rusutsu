@@ -2,7 +2,6 @@
 
 import { type ReactNode, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CorrectionLink } from "@/features/corrections/CorrectionLink";
 import { SimilarCourses } from "@/features/course-recommendations/SimilarCourses";
 import type { ElevationProfileMapPoint } from "@/features/map/types";
 import useMediaQuery from "@/hooks/use-media-query";
@@ -11,6 +10,7 @@ import type { FinalizedCourseGroup } from "../types";
 import {
   COURSE_STATUS_DESCRIPTION,
   createConnectedCourseElevationProfile,
+  createCourseProfileBands,
   getCourseGroupMetricItems,
   getCourseGroupNotes,
   getCourseGroupPisteSymbol,
@@ -82,6 +82,7 @@ export const SelectedCourseDetail = ({
   const profile = (
     <ElevationProfile
       points={profilePoints}
+      bands={createCourseProfileBands(courseGroup.courses)}
       activeDistance={
         selectedElevationProfilePoint?.courseGroupId === courseGroup.id
           ? selectedElevationProfilePoint.distance
@@ -151,7 +152,7 @@ export const SelectedCourseDetail = ({
               value="similar"
               className="h-9 rounded-none border-0 border-b-2 border-transparent text-[13px] after:hidden data-active:border-blue-600 data-active:font-bold data-active:text-blue-600"
             >
-              類似コース{count == null ? "" : `（${count}）`}
+              斜度の近いコース{count == null ? "" : `（${count}）`}
             </TabsTrigger>
           </TabsList>
           <TabsContent value="profile" keepMounted>
@@ -202,19 +203,15 @@ export const SelectedCourseDetail = ({
               }
             : undefined
         }
+        postTarget={{ kind: "COURSE", id: courseGroup.id }}
+        correctionContext={{
+          kind: "slope",
+          targetKind: "slope",
+          targetId: selectedCourse.id,
+        }}
       />
 
       <FeatureMetrics items={getCourseGroupMetricItems(courseGroup)} />
-      {resortId && (
-        <CorrectionLink
-          resortId={resortId}
-          context={{
-            kind: "slope",
-            targetKind: "slope",
-            targetId: selectedCourse.id,
-          }}
-        />
-      )}
 
       {resortId ? (
         <SimilarCourses

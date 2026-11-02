@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import useMediaQuery from "@/hooks/use-media-query";
 import type { ElevationProfilePoint } from "../types";
+import type { ProfileBand } from "../utils/detailMetrics";
 
 /** 断面図の線の色。開いている区間と閉じている区間を塗り分ける */
 const STATUS_LINE_COLOR = {
@@ -46,8 +47,11 @@ export const ElevationProfile = ({
   maxPlotHeight: desktopMaxPlotHeight = Infinity,
   desktopReadout = true,
   kind = "course",
+  bands = [],
 }: {
   points: ElevationProfilePoint[];
+  /** 横軸の下に並べる区間の帯（レベル・圧雪・早朝・ナイター）。割合は 0〜1 */
+  bands?: ProfileBand[];
   activeDistance?: number | null;
   onPointSelect?: (point: ElevationProfilePoint) => void;
   /** PCでの描画部の高さの上限（px）。コース比較のように高さを揃えたい所で使う */
@@ -101,7 +105,12 @@ export const ElevationProfile = ({
   const bottomPadding = kind === "lift" ? 26 : 10;
   const chartHeight = elevationDifference * scale + bottomPadding;
   const chartBottom = chartTop + chartHeight;
-  const height = chartBottom + 32;
+  const bandTop = chartBottom + 3;
+  const bandRowHeight = 15;
+  const bandsHeight =
+    bands.length * (bandRowHeight + 2) + (bands.length ? 3 : 0);
+  const tickTop = chartBottom + bandsHeight;
+  const height = tickTop + 32;
   const bottomAxisElevation = minElevation - bottomPadding / scale;
   const elevationRange = maxElevation - bottomAxisElevation;
   const elevationStep = getDistanceGridInterval(
@@ -257,7 +266,7 @@ export const ElevationProfile = ({
                 />
                 <text
                   x={toX(distance)}
-                  y={chartBottom + 15}
+                  y={tickTop + 15}
                   fill="#6B7280"
                   fontSize={12}
                   fontWeight={800}
@@ -275,7 +284,7 @@ export const ElevationProfile = ({
             ))}
             <text
               x={chartRight}
-              y={chartBottom + 29}
+              y={tickTop + 29}
               fill="#6B7280"
               fontSize={12}
               fontWeight={800}
@@ -283,6 +292,59 @@ export const ElevationProfile = ({
             >
               水平距離
             </text>
+            {bands.map((band, row) => {
+              const y = bandTop + row * (bandRowHeight + 2);
+              return (
+                <g key={band.key}>
+                  {band.runs.map(run => {
+                    const x = toX(run.from * maxDistance);
+                    const runWidth = toX(run.to * maxDistance) - x;
+                    return (
+                      <g key={run.from}>
+                        <rect
+                          x={x}
+                          y={y}
+                          width={Math.max(0, runWidth)}
+                          height={bandRowHeight}
+                          fill={run.color}
+                          fillOpacity={0.3}
+                        />
+                        {/* 帯に収まらない名前は省き、色だけで区間を示す */}
+                        {run.label && run.label.length * 10 + 6 <= runWidth && (
+                          <text
+                            x={x + runWidth / 2}
+                            y={y + 11}
+                            fill="#1E293B"
+                            fontSize={10}
+                            fontWeight={700}
+                            textAnchor="middle"
+                          >
+                            {run.label}
+                          </text>
+                        )}
+                      </g>
+                    );
+                  })}
+                </g>
+              );
+            })}
+            {/* 区間の切れ目は断面図から帯まで通しで線を引く */}
+            {[
+              ...new Set(
+                bands.flatMap(band => band.runs.slice(1).map(run => run.from)),
+              ),
+            ].map(from => (
+              <line
+                key={from}
+                x1={toX(from * maxDistance)}
+                x2={toX(from * maxDistance)}
+                y1={chartTop}
+                y2={bandTop + bandsHeight - 3}
+                stroke="#64748B"
+                strokeWidth={1}
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
             {statusSegments.map(segment => (
               <path
                 key={`${segment.status ?? "unknown"}-${segment.points[0]?.distance ?? 0}`}

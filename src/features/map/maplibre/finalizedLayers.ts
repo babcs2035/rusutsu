@@ -473,8 +473,8 @@ export const VARIABLE_MASK_DASH: DataDrivenPropertyValueSpecification<
 ] as unknown as DataDrivenPropertyValueSpecification<number[]>;
 
 /**
- * 隙間を空ける対象。
- * 選択中のコースは実線で見せる（点線のままだと形が読みにくい）。
+ * 隙間を空ける対象。全体を見ているときだけ点線にする。
+ * コースを選んでいる間は圧雪を詳細の名前横と断面図で示すので、地図は実線で形を見せる。
  */
 const getUngroomedMaskFilter = (
   state: FinalizedStyleState,
@@ -482,6 +482,7 @@ const getUngroomedMaskFilter = (
 ): FilterSpecification => [
   "all",
   ["literal", state.showUngroomed !== false],
+  ["literal", state.selectedFeature?.kind !== "course"],
   ["==", ["get", "grooming"], variable ? "variable" : "ungroomed"],
 ];
 

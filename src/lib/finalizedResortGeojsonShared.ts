@@ -189,7 +189,7 @@ export const COURSE_DIFFICULTY_META: Record<
   beginner: { label: "初級", color: "#22C55E" },
   beginnerIntermediate: { label: "初・中級", color: "#FF8C00" },
   intermediate: { label: "中級", color: "#FF0000" },
-  intermediateAdvanced: { label: "中・上級", color: "#B45309" },
+  intermediateAdvanced: { label: "中・上級", color: "#A855F7" },
   advanced: { label: "上級", color: "#222222" },
   unknown: { label: "不明", color: "#6B7280" },
 };

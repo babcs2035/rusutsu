@@ -25,7 +25,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
   const file = path.join(root, "integration.mjs");
   await build({
     stdin: {
-      contents: `export {prisma,disconnectPrisma} from '@/lib/prisma'; export * from '@/server/data-documents/repository'; export * from '@/server/course-lift/canonicalDocuments'; export * from '@/server/course-lift/canonicalCodec'; export * from '@/server/course-lift/mapData'; export * from '@/server/course-lift/operations'; export * from '@/server/crawl-latest/persistence'; export {crawlLatestRunInputSchema} from '@/server/crawl-latest/contract'; export {hashDataDocumentContent} from '@/server/data-documents/repositoryCore'; export {getFinalizedResortMapData} from '@/lib/finalizedResortGeojson';`,
+      contents: `export {prisma,disconnectPrisma} from '@/lib/prisma'; export * from '@/server/data-documents/repository'; export * from '@/server/course-lift/canonicalDocuments'; export * from '@/server/course-lift/canonicalCodec'; export * from '@/server/course-lift/mapData'; export * from '@/server/course-lift/operations'; export * from '@/server/course-lift/summaryClient'; export * from '@/server/crawl-latest/persistence'; export {crawlLatestRunInputSchema} from '@/server/crawl-latest/contract'; export {hashDataDocumentContent} from '@/server/data-documents/repositoryCore'; export {getFinalizedResortMapData} from '@/lib/finalizedResortGeojson';`,
       resolveDir: process.cwd(),
       sourcefile: "canonical-test.ts",
     },
@@ -186,7 +186,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
         const summary = await db.skiResortOperationSummary.findUniqueOrThrow({
           where: { skiResortId: "sample" },
         });
-        assert.equal(summary.courseTotal, 3);
+        assert.equal(summary.courseTotal, 4);
         assert.equal(summary.courseActive, null);
       },
     );
@@ -261,7 +261,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
         ],
       });
     await t.test(
-      "adoption projects mapped status/comments and calculates grouped counts",
+      "adoption counts official items once even when assigned to multiple lines",
       async () => {
         await api.persistCrawlLatestRun(
           crawl("2026-10-18T01:00:00Z", [
@@ -282,6 +282,19 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
         assert.equal(summary.courseActive, 1);
         assert.equal(summary.liftTotal, 2);
         assert.equal(summary.liftActive, 1);
+        assert.equal(summary.calculationVersion, api.OPERATION_SUMMARY_VERSION);
+        // 旧版の保存値も読み取り時に再集計し、次のクロールまで誤った総数を残さない。
+        await db.skiResortOperationSummary.update({
+          where: { skiResortId: "sample" },
+          data: { courseTotal: 99, courseActive: 99, calculationVersion: 1 },
+        });
+        assert.deepEqual(
+          (await api.findOperatingSummariesDirect()).sample.courses,
+          { total: 2, active: 1 },
+        );
+        await db.$transaction((tx: unknown) =>
+          api.refreshMapOperations(tx, ["sample"]),
+        );
         const map = await api.getFinalizedResortMapData("sample");
         assert.equal(
           map.courses.features.find(
@@ -289,6 +302,49 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
           ).properties.status,
           "○",
         );
+      },
+    );
+    await t.test(
+      "official sections stay separate within one map group and unknown remains unknown",
+      async () => {
+        const saved = await api.getDataDocumentDirect(mappingKey);
+        const sections = JSON.parse(JSON.stringify(mapping));
+        sections.courses.rows[0].crawledName = "A上部";
+        sections.courses.rows[0].crawledNames = ["A上部"];
+        sections.courses.rows[1].crawledName = "A下部";
+        await api.writeDataDocumentsDirect([
+          write(mappingKey, sections, saved.hash),
+        ]);
+        await api.persistCrawlLatestRun(
+          crawl("2026-10-18T01:10:00Z", [
+            { name: "A上部", status: "○", update: null, note: null },
+            { name: "A下部", status: "×", update: null, note: null },
+            { name: "B", status: "△", update: null, note: null },
+          ]),
+          "sections",
+        );
+        const detail = await api.getFinalizedResortMapData("sample");
+        assert.equal(detail.courseStatusSummary.total, 3);
+        assert.deepEqual(
+          (await api.findOperatingSummariesDirect()).sample.courses,
+          { total: 3, active: 2 },
+        );
+        await api.persistCrawlLatestRun(
+          crawl("2026-10-18T01:20:00Z", [
+            { name: "A上部", status: "○", update: null, note: null },
+            { name: "A下部", status: "×", update: null, note: null },
+            { name: "B", status: null, update: null, note: null },
+          ]),
+          "sections-unknown",
+        );
+        assert.deepEqual(
+          (await api.findOperatingSummariesDirect()).sample.courses,
+          { total: 3, active: null },
+        );
+        const current = await api.getDataDocumentDirect(mappingKey);
+        await api.writeDataDocumentsDirect([
+          write(mappingKey, mapping, current.hash),
+        ]);
       },
     );
     await t.test(
@@ -305,12 +361,16 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
           null,
         );
         assert.equal(
+          (await api.findOperatingSummariesDirect()).sample.courses.total,
+          1,
+        );
+        assert.equal(
           (
             await db.skiResortOperationSummary.findUniqueOrThrow({
               where: { skiResortId: "sample" },
             })
           ).courseActive,
-          null,
+          1,
         );
         assert.ok(
           await db.crawlLatestIssue.count({
@@ -350,6 +410,10 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
           (await db.mapCourse.findUniqueOrThrow({ where: { id: "b" } })).status,
           "△",
         );
+        assert.deepEqual(
+          (await api.findOperatingSummariesDirect()).sample.courses,
+          { total: 1, active: 1 },
+        );
         const base = await api.getDataDocumentDirect(baseKey);
         await assert.rejects(
           api.writeDataDocumentsDirect([
@@ -368,7 +432,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
       },
     );
     await t.test(
-      "coordinate edits invalidate stale elevations and use basic total until resampling",
+      "coordinate edits invalidate elevations without changing official item counts",
       async () => {
         const saved = await api.getDataDocumentDirect(baseKey);
         const data = JSON.parse(saved.content);
@@ -385,7 +449,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
               where: { skiResortId: "sample" },
             })
           ).courseTotal,
-          9,
+          1,
         );
       },
     );
@@ -662,7 +726,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
           where: { skiResortId: "annotated" },
         });
         assert.equal(summary.courseTotal, 1);
-        assert.equal(summary.courseActive, 0);
+        assert.equal(summary.courseActive, null);
         assert.equal(
           (await api.getFinalizedResortMapData("annotated")).courses.features
             .length,

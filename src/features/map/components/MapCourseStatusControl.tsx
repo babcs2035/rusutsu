@@ -29,6 +29,7 @@ export function MapCourseStatusControl({
   stacked,
   compact = false,
   inline = false,
+  bare = false,
   placement = "top",
   className,
 }: {
@@ -44,6 +45,8 @@ export function MapCourseStatusControl({
   stacked?: ReactNode;
   compact?: boolean;
   inline?: boolean;
+  /** 地図の外（詳細パネル）に置くときは枠と影を付けず、文字と同じ並びにする */
+  bare?: boolean;
   placement?: "top" | "bottom";
   className?: string;
 }) {
@@ -106,6 +109,8 @@ export function MapCourseStatusControl({
               placement === "bottom" && "disabled:opacity-50",
               inline &&
                 "h-9 gap-1 px-1 text-sm font-semibold min-[375px]:px-1.5 md:h-8 md:gap-1 md:px-1.5 md:text-[13px] disabled:opacity-50",
+              bare &&
+                "h-7 border-transparent bg-transparent px-0 shadow-none hover:bg-transparent min-[375px]:px-0 md:h-7 md:px-0",
             )}
           >
             <span
@@ -207,15 +212,20 @@ export function MapCourseStatusControl({
 export function MapCourseStatusOptions({
   settings,
   onChange,
+  className,
 }: {
   settings: MapDisplaySettings;
   onChange: (settings: MapDisplaySettings) => void;
+  className?: string;
 }) {
   return (
     <div
       role="group"
       aria-label="表示するコースの営業状況"
-      className="flex w-full min-w-0 items-center justify-evenly gap-1"
+      className={cn(
+        "flex w-full min-w-0 items-center justify-evenly gap-1",
+        className,
+      )}
     >
       {COURSE_STATUS_OPTIONS.filter(option => option.value !== "closed").map(
         option => (

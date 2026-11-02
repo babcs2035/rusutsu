@@ -25,11 +25,6 @@ export const RECOMMENDATION = {
   maximumInputGap: 100,
   maximumJoinGap: 15,
   minimumDistance: 40,
-  curveWindow: 50,
-  curveAngle: 45,
-  curveSeparation: 75,
-  minimumCurves: 3,
-  minimumCurvesPerKm: 2,
 } as const;
 export type Grooming = "groomed" | "partial" | "ungroomed" | "unknown";
 export type CourseFeature = {
@@ -43,7 +38,6 @@ export type CourseFeature = {
   logDistance: number;
   maxSlope: number;
   slopeDistances: number[];
-  shape: "normal" | "winding";
   grooming: Grooming;
 };
 export const hasCourseName = (name: unknown): name is string =>
@@ -112,7 +106,7 @@ const downhill = (coordinates: GeoCoordinate[]) =>
     ? coordinates
     : [...coordinates].reverse();
 
-/** Regular distance sampling makes both slope and curve windows independent of source point density. */
+/** Regular distance sampling makes slope windows independent of source point density. */
 export function resample(
   coordinates: GeoCoordinate[],
   spacing: number,
@@ -139,50 +133,6 @@ export function resample(
   }
   points.push(coordinates[coordinates.length - 1]);
   return points;
-}
-export function classifyShape(
-  coordinates: GeoCoordinate[],
-): "normal" | "winding" {
-  const points = resample(coordinates, RECOMMENDATION.sampleMeters);
-  const radius = RECOMMENDATION.curveWindow / RECOMMENDATION.sampleMeters;
-  const events: Array<{ distance: number; angle: number }> = [];
-  for (let i = radius; i < points.length - radius; i++) {
-    const a = points[i - radius],
-      b = points[i],
-      c = points[i + radius];
-    const scale = Math.cos((b[1] * Math.PI) / 180);
-    const x1 = (b[0] - a[0]) * scale,
-      y1 = b[1] - a[1];
-    const x2 = (c[0] - b[0]) * scale,
-      y2 = c[1] - b[1];
-    const norm = Math.hypot(x1, y1) * Math.hypot(x2, y2);
-    if (norm === 0) continue;
-    const angle =
-      (Math.acos(Math.min(1, Math.max(-1, (x1 * x2 + y1 * y2) / norm))) * 180) /
-      Math.PI;
-    if (angle >= RECOMMENDATION.curveAngle)
-      events.push({ distance: i * RECOMMENDATION.sampleMeters, angle });
-  }
-  // Local maxima + non-maximum suppression prevent one broad turn counting several times.
-  const selected: typeof events = [];
-  for (const event of events.sort(
-    (a, b) => b.angle - a.angle || a.distance - b.distance,
-  ))
-    if (
-      selected.every(
-        other =>
-          Math.abs(other.distance - event.distance) >=
-          RECOMMENDATION.curveSeparation,
-      )
-    )
-      selected.push(event);
-  const length = points
-    .slice(1)
-    .reduce((sum, p, i) => sum + horizontalDistance(points[i], p), 0);
-  return selected.length >= RECOMMENDATION.minimumCurves &&
-    selected.length / (length / 1000) >= RECOMMENDATION.minimumCurvesPerKm
-    ? "winding"
-    : "normal";
 }
 /** Lower of 80% and maximum minus 5 degrees, floored to a whole degree.
  * The 5 degree margin keeps the band wider than elevation noise on gentle runs.
@@ -340,7 +290,6 @@ export function extractCourseFeatures(
       logDistance: Math.log(distance),
       maxSlope,
       slopeDistances: slopeDistanceProfile(segments),
-      shape: classifyShape(samples),
       grooming: aggregateGrooming(chosen.map(c => c.properties.piste)),
     });
   }
@@ -420,9 +369,6 @@ export function rankCourses(
   candidates: RecommendationCandidate[],
 ) {
   const seen = new Set<string>([source.geometryHash]);
-  const priority = (candidate: RecommendationCandidate) =>
-    Number(!groomingCompatible(source.grooming, candidate.grooming)) * 2 +
-    Number(candidate.shape !== source.shape);
   return candidates
     .filter(
       c =>
@@ -432,7 +378,6 @@ export function rankCourses(
     .map(course => ({ ...course, ...similarity(source, course) }))
     .sort(
       (a, b) =>
-        priority(a) - priority(b) ||
         b.score - a.score ||
         a.resortId.localeCompare(b.resortId, "en") ||
         a.key.localeCompare(b.key, "en"),

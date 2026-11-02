@@ -7,6 +7,10 @@ import {
   usesRemoteDataApi,
 } from "@/lib/internalDataApiClient";
 import { prisma } from "@/lib/prisma";
+import {
+  calculateMapOperationSummaries,
+  OPERATION_SUMMARY_VERSION,
+} from "./operations";
 
 const countSchema = z
   .object({
@@ -46,21 +50,38 @@ export async function readOperatingSummaries(): Promise<
 export async function findOperatingSummariesDirect(): Promise<
   Record<string, ResortOperatingCounts>
 > {
-  const rows = await prisma.skiResortOperationSummary.findMany();
-  return Object.fromEntries(
-    rows.map(row => [
-      row.skiResortId,
-      {
-        hasMap: row.hasMap,
-        courses:
-          row.courseTotal === null
-            ? null
-            : { total: row.courseTotal, active: row.courseActive },
-        lifts:
-          row.liftTotal === null
-            ? null
-            : { total: row.liftTotal, active: row.liftActive },
-      },
-    ]),
+  return prisma.$transaction(
+    async tx => {
+      const stored = await tx.skiResortOperationSummary.findMany();
+      // 次のクロールまで旧版のコース数が残らないよう、旧版だけ読み取り時に再集計する。
+      const updated = new Map(
+        (
+          await calculateMapOperationSummaries(
+            tx,
+            stored
+              .filter(row => row.calculationVersion < OPERATION_SUMMARY_VERSION)
+              .map(row => row.skiResortId),
+          )
+        ).map(row => [row.skiResortId, row]),
+      );
+      const rows = stored.map(row => updated.get(row.skiResortId) ?? row);
+      return Object.fromEntries(
+        rows.map(row => [
+          row.skiResortId,
+          {
+            hasMap: row.hasMap,
+            courses:
+              row.courseTotal === null
+                ? null
+                : { total: row.courseTotal, active: row.courseActive },
+            lifts:
+              row.liftTotal === null
+                ? null
+                : { total: row.liftTotal, active: row.liftActive },
+          },
+        ]),
+      );
+    },
+    { isolationLevel: "RepeatableRead" },
   );
 }

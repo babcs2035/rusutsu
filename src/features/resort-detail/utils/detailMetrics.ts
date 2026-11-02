@@ -1,3 +1,4 @@
+import { recommendationSelection } from "@/features/course-recommendations/algorithm";
 import type { SelectedMapFeature } from "@/features/map/types";
 import type { CourseStatusSummary } from "@/lib/courseStatusSummary";
 import type {
@@ -12,6 +13,7 @@ import {
   calculateCoordinateSlopes,
   getCourseDifficulty,
 } from "@/lib/finalizedResortGeojsonShared";
+import type { PropertySegment } from "@/shared/course-lift/segments";
 import type { ElevationProfilePoint, FinalizedCourseGroup } from "../types";
 
 export const normalizeIconSymbol = (value: string | null | undefined) => {
@@ -51,7 +53,8 @@ export const PISTE_STATUS_DESCRIPTION = {
 export const getCourseGroupStatus = (
   group: FinalizedCourseGroup,
 ): { symbol: StatusSymbol | null; note: string | null } => {
-  const symbols = group.courses.map(course =>
+  const mainGroup = getMainCourseGroup(group);
+  const symbols = mainGroup.courses.map(course =>
     normalizeIconSymbol(course.properties.status),
   );
   const known = symbols.filter(
@@ -70,7 +73,7 @@ export const getCourseGroupStatus = (
     };
   }
 
-  const openSections = group.courses
+  const openSections = mainGroup.courses
     .filter((_, index) => symbols[index] === "○")
     .map(course => course.sectionName)
     .filter((section): section is string => Boolean(section));
@@ -87,36 +90,58 @@ export const getCourseGroupStatus = (
 export const getCourseGroupPisteSymbol = (
   group: FinalizedCourseGroup,
 ): StatusSymbol | null => {
-  const symbols = group.courses
+  const mainGroup = getMainCourseGroup(group);
+  const symbols = mainGroup.courses
     .map(course => normalizeIconSymbol(course.properties.piste))
     .filter((symbol): symbol is StatusSymbol => symbol !== null);
   if (symbols.length === 0) return null;
-  if (symbols.length !== group.courses.length) return null;
+  if (symbols.length !== mainGroup.courses.length) return null;
   return symbols.every(symbol => symbol === symbols[0]) ? symbols[0] : null;
 };
 
-/** コース名の横に出すレベル・圧雪 */
+export type GroomingLabel = (typeof PISTE_STATUS_DESCRIPTION)[StatusSymbol];
+
+/**
+ * コース名の横に出すレベル・圧雪・早朝・ナイター。
+ * 圧雪が区間で違うときは、圧雪でない区間だけ「上部 非圧雪」のように書く。
+ */
 export const getCourseGroupTags = (group: FinalizedCourseGroup) => {
-  const first = group.courses[0];
-  const piste = getCourseGroupPisteSymbol(group);
+  const mainGroup = getMainCourseGroup(group);
+  const first = mainGroup.courses[0];
   const difficulty = first ? getCourseDifficulty(first.properties.level) : null;
+  const runs = getCourseAttributeRuns(mainGroup.courses);
+  const pisteRuns = runs.piste;
+  const onlyPiste = pisteRuns.length === 1 ? pisteRuns[0].value : null;
+  const grooming = (
+    onlyPiste
+      ? [{ symbol: onlyPiste, position: "" }]
+      : pisteRuns
+          .filter(run => run.value === "△" || run.value === "×")
+          .map(run => ({ symbol: run.value, position: getRunPosition(run) }))
+  ).map(({ symbol, position }) => {
+    const value = PISTE_STATUS_DESCRIPTION[symbol as StatusSymbol];
+    return { label: `${position} ${value}`.trim(), value };
+  });
   return {
     // レベルが分からないときは「不明」と書かず、チップを出さない
     difficulty:
       difficulty && difficulty !== "unknown"
         ? COURSE_DIFFICULTY_META[difficulty]
         : null,
-    grooming:
-      group.courses.some(course => course.properties.pisteSegments?.length) ||
-      new Set(
-        group.courses.map(course =>
-          normalizeIconSymbol(course.properties.piste),
-        ),
-      ).size > 1
-        ? ("区間別" as const)
-        : piste
-          ? PISTE_STATUS_DESCRIPTION[piste]
-          : null,
+    grooming: grooming.filter(
+      (item, index) =>
+        grooming.findIndex(other => other.label === item.label) === index,
+    ),
+    hours: [
+      ...describeOpenRuns(runs.morning, "早朝").map(label => ({
+        label,
+        kind: "morning" as const,
+      })),
+      ...describeOpenRuns(runs.night, "ナイター").map(label => ({
+        label,
+        kind: "night" as const,
+      })),
+    ],
   };
 };
 
@@ -300,6 +325,38 @@ export const createFinalizedCourseGroups = (
   return [...groups.values()];
 };
 
+/** MAIN route is the lowest numeric route key; its connected sections stay together. */
+export const getMainCourseGroup = (
+  group: FinalizedCourseGroup,
+): FinalizedCourseGroup => {
+  const legacySectionOrder: Record<string, number> = {
+    上部: 1,
+    中部: 2,
+    下部: 3,
+  };
+  const selection = recommendationSelection(group.id, group.courses);
+  const selected = selection?.routeId
+    ? group.courses.filter(
+        course => (course.routeKey ?? course.id) === selection.routeId,
+      )
+    : group.courses;
+  const courses = selected
+    .map((course, index) => ({ course, index }))
+    .sort((a, b) => {
+      const aOrder =
+        a.course.sectionOrder ?? legacySectionOrder[a.course.sectionName ?? ""];
+      const bOrder =
+        b.course.sectionOrder ?? legacySectionOrder[b.course.sectionName ?? ""];
+      if (aOrder != null && bOrder != null && aOrder !== bOrder)
+        return aOrder - bOrder;
+      if (aOrder != null && bOrder == null) return -1;
+      if (aOrder == null && bOrder != null) return 1;
+      return a.index - b.index;
+    })
+    .map(item => item.course);
+  return { ...group, courses };
+};
+
 /**
  * 選択中のコースのまとまり。地図で別ルートの1本を押したときは、
  * そのルートだけのまとまりにして断面図や距離をそのルートで出す。
@@ -311,12 +368,16 @@ export const findSelectedCourseGroup = (
   if (feature?.kind !== "course") return null;
   const group = groups.find(item => item.id === feature.id);
   if (!group) return null;
+  if (!feature.routeId) return getMainCourseGroup(group);
   const route = feature.routeId
     ? group.courses.filter(
-        course => (course.routeKey ?? course.id) === feature.routeId,
+        course =>
+          course.routeKey === feature.routeId || course.id === feature.routeId,
       )
     : [];
-  return route.length > 0 ? { ...group, courses: route } : group;
+  return route.length > 0
+    ? { ...group, courses: route }
+    : getMainCourseGroup(group);
 };
 
 export const haversineMeters = (a: GeoCoordinate, b: GeoCoordinate) => {
@@ -388,19 +449,8 @@ const getProfileCoordinates = (coordinates: GeoCoordinate[]) => {
   return shouldReverse ? [...coordinates].reverse() : coordinates;
 };
 
-export const createConnectedCourseElevationProfile = (
-  courses: FinalizedCourseFeature[],
-): ElevationProfilePoint[] => {
-  // Alternative routes do not form one continuous elevation profile.
-  // The sections of a single route do.
-  if (
-    courses.length > 1 &&
-    courses.some(course => course.groupKind === "routes") &&
-    new Set(courses.map(course => course.routeKey ?? course.id)).size > 1
-  ) {
-    return [];
-  }
-  const sortedCourses = courses
+const sortCoursesTopDown = (courses: FinalizedCourseFeature[]) =>
+  courses
     .map((course, index) => ({ course, index }))
     .sort((a, b) => {
       const aOrder =
@@ -419,6 +469,20 @@ export const createConnectedCourseElevationProfile = (
       return a.index - b.index;
     })
     .map(item => item.course);
+
+export const createConnectedCourseElevationProfile = (
+  courses: FinalizedCourseFeature[],
+): ElevationProfilePoint[] => {
+  // Alternative routes do not form one continuous elevation profile.
+  // The sections of a single route do.
+  if (
+    courses.length > 1 &&
+    courses.some(course => course.groupKind === "routes") &&
+    new Set(courses.map(course => course.routeKey ?? course.id)).size > 1
+  ) {
+    return [];
+  }
+  const sortedCourses = sortCoursesTopDown(courses);
 
   const points: ElevationProfilePoint[] = [];
   let distance = 0;
@@ -461,9 +525,202 @@ export const createConnectedCourseElevationProfile = (
   return points;
 };
 
-/** コースの数値の帯（`FeatureMetrics`）に並べる値。詳細とコース比較で同じ並びにする */
-export const getCourseGroupMetricItems = (group: FinalizedCourseGroup) => {
-  const distances = group.courses
+export type CourseAttributeKey = "level" | "piste" | "morning" | "night";
+/** 滑り始めを 0、滑り終わりを 1 とした水平距離の割合で表す区間 */
+export type CourseAttributeRun = {
+  from: number;
+  to: number;
+  value: string | null;
+};
+
+const COURSE_ATTRIBUTE_KEYS: CourseAttributeKey[] = [
+  "level",
+  "piste",
+  "morning",
+  "night",
+];
+
+/** 区間の値があればそれを、無い所はコース全体の値で埋めて 0〜1 を覆う */
+const fillCourseSegments = (
+  segments: PropertySegment[] | undefined,
+  fallback: string | null,
+): CourseAttributeRun[] => {
+  const runs: CourseAttributeRun[] = [];
+  let cursor = 0;
+  for (const segment of segments ?? []) {
+    if (segment.from > cursor)
+      runs.push({ from: cursor, to: segment.from, value: fallback });
+    runs.push(segment);
+    cursor = segment.to;
+  }
+  if (cursor < 1) runs.push({ from: cursor, to: 1, value: fallback });
+  return runs;
+};
+
+/**
+ * 上部から下部へ並べたときの、レベル・圧雪・早朝・ナイターの区間。
+ * 上部・下部に分かれたコースと、1 本の中の区間指定の両方を同じ並びにする。
+ */
+export const getCourseAttributeRuns = (
+  courses: FinalizedCourseFeature[],
+): Record<CourseAttributeKey, CourseAttributeRun[]> => {
+  const sorted = sortCoursesTopDown(courses);
+  const lengths = sorted.map(course =>
+    course.coordinates.reduce(
+      (sum, coordinate, index) =>
+        index === 0
+          ? sum
+          : sum + haversineMeters(course.coordinates[index - 1], coordinate),
+      0,
+    ),
+  );
+  const total = lengths.reduce((sum, length) => sum + length, 0);
+  const result = Object.fromEntries(
+    COURSE_ATTRIBUTE_KEYS.map(key => [key, [] as CourseAttributeRun[]]),
+  ) as Record<CourseAttributeKey, CourseAttributeRun[]>;
+  if (total <= 0) return result;
+
+  let offset = 0;
+  for (const [index, course] of sorted.entries()) {
+    const start = offset / total;
+    const span = lengths[index] / total;
+    offset += lengths[index];
+    if (span <= 0) continue;
+    // 断面図と同じく標高の高い側を始点にする。区間の割合は元の向きなので裏返す
+    const reversed =
+      getProfileCoordinates(course.coordinates) !== course.coordinates;
+    const { properties } = course;
+    const difficulty = getCourseDifficulty(properties.level);
+    const pieces: Record<CourseAttributeKey, CourseAttributeRun[]> = {
+      level: [
+        {
+          from: 0,
+          to: 1,
+          value:
+            difficulty === "unknown"
+              ? null
+              : COURSE_DIFFICULTY_META[difficulty].label,
+        },
+      ],
+      piste: fillCourseSegments(
+        properties.pisteSegments,
+        normalizeIconSymbol(properties.piste),
+      ),
+      morning: fillCourseSegments(
+        properties.morningSegments,
+        normalizeIconSymbol(properties.morning),
+      ),
+      night: fillCourseSegments(
+        properties.nightSegments,
+        normalizeIconSymbol(properties.night),
+      ),
+    };
+    for (const key of COURSE_ATTRIBUTE_KEYS) {
+      const placed = pieces[key].map(piece => ({
+        from: start + (reversed ? 1 - piece.to : piece.from) * span,
+        to: start + (reversed ? 1 - piece.from : piece.to) * span,
+        value: piece.value,
+      }));
+      result[key].push(...(reversed ? placed.reverse() : placed));
+    }
+  }
+
+  for (const key of COURSE_ATTRIBUTE_KEYS) {
+    result[key] = result[key].reduce<CourseAttributeRun[]>((runs, run) => {
+      const last = runs.at(-1);
+      if (last && last.value === run.value) last.to = run.to;
+      else runs.push({ ...run });
+      return runs;
+    }, []);
+  }
+  return result;
+};
+
+export type ProfileBand = {
+  key: CourseAttributeKey;
+  runs: Array<CourseAttributeRun & { label: string | null; color: string }>;
+};
+
+// 名前の横のチップと同じ系統の色。ナイターは地図の縁取りと同じ黄色
+const PISTE_BAND_COLOR: Record<StatusSymbol, string> = {
+  "○": "#06B6D4",
+  "△": "#8B5CF6",
+  "×": "#D946EF",
+};
+const HOURS_BAND = {
+  morning: { label: "早朝", color: "#38BDF8" },
+  night: { label: "ナイター", color: "#FACC15" },
+};
+
+/**
+ * 断面図の横軸に添える帯。途中でレベル・圧雪・早朝・ナイターが変わる項目だけ出す。
+ * 値が分からない区間は色を付けない。
+ */
+export const createCourseProfileBands = (
+  courses: FinalizedCourseFeature[],
+): ProfileBand[] => {
+  const runs = getCourseAttributeRuns(courses);
+  const bands: ProfileBand[] = [];
+  if (runs.level.length > 1)
+    bands.push({
+      key: "level",
+      runs: runs.level.map(run => ({
+        ...run,
+        label: run.value,
+        color: run.value
+          ? COURSE_DIFFICULTY_META[getCourseDifficulty(run.value)].color
+          : "transparent",
+      })),
+    });
+  if (runs.piste.length > 1)
+    bands.push({
+      key: "piste",
+      runs: runs.piste.map(run => {
+        const symbol = run.value as StatusSymbol | null;
+        return {
+          ...run,
+          label: symbol ? PISTE_STATUS_DESCRIPTION[symbol] : null,
+          color: symbol ? PISTE_BAND_COLOR[symbol] : "transparent",
+        };
+      }),
+    });
+  for (const key of ["morning", "night"] as const) {
+    if (runs[key].length < 2 || !runs[key].some(run => run.value === "○"))
+      continue;
+    bands.push({
+      key,
+      runs: runs[key].map(run => ({
+        ...run,
+        label: run.value === "○" ? HOURS_BAND[key].label : null,
+        color: run.value === "○" ? HOURS_BAND[key].color : "transparent",
+      })),
+    });
+  }
+  return bands;
+};
+
+/** 区間がコースのどのあたりかを「上部・中部・下部」で表す。全体なら空 */
+const getRunPosition = (run: CourseAttributeRun) => {
+  const fromTop = run.from <= 0.01;
+  const toBottom = run.to >= 0.99;
+  if (fromTop && toBottom) return "";
+  if (fromTop) return "上部";
+  if (toBottom) return "下部";
+  return "中部";
+};
+
+/** 営業している（○）区間を「下部 ナイター」のように書く */
+const describeOpenRuns = (runs: CourseAttributeRun[], label: string) => [
+  ...new Set(
+    runs
+      .filter(run => run.value === "○")
+      .map(run => `${getRunPosition(run)} ${label}`.trim()),
+  ),
+];
+
+export const getCourseGroupMetrics = (group: FinalizedCourseGroup) => {
+  const mainGroup = getMainCourseGroup(group);
+  const distances = mainGroup.courses
     .map(
       course =>
         course.properties.slopeDistMap ?? course.properties.distance ?? null,
@@ -473,7 +730,7 @@ export const getCourseGroupMetricItems = (group: FinalizedCourseGroup) => {
     distances.length > 0
       ? distances.reduce((sum, value) => sum + value, 0)
       : null;
-  const horizontalDistances = group.courses.map(
+  const horizontalDistances = mainGroup.courses.map(
     course => course.properties.horizontalDistMap,
   );
   const horizontalDistance = horizontalDistances.some(
@@ -481,27 +738,64 @@ export const getCourseGroupMetricItems = (group: FinalizedCourseGroup) => {
   )
     ? horizontalDistances.reduce<number>((sum, value) => sum + (value ?? 0), 0)
     : null;
-  const averageSlope = averageNullable(
-    group.courses.map(course => course.properties.avgSlopeDegMap),
-  );
+  const weightedSlopes = mainGroup.courses.flatMap(course => {
+    const slope = course.properties.avgSlopeDegMap;
+    const weight = course.properties.slopeDistMap ?? course.properties.distance;
+    return typeof slope === "number" && typeof weight === "number" && weight > 0
+      ? [{ slope, weight }]
+      : [];
+  });
+  const averageSlope = weightedSlopes.length
+    ? weightedSlopes.reduce((sum, item) => sum + item.slope * item.weight, 0) /
+      weightedSlopes.reduce((sum, item) => sum + item.weight, 0)
+    : averageNullable(
+        mainGroup.courses.map(course => course.properties.avgSlopeDegMap),
+      );
   const maxSlope = maxNullable(
-    group.courses.map(course => course.properties.maxSlopeDegMap),
+    mainGroup.courses.map(course => course.properties.maxSlopeDegMap),
   );
-  const elevationRange = getElevationRange(
-    group.courses.map(course => course.coordinates),
-  );
-  const elevationDiff = elevationRange
-    ? elevationRange.max - elevationRange.min
+  const elevationDiffs = mainGroup.courses
+    .map(course => {
+      const known = course.properties.elevationDiffMap;
+      if (typeof known === "number" && Number.isFinite(known)) return known;
+      const range = getElevationRange([course.coordinates]);
+      return range ? range.max - range.min : null;
+    })
+    .filter((value): value is number => value != null);
+  const elevationDiff = elevationDiffs.length
+    ? elevationDiffs.reduce((sum, value) => sum + value, 0)
     : null;
+  const elevationRange = getElevationRange(
+    mainGroup.courses.map(course => course.coordinates),
+  );
+  return {
+    distance,
+    horizontalDistance,
+    averageSlope,
+    maxSlope,
+    elevationDiff,
+    elevationRange,
+  };
+};
+
+/** コースの数値の帯（`FeatureMetrics`）に並べる値。詳細とコース比較で同じ並びにする */
+export const getCourseGroupMetricItems = (group: FinalizedCourseGroup) => {
+  const {
+    distance,
+    horizontalDistance,
+    averageSlope,
+    maxSlope,
+    elevationDiff,
+    elevationRange,
+  } = getCourseGroupMetrics(group);
   return [
     { title: "水平距離", value: formatMeters(horizontalDistance) },
     { title: "斜面距離", value: formatMeters(distance) },
     {
       title: "標高差",
       value: formatMeters(elevationDiff),
-      detail: elevationRange
-        ? `${Math.round(elevationRange.max)} - ${Math.round(elevationRange.min)}m`
-        : null,
+      detail: formatElevationRange(elevationRange),
+      width: "wide",
     },
     { title: "平均", value: formatDegree(averageSlope) },
     { title: "最大", value: formatDegree(maxSlope) },

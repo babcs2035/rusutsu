@@ -1,10 +1,12 @@
 "use client";
 
-import { Circle, Minus, Play, Triangle, X } from "lucide-react";
+import { Circle, Minus, Pencil, Play, Plus, Triangle, X } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
-import { ReportErrorButton } from "@/features/corrections/ReportErrorButton";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { requestCommunityComposer } from "@/features/community/composerEvents";
+import { CorrectionLink } from "@/features/corrections/CorrectionLink";
 import { cn } from "@/lib/utils";
-import type { StatusSymbol } from "../utils/detailMetrics";
+import type { GroomingLabel, StatusSymbol } from "../utils/detailMetrics";
 import { getYoutubeSearchUrl } from "../utils/featureLinks";
 import type { FeatureStatusSource } from "../utils/featureSources";
 import { SourceLine } from "./CompactInfo";
@@ -25,30 +27,36 @@ const UNKNOWN_STATUS_STYLE = {
   Icon: Minus,
   className: "border-slate-200 bg-white text-slate-500",
 };
-const GROOMING_CLASS = {
-  区間別: "text-violet-700",
+const GROOMING_CLASS: Record<GroomingLabel, string> = {
   圧雪: "text-cyan-700",
   日によって圧雪: "text-violet-700",
   非圧雪: "text-fuchsia-700",
+};
+// ナイターは地図の縁取りと同じ黄色、早朝は朝の空の水色
+const HOURS_CLASS = {
+  morning: "border-sky-300 bg-sky-50 text-sky-800",
+  night: "border-yellow-300 bg-yellow-100 text-yellow-800",
 };
 // Preserve the map's level colors while making small text readable on white.
 const LEVEL_TEXT_COLOR: Record<string, string> = {
   "#22C55E": "#15803D",
   "#FF8C00": "#9A3412",
   "#FF0000": "#B91C1C",
-  "#B45309": "#92400E",
+  "#A855F7": "#7E22CE",
 };
 const TAG_CLASS =
-  "inline-flex h-6 shrink-0 items-center rounded-full border px-2 text-xs font-semibold whitespace-nowrap";
+  "inline-flex h-6 shrink-0 items-center rounded-full border px-2 align-middle text-xs font-semibold whitespace-nowrap";
 
-/** レベル・圧雪（リフトは種別・速度）の値チップ。名前の横に並べる */
+/** レベル・圧雪・早朝・ナイター（リフトは種別・速度）の値チップ。名前の横に並べる */
 export const FeatureTags = ({
   difficulty,
-  grooming,
+  grooming = [],
+  hours = [],
   tags = [],
 }: {
   difficulty?: { label: string; color: string } | null;
-  grooming?: keyof typeof GROOMING_CLASS | null;
+  grooming?: Array<{ label: string; value: GroomingLabel }>;
+  hours?: Array<{ label: string; kind: keyof typeof HOURS_CLASS }>;
   tags?: string[];
 }) => (
   <>
@@ -63,17 +71,23 @@ export const FeatureTags = ({
         {difficulty.label}
       </span>
     )}
-    {grooming && (
+    {grooming.map(item => (
       <span
+        key={item.label}
         className={cn(
           TAG_CLASS,
           "border-slate-200 bg-slate-50",
-          GROOMING_CLASS[grooming],
+          GROOMING_CLASS[item.value],
         )}
       >
-        {grooming}
+        {item.label}
       </span>
-    )}
+    ))}
+    {hours.map(item => (
+      <span key={item.label} className={cn(TAG_CLASS, HOURS_CLASS[item.kind])}>
+        {item.label}
+      </span>
+    ))}
     {tags.map(tag => (
       <span
         key={tag}
@@ -85,8 +99,18 @@ export const FeatureTags = ({
   </>
 );
 
+// 地図の「＋投稿」「営業中のみ」と同じ文字・枠
+const ACTION_CLASS =
+  "h-8 gap-1 rounded-md border border-slate-300 bg-white px-1.5 text-sm font-semibold whitespace-nowrap text-slate-700 shadow-sm hover:bg-slate-50 md:text-[13px]";
+// 投稿は青、動画は YouTube の赤で塗る
+const POST_CLASS =
+  "border-blue-600 bg-blue-600 text-white hover:bg-blue-700 hover:text-white";
+const VIDEO_CLASS =
+  "border-red-600 bg-red-600 text-white hover:bg-red-700 hover:text-white";
+
 /**
- * 営業状況を一番目立つチップで出し、余った右側に出典と動画検索を置く。
+ * 営業状況を一番目立つチップで出し、その右に出典を折り返して添える。
+ * 下の段に投稿・情報の修正・動画検索の操作を並べる。
  */
 export const FeatureHeadline = ({
   kind,
@@ -94,6 +118,8 @@ export const FeatureHeadline = ({
   searchWord,
   sources,
   reportContext,
+  postTarget,
+  correctionContext,
 }: {
   kind: "course" | "lift";
   status: { symbol: StatusSymbol | null; text: string };
@@ -104,62 +130,100 @@ export const FeatureHeadline = ({
     targetIds: string[];
     snapshotId?: string | null;
   };
+  /** 投稿の対象。reportContext の resortId と組み合わせて使う */
+  postTarget?: { kind: "COURSE" | "LIFT"; id: string };
+  /** 「情報を修正」で開く修正画面の文脈 */
+  correctionContext?: unknown;
 }) => {
   const statusStyle = status.symbol
     ? STATUS_STYLE[status.symbol]
     : UNKNOWN_STATUS_STYLE;
   const label = kind === "course" ? "コース状況" : "リフト状況";
+  const resortId = reportContext?.resortId;
 
   return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-      <span
-        className={cn(
-          "inline-flex h-7 shrink-0 items-center gap-1 rounded-full border px-2.5 text-sm font-bold whitespace-nowrap",
-          statusStyle.className,
-        )}
-      >
-        <statusStyle.Icon
-          aria-hidden="true"
-          className="size-4"
-          strokeWidth={3}
-        />
-        {status.text}
-      </span>
+    <div className="flex flex-col gap-2">
+      <div className="flex items-start gap-2">
+        <span
+          className={cn(
+            "inline-flex h-7 shrink-0 items-center gap-1 rounded-full border px-2.5 text-sm font-bold whitespace-nowrap",
+            statusStyle.className,
+          )}
+        >
+          <statusStyle.Icon
+            aria-hidden="true"
+            className="size-4"
+            strokeWidth={3}
+          />
+          {status.text}
+        </span>
 
-      <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-x-2 gap-y-1">
-        {sources.map(source => (
-          <SourceLine
-            key={JSON.stringify([source.urls, source.update])}
-            label={label}
-            urls={source.urls}
-            updates={source.update ? [source.update] : []}
-            highlights={source.matches.flatMap(match => match.officialNames)}
-            showFetched={false}
-            showLabel={false}
-            compact
-          />
-        ))}
-        {reportContext && sources.some(source => source.urls.length > 0) && (
-          <ReportErrorButton
-            resortId={reportContext.resortId}
-            kind="source"
-            label="出典表記の誤りを報告"
-            context={{ ...reportContext, targetKind: kind, sources }}
-          />
-        )}
-        {searchWord && (
-          <a
-            href={getYoutubeSearchUrl(searchWord)}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="YouTubeで動画を探す"
-            className="inline-flex min-h-7 items-center gap-0.5 whitespace-nowrap text-xs text-red-700 underline underline-offset-2 hover:text-red-900"
-          >
-            <Play size={12} fill="currentColor" aria-hidden="true" />
-            動画
-          </a>
+        {sources.length > 0 && (
+          <div className="flex min-h-7 min-w-0 flex-1 flex-col justify-center gap-1">
+            {sources.map(source => (
+              <SourceLine
+                key={JSON.stringify([source.urls, source.update])}
+                label={label}
+                urls={source.urls}
+                updates={source.update ? [source.update] : []}
+                highlights={source.matches.flatMap(
+                  match => match.officialNames,
+                )}
+                showFetched={false}
+                showLabel={false}
+                compact
+              />
+            ))}
+          </div>
         )}
       </div>
+
+      {(resortId || searchWord) && (
+        <div className="flex items-center gap-1.5">
+          {resortId && postTarget && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className={cn(ACTION_CLASS, POST_CLASS)}
+              onClick={() =>
+                requestCommunityComposer({ resortId, target: postTarget })
+              }
+            >
+              ＋投稿
+            </Button>
+          )}
+          {resortId && correctionContext !== undefined && (
+            <CorrectionLink
+              resortId={resortId}
+              context={correctionContext}
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                ACTION_CLASS,
+              )}
+            >
+              <Pencil aria-hidden="true" />
+              情報を修正
+            </CorrectionLink>
+          )}
+          {searchWord && (
+            <a
+              href={getYoutubeSearchUrl(searchWord)}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="YouTubeで動画を探す"
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                ACTION_CLASS,
+                VIDEO_CLASS,
+              )}
+            >
+              <Play aria-hidden="true" fill="currentColor" />
+              動画を探す
+            </a>
+          )}
+        </div>
+      )}
     </div>
   );
 };
@@ -171,8 +235,14 @@ export const FeatureMetrics = ({
   items: Array<{ title: string; value: string; detail?: string | null }>;
 }) => (
   <dl
-    className="grid gap-1 rounded-lg bg-slate-50 px-2.5 py-2"
-    style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
+    className="@container grid items-start gap-x-1 rounded-lg bg-slate-50 px-2.5 py-2 @min-[300px]:gap-x-1.5"
+    style={{
+      gridTemplateColumns: items
+        .map(item =>
+          item.title === "標高差" ? "minmax(0, 2fr)" : "minmax(0, 1fr)",
+        )
+        .join(" "),
+    }}
   >
     {items.map(item => (
       <div
@@ -180,12 +250,17 @@ export const FeatureMetrics = ({
         className="min-w-0"
         title={item.detail ?? undefined}
       >
-        <dt className="whitespace-nowrap text-[10px] text-slate-500 sm:text-xs">
+        <dt className="whitespace-nowrap text-[10px] leading-tight text-slate-500 @min-[420px]:text-xs">
           {item.title}
         </dt>
-        <dd className="whitespace-nowrap text-[13px] font-bold tabular-nums tracking-tight text-slate-900 sm:text-base">
+        <dd className="whitespace-nowrap text-[clamp(10px,3.8cqw,16px)] font-bold leading-5 tabular-nums tracking-tight text-slate-900 @min-[420px]:leading-6">
           {item.value}
         </dd>
+        {item.detail && (
+          <dd className="whitespace-nowrap text-[10px] tabular-nums tracking-tighter text-slate-500 @min-[420px]:text-xs">
+            {item.detail}
+          </dd>
+        )}
       </div>
     ))}
   </dl>

@@ -58,28 +58,37 @@ export function SourceLine({
           className={`inline-flex min-w-0 max-w-full flex-wrap items-center gap-x-1.5 gap-y-0.5 rounded-md border border-blue-100 bg-blue-50 py-0.5 ${compact ? COMPACT_SOURCE_CHIP : "min-h-7 px-2"}`}
         >
           {/* URLs describe the category; item timestamps are not URL-index pairs. */}
-          {links.map((url, index) => (
-            <ExternalLinkComponent
-              key={url}
-              href={withTextFragment(url, highlights)}
-              title={
-                highlights.length
-                  ? `公式サイトの「${highlights.join("」「")}」の箇所を開く`
-                  : url
-              }
-              className="inline-flex shrink-0 items-center gap-0.5 font-medium text-blue-700 underline underline-offset-2 hover:text-blue-800"
-              aria-label={`${label}の出典を開く${links.length > 1 ? `（${index + 1}）` : ""}`}
-            >
-              出典{links.length > 1 ? index + 1 : ""}
-              {urlLabels?.[url] ? `(${urlLabels[url]})` : ""}
-              {highlights.length > 0
-                ? `（表記：${[...new Set(highlights)].join("・")}）`
-                : ""}
-              <ExternalLink
-                className={compact ? COMPACT_SOURCE_ICON : "size-3.5"}
-              />
-            </ExternalLinkComponent>
-          ))}
+          {links.map((url, index) => {
+            const link = (
+              <ExternalLinkComponent
+                key={url}
+                href={withTextFragment(url, highlights)}
+                title={
+                  highlights.length
+                    ? `公式サイトの「${highlights.join("」「")}」の箇所を開く`
+                    : url
+                }
+                className="inline-flex shrink-0 items-center gap-0.5 font-medium text-blue-700 underline underline-offset-2 hover:text-blue-800"
+                aria-label={`${label}の出典を開く${links.length > 1 ? `（${index + 1}）` : ""}`}
+              >
+                出典{links.length > 1 ? index + 1 : ""}
+                {urlLabels?.[url] ? `(${urlLabels[url]})` : ""}
+                <ExternalLink
+                  className={compact ? COMPACT_SOURCE_ICON : "size-3.5"}
+                />
+              </ExternalLinkComponent>
+            );
+            if (!highlights.length) return link;
+            // 掲載名は長くなるので小さくし、出典の右で折り返す
+            return (
+              <span key={url} className="flex min-w-0 items-baseline gap-1">
+                {link}
+                <span className="min-w-0 break-words text-[10px] text-slate-600 md:text-xs">
+                  表記：{[...new Set(highlights)].join("・")}
+                </span>
+              </span>
+            );
+          })}
           {published.map(text => (
             <span
               key={text}

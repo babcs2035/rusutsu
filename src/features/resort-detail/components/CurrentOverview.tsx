@@ -20,7 +20,7 @@ import { ResortComment } from "./ResortComment";
 import { useSimultaneousView } from "./SimultaneousToggle";
 
 /** 出典がないときは営業状況が分からないので、地図のコース数だけを「不明」として出す。 */
-const createMapCourseSummary = (
+export const createMapCourseSummary = (
   count: number | null,
 ): CourseStatusSummary | null =>
   count == null

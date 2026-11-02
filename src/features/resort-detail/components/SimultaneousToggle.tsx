@@ -30,6 +30,7 @@ type GroupView = NonNullable<Awaited<ReturnType<typeof getSimultaneousView>>>;
 /** 同時表示の組で一緒に出す相手のスキー場（地図を除いた詳細） */
 export type SimultaneousPartner = GroupView["partners"][number];
 const NO_PARTNERS: SimultaneousPartner[] = [];
+const NO_COMMUNITY_RESORTS: GroupView["communityResorts"] = [];
 const groupViews = new Map<
   string,
   { status: "loading" | "ready" | "error"; data?: GroupView }
@@ -108,6 +109,7 @@ export function useSimultaneousView(resort: MapResort | null) {
       mapData: ownMapData,
       conditions: [],
       partners: NO_PARTNERS,
+      communityResorts: NO_COMMUNITY_RESORTS,
       loading: false,
     };
   const view = groupViews.get(`${resort.id}:${active.groupId}`);
@@ -116,6 +118,7 @@ export function useSimultaneousView(resort: MapResort | null) {
     mapData: view?.data?.mapData ?? ownMapData,
     conditions: view?.data?.conditions ?? [],
     partners: view?.data?.partners ?? NO_PARTNERS,
+    communityResorts: view?.data?.communityResorts ?? NO_COMMUNITY_RESORTS,
     loading: !view || view.status === "loading",
   };
 }

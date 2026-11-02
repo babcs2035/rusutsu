@@ -69,7 +69,6 @@ async function loadRecommendationPool(resortId: string, favoriteIds: string[]) {
     getResortLabelName(r.id, r.nameJa, r.shortName);
   const convert = (row: (typeof rows)[number]): RecommendationCandidate => ({
     ...row,
-    shape: row.shape as "normal" | "winding",
     grooming: row.grooming as Grooming,
     resortName: labelName(byCanonical.get(row.resortId) ?? sourceResort),
   });
@@ -88,7 +87,6 @@ async function loadRecommendationPool(resortId: string, favoriteIds: string[]) {
       steepThreshold: row.steepThreshold,
       sourceSteepDistance: row.sourceSteepDistance,
       candidateSteepDistance: row.candidateSteepDistance,
-      shapeDifferent: row.shape !== source.shape,
       groomingDifferent: !groomingCompatible(source.grooming, row.grooming),
       score: row.score,
       slopeDifference: row.slopeDifference,

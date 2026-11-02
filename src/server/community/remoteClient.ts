@@ -2,6 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { auth } from "@/auth";
 import type { ActionResult } from "@/features/community/contract";
+import { reportHttpError } from "@/features/community/submitReport";
 import {
   fetchInternalDataApi,
   InternalDataApiError,
@@ -79,6 +80,13 @@ async function remoteRequest(command: CommunityCommand, photos?: FormData) {
     // A missing/hidden photo is deliberately indistinguishable from no photo.
     if (command.operation === "photo" && response.status === 404)
       return response;
+    if (!response.headers.get("content-type")?.includes("application/json")) {
+      void response.body?.cancel().catch(() => {});
+      throw new InternalDataApiError(
+        reportHttpError(response.status),
+        response.status,
+      );
+    }
     const error = await response.json().catch(() => null);
     const message =
       (response.status === 404 || response.status === 405) &&

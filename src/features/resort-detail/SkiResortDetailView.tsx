@@ -16,7 +16,10 @@ import {
   setCommunityMapPoint,
 } from "@/features/community/composerEvents";
 import type { ReportMapTarget } from "@/features/community/contract";
-import { communityMapData } from "@/features/community/mapData";
+import {
+  communityMapData,
+  resortReportMap,
+} from "@/features/community/mapData";
 import {
   highlightCommunityMapEntry,
   openCommunityMapPosts,
@@ -210,6 +213,11 @@ export const SkiResortDetailView = ({
     null,
   );
   const composeResortId = resortData?.id;
+  const composeResortIds = useRef<string[]>([]);
+  composeResortIds.current = [
+    composeResortId ?? "",
+    ...simultaneous.partners.map(partner => partner.id),
+  ];
   const handlePickMode = useCallback(
     (mode: "POINT" | null) => {
       if (composeResortId) setCommunityMapPickMode(composeResortId, mode);
@@ -228,7 +236,8 @@ export const SkiResortDetailView = ({
     if (!composeResortId) return;
     const open = (event: Event) => {
       const request = (event as CustomEvent<ComposeRequest>).detail;
-      if (request?.resortId !== composeResortId) return;
+      if (!request || !composeResortIds.current.includes(request.resortId))
+        return;
       event.preventDefault();
       if (request.target) setComposeTarget(request.target);
       setComposeRequest(current =>
@@ -276,18 +285,21 @@ export const SkiResortDetailView = ({
     composing && selectedFinalizedFeature
       ? `${selectedFinalizedFeature.kind}:${selectedFinalizedFeature.id}`
       : null;
-  const composeCourseFeatures = resortData?.finalizedMapData?.courses?.features;
+  const composeCourseFeatures = displayedMapData?.courses?.features;
   // 投稿で選べるコース・リフトは、詳細の地図で読み込み済みのものから作る
   const composeMapData = useMemo(
     () =>
       resortData
-        ? communityMapData(
-            resortData.nameJa,
-            [resortData.longitude, resortData.latitude],
-            resortData.finalizedMapData,
-          )
+        ? {
+            ...communityMapData(
+              resortData.nameJa,
+              [resortData.longitude, resortData.latitude],
+              displayedMapData,
+            ),
+            resorts: simultaneous.communityResorts,
+          }
         : null,
-    [resortData],
+    [resortData, displayedMapData, simultaneous.communityResorts],
   );
   useEffect(() => {
     if (!composeFeatureKey) return;
@@ -330,7 +342,7 @@ export const SkiResortDetailView = ({
     setComposeTarget(null);
     onSelectedFinalizedFeatureChange(selectionBeforeCompose.current);
   };
-  const activeComposerResortId = composeRequest?.resortId;
+  const activeComposerResortId = composeRequest ? composeResortId : undefined;
   useEffect(() => {
     if (!composeRequest) return;
     const url = new URL(window.location.href);
@@ -601,7 +613,9 @@ export const SkiResortDetailView = ({
   );
 
   const composer =
-    composeRequest?.resortId === resort.id && composeMapData ? (
+    composeRequest &&
+    composeResortIds.current.includes(composeRequest.resortId) &&
+    composeMapData ? (
       <div
         className="flex h-full min-h-0 flex-col"
         role="region"
@@ -609,9 +623,13 @@ export const SkiResortDetailView = ({
       >
         <div className="min-h-0 flex-1">
           <CommunityComposer
-            key={`${resort.id}:${composeRequest.postId ?? "new"}`}
-            resortId={resort.id}
-            mapData={composeMapData}
+            key={`${composeRequest.resortId}:${composeRequest.postId ?? "new"}`}
+            resortId={composeRequest.resortId}
+            mapData={
+              composeRequest.postId
+                ? resortReportMap(composeMapData, composeRequest.resortId)
+                : composeMapData
+            }
             postId={composeRequest.postId}
             embedded
             onClose={closeComposer}
@@ -644,18 +662,20 @@ export const SkiResortDetailView = ({
   const detailPanelContent = isSidePanel ? (
     (renderFeatureDetail({ withOpenList: true }) ??
     postDetail ?? (
-      <div
-        data-session-scroll={`${stateKey}:desktop:${activeTab}`}
-        className="flex-1 overflow-y-auto"
-      >
-        {desktopDetailHeader}
-        <DetailTabs
-          tabs={TABS}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-        />
-        <div className="p-3 @min-[30rem]/resort-detail:p-4 text-gray-700">
-          {renderTabPanels()}
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="shrink-0">{desktopDetailHeader}</div>
+        <div
+          data-session-scroll={`${stateKey}:desktop:${activeTab}`}
+          className="min-h-0 flex-1 overflow-y-auto"
+        >
+          <DetailTabs
+            tabs={TABS}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+          />
+          <div className="p-3 @min-[30rem]/resort-detail:p-4 text-gray-700">
+            {renderTabPanels()}
+          </div>
         </div>
       </div>
     ))

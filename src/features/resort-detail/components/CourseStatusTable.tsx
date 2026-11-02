@@ -94,6 +94,8 @@ export function CourseStatusTable({
   unavailable = false,
   onShowDetail,
   detailLabel = "詳細",
+  inline = false,
+  observedTime,
 }: {
   summary?: CourseStatusSummary | null;
   kind?: "course" | "lift";
@@ -104,6 +106,10 @@ export function CourseStatusTable({
   /** 渡すと見出しの右に「詳細」ボタンを出す（一覧・個別詳細への導線） */
   onShowDetail?: () => void;
   detailLabel?: string;
+  /** 見出し・記号と件数・出典を1行に並べる（幅が足りなければ出典だけ次の行へ） */
+  inline?: boolean;
+  /** 取得日時。inline のときだけ、出典と同じ行の左に置く */
+  observedTime?: ReactNode;
 }) {
   const headingId = useId();
   const isLift = kind === "lift";
@@ -121,7 +127,7 @@ export function CourseStatusTable({
   // 見出し行（名前・件数・説明・詳細）→ 記号と件数 → 出典の順に積む。
   return (
     <section
-      className="@container/status-summary flex min-w-0 flex-col gap-1 rounded-lg border border-slate-200 px-1.5 py-1.5"
+      className={`@container/status-summary flex min-w-0 gap-1 ${inline ? "flex-wrap items-center gap-x-2 rounded-lg bg-slate-50 px-2 py-1.5" : "flex-col rounded-lg border border-slate-200 px-1.5 py-1.5"}`}
       aria-labelledby={headingId}
     >
       <div className="flex min-w-0 items-center">
@@ -158,7 +164,7 @@ export function CourseStatusTable({
       <div
         role="group"
         aria-labelledby={headingId}
-        className="flex min-w-0 items-center justify-between gap-1 [&_[role=img]]:size-3.5 [&_svg]:size-3.5 @min-[12rem]/status-summary:[&_[role=img]]:size-4 @min-[12rem]/status-summary:[&_svg]:size-4"
+        className={`flex min-w-0 items-center gap-1 ${inline ? "gap-x-1.5" : "justify-between"} [&_[role=img]]:size-3.5 [&_svg]:size-3.5 @min-[12rem]/status-summary:[&_[role=img]]:size-4 @min-[12rem]/status-summary:[&_svg]:size-4`}
       >
         {unavailable && (
           <NotFetchedBadge
@@ -180,13 +186,23 @@ export function CourseStatusTable({
                 size="sm"
               />
             )}
-            <span className="inline-flex h-6 items-center text-base leading-none font-bold tabular-nums text-slate-900 @min-[12rem]/status-summary:h-7 @min-[12rem]/status-summary:text-lg">
+            <span
+              className={`inline-flex h-6 items-center text-base leading-none font-bold tabular-nums text-slate-900 ${inline ? "" : "@min-[12rem]/status-summary:h-7 @min-[12rem]/status-summary:text-lg"}`}
+            >
               {column.count ?? "—"}
             </span>
           </div>
         ))}
       </div>
-      {source && <div className="min-w-0">{source}</div>}
+      {inline
+        ? (observedTime || source) && (
+            // 取得日時と出典は1組で送る。入りきらなければ次の行に、取得日時を左・出典を右に置く
+            <div className="flex flex-1 items-center justify-between gap-2 whitespace-nowrap">
+              {observedTime ?? <span />}
+              {source}
+            </div>
+          )
+        : source && <div className="min-w-0">{source}</div>}
     </section>
   );
 }

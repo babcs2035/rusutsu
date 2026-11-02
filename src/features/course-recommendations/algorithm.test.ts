@@ -7,7 +7,6 @@ import type {
 import {
   aggregateGrooming,
   type CourseFeature,
-  classifyShape,
   extractCourseFeatures,
   groomingCompatible,
   hasCourseName,
@@ -233,7 +232,7 @@ test("Wasserstein compares length-normalized profiles per degree; length ratio i
     assert.equal(score.score, similarity(b, a).score);
   }
 });
-test("ranking prioritizes compatible grooming/shape, excludes own resort and copied geometry; returns stable top three", () => {
+test("ranking follows slope similarity, excludes own resort and copied geometry; returns stable top three", () => {
   const source = { ...feature(), geometryHash: "source" };
   const candidate = (id: string, overrides = {}) => ({
     ...feature({ resortId: id }),
@@ -249,7 +248,6 @@ test("ranking prioritizes compatible grooming/shape, excludes own resort and cop
     candidate("source"),
     candidate("copy", { geometryHash: "source" }),
     candidate("other", { grooming: "ungroomed" }),
-    candidate("winding", { shape: "winding" }),
     candidate("far", { logDistance: 99 }),
   ];
   assert.deepEqual(
@@ -268,16 +266,26 @@ test("ranking prioritizes compatible grooming/shape, excludes own resort and cop
     rankCourses(source, [candidate("far", { logDistance: 99 })]).length,
     1,
   );
-  assert.equal(
-    rankCourses(source, [candidate("winding", { shape: "winding" })]).length,
-    1,
+  const betterSlopeMatch = candidate("better", {
+    maxSlope: source.maxSlope,
+    slopeDistances: [...source.slopeDistances],
+    distance: source.distance,
+    logDistance: source.logDistance,
+    grooming: "ungroomed",
+  });
+  const worseSlopeMatch = candidate("worse", {
+    maxSlope: source.maxSlope + 8,
+    grooming: "groomed",
+  });
+  assert.ok(
+    similarity(source, betterSlopeMatch).score >
+      similarity(source, worseSlopeMatch).score,
   );
   assert.deepEqual(
-    rankCourses(source, [
-      candidate("winding", { shape: "winding" }),
-      candidate("far", { logDistance: 99 }),
-    ]).map(r => r.resortId),
-    ["far", "winding"],
+    rankCourses(source, [worseSlopeMatch, betterSlopeMatch]).map(
+      r => r.resortId,
+    ),
+    ["better", "worse"],
   );
 });
 test("slope distributions distinguish steady slopes from flat/steep mixtures with the same mean", () => {
@@ -374,32 +382,6 @@ test("terrain similarity handles flat courses and exposes meaningful grades", ()
   assert.equal(results.length, 1);
   assert.ok(results[0].score < 60);
 });
-test("distance smoothing classifies large repeated bends, ignores tiny coordinate noise and point density", () => {
-  const winding: GeoCoordinate[] = [];
-  for (let i = 0; i <= 120; i++) {
-    const block = Math.floor(i / 20),
-      t = i % 20;
-    winding.push([
-      140 + (block % 2 ? 20 - t : t) * 0.00012,
-      43 + block * 0.0002,
-      1000 - i * 2,
-    ]);
-  }
-  assert.equal(classifyShape(line(0, 120)), "normal");
-  assert.equal(
-    classifyShape(
-      line(0, 120).map((p, i) => [
-        p[0] + (i % 2) * 0.000001,
-        p[1],
-        p[2] as number,
-      ]),
-    ),
-    "normal",
-  );
-  assert.equal(classifyShape(winding), "winding");
-  assert.equal(classifyShape(winding.filter((_, i) => i % 2 === 0)), "winding");
-});
-
 test("list selection requests the numeric main route; a clicked secondary route is never changed into the main route", () => {
   const two = course({ groupKind: "routes", routeKey: "g:route:2" });
   const ten = course({ groupKind: "routes", routeKey: "g:route:10" });

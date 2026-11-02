@@ -151,7 +151,7 @@ function FavoritesState({
       ids: local.current.ids.filter(id => availableResorts.has(id)),
     };
     // 同じアカウントの再同期中は、前の一覧を使える状態のまま残す。
-    // 一度 ready を落とすと、お気に入りに依存する表示（類似コースなど）が
+    // 一度 ready を落とすと、お気に入りに依存する表示（斜度の近いコースなど）が
     // タブを戻るたびに作り直されて読み込み直しになる。
     setSnapshot(previous =>
       previous.userId === userId ? previous : { userId, ids: [], ready: false },

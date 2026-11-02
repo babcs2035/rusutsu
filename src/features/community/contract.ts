@@ -150,6 +150,13 @@ export type CommunityMapData = {
   center: [number, number];
   courses: CourseOption[];
   lifts: LiftOption[];
+  /** 同時表示中の線と、保存先のスキー場の対応。 */
+  resorts?: {
+    id: string;
+    name: string;
+    courseIds: string[];
+    liftIds: string[];
+  }[];
 };
 export type PublicPhoto = { id: string; width: number; height: number };
 export type ReportMapTarget =

@@ -8,6 +8,10 @@ import { Button } from "@/components/ui/button";
 import type { PublicPhoto } from "./contract";
 
 type Rect = { top: number; left: number; width: number; height: number };
+export type LightboxPhoto = PublicPhoto & {
+  src?: string;
+  thumbnailSrc?: string;
+};
 
 const photoUrl = (id: string) =>
   `/rusutsu/api/community/photos/${encodeURIComponent(id)}`;
@@ -24,7 +28,7 @@ export function PhotoLightbox({
   onIndexChange,
   onClose,
 }: {
-  photos: PublicPhoto[];
+  photos: LightboxPhoto[];
   index: number;
   /** 写真を押した要素。PCではこれを含む詳細パネルの上に出す */
   anchor: HTMLElement | null;
@@ -92,12 +96,12 @@ export function PhotoLightbox({
         style={{
           aspectRatio: `${photo.width} / ${photo.height}`,
           width: `min(100%, calc((100dvh - 6rem) * ${photo.width / photo.height}))`,
-          backgroundImage: `url(${photoUrl(photo.id)}?size=thumb)`,
+          backgroundImage: `url(${photo.thumbnailSrc ?? photo.src ?? `${photoUrl(photo.id)}?size=thumb`})`,
         }}
       >
         <Image
           key={photo.id}
-          src={photoUrl(photo.id)}
+          src={photo.src ?? photoUrl(photo.id)}
           alt={alt}
           width={photo.width}
           height={photo.height}
