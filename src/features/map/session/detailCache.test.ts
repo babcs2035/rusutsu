@@ -69,6 +69,9 @@ test("旧キャッシュは復元せず、再取得して保存した詳細を�
     else Reflect.deleteProperty(globalThis, "indexedDB");
   });
   assert.equal(await readDetailCache("test"), null);
+  // 旧版は型が合っていても、採用済みでない過去の営業状況を含む可能性がある。
+  entries.set("test", { id: "test", data, version: 2 });
+  assert.equal(await readDetailCache("test"), null);
   await writeDetailCache(data as unknown as SkiResortDetail);
   assert.deepEqual(await readDetailCache("test"), data);
   assert.equal(await readDetailCache("missing"), null);

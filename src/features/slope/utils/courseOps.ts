@@ -9,9 +9,6 @@ import { joinLines } from "./lineGeometry";
 
 export const createEmptyDetail = (): CourseDetail => ({
   level: "",
-  distance: "",
-  avg: "",
-  max: "",
   piste: "",
   morning: "",
   night: "",

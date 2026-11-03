@@ -22,6 +22,8 @@ export type CapabilityOperationFields = {
 export type CapabilityOperationSection = {
   /** false は「公式ページにこのカテゴリが存在しない」。未調査は台帳に載せない。 */
   available: boolean;
+  /** 掲載一覧が全件か、営業中のみか。省略時は全件一覧として扱う。 */
+  listingMode?: "complete" | "operating-only";
   /** 冬季に列挙された件数。 */
   count: number;
   fields: CapabilityOperationFields;

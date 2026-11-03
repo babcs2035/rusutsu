@@ -70,8 +70,7 @@ export function StatusLegendDialog({
             </p>
           ) : (
             <p className="text-sm leading-relaxed">
-              区間数は、公式サイトの営業状況の区分に合わせて数えています。
-              同じコースでも、上部・下部などに分かれている場合は、それぞれ1区間として数えます。
+              地図のコースを基準に数えています。同じコースの複数の区間は1コースにまとめ、一部だけ滑走できる場合は△、営業状況が分からない区間がある場合は「不明」に含めます。
             </p>
           )}
           <DialogClose
@@ -138,7 +137,7 @@ export function CourseStatusTable({
           <span className="whitespace-nowrap">{name}</span>
           {summary && (
             <span className="whitespace-nowrap text-[11px] font-normal text-slate-600 @min-[12rem]/status-summary:text-sm">
-              {`${summary.total}${isLift ? "本" : "区間"}`}
+              {`${summary.total}本`}
             </span>
           )}
         </h3>

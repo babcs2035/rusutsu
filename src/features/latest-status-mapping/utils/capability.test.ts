@@ -118,6 +118,32 @@ test("行が0件でも出典URLが登録されていればavailableはtrueにな
   assert.equal(capability.courses.available, true);
 });
 
+test("operationListingModesの正常値を対応するセクションへ保持する", () => {
+  const capability = build({
+    courses: [{ name: "Aコース", status: "○", update: "09:00", note: null }],
+    lifts: [{ name: "第1リフト", status: "○", update: "09:00", note: null }],
+    operationListingModes: {
+      courses: "operating-only",
+      lifts: "complete",
+    },
+  });
+  assert.equal(capability.courses.listingMode, "operating-only");
+  assert.equal(capability.lifts.listingMode, "complete");
+});
+
+test("operationListingModesの不正値は台帳へ追加せず、未指定時も従来形式を保つ", () => {
+  const invalid = build({
+    courses: [],
+    lifts: [],
+    operationListingModes: { courses: "partial", lifts: null },
+  });
+  const omitted = build({ courses: [], lifts: [] });
+  assert.equal(invalid.courses.listingMode, undefined);
+  assert.equal(invalid.lifts.listingMode, undefined);
+  assert.equal("listingMode" in omitted.courses, false);
+  assert.equal("listingMode" in omitted.lifts, false);
+});
+
 const buildCoursesCapability = () =>
   build({
     courses: [
@@ -194,6 +220,47 @@ test("台帳にある名前が結果から消えていると差分として報�
   assert.equal(gaps.length, 1);
   assert.equal(gaps[0].code, "CAPABILITY.MISSING_COURSES_NAMES");
   assert.match(gaps[0].message, /Bコース/);
+});
+
+test("operating-onlyでは名前不足を警告せず、期待フィールド不足は警告する", () => {
+  const capability = buildCoursesCapability();
+  capability.courses.listingMode = "operating-only";
+  const gaps = findCapabilityGaps(capability, {
+    courses: [{ name: "Aコース", status: null, update: "09:00", note: null }],
+  });
+  assert.deepEqual(
+    gaps.map(gap => gap.code),
+    ["CAPABILITY.MISSING_COURSES_FIELD"],
+  );
+  assert.match(gaps[0].message, /status/);
+});
+
+test("operating-onlyでも0件は掲載なしと判定できないため件数警告を残す", () => {
+  const capability = buildCoursesCapability();
+  capability.courses.listingMode = "operating-only";
+  const gaps = findCapabilityGaps(capability, { courses: [] });
+  assert.deepEqual(
+    gaps.map(gap => gap.code),
+    ["CAPABILITY.MISSING_COURSES"],
+  );
+});
+
+test("operating-onlyではnote欠損を許容し、completeでは警告を維持する", () => {
+  const capability = build({
+    courses: [
+      { name: "Aコース", status: "○", update: "09:00", note: "急斜面" },
+    ],
+  });
+  const partialResult = {
+    courses: [{ name: "Aコース", status: "○", update: "09:00", note: null }],
+  };
+  capability.courses.listingMode = "operating-only";
+  assert.deepEqual(findCapabilityGaps(capability, partialResult), []);
+  capability.courses.listingMode = "complete";
+  assert.deepEqual(
+    findCapabilityGaps(capability, partialResult).map(gap => gap.code),
+    ["CAPABILITY.MISSING_COURSES_FIELD"],
+  );
 });
 
 test("結果が台帳と一致していれば差分は出ない", () => {

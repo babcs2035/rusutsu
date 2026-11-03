@@ -38,9 +38,6 @@ export type FinalizedCourseFeature = {
     elevationDiffMap: number | null;
     avgSlopeDegMap: number | null;
     maxSlopeDegMap: number | null;
-    distance: number | null;
-    avg: number | null;
-    max: number | null;
     maxWidth: number | null;
     minWidth: number | null;
     note: string | null;

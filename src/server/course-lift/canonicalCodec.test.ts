@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { MapCourse } from "@prisma/client";
-import { createCourseStatusSummary } from "@/lib/courseStatusSummary";
 import {
   entityFeature,
   liftAttributes,
@@ -58,7 +57,9 @@ test("geometry is kept once and map metrics are extracted into numeric columns",
     0,
   );
   assert.equal(base.id, "a");
-  assert.equal(base.fields.distance, 100);
+  assert.equal(base.fields.distance, null);
+  assert.equal(base.properties.avg, undefined);
+  assert.equal(base.properties.max, undefined);
   assert.equal(base.properties.name, undefined);
   assert.equal(base.properties.distance, undefined);
   assert.equal(base.metadata.geometry, undefined);
@@ -103,6 +104,12 @@ test("geometry is kept once and map metrics are extracted into numeric columns",
   assert.deepEqual(entityFeature(row).geometry, feature.geometry);
   assert.deepEqual(entityFeature(row, true).geometry, derived.derivedGeometry);
   assert.equal(entityFeature(row, true).properties?.slope_dist_map, 100);
+  for (const key of ["distance", "avg", "max"]) {
+    assert.equal(
+      Object.hasOwn(entityFeature(row).properties ?? {}, key),
+      false,
+    );
+  }
 });
 
 const entity = (id: string, status: string | null, options = {}) => ({
@@ -115,7 +122,7 @@ const entity = (id: string, status: string | null, options = {}) => ({
   hasStatusSource: true,
   ...options,
 });
-test("course status summary counts official items independently of map groups", () => {
+test("course operations count all logical map groups and ignore old official summaries", () => {
   const rows = [
     entity("a1", "○", { groupId: "A" }),
     entity("a2", "×", { groupId: "A" }),
@@ -131,96 +138,45 @@ test("course status summary counts official items independently of map groups", 
     entity("J", "○", { crawledNames: [] }),
     entity("K", "○", { crawledNames: [] }),
   ];
-  const summary = createCourseStatusSummary(
-    {
-      fileName: "status.json",
-      time: null,
-      sourceUrls: ["https://example.com/courses"],
-      items: [
-        { name: "official-a", status: "○" },
-        { name: "official-b", status: "△" },
-        { name: "official-c", status: "×" },
-      ],
-    },
-    ["official-a", "official-b", "official-c"],
-    true,
-  );
-  assert.ok(summary);
   assert.deepEqual(
     summarizeOperationEntities(
       rows.map(row => ({ ...row, elevationReady: false })),
       "course",
       99,
-      summary,
     ),
     {
-      active: 2,
-      total: 3,
+      active: 8,
+      total: 11,
       source: "mapping",
     },
   );
 });
 
-test("multiple map groups mapped to one official item count it once", () => {
-  const summary = createCourseStatusSummary(
-    {
-      fileName: "status.json",
-      time: null,
-      sourceUrls: ["https://example.com/courses"],
-      items: [{ name: "official-a", status: "○" }],
-    },
-    ["official-a", "official-a"],
-    true,
-  );
-  assert.ok(summary);
+test("multiple map groups mapped to one official item count separately", () => {
   assert.deepEqual(
     summarizeOperationEntities(
-      [entity("map-a", null), entity("map-b", null)],
+      [entity("map-a", "○"), entity("map-b", "○")],
       "course",
       99,
-      summary,
     ),
-    { active: 1, total: 1, source: "mapping" },
+    { active: 2, total: 2, source: "mapping" },
   );
 });
 
-test("course unknown status makes active unknown and empty sourced summary hides count", () => {
-  const summary = createCourseStatusSummary(
-    {
-      fileName: "status.json",
-      time: null,
-      sourceUrls: ["https://example.com/courses"],
-      items: [{ name: "official-a", status: "○" }, { name: "official-b" }],
-    },
-    ["official-a", "official-b"],
-    true,
-  );
-  assert.ok(summary);
-  assert.deepEqual(summarizeOperationEntities([], "course", 9, summary), {
-    active: null,
-    total: 2,
-    source: "mapping",
-  });
-  const emptySummary = createCourseStatusSummary(
-    {
-      fileName: "status.json",
-      time: null,
-      sourceUrls: ["https://example.com/courses"],
-      items: [],
-    },
-    [],
-    true,
-  );
-  assert.ok(emptySummary);
+test("course unknown status makes active unknown and empty map uses basic fallback", () => {
   assert.deepEqual(
     summarizeOperationEntities(
-      [entity("map-a", null)],
+      [entity("known", "○"), entity("unknown", null)],
       "course",
       9,
-      emptySummary,
     ),
-    { active: null, total: null, source: "mapping" },
+    { active: null, total: 2, source: "mapping" },
   );
+  assert.deepEqual(summarizeOperationEntities([], "course", 9), {
+    active: null,
+    total: 9,
+    source: "basic",
+  });
 });
 
 test("no-source map inventory counts all group IDs regardless of names/elevation", () => {
@@ -251,7 +207,7 @@ test("no-source map inventory counts all group IDs regardless of names/elevation
     source: "basic",
   });
 });
-test("lifts remain separate equipment even if names are equal", () => {
+test("lifts count every map equipment item even without crawler-name mappings", () => {
   assert.deepEqual(
     summarizeOperationEntities(
       [
@@ -264,7 +220,7 @@ test("lifts remain separate equipment even if names are equal", () => {
       "lift",
       99,
     ),
-    { active: null, total: 4, source: "mapping" },
+    { active: null, total: 5, source: "mapping" },
   );
 });
 test("only map, mapping and detail document families are virtualized", () => {

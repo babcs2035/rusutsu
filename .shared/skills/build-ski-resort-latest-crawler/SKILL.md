@@ -124,7 +124,7 @@ node .shared/skills/build-ski-resort-latest-crawler/scripts/capture-rendered-pag
 - `note`、名前の正規化、source URL、欠損値、保存処理は実装ガイドの出力規則に従う。
 - 保存は必ず `await Utils.saveLatestResult(...)` とする。個別クローラーから `fs.writeFile` で最新JSONを直接書かない。
 - `shared/utils` はクローラーのエントリポイントを読み込んだ時点から診断を開始する。browser launchやpage作成前の失敗でも、終了前に失敗runとissueを確定する。DOMがない実行はDOMを捏造せずメタデータだけ残す。
-- 表示を止めるのはエラー（`console.error`、navigation失敗、例外）と、明示的に止める警告だけ。件数が想定と違うときは `Utils.checkCourseLiftCount` が `Utils.warnBlocking` で止める。それ以外の `console.warn` は表示を止めず、警告とDOMを残す（「不明」「掲載なし」もそのまま表示される）。カテゴリが特定できる失敗はそのカテゴリだけを止め、特定できないエラーは全カテゴリを止める。診断保存自体の失敗は、既に検証できたカテゴリの内容を不正扱いにしない。
+- 表示を止めるのはエラー（`console.error`、navigation失敗、例外）と、明示的に止める警告だけ。固定件数の一致は検証しない。`Utils.checkOperationNames` は重複名だけを検証する。営業状況の欠損は、保存時に使用中の対応表へ照合して判定し、該当項目だけ不明とする。掲載形式の例外は正本capabilityのlistingModeに根拠付きで記録し、適用スキー場を報告する。それ以外の `console.warn` は表示を止めず、警告とDOMを残す（「不明」「掲載なし」もそのまま表示される）。カテゴリが特定できる失敗はそのカテゴリだけを止め、特定できないエラーは全カテゴリを止める。診断保存自体の失敗は、既に検証できたカテゴリの内容を不正扱いにしない。
 - コースかリフトが1件以上あり全部 `"×"` の実行では、天気・コメントが空や仮の値でも警告とそのためだけのDOMを残さない（送信時と保存時に自動で除く）。
 - 取得に時間がかかるページは、`Utils.navigateSafely(page, url, selector, gotoTimeout, selectorTimeout)` の待ち時間を延ばしてよい。バッチ全体の上限は `CRAWL_LATEST_TIMEOUT_MS` / `--timeout-ms`。延ばした値と理由をコードコメントに残す。
 - `--local-files` の子プロセスへAPI URL・APIトークン・DB接続文字列の秘密値を渡さない（空文字でdotenvの再読込みも防ぐ）。remote実行ではDOMと生結果をメモリに保持し、API側の非公開volumeだけへgzipを保存する。worker側へDOMを二重保存しない。

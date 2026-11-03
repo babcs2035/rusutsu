@@ -78,7 +78,7 @@ test("mergeCourses joins the middle of one course to the middle of another", () 
 
 test("mergeCourses can take the detail of the second course", () => {
   const withDetail = course("b", "下の道", lower.coordinates, {
-    detail: { ...lower.detail, level: "上級", distance: "800" },
+    detail: { ...lower.detail, level: "上級" },
   });
   const result = mergeCourses(
     [upper, withDetail],
@@ -87,7 +87,6 @@ test("mergeCourses can take the detail of the second course", () => {
     { name: "つないだ道", detailFrom: "second" },
   );
   assert.equal(result[0].detail.level, "上級");
-  assert.equal(result[0].detail.distance, "800");
 });
 
 test("mergeCourses refuses to merge a course with itself", () => {

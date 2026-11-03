@@ -261,15 +261,29 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
         ],
       });
     await t.test(
-      "adoption counts official items once even when assigned to multiple lines",
+      "adoption counts map groups and includes unmapped courses as unknown",
       async () => {
-        await api.persistCrawlLatestRun(
-          crawl("2026-10-18T01:00:00Z", [
-            { name: "A", status: "○", update: "08:00", note: "上部のみ" },
-            { name: "B", status: "×", update: null, note: null },
-          ]),
-          "first",
-        );
+        const input = crawl("2026-10-18T01:00:00Z", [
+          { name: "A", status: "○", update: "08:00", note: "上部のみ" },
+          { name: "B", status: "×", update: null, note: null },
+        ]);
+        input.issues = ["COURSES", "LIFTS"].map(categoryKind => ({
+          categoryKind,
+          severity: "WARNING",
+          code: "CRAWLER.VALIDATION",
+          message: `${categoryKind} count differs from expected count`,
+          occurrences: 1,
+          blocksPromotion: false,
+        }));
+        const saved = await api.persistCrawlLatestRun(input, "first");
+        const categories = await db.crawlLatestCategorySnapshot.findMany({
+          where: { runId: saved.runId, kind: { in: ["COURSES", "LIFTS"] } },
+        });
+        for (const category of categories) {
+          assert.equal(category.validationState, "WARNING");
+          assert.equal(category.eligibleForCurrent, true);
+        }
+        assert.equal(categories.length, 2);
         const a = await db.mapCourse.findUniqueOrThrow({ where: { id: "a1" } });
         assert.equal(a.status, "○");
         assert.equal(a.latestNote, "上部のみ");
@@ -278,8 +292,8 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
         const summary = await db.skiResortOperationSummary.findUniqueOrThrow({
           where: { skiResortId: "sample" },
         });
-        assert.equal(summary.courseTotal, 2);
-        assert.equal(summary.courseActive, 1);
+        assert.equal(summary.courseTotal, 4);
+        assert.equal(summary.courseActive, null);
         assert.equal(summary.liftTotal, 2);
         assert.equal(summary.liftActive, 1);
         assert.equal(summary.calculationVersion, api.OPERATION_SUMMARY_VERSION);
@@ -288,9 +302,20 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
           where: { skiResortId: "sample" },
           data: { courseTotal: 99, courseActive: 99, calculationVersion: 1 },
         });
-        assert.deepEqual(
-          (await api.findOperatingSummariesDirect()).sample.courses,
-          { total: 2, active: 1 },
+        const concurrentSummaries = await Promise.all([
+          api.findOperatingSummariesDirect(),
+          api.findOperatingSummariesDirect(),
+        ]);
+        for (const counts of concurrentSummaries) {
+          assert.deepEqual(counts.sample.courses, { total: 4, active: null });
+        }
+        assert.equal(
+          (
+            await db.skiResortOperationSummary.findUniqueOrThrow({
+              where: { skiResortId: "sample" },
+            })
+          ).calculationVersion,
+          api.OPERATION_SUMMARY_VERSION,
         );
         await db.$transaction((tx: unknown) =>
           api.refreshMapOperations(tx, ["sample"]),
@@ -305,7 +330,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
       },
     );
     await t.test(
-      "official sections stay separate within one map group and unknown remains unknown",
+      "map sections share one course and unknown remains unknown",
       async () => {
         const saved = await api.getDataDocumentDirect(mappingKey);
         const sections = JSON.parse(JSON.stringify(mapping));
@@ -324,10 +349,12 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
           "sections",
         );
         const detail = await api.getFinalizedResortMapData("sample");
-        assert.equal(detail.courseStatusSummary.total, 3);
+        assert.equal(detail.courseStatusSummary.total, 4);
+        assert.equal(detail.courseStatusSummary.partial, 2);
+        assert.equal(detail.courseStatusSummary.unknown, 2);
         assert.deepEqual(
           (await api.findOperatingSummariesDirect()).sample.courses,
-          { total: 3, active: 2 },
+          { total: 4, active: null },
         );
         await api.persistCrawlLatestRun(
           crawl("2026-10-18T01:20:00Z", [
@@ -339,7 +366,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
         );
         assert.deepEqual(
           (await api.findOperatingSummariesDirect()).sample.courses,
-          { total: 3, active: null },
+          { total: 4, active: null },
         );
         const current = await api.getDataDocumentDirect(mappingKey);
         await api.writeDataDocumentsDirect([
@@ -362,7 +389,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
         );
         assert.equal(
           (await api.findOperatingSummariesDirect()).sample.courses.total,
-          1,
+          4,
         );
         assert.equal(
           (
@@ -370,7 +397,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
               where: { skiResortId: "sample" },
             })
           ).courseActive,
-          1,
+          null,
         );
         assert.ok(
           await db.crawlLatestIssue.count({
@@ -412,7 +439,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
         );
         assert.deepEqual(
           (await api.findOperatingSummariesDirect()).sample.courses,
-          { total: 1, active: 1 },
+          { total: 4, active: null },
         );
         const base = await api.getDataDocumentDirect(baseKey);
         await assert.rejects(
@@ -432,7 +459,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
       },
     );
     await t.test(
-      "coordinate edits invalidate elevations without changing official item counts",
+      "coordinate edits invalidate elevations without changing map group counts",
       async () => {
         const saved = await api.getDataDocumentDirect(baseKey);
         const data = JSON.parse(saved.content);
@@ -449,7 +476,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
               where: { skiResortId: "sample" },
             })
           ).courseTotal,
-          1,
+          4,
         );
       },
     );
@@ -621,7 +648,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
           where: { id: "detail-line" },
         });
         assert.equal(row.difficulty, "上級");
-        assert.equal(row.distance, 777);
+        assert.equal(Object.hasOwn(row, "distance"), false);
         const legacy = await api.getDataDocumentDirect(detailKey);
         await db.$transaction((tx: unknown) =>
           api.writeCanonicalMapDocument(
@@ -643,6 +670,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
         );
         assert.equal(detail[0].note, "新説明");
         const current = await api.getDataDocumentDirect(detailKey);
+        detail[0].note = "距離を含む更新";
         detail[0].distance = 888;
         await api.writeDataDocumentsDirect([
           write(detailKey, detail, current.hash),
@@ -653,7 +681,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
               where: { id: "detail-line" },
             })
           ).distance,
-          888,
+          undefined,
         );
         assert.equal(
           await db.dataDocument.count({ where: { key: detailKey } }),
@@ -664,6 +692,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
         const batchMap = JSON.parse(beforeBatch.content);
         const batchDetail = JSON.parse(detailBatch.content);
         batchMap.features[0].properties.note = "一括更新";
+        batchDetail[0].note = "一括更新詳細";
         batchDetail[0].distance = 999;
         const results = await api.writeDataDocumentsDirect([
           write(beforeKey, batchMap, beforeBatch.hash),
@@ -681,6 +710,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
         const beforeIndirect = await api.getDataDocumentDirect(beforeKey);
         const indirectDetail = await api.getDataDocumentDirect(detailKey);
         const indirectItems = JSON.parse(indirectDetail.content);
+        indirectItems[0].note = "間接更新詳細";
         indirectItems[0].distance = 1000;
         await api.writeDataDocumentsDirect([
           write(detailKey, indirectItems, indirectDetail.hash),
@@ -732,6 +762,230 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
             .length,
           1,
         );
+      },
+    );
+    await t.test(
+      "mapping coverage keeps usable states, groups gaps, and applies recorded listing policy",
+      async () => {
+        const savedMapping = await api.getDataDocumentDirect(mappingKey);
+        const activeMapping = JSON.parse(JSON.stringify(mapping));
+        activeMapping.courses.rows[0].crawledNames = ["A", "A別名"];
+        activeMapping.courses.rows[1].crawledNames = ["A", "A別名"];
+        activeMapping.courses.rows[2].crawledName = "B";
+        await api.writeDataDocumentsDirect([
+          write(mappingKey, activeMapping, savedMapping.hash),
+        ]);
+        const ambiguous = await api.persistCrawlLatestRun(
+          crawl("2026-11-03T00:00:00Z", [
+            { name: "A", status: "○", update: null, note: null },
+            { name: "A別名", status: "×", update: null, note: null },
+            { name: "B", status: null, update: null, note: null },
+          ]),
+          "mapping-ambiguous",
+        );
+        const issues = await db.crawlLatestIssue.findMany({
+          where: { runId: ambiguous.runId },
+        });
+        const gap = issues.find(
+          (issue: { code: string }) =>
+            issue.code === "MAPPING.AMBIGUOUS_OPERATION",
+        );
+        assert.ok(gap);
+        assert.equal(gap.blocksPromotion, false);
+        assert.equal(gap.occurrences, 1);
+        assert.deepEqual(gap.details.gaps[0].entityIds.sort(), ["a1", "a2"]);
+        assert.ok(
+          issues.some(
+            (issue: { code: string }) =>
+              issue.code === "MAPPING.OPERATION_STATUS_MISSING",
+          ),
+        );
+        const a = await db.mapCourse.findUniqueOrThrow({ where: { id: "a1" } });
+        assert.equal(a.status, null);
+        assert.ok(a.statusSnapshotId);
+
+        const missing = await api.persistCrawlLatestRun(
+          crawl("2026-11-03T00:10:00Z", [
+            { name: "A", status: "○", update: null, note: null },
+          ]),
+          "mapping-missing",
+        );
+        assert.equal(
+          (await db.mapCourse.findUniqueOrThrow({ where: { id: "a1" } }))
+            .status,
+          "○",
+        );
+        assert.equal(
+          (await db.mapCourse.findUniqueOrThrow({ where: { id: "b" } })).status,
+          null,
+        );
+        assert.equal(
+          await db.crawlLatestIssue.count({
+            where: { runId: missing.runId, code: "MAPPING.OPERATION_MISSING" },
+          }),
+          1,
+        );
+        const missingCategory =
+          await db.crawlLatestCategorySnapshot.findFirstOrThrow({
+            where: { runId: missing.runId, kind: "COURSES" },
+          });
+        assert.equal(missingCategory.validationState, "WARNING");
+        assert.equal(missingCategory.eligibleForCurrent, true);
+
+        // 読み取りは保存済みの反映結果を使い、古い識別子を最新の生データで補わない。
+        await db.mapCourse.update({
+          where: { id: "a1" },
+          data: {
+            status: "×",
+            statusSnapshotId: "old-snapshot",
+            officialUpdatedAt: "Apr 30",
+          },
+        });
+        const guarded = await api.readCanonicalResortMapDirect("sample");
+        const guardedA = guarded.data.courses.features.find(
+          (feature: { id: string }) => feature.id === "a1",
+        );
+        assert.equal(guardedA.properties.status, null);
+        assert.equal(guardedA.properties.update, null);
+        await db.$transaction((tx: unknown) =>
+          api.refreshMapOperations(tx, ["sample"]),
+        );
+
+        const fields = { name: true, status: true, update: false, note: false };
+        const capabilityKey =
+          "resorts-temporary/latest_status_capability/sample.json";
+        await api.writeDataDocumentsDirect([
+          write(capabilityKey, {
+            version: 1,
+            resortId: "sample",
+            observedAt: "2026-01-01T00:00:00Z",
+            crawlerSourceHash: null,
+            source: {
+              mode: "WAYBACK_VALIDATION",
+              archiveTimestamp: "20250223161454",
+              urls: ["https://example.com/courses"],
+            },
+            courses: {
+              available: true,
+              listingMode: "operating-only",
+              count: 2,
+              names: ["A", "B"],
+              statuses: ["○"],
+              fields,
+            },
+            lifts: {
+              available: false,
+              count: 0,
+              names: [],
+              statuses: [],
+              fields,
+            },
+            conditions: {
+              comment: false,
+              news: false,
+              points: [],
+              fields: {
+                update: false,
+                weather: false,
+                temperature: false,
+                snowDepth: false,
+                snowfall: false,
+                condition: false,
+                windSpeed: false,
+              },
+            },
+          }),
+        ]);
+        const listing = await api.persistCrawlLatestRun(
+          crawl("2026-11-03T00:20:00Z", [
+            { name: "A", status: "○", update: null, note: null },
+          ]),
+          "mapping-operating-only",
+        );
+        assert.equal(
+          await db.crawlLatestIssue.count({
+            where: { runId: listing.runId, code: "MAPPING.OPERATION_MISSING" },
+          }),
+          0,
+        );
+        assert.equal(
+          (await db.mapCourse.findUniqueOrThrow({ where: { id: "b" } })).status,
+          null,
+        );
+        assert.equal(
+          (await db.mapCourse.findUniqueOrThrow({ where: { id: "a1" } }))
+            .status,
+          "○",
+        );
+        await db.dataDocument.delete({ where: { key: capabilityKey } });
+      },
+    );
+    await t.test(
+      "without adopted current snapshots, canonical map reads and summaries clear stale operation fields",
+      async () => {
+        await db.crawlLatestCurrent.deleteMany({
+          where: { skiResortId: "sample", kind: { in: ["COURSES", "LIFTS"] } },
+        });
+        const staleFields = {
+          status: "○",
+          statusName: "Apr 30 old status",
+          latestNote: "Apr 30 old note",
+          officialUpdatedAt: "Apr 30 old update",
+          statusObservedAt: new Date("2026-04-30T08:00:00Z"),
+          statusSnapshotId: "apr-30-snapshot",
+          statusSourceUrls: ["https://old.example/status"],
+          hasStatusSource: true,
+        };
+        await db.mapCourse.updateMany({
+          where: { resortId: "sample", archivedAt: null },
+          data: staleFields,
+        });
+        await db.mapLift.updateMany({
+          where: { resortId: "sample", archivedAt: null },
+          data: staleFields,
+        });
+
+        const map = await api.readCanonicalResortMapDirect("sample");
+        assert.equal(map.enabled, true);
+        assert.ok(map.data);
+        assert.equal(map.data.courses?.observedAt, null);
+        assert.deepEqual(map.data.courses?.sourceUrls, []);
+        assert.deepEqual(map.data.courseStatusSummary, {
+          total: 4,
+          open: 0,
+          partial: 0,
+          closed: 0,
+          unknown: 4,
+          observedAt: null,
+          sourceUrls: [],
+          updates: [],
+          sourceLabels: undefined,
+        });
+        for (const feature of map.data.courses?.features ?? []) {
+          assert.equal(feature.properties.status, null);
+          assert.equal(feature.properties.update, null);
+          assert.equal(feature.properties.latestNote, null);
+          assert.equal(feature.latestStatusName, null);
+          assert.equal(feature.statusSnapshotId, null);
+          assert.deepEqual(feature.sourceUrls, []);
+        }
+        assert.equal(map.data.lifts?.observedAt, null);
+        assert.deepEqual(map.data.lifts?.sourceUrls, []);
+        for (const feature of map.data.lifts?.features ?? []) {
+          assert.equal(feature.properties.status, null);
+          assert.equal(feature.properties.update, null);
+          assert.equal(feature.properties.latestNote, null);
+          assert.equal(feature.latestStatusName, null);
+          assert.equal(feature.statusSnapshotId, null);
+        }
+
+        const [summary] = await db.$transaction((tx: unknown) =>
+          api.calculateMapOperationSummaries(tx, ["sample"]),
+        );
+        assert.equal(summary.courseTotal, 4);
+        assert.equal(summary.courseActive, null);
+        assert.equal(summary.liftTotal, 2);
+        assert.equal(summary.liftActive, null);
       },
     );
   } finally {

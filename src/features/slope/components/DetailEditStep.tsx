@@ -412,44 +412,6 @@ export function DetailEditStep({
               </Select>
             </div>
 
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <Label>滑走距離（m）</Label>
-                <RequestFieldChange id={selectedCourse.id} field="distance" />
-                <Input
-                  className="h-7 w-full rounded-md border border-input bg-white px-2.5 text-xs shadow-sm"
-                  type="number"
-                  onWheel={event => event.currentTarget.blur()}
-                  value={selectedCourse.detail.distance}
-                  onChange={event =>
-                    updateDetail({ distance: event.target.value })
-                  }
-                />
-              </div>
-              <div className="flex-1">
-                <Label>平均斜度（°）</Label>
-                <RequestFieldChange id={selectedCourse.id} field="avg" />
-                <Input
-                  className="h-7 w-full rounded-md border border-input bg-white px-2.5 text-xs shadow-sm"
-                  type="number"
-                  onWheel={event => event.currentTarget.blur()}
-                  value={selectedCourse.detail.avg}
-                  onChange={event => updateDetail({ avg: event.target.value })}
-                />
-              </div>
-              <div className="flex-1">
-                <Label>最大斜度（°）</Label>
-                <RequestFieldChange id={selectedCourse.id} field="max" />
-                <Input
-                  className="h-7 w-full rounded-md border border-input bg-white px-2.5 text-xs shadow-sm"
-                  type="number"
-                  onWheel={event => event.currentTarget.blur()}
-                  value={selectedCourse.detail.max}
-                  onChange={event => updateDetail({ max: event.target.value })}
-                />
-              </div>
-            </div>
-
             <div>
               <Label>圧雪</Label>
               <RequestFieldChange id={selectedCourse.id} field="piste" />

@@ -2,6 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { readResolvedLatestStatusMapping } from "@/features/latest-status-mapping/server/mappingFiles";
 import type { ResolvedLatestStatusMapping } from "@/features/latest-status-mapping/types";
+import { createMapCourseStatusSummary } from "@/features/resort-detail/utils/courseStatusSummary";
 import {
   courseGroupingLabel,
   courseGroupingRoute,
@@ -63,9 +64,6 @@ export type FinalizedCourseFeature = {
     elevationDiffMap: number | null;
     avgSlopeDegMap: number | null;
     maxSlopeDegMap: number | null;
-    distance: number | null;
-    avg: number | null;
-    max: number | null;
     maxWidth: number | null;
     minWidth: number | null;
     note: string | null;
@@ -418,9 +416,6 @@ export const normalizeCourseFeature = (
       elevationDiffMap: normalizeNumber(properties.elevation_diff_map),
       avgSlopeDegMap: normalizeNumber(properties.avg_slope_deg_map),
       maxSlopeDegMap: normalizeNumber(properties.max_slope_deg_map),
-      distance: normalizeNumber(properties.distance),
-      avg: normalizeNumber(properties.avg),
-      max: normalizeNumber(properties.max),
       maxWidth: normalizeNumber(properties.maxWidth),
       minWidth: normalizeNumber(properties.minWidth),
       note: normalizeString(properties.note),
@@ -579,9 +574,6 @@ const COURSE_BASE_KEYS = [
   "level",
   "piste",
   "snowboard",
-  "avg",
-  "max",
-  "distance",
   "image",
   "searchWord",
 ] as const;
@@ -1004,11 +996,10 @@ export const buildResortMapData = async (
   report.courses = courses.issues;
   report.lifts = lifts.issues;
 
-  const courseStatusSummary = createCourseStatusSummary(
-    courseStatus,
-    courses.section?.features.map(feature => feature.latestStatusName) ?? [],
-    [...courseStatusMapping.byGeojsonName.values()].some(Boolean),
-  );
+  const mapCourseSummary = createMapCourseStatusSummary(courses.section);
+  const courseStatusSummary = mapCourseSummary
+    ? { ...mapCourseSummary, sourceLabels: courseStatus?.sourceLabels }
+    : createCourseStatusSummary(courseStatus, [], false);
   if (!courses.section && !lifts.section && !courseStatusSummary)
     return { data: null, report };
 

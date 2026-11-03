@@ -35,9 +35,6 @@ export const REQUIRED_COURSE_FIELD_LABELS: Record<RequiredCourseField, string> =
 
 export const COURSE_DETAIL_LABELS: Record<keyof CourseDetail, string> = {
   level: "難易度",
-  distance: "滑走距離（m）",
-  avg: "平均斜度（°）",
-  max: "最大斜度（°）",
   piste: "圧雪",
   morning: "早朝営業",
   night: "ナイター営業",

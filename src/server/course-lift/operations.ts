@@ -1,19 +1,27 @@
 import type { Prisma } from "@prisma/client";
 import { summarizeCourseStatusForList } from "@/features/home/utils/operatingCounts";
+import { summarizeMapCourseStatuses } from "@/features/resort-detail/utils/courseStatusSummary";
 import {
-  type CourseStatusSummary,
-  createCourseStatusSummary,
-} from "@/lib/courseStatusSummary";
-import { normalizeCrawledName } from "@/lib/resortMapMerge";
+  courseGroupingRoute,
+  readCourseGrouping,
+} from "@/shared/course-lift/identity";
 import { record } from "./canonicalCodec";
 import { canonicalMapsEnabled } from "./canonicalDocuments";
+import {
+  evaluateOperationCoverage,
+  type OperationListingPolicy,
+} from "./operationCoverage";
+import { writeMapOperations, writeOperationSummaries } from "./operationWrites";
 
 type Tx = Prisma.TransactionClient;
-export const OPERATION_SUMMARY_VERSION = 2;
+export const OPERATION_SUMMARY_VERSION = 4;
 export type OperationEntity = {
   id: string;
   name: string | null;
   groupId?: string | null;
+  groupKind?: "continuous" | "routes";
+  routeKey?: string;
+  recommendationGroupingInvalid?: boolean;
   crawledNames: string[];
   status: string | null;
   elevationReady?: boolean;
@@ -30,16 +38,7 @@ export function summarizeOperationEntities(
   entities: OperationEntity[],
   kind: "course" | "lift",
   fallback: number,
-  courseStatus?: CourseStatusSummary | null,
 ) {
-  if (kind === "course" && courseStatus?.sourceUrls.some(url => url.trim())) {
-    const count = summarizeCourseStatusForList(courseStatus);
-    return {
-      total: count?.total ?? null,
-      active: count?.active ?? null,
-      source: "mapping",
-    };
-  }
   if (!entities.length) {
     return {
       total: fallback > 0 ? fallback : null,
@@ -47,23 +46,31 @@ export function summarizeOperationEntities(
       source: "basic",
     };
   }
-  // 詳細の「未取得」と同じく、標高・名前・対応付けに関係なく地図のグループを数える。
+  const hasStatusSource = entities.some(row => row.hasStatusSource);
   if (kind === "course") {
+    const summary = summarizeMapCourseStatuses(
+      entities.map(row => ({
+        ...row,
+        groupId: row.groupId ?? row.id,
+      })),
+    );
+    const count = summarizeCourseStatusForList({
+      ...summary,
+      observedAt: null,
+      sourceUrls: [],
+      updates: [],
+    });
     return {
-      total: new Set(entities.map(row => row.groupId ?? row.id)).size,
-      active: null,
-      source: "map",
+      total: count?.total ?? null,
+      active: count?.active ?? null,
+      source: hasStatusSource ? "mapping" : "map",
     };
   }
-  const hasStatusSource = entities.some(row => row.hasStatusSource);
-  const selected = hasStatusSource
-    ? entities.filter(row => row.crawledNames.length > 0)
-    : entities;
   const groups = new Map<string, Array<string | null>>();
-  for (const row of selected) {
+  for (const row of entities) {
     const key = row.id;
     const statuses = groups.get(key) ?? [];
-    statuses.push(hasStatusSource ? row.status : null);
+    statuses.push(row.status);
     groups.set(key, statuses);
   }
   const states = [...groups.values()].map(statuses =>
@@ -87,29 +94,42 @@ export function summarizeOperationEntities(
 export async function refreshMapOperations(
   tx: Tx,
   changedIds: readonly string[],
-  diagnostic?: { runId: string; adoptedKinds: Set<string> },
+  diagnostic?: {
+    runId: string;
+    resortId?: string;
+    adoptedKinds: Set<string>;
+    listingPolicies?: Partial<
+      Record<"COURSES" | "LIFTS", OperationListingPolicy>
+    >;
+  },
 ) {
   if (!changedIds.length || !(await canonicalMapsEnabled(tx))) return;
   let warningCount = 0;
-  const resorts = await tx.skiResort.findMany({
-    select: {
-      id: true,
-      nameJa: true,
-      mergedIntoId: true,
-      sourceResortIds: true,
-      numberOfCourses: true,
-      numberOfLifts: true,
+  const warningKinds = new Set<"COURSES" | "LIFTS">();
+  const related = await tx.skiResort.findMany({
+    where: {
+      OR: [
+        { id: { in: [...changedIds] } },
+        { sourceResortIds: { hasSome: [...changedIds] } },
+        { mergedIntoId: { in: [...changedIds] } },
+      ],
     },
+    select: { id: true },
   });
-  const changed = new Set(changedIds);
-  const targets = new Set(changedIds);
-  for (const resort of resorts) {
-    if (
-      resort.sourceResortIds.some(id => changed.has(id)) ||
-      (resort.mergedIntoId && changed.has(resort.mergedIntoId))
-    )
-      targets.add(resort.id);
-  }
+  const targets = new Set([...changedIds, ...related.map(row => row.id)]);
+  const diagnostics: Prisma.CrawlLatestIssueCreateManyInput[] = [];
+  const revisions = diagnostic
+    ? await tx.mapDocumentState.findMany({
+        where: {
+          key: {
+            in: [...targets].map(
+              id => `resorts-temporary/latest_status_mapping/${id}.json`,
+            ),
+          },
+        },
+        select: { key: true, hash: true, version: true },
+      })
+    : [];
   const currents = await tx.crawlLatestCurrent.findMany({
     where: {
       skiResortId: { in: [...targets] },
@@ -128,20 +148,6 @@ export async function refreshMapOperations(
       const snapshot = currents.find(
         row => row.skiResortId === id && row.kind === category,
       )?.snapshot;
-      const captured: Array<Record<string, unknown>> = snapshot
-        ? (Array.isArray(snapshot.data) ? snapshot.data : []).map(item => ({
-            ...record(item),
-            _snapshotId: snapshot.id,
-            _observedAt: snapshot.run.observedAt.toISOString(),
-            _sourceUrls: snapshot.sourceUrls,
-          }))
-        : [];
-      const items = new Map<string, Array<Record<string, unknown>>>();
-      for (const item of captured) {
-        if (typeof item.name !== "string") continue;
-        const name = normalizeCrawledName(item.name);
-        items.set(name, [...(items.get(name) ?? []), item]);
-      }
       const rows =
         kind === "course"
           ? await tx.mapCourse.findMany({
@@ -150,7 +156,7 @@ export async function refreshMapOperations(
                 archivedAt: null,
                 geometryType: "LineString",
               },
-              select: { id: true, crawledNames: true },
+              select: { id: true, crawledNames: true, mappingAssigned: true },
             })
           : await tx.mapLift.findMany({
               where: {
@@ -158,81 +164,90 @@ export async function refreshMapOperations(
                 archivedAt: null,
                 geometryType: "LineString",
               },
-              select: { id: true, crawledNames: true },
+              select: { id: true, crawledNames: true, mappingAssigned: true },
             });
-      for (const row of rows) {
-        const matches = [
-          ...new Set(
-            row.crawledNames.flatMap(
-              name => items.get(normalizeCrawledName(name)) ?? [],
-            ),
-          ),
-        ];
-        const match = matches.length === 1 ? matches[0] : null;
-        if (
-          diagnostic?.adoptedKinds.has(category) &&
-          snapshot &&
-          row.crawledNames.length > 0 &&
-          matches.length !== 1
-        ) {
-          warningCount++;
-          await tx.crawlLatestIssue.create({
-            data: {
-              runId: diagnostic.runId,
-              categoryKind: category,
-              severity: "WARNING",
-              code: matches.length
-                ? "MAPPING.AMBIGUOUS_OPERATION"
-                : "MAPPING.OPERATION_MISSING",
-              message: `対応先の営業情報を特定できません: ${id} / ${row.id}`,
-              details: {
-                resortId: id,
-                entityId: row.id,
-                crawledNames: row.crawledNames,
-              },
+      const policy =
+        !diagnostic?.resortId || diagnostic.resortId === id
+          ? diagnostic?.listingPolicies?.[category]
+          : undefined;
+      const coverage = evaluateOperationCoverage(rows, snapshot?.data, policy);
+      if (
+        diagnostic?.adoptedKinds.has(category) &&
+        snapshot &&
+        snapshot.runId === diagnostic.runId &&
+        snapshot.state !== "NOT_SUPPORTED" &&
+        !(snapshot.state === "EMPTY" && snapshot.sourceUrls.length === 0)
+      ) {
+        const mappingRevision = revisions.find(
+          row =>
+            row.key === `resorts-temporary/latest_status_mapping/${id}.json`,
+        );
+        for (const reason of [
+          "missing",
+          "ambiguous",
+          "status-missing",
+          "status-invalid",
+        ] as const) {
+          const gaps = coverage.gaps.filter(gap => gap.reason === reason);
+          if (!gaps.length) continue;
+          warningCount += gaps.length;
+          warningKinds.add(category);
+          const codes = {
+            missing: "MAPPING.OPERATION_MISSING",
+            ambiguous: "MAPPING.AMBIGUOUS_OPERATION",
+            "status-missing": "MAPPING.OPERATION_STATUS_MISSING",
+            "status-invalid": "MAPPING.OPERATION_STATUS_INVALID",
+          };
+          diagnostics.push({
+            runId: diagnostic.runId,
+            categoryKind: category,
+            severity: "WARNING",
+            code: codes[reason],
+            message: `対応表の営業状況を確定できません: ${id} / ${category} / ${reason} (${gaps.length}参照)`,
+            occurrences: gaps.length,
+            blocksPromotion: false,
+            details: {
+              resortId: id,
+              snapshotId: snapshot.id,
+              mappingHash: mappingRevision?.hash ?? null,
+              mappingVersion: mappingRevision?.version ?? null,
+              gaps,
+              unassigned: coverage.unassigned,
+              excluded: coverage.excluded,
             },
           });
         }
-        const observedAt =
-          match?._observedAt ?? snapshot?.run.observedAt.toISOString();
-        const observedTime =
-          typeof observedAt === "string" ? new Date(observedAt) : null;
-        const data = {
-          status: symbol(match?.status),
-          statusName: typeof match?.name === "string" ? match.name : null,
-          latestNote: typeof match?.note === "string" ? match.note : null,
-          officialUpdatedAt:
-            typeof match?.update === "string" ? match.update : null,
-          statusObservedAt:
-            observedTime && Number.isFinite(observedTime.getTime())
-              ? observedTime
-              : null,
-          statusSnapshotId:
-            typeof match?._snapshotId === "string" ? match._snapshotId : null,
-          statusSourceUrls:
-            match && Array.isArray(match._sourceUrls)
-              ? (match._sourceUrls as string[])
-              : (snapshot?.sourceUrls ?? []),
-          hasStatusSource: captured.length > 0,
-        };
-        if (kind === "course")
-          await tx.mapCourse.update({ where: { id: row.id }, data });
-        else await tx.mapLift.update({ where: { id: row.id }, data });
       }
+      await writeMapOperations(
+        tx,
+        kind,
+        coverage.resolved.map(row => {
+          const { item: match, status } = row.resolution;
+          return {
+            id: row.id,
+            status,
+            statusName: typeof match?.name === "string" ? match.name : null,
+            latestNote: typeof match?.note === "string" ? match.note : null,
+            officialUpdatedAt:
+              typeof match?.update === "string" ? match.update : null,
+            statusObservedAt: snapshot?.run.observedAt ?? null,
+            // 不明も今回評価した結果。前回の値との混在を識別子で防ぐ。
+            statusSnapshotId: snapshot?.id ?? null,
+            statusSourceUrls: snapshot?.sourceUrls ?? [],
+            hasStatusSource: Boolean(snapshot?.sourceUrls.length),
+          };
+        }),
+      );
     }
   }
+  if (diagnostics.length)
+    await tx.crawlLatestIssue.createMany({ data: diagnostics });
   const summaries = await calculateMapOperationSummaries(tx, [...targets]);
-  for (const { skiResortId, ...data } of summaries) {
-    await tx.skiResortOperationSummary.upsert({
-      where: { skiResortId },
-      create: { skiResortId, ...data },
-      update: data,
-    });
-  }
-  return { warningCount };
+  await writeOperationSummaries(tx, summaries);
+  return { warningCount, warningKinds: [...warningKinds] };
 }
 
-/** 保存済み集計の更新と旧版の読み取りに、詳細と同じ公式項目の集計を使う。 */
+/** 保存済み集計も詳細と同じ地図のコース・現在値から集計する。 */
 export async function calculateMapOperationSummaries(
   tx: Tx,
   resortIds: readonly string[],
@@ -273,9 +288,10 @@ export async function calculateMapOperationSummaries(
       groupId: true,
       crawledNames: true,
       status: true,
-      statusName: true,
+      properties: true,
       elevationReady: true,
       hasStatusSource: true,
+      statusSnapshotId: true,
     },
   });
   const lifts = await tx.mapLift.findMany({
@@ -291,11 +307,15 @@ export async function calculateMapOperationSummaries(
       crawledNames: true,
       status: true,
       hasStatusSource: true,
+      statusSnapshotId: true,
     },
   });
   const currents = await tx.crawlLatestCurrent.findMany({
-    where: { skiResortId: { in: candidateIds }, kind: "COURSES" },
-    include: { snapshot: true },
+    where: {
+      skiResortId: { in: candidateIds },
+      kind: { in: ["COURSES", "LIFTS"] },
+    },
+    select: { skiResortId: true, kind: true, snapshotId: true },
   });
   return resorts.map(resort => {
     const id = resort.id;
@@ -312,32 +332,55 @@ export async function calculateMapOperationSummaries(
       candidates
         .map(candidate => lifts.filter(row => row.resortId === candidate))
         .find(rows => rows.length) ?? [];
-    // 詳細が表示する地図の営業情報を使う。複数の線が同じ公式項目を参照しても加算しない。
-    const snapshot = currents.find(
-      row => row.skiResortId === (courseRows[0]?.resortId ?? id),
-    )?.snapshot;
-    const courseStatus = createCourseStatusSummary(
-      snapshot
-        ? {
-            fileName: snapshot.id,
-            time: null,
-            items: Array.isArray(snapshot.data)
-              ? snapshot.data.map(record)
-              : [],
-            sourceUrls: snapshot.sourceUrls,
-          }
-        : null,
-      courseRows.map(row => row.statusName),
-      courseRows.some(row => row.crawledNames.length > 0),
-    );
+    const projectRows = <
+      T extends OperationEntity & {
+        resortId: string;
+        statusSnapshotId: string | null;
+      },
+    >(
+      rows: T[],
+      kind: "COURSES" | "LIFTS",
+    ) => {
+      const current = currents.find(
+        row =>
+          row.skiResortId === (rows[0]?.resortId ?? id) && row.kind === kind,
+      );
+      return rows.map(row => ({
+        ...row,
+        status:
+          current && row.statusSnapshotId === current.snapshotId
+            ? row.status
+            : null,
+        hasStatusSource: Boolean(current) && row.hasStatusSource,
+      }));
+    };
+    const groupedCourseRows = courseRows.map(row => {
+      const grouping = readCourseGrouping(
+        record(row.properties).courseGrouping,
+      );
+      return {
+        ...row,
+        ...(grouping
+          ? {
+              groupKind: grouping.kind,
+              ...(grouping.kind === "routes"
+                ? {
+                    routeKey: `${grouping.id}:route:${courseGroupingRoute(grouping)}`,
+                  }
+                : {}),
+            }
+          : {}),
+        recommendationGroupingInvalid:
+          record(row.properties).courseGrouping != null && !grouping,
+      };
+    });
     const course = summarizeOperationEntities(
-      courseRows,
+      projectRows(groupedCourseRows, "COURSES"),
       "course",
       resort.numberOfCourses,
-      courseStatus,
     );
     const lift = summarizeOperationEntities(
-      liftRows,
+      projectRows(liftRows, "LIFTS"),
       "lift",
       resort.numberOfLifts,
     );

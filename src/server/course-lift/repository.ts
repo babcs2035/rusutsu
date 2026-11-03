@@ -1,6 +1,7 @@
 import { isDeepStrictEqual } from "node:util";
 import { Prisma } from "@prisma/client";
 import { readCourseGrouping } from "@/shared/course-lift/identity";
+import { omitPublishedCourseMetrics } from "@/shared/course-lift/publishedMetrics";
 import {
   contentHash,
   derivedKey,
@@ -73,7 +74,6 @@ export async function syncMapEntities(tx: Tx, keys: readonly string[]) {
         documentKey: key,
         sourceIndex: index,
         name: str(props.name),
-        distance: num(props.distance),
         properties: json(props),
         geometry: json(f.geometry),
         feature: json(f),
@@ -123,8 +123,20 @@ export async function syncMapEntities(tx: Tx, keys: readonly string[]) {
           groupId: group?.id ?? null,
           sectionOrder: group?.order ?? null,
           difficulty: str(props.level),
-          angleAvg: num(props.avg),
-          angleMax: num(props.max),
+          properties: json(omitPublishedCourseMetrics(props)),
+          feature: json({
+            ...f,
+            properties: omitPublishedCourseMetrics(props),
+          }),
+          derivedFeature:
+            matches.length === 1
+              ? json({
+                  ...matches[0],
+                  properties: omitPublishedCourseMetrics(
+                    matches[0].properties ?? {},
+                  ),
+                })
+              : Prisma.DbNull,
         };
         await assertMovable(tx, "course", id, key, primaryKeys);
         await tx.mapCourse.upsert({
@@ -137,6 +149,7 @@ export async function syncMapEntities(tx: Tx, keys: readonly string[]) {
         const capacity = num(props.capacity);
         const data = {
           ...common,
+          distance: num(props.distance),
           type: str(props.type),
           capacity:
             capacity !== null &&

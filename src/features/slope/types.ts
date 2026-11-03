@@ -11,9 +11,6 @@ export type BinaryMark = "○" | "×" | "";
 
 export type CourseDetail = {
   level: string;
-  distance: string;
-  avg: string;
-  max: string;
   piste: PisteMark;
   morning: BinaryMark;
   night: BinaryMark;

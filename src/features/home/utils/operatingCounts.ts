@@ -1,3 +1,4 @@
+import { createMapCourseStatusSummary } from "@/features/resort-detail/utils/courseStatusSummary";
 import type { CourseStatusSummary } from "@/lib/courseStatusSummary";
 import type {
   FinalizedCourseFeature,
@@ -47,22 +48,15 @@ export const summarizeCourseStatusForList = (
   };
 };
 
-/** 詳細と同じ営業情報の項目数。未取得時は地図のグループ数を使う。 */
+/** 詳細と同じ地図上のコースと状態から集計する。 */
 export const summarizeCoursesForList = (
   mapData: FinalizedResortMapData | null,
   fallbackTotal: number,
 ): OperatingCount | null => {
-  const courses = mapData?.courses?.features;
-  const summary = mapData?.courseStatusSummary;
-  if (summary?.sourceUrls.some(url => url.trim() !== "")) {
-    return summarizeCourseStatusForList(summary);
-  }
-
-  if (!courses?.length) {
-    return unknownCount(fallbackTotal);
-  }
-
-  return unknownCount(new Set(courses.map(course => course.groupId)).size);
+  const summary = createMapCourseStatusSummary(mapData?.courses);
+  return summary && summary.total > 0
+    ? summarizeCourseStatusForList(summary)
+    : unknownCount(fallbackTotal);
 };
 
 export const summarizeMappedCourses = (

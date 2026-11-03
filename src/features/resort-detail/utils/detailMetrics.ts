@@ -721,10 +721,7 @@ const describeOpenRuns = (runs: CourseAttributeRun[], label: string) => [
 export const getCourseGroupMetrics = (group: FinalizedCourseGroup) => {
   const mainGroup = getMainCourseGroup(group);
   const distances = mainGroup.courses
-    .map(
-      course =>
-        course.properties.slopeDistMap ?? course.properties.distance ?? null,
-    )
+    .map(course => course.properties.slopeDistMap)
     .filter((value): value is number => value !== null);
   const distance =
     distances.length > 0
@@ -740,7 +737,7 @@ export const getCourseGroupMetrics = (group: FinalizedCourseGroup) => {
     : null;
   const weightedSlopes = mainGroup.courses.flatMap(course => {
     const slope = course.properties.avgSlopeDegMap;
-    const weight = course.properties.slopeDistMap ?? course.properties.distance;
+    const weight = course.properties.slopeDistMap;
     return typeof slope === "number" && typeof weight === "number" && weight > 0
       ? [{ slope, weight }]
       : [];

@@ -19,9 +19,6 @@ export type SlopeEditorTab = "details" | "geometry" | "mapping";
 
 const DETAIL_KEYS = [
   "level",
-  "distance",
-  "avg",
-  "max",
   "piste",
   "morning",
   "night",
@@ -31,7 +28,6 @@ const DETAIL_KEYS = [
   "image",
 ] as const;
 const WIDE_KEYS = new Set(["note", "searchWord", "youtubeUrl", "image"]);
-const NUMERIC_KEYS = new Set(["distance", "avg", "max"]);
 const choiceOptions: Partial<
   Record<(typeof DETAIL_KEYS)[number], readonly string[]>
 > = {
@@ -173,8 +169,7 @@ export function SlopeRequestEditor({
                 ) : (
                   <input
                     className={inputClass}
-                    type={NUMERIC_KEYS.has(key) ? "number" : "text"}
-                    step="any"
+                    type="text"
                     value={value}
                     onChange={event => updateProperty(key, event.target.value)}
                   />

@@ -1,8 +1,7 @@
 import type { SaveCoursePayload, SaveRequest } from "@/features/slope/types";
 import { featureIdentity } from "@/shared/course-lift/identity";
+import { omitPublishedCourseMetrics } from "@/shared/course-lift/publishedMetrics";
 import { renameMappedGeometry } from "./candidateMapping";
-
-const NUMERIC_COURSE_KEYS = new Set(["distance", "avg", "max"]);
 
 export function slopeCandidate(payload: unknown): SaveRequest | null {
   if (!payload || typeof payload !== "object") return null;
@@ -24,7 +23,23 @@ export function slopeCandidate(payload: unknown): SaveRequest | null {
     )
   )
     return null;
-  return candidate;
+  return {
+    ...candidate,
+    courses: candidate.courses.map(course => ({
+      ...course,
+      properties: omitPublishedCourseMetrics(course.properties),
+      detail: omitPublishedCourseMetrics(course.detail),
+    })),
+    preservedFeatures: candidate.preservedFeatures?.map(feature => ({
+      ...feature,
+      properties: feature.properties
+        ? omitPublishedCourseMetrics(feature.properties)
+        : feature.properties,
+    })),
+    preservedDetails: candidate.preservedDetails?.map(entry =>
+      omitPublishedCourseMetrics(entry),
+    ),
+  };
 }
 
 export function slopeDocumentKey(candidate: SaveRequest, resortId: string) {
@@ -81,12 +96,8 @@ export function updateCourseProperty(
   key: string,
   value: string,
 ): SaveCoursePayload {
-  const parsed =
-    NUMERIC_COURSE_KEYS.has(key) &&
-    value.trim() !== "" &&
-    Number.isFinite(Number(value))
-      ? Number(value)
-      : value;
+  if (["distance", "avg", "max"].includes(key)) return course;
+  const parsed = value;
   const properties: Record<string, unknown> = {
     ...course.properties,
     [key]: parsed,

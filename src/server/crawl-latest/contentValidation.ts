@@ -276,10 +276,11 @@ const inspectOperations = (
       issue(
         kind,
         "SERVER_VALIDATION.OPERATION_DUPLICATE_NAME",
-        `The ${kind.toLowerCase()} category must not contain duplicate names.`,
+        `Duplicate ${kind.toLowerCase()} names are ambiguous; affected mappings are shown as unknown.`,
         {
           occurrences: duplicateNames.length,
           details: { names: duplicateNames },
+          notice: true,
         },
       ),
     );
@@ -388,14 +389,18 @@ export const buildCapabilityGapIssues = (
   const month = new Date(input.observedAt).getUTCMonth() + 1;
   // JSTの12〜3月。春営業だけのスキー場は台帳側が false になるので対象外になる。
   if (month > 3 && month < 12) return [];
-  return findCapabilityGaps(capability, input.rawPayload).map(gap => ({
-    categoryKind: gap.category,
-    severity: "WARNING" as const,
-    code: gap.code,
-    message: gap.message,
-    occurrences: 1,
-    blocksPromotion: false,
-  }));
+  // 営業状況の欠損は、現在使っている対応表を基準に保存時に検証する。
+  // 冬季の固定件数・名称一覧は、公式の掲載変更を障害と誤認するため使わない。
+  return findCapabilityGaps(capability, input.rawPayload)
+    .filter(gap => gap.category !== "COURSES" && gap.category !== "LIFTS")
+    .map(gap => ({
+      categoryKind: gap.category,
+      severity: "WARNING" as const,
+      code: gap.code,
+      message: gap.message,
+      occurrences: 1,
+      blocksPromotion: false,
+    }));
 };
 
 const CLOSED_STATUSES = new Set(["×", "✕"]);

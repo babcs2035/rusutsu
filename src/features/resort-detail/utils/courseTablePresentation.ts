@@ -64,7 +64,7 @@ export function courseSectionSymbols(
 }
 
 const courseDistance = (course: FinalizedCourseFeature) => {
-  const declared = course.properties.slopeDistMap ?? course.properties.distance;
+  const declared = course.properties.slopeDistMap;
   if (declared != null && Number.isFinite(declared) && declared > 0)
     return declared;
   return course.coordinates.slice(1).reduce((sum, point, index) => {

@@ -3,13 +3,13 @@ import type { CourseStatusSummary } from "@/lib/courseStatusSummary";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import type { Resort } from "../types";
 import { removeGeneratedCommentLinks } from "../utils/commentContent";
+import { createMapCourseStatusSummary } from "../utils/courseStatusSummary";
 import {
   conditionText,
   hasSourceUrl,
   record,
   sourceUrls,
 } from "../utils/currentConditions";
-import { createFinalizedCourseGroups } from "../utils/detailMetrics";
 import { createLiftStatusSummary } from "../utils/liftStatusSummary";
 import { formatOperationDate } from "../utils/operationDates";
 import { NotFetchedBadge, SourceLine } from "./CompactInfo";
@@ -51,7 +51,7 @@ export function CurrentOverview({
   const courses = resort.finalizedMapData?.courses;
   const newsLinks = resort.newsLinks ?? [];
   const lifts = resort.finalizedMapData?.lifts;
-  const courseStatus = resort.finalizedMapData?.courseStatusSummary;
+  const courseStatus = createMapCourseStatusSummary(courses);
   // 「〇〇も同時に表示」中は、相手のスキー場のコンディションもまとめて出す。
   const simultaneous = useSimultaneousView(resort);
   const conditions = [
@@ -65,11 +65,7 @@ export function CurrentOverview({
   );
   const hasLiftSource = hasSourceUrl(lifts?.sourceUrls);
   const hasAnyCondition = conditions.some(item => item.weather);
-  const courseSummary = hasCourseSource
-    ? courseStatus
-    : createMapCourseSummary(
-        courses ? createFinalizedCourseGroups(courses.features).length : null,
-      );
+  const courseSummary = courseStatus;
   const liftSummary = createLiftStatusSummary(lifts);
   const operationEntries = [
     ...(hasCourseSource
@@ -134,7 +130,9 @@ export function CurrentOverview({
                   showLabel={false}
                   showFetched={false}
                   urls={courseStatus?.sourceUrls ?? courses?.sourceUrls}
-                  urlLabels={courseStatus?.sourceLabels}
+                  urlLabels={
+                    resort.finalizedMapData?.courseStatusSummary?.sourceLabels
+                  }
                   updates={
                     courseStatus?.updates ??
                     courses?.features.map(c => c.properties.update ?? "")

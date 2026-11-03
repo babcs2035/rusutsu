@@ -20,7 +20,7 @@ test("通常表示は○△×と不明の件数を並べ、説明ボタンを持
     createElement(CourseStatusTable, { summary }),
   );
   const text = html.replace(/<[^>]+>/g, "");
-  assert.match(text, /40区間/);
+  assert.match(text, /40本/);
   for (const value of [5, 2, 30, 3])
     assert.match(html, new RegExp(`>${value}</span>`));
   assert.match(html, /コースの記号と集計方法について/);
@@ -36,7 +36,7 @@ test("未取得は記号の列を出さず、不明の件数だけを出す", ()
   );
   const text = html.replace(/<[^>]+>/g, "");
   assert.match(text, /未取得/);
-  assert.match(text, /40区間/);
+  assert.match(text, /40本/);
   // ○△×のアイコンは出さない（全部0にしかならないため）
   assert.doesNotMatch(html, /stroke-width="3"/);
 });

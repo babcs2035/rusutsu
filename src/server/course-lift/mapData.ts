@@ -1,5 +1,9 @@
 import type { Prisma } from "@prisma/client";
-import { createCourseStatusSummary } from "@/lib/courseStatusSummary";
+import { createMapCourseStatusSummary } from "@/features/resort-detail/utils/courseStatusSummary";
+import {
+  applyCurrentMapOperations,
+  CURRENT_MAP_OPERATION_VERSION,
+} from "@/lib/currentMapOperations";
 import {
   normalizeCourseFeature,
   normalizeLiftFeature,
@@ -17,13 +21,17 @@ import {
 import { toSourceLabels } from "@/lib/latestStatusFiles";
 import { prisma } from "@/lib/prisma";
 import { adjustCourseName } from "@/lib/resortMapMerge";
-import { entityFeature, record } from "./canonicalCodec";
+import { entityFeature } from "./canonicalCodec";
 import { canonicalMapsEnabled } from "./canonicalDocuments";
 
 export async function findCanonicalResortMap(
   tx: Prisma.TransactionClient,
   resortId: string,
-): Promise<{ enabled: boolean; data: FinalizedResortMapData | null }> {
+): Promise<{
+  enabled: boolean;
+  data: FinalizedResortMapData | null;
+  operationDataVersion?: number;
+}> {
   if (!(await canonicalMapsEnabled(tx))) return { enabled: false, data: null };
   const courses = await tx.mapCourse.findMany({
     where: { resortId, archivedAt: null, geometryType: "LineString" },
@@ -33,11 +41,32 @@ export async function findCanonicalResortMap(
     where: { resortId, archivedAt: null, geometryType: "LineString" },
     orderBy: { sourceIndex: "asc" },
   });
+  const adopted = await tx.crawlLatestCurrent.findMany({
+    where: { skiResortId: resortId, kind: { in: ["COURSES", "LIFTS"] } },
+    select: {
+      kind: true,
+      snapshotId: true,
+      snapshot: {
+        select: {
+          id: true,
+          sourceUrls: true,
+          sourceLabels: true,
+          run: { select: { observedAt: true } },
+        },
+      },
+    },
+  });
+  const current = (kind: "COURSES" | "LIFTS") =>
+    adopted.find(row => row.kind === kind)?.snapshot;
   const projected = (
     row: (typeof courses)[number] | (typeof lifts)[number],
+    kind: "COURSES" | "LIFTS",
   ) => {
     const base = entityFeature(row);
     const derived = row.derivedIndex === null ? null : entityFeature(row, true);
+    const snapshot = current(kind);
+    // 状態は更新時に反映済み。現在の取得結果と識別子が合う値だけ読める。
+    const usable = Boolean(snapshot && row.statusSnapshotId === snapshot.id);
     return {
       ...base,
       geometry: derived?.geometry ?? base.geometry,
@@ -46,11 +75,11 @@ export async function findCanonicalResortMap(
         ...derived?.properties,
         name: adjustCourseName(row.name ?? "名前不明"),
         source_name: row.name,
-        status: row.status,
-        update: row.officialUpdatedAt,
-        latest_note: row.latestNote,
-        latest_status_name: row.statusName,
-        status_snapshot_id: row.statusSnapshotId,
+        status: usable ? row.status : null,
+        update: usable ? row.officialUpdatedAt : null,
+        latest_note: usable ? row.latestNote : null,
+        latest_status_name: usable ? row.statusName : null,
+        status_snapshot_id: usable ? row.statusSnapshotId : null,
         status_mapping_names: row.crawledNames,
       },
     };
@@ -58,53 +87,16 @@ export async function findCanonicalResortMap(
   const courseFeatures = courses
     .map((row, index) =>
       normalizeCourseFeature(
-        projected(row),
+        projected(row, "COURSES"),
         index,
         row.sourceKind === "osm" ? "unverified" : "verified",
-        row.statusSourceUrls,
+        current("COURSES")?.sourceUrls ?? [],
       ),
     )
     .filter((feature): feature is FinalizedCourseFeature => feature !== null);
   const liftFeatures = lifts
-    .map((row, index) => normalizeLiftFeature(projected(row), index))
+    .map((row, index) => normalizeLiftFeature(projected(row, "LIFTS"), index))
     .filter((feature): feature is FinalizedLiftFeature => feature !== null);
-  const latest = (rows: Array<{ statusObservedAt: Date | null }>) =>
-    rows.reduce<string | null>(
-      (time, row) =>
-        row.statusObservedAt &&
-        (!time || row.statusObservedAt.toISOString() > time)
-          ? row.statusObservedAt.toISOString()
-          : time,
-      null,
-    );
-  const urls = (rows: Array<{ statusSourceUrls: string[] }>) => [
-    ...new Set(rows.flatMap(row => row.statusSourceUrls)),
-  ];
-  const snapshot = (
-    await tx.crawlLatestCurrent.findFirst({
-      where: { skiResortId: resortId, kind: "COURSES" },
-      include: {
-        snapshot: { include: { run: { select: { observedAt: true } } } },
-      },
-    })
-  )?.snapshot;
-  const courseStatus = snapshot
-    ? {
-        fileName: snapshot.id,
-        time: snapshot.run.observedAt.toISOString(),
-        sourceUrls: snapshot.sourceUrls,
-        sourceLabels: toSourceLabels(
-          snapshot.sourceUrls,
-          snapshot.sourceLabels,
-        ),
-        items: Array.isArray(snapshot.data) ? snapshot.data.map(record) : [],
-      }
-    : null;
-  const courseStatusSummary = createCourseStatusSummary(
-    courseStatus,
-    courseFeatures.map(feature => feature.latestStatusName),
-    courses.some(row => row.crawledNames.length > 0),
-  );
   const data: FinalizedResortMapData = {
     courses: courseFeatures.length
       ? {
@@ -115,8 +107,8 @@ export async function findCanonicalResortMap(
               : "slope_before",
           baseSource: "slope_before",
           fileName: `${resortId}.geojson`,
-          sourceUrls: urls(courses),
-          observedAt: latest(courses),
+          sourceUrls: current("COURSES")?.sourceUrls ?? [],
+          observedAt: current("COURSES")?.run.observedAt.toISOString() ?? null,
           features: courseFeatures,
         }
       : null,
@@ -127,16 +119,31 @@ export async function findCanonicalResortMap(
             : "lift_before",
           baseSource: "lift_before",
           fileName: `${resortId}.geojson`,
-          sourceUrls: urls(lifts),
-          observedAt: latest(lifts),
+          sourceUrls: current("LIFTS")?.sourceUrls ?? [],
+          observedAt: current("LIFTS")?.run.observedAt.toISOString() ?? null,
           features: liftFeatures,
         }
       : null,
-    courseStatusSummary,
   };
+  const courseSummary = createMapCourseStatusSummary(data.courses);
   return {
     enabled: true,
-    data: data.courses || data.lifts || courseStatusSummary ? data : null,
+    operationDataVersion: CURRENT_MAP_OPERATION_VERSION,
+    data:
+      data.courses || data.lifts
+        ? {
+            ...data,
+            courseStatusSummary: courseSummary
+              ? {
+                  ...courseSummary,
+                  sourceLabels: toSourceLabels(
+                    current("COURSES")?.sourceUrls ?? [],
+                    current("COURSES")?.sourceLabels,
+                  ),
+                }
+              : null,
+          }
+        : null,
   };
 }
 export async function readCanonicalResortMap(resortId: string) {
@@ -145,9 +152,26 @@ export async function readCanonicalResortMap(resortId: string) {
     const response = await fetchInternalDataApi(
       `/api/internal/v1/resort-map?resortId=${encodeURIComponent(resortId)}`,
     );
-    return (await response.json()) as {
+    const result = (await response.json()) as {
       enabled: boolean;
       data: FinalizedResortMapData | null;
+      operationDataVersion?: number;
+    };
+    if (!result.enabled || !result.data) return result;
+    // 同じ版のAPIはトランザクション内で現在値を照合済み。追加通信しない。
+    if (result.operationDataVersion === CURRENT_MAP_OPERATION_VERSION)
+      return result;
+    // APIが旧版でも、地図の保存値へフォールバックさせない。
+    const { readCurrentCrawlLatestStatus } = await import(
+      "@/lib/crawlLatestCurrent"
+    );
+    const [courses, lifts] = await Promise.all([
+      readCurrentCrawlLatestStatus(resortId, "courses"),
+      readCurrentCrawlLatestStatus(resortId, "lifts"),
+    ]);
+    return {
+      ...result,
+      data: applyCurrentMapOperations(result.data, { courses, lifts }),
     };
   } catch (error) {
     // The local UI can still read an older data API while the server is upgraded.

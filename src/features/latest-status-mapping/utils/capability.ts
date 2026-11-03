@@ -104,6 +104,13 @@ export const buildCapabilityFromResult = (options: {
   crawlerSourceHash?: string | null;
 }): LatestStatusCapabilityFile => {
   const result = isRecord(options.result) ? options.result : {};
+  const listingModes = isRecord(result.operationListingModes)
+    ? result.operationListingModes
+    : {};
+  const listingMode = (key: "courses" | "lifts") =>
+    listingModes[key] === "complete" || listingModes[key] === "operating-only"
+      ? listingModes[key]
+      : undefined;
   const urls = (value: unknown): boolean =>
     Array.isArray(value) &&
     value.some(entry => typeof entry === "string" && entry.trim() !== "");
@@ -113,8 +120,16 @@ export const buildCapabilityFromResult = (options: {
     source: options.source,
     observedAt: options.observedAt,
     crawlerSourceHash: options.crawlerSourceHash ?? null,
-    courses: summarizeOperations(result.courses, urls(result.courseUrl)),
-    lifts: summarizeOperations(result.lifts, urls(result.liftUrl)),
+    courses: {
+      ...summarizeOperations(result.courses, urls(result.courseUrl)),
+      ...(listingMode("courses")
+        ? { listingMode: listingMode("courses") }
+        : {}),
+    },
+    lifts: {
+      ...summarizeOperations(result.lifts, urls(result.liftUrl)),
+      ...(listingMode("lifts") ? { listingMode: listingMode("lifts") } : {}),
+    },
     conditions: summarizeConditions(result),
   };
 };
@@ -156,6 +171,10 @@ export const findCapabilityGaps = (
       continue;
     }
     for (const field of CAPABILITY_OPERATION_KEYS) {
+      // 営業中一覧は備考が記載されない行を含むため、note欠損は警告しない。
+      if (expected.listingMode === "operating-only" && field === "note") {
+        continue;
+      }
       if (expected.fields[field] && !actual.fields[field]) {
         gaps.push({
           category: kind,
@@ -167,7 +186,11 @@ export const findCapabilityGaps = (
     const missingNames = expected.names.filter(
       name => !actual.names.includes(name),
     );
-    if (expected.names.length > 0 && missingNames.length > 0) {
+    if (
+      expected.listingMode !== "operating-only" &&
+      expected.names.length > 0 &&
+      missingNames.length > 0
+    ) {
       gaps.push({
         category: kind,
         code: `CAPABILITY.MISSING_${kind}_NAMES`,

@@ -206,6 +206,25 @@ const readCapabilityForRun = async (
   }
 };
 
+const operationListingState = (
+  rawPayload: unknown,
+  kind: "courses" | "lifts",
+): "listed" | "not-published" | "failed" | undefined => {
+  if (
+    !rawPayload ||
+    typeof rawPayload !== "object" ||
+    Array.isArray(rawPayload)
+  )
+    return undefined;
+  const listing = (rawPayload as Record<string, unknown>).operationListing;
+  if (!listing || typeof listing !== "object" || Array.isArray(listing))
+    return undefined;
+  const value = (listing as Record<string, unknown>)[kind];
+  return value === "listed" || value === "not-published" || value === "failed"
+    ? value
+    : undefined;
+};
+
 export async function persistCrawlLatestRun(
   input: CrawlLatestRunInput,
   idempotencyKey: string,
@@ -218,10 +237,8 @@ export async function persistCrawlLatestRun(
   );
   if (duplicate) return duplicate;
 
-  const validation = buildCategoryPersistenceData(
-    input,
-    await readCapabilityForRun(input),
-  );
+  const capability = await readCapabilityForRun(input);
+  const validation = buildCategoryPersistenceData(input, capability);
   const { categories } = validation;
   const isYukiMagi =
     input.producerId === "yuki_magi" && input.resortId === "yuki-magi";
@@ -447,8 +464,38 @@ export async function persistCrawlLatestRun(
             const projection = await refreshMapOperations(
               transaction,
               [input.resortId],
-              { runId: run.id, adoptedKinds },
+              {
+                runId: run.id,
+                resortId: input.resortId,
+                adoptedKinds,
+                listingPolicies: {
+                  COURSES: {
+                    listingMode: capability?.courses.listingMode,
+                    listingState: operationListingState(
+                      input.rawPayload,
+                      "courses",
+                    ),
+                  },
+                  LIFTS: {
+                    listingMode: capability?.lifts.listingMode,
+                    listingState: operationListingState(
+                      input.rawPayload,
+                      "lifts",
+                    ),
+                  },
+                },
+              },
             );
+            if (projection?.warningKinds.length) {
+              await transaction.crawlLatestCategorySnapshot.updateMany({
+                where: {
+                  runId: run.id,
+                  kind: { in: projection.warningKinds },
+                  validationState: "VALID",
+                },
+                data: { validationState: "WARNING" },
+              });
+            }
             if (projection?.warningCount && outcome === "SUCCESS") {
               finalOutcome = "PARTIAL";
               await transaction.crawlLatestRun.update({

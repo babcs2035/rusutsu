@@ -20,6 +20,7 @@ import { StatusMark } from "@/features/resort-detail/components/CompactInfo";
 import { FinalizedFeatureDetail } from "@/features/resort-detail/components/FinalizedFeatureDetail";
 import type { FeatureDetailPlacement } from "@/features/resort-detail/components/ResortMapSection";
 import { ResortMapSection } from "@/features/resort-detail/components/ResortMapSection";
+import { createMapCourseStatusSummary } from "@/features/resort-detail/utils/courseStatusSummary";
 import { hasSourceUrl } from "@/features/resort-detail/utils/currentConditions";
 import {
   createFinalizedCourseGroups,
@@ -65,15 +66,10 @@ const unknownSummary = (total: number): CourseStatusSummary => ({
 
 const getCourseSummary = (resort: Resort): CourseStatusSummary => {
   const mapData = resort.finalizedMapData;
-  const statusSummary = mapData?.courseStatusSummary;
-  const hasSource = hasSourceUrl(
-    statusSummary?.sourceUrls ?? mapData?.courses?.sourceUrls,
+  return (
+    createMapCourseStatusSummary(mapData?.courses) ??
+    unknownSummary(resort.numberOfCourses ?? 0)
   );
-  if (hasSource && statusSummary) return statusSummary;
-  const groupCount = mapData?.courses
-    ? createFinalizedCourseGroups(mapData.courses.features).length
-    : (resort.numberOfCourses ?? 0);
-  return unknownSummary(groupCount);
 };
 
 const getLiftSummary = (resort: Resort): CourseStatusSummary => {

@@ -19,6 +19,7 @@ import {
   syncMapEntities,
   verifyRelationalDocument,
 } from "@/server/course-lift/repository";
+import { cleanCourseDocumentContent } from "@/server/course-lift/retiredMetrics";
 import { syncRecommendationDocuments } from "@/server/course-recommendations/projection";
 import {
   BundledFileDataDocumentSource,
@@ -39,6 +40,7 @@ import {
   type AtomicDataDocumentWrite,
   type DataDocumentDatabase,
   DataDocumentRepository,
+  hashDataDocumentContent,
 } from "./repositoryCore";
 
 const SERIALIZABLE_TRANSACTION_ATTEMPTS = 3;
@@ -83,6 +85,13 @@ export async function writeDataDocumentsInTransaction(
   if (conflicts.length > 0) {
     throw new DataDocumentConflictError(conflicts);
   }
+
+  documents = documents.map(document => {
+    const content = cleanCourseDocumentContent(document.key, document.content);
+    return content === document.content
+      ? document
+      : { ...document, content, hash: hashDataDocumentContent(content) };
+  });
 
   const stored: Array<
     import("@/server/course-lift/migrationPlan").MapSourceDocument

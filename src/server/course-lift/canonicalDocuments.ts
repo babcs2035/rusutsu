@@ -7,6 +7,7 @@ import {
   legacyCourseGrouping,
   readCourseGrouping,
 } from "@/shared/course-lift/identity";
+import { omitPublishedCourseMetrics } from "@/shared/course-lift/publishedMetrics";
 import {
   CANONICAL_MAP_MIGRATION_KEY,
   courseAttributes,
@@ -67,7 +68,13 @@ export async function readCanonicalMapDocument(
       );
       if (matches.length)
         return matches.map(row => entityFeature(row).properties);
-      return item.entityId ? [] : [item.entry];
+      return item.entityId
+        ? []
+        : [
+            kind.kind === "course"
+              ? omitPublishedCourseMetrics(raw)
+              : item.entry,
+          ];
     });
   } else if (kind.mapping) {
     data = { version: 1 };
@@ -184,14 +191,17 @@ export async function writeCanonicalMapDocument(
           });
     const rowOrder: unknown[] = [];
     for (const [index, entry] of entries.entries()) {
-      const props = record(entry);
+      const props =
+        kind.kind === "course"
+          ? omitPublishedCourseMetrics(record(entry))
+          : record(entry);
       const matches = rows.filter(row =>
         props.entityId
           ? row.id === props.entityId
           : props.name && row.name === props.name,
       );
       if (!matches.length) {
-        rowOrder.push({ entry });
+        rowOrder.push({ entry: props });
         continue;
       }
       for (const row of matches) {
@@ -208,20 +218,19 @@ export async function writeCanonicalMapDocument(
               : liftAttributes(props);
           const fields = {
             name: split.fields.name,
-            distance: split.fields.distance,
             ...(kind.kind === "course"
               ? {
                   difficulty: split.fields.difficulty,
-                  angleAvg: split.fields.angleAvg,
-                  angleMax: split.fields.angleMax,
                 }
-              : { type: split.fields.type, capacity: split.fields.capacity }),
+              : {
+                  distance: split.fields.distance,
+                  type: split.fields.type,
+                  capacity: split.fields.capacity,
+                }),
             ...attrs,
           };
           const keyByColumn: Record<string, string> = {
             difficulty: "level",
-            angleAvg: "avg",
-            angleMax: "max",
           };
           const data = {
             ...Object.fromEntries(
@@ -321,16 +330,7 @@ export async function writeCanonicalMapDocument(
     if (!kind.derived && kind.sourceKind === "curated") {
       const baseKeys =
         kind.kind === "course"
-          ? [
-              "level",
-              "piste",
-              "snowboard",
-              "avg",
-              "max",
-              "distance",
-              "image",
-              "searchWord",
-            ]
+          ? ["level", "piste", "snowboard", "image", "searchWord"]
           : [
               "type",
               "speed",
@@ -476,7 +476,6 @@ export async function writeCanonicalMapDocument(
         documentKey: document.key,
         sourceIndex: index,
         name: split.fields.name,
-        distance: split.fields.distance,
         properties: jsonValue(split.properties),
         geometry: jsonValue(split.geometry),
         geometryType:
@@ -543,8 +542,6 @@ export async function writeCanonicalMapDocument(
           groupId: group?.id ?? null,
           sectionOrder: group?.order ?? null,
           difficulty: split.fields.difficulty,
-          angleAvg: split.fields.angleAvg,
-          angleMax: split.fields.angleMax,
         };
         await tx.mapCourse.upsert({
           where: { id },
@@ -555,6 +552,7 @@ export async function writeCanonicalMapDocument(
         const data = {
           ...common,
           ...liftAttributes(props),
+          distance: split.fields.distance,
           type: split.fields.type,
           capacity: split.fields.capacity,
         };

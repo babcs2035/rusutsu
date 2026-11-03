@@ -66,7 +66,6 @@ test("one course has a whole-degree distance profile from geometry distance only
     course({
       properties: {
         ...course().properties,
-        distance: 99999,
         slopeDistMap: 12345,
       },
     }),

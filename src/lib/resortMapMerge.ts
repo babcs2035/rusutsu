@@ -12,6 +12,7 @@
  */
 
 import type { ResolvedLatestStatusMapping } from "@/features/latest-status-mapping/types";
+import { omitPublishedCourseMetrics } from "@/shared/course-lift/publishedMetrics";
 
 export type MergeIssue = {
   level: "error" | "warn";
@@ -404,7 +405,9 @@ export const mergeCourseFeatures = ({
       }
     }
 
-    const properties: Record<string, unknown> = { ...feature.properties };
+    const properties: Record<string, unknown> = omitPublishedCourseMetrics({
+      ...feature.properties,
+    });
     properties.name = adjustCourseName(normName);
     // 同名の線をひとまとめに扱うため、元の内部名も残す
     properties.source_name = normName;
@@ -427,7 +430,7 @@ export const mergeCourseFeatures = ({
           ),
         );
       }
-      Object.assign(properties, withoutName(base));
+      Object.assign(properties, omitPublishedCourseMetrics(withoutName(base)));
     }
     if (status) Object.assign(properties, renameStatusKeys(status));
     properties.latest_status_name = status ? getName(status) : null;
@@ -436,7 +439,7 @@ export const mergeCourseFeatures = ({
     features.push({
       type: "Feature",
       geometry: feature.geometry,
-      properties,
+      properties: omitPublishedCourseMetrics(properties),
     });
   }
 

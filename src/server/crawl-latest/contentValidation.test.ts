@@ -163,15 +163,13 @@ test("accepts zero as an actual weather value", () => {
   assert.deepEqual(validation.serverIssues, []);
 });
 
-test("invalidates operations with empty names, unknown statuses, or duplicates", () => {
+test("invalidates operations with empty names or unknown statuses", () => {
   const input = validInput();
   const courses = input.categories.find(
     candidate => candidate.kind === "COURSES",
   );
   assert.ok(courses);
   courses.data = [
-    { name: " A ", status: "○", update: null, note: null },
-    { name: "A", status: "△", update: null, note: null },
     { name: " ", status: "○", update: null, note: null },
     { name: "B", status: null, update: null, note: null },
     { name: "C", status: "OPEN", update: null, note: null },
@@ -188,20 +186,73 @@ test("invalidates operations with empty names, unknown statuses, or duplicates",
   assert.deepEqual(
     validation.serverIssues.map(candidate => candidate.code).sort(),
     [
-      "SERVER_VALIDATION.OPERATION_DUPLICATE_NAME",
       "SERVER_VALIDATION.OPERATION_NAME_EMPTY",
       "SERVER_VALIDATION.OPERATION_STATUS_MISSING",
       "SERVER_VALIDATION.OPERATION_STATUS_UNKNOWN",
     ],
   );
   for (const candidate of validation.serverIssues) {
+    assert.equal(candidate.categoryKind, "COURSES");
     const notice =
       candidate.code === "SERVER_VALIDATION.OPERATION_STATUS_MISSING";
-    assert.equal(candidate.categoryKind, "COURSES");
     assert.equal(candidate.severity, notice ? "WARNING" : "ERROR");
     assert.equal(candidate.blocksPromotion, !notice);
     assert.equal(candidate.externalId, undefined);
   }
+});
+
+test("duplicate operation names warn without blocking other usable items", () => {
+  const input = validInput();
+  const courses = input.categories.find(
+    candidate => candidate.kind === "COURSES",
+  );
+  assert.ok(courses);
+  courses.data = [
+    { name: "A", status: "○", update: null, note: null },
+    { name: " A ", status: "△", update: null, note: null },
+    { name: "B", status: "×", update: null, note: null },
+  ];
+
+  const validation = buildCrawlLatestPersistenceValidation(input);
+  const result = category(validation, "COURSES");
+  const duplicate = validation.serverIssues.find(
+    candidate =>
+      candidate.code === "SERVER_VALIDATION.OPERATION_DUPLICATE_NAME",
+  );
+
+  assert.equal(result.state, "SUCCESS");
+  assert.equal(result.validationState, "WARNING");
+  assert.equal(result.eligibleForCurrent, true);
+  assert.equal(result.itemCount, 3);
+  assert.equal(result.usableItemCount, 1);
+  assert.deepEqual(result.names, ["A", "A", "B"]);
+  assert.ok(duplicate);
+  assert.equal(duplicate.categoryKind, "COURSES");
+  assert.equal(duplicate.severity, "WARNING");
+  assert.equal(duplicate.blocksPromotion, false);
+  assert.deepEqual(duplicate.details, { names: ["A"] });
+});
+
+test("malformed operation item shapes remain fatal", () => {
+  const input = validInput();
+  const courses = input.categories.find(
+    candidate => candidate.kind === "COURSES",
+  );
+  assert.ok(courses);
+  courses.data = [null];
+
+  const validation = buildCrawlLatestPersistenceValidation(input);
+  const result = category(validation, "COURSES");
+  const invalidItem = validation.serverIssues.find(
+    candidate => candidate.code === "SERVER_VALIDATION.OPERATION_INVALID_ITEM",
+  );
+
+  assert.equal(result.validationState, "INVALID");
+  assert.equal(result.eligibleForCurrent, false);
+  assert.equal(result.usableItemCount, 0);
+  assert.ok(invalidItem);
+  assert.equal(invalidItem.severity, "ERROR");
+  assert.equal(invalidItem.blocksPromotion, true);
 });
 
 test("keeps valid Wayback categories out of current", () => {
@@ -398,15 +449,80 @@ test("7月に観測したLIVE実行はシーズン外なので差分が出ない
   assert.deepEqual(issues, []);
 });
 
-test("1月に観測したLIVE実行は差分が出て、severityはWARNINGでblocksPromotionはfalse", () => {
+test("1月に観測したLIVE実行でもoperation台帳との差分は出ない", () => {
   const input = validInput();
   input.sourceMode = "LIVE";
   input.observedAt = "2026-01-15T00:00:00.000Z";
   input.rawPayload = { resortName: "sample-resort" };
 
   const issues = buildCapabilityGapIssues(input, coursesOnlyCapability);
-  assert.equal(issues.length, 1);
-  assert.equal(issues[0].code, "CAPABILITY.MISSING_COURSES");
-  assert.equal(issues[0].severity, "WARNING");
-  assert.equal(issues[0].blocksPromotion, false);
+  assert.deepEqual(issues, []);
+});
+
+test("winter capability gaps still report weather, comment, and news", () => {
+  const input = validInput();
+  input.sourceMode = "LIVE";
+  input.observedAt = "2026-01-15T00:00:00.000Z";
+  input.rawPayload = { resortName: "sample-resort" };
+  const capability: LatestStatusCapabilityFile = {
+    ...coursesOnlyCapability,
+    lifts: {
+      available: true,
+      count: 2,
+      fields: { name: true, status: true, update: false, note: false },
+      names: ["Lift 1", "Lift 2"],
+      statuses: ["○", "×"],
+    },
+    conditions: {
+      comment: true,
+      news: true,
+      points: ["mountain"],
+      fields: {
+        update: false,
+        weather: false,
+        temperature: true,
+        snowDepth: false,
+        snowfall: false,
+        condition: false,
+        windSpeed: false,
+      },
+    },
+  };
+
+  const issues = buildCapabilityGapIssues(input, capability);
+
+  assert.deepEqual(
+    issues.map(({ categoryKind, code, severity, blocksPromotion }) => ({
+      categoryKind,
+      code,
+      severity,
+      blocksPromotion,
+    })),
+    [
+      {
+        categoryKind: "WEATHER",
+        code: "CAPABILITY.MISSING_WEATHER_FIELD",
+        severity: "WARNING",
+        blocksPromotion: false,
+      },
+      {
+        categoryKind: "WEATHER",
+        code: "CAPABILITY.MISSING_WEATHER_POINT",
+        severity: "WARNING",
+        blocksPromotion: false,
+      },
+      {
+        categoryKind: "COMMENT",
+        code: "CAPABILITY.MISSING_COMMENT",
+        severity: "WARNING",
+        blocksPromotion: false,
+      },
+      {
+        categoryKind: "NEWS",
+        code: "CAPABILITY.MISSING_NEWS",
+        severity: "WARNING",
+        blocksPromotion: false,
+      },
+    ],
+  );
 });

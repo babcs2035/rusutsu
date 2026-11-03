@@ -153,7 +153,6 @@ test("group metadata roundtrips and unsupported original details are not normali
             entityId: "stable",
             name: "X",
             level: "初・中・上級",
-            distance: "1000",
             custom: { x: 1 },
             courseGrouping: {
               id: "g",
@@ -177,7 +176,6 @@ test("group metadata roundtrips and unsupported original details are not normali
   const payload = courseToSavePayload(loaded.courses[0]);
   assert.equal(payload.properties.entityId, "stable");
   assert.equal(payload.properties.level, "初・中・上級");
-  assert.equal(payload.properties.distance, "1000");
   assert.deepEqual(payload.properties.custom, { x: 1 });
   // 1 本だけのグループは確認する対象がないので、まとめ方の画面には出さない
   assert.equal(courseGroupingBuckets(loaded.courses).length, 0);

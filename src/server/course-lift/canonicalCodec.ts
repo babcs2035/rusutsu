@@ -1,5 +1,6 @@
 import type { MapCourse, MapLift, Prisma } from "@prisma/client";
 import { featureIdentity } from "@/shared/course-lift/identity";
+import { omitPublishedCourseMetrics } from "@/shared/course-lift/publishedMetrics";
 import type { MapFeature } from "./migrationPlan";
 
 export const CANONICAL_MAP_MIGRATION_KEY = "map-canonical-v2";
@@ -32,8 +33,6 @@ const columns = {
   name: "name",
   distance: "distance",
   level: "difficulty",
-  avg: "angleAvg",
-  max: "angleMax",
   type: "type",
   capacity: "capacity",
 } as const;
@@ -102,12 +101,11 @@ export function splitFeature(
   const { geometry, properties: _properties, ...metadata } = feature;
   const id = featureIdentity(properties, documentKey, index);
   const capacity = number(properties.capacity);
+  const kind = mapDocumentKind(documentKey)?.kind;
   const fields = {
     name: text(properties.name),
-    distance: number(properties.distance),
+    distance: kind === "lift" ? number(properties.distance) : null,
     difficulty: text(properties.level),
-    angleAvg: number(properties.avg),
-    angleMax: number(properties.max),
     type: text(properties.type),
     capacity:
       capacity !== null &&
@@ -117,7 +115,6 @@ export function splitFeature(
         : null,
   };
   const baseMetrics = splitDerivedFeature(feature, index);
-  const kind = mapDocumentKind(documentKey)?.kind;
   const attributes =
     kind === "lift" ? liftAttributes(properties) : courseAttributes(properties);
   const indexedKeys = Object.keys(columns).filter(key =>
@@ -127,6 +124,7 @@ export function splitFeature(
   );
   for (const key of [
     "entityId",
+    ...(kind === "course" ? ["distance", "avg", "max"] : []),
     ...indexedKeys,
     ...Object.keys(attributes),
     ...Object.keys(metrics),
@@ -150,6 +148,8 @@ export function splitDerivedFeature(feature: MapFeature, index: number) {
     "entityId",
     "name",
     "courseGrouping",
+    "avg",
+    "max",
     "slope_deg",
     ...Object.keys(columns),
     ...Object.keys(courseAttributes({})),
@@ -179,8 +179,13 @@ export function entityFeature(
   derived = false,
 ): MapFeature {
   const values = row as unknown as Record<string, unknown>;
+  const isCourse = "sourceKind" in row;
   const properties = {
-    ...record(derived ? row.derivedProperties : row.properties),
+    ...(isCourse
+      ? omitPublishedCourseMetrics(
+          record(derived ? row.derivedProperties : row.properties),
+        )
+      : record(derived ? row.derivedProperties : row.properties)),
     entityId: row.id,
   } as Record<string, unknown>;
   if (!derived) {
@@ -189,6 +194,7 @@ export function entityFeature(
     for (const key of Object.keys(attributes)) properties[key] = values[key];
   }
   for (const [key, column] of Object.entries(derived ? metrics : columns)) {
+    if (isCourse && key === "distance") continue;
     if (column in values) properties[key] = values[column];
   }
   if (!derived && row.elevationReady && row.derivedIndex === null) {

@@ -117,6 +117,5 @@ test("course candidate edits keep properties, detail and mapping aligned", () =>
     ),
   );
   assert.equal(renamed.courses[0].properties.name, "A改");
-  assert.equal(renamed.courses[0].detail.max, 28);
   assert.equal(renamed.mapping?.rows[0].geojsonName, "A改");
 });

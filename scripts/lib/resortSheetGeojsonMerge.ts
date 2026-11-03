@@ -45,6 +45,18 @@ const MEASURED_FIELDS = new Set([
   "midstation",
   "slope_deg",
 ]);
+const PUBLISHED_COURSE_METRIC_FIELDS = new Set(["distance", "avg", "max"]);
+const removePublishedCourseMetrics = (
+  properties: Record<string, unknown>,
+  kind: ResortSheetKind,
+) => {
+  if (kind !== "course") return properties;
+  if (![...PUBLISHED_COURSE_METRIC_FIELDS].some(key => key in properties))
+    return properties;
+  const result = { ...properties };
+  for (const key of PUBLISHED_COURSE_METRIC_FIELDS) delete result[key];
+  return result;
+};
 
 const trimmed = (row: SheetRow, key: string): string => (row[key] ?? "").trim();
 
@@ -147,9 +159,18 @@ export const mergeSheetRowsIntoBefore = (
 
   const features = collection.features.map(feature => {
     const properties = feature.properties ?? {};
+    const cleanProperties = removePublishedCourseMetrics(properties, kind);
+    const cleanFeature =
+      cleanProperties === properties
+        ? feature
+        : { ...feature, properties: cleanProperties };
+    const returnCleanFeature = () => {
+      if (cleanFeature !== feature) changedFeatures += 1;
+      return cleanFeature;
+    };
     const featureName = properties.name;
     if (typeof featureName !== "string" || featureName.length === 0) {
-      return feature;
+      return returnCleanFeature();
     }
 
     const matchedName = matchDataName(
@@ -158,16 +179,19 @@ export const mergeSheetRowsIntoBefore = (
       featureName,
       kind,
     );
-    if (!matchedName || duplicateNames.has(matchedName)) return feature;
+    if (!matchedName || duplicateNames.has(matchedName))
+      return returnCleanFeature();
 
     const row = rowByName.get(matchedName);
-    if (!row) return feature;
+    if (!row) return returnCleanFeature();
     usedRowNames.add(matchedName);
     matchedFeatures += 1;
 
-    const nextProperties = { ...properties };
+    const nextProperties = { ...cleanProperties };
     for (const [key, value] of Object.entries(normalizeSheetRow(row))) {
       if (key === "name") continue;
+      if (kind === "course" && PUBLISHED_COURSE_METRIC_FIELDS.has(key))
+        continue;
       if (!hasStoredValue(value)) continue;
       if (hasStoredValue(nextProperties[key])) continue;
       nextProperties[key] = value;
@@ -221,9 +245,18 @@ export const syncBeforePropertiesToMeasured = (
   const unmatchedFeatureNames: string[] = [];
   const features = measured.features.map(feature => {
     const properties = feature.properties ?? {};
+    const cleanProperties = removePublishedCourseMetrics(properties, kind);
+    const cleanFeature =
+      cleanProperties === properties
+        ? feature
+        : { ...feature, properties: cleanProperties };
+    const returnCleanFeature = () => {
+      if (cleanFeature !== feature) changedFeatures += 1;
+      return cleanFeature;
+    };
     const featureName = properties.name;
     if (typeof featureName !== "string" || featureName.length === 0) {
-      return feature;
+      return returnCleanFeature();
     }
 
     const matchedName = matchDataName(
@@ -237,13 +270,15 @@ export const syncBeforePropertiesToMeasured = (
       : undefined;
     if (!beforeProperties) {
       unmatchedFeatureNames.push(featureName);
-      return feature;
+      return returnCleanFeature();
     }
     matchedFeatures += 1;
 
-    const nextProperties = { ...properties };
+    const nextProperties = { ...cleanProperties };
     for (const [key, value] of Object.entries(beforeProperties)) {
       if (key === "name" || MEASURED_FIELDS.has(key)) continue;
+      if (kind === "course" && PUBLISHED_COURSE_METRIC_FIELDS.has(key))
+        continue;
       nextProperties[key] = value;
     }
     nextProperties.name = featureName;

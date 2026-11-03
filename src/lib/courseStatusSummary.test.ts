@@ -137,8 +137,8 @@ test("地図生成から公式項目の集計を渡す。地図がなくても�
       latestStatusLoader,
     });
     assert.equal(mapped?.courses?.features.length, 4);
-    assert.equal(mapped?.courseStatusSummary?.total, 3);
-    assert.equal(mapped?.courseStatusSummary?.open, 1);
+    assert.equal(mapped?.courseStatusSummary?.total, 4);
+    assert.equal(mapped?.courseStatusSummary?.open, 2);
     assert.equal(mapped?.courseStatusSummary?.partial, 1);
     assert.equal(mapped?.courseStatusSummary?.closed, 1);
     assert.deepEqual(

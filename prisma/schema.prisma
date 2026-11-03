@@ -115,8 +115,6 @@ model Course {
   name        String
   snowboard   String? // "○", "×", etc.
   difficulty  String? // "初級", "中級", "上級", etc.
-  distance    Int? // meters
-  angle       Int? // degrees
   note        String?
 
   @@map("courses")
@@ -639,9 +637,6 @@ model MapCourse {
   group                  MapCourseGroup? @relation(fields: [groupId, resortId, sourceKind], references: [id, resortId, sourceKind], onDelete: Restrict)
   sectionOrder           Int?
   difficulty             String?
-  distance               Float?
-  angleAvg               Float?
-  angleMax               Float?
   piste                  String?
   snowboard              String?
   morning                String?

@@ -1,10 +1,5 @@
+import { omitPublishedCourseMetrics } from "@/shared/course-lift/publishedMetrics";
 import type { EditorCourse, SaveCoursePayload } from "../types";
-
-const toNumberOrEmpty = (value: string): number | "" => {
-  if (value.trim() === "") return "";
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : "";
-};
 
 const buildCourseDetailProperties = (
   resortId: string,
@@ -19,9 +14,6 @@ const buildCourseDetailProperties = (
     name: course.name,
     entityId: course.id,
     level: course.detail.level,
-    distance: toNumberOrEmpty(course.detail.distance),
-    avg: toNumberOrEmpty(course.detail.avg),
-    max: toNumberOrEmpty(course.detail.max),
     piste: course.detail.piste,
     morning: course.detail.morning,
     night: course.detail.night,
@@ -30,24 +22,25 @@ const buildCourseDetailProperties = (
     searchWord: course.detail.searchWord,
     note: course.detail.note,
   };
+  const cleanProperties = omitPublishedCourseMetrics(properties);
   if (course.loadedDetail && course.rawDetail) {
     for (const key of Object.keys(course.detail) as Array<
       keyof typeof course.detail
     >) {
       if (course.detail[key] !== course.loadedDetail[key]) continue;
       if (Object.hasOwn(course.rawDetail, key))
-        properties[key] = course.rawDetail[key];
-      else delete properties[key];
+        cleanProperties[key] = course.rawDetail[key];
+      else delete cleanProperties[key];
     }
   }
-  return properties;
+  return omitPublishedCourseMetrics(cleanProperties);
 };
 
 const buildCourseBeforeProperties = (
   resortId: string,
   course: EditorCourse,
 ): Record<string, unknown> => ({
-  ...course.beforeExtras,
+  ...omitPublishedCourseMetrics(course.beforeExtras),
   ...buildCourseDetailProperties(resortId, course),
   // 詳細側の extras は読み込み時の slope_before properties を含むため、
   // 識別子・まとめ方は最後に置き、編集後の値が古い値で上書きされないようにする。

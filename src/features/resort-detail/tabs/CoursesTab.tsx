@@ -20,7 +20,6 @@ import {
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import { SourceLine, StatusMark } from "../components/CompactInfo";
 import { CourseStatusTable } from "../components/CourseStatusTable";
-import { createMapCourseSummary } from "../components/CurrentOverview";
 import { DistributionChart } from "../components/DistributionChart";
 import { ObservationTimes } from "../components/ObservationTimes";
 import { ariaSort, SortableHeader } from "../components/SortableHeader";
@@ -30,6 +29,7 @@ import {
   slopeDistribution,
   sumKnown,
 } from "../utils/courseDistribution";
+import { createMapCourseStatusSummary } from "../utils/courseStatusSummary";
 import {
   type CourseSymbolField,
   courseDifficultyBands,
@@ -194,8 +194,8 @@ export const CoursesTab = ({
   // 「営業中のみ」は地図の状態をそのまま使い、ここで切り替えても地図に反映する
   const statusState = useDetailCourseStatus(resort.id);
   const statusFilter = getDetailCourseStatusFilter(statusState);
-  const courseStatus = finalizedMapData?.courseStatusSummary;
   const section = finalizedMapData?.courses;
+  const courseStatus = createMapCourseStatusSummary(section);
   // 出典が未登録なら営業状況そのものが取れていない。区間数は地図のコースで数える。
   const hasSource = hasSourceUrl(
     courseStatus?.sourceUrls ?? section?.sourceUrls,
@@ -394,9 +394,7 @@ export const CoursesTab = ({
       <div className="space-y-1">
         <CourseStatusTable
           inline
-          summary={
-            hasSource ? courseStatus : createMapCourseSummary(groups.length)
-          }
+          summary={courseStatus}
           unavailable={!hasSource}
           observedTime={
             hasSource ? (
@@ -419,7 +417,7 @@ export const CoursesTab = ({
                 showLabel={false}
                 showFetched={false}
                 urls={courseStatus?.sourceUrls ?? section?.sourceUrls}
-                urlLabels={courseStatus?.sourceLabels}
+                urlLabels={finalizedMapData?.courseStatusSummary?.sourceLabels}
                 updates={
                   courseStatus?.updates ??
                   features.map(c => c.properties.update ?? "")

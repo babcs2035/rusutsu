@@ -52,7 +52,7 @@ test("courses count open and partial once per group, excluding unmapped entries"
   assert.deepEqual(counts, { active: 3, total: 4 });
 });
 
-test("one mapped course with an unavailable status makes the numerator unknown", () => {
+test("a missing section status makes the logical course count unknown", () => {
   assert.deepEqual(
     summarizeMappedCourses([
       course("A", "○"),
@@ -102,7 +102,7 @@ test("標高未取得でもマップのコースがあればgroupIdで数える"
     [140.001, 43.001],
   ];
   assert.deepEqual(summarizeCoursesForList(mapData([pending]), 9), {
-    active: null,
+    active: 1,
     total: 1,
   });
   assert.deepEqual(summarizeCoursesForList(null, 9), {
@@ -110,7 +110,7 @@ test("標高未取得でもマップのコースがあればgroupIdで数える"
     total: 9,
   });
   assert.deepEqual(summarizeCoursesForList(mapData([pending]), 0), {
-    active: null,
+    active: 1,
     total: 1,
   });
 });
@@ -165,7 +165,7 @@ test("summaryのsource URLが空白だけなら地図のgroupIdを使う", () =>
   });
 });
 
-test("営業状況の公式項目を線やグループによらず一覧のコース数に使う", () => {
+test("official aggregate snapshot does not replace current map group counts", () => {
   const data = mapData([
     course("A", "○"),
     course("A", "×"),
@@ -191,10 +191,10 @@ test("営業状況の公式項目を線やグループによらず一覧のコ�
     sourceUrls: ["https://example.com/courses"],
     updates: [],
   };
-  assert.deepEqual(summarizeCoursesForList(data, 99), { active: 8, total: 12 });
+  assert.deepEqual(summarizeCoursesForList(data, 99), { active: 8, total: 11 });
 });
 
-test("標高がなくても営業状況の公式項目を優先する", () => {
+test("missing status in a map group makes its active count unknown", () => {
   const pending = course("A", "○");
   pending.coordinates = [
     [140, 43],
@@ -202,19 +202,26 @@ test("標高がなくても営業状況の公式項目を優先する", () => {
   ];
   const data = mapData([pending]);
   data.courseStatusSummary = {
-    total: 4,
-    open: 1,
-    partial: 2,
-    closed: 1,
+    total: 900,
+    open: 900,
+    partial: 0,
+    closed: 0,
     unknown: 0,
     observedAt: null,
     sourceUrls: ["https://example.com/courses"],
     updates: [],
   };
-  assert.deepEqual(summarizeCoursesForList(data, 99), { active: 3, total: 4 });
+  pending.properties.status = null;
+  const missing = course("A", null);
+  const withMissingSection = mapData([pending, missing]);
+  withMissingSection.courseStatusSummary = data.courseStatusSummary;
+  assert.deepEqual(summarizeCoursesForList(withMissingSection, 99), {
+    active: null,
+    total: 1,
+  });
 });
 
-test("営業状況に不明項目があれば営業数を不明にし、0件なら非表示にする", () => {
+test("map rows override stale summary counts, while empty inventory uses fallback", () => {
   const data = mapData([course("A", "○")]);
   data.courseStatusSummary = {
     total: 2,
@@ -226,10 +233,7 @@ test("営業状況に不明項目があれば営業数を不明にし、0件な�
     sourceUrls: ["https://example.com/courses"],
     updates: [],
   };
-  assert.deepEqual(summarizeCoursesForList(data, 99), {
-    active: null,
-    total: 2,
-  });
+  assert.deepEqual(summarizeCoursesForList(data, 99), { active: 1, total: 1 });
 
   data.courseStatusSummary = {
     total: 0,
@@ -241,5 +245,9 @@ test("営業状況に不明項目があれば営業数を不明にし、0件な�
     sourceUrls: ["https://example.com/courses"],
     updates: [],
   };
-  assert.equal(summarizeCoursesForList(data, 99), null);
+  assert.deepEqual(summarizeCoursesForList(data, 99), { active: 1, total: 1 });
+  assert.deepEqual(summarizeCoursesForList(mapData([]), 99), {
+    active: null,
+    total: 99,
+  });
 });

@@ -11,9 +11,6 @@ export type SlopeReview = FeatureReview;
 const FIELD_ORDER = [
   "name",
   "level",
-  "distance",
-  "avg",
-  "max",
   "piste",
   "morning",
   "night",
@@ -24,6 +21,9 @@ const FIELD_ORDER = [
   "image",
 ];
 const INTERNAL_KEYS = new Set([
+  "distance",
+  "avg",
+  "max",
   "entityId",
   "@id",
   "resort",

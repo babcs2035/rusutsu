@@ -101,6 +101,24 @@ test("duplicate sheet names are left unmatched instead of choosing the last row"
   assert.deepEqual(result.unmatchedRowNames, ["ペア"]);
 });
 
+test("retired course metrics are removed and counted without a matching sheet row", () => {
+  const source = collection({ name: "未対応", distance: 350, avg: 8, max: 12 });
+  const merged = mergeSheetRowsIntoBefore(source, [], "course");
+  assert.equal(merged.changedFeatures, 1);
+  assert.deepEqual(merged.collection.features[0]?.properties, {
+    name: "未対応",
+  });
+  const measured = syncBeforePropertiesToMeasured(
+    source,
+    collection({ name: "別コース" }),
+    "course",
+  );
+  assert.equal(measured.changedFeatures, 1);
+  assert.deepEqual(measured.collection.features[0]?.properties, {
+    name: "未対応",
+  });
+});
+
 test("Excel fills empty before fields without replacing curated values", () => {
   const rows: SheetRow[] = [
     {
@@ -108,6 +126,8 @@ test("Excel fills empty before fields without replacing curated values", () => {
       name: "白樺コース",
       level: "初級",
       distance: "1200.0",
+      avg: "18",
+      max: "32",
       piste: "○",
       searchWord: "テスト 白樺",
     },
@@ -125,7 +145,6 @@ test("Excel fills empty before fields without replacing curated values", () => {
     level: "中級",
     searchWord: "テスト 白樺",
     resort: "test-resort",
-    distance: 1200,
     piste: "○",
   });
 });
@@ -158,6 +177,8 @@ test("before properties reach measured data while measurements stay intact", () 
     name: "メロディ",
     level: "初級",
     distance: 350,
+    avg: 15,
+    max: 25,
     searchWord: "GALA メロディ",
   });
   const measured = collection({
@@ -166,6 +187,9 @@ test("before properties reach measured data while measurements stay intact", () 
     horizontal_dist_map: 315,
     slope_dist_map: 320,
     midstation: [139, 36, 800],
+    distance: 999,
+    avg: 99,
+    max: 99,
   });
   const result = syncBeforePropertiesToMeasured(measured, before, "course");
 
@@ -177,7 +201,6 @@ test("before properties reach measured data while measurements stay intact", () 
     horizontal_dist_map: 315,
     slope_dist_map: 320,
     midstation: [139, 36, 800],
-    distance: 350,
     searchWord: "GALA メロディ",
   });
 });

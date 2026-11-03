@@ -1,7 +1,7 @@
 import type { MapSkiResort, SkiResortDetail } from "@/types/skiResorts";
 
-// 詳細の必須フィールドを変更したら更新する。旧データを現行の型として復元しない。
-const DETAIL_CACHE_VERSION = 2;
+// 古い営業情報を含む詳細も復元させない。再取得した現在値で保存し直す。
+const DETAIL_CACHE_VERSION = 3;
 
 // IndexedDB の structured clone を使い、詳細内の Date を文字列に変えない。
 async function openCache(): Promise<IDBDatabase> {

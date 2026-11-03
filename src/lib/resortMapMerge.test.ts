@@ -29,13 +29,13 @@ const line = (
 test("fixed IDs keep same-name attributes and explicit unmapped status separate", () => {
   const result = mergeCourseFeatures({
     geometryFeatures: [
-      line("X", { entityId: "a" }),
+      line("X", { entityId: "a", distance: 12, avg: 4, max: 9 }),
       line("X", { entityId: "b" }),
       line("", { entityId: "c" }),
     ],
     baseItems: [
-      { entityId: "b", name: "X", level: "初級" },
-      { entityId: "a", name: "X", level: "上級" },
+      { entityId: "b", name: "X", level: "初級", distance: 99 },
+      { entityId: "a", name: "X", level: "上級", avg: 10, max: 20 },
     ],
     statusItems: [{ name: "上", status: "○" }],
     statusMapping: {
@@ -56,6 +56,16 @@ test("fixed IDs keep same-name attributes and explicit unmapped status separate"
   assert.equal(result.features[1].properties.level, "初級");
   assert.deepEqual(result.features[1].properties.status_mapping_names, []);
   assert.equal(result.features[0].properties.status, "○");
+  for (const key of ["distance", "avg", "max"]) {
+    assert.equal(
+      Object.hasOwn(result.features[0]?.properties ?? {}, key),
+      false,
+    );
+    assert.equal(
+      Object.hasOwn(result.features[1]?.properties ?? {}, key),
+      false,
+    );
+  }
   assert.notEqual(result.features[1].properties.status, "○");
   assert.equal(result.features[2].properties.status, "○");
 });

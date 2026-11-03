@@ -108,3 +108,19 @@ test("serializeしてparseし直しても台帳の内容は変わらない", () 
   const roundTripped = parseCapabilityFile(original.resortId, raw);
   assert.deepEqual(roundTripped, original);
 });
+
+test("listingModeを保持し、不正値は既定のcomplete相当として省略する", () => {
+  const raw = JSON.stringify({
+    courses: { available: true, listingMode: "operating-only" },
+    lifts: { available: true, listingMode: "partial" },
+  });
+  const parsed = parseCapabilityFile("sample-resort", raw);
+  assert.ok(parsed);
+  assert.equal(parsed?.courses.listingMode, "operating-only");
+  assert.equal(parsed?.lifts.listingMode, undefined);
+  assert.equal(
+    parseCapabilityFile("sample-resort", serializeCapabilityFile(parsed))
+      ?.courses.listingMode,
+    "operating-only",
+  );
+});

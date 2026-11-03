@@ -71,8 +71,6 @@ const course = z.object({
   name: text,
   snowboard: optionalText,
   difficulty: optionalText,
-  distance: optionalNumber,
-  angle: optionalNumber,
   note: optionalText,
 });
 const lift = z.object({

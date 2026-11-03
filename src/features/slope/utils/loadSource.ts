@@ -3,6 +3,7 @@ import {
   legacyCourseGrouping,
   readCourseGrouping,
 } from "@/shared/course-lift/identity";
+import { omitPublishedCourseMetrics } from "@/shared/course-lift/publishedMetrics";
 import { LEVEL_OPTIONS } from "../constants";
 import type {
   BinaryMark,
@@ -103,9 +104,6 @@ const normalizeMark = (value: unknown, allowed: string[]): string => {
 
 const buildDetail = (entry: SlopeDetailEntry): CourseDetail => ({
   level: normalizeLevel(entry.level).level,
-  distance: toDetailString(entry.distance),
-  avg: toDetailString(entry.avg),
-  max: toDetailString(entry.max),
   piste: normalizeMark(entry.piste, ["○", "△", "×"]) as PisteMark,
   morning: normalizeMark(entry.morning, ["○", "×"]) as BinaryMark,
   night: normalizeMark(entry.night, ["○", "×"]) as BinaryMark,
@@ -144,9 +142,6 @@ const mergeDetail = (
   return {
     detail: {
       level: levelNormalization.level,
-      distance: detail.distance || before.distance,
-      avg: detail.avg || before.avg,
-      max: detail.max || before.max,
       piste: detail.piste || before.piste,
       morning: detail.morning || before.morning,
       night: detail.night || before.night,
@@ -297,9 +292,9 @@ export const sourceDataToCourses = (
     });
   }
 
-  const preservedDetails = detailEntries.filter(
-    (_, index) => !matchedDetailIndexes.has(index),
-  );
+  const preservedDetails = detailEntries
+    .filter((_, index) => !matchedDetailIndexes.has(index))
+    .map(entry => omitPublishedCourseMetrics(entry));
   return { courses, preservedFeatures, preservedDetails, warnings };
 };
 
@@ -307,7 +302,7 @@ export const sourceDataToCourses = (
  * 下書きの空欄を、いまの slope_before / slope_detail の値で埋める。
  *
  * 下書きは「その時の編集画面が持っていた値」しか覚えていない。読み込みが
- * 不十分だった頃の下書きを開くと、ファイルには level や distance があるのに
+ * 不十分だった頃の下書きを開くと、ファイルには項目があるのに
  * 画面は空、という食い違いが起きる。名前が一致するコースについてだけ、
  * 空いている項目を埋め直す（入っている値は書き換えない）。
  */

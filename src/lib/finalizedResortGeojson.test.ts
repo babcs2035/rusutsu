@@ -49,9 +49,6 @@ const createTestCourse = (
     elevationDiffMap: null,
     avgSlopeDegMap: 12,
     maxSlopeDegMap: null,
-    distance: null,
-    avg: null,
-    max: null,
     maxWidth: null,
     minWidth: null,
     note: null,
@@ -244,7 +241,12 @@ test("map data follows finalized, measured, then before priority", async () => {
         [140, 40, 1000],
         [140.01, 40.01, 900],
       ],
-      { avg_slope_deg_map: "12.3" },
+      {
+        avg_slope_deg_map: "12.3",
+        distance: 1200,
+        avg: 18,
+        max: 33,
+      },
     );
     await writeJson(
       path.join(roots.temporaryRoot, "slope_detail", `${mergedId}.json`),
@@ -496,6 +498,9 @@ test("map data follows finalized, measured, then before priority", async () => {
     assert.equal(mergedCourse?.displayName, "白樺ゲレンデ");
     assert.equal(mergedCourse?.sectionName, "上部");
     assert.equal(mergedCourse?.properties.level, "中級");
+    for (const key of ["distance", "avg", "max"]) {
+      assert.equal(Object.hasOwn(mergedCourse?.properties ?? {}, key), false);
+    }
     assert.equal(mergedCourse?.latestStatusName, "白樺ゲレンデ上部");
     assert.equal(mergedCourse?.properties.searchWord, "テスト　白樺ゲレンデ");
     assert.equal(

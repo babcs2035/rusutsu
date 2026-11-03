@@ -77,6 +77,10 @@ const normalizeOperationSection = (
   const names = normalizeStringArray(source.names, 2_000);
   return {
     available: source.available === true,
+    ...(source.listingMode === "complete" ||
+    source.listingMode === "operating-only"
+      ? { listingMode: source.listingMode }
+      : {}),
     count:
       typeof source.count === "number" && Number.isInteger(source.count)
         ? source.count
