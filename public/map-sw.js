@@ -26,8 +26,7 @@ const isMapPath = pathname => {
   if (isHomePath(pathname)) return true;
   const match = /^\/rusutsu\/([a-z0-9-]{1,200})\/?$/.exec(pathname);
   return (
-    !!match &&
-    !["admin", "api", "login", "offline-tab"].includes(match[1])
+    !!match && !["admin", "api", "login", "offline-tab"].includes(match[1])
   );
 };
 const isTile = url =>
@@ -287,16 +286,18 @@ async function saveHome(response) {
   )
     return;
   const html = await response.clone().text();
-  const paths = [...html.matchAll(/(?:src|href)="([^"]+)"/g)]
-    .map(match => new URL(match[1].replaceAll("&amp;", "&"), homeURL))
-    .filter(isAsset);
+  const paths = assetPaths(html);
   // ワーカーはページ外から取得されるので、起動資産として明示的に保存する。
   paths.push(new URL("/rusutsu/maplibre/maplibre-gl-worker.mjs", homeURL));
+  const cache = await caches.open(HOME);
+  // 旧版は旧ビルドを消さずに溜めたため、上限で新しい資産を保存できず
+  // 古い HTML が残り続けた。保存中の HTML と新しい HTML が使わない分を先に消す。
+  const saved = await (await cache.match(homeURL))?.text();
+  await evictUnusedBuilds(paths, saved ? assetPaths(saved) : []);
   // 起動に要る資産を保存できた HTML だけ採用する。
   await Promise.all(
     paths.map(url => cachedAsset(new Request(url), ASSETS, 600, true)),
   );
-  const cache = await caches.open(HOME);
   // 保存するのは展開済み HTML。通信時の圧縮・長さ・RSC 用 Vary を持ち越さない。
   const headers = new Headers(response.headers);
   for (const name of [
@@ -308,6 +309,29 @@ async function saveHome(response) {
     headers.delete(name);
   await cache.put(homeURL, new Response(html, { status: 200, headers }));
   await purgeOldBuild(paths);
+}
+const assetPaths = html =>
+  [...html.matchAll(/(?:src|href)="([^"]+)"/g)]
+    .map(match => new URL(match[1].replaceAll("&amp;", "&"), homeURL))
+    .filter(isAsset);
+const buildOf = paths =>
+  [...new Set(paths.filter(isBuildAsset).map(url => url.href))].sort();
+// 版が同じなら何もしない（遅延読み込みの chunk を残す）。
+async function evictUnusedBuilds(paths, savedPaths) {
+  const previous = await (
+    await (await caches.open(META)).match(buildURL)
+  )?.json();
+  if (JSON.stringify(previous) === JSON.stringify(buildOf(paths))) return;
+  await writes.catch(() => {});
+  const keep = new Set([...buildOf(paths), ...buildOf(savedPaths)]);
+  const assets = await caches.open(ASSETS);
+  for (const key of await assets.keys()) {
+    const url = new URL(typeof key === "string" ? key : key.url);
+    if (isBuildAsset(url) && !keep.has(url.href)) {
+      await assets.delete(key);
+      sizes.get(ASSETS)?.delete(url.href);
+    }
+  }
 }
 // 版が変わったら、新しい HTML が参照しない旧ビルドの JS/CSS を消す。
 // 遅延読み込みの chunk は、開いている画面から送り直してもらう。
@@ -333,8 +357,10 @@ async function purgeOldBuild(paths) {
     [])
     client.postMessage({ type: "REWARM" });
 }
+// 旧版は保存済み HTML を通信より先に返すため、タブが残る端末では
+// デプロイ後も古い画面と Server Action ID のまま開けなくなる。待たずに差し替える。
+self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", event => {
-  // 更新時は既存タブが閉じるまで待つ（skipWaiting で実行中の版を差し替えない）。
   event.waitUntil(
     Promise.all([
       self.clients.claim(),
@@ -358,7 +384,8 @@ self.addEventListener("message", event => {
     return;
   const source = new URL(event.source.url);
   if (!isMapPath(source.pathname)) return;
-  if (event.data?.type === "SET_VIEW") views.set(event.source.id, event.data.id);
+  if (event.data?.type === "SET_VIEW")
+    views.set(event.source.id, event.data.id);
   if (
     event.data?.type === "SAVE_DETAIL" &&
     typeof event.data.id === "string" &&
