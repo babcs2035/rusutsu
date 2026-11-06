@@ -30,6 +30,8 @@ const ID_PREFIXES: Record<string, string> = {
   offers: "offer",
   party_rules: "party",
   fees: "fee",
+  rental_audiences: "ra",
+  rentals: "rental",
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -125,7 +127,24 @@ const badgesOf = (
       }
       return parts;
     }
-    case "audiences": {
+    case "rentals": {
+      const price = isRecord(item.price) ? item.price : {};
+      const duration = isRecord(item.duration) ? item.duration : {};
+      return [
+        formatYen(price.amount) ?? "金額未確定",
+        ...(Array.isArray(item.items) ? item.items.map(String) : []),
+        String(duration.mode ?? "unknown"),
+        ...(typeof duration.days === "number" ? [`${duration.days}日`] : []),
+        ...(typeof duration.hours === "number"
+          ? [`${duration.hours}時間`]
+          : []),
+        ...listNames("rental_audience_choices", item.audience_ids),
+        ...listNames("calendars", item.calendar_ids),
+        ...(isRecord(item.target_qualification) ? ["資格の絞り込み"] : []),
+      ];
+    }
+    case "audiences":
+    case "rental_audiences": {
       const parts: string[] = [];
       if (item.is_default === true) parts.push("既定区分");
       if (typeof item.age_min === "number") parts.push(`${item.age_min}歳〜`);
@@ -183,6 +202,7 @@ export const CollectionSection = ({
   data,
   idIndex,
   update,
+  itemFilter,
 }: {
   collectionKey: string;
   title: string;
@@ -192,6 +212,8 @@ export const CollectionSection = ({
   data: TicketDocument;
   idIndex: IdIndex;
   update: (path: (string | number)[], value: NodeUpdate) => void;
+  /** この画面に出す項目。追加・開いて編集中の項目は条件から外れても出したままにする */
+  itemFilter?: (item: unknown) => boolean;
 }) => {
   const [filter, setFilter] = useState("");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
@@ -199,16 +221,25 @@ export const CollectionSection = ({
   const [removingIndex, setRemovingIndex] = useState<number | null>(null);
   const itemSpec = spec.items.kind === "object" ? spec.items : null;
 
+  const visible = useMemo(
+    () =>
+      items
+        .map((item, index) => ({ item, index }))
+        .filter(
+          ({ item, index }) =>
+            !itemFilter || itemFilter(item) || expanded.has(index),
+        ),
+    [items, itemFilter, expanded],
+  );
+
   const filtered = useMemo(() => {
     const query = filter.trim().toLocaleLowerCase("ja");
-    return items
-      .map((item, index) => ({ item, index }))
-      .filter(({ item }) =>
-        query === ""
-          ? true
-          : JSON.stringify(item).toLocaleLowerCase("ja").includes(query),
-      );
-  }, [filter, items]);
+    return visible.filter(({ item }) =>
+      query === ""
+        ? true
+        : JSON.stringify(item).toLocaleLowerCase("ja").includes(query),
+    );
+  }, [filter, visible]);
 
   const toggle = (index: number) => {
     const next = new Set(expanded);
@@ -252,7 +283,8 @@ export const CollectionSection = ({
       <div className="flex flex-col gap-4 max-w-[400px] md:max-w-[1200px] mx-auto">
         <div className="rounded-2xl bg-white border border-gray-200 p-4 md:p-5">
           <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div className="flex-1 min-w-0 md:min-w-[260px]">
+            {/* 狭い幅では絞り込み欄を次の行へ回し、見出しが縦に割れないようにする */}
+            <div className="flex-1 min-w-60 md:min-w-[260px]">
               <div className="flex items-baseline gap-2 flex-wrap">
                 <h2 className="text-base font-bold font-[var(--font-heading)]">
                   {title}
@@ -261,7 +293,7 @@ export const CollectionSection = ({
                   {collectionKey}
                 </span>
                 <span className="text-gray-600 text-sm font-medium">
-                  {items.length}件
+                  {visible.length}件
                 </span>
               </div>
               <p className="mt-2 text-gray-600 text-xs leading-snug">
@@ -288,14 +320,14 @@ export const CollectionSection = ({
               </Button>
             </div>
           </div>
-          {items.length > 1 && (
+          {visible.length > 1 && (
             <div className="mt-3 flex gap-2">
               <Button
                 type="button"
                 variant="ghost"
                 size="xs"
                 onClick={() =>
-                  setExpanded(new Set(items.map((_, index) => index)))
+                  setExpanded(new Set(visible.map(({ index }) => index)))
                 }
               >
                 すべて開く
@@ -318,7 +350,7 @@ export const CollectionSection = ({
           </p>
         ) : filtered.length === 0 ? (
           <p className="text-gray-500 text-sm">
-            {items.length === 0
+            {visible.length === 0
               ? "項目がありません。"
               : "絞り込み条件に一致する項目がありません。"}
           </p>

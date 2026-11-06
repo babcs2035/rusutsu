@@ -26,6 +26,7 @@ import {
   saveCommunityProfile,
 } from "@/features/community/actions";
 import { CommunityNotificationsLink } from "@/features/community/CommunityNotificationsLink";
+import { reloadIfStaleBuild } from "@/shared/utils/staleBuild";
 import {
   publicLogout,
   readLoginHistory,
@@ -192,7 +193,8 @@ function FavoritesState({
           if (wasLoggedIn && !dismissed && !dismissedInMemory.current)
             setExpired(true);
         }
-      } catch {
+      } catch (error) {
+        if (reloadIfStaleBuild(error)) return;
         if (request === generation.current) {
           setSnapshot({ userId, ids: [], ready: false });
           toast.error("お気に入りを読み込めませんでした。再度お試しください。");
@@ -275,7 +277,8 @@ function FavoritesState({
             added ? "お気に入りに追加しました" : "お気に入りから解除しました",
             { duration: 1000 },
           );
-      } catch {
+      } catch (error) {
+        if (reloadIfStaleBuild(error)) return;
         if (currentUser.current === account) {
           // Roll back this operation only; preserve concurrent changes to other IDs.
           setSnapshot(value => ({

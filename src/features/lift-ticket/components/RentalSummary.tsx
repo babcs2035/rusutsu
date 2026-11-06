@@ -8,7 +8,7 @@ const yen = (amount: number) => `¥${amount.toLocaleString("ja-JP")}`;
 /**
  * 料金カードの中のレンタルの枠。利用者ごとに「借りる物」と金額を出し、
  * その下に実際に借りる料金（セット・単品の組み合わせ）を小さく並べる。
- * 未収集のスキー場では、選んだのに金額が足されない理由だけを1行出す
+ * レンタル情報が無いことは、合計の横の「＋ゴーグル」と注釈で知らせる
  */
 export const RentalSummary = ({
   rental,
@@ -18,13 +18,8 @@ export const RentalSummary = ({
   /** 2日以上なら、日ごとに借りる料金に「× N日」を付ける */
   dayCount: number;
 }) => {
-  if (rental.status === "none") return null;
-  if (rental.status === "not_collected") {
-    return (
-      <p className="rounded-lg border border-orange-200 bg-white px-3 py-2 text-xs text-gray-600">
-        このスキー場のレンタル料金は未収集のため、合計に含めていません
-      </p>
-    );
+  if (rental.status === "none" || rental.status === "not_collected") {
+    return null;
   }
   return (
     <div className="rounded-lg border border-orange-200 bg-white px-3 py-2.5">
@@ -52,6 +47,11 @@ export const RentalSummary = ({
             {line.note && (
               <p className="text-xs text-orange-900">{line.note}</p>
             )}
+            {(line.warnings ?? []).map(warning => (
+              <p key={warning} className="text-xs text-orange-900 md:text-sm">
+                {warning}
+              </p>
+            ))}
             {line.picks.map(pick => (
               <div key={`${pick.rentalId}:${pick.dates.join(",")}`}>
                 <p className="flex items-baseline justify-between gap-3 text-xs text-gray-600">
@@ -73,6 +73,32 @@ export const RentalSummary = ({
                   className="mt-0.5"
                 />
               </div>
+            ))}
+            {/* 日中のレンタルが夜も使えない場合に借り足す料金（合計には含めない） */}
+            {(line.nightAddOns ?? []).map(addOn => (
+              <p
+                key={addOn.date}
+                className="flex items-baseline justify-between gap-3 text-xs text-gray-600 md:text-sm"
+              >
+                <span className="min-w-0">
+                  夜も借りるなら: ナイター用レンタル
+                </span>
+                <span className="flex-shrink-0 font-mono">
+                  ＋{yen(addOn.unitTotal)}
+                </span>
+              </p>
+            ))}
+            {/* 宿泊者限定などの料金（合計には含めない） */}
+            {(line.conditional ?? []).map(item => (
+              <p
+                key={item.label}
+                className="flex items-baseline justify-between gap-3 text-xs text-gray-600 md:text-sm"
+              >
+                <span className="min-w-0">{item.label}なら</span>
+                <span className="flex-shrink-0 font-mono">
+                  {yen(item.unitTotal)}
+                </span>
+              </p>
             ))}
           </div>
         ))}

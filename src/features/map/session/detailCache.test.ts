@@ -1,11 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { MapSkiResort, SkiResortDetail } from "@/types/skiResorts";
+import type { SkiResortDetail } from "@/types/skiResorts";
 import {
   readDetailCache,
-  readOverviewCache,
+  retainComparedDetails,
   writeDetailCache,
-  writeOverviewCache,
 } from "./detailCache";
 
 test("旧キャッシュは復元せず、再取得して保存した詳細を次回復元する", async t => {
@@ -27,7 +26,7 @@ test("旧キャッシュは復元せず、再取得して保存した詳細を�
             const request = { result: entries.get(id), onsuccess: () => {} };
             queueMicrotask(() => {
               request.onsuccess();
-              tx.oncomplete();
+              if (mode === "readonly") tx.oncomplete();
             });
             return request;
           },
@@ -77,10 +76,19 @@ test("旧キャッシュは復元せず、再取得して保存した詳細を�
   assert.equal(await readDetailCache("missing"), null);
   entries.set("test", { ...entries.get("test"), version: -1 });
   assert.equal(await readDetailCache("test"), null);
-  const first = [{ id: "a" }] as MapSkiResort[];
-  const second = [{ id: "b" }] as MapSkiResort[];
-  await writeOverviewCache("tab-a", first);
-  await writeOverviewCache("tab-b", second);
-  assert.deepEqual(await readOverviewCache("tab-a"), first);
-  assert.deepEqual(await readOverviewCache("tab-b"), second);
+  // 直近に開いた 2 件と比較中の全件だけを残す。
+  entries.clear();
+  let now = 0;
+  t.mock.method(Date, "now", () => ++now);
+  const detail = (id: string) =>
+    ({ ...data, id }) as unknown as SkiResortDetail;
+  for (const id of ["a", "b", "c"]) await writeDetailCache(detail(id));
+  for (const id of ["x", "y", "z"])
+    await writeDetailCache(detail(id), { compared: true });
+  assert.deepEqual([...entries.keys()].sort(), ["b", "c", "x", "y", "z"]);
+  await retainComparedDetails(["x", "c"]);
+  assert.deepEqual([...entries.keys()].sort(), ["b", "c", "x"]);
+  // 比較から外しても、直近に開いた詳細なら残る。
+  await retainComparedDetails([]);
+  assert.deepEqual([...entries.keys()].sort(), ["b", "c"]);
 });

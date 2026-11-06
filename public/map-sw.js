@@ -3,11 +3,18 @@ const PREFIX = "rusutsu-map-v1";
 const HOME = `${PREFIX}-home`;
 const ASSETS = `${PREFIX}-assets`;
 const TILES = `${PREFIX}-tiles`;
-const OVERVIEW_TILES = `${PREFIX}-overview-tiles`;
+// 比較画面や詳細の計画外など、表示したタイル。古い順に入れ替える。
+const VIEWED_TILES = `${PREFIX}-viewed-tiles`;
 const META = `${PREFIX}-meta`;
 const IMAGES = `${PREFIX}-images`;
 const ROOT = "/rusutsu/";
 const homeURL = new URL("/rusutsu", self.location.origin).href;
+const buildURL = new URL("/rusutsu/offline-build", self.location.origin).href;
+// 圏外で開き直すのに要るのは直近のスキー場だけ。直前の 1 件まで残す。
+const RETAINED_DETAILS = 2;
+// 電波が弱いゲレンデで待たせない。これを過ぎたら保存済みの画面を出す。
+const NAVIGATION_TIMEOUT = 3000;
+const isBuildAsset = url => url.pathname.startsWith("/rusutsu/_next/static/");
 const isAsset = url =>
   url.origin === self.location.origin &&
   (url.pathname.startsWith("/rusutsu/_next/static/") ||
@@ -54,14 +61,33 @@ function saveBounded(name, request, response, limit, strict = false) {
       }
       const entries = sizes.get(name);
       const key = typeof request === "string" ? request : request.url;
-      if (!entries.has(key) && entries.size >= limit)
-        throw new Error("entry limit");
+      const evict = name === VIEWED_TILES;
       const bytes = opaqueImage ? null : await response.clone().arrayBuffer();
       const byteLength = bytes ? bytes.byteLength : 7 * 1024 * 1024;
-      const budget = name === TILES ? 192 * 1024 * 1024 : 64 * 1024 * 1024;
-      let used = -(entries.get(key) || 0);
-      for (const size of entries.values()) used += size;
-      if (used + byteLength > budget) throw new Error("byte limit");
+      const budget =
+        name === TILES
+          ? 192 * 1024 * 1024
+          : name === VIEWED_TILES
+            ? 48 * 1024 * 1024
+            : 64 * 1024 * 1024;
+      const used = () => {
+        let total = -(entries.get(key) || 0);
+        for (const size of entries.values()) total += size;
+        return total;
+      };
+      // 表示しただけのタイルは古い順（保存順）に消して空きを作る。
+      while (
+        evict &&
+        entries.size &&
+        (entries.size >= limit || used() + byteLength > budget)
+      ) {
+        const oldest = entries.keys().next().value;
+        await cache.delete(oldest);
+        entries.delete(oldest);
+      }
+      if (!entries.has(key) && entries.size >= limit)
+        throw new Error("entry limit");
+      if (used() + byteLength > budget) throw new Error("byte limit");
       const headers = new Headers(response.headers);
       for (const key of ["content-encoding", "content-length", "vary"])
         headers.delete(key);
@@ -130,44 +156,41 @@ async function pool(values, action) {
 }
 let preparation = Promise.resolve();
 const views = new Map();
-const retentionURL = tabId =>
-  new URL(`/rusutsu/offline-tab/${encodeURIComponent(tabId)}`, homeURL).href;
 const detailURL = id =>
   new URL(`/rusutsu/offline-detail/${encodeURIComponent(id)}`, homeURL).href;
 
-// preparation と writes の完了後に削除する。保存中の古いジョブが画像を復活させない。
-async function retainDetails(tabId, retainedIds) {
+// 直近に開いた詳細だけ残す。残す詳細も使うタイル・画像は消さない。
+// saveDetail は preparation で直列化されるので、保存中の旧ジョブと競合しない。
+async function pruneDetails(currentId) {
   const meta = await caches.open(META);
-  const tabKey = retentionURL(tabId);
-  const previous = await (await meta.match(tabKey))?.json();
-  await meta.put(tabKey, new Response(JSON.stringify({ retainedIds })));
-  const retained = new Set();
-  const manifests = new Map();
+  const current = detailURL(currentId);
+  const manifests = [];
   for (const key of await meta.keys()) {
     const url = typeof key === "string" ? key : key.url;
-    const entry = await (await meta.match(key)).json();
-    if (new URL(url).pathname.startsWith("/rusutsu/offline-tab/")) {
-      for (const id of entry.retainedIds || []) retained.add(id);
-    } else manifests.set(url, entry);
+    if (!new URL(url).pathname.startsWith("/rusutsu/offline-detail/")) continue;
+    manifests.push({ url, entry: await (await meta.match(key)).json() });
   }
-  const removed = (previous?.retainedIds || []).filter(id => !retained.has(id));
-  const discarded = removed
-    .map(id => manifests.get(detailURL(id)))
-    .filter(Boolean);
-  for (const id of removed) {
-    await meta.delete(detailURL(id));
-    manifests.delete(detailURL(id));
-  }
+  manifests.sort((a, b) =>
+    a.url === current
+      ? -1
+      : b.url === current
+        ? 1
+        : (b.entry.usedAt || 0) - (a.entry.usedAt || 0),
+  );
+  const kept = manifests.slice(0, RETAINED_DETAILS);
+  const discarded = manifests.slice(RETAINED_DETAILS);
+  if (!discarded.length) return;
+  for (const { url } of discarded) await meta.delete(url);
   await writes.catch(() => {});
   for (const [name, field] of [
     [TILES, "tiles"],
     [IMAGES, "images"],
   ]) {
-    const keep = new Set(
-      [...manifests.values()].flatMap(entry => entry[field] || []),
-    );
+    const keep = new Set(kept.flatMap(({ entry }) => entry[field] || []));
     const cache = await caches.open(name);
-    for (const url of new Set(discarded.flatMap(entry => entry[field] || []))) {
+    for (const url of new Set(
+      discarded.flatMap(({ entry }) => entry[field] || []),
+    )) {
       if (!keep.has(url)) {
         await cache.delete(url);
         sizes.get(name)?.delete(url);
@@ -178,10 +201,8 @@ async function retainDetails(tabId, retainedIds) {
 
 async function saveDetail(data, clientId) {
   if (views.has(clientId) && views.get(clientId) !== data.id) return;
-  const key = new URL(
-    `/rusutsu/offline-detail/${encodeURIComponent(data.id)}`,
-    homeURL,
-  ).href;
+  const key = detailURL(data.id);
+  const usedAt = Date.now();
   const meta = await caches.open(META);
   const previous = await (await meta.match(key))?.json();
   const ownedTiles = [
@@ -199,6 +220,7 @@ async function saveDetail(data, clientId) {
       new Response(
         JSON.stringify({
           state,
+          usedAt,
           minZoom: data.minZoom,
           maxZoom: data.maxZoom,
           tiles: ownedTiles,
@@ -209,6 +231,7 @@ async function saveDetail(data, clientId) {
       ),
     );
   await status("saving");
+  await pruneDetails(data.id);
   try {
     await pool(
       (data.assets || []).filter(
@@ -284,10 +307,48 @@ async function saveHome(response) {
   ])
     headers.delete(name);
   await cache.put(homeURL, new Response(html, { status: 200, headers }));
+  await purgeOldBuild(paths);
+}
+// 版が変わったら、新しい HTML が参照しない旧ビルドの JS/CSS を消す。
+// 遅延読み込みの chunk は、開いている画面から送り直してもらう。
+async function purgeOldBuild(paths) {
+  const build = [
+    ...new Set(paths.filter(isBuildAsset).map(url => url.href)),
+  ].sort();
+  const meta = await caches.open(META);
+  const previous = await (await meta.match(buildURL))?.json();
+  if (JSON.stringify(previous) === JSON.stringify(build)) return;
+  await writes.catch(() => {});
+  const keep = new Set(build);
+  const assets = await caches.open(ASSETS);
+  for (const key of await assets.keys()) {
+    const url = new URL(typeof key === "string" ? key : key.url);
+    if (isBuildAsset(url) && !keep.has(url.href)) {
+      await assets.delete(key);
+      sizes.get(ASSETS)?.delete(url.href);
+    }
+  }
+  await meta.put(buildURL, new Response(JSON.stringify(build)));
+  for (const client of (await self.clients.matchAll?.({ type: "window" })) ||
+    [])
+    client.postMessage({ type: "REWARM" });
 }
 self.addEventListener("activate", event => {
   // 更新時は既存タブが閉じるまで待つ（skipWaiting で実行中の版を差し替えない）。
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    Promise.all([
+      self.clients.claim(),
+      // 旧版のタブ別保持リストと一覧画面のタイル。今は使わない。
+      caches.delete(`${PREFIX}-overview-tiles`),
+      caches.open(META).then(async meta => {
+        for (const key of await meta.keys()) {
+          const url = typeof key === "string" ? key : key.url;
+          if (new URL(url).pathname.startsWith("/rusutsu/offline-tab/"))
+            await meta.delete(key);
+        }
+      }),
+    ]).catch(() => {}),
+  );
 });
 self.addEventListener("message", event => {
   if (
@@ -297,20 +358,7 @@ self.addEventListener("message", event => {
     return;
   const source = new URL(event.source.url);
   if (!isMapPath(source.pathname)) return;
-  if (event.data?.type === "SET_VIEW") {
-    views.set(event.source.id, event.data.id);
-    if (
-      typeof event.data.tabId === "string" &&
-      Array.isArray(event.data.retainedIds) &&
-      event.data.retainedIds.length <= 2 &&
-      event.data.retainedIds.every(id => typeof id === "string")
-    ) {
-      preparation = preparation
-        .catch(() => {})
-        .then(() => retainDetails(event.data.tabId, event.data.retainedIds));
-      event.waitUntil(preparation.catch(() => {}));
-    }
-  }
+  if (event.data?.type === "SET_VIEW") views.set(event.source.id, event.data.id);
   if (
     event.data?.type === "SAVE_DETAIL" &&
     typeof event.data.id === "string" &&
@@ -361,9 +409,8 @@ self.addEventListener("fetch", event => {
         } catch {
           /* 保存禁止でもオンラインの地図を表示する。 */
         }
-        // 詳細背景は SAVE_DETAIL の所有付き保存に任せる。一覧背景は別枠。
-        if (views.get(event.clientId)) return fetchPublic(request);
-        return cachedAsset(request, OVERVIEW_TILES, 512);
+        // 詳細の計画分は SAVE_DETAIL が保存する。それ以外も表示した分は残す。
+        return cachedAsset(request, VIEWED_TILES, 1500);
       })(),
     );
     return;
@@ -404,13 +451,22 @@ self.addEventListener("fetch", event => {
       } catch {
         /* 保存禁止でも通信を続ける。 */
       }
-      const usableNetwork = network.then(response =>
-        !response.ok && cached ? cached : response,
-      );
-      if (!cached) return usableNetwork;
-      // 保存済みなら通信を待たず表示。新しいHTMLは裏で次回用に保存する。
-      usableNetwork.catch(() => {});
-      return cached;
+      if (!cached) return network;
+      // 通信を優先し、デプロイ後に旧版の画面で起動しないようにする。
+      // 圏外・サーバー障害・応答が遅いときだけ保存済みの画面を出す。
+      return new Promise(resolve => {
+        const timer = setTimeout(() => resolve(cached), NAVIGATION_TIMEOUT);
+        network.then(
+          response => {
+            clearTimeout(timer);
+            resolve(response.ok ? response : cached);
+          },
+          () => {
+            clearTimeout(timer);
+            resolve(cached);
+          },
+        );
+      });
     })(),
   );
 });

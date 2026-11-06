@@ -21,6 +21,34 @@ export type TicketSection = {
   /** overview のように複数のルートキーを1画面に出す場合に使う */
   keys: string[];
   description: string;
+  /**
+   * 同じ配列を用途で分けて見せるときの絞り込み（料金をリフト券とセット券に分ける）。
+   * 表示だけを分け、保存されるJSONの形は変えない
+   */
+  itemFilter?: (item: unknown, data: Record<string, unknown>) => boolean;
+  /** 該当する項目が無いスキー場ではタブを出さない */
+  hideWhenEmpty?: boolean;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
+/** 券種にレンタルが付いた料金か（リフト券とレンタルのセット料金） */
+export const isRentalBundleOffer = (
+  item: unknown,
+  data: Record<string, unknown>,
+): boolean => {
+  if (!isRecord(item) || !Array.isArray(data.products)) return false;
+  const product = data.products.find(
+    candidate => isRecord(candidate) && candidate.id === item.product_id,
+  );
+  return (
+    isRecord(product) &&
+    Array.isArray(product.included_items) &&
+    product.included_items.some(
+      included => isRecord(included) && included.type === "rental",
+    )
+  );
 };
 
 export const TICKET_SECTIONS: TicketSection[] = [
@@ -53,6 +81,14 @@ export const TICKET_SECTIONS: TicketSection[] = [
     keys: ["audiences"],
     description:
       "年齢・学校区分で決まる料金表の行。is_default はちょうど1件（どの条件にも当てはまらない人が買う区分）。性別・地域条件はここに入れない。",
+  },
+  {
+    id: "rental_audiences",
+    title: "レンタル人物区分",
+    kind: "array",
+    keys: ["rental_audiences"],
+    description:
+      "レンタル料金だけで使う人物区分（券と年齢の分け方が違う「小人（小学生以下）」等）。券と同じ区分で足りるなら空にして人物区分を参照する。",
   },
   {
     id: "calendars",
@@ -96,11 +132,30 @@ export const TICKET_SECTIONS: TicketSection[] = [
   },
   {
     id: "offers",
-    title: "料金",
+    title: "リフト料金",
     kind: "array",
     keys: ["offers"],
+    itemFilter: (item, data) => !isRentalBundleOffer(item, data),
     description:
       "誰が・どの券を・いつ使い・どこで買い・いくらか。1つの offer は1つの金額を持つ（日付で変わるならカレンダーごとに分ける）。",
+  },
+  {
+    id: "rentals",
+    title: "レンタル料金",
+    kind: "array",
+    keys: ["rentals"],
+    description:
+      "用具の組み合わせ × 対象者 × 期間 × 適用日 = 1件。セットと単品をすべて記録する。空は「未収集」の意味。リフト券とのセット券は券種の付帯サービスに書く。",
+  },
+  {
+    id: "bundle_offers",
+    title: "セット料金",
+    kind: "array",
+    keys: ["offers"],
+    itemFilter: isRentalBundleOffer,
+    hideWhenEmpty: true,
+    description:
+      "リフト券とレンタルのセット料金。付帯サービスにレンタルを持つ券種の料金がここに出る。料金の書き方はリフト料金と同じ。",
   },
   {
     id: "party_rules",
@@ -144,6 +199,8 @@ export const KEY_LABELS: Record<string, string> = {
   offers: "料金",
   party_rules: "同行者ルール",
   fees: "追加費用",
+  rental_audiences: "レンタル人物区分",
+  rentals: "レンタル料金",
   calculation_policy: "計算方針",
   data_quality: "データ品質",
 
@@ -195,7 +252,8 @@ export const KEY_LABELS: Record<string, string> = {
   operating: "運行する",
 
   validity: "有効範囲",
-  mode: "有効範囲の種別",
+  // 券種の有効範囲とレンタルの貸出期間の両方で使う。見出しの下に出るので「種別」で足りる
+  mode: "種別",
   hours: "時間数",
   days: "日数",
   points: "ポイント数",
@@ -257,6 +315,12 @@ export const KEY_LABELS: Record<string, string> = {
   applies_to_product_ids: "対象の券種",
   applies_to_channel_ids: "対象の購入経路",
 
+  shop_name_ja: "ショップ名",
+  items: "用具",
+  grade_ja: "グレード",
+  duration: "貸出期間",
+  after_days: "何日目より後の追加か",
+
   tax_included: "税込",
   stacking_default: "併用可否の既定値",
   best_price_hint_ja: "最安提示のヒント",
@@ -301,6 +365,18 @@ export const ID_REF_TARGETS: Record<string, string> = {
   // related_ids は offer / audience / product などを横断して指す
   related_ids: "any",
 };
+
+/**
+ * 参照先を、キー名と置かれた場所から決める。
+ * レンタル料金の audience_ids だけは、券の人物区分とレンタル人物区分の両方を指せる。
+ */
+export const refTargetOf = (
+  key: string,
+  path: readonly (string | number)[],
+): string | undefined =>
+  key === "audience_ids" && path[0] === "rentals"
+    ? "rental_audience_choices"
+    : ID_REF_TARGETS[key];
 
 /** 複数行で入力させる文章フィールド */
 export const MULTILINE_KEYS = new Set([

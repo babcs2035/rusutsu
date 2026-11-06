@@ -14,10 +14,16 @@ export function useOfflineMap() {
     let disposed = false;
     let observer: PerformanceObserver | undefined;
     let refresh = () => {};
+    let rewarm = () => {};
     const resume = () => {
       if (navigator.onLine) refresh();
     };
+    // 版の切替で旧ビルドを消した後、この画面が読み込んだ chunk を保存し直す。
+    const receive = (event: MessageEvent) => {
+      if (event.data?.type === "REWARM") rewarm();
+    };
     window.addEventListener("online", resume);
+    navigator.serviceWorker.addEventListener("message", receive);
     void navigator.serviceWorker
       .register("/rusutsu/map-sw.js", {
         scope: "/rusutsu",
@@ -34,6 +40,7 @@ export function useOfflineMap() {
         warm(performance.getEntriesByType("resource"));
         observer = new PerformanceObserver(list => warm(list.getEntries()));
         observer.observe({ type: "resource" });
+        rewarm = () => warm(performance.getEntriesByType("resource"));
         refresh = () => {
           warm(performance.getEntriesByType("resource"));
           registration.active?.postMessage({ type: "SAVE_HOME" });
@@ -47,6 +54,7 @@ export function useOfflineMap() {
       disposed = true;
       observer?.disconnect();
       window.removeEventListener("online", resume);
+      navigator.serviceWorker.removeEventListener("message", receive);
     };
   }, []);
 }

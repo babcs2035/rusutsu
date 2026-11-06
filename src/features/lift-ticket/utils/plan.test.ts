@@ -149,14 +149,15 @@ test("ナイター込みでもナイター営業が無い日は1日（ナイタ�
   );
 });
 
-test("定休日を含む日程は合計を出さない", () => {
-  // 営業していない日に料金を出すと誤案内になる
+test("定休日を含む日程は、定休日を料金なしにして営業日だけで合計する", () => {
+  // 営業していない日に料金を出すと誤案内になる。合計は営業日の分（仕様 PB27・M04）
   const result = plan(NO_DAY_PASS, [
     ["2026-01-27", DAY], // 火曜（定休日）
     ["2026-01-28", DAY],
   ]);
   assert.equal(result.days[0].result.status, "closed");
-  assert.equal(result.total, null);
+  assert.equal(result.days[0].result.payableTotal, null);
+  assert.equal(result.total, result.days[1].result.payableTotal);
 });
 
 test("出典は日をまたいで重複を除いて番号順に並べる", () => {
@@ -466,10 +467,16 @@ test("営業時間が不明な「1日」の日は1日券にし、残りの日を
   assert.equal(result.total, 13200 + 36000);
 });
 
-test("営業時間を超える時間指定は25時間券でもまかなえない", () => {
+test("営業時間を超える時間指定は、1日と同じ料金（25時間券との比較も同じ）と営業時間の注記を出す", () => {
+  // 仕様S7: 以前は料金なしにしていた。この日はナイター営業が無く、通常営業は8時間
   const result = plan(MULTI, [["2026-01-14", { kind: "hours", hours: 9 }]]);
-  assert.equal(result.total, null);
-  assert.equal(result.multiDay, null);
+  const day = plan(MULTI, [["2026-01-14", DAY]]);
+  assert.equal(result.total, day.total);
+  assert.ok(
+    result.days[0].options?.notes.includes(
+      "この日の営業は8時間（8:30〜16:30）です",
+    ),
+  );
 });
 
 const twoDayPool = (data: LiftTicketData): LiftTicketData => ({

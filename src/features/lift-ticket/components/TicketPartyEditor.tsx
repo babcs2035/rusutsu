@@ -63,26 +63,31 @@ type Props = {
 const DURATION_LABELS: Record<string, string> = {
   day: "1日",
   "day-night": "1日＋ナイター",
+  night: "ナイター",
   ...Object.fromEntries(
     TICKET_HOUR_OPTIONS.map(hours => [`h${hours}`, `${hours}時間`]),
   ),
 };
 
 /**
- * 滑る長さは1つのドロップダウンで選ぶ（「1日」「1日＋ナイター」「1〜12時間」）。
+ * 滑る長さは1つのドロップダウンで選ぶ（「1日」「1日＋ナイター」「ナイター」「1〜9時間」）。
  * 時間を別の入力欄にすると、数字だけ（「4」）では何のことか分からず、行も折り返す
  */
 const durationKeyOf = (duration: TicketDayPlan["duration"]) =>
   duration.kind === "hours"
     ? `h${duration.hours}`
-    : duration.withNight
-      ? "day-night"
-      : "day";
+    : duration.kind === "night"
+      ? "night"
+      : duration.withNight
+        ? "day-night"
+        : "day";
 
 const durationOfKey = (key: string): TicketDayPlan["duration"] =>
   key.startsWith("h")
     ? { kind: "hours", hours: Number(key.slice(1)) }
-    : { kind: "day", withNight: key === "day-night" };
+    : key === "night"
+      ? { kind: "night" }
+      : { kind: "day", withNight: key === "day-night" };
 
 const sanitizeNumber = (value: string) => {
   const digits = value.replace(/\D/g, "");

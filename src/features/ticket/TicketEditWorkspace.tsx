@@ -301,9 +301,13 @@ export function TicketEditWorkspace({
   const fieldSpecOf = (key: string): FieldSpec | null =>
     schemaSpec.fields.find(field => field.key === key)?.spec ?? null;
 
-  const countOf = (key: string): number | null => {
-    const value = data?.[key];
-    return Array.isArray(value) ? value.length : null;
+  const countOf = (item: (typeof TICKET_SECTIONS)[number]): number | null => {
+    const value = data?.[item.keys[0]];
+    if (!Array.isArray(value)) return null;
+    const { itemFilter } = item;
+    return itemFilter && data
+      ? value.filter(entry => itemFilter(entry, data)).length
+      : value.length;
   };
 
   return (
@@ -465,8 +469,9 @@ export function TicketEditWorkspace({
           )}
           <div className="flex gap-4 overflow-x-auto border-b border-gray-200">
             {TICKET_SECTIONS.map(item => {
-              const count =
-                item.kind === "array" ? countOf(item.keys[0]) : null;
+              const count = item.kind === "array" ? countOf(item) : null;
+              if (item.hideWhenEmpty && !count && sectionId !== item.id)
+                return null;
               return (
                 <Button
                   key={item.id}
@@ -553,8 +558,11 @@ export function TicketEditWorkspace({
                   const items = Array.isArray(data[key])
                     ? (data[key] as unknown[])
                     : [];
+                  const { itemFilter } = section;
                   return (
                     <CollectionSection
+                      // 同じ配列を分けた画面どうしで、開閉・絞り込みの状態を持ち越さない
+                      key={section.id}
                       collectionKey={key}
                       title={section.title}
                       description={section.description}
@@ -563,6 +571,9 @@ export function TicketEditWorkspace({
                       data={data}
                       idIndex={idIndex}
                       update={update}
+                      itemFilter={
+                        itemFilter ? item => itemFilter(item, data) : undefined
+                      }
                     />
                   );
                 })()

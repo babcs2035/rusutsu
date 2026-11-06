@@ -27,8 +27,10 @@ services:
       - INTERNAL_DATA_API_DIAGNOSTICS_TOKEN=${INTERNAL_DATA_API_DIAGNOSTICS_TOKEN}
       - CRAWLER_ARTIFACT_ROOT=/app/var/crawler-artifacts
       - CRAWLER_ARTIFACT_RETENTION_DAYS=${CRAWLER_ARTIFACT_RETENTION_DAYS:-30}
+      - SHARE_IMAGE_CACHE_ROOT=/app/var/share-images
     volumes:
       - crawler_artifacts:/app/var/crawler-artifacts
+      - share_images:/app/var/share-images
     restart: unless-stopped
     init: true
     healthcheck:
@@ -64,3 +66,4 @@ services:
 volumes:
   postgres_data:
   crawler_artifacts:
+  share_images:

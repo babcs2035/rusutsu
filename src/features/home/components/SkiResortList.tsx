@@ -150,9 +150,19 @@ const priceText = (
   if (["unavailable", "outside_season", "closed"].includes(ticket.status)) {
     return ticket.status === "outside_season" ? "営業期間外" : "不明";
   }
+  // セット券の合計が出たときは、レンタルを借りる全員の料金が出ている
+  const bundleApplied =
+    bundle != null && bundle.lines.length > 0 && bundle.total != null;
+  // 選んだ用具のレンタル情報が無いスキー場は、詳細の「¥3,900 ＋ゴーグル」を
+  // 一覧の幅に収まるよう「¥3,900＋α」と縮めて出す（「〜」は一部不明のとき）
+  const rentalMissing =
+    (rental?.missingLabels.length ?? 0) > 0 ||
+    (rental?.status === "not_collected" && !bundleApplied);
+  const suffix = (uncertain: boolean) =>
+    rentalMissing ? "＋α" : uncertain ? "〜" : "";
   // セット券（リフト券＋レンタル）のほうが安いときは、その合計を使う
-  if (bundle && bundle.lines.length > 0 && bundle.total != null) {
-    return `¥${bundle.total.toLocaleString("ja-JP")}`;
+  if (bundleApplied) {
+    return `¥${bundle.total?.toLocaleString("ja-JP")}${suffix(false)}`;
   }
   const ticketAmount = ticket.ticketTotal ?? ticket.knownTicketTotal;
   const rentalAmount = rental?.total ?? rental?.knownTotal ?? 0;
@@ -160,22 +170,31 @@ const priceText = (
     ticket.status === "partial" ||
     (rental != null &&
       rental.status !== "none" &&
-      rental.status !== "complete");
+      rental.status !== "complete" &&
+      rental.status !== "not_collected");
   if (uncertain && ticketAmount + rentalAmount === 0) {
     return "料金一部不明";
   }
-  return `¥${(ticketAmount + rentalAmount).toLocaleString("ja-JP")}${
-    uncertain ? "〜" : ""
-  }`;
+  return `¥${(ticketAmount + rentalAmount).toLocaleString("ja-JP")}${suffix(
+    uncertain,
+  )}`;
 };
 
-const ListMetric = ({ label, value }: { label: string; value: string }) => (
+const ListMetric = ({
+  label,
+  value,
+  description,
+}: {
+  label: string;
+  value: string;
+  description?: string;
+}) => (
   <span className="flex min-w-0 items-baseline gap-1 overflow-hidden whitespace-nowrap">
     <span className="shrink-0 text-[11px] font-semibold text-gray-700 @min-[400px]:text-xs">
       {label}
     </span>
     <span
-      title={value}
+      title={description ?? value}
       className="truncate text-[13px] font-bold leading-tight tabular-nums text-blue-700 @min-[300px]:text-sm @min-[400px]:text-base"
     >
       {value}
@@ -206,7 +225,17 @@ const OperatingMetric = ({
       : hasMap === false && total > 0
         ? `不明/${total}`
         : "不明";
-  return <ListMetric label={label} value={value} />;
+  return (
+    <ListMetric
+      label={label}
+      value={value}
+      description={
+        hasMap && count && count.active !== null && !isLoading
+          ? `${label} ${value}：営業情報と対応済みの${label}のうち、${label === "コース" ? "滑走可能" : "運行中・待機中"}な数／対応済みの総数`
+          : undefined
+      }
+    />
+  );
 };
 
 /**

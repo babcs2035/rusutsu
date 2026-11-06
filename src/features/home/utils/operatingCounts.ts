@@ -18,7 +18,7 @@ export type ResortOperatingCounts = {
 };
 
 const isMapped = (feature: { statusMappingNames?: string[] }) =>
-  (feature.statusMappingNames?.length ?? 0) > 0;
+  feature.statusMappingNames?.some(name => name.trim() !== "") ?? false;
 
 const isOpen = (status: string | null | undefined) =>
   status && /[○〇◯△]/u.test(status);
@@ -48,34 +48,28 @@ export const summarizeCourseStatusForList = (
   };
 };
 
-/** 詳細と同じ地図上のコースと状態から集計する。 */
+/** 営業情報に対応付けたコースだけを一覧の分母にする。 */
 export const summarizeCoursesForList = (
   mapData: FinalizedResortMapData | null,
   fallbackTotal: number,
 ): OperatingCount | null => {
-  const summary = createMapCourseStatusSummary(mapData?.courses);
-  return summary && summary.total > 0
-    ? summarizeCourseStatusForList(summary)
+  const courses = mapData?.courses?.features;
+  return courses?.length
+    ? summarizeMappedCourses(courses)
     : unknownCount(fallbackTotal);
 };
 
 export const summarizeMappedCourses = (
   courses: FinalizedCourseFeature[],
 ): OperatingCount | null => {
-  const groups = new Map<string, Array<string | null | undefined>>();
-  for (const course of courses) {
-    if (!isMapped(course)) continue;
-    const statuses = groups.get(course.groupId) ?? [];
-    statuses.push(course.properties.status);
-    groups.set(course.groupId, statuses);
-  }
-
-  const states = [...groups.values()].map(statuses => {
-    if (statuses.some(isOpen)) return true;
-    if (statuses.every(isClosed)) return false;
-    return null;
+  const summary = createMapCourseStatusSummary({
+    source: "mixed",
+    baseSource: "mixed",
+    fileName: "",
+    sourceUrls: [],
+    features: courses.filter(isMapped),
   });
-  return summarize(states);
+  return summary ? summarizeCourseStatusForList(summary) : null;
 };
 
 export const summarizeMappedLifts = (

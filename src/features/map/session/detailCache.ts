@@ -1,17 +1,42 @@
-import type { MapSkiResort, SkiResortDetail } from "@/types/skiResorts";
+import type { SkiResortDetail } from "@/types/skiResorts";
 
 // 古い営業情報を含む詳細も復元させない。再取得した現在値で保存し直す。
 const DETAIL_CACHE_VERSION = 3;
+// 圏外で開き直すのは直近の詳細だけ。直前の 1 件まで残す。比較中のものは別に全件残す。
+const RETAINED_VIEWS = 2;
+
+type CacheEntry = {
+  id: string;
+  version: number;
+  data: SkiResortDetail;
+  viewedAt?: number;
+  compared?: boolean;
+};
+
+/** 直近に開いた詳細と比較中の詳細だけ残し、それ以外を消す。 */
+function prune(store: IDBObjectStore, entries: CacheEntry[]) {
+  const recent = new Set(
+    entries
+      .filter(entry => entry.viewedAt)
+      .sort((a, b) => (b.viewedAt ?? 0) - (a.viewedAt ?? 0))
+      .slice(0, RETAINED_VIEWS)
+      .map(entry => entry.id),
+  );
+  for (const entry of entries) {
+    if (!entry.compared && !recent.has(entry.id)) store.delete(entry.id);
+  }
+}
 
 // IndexedDB の structured clone を使い、詳細内の Date を文字列に変えない。
 async function openCache(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open("rusutsu-offline-v1", 2);
+    const request = indexedDB.open("rusutsu-offline-v1", 3);
     request.onupgradeneeded = () => {
-      for (const name of ["details", "views"]) {
-        if (!request.result.objectStoreNames.contains(name))
-          request.result.createObjectStore(name, { keyPath: "id" });
-      }
+      const db = request.result;
+      if (!db.objectStoreNames.contains("details"))
+        db.createObjectStore("details", { keyPath: "id" });
+      // v2 までのタブ別一覧・保持リスト。閉じたタブの分が残り続けるので捨てる。
+      if (db.objectStoreNames.contains("views")) db.deleteObjectStore("views");
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
@@ -44,31 +69,49 @@ export async function readDetailCache(
     return null;
   }
 }
-export async function writeDetailCache(data: SkiResortDetail, tabId?: string) {
+/** 詳細を開いたときは viewedAt、比較で取得したときは compared を付けて保存する。 */
+export async function writeDetailCache(
+  data: SkiResortDetail,
+  { compared = false }: { compared?: boolean } = {},
+) {
+  return updateCache(store => {
+    const previous = store.get(data.id);
+    previous.onsuccess = () => {
+      const entry: CacheEntry = previous.result ?? { id: data.id };
+      store.put({
+        ...entry,
+        version: DETAIL_CACHE_VERSION,
+        data,
+        ...(compared ? { compared: true } : { viewedAt: Date.now() }),
+      });
+      const all = store.getAll();
+      all.onsuccess = () => prune(store, all.result);
+    };
+  });
+}
+
+/** 比較から外したスキー場は、直近に開いた 2 件に入っていなければ消す。 */
+export async function retainComparedDetails(ids: string[]) {
+  const compared = new Set(ids);
+  return updateCache(store => {
+    const all = store.getAll();
+    all.onsuccess = () => {
+      const entries: CacheEntry[] = all.result.map(entry => {
+        const next = { ...entry, compared: compared.has(entry.id) };
+        if (next.compared !== Boolean(entry.compared)) store.put(next);
+        return next;
+      });
+      prune(store, entries);
+    };
+  });
+}
+
+async function updateCache(update: (store: IDBObjectStore) => void) {
   try {
     const db = await openCache();
     await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction(["details", "views"], "readwrite");
-      const store = tx.objectStore("details");
-      const put = () => {
-        store.put({
-          id: data.id,
-          version: DETAIL_CACHE_VERSION,
-          data,
-          savedAt: Date.now(),
-        });
-        const all = store.getAll();
-        all.onsuccess = () => {
-          if (all.result.length > 20) tx.abort();
-        };
-      };
-      if (tabId) {
-        const owner = tx.objectStore("views").get(tabId);
-        owner.onsuccess = () => {
-          if (owner.result?.resortIds?.includes(data.id)) put();
-          else tx.abort(); // 遅れて完了した取得で、削除した詳細を復活させない。
-        };
-      } else put();
+      const tx = db.transaction("details", "readwrite");
+      update(tx.objectStore("details"));
       tx.oncomplete = () => {
         db.close();
         resolve();
@@ -82,94 +125,5 @@ export async function writeDetailCache(data: SkiResortDetail, tabId?: string) {
   } catch {
     /* 端末の保存制限は画面の読み込みを妨げない。 */
     return false;
-  }
-}
-
-/** 一覧の実データもタブ別に保存。別タブのHTML更新に引きずられない。 */
-export async function readOverviewCache(
-  id: string,
-): Promise<MapSkiResort[] | null> {
-  try {
-    const db = await openCache();
-    return await new Promise((resolve, reject) => {
-      const tx = db.transaction("views", "readonly");
-      const request = tx.objectStore("views").get(id);
-      request.onsuccess = () =>
-        resolve(
-          request.result?.version === 1 && Array.isArray(request.result.data)
-            ? request.result.data
-            : null,
-        );
-      request.onerror = () => reject(request.error);
-      tx.oncomplete = () => db.close();
-      tx.onabort = () => {
-        db.close();
-        reject(tx.error);
-      };
-    });
-  } catch {
-    return null;
-  }
-}
-export async function writeOverviewCache(id: string, data: MapSkiResort[]) {
-  try {
-    const db = await openCache();
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction("views", "readwrite");
-      const store = tx.objectStore("views");
-      const previous = store.get(id);
-      previous.onsuccess = () => {
-        store.put({ ...previous.result, id, version: 1, data });
-        const all = store.getAll();
-        all.onsuccess = () => {
-          if (all.result.length > 20) tx.abort();
-        };
-      };
-      tx.oncomplete = () => {
-        db.close();
-        resolve();
-      };
-      tx.onabort = () => {
-        db.close();
-        reject(tx.error);
-      };
-    });
-  } catch {
-    /* キャッシュ禁止でもSSRで受け取った一覧を表示する。 */
-  }
-}
-
-/** 各タブの参照と削除を同じトランザクションで更新する。休止タブも保護する。 */
-export async function retainDetailCaches(tabId: string, resortIds: string[]) {
-  try {
-    const db = await openCache();
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction(["details", "views"], "readwrite");
-      const views = tx.objectStore("views");
-      const request = views.get(tabId);
-      request.onsuccess = () => {
-        const previous: string[] = request.result?.resortIds ?? [];
-        views.put({ ...request.result, id: tabId, resortIds });
-        const all = views.getAll();
-        all.onsuccess = () => {
-          const retained = new Set<string>(
-            all.result.flatMap(view => view.resortIds ?? []),
-          );
-          for (const id of previous) {
-            if (!retained.has(id)) tx.objectStore("details").delete(id);
-          }
-        };
-      };
-      tx.oncomplete = () => {
-        db.close();
-        resolve();
-      };
-      tx.onabort = () => {
-        db.close();
-        reject(tx.error);
-      };
-    });
-  } catch {
-    /* 保存禁止でも通常の表示を続ける。 */
   }
 }

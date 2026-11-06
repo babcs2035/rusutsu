@@ -25,6 +25,11 @@ import {
   seasonContains,
   sourceQuotesOf,
 } from "./calculateLiftTicket";
+import {
+  calculateDurationOptions,
+  formatHours,
+  operatingSegmentsOn,
+} from "./durationOptions";
 
 export const TICKET_RENTAL_ITEM_LABELS: Record<TicketRentalItem, string> = {
   skis: "板",
@@ -104,10 +109,40 @@ export const formatRentalRequest = (
   return gearExtras ? `${sport}${extras.join("＋")}` : extras.join("＋");
 };
 
+/**
+ * ウェア上下（wear）は上（wear_top）と下（wear_bottom）の両方を含む。
+ * 上下セットが無く上・下が別料金の施設では、上＋下で「ウェア」を借りる（R09）
+ */
+const WEAR_HALVES = ["wear_top", "wear_bottom"];
 const coveredItemsOf = (rental: LiftTicketRental) =>
-  new Set(
-    rental.items.flatMap(item => SET_ITEMS[item] ?? [item as TicketRentalItem]),
+  new Set<string>(
+    rental.items.flatMap(item =>
+      item === "wear"
+        ? ["wear", ...WEAR_HALVES]
+        : item === "snowboard_set"
+          ? [...(SET_ITEMS[item] ?? []), "snowboard_bindings"]
+          : (SET_ITEMS[item] ?? [item]),
+    ),
   );
+
+/**
+ * 計算で揃える物。ウェアは上・下に分け、ビンディングが別料金の施設では
+ * ボード板にビンディングを足す（R16）
+ */
+const requiredItemsOf = (data: LiftTicketData, items: TicketRentalItem[]) => {
+  const rentals = data.rentals ?? [];
+  const separateBindings = rentals.some(
+    rental =>
+      rental.items.length === 1 && rental.items[0] === "snowboard_bindings",
+  );
+  return items.flatMap<string>(item =>
+    item === "wear"
+      ? WEAR_HALVES
+      : item === "snowboard" && separateBindings
+        ? ["snowboard", "snowboard_bindings"]
+        : [item],
+  );
+};
 
 /** セット券に含まれていても、リフト券＋レンタルの代わりとして比べてよい付帯サービス */
 const BUNDLE_COMPATIBLE_ITEM_TYPES = [
@@ -118,14 +153,21 @@ const BUNDLE_COMPATIBLE_ITEM_TYPES = [
   "parking",
 ];
 
+/** セット券として比べる券の有効期間（1日券・N時間券・連続N日券） */
+const BUNDLE_VALIDITY_MODES = [
+  "calendar_day",
+  "hours_from_first_use",
+  "consecutive_days",
+];
+
 /**
- * リフト券とレンタルをまとめて売るセット券か（1日券で、レンタル以外の
+ * リフト券とレンタルをまとめて売るセット券か（1日券・時間券・連続日券で、レンタル以外の
  * 付帯がレッスン・内容不明でないもの）。レッスン付きなどは別物なので比べない。
  */
 export const isRentalBundleProduct = (product: LiftTicketProduct) => {
   const items = product.included_items ?? [];
   return (
-    product.validity?.mode === "calendar_day" &&
+    BUNDLE_VALIDITY_MODES.includes(product.validity?.mode ?? "") &&
     (product.add_on_to_product_ids?.length ?? 0) === 0 &&
     items.some(item => item.type === "rental") &&
     items.every(item =>
@@ -144,15 +186,25 @@ export const bundleCoveredItemsOf = (
   product: LiftTicketProduct,
   sport: TicketRentalSport,
 ): Set<TicketRentalItem> => {
-  const text = (product.included_items ?? [])
-    .filter(item => item.type === "rental")
+  const covered = new Set<TicketRentalItem>();
+  const rentalEntries = (product.included_items ?? []).filter(
+    item => item.type === "rental",
+  );
+  // 用具が構造化されていれば、名称は読まずにそれを使う
+  const structured = rentalEntries.flatMap(item => item.rental_items ?? []);
+  if (structured.length > 0) {
+    for (const item of structured) {
+      if (TICKET_RENTAL_ITEMS_BY_SPORT[sport].includes(item)) covered.add(item);
+    }
+    return covered;
+  }
+  const text = rentalEntries
     .map(item =>
       [item.name_ja, item.description_ja]
         .filter((part): part is string => Boolean(part))
         .join(" "),
     )
     .join(" ");
-  const covered = new Set<TicketRentalItem>();
   const skiOnly = /スキー/.test(text) && !/ボード|スノボ/.test(text);
   const boardOnly = /ボード|スノボ/.test(text) && !/スキー/.test(text);
   if (
@@ -173,6 +225,12 @@ export const bundleCoveredItemsOf = (
  * （rental_audiences）のうち、**レンタルが参照している区分だけ**で判定する。
  * 券にしか無い区分（シニア等）まで候補に入れると、レンタルの料金が引けなくなる
  */
+const toMinutesOrNull = (time?: string | null) => {
+  if (!time) return null;
+  const [hour, minute] = time.split(":").map(Number);
+  return hour * 60 + minute;
+};
+
 const rentalAudienceMatcher = (data: LiftTicketData) => {
   const referenced = new Set(
     (data.rentals ?? []).flatMap(rental => rental.audience_ids ?? []),
@@ -189,17 +247,114 @@ const rentalAudienceMatcher = (data: LiftTicketData) => {
     });
 };
 
+/**
+ * 身長・学年の書類など、入力（年齢・学校区分）では判定できない資格で決まる
+ * 子ども料金（「身長130cm以下」）。小学生・未就学児の条件付き候補にだけ使う（CH20）。
+ * 確定には使わない（availableOn が資格付きを外す）
+ */
+const rentalQualifiedChildMatcher = (data: LiftTicketData) => {
+  const audienceById = new Map<string, LiftTicketAudience>(
+    [...data.audiences, ...(data.rental_audiences ?? [])].map(audience => [
+      audience.id,
+      audience,
+    ]),
+  );
+  return (rental: LiftTicketRental, group: TicketPartyGroup) => {
+    const category =
+      group.category === "disabled" ? group.baseCategory : group.category;
+    if (!rental.target_qualification) return false;
+    if (category !== "elementary" && category !== "preschool") return false;
+    const audiences = (rental.audience_ids ?? []).map(id =>
+      audienceById.get(id),
+    );
+    return (
+      audiences.length > 0 &&
+      audiences.every(
+        audience =>
+          audience != null &&
+          audience.is_default !== true &&
+          !audience.is_disability_qualified &&
+          (audience.school_levels?.length ?? 0) === 0 &&
+          audience.age_min == null &&
+          audience.age_max == null,
+      )
+    );
+  };
+};
+
+/**
+ * 選んだリフト券の時間帯。
+ * unknown … 希望に合う券が無く、時間帯が決まらない
+ * known   … 券が決まった。start は時間帯券（午後券など）の開始（分）。朝から使う券は null
+ */
+type TicketWindow =
+  | { kind: "unknown" }
+  | { kind: "known"; start: number | null };
+
+/**
+ * 選んだリフト券の時間帯（windowLabel「13:00〜16:30」の開始時刻）を読む。
+ * 一番上の券（primary）を使う。ただし「午後」の希望（usePreference: half_day）のときは、
+ * 時間帯の決まった券（午後券など）があればその最安を使い、無ければ午後に使う前提で
+ * 時間帯は決めない（unknown）
+ */
+const ticketWindowOf = (
+  data: LiftTicketData,
+  input: LiftTicketSearchInput,
+  plan: TicketDayPlan,
+): TicketWindow => {
+  if (plan.duration.kind !== "hours") return { kind: "unknown" };
+  const options = calculateDurationOptions(
+    data,
+    input,
+    plan.date,
+    plan.duration,
+  );
+  const restricted = [options.primary, ...options.timeRestricted]
+    .filter(option => option?.timeRestricted)
+    .sort((left, right) => (left?.total ?? 0) - (right?.total ?? 0))[0];
+  // 「午後」の希望で時間帯券が無いときは、午後に使う前提（朝から使う券とは決めつけない）
+  if (input.usePreference === "half_day" && !restricted) {
+    return { kind: "unknown" };
+  }
+  const chosen =
+    input.usePreference === "half_day" ? restricted : options.primary;
+  if (!chosen) return { kind: "unknown" };
+  const match = chosen.timeRestricted
+    ? /^(\d{1,2}:\d{2})/.exec(chosen.windowLabel ?? "")
+    : null;
+  return { kind: "known", start: toMinutesOrNull(match?.[1]) };
+};
+
 /** その日の滑る長さに使える貸出期間か */
 const fitsDuration = (
   rental: LiftTicketRental,
   duration: TicketDayPlan["duration"],
+  ticketWindow: () => TicketWindow = () => ({ kind: "unknown" }),
 ) => {
   const { mode, hours } = rental.duration;
+  // ナイター用のレンタル（17:00〜など）は「ナイター」にだけ使う
+  if (mode === "night") return duration.kind === "night";
   if (mode === "day") return true;
   if (duration.kind !== "hours") return false;
   if (mode === "hours") return hours != null && hours >= duration.hours;
-  // 半日の時間数が公式に無ければ、4時間以下の滑走にだけ当てる
-  if (mode === "half_day") return duration.hours <= (hours ?? 4);
+
+  if (mode === "half_day") {
+    // 開始時刻のある半日料金（13:00〜）は、選んだリフト券がその時刻以降の
+    // 時間帯券（午後券）のときだけ使う。朝から使う時間券では1日料金（RT01・RT02）。
+    // 券が決まらない（希望に合う券が無い）ときは、券で判断できないので従来どおり
+    const rentalStart = toMinutesOrNull(rental.duration.start_time);
+    if (rentalStart != null) {
+      const window = ticketWindow();
+      if (
+        window.kind === "known" &&
+        (window.start == null || window.start < rentalStart)
+      ) {
+        return false;
+      }
+    }
+    // 半日の時間数が公式に無ければ、4時間以下の滑走にだけ当てる
+    return duration.hours <= (hours ?? 4);
+  }
   return false;
 };
 
@@ -243,7 +398,7 @@ const costOf = (option: RentalOption) =>
  * そろった用具の組み合わせ（ビット）ごとの最安を順に詰めていく
  */
 const cheapestCover = (
-  required: TicketRentalItem[],
+  required: string[],
   options: RentalOption[],
 ): RentalOption[] | null => {
   if (required.length === 0) return [];
@@ -305,6 +460,21 @@ export type TicketRentalLine = {
   unitTotal: number | null;
   subtotal: number | null;
   note: string | null;
+  /** このスキー場で借りられない用具の要約（「ゴーグル」）。合計には含めない */
+  missingLabel: string | null;
+  /** 利用者に確認してもらう事項（日中のレンタルが夜も使えるか など） */
+  warnings?: string[];
+  /** 資格が要る安い料金（「宿泊者限定」なら1人ぶん 3,000円）。合計には含めない */
+  conditional?: Array<{ label: string; unitTotal: number }>;
+  /**
+   * 日中のレンタルが夜も使えるか分からない日に、夜の分を借り足す場合の候補
+   * （合計には含めない）
+   */
+  nightAddOns?: Array<{
+    date: string;
+    picks: TicketRentalPick[];
+    unitTotal: number;
+  }>;
 };
 
 export type TicketRentalResult = {
@@ -319,6 +489,11 @@ export type TicketRentalResult = {
   total: number | null;
   knownTotal: number;
   references: PriceReference[];
+  /**
+   * 選んだのにこのスキー場で借りられない用具の要約（利用者ごと、重複なし）。
+   * 料金表にもセット券にも無い物で、合計には含めずに「＋ゴーグル」と添える
+   */
+  missingLabels: string[];
 };
 
 const PRESCHOOL_AGES = [0, 1, 2, 3, 4, 5, 6];
@@ -368,9 +543,29 @@ export const calculateRentalPlan = (
     group => group.count > 0 && rentalItemsOf(group.rental).length > 0,
   );
   const empty = { lines: [], total: null, knownTotal: 0, references: [] };
-  if (renters.length === 0) return { status: "none", ...empty };
+  if (renters.length === 0) {
+    return { status: "none", ...empty, missingLabels: [] };
+  }
+  const options = rentalOptionsOf(data);
+  const missingOf = (group: TicketPartyGroup) =>
+    missingRentalItemsOf(options, group.rental);
+  const missingLabelOf = (group: TicketPartyGroup) => {
+    const missing = missingOf(group);
+    return group.rental && missing.length > 0
+      ? formatRentalRequest({ sport: group.rental.sport, items: missing })
+      : null;
+  };
+  const missingLabels = [
+    ...new Set(
+      renters
+        .map(missingLabelOf)
+        .filter((label): label is string => label != null),
+    ),
+  ];
   const rentals = data.rentals ?? [];
-  if (rentals.length === 0) return { status: "not_collected", ...empty };
+  if (rentals.length === 0) {
+    return { status: "not_collected", ...empty, missingLabels };
+  }
 
   const today = input.today ?? getTodayInJapan();
   const plans: TicketDayPlan[] =
@@ -384,6 +579,16 @@ export const calculateRentalPlan = (
           },
         ];
   const matchesAudience = rentalAudienceMatcher(data);
+  // リフト券の時間帯は人ごと・店舗ごとに変わらないので、日ごとに1回だけ求める
+  const windowCache = new Map<TicketDayPlan, TicketWindow>();
+  const windowOf = (plan: TicketDayPlan) => {
+    const cached = windowCache.get(plan);
+    if (cached) return cached;
+    const window = ticketWindowOf(data, input, plan);
+    windowCache.set(plan, window);
+    return window;
+  };
+  const matchesQualifiedChild = rentalQualifiedChildMatcher(data);
   const { references, numberBySourceId } = buildReferences(data);
   const channelById = new Map(
     data.channels.map(channel => [channel.id, channel]),
@@ -432,7 +637,21 @@ export const calculateRentalPlan = (
   };
 
   const lines: TicketRentalLine[] = renters.map(group => {
-    const required = rentalItemsOf(group.rental);
+    // 借りられない用具は料金を探さず、合計の横に「＋ゴーグル」と添える
+    const missing = missingOf(group);
+    const required = requiredItemsOf(
+      data,
+      rentalItemsOf(group.rental).filter(item => !missing.includes(item)),
+    );
+    // 料金が書かれていないレンタルしか無い用具（RT12）
+    const unpricedOnly = rentalItemsOf(group.rental).filter(
+      item =>
+        missing.includes(item) &&
+        rentals.some(
+          rental =>
+            rental.price.amount == null && coveredItemsOf(rental).has(item),
+        ),
+    );
     // ★**年齢未入力の未就学児は0〜6歳のどの年齢でも同じ区分になる料金だけを使う。**
     // 券は無料・有料の境目があるので年齢を求めるが、レンタルの「12歳以下」等は
     // 年齢なしで決まる。0〜6歳の途中で料金が分かれるときだけ年齢を求める
@@ -442,175 +661,364 @@ export const calculateRentalPlan = (
       effectiveCategory === "preschool" && group.age == null
         ? PRESCHOOL_AGES.map(age => ({ ...group, age }))
         : [group];
-    const candidates = rentals.filter(rental =>
-      variants.every(variant => matchesAudience(rental, variant)),
+    const allCandidates = rentals.filter(rental =>
+      variants.every(
+        variant =>
+          matchesAudience(rental, variant) ||
+          matchesQualifiedChild(rental, variant),
+      ),
     );
-    const base = {
-      groupId: group.id,
-      groupLabel: formatPartyGroupLabel(group),
-      count: group.count,
-      requestLabel: formatRentalRequest(group.rental),
-    };
-    const unresolved = (note: string): TicketRentalLine => ({
-      ...base,
-      picks: [],
-      unitTotal: null,
-      subtotal: null,
-      note,
-    });
-    if (plans.some(plan => !plan.date || !seasonContains(data, plan.date))) {
-      return unresolved("収録シーズン外の日はレンタル料金を出せません");
-    }
-    if (
-      variants.length > 1 &&
-      candidates.length === 0 &&
-      rentals.some(rental =>
-        variants.some(variant => matchesAudience(rental, variant)),
-      )
-    ) {
-      return unresolved(
-        "年齢でレンタル料金が変わります。年齢を入力してください",
-      );
-    }
-
-    /** 1日ぶんの最安（借りられない日は null） */
-    const dayCover = (plan: TicketDayPlan) =>
-      cheapestCover(
-        required,
-        candidates
-          .filter(
-            rental =>
-              fitsDuration(rental, plan.duration) &&
-              availableOn(data, rental, plan.date, today),
-          )
-          .map(rental => ({
-            rental,
-            amount: rental.price.amount ?? 0,
-            times: 1,
-          })),
-      );
-
-    const picks: TicketRentalPick[] = [];
-    for (const run of consecutiveRuns(plans)) {
-      const perDay = run.map(plan => dayCover(plan));
-      if (perDay.some(cover => cover == null)) {
-        return unresolved("借りる物のレンタル料金が公式資料にありません");
+    // ★1人は全日程で1つの店舗から借りる。店舗をまたいで板とブーツを組み合わせたり、
+    // 別の店舗の延長料金を足したりしない（監査C08）。店舗ごとに計算して最安を選ぶ
+    const shopNames = [
+      ...new Set(allCandidates.map(rental => rental.shop_name_ja ?? "")),
+    ];
+    const lineForShop = (candidates: LiftTicketRental[]): TicketRentalLine => {
+      const base = {
+        groupId: group.id,
+        groupLabel: formatPartyGroupLabel(group),
+        count: group.count,
+        requestLabel: formatRentalRequest(group.rental),
+        missingLabel: missingLabelOf(group),
+      };
+      if (required.length === 0 && unpricedOnly.length > 0) {
+        return {
+          ...base,
+          picks: [],
+          unitTotal: null,
+          subtotal: null,
+          note: "レンタル料金が公式資料に書かれていません",
+        };
       }
-      const perDayTotal = perDay.reduce(
-        (sum, cover) => sum + totalOf(cover ?? []),
+      if (required.length === 0) {
+        return { ...base, picks: [], unitTotal: 0, subtotal: 0, note: null };
+      }
+      const unresolved = (note: string): TicketRentalLine => ({
+        ...base,
+        picks: [],
+        unitTotal: null,
+        subtotal: null,
+        note,
+      });
+      if (plans.some(plan => !plan.date || !seasonContains(data, plan.date))) {
+        return unresolved("収録シーズン外の日はレンタル料金を出せません");
+      }
+      if (
+        variants.length > 1 &&
+        candidates.length === 0 &&
+        rentals.some(rental =>
+          variants.some(variant => matchesAudience(rental, variant)),
+        )
+      ) {
+        return unresolved(
+          "年齢でレンタル料金が変わります。年齢を入力してください",
+        );
+      }
+
+      const nightExtras: Array<{ plan: TicketDayPlan; cover: RentalOption[] }> =
+        [];
+      const lineWarnings: string[] = [];
+      /** 1日ぶんの最安（借りられない日は null） */
+      const dayCover = (plan: TicketDayPlan): RentalOption[] | null => {
+        const window = () => windowOf(plan);
+        const normal = cheapestCover(
+          required,
+          candidates
+            .filter(
+              rental =>
+                fitsDuration(rental, plan.duration, window) &&
+                availableOn(data, rental, plan.date, today),
+            )
+            .map(rental => ({
+              rental,
+              amount: rental.price.amount ?? 0,
+              times: 1,
+            })),
+        );
+        if (normal || plan.duration.kind !== "day") return normal;
+        // リフト券のS1と同じ: 1日料金が無ければ、いちばん長い時間料金を1日に使う（RT05・RT06）
+        const hourly = candidates.filter(
+          rental =>
+            rental.duration.mode === "hours" &&
+            availableOn(data, rental, plan.date, today),
+        );
+        if (hourly.length === 0) return null;
+        const longestHours = Math.max(
+          ...hourly.map(rental => rental.duration.hours ?? 0),
+        );
+        const cover = cheapestCover(
+          required,
+          hourly
+            .filter(rental => (rental.duration.hours ?? 0) === longestHours)
+            .map(rental => ({
+              rental,
+              amount: rental.price.amount ?? 0,
+              times: 1,
+            })),
+        );
+        const regular =
+          operatingSegmentsOn(data, plan.date).byType.get("regular") ?? [];
+        const minutes = regular.reduce(
+          (sum, [start, end]) => sum + end - start,
+          0,
+        );
+        if (cover && longestHours * 60 < minutes) {
+          const hm = (value: number) =>
+            `${Math.floor(value / 60)}:${String(value % 60).padStart(2, "0")}`;
+          const label = regular
+            .map(([start, end]) => `${hm(start)}〜${hm(end)}`)
+            .join("、");
+          lineWarnings.push(
+            `この日の営業は${formatHours(minutes / 60)}（${label}）です`,
+          );
+        }
+        return cover;
+      };
+
+      // 「1日＋ナイター」の日に、日中のレンタルが夜も使えるか（B12）。
+      // データの終了時刻（duration.end_time）がナイター終了以降なら使える、
+      // ナイター開始以前なら夜はナイター用を借り足す、記録が無ければ確認を促す
+      const nightCover = (plan: TicketDayPlan) =>
+        cheapestCover(
+          required,
+          candidates
+            .filter(
+              rental =>
+                rental.duration.mode === "night" &&
+                availableOn(data, rental, plan.date, today),
+            )
+            .map(rental => ({
+              rental,
+              amount: rental.price.amount ?? 0,
+              times: 1,
+            })),
+        );
+
+      const dayAndNightCover = (plan: TicketDayPlan) => {
+        const day = dayCover(plan);
+        if (
+          day == null ||
+          plan.duration.kind !== "day" ||
+          !plan.duration.withNight
+        )
+          return day;
+        const night = operatingSegmentsOn(data, plan.date).byType.get("night");
+        if (!night || night.length === 0) return day;
+        const nightStart = night[0][0];
+        const nightEnd = night.at(-1)?.[1] ?? nightStart;
+        const ends = day.map(option =>
+          toMinutesOrNull(option.rental.duration.end_time),
+        );
+        if (ends.every(end => end != null && end >= nightEnd)) return day;
+        const extra = nightCover(plan);
+        if (ends.some(end => end != null && end <= nightStart)) {
+          // 日中のレンタルは夜に使えないと分かっている。夜の分を借り足す
+          return extra ? [...day, ...extra] : day;
+        }
+        lineWarnings.push(
+          "日中のレンタルが夜も使えるかは公式で確認してください",
+        );
+        if (extra) nightExtras.push({ plan, cover: extra });
+        return day;
+      };
+
+      const picks: TicketRentalPick[] = [];
+      for (const run of consecutiveRuns(plans)) {
+        const perDay = run.map(plan => dayAndNightCover(plan));
+        if (perDay.some(cover => cover == null)) {
+          return unresolved("借りる物のレンタル料金が公式資料にありません");
+        }
+        const perDayTotal = perDay.reduce(
+          (sum, cover) => sum + totalOf(cover ?? []),
+          0,
+        );
+        // 「2日間」の料金と、毎日借りられる1日料金を組み合わせた案
+        const dates = run.map(plan => plan.date);
+        const multiDay =
+          run.length >= 2
+            ? cheapestCover(required, [
+                ...candidates
+                  .filter(
+                    rental =>
+                      rental.duration.mode === "days" &&
+                      rental.duration.days === run.length &&
+                      availableOn(data, rental, run[0].date, today),
+                  )
+                  .map(rental => ({
+                    rental,
+                    amount: rental.price.amount ?? 0,
+                    times: 1,
+                  })),
+                // 「1日＋以降1日追加」「5日間＋6日目以降1日ごと」
+                ...candidates.flatMap(base => {
+                  const baseDays = baseDaysOf(base);
+                  if (
+                    baseDays == null ||
+                    baseDays >= run.length ||
+                    !availableOn(data, base, run[0].date, today)
+                  ) {
+                    return [];
+                  }
+                  return candidates
+                    .filter(
+                      extra =>
+                        extra.duration.mode === "extra_day" &&
+                        (extra.duration.after_days ?? 1) === baseDays &&
+                        sameItems(base, extra) &&
+                        availableOn(data, extra, run[0].date, today),
+                    )
+                    .map(extra => ({
+                      rental: base,
+                      amount: base.price.amount ?? 0,
+                      times: 1,
+                      extra: {
+                        rental: extra,
+                        amount: extra.price.amount ?? 0,
+                        times: run.length - baseDays,
+                      },
+                    }));
+                }),
+                ...candidates
+                  .filter(
+                    rental =>
+                      rental.duration.mode === "day" &&
+                      run.every(plan =>
+                        availableOn(data, rental, plan.date, today),
+                      ),
+                  )
+                  // 日によって料金が違う1日料金は混ぜない（1日ずつの案で比べる）
+                  .map(rental => ({
+                    rental,
+                    amount: rental.price.amount ?? 0,
+                    times: run.length,
+                  })),
+              ])
+            : null;
+        if (
+          multiDay?.some(
+            option =>
+              option.rental.duration.mode === "days" || option.extra != null,
+          ) &&
+          totalOf(multiDay) < perDayTotal
+        ) {
+          for (const option of multiDay) {
+            picks.push(toPick(option, dates));
+            if (option.extra) picks.push(toPick(option.extra, dates));
+          }
+          continue;
+        }
+        perDay.forEach((cover, index) => {
+          for (const option of cover ?? []) {
+            picks.push(toPick(option, [run[index].date]));
+          }
+        });
+      }
+
+      // 同じ料金を日ごとに並べない（「スキーセット ¥5,000 × 3日」にまとめる）。
+      // 「2日間」の料金はそれだけで期間ぶんなのでまとめない
+      const merged: TicketRentalPick[] = [];
+      for (const pick of picks) {
+        const same = merged.find(
+          item =>
+            item.rentalId === pick.rentalId &&
+            item.unitAmount === pick.unitAmount &&
+            !item.multiDay &&
+            !pick.multiDay,
+        );
+        if (same) {
+          same.times += pick.times;
+          same.dates = [...new Set([...same.dates, ...pick.dates])].sort();
+          continue;
+        }
+        merged.push({ ...pick, dates: [...pick.dates] });
+      }
+      const unitTotal = merged.reduce(
+        (sum, pick) => sum + pick.unitAmount * pick.times,
         0,
       );
-      // 「2日間」の料金と、毎日借りられる1日料金を組み合わせた案
-      const dates = run.map(plan => plan.date);
-      const multiDay =
-        run.length >= 2
-          ? cheapestCover(required, [
-              ...candidates
-                .filter(
-                  rental =>
-                    rental.duration.mode === "days" &&
-                    rental.duration.days === run.length &&
-                    availableOn(data, rental, run[0].date, today),
-                )
-                .map(rental => ({
-                  rental,
-                  amount: rental.price.amount ?? 0,
-                  times: 1,
-                })),
-              // 「1日＋以降1日追加」「5日間＋6日目以降1日ごと」
-              ...candidates.flatMap(base => {
-                const baseDays = baseDaysOf(base);
-                if (
-                  baseDays == null ||
-                  baseDays >= run.length ||
-                  !availableOn(data, base, run[0].date, today)
-                ) {
-                  return [];
-                }
-                return candidates
-                  .filter(
-                    extra =>
-                      extra.duration.mode === "extra_day" &&
-                      (extra.duration.after_days ?? 1) === baseDays &&
-                      sameItems(base, extra) &&
-                      availableOn(data, extra, run[0].date, today),
-                  )
-                  .map(extra => ({
-                    rental: base,
-                    amount: base.price.amount ?? 0,
-                    times: 1,
-                    extra: {
-                      rental: extra,
-                      amount: extra.price.amount ?? 0,
-                      times: run.length - baseDays,
-                    },
-                  }));
-              }),
-              ...candidates
-                .filter(
-                  rental =>
-                    rental.duration.mode === "day" &&
-                    run.every(plan =>
-                      availableOn(data, rental, plan.date, today),
-                    ),
-                )
-                // 日によって料金が違う1日料金は混ぜない（1日ずつの案で比べる）
-                .map(rental => ({
-                  rental,
-                  amount: rental.price.amount ?? 0,
-                  times: run.length,
-                })),
-            ])
-          : null;
+      // 開始時刻の書かれていない半日料金は、午前・午後を店舗で確かめてもらう（RT04）
       if (
-        multiDay?.some(
-          option =>
-            option.rental.duration.mode === "days" || option.extra != null,
-        ) &&
-        totalOf(multiDay) < perDayTotal
-      ) {
-        for (const option of multiDay) {
-          picks.push(toPick(option, dates));
-          if (option.extra) picks.push(toPick(option.extra, dates));
-        }
-        continue;
+        merged.some(pick => {
+          const rental = rentals.find(item => item.id === pick.rentalId);
+          return (
+            rental?.duration.mode === "half_day" && !rental.duration.start_time
+          );
+        })
+      )
+        lineWarnings.push("午前・午後の指定は店舗で確認してください");
+      // 開始時刻の決まった半日料金を使ったら、その時刻を添える（朝から滑るなら使えない）
+      for (const pick of merged) {
+        const rental = rentals.find(item => item.id === pick.rentalId);
+        if (rental?.duration.mode === "half_day" && rental.duration.start_time)
+          lineWarnings.push(
+            `${rental.duration.start_time.replace(/^0/u, "")}からの料金です`,
+          );
       }
-      perDay.forEach((cover, index) => {
-        for (const option of cover ?? []) {
-          picks.push(toPick(option, [run[index].date]));
-        }
-      });
-    }
-
-    // 同じ料金を日ごとに並べない（「スキーセット ¥5,000 × 3日」にまとめる）。
-    // 「2日間」の料金はそれだけで期間ぶんなのでまとめない
-    const merged: TicketRentalPick[] = [];
-    for (const pick of picks) {
-      const same = merged.find(
-        item =>
-          item.rentalId === pick.rentalId &&
-          item.unitAmount === pick.unitAmount &&
-          !item.multiDay &&
-          !pick.multiDay,
-      );
-      if (same) {
-        same.times += pick.times;
-        same.dates = [...new Set([...same.dates, ...pick.dates])].sort();
-        continue;
-      }
-      merged.push({ ...pick, dates: [...pick.dates] });
-    }
-    const unitTotal = merged.reduce(
-      (sum, pick) => sum + pick.unitAmount * pick.times,
-      0,
-    );
-    return {
-      ...base,
-      picks: merged,
-      unitTotal,
-      subtotal: unitTotal * group.count,
-      note: null,
+      // 宿泊者・県民・クーポンなど資格が要る料金は確定には使わず、条件付き候補に出す（RT08）
+      const conditional = [
+        ...new Set(
+          candidates
+            .filter(
+              rental =>
+                rental.target_qualification && rental.price.amount != null,
+            )
+            .map(
+              rental =>
+                rental.target_qualification?.official_label_ja ?? "条件付き",
+            ),
+        ),
+      ]
+        .map(label => {
+          const cover = cheapestCover(
+            required,
+            candidates
+              .filter(
+                rental =>
+                  fitsDuration(rental, plans[0].duration, () =>
+                    windowOf(plans[0]),
+                  ) &&
+                  rental.price.amount != null &&
+                  (!rental.target_qualification ||
+                    rental.target_qualification.official_label_ja === label),
+              )
+              .map(rental => ({
+                rental,
+                amount: rental.price.amount ?? 0,
+                times: 1,
+              })),
+          );
+          return cover
+            ? { label, unitTotal: totalOf(cover) * plans.length }
+            : null;
+        })
+        .filter(
+          (item): item is { label: string; unitTotal: number } =>
+            item != null && item.unitTotal < unitTotal,
+        );
+      return {
+        ...base,
+        picks: merged,
+        unitTotal,
+        subtotal: unitTotal * group.count,
+        note: null,
+        warnings: [...new Set(lineWarnings)],
+        conditional,
+        nightAddOns: nightExtras.map(({ plan, cover }) => ({
+          date: plan.date,
+          picks: cover.map(option => toPick(option, [plan.date])),
+          unitTotal: totalOf(cover),
+        })),
+      };
     };
+    const perShop = (shopNames.length > 0 ? shopNames : [""]).map(shop =>
+      lineForShop(
+        allCandidates.filter(rental => (rental.shop_name_ja ?? "") === shop),
+      ),
+    );
+    const priced = perShop
+      .filter(line => line.subtotal != null)
+      .sort((left, right) => (left.subtotal ?? 0) - (right.subtotal ?? 0));
+    return priced[0] ?? perShop[0];
   });
 
   const knownTotal = lines.reduce((sum, line) => sum + (line.subtotal ?? 0), 0);
@@ -626,6 +1034,7 @@ export const calculateRentalPlan = (
     references: references.filter(reference =>
       usedNumbers.has(reference.number),
     ),
+    missingLabels,
   };
 };
 
@@ -658,6 +1067,7 @@ export const rentalOptionsOf = (
     if (rental.target_qualification || rental.price.amount == null) continue;
     for (const item of coveredItemsOf(rental)) available.add(item);
   }
+  if (WEAR_HALVES.every(item => available.has(item))) available.add("wear");
   // 単品のレンタル料金が無いスキー場でも、セット券で借りられる物は選べる
   for (const product of data.products) {
     if (!isRentalBundleProduct(product)) continue;
@@ -679,6 +1089,20 @@ export const rentalOptionsOf = (
   );
   return sports.length > 0 ? { sports, itemsBySport } : null;
 };
+
+/**
+ * 選んだ用具のうち、このスキー場で借りられない物（料金表にもセット券にも無い物）。
+ * レンタル料金を集めていないスキー場（options が null）では選んだ物すべて
+ */
+export const missingRentalItemsOf = (
+  options: TicketRentalOptions | null,
+  request: TicketRentalRequest | null | undefined,
+) =>
+  request
+    ? rentalItemsOf(request).filter(
+        item => !options?.itemsBySport[request.sport].includes(item),
+      )
+    : [];
 
 /** 「あり」にしたときの最初の選択（その種目の板・ブーツ・ストックのうち借りられる物） */
 export const defaultRentalRequestOf = (

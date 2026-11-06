@@ -122,7 +122,7 @@ const entity = (id: string, status: string | null, options = {}) => ({
   hasStatusSource: true,
   ...options,
 });
-test("course operations count all logical map groups and ignore old official summaries", () => {
+test("course operations count only mapped logical groups and ignore old official summaries", () => {
   const rows = [
     entity("a1", "○", { groupId: "A" }),
     entity("a2", "×", { groupId: "A" }),
@@ -145,8 +145,8 @@ test("course operations count all logical map groups and ignore old official sum
       99,
     ),
     {
-      active: 8,
-      total: 11,
+      active: 6,
+      total: 9,
       source: "mapping",
     },
   );
@@ -155,7 +155,10 @@ test("course operations count all logical map groups and ignore old official sum
 test("multiple map groups mapped to one official item count separately", () => {
   assert.deepEqual(
     summarizeOperationEntities(
-      [entity("map-a", "○"), entity("map-b", "○")],
+      [
+        entity("map-a", "○", { crawledNames: ["official"] }),
+        entity("map-b", "○", { crawledNames: ["official"] }),
+      ],
       "course",
       99,
     ),
@@ -179,7 +182,7 @@ test("course unknown status makes active unknown and empty map uses basic fallba
   });
 });
 
-test("no-source map inventory counts all group IDs regardless of names/elevation", () => {
+test("unmapped inventory has no denominator regardless of names/elevation", () => {
   const rows = [
     entity("a1", null, { groupId: "A" }),
     entity("a2", null, { groupId: "A" }),
@@ -190,7 +193,7 @@ test("no-source map inventory counts all group IDs regardless of names/elevation
   ].map(row => ({ ...row, crawledNames: [], hasStatusSource: false }));
   assert.deepEqual(summarizeOperationEntities(rows, "course", 99), {
     active: null,
-    total: 5,
+    total: null,
     source: "map",
   });
   assert.deepEqual(
@@ -199,7 +202,7 @@ test("no-source map inventory counts all group IDs regardless of names/elevation
       "course",
       9,
     ),
-    { active: null, total: 5, source: "map" },
+    { active: null, total: null, source: "map" },
   );
   assert.deepEqual(summarizeOperationEntities([], "course", 0), {
     active: null,
@@ -207,7 +210,7 @@ test("no-source map inventory counts all group IDs regardless of names/elevation
     source: "basic",
   });
 });
-test("lifts count every map equipment item even without crawler-name mappings", () => {
+test("lifts count only mapped equipment and keep missing mapped status unknown", () => {
   assert.deepEqual(
     summarizeOperationEntities(
       [
@@ -220,7 +223,54 @@ test("lifts count every map equipment item even without crawler-name mappings", 
       "lift",
       99,
     ),
-    { active: null, total: 5, source: "mapping" },
+    { active: null, total: 4, source: "mapping" },
+  );
+});
+
+test("unmapped courses do not hide known closures in the list", () => {
+  const mapped = Array.from({ length: 9 }, (_, i) =>
+    entity(`course-${i}`, "×"),
+  );
+  const rows = [
+    ...mapped,
+    entity("duplicate-section", "×", { groupId: "course-1" }),
+    ...Array.from({ length: 4 }, (_, i) =>
+      entity(`unmapped-${i}`, null, { crawledNames: [] }),
+    ),
+  ];
+  assert.deepEqual(summarizeOperationEntities(rows, "course", 13), {
+    active: 0,
+    total: 9,
+    source: "mapping",
+  });
+  mapped[0].status = "○";
+  mapped[2].status = "△";
+  assert.deepEqual(summarizeOperationEntities(rows, "course", 13), {
+    active: 2,
+    total: 9,
+    source: "mapping",
+  });
+  mapped[3].status = null;
+  assert.deepEqual(summarizeOperationEntities(rows, "course", 13), {
+    active: null,
+    total: 9,
+    source: "mapping",
+  });
+});
+
+test("unmapped lifts do not hide known equipment states", () => {
+  assert.deepEqual(
+    summarizeOperationEntities(
+      [
+        entity("a", "○"),
+        entity("b", "×"),
+        entity("unmapped", null, { crawledNames: [] }),
+        entity("blank", null, { crawledNames: [" "] }),
+      ],
+      "lift",
+      99,
+    ),
+    { active: 1, total: 2, source: "mapping" },
   );
 });
 test("only map, mapping and detail document families are virtualized", () => {

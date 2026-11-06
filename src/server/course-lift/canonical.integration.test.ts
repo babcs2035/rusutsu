@@ -186,7 +186,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
         const summary = await db.skiResortOperationSummary.findUniqueOrThrow({
           where: { skiResortId: "sample" },
         });
-        assert.equal(summary.courseTotal, 4);
+        assert.equal(summary.courseTotal, null);
         assert.equal(summary.courseActive, null);
       },
     );
@@ -261,7 +261,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
         ],
       });
     await t.test(
-      "adoption counts map groups and includes unmapped courses as unknown",
+      "adoption counts mapped groups and ignores unmapped courses",
       async () => {
         const input = crawl("2026-10-18T01:00:00Z", [
           { name: "A", status: "○", update: "08:00", note: "上部のみ" },
@@ -292,8 +292,8 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
         const summary = await db.skiResortOperationSummary.findUniqueOrThrow({
           where: { skiResortId: "sample" },
         });
-        assert.equal(summary.courseTotal, 4);
-        assert.equal(summary.courseActive, null);
+        assert.equal(summary.courseTotal, 2);
+        assert.equal(summary.courseActive, 1);
         assert.equal(summary.liftTotal, 2);
         assert.equal(summary.liftActive, 1);
         assert.equal(summary.calculationVersion, api.OPERATION_SUMMARY_VERSION);
@@ -307,7 +307,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
           api.findOperatingSummariesDirect(),
         ]);
         for (const counts of concurrentSummaries) {
-          assert.deepEqual(counts.sample.courses, { total: 4, active: null });
+          assert.deepEqual(counts.sample.courses, { total: 2, active: 1 });
         }
         assert.equal(
           (
@@ -354,7 +354,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
         assert.equal(detail.courseStatusSummary.unknown, 2);
         assert.deepEqual(
           (await api.findOperatingSummariesDirect()).sample.courses,
-          { total: 4, active: null },
+          { total: 2, active: 2 },
         );
         await api.persistCrawlLatestRun(
           crawl("2026-10-18T01:20:00Z", [
@@ -366,7 +366,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
         );
         assert.deepEqual(
           (await api.findOperatingSummariesDirect()).sample.courses,
-          { total: 4, active: null },
+          { total: 2, active: null },
         );
         const current = await api.getDataDocumentDirect(mappingKey);
         await api.writeDataDocumentsDirect([
@@ -389,7 +389,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
         );
         assert.equal(
           (await api.findOperatingSummariesDirect()).sample.courses.total,
-          4,
+          2,
         );
         assert.equal(
           (
@@ -439,7 +439,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
         );
         assert.deepEqual(
           (await api.findOperatingSummariesDirect()).sample.courses,
-          { total: 4, active: null },
+          { total: 2, active: 2 },
         );
         const base = await api.getDataDocumentDirect(baseKey);
         await assert.rejects(
@@ -476,7 +476,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
               where: { skiResortId: "sample" },
             })
           ).courseTotal,
-          4,
+          2,
         );
       },
     );
@@ -755,7 +755,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
         const summary = await db.skiResortOperationSummary.findUniqueOrThrow({
           where: { skiResortId: "annotated" },
         });
-        assert.equal(summary.courseTotal, 1);
+        assert.equal(summary.courseTotal, null);
         assert.equal(summary.courseActive, null);
         assert.equal(
           (await api.getFinalizedResortMapData("annotated")).courses.features
@@ -982,7 +982,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
         const [summary] = await db.$transaction((tx: unknown) =>
           api.calculateMapOperationSummaries(tx, ["sample"]),
         );
-        assert.equal(summary.courseTotal, 4);
+        assert.equal(summary.courseTotal, 2);
         assert.equal(summary.courseActive, null);
         assert.equal(summary.liftTotal, 2);
         assert.equal(summary.liftActive, null);

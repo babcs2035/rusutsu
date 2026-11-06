@@ -14,7 +14,7 @@ import {
 import { writeMapOperations, writeOperationSummaries } from "./operationWrites";
 
 type Tx = Prisma.TransactionClient;
-export const OPERATION_SUMMARY_VERSION = 4;
+export const OPERATION_SUMMARY_VERSION = 5;
 export type OperationEntity = {
   id: string;
   name: string | null;
@@ -46,10 +46,13 @@ export function summarizeOperationEntities(
       source: "basic",
     };
   }
-  const hasStatusSource = entities.some(row => row.hasStatusSource);
+  const mapped = entities.filter(row =>
+    row.crawledNames.some(name => name.trim() !== ""),
+  );
+  const hasStatusSource = mapped.some(row => row.hasStatusSource);
   if (kind === "course") {
     const summary = summarizeMapCourseStatuses(
-      entities.map(row => ({
+      mapped.map(row => ({
         ...row,
         groupId: row.groupId ?? row.id,
       })),
@@ -67,7 +70,7 @@ export function summarizeOperationEntities(
     };
   }
   const groups = new Map<string, Array<string | null>>();
-  for (const row of entities) {
+  for (const row of mapped) {
     const key = row.id;
     const statuses = groups.get(key) ?? [];
     statuses.push(row.status);

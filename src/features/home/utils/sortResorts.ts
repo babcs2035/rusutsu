@@ -78,7 +78,7 @@ export function sortResorts<T extends SortableResort>(
             ? resortDistance(resort, position)
             : null
           : order === "courses"
-            ? -(counts.courses?.total ?? resort.numberOfCourses)
+            ? -resort.numberOfCourses
             : order === "openCourses"
               ? counts.courses?.active == null
                 ? null

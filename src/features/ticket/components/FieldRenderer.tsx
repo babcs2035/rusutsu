@@ -16,10 +16,10 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  ID_REF_TARGETS,
   ITEM_TITLE_KEYS,
   labelOf,
   MULTILINE_KEYS,
+  refTargetOf,
 } from "../presentation";
 import type { EnumLabelCatalog, EnumLabelInfo, FieldSpec } from "../types";
 import {
@@ -150,7 +150,7 @@ const StringField = ({
     update(path, next);
   };
 
-  const refTarget = ID_REF_TARGETS[fieldKey];
+  const refTarget = refTargetOf(fieldKey, path);
   if (refTarget !== undefined) {
     const options = idIndex[refTarget] ?? [];
     const dangling = current !== "" && !options.some(o => o.id === current);
@@ -688,7 +688,7 @@ const ArrayField = (props: {
   const values = Array.isArray(value) ? value : [];
   const items = spec.items;
 
-  const refTarget = ID_REF_TARGETS[fieldKey];
+  const refTarget = refTargetOf(fieldKey, props.path);
   if (refTarget !== undefined && items.kind === "string") {
     const options = idIndex[refTarget] ?? [];
     const selected = values.filter(

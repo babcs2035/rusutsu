@@ -82,6 +82,64 @@ test("スキー場のパスを直接リンクとして扱い、ホームのパ�
     null,
   );
 });
+test("比較URLは保存済み比較を上書きし、IDを重複排除して復元する", () => {
+  const saved: HomeSession = {
+    ...session,
+    selectedCompareIds: ["kiroro", "rusutsu"],
+    favoriteCompareIds: ["kiroro"],
+    isCompareOpen: true,
+  };
+  const result = resolveHomeSession(
+    saved,
+    new URL(
+      "https://example.com/rusutsu?compare=niseko,rusutsu,niseko,missing",
+    ),
+    new Set(["rusutsu", "niseko", "kiroro"]),
+  );
+  assert.equal(result?.selectedResortId, null);
+  assert.deepEqual(result?.selectedCompareIds, ["kiroro", "rusutsu"]);
+  assert.deepEqual(result?.favoriteCompareIds, ["niseko", "rusutsu"]);
+  assert.equal(result?.isCompareOpen, true);
+});
+test("詳細URLはcompareより優先し、compare無しでは保存リストだけ残す", () => {
+  const saved: HomeSession = {
+    ...session,
+    selectedCompareIds: ["kiroro", "rusutsu"],
+    favoriteCompareIds: ["niseko"],
+    isCompareOpen: true,
+  };
+  const known = new Set(["rusutsu", "niseko", "kiroro"]);
+  const detail = resolveHomeSession(
+    saved,
+    new URL("https://example.com/rusutsu/niseko?compare=rusutsu"),
+    known,
+  );
+  assert.equal(detail?.selectedResortId, "niseko");
+  assert.equal(detail?.isCompareOpen, false);
+  assert.equal(detail?.favoriteCompareIds, null);
+  const home = resolveHomeSession(
+    saved,
+    new URL("https://example.com/rusutsu"),
+    known,
+  );
+  assert.equal(home?.isCompareOpen, false);
+  assert.equal(home?.favoriteCompareIds, null);
+  assert.deepEqual(home?.selectedCompareIds, ["kiroro", "rusutsu"]);
+});
+test("不正または未知だけの比較URLは stale comparison を開かない", () => {
+  const saved: HomeSession = {
+    ...session,
+    selectedCompareIds: ["rusutsu"],
+    isCompareOpen: true,
+  };
+  const result = resolveHomeSession(
+    saved,
+    new URL("https://example.com/rusutsu?compare=unknown,INVALID"),
+    new Set(["rusutsu"]),
+  );
+  assert.equal(result?.isCompareOpen, false);
+  assert.deepEqual(result?.selectedCompareIds, ["rusutsu"]);
+});
 test("削除されたスキー場と破損した保存データは復元しない", () => {
   assert.equal(
     resolveHomeSession(

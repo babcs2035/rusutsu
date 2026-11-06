@@ -115,7 +115,7 @@ test("標高未取得でもマップのコースがあればgroupIdで数える"
   });
 });
 
-test("営業情報がないマップは標高や名前によらずgroupIdごとに数える", () => {
+test("対応済みコースがない地図は基本情報の数を分母に混ぜない", () => {
   const sections = [course("A", null, false), course("A", null, false)];
   sections.forEach((section, index) => {
     section.name = `A_${index + 1}`;
@@ -143,11 +143,11 @@ test("営業情報がないマップは標高や名前によらずgroupIdごと�
       ]),
       99,
     ),
-    { active: null, total: 8 },
+    null,
   );
 });
 
-test("summaryのsource URLが空白だけなら地図のgroupIdを使う", () => {
+test("公式の集計があっても未対応の地図には分母を作らない", () => {
   const data = mapData([course("unnamed", null, false)]);
   data.courseStatusSummary = {
     total: 8,
@@ -159,10 +159,7 @@ test("summaryのsource URLが空白だけなら地図のgroupIdを使う", () =>
     sourceUrls: ["  "],
     updates: [],
   };
-  assert.deepEqual(summarizeCoursesForList(data, 9), {
-    active: null,
-    total: 1,
-  });
+  assert.equal(summarizeCoursesForList(data, 9), null);
 });
 
 test("official aggregate snapshot does not replace current map group counts", () => {
@@ -191,7 +188,51 @@ test("official aggregate snapshot does not replace current map group counts", ()
     sourceUrls: ["https://example.com/courses"],
     updates: [],
   };
-  assert.deepEqual(summarizeCoursesForList(data, 99), { active: 8, total: 11 });
+  assert.deepEqual(summarizeCoursesForList(data, 99), { active: 6, total: 9 });
+});
+
+test("赤倉観光の対応済み9コースと未対応4コースを分けて数える", () => {
+  const mapped = Array.from({ length: 9 }, (_, i) =>
+    course(`mapped-${i}`, "×"),
+  );
+  const unmapped = Array.from({ length: 4 }, (_, i) =>
+    course(`unmapped-${i}`, null, false),
+  );
+  const data = mapData([...mapped, course("mapped-1", "×"), ...unmapped]);
+  assert.deepEqual(summarizeCoursesForList(data, 13), { active: 0, total: 9 });
+  mapped[0].properties.status = "○";
+  mapped[2].properties.status = "△";
+  assert.deepEqual(summarizeCoursesForList(data, 13), { active: 2, total: 9 });
+  mapped[3].properties.status = null;
+  assert.deepEqual(summarizeCoursesForList(data, 13), {
+    active: null,
+    total: 9,
+  });
+});
+
+test("対応済みの連続区間に欠損があれば開いている区間だけで確定しない", () => {
+  assert.deepEqual(
+    summarizeMappedCourses([course("A", "○"), course("A", null)]),
+    { active: null, total: 1 },
+  );
+});
+
+test("別ルートのコースは詳細と同じ主ルートの状態で数える", () => {
+  const routes = [course("A", "×"), course("A", "○")];
+  routes.forEach((row, i) => {
+    row.groupKind = "routes";
+    row.routeKey = `A:route:${i + 1}`;
+  });
+  assert.deepEqual(summarizeMappedCourses(routes), { active: 0, total: 1 });
+});
+
+test("空白だけの対応名はコース・リフトの分母に含めない", () => {
+  const blankCourse = course("blank", null);
+  blankCourse.statusMappingNames = [" "];
+  const blankLift = lift("blank", null);
+  blankLift.statusMappingNames = [" "];
+  assert.equal(summarizeMappedCourses([blankCourse]), null);
+  assert.equal(summarizeMappedLifts([blankLift]), null);
 });
 
 test("missing status in a map group makes its active count unknown", () => {

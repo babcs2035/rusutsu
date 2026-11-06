@@ -11,6 +11,7 @@ import {
 } from "../utils/rentalBundle";
 import { BundleSummary } from "./BundleSummary";
 import { ConditionalOffers } from "./ConditionalOffers";
+import { DurationAlternatives } from "./DurationAlternatives";
 import { RentalSummary } from "./RentalSummary";
 import { SourceLinks } from "./SourceLinks";
 import {
@@ -110,7 +111,9 @@ export const TicketPlanCard = ({
   const plan = bundleApplied
     ? planWithoutBundledGroups(fullPlan, bundleApplied)
     : fullPlan;
-  const bundledIds = new Set(bundleApplied?.lines.map(line => line.groupId));
+  const bundledIds = new Set(
+    bundleApplied?.lines.flatMap(line => line.memberGroupIds ?? [line.groupId]),
+  );
   const rental: TicketRentalResult | null =
     bundleApplied && fullRental
       ? fullRental.status === "not_collected"
@@ -138,9 +141,22 @@ export const TicketPlanCard = ({
       : fullRental;
   const tripDayCount = fullPlan.days.length;
   const usesMultiDay = plan.multiDay != null;
+  // 借りられない用具だけを選んだ人しかいなければ、レンタルの枠は出さない
   const rentalShown =
     rental != null &&
-    (rental.status === "complete" || rental.status === "partial");
+    (rental.status === "complete" || rental.status === "partial") &&
+    rental.lines.some(line => line.picks.length > 0 || line.subtotal == null);
+  // レンタル情報が無い物は合計に含めず、「¥3,900 ＋ゴーグル」と添えて注釈を出す
+  const rentalNotCollected = rental?.status === "not_collected";
+  const missingRentalLabels = rentalNotCollected
+    ? ["レンタル"]
+    : (fullRental?.missingLabels ?? []);
+  const missingRentalNote =
+    missingRentalLabels.length === 0
+      ? null
+      : rentalNotCollected
+        ? "※このスキー場のレンタル情報はありませんでした"
+        : `※${missingRentalLabels.join("・")}のレンタル情報はありませんでした`;
   // リフト券もレンタルも出たときだけ合計を出す。どちらかが未確定なら合計も未確定
   const separateTotal = !rentalShown
     ? plan.total
@@ -267,7 +283,8 @@ export const TicketPlanCard = ({
         )}
       >
         <div className="flex items-baseline justify-between gap-3">
-          <div className="min-w-0">
+          {/* 金額の横の「＋ゴーグル」が長くても、見出しは潰さない */}
+          <div className="min-w-0 max-w-[55%] shrink-0">
             <p className="text-sm font-semibold text-gray-700">
               {tripDayCount === 1 ? "合計" : `${tripDayCount}日の合計`}
             </p>
@@ -287,11 +304,29 @@ export const TicketPlanCard = ({
           {total == null ? (
             <p className="text-sm font-semibold text-gray-600">未確定</p>
           ) : (
-            <p className="text-2xl font-bold text-gray-900 font-mono">
-              {yen(total)}
+            <p className="min-w-0 text-right">
+              <span className="text-2xl font-bold text-gray-900 font-mono whitespace-nowrap">
+                {yen(total)}
+              </span>
+              {/* 収まらなければ「＋ゴーグル」「＋グローブ」の単位で次の行へ回す */}
+              {[
+                ...new Set(
+                  missingRentalLabels.flatMap(label => label.split("＋")),
+                ),
+              ].map(label => (
+                <span
+                  key={label}
+                  className="ml-1 inline-block text-sm font-bold text-gray-700 whitespace-nowrap"
+                >
+                  ＋{label}
+                </span>
+              ))}
             </p>
           )}
         </div>
+        {missingRentalNote && (
+          <p className="mt-1 text-xs text-orange-900">{missingRentalNote}</p>
+        )}
 
         {/* 1日（または同じ内容の日のまとまり）ごとに白い枠で囲み、日付を見出しにする */}
         <div className="mt-3 flex flex-col gap-2">
@@ -343,6 +378,13 @@ export const TicketPlanCard = ({
                     multiplier={dayCount}
                     multiplierUnit="日"
                     references={plan.references}
+                  />
+                )}
+
+                {!covered && (
+                  <DurationAlternatives
+                    options={day.options}
+                    dayCount={dayCount}
                   />
                 )}
 
@@ -414,6 +456,29 @@ export const TicketPlanCard = ({
                   />
                 )}
               </div>
+              {(plan.multiDay.notes ?? []).map(note => (
+                <p
+                  key={note}
+                  className="mt-1 text-xs text-orange-900 md:text-sm"
+                >
+                  {note}
+                </p>
+              ))}
+              {(plan.multiDayAlternatives ?? []).map(alternative => (
+                <p
+                  key={alternative.productId}
+                  className="mt-1 flex items-baseline justify-between gap-3 text-xs text-gray-700 md:text-sm"
+                >
+                  <span className="min-w-0">
+                    同じ金額で: {alternative.productName}
+                    {(alternative.notes ?? []).length > 0 &&
+                      `（${(alternative.notes ?? []).join("・")}）`}
+                  </span>
+                  <span className="flex-shrink-0 font-mono">
+                    {yen(alternative.ticketTotal)}
+                  </span>
+                </p>
+              ))}
               <ConditionalOffers
                 className="mt-2"
                 offers={plan.multiDay.conditionalOffers}
@@ -430,7 +495,14 @@ export const TicketPlanCard = ({
           </div>
         )}
 
-        {rental && rental.status !== "none" && (
+        {/* セット券の料金が年齢で分かれ、年齢が空欄なので比べられなかった */}
+        {bundle && bundle.ageNeededGroupIds.length > 0 && (
+          <p className="mt-2 rounded-lg border border-orange-200 bg-white px-3 py-2 text-xs font-semibold text-red-600">
+            年齢を入れると、セット券の料金とも比べます
+          </p>
+        )}
+
+        {rental && rentalShown && (
           <div className="mt-2">
             <RentalSummary rental={rental} dayCount={tripDayCount} />
           </div>

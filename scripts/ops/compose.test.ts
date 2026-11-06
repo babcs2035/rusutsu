@@ -62,7 +62,16 @@ test("production Compose isolates tokens and waits for DB/API health", {
     "crawler_artifacts",
     "crawler_worker_artifacts",
     "postgres_data",
+    "share_images",
   ]);
+  assert.equal(app.environment.SHARE_IMAGE_CACHE_ROOT, "/app/var/share-images");
+  assert.ok(
+    app.volumes.some(
+      (volume: { source: string; target: string }) =>
+        volume.source === "share_images" &&
+        volume.target === "/app/var/share-images",
+    ),
+  );
 });
 
 for (const key of Object.keys(required)) {

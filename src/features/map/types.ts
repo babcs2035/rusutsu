@@ -1,4 +1,5 @@
 import type L from "leaflet";
+import type { Map as MapLibreMap } from "maplibre-gl";
 import type { ReactNode } from "react";
 import type { MapDisplaySettings } from "@/features/map/utils/mapDisplaySettings";
 import type {
@@ -170,6 +171,8 @@ export type MapViewRestoreRequest = MapViewSnapshot & {
 };
 
 export type JapanResortMapProps = {
+  /** 地図の生成完了。静止画像の出力などでタイル・ソースの完了を監視する。 */
+  onMapReady?: (map: MapLibreMap) => void;
   onCommunityPointPick?: (coordinates: [number, number]) => void;
   communityPoint?: [number, number] | null;
   resorts: MapSkiResort[];

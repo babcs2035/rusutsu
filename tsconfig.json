@@ -36,7 +36,9 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "src/private/data/resorts-temporary/tmp/community-build/types/**/*.ts",
-    "src/private/data/resorts-temporary/tmp/community-build/dev/types/**/*.ts"
+    "src/private/data/resorts-temporary/tmp/community-build/dev/types/**/*.ts",
+    ".next-qa/types/**/*.ts",
+    ".next-qa/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

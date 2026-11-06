@@ -10,7 +10,7 @@ import type {
   TouchEvent as ReactTouchEvent,
   RefObject,
 } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import { FavoriteButton } from "@/features/favorites/FavoriteButton";
 import { useFavorites } from "@/features/favorites/FavoritesProvider";
 import type { Filters } from "@/features/filters/types";
 import { DEFAULT_LIFT_TICKET_SEARCH_INPUT } from "@/features/lift-ticket/utils/calculateLiftTicket";
+import { waitForDetailSaved } from "@/features/map/session/prepareDetail";
 import { useScreenState } from "@/features/map/session/useScreenState";
 import type {
   CourseColorMode,
@@ -364,6 +365,87 @@ export const HomeLayout = ({
         (!selectedResortId &&
           !shouldShowMobileTopChrome &&
           !shouldShowMobileSearchScreen)));
+  const mapProps: JapanResortMapProps = {
+    resorts: initialResorts,
+    filteredResortIdSet,
+    isFilterActive: hasActiveFilters,
+    // 条件なしで検索結果を閉じる時に、全スキー場へ fit して地図位置が動くのを防ぐ。
+    searchResultResortIds: mapSearchResultResortIds,
+    searchViewportRequestKey,
+    searchViewportBottomPaddingRatio,
+    selectedResortId,
+    hoveredResortId,
+    onSelectResort,
+    interactionMode: mapInteractionMode,
+    selectedCompareIdSet,
+    onToggleCompare,
+    onBoundsChange: () => undefined,
+    onViewChange: onMapViewChange,
+    onUserMapInteraction,
+    onUserMapZoomInteraction,
+    restoreViewRequest,
+    finalizedMapData: selectedMapData,
+    linkedAreaControl: selectedResortData ? (
+      <SimultaneousToggle
+        resort={selectedResortData}
+        onSelectResort={onSelectResort}
+        size="inline"
+      />
+    ) : undefined,
+    selectedFinalizedFeature,
+    onSelectedFinalizedFeatureChange,
+    selectedElevationProfilePoint,
+    onSelectedElevationProfilePointChange,
+  };
+  // 隠している間は最後に表示した状態のまま止め、裏で地図を動かさない。
+  // 一度も表示していない（URL から詳細を開いた）ときは全国の表示で作る。
+  const visibleMapPropsRef = useRef<JapanResortMapProps | null>(null);
+  if (shouldRenderMap) visibleMapPropsRef.current = mapProps;
+  const mainMapProps: JapanResortMapProps = shouldRenderMap
+    ? mapProps
+    : (visibleMapPropsRef.current ?? {
+        ...mapProps,
+        selectedResortId: null,
+        hoveredResortId: null,
+        interactionMode: "default",
+        finalizedMapData: null,
+        linkedAreaControl: undefined,
+        selectedFinalizedFeature: null,
+        selectedElevationProfilePoint: null,
+      });
+  const [hasMainMap, setHasMainMap] = useState(shouldRenderMap);
+  const renderMainMap = shouldRenderMap || hasMainMap;
+  useEffect(() => {
+    if (shouldRenderMap) setHasMainMap(true);
+  }, [shouldRenderMap]);
+  // URL から詳細を開いたときは、詳細の取得と圏外用の保存が終わってから
+  // 全国地図を裏で作る。電波が弱いときに詳細の通信と取り合わないようにする。
+  const isDetailReady =
+    Boolean(selectedResortId) &&
+    selectedResortData?.id === selectedResortId &&
+    !isPending;
+  useEffect(() => {
+    if (hasMainMap || !isDetailReady || !selectedResortId) return;
+    let disposed = false;
+    let idle: number | undefined;
+    void waitForDetailSaved(selectedResortId).then(() => {
+      if (disposed) return;
+      const create = () => {
+        if (!disposed) setHasMainMap(true);
+      };
+      idle =
+        typeof window.requestIdleCallback === "function"
+          ? window.requestIdleCallback(create, { timeout: 3000 })
+          : window.setTimeout(create, 500);
+    });
+    return () => {
+      disposed = true;
+      if (idle === undefined) return;
+      if (typeof window.cancelIdleCallback === "function")
+        window.cancelIdleCallback(idle);
+      else window.clearTimeout(idle);
+    };
+  }, [hasMainMap, isDetailReady, selectedResortId]);
   const { sortedResorts, controls: sortControls } =
     useResortSort(filteredResorts);
   const shouldShowMobileResultCount = mobileContentTab === "info";
@@ -557,47 +639,20 @@ export const HomeLayout = ({
                   )}
                 </Button>
               )}
-            {shouldRenderMap && (
-              <DynamicMap
-                resorts={initialResorts}
-                filteredResortIdSet={filteredResortIdSet}
-                isFilterActive={hasActiveFilters}
-                // 条件なしで検索結果を閉じる時に、全スキー場へ fit して地図位置が動くのを防ぐ。
-                searchResultResortIds={mapSearchResultResortIds}
-                searchViewportRequestKey={searchViewportRequestKey}
-                searchViewportBottomPaddingRatio={
-                  searchViewportBottomPaddingRatio
+            {renderMainMap && (
+              // スマホで詳細・比較・検索を開いている間も地図は破棄せず隠す。
+              // 閉じたときに地図を作り直さず、前の画面をすぐ出すため。
+              <div
+                className={
+                  shouldRenderMap
+                    ? "absolute inset-0"
+                    : "invisible pointer-events-none absolute inset-0"
                 }
-                selectedResortId={selectedResortId}
-                hoveredResortId={hoveredResortId}
-                onSelectResort={onSelectResort}
-                interactionMode={mapInteractionMode}
-                selectedCompareIdSet={selectedCompareIdSet}
-                onToggleCompare={onToggleCompare}
-                onBoundsChange={() => undefined}
-                onViewChange={onMapViewChange}
-                onUserMapInteraction={onUserMapInteraction}
-                onUserMapZoomInteraction={onUserMapZoomInteraction}
-                restoreViewRequest={restoreViewRequest}
-                finalizedMapData={selectedMapData}
-                linkedAreaControl={
-                  selectedResortData ? (
-                    <SimultaneousToggle
-                      resort={selectedResortData}
-                      onSelectResort={onSelectResort}
-                      size="inline"
-                    />
-                  ) : undefined
-                }
-                selectedFinalizedFeature={selectedFinalizedFeature}
-                onSelectedFinalizedFeatureChange={
-                  onSelectedFinalizedFeatureChange
-                }
-                selectedElevationProfilePoint={selectedElevationProfilePoint}
-                onSelectedElevationProfilePointChange={
-                  onSelectedElevationProfilePointChange
-                }
-              />
+                aria-hidden={!shouldRenderMap}
+                inert={!shouldRenderMap}
+              >
+                <DynamicMap {...mainMapProps} />
+              </div>
             )}
             {!shouldRenderMap &&
               !selectedResortId &&
@@ -663,6 +718,7 @@ export const HomeLayout = ({
                 mobileContentTab="info"
                 mobilePresentation="inline"
                 hideMobileInfoSection
+                liftTicketInput={filters.liftTicket ?? undefined}
               />
             )}
             {shouldShowMobileSearchScreen && (
@@ -748,6 +804,7 @@ export const HomeLayout = ({
             mobileContentTab="info"
             hideMobileInfoSection
             isDesktopMapExpanded={isDesktopDetailMapExpanded}
+            liftTicketInput={filters.liftTicket ?? undefined}
           />
         )}
       </AnimatedPanel>

@@ -2523,6 +2523,8 @@ export type OfficialCase = {
     name: string;
     input: LiftTicketSearchInput;
     amount: number | null;
+    /** 借りられない用具として合計の横に添える要約（「ゴーグル」） */
+    missing?: string[];
   }>;
 };
 
@@ -4117,7 +4119,7 @@ export const OFFICIAL_CASES: OfficialCase[] = [
         amount: 3500,
       },
       {
-        name: "大人 ゴーグル単品（個別額未掲載）",
+        name: "大人 ゴーグル単品（個別額未掲載）は合計に含めず添える",
         input: {
           visitDate: "2027-01-05",
           today: "2026-10-30",
@@ -4145,7 +4147,8 @@ export const OFFICIAL_CASES: OfficialCase[] = [
             },
           ],
         },
-        amount: null,
+        amount: 0,
+        missing: ["ゴーグル"],
       },
       {
         name: "大人 スキーセットを連続2日借りる",
@@ -15352,6 +15355,135 @@ export const OFFICIAL_CASES: OfficialCase[] = [
         today: "2026-12-15",
         age: 60,
         amount: 32000,
+      },
+    ],
+    // レンタル料金は https://osorakan.co.jp/winter/rental/ の料金表（2026-11-05照合）
+    rentalQueries: [
+      {
+        name: "大人スキーセット",
+        input: {
+          visitDate: "2027-01-20",
+          today: "2026-11-05",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+        },
+        amount: 4500,
+      },
+      {
+        name: "大人スキー全セット（ウェア付き）",
+        input: {
+          visitDate: "2027-01-20",
+          today: "2026-11-05",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles", "wear"],
+              },
+            },
+          ],
+        },
+        amount: 7700,
+      },
+      {
+        name: "大人スキーセット+ヘルメット",
+        input: {
+          visitDate: "2027-01-20",
+          today: "2026-11-05",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles", "helmet"],
+              },
+            },
+          ],
+        },
+        amount: 5500,
+      },
+      {
+        name: "大人板のみ",
+        input: {
+          visitDate: "2027-01-20",
+          today: "2026-11-05",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "adult",
+              age: 30,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis"],
+              },
+            },
+          ],
+        },
+        amount: 2500,
+      },
+      {
+        name: "小学生スキーセット",
+        input: {
+          visitDate: "2027-01-20",
+          today: "2026-11-05",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "elementary",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "ski",
+                items: ["skis", "ski_boots", "poles"],
+              },
+            },
+          ],
+        },
+        amount: 2600,
+      },
+      {
+        name: "高校生ボード全セット",
+        input: {
+          visitDate: "2027-01-20",
+          today: "2026-11-05",
+          usePreference: "full_day",
+          party: [
+            {
+              id: "a",
+              category: "high_school",
+              age: null,
+              count: 1,
+              rental: {
+                sport: "snowboard",
+                items: ["snowboard", "snowboard_boots", "wear"],
+              },
+            },
+          ],
+        },
+        amount: 4200,
       },
     ],
   },

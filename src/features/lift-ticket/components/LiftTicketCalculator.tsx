@@ -11,7 +11,7 @@ import {
   DEFAULT_LIFT_TICKET_SEARCH_INPUT,
   selectLiftTicketSeason,
 } from "../utils/calculateLiftTicket";
-import { calculateRentalPlan, rentalOptionsOf } from "../utils/rental";
+import { calculateRentalPlan, SEARCH_RENTAL_OPTIONS } from "../utils/rental";
 import { calculateRentalBundle } from "../utils/rentalBundle";
 import { TicketPartyEditor } from "./TicketPartyEditor";
 import { TicketPlanCard } from "./TicketPlanCard";
@@ -41,14 +41,11 @@ export const LiftTicketCalculator = ({
     () => (data ? calculateLiftTicketPlan(data, input) : null),
     [data, input],
   );
-  const rentalOptions = useMemo(
-    () => (data ? rentalOptionsOf(data) : null),
-    [data],
-  );
-  // レンタル料金が無いスキー場では、保存済みの選択があっても計算に出さない
+  // 選べる用具は検索画面と同じにする（検索で選んだ条件をそのまま残す）。
+  // このスキー場で借りられない物は、合計の横に「＋ゴーグル」と添えて知らせる
   const rental = useMemo(
-    () => (data && rentalOptions ? calculateRentalPlan(data, input) : null),
-    [data, input, rentalOptions],
+    () => (data ? calculateRentalPlan(data, input) : null),
+    [data, input],
   );
   // リフト券とレンタルのセット券が、別々に買うより安ければ使う
   const bundle = useMemo(
@@ -72,7 +69,7 @@ export const LiftTicketCalculator = ({
         <TicketPartyEditor
           value={input}
           onChange={setInput}
-          rentalOptions={rentalOptions}
+          rentalOptions={SEARCH_RENTAL_OPTIONS}
           ageRequiredGroupIds={plan ? ageRequiredGroupIdsOf(plan) : []}
         />
         {plan && <TicketPlanCard plan={plan} rental={rental} bundle={bundle} />}

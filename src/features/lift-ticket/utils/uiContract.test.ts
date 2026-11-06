@@ -242,7 +242,11 @@ for (const spec of OFFICIAL_CASES.filter(c =>
           { id: "day", date: query.input.visitDate, duration: DAY },
         ],
       };
-      assert.equal(calculateRentalPlan(data, queryInput).total, query.amount);
+      const result = calculateRentalPlan(data, queryInput);
+      assert.equal(result.total, query.amount);
+      if (query.missing) {
+        assert.deepEqual(result.missingLabels, query.missing);
+      }
     });
   }
   for (const [category, age] of spec.ambiguousAges ?? []) {
@@ -317,9 +321,38 @@ for (const spec of OFFICIAL_CASES.filter(c =>
       assert.equal(result.days[0].result.productId, product);
     });
   }
-  for (const [hours, amount] of spec.hours) {
+  // 画面で選べるのは1〜9時間（10時間以上は「1日＋ナイター」）
+  for (const [hours, amount] of spec.hours.filter(
+    ([hours]) => hours <= Math.max(...TICKET_HOUR_OPTIONS),
+  )) {
     test(`${spec.resort}: ${hours}時間の要件と料金`, () => {
       const result = plan("adult", 30, spec.date, { kind: "hours", hours });
+      const operatingNote = (result.days[0].options?.notes ?? []).some(note =>
+        note.startsWith("この日の営業は"),
+      );
+      if (amount == null && operatingNote) {
+        // 仕様S7: その日の営業より長い指定は、営業全体（ナイター込み）の料金と
+        // 「この日の営業は8時間（8:30〜16:30）です」を出す。
+        // 照合ケースの null は旧仕様（料金なし）のときの期待値
+        const whole = plan("adult", 30, spec.date, {
+          kind: "day",
+          withNight: true,
+        });
+        assert.equal(result.total, whole.total);
+        return;
+      }
+      const primary = result.days[0].options?.primary;
+      if (amount == null && result.total != null && primary) {
+        // 仕様S3・S10: ナイター営業日はナイターを含めて数え、2枚まで組み合わせる。
+        // 照合ケースの null は旧仕様（日中だけで数えて料金なし）のときの期待値
+        const whole = plan("adult", 30, spec.date, {
+          kind: "day",
+          withNight: true,
+        });
+        assert.ok(primary.hours >= hours, JSON.stringify(primary));
+        assert.ok(result.total <= (whole.total ?? Number.POSITIVE_INFINITY));
+        return;
+      }
       assert.equal(result.total, amount);
       assertPrice(result.days[0].result, amount);
     });
@@ -331,9 +364,22 @@ for (const spec of OFFICIAL_CASES.filter(c =>
         p => p.id === result.days[0].result.productId,
       );
       if (result.total == null || !selected) return;
-      assert.notEqual(selected.validity?.mode, "fixed_time_window");
+      const options = result.days[0].options;
+      // 仕様S4: 一番上の時間帯固定券は、その日の範囲をすべて含むときだけ
+      if (selected.validity?.mode === "fixed_time_window")
+        assert.equal(options?.primary?.timeRestricted, false);
       const available = skiableHoursOf(selected, data, spec.date);
-      if (available != null) assert.ok(available >= hours);
+      // 仕様S7: 営業より長い指定なら、その旨の注記がある
+      if (
+        available != null &&
+        available < hours &&
+        options?.primary?.productIds.length === 1
+      )
+        assert.ok(
+          options.notes.some(note => note.startsWith("この日の営業は")) ||
+            (options.primary?.hours ?? 0) >= hours,
+          JSON.stringify(options.notes),
+        );
     });
   }
   for (const date of spec.openExceptions ?? []) {

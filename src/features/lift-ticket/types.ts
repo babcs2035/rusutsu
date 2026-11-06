@@ -20,7 +20,8 @@ export const TICKET_DISABILITY_BASE_CATEGORIES =
     category => category !== "disabled",
   );
 
-export const TICKET_HOUR_OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);
+/** N時間の選択肢。通常営業はほぼ9時間以内で、それより長い人は「1日＋ナイター」を選ぶ */
+export const TICKET_HOUR_OPTIONS = Array.from({ length: 9 }, (_, i) => i + 1);
 
 /** 画面で1つずつ選べるレンタル用具。セット（ski_set 等）はデータ側だけのラベル */
 export const TICKET_RENTAL_ITEMS = [
@@ -79,9 +80,10 @@ export type TicketDurationRequest =
   | { kind: "days"; days: number }
   | { kind: "product"; productId: string };
 
-/** 画面で選べるのは「1日（ナイター無/込）」と「N時間」の3択 */
+/** 画面で選べるのは「1日（ナイター無/込）」「ナイター」「N時間」 */
 export type TicketDayDuration =
   | { kind: "day"; withNight: boolean }
+  | { kind: "night" }
   | { kind: "hours"; hours: number };
 
 /**
@@ -166,6 +168,11 @@ export type LiftTicketProduct = {
     name_ja: string;
     description_ja?: string | null;
     notes_ja?: string | null;
+    /**
+     * type が "rental" のとき、含まれる用具（板・ブーツ・ストック・ウェア・ゴーグル等）。
+     * あれば名称の文字を読まずにこれで比べる。無い（旧データ）ときだけ名称から推定する
+     */
+    rental_items?: TicketRentalItem[];
   }>;
   shared_with_resorts?: Array<{
     /** 相手スキー場の SkiResort.id。マスタに無い場合のみ null */
@@ -380,6 +387,18 @@ export type LiftTicketFee = {
   amount?: number | null;
   currency?: string;
   applies_to_product_ids?: string[];
+  /**
+   * 手数料がかかる販売経路（channels の id。Web 決済手数料なら ["web"]）。
+   * 商品と併記したときは両方に合う購入にだけかかる。商品を指定せず
+   * 販売経路だけを書いてもよい（その経路で買う券すべてが対象）
+   */
+  channel_ids?: string[];
+  /**
+   * 課金の単位。per_person=1人ごと、per_ticket=1枚ごと、per_payment=1決済ごと。
+   * 省略は per_person（従来の扱い）。保証金は返金されるぶんを料金に含めず、
+   * 返却で返金する旨を name_ja / notes_ja に書く
+   */
+  charge_unit?: "per_person" | "per_ticket" | "per_payment";
   notes_ja?: string | null;
 };
 
@@ -501,6 +520,9 @@ export type TicketCalculationLine = {
   count: number;
   audienceName: string | null;
   productName: string | null;
+  /** 採用した券・料金の id。手数料の対象（商品・販売経路）の判定に使う */
+  productId?: string | null;
+  channelIds?: string[];
   offerName: string | null;
   unitAmount: number | null;
   subtotal: number | null;
@@ -554,8 +576,10 @@ export type TicketConditionalOffer = {
 export type TicketCalculationFee = {
   name: string;
   amount: number;
-  /** 人数分の合計。返ってこない負担だけが fees に載る */
+  /** 課金単位ぶんの合計（人数・枚数・決済回数を掛けたもの）。返ってこない負担だけが fees に載る */
   total: number;
+  /** 課金の単位（画面の「1決済あたり」等の表示用） */
+  chargeUnit?: "per_person" | "per_ticket" | "per_payment";
 };
 
 export type TicketCalculationResult = {

@@ -16,7 +16,6 @@ import {
   useTransition,
 } from "react";
 import { flushSync } from "react-dom";
-import { z } from "zod";
 import { getSkiResortById } from "@/actions/skiResorts";
 import {
   RecommendationProvider,
@@ -40,10 +39,8 @@ import {
 import { useResortAliases } from "@/features/map/hooks/useResortAliases";
 import {
   readDetailCache,
-  readOverviewCache,
-  retainDetailCaches,
+  retainComparedDetails,
   writeDetailCache,
-  writeOverviewCache,
 } from "@/features/map/session/detailCache";
 import { MapSessionProvider } from "@/features/map/session/MapSessionProvider";
 import { prepareDetail } from "@/features/map/session/prepareDetail";
@@ -61,13 +58,16 @@ import type {
   ElevationProfileMapPoint,
   SelectedMapFeature,
 } from "@/features/map/types";
+import { useWarmShareImage } from "@/features/share/useWarmShareImage";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
+import { parseCompareIds, writeCompareIds } from "@/shared/utils/comparePath";
 import {
   resortDocumentTitle,
   resortIdFromPathname,
   resortPathname,
 } from "@/shared/utils/resortPath";
+import { reloadIfStaleBuild } from "@/shared/utils/staleBuild";
 import type {
   MapSkiResort,
   NullableSkiResortDetail,
@@ -123,34 +123,20 @@ export function HomeClient({ initialResorts }: Props) {
       isListSheetOpen: false,
       listSheetSnapPoint: BOTTOM_SHEET_INITIAL_SNAP_POINT,
     };
-    const tokenKey = `${HOME_SESSION_KEY}:data`;
-    const token =
-      readStorage(tokenKey, z.string()) ??
-      crypto.randomUUID?.() ??
-      `${Date.now()}-${Math.random()}`;
-    writeStorage(tokenKey, token);
-    let disposed = false;
-    void readOverviewCache(token).then(cached => {
-      if (disposed) return;
-      const resorts = cached ?? initialResorts;
-      if (!cached) void writeOverviewCache(token, initialResorts);
-      const returnUrl = new URL(window.location.href);
-      if (returnUrl.searchParams.has("favoriteLogin")) {
-        returnUrl.searchParams.delete("favoriteLogin");
-        window.history.replaceState(window.history.state, "", returnUrl);
-      }
-      setBoot({
-        resorts,
-        session: resolveHomeSession(
-          stored ?? defaults,
-          new URL(window.location.href),
-          new Set(resorts.map(resort => resort.id)),
-        ),
-      });
+    // 一覧は HTML に含まれる値をそのまま使う。圏外では SW が保存した HTML の値になる。
+    const returnUrl = new URL(window.location.href);
+    if (returnUrl.searchParams.has("favoriteLogin")) {
+      returnUrl.searchParams.delete("favoriteLogin");
+      window.history.replaceState(window.history.state, "", returnUrl);
+    }
+    setBoot({
+      resorts: initialResorts,
+      session: resolveHomeSession(
+        stored ?? defaults,
+        new URL(window.location.href),
+        new Set(initialResorts.map(resort => resort.id)),
+      ),
     });
-    return () => {
-      disposed = true;
-    };
   }, [initialResorts]);
   // 親（body直下）に確定した高さがないので、ここで画面いっぱいの高さを渡す。
   // 渡さないと h-full が潰れて、スピナーが画面の上端に貼り付く。
@@ -252,7 +238,7 @@ function HomeClientContent({
   const [mobileContentTab, setMobileContentTab] = useState<"info" | "map">(
     session?.mobileContentTab ?? "map",
   );
-  const [isPending, startTransition] = useTransition();
+  const [isPending] = useTransition();
   const [discardFilterChangesDialogOpen, setDiscardFilterChangesDialogOpen] =
     useState(false);
   const [clearCompareDialogOpen, setClearCompareDialogOpen] = useState(false);
@@ -290,9 +276,7 @@ function HomeClientContent({
   });
 
   useEffect(() => {
-    const retainedIds = retainResortSession(selectedResortId);
-    const tabId = readStorage(`${HOME_SESSION_KEY}:data`, z.string());
-    if (tabId) void retainDetailCaches(tabId, retainedIds);
+    retainResortSession(selectedResortId);
     if (!("serviceWorker" in navigator)) return;
     let disposed = false;
     void navigator.serviceWorker.ready.then(registration => {
@@ -300,8 +284,6 @@ function HomeClientContent({
         registration.active?.postMessage({
           type: "SET_VIEW",
           id: selectedResortId,
-          tabId,
-          retainedIds,
         });
     });
     return () => {
@@ -355,11 +337,9 @@ function HomeClientContent({
           return;
         }
         setSelectedResortData(data);
-        void writeDetailCache(
-          data,
-          readStorage(`${HOME_SESSION_KEY}:data`, z.string()) ?? undefined,
-        ).then(saved => prepareDetail(data, saved));
-      } catch {
+        void writeDetailCache(data).then(saved => prepareDetail(data, saved));
+      } catch (error) {
+        if (reloadIfStaleBuild(error)) return;
         if (!disposed && current === generation) setDetailError(true);
       } finally {
         if (timer) {
@@ -429,16 +409,28 @@ function HomeClientContent({
     // 地図移動は URL 履歴を増やさない。スキー場の切り替えだけ履歴に積み、
     // ブラウザの戻る・進むで前のスキー場（またはホーム）へ戻れるようにする。
     const url = new URL(window.location.href);
-    url.pathname = resortPathname(selectedResortId);
+    const compareIds = isCompareOpen
+      ? (favoriteCompareIds ?? selectedCompareIds)
+      : [];
+    const shouldShowCompareUrl = isCompareOpen && compareIds.length > 0;
+    url.pathname = resortPathname(
+      shouldShowCompareUrl ? null : selectedResortId,
+    );
     url.searchParams.delete("resort");
+    writeCompareIds(url, shouldShowCompareUrl ? compareIds : []);
     const historyMode = urlHistoryModeRef.current;
     urlHistoryModeRef.current = "push";
     if (url.href === window.location.href) return;
+    const nextResortId = shouldShowCompareUrl ? null : selectedResortId;
     const isResortChange =
-      resortIdFromPathname(window.location.pathname) !== selectedResortId;
+      resortIdFromPathname(window.location.pathname) !== nextResortId;
+    const wasCompareOpen = new URL(window.location.href).searchParams.has(
+      "compare",
+    );
+    const isCompareTransition = wasCompareOpen !== shouldShowCompareUrl;
     // state は null で渡す。Next の内部 state を渡すとルーターに反映されず、
     // 次の再描画で元の URL に書き戻される。
-    if (historyMode === "push" && isResortChange)
+    if (historyMode === "push" && (isResortChange || isCompareTransition))
       window.history.pushState(null, "", url);
     else window.history.replaceState(null, "", url);
   }, [
@@ -457,21 +449,6 @@ function HomeClientContent({
     isCompareOpen,
     selectedElevationProfilePoint,
   ]);
-
-  useEffect(() => {
-    if (!session?.isCompareOpen) return;
-    let disposed = false;
-    void Promise.all(
-      (session.favoriteCompareIds ?? session.selectedCompareIds ?? []).map(
-        getCachedResort,
-      ),
-    ).then(data => {
-      if (!disposed) setCompareResortData(data.filter(item => item !== null));
-    });
-    return () => {
-      disposed = true;
-    };
-  }, [session]);
 
   // --- データ絞り込みロジック ---
 
@@ -505,10 +482,44 @@ function HomeClientContent({
     isCompareOpen && favoriteCompareIds !== null
       ? favoriteCompareIds
       : selectedCompareIds;
+  useWarmShareImage(
+    isCompareOpen
+      ? activeCompareIds
+      : selectedResortId
+        ? [selectedResortId]
+        : [],
+    isCompareOpen,
+  );
   const selectedCompareIdSet = useMemo(
     () => new Set(activeCompareIds),
     [activeCompareIds],
   );
+  const compareCacheKey = activeCompareIds.join(",");
+  useEffect(() => {
+    let disposed = false;
+    if (!isCompareOpen || !compareCacheKey) {
+      setCompareResortData([]);
+      setIsCompareLoading(false);
+      return;
+    }
+    setIsCompareLoading(true);
+    setCompareResortData([]);
+    void Promise.all(compareCacheKey.split(",").map(getCachedResort)).then(
+      data => {
+        if (disposed) return;
+        setCompareResortData(data.filter(item => item !== null));
+        setIsCompareLoading(false);
+      },
+    );
+    return () => {
+      disposed = true;
+    };
+  }, [compareCacheKey, isCompareOpen]);
+  useEffect(() => {
+    void retainComparedDetails(
+      compareCacheKey ? compareCacheKey.split(",") : [],
+    );
+  }, [compareCacheKey]);
   // 詳細データの取得を待たずに名前と所在地を出すための素材。
   // 一覧（地図用データ）はページのSSRに含まれるので、リストや地図から選んだ
   // ときはもちろん、URL直打ちでも初回描画の時点で手元にある。
@@ -914,35 +925,78 @@ function HomeClientContent({
     });
   };
 
-  // ブラウザの戻る・進むで、URL のスキー場を開く／詳細を閉じる。
+  // ブラウザ履歴を URL のスキー場・比較状態へ同期する。
   const historyNavigationRef = useRef({
     selectedResortId,
+    isCompareOpen,
     select: handleSelectResort,
     close: handleCloseDetail,
+    closeCompare: () => {},
+    restoreCompare: (_ids: string[]) => {},
   });
   useEffect(() => {
     historyNavigationRef.current = {
       selectedResortId,
+      isCompareOpen,
       select: handleSelectResort,
       close: handleCloseDetail,
+      closeCompare: () => handleCloseCompare(true),
+      restoreCompare: ids => {
+        setSelectedResortId(null);
+        setSelectedResortData(null);
+        setSelectedFinalizedFeature(null);
+        setSelectedElevationProfilePoint(null);
+        setFavoriteCompareIds(ids);
+        setIsCompareOpen(true);
+        setMobileContentTab("info");
+        setHoveredResortId(null);
+        if (isSidePanelLayout) setIsListSheetOpen(false);
+        else {
+          setListSheetSnapPoint(BOTTOM_SHEET_SEARCH_SNAP_POINT);
+          setIsListSheetOpen(true);
+        }
+      },
     };
   });
   useEffect(() => {
     const resortIds = new Set(initialResorts.map(resort => resort.id));
     const handlePopState = () => {
-      const id = resortIdFromPathname(window.location.pathname);
+      const url = new URL(window.location.href);
+      const pathId = resortIdFromPathname(url.pathname);
       const navigation = historyNavigationRef.current;
-      if (id === navigation.selectedResortId) return;
-      if (id && resortIds.has(id)) navigation.select(id);
-      else if (navigation.selectedResortId) navigation.close();
+      urlHistoryModeRef.current = "replace";
+      if (pathId) {
+        if (navigation.isCompareOpen) navigation.closeCompare();
+        if (resortIds.has(pathId) && pathId !== navigation.selectedResortId)
+          navigation.select(pathId);
+        else if (!resortIds.has(pathId) && navigation.selectedResortId)
+          navigation.close();
+        return;
+      }
+      const compareIds = url.searchParams.has("compare")
+        ? parseCompareIds(url.searchParams.getAll("compare"), resortIds)
+        : [];
+      if (compareIds.length > 0) {
+        navigation.restoreCompare(compareIds);
+        return;
+      }
+      if (navigation.isCompareOpen) navigation.closeCompare();
+      if (navigation.selectedResortId) navigation.close();
     };
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, [initialResorts]);
   useEffect(() => {
     const resort = initialResorts.find(item => item.id === selectedResortId);
-    document.title = resortDocumentTitle(resort?.nameJa ?? null);
-  }, [initialResorts, selectedResortId]);
+    document.title = isCompareOpen
+      ? `スキー場比較 ${activeCompareIds.length}件 | Rusutsu`
+      : resortDocumentTitle(resort?.nameJa ?? null);
+  }, [
+    initialResorts,
+    selectedResortId,
+    isCompareOpen,
+    activeCompareIds.length,
+  ]);
 
   const handleToggleCompare = useCallback(
     (id: string, selected: boolean) => {
@@ -960,32 +1014,29 @@ function HomeClientContent({
       if (!isCompareOpen) return;
 
       if (!selected) {
-        setCompareResortData(prev => prev.filter(resort => resort.id !== id));
+        if (activeCompareIds.length === 1) {
+          setFavoriteCompareIds(null);
+          setIsCompareOpen(false);
+        }
         return;
       }
-
-      setIsCompareLoading(true);
-      startTransition(async () => {
-        const data = await getCachedResort(id);
-        if (data) {
-          setCompareResortData(prev =>
-            prev.some(resort => resort.id === data.id) ? prev : [...prev, data],
-          );
-        }
-        setIsCompareLoading(false);
-      });
     },
-    [isCompareOpen, favoriteCompareIds],
+    [activeCompareIds, isCompareOpen, favoriteCompareIds],
   );
 
   const handleOpenCompare = useCallback(
-    async (ids = selectedCompareIds, fromFavorites = false) => {
+    (ids = selectedCompareIds, fromFavorites = false) => {
       if (ids.length === 0) return;
+      urlHistoryModeRef.current = "push";
       setFavoriteCompareIds(fromFavorites ? ids : null);
 
       setMobileContentTab("info");
       setHoveredResortId(null);
       saveReturnViewState();
+      setSelectedResortId(null);
+      setSelectedResortData(null);
+      setSelectedFinalizedFeature(null);
+      setSelectedElevationProfilePoint(null);
       setIsCompareOpen(true);
       setIsCompareLoading(true);
       if (isSidePanelLayout) {
@@ -994,12 +1045,6 @@ function HomeClientContent({
         setListSheetSnapPoint(BOTTOM_SHEET_SEARCH_SNAP_POINT);
         setIsListSheetOpen(true);
       }
-      setCompareResortData([]);
-
-      const data = await Promise.all(ids.map(id => getCachedResort(id)));
-
-      setCompareResortData(data.filter(resort => resort !== null));
-      setIsCompareLoading(false);
     },
     [isSidePanelLayout, saveReturnViewState, selectedCompareIds],
   );
@@ -1019,13 +1064,15 @@ function HomeClientContent({
     [],
   );
 
-  const handleCloseCompare = () => {
+  const handleCloseCompare = (fromHistory = false) => {
+    if (!fromHistory) urlHistoryModeRef.current = "push";
     closeMobileContentTab();
     setIsCompareOpen(false);
     setFavoriteCompareIds(null);
     restoreReturnViewState();
   };
   const handleClearCompare = useCallback(() => {
+    urlHistoryModeRef.current = "push";
     if (favoriteCompareIds === null) setSelectedCompareIds([]);
     setFavoriteCompareIds(null);
     setCompareResortData([]);
@@ -1207,8 +1254,11 @@ async function getCachedResort(id: string): Promise<SkiResortDetail | null> {
   if (!navigator.onLine) return cached;
   try {
     const data = await getSkiResortById(id);
+    // 比較中のスキー場も圏外で開けるよう、取得した最新値を保存する。
+    if (data) void writeDetailCache(data, { compared: true });
     return data ?? cached;
-  } catch {
+  } catch (error) {
+    reloadIfStaleBuild(error);
     return cached;
   }
 }

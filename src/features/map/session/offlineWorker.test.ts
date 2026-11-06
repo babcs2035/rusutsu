@@ -176,7 +176,21 @@ test("保存 HTML に圧縮ヘッダーや RSC 用 Vary を持ち越さない", 
   assert.equal(response?.headers.get("x-content-type-options"), "nosniff");
 });
 
-test("応答しない通信でも保存画面は即座に開く", async () => {
+test("保存済みでも通信できれば最新の画面を開く", async () => {
+  const runtime = worker(async () => new Response("latest"));
+  await (await runtime.caches.open("rusutsu-map-v1-home")).put(
+    "https://example.com/rusutsu",
+    new Response("saved"),
+  );
+  const response = await runtime.dispatch({
+    url: "https://example.com/rusutsu",
+    method: "GET",
+    mode: "navigate",
+  });
+  assert.equal(await response?.text(), "latest");
+});
+
+test("応答しない通信でも待ち時間後に保存画面を開く", async () => {
   const runtime = worker(() => new Promise(() => {}));
   await (await runtime.caches.open("rusutsu-map-v1-home")).put(
     "https://example.com/rusutsu",
@@ -273,7 +287,7 @@ test("新版の起動資産を取得できなければ既存HTMLを置き換え�
   );
 });
 
-test("A→ホーム→B→ホーム→CでAだけを削除し、共有画像と休止中の別タブを保護する", async () => {
+test("直近2件の詳細だけ残し、残す詳細と共有するタイルは消さない", async () => {
   const runtime = worker(async () => new Response("saved"));
   await (await runtime.caches.open("rusutsu-map-v1-home")).put(
     "https://example.com/rusutsu",
@@ -283,29 +297,23 @@ test("A→ホーム→B→ホーム→CでAだけを削除し、共有画像と�
     `https://cyberjapandata.gsi.go.jp/xyz/pale/14/${id}/2.png`;
   const shared = tile(0);
   const image = "https://example.org/trail.png";
-  const view = (id: string | null, retainedIds: string[], tabId = "tab-a") =>
-    runtime.message({ type: "SET_VIEW", id, retainedIds, tabId }, tabId);
-  const save = (id: string, tiles: string[], images: string[] = []) =>
-    runtime.message(
-      { type: "SAVE_DETAIL", id, tiles, images, complete: true },
-      "tab-a",
-    );
+  const save = async (id: string, tiles: string[], images: string[] = []) => {
+    await runtime.message({ type: "SET_VIEW", id });
+    await runtime.message({
+      type: "SAVE_DETAIL",
+      id,
+      tiles,
+      images,
+      complete: true,
+    });
+  };
   const tiles = await runtime.caches.open("rusutsu-map-v1-tiles");
   const images = await runtime.caches.open("rusutsu-map-v1-images");
   const meta = await runtime.caches.open("rusutsu-map-v1-meta");
-  await view("A", ["A"]);
   await save("A", [tile(1), shared], [image]);
-  await view(null, ["A"]);
-  assert.ok(await tiles.match(tile(1)));
-  await view("B", ["B", "A"]);
   await save("B", [tile(2), shared]);
-  await view("A", ["A"], "tab-b");
-  await view(null, ["B", "A"]);
-  await view("C", ["C", "B"]);
+  assert.ok(await tiles.match(tile(1)));
   await save("C", [tile(3)]);
-  assert.ok(await tiles.match(tile(1)), "別タブが使うAを保護");
-  await view("D", ["D", "A"], "tab-b");
-  await view("E", ["E", "D"], "tab-b");
   assert.equal(await tiles.match(tile(1)), undefined);
   assert.equal(await images.match(image), undefined);
   assert.equal(
@@ -314,27 +322,22 @@ test("A→ホーム→B→ホーム→CでAだけを削除し、共有画像と�
   );
   for (const url of [shared, tile(2), tile(3)])
     assert.ok(await tiles.match(url));
-  await save("A", [tile(1)]);
-  assert.equal(
-    await tiles.match(tile(1)),
-    undefined,
-    "遅れた旧画面の保存で復活しない",
-  );
+  // 開き直した B は新しくなり、次に消えるのは C。
+  await save("B", [tile(2), shared]);
+  await save("D", [tile(4)]);
+  assert.equal(await tiles.match(tile(3)), undefined);
+  for (const url of [shared, tile(2), tile(4)])
+    assert.ok(await tiles.match(url));
 });
 
-test("1タブで25件巡回しても直近2件だけを保存する", async () => {
+test("25件巡回しても直近2件だけを保存する", async () => {
   const runtime = worker(async () => new Response("saved"));
   await (await runtime.caches.open("rusutsu-map-v1-home")).put(
     "https://example.com/rusutsu",
     new Response("home"),
   );
   for (let i = 0; i < 25; i++) {
-    await runtime.message({
-      type: "SET_VIEW",
-      id: String(i),
-      tabId: "one",
-      retainedIds: [String(i), ...(i ? [String(i - 1)] : [])],
-    });
+    await runtime.message({ type: "SET_VIEW", id: String(i) });
     await runtime.message({
       type: "SAVE_DETAIL",
       id: String(i),
@@ -348,49 +351,46 @@ test("1タブで25件巡回しても直近2件だけを保存する", async () =
   );
 });
 
-test("保存途中で2つ先へ移動しても、完了の遅い画像が削除後に復活しない", async () => {
-  let finish: (() => void) | undefined;
-  let started: (() => void) | undefined;
-  const waiting = new Promise<void>(resolve => {
-    started = resolve;
-  });
+test("比較などで表示しただけのタイルも圏外で再表示できる", async () => {
+  let online = true;
   const runtime = worker(async () => {
-    started?.();
-    await new Promise<void>(resolve => {
-      finish = resolve;
-    });
-    return new Response("late tile");
+    if (!online) throw new TypeError("offline");
+    return new Response("tile");
   });
-  const url = "https://cyberjapandata.gsi.go.jp/xyz/pale/14/1/2.png";
-  await runtime.message({
-    type: "SET_VIEW",
-    tabId: "one",
-    id: "A",
-    retainedIds: ["A"],
+  const url = "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/15/1/2.jpg";
+  const request = { url, method: "GET", mode: "cors" };
+  assert.equal(await (await runtime.dispatch(request))?.text(), "tile");
+  online = false;
+  assert.equal(await (await runtime.dispatch(request))?.text(), "tile");
+});
+
+test("新しい版の画面を保存したら旧ビルドの JS だけを消す", async () => {
+  let version = "a";
+  const runtime = worker(async request => {
+    if (String(request.url ?? request).endsWith("/rusutsu"))
+      return new Response(
+        `<html><script src="/rusutsu/_next/static/chunks/${version}.js"></script></html>`,
+        { headers: { "content-type": "text/html" } },
+      );
+    return new Response("asset");
   });
-  const saving = runtime.message({
-    type: "SAVE_DETAIL",
-    id: "A",
-    tiles: [url],
-    complete: true,
-  });
-  await waiting;
-  const second = runtime.message({
-    type: "SET_VIEW",
-    tabId: "one",
-    id: "B",
-    retainedIds: ["B", "A"],
-  });
-  const third = runtime.message({
-    type: "SET_VIEW",
-    tabId: "one",
-    id: "C",
-    retainedIds: ["C", "B"],
-  });
-  finish?.();
-  await Promise.all([saving, second, third]);
-  assert.equal(
-    await (await runtime.caches.open("rusutsu-map-v1-tiles")).match(url),
-    undefined,
+  const assets = await runtime.caches.open("rusutsu-map-v1-assets");
+  const asset = (name: string) =>
+    `https://example.com/rusutsu/_next/static/chunks/${name}.js`;
+  await runtime.saveHome();
+  // 同じ版の遅延 chunk は残る。
+  await runtime.message({ type: "WARM_MAP", assets: [asset("lazy")] });
+  await runtime.saveHome();
+  assert.ok(await assets.match(asset("a")));
+  assert.ok(await assets.match(asset("lazy")));
+  version = "b";
+  await runtime.saveHome();
+  assert.ok(await assets.match(asset("b")));
+  assert.equal(await assets.match(asset("a")), undefined);
+  assert.equal(await assets.match(asset("lazy")), undefined);
+  assert.ok(
+    await assets.match(
+      "https://example.com/rusutsu/maplibre/maplibre-gl-worker.mjs",
+    ),
   );
 });

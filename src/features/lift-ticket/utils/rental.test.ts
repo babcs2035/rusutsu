@@ -140,13 +140,36 @@ test("板だけ・板＋ブーツ・3点・3点＋ウェアで最安の組み合
   assert.equal(totalOf({ sport: "ski", items: ["wear"] }), 3000);
 });
 
-test("料金表に無い用具（ゴーグル）を選ぶと未確定にする", () => {
+test("料金表に無い用具（ゴーグル）は合計に含めず、借りられない物として返す", () => {
   const result = calculateRentalPlan(
     data(RENTALS),
     input([group({ sport: "ski", items: ["skis", "goggles"] })]),
   );
-  assert.equal(result.status, "partial");
-  assert.equal(result.total, null);
+  const skisOnly = calculateRentalPlan(
+    data(RENTALS),
+    input([group({ sport: "ski", items: ["skis"] })]),
+  );
+  assert.equal(result.status, "complete");
+  assert.equal(result.total, skisOnly.total);
+  assert.deepEqual(result.missingLabels, ["ゴーグル"]);
+});
+
+test("借りられない用具だけを選んだ人は0円で、要約だけを返す", () => {
+  const result = calculateRentalPlan(
+    data(RENTALS),
+    input([group({ sport: "ski", items: ["goggles", "gloves"] })]),
+  );
+  assert.equal(result.total, 0);
+  assert.deepEqual(result.missingLabels, ["ゴーグル＋グローブ"]);
+});
+
+test("レンタル料金を集めていないスキー場は、選んだ物すべてを借りられない物にする", () => {
+  const result = calculateRentalPlan(
+    data([]),
+    input([group({ sport: "ski", items: ["skis", "ski_boots", "poles"] })]),
+  );
+  assert.equal(result.status, "not_collected");
+  assert.deepEqual(result.missingLabels, ["スキー3点"]);
 });
 
 test("レンタルだけの区分（キッズ＝小学生以下）を学校区分で引き、シニアは基準区分へ戻す", () => {

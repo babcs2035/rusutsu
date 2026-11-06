@@ -153,6 +153,7 @@ export const MapLibreResortMap = memo(function MapLibreResortMap(
 });
 
 function MapLibreResortMapContent({
+  onMapReady,
   onCommunityPointPick,
   communityPoint,
   onRecover,
@@ -1437,6 +1438,10 @@ function MapLibreResortMapContent({
     surfaceRef,
     showBottomToolbar,
   );
+
+  useEffect(() => {
+    if (map && isReady) onMapReady?.(map);
+  }, [map, isReady, onMapReady]);
 
   return (
     <div

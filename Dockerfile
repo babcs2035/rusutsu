@@ -109,7 +109,7 @@ RUN cp -an /tmp/node_modules/. ./node_modules/ && rm -rf /tmp/node_modules
 # Setup permissions. The crawler artifact directory is mounted as a persistent
 # volume in production, so warning/failure DOMs survive container replacement.
 RUN mkdir -p .cache /pnpm /app/var/crawler-artifacts \
-    /app/var/crawler-worker-artifacts && \
+    /app/var/crawler-worker-artifacts /app/var/share-images && \
     chown -R nextjs:nodejs /app /home/nextjs/.cache /pnpm
 
 # Switch to non-root user

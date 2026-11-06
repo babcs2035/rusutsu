@@ -39,3 +39,33 @@ export async function prepareDetail(data: SkiResortDetail, dataSaved: boolean) {
     /* 次のオンライン復帰時に再試行する。 */
   }
 }
+
+/**
+ * SW がこの詳細の地図タイル・画像を保存し終えるまで待つ。
+ * SW が無い、保存が始まらない、時間切れのときはそこで打ち切る。
+ */
+export async function waitForDetailSaved(id: string, timeout = 20000) {
+  if (
+    process.env.NODE_ENV !== "production" ||
+    typeof caches === "undefined" ||
+    !("serviceWorker" in navigator)
+  )
+    return;
+  // public/map-sw.js の META と detailURL に揃える。
+  const key = new URL(
+    `/rusutsu/offline-detail/${encodeURIComponent(id)}`,
+    window.location.origin,
+  ).href;
+  const until = Date.now() + timeout;
+  while (Date.now() < until) {
+    try {
+      const saved = await (
+        await (await caches.open("rusutsu-map-v1-meta")).match(key)
+      )?.json();
+      if (saved && saved.state !== "saving") return;
+    } catch {
+      return;
+    }
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+}

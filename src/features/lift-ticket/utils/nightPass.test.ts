@@ -118,7 +118,8 @@ test("ナイター営業日で、ナイター込み1日券が無ければ1日券
     result.lines.some(line => line.groupLabel.includes("ナイター")),
     "ナイター側の行だと区別できるラベルが付く",
   );
-  assert.match(result.notes.join(""), /1日券とナイター券の合算/);
+  // 券名と2行の内訳で合算だと分かるので、「〜が無いため」の注記は出さない
+  assert.doesNotMatch(result.notes.join(""), /無いため/);
 });
 
 const MEGAHIRA = path.join(

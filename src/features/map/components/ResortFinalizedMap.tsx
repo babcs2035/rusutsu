@@ -42,6 +42,7 @@ const getCoordinatesCenter = (
 };
 
 type Props = {
+  onMapReady?: JapanResortMapProps["onMapReady"];
   DynamicMap: ComponentType<JapanResortMapProps>;
   resortId: string;
   finalizedMapData: FinalizedResortMapData | null;
@@ -99,6 +100,7 @@ type Props = {
  * 「どのスキー場を、どの大きさで、何を選んだ状態で出すか」だけを決める。
  */
 export const ResortFinalizedMap = ({
+  onMapReady,
   DynamicMap,
   resortId,
   finalizedMapData,
@@ -163,6 +165,7 @@ export const ResortFinalizedMap = ({
   return (
     <div className={cn("relative h-full w-full overflow-hidden", className)}>
       <DynamicMap
+        onMapReady={onMapReady}
         resorts={mapResorts}
         filteredResortIdSet={selectedResortIdSet}
         isFilterActive={false}

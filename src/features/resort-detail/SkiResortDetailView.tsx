@@ -26,6 +26,7 @@ import {
   useCommunityMapPostHost,
   useOpenCommunityMapPosts,
 } from "@/features/community/mapPostStore";
+import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
 import { useScreenState } from "@/features/map/session/useScreenState";
 import type {
   ElevationProfileMapPoint,
@@ -92,6 +93,8 @@ type Props = {
    * 右側に小さく重ねて出す。
    */
   isDesktopMapExpanded?: boolean;
+  /** 検索画面で指定した料金計算の条件。料金タブの最初の入力にする */
+  liftTicketInput?: LiftTicketSearchInput;
 };
 
 const tabSchema = z.enum(["ゲレンデ", "SNS", "料金", "天気", "投稿"]);
@@ -169,6 +172,7 @@ export const SkiResortDetailView = ({
   mobilePresentation = "overlay",
   hideMobileInfoSection = false,
   isDesktopMapExpanded = false,
+  liftTicketInput,
 }: Props) => {
   // 「〇〇も同時に表示」中は、地図と地図で選んだ線の詳細を組全体で扱う
   const simultaneous = useSimultaneousView(resortData ?? null);
@@ -599,7 +603,9 @@ export const SkiResortDetailView = ({
       >
         <SnsTab resort={resort} />
       </div>
-      {activeTab === "料金" && <TicketsTab resort={resort} />}
+      {activeTab === "料金" && (
+        <TicketsTab resort={resort} searchInput={liftTicketInput} />
+      )}
       {activeTab === "天気" && <WeatherTab resort={resort} />}
       {/* 外側の余白はほかのタブと同じ（タブ本文の枠が持つ） */}
       {activeTab === "投稿" && (

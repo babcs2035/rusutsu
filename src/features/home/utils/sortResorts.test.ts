@@ -39,16 +39,16 @@ test("sorts names naturally without changing the input array", () => {
   assert.deepEqual(ids(input), ["B", "A10", "A2"]);
 });
 
-test("uses the course total shown in the list, falling back to basic data", () => {
+test("sorts courses by basic course count regardless of mapped coverage", () => {
   const input = [
-    resort("basic", { courses: 15 }),
-    resort("mapped", { courses: 99, counts: counts(2, 8) }),
-    resort("largest", { counts: counts(2, 20) }),
+    resort("low-coverage", { courses: 30, counts: counts(2, 8) }),
+    resort("high-coverage", { courses: 20, counts: counts(18, 20) }),
+    resort("no-status", { courses: 10 }),
   ];
   assert.deepEqual(ids(sortResorts(input, "courses")), [
-    "largest",
-    "basic",
-    "mapped",
+    "low-coverage",
+    "high-coverage",
+    "no-status",
   ]);
 });
 

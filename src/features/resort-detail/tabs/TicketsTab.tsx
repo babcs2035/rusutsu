@@ -17,6 +17,7 @@ import {
 import { LiftTicketCalculator } from "@/features/lift-ticket/components/LiftTicketCalculator";
 import { LiftTicketPriceTable } from "@/features/lift-ticket/components/LiftTicketPriceTable";
 import { RentalPriceTable } from "@/features/lift-ticket/components/RentalPriceTable";
+import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
 import {
   type TicketCategory,
   ticketCategoriesOf,
@@ -101,7 +102,24 @@ const TicketCategoryTabs = ({
   </div>
 );
 
-export const TicketsTab = ({ resort }: { resort: Resort }) => {
+/** 検索条件ごとに保存先を分けるための短い識別子（同じ条件なら同じ値） */
+const inputKeyOf = (input: LiftTicketSearchInput) => {
+  const text = JSON.stringify(input);
+  let hash = 5381;
+  for (let index = 0; index < text.length; index++) {
+    hash = ((hash << 5) + hash + text.charCodeAt(index)) | 0;
+  }
+  return (hash >>> 0).toString(36);
+};
+
+export const TicketsTab = ({
+  resort,
+  searchInput,
+}: {
+  resort: Resort;
+  /** 検索画面で指定した料金計算の条件 */
+  searchInput?: LiftTicketSearchInput;
+}) => {
   const tickets = resort.tickets;
   // 「〇〇も同時に表示」中は、組のスキー場の券も選べるようにする
   const { active, partners } = useSimultaneousView(resort);
@@ -149,7 +167,12 @@ export const TicketsTab = ({ resort }: { resort: Resort }) => {
         <LiftTicketCalculator
           key={category.key}
           seasons={category.seasons}
-          sessionKey={`rusutsu:detail:v1:${resort.id}:ticketInput`}
+          // 検索で条件を指定していれば、それを最初の入力にする。詳細で変えた分は
+          // 同じ検索条件の間だけ残し、検索条件を変えたら新しい条件から始める
+          sessionKey={`rusutsu:detail:v1:${resort.id}:ticketInput${
+            searchInput ? `:${inputKeyOf(searchInput)}` : ""
+          }`}
+          initialInput={searchInput}
           categoryControl={categoryControl}
         />
         <section>

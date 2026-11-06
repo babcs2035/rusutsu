@@ -82,8 +82,8 @@ const WEEKDAY = "2027-01-13";
 const HOLIDAY = "2027-01-16";
 
 test("おそらかん: 単品レンタル料金が無くても、セット券で借りる物を選べて合計が出る", () => {
-  const data = load("osorakan-snow-park");
-  assert.equal((data.rentals ?? []).length, 0);
+  // 単品レンタル料金を集める前の状態（セット券だけ）を再現する
+  const data = { ...load("osorakan-snow-park"), rentals: [] };
   const options = rentalOptionsOf(data);
   assert.ok(options, "セット券に含まれる用具を選択肢にする");
   assert.deepEqual(options.sports, ["ski", "snowboard"]);
@@ -113,9 +113,11 @@ test("おそらかん: ウェアも借りるなら、ウェア付きのセット
   assert.equal(holiday.bundle?.lines[0].subtotal, 12200);
 });
 
-test("セット券に含まれない用具（ヘルメット）を借りる人にはセット券を使わない", () => {
+// 仕様 BN04（セット券に含まれない用具は単品を足して比べる）に合わせて変更。
+// 以前は「含まれない物があればセット券を使わない」だった
+test("セット券に含まれない用具（ヘルメット）は、セット券＋単品を足して別々と比べる", () => {
   const data = load("osorakan-snow-park");
-  const { bundle } = bundleOf(
+  const { rental, bundle } = bundleOf(
     data,
     inputOf(
       [
@@ -127,7 +129,27 @@ test("セット券に含まれない用具（ヘルメット）を借りる人�
       WEEKDAY,
     ),
   );
-  assert.equal(bundle, null);
+  // セット券 8,000円＋ヘルメット単品 1,000円（別々は 11,000円）
+  assert.equal(bundle?.total, 9000);
+  assert.equal(bundle?.separateTotal, 11000);
+  assert.ok(
+    bundle?.lines[0].warnings.some(warning => warning.includes("単品")),
+    "単品を足した説明が無い",
+  );
+  assert.ok(rental);
+});
+
+test("おそらかん: 借りられない用具（ゴーグル）を選んでも、セット券で残りを借りる", () => {
+  const data = load("osorakan-snow-park");
+  const input = inputOf(
+    [adult({ sport: "ski", items: [...SKI_SET.items, "goggles"] })],
+    WEEKDAY,
+  );
+  const { rental, bundle } = bundleOf(data, input);
+  assert.ok(bundle);
+  assert.equal(bundle.lines[0].productId, "rental-1");
+  assert.equal(bundle.total, 8000);
+  assert.deepEqual(rental?.missingLabels, ["ゴーグル"]);
 });
 
 test("おそらかん: 複数日はセット券を日数ぶん足す", () => {
@@ -211,4 +233,31 @@ test("レンタルを借りない検索では何も返さない", () => {
   const data = load("osorakan-snow-park");
   const { bundle } = bundleOf(data, inputOf([adult(null)], WEEKDAY));
   assert.equal(bundle, null);
+});
+
+test("おそらかん: レディースDAY（木曜）でも、セット券に通常の1日券の料金を混ぜない", () => {
+  const data = load("osorakan-snow-park");
+  // 2027-01-14 は木曜（レディースDAY）
+  const { bundle } = bundleOf(
+    data,
+    inputOf([adult(SKI_SET_WEAR)], "2027-01-14"),
+  );
+  assert.ok(bundle);
+  assert.equal(bundle.lines[0].productId, "rental-2");
+  assert.equal(bundle.lines[0].subtotal, 10600);
+  assert.ok(
+    bundle.conditionalOffers.every(offer => offer.unitAmount !== 2000),
+    "レディースDAYの1日券（2,000円）はセット券の条件付きの案にしない",
+  );
+});
+
+test("おそらかん: 年齢が空欄なら、年齢で分かれるセット券は使わず年齢の入力を求める", () => {
+  const data = load("osorakan-snow-park");
+  const { bundle } = bundleOf(
+    data,
+    inputOf([adult(SKI_SET_WEAR, { age: null })], WEEKDAY),
+  );
+  assert.ok(bundle);
+  assert.equal(bundle.lines.length, 0);
+  assert.deepEqual(bundle.ageNeededGroupIds, ["g1"]);
 });

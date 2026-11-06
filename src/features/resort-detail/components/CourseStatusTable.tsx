@@ -73,6 +73,11 @@ export function StatusLegendDialog({
               地図のコースを基準に数えています。同じコースの複数の区間は1コースにまとめ、一部だけ滑走できる場合は△、営業状況が分からない区間がある場合は「不明」に含めます。
             </p>
           )}
+          <p className="mt-2 text-sm leading-relaxed">
+            スキー場一覧の件数は、営業情報と対応付けた
+            {isLift ? "リフト" : "コース"}
+            だけを対象にしています。
+          </p>
           <DialogClose
             aria-label="説明を閉じる"
             className="absolute right-3 top-3 flex size-9 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-600"

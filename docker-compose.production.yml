@@ -25,9 +25,11 @@ services:
       - INTERNAL_DATA_API_DIAGNOSTICS_TOKEN=${INTERNAL_DATA_API_DIAGNOSTICS_TOKEN:?INTERNAL_DATA_API_DIAGNOSTICS_TOKEN is required}
       - CRAWLER_ARTIFACT_ROOT=/app/var/crawler-artifacts
       - CRAWLER_ARTIFACT_RETENTION_DAYS=${CRAWLER_ARTIFACT_RETENTION_DAYS:-30}
+      - SHARE_IMAGE_CACHE_ROOT=/app/var/share-images
       - PUBLIC_READINESS_URL=${DATA_API_BASE_URL:?DATA_API_BASE_URL must be the public HTTPS URL including /rusutsu}
     volumes:
       - crawler_artifacts:/app/var/crawler-artifacts
+      - share_images:/app/var/share-images
     restart: unless-stopped
     init: true
     stop_grace_period: 30s
@@ -94,4 +96,5 @@ volumes:
     external: true
     name: ${POSTGRES_VOLUME:?POSTGRES_VOLUME must identify the existing database volume}
   crawler_artifacts:
+  share_images:
   crawler_worker_artifacts:

@@ -4,6 +4,7 @@ import {
   TICKET_RENTAL_ITEMS,
   TICKET_RENTAL_SPORTS,
 } from "@/features/lift-ticket/types";
+import { parseCompareIds } from "@/shared/utils/comparePath";
 import { resortIdFromUrl } from "@/shared/utils/resortPath";
 
 const id = z.string().min(1).max(200);
@@ -22,7 +23,13 @@ export const viewportSchema = z.object({
 });
 const duration = z.union([
   z.object({ kind: z.literal("day"), withNight: z.boolean() }),
-  z.object({ kind: z.literal("hours"), hours: z.number().positive().max(24) }),
+  z.object({ kind: z.literal("night") }),
+  // 選択肢は1〜9時間。以前保存した10時間以上は「1日＋ナイター」に読み替える
+  z
+    .object({ kind: z.literal("hours"), hours: z.number().positive().max(24) })
+    .transform(value =>
+      value.hours > 9 ? ({ kind: "day", withNight: true } as const) : value,
+    ),
 ]);
 const numeric = z.number().nonnegative().nullable();
 export const filtersSchema = z.object({
@@ -168,19 +175,29 @@ export function resolveHomeSession(
   // URL が履歴の各エントリの正なので、ホームの URL ならスキー場を選ばない。
   const explicit = resortIdFromUrl(url);
   const validId = explicit && resortIds.has(explicit) ? explicit : null;
+  const hasDetailUrl = explicit !== null;
+  const urlCompareIds =
+    hasDetailUrl || !url.searchParams.has("compare")
+      ? null
+      : parseCompareIds(url.searchParams.getAll("compare"), resortIds);
+  const isUrlCompareOpen = (urlCompareIds?.length ?? 0) > 0;
   return {
     ...saved,
     selectedResortId: validId,
+    selectedCompareIds: saved.selectedCompareIds ?? [],
+    favoriteCompareIds: isUrlCompareOpen ? urlCompareIds : null,
+    isCompareOpen: isUrlCompareOpen,
     isMobileFilterOverlayOpen:
-      explicit && explicit !== saved.selectedResortId
+      isUrlCompareOpen || (explicit && explicit !== saved.selectedResortId)
         ? false
         : saved.isMobileFilterOverlayOpen,
     selectedFeature:
       validId && validId === saved.selectedResortId
         ? saved.selectedFeature
         : null,
-    mobileContentTab:
-      explicit && explicit !== saved.selectedResortId
+    mobileContentTab: isUrlCompareOpen
+      ? "info"
+      : explicit && explicit !== saved.selectedResortId
         ? "info"
         : saved.mobileContentTab,
   };

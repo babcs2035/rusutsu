@@ -22,6 +22,10 @@ import {
   isSharedLiftTicketProduct,
   priceModeOf,
 } from "../types";
+import {
+  calculateDurationOptions,
+  type TicketDurationOptions,
+} from "./durationOptions";
 
 export const TICKET_PARTY_CATEGORY_LABELS: Record<TicketPartyCategory, string> =
   {
@@ -595,28 +599,14 @@ const isUnknownHoursDayPass = (
 };
 
 /**
- * 「〇時間滑りたい」を満たす券のうち、**パーティ合計が最安**のものを選ぶ。
- *
- * 券種名を選ばせる代わりに滑る長さで選べるようにするための関数。
- * 「7時間」と入力されたら9時間券が候補になり、3〜6時間券は落ちる。
+ * 長さの指定（1日・N時間・ナイター）に使える券の基本の候補。
+ * 共通券・エリア限定券・誰でも買える料金の無い券をここで外す。
+ * 利用単位（時間帯固定・回数券など）の判定は呼び出し側で行う。
  */
-export const selectCheapestProductForDuration = (
+export const durationCandidateProducts = (
   data: LiftTicketData,
   input: LiftTicketSearchInput,
-  request: TicketDurationRequest,
 ) => {
-  if (request.kind === "product") {
-    return (
-      data.products.find(product => product.id === request.productId) ?? null
-    );
-  }
-  const operatingHours = allOperatingHoursOn(data, input.visitDate);
-  if (
-    request.kind === "hours" &&
-    operatingHours != null &&
-    request.hours > operatingHours
-  )
-    return null;
   // 付属物（温泉特典など）が付いていても普通のリフト券なので候補から外さない。
   // 外していたため「温泉特典付き9時間券」が7時間の要件で該当なしになっていた。
   // 共通券だけは別枠（画面の単独券／共通券の切り替えで扱う）。
@@ -661,12 +651,43 @@ export const selectCheapestProductForDuration = (
       product.validity?.days === 1 &&
       hasUnconditionalStandardOffer(data, product),
   );
-  const candidates = data.products.filter(product => {
+  return data.products.filter(product => {
     if (isExcludedShared(product)) return false;
     // 利用エリアを指定していない検索に、初心者エリア限定の安い券を出さない。
     if (hasUnrestrictedDayPass && (product.area_ids?.length ?? 0) > 0)
       return false;
-    if (!hasUnconditionalStandardOffer(data, product)) return false;
+    return hasUnconditionalStandardOffer(data, product);
+  });
+};
+
+/**
+ * 「〇時間滑りたい」を満たす券のうち、**パーティ合計が最安**のものを選ぶ。
+ *
+ * 券種名を選ばせる代わりに滑る長さで選べるようにするための関数。
+ * 「7時間」と入力されたら9時間券が候補になり、3〜6時間券は落ちる。
+ */
+export const selectCheapestProductForDuration = (
+  data: LiftTicketData,
+  input: LiftTicketSearchInput,
+  request: TicketDurationRequest,
+) => {
+  if (request.kind === "product") {
+    return (
+      data.products.find(product => product.id === request.productId) ?? null
+    );
+  }
+  const operatingHours = allOperatingHoursOn(data, input.visitDate);
+  if (
+    request.kind === "hours" &&
+    operatingHours != null &&
+    request.hours > operatingHours
+  )
+    return null;
+  const baseCandidates = new Set(
+    durationCandidateProducts(data, input).map(product => product.id),
+  );
+  const candidates = data.products.filter(product => {
+    if (!baseCandidates.has(product.id)) return false;
     // ★時間帯が固定された券（ゴゴイチ券など）は朝から滑りたい人の代表にしない。
     // 明示的に券種を選んだ場合だけ使える
     if (product.validity?.mode === "fixed_time_window") return false;
@@ -1026,6 +1047,9 @@ const isFullDayLike = (product: LiftTicketProduct) =>
   (product.validity?.mode !== "hours_pool" &&
     (durationHours(product) ?? 0) >= 6);
 
+const includesRental = (product: LiftTicketProduct) =>
+  (product.included_items ?? []).some(item => item.type === "rental");
+
 const getAutomaticSpecialProductIds = (
   data: LiftTicketData,
   baseProduct: LiftTicketProduct,
@@ -1035,6 +1059,7 @@ const getAutomaticSpecialProductIds = (
   const productById = new Map(
     data.products.map(product => [product.id, product]),
   );
+  const withRental = includesRental(baseProduct);
   return (
     data.offers
       .filter(offer => offerMatchesDate(data, offer, dateString))
@@ -1042,6 +1067,9 @@ const getAutomaticSpecialProductIds = (
       .filter(offer => {
         const product = productById.get(offer.product_id);
         if (product == null) return false;
+        // レンタル付きのセット券と、リフト券だけの券を混ぜない
+        // （レディースDAYの1日券をセット券の料金として出していた）
+        if (includesRental(product) !== withRental) return false;
         const mode = product.validity?.mode;
         return mode == null || mode === "unknown" || isFullDayLike(product);
       })
@@ -1329,6 +1357,49 @@ const withHeldBaseProduct = (
   };
 };
 
+/**
+ * 手数料がこの購入（商品・販売経路）にかかるか。商品と販売経路の両方を書いた
+ * 手数料は両方に合うときだけ、どちらか片方だけ書いた手数料はその条件だけで判定する
+ * （販売経路だけの手数料も対象。どちらも無い手数料は対象を決められないので外す）
+ */
+const feeAppliesTo = (
+  fee: LiftTicketData["fees"][number],
+  productId: string | null | undefined,
+  channelIds: string[] | undefined,
+) => {
+  const products = fee.applies_to_product_ids ?? [];
+  const channels = fee.channel_ids ?? [];
+  if (products.length === 0 && channels.length === 0) return false;
+  if (products.length > 0 && !(productId && products.includes(productId)))
+    return false;
+  if (
+    channels.length > 0 &&
+    !(channelIds ?? []).some(channelId => channels.includes(channelId))
+  )
+    return false;
+  return true;
+};
+
+/** 1人ぶんに均した手数料。1決済ごとの手数料は人数で割る（券の比較用） */
+const feePerPerson = (
+  data: LiftTicketData,
+  productId: string,
+  channelIds: string[] | undefined,
+  partyCount: number,
+) =>
+  data.fees
+    .filter(
+      fee => fee.amount != null && feeAppliesTo(fee, productId, channelIds),
+    )
+    .reduce(
+      (sum, fee) =>
+        sum +
+        (fee.charge_unit === "per_payment"
+          ? (fee.amount ?? 0) / Math.max(1, partyCount)
+          : (fee.amount ?? 0)),
+      0,
+    );
+
 const calculateGroupLine = (
   data: LiftTicketData,
   group: TicketPartyGroup,
@@ -1337,6 +1408,7 @@ const calculateGroupLine = (
   today: string,
   numberBySourceId: Map<string, number>,
   heldProductIds: ReadonlySet<string>,
+  partyCount = 1,
 ) => {
   if (
     group.category === "disabled" &&
@@ -1397,6 +1469,35 @@ const calculateGroupLine = (
       conditionalOffers: [],
     };
   }
+  // 学校区分にあり得ない年齢（高校生19歳など）は、データに年齢の上限が無くても
+  // 金額を出さない。区分の料金か年齢の料金かを決められないので確認を促す（PB03）。
+  // 学校区分の料金と、その年齢に合う年齢区分の料金（若者16〜22歳など）の両方が
+  // あって料金が分かれるときだけ。年齢に合う年齢区分が無ければ従来どおり学校区分の料金
+  if (
+    schoolAudiences.length > 0 &&
+    schoolAgeMismatchOf(group) &&
+    data.audiences.some(
+      a =>
+        !a.is_default &&
+        !a.is_disability_qualified &&
+        (a.school_levels?.length ?? 0) === 0 &&
+        hasAgeCondition(a) &&
+        matchesAge(a, group.age as number),
+    )
+  ) {
+    const category =
+      group.category === "disabled"
+        ? (group.baseCategory ?? "adult")
+        : group.category;
+    return {
+      line: createUnresolvedLine(
+        group,
+        baseProduct,
+        `年齢が${TICKET_PARTY_CATEGORY_LABELS[category]}の範囲と合いません。公式の対象条件を確認してください。`,
+      ),
+      conditionalOffers: [],
+    };
+  }
   if (needsAgeForGroup(data, group)) {
     return {
       line: {
@@ -1420,37 +1521,106 @@ const calculateGroupLine = (
   const productById = new Map(
     data.products.map(product => [product.id, product]),
   );
-  const matchingOffers = data.offers
-    .map(offer =>
-      withHeldBaseProduct(
-        offer,
-        productById.get(offer.product_id),
-        heldProductIds,
-      ),
-    )
-    .filter(offer => {
-      if (!allowedProductIds.has(offer.product_id)) return false;
-      if (!offerMatchesDate(data, offer, dateString)) return false;
-      // 今日の時点で買えない券（販売終了の早割など）は、計算にも候補にも出さない
-      if (
-        !isPurchasableOn(
+  const offersMatching = (audiences: Map<string, LiftTicketAudience>) =>
+    data.offers
+      .map(offer =>
+        withHeldBaseProduct(
           offer,
-          dateString,
-          today,
-          isSoldOnVisitDay(data, offer),
-        )
-      ) {
-        return false;
-      }
-      const audienceIds = offer.audience_ids ?? [];
-      if (audienceIds.length === 0) return true;
-      return audienceIds.some(audienceId => {
-        const audience = audienceById.get(audienceId);
-        return audience
-          ? audienceMatchesGroup(audience, group, audienceById)
-          : false;
+          productById.get(offer.product_id),
+          heldProductIds,
+        ),
+      )
+      .filter(offer => {
+        if (!allowedProductIds.has(offer.product_id)) return false;
+        if (!offerMatchesDate(data, offer, dateString)) return false;
+        // 今日の時点で買えない券（販売終了の早割など）は、計算にも候補にも出さない
+        if (
+          !isPurchasableOn(
+            offer,
+            dateString,
+            today,
+            isSoldOnVisitDay(data, offer),
+          )
+        ) {
+          return false;
+        }
+        const audienceIds = offer.audience_ids ?? [];
+        if (audienceIds.length === 0) return true;
+        return audienceIds.some(audienceId => {
+          const audience = audiences.get(audienceId);
+          return audience
+            ? audienceMatchesGroup(audience, group, audiences)
+            : false;
+        });
       });
-    });
+  let matchingOffers = offersMatching(audienceById);
+  // 子ども・学生には当てない（小学生の料金が共通券にしか無い施設で、単独券に
+  // 大人料金を出さない）。年齢を入れた大人（18歳など）だけ
+  // その区分の料金がナイター券にしか無い（「18歳ナイター無料」）ときだけ。
+  // シニアやキャンペーン区分の料金が無い券を大人料金で埋めない
+  const ownAudienceIds = [...audienceById.values()]
+    .filter(audience => audienceMatchesGroup(audience, group, audienceById))
+    .map(audience => audience.id);
+  const onlyOnNightTickets =
+    ownAudienceIds.length > 0 &&
+    data.offers
+      .filter(offer =>
+        (offer.audience_ids ?? []).some(id => ownAudienceIds.includes(id)),
+      )
+      .every(offer => {
+        const product = productById.get(offer.product_id);
+        return product != null && isNightTicketProduct(product);
+      });
+  if (
+    matchingOffers.length === 0 &&
+    group.category === "adult" &&
+    onlyOnNightTickets
+  ) {
+    // ★その券に、この人の区分（「18歳」など）の料金が1つも無いなら、その券では
+    // 区分を分けていないので基準の区分（大人）の料金を使う。
+    // 「18歳ナイター無料」がナイター券にだけあり、18歳の1日券が料金なしになっていた（PB19）
+    const productAudienceIds = new Set(
+      data.offers
+        .filter(offer => allowedProductIds.has(offer.product_id))
+        .flatMap(offer => offer.audience_ids ?? []),
+    );
+    const productAudiences = new Map(
+      [...audienceById].filter(([id]) => productAudienceIds.has(id)),
+    );
+    if (productAudiences.size < audienceById.size)
+      matchingOffers = offersMatching(productAudiences);
+  }
+  // 券ごとに人物区分を決める（CH17）。年齢だけで決まる区分（ヤング=22歳まで）の
+  // 料金がこの券に無いときは、その券では区分を分けていないので基準の区分
+  // （大人）の料金を使う。学校区分の料金（小学生など）は、共通券にしか無い施設
+  // （ダイナランド）があるので、単独券に大人料金を出さない
+  if (
+    matchingOffers.length === 0 &&
+    ownAudienceIds.length > 0 &&
+    ["adult", "university", "high_school"].includes(group.category) &&
+    // 「22歳まで」のように上限のある年齢区分だけ。シニア（60歳以上）や
+    // キャンペーン区分の料金が無い券を大人料金で埋めない（公式照合の恐羅漢・札幌国際）
+    ownAudienceIds.every(id => {
+      const audience = audienceById.get(id);
+      return (
+        audience != null &&
+        (audience.school_levels?.length ?? 0) === 0 &&
+        audience.age_max != null
+      );
+    }) &&
+    !onlyOnNightTickets
+  ) {
+    const productAudienceIds = new Set(
+      data.offers
+        .filter(offer => allowedProductIds.has(offer.product_id))
+        .flatMap(offer => offer.audience_ids ?? []),
+    );
+    const productAudiences = new Map(
+      [...audienceById].filter(([id]) => productAudienceIds.has(id)),
+    );
+    if (productAudiences.size > 0 && productAudiences.size < audienceById.size)
+      matchingOffers = offersMatching(productAudiences);
+  }
   const standardOffers = matchingOffers.filter(isUnconditionalStandardOffer);
   const resolvedStandardOffers = standardOffers
     .map(offer => ({
@@ -1463,6 +1633,13 @@ const calculateGroupLine = (
   );
   // 今買える早割・WEB前売は、通常料金より安い場合だけ計算結果に使う
   // （同額なら窓口でそのまま買える通常料金のほうを見せる）
+  // 比べるのは手数料込みの額（Web 5,800円＋手数料100円は窓口 5,900円と同額）
+  const feeOfOffer = (offer: LiftTicketOffer) =>
+    feePerPerson(data, offer.product_id, offer.channel_ids, partyCount);
+  const bestStandardEffective =
+    bestStandardOffer?.price.amount == null
+      ? null
+      : bestStandardOffer.price.amount + feeOfOffer(bestStandardOffer.offer);
   const cheaperPurchaseMethodOfferIds = new Set(
     matchingOffers
       .filter(isPurchaseMethodOffer)
@@ -1470,8 +1647,8 @@ const calculateGroupLine = (
         const amount = resolvePrice(data, offer, dateString).amount;
         return (
           amount != null &&
-          (bestStandardOffer?.price.amount == null ||
-            amount < bestStandardOffer.price.amount)
+          (bestStandardEffective == null ||
+            amount + feeOfOffer(offer) < bestStandardEffective)
         );
       })
       .map(offer => offer.id),
@@ -1584,16 +1761,13 @@ const calculateGroupLine = (
   const ageWarnings =
     automaticAgeGenerationWarnings(bestOffer.offer, group) ?? [];
   // 障がい者料金は、窓口で出す証明書だけを添える（手順の長文は出さない）
-  const disabilityWarnings =
-    group.category === "disabled" &&
-    (bestOffer.offer.audience_ids ?? []).some(
-      audienceId =>
-        audienceById.get(audienceId)?.is_disability_qualified === true,
-    )
-      ? (bestOffer.offer.requirements ?? [])
-          .map(requirement => requirement.proof_ja)
-          .filter((proof): proof is string => Boolean(proof))
-      : [];
+  // ★採用した料金に必要な証明（学生証・年齢確認書類・QRコードなど）は必ず出す。
+  // 以前は障がい者料金だけに出していたため、ヤング・シニア・学生料金で
+  // 証明が要ることが画面に出なかった（監査C16）
+  const proofWarnings = (bestOffer.offer.requirements ?? [])
+    .map(requirement => requirement.proof_ja)
+    .filter((proof): proof is string => Boolean(proof))
+    .map(proof => (/必要|提示|要/u.test(proof) ? proof : `${proof}が必要です`));
   // 早割・WEB前売は窓口では買えないので、買い方を1行で添える。
   // 決済手段・発券手順などの長文は公式ページ（出典）で確認してもらう
   const purchase = cheaperPurchaseMethodOfferIds.has(bestOffer.offer.id)
@@ -1602,7 +1776,7 @@ const calculateGroupLine = (
   const warnings = [
     ...new Set([
       ...ageWarnings,
-      ...disabilityWarnings,
+      ...proofWarnings,
       ...(purchase?.warning ? [purchase.warning] : []),
     ]),
   ];
@@ -1614,6 +1788,8 @@ const calculateGroupLine = (
     count: group.count,
     audienceName: matchingAudience?.name_ja ?? null,
     productName: product.name_ja,
+    productId: product.id,
+    channelIds: bestOffer.offer.channel_ids ?? [],
     offerName: bestOffer.offer.name_ja,
     unitAmount,
     subtotal: unitAmount == null ? null : unitAmount * group.count,
@@ -1649,9 +1825,13 @@ const isApplicablePartyRule = (
   baseProduct: LiftTicketProduct,
   dateString: string,
   today: string,
+  /** true のとき資格付き（県民割・同居の家族）も対象にする。条件付き候補の計算用 */
+  includeQualified = false,
 ) => {
-  // 宿泊者・女性限定などは人数構成だけでは確定できないので自動適用しない
-  if (rule.target_qualification || rule.target_genders) return false;
+  // 宿泊者・女性限定などは人数構成だけでは確定できないので自動適用しない。
+  // 資格付きは確定には使わず、条件付き候補としてだけ出す（includeQualified）
+  if (rule.target_genders) return false;
+  if (rule.target_qualification && !includeQualified) return false;
   const components = rule.components ?? [];
   if (components.length === 0) return false;
   // 券種を指定しているルールは、その券種を買うときだけ使う（親子パックは1日券）
@@ -1718,11 +1898,13 @@ const applyPartyRuleOnce = (
 
   for (const [componentIndex, component] of components.entries()) {
     const isQualifier = ratioIndex >= 0 && componentIndex < ratioIndex;
+    // 無料の対象（保護者同伴の未就学児など）は、その人に通常料金が無くても当てる（P12・P13）
     const eligible = groups
       .map((_, groupIndex) => groupIndex)
       .filter(
         groupIndex =>
-          unitAmounts[groupIndex] != null &&
+          (unitAmounts[groupIndex] != null ||
+            (component.price_effect?.type === "free" && !isQualifier)) &&
           matchesComponent(componentIndex, groupIndex),
       );
     const pool = isQualifier ? groups.map(group => group.count) : left;
@@ -1772,7 +1954,10 @@ const applyPartyRuleOnce = (
 
   if (consumedCount <= 0) return null;
   if (fixedTotal != null) total = fixedTotal;
-  if (total >= individualTotal) return null;
+  const freesUnpriced = [...consumed.keys()].some(
+    groupIndex => unitAmounts[groupIndex] == null,
+  );
+  if (total >= individualTotal && !freesUnpriced) return null;
   return { consumed, total, individualTotal };
 };
 
@@ -1795,6 +1980,95 @@ const formatSetMembers = (setMembers: string[]) => {
  * ルールで買う人数を元の行から差し引き、ルールごとに1行へまとめる。
  * 個別に買うより安くなる場合だけ当てる。
  */
+/**
+ * 同行者ルールを何回ずつ当てるかを決める（割引額が最大になる組み合わせ）。
+ *
+ * - 排他グループ（exclusive_group_id）は1グループにつき1ルール・1回だけ
+ * - 比率型（大人1名につき○名まで）は資格者全員分を1回で当て終えるので1回だけ
+ * - 同じ割引額なら、データの先のルールを多く使う組み合わせを選ぶ（従来の結果を保つ）
+ * 返す順序は当てる順。ルールごとにまとめて返す
+ */
+const planPartyRuleApplications = (
+  rules: LiftTicketPartyRule[],
+  groups: TicketPartyGroup[],
+  remaining: number[],
+  unitAmounts: (number | null)[],
+  matcherOf: (
+    rule: LiftTicketPartyRule,
+  ) => (componentIndex: number, groupIndex: number) => boolean,
+): Array<{ rule: LiftTicketPartyRule; count: number }> => {
+  const matchers = rules.map(matcherOf);
+  const onceOnly = rules.map(
+    rule =>
+      rule.exclusive_group_id != null ||
+      (rule.components ?? []).some(
+        component => component.per_qualifying_count != null,
+      ),
+  );
+  type Best = { saving: number; steps: number[] };
+  const memo = new Map<string, Best>();
+  const search = (
+    start: number,
+    left: number[],
+    usedExclusive: string[],
+  ): Best => {
+    const key = `${start}|${left.join(",")}|${usedExclusive.join(",")}`;
+    const cached = memo.get(key);
+    if (cached) return cached;
+    let best: Best = { saving: 0, steps: [] };
+    for (let index = start; index < rules.length; index += 1) {
+      const rule = rules[index];
+      if (
+        rule.exclusive_group_id &&
+        usedExclusive.includes(rule.exclusive_group_id)
+      )
+        continue;
+      const application = applyPartyRuleOnce(
+        rule,
+        groups,
+        left,
+        unitAmounts,
+        matchers[index],
+      );
+      if (!application) continue;
+      const next = [...left];
+      for (const [groupIndex, count] of application.consumed)
+        next[groupIndex] -= count;
+      const rest = search(
+        onceOnly[index] ? index + 1 : index,
+        next,
+        rule.exclusive_group_id
+          ? [...usedExclusive, rule.exclusive_group_id].sort()
+          : usedExclusive,
+      );
+      // 通常料金の無い人を無料にできるルール（保護者同伴の未就学児無料）は、
+      // 金額が下がらなくても当てる価値がある（料金を確定できる）
+      const freedUnpriced = [...application.consumed].reduce(
+        (sum, [groupIndex, count]) =>
+          sum + (unitAmounts[groupIndex] == null ? count : 0),
+        0,
+      );
+      const saving =
+        application.individualTotal -
+        application.total +
+        freedUnpriced * 0.001 +
+        rest.saving;
+      if (saving > best.saving)
+        best = { saving, steps: [index, ...rest.steps] };
+    }
+    memo.set(key, best);
+    return best;
+  };
+  const { steps } = search(0, [...remaining], []);
+  const planned: Array<{ rule: LiftTicketPartyRule; count: number }> = [];
+  for (const index of steps) {
+    const last = planned.at(-1);
+    if (last && last.rule === rules[index]) last.count += 1;
+    else planned.push({ rule: rules[index], count: 1 });
+  }
+  return planned;
+};
+
 const applyPartyRules = (
   data: LiftTicketData,
   groups: TicketPartyGroup[],
@@ -1803,6 +2077,7 @@ const applyPartyRules = (
   dateString: string,
   today: string,
   numberBySourceId: Map<string, number>,
+  includeQualified = false,
 ): TicketCalculationLine[] => {
   const audienceById = new Map(
     data.audiences.map(audience => [audience.id, audience]),
@@ -1813,26 +2088,41 @@ const applyPartyRules = (
   const remaining = lines.map(line => line.count);
   const unitAmounts = lines.map(line => line.unitAmount);
   const ruleLines: TicketCalculationLine[] = [];
-  const usedExclusiveGroups = new Set<string>();
+  const matcherOf =
+    (rule: LiftTicketPartyRule) =>
+    (componentIndex: number, groupIndex: number) =>
+      ((rule.components ?? [])[componentIndex].audience_ids ?? []).some(
+        audienceId => {
+          const audience = audienceById.get(audienceId);
+          return audience
+            ? audienceMatchesGroup(audience, groups[groupIndex], audienceById)
+            : false;
+        },
+      );
+  const applicableRules = (data.party_rules ?? []).filter(rule =>
+    isApplicablePartyRule(
+      data,
+      rule,
+      baseProduct,
+      dateString,
+      today,
+      includeQualified,
+    ),
+  );
+  // ★データの並び順に先頭から当てると、もっと安い組み合わせを逃す
+  // （大人3＋小学生2で「大人2＋小2」を先に当てると 23,000円、
+  // 「大人1＋小1」と「大人2＋小1」なら 22,500円）。適用回数を総当たりで決める
+  const planned = planPartyRuleApplications(
+    applicableRules,
+    groups,
+    remaining,
+    unitAmounts,
+    matcherOf,
+  );
 
-  for (const rule of data.party_rules ?? []) {
-    if (
-      rule.exclusive_group_id &&
-      usedExclusiveGroups.has(rule.exclusive_group_id)
-    ) {
-      continue;
-    }
-    if (!isApplicablePartyRule(data, rule, baseProduct, dateString, today)) {
-      continue;
-    }
+  for (const { rule, count: plannedCount } of planned) {
     const components = rule.components ?? [];
-    const matchesComponent = (componentIndex: number, groupIndex: number) =>
-      (components[componentIndex].audience_ids ?? []).some(audienceId => {
-        const audience = audienceById.get(audienceId);
-        return audience
-          ? audienceMatchesGroup(audience, groups[groupIndex], audienceById)
-          : false;
-      });
+    const matchesComponent = matcherOf(rule);
     const consumed = new Map<number, number>();
     // 1セットごとの中身（「大人1名＋小学生1名」）。同じ区分を複数行に分けて
     // 入力しても（レンタルの有無など）区分名でまとめて数える
@@ -1840,8 +2130,7 @@ const applyPartyRules = (
     let setCount = 0;
     let total = 0;
     let individualTotal = 0;
-    // 排他グループは1回だけ。未指定の親子パック等は従来どおり繰り返す。
-    const applicationLimit = rule.exclusive_group_id ? 1 : 100;
+    const applicationLimit = plannedCount;
     for (let guard = 0; guard < applicationLimit; guard += 1) {
       const application = applyPartyRuleOnce(
         rule,
@@ -1874,9 +2163,6 @@ const applyPartyRules = (
         break;
     }
     if (setCount === 0) continue;
-    if (rule.exclusive_group_id) {
-      usedExclusiveGroups.add(rule.exclusive_group_id);
-    }
 
     const consumedGroups = [...consumed.entries()].sort(
       ([left], [right]) => left - right,
@@ -1922,6 +2208,8 @@ const applyPartyRules = (
         setCount,
       },
       purchaseUrl,
+      productId: baseProduct.id,
+      channelIds: rule.channel_ids ?? [],
       warnings:
         salesStart && salesStart > today
           ? [`${monthDay(salesStart)}から販売開始です`]
@@ -1929,7 +2217,28 @@ const applyPartyRules = (
     });
   }
 
-  if (ruleLines.length === 0) return lines;
+  // 同伴が条件の無料（保護者同伴の未就学児無料）だけで料金が決まる人が、
+  // 同伴者なしで入力されたら理由を出す（P12）
+  const companionNote = (index: number) =>
+    lines[index].unitAmount == null &&
+    applicableRules.some(rule =>
+      (rule.components ?? []).some(
+        (component, componentIndex) =>
+          component.price_effect?.type === "free" &&
+          componentIndex > 0 &&
+          matcherOf(rule)(componentIndex, index),
+      ),
+    )
+      ? "保護者の同伴が必要です"
+      : null;
+  const withCompanionNotes = (target: TicketCalculationLine[]) =>
+    target.map((line, index) => {
+      const note = companionNote(index);
+      return note
+        ? { ...line, note: [line.note, note].filter(Boolean).join(" ") }
+        : line;
+    });
+  if (ruleLines.length === 0) return withCompanionNotes(lines);
   const restLines = lines
     .map((line, index) => ({
       ...line,
@@ -2030,6 +2339,7 @@ export const calculateLiftTicket = (
       input.today ?? getTodayInJapan(),
       numberBySourceId,
       heldProductIds,
+      partyCount,
     ),
   );
   // 親子パックなど、同行者構成で安くなるセットを個別購入の代わりに当てる
@@ -2042,43 +2352,94 @@ export const calculateLiftTicket = (
     input.today ?? getTodayInJapan(),
     numberBySourceId,
   );
-  const conditionalOffers = calculatedGroups.flatMap(
-    group => group.conditionalOffers,
+  // 資格付きの同行者ルール（県民割・同居の家族）は確定には使わず、
+  // 当てたら安くなるときだけ条件付き候補として金額と条件を出す
+  const qualifiedRules = new Map(
+    (data.party_rules ?? [])
+      .filter(rule => rule.target_qualification)
+      .map(rule => [`party-rule:${rule.id}`, rule]),
   );
+  const partyRuleOffers: TicketConditionalOffer[] = [];
+  if (qualifiedRules.size > 0) {
+    const withQualified = applyPartyRules(
+      data,
+      activeGroups,
+      calculatedGroups.map(group => group.line),
+      baseProduct,
+      input.visitDate,
+      input.today ?? getTodayInJapan(),
+      numberBySourceId,
+      true,
+    );
+    const known = (target: TicketCalculationLine[]) =>
+      target.reduce((total, line) => total + (line.subtotal ?? 0), 0);
+    if (known(withQualified) < known(lines)) {
+      for (const line of withQualified) {
+        const rule = qualifiedRules.get(line.groupId);
+        if (!rule || line.subtotal == null || line.unitAmount == null) continue;
+        const target = rule.target_qualification;
+        const condition = target?.official_label_ja ?? target?.description_ja;
+        partyRuleOffers.push({
+          id: line.groupId,
+          groupId: line.groupId,
+          groupLabel: line.groupLabel,
+          count: line.count,
+          productName: line.productName ?? baseProduct.name_ja,
+          offerName: line.offerName ?? rule.name_ja,
+          unitAmount: line.unitAmount,
+          subtotal: line.subtotal,
+          label: target?.description_ja ?? condition ?? rule.name_ja,
+          conditions: condition ? [condition] : [],
+          sourceNumbers: line.sourceNumbers,
+          sourceQuotes: line.sourceQuotes,
+        });
+      }
+    }
+  }
+  const conditionalOffers = [
+    ...calculatedGroups.flatMap(group => group.conditionalOffers),
+    ...partyRuleOffers,
+  ];
   const isComplete = lines.every(line => line.subtotal != null);
   const knownTicketTotal = lines.reduce(
     (total, line) => total + (line.subtotal ?? 0),
     0,
   );
-  const productIds = new Set(
-    lines
-      .map(
-        line =>
-          data.products.find(product => product.name_ja === line.productName)
-            ?.id,
-      )
-      .filter((productId): productId is string => Boolean(productId)),
-  );
-  const applicableFees = data.fees.filter(fee =>
-    fee.applies_to_product_ids?.some(productId => productIds.has(productId)),
-  );
-  // fees に載っているのは「返ってこない追加負担」だけ（返金される保証金は
-  // そもそも記録しない）。券の合計に足せばそれが実質負担になる
-  const feeTotal = applicableFees.reduce(
-    (sum, fee) => sum + (fee.amount ?? 0) * partyCount,
-    0,
-  );
+  const productIdOf = (line: TicketCalculationLine) =>
+    line.productId ??
+    data.products.find(product => product.name_ja === line.productName)?.id;
+  // 手数料は課金の単位（1人・1枚・1決済）と、かかる購入（商品・販売経路）に
+  // 合った回数だけ足す。fees に載っているのは返ってこない負担だけで、
+  // 返金される保証金は「返却で返金」と書いて1決済・1枚の単位で数える
+  const appliedFees = data.fees.flatMap(fee => {
+    const matched = lines.filter(line =>
+      feeAppliesTo(fee, productIdOf(line), line.channelIds),
+    );
+    if (matched.length === 0) return [];
+    const unit = fee.charge_unit ?? "per_person";
+    const units =
+      unit === "per_payment"
+        ? 1
+        : matched.reduce((sum, line) => sum + line.count, 0);
+    return [{ fee, unit, total: (fee.amount ?? 0) * units }];
+  });
+  const feeTotal = appliedFees.reduce((sum, applied) => sum + applied.total, 0);
+  const UNIT_LABELS = {
+    per_person: "1人あたり",
+    per_ticket: "1枚あたり",
+    per_payment: "1決済あたり",
+  } as const;
 
   const notes: string[] = [];
-  if (applicableFees.length > 0) {
+  if (appliedFees.length > 0) {
     notes.push(
-      `別途費用: ${applicableFees
-        .map(fee =>
+      `別途費用: ${appliedFees
+        .map(({ fee, unit }) =>
           fee.amount == null
             ? fee.name_ja
-            : `${fee.name_ja} ¥${fee.amount.toLocaleString("ja-JP")}`,
+            : `${fee.name_ja} ¥${fee.amount.toLocaleString("ja-JP")}（${UNIT_LABELS[unit]}）`,
         )
-        .join("、")}（人数あたりか券あたりか不明な場合は合計に含めていません）`,
+        .join("、")}`,
     );
   }
   // data_quality（unresolved_questions / human_review_required）は
@@ -2092,12 +2453,13 @@ export const calculateLiftTicket = (
     productId: baseProduct.id,
     productName: baseProduct.name_ja,
     lines,
-    fees: applicableFees
-      .filter(fee => fee.amount != null)
-      .map(fee => ({
+    fees: appliedFees
+      .filter(({ fee }) => fee.amount != null)
+      .map(({ fee, unit, total }) => ({
         name: fee.name_ja,
         amount: fee.amount ?? 0,
-        total: (fee.amount ?? 0) * partyCount,
+        total,
+        chargeUnit: unit,
       })),
     ticketTotal: isComplete ? knownTicketTotal : null,
     knownTicketTotal,
@@ -2188,13 +2550,7 @@ const mergeDayAndNightResults = (
         ...nightResult.conditionalOfferNames,
       ]),
     ),
-    notes: Array.from(
-      new Set([
-        ...dayResult.notes,
-        ...nightResult.notes,
-        "ナイター込みの1日券が無いため、1日券とナイター券の合算です。",
-      ]),
-    ),
+    notes: Array.from(new Set([...dayResult.notes, ...nightResult.notes])),
     references,
   };
 };
@@ -2331,6 +2687,8 @@ const consecutiveRuns = (dates: string[]) => {
 export type TicketPlanDay = {
   plan: TicketDayPlan;
   result: TicketCalculationResult;
+  /** 一番上・時間帯固定・1時間短い案・1枚で滑れる最長（durationOptions.ts） */
+  options?: TicketDurationOptions;
 };
 
 export type TicketPlanMultiDay = {
@@ -2377,6 +2735,18 @@ export type TicketPlanMultiDay = {
   conditionalOffers: TicketPlanConditionalOffer[];
   /** ticket_set のとき、セットの枚数とまかなうのべ人日 */
   ticketSet?: { ticketsPerSet: number; coveredPersonDays: number };
+  /** 利用者に伝える事項（25時間券で「10時間残ります」など） */
+  notes?: string[];
+  /**
+   * consecutive_days のとき、使う連続日券ごとの内訳（「2日券」1/18〜19、
+   * 「2日券」1/20〜21）。1枚だけなら1件
+   */
+  segments?: Array<{
+    dates: string[];
+    productId: string;
+    productName: string;
+    total: number;
+  }>;
 };
 
 export type TicketPlanConditionalOffer = TicketConditionalOffer & {
@@ -2402,6 +2772,8 @@ export type TicketPlanAddOn = {
 
 export type TicketPlanResult = {
   days: TicketPlanDay[];
+  /** 採用した案と同額の別の案（3日券と25時間券が同額など）。上の案と比べてもらう */
+  multiDayAlternatives?: TicketPlanMultiDay[];
   /** 1日ずつ買った合計（営業していない日は 0 として扱わず null にする） */
   perDayTotal: number | null;
   /** 複数日券を使ったほうが安い場合の代替案 */
@@ -2429,12 +2801,13 @@ export const ageRequiredGroupIdsOf = (plan: TicketPlanResult) => [
  */
 const plannedHoursOf = (data: LiftTicketData, plan: TicketDayPlan) => {
   if (plan.duration.kind === "hours") {
+    // 仕様S7: 営業より長い指定は営業時間全体として扱う（「1日」と同じ時間）
     const open = allOperatingHoursOn(data, plan.date);
-    return open != null && plan.duration.hours > open
-      ? null
+    return open != null
+      ? Math.min(plan.duration.hours, open)
       : plan.duration.hours;
   }
-  if (plan.duration.withNight) return null;
+  if (plan.duration.kind === "night" || plan.duration.withNight) return null;
   return operatingHoursOn(data, plan.date);
 };
 
@@ -2480,6 +2853,8 @@ const selectHoursPoolPlanFor = (
   let best: TicketPlanMultiDay | null = null;
   for (const product of data.products) {
     if (product.validity?.mode !== "hours_pool") continue;
+    // 追加券（トップアップ）は追加先の券と一緒にだけ使う。単独の券にしない
+    if ((product.add_on_to_product_ids?.length ?? 0) > 0) continue;
     const maxDays = product.validity.days;
     if (maxDays != null && new Set(sortedDates).size > maxDays) continue;
     const poolHours = product.validity.hours ?? null;
@@ -2577,8 +2952,20 @@ const selectHoursPoolPlanFor = (
           ? addOnsFor(addOn, ticketCount * poolHours, shortHours)
           : [];
         if (addOns == null) continue;
+        const coveredHours =
+          ticketCount * poolHours +
+          addOns.reduce(
+            (sum, item) =>
+              sum +
+              item.ticketCount *
+                (data.products.find(p => p.id === item.productId)?.validity
+                  ?.hours ?? 0),
+            0,
+          );
+        const leftover = coveredHours - requiredHours;
         const candidate: TicketPlanMultiDay = {
           kind: "hours_pool",
+          notes: leftover > 0 ? [`${formatHoursLeft(leftover)}残ります`] : [],
           productId: product.id,
           productName: product.official_label_ja ?? product.name_ja,
           days: plans.length,
@@ -2875,6 +3262,9 @@ const perDayConditionalOffersFor = (
 };
 
 /** 計算結果の料金行が拠っている出典番号 */
+const formatHoursLeft = (hours: number) =>
+  `${Number.isInteger(hours) ? hours : Math.round(hours * 10) / 10}時間`;
+
 const resultSourceNumbersOf = (result: TicketCalculationResult) =>
   [...new Set(result.lines.flatMap(line => line.sourceNumbers))].sort(
     (left, right) => left - right,
@@ -2894,90 +3284,178 @@ export const calculateLiftTicketPlan = (
   input: LiftTicketSearchInput,
 ): TicketPlanResult => {
   const plans = input.days ?? [];
-  const days: TicketPlanDay[] = plans.map(plan => ({
-    plan,
-    result: (() => {
-      const dayInput = { ...input, visitDate: plan.date, days: undefined };
-      // 「1日（ナイター込）」はナイターの有無・単独券の要否で分岐が要るので専用の関数に任せる
-      if (plan.duration.kind === "day" && plan.duration.withNight) {
-        return calculateDayPassResult(data, dayInput);
-      }
-      const product = selectCheapestProductForDuration(
-        data,
-        dayInput,
-        plan.duration,
-      );
-      // 要件に合う券が無ければ null を渡す（別の券で代用させない）
-      const result = calculateLiftTicket(data, dayInput, product?.id ?? null);
-      return result;
-    })(),
-  }));
+  const days: TicketPlanDay[] = plans.map(plan => {
+    const dayInput = { ...input, visitDate: plan.date, days: undefined };
+    const options = calculateDurationOptions(
+      data,
+      input,
+      plan.date,
+      plan.duration,
+    );
+    if (options.primary)
+      return { plan, result: options.primary.result, options };
+    // 要件に合う券が無い・休業日などは、理由付きで料金なしにする（別の券で代用しない）
+    const base = calculateLiftTicket(data, dayInput, null);
+    return {
+      plan,
+      options,
+      result: {
+        ...base,
+        status: base.status === "unavailable" ? options.status : base.status,
+        notes: [...new Set([...options.notes, ...base.notes])],
+      },
+    };
+  });
 
-  const priced = days.filter(day => day.result.payableTotal != null);
+  // ★定休日・営業期間外の日は「料金なし」と示し、合計には含めない
+  // （以前は1日でも休業日があると合計全体が出なかった。L09・PB27）
+  const isClosedDay = (day: TicketPlanDay) =>
+    day.result.status === "closed" || day.result.status === "outside_season";
+  const openDays = days.filter(day => !isClosedDay(day));
+  const priced = openDays.filter(day => day.result.payableTotal != null);
   const perDayTotal =
-    priced.length === days.length && days.length > 0
+    priced.length === openDays.length && openDays.length > 0
       ? priced.reduce((sum, day) => sum + (day.result.payableTotal ?? 0), 0)
       : null;
+  const openPlans = openDays.map(day => day.plan);
 
-  // 複数日券。連続した日のかたまりごとに、日数がぴったり一致する券を探す
+  // 複数日券。連続した日のかたまりごとに、短い連続日券への分け方も含めて最安を探す
+  // （4日なら「2日券×2」、5日なら「3日券＋2日券」。監査C12）。
+  // 離れたかたまり（1/18〜19と1/21〜22）もそれぞれ分けて合計する
   let multiDay: TicketPlanMultiDay | null = null;
   if (days.length >= 2 && perDayTotal != null) {
-    for (const run of consecutiveRuns(plans.map(plan => plan.date))) {
+    type Segment = {
+      dates: string[];
+      productId: string;
+      productName: string;
+      result: TicketCalculationResult;
+    };
+    const chosen: Segment[] = [];
+    let saving = 0;
+    const dayTotalOf = (date: string) =>
+      days.find(day => day.plan.date === date)?.result.payableTotal ?? 0;
+    for (const run of consecutiveRuns(openPlans.map(plan => plan.date))) {
       if (run.length < 2) continue;
-      const runInput = { ...input, visitDate: run[0], days: undefined };
-      const product = selectCheapestProductForDuration(data, runInput, {
-        kind: "days",
-        days: run.length,
-      });
-      if (!product) continue;
-      const result = calculateLiftTicket(data, runInput, product.id);
-      if (result.payableTotal == null) continue;
-      // そのかたまりを1日ずつ買った場合の合計と比べる
-      const runPerDay = days
-        .filter(day => run.includes(day.plan.date))
-        .reduce((sum, day) => sum + (day.result.payableTotal ?? 0), 0);
-      if (result.payableTotal >= runPerDay) continue;
-      const candidate: TicketPlanMultiDay = {
+      // best[i] = run[0..i) の最安。from[i] = 最後のかたまり
+      const best: number[] = [0];
+      const from: Array<{ start: number; segment: Segment | null }> = [
+        { start: 0, segment: null },
+      ];
+      for (let end = 1; end <= run.length; end += 1) {
+        best[end] = best[end - 1] + dayTotalOf(run[end - 1]);
+        from[end] = { start: end - 1, segment: null };
+        for (let start = 0; start <= end - 2; start += 1) {
+          const length = end - start;
+          const segmentInput = {
+            ...input,
+            visitDate: run[start],
+            days: undefined,
+          };
+          const product = selectCheapestProductForDuration(data, segmentInput, {
+            kind: "days",
+            days: length,
+          });
+          if (!product || (product.validity?.days ?? 0) !== length) continue;
+          const result = calculateLiftTicket(data, segmentInput, product.id);
+          if (result.payableTotal == null) continue;
+          const cost = best[start] + result.payableTotal;
+          if (cost < best[end]) {
+            best[end] = cost;
+            from[end] = {
+              start,
+              segment: {
+                dates: run.slice(start, end),
+                productId: product.id,
+                productName: product.official_label_ja ?? product.name_ja,
+                result,
+              },
+            };
+          }
+        }
+      }
+      const runPerDay = run.reduce((sum, date) => sum + dayTotalOf(date), 0);
+      if (best[run.length] >= runPerDay) continue;
+      saving += runPerDay - best[run.length];
+      const segments: Segment[] = [];
+      for (let end = run.length; end > 0; end = from[end].start)
+        if (from[end].segment) segments.unshift(from[end].segment as Segment);
+      chosen.push(...segments);
+    }
+    if (chosen.length > 0) {
+      const ticketTotal = chosen.reduce(
+        (sum, segment) => sum + (segment.result.payableTotal ?? 0),
+        0,
+      );
+      const names = chosen.map(segment => segment.productName);
+      const sameName = names.every(name => name === names[0]);
+      multiDay = {
         kind: "consecutive_days",
-        productId: product.id,
-        productName: product.official_label_ja ?? product.name_ja,
-        days: run.length,
-        dates: run,
-        ticketCount: 1,
+        productId: chosen[0].productId,
+        productName: sameName
+          ? `${names[0]}${chosen.length > 1 ? `×${chosen.length}` : ""}`
+          : names.join("＋"),
+        days: chosen.reduce((sum, segment) => sum + segment.dates.length, 0),
+        dates: chosen.flatMap(segment => segment.dates),
+        ticketCount: chosen.length,
         requiredHours: null,
-        total: result.payableTotal + (perDayTotal - runPerDay),
+        total: perDayTotal - saving,
         perDayTotal,
-        sourceNumbers: resultSourceNumbersOf(result),
-        lines: result.lines,
+        sourceNumbers: [
+          ...new Set(
+            chosen.flatMap(segment => resultSourceNumbersOf(segment.result)),
+          ),
+        ],
+        lines: chosen.flatMap(segment => segment.result.lines),
         addOns: [],
-        ticketTotal: result.payableTotal,
-        conditionalOffers: result.conditionalOffers.map(offer => ({
-          ...offer,
-          days: null,
+        ticketTotal,
+        conditionalOffers: chosen.flatMap(segment =>
+          segment.result.conditionalOffers.map(offer => ({
+            ...offer,
+            days: null,
+          })),
+        ),
+        // 料金の期間をまたぐ連続日券は、初日の期間の料金で計算する（L11。公式の確認が必要）
+        notes: chosen.some(segment =>
+          segment.dates.some(
+            date => dayTotalOf(date) !== dayTotalOf(segment.dates[0]),
+          ),
+        )
+          ? ["期間をまたぎます（料金は初日の期間で計算しています）"]
+          : [],
+        segments: chosen.map(segment => ({
+          dates: segment.dates,
+          productId: segment.productId,
+          productName: segment.productName,
+          total: segment.result.payableTotal ?? 0,
         })),
       };
-      if (multiDay == null || candidate.total < multiDay.total) {
-        multiDay = candidate;
-      }
     }
   }
 
   const pooled = selectHoursPoolPlan(
     data,
     input,
-    plans,
+    openPlans,
     perDayTotal,
-    days.map(day => day.result.payableTotal),
+    openDays.map(day => day.result.payableTotal),
   );
+  const multiDayAlternatives: TicketPlanMultiDay[] = [];
   if (
     pooled != null &&
     (multiDay == null || pooled.total < multiDay.total) &&
     (perDayTotal == null || pooled.total < perDayTotal)
   ) {
     multiDay = pooled;
+  } else if (
+    pooled != null &&
+    multiDay != null &&
+    pooled.total === multiDay.total
+  ) {
+    // 同額なら連続日券を上にし、時間を使い切る券は別の案として残す（T05）
+    multiDayAlternatives.push(pooled);
   }
 
-  const ticketSet = selectTicketSetPlan(data, input, days, perDayTotal);
+  const ticketSet = selectTicketSetPlan(data, input, openDays, perDayTotal);
   if (
     ticketSet != null &&
     (multiDay == null || ticketSet.total < multiDay.total) &&
@@ -3020,5 +3498,12 @@ export const calculateLiftTicketPlan = (
     usedNumbers.has(reference.number),
   );
 
-  return { days, perDayTotal, multiDay, total, references };
+  return {
+    days,
+    perDayTotal,
+    multiDay,
+    multiDayAlternatives,
+    total,
+    references,
+  };
 };

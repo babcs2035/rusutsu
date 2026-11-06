@@ -1,4 +1,4 @@
-import { ID_REF_TARGETS, labelOf } from "../presentation";
+import { ID_REF_TARGETS, labelOf, refTargetOf } from "../presentation";
 import type { TicketDocument } from "../types";
 
 /** ID参照の選択肢1件 */
@@ -20,6 +20,8 @@ export const ID_COLLECTIONS = [
   "offers",
   "party_rules",
   "fees",
+  "rental_audiences",
+  "rentals",
 ] as const;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -47,6 +49,14 @@ export const buildIdIndex = (data: TicketDocument): IdIndex => {
         )
       : [];
   }
+  // レンタル料金の対象者は、券の人物区分とレンタル人物区分のどちらからも選べる
+  index.rental_audience_choices = [
+    ...(index.audiences ?? []),
+    ...(index.rental_audiences ?? []).map(option => ({
+      id: option.id,
+      label: `${labelOf("rental_audiences")}: ${option.label}`,
+    })),
+  ];
   // related_ids のように参照先が横断的なものは全件から選ばせる
   index.any = ID_COLLECTIONS.flatMap(collection =>
     (index[collection] ?? []).map(option => ({
@@ -135,7 +145,7 @@ export const findDanglingReferences = (data: TicketDocument): string[] => {
   }
   const dangling: string[] = [];
   walk(data, [], (key, value, path) => {
-    const target = ID_REF_TARGETS[key];
+    const target = refTargetOf(key, path);
     if (target === undefined) return;
     if (value.trim() === "") return;
     if (known[target]?.has(value)) return;
