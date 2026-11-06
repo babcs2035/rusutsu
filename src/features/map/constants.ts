@@ -41,7 +41,7 @@ export const GSI_TILE_LAYERS: Record<
   },
 };
 export const GSI_TILE_ATTRIBUTION =
-  '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener noreferrer">地理院タイル</a>';
+  '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener noreferrer">国土地理院</a>';
 // 同上の理由で 1 引いてある（元は 5 / 18）
 export const GSI_TILE_MIN_ZOOM = 4;
 export const GSI_TILE_MAX_ZOOM = 17;

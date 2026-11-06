@@ -17,8 +17,10 @@ import {
   SHARE_IMAGE_HEIGHT,
   SHARE_IMAGE_VERSION,
   SHARE_IMAGE_WIDTH,
+  SHARE_MAP_SCALE,
   SHARE_MAP_SIZES,
   type ShareMapSize,
+  shareMapViewport,
 } from "@/features/share/mapCard";
 import type { ShareResort } from "./data";
 import { shareImageOverlay, shareImageSlots } from "./imageLayout";
@@ -199,8 +201,8 @@ async function captureMap(
   const previous = await cached(filename);
   if (previous) return previous;
   const page = await browser.newPage({
-    viewport: SHARE_MAP_SIZES[size],
-    deviceScaleFactor: 1,
+    viewport: shareMapViewport(size),
+    deviceScaleFactor: SHARE_MAP_SCALE,
   });
   const origin = renderOrigin();
   let failedPhoto = false;
@@ -242,9 +244,16 @@ async function captureMap(
     await page.evaluate(() => document.fonts.ready);
     if (hasShareMap(data.mapData) && (!successfulPhotos || failedPhoto))
       throw new Error("share photography not fully loaded");
-    const bytes = await page
+    const shot = await page
       .locator("[data-share-map]")
       .screenshot({ type: "png", animations: "disabled", timeout: 10000 });
+    // 端数で1px ずれないよう、差し込み枠の大きさへ合わせる。
+    const bytes = await sharp(shot)
+      .resize(SHARE_MAP_SIZES[size].width, SHARE_MAP_SIZES[size].height, {
+        fit: "fill",
+      })
+      .png()
+      .toBuffer();
     await save(filename, bytes);
     return bytes;
   } finally {
@@ -295,13 +304,7 @@ export async function createShareImage(
         });
       }
       layers.push({
-        input: shareImageOverlay(
-          data.map(d => d.resort.nameJa),
-          total,
-          data.some(d => hasOsmMap(d.mapData)),
-          comparison,
-          data.some(d => hasShareMap(d.mapData)),
-        ),
+        input: shareImageOverlay(data.some(d => hasOsmMap(d.mapData))),
         left: 0,
         top: 0,
       });
@@ -310,7 +313,7 @@ export async function createShareImage(
           width: SHARE_IMAGE_WIDTH,
           height: SHARE_IMAGE_HEIGHT,
           channels: 3,
-          background: "#f8fafc",
+          background: "#ffffff",
         },
       })
         .composite(layers)

@@ -74,14 +74,14 @@ export const TILE_LAYERS: Record<
     label: "地理院地図",
     url: "https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png",
     attribution:
-      '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener noreferrer">地理院タイル</a>',
+      '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener noreferrer">国土地理院</a>',
     maxZoom: 18,
   },
   gsiPhoto: {
     label: "地理院写真",
     url: "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
     attribution:
-      '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener noreferrer">地理院タイル</a>',
+      '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener noreferrer">国土地理院</a>',
     maxZoom: 18,
   },
   osm: {

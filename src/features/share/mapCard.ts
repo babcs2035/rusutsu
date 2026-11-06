@@ -1,21 +1,33 @@
 import type { FinalizedResortMapData } from "@/lib/finalizedResortGeojsonShared";
 
-export const SHARE_IMAGE_VERSION = "4";
+export const SHARE_IMAGE_VERSION = "6";
+/** 共有画像は縮小表示されるので、線と記号を1.5倍の解像度で描いて太く見せる。 */
+export const SHARE_MAP_SCALE = 1.5;
+/** 航空写真を白地に薄め、コースとリフトの線を目立たせる。 */
+export const SHARE_PHOTO_OPACITY = 0.45;
+export const shareMapViewport = (size: ShareMapSize) => ({
+  width: Math.round(SHARE_MAP_SIZES[size].width / SHARE_MAP_SCALE),
+  height: Math.round(SHARE_MAP_SIZES[size].height / SHARE_MAP_SCALE),
+});
 export const SHARE_IMAGE_WIDTH = 1200;
 export const SHARE_IMAGE_HEIGHT = 630;
 export const SHARE_MAP_SIZES = {
-  detail: { width: 1160, height: 458 },
-  pair: { width: 1160, height: 211 },
-  grid: { width: 572, height: 211 },
+  // 地図を全面に敷き、比較は2px の隙間だけで並べる。
+  detail: { width: 1200, height: 630 },
+  half: { width: 599, height: 630 },
+  pair: { width: 1200, height: 314 },
+  grid: { width: 599, height: 314 },
 } as const;
 export type ShareMapSize = keyof typeof SHARE_MAP_SIZES;
 
 export const shareMapSize = (count: number, index = 0): ShareMapSize =>
   count === 1
     ? "detail"
-    : count === 2 || (count === 3 && index === 2)
-      ? "pair"
-      : "grid";
+    : count === 2
+      ? "half"
+      : count === 3 && index === 2
+        ? "pair"
+        : "grid";
 
 /** 日々変わる営業情報を画像へ焼き込まず、地形の変更時だけ素材を作り直す。 */
 export function shareMapData(

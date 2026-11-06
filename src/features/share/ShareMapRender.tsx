@@ -4,11 +4,19 @@ import type { Map as MapLibreMap } from "maplibre-gl";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { ResortFinalizedMap } from "@/features/map/components/ResortFinalizedMap";
-import { MapScaleSlot } from "@/features/map/maplibre/MapScaleSlot";
+import {
+  BASE_BACKGROUND_LAYER_ID,
+  BASE_RASTER_LAYER_ID,
+} from "@/features/map/maplibre/baseStyle";
 import { DEFAULT_MAP_DISPLAY_SETTINGS } from "@/features/map/utils/mapDisplaySettings";
 import type { FinalizedResortMapData } from "@/lib/finalizedResortGeojsonShared";
 import type { MapSkiResort } from "@/types/skiResorts";
-import { hasShareMap, SHARE_MAP_SIZES, type ShareMapSize } from "./mapCard";
+import {
+  hasShareMap,
+  SHARE_PHOTO_OPACITY,
+  type ShareMapSize,
+  shareMapViewport,
+} from "./mapCard";
 
 const DynamicMap = dynamic(
   () =>
@@ -39,6 +47,26 @@ export function ShareMapRender({
     if (!map) return;
     let stableSince = 0;
     const timer = setInterval(() => {
+      // 地図部品が後から描画設定を入れ直しても、撮影前に必ず薄めた状態へ戻す。
+      const photo = map.getLayer(BASE_RASTER_LAYER_ID.photo);
+      if (!photo) return;
+      if (
+        map.getPaintProperty(BASE_RASTER_LAYER_ID.photo, "raster-opacity") !==
+        SHARE_PHOTO_OPACITY
+      ) {
+        stableSince = 0;
+        map.setPaintProperty(
+          BASE_BACKGROUND_LAYER_ID,
+          "background-color",
+          "#ffffff",
+        );
+        map.setPaintProperty(
+          BASE_RASTER_LAYER_ID.photo,
+          "raster-opacity",
+          SHARE_PHOTO_OPACITY,
+        );
+        return;
+      }
       // リフトのアニメーション中でもタイル・GeoJSON・viewportの完了を判定する。
       const settled =
         map.areTilesLoaded() &&
@@ -54,7 +82,7 @@ export function ShareMapRender({
     }, 100);
     return () => clearInterval(timer);
   }, [map]);
-  const dimensions = SHARE_MAP_SIZES[size];
+  const dimensions = shareMapViewport(size);
   return (
     <div
       data-share-map-ready={available ? String(ready) : "true"}
@@ -63,35 +91,30 @@ export function ShareMapRender({
         ...dimensions,
         position: "relative",
         overflow: "hidden",
-        background: "#e5eaf0",
+        background: "#ffffff",
       }}
     >
       {available ? (
-        <>
-          <ResortFinalizedMap
-            DynamicMap={DynamicMap}
-            resortId={resort.id}
-            finalizedMapData={mapData}
-            mapResorts={[resort]}
-            presentation="preview"
-            embedded
-            showToolbar={false}
-            showOpenOnlyControl={false}
-            showLocationControl={false}
-            courseColorMode="slope"
-            mapDisplaySettings={settings}
-            mapTileVariant="photo"
-            showOpenOnly={false}
-            selectedFinalizedFeature={null}
-            selectedElevationProfilePoint={null}
-            onSelectedFinalizedFeatureChange={nothing}
-            onSelectedElevationProfilePointChange={nothing}
-            onMapReady={setMap}
-          />
-          <div style={{ position: "absolute", bottom: 10, right: 14 }}>
-            <MapScaleSlot map={map} />
-          </div>
-        </>
+        <ResortFinalizedMap
+          DynamicMap={DynamicMap}
+          resortId={resort.id}
+          finalizedMapData={mapData}
+          mapResorts={[resort]}
+          presentation="preview"
+          embedded
+          showToolbar={false}
+          showOpenOnlyControl={false}
+          showLocationControl={false}
+          courseColorMode="slope"
+          mapDisplaySettings={settings}
+          mapTileVariant="photo"
+          showOpenOnly={false}
+          selectedFinalizedFeature={null}
+          selectedElevationProfilePoint={null}
+          onSelectedFinalizedFeatureChange={nothing}
+          onSelectedElevationProfilePointChange={nothing}
+          onMapReady={setMap}
+        />
       ) : (
         <div
           style={{
@@ -105,7 +128,7 @@ export function ShareMapRender({
           ゲレンデマップ準備中
         </div>
       )}
-      <style>{`.maplibregl-ctrl-attrib, nextjs-portal { display: none !important; }`}</style>
+      <style>{`.maplibregl-ctrl-attrib, .maplibregl-ctrl-scale, .resort-label-anchor, nextjs-portal { display: none !important; }`}</style>
     </div>
   );
 }

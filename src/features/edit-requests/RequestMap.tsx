@@ -227,7 +227,7 @@ export default function RequestMap({
       center: all[0].positions[0],
       zoom: 12,
       maxZoom: 18,
-      attributionControl: { compact: true },
+      attributionControl: { compact: false },
       dragRotate: false,
       pitchWithRotate: false,
       touchPitch: false,

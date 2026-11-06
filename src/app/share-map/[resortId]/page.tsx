@@ -27,7 +27,7 @@ export default async function ShareMapPage({
       <p>
         背景：
         <a href="https://maps.gsi.go.jp/development/ichiran.html#seamlessphoto">
-          地理院タイル（国土地理院）
+          国土地理院
         </a>
         を加工し、Rusutsuがコース・リフト・斜度表示を追記。
       </p>

@@ -83,7 +83,7 @@ export const useMapLibreMap = ({
       bearing: viewport?.bearing ?? 0,
       minZoom: GSI_TILE_MIN_ZOOM,
       maxZoom: GSI_TILE_MAX_ZOOM,
-      attributionControl: { compact: true },
+      attributionControl: { compact: false },
       // 回転はスキー場詳細画面だけで使うので、既定では切っておく
       dragRotate: false,
       pitchWithRotate: false,

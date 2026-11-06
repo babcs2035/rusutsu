@@ -252,7 +252,7 @@ export function EditorMap({
       pitchWithRotate: false,
       touchPitch: false,
       maxPitch: 0,
-      attributionControl: { compact: true },
+      attributionControl: { compact: false },
     });
     mapRef.current = map;
 
