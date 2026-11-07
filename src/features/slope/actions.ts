@@ -438,9 +438,16 @@ export async function saveSlopeEdits(
     const actor = await getCurrentActor().catch(() => null);
     if (actor?.role !== "admin" || !(error instanceof Error)) throw error;
     console.error("Failed to save slope edits", error);
+    // conflict を付けて、管理者が上書き保存を選べるようにする
     return {
       ok: false,
-      errors: [`保存できませんでした（理由: ${error.message.slice(0, 500)}）`],
+      conflict: true,
+      errors: [
+        `保存できませんでした（理由: ${error.message.slice(0, 500)}）`,
+        ...(request.forceOverwrite
+          ? []
+          : ["現在の編集内容を優先する場合は、上書き保存を選んでください。"]),
+      ],
     };
   }
 }

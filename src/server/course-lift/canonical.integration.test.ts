@@ -25,7 +25,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
   const file = path.join(root, "integration.mjs");
   await build({
     stdin: {
-      contents: `export {prisma,disconnectPrisma} from '@/lib/prisma'; export * from '@/server/data-documents/repository'; export * from '@/server/course-lift/canonicalDocuments'; export * from '@/server/course-lift/canonicalCodec'; export * from '@/server/course-lift/mapData'; export * from '@/server/course-lift/operations'; export * from '@/server/course-lift/summaryClient'; export * from '@/server/crawl-latest/persistence'; export {crawlLatestRunInputSchema} from '@/server/crawl-latest/contract'; export {hashDataDocumentContent} from '@/server/data-documents/repositoryCore'; export {getFinalizedResortMapData} from '@/lib/finalizedResortGeojson';`,
+      contents: `export {prisma,disconnectPrisma} from '@/lib/prisma'; export * from '@/server/data-documents/repository'; export * from '@/server/course-lift/canonicalDocuments'; export * from '@/server/course-lift/canonicalCodec'; export * from '@/server/course-lift/mapData'; export * from '@/server/course-lift/operations'; export * from '@/server/course-lift/summaryClient'; export * from '@/server/crawl-latest/persistence'; export {crawlLatestRunInputSchema} from '@/server/crawl-latest/contract'; export {hashDataDocumentContent} from '@/server/data-documents/repositoryCore'; export {getFinalizedResortMapData} from '@/lib/finalizedResortGeojson'; export {withAdminOverwrite} from '@/server/edit-requests/overwriteContext';`,
       resolveDir: process.cwd(),
       sourcefile: "canonical-test.ts",
     },
@@ -986,6 +986,66 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
         assert.equal(summary.courseActive, null);
         assert.equal(summary.liftTotal, 2);
         assert.equal(summary.liftActive, null);
+      },
+    );
+    await t.test(
+      "admin overwrite copies lines whose IDs belong to another document",
+      async () => {
+        const base = await db.skiResort.findUniqueOrThrow({
+          where: { id: "sample" },
+        });
+        await db.skiResort.create({
+          data: {
+            ...base,
+            id: "copy-test",
+            createdAt: undefined,
+            updatedAt: undefined,
+          },
+        });
+        const osmKey = "resorts-temporary/slope_before_osm/copy-test.geojson";
+        const curatedKey = "resorts-temporary/slope_before/copy-test.geojson";
+        const curatedDerivedKey =
+          "resorts-temporary/slope_10m/copy-test.geojson";
+        const osmLine = line("osm-1", "OSM線", "osm-group");
+        await api.writeDataDocumentsDirect([
+          write(osmKey, collection([osmLine])),
+        ]);
+        const copied = [
+          write(curatedKey, collection([osmLine])),
+          write(
+            curatedDerivedKey,
+            collection(
+              [elevated[0]].map(feature => ({
+                ...feature,
+                properties: { ...feature.properties, entityId: "osm-1" },
+              })),
+            ),
+          ),
+        ];
+        await assert.rejects(
+          api.writeDataDocumentsDirect(copied),
+          /belongs to another document/,
+        );
+        await api.withAdminOverwrite(() =>
+          api.writeDataDocumentsDirect(copied),
+        );
+        const osmRow = await db.mapCourse.findUniqueOrThrow({
+          where: { id: "osm-1" },
+        });
+        assert.equal(osmRow.documentKey, osmKey);
+        const curatedRows = await db.mapCourse.findMany({
+          where: { documentKey: curatedKey, archivedAt: null },
+        });
+        assert.equal(curatedRows.length, 1);
+        assert.match(curatedRows[0].id, /^copy:/);
+        assert.equal(curatedRows[0].name, "OSM線");
+        assert.notEqual(curatedRows[0].groupId, "osm-group");
+        assert.ok(curatedRows[0].derivedGeometry);
+        const osmDocument = JSON.parse(
+          (await api.getDataDocumentDirect(osmKey)).content,
+        );
+        assert.equal(osmDocument.features.length, 1);
+        assert.equal(osmDocument.features[0].properties.entityId, "osm-1");
       },
     );
   } finally {

@@ -1,7 +1,9 @@
+import { randomUUID } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import { Prisma } from "@prisma/client";
 import type { RawGeoFeature } from "@/lib/resortMapMerge";
 import { mergeCourseFeatures, mergeLiftFeatures } from "@/lib/resortMapMerge";
+import { allowsAdminOverwrite } from "@/server/edit-requests/overwriteContext";
 import {
   featureIdentity,
   legacyCourseGrouping,
@@ -167,8 +169,15 @@ export async function writeCanonicalMapDocument(
   tx: Tx,
   document: MapSourceDocument,
   movingKeys: Set<string>,
-  options: { migrating?: boolean } = {},
+  options: {
+    migrating?: boolean;
+    /** 管理者の上書きで複製した線の 元ID→新ID。同じ保存の派生・詳細でも使う。 */
+    idRemap?: Map<string, string>;
+  } = {},
 ) {
+  const idRemap = options.idRemap ?? new Map<string, string>();
+  const remapped = (id: unknown) =>
+    typeof id === "string" ? (idRemap.get(id) ?? id) : id;
   const kind = mapDocumentKind(document.key);
   if (!kind) throw new Error(`Not a canonical map key: ${document.key}`);
   let metadata: Record<string, unknown>;
@@ -191,10 +200,13 @@ export async function writeCanonicalMapDocument(
           });
     const rowOrder: unknown[] = [];
     for (const [index, entry] of entries.entries()) {
-      const props =
+      const raw =
         kind.kind === "course"
           ? omitPublishedCourseMetrics(record(entry))
           : record(entry);
+      const props = raw.entityId
+        ? { ...raw, entityId: remapped(raw.entityId) }
+        : raw;
       const matches = rows.filter(row =>
         props.entityId
           ? row.id === props.entityId
@@ -385,6 +397,7 @@ export async function writeCanonicalMapDocument(
     for (const [index, feature] of features.entries()) {
       const props = record(feature.properties);
       let id = featureIdentity(props, kind.primaryKey, index);
+      if (kind.derived && props.entityId) id = String(remapped(id));
       if (kind.derived && !props.entityId) {
         const matches =
           kind.kind === "course"
@@ -434,7 +447,7 @@ export async function writeCanonicalMapDocument(
         continue;
       }
       const split = splitFeature(feature, document.key, index);
-      const old =
+      let old =
         kind.kind === "course"
           ? await tx.mapCourse.findUnique({ where: { id } })
           : await tx.mapLift.findUnique({ where: { id } });
@@ -442,8 +455,16 @@ export async function writeCanonicalMapDocument(
         old &&
         old.documentKey !== document.key &&
         !movingKeys.has(old.documentKey)
-      )
-        throw new Error(`Entity ${id} belongs to another document`);
+      ) {
+        if (!allowsAdminOverwrite())
+          throw new Error(`Entity ${id} belongs to another document`);
+        // 管理者の上書き: 元のファイルの線は残し、新しい線として複製する
+        const copyId = `copy:${randomUUID()}`;
+        idRemap.set(id, copyId);
+        ids.add(copyId);
+        id = copyId;
+        old = null;
+      }
       const invalidated =
         old && !isDeepStrictEqual(old.geometry, split.geometry)
           ? {
@@ -517,8 +538,12 @@ export async function writeCanonicalMapDocument(
             existing &&
             (existing.resortId !== kind.resortId ||
               existing.sourceKind !== kind.sourceKind)
-          )
-            throw new Error("Group belongs to another resort/source");
+          ) {
+            if (!allowsAdminOverwrite())
+              throw new Error("Group belongs to another resort/source");
+            // 管理者の上書き: 別ファイルのグループは残し、こちら用のグループを作る
+            group.id = `${group.id}@${kind.resortId}:${kind.sourceKind}`;
+          }
           const data = {
             resortId: kind.resortId,
             sourceKind: kind.sourceKind,

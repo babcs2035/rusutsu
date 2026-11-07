@@ -97,6 +97,7 @@ export async function writeDataDocumentsInTransaction(
     import("@/server/course-lift/migrationPlan").MapSourceDocument
   > = [];
   const movingKeys = new Set(documents.map(document => document.key));
+  const idRemap = new Map<string, string>();
   const ordered = [...documents].sort((a, b) => {
     const rank = (key: string) => {
       const parsed = mapDocumentKind(key);
@@ -122,6 +123,7 @@ export async function writeDataDocumentsInTransaction(
             version: (currentByKey.get(document.key)?.version ?? 0) + 1,
           },
           movingKeys,
+          { idRemap },
         ),
       );
       continue;
