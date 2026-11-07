@@ -12,6 +12,7 @@
 import {
   createProjectedLine,
   getBendAngle,
+  getDistanceAlongLine,
   getLabelDistances,
   getPointAtDistance,
   getSpacedDistances,
@@ -39,6 +40,8 @@ export type LabelSource = {
   isSelected: boolean;
   /** 「営業中のみ」表示で沈ませる対象か */
   isMuted: boolean;
+  /** 名前を重ねない線上の点（リフトの中間駅など） */
+  avoidPoints?: LayoutPoint[];
 };
 
 export type LabelPlacement = {
@@ -83,6 +86,38 @@ const MAX_LABEL_LINE_RATIO = 0.5;
 const MAX_LABEL_DEVIATION_RATIO = 0.5;
 /** 名前の範囲で、線が曲がってよい角度（度） */
 const MAX_LABEL_BEND_DEG = 20;
+
+/** 中間駅の印と名前のあいだに空ける距離（px）。印の半径と縁を含む */
+export const LINE_POINT_CLEARANCE_PX = 14;
+
+/**
+ * 名前の中心を、避けたい点から名前の半分＋余白だけ離した位置へずらす。
+ * 前後どちらにも置けなければ null。
+ */
+const shiftAwayFromPoints = ({
+  target,
+  avoidDistances,
+  clearance,
+  min,
+  max,
+}: {
+  target: number;
+  avoidDistances: number[];
+  clearance: number;
+  min: number;
+  max: number;
+}): number | null => {
+  const isClear = (distance: number) =>
+    distance >= min &&
+    distance <= max &&
+    avoidDistances.every(avoid => Math.abs(distance - avoid) >= clearance);
+  if (isClear(target)) return target;
+  const options = avoidDistances
+    .flatMap(avoid => [avoid - clearance, avoid + clearance])
+    .filter(isClear)
+    .sort((a, b) => Math.abs(a - target) - Math.abs(b - target));
+  return options[0] ?? null;
+};
 
 export const getLabelFontSize = (zoom: number) => (zoom >= 16 ? 12 : 11);
 
@@ -143,17 +178,42 @@ export const collectLabelCandidates = ({
       ? Number.POSITIVE_INFINITY
       : line.length * source.weight;
 
+    const half = labelWidth / 2;
+    const avoidDistances = (source.avoidPoints ?? []).map(point =>
+      getDistanceAlongLine(line, point),
+    );
+    const clearance = half + LINE_POINT_CLEARANCE_PX;
+    const isAwayFromPoints = (distance: number) =>
+      avoidDistances.every(avoid => Math.abs(distance - avoid) >= clearance);
+
     distances.forEach((distance, index) => {
+      // 中間駅の印に名前がかぶらないよう、駅の前後へずらす
+      const target = shiftAwayFromPoints({
+        target: distance,
+        avoidDistances,
+        clearance,
+        min: half,
+        max: line.length - half,
+      });
+      if (target === null) return;
       // 探索半径を狭くして、1/4・1/2・3/4 から大きくずれないようにする
-      const anchor = refineAnchor({
+      const refined = refineAnchor({
         line,
-        targetDistance: distance,
+        targetDistance: target,
         span: labelWidth,
         searchRadius: Math.min(line.length * 0.06, 36),
       });
+      // 直線に寄せた結果が駅に戻ってしまうときは、ずらした位置に置く
+      const anchor = isAwayFromPoints(refined.distance)
+        ? refined
+        : refineAnchor({
+            line,
+            targetDistance: target,
+            span: labelWidth,
+            searchRadius: 0,
+          });
       // まっすぐな場所が見つからなければ名前を出さない。曲がった線の上に
       // まっすぐな文字を置くと、どの線の名前か分からなくなる
-      const half = labelWidth / 2;
       if (
         anchor.deviation > labelHeight * MAX_LABEL_DEVIATION_RATIO ||
         getBendAngle(line, anchor.distance - half, anchor.distance + half) >

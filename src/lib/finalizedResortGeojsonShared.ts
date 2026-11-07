@@ -121,6 +121,8 @@ export type FinalizedLiftFeature = {
     youtubeUrl?: string | null;
     morning: string | null;
     night: string | null;
+    /** 中間駅。リフト線上の [経度, 緯度]。無いリフトは null */
+    midstation?: [number, number] | null;
   };
 };
 
@@ -493,4 +495,80 @@ export const LIFT_CLASS_LABEL_WEIGHT: Record<LiftClass, number> = {
   gondola: 1.6,
   highSpeed: 1.5,
   other: 1,
+};
+
+/** 中間駅として認める、リフト線からの最大のずれ（m） */
+const MIDSTATION_MAX_OFFSET_M = 120;
+
+/**
+ * 中間駅の位置を、リフト線の上の [経度, 緯度] にそろえる。
+ *
+ * 元データは [経度, 緯度(, 標高)] だが、緯度と経度が逆に入ったものもある。
+ * 両方の並びで線までの距離を測り、近い方を採る。表示で線から浮かないよう、
+ * 線上のいちばん近い点へ寄せる。線から離れすぎた値や端点の値は捨てる。
+ */
+export const resolveLiftMidstation = (
+  value: unknown,
+  coordinates: GeoCoordinate[],
+): [number, number] | null => {
+  if (!Array.isArray(value) || value.length < 2 || coordinates.length < 2)
+    return null;
+  const a = Number(value[0]);
+  const b = Number(value[1]);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+
+  const latRad = (coordinates[0][1] * Math.PI) / 180;
+  const mPerLng = 111_320 * Math.cos(latRad);
+  const mPerLat = 110_540;
+
+  const nearestOnLine = (lng: number, lat: number) => {
+    let best: { lng: number; lat: number; distance: number; t: number } | null =
+      null;
+    let walked = 0;
+    let total = 0;
+    for (let index = 1; index < coordinates.length; index += 1) {
+      const [sx, sy] = coordinates[index - 1];
+      const [ex, ey] = coordinates[index];
+      total += Math.hypot((ex - sx) * mPerLng, (ey - sy) * mPerLat);
+    }
+    for (let index = 1; index < coordinates.length; index += 1) {
+      const [sx, sy] = coordinates[index - 1];
+      const [ex, ey] = coordinates[index];
+      const dx = (ex - sx) * mPerLng;
+      const dy = (ey - sy) * mPerLat;
+      const px = (lng - sx) * mPerLng;
+      const py = (lat - sy) * mPerLat;
+      const lengthSq = dx * dx + dy * dy;
+      const t =
+        lengthSq === 0
+          ? 0
+          : Math.max(0, Math.min(1, (px * dx + py * dy) / lengthSq));
+      const distance = Math.hypot(px - t * dx, py - t * dy);
+      const segmentLength = Math.sqrt(lengthSq);
+      if (!best || distance < best.distance) {
+        best = {
+          lng: sx + t * (ex - sx),
+          lat: sy + t * (ey - sy),
+          distance,
+          t: total > 0 ? (walked + t * segmentLength) / total : 0,
+        };
+      }
+      walked += segmentLength;
+    }
+    return best;
+  };
+
+  const candidates = [
+    [a, b],
+    [b, a],
+  ]
+    .filter(([lng, lat]) => Math.abs(lat) <= 90 && Math.abs(lng) <= 180)
+    .map(([lng, lat]) => nearestOnLine(lng, lat))
+    .filter(candidate => candidate !== null)
+    .sort((left, right) => left.distance - right.distance);
+  const nearest = candidates[0];
+  if (!nearest || nearest.distance > MIDSTATION_MAX_OFFSET_M) return null;
+  // 乗り場・降り場と重なる位置は中間駅として出さない
+  if (nearest.t < 0.03 || nearest.t > 0.97) return null;
+  return [nearest.lng, nearest.lat];
 };

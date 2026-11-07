@@ -70,6 +70,38 @@ export const createProjectedLine = (
   return { points, segmentLengths, cumulativeLengths, length: total };
 };
 
+/** 点にいちばん近い線上の位置を、始点からの距離（px）で返す */
+export const getDistanceAlongLine = (
+  line: ProjectedLine,
+  point: LayoutPoint,
+): number => {
+  let bestDistance = 0;
+  let bestOffset = Number.POSITIVE_INFINITY;
+  for (let index = 0; index < line.segmentLengths.length; index += 1) {
+    const start = line.points[index];
+    const end = line.points[index + 1];
+    const length = line.segmentLengths[index];
+    if (!start || !end || !length) continue;
+    const t = Math.max(
+      0,
+      Math.min(
+        1,
+        ((point.x - start.x) * (end.x - start.x) +
+          (point.y - start.y) * (end.y - start.y)) /
+          (length * length),
+      ),
+    );
+    const offset = Math.hypot(
+      point.x - (start.x + t * (end.x - start.x)),
+      point.y - (start.y + t * (end.y - start.y)),
+    );
+    if (offset >= bestOffset) continue;
+    bestOffset = offset;
+    bestDistance = (line.cumulativeLengths[index] ?? 0) + t * length;
+  }
+  return bestDistance;
+};
+
 export const getPointAtDistance = (
   line: ProjectedLine,
   distance: number,

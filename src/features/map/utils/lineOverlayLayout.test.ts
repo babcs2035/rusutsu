@@ -19,6 +19,7 @@ import {
   getDirectionMarkPath,
   getLabelFontSize,
   type LabelSource,
+  LINE_POINT_CLEARANCE_PX,
   placeLabelCandidates,
   shouldSkipCourseLabel,
 } from "./lineOverlayLayout";
@@ -485,4 +486,36 @@ test("getDirectionMarkPath は切り欠きのある矢の形を返す", () => {
   assert.equal(path.split("L").length - 1, 3);
   assert.ok(path.startsWith("M 4.00 0"));
   assert.ok(path.endsWith("Z"));
+});
+
+test("リフト名は中間駅の印を避けて、駅の前後に置く", () => {
+  const station = { x: 200, y: 0 };
+  const candidates = collectLabelCandidates({
+    sources: [
+      {
+        kind: "lift",
+        sourceIds: ["lift-1"],
+        primaryId: "lift-1",
+        name: "第4ペア",
+        weight: 1,
+        points: [
+          { x: 0, y: 0 },
+          { x: 400, y: 0 },
+        ],
+        isSelected: false,
+        isMuted: false,
+        avoidPoints: [station],
+      },
+    ],
+    zoom: 15,
+    twoLabelMinLength: 10_000,
+    measureWidth: text => text.length * 10,
+  });
+  assert.equal(candidates.length, 1);
+  const placement = candidates[0]?.placement;
+  assert.ok(placement);
+  assert.ok(
+    Math.abs(placement.x - station.x) >=
+      placement.boxWidth / 2 + LINE_POINT_CLEARANCE_PX,
+  );
 });

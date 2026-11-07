@@ -98,6 +98,42 @@ function CourseLineSample({
   );
 }
 
+/** 中間駅の印。地図の白丸（リフト色の縁）と同じ見た目にする */
+function LiftStationSample() {
+  const lineWidth = getSampleWidth("lift");
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 56 14"
+      preserveAspectRatio="xMidYMid meet"
+      className="h-[14px] w-14 shrink-0"
+    >
+      <path
+        d="M6 7H50"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={lineWidth + FINALIZED_CASING_EXTRA.pale}
+        strokeLinecap="round"
+      />
+      <path
+        d="M6 7H50"
+        fill="none"
+        stroke={LIFT_PALETTE.open.color}
+        strokeWidth={lineWidth}
+        strokeLinecap="round"
+      />
+      <circle
+        cx="28"
+        cy="7"
+        r="5"
+        fill="#FFFFFF"
+        stroke={LIFT_PALETTE.open.color}
+        strokeWidth="2.2"
+      />
+    </svg>
+  );
+}
+
 export function MapLineLegendDialog() {
   return (
     <Dialog>
@@ -167,6 +203,12 @@ export function MapLineLegendDialog() {
                   <span>{item.label}</span>
                 </div>
               ))}
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="flex w-14 shrink-0">
+                  <LiftStationSample />
+                </span>
+                <span>中間駅</span>
+              </div>
             </div>
           </section>
           <DialogClose

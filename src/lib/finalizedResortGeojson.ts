@@ -12,7 +12,10 @@ import type { PropertySegment } from "@/shared/course-lift/segments";
 import { normalizePropertySegments } from "@/shared/course-lift/segments";
 import type { CourseStatusSummary } from "./courseStatusSummary";
 import { createCourseStatusSummary } from "./courseStatusSummary";
-import { calculateCoordinateSlopes } from "./finalizedResortGeojsonShared";
+import {
+  calculateCoordinateSlopes,
+  resolveLiftMidstation,
+} from "./finalizedResortGeojsonShared";
 import {
   type LatestSuccessfulStatus,
   loadLatestSuccessfulStatus,
@@ -141,6 +144,8 @@ export type FinalizedLiftFeature = {
     youtubeUrl?: string | null;
     morning: string | null;
     night: string | null;
+    /** 中間駅。リフト線上の [経度, 緯度]。無いリフトは null */
+    midstation?: [number, number] | null;
   };
 };
 
@@ -481,6 +486,7 @@ export const normalizeLiftFeature = (
       youtubeUrl: normalizeString(properties.youtubeUrl),
       morning: normalizeString(properties.morning),
       night: normalizeString(properties.night),
+      midstation: resolveLiftMidstation(properties.midstation, coordinates),
     },
   };
 };

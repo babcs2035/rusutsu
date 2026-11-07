@@ -85,6 +85,7 @@ import {
   buildCourseCollection,
   buildCourseOutlineCollection,
   buildLiftCollection,
+  buildLiftStationCollection,
 } from "./maplibre/sources";
 import { useElevationProfileMarker } from "./maplibre/useElevationProfileMarker";
 import { useLiftAnimation } from "./maplibre/useLiftAnimation";
@@ -722,6 +723,10 @@ function MapLibreResortMapContent({
     () => buildLiftCollection(finalizedLifts),
     [finalizedLifts],
   );
+  const liftStationCollection = useMemo(
+    () => buildLiftStationCollection(finalizedLifts),
+    [finalizedLifts],
+  );
 
   useEffect(() => {
     if (!map || !isReady) return;
@@ -730,12 +735,20 @@ function MapLibreResortMapContent({
       [FINALIZED_SOURCE.courses, courseCollection],
       [FINALIZED_SOURCE.courseOutlines, courseOutlineCollection],
       [FINALIZED_SOURCE.lifts, liftCollection],
+      [FINALIZED_SOURCE.liftStations, liftStationCollection],
     ] as const;
     for (const [sourceId, data] of entries) {
       const source = map.getSource(sourceId) as GeoJSONSource | undefined;
       source?.setData(data);
     }
-  }, [courseCollection, courseOutlineCollection, isReady, liftCollection, map]);
+  }, [
+    courseCollection,
+    courseOutlineCollection,
+    isReady,
+    liftCollection,
+    liftStationCollection,
+    map,
+  ]);
 
   // --- 見た目の状態 -------------------------------------------------------
   const styleState: FinalizedStyleState = useMemo(

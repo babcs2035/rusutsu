@@ -16,6 +16,7 @@ export const FINALIZED_SOURCE = {
   courses: "finalized-courses",
   courseOutlines: "finalized-course-outlines",
   lifts: "finalized-lifts",
+  liftStations: "finalized-lift-stations",
 } as const;
 
 export const FINALIZED_LAYER = {
@@ -34,6 +35,7 @@ export const FINALIZED_LAYER = {
   liftFlowSlow: "finalized-lift-flow-slow",
   liftFlowNormal: "finalized-lift-flow-normal",
   liftFlowFast: "finalized-lift-flow-fast",
+  liftStation: "finalized-lift-station",
   courseHit: "finalized-course-hit",
   liftHit: "finalized-lift-hit",
 } as const;
@@ -515,6 +517,45 @@ const ARROW_SIZE: DataDrivenPropertyValueSpecification<number> = [
   0.6,
 ];
 
+/**
+ * 中間駅の白丸。線の太さより大きくして、線の上でも駅だと分かるようにする。
+ * 縁はリフトと同じ色にし、どのリフトの駅かを色でも結びつける。
+ */
+export const LIFT_STATION_MIN_ZOOM = 13;
+const LIFT_STATION_RADIUS: DataDrivenPropertyValueSpecification<number> = [
+  "interpolate",
+  ["linear"],
+  ["zoom"],
+  13,
+  4.6,
+  15,
+  6.4,
+  17,
+  8,
+  18,
+  9,
+];
+const LIFT_STATION_STROKE: DataDrivenPropertyValueSpecification<number> = [
+  "interpolate",
+  ["linear"],
+  ["zoom"],
+  13,
+  2.2,
+  16,
+  3,
+  18,
+  3.6,
+];
+
+const getLiftStationStrokeColor = (
+  state: FinalizedStyleState,
+): DataDrivenPropertyValueSpecification<string> => [
+  "case",
+  isDimmedExpression(state, "lift"),
+  DIMMED_STYLE.lift.color,
+  ["get", "color"],
+];
+
 /** タップ判定用の透明な線。細い線をそのまま狙わせると当たらない */
 const createHitLayer = (
   id: string,
@@ -696,6 +737,21 @@ export const createFinalizedLayers = (
       },
     }),
   ),
+  {
+    id: FINALIZED_LAYER.liftStation,
+    type: "circle",
+    source: FINALIZED_SOURCE.liftStations,
+    minzoom: LIFT_STATION_MIN_ZOOM,
+    paint: {
+      "circle-radius": LIFT_STATION_RADIUS,
+      "circle-color": "#FFFFFF",
+      "circle-stroke-color": getLiftStationStrokeColor(state),
+      "circle-stroke-width": LIFT_STATION_STROKE,
+      "circle-opacity": getLineOpacity(state, "lift"),
+      "circle-stroke-opacity": getLineOpacity(state, "lift"),
+      "circle-pitch-alignment": "map",
+    },
+  },
   createHitLayer(
     FINALIZED_LAYER.courseHit,
     FINALIZED_SOURCE.courseOutlines,
@@ -841,6 +897,21 @@ export const applyFinalizedStyleState = (
   for (const layer of LIFT_FLOW_LAYERS) {
     set(layer.id, "line-opacity", getFlowOpacity(state));
   }
+  set(
+    FINALIZED_LAYER.liftStation,
+    "circle-stroke-color",
+    getLiftStationStrokeColor(state),
+  );
+  set(
+    FINALIZED_LAYER.liftStation,
+    "circle-opacity",
+    getLineOpacity(state, "lift"),
+  );
+  set(
+    FINALIZED_LAYER.liftStation,
+    "circle-stroke-opacity",
+    getLineOpacity(state, "lift"),
+  );
 
   set(FINALIZED_LAYER.courseArrow, "icon-opacity", [
     "case",

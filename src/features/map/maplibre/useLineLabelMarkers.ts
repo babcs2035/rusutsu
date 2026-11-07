@@ -24,9 +24,11 @@ import {
   getLabelFont,
   type LabelPlacement,
   type LabelSource,
+  LINE_POINT_CLEARANCE_PX,
   placeLabelCandidates,
   shouldSkipCourseLabel,
 } from "../utils/lineOverlayLayout";
+import { LIFT_STATION_MIN_ZOOM } from "./finalizedLayers";
 
 const SELECTED_LINE_CLEARANCE_PX = 16;
 
@@ -151,10 +153,30 @@ export const useLineLabelMarkers = ({
       const placements: LabelPlacement[] = [];
       const padding = getLabelCollisionPadding(zoom);
 
+      // 中間駅の印の上には、どの名前も置かない
+      const stationPoints = new Map<string, LayoutPoint>();
+      if (zoom >= LIFT_STATION_MIN_ZOOM) {
+        for (const lift of lifts) {
+          const midstation = lift.properties.midstation;
+          if (!midstation) continue;
+          const point = map.project(midstation);
+          stationPoints.set(lift.id, { x: point.x, y: point.y });
+          placedRects.push({
+            cx: point.x,
+            cy: point.y,
+            // 駅の前後へずらした名前とは接しないよう、2px 内側にする
+            halfWidth: LINE_POINT_CLEARANCE_PX - padding - 2,
+            halfHeight: LINE_POINT_CLEARANCE_PX - padding - 2,
+            angle: 0,
+          });
+        }
+      }
+
       if (showLiftNames && zoom >= LIFT_LABEL_MIN_ZOOM) {
         const liftSources = lifts.flatMap<LabelSource>(lift => {
           if (lift.name.length === 0) return [];
           if (selectedIds.has(lift.id)) return [];
+          const station = stationPoints.get(lift.id);
 
           return [
             {
@@ -169,6 +191,7 @@ export const useLineLabelMarkers = ({
               ).reverse(),
               isSelected: false,
               isMuted: false,
+              avoidPoints: station ? [station] : undefined,
             },
           ];
         });

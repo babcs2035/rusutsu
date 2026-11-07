@@ -1,4 +1,4 @@
-import type { FeatureCollection, LineString } from "geojson";
+import type { FeatureCollection, LineString, Point } from "geojson";
 import {
   COURSE_DIFFICULTY_META,
   createCourseColorSegments,
@@ -242,5 +242,41 @@ export const buildLiftCollection = (
         night: lift.properties.night === "○",
       },
     );
+  }),
+});
+
+export type LiftStationProperties = {
+  sourceId: string;
+  name: string;
+  color: string;
+  status: FinalizedFeatureStatus;
+};
+
+export const EMPTY_LIFT_STATION_COLLECTION: FeatureCollection<
+  Point,
+  LiftStationProperties
+> = { type: "FeatureCollection", features: [] };
+
+/** リフトの中間駅。線の上に、リフトと同じ色の縁の白丸で描く */
+export const buildLiftStationCollection = (
+  lifts: FinalizedLiftFeature[],
+): FeatureCollection<Point, LiftStationProperties> => ({
+  type: "FeatureCollection",
+  features: lifts.flatMap(lift => {
+    const midstation = lift.properties.midstation;
+    if (!midstation) return [];
+    const status = getFeatureStatusKind(lift.properties.status);
+    return [
+      {
+        type: "Feature" as const,
+        geometry: { type: "Point" as const, coordinates: [...midstation] },
+        properties: {
+          sourceId: lift.id,
+          name: lift.name,
+          color: LIFT_PALETTE[status].color,
+          status,
+        },
+      },
+    ];
   }),
 });
