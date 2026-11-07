@@ -1,14 +1,12 @@
 import type { FinalizedResortMapData } from "@/lib/finalizedResortGeojsonShared";
 
-export const SHARE_IMAGE_VERSION = "6";
-/** 共有画像は縮小表示されるので、線と記号を1.5倍の解像度で描いて太く見せる。 */
-export const SHARE_MAP_SCALE = 1.5;
+export const SHARE_IMAGE_VERSION = "7";
 /** 航空写真を白地に薄め、コースとリフトの線を目立たせる。 */
-export const SHARE_PHOTO_OPACITY = 0.45;
-export const shareMapViewport = (size: ShareMapSize) => ({
-  width: Math.round(SHARE_MAP_SIZES[size].width / SHARE_MAP_SCALE),
-  height: Math.round(SHARE_MAP_SIZES[size].height / SHARE_MAP_SCALE),
-});
+export const SHARE_PHOTO_OPACITY = 0.7;
+/** 共有画像は縮小表示されるので、コースとリフトの線だけを太くする。 */
+export const SHARE_LINE_WIDTH_SCALE = 3;
+/** 全体を収めたうえで最大まで寄せる。太くした線が端で切れない分だけ空ける。 */
+export const SHARE_FIT_PADDING = 24;
 export const SHARE_IMAGE_WIDTH = 1200;
 export const SHARE_IMAGE_HEIGHT = 630;
 export const SHARE_MAP_SIZES = {
