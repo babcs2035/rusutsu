@@ -83,8 +83,14 @@ for (const spec of OFFICIAL_CASES.filter(c =>
   const assertPrice = (
     result: TicketCalculationResult,
     amount: number | null,
+    // 画面の合計は券の料金に手数料を足した額。券単体の照合は手数料を含めない。
+    withFees = false,
   ) => {
-    assert.equal(result.ticketTotal, amount, JSON.stringify(result.lines));
+    assert.equal(
+      withFees ? result.payableTotal : result.ticketTotal,
+      amount,
+      JSON.stringify(result.lines),
+    );
     if (amount != null) {
       assert.equal(result.status, "complete");
       // 出典があるだけでなく、実際に選ばれた料金行が公式URLへ結び付くこと。
@@ -109,7 +115,7 @@ for (const spec of OFFICIAL_CASES.filter(c =>
     test(`${spec.resort}: ${category}を選択（年齢未入力）`, () => {
       const result = plan(category, null);
       assert.equal(result.total, spec.categories[category]);
-      assertPrice(result.days[0].result, spec.categories[category]);
+      assertPrice(result.days[0].result, spec.categories[category], true);
       if (spec.categories[category] == null) {
         assert.match(
           result.days[0].result.lines.map(line => line.note).join(" "),
@@ -194,7 +200,7 @@ for (const spec of OFFICIAL_CASES.filter(c =>
         ? spec.categories.adult
         : spec.dayWithNight;
     assert.equal(result.total, expected);
-    assertPrice(result.days[0].result, expected);
+    assertPrice(result.days[0].result, expected, true);
   });
   for (const [dates, hours, amount] of spec.multiDays ?? []) {
     test(`${spec.resort}: 日をまたぐ時間券と追加券の合計`, () => {
@@ -215,7 +221,7 @@ for (const spec of OFFICIAL_CASES.filter(c =>
     test(`${spec.resort}: ${date} ${category}の特定日料金`, () => {
       const result = plan(category, age, date);
       assert.equal(result.total, amount);
-      assertPrice(result.days[0].result, amount);
+      assertPrice(result.days[0].result, amount, true);
     });
   }
   for (const query of spec.partyQueries ?? []) {
@@ -263,14 +269,14 @@ for (const spec of OFFICIAL_CASES.filter(c =>
     test(`${spec.resort}: ${category} ${age}歳の公式料金`, () => {
       const result = plan(category, age);
       assert.equal(result.total, amount);
-      assertPrice(result.days[0].result, amount);
+      assertPrice(result.days[0].result, amount, true);
     });
   }
   for (const [date, amount] of spec.dates) {
     test(`${spec.resort}: ${date}の料金（平休日・期間境界）`, () => {
       const result = plan("adult", 30, date);
       assert.equal(result.total, amount);
-      assertPrice(result.days[0].result, amount);
+      assertPrice(result.days[0].result, amount, true);
     });
   }
   for (const [product, amount] of spec.products) {
@@ -317,7 +323,7 @@ for (const spec of OFFICIAL_CASES.filter(c =>
     test(`${spec.resort}: ${hours}時間検索 ${category}の代替券と料金`, () => {
       const result = plan(category, age, spec.date, { kind: "hours", hours });
       assert.equal(result.total, amount);
-      assertPrice(result.days[0].result, amount);
+      assertPrice(result.days[0].result, amount, true);
       assert.equal(result.days[0].result.productId, product);
     });
   }
@@ -354,7 +360,7 @@ for (const spec of OFFICIAL_CASES.filter(c =>
         return;
       }
       assert.equal(result.total, amount);
-      assertPrice(result.days[0].result, amount);
+      assertPrice(result.days[0].result, amount, true);
     });
   }
   for (const hours of TICKET_HOUR_OPTIONS) {
