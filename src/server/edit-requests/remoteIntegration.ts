@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { once } from "node:events";
 import { promises as fs } from "node:fs";
 import path from "node:path";
@@ -153,6 +154,32 @@ export async function verifyRemoteWorkflow(
         },
         body: JSON.stringify(body),
       });
+    const withApproveFetch = async <T>(
+      intercept: (
+        body: Record<string, unknown>,
+        forward: () => Promise<Response>,
+      ) => Promise<Response>,
+      action: () => Promise<T>,
+    ) => {
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = async (input, init) => {
+        const request = new Request(input, init);
+        if (request.url === endpoint) {
+          const body = (await request.clone().json()) as Record<
+            string,
+            unknown
+          >;
+          if (body.operation === "approve")
+            return intercept(body, () => originalFetch(request));
+        }
+        return originalFetch(input, init);
+      };
+      try {
+        return await action();
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    };
     assert.equal(
       (
         await raw(
@@ -265,8 +292,15 @@ export async function verifyRemoteWorkflow(
     );
     assert.equal(revised.ok, true);
     assert.ok(revised.ok);
-    const approved = await actor("integration-admin", () =>
-      api.approveEditRequest(id, revised.version),
+    const approved = await withApproveFetch(
+      async (body, forward) => {
+        assert.equal(body.overwrite, undefined);
+        return forward();
+      },
+      () =>
+        actor("integration-admin", () =>
+          api.approveEditRequest(id, revised.version),
+        ),
     );
     assert.equal(approved.ok, true);
     assert.equal(
@@ -293,6 +327,103 @@ export async function verifyRemoteWorkflow(
         )
       ).rows[0].count,
       1,
+    );
+
+    const conflictSubmission = await actor("integration-editor", () =>
+      api.saveResortLink({
+        resortId: "integration-resort",
+        platform: "officialSiteUrls",
+        links: [{ url: "https://example.invalid/overwrite-proposed" }],
+        expectedLinks: [{ url: "https://example.invalid/remote-corrected" }],
+      }),
+    );
+    assert.equal(conflictSubmission.ok, true);
+    assert.ok(conflictSubmission.ok && conflictSubmission.submission);
+    const conflictId = conflictSubmission.submission.requestId;
+    const currentLinks = await remote.query(
+      "SELECT content FROM data_documents WHERE key='SkiResortLinks.json'",
+    );
+    const concurrentMap = JSON.parse(currentLinks.rows[0].content as string);
+    concurrentMap["integration-resort"].officialSiteUrls = [
+      { url: "https://example.invalid/concurrent-update" },
+    ];
+    const concurrentContent = `${JSON.stringify(concurrentMap, null, 2)}\n`;
+    const concurrentHash = createHash("sha256")
+      .update(concurrentContent, "utf8")
+      .digest("hex");
+    await remote.query(
+      "UPDATE data_documents SET content=$1, hash=$2, version=version+1 WHERE key='SkiResortLinks.json'",
+      [concurrentContent, concurrentHash],
+    );
+    const conflictResult = await actor("integration-admin", () =>
+      api.approveEditRequest(conflictId, 1),
+    );
+    assert.equal(conflictResult.ok, false);
+    const conflictView = await actor("integration-admin", () =>
+      api.getEditRequest(conflictId),
+    );
+    assert.equal(conflictView.status, "CONFLICT");
+    const rejectedOverwrite = await withApproveFetch(
+      async body => {
+        assert.equal(body.overwrite, true);
+        return Response.json(
+          {
+            error: {
+              code: "INVALID_COMMAND",
+              message: "Unknown field: overwrite",
+            },
+          },
+          { status: 422 },
+        );
+      },
+      () =>
+        actor("integration-admin", () =>
+          api.approveEditRequest(conflictId, conflictView.version, true),
+        ),
+    );
+    assert.equal(rejectedOverwrite.ok, false);
+    assert.ok(
+      "error" in rejectedOverwrite &&
+        rejectedOverwrite.error.includes(
+          "接続先サーバーが競合内容の採用に未対応",
+        ) &&
+        rejectedOverwrite.error.includes("申請内容は残っています"),
+    );
+    const afterRejectedOverwrite = await actor("integration-admin", () =>
+      api.getEditRequest(conflictId),
+    );
+    assert.equal(afterRejectedOverwrite.status, "CONFLICT");
+    assert.equal(afterRejectedOverwrite.version, conflictView.version);
+    assert.equal(
+      (
+        await remote.query(
+          "SELECT content FROM data_documents WHERE key='SkiResortLinks.json'",
+        )
+      ).rows[0].content,
+      concurrentContent,
+    );
+    const forcedApprove = await withApproveFetch(
+      async (body, forward) => {
+        assert.equal(body.overwrite, true);
+        return forward();
+      },
+      () =>
+        actor("integration-admin", () =>
+          api.approveEditRequest(conflictId, conflictView.version, true),
+        ),
+    );
+    assert.equal(forcedApprove.ok, true, JSON.stringify(forcedApprove));
+    assert.equal(
+      (await actor("integration-admin", () => api.getEditRequest(conflictId)))
+        .status,
+      "APPLIED",
+    );
+    assert.ok(
+      (
+        await remote.query(
+          "SELECT content FROM data_documents WHERE key='SkiResortLinks.json'",
+        )
+      ).rows[0].content.includes("overwrite-proposed"),
     );
 
     // The master form uses a different success shape from the other tools.

@@ -3,7 +3,7 @@ import { ArrowLeft, Check, ChevronRight, Pencil, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import {
   EDIT_KIND_LABELS,
@@ -294,7 +294,7 @@ function PlanSummary({ groups }: { groups: ChangeGroup[] }) {
     <section className="space-y-4" aria-labelledby="change-summary">
       <div>
         <h2 id="change-summary" className="text-lg font-bold text-slate-950">
-          反映される変更
+          申請・修正内容の差分
         </h2>
         <p className="mt-1 text-sm text-slate-600">
           {groups.length
@@ -443,7 +443,7 @@ export function RequestDetail({
     request.candidatePayload ?? request.submittedPayload,
   );
   const [plan, setPlan] = useState(
-    request.candidatePlan ?? request.submittedPlan,
+    request.currentPlan ?? request.candidatePlan ?? request.submittedPlan,
   );
   const groups = useMemo(() => {
     if (!plan) return [];
@@ -482,7 +482,32 @@ export function RequestDetail({
   const [editing, setEditing] = useState(false);
   const dirty =
     JSON.stringify(payload) !== savedPayload || comment !== savedComment;
+  useEffect(() => {
+    if (dirty || request.version <= version) return;
+    const nextPayload = request.candidatePayload ?? request.submittedPayload;
+    setPayload(nextPayload);
+    setSavedPayload(JSON.stringify(nextPayload));
+    setPlan(
+      request.currentPlan ?? request.candidatePlan ?? request.submittedPlan,
+    );
+    setVersion(request.version);
+    setComment(request.comment ?? "");
+    setSavedComment(request.comment ?? "");
+  }, [
+    dirty,
+    request.candidatePayload,
+    request.candidatePlan,
+    request.currentPlan,
+    request.submittedPayload,
+    request.submittedPlan,
+    request.version,
+    request.comment,
+    version,
+  ]);
   const canReview = request.isAdmin && request.status === "PENDING";
+  const canSaveConflict = request.isAdmin && request.status === "CONFLICT";
+  const conflictUnsupported =
+    canSaveConflict && request.currentPlan === undefined;
   const highlights = submittedHighlights(
     request.kind,
     request.submittedPayload,
@@ -581,7 +606,41 @@ export function RequestDetail({
         </details>
       </div>
     ),
-    footer: canReview ? (
+    footer: canSaveConflict ? (
+      <div className="grid gap-2">
+        {conflictUnsupported && (
+          <p role="alert" className="text-xs text-rose-800">
+            競合内容の比較と採用には接続先サーバーの更新が必要です。申請内容は残っています。
+          </p>
+        )}
+        <Button
+          className="h-9 w-full whitespace-nowrap"
+          disabled={pending || conflictUnsupported}
+          onClick={() =>
+            act(() => approveEditRequest(request.id, version, true))
+          }
+        >
+          <Check className="size-3.5" />
+          {pending ? "処理中…" : "申請・修正内容を採用"}
+        </Button>
+        <Button
+          className="h-9 w-full whitespace-nowrap"
+          variant="outline"
+          disabled={pending || conflictUnsupported}
+          onClick={() =>
+            act(() =>
+              rejectEditRequest(
+                request.id,
+                version,
+                "競合の確認後、現在の公開内容を採用しました。",
+              ),
+            )
+          }
+        >
+          現在の公開内容を残す
+        </Button>
+      </div>
+    ) : canReview ? (
       editing ? (
         <>
           <p className="text-xs text-slate-600">
@@ -811,6 +870,58 @@ export function RequestDetail({
             >
               <X className="size-4" />
               却下する
+            </Button>
+          </div>
+        </section>
+      )}
+      {canSaveConflict && (
+        <section className="space-y-3 rounded-xl border border-rose-200 bg-white p-5 shadow-sm">
+          {conflictUnsupported && (
+            <p role="alert" className="text-sm text-rose-800">
+              競合内容の比較と採用には接続先サーバーの更新が必要です。申請内容は残っています。
+            </p>
+          )}
+          <p className="text-sm text-slate-600">
+            申請後に、次の項目が別の保存でも変更されました。
+          </p>
+          {!!request.conflicts?.length && (
+            <ul className="list-disc space-y-0.5 pl-5 text-sm text-rose-900">
+              {request.conflicts.map(item => (
+                <li key={item} className="break-all">
+                  {item}
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="text-xs text-slate-500">
+            「申請・修正内容を採用」は、これらの項目を申請の値にし、ほかの変更と重ねて反映します。「現在の公開内容を残す」は申請全体を却下します。
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <Button
+              className="h-10 px-4 whitespace-nowrap"
+              disabled={pending || conflictUnsupported}
+              onClick={() =>
+                act(() => approveEditRequest(request.id, version, true))
+              }
+            >
+              <Check className="size-4" />
+              {pending ? "処理中…" : "申請・修正内容を採用"}
+            </Button>
+            <Button
+              className="h-10 px-4 whitespace-nowrap"
+              variant="outline"
+              disabled={pending || conflictUnsupported}
+              onClick={() =>
+                act(() =>
+                  rejectEditRequest(
+                    request.id,
+                    version,
+                    "競合の確認後、現在の公開内容を採用しました。",
+                  ),
+                )
+              }
+            >
+              現在の公開内容を残す
             </Button>
           </div>
         </section>

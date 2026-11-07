@@ -84,7 +84,11 @@ export async function POST(request: Request) {
             command.comment,
           );
         case "approve":
-          return approveEditRequest(command.id, command.version);
+          return approveEditRequest(
+            command.id,
+            command.version,
+            command.overwrite,
+          );
         case "reject":
           return rejectEditRequest(
             command.id,

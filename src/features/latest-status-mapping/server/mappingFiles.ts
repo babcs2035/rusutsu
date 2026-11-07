@@ -4,6 +4,7 @@ import path from "node:path";
 import type { LatestSuccessfulStatus } from "@/lib/latestStatusFiles";
 import { loadLatestSuccessfulStatus } from "@/lib/latestStatusFiles";
 import type { DataDocumentWrite } from "@/server/data-documents/contract";
+import { allowsAdminOverwrite } from "@/server/edit-requests/overwriteContext";
 import type {
   LatestStatusMappingFile,
   LatestStatusMappingItem,
@@ -545,7 +546,7 @@ export const prepareLatestStatusMappingDocument = async (
   if (errors.length > 0) return { ok: false, errors };
 
   const current = await readMappingFile(temporaryRoot, request.resortId);
-  if (current.hash !== request.mappingFileHash) {
+  if (current.hash !== request.mappingFileHash && !allowsAdminOverwrite()) {
     return {
       ok: false,
       errors: [
@@ -582,7 +583,7 @@ export const prepareLatestStatusMappingDocument = async (
       key: `resorts-temporary/latest_status_mapping/${request.resortId}.json`,
       content: raw,
       mediaType: "application/json",
-      expectedHash: request.mappingFileHash,
+      expectedHash: current.hash,
     },
   };
 };
@@ -620,7 +621,7 @@ export const saveLatestStatusMappingFile = async (
           key,
           content: raw,
           mediaType: "application/json",
-          expectedHash: request.mappingFileHash,
+          expectedHash: prepared.document.expectedHash,
         },
       ]);
     } catch (error) {

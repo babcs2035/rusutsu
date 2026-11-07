@@ -45,6 +45,7 @@ export const editRequestApiCommandSchema = z.discriminatedUnion("operation", [
     operation: z.literal("approve"),
     id: requestIdSchema,
     version: requestVersionSchema,
+    overwrite: z.boolean().optional(),
   }),
   z.strictObject({
     ...identity,
@@ -197,6 +198,8 @@ export const remoteRequestDetailSchema = summary
     candidatePayload: z.unknown(),
     submittedPlan: remotePlanSchema.nullable(),
     candidatePlan: remotePlanSchema.nullable(),
+    currentPlan: remotePlanSchema.nullable().optional(),
+    conflicts: z.array(z.string()).optional(),
   });
 export const remoteMutationSchema = z.discriminatedUnion("ok", [
   z.object({ ok: z.literal(true) }),

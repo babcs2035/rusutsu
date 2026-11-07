@@ -15,7 +15,7 @@ import {
   remoteRequestDetailSchema,
   remoteRequestListSchema,
 } from "./remoteContract";
-import { ensureLocalWorkflow } from "./workflow";
+import { ensureLocalWorkflow, rebasePlan } from "./workflow";
 
 const COURSE_FOLDERS = [
   ["slope_before", "slope_10m"],
@@ -125,6 +125,14 @@ export async function getEditRequest(id: string) {
   if (!request)
     throw new Error("申請が見つからないか、アクセス権限がありません。");
   assertCanReadRequest(actor, request);
+  const rebased =
+    actor.role === "admin" && request.status === "CONFLICT"
+      ? await prisma.$transaction(
+          tx => rebasePlan(tx, request.candidatePlan as unknown as EditPlan),
+          { isolationLevel: "RepeatableRead", timeout: 30_000 },
+        )
+      : null;
+  const currentPlan = rebased?.plan ?? null;
   const resort = await prisma.skiResort.findUnique({
     where: { id: request.resortId },
     select: { nameJa: true },
@@ -143,6 +151,8 @@ export async function getEditRequest(id: string) {
   ]);
   return {
     id: request.id,
+    currentPlan,
+    conflicts: rebased?.conflicts ?? [],
     kind: request.kind as EditKind,
     resortId: request.resortId,
     resortName: resort?.nameJa ?? null,

@@ -8,6 +8,10 @@ import { verifyRemoteWorkflow } from "./remoteIntegration";
 
 // This suite never reads DATABASE_URL. It is opt-in and restricted to the
 // disposable local server created for this task, to prevent production writes.
+type MutationResult = { ok: boolean; error?: string };
+type RequestView = Awaited<
+  ReturnType<typeof import("./repository").getEditRequest>
+>;
 const testDatabase = process.env.EDITOR_WORKFLOW_TEST_DATABASE_URL;
 test("editor requests: real PostgreSQL authorization, corrections, atomicity and concurrency", {
   skip: !testDatabase,
@@ -345,6 +349,265 @@ test("editor requests: real PostgreSQL authorization, corrections, atomicity and
             })
           ).status,
           "CONFLICT",
+        );
+      },
+    );
+    await t.test(
+      "administrators can compare and adopt conflicted corrections without losing unrelated changes",
+      async () => {
+        const request = await db.editRequest.findFirst({
+          where: { resortId: testId, status: "CONFLICT" },
+        });
+        assert.ok(request);
+        const originalSubmission = JSON.stringify(request.submittedPlan);
+        const latest = await db.dataDocument.findUniqueOrThrow({
+          where: { key: "SkiResortLinks.json" },
+        });
+        await actor("integration-admin", () =>
+          api.writeDataDocuments([
+            {
+              key: latest.key,
+              content: JSON.stringify({
+                ...JSON.parse(latest.content),
+                unrelated: {
+                  officialSiteUrls: [
+                    { url: "https://example.invalid/unrelated" },
+                  ],
+                },
+              }),
+              mediaType: latest.mediaType,
+              expectedHash: latest.hash,
+            },
+          ]),
+        );
+        const comparison = await actor(
+          "integration-admin",
+          () => api.getEditRequest(request.id) as Promise<RequestView>,
+        );
+        assert.ok(comparison.currentPlan);
+        assert.match(
+          JSON.stringify(comparison.currentPlan.beforeDocuments),
+          /example.invalid\/newer/,
+        );
+        assert.match(
+          JSON.stringify(comparison.currentPlan.documents),
+          /example.invalid\/unrelated/,
+        );
+        assert.equal(
+          (
+            await actor(
+              "integration-editor",
+              () => api.getEditRequest(request.id) as Promise<RequestView>,
+            )
+          ).currentPlan,
+          null,
+        );
+        assert.equal(
+          (
+            await actor(
+              "integration-editor",
+              () =>
+                api.approveEditRequest(
+                  request.id,
+                  request.version,
+                  true,
+                ) as Promise<MutationResult>,
+            )
+          ).ok,
+          false,
+        );
+        assert.equal(
+          (
+            await actor(
+              "integration-admin",
+              () =>
+                api.approveEditRequest(
+                  request.id,
+                  request.version - 1,
+                  true,
+                ) as Promise<MutationResult>,
+            )
+          ).ok,
+          false,
+        );
+        const adopted = await actor(
+          "integration-admin",
+          () =>
+            api.approveEditRequest(
+              request.id,
+              request.version,
+              true,
+            ) as Promise<MutationResult>,
+        );
+        assert.equal(adopted.ok, true, adopted.error ?? "");
+        const saved = JSON.parse(
+          (
+            await db.dataDocument.findUniqueOrThrow({
+              where: { key: latest.key },
+            })
+          ).content,
+        );
+        assert.equal(
+          saved[testId].officialSiteUrls[0].url,
+          "https://example.invalid/stale",
+        );
+        assert.equal(
+          saved.unrelated.officialSiteUrls[0].url,
+          "https://example.invalid/unrelated",
+        );
+        const applied = await db.editRequest.findUniqueOrThrow({
+          where: { id: request.id },
+        });
+        assert.equal(applied.status, "APPLIED");
+        assert.equal(JSON.stringify(applied.submittedPlan), originalSubmission);
+        assert.equal(
+          (
+            await actor(
+              "integration-admin",
+              () =>
+                api.approveEditRequest(
+                  request.id,
+                  request.version,
+                  true,
+                ) as Promise<MutationResult>,
+            )
+          ).ok,
+          false,
+        );
+        // Restore the fixture expected by the following tests.
+        await actor("integration-admin", () =>
+          api.saveResortLink(
+            linkInput("https://example.invalid/newer", [
+              { url: "https://example.invalid/stale" },
+            ]),
+          ),
+        );
+      },
+    );
+    await t.test(
+      "administrators can resolve a conflict by keeping the current published content",
+      async () => {
+        const proposal = await actor<{ submission: { requestId: string } }>(
+          "integration-editor",
+          () =>
+            api.saveResortLink(
+              linkInput("https://example.invalid/proposal-to-discard", [
+                { url: "https://example.invalid/newer" },
+              ]),
+            ),
+        );
+        const id = proposal.submission.requestId;
+        await actor("integration-admin", () =>
+          api.saveResortLink(
+            linkInput("https://example.invalid/keep-current", [
+              { url: "https://example.invalid/newer" },
+            ]),
+          ),
+        );
+        assert.equal(
+          (
+            await actor(
+              "integration-admin",
+              () => api.approveEditRequest(id, 1) as Promise<MutationResult>,
+            )
+          ).ok,
+          false,
+        );
+        const conflicted = await db.editRequest.findUniqueOrThrow({
+          where: { id },
+        });
+        assert.equal(conflicted.status, "CONFLICT");
+        const before = await db.dataDocument.findUniqueOrThrow({
+          where: { key: "SkiResortLinks.json" },
+        });
+        assert.equal(
+          (
+            await actor(
+              "integration-admin",
+              () =>
+                api.rejectEditRequest(
+                  id,
+                  conflicted.version,
+                  "競合の確認後、現在の公開内容を採用しました。",
+                ) as Promise<MutationResult>,
+            )
+          ).ok,
+          true,
+        );
+        const after = await db.dataDocument.findUniqueOrThrow({
+          where: { key: "SkiResortLinks.json" },
+        });
+        assert.equal(after.hash, before.hash);
+        assert.equal(after.version, before.version);
+        assert.equal(
+          (await db.editRequest.findUniqueOrThrow({ where: { id } })).status,
+          "REJECTED",
+        );
+        await actor("integration-admin", () =>
+          api.saveResortLink(
+            linkInput("https://example.invalid/newer", [
+              { url: "https://example.invalid/keep-current" },
+            ]),
+          ),
+        );
+      },
+    );
+    await t.test(
+      "a later change to another field of the same resort does not block approval",
+      async () => {
+        const published = async () =>
+          JSON.parse(
+            (
+              await db.dataDocument.findUniqueOrThrow({
+                where: { key: "SkiResortLinks.json" },
+              })
+            ).content,
+          )[testId];
+        const { officialSiteUrls: official, mapUrls = [] } = await published();
+        const proposal = await actor<{ submission: { requestId: string } }>(
+          "integration-editor",
+          () =>
+            api.saveResortLink({
+              ...linkInput("https://example.invalid/field-level", official),
+            }),
+        );
+        await actor("integration-admin", () =>
+          api.saveResortLink({
+            resortId: testId,
+            platform: "mapUrls",
+            links: [{ url: "https://example.invalid/map-by-admin.png" }],
+            expectedLinks: mapUrls,
+          }),
+        );
+        const approved = (await actor("integration-admin", () =>
+          api.approveEditRequest(proposal.submission.requestId, 1),
+        )) as MutationResult;
+        assert.equal(approved.ok, true, approved.error ?? "");
+        const links = await published();
+        assert.equal(
+          links.officialSiteUrls[0].url,
+          "https://example.invalid/field-level",
+        );
+        assert.equal(
+          links.mapUrls[0].url,
+          "https://example.invalid/map-by-admin.png",
+        );
+        await actor("integration-admin", () =>
+          api.saveResortLink({
+            ...linkInput("https://example.invalid/newer", [
+              { url: "https://example.invalid/field-level" },
+            ]),
+          }),
+        );
+        await actor("integration-admin", () =>
+          api.saveResortLink({
+            resortId: testId,
+            platform: "mapUrls",
+            links: [],
+            expectedLinks: [
+              { url: "https://example.invalid/map-by-admin.png" },
+            ],
+          }),
         );
       },
     );
@@ -908,18 +1171,23 @@ test("editor requests: real PostgreSQL authorization, corrections, atomicity and
         });
         assert.equal(stored.version, 2);
         assert.equal(stored.data.season.notes_ja, "管理者が確認した注記");
+        const staleData = structuredClone(corrected);
+        staleData.season.notes_ja = "古い版から申請した注記";
         const stale = (await actor("integration-editor", () =>
           api.saveTicketFile({
             resortId,
             seasonId,
-            data: corrected,
+            data: staleData,
             baseVersion: 2,
           }),
         )) as { ok: boolean; submission: { requestId: string } };
         assert.equal(stale.ok, true);
+        // 申請後に同じ項目が別の値へ変わったときだけ競合にする
+        const concurrent = structuredClone(corrected);
+        concurrent.season.notes_ja = "別の保存で変えた注記";
         await db.liftTicketSeason.update({
           where: { skiResortId_seasonId: { skiResortId: resortId, seasonId } },
-          data: { version: { increment: 1 } },
+          data: { version: { increment: 1 }, data: concurrent },
         });
         assert.equal(
           (
@@ -943,7 +1211,6 @@ test("editor requests: real PostgreSQL authorization, corrections, atomicity and
             observedAt,
             completedAt: observedAt,
             schemaVersion: 1,
-            rawPayload: {},
             requestHash: "a".repeat(64),
             outcome: "SUCCESS",
           },
@@ -1067,6 +1334,124 @@ test("editor requests: real PostgreSQL authorization, corrections, atomicity and
             where: { key: "map-entities-v1" },
           });
         }
+      },
+    );
+    await t.test(
+      "conflict adoption keeps concurrently added courses and schedules the saved geometry",
+      async () => {
+        const resortId = "integration-conflict-courses";
+        await db.skiResort.create({ data: { id: resortId, ...scalars } });
+        const key = `resorts-temporary/slope_before_osm/${resortId}.geojson`;
+        const feature = (id: string, note: string) => ({
+          type: "Feature",
+          properties: { entityId: id, name: id, note, courseGrouping: null },
+          geometry: {
+            type: "LineString",
+            coordinates: [
+              [140, 43],
+              [140.001, 43.001],
+            ],
+          },
+        });
+        const first = feature("first", "before");
+        await actor("integration-admin", () =>
+          api.writeDataDocuments([
+            {
+              key,
+              content: JSON.stringify({
+                type: "FeatureCollection",
+                features: [first],
+              }),
+              mediaType: "application/geo+json",
+              expectedHash: null,
+            },
+          ]),
+        );
+        const before = await db.dataDocument.findUniqueOrThrow({
+          where: { key },
+        });
+        const payload = {
+          resortId,
+          sourceKind: "osm",
+          fileHash: before.hash,
+          detailFileHash: null,
+          courses: [
+            {
+              targetSkiId: resortId,
+              properties: { ...first.properties, note: "admin correction" },
+              coordinates: first.geometry.coordinates,
+              detail: {},
+            },
+          ],
+          preservedFeatures: [],
+          preservedDetails: [],
+        };
+        const proposal = await actor<{ submission: { requestId: string } }>(
+          "integration-editor",
+          () => api.saveSlopeEdits(payload),
+        );
+        await actor("integration-admin", () =>
+          api.saveSlopeEdits({
+            ...payload,
+            courses: [
+              {
+                ...payload.courses[0],
+                properties: { ...first.properties, note: "concurrent" },
+              },
+              {
+                targetSkiId: resortId,
+                properties: feature("added", "concurrent addition").properties,
+                coordinates: first.geometry.coordinates,
+                detail: {},
+              },
+            ],
+          }),
+        );
+        const id = proposal.submission.requestId;
+        assert.equal(
+          (
+            await actor<MutationResult>("integration-admin", () =>
+              api.approveEditRequest(id, 1),
+            )
+          ).ok,
+          false,
+        );
+        const request = await db.editRequest.findUniqueOrThrow({
+          where: { id },
+        });
+        assert.equal(
+          (
+            await actor<MutationResult>("integration-admin", () =>
+              api.approveEditRequest(id, request.version, true),
+            )
+          ).ok,
+          true,
+        );
+        const saved = JSON.parse(
+          (await db.dataDocument.findUniqueOrThrow({ where: { key } })).content,
+        );
+        assert.equal(saved.features.length, 2);
+        assert.equal(
+          saved.features.find(
+            (f: { properties: { entityId: string } }) =>
+              f.properties.entityId === "first",
+          ).properties.note,
+          "admin correction",
+        );
+        assert.ok(
+          saved.features.some(
+            (f: { properties: { entityId: string } }) =>
+              f.properties.entityId === "added",
+          ),
+        );
+        const derived = await db.dataDocument.findUniqueOrThrow({
+          where: { key: key.replace("slope_before_osm/", "slope_10m_osm/") },
+        });
+        const job = await db.editRequestJob.findFirstOrThrow({
+          where: { requestId: id },
+        });
+        assert.equal(job.payload.hash, derived.hash);
+        assert.equal(job.payload.source.features.length, 2);
       },
     );
     await t.test(

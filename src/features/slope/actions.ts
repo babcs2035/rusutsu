@@ -18,6 +18,10 @@ import {
 } from "@/server/data-documents/client";
 import { DataDocumentConflictError } from "@/server/data-documents/contract";
 import { synchronizeDerivedGeometry } from "@/server/derivedGeometry";
+import {
+  allowsAdminOverwrite,
+  withAdminOverwrite,
+} from "@/server/edit-requests/overwriteContext";
 import { saveRelatedEditorLinks } from "@/server/edit-requests/relatedLinks";
 import { runEdit } from "@/server/edit-requests/workflow";
 import { featureIdentity } from "@/shared/course-lift/identity";
@@ -238,6 +242,7 @@ export async function saveSlopeEdits(
     const currentDetailHash = currentDetailDocument?.hash ?? null;
     if (
       !request.forceOverwrite &&
+      !allowsAdminOverwrite() &&
       (currentBeforeHash !== request.fileHash ||
         currentDetailHash !== request.detailFileHash)
     ) {
@@ -424,7 +429,7 @@ export async function saveSlopeEdits(
   // 明示的な上書きは既存のDataDocument APIで保存できるようにする。
   if (request.forceOverwrite && usesRemoteDataApi()) {
     await requireAdmin();
-    return operation();
+    return withAdminOverwrite(operation);
   }
   return runEdit("slope", request.resortId, request, operation);
 }

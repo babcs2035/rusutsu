@@ -30,7 +30,7 @@ export const REQUEST_STATUS_LABELS: Record<string, string> = {
   APPLIED: "反映済み",
   REJECTED: "却下",
   WITHDRAWN: "取り下げ",
-  CONFLICT: "競合（再申請が必要）",
+  CONFLICT: "競合",
 };
 export type Submission = { requestId: string };
 export type ElevationTask = {

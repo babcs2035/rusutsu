@@ -223,6 +223,17 @@ export async function findAdminSkiResortsDirect(): Promise<
   return resorts.map(serializeAdminSkiResort);
 }
 
+export async function readAdminSkiResortInTransaction(
+  transaction: Prisma.TransactionClient,
+  id: string,
+): Promise<AdminSkiResortRecord | null> {
+  const row = await transaction.skiResort.findUnique({
+    where: { id },
+    select: adminSkiResortSelect,
+  });
+  return row ? serializeAdminSkiResort(row) : null;
+}
+
 export async function updateAdminSkiResortDirect(
   id: string,
   expectedUpdatedAt: string,

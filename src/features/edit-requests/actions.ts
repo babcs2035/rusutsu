@@ -30,8 +30,8 @@ import {
 import {
   applyPlan,
   asJson,
-  assertPlanCurrent,
   ensureLocalWorkflow,
+  rebasePlan,
   serializable,
 } from "@/server/edit-requests/workflow";
 
@@ -109,12 +109,21 @@ export async function saveRequestCandidate(
   }
 }
 
-export async function approveEditRequest(id: string, expectedVersion: number) {
+export async function approveEditRequest(
+  id: string,
+  expectedVersion: number,
+  overwrite = false,
+) {
   try {
     const actor = await requireAdmin();
     if (usesRemoteDataApi()) {
       const result = await remoteEditRequestResult(
-        { operation: "approve", id, version: expectedVersion },
+        {
+          operation: "approve",
+          id,
+          version: expectedVersion,
+          ...(overwrite ? { overwrite: true } : {}),
+        },
         remoteMutationSchema,
       );
       refresh(id);
@@ -126,8 +135,14 @@ export async function approveEditRequest(id: string, expectedVersion: number) {
     requestVersionSchema.parse(expectedVersion);
     await serializable(async tx => {
       const request = await tx.editRequest.findUnique({ where: { id } });
-      assertPendingVersion(request, expectedVersion);
-      if (!request) throw new EditConflictError();
+      if (
+        !request ||
+        !["PENDING", "CONFLICT"].includes(request.status) ||
+        request.version !== expectedVersion
+      )
+        throw new EditConflictError();
+      if (request.status === "CONFLICT" && !overwrite)
+        throw new CanonicalEditConflictError();
       const [admin, author] = await Promise.all([
         tx.user.findUnique({ where: { id: actor.id }, select: { role: true } }),
         tx.user.findUnique({
@@ -137,7 +152,7 @@ export async function approveEditRequest(id: string, expectedVersion: number) {
       ]);
       assertReviewActors(admin, author);
       const claimed = await tx.editRequest.updateMany({
-        where: { id, status: "PENDING", version: expectedVersion },
+        where: { id, status: request.status, version: expectedVersion },
         data: {
           status: "APPLIED",
           version: { increment: 1 },
@@ -146,8 +161,15 @@ export async function approveEditRequest(id: string, expectedVersion: number) {
         },
       });
       if (claimed.count !== 1) throw new EditConflictError();
-      const plan = request.candidatePlan as unknown as EditPlan;
-      await applyPlan(tx, plan);
+      const plan = await applyPlan(
+        tx,
+        request.candidatePlan as unknown as EditPlan,
+        { overwrite },
+      );
+      await tx.editRequest.update({
+        where: { id },
+        data: { candidatePlan: asJson(plan) },
+      });
       await tx.editRequestEvent.create({
         data: {
           requestId: id,
@@ -157,6 +179,7 @@ export async function approveEditRequest(id: string, expectedVersion: number) {
             payload: request.candidatePayload,
             plan,
             comment: request.reviewComment,
+            overwrite,
           }),
         },
       });
@@ -173,8 +196,8 @@ export async function approveEditRequest(id: string, expectedVersion: number) {
     after(() => drainEditRequestJobs());
     return { ok: true as const };
   } catch (error) {
-    // A genuine canonical-data conflict is terminal, but a stale review version
-    // or racing withdrawal must not overwrite the winning transition.
+    // Keep the proposal recoverable. A reviewer must choose which content
+    // to adopt after a canonical-data conflict; stale review versions still fail.
     if (error instanceof CanonicalEditConflictError) {
       // Recheck after rollback and use the original version, so a racing
       // revision, withdrawal, approval or permission revocation wins safely.
@@ -192,18 +215,13 @@ export async function approveEditRequest(id: string, expectedVersion: number) {
             request.version !== expectedVersion
           )
             return;
-          try {
-            await assertPlanCurrent(
-              tx,
-              request.candidatePlan as unknown as EditPlan,
-            );
-            return;
-          } catch (conflict) {
-            if (!(conflict instanceof CanonicalEditConflictError))
-              throw conflict;
-          }
-          const comment =
-            "申請後に元データが更新されました。最新データから再申請してください。";
+          // 別のスキー場や別の項目の更新だけなら競合にしない
+          const { conflicts } = await rebasePlan(
+            tx,
+            request.candidatePlan as unknown as EditPlan,
+          );
+          if (!conflicts.length) return;
+          const comment = `申請後に同じ項目が更新されました（${conflicts.slice(0, 5).join("、")}${conflicts.length > 5 ? ` ほか${conflicts.length - 5}件` : ""}）。申請・修正内容と現在の公開内容を確認し、採用する内容を選んでください。`;
           const updated = await tx.editRequest.updateMany({
             where: { id, status: "PENDING", version: expectedVersion },
             data: {
@@ -220,7 +238,7 @@ export async function approveEditRequest(id: string, expectedVersion: number) {
                 requestId: id,
                 actorId: actor.id,
                 action: "CONFLICT",
-                payload: { comment },
+                payload: asJson({ comment, conflicts }),
               },
             });
         });
@@ -261,7 +279,7 @@ export async function rejectEditRequest(
       });
       if (user?.role !== "admin") throw new Error("管理者権限が必要です。");
       const updated = await tx.editRequest.updateMany({
-        where: { id, status: "PENDING", version },
+        where: { id, status: { in: ["PENDING", "CONFLICT"] }, version },
         data: {
           status: "REJECTED",
           version: { increment: 1 },

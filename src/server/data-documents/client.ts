@@ -10,6 +10,7 @@ import {
   capturedDocument,
   recordDocument,
 } from "@/server/edit-requests/capture";
+import { allowsAdminOverwrite } from "@/server/edit-requests/overwriteContext";
 import {
   DataDocumentConflictError,
   type DataDocumentWrite,
@@ -113,6 +114,27 @@ export const listDataDocuments = (prefix = "") =>
 export const writeDataDocuments = async (
   documents: readonly DataDocumentWrite[],
 ) => {
+  if (allowsAdminOverwrite() && !usesRemoteDataApi()) {
+    // Admin edits take precedence over an older editor snapshot. Keep the
+    // actual write conditional on the newest hashes, including on a retry.
+    const input = dataDocumentBatchWriteSchema.parse({ documents });
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const current = await Promise.all(
+        input.documents.map(async document => ({
+          ...document,
+          expectedHash: (await getDataDocument(document.key))?.hash ?? null,
+        })),
+      );
+      try {
+        const captured = await captureDocumentWrites(current, getDataDocument);
+        if (captured) return captured;
+        return await writeDataDocumentsDirect(current);
+      } catch (error) {
+        if (!(error instanceof DataDocumentConflictError) || attempt === 2)
+          throw error;
+      }
+    }
+  }
   const captured = await captureDocumentWrites(documents, getDataDocument);
   if (captured) return captured;
   return usesRemoteDataApi()
