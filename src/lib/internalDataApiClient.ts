@@ -5,6 +5,26 @@ import type { InternalDataApiScope } from "@/lib/internalDataApiScopes";
 
 const INTERNAL_PATH_PREFIX = "/api/internal/v1/";
 const DEFAULT_TIMEOUT_MS = 30_000;
+const RETRY_DELAYS_MS = [250, 500] as const;
+const RETRYABLE_STATUSES = new Set([502, 503, 504]);
+
+const waitForRetry = (delayMs: number, signal: AbortSignal): Promise<void> =>
+  new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(signal.reason ?? new DOMException("Aborted", "AbortError"));
+      return;
+    }
+    const timeout = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, delayMs);
+    const onAbort = () => {
+      clearTimeout(timeout);
+      signal.removeEventListener("abort", onAbort);
+      reject(signal.reason ?? new DOMException("Aborted", "AbortError"));
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
 
 const configuredBaseUrl = (): string | null => {
   const value = process.env.DATA_API_BASE_URL?.trim();
@@ -71,30 +91,45 @@ export async function fetchInternalDataApi(
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+  const signal = init.signal
+    ? AbortSignal.any([init.signal, controller.signal])
+    : controller.signal;
   try {
     const headers = new Headers(init.headers);
     headers.set("Authorization", `Bearer ${token}`);
     headers.set("Accept", "application/json");
 
-    const response = await fetch(`${baseUrl}${path}`, {
-      ...init,
-      headers,
-      cache: "no-store",
-      redirect: "error",
-      signal: init.signal
-        ? AbortSignal.any([init.signal, controller.signal])
-        : controller.signal,
-    });
-    if (
-      !response.ok &&
-      !options.acceptedErrorStatuses?.includes(response.status)
-    ) {
-      throw new InternalDataApiError(
-        `正本データAPIがHTTP ${response.status}を返しました。`,
-        response.status,
-      );
+    const method = (init.method ?? "GET").toUpperCase();
+    const retryableMethod = method === "GET" || method === "HEAD";
+    for (let attempt = 0; ; attempt += 1) {
+      const response = await fetch(`${baseUrl}${path}`, {
+        ...init,
+        headers,
+        cache: "no-store",
+        redirect: "error",
+        signal,
+      });
+      if (
+        retryableMethod &&
+        RETRYABLE_STATUSES.has(response.status) &&
+        !options.acceptedErrorStatuses?.includes(response.status) &&
+        attempt < RETRY_DELAYS_MS.length
+      ) {
+        await response.body?.cancel();
+        await waitForRetry(RETRY_DELAYS_MS[attempt], signal);
+        continue;
+      }
+      if (
+        !response.ok &&
+        !options.acceptedErrorStatuses?.includes(response.status)
+      ) {
+        throw new InternalDataApiError(
+          `正本データAPIがHTTP ${response.status}を返しました。`,
+          response.status,
+        );
+      }
+      return response;
     }
-    return response;
   } catch (error) {
     if (error instanceof InternalDataApiError) throw error;
     if (error instanceof Error && error.name === "AbortError") {
