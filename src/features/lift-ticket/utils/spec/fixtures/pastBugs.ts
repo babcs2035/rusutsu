@@ -751,3 +751,20 @@ export const collectedEitherChannelResort = webAndWindowBase(
   "spec-pb-either-channel",
   ["window", "web"],
 );
+/**
+ * PB90・PB91: 小人のウェアは貸出なし（大人だけある。羽黒山型）、
+ * 大人のヘルメットは貸出なし（小人だけある。やわたハイランド191型）
+ */
+export const unavailableForCategoryResort = specResort({
+  id: "spec-pb-unavailable-for-category",
+  tickets: [day({ adult: 3500, elementary: 2300 })],
+  rentals: [
+    {
+      id: "ski-set",
+      items: ["ski_set"],
+      prices: { adult: 3000, elementary: 2400 },
+    },
+    { id: "wear", items: ["wear"], prices: { adult: 2000 } },
+    { id: "helmet", items: ["helmet"], prices: { elementary: 500 } },
+  ],
+});

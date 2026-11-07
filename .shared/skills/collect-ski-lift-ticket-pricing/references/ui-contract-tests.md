@@ -59,7 +59,7 @@ JSONの検証だけを通して、施設全体の確認完了としない。
    `SELECTABLE_TICKET_PARTY_CATEGORIES` を読む。学校区分のIDを直接指定するCLIではなく、
    UIの人物区分・年齢・利用日・滑る長さで入力を作る。
 2. 独立監査担当が公式URLの表と脚注から、対象シーズン、日付、人物条件、券種、
-   販売経路、期待額を転記する。`utils/testing/officialCases.ts` の共通表へ追加する。
+   販売経路、期待額を転記する。rusutsu-library の `src/private/data/lift-ticket-test-fixtures/official-cases/{resort-id}.json`（型は `utils/testing/officialCases.ts`）へ追加する。スキー場ごとの期待値は公開リポジトリの rusutsu 側に置かない。
    計算結果から期待額を生成しない。0円、要年齢入力、料金不明、対象外を区別する。
 3. CI用に公開データ変換 `toClientLiftTicketData` を通した固定JSONを
    `src/private/data/lift-ticket-test-fixtures/ui/<resort>/<season>.json` に保存する。

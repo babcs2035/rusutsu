@@ -253,6 +253,9 @@ for (const spec of OFFICIAL_CASES.filter(c =>
       if (query.missing) {
         assert.deepEqual(result.missingLabels, query.missing);
       }
+      if (query.unavailable) {
+        assert.deepEqual(result.unavailableLabels, query.unavailable);
+      }
     });
   }
   for (const [category, age] of spec.ambiguousAges ?? []) {

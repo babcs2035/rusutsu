@@ -157,6 +157,14 @@ export const TicketPlanCard = ({
       : rentalNotCollected
         ? "※このスキー場のレンタル情報はありませんでした"
         : `※${missingRentalLabels.join("・")}のレンタル情報はありませんでした`;
+  // 区分によって貸出が無い用具（小学生のウェアなど）は合計に含めず、その旨だけ添える
+  const unavailableRentalLabels = rentalNotCollected
+    ? []
+    : (fullRental?.unavailableLabels ?? []);
+  const unavailableRentalNote =
+    unavailableRentalLabels.length === 0
+      ? null
+      : `※${unavailableRentalLabels.join("・")}は貸出がありません`;
   // リフト券もレンタルも出たときだけ合計を出す。どちらかが未確定なら合計も未確定
   const separateTotal = !rentalShown
     ? plan.total
@@ -326,6 +334,11 @@ export const TicketPlanCard = ({
         </div>
         {missingRentalNote && (
           <p className="mt-1 text-xs text-orange-900">{missingRentalNote}</p>
+        )}
+        {unavailableRentalNote && (
+          <p className="mt-1 text-xs text-orange-900">
+            {unavailableRentalNote}
+          </p>
         )}
 
         {/* 1日（または同じ内容の日のまとまり）ごとに白い枠で囲み、日付を見出しにする */}

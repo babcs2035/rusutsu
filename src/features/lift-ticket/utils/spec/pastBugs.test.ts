@@ -1,4 +1,4 @@
-// 仕様書 PB-A〜PB-G・PB-J（過去の不具合の再発防止、PB01〜PB62・PB85〜PB89の計算で確かめられる行。PB-H 表示・PB-I データ検証は対象外）
+// 仕様書 PB-A〜PB-G・PB-J（過去の不具合の再発防止、PB01〜PB62・PB85〜PB91の計算で確かめられる行。PB-H 表示・PB-I データ検証は対象外）
 // PB-A 人物区分は audience.test.ts、PB-B〜PB-G はこのファイル。PB-A の行は audience.test.ts に ID 付きで実装している
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -75,6 +75,7 @@ import {
   threeDaysBeforeResort,
   threeKindsResort,
   ticketSetResort,
+  unavailableForCategoryResort,
   unknownHoursPoolResort,
   weekendNightResort,
   yearEndResort,
@@ -709,4 +710,50 @@ test("PB89 窓口でもWebでも買える 5,800円には、手数料のかから
     ],
   };
   assert.equal(run(clientShaped, JAN13, DAY, [adult(2)]).total, 11600);
+});
+
+// ---------- 区分によって貸出が無い用具（Q4: 2026-11-07） ----------
+test("PB90 小人のウェアは貸出なし（大人だけある）。大人・小人ともスキー3点＋ウェアなら、小人はスキー3点だけ合計し「小人のウェア」を貸出なしと添える", () => {
+  const rental = calculateRentalPlan(
+    unavailableForCategoryResort,
+    dayInput(
+      JAN13,
+      DAY,
+      party(
+        { ...adult(1), rental: { ...SKI3, items: [...SKI3.items, "wear"] } },
+        {
+          ...elementary(1),
+          rental: { ...SKI3, items: [...SKI3.items, "wear"] },
+        },
+      ),
+    ),
+  );
+  assert.equal(rental.status, "complete");
+  assert.equal(rental.total, 3000 + 2000 + 2400);
+  assert.ok(
+    (rental.unavailableLabels ?? []).some(label => label.includes("ウェア")),
+    JSON.stringify(rental.unavailableLabels),
+  );
+  // スキー場全体では借りられるので「レンタル情報はありません」にはしない
+  assert.deepEqual(rental.missingLabels, []);
+});
+test("PB91 大人のヘルメットは貸出なし（小人だけある）。大人がスキー3点＋ヘルメットなら、スキー3点だけ合計する", () => {
+  const rental = calculateRentalPlan(
+    unavailableForCategoryResort,
+    dayInput(
+      JAN13,
+      DAY,
+      party({
+        ...adult(1),
+        rental: { ...SKI3, items: [...SKI3.items, "helmet"] },
+      }),
+    ),
+  );
+  assert.equal(rental.total, 3000);
+  assert.ok(
+    (rental.unavailableLabels ?? []).some(label =>
+      label.includes("ヘルメット"),
+    ),
+    JSON.stringify(rental.unavailableLabels),
+  );
 });

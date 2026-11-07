@@ -462,6 +462,11 @@ export type TicketRentalLine = {
   note: string | null;
   /** このスキー場で借りられない用具の要約（「ゴーグル」）。合計には含めない */
   missingLabel: string | null;
+  /**
+   * この人の区分には貸出が無い用具（ほかの区分にはある。小人のウェアなど）。
+   * 合計には含めず「貸出なし」と添える
+   */
+  unavailableLabel?: string | null;
   /** 利用者に確認してもらう事項（日中のレンタルが夜も使えるか など） */
   warnings?: string[];
   /** 資格が要る安い料金（「宿泊者限定」なら1人ぶん 3,000円）。合計には含めない */
@@ -494,6 +499,8 @@ export type TicketRentalResult = {
    * 料金表にもセット券にも無い物で、合計には含めずに「＋ゴーグル」と添える
    */
   missingLabels: string[];
+  /** 区分によって貸出が無い用具（「小人1名のウェア」）。合計には含めない */
+  unavailableLabels?: string[];
 };
 
 const PRESCHOOL_AGES = [0, 1, 2, 3, 4, 5, 6];
@@ -639,10 +646,6 @@ export const calculateRentalPlan = (
   const lines: TicketRentalLine[] = renters.map(group => {
     // 借りられない用具は料金を探さず、合計の横に「＋ゴーグル」と添える
     const missing = missingOf(group);
-    const required = requiredItemsOf(
-      data,
-      rentalItemsOf(group.rental).filter(item => !missing.includes(item)),
-    );
     // 料金が書かれていないレンタルしか無い用具（RT12）
     const unpricedOnly = rentalItemsOf(group.rental).filter(
       item =>
@@ -668,6 +671,25 @@ export const calculateRentalPlan = (
           matchesQualifiedChild(rental, variant),
       ),
     );
+    // ★**この人の区分には貸出が無い用具（大人用だけある小人のウェアなど）は合計から外し、
+    // 「貸出なし」と添える。**区分に合うレンタルがひとつも無いときは、年齢の入力待ち等の
+    // 別の理由なので外さない
+    const coversForGroup = (item: TicketRentalItem) =>
+      requiredItemsOf(data, [item]).every(part =>
+        allCandidates.some(rental => coveredItemsOf(rental).has(part)),
+      );
+    const unavailable =
+      allCandidates.length === 0
+        ? []
+        : rentalItemsOf(group.rental).filter(
+            item => !missing.includes(item) && !coversForGroup(item),
+          );
+    const required = requiredItemsOf(
+      data,
+      rentalItemsOf(group.rental).filter(
+        item => !missing.includes(item) && !unavailable.includes(item),
+      ),
+    );
     // ★1人は全日程で1つの店舗から借りる。店舗をまたいで板とブーツを組み合わせたり、
     // 別の店舗の延長料金を足したりしない（監査C08）。店舗ごとに計算して最安を選ぶ
     const shopNames = [
@@ -680,6 +702,13 @@ export const calculateRentalPlan = (
         count: group.count,
         requestLabel: formatRentalRequest(group.rental),
         missingLabel: missingLabelOf(group),
+        unavailableLabel:
+          group.rental && unavailable.length > 0
+            ? formatRentalRequest({
+                sport: group.rental.sport,
+                items: unavailable,
+              })
+            : null,
       };
       if (required.length === 0 && unpricedOnly.length > 0) {
         return {
@@ -1066,6 +1095,13 @@ export const calculateRentalPlan = (
       usedNumbers.has(reference.number),
     ),
     missingLabels,
+    unavailableLabels: [
+      ...new Set(
+        lines
+          .filter(line => line.unavailableLabel)
+          .map(line => `${line.groupLabel}の${line.unavailableLabel}`),
+      ),
+    ],
   };
 };
 
