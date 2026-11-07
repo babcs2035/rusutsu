@@ -1,5 +1,6 @@
 import { DETAIL_KEYS, NUMERIC_DETAIL_KEYS } from "../constants";
 import type { EditorLift, SaveLiftPayload } from "../types";
+import { toDetailString } from "./detailMerge";
 import { isSameMidstation } from "./liftOps";
 
 const numericKeySet = new Set<string>(NUMERIC_DETAIL_KEYS);
@@ -35,6 +36,9 @@ export const liftToSavePayload = (lift: EditorLift): SaveLiftPayload => {
   if (lift.rawProperties) {
     for (const key of DETAIL_KEYS) {
       if (lift.detail[key] !== lift.original.detail[key]) continue;
+      // 種類が未入力だったリフトは、既定値「リフト」を保存する
+      if (key === "type" && toDetailString(lift.rawProperties[key]) === "")
+        continue;
       if (Object.hasOwn(lift.rawProperties, key))
         properties[key] = lift.rawProperties[key];
       else delete properties[key];

@@ -24,8 +24,47 @@ test("コース名の既存規則から初期対応を提案する", () => {
         crawledName: "白樺ゲレンデ上部",
         geojsonName: "白樺ゲレンデ_#上部",
       },
-      { crawledName: "未登録コース", geojsonName: "地図だけ" },
+      { crawledName: null, geojsonName: "地図だけ" },
+      { crawledName: "未登録コース", geojsonName: null },
     ],
+  );
+});
+
+test("分割した線の連番は同じ名前として対応させる", () => {
+  assert.deepEqual(
+    createSuggestedRows(
+      "courses",
+      ["Aコース", "高天ヶ原ゲレンデ上部"],
+      ["Aコース", "Aコース_2", "高天ヶ原ゲレンデ_上部_2"],
+    ),
+    [
+      { crawledName: "Aコース", geojsonName: "Aコース" },
+      { crawledName: "Aコース", geojsonName: "Aコース_2" },
+      {
+        crawledName: "高天ヶ原ゲレンデ上部",
+        geojsonName: "高天ヶ原ゲレンデ_上部_2",
+      },
+    ],
+  );
+});
+
+test("名前の一部だけが同じ組み合わせは自動で対応させない", () => {
+  assert.deepEqual(
+    createSuggestedRows(
+      "courses",
+      ["スカイライン", "第1リフト"],
+      ["スカイライン_尾根筋コース", "第1"],
+    ),
+    [
+      { crawledName: null, geojsonName: "スカイライン_尾根筋コース" },
+      { crawledName: null, geojsonName: "第1" },
+      { crawledName: "スカイライン", geojsonName: null },
+      { crawledName: "第1リフト", geojsonName: null },
+    ],
+  );
+  assert.deepEqual(
+    createSuggestedRows("lifts", ["第１ペアリフト"], ["第1ペアリフト"]),
+    [{ crawledName: "第１ペアリフト", geojsonName: "第1ペアリフト" }],
   );
 });
 
@@ -64,7 +103,7 @@ test("無名コースと余ったクローラー項目は対応なしのまま�
   ]);
 });
 
-test("完全一致しない名前は共通部分が多い組み合わせから並べる", () => {
+test("完全一致しない名前は似ていても対応させない", () => {
   assert.deepEqual(
     createSuggestedRows(
       "courses",
@@ -72,14 +111,10 @@ test("完全一致しない名前は共通部分が多い組み合わせから�
       ["ファミリーゲレンデ", "ダイナミック_上部"],
     ),
     [
-      {
-        crawledName: "ダイナミックコース",
-        geojsonName: "ダイナミック_上部",
-      },
-      {
-        crawledName: "ファミリーコース",
-        geojsonName: "ファミリーゲレンデ",
-      },
+      { crawledName: null, geojsonName: "ファミリーゲレンデ" },
+      { crawledName: null, geojsonName: "ダイナミック_上部" },
+      { crawledName: "ファミリーコース", geojsonName: null },
+      { crawledName: "ダイナミックコース", geojsonName: null },
     ],
   );
 });
@@ -100,11 +135,12 @@ test("保存済みの並びを維持して新しい名前を末尾へ足す", ()
       "courses",
       [{ crawledName: "A", geojsonName: "甲" }],
       ["A", "B"],
-      ["甲", "乙"],
+      ["甲", "乙", "B"],
     ),
     [
       { crawledName: "A", geojsonName: "甲" },
-      { crawledName: "B", geojsonName: "乙" },
+      { crawledName: "B", geojsonName: "B" },
+      { crawledName: null, geojsonName: "乙" },
     ],
   );
 });
@@ -123,8 +159,10 @@ test("クローラー名だけの対応表でも、初期提案と同じ突き�
       ["ファミリーゲレンデ", "ダイナミック_上部"],
     ),
     [
-      { crawledName: "ダイナミックコース", geojsonName: "ダイナミック_上部" },
-      { crawledName: "ファミリーコース", geojsonName: "ファミリーゲレンデ" },
+      { crawledName: null, geojsonName: "ファミリーゲレンデ" },
+      { crawledName: null, geojsonName: "ダイナミック_上部" },
+      { crawledName: "ダイナミックコース", geojsonName: null },
+      { crawledName: "ファミリーコース", geojsonName: null },
     ],
   );
 });

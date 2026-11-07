@@ -14,6 +14,7 @@ test("unchanged lift details and original feature members retain their raw repre
     properties: {
       entityId: "lift-a",
       name: "A",
+      type: "ゴンドラ",
       capacity: "04",
       speed: null,
       note: "  original  ",
@@ -47,6 +48,31 @@ test("unchanged lift details and original feature members retain their raw repre
   assert.deepEqual(saved, original);
   lifts[0].detail.capacity = "6";
   assert.equal(liftToSavePayload(lifts[0]).properties.capacity, 6);
+});
+
+test("種類が未入力のリフトは「リフト」として保存する", () => {
+  const { lifts } = sourceDataToLifts("appi", {
+    geojson: {
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature" as const,
+          properties: { entityId: "lift-b", name: "B" },
+          geometry: {
+            type: "LineString",
+            coordinates: [
+              [140, 40],
+              [140.01, 40.01],
+            ],
+          },
+        },
+      ],
+    },
+    details: null,
+    fileHash: null,
+  });
+  assert.equal(lifts[0].detail.type, "リフト");
+  assert.equal(liftToSavePayload(lifts[0]).properties.type, "リフト");
 });
 
 test("conflicting groups and duplicate fixed IDs are rejected before saving", () => {

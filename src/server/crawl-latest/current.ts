@@ -72,7 +72,15 @@ export async function listCurrentCrawlLatestResortIdsDirect(
   kind: LatestStatusKind,
 ): Promise<string[]> {
   const currents = await prisma.crawlLatestCurrent.findMany({
-    where: { kind: categoryKind(kind) },
+    // 天気だけを取るクローラーにも、空のコース・リフト結果が保存される。
+    // findCurrentCrawlLatestStatusDirect と同じく、名前も出典もない結果は数えない。
+    where: {
+      kind: categoryKind(kind),
+      snapshot: {
+        state: { not: "NOT_SUPPORTED" },
+        OR: [{ itemCount: { gt: 0 } }, { sourceUrls: { isEmpty: false } }],
+      },
+    },
     select: { skiResortId: true },
     orderBy: { skiResortId: "asc" },
   });

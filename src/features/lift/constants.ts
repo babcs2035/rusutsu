@@ -5,6 +5,8 @@ export const LIFT_TUTORIAL_SEEN_STORAGE_KEY = "rusutsu-lift-tutorial-seen";
 export const DRAFT_STORAGE_PREFIX = "rusutsu-lift-draft:";
 
 export const SPEED_OPTIONS = ["高速", "低速", ""] as const;
+/** 種類が未入力のリフトに入れる値。ゴンドラなどは編集画面で変える。 */
+export const DEFAULT_LIFT_TYPE = "リフト";
 export const TYPE_OPTIONS = [
   "リフト",
   "ゴンドラ",
@@ -27,6 +29,7 @@ export const MAKER_OPTIONS = [
   "三菱重工業",
   "POMA",
   "樫山工業",
+  "小島製作所",
   "",
 ] as const;
 

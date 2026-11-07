@@ -77,7 +77,9 @@ export const sourceDataToLifts = (
     // 過去にこのツールで保存した詳細フィールドを properties から復元する
     const detail = createEmptyLiftDetail();
     for (const key of DETAIL_KEYS) {
-      detail[key] = toDetailString(properties[key]);
+      const value = toDetailString(properties[key]);
+      // 種類が未入力なら既定値「リフト」にする
+      if (key !== "type" || value !== "") detail[key] = value;
     }
 
     const extras: Record<string, unknown> = {};

@@ -1,4 +1,4 @@
-import { DETAIL_KEYS } from "../constants";
+import { DEFAULT_LIFT_TYPE, DETAIL_KEYS } from "../constants";
 import type {
   DetailMatchMethod,
   EditorLift,
@@ -8,7 +8,7 @@ import type {
 
 export const createEmptyLiftDetail = (): LiftDetail => ({
   speed: "",
-  type: "",
+  type: DEFAULT_LIFT_TYPE,
   hood: "",
   capacity: "",
   distance: "",
@@ -39,6 +39,7 @@ export const toDetailString = (value: unknown): string => {
 export const entryToDetail = (entry: LiftDetailEntry): LiftDetail => {
   const detail = createEmptyLiftDetail();
   for (const key of DETAIL_KEYS) {
+    // 空欄は結合時に無視されるので、既定の種類も入れない
     detail[key] = toDetailString(entry[key]);
   }
   if (detail.maker === "") {

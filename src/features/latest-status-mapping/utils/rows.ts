@@ -1,9 +1,4 @@
-import {
-  addSectionMarker,
-  canonicalBase,
-  normalizeCrawledName,
-  removeSuffixIndexIfMultiPart,
-} from "@/lib/resortMapMerge";
+import { addSectionMarker, normalizeCrawledName } from "@/lib/resortMapMerge";
 import type { LatestStatusMappingKind, LatestStatusMappingRow } from "../types";
 
 import { rowCrawledNames } from "./aliases";
@@ -76,31 +71,32 @@ export const compactMappingRows = (
   return next.filter((_, index) => !removedIndexes.has(index));
 };
 
-const findCourseSuggestion = (
-  geojsonName: string,
-  crawledNames: string[],
-): string | null => {
-  const normalizedToOriginal = new Map(
-    crawledNames.map(name => [normalizeCrawledName(name), name]),
-  );
-  const statusName = removeSuffixIndexIfMultiPart(geojsonName);
-  return (
-    normalizedToOriginal.get(statusName) ??
-    normalizedToOriginal.get(canonicalBase(geojsonName)) ??
-    normalizedToOriginal.get(addSectionMarker(statusName)) ??
-    null
-  );
-};
+/** 全角半角と空白の違いだけを無視する。名前の一部一致は同じ名前とみなさない。 */
+const toComparableName = (name: string): string =>
+  name.normalize("NFKC").replace(/\s+/gu, "");
 
+/**
+ * 地図の線と同じ名前のクロール名を探す。
+ *
+ * 誤対応を防ぐため、名前が同じときだけ提案する。表記の違いとして扱うのは、
+ * 分割した線の連番（`_2`）と区間の書き方（`白樺ゲレンデ_上部` と
+ * `白樺ゲレンデ上部`）だけ。
+ */
 const findSuggestion = (
-  kind: LatestStatusMappingKind,
   geojsonName: string,
   crawledNames: string[],
 ): string | null => {
-  if (kind === "courses") {
-    return findCourseSuggestion(geojsonName, crawledNames);
-  }
-  return crawledNames.includes(geojsonName) ? geojsonName : null;
+  const base = geojsonName.replace(/_\d+$/u, "");
+  const targets = new Set(
+    [geojsonName, base, addSectionMarker(base)].map(toComparableName),
+  );
+  return (
+    crawledNames.find(
+      name =>
+        targets.has(toComparableName(name)) ||
+        targets.has(toComparableName(normalizeCrawledName(name))),
+    ) ?? null
+  );
 };
 
 const normalizeForPartialMatch = (name: string): string =>
@@ -141,14 +137,14 @@ const partialMatchScore = (leftName: string, rightName: string): number => {
   return commonLength * 10_000 + Math.round(coverage * 100) + containsBonus;
 };
 
-/** 自動対応付けと同じ正規化で、名前に共通部分があるかを調べる。 */
+/** 保存前の警告用に、名前に共通部分があるかを調べる。 */
 export const hasMappingNameOverlap = (left: string, right: string): boolean =>
   normalizeCrawledName(left).normalize("NFKC").toLowerCase() ===
     normalizeCrawledName(right).normalize("NFKC").toLowerCase() ||
   partialMatchScore(left, right) > 0;
 
 export const createSuggestedRows = (
-  kind: LatestStatusMappingKind,
+  _kind: LatestStatusMappingKind,
   crawledNames: string[],
   geojsonNames: string[],
 ): LatestStatusMappingRow[] => {
@@ -158,54 +154,15 @@ export const createSuggestedRows = (
   const usedGeojsonNames = new Set<string>();
   const rows: LatestStatusMappingRow[] = [];
 
-  // 既存の完全一致・区間名規則を最優先する。同じクロール名を
-  // 分割された複数のGeoJSON線へ対応させる既存挙動も維持する。
+  // 同じクロール名を、分割された複数の地図の線へ対応させる。
+  // 名前が違う組み合わせは、似ていても並び順が同じでも自動ではつながない。
   for (const geojsonName of uniqueGeojsonNames) {
     if (isNamelessGeojsonName(geojsonName)) continue;
-    const crawledName = findSuggestion(kind, geojsonName, uniqueCrawledNames);
+    const crawledName = findSuggestion(geojsonName, uniqueCrawledNames);
     if (!crawledName) continue;
     rows.push({ crawledName, geojsonName });
     usedCrawledNames.add(crawledName);
     usedGeojsonNames.add(geojsonName);
-  }
-
-  const remainingCrawledNames = uniqueCrawledNames.filter(
-    name => !usedCrawledNames.has(name),
-  );
-  const remainingGeojsonNames = uniqueGeojsonNames.filter(
-    name => !usedGeojsonNames.has(name) && !isNamelessGeojsonName(name),
-  );
-  const candidates = remainingCrawledNames
-    .flatMap((crawledName, crawledIndex) =>
-      remainingGeojsonNames.map((geojsonName, geojsonIndex) => ({
-        crawledName,
-        crawledIndex,
-        geojsonName,
-        geojsonIndex,
-        score: partialMatchScore(crawledName, geojsonName),
-      })),
-    )
-    .sort(
-      (left, right) =>
-        right.score - left.score ||
-        left.geojsonIndex - right.geojsonIndex ||
-        left.crawledIndex - right.crawledIndex,
-    );
-
-  // 残りは共通部分の多い組み合わせから一対一で配置する。
-  for (const candidate of candidates) {
-    if (
-      usedCrawledNames.has(candidate.crawledName) ||
-      usedGeojsonNames.has(candidate.geojsonName)
-    ) {
-      continue;
-    }
-    rows.push({
-      crawledName: candidate.crawledName,
-      geojsonName: candidate.geojsonName,
-    });
-    usedCrawledNames.add(candidate.crawledName);
-    usedGeojsonNames.add(candidate.geojsonName);
   }
 
   for (const geojsonName of uniqueGeojsonNames) {
@@ -218,7 +175,7 @@ export const createSuggestedRows = (
       rows.push({ crawledName, geojsonName: null });
     }
   }
-  return compactMappingRows(rows);
+  return rows;
 };
 
 /**
