@@ -93,6 +93,12 @@ src/private/data/resorts-temporary/tmp/lift-ticket-discovery/{resort-id}/
 - レンタル用具の料金（公式サイト・公式案内の場内ショップ。セット・単品・ウェア・小物を
   対象者・期間・グレードごとに `rentals` へ。書き方は `references/data-model.md` の rentals）。
   レンタル料金表に年度表記が無いだけでは収集を止めない（下の Stage 1 の7を参照）
+- レンタルの「日中のレンタルが夜も使えるか」（`usable_at_night`）。ナイター営業がある施設では
+  レンタルページ・FAQで必ず調べ、記載が無ければ null のまま `unresolved_questions` に残す
+- 雪マジ（マジ☆部）の掲載内容（`yukimaji`。書き方は `references/data-model.md` の yukimaji）。
+  https://majibu.jp/pickup/yukimaji/place.html の一覧と jalan.net の施設詳細を保存し、
+  無料・割引クーポンの対象券・期間・曜日・除外日・ナイターの扱い・回数・追加費用・
+  レンタル特典を掲載文のまま記録する。掲載が無ければ `yukimaji: null`
 
 収集しない:
 
@@ -355,6 +361,25 @@ URL調査のみの依頼はここで報告して終了する。
    node .shared/skills/collect-ski-lift-ticket-pricing/scripts/check-lift-ticket-coverage.mjs <draft.json>
    ```
 
+## Stage 1b: 雪マジの取得
+
+1. 一覧 https://majibu.jp/pickup/yukimaji/place.html は JavaScript 描画なので Playwright で開き、
+   `li.place-list__item` の施設名・タグ（全日利用可／平日のみ利用可／曜日限定／期間限定／準備中）・
+   詳細URL（`https://www.jalan.net/majibu/client/detail/CLYUKI…`）を取る。
+2. 対象スキー場を一覧の施設名と名寄せする（表記揺れは `src/private/data` の名寄せ辞書で確認。
+   志賀高原のように複数スキー場をまとめた掲載は、該当する各スキー場に同じ内容を記録する）。
+   一覧に無ければ `yukimaji: null` にして、名寄せに使った名前を `data_quality.notes_ja` に書く。
+3. 詳細ページを `sources` に保存し、「特典内容」「対象期間・時間」「料金について」
+   「レンタル・他料金」「受付場所」「営業日・時間」「定休日」「注意事項・その他」を読む。
+   一覧のタグと詳細の記載が食い違う（タグは無料クーポンの条件で、割引は別）ことがあるので、
+   詳細ページの記載を正とする。
+4. `yukimaji` を data-model のとおり記録する。「平日」に祝日を含むか、年末年始の扱い、
+   無料を使い切った後の割引の可否など、掲載文に無いことは補わず `holiday_treatment_ja: null` /
+   `unresolved_questions` に残す。「料金について」欄の通常料金が `offers` と食い違えば
+   `human_review_required` に書く（どちらが新しいかを人が確認する）。
+5. 雪マジの対象券が `products` に無い（「5時間券」「午後＆ナイター券」）場合は、公式料金表から
+   その券を `products` / `offers` に追加してから参照する。
+
 ## Stage 2: 独立監査
 
 監査担当には保存資料・草案JSON・監査チェックリスト・taxonomyだけを渡す。
@@ -369,6 +394,8 @@ URL調査のみの依頼はここで報告して終了する。
 - 障がい者audienceと通常料金へのフォールバック
 - 動的価格、保証金、手数料、共通券、セット内容、追加券（`add_on_to_product_ids`）
 - シーズン券や保有者限定特典の混入
+- レンタルの `usable_at_night`、ウェア上下の分け方（`wear_top` / `wear_bottom`）、子ども区分の決め方（年齢・学校・身長）
+- 雪マジ: 無料と割引の期間・曜日・対象券・回数・ナイターの扱い・追加費用が掲載文と一致し、掲載に無い条件を補っていない
 
 監査結果を作業領域の `{season-id}.audit.json` に保存する:
 
@@ -508,7 +535,13 @@ rm -rf src/private/data/resorts-temporary/tmp/lift-ticket/<resort-id>
 - 使用した公式URLと追加取得URL
 - 保存資料数、PDF数、画像内から読んだ料金
 - audience / calendar / operating hours / product / channel / offer /
-  party rule / fee / rental の件数
+  party rule / fee / rental の件数、雪マジの有無（listed / preparing / null）
+- 保存した料金JSONに `scripts/check-fictional-coverage.mjs --real <file> --fictional tests/fixtures/fictional` を流し、
+  「架空ケースなし」の警告が出た特徴を報告する。警告は `tests/fixtures/fictional/` に架空ケースを足すか、
+  `references/coverage-acknowledged.json` に理由付きで載せるまで残る（`references/fictional-fixtures.md`）
+- 抽出関数（`scripts/lift-ticket-features.mjs`）が軸として持たない新しい構造（`notes_ja` にだけ書いた条件など）は
+  機械では拾えないので、`docs/plans/lift-ticket-duration-test-cases.md` の架空ケースと Y の特徴表に当てはまらない
+  料金・レンタル・雪マジの型を見つけたら、施設名と特徴を1行で報告し、文書・架空フィクスチャ・抽出関数に足す
 - 機械検証、独立監査、シナリオテストの結果
 - 判読不能、unknown、未解決事項、human_review_required
 - `data_quality.status`

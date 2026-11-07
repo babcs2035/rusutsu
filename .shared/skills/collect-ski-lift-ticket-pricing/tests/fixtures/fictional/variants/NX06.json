@@ -1,0 +1,43 @@
+{
+  "case_id": "NX06",
+  "doc_section": "NX",
+  "base": "a",
+  "note_ja": "営業区分が不明（hours_type: unknown、時刻はある）",
+  "merge": {
+    "operating_hours": [
+      {
+        "id": "oh-regular",
+        "name_ja": "通常営業",
+        "official_label_ja": null,
+        "hours_type": "unknown",
+        "calendar_ids": [
+          "cal-all"
+        ],
+        "start_time": "08:30",
+        "end_time": "16:30",
+        "lifts": [],
+        "notes_ja": "営業区分（通常・ナイター等）の記載が無く、時刻だけ分かる。",
+        "source_refs": [
+          "src-info"
+        ]
+      }
+    ],
+    "data_quality": {
+      "status": "needs_review",
+      "human_review_required": [
+        {
+          "what_ja": "営業区分",
+          "why_ja": "公式に営業区分の記載が無く時刻だけ分かる。",
+          "where_ja": "page-002/page.html の営業案内",
+          "source_refs": [
+            "src-price"
+          ],
+          "related_ids": [
+            "oh-regular"
+          ],
+          "notes_ja": null
+        }
+      ]
+    }
+  }
+}

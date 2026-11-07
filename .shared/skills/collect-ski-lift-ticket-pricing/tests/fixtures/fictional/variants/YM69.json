@@ -1,0 +1,16 @@
+{
+  "case_id": "YM69",
+  "doc_section": "YM2",
+  "base": "ym",
+  "note_ja": "「準備中」で特典内容なし（マウントレースイ型）",
+  "merge": {
+    "yukimaji": {
+      "status": "preparing",
+      "benefit_text_ja": "準備中（特典内容は後日追加予定）",
+      "period_text_ja": null,
+      "free_coupon": null,
+      "discount_coupon": null,
+      "rental_benefit": null
+    }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "case_id": "YM54",
+  "doc_section": "YM2",
+  "base": "ym",
+  "note_ja": "「平日限定」で定休日が火曜（Ohana Resort型）",
+  "append": {
+    "calendars": [
+      {
+        "id": "cal-tue",
+        "name_ja": "火曜（定休日）",
+        "official_label_ja": null,
+        "included_day_types": [
+          "tuesday"
+        ],
+        "included_dates": [],
+        "included_date_ranges": [],
+        "excluded_dates": [],
+        "excluded_date_ranges": [],
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ]
+      }
+    ],
+    "operating_hours": [
+      {
+        "id": "oh-closed",
+        "name_ja": "定休日",
+        "official_label_ja": null,
+        "hours_type": "closed",
+        "calendar_ids": [
+          "cal-tue"
+        ],
+        "start_time": null,
+        "end_time": null,
+        "lifts": [],
+        "notes_ja": null,
+        "source_refs": [
+          "src-info"
+        ]
+      }
+    ]
+  }
+}

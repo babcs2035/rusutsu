@@ -1,0 +1,45 @@
+{
+  "case_id": "FT-RENTAL-MEMBER",
+  "doc_section": "FT",
+  "base": "r",
+  "note_ja": "会員だけが使えるレンタル料金（雫石型。会員価格は条件付きで自動適用しない）",
+  "append": {
+    "rentals": [
+      {
+        "id": "ski-set-a-member",
+        "name_ja": "スキーセット 大人（店舗A） 会員",
+        "official_label_ja": "スキーセット 大人（店舗A） 会員",
+        "shop_name_ja": "店舗A",
+        "items": [
+          "ski_set"
+        ],
+        "grade_ja": "スタンダード",
+        "audience_ids": [
+          "rental-adult"
+        ],
+        "calendar_ids": [],
+        "channel_ids": [],
+        "duration": {
+          "mode": "day"
+        },
+        "price": {
+          "currency": "JPY",
+          "amount": 4500
+        },
+        "target_qualification": {
+          "official_label_ja": "架空リゾート会員さま",
+          "description_ja": "架空リゾートの会員プログラムの会員",
+          "source_refs": [
+            "src-price"
+          ],
+          "notes_ja": null
+        },
+        "purchase_deadline": null,
+        "source_refs": [
+          "src-price"
+        ],
+        "usable_at_night": null
+      }
+    ]
+  }
+}

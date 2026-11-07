@@ -1,0 +1,1 @@
+{"case_id": "FT-YM-DISCOUNT-WEEKEND", "doc_section": "FT", "base": "ym", "note_ja": "割引クーポンが土日だけで祝日は使えない（シャトー塩沢型。祝日の扱いが掲載に明記）", "merge": {"yukimaji": {"discount_coupon": {"day_rule": "saturday_sunday", "day_rule_text_ja": "《土・日限定》土・日曜日のみ利用可能（祝日は利用不可）", "holiday_treatment_ja": "祝日は利用不可"}}}}

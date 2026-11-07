@@ -649,6 +649,9 @@ party_rules を適用し、**個別購入の合計と比べて安い方**を返�
 かつて `refundable` / `included_in_offer_price` のフラグから「窓口で払う額」
 「戻る額」「実質負担」の3つを出していたが、必要なのは実質負担だけだった。
 
+- `unit`: 課金の単位（`fee_units`: 1人ごと／1枚ごと／1決済ごと）。省略は1枚ごと。
+  Web手数料が子ども用商品にだけ掛かるなら `applies_to_product_ids` で絞る。
+
 ## rentals（レンタル用具の料金）
 
 ★**画面で「レンタル有り」を選んだ人に、借りる用具の料金を足すための情報。**
@@ -699,6 +702,18 @@ party_rules を適用し、**個別購入の合計と比べて安い方**を返�
   画面は「基準の料金＋追加日×残りの日数」と、1日ずつ・N日間の料金を比べて安いほうを使う。
 - `channel_ids` / `purchase_deadline`: Web予約割引など、予約経路と期限で金額が
   違う料金だけに書く（offerと同じ書き方）。窓口で当日借りる料金には書かない。
+- ★**`usable_at_night`**: 日中のレンタルをナイター終了まで使えるか。公式に「ナイター終了まで」
+  等があれば `true`、「17:00まで返却」等があれば `false`、記載が無ければ `null`。
+  ナイター営業がある施設では `null` のままにせず、レンタルページ・FAQ を調べた結果を
+  `data_quality.unresolved_questions` に残す（画面は `null` のとき「夜も使えるかは公式で確認」と
+  注記し、ナイター用レンタルの追加を候補に出す）。
+- ウェアの上だけ・下だけの料金は `wear_top` / `wear_bottom`。`unknown`＋note で書かない。
+  上下セットは `wear` のまま（画面は `wear` と `wear_top`＋`wear_bottom` を比べる）。
+- レンタルの子ども区分が年齢だけ（「12歳以下」）なら `rental_audiences` に年齢で書き、
+  学校区分を補わない。「小学生かつ12歳以下」は両方を書く（AND）。
+- 大人・シニアなど複数区分が同額なら、1件の `audience_ids` に複数を並べてよい。
+- 受付時の身分証提示・対応サイズ（足・身長）は `notes_ja` に公式表記で残す。身分証は画面の警告に使い、
+  サイズは料金計算に使わない。
 - `target_qualification`: 宿泊者・リフト券購入者・会員など入力から判定できない条件。
   画面は自動適用せず条件付きで別掲する。
 - ★**`rentals` が空・省略は「未収集」の意味。** レンタルが無いことを公式で
@@ -714,6 +729,83 @@ party_rules を適用し、**個別購入の合計と比べて安い方**を返�
 表記から読むので、「スキー3点」「ボード2点」「ウェア上下」のように公式の言葉で書く
 （含まれる用具が読めない書き方だと、借りる物がまかなえず比較されない）。
 会員・クーポン・学生など条件付きのセット券は自動では使わず、条件付きの案として別に出る。
+
+## yukimaji（雪マジ）
+
+★**マジ☆部「雪マジ」（19〜22歳向けのリフト券無料・割引クーポン）の掲載内容。**
+画面は年齢 18〜22歳の入力で、利用日がクーポンの条件に合えば「雪マジ無料」「雪マジ割引」を
+出す（判定の仕様は `docs/plans/lift-ticket-duration-test-cases.md` の YM）。
+出典は https://majibu.jp/pickup/yukimaji/place.html の施設一覧と、各施設の
+jalan.net/majibu 詳細ページ。詳細ページを `sources` に保存し、**掲載文のまま記録する**
+（「平日」に祝日を含むか等、書かれていないことを補わない）。
+
+```json
+{
+  "status": "listed",
+  "majibu_url": "https://www.jalan.net/majibu/client/detail/CLYUKI000002/?majiShbtsCd=YUKIMAJI001",
+  "majibu_name_ja": "高峰マウンテンパーク",
+  "benefit_text_ja": "【無料クーポン】1日リフト券（19歳～22歳の間で2回利用可） 【割引クーポン】1日リフト券半額＋レンタル20％OFF ※割引クーポンは19歳～22歳の間で何度でも利用可",
+  "period_text_ja": "【無料・割引クーポン共通】11/21～2027/4/18",
+  "free_coupon": {
+    "product_ids": ["day-pass"],
+    "period": { "start": "2026-11-21", "end": "2027-04-18" },
+    "period_text_ja": "11/21～2027/4/18",
+    "period_approximate": false,
+    "day_rule": "all",
+    "day_rule_text_ja": "全日利用可",
+    "excluded_date_ranges": [],
+    "holiday_treatment_ja": null,
+    "max_uses": 2,
+    "uses_text_ja": "19歳～22歳の間で2回利用可",
+    "night_policy": "unknown",
+    "time_window": null,
+    "price_rules": [{ "price_effect": { "type": "free" }, "source_refs": ["src-majibu"] }],
+    "source_refs": ["src-majibu"]
+  },
+  "discount_coupon": {
+    "product_ids": ["day-pass"],
+    "period": { "start": "2026-11-21", "end": "2027-04-18" },
+    "period_text_ja": "11/21～2027/4/18",
+    "period_approximate": false,
+    "day_rule": "all",
+    "day_rule_text_ja": "全日利用可",
+    "max_uses": null,
+    "uses_text_ja": "何度でも利用可",
+    "night_policy": "unknown",
+    "price_rules": [{ "price_effect": { "type": "discount_percent", "percent": 50 }, "official_label_ja": "1日リフト券半額", "source_refs": ["src-majibu"] }],
+    "source_refs": ["src-majibu"]
+  },
+  "shared_use_count_with_resorts": [],
+  "fees": [],
+  "rental_benefit": { "description_ja": "レンタル20％OFF", "price_effect": { "type": "discount_percent", "percent": 20 }, "applies_with": "discount_coupon", "requirements_ja": null },
+  "rental_restriction_ja": null,
+  "other_benefits_ja": [],
+  "requirements_ja": [],
+  "notes_ja": null,
+  "source_refs": ["src-majibu"]
+}
+```
+
+- **共通ルールは書かない**: 対象生年月日（2004/4/2〜2008/4/1）、リクルートID登録、身分証原本、
+  無料は1施設2回まで（前シーズン分も通算）は計算側の定数。施設固有の追加条件
+  （「顔写真付き身分証」「受付はセンターハウス」）だけ `requirements_ja` に書く。
+- `product_ids`: 無料・割引の対象券を `products` から参照する。「1日券 or ナイター券」の選択制は
+  両方。「単独1日券のみ（共通券へのUP不可）」「共通1日券」は該当する券だけ。対象が「5時間券」
+  「午後＆ナイター券」なら、その券（無ければ products に追加して記録する）。
+- `day_rule` / `period` / `excluded_date_ranges` / `listed_dates` / `period_rules`: 無料と割引で
+  期間・曜日が別記なら別々に書く。「12月下旬〜3月下旬」のような概数は `period` を null にし
+  `period_approximate: true` と `period_text_ja` で残す（画面は確定している月の範囲で適用し注記する）。
+- `price_rules`: 割引後の金額が書かれていれば `fixed_total`（amount）、「半額」「30%OFF」は
+  `discount_percent`、「1,000円引き」は `discount_amount`。平日・土日祝で額が違えば `calendar_ids`
+  で分ける。回数で額が変わる施設は `from_use_number` で段階を分ける。割引額の記載が無い施設は
+  `discount_coupon: null`。
+- `fees`: 掲載文に書かれた追加費用だけ。ICカード保証料（返却時返金）は `refundable: true`、
+  入場料・発行手数料は `false`。リフト券側の `fees` と重ねて書かない（雪マジの掲載文に
+  書かれているという事実を残すため、ここにも書く）。
+- `status: "preparing"` は特典内容が「後日追加予定」の施設。期間・金額が書かれていれば
+  「準備中」タグでも `listed`。
+- 掲載が無いスキー場は `yukimaji: null`（一覧の130施設と名寄せして確認したことを意味する）。
+  未調査なら省略。
 
 ## calculation_policy
 

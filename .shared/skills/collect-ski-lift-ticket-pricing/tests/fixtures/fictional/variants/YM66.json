@@ -1,0 +1,16 @@
+{
+  "case_id": "YM66",
+  "doc_section": "YM2",
+  "base": "ym",
+  "note_ja": "「レンタルクーポンあり（額の記載なし）」（阿仁・南郷型）",
+  "merge": {
+    "yukimaji": {
+      "rental_benefit": {
+        "description_ja": "雪マジのレンタルクーポンあり（額の記載なし）",
+        "price_effect": null,
+        "applies_with": "unknown",
+        "requirements_ja": null
+      }
+    }
+  }
+}

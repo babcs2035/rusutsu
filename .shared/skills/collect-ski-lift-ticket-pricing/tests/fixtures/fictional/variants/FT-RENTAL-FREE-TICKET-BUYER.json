@@ -1,0 +1,45 @@
+{
+  "case_id": "FT-RENTAL-FREE-TICKET-BUYER",
+  "doc_section": "FT",
+  "base": "a",
+  "note_ja": "レンタル品がリフト券購入者は無料（福井和泉のソリ型。条件付き0円）",
+  "append": {
+    "rentals": [
+      {
+        "id": "r-sled-free-ticket",
+        "name_ja": "スキーセット（リフト券購入者）",
+        "official_label_ja": "スキーセット（リフト券購入者は無料）",
+        "shop_name_ja": "センターハウス レンタル",
+        "items": [
+          "ski_set"
+        ],
+        "grade_ja": "スタンダード",
+        "audience_ids": [
+          "adult"
+        ],
+        "calendar_ids": [],
+        "channel_ids": [],
+        "duration": {
+          "mode": "day"
+        },
+        "price": {
+          "currency": "JPY",
+          "amount": 0
+        },
+        "target_qualification": {
+          "official_label_ja": "リフト券購入者",
+          "description_ja": "リフト券を購入した方",
+          "source_refs": [
+            "src-price"
+          ]
+        },
+        "purchase_deadline": null,
+        "source_refs": [
+          "src-price"
+        ],
+        "usable_at_night": null,
+        "notes_ja": "架空。リフト券購入者は無料。"
+      }
+    ]
+  }
+}

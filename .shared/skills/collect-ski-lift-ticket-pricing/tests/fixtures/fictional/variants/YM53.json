@@ -1,0 +1,50 @@
+{
+  "case_id": "YM53",
+  "doc_section": "YM2",
+  "base": "ym",
+  "note_ja": "「土日祝限定、12/28〜1/1は平日も可」（櫛引たらのきだい・ばんしゅう戸倉型）",
+  "merge": {
+    "yukimaji": {
+      "free_coupon": {
+        "day_rule": "by_period",
+        "day_rule_text_ja": "土日祝限定（12/28〜1/1は平日も可）",
+        "excluded_date_ranges": [],
+        "period_rules": [
+          {
+            "period": {
+              "start": "2026-12-20",
+              "end": "2026-12-27",
+              "start_time": null,
+              "end_time": null,
+              "deadline_ja": null,
+              "notes_ja": null
+            },
+            "day_rule": "weekend_holiday"
+          },
+          {
+            "period": {
+              "start": "2026-12-28",
+              "end": "2027-01-01",
+              "start_time": null,
+              "end_time": null,
+              "deadline_ja": null,
+              "notes_ja": null
+            },
+            "day_rule": "all"
+          },
+          {
+            "period": {
+              "start": "2027-01-02",
+              "end": "2027-03-15",
+              "start_time": null,
+              "end_time": null,
+              "deadline_ja": null,
+              "notes_ja": null
+            },
+            "day_rule": "weekend_holiday"
+          }
+        ]
+      }
+    }
+  }
+}

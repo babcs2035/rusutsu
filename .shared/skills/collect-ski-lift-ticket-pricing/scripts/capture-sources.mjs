@@ -299,15 +299,28 @@ async function expandCollapsedContent(page, notes) {
   try {
     const tabs = page.locator("[role=tab]");
     const count = Math.min(await tabs.count(), 10);
+    const startUrl = page.url();
+    let clicked = 0;
     for (let i = 0; i < count; i++) {
       try {
+        // 別ページへのリンクになっているタブは押さない（押すと保存対象のページから離れる）
+        const href = await tabs.nth(i).getAttribute("href");
+        if (href && !href.startsWith("#") && !href.startsWith("javascript:"))
+          continue;
         await tabs.nth(i).click({ timeout: 1000, noWaitAfter: true });
         await page.waitForTimeout(300);
+        clicked++;
+        if (page.url() !== startUrl) {
+          // 念のため: 遷移してしまったら元のページへ戻して以降のタブは押さない
+          await page.goto(startUrl, { waitUntil: "domcontentloaded" });
+          notes.push("タブのクリックで別ページへ遷移したため元のページへ戻した");
+          break;
+        }
       } catch {
         // 個別クリック失敗は無視
       }
     }
-    if (count > 0) notes.push(`タブを${count}件順にクリック`);
+    if (clicked > 0) notes.push(`タブを${clicked}件順にクリック`);
   } catch {
     // 無視
   }
@@ -690,12 +703,17 @@ async function main() {
         opts.resort,
         opts.season,
       );
+      // 明示指定したページは「リフト券・シーズン券」のようなタイトルでも捨てない
+      // （URLが対象外なら取得前に止めている）。リンク追跡で拾ったページだけ
+      // タイトルでも除外する
       if (
-        isOutOfScopeSource(
-          metadata.requested_url,
-          metadata.final_url,
-          metadata.page_title,
-        )
+        linkedFrom == null
+          ? isOutOfScopeSource(metadata.final_url)
+          : isOutOfScopeSource(
+              metadata.requested_url,
+              metadata.final_url,
+              metadata.page_title,
+            )
       ) {
         fs.rmSync(pageDir, { recursive: true, force: true });
         console.error(

@@ -1,0 +1,63 @@
+{
+  "case_id": "W12",
+  "doc_section": "W",
+  "base": "a",
+  "note_ja": "レンタルのWeb予約 4,500円・店頭 5,000円（予約は前日まで）",
+  "append": {
+    "channels": [
+      {
+        "id": "rental-web",
+        "name_ja": "レンタルWeb予約",
+        "official_label_ja": "レンタルWeb予約",
+        "url": "https://example.com/fictional-a/rental/",
+        "location_ja": null,
+        "purchase_deadline_ja": "利用日前日まで",
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ]
+      }
+    ],
+    "rentals": [
+      {
+        "id": "r-set-day-web",
+        "name_ja": "スキーセット 大人 1日 Web予約",
+        "official_label_ja": "スキーセット 大人 1日 Web予約",
+        "shop_name_ja": "センターハウス レンタル",
+        "items": [
+          "ski_set"
+        ],
+        "grade_ja": "スタンダード",
+        "audience_ids": [
+          "adult"
+        ],
+        "calendar_ids": [],
+        "channel_ids": [
+          "rental-web"
+        ],
+        "duration": {
+          "mode": "day"
+        },
+        "price": {
+          "currency": "JPY",
+          "amount": 4500
+        },
+        "target_qualification": null,
+        "purchase_deadline": {
+          "same_day_allowed": false,
+          "official_text_ja": "利用日前日まで",
+          "notes_ja": null,
+          "source_refs": [
+            "src-price"
+          ],
+          "days_before_use": 1,
+          "deadline_date": null
+        },
+        "source_refs": [
+          "src-price"
+        ],
+        "usable_at_night": null
+      }
+    ]
+  }
+}

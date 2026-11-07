@@ -1,0 +1,21 @@
+{
+  "case_id": "YM75",
+  "doc_section": "YM2",
+  "base": "ym",
+  "note_ja": "「受付10:00〜」（Mt.T型）",
+  "merge": {
+    "yukimaji": {
+      "free_coupon": {
+        "time_window": {
+          "start": null,
+          "end": null,
+          "start_time": "10:00",
+          "end_time": null,
+          "deadline_ja": null,
+          "notes_ja": null
+        },
+        "notes_ja": "受付は10:00から。"
+      }
+    }
+  }
+}

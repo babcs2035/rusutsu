@@ -1,0 +1,58 @@
+{
+  "case_id": "YM80",
+  "doc_section": "YM2",
+  "base": "ym",
+  "note_ja": "無料は 1/4〜1/31、割引は 1/4〜クローズ。割引は1日券 3,500円 or ナイター券 1,500円の選択制（日高国際型）",
+  "merge": {
+    "yukimaji": {
+      "free_coupon": {
+        "period": {
+          "start": "2027-01-04",
+          "end": "2027-01-31"
+        },
+        "period_text_ja": "1/4～1/31",
+        "excluded_date_ranges": []
+      },
+      "discount_coupon": {
+        "product_ids": [
+          "day",
+          "night"
+        ],
+        "period": {
+          "start": "2027-01-04",
+          "end": null
+        },
+        "period_text_ja": "1/4～クローズ",
+        "period_approximate": true,
+        "price_rules": [
+          {
+            "product_ids": [
+              "day"
+            ],
+            "price_effect": {
+              "type": "fixed_total",
+              "amount": 3500
+            },
+            "official_label_ja": "1日リフト券 3,500円",
+            "source_refs": [
+              "src-majibu"
+            ]
+          },
+          {
+            "product_ids": [
+              "night"
+            ],
+            "price_effect": {
+              "type": "fixed_total",
+              "amount": 1500
+            },
+            "official_label_ja": "ナイター券 1,500円",
+            "source_refs": [
+              "src-majibu"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

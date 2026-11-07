@@ -1,0 +1,44 @@
+{
+  "case_id": "L09",
+  "doc_section": "L",
+  "base": "l",
+  "note_ja": "1/19 が臨時休業（closed の日付限定カレンダー）",
+  "append": {
+    "calendars": [
+      {
+        "id": "cal-closed",
+        "name_ja": "臨時休業",
+        "official_label_ja": null,
+        "included_day_types": [],
+        "included_dates": [
+          "2027-01-19"
+        ],
+        "included_date_ranges": [],
+        "excluded_dates": [],
+        "excluded_date_ranges": [],
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ]
+      }
+    ],
+    "operating_hours": [
+      {
+        "id": "oh-closed",
+        "name_ja": "臨時休業",
+        "official_label_ja": null,
+        "hours_type": "closed",
+        "calendar_ids": [
+          "cal-closed"
+        ],
+        "start_time": null,
+        "end_time": null,
+        "lifts": [],
+        "notes_ja": null,
+        "source_refs": [
+          "src-info"
+        ]
+      }
+    ]
+  }
+}

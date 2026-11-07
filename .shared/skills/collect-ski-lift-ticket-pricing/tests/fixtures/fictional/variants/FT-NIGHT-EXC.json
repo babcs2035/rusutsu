@@ -1,0 +1,49 @@
+{
+  "case_id": "FT-NIGHT-EXC",
+  "doc_section": "3-A",
+  "base": "b",
+  "note_ja": "土曜ナイターのカレンダーに除外日（1/23）がある",
+  "merge": {
+    "calendars": [
+      {
+        "id": "cal-all",
+        "name_ja": "シーズン全日",
+        "official_label_ja": null,
+        "included_day_types": [
+          "all"
+        ],
+        "included_dates": [],
+        "included_date_ranges": [
+          {
+            "start": "2026-12-19",
+            "end": "2027-03-31"
+          }
+        ],
+        "excluded_dates": [],
+        "excluded_date_ranges": [],
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ]
+      },
+      {
+        "id": "cal-sat",
+        "name_ja": "土曜",
+        "official_label_ja": null,
+        "included_day_types": [
+          "saturday"
+        ],
+        "included_dates": [],
+        "included_date_ranges": [],
+        "excluded_dates": [
+          "2027-01-23"
+        ],
+        "excluded_date_ranges": [],
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ]
+      }
+    ]
+  }
+}

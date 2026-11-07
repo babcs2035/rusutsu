@@ -1,0 +1,22 @@
+{
+  "case_id": "YM56",
+  "doc_section": "YM2",
+  "base": "ym",
+  "note_ja": "期間が「12月下旬〜3月下旬」（概数。フェアリーランドかねやま型）",
+  "merge": {
+    "yukimaji": {
+      "period_text_ja": "【無料・割引クーポン共通】12月下旬～3月下旬",
+      "free_coupon": {
+        "period": null,
+        "period_text_ja": "12月下旬～3月下旬",
+        "period_approximate": true,
+        "excluded_date_ranges": []
+      },
+      "discount_coupon": {
+        "period": null,
+        "period_text_ja": "12月下旬～3月下旬",
+        "period_approximate": true
+      }
+    }
+  }
+}

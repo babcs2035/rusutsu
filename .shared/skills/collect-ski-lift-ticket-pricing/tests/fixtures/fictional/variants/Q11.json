@@ -1,0 +1,71 @@
+{
+  "case_id": "Q11",
+  "doc_section": "Q",
+  "base": "a",
+  "note_ja": "割引理由が不明（unknown）で、公式表記が「春のキャンペーン 4,800円」。条件の記載なし",
+  "merge": {
+    "data_quality": {
+      "status": "needs_review",
+      "human_review_required": [
+        {
+          "what_ja": "春のキャンペーンの対象条件",
+          "why_ja": "公式に条件の記載が無く割引理由を特定できない。",
+          "where_ja": "page-001/page.html の「春のキャンペーン」の記載",
+          "source_refs": [
+            "src-price"
+          ],
+          "related_ids": [
+            "o-day-campaign"
+          ],
+          "notes_ja": null
+        }
+      ]
+    }
+  },
+  "append": {
+    "offers": [
+      {
+        "id": "o-day-campaign",
+        "name_ja": "春のキャンペーン1日券",
+        "official_label_ja": "春のキャンペーン1日券",
+        "discount_reasons": [
+          "unknown"
+        ],
+        "product_id": "day",
+        "audience_ids": [
+          "adult"
+        ],
+        "calendar_ids": [
+          "cal-all"
+        ],
+        "channel_ids": [
+          "window"
+        ],
+        "sales_period": null,
+        "use_period": null,
+        "price": {
+          "currency": "JPY",
+          "amount": 4800,
+          "notes_ja": null
+        },
+        "requirements": [],
+        "stacking": {
+          "stackable_with_other_discounts": "not_stackable",
+          "notes_ja": "他の割引との併用不可（架空の公式記載）。"
+        },
+        "source_refs": [
+          "src-price"
+        ],
+        "notes_ja": null,
+        "target_qualification": {
+          "official_label_ja": "春のキャンペーン（条件の記載なし）",
+          "description_ja": "公式表記のみで対象条件の記載が無い",
+          "source_refs": [
+            "src-price"
+          ],
+          "notes_ja": null
+        }
+      }
+    ]
+  }
+}

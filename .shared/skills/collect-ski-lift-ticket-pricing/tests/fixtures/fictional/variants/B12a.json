@@ -1,0 +1,71 @@
+{
+  "case_id": "B12a",
+  "doc_section": "B",
+  "base": "b",
+  "note_ja": "日中のレンタルが夜も使えるか: 使える（usable_at_night=true）",
+  "merge": {
+    "rentals": [
+      {
+        "id": "r-set-day",
+        "name_ja": "スキーセット 大人 1日",
+        "official_label_ja": "スキーセット 大人 1日",
+        "shop_name_ja": "センターハウス レンタル",
+        "items": [
+          "ski_set"
+        ],
+        "grade_ja": "スタンダード",
+        "audience_ids": [
+          "adult"
+        ],
+        "calendar_ids": [],
+        "channel_ids": [],
+        "duration": {
+          "mode": "day"
+        },
+        "price": {
+          "currency": "JPY",
+          "amount": 5000
+        },
+        "target_qualification": null,
+        "purchase_deadline": null,
+        "source_refs": [
+          "src-price"
+        ],
+        "usable_at_night": true,
+        "notes_ja": "日中のレンタルはナイター終了まで使える（公式に記載）。"
+      },
+      {
+        "id": "r-set-night",
+        "name_ja": "スキーセット 大人 ナイター（17:00〜）",
+        "official_label_ja": "スキーセット 大人 ナイター（17:00〜）",
+        "shop_name_ja": "センターハウス レンタル",
+        "items": [
+          "ski_set"
+        ],
+        "grade_ja": "スタンダード",
+        "audience_ids": [
+          "adult"
+        ],
+        "calendar_ids": [],
+        "channel_ids": [],
+        "duration": {
+          "mode": "night",
+          "start_time": "17:00"
+        },
+        "price": {
+          "currency": "JPY",
+          "amount": 2500
+        },
+        "target_qualification": null,
+        "purchase_deadline": null,
+        "source_refs": [
+          "src-price"
+        ],
+        "usable_at_night": null
+      }
+    ],
+    "data_quality": {
+      "unresolved_questions": []
+    }
+  }
+}

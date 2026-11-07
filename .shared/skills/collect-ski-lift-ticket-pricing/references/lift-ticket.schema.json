@@ -337,6 +337,17 @@
           ]
         }
       }
+    },
+    "yukimaji": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/yukimaji"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "雪マジの掲載内容。未調査は省略、掲載無しを確認したら null"
     }
   },
   "$defs": {
@@ -1867,6 +1878,20 @@
         },
         "source_refs": {
           "$ref": "#/$defs/sourceRefs"
+        },
+        "unit": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "per_person",
+            "per_ticket",
+            "per_transaction",
+            "unknown",
+            null
+          ],
+          "description": "課金の単位（taxonomy.json の fee_units）。1人ごと／1枚ごと／1決済ごと。省略・null は per_ticket と同じに扱う"
         }
       },
       "description": "★**券の料金とは別に払う「返ってこない追加負担」だけ**を記録する（ICカード発行手数料・システム利用料・送料など）。\n★**返金される保証金（ICカードデポジット等）は記録しない。** 返却すれば戻ってくるので実質の負担ではない。返金の有無を表すフラグも持たない — 載っているものは全て負担、というだけにする。\n★**特定の状況でのみ発生する費用も記録しない**（再発行手数料＝紛失時、キャンセル料など）。\n券の提示価格に返金される保証金が含まれている場合は、**offerの price を実質負担（保証金を差し引いた額）で記録し**、公式提示額と差し引いた理由を price.notes_ja に書く。知りたいのは実質いくら払うかであって、内訳の分類ではない。"
@@ -1925,7 +1950,9 @@
               "helmet",
               "goggles",
               "gloves",
-              "unknown"
+              "unknown",
+              "wear_top",
+              "wear_bottom"
             ]
           }
         },
@@ -2158,6 +2185,13 @@
               }
             }
           }
+        },
+        "usable_at_night": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "日中のレンタルをナイター終了まで使えるか。true=公式に「ナイター終了まで」等の記載、false=公式に「17:00まで」等の返却時刻の記載、null=公式に記載なし（ナイター営業がある施設では収集時に調べたことを data_quality に残す）"
         }
       }
     },
@@ -2428,6 +2462,415 @@
         }
       },
       "description": "料金への効き方。**null＝その構成員は通常料金のまま**（同伴者無料ルールの「大人」側）、または**同じルール内の fixed_total のセット合計に含まれる**（ファミリーパックの2人目以降）。効き方が公式資料から確定できない場合だけ type を \"unknown\" にし、human_review_required に確認箇所を書く。"
+    },
+    "yukimajiPriceRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "price_effect",
+        "source_refs"
+      ],
+      "properties": {
+        "product_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "この金額が効く券。省略はクーポンの product_ids 全部"
+        },
+        "calendar_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "平日・土日祝で割引額が違うときに分ける。省略は全日"
+        },
+        "from_use_number": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "回数で割引額が変わる施設（ふじてん型）で、この金額が効き始める利用回数。省略は1回目から"
+        },
+        "price_effect": {
+          "$ref": "#/$defs/priceEffect",
+          "description": "free=無料、fixed_total=割引後の金額（amount）、discount_amount=○円引き、discount_percent=○%OFF（半額は50）"
+        },
+        "official_label_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_refs": {
+          "$ref": "#/$defs/sourceRefs"
+        },
+        "source_quotes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "yukimajiCoupon": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "product_ids",
+        "day_rule",
+        "day_rule_text_ja",
+        "max_uses",
+        "price_rules",
+        "source_refs"
+      ],
+      "properties": {
+        "product_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          },
+          "description": "対象の券（通常は1日券）。「1日券 or ナイター券」の選択制なら両方。共通券限定・単独券限定は該当する product だけ"
+        },
+        "period": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/period"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "対象期間。「12月下旬」のような概数は start/end を置かず period_text_ja と approximate で表す"
+        },
+        "period_text_ja": {
+          "type": "string",
+          "description": "掲載文の期間表記をそのまま（「《平日限定》12/19～2027/3/22」）"
+        },
+        "period_approximate": {
+          "type": "boolean",
+          "description": "期間の境界が「上旬・中旬・下旬・オープン日・クローズまで」など概数なら true"
+        },
+        "day_rule": {
+          "type": "string",
+          "enum": [
+            "all",
+            "weekday",
+            "weekend_holiday",
+            "saturday_sunday",
+            "weekday_and_saturday",
+            "mon_thu_excluding_holiday",
+            "listed_dates",
+            "by_period",
+            "unknown"
+          ],
+          "description": "taxonomy.json の yukimaji_day_rules"
+        },
+        "day_rule_text_ja": {
+          "type": "string"
+        },
+        "period_rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "period",
+              "day_rule"
+            ],
+            "properties": {
+              "period": {
+                "$ref": "#/$defs/period"
+              },
+              "day_rule": {
+                "type": "string",
+                "enum": [
+                  "all",
+                  "weekday",
+                  "weekend_holiday",
+                  "saturday_sunday",
+                  "weekday_and_saturday",
+                  "mon_thu_excluding_holiday",
+                  "listed_dates",
+                  "by_period",
+                  "unknown"
+                ],
+                "description": "期間ごとの曜日条件（by_period は入れ子にしない）"
+              },
+              "listed_dates": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/date"
+                }
+              }
+            }
+          },
+          "description": "day_rule=by_period のとき、期間ごとの曜日条件（只見・みやぎ蔵王七ヶ宿型）"
+        },
+        "listed_dates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/date"
+          },
+          "description": "day_rule=listed_dates のとき、利用できる日付の列挙（爺ガ岳型）"
+        },
+        "excluded_date_ranges": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/period"
+          },
+          "description": "除外期間（「12/29〜1/3を除く」）"
+        },
+        "excluded_dates_unspecified": {
+          "type": "boolean",
+          "description": "「除外日あり」と書かれているが日付が無い（郡上ヴァカンス村型）"
+        },
+        "holiday_treatment_ja": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "「平日」に祝日・年末年始を含むかの公式記載。無ければ null（計算側は祝日・年末年始特定日を平日に含めず、注記を出す）"
+        },
+        "max_uses": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "利用回数の上限。無料クーポンは2。「何度でも」は null"
+        },
+        "uses_text_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "night_policy": {
+          "type": "string",
+          "enum": [
+            "allowed",
+            "not_allowed",
+            "unknown"
+          ],
+          "description": "taxonomy.json の yukimaji_night_policies"
+        },
+        "time_window": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/period"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "「9:00〜15:00まで」「受付10:00〜」のような時間の制限。start_time/end_time を使う"
+        },
+        "price_rules": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/yukimajiPriceRule"
+          }
+        },
+        "notes_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_refs": {
+          "$ref": "#/$defs/sourceRefs"
+        },
+        "source_quotes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "yukimaji": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "majibu_url",
+        "source_refs"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "listed",
+            "preparing"
+          ],
+          "description": "listed=特典内容あり、preparing=「準備中」で特典内容が無い（郡上ヴァカンス村のように準備中でも内容があれば listed）"
+        },
+        "majibu_url": {
+          "type": "string",
+          "description": "jalan.net/majibu の施設詳細URL"
+        },
+        "majibu_name_ja": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "掲載名（名寄せの根拠）"
+        },
+        "benefit_text_ja": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "「特典内容」欄の原文"
+        },
+        "period_text_ja": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "「対象期間・時間」欄の原文"
+        },
+        "free_coupon": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/yukimajiCoupon"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "discount_coupon": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/yukimajiCoupon"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "割引額の記載が無い施設は null（無料だけ扱う）"
+        },
+        "shared_use_count_with_resorts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "利用回数を合算する相手スキー場のID（白馬コルチナ＋白馬乗鞍型）"
+        },
+        "fees": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name_ja",
+              "amount",
+              "refundable"
+            ],
+            "properties": {
+              "name_ja": {
+                "type": "string"
+              },
+              "amount": {
+                "$ref": "#/$defs/nonNegativeAmount"
+              },
+              "refundable": {
+                "type": "boolean",
+                "description": "true=返却時返金の保証料（合計に入れず注記）、false=入場料・発行手数料（合計に入れる）"
+              },
+              "notes_ja": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          },
+          "description": "無料・割引クーポン利用時にも別途かかる費用。掲載文に書かれたものだけ"
+        },
+        "rental_benefit": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "description_ja"
+              ],
+              "properties": {
+                "description_ja": {
+                  "type": "string"
+                },
+                "price_effect": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/priceEffect"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "「レンタル20%OFF」のように額が決まるものだけ。額の記載が無い「レンタルクーポンあり」は null"
+                },
+                "applies_with": {
+                  "type": "string",
+                  "enum": [
+                    "free_coupon",
+                    "discount_coupon",
+                    "both",
+                    "unknown"
+                  ]
+                },
+                "requirements_ja": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "「Instagramのフォロー必須」など"
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rental_restriction_ja": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "「外部レンタル利用時は対象外」など"
+        },
+        "other_benefits_ja": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "入浴・宿泊・スクール特典、POWチケットなど計算に使わないもの（原文）"
+        },
+        "requirements_ja": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "施設固有の提示物・受付条件（「顔写真付き身分証」「受付はリフト券売り場」）。共通ルール（リクルートID・身分証）は書かない"
+        },
+        "notes_ja": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_refs": {
+          "$ref": "#/$defs/sourceRefs"
+        }
+      },
+      "description": "★マジ☆部「雪マジ」の掲載内容。https://majibu.jp/pickup/yukimaji/place.html の施設一覧から jalan.net の施設詳細を保存し、掲載文のまま記録する。共通ルール（2004/4/2〜2008/4/1生まれ、リクルートID登録、身分証原本、無料は1施設2回まで通算）は計算側の定数で、ここには書かない。掲載が無い施設は null。"
     }
   }
 }

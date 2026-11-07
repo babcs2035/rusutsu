@@ -1,0 +1,39 @@
+{
+  "case_id": "R16",
+  "doc_section": "R",
+  "base": "r",
+  "note_ja": "ビンディングが別料金（1,000円）のボード",
+  "append": {
+    "rentals": [
+      {
+        "id": "snowboard-bindings-a",
+        "name_ja": "ビンディング 大人（店舗A）",
+        "official_label_ja": "ビンディング 大人（店舗A）",
+        "shop_name_ja": "店舗A",
+        "items": [
+          "snowboard_bindings"
+        ],
+        "grade_ja": "スタンダード",
+        "audience_ids": [
+          "rental-adult"
+        ],
+        "calendar_ids": [],
+        "channel_ids": [],
+        "duration": {
+          "mode": "day"
+        },
+        "price": {
+          "currency": "JPY",
+          "amount": 1000
+        },
+        "target_qualification": null,
+        "purchase_deadline": null,
+        "source_refs": [
+          "src-price"
+        ],
+        "usable_at_night": null,
+        "notes_ja": "ボード板・ビンディング・ブーツを別々に借りる施設。"
+      }
+    ]
+  }
+}

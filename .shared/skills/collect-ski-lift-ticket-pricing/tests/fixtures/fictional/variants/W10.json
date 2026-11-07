@@ -1,0 +1,138 @@
+{
+  "case_id": "W10",
+  "doc_section": "W",
+  "base": "a",
+  "note_ja": "ICカード保証金 500円（新規発行のみ、返却で返金）。feesに入れず price.notes_ja に書く",
+  "merge": {
+    "offers": [
+      {
+        "id": "o-day",
+        "name_ja": "1日券（大人）",
+        "official_label_ja": "1日券（大人）",
+        "discount_reasons": [],
+        "product_id": "day",
+        "audience_ids": [
+          "adult"
+        ],
+        "calendar_ids": [
+          "cal-all"
+        ],
+        "channel_ids": [
+          "window"
+        ],
+        "sales_period": null,
+        "use_period": null,
+        "price": {
+          "currency": "JPY",
+          "amount": 5000,
+          "notes_ja": "ICカード保証金500円（新規発行のみ、返却で返金）は含まない。"
+        },
+        "requirements": [],
+        "stacking": {
+          "stackable_with_other_discounts": "not_stackable",
+          "notes_ja": "他の割引との併用不可（架空の公式記載）。"
+        },
+        "source_refs": [
+          "src-price"
+        ],
+        "notes_ja": null
+      },
+      {
+        "id": "o-h4",
+        "name_ja": "4時間券（大人）",
+        "official_label_ja": "4時間券（大人）",
+        "discount_reasons": [],
+        "product_id": "h4",
+        "audience_ids": [
+          "adult"
+        ],
+        "calendar_ids": [
+          "cal-all"
+        ],
+        "channel_ids": [
+          "window"
+        ],
+        "sales_period": null,
+        "use_period": null,
+        "price": {
+          "currency": "JPY",
+          "amount": 4000,
+          "notes_ja": null
+        },
+        "requirements": [],
+        "stacking": {
+          "stackable_with_other_discounts": "not_stackable",
+          "notes_ja": "他の割引との併用不可（架空の公式記載）。"
+        },
+        "source_refs": [
+          "src-price"
+        ],
+        "notes_ja": null
+      },
+      {
+        "id": "o-am",
+        "name_ja": "午前券（大人）",
+        "official_label_ja": "午前券（大人）",
+        "discount_reasons": [],
+        "product_id": "am",
+        "audience_ids": [
+          "adult"
+        ],
+        "calendar_ids": [
+          "cal-all"
+        ],
+        "channel_ids": [
+          "window"
+        ],
+        "sales_period": null,
+        "use_period": null,
+        "price": {
+          "currency": "JPY",
+          "amount": 3500,
+          "notes_ja": null
+        },
+        "requirements": [],
+        "stacking": {
+          "stackable_with_other_discounts": "not_stackable",
+          "notes_ja": "他の割引との併用不可（架空の公式記載）。"
+        },
+        "source_refs": [
+          "src-price"
+        ],
+        "notes_ja": null
+      },
+      {
+        "id": "o-pm",
+        "name_ja": "午後券（大人）",
+        "official_label_ja": "午後券（大人）",
+        "discount_reasons": [],
+        "product_id": "pm",
+        "audience_ids": [
+          "adult"
+        ],
+        "calendar_ids": [
+          "cal-all"
+        ],
+        "channel_ids": [
+          "window"
+        ],
+        "sales_period": null,
+        "use_period": null,
+        "price": {
+          "currency": "JPY",
+          "amount": 3500,
+          "notes_ja": null
+        },
+        "requirements": [],
+        "stacking": {
+          "stackable_with_other_discounts": "not_stackable",
+          "notes_ja": "他の割引との併用不可（架空の公式記載）。"
+        },
+        "source_refs": [
+          "src-price"
+        ],
+        "notes_ja": null
+      }
+    ]
+  }
+}

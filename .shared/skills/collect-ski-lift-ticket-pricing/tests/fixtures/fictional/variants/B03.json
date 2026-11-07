@@ -1,0 +1,14 @@
+{
+  "case_id": "B03",
+  "doc_section": "B",
+  "base": "b",
+  "note_ja": "土・1日＋ナイターで、1日＋ナイター券が無い施設（1日券＋ナイター券の合算になる）",
+  "remove": {
+    "products": [
+      "day-night"
+    ],
+    "offers": [
+      "o-day-night"
+    ]
+  }
+}

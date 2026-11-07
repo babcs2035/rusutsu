@@ -1,0 +1,43 @@
+{
+  "case_id": "G03",
+  "doc_section": "G",
+  "base": "g",
+  "note_ja": "営業時間が不明な施設（オープニング期間の9時間券あり）",
+  "merge": {
+    "operating_hours": [
+      {
+        "id": "oh-regular",
+        "name_ja": "営業時間（公式に時刻の記載なし）",
+        "official_label_ja": null,
+        "hours_type": "unknown",
+        "calendar_ids": [
+          "cal-all"
+        ],
+        "start_time": null,
+        "end_time": null,
+        "lifts": [],
+        "notes_ja": "公式に営業時間の記載が無い。推定値は書かない。",
+        "source_refs": [
+          "src-info"
+        ]
+      }
+    ],
+    "data_quality": {
+      "status": "needs_review",
+      "human_review_required": [
+        {
+          "what_ja": "営業時間",
+          "why_ja": "公式に営業時間の記載が無く確定できない。",
+          "where_ja": "page-002/page.html の営業案内",
+          "source_refs": [
+            "src-price"
+          ],
+          "related_ids": [
+            "oh-regular"
+          ],
+          "notes_ja": null
+        }
+      ]
+    }
+  }
+}

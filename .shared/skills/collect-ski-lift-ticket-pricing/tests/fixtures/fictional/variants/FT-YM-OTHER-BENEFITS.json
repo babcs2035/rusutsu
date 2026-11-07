@@ -1,0 +1,1 @@
+{"case_id": "FT-YM-OTHER-BENEFITS", "doc_section": "FT", "base": "ym", "note_ja": "雪マジに無料・割引以外の特典がある（湯沢中里型。提携チケットの特別価格を other_benefits_ja に記録）", "merge": {"yukimaji": {"other_benefits_ja": ["提携チケット 3,650円"]}}}

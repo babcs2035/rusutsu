@@ -1,0 +1,52 @@
+{
+  "case_id": "FT-C-DATES",
+  "doc_section": "3-A",
+  "base": "c",
+  "note_ja": "ナイター営業日が日付の列挙で、1日券がナイターを含む型（C の日付版）",
+  "merge": {
+    "calendars": [
+      {
+        "id": "cal-all",
+        "name_ja": "シーズン全日",
+        "official_label_ja": null,
+        "included_day_types": [
+          "all"
+        ],
+        "included_dates": [],
+        "included_date_ranges": [
+          {
+            "start": "2026-12-19",
+            "end": "2027-03-31"
+          }
+        ],
+        "excluded_dates": [],
+        "excluded_date_ranges": [],
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ]
+      },
+      {
+        "id": "cal-nightdays",
+        "name_ja": "ナイター営業日",
+        "official_label_ja": null,
+        "included_day_types": [
+          "special"
+        ],
+        "included_dates": [
+          "2027-01-09",
+          "2027-01-16",
+          "2027-01-23",
+          "2027-01-30"
+        ],
+        "included_date_ranges": [],
+        "excluded_dates": [],
+        "excluded_date_ranges": [],
+        "notes_ja": "公式に掲載された日付のみ",
+        "source_refs": [
+          "src-price"
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,1046 @@
+{
+  "schema_version": "1.0.0",
+  "taxonomy_version": "33.0.0",
+  "resort": {
+    "id": "fictional-r"
+  },
+  "season": {
+    "id": "2026-2027",
+    "label_ja": "2026-2027シーズン",
+    "start_date": "2026-12-19",
+    "end_date": "2027-03-31",
+    "notes_ja": "テスト用の架空データ（架空スキー場R（レンタルの種類型））。実在のスキー場・料金ではない。",
+    "source_refs": [
+      "src-price"
+    ]
+  },
+  "sources": [
+    {
+      "id": "src-price",
+      "url": "https://example.com/fictional-r/price/",
+      "requested_url": "https://example.com/fictional-r/price/",
+      "final_url": "https://example.com/fictional-r/price/",
+      "page_title": "リフト券料金 | 架空スキー場R（レンタルの種類型）",
+      "http_status": 200,
+      "captured_at": "2026-11-07T00:00:00Z",
+      "content_type": "text/html; charset=utf-8",
+      "content_hash": "0000000000000000000000000000000000000000000000000000000000000001",
+      "path": "page-001/page.html",
+      "linked_from_source_id": null,
+      "user_specified": true,
+      "capture_success": true,
+      "notes_ja": "テスト用の架空資料（料金表）。"
+    },
+    {
+      "id": "src-info",
+      "url": "https://example.com/fictional-r/info/",
+      "requested_url": "https://example.com/fictional-r/info/",
+      "final_url": "https://example.com/fictional-r/info/",
+      "page_title": "営業案内 | 架空スキー場R（レンタルの種類型）",
+      "http_status": 200,
+      "captured_at": "2026-11-07T00:00:00Z",
+      "content_type": "text/html; charset=utf-8",
+      "content_hash": "0000000000000000000000000000000000000000000000000000000000000002",
+      "path": "page-002/page.html",
+      "linked_from_source_id": null,
+      "user_specified": true,
+      "capture_success": true,
+      "notes_ja": "テスト用の架空資料（営業案内）。"
+    }
+  ],
+  "audiences": [
+    {
+      "id": "adult",
+      "name_ja": "大人",
+      "official_label_ja": "大人",
+      "age_min": null,
+      "age_max": null,
+      "age_basis_ja": null,
+      "school_levels": [],
+      "notes_ja": null,
+      "source_refs": [
+        "src-price"
+      ],
+      "is_default": true
+    },
+    {
+      "id": "elementary",
+      "name_ja": "小学生",
+      "official_label_ja": "小学生",
+      "age_min": null,
+      "age_max": null,
+      "age_basis_ja": null,
+      "school_levels": [
+        "elementary_school"
+      ],
+      "notes_ja": null,
+      "source_refs": [
+        "src-price"
+      ],
+      "is_default": false
+    }
+  ],
+  "calendars": [
+    {
+      "id": "cal-all",
+      "name_ja": "シーズン全日",
+      "official_label_ja": null,
+      "included_day_types": [
+        "all"
+      ],
+      "included_dates": [],
+      "included_date_ranges": [
+        {
+          "start": "2026-12-19",
+          "end": "2027-03-31"
+        }
+      ],
+      "excluded_dates": [],
+      "excluded_date_ranges": [],
+      "notes_ja": null,
+      "source_refs": [
+        "src-price"
+      ]
+    }
+  ],
+  "operating_hours": [
+    {
+      "id": "oh-regular",
+      "name_ja": "通常営業",
+      "official_label_ja": null,
+      "hours_type": "regular",
+      "calendar_ids": [
+        "cal-all"
+      ],
+      "start_time": "08:30",
+      "end_time": "16:30",
+      "lifts": [],
+      "notes_ja": null,
+      "source_refs": [
+        "src-info"
+      ]
+    }
+  ],
+  "areas": [],
+  "products": [
+    {
+      "id": "day",
+      "name_ja": "1日券",
+      "official_label_ja": "1日券",
+      "validity": {
+        "hours": null,
+        "days": 1,
+        "points": null,
+        "rides": null,
+        "start_time": null,
+        "end_time": null,
+        "notes_ja": null,
+        "mode": "calendar_day"
+      },
+      "covers_hours_types": [
+        "regular"
+      ],
+      "notes_ja": null,
+      "source_refs": [
+        "src-price"
+      ]
+    }
+  ],
+  "channels": [
+    {
+      "id": "window",
+      "name_ja": "チケット窓口",
+      "official_label_ja": "チケット窓口",
+      "url": null,
+      "location_ja": "センターハウス",
+      "purchase_deadline_ja": null,
+      "notes_ja": null,
+      "source_refs": [
+        "src-price"
+      ]
+    }
+  ],
+  "offers": [
+    {
+      "id": "o-adult",
+      "name_ja": "o-adult",
+      "official_label_ja": "o-adult",
+      "discount_reasons": [],
+      "product_id": "day",
+      "audience_ids": [
+        "adult"
+      ],
+      "calendar_ids": [
+        "cal-all"
+      ],
+      "channel_ids": [
+        "window"
+      ],
+      "sales_period": null,
+      "use_period": null,
+      "price": {
+        "currency": "JPY",
+        "amount": 5000,
+        "notes_ja": null
+      },
+      "requirements": [],
+      "stacking": {
+        "stackable_with_other_discounts": "not_stackable",
+        "notes_ja": "他の割引との併用不可（架空の公式記載）。"
+      },
+      "source_refs": [
+        "src-price"
+      ],
+      "notes_ja": null
+    },
+    {
+      "id": "o-elem",
+      "name_ja": "o-elem",
+      "official_label_ja": "o-elem",
+      "discount_reasons": [],
+      "product_id": "day",
+      "audience_ids": [
+        "elementary"
+      ],
+      "calendar_ids": [
+        "cal-all"
+      ],
+      "channel_ids": [
+        "window"
+      ],
+      "sales_period": null,
+      "use_period": null,
+      "price": {
+        "currency": "JPY",
+        "amount": 3000,
+        "notes_ja": null
+      },
+      "requirements": [],
+      "stacking": {
+        "stackable_with_other_discounts": "not_stackable",
+        "notes_ja": "他の割引との併用不可（架空の公式記載）。"
+      },
+      "source_refs": [
+        "src-price"
+      ],
+      "notes_ja": null
+    }
+  ],
+  "party_rules": [],
+  "fees": [],
+  "rental_audiences": [
+    {
+      "id": "rental-adult",
+      "name_ja": "大人",
+      "official_label_ja": "大人（中学生以上）",
+      "school_levels": [],
+      "age_min": null,
+      "age_max": null,
+      "is_default": true,
+      "source_refs": [
+        "src-price"
+      ]
+    },
+    {
+      "id": "rental-child",
+      "name_ja": "子ども",
+      "official_label_ja": "子ども（小学生以下）",
+      "school_levels": [
+        "preschool",
+        "elementary_school"
+      ],
+      "age_min": null,
+      "age_max": null,
+      "is_default": false,
+      "source_refs": [
+        "src-price"
+      ]
+    }
+  ],
+  "rentals": [
+    {
+      "id": "ski-set-a",
+      "name_ja": "スキーセット 大人（店舗A）",
+      "official_label_ja": "スキーセット 大人（店舗A）",
+      "shop_name_ja": "店舗A",
+      "items": [
+        "ski_set"
+      ],
+      "grade_ja": "スタンダード",
+      "audience_ids": [
+        "rental-adult"
+      ],
+      "calendar_ids": [],
+      "channel_ids": [],
+      "duration": {
+        "mode": "day"
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": 5000
+      },
+      "target_qualification": null,
+      "purchase_deadline": null,
+      "source_refs": [
+        "src-price"
+      ],
+      "usable_at_night": null
+    },
+    {
+      "id": "ski-set-c",
+      "name_ja": "スキーセット 子ども（店舗A）",
+      "official_label_ja": "スキーセット 子ども（店舗A）",
+      "shop_name_ja": "店舗A",
+      "items": [
+        "ski_set"
+      ],
+      "grade_ja": "スタンダード",
+      "audience_ids": [
+        "rental-child"
+      ],
+      "calendar_ids": [],
+      "channel_ids": [],
+      "duration": {
+        "mode": "day"
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": 3500
+      },
+      "target_qualification": null,
+      "purchase_deadline": null,
+      "source_refs": [
+        "src-price"
+      ],
+      "usable_at_night": null
+    },
+    {
+      "id": "board-set-a",
+      "name_ja": "ボードセット 大人（店舗A）",
+      "official_label_ja": "ボードセット 大人（店舗A）",
+      "shop_name_ja": "店舗A",
+      "items": [
+        "snowboard_set"
+      ],
+      "grade_ja": "スタンダード",
+      "audience_ids": [
+        "rental-adult"
+      ],
+      "calendar_ids": [],
+      "channel_ids": [],
+      "duration": {
+        "mode": "day"
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": 5500
+      },
+      "target_qualification": null,
+      "purchase_deadline": null,
+      "source_refs": [
+        "src-price"
+      ],
+      "usable_at_night": null
+    },
+    {
+      "id": "board-set-c",
+      "name_ja": "ボードセット 子ども（店舗A）",
+      "official_label_ja": "ボードセット 子ども（店舗A）",
+      "shop_name_ja": "店舗A",
+      "items": [
+        "snowboard_set"
+      ],
+      "grade_ja": "スタンダード",
+      "audience_ids": [
+        "rental-child"
+      ],
+      "calendar_ids": [],
+      "channel_ids": [],
+      "duration": {
+        "mode": "day"
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": 4000
+      },
+      "target_qualification": null,
+      "purchase_deadline": null,
+      "source_refs": [
+        "src-price"
+      ],
+      "usable_at_night": null
+    },
+    {
+      "id": "ski-full-a",
+      "name_ja": "スキーフルセット 大人（店舗A）",
+      "official_label_ja": "スキーフルセット 大人（店舗A）",
+      "shop_name_ja": "店舗A",
+      "items": [
+        "ski_set",
+        "wear"
+      ],
+      "grade_ja": "スタンダード",
+      "audience_ids": [
+        "rental-adult"
+      ],
+      "calendar_ids": [],
+      "channel_ids": [],
+      "duration": {
+        "mode": "day"
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": 8000
+      },
+      "target_qualification": null,
+      "purchase_deadline": null,
+      "source_refs": [
+        "src-price"
+      ],
+      "usable_at_night": null
+    },
+    {
+      "id": "ski-full-c",
+      "name_ja": "スキーフルセット 子ども（店舗A）",
+      "official_label_ja": "スキーフルセット 子ども（店舗A）",
+      "shop_name_ja": "店舗A",
+      "items": [
+        "ski_set",
+        "wear"
+      ],
+      "grade_ja": "スタンダード",
+      "audience_ids": [
+        "rental-child"
+      ],
+      "calendar_ids": [],
+      "channel_ids": [],
+      "duration": {
+        "mode": "day"
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": 6000
+      },
+      "target_qualification": null,
+      "purchase_deadline": null,
+      "source_refs": [
+        "src-price"
+      ],
+      "usable_at_night": null
+    },
+    {
+      "id": "board-full-a",
+      "name_ja": "ボードフルセット 大人（店舗A）",
+      "official_label_ja": "ボードフルセット 大人（店舗A）",
+      "shop_name_ja": "店舗A",
+      "items": [
+        "snowboard_set",
+        "wear"
+      ],
+      "grade_ja": "スタンダード",
+      "audience_ids": [
+        "rental-adult"
+      ],
+      "calendar_ids": [],
+      "channel_ids": [],
+      "duration": {
+        "mode": "day"
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": 8500
+      },
+      "target_qualification": null,
+      "purchase_deadline": null,
+      "source_refs": [
+        "src-price"
+      ],
+      "usable_at_night": null
+    },
+    {
+      "id": "board-full-c",
+      "name_ja": "ボードフルセット 子ども（店舗A）",
+      "official_label_ja": "ボードフルセット 子ども（店舗A）",
+      "shop_name_ja": "店舗A",
+      "items": [
+        "snowboard_set",
+        "wear"
+      ],
+      "grade_ja": "スタンダード",
+      "audience_ids": [
+        "rental-child"
+      ],
+      "calendar_ids": [],
+      "channel_ids": [],
+      "duration": {
+        "mode": "day"
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": 6500
+      },
+      "target_qualification": null,
+      "purchase_deadline": null,
+      "source_refs": [
+        "src-price"
+      ],
+      "usable_at_night": null
+    },
+    {
+      "id": "tebura-a",
+      "name_ja": "手ぶらパック 大人（店舗A）",
+      "official_label_ja": "手ぶらパック（スキーフルセット＋ゴーグル＋グローブ）",
+      "shop_name_ja": "店舗A",
+      "items": [
+        "ski_set",
+        "wear",
+        "goggles",
+        "gloves"
+      ],
+      "grade_ja": "スタンダード",
+      "audience_ids": [
+        "rental-adult"
+      ],
+      "calendar_ids": [],
+      "channel_ids": [],
+      "duration": {
+        "mode": "day"
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": 9000
+      },
+      "target_qualification": null,
+      "purchase_deadline": null,
+      "source_refs": [
+        "src-price"
+      ],
+      "usable_at_night": null
+    },
+    {
+      "id": "tebura-c",
+      "name_ja": "手ぶらパック 子ども（店舗A）",
+      "official_label_ja": "手ぶらパック（スキーフルセット＋ゴーグル＋グローブ）",
+      "shop_name_ja": "店舗A",
+      "items": [
+        "ski_set",
+        "wear",
+        "goggles",
+        "gloves"
+      ],
+      "grade_ja": "スタンダード",
+      "audience_ids": [
+        "rental-child"
+      ],
+      "calendar_ids": [],
+      "channel_ids": [],
+      "duration": {
+        "mode": "day"
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": 7000
+      },
+      "target_qualification": null,
+      "purchase_deadline": null,
+      "source_refs": [
+        "src-price"
+      ],
+      "usable_at_night": null
+    },
+    {
+      "id": "skis-a",
+      "name_ja": "スキー板 大人（店舗A）",
+      "official_label_ja": "スキー板 大人（店舗A）",
+      "shop_name_ja": "店舗A",
+      "items": [
+        "skis"
+      ],
+      "grade_ja": "スタンダード",
+      "audience_ids": [
+        "rental-adult"
+      ],
+      "calendar_ids": [],
+      "channel_ids": [],
+      "duration": {
+        "mode": "day"
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": 3500
+      },
+      "target_qualification": null,
+      "purchase_deadline": null,
+      "source_refs": [
+        "src-price"
+      ],
+      "usable_at_night": null
+    },
+    {
+      "id": "ski-boots-a",
+      "name_ja": "スキーブーツ 大人（店舗A）",
+      "official_label_ja": "スキーブーツ 大人（店舗A）",
+      "shop_name_ja": "店舗A",
+      "items": [
+        "ski_boots"
+      ],
+      "grade_ja": "スタンダード",
+      "audience_ids": [
+        "rental-adult"
+      ],
+      "calendar_ids": [],
+      "channel_ids": [],
+      "duration": {
+        "mode": "day"
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": 2000
+      },
+      "target_qualification": null,
+      "purchase_deadline": null,
+      "source_refs": [
+        "src-price"
+      ],
+      "usable_at_night": null
+    },
+    {
+      "id": "poles-a",
+      "name_ja": "ストック 大人（店舗A）",
+      "official_label_ja": "ストック 大人（店舗A）",
+      "shop_name_ja": "店舗A",
+      "items": [
+        "poles"
+      ],
+      "grade_ja": "スタンダード",
+      "audience_ids": [
+        "rental-adult"
+      ],
+      "calendar_ids": [],
+      "channel_ids": [],
+      "duration": {
+        "mode": "day"
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": 500
+      },
+      "target_qualification": null,
+      "purchase_deadline": null,
+      "source_refs": [
+        "src-price"
+      ],
+      "usable_at_night": null
+    },
+    {
+      "id": "snowboard-a",
+      "name_ja": "ボード板 大人（店舗A）",
+      "official_label_ja": "ボード板 大人（店舗A）",
+      "shop_name_ja": "店舗A",
+      "items": [
+        "snowboard"
+      ],
+      "grade_ja": "スタンダード",
+      "audience_ids": [
+        "rental-adult"
+      ],
+      "calendar_ids": [],
+      "channel_ids": [],
+      "duration": {
+        "mode": "day"
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": 4000
+      },
+      "target_qualification": null,
+      "purchase_deadline": null,
+      "source_refs": [
+        "src-price"
+      ],
+      "usable_at_night": null
+    },
+    {
+      "id": "board-boots-a",
+      "name_ja": "ボードブーツ 大人（店舗A）",
+      "official_label_ja": "ボードブーツ 大人（店舗A）",
+      "shop_name_ja": "店舗A",
+      "items": [
+        "snowboard_boots"
+      ],
+      "grade_ja": "スタンダード",
+      "audience_ids": [
+        "rental-adult"
+      ],
+      "calendar_ids": [],
+      "channel_ids": [],
+      "duration": {
+        "mode": "day"
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": 2000
+      },
+      "target_qualification": null,
+      "purchase_deadline": null,
+      "source_refs": [
+        "src-price"
+      ],
+      "usable_at_night": null
+    },
+    {
+      "id": "wear-a",
+      "name_ja": "ウェア上下 大人（店舗A）",
+      "official_label_ja": "ウェア上下 大人（店舗A）",
+      "shop_name_ja": "店舗A",
+      "items": [
+        "wear"
+      ],
+      "grade_ja": "スタンダード",
+      "audience_ids": [
+        "rental-adult"
+      ],
+      "calendar_ids": [],
+      "channel_ids": [],
+      "duration": {
+        "mode": "day"
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": 4000
+      },
+      "target_qualification": null,
+      "purchase_deadline": null,
+      "source_refs": [
+        "src-price"
+      ],
+      "usable_at_night": null
+    },
+    {
+      "id": "wear-top-a",
+      "name_ja": "ウェア上 大人（店舗A）",
+      "official_label_ja": "ウェア上 大人（店舗A）",
+      "shop_name_ja": "店舗A",
+      "items": [
+        "wear_top"
+      ],
+      "grade_ja": "スタンダード",
+      "audience_ids": [
+        "rental-adult"
+      ],
+      "calendar_ids": [],
+      "channel_ids": [],
+      "duration": {
+        "mode": "day"
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": 2500
+      },
+      "target_qualification": null,
+      "purchase_deadline": null,
+      "source_refs": [
+        "src-price"
+      ],
+      "usable_at_night": null
+    },
+    {
+      "id": "wear-bottom-a",
+      "name_ja": "ウェア下 大人（店舗A）",
+      "official_label_ja": "ウェア下 大人（店舗A）",
+      "shop_name_ja": "店舗A",
+      "items": [
+        "wear_bottom"
+      ],
+      "grade_ja": "スタンダード",
+      "audience_ids": [
+        "rental-adult"
+      ],
+      "calendar_ids": [],
+      "channel_ids": [],
+      "duration": {
+        "mode": "day"
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": 2000
+      },
+      "target_qualification": null,
+      "purchase_deadline": null,
+      "source_refs": [
+        "src-price"
+      ],
+      "usable_at_night": null
+    },
+    {
+      "id": "helmet-a",
+      "name_ja": "ヘルメット 大人（店舗A）",
+      "official_label_ja": "ヘルメット 大人（店舗A）",
+      "shop_name_ja": "店舗A",
+      "items": [
+        "helmet"
+      ],
+      "grade_ja": "スタンダード",
+      "audience_ids": [
+        "rental-adult"
+      ],
+      "calendar_ids": [],
+      "channel_ids": [],
+      "duration": {
+        "mode": "day"
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": 1000
+      },
+      "target_qualification": null,
+      "purchase_deadline": null,
+      "source_refs": [
+        "src-price"
+      ],
+      "usable_at_night": null
+    },
+    {
+      "id": "goggles-a",
+      "name_ja": "ゴーグル 大人（店舗A）",
+      "official_label_ja": "ゴーグル 大人（店舗A）",
+      "shop_name_ja": "店舗A",
+      "items": [
+        "goggles"
+      ],
+      "grade_ja": "スタンダード",
+      "audience_ids": [
+        "rental-adult"
+      ],
+      "calendar_ids": [],
+      "channel_ids": [],
+      "duration": {
+        "mode": "day"
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": 1000
+      },
+      "target_qualification": null,
+      "purchase_deadline": null,
+      "source_refs": [
+        "src-price"
+      ],
+      "usable_at_night": null
+    },
+    {
+      "id": "gloves-a",
+      "name_ja": "グローブ 大人（店舗A）",
+      "official_label_ja": "グローブ 大人（店舗A）",
+      "shop_name_ja": "店舗A",
+      "items": [
+        "gloves"
+      ],
+      "grade_ja": "スタンダード",
+      "audience_ids": [
+        "rental-adult"
+      ],
+      "calendar_ids": [],
+      "channel_ids": [],
+      "duration": {
+        "mode": "day"
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": 500
+      },
+      "target_qualification": null,
+      "purchase_deadline": null,
+      "source_refs": [
+        "src-price"
+      ],
+      "usable_at_night": null
+    },
+    {
+      "id": "goggles-gloves-a",
+      "name_ja": "ゴーグル＋グローブ 大人（店舗A）",
+      "official_label_ja": "ゴーグル＋グローブ 大人（店舗A）",
+      "shop_name_ja": "店舗A",
+      "items": [
+        "goggles",
+        "gloves"
+      ],
+      "grade_ja": "スタンダード",
+      "audience_ids": [
+        "rental-adult"
+      ],
+      "calendar_ids": [],
+      "channel_ids": [],
+      "duration": {
+        "mode": "day"
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": 1200
+      },
+      "target_qualification": null,
+      "purchase_deadline": null,
+      "source_refs": [
+        "src-price"
+      ],
+      "usable_at_night": null
+    },
+    {
+      "id": "ski-high-a",
+      "name_ja": "スキーセット（ハイグレード） 大人（店舗A）",
+      "official_label_ja": "スキーセット（ハイグレード） 大人（店舗A）",
+      "shop_name_ja": "店舗A",
+      "items": [
+        "ski_set"
+      ],
+      "grade_ja": "ハイグレード",
+      "audience_ids": [
+        "rental-adult"
+      ],
+      "calendar_ids": [],
+      "channel_ids": [],
+      "duration": {
+        "mode": "day"
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": 7000
+      },
+      "target_qualification": null,
+      "purchase_deadline": null,
+      "source_refs": [
+        "src-price"
+      ],
+      "usable_at_night": null
+    },
+    {
+      "id": "short-ski-a",
+      "name_ja": "ショートスキーセット 大人（店舗A）",
+      "official_label_ja": "ショートスキーセット（板・ブーツ）",
+      "shop_name_ja": "店舗A",
+      "items": [
+        "skis",
+        "ski_boots"
+      ],
+      "grade_ja": "ショートスキー",
+      "audience_ids": [
+        "rental-adult"
+      ],
+      "calendar_ids": [],
+      "channel_ids": [],
+      "duration": {
+        "mode": "day"
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": 3500
+      },
+      "target_qualification": null,
+      "purchase_deadline": null,
+      "source_refs": [
+        "src-price"
+      ],
+      "usable_at_night": null
+    },
+    {
+      "id": "skis-b",
+      "name_ja": "スキー板 大人（店舗B）",
+      "official_label_ja": "スキー板 大人（店舗B）",
+      "shop_name_ja": "店舗B",
+      "items": [
+        "skis"
+      ],
+      "grade_ja": "スタンダード",
+      "audience_ids": [
+        "rental-adult"
+      ],
+      "calendar_ids": [],
+      "channel_ids": [],
+      "duration": {
+        "mode": "day"
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": 2500
+      },
+      "target_qualification": null,
+      "purchase_deadline": null,
+      "source_refs": [
+        "src-price"
+      ],
+      "usable_at_night": null
+    },
+    {
+      "id": "ski-boots-b",
+      "name_ja": "スキーブーツ 大人（店舗B）",
+      "official_label_ja": "スキーブーツ 大人（店舗B）",
+      "shop_name_ja": "店舗B",
+      "items": [
+        "ski_boots"
+      ],
+      "grade_ja": "スタンダード",
+      "audience_ids": [
+        "rental-adult"
+      ],
+      "calendar_ids": [],
+      "channel_ids": [],
+      "duration": {
+        "mode": "day"
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": 1500
+      },
+      "target_qualification": null,
+      "purchase_deadline": null,
+      "source_refs": [
+        "src-price"
+      ],
+      "usable_at_night": null
+    },
+    {
+      "id": "poles-b",
+      "name_ja": "ストック 大人（店舗B）",
+      "official_label_ja": "ストック 大人（店舗B）",
+      "shop_name_ja": "店舗B",
+      "items": [
+        "poles"
+      ],
+      "grade_ja": "スタンダード",
+      "audience_ids": [
+        "rental-adult"
+      ],
+      "calendar_ids": [],
+      "channel_ids": [],
+      "duration": {
+        "mode": "day"
+      },
+      "price": {
+        "currency": "JPY",
+        "amount": 500
+      },
+      "target_qualification": null,
+      "purchase_deadline": null,
+      "source_refs": [
+        "src-price"
+      ],
+      "usable_at_night": null
+    }
+  ],
+  "calculation_policy": {
+    "currency": "JPY",
+    "tax_included": true,
+    "stacking_default": "unknown",
+    "best_price_hint_ja": null,
+    "notes_ja": "テスト用の架空データ。"
+  },
+  "data_quality": {
+    "status": "complete",
+    "generated_at": "2026-11-07T00:00:00Z",
+    "last_verified_at": "2026-11-07T00:00:00Z",
+    "unresolved_questions": [],
+    "illegible_items": [],
+    "human_review_required": [],
+    "notes_ja": "テスト用の架空データ。"
+  }
+}

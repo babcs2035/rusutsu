@@ -544,7 +544,7 @@ console.log("== other の全廃と unknown の通知 ==");
       !Object.keys(g.labels).includes("unknown") &&
       // data_quality_statuses は抽出担当の自己申告なので unknown を持たない
       !["currencies", "condition_match_modes", "discount_value_types",
-        "data_quality_statuses"].includes(name),
+        "data_quality_statuses", "yukimaji_statuses"].includes(name),
   );
   assert(
     "確定できない可能性がある群には unknown がある",
@@ -2707,6 +2707,380 @@ if (withCapture) {
       JSON.stringify([manifest.pages[0].tables_extracted, manifest.pages[0].screen_tiles]),
     );
   }
+}
+
+console.log("== Y. 架空ケースの特徴抽出・照合（Y01〜Y05） ==");
+{
+  const FEATURES_JS = path.join(SKILL_DIR, "scripts", "lift-ticket-features.mjs");
+  const APPLY_JS = path.join(SKILL_DIR, "scripts", "apply-fictional-variant.mjs");
+  const COVER_JS = path.join(SKILL_DIR, "scripts", "check-fictional-coverage.mjs");
+  const ACK_PATH = path.join(SKILL_DIR, "references", "coverage-acknowledged.json");
+  const CATALOG_PATH = path.join(SKILL_DIR, "references", "feature-catalog.md");
+  const FICTIONAL_DIR = path.join(TESTS_DIR, "fixtures", "fictional");
+  const MINIMAL = path.join(FICTIONAL_DIR, "_minimal-for-tests.json");
+  const REAL_DIR = path.resolve(SKILL_DIR, "..", "..", "..", "src", "private", "data", "lift-ticket");
+
+  const { extractFeatures } = await import(pathToFileURL(FEATURES_JS).href);
+  const { applyVariant, loadFictional } = await import(pathToFileURL(APPLY_JS).href);
+  const cover = await import(pathToFileURL(COVER_JS).href);
+  const minimal = JSON.parse(fs.readFileSync(MINIMAL, "utf8"));
+  const clone = (v) => JSON.parse(JSON.stringify(v));
+  // ナイター営業（毎日）を足した版。ナイターの型の組み合わせ特徴と変異テストに使う
+  const minimalNight = clone(minimal);
+  {
+    const reg = minimalNight.operating_hours.find((o) => o.hours_type === "regular");
+    minimalNight.operating_hours.push({ ...clone(reg), id: "hours-night-test", name_ja: "ナイター", official_label_ja: "ナイター", hours_type: "night", start_time: "17:00", end_time: "21:00" });
+  }
+  const yTmp = fs.mkdtempSync(path.join(os.tmpdir(), "lift-ticket-y-"));
+  const writeJson = (file, data) => {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, `${JSON.stringify(data, null, 2)}\n`);
+    return file;
+  };
+  /** 架空ディレクトリ（本体 a.json だけ）を作る */
+  const fictionalDirOf = (name, data) => {
+    const dir = path.join(yTmp, name);
+    writeJson(path.join(dir, "a.json"), data);
+    return dir;
+  };
+  const runCover = (realPath, fictionalDir, extra = []) =>
+    run(COVER_JS, ["--real", realPath, "--fictional", fictionalDir, "--acknowledged", ACK_PATH, ...extra]);
+
+  // ---- Y01: 実在・架空で同じ関数 ----
+  {
+    const defs = fs
+      .readdirSync(path.join(SKILL_DIR, "scripts"))
+      .filter((f) => f.endsWith(".mjs"))
+      .filter((f) => /export function extractFeatures\b|function extractFeatures\b/.test(fs.readFileSync(path.join(SKILL_DIR, "scripts", f), "utf8")));
+    assert("Y01 extractFeatures の定義は lift-ticket-features.mjs の1箇所だけ", defs.join(",") === "lift-ticket-features.mjs", defs.join(","));
+    const coverSrc = fs.readFileSync(COVER_JS, "utf8");
+    assert(
+      "Y01 照合スクリプトは実在・架空とも同じ extractFeatures を import して使う",
+      /import \{ extractFeatures \} from "\.\/lift-ticket-features\.mjs"/.test(coverSrc) &&
+        (coverSrc.match(/extractFeatures\(/g) ?? []).length >= 2,
+    );
+    const set = extractFeatures(minimal);
+    assert("Y01 extractFeatures は Set<string> を返し、キーは 分野:名前 形式", set instanceof Set && set.size > 50 && [...set].every((k) => /^[a-z]+:[^\s]+$/.test(k)), [...set].filter((k) => !/^[a-z]+:[^\s]+$/.test(k)).join("\n"));
+    const sameAgain = extractFeatures(clone(minimal));
+    assert("Y01 同じJSONなら何度でも同じ特徴（決定的）", [...set].sort().join("\n") === [...sameAgain].sort().join("\n"));
+    const cli = run(FEATURES_JS, [MINIMAL]);
+    assert("Y01 lift-ticket-features.mjs のCLIは特徴キーを1行ずつ出す", cli.status === 0 && cli.stdout.includes("fee:unit=per_ticket"), `${cli.stdout.slice(0, 300)}${cli.stderr}`);
+  }
+
+  // ---- 特徴ごとの単体確認（金額の組み合わせ・新フィールド） ----
+  {
+    const base = extractFeatures(minimal);
+    assert("price: 標準の1日券より安い長時間券が無ければ出ない", !base.has("price:long_hours_cheaper_than_day") && !base.has("price:online_higher_than_standard"));
+    const std = minimal.offers.find((o) => o.id === "offer-adult-day-standard-weekday");
+
+    const withHours = (amount) => {
+      const d = clone(minimal);
+      d.products.push({ id: "h8", name_ja: "8時間券", official_label_ja: null, validity: { mode: "hours_from_first_use", hours: 8 }, area_ids: ["all-mountain"], notes_ja: null, source_refs: ["src-page-ryokin"] });
+      d.offers.push({ ...clone(std), id: "offer-h8", product_id: "h8", price: { currency: "JPY", amount } });
+      return extractFeatures(d);
+    };
+    assert("price: 8時間券が1日券より安いと long_hours_cheaper_than_day（恐羅漢型）", withHours(std.price.amount - 1000).has("price:long_hours_cheaper_than_day"));
+    assert("price: 8時間券が1日券と同額なら出ない", !withHours(std.price.amount).has("price:long_hours_cheaper_than_day"));
+
+    const withWeb = (amount) => {
+      const d = clone(minimal);
+      const web = d.offers.find((o) => o.id === "offer-adult-day-web-advance");
+      web.discount_reasons = ["online_purchase"];
+      web.price.amount = amount;
+      return extractFeatures(d);
+    };
+    assert("price: Web料金が窓口より高いと online_higher_than_standard", withWeb(std.price.amount + 500).has("price:online_higher_than_standard"));
+    assert("price: Web料金が窓口より安ければ出ない", !withWeb(std.price.amount - 500).has("price:online_higher_than_standard"));
+
+    const bundle = (amount) => {
+      const d = clone(minimal);
+      const lunch = d.offers.find((o) => o.id === "offer-lunch-pack-adult");
+      lunch.price.amount = amount;
+      return extractFeatures(d);
+    };
+    assert("price: 付属品付きの券が付属なしの券より安いと bundle_cheaper_than_plain_ticket", bundle(std.price.amount - 500).has("price:bundle_cheaper_than_plain_ticket") && !bundle(std.price.amount + 500).has("price:bundle_cheaper_than_plain_ticket"));
+
+    const d1 = clone(minimal);
+    d1.fees[0].unit = "per_person";
+    d1.rentals[0].usable_at_night = true;
+    d1.rentals[0].duration = { mode: "extra_day", after_days: 2 };
+    const f1 = extractFeatures(d1);
+    assert("fee.unit / rental.usable_at_night / extra_day.after_days が特徴に出る", f1.has("fee:unit=per_person") && f1.has("rental:usable_at_night=true") && f1.has("rental:duration.mode=extra_day:after_days=2"), [...f1].filter((k) => /^(fee|rental:usable|rental:duration)/.test(k)).join("\n"));
+    assert("rental: ウェア上下に分けた件を wear.split_top_bottom として出す", base.has("rental:wear.split_top_bottom") && base.has("rental:item=wear_top"));
+    const nightBase = extractFeatures(minimalNight);
+    assert("combo: 営業時間の型×1日券・ナイターの型×1日券がナイター含むか・同行者ルール×レンタル込みが出る", nightBase.has("combo:hours=regular+night×day_pass=present") && nightBase.has("combo:night=day_types×day_pass_covers_night=no") && nightBase.has("combo:night×night_only_product=present") && nightBase.has("combo:party_rule×rental_included=no"), [...nightBase].filter((k) => k.startsWith("combo:")).join("\n"));
+    assert("yukimaji: 雪マジの曜日条件・回数・追加費用が特徴に出る", [...base].some((k) => k.startsWith("yukimaji:free.day_rule=")) && [...base].some((k) => k.startsWith("yukimaji:free.max_uses=")) && [...base].some((k) => k.startsWith("yukimaji:fee=")), [...base].filter((k) => k.startsWith("yukimaji:")).join("\n"));
+    // 自由記述は読まない
+    const d2 = clone(minimal);
+    for (const r of d2.rentals) r.notes_ja = "身分証の提示が必要。保証金あり。ナイター終了まで利用可。サイズ 25cm";
+    for (const o of d2.offers) o.notes_ja = "QRコード・予約メール・学生証・障がい者手帳";
+    const f2 = extractFeatures(d2);
+    assert("notes_ja の文言は特徴にしない", [...f2].sort().join("\n") === [...base].sort().join("\n"));
+  }
+
+  // ---- Y03: 確認済み一覧 ----
+  {
+    const ack0 = JSON.parse(fs.readFileSync(ACK_PATH, "utf8"));
+    assert("coverage-acknowledged.json が配列で、不備が無い", Array.isArray(ack0) && cover.validateAcknowledged(ack0).length === 0, JSON.stringify(ack0).slice(0, 200));
+
+    const fdir = fictionalDirOf("y03-fictional", minimal);
+    const real = clone(minimal);
+    real.fees[0].unit = "per_transaction";
+    const realFile = writeJson(path.join(yTmp, "y03-real", "some-resort", "2025-2026.json"), real);
+    const r0 = runCover(realFile, fdir);
+    assert("Y02 架空に無い特徴を持つ実在施設は『施設名: 特徴（架空ケースなし）』で出て失敗する", r0.status === 1 && r0.stdout.includes("some-resort: fee:unit=per_transaction（架空ケースなし）"), `${r0.stdout}${r0.stderr}`);
+    const same = runCover(MINIMAL, fdir);
+    assert("実在と架空が同じ構造なら警告なしで成功する", same.status === 0, `${same.stdout}${same.stderr}`);
+
+    const ackFile = (list) => writeJson(path.join(yTmp, `ack-${Math.random().toString(36).slice(2)}.json`), list);
+    const withAck = (list) => run(COVER_JS, ["--real", realFile, "--fictional", fdir, "--acknowledged", ackFile(list)]);
+    const ok = withAck([{ feature: "fee:unit=per_transaction", reason_ja: "決済ごとの手数料は架空ケースを作るほどの差がないと確認済み", cases: ["W09"] }]);
+    assert("Y03 理由付きで確認済み一覧にある特徴は失敗にしない", ok.status === 0 && !ok.stdout.includes("架空ケースなし"), `${ok.stdout}${ok.stderr}`);
+    for (const [name, reason] of [["空文字", ""], ["空白だけ", "  "], ["欠落", undefined]]) {
+      const entry = { feature: "fee:unit=per_transaction", cases: ["W09"] };
+      if (reason !== undefined) entry.reason_ja = reason;
+      const bad = withAck([entry]);
+      assert(`Y03 reason_ja が${name}なら失敗する`, bad.status === 1 && bad.stdout.includes("reason_ja（理由）が空") && bad.stdout.includes("fee:unit=per_transaction（架空ケースなし）"), `${bad.stdout}${bad.stderr}`);
+    }
+    const asJson = run(COVER_JS, ["--real", realFile, "--fictional", fdir, "--acknowledged", ACK_PATH, "--json"]);
+    let parsed = null;
+    try {
+      parsed = JSON.parse(asJson.stdout);
+    } catch {
+      // 下のassertで失敗にする
+    }
+    assert("--json は機械可読で、missing に施設名と特徴が入る", asJson.status === 1 && parsed?.ok === false && parsed.missing.some((m) => m.resort === "some-resort" && m.feature === "fee:unit=per_transaction"), asJson.stdout.slice(0, 300));
+    const usage = run(COVER_JS, ["--real", MINIMAL]);
+    assert("--fictional が無ければ使い方を出して終了コード2", usage.status === 2, `${usage.stdout}${usage.stderr}`);
+  }
+
+  // ---- Y05: 変異テスト（架空から特徴を1つ外すと警告に出る） ----
+  {
+    const mutations = [
+      ["手数料を外す", (d) => { d.fees = []; }, "fee:present"],
+      ["同行者ルールを外す", (d) => { d.party_rules = []; }, "party:rule"],
+      ["レンタルを外す", (d) => { d.rentals = []; d.rental_audiences = []; d.yukimaji.rental_benefit = null; }, "rental:present"],
+      ["雪マジを外す", (d) => { delete d.yukimaji; }, "yukimaji:status=listed"],
+      ["ナイター営業を外す", (d) => { d.operating_hours = d.operating_hours.filter((o) => o.hours_type !== "night"); }, "hours:type=night"],
+      ["ナイター単独券の券種を外す", (d) => {
+        const ids = new Set(d.products.filter((p) => p.validity.mode === "fixed_time_window").map((p) => p.id));
+        d.products = d.products.filter((p) => !ids.has(p.id));
+        d.offers = d.offers.filter((o) => !ids.has(o.product_id));
+        for (const r of d.party_rules) for (const c of r.components) c.product_ids = (c.product_ids ?? []).filter((id) => !ids.has(id));
+        if (d.yukimaji) for (const k of ["free_coupon", "discount_coupon"]) if (d.yukimaji[k]) d.yukimaji[k].product_ids = d.yukimaji[k].product_ids.filter((id) => !ids.has(id));
+      }, "product:validity.mode=fixed_time_window"],
+      ["資格条件付きの割引を外す", (d) => { d.offers = d.offers.filter((o) => !o.target_qualification); for (const r of d.party_rules) for (const c of r.components) c.offer_ids = (c.offer_ids ?? []).filter((id) => d.offers.some((o) => o.id === id)); }, "offer:qualification"],
+    ];
+    const realDir = path.join(yTmp, "y05-real", "minimal-resort");
+    writeJson(path.join(realDir, "2025-2026.json"), minimalNight);
+    for (const [name, mutate, feature] of mutations) {
+      const d = clone(minimalNight);
+      mutate(d);
+      const mutated = extractFeatures(d);
+      const fdir = fictionalDirOf(`y05-${feature.replace(/\W/g, "_")}`, d);
+      const r = runCover(path.join(realDir, "2025-2026.json"), fdir);
+      assert(
+        `Y05 変異（${name}）で ${feature} が警告に出る`,
+        !mutated.has(feature) && r.status === 1 && r.stdout.includes(`minimal-resort: ${feature}（架空ケースなし）`),
+        `mutated.has=${mutated.has(feature)}\n${r.stdout}${r.stderr}`,
+      );
+    }
+  }
+
+  // ---- variants の適用 ----
+  {
+    const hoursish = minimal.products.find((p) => p.id === "day-pass-lunch");
+    const lunchOffers = minimal.offers.filter((o) => o.product_id === hoursish.id);
+    const variant = {
+      case_id: "T01",
+      doc_section: "T",
+      base: "a",
+      note_ja: "applyVariant のテスト",
+      remove: { offers: lunchOffers.map((o) => o.id), products: [hoursish.id] },
+      merge: { resort: { id: "fictional-t01" }, operating_hours: [minimal.operating_hours[0]] },
+      append: {
+        products: [{ ...clone(hoursish), id: "day-pass-lunch-x", validity: { mode: "hours_from_first_use", hours: 6, days: null, points: null, rides: null, start_time: null, end_time: null, notes_ja: null } }],
+        offers: lunchOffers.map((o) => ({ ...clone(o), id: `${o.id}-x`, product_id: "day-pass-lunch-x" })),
+      },
+    };
+    const before = JSON.stringify(minimal);
+    const out = applyVariant(minimal, variant);
+    assert("applyVariant: base は変更されない", JSON.stringify(minimal) === before);
+    assert("applyVariant: remove で消え、append で末尾に足される", !out.products.some((p) => p.id === hoursish.id) && out.products.at(-1).id === "day-pass-lunch-x" && out.offers.at(-1).product_id === "day-pass-lunch-x" && out.offers.length === minimal.offers.length, `${out.products.map((p) => p.id)}`);
+    assert("applyVariant: merge はオブジェクトを再帰マージし、配列は丸ごと置き換える", out.resort.id === "fictional-t01" && out.operating_hours.length === 1 && out.season.id === minimal.season.id);
+    assert("applyVariant: 適用順は remove→merge→append（同じidを消して足し直せる）", (() => {
+      const v = { case_id: "T02", remove: { products: ["day-pass-lunch"], offers: lunchOffers.map((o) => o.id) }, append: { products: [clone(hoursish)], offers: clone(lunchOffers) } };
+      const o2 = applyVariant(minimal, v);
+      return o2.products.filter((p) => p.id === "day-pass-lunch").length === 1 && o2.products.at(-1).id === "day-pass-lunch";
+    })());
+    let threw = false;
+    try {
+      applyVariant(minimal, { case_id: "T03", remove: { products: ["no-such-id"] } });
+    } catch {
+      threw = true;
+    }
+    assert("applyVariant: 存在しないidの remove は例外にする", threw);
+    threw = false;
+    try {
+      applyVariant(minimal, { case_id: "T04", append: { calculation_policy: [{}] } });
+    } catch {
+      threw = true;
+    }
+    assert("applyVariant: 追加できない配列名の append は例外にする", threw);
+    const f = extractFeatures(out);
+    assert("applyVariant: 適用結果から新しい特徴（6時間券）が取れる", f.has("product:validity.mode=hours_from_first_use"));
+    const outFile = writeJson(path.join(yTmp, "variant-out.json"), out);
+    for (const key of ORDER) {
+      const r = run(SCRIPTS[key], [outFile]);
+      assert(`applyVariant の結果が ${key} を通る`, r.status === 0, `${r.stdout}${r.stderr}`);
+    }
+
+    // loadFictional: 本体＋variants（base は "a" で引ける）。ファイル名が _ で始まるものは読まない
+    const dir = path.join(yTmp, "load-fictional");
+    writeJson(path.join(dir, "a.json"), minimal);
+    writeJson(path.join(dir, "_ignored.json"), minimal);
+    writeJson(path.join(dir, "variants", "T01.json"), variant);
+    const items = loadFictional(dir);
+    assert("loadFictional: 本体と variants を読み、_ 始まりは無視する", items.length === 2 && items[0].kind === "base" && items[1].id === "T01" && items[1].data.resort.id === "fictional-t01", items.map((i) => i.id).join(","));
+    const cli = run(APPLY_JS, [dir, "--out", path.join(yTmp, "applied")]);
+    assert("apply-fictional-variant CLI が適用結果を --out に書く", cli.status === 0 && fs.existsSync(path.join(yTmp, "applied", "T01.json")), `${cli.stdout}${cli.stderr}`);
+  }
+
+  // ---- tests/fixtures/fictional の全JSON（variants適用後を含む）が3スクリプトを通る ----
+  {
+    let items = [];
+    try {
+      items = loadFictional(FICTIONAL_DIR);
+    } catch (err) {
+      assert("fictional の読み込み（本体・variants）", false, err.message);
+    }
+    if (items.length === 0) {
+      console.log("  SKIP fictional ディレクトリに本体JSONがまだ無い（_ 始まりの補助JSONは対象外）");
+    }
+    for (const it of items) {
+      const f = writeJson(path.join(yTmp, "fictional-all", `${it.id}.json`), it.data);
+      for (const key of ORDER) {
+        const r = run(SCRIPTS[key], [f]);
+        assert(`fictional/${it.kind === "base" ? "" : "variants/"}${it.id} × ${key}`, r.status === 0, `${r.stdout}${r.stderr}`);
+      }
+    }
+    for (const key of ORDER) {
+      const r = run(SCRIPTS[key], [MINIMAL]);
+      assert(`fictional/_minimal-for-tests × ${key}`, r.status === 0, `${r.stdout}${r.stderr}`);
+    }
+  }
+
+  // ---- 実データ全施設の抽出 ----
+  if (!fs.existsSync(REAL_DIR)) {
+    console.log(`  SKIP 実データ（${REAL_DIR}）が無いため全施設の抽出テストを省略`);
+  } else {
+    const files = cover.listRealFiles(REAL_DIR);
+    const counts = new Map();
+    let threwOn = null;
+    for (const file of files) {
+      try {
+        for (const k of extractFeatures(JSON.parse(fs.readFileSync(file, "utf8")))) counts.set(k, (counts.get(k) ?? 0) + 1);
+      } catch (err) {
+        threwOn = `${file}: ${err.message}`;
+        break;
+      }
+    }
+    assert(`実データ ${files.length} ファイルの特徴抽出が例外なく終わる（特徴 ${counts.size} 種）`, files.length > 0 && threwOn === null, threwOn ?? "");
+
+    // coverage-report.md の 3-A（実在施設にあって架空ケースに無い特徴51件）→ 特徴キーの対応表
+    const SECTION_3A = {
+      "条件:併用可否=unknown": "offer:stacking=unknown",
+      "券:covers_hours_types=未指定": "product:covers=unspecified",
+      "条件:必要な証明=障がい者手帳": "offer:proof=disability_certificate",
+      "条件:必要な証明=予約確認メール・購入画面": "offer:proof=reservation_proof",
+      "条件:必要な証明=会員証・カード": "offer:proof=membership_card",
+      "レンタル:rentalsが空": "rental:absent",
+      "券:有効期間の記載(usable_within_ja)": "product:usable_within_stated",
+      "人物:年齢の重複を許す(allow_age_overlap)": "audience:allow_age_overlap",
+      "人物:年齢の基準日(age_basis_ja)の記載": "audience:age_basis_stated",
+      "条件:利用期間(use_period)": "offer:use_period",
+      "券:利用単位=unknown": "product:validity.mode=unknown",
+      "レンタル:1件に複数の対象区分": "rental:audience.multiple_per_item",
+      "人物:基準区分(大人)に年齢条件がある": "audience:default_has_age_max",
+      "条件:割引理由=prior_purchase": "offer:reason=prior_purchase",
+      "条件:資格=会員・メンバー・保有者": "offer:qualification=member_holder",
+      "条件:割引理由=membership": "offer:reason=membership",
+      "営業:nightが期間指定": "hours:night.period_limited",
+      "条件:必要な証明=クーポン・バウチャー": "offer:proof=coupon_voucher",
+      "レンタル:区分の決め方=年齢": "rental:audience_basis=age",
+      "条件:併用可否=not_stackable": "offer:stacking=not_stackable",
+      "条件:割引理由=app_registration": "offer:reason=app_registration",
+      "条件:資格=アプリ登録": "offer:qualification=app_registration",
+      "条件:資格=誕生日・年齢": "offer:qualification=birthday_or_age",
+      "条件:割引理由=unknown": "offer:reason=unknown",
+      "条件:資格に nominal_age": "offer:qualification.nominal_age",
+      "レンタル:カレンダーで料金が変わる": "rental:calendar_specific",
+      "営業:リフト別の運休(operating=false)": "hours:lift_suspended",
+      "人物:学校セット=junior_high_school": "audience:school_set=junior_high_school",
+      "レンタル:サイズの記載": "rental:size_stated_in_name",
+      "レンタル:区分の決め方=学校+年齢": "rental:audience_basis=school_and_age",
+      "条件:必要な証明=宿泊証明": "offer:proof=lodging_proof",
+      "同行者:時間券・時間帯券のルール": "party:timed_product",
+      "レンタル:延長(after_days=1/省略)": "rental:duration.mode=extra_day:after_days=1",
+      "券:covers=regular+early_morning": "product:covers=early_morning+regular",
+      "人物:学校セット=high_school": "audience:school_set=high_school",
+      "券:付いている物=unknown": "product:included=unknown",
+      "条件:変動価格(live_lookup_required)": "offer:price.live_lookup_required",
+      "人物:学校セット=elementary_school+high_school+junior_high_school": "audience:school_set=elementary_school+high_school+junior_high_school",
+      "人物:年齢区分が学校(high_school)の年齢範囲を部分的にまたぐ": "audience:age_crosses_school=high_school",
+      "レンタル:期間=unknown": "rental:duration.mode=unknown",
+      "券:calendar_dayは有るが基準区分向けofferが無い": "product:day_pass.no_offer_for_default_audience",
+      "券:付いている物=lesson": "product:included=lesson",
+      "時間帯固定:その他": "window:kind=other",
+      "時間帯固定:午後(ナイター途中まで)": "window:kind=afternoon_into_night",
+      "条件:販売期間(文言のみ)": "offer:sales_period=text_only",
+      "人物:学校セット=elementary_school+high_school+junior_high_school+preschool": "audience:school_set=elementary_school+high_school+junior_high_school+preschool",
+      "人物:学校セット=high_school+university": "audience:school_set=high_school+university",
+      "同行者:構成員の役割数=4": "party:components=4plus",
+      "同行者:利用期間の限定": "party:use_period",
+      // 「#36 レンタル:身分証の記載」は notes_ja にしか無い（notes を読まない方針）ため対応表に含めない
+      // 「#42 レンタル:期間が不明(unknown)」は #41 と同じ特徴
+    };
+    const absent = Object.entries(SECTION_3A).filter(([, key]) => !counts.has(key));
+    assert(
+      `coverage-report 3-A の特徴（${Object.keys(SECTION_3A).length} 件に対応するキー）が実データから全部出る`,
+      absent.length === 0,
+      absent.map(([name, key]) => `${name} → ${key}`).join("\n"),
+    );
+
+    // 実データで出た特徴キーは feature-catalog.md に載っている（「=」より前の名前で確認）
+    const catalog = fs.readFileSync(CATALOG_PATH, "utf8");
+    const catalogText = catalog.replace(/\\\|/g, "|");
+    const undocumented = [...counts.keys()]
+      .map((k) => k.split("=")[0])
+      .filter((name, i, arr) => arr.indexOf(name) === i)
+      .filter((name) => {
+        // `hours:<regular|night|early_morning>.xxx` と `yukimaji:<kind>.xxx` はテンプレート表記で載せている
+        const generic = name.replace(/^hours:(regular|night|early_morning)\./, "hours:<regular|night|early_morning>.").replace(/^yukimaji:(free|discount)\./, "yukimaji:<kind>.");
+        // 表では `a:b.x` / `.y` のように語尾だけ書く行があるので、語幹＋語尾の両方が載っていれば載っているとみなす
+        const dot = generic.lastIndexOf(".");
+        const stemTail = dot > 0 ? [generic.slice(0, dot), generic.slice(dot)] : null;
+        return !(
+          catalogText.includes(name) ||
+          catalogText.includes(generic) ||
+          (stemTail && catalogText.includes(stemTail[0]) && catalogText.includes(stemTail[1]))
+        );
+      });
+    assert("実データで出る特徴キーがすべて feature-catalog.md に載っている", undocumented.length === 0, undocumented.join("\n"));
+
+    // 実在施設に対する照合（架空ケースが揃うまでは警告が出る。ここでは落ちずに完走することだけ確認）
+    const fdir = fictionalDirOf("y-real-all", minimal);
+    const all = runCover(REAL_DIR, fdir, ["--json"]);
+    let parsed = null;
+    try {
+      parsed = JSON.parse(all.stdout);
+    } catch {
+      // 下のassertで失敗にする
+    }
+    assert("全実在施設の照合が完走し、結果をJSONで返す（警告件数は架空ケースの充足に依存）", (all.status === 0 || all.status === 1) && parsed && parsed.real_resorts === files.length, `${all.status}\n${all.stdout.slice(0, 200)}${all.stderr}`);
+  }
+
+  fs.rmSync(yTmp, { recursive: true, force: true });
 }
 
 console.log(`\n結果: ${passed} passed, ${failed} failed`);

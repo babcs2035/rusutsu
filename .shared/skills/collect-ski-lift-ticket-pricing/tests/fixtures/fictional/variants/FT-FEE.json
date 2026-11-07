@@ -1,0 +1,25 @@
+{
+  "case_id": "FT-FEE",
+  "doc_section": "3-A",
+  "base": "a",
+  "note_ja": "課金の単位（unit）が書かれていない手数料",
+  "append": {
+    "fees": [
+      {
+        "id": "fee-ic",
+        "name_ja": "ICカード発行手数料",
+        "official_label_ja": "ICカード発行手数料",
+        "amount": 500,
+        "currency": "JPY",
+        "applies_to_product_ids": [
+          "day"
+        ],
+        "applies_to_channel_ids": [],
+        "notes_ja": "返金されない。課金の単位の記載なし。",
+        "source_refs": [
+          "src-price"
+        ]
+      }
+    ]
+  }
+}

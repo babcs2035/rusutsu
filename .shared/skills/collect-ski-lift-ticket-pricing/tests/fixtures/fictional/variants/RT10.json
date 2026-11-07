@@ -1,0 +1,16 @@
+{
+  "case_id": "RT10",
+  "doc_section": "RT",
+  "base": "r",
+  "note_ja": "ボードのレンタルが無い（スキーのレンタルしか無い）",
+  "remove": {
+    "rentals": [
+      "board-set-a",
+      "board-set-c",
+      "board-full-a",
+      "board-full-c",
+      "snowboard-a",
+      "board-boots-a"
+    ]
+  }
+}

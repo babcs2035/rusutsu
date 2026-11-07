@@ -1,0 +1,14 @@
+{
+  "case_id": "YM76",
+  "doc_section": "YM2",
+  "base": "ym",
+  "note_ja": "2施設で無料回数を合算（白馬コルチナ＋白馬乗鞍型）",
+  "merge": {
+    "yukimaji": {
+      "shared_use_count_with_resorts": [
+        "fictional-ym-pair"
+      ],
+      "notes_ja": "無料クーポンは相手スキー場と合算で2回まで。"
+    }
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "case_id": "K07",
+  "doc_section": "K",
+  "base": "a",
+  "note_ja": "温泉入浴付き9時間券だけがある",
+  "append": {
+    "products": [
+      {
+        "id": "h9-bath",
+        "name_ja": "温泉入浴付き9時間券",
+        "official_label_ja": "温泉入浴付き9時間券",
+        "validity": {
+          "hours": 9,
+          "days": null,
+          "points": null,
+          "rides": null,
+          "start_time": null,
+          "end_time": null,
+          "notes_ja": null,
+          "mode": "hours_from_first_use"
+        },
+        "included_items": [
+          {
+            "type": "bath",
+            "name_ja": "温泉入浴",
+            "official_label_ja": "温泉入浴",
+            "description_ja": "温泉入浴付き。",
+            "value_amount": null,
+            "notes_ja": null,
+            "source_refs": [
+              "src-price"
+            ]
+          }
+        ],
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ]
+      }
+    ],
+    "offers": [
+      {
+        "id": "o-h9-bath",
+        "name_ja": "o-h9-bath",
+        "official_label_ja": "o-h9-bath",
+        "discount_reasons": [],
+        "product_id": "h9-bath",
+        "audience_ids": [
+          "adult"
+        ],
+        "calendar_ids": [
+          "cal-all"
+        ],
+        "channel_ids": [
+          "window"
+        ],
+        "sales_period": null,
+        "use_period": null,
+        "price": {
+          "currency": "JPY",
+          "amount": 6000,
+          "notes_ja": null
+        },
+        "requirements": [],
+        "stacking": {
+          "stackable_with_other_discounts": "not_stackable",
+          "notes_ja": "他の割引との併用不可（架空の公式記載）。"
+        },
+        "source_refs": [
+          "src-price"
+        ],
+        "notes_ja": null
+      }
+    ]
+  },
+  "remove": {
+    "products": [
+      "day",
+      "h4",
+      "am",
+      "pm"
+    ],
+    "offers": [
+      "o-day",
+      "o-h4",
+      "o-am",
+      "o-pm"
+    ]
+  }
+}

@@ -1,0 +1,1 @@
+{"case_id": "FT-YM-REQUIREMENTS", "doc_section": "FT", "base": "ym", "note_ja": "施設独自の受付条件がある（マウントレースイ型。「受付場所：リフト券売り場」を requirements_ja に記録）", "merge": {"yukimaji": {"requirements_ja": ["受付場所：リフト券売り場"]}}}

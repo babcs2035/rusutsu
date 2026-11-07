@@ -1,0 +1,80 @@
+{
+  "case_id": "Q06",
+  "doc_section": "Q",
+  "base": "a",
+  "note_ja": "「20才割」（2005/4/2〜2006/4/1生まれ 2,000円、nominal_age: 20）",
+  "merge": {
+    "data_quality": {
+      "status": "needs_review",
+      "human_review_required": [
+        {
+          "what_ja": "20才割の割引理由",
+          "why_ja": "公式資料から割引理由を特定できない（年齢キャンペーン）。",
+          "where_ja": "page-001/page.html の20才割の記載",
+          "source_refs": [
+            "src-price"
+          ],
+          "related_ids": [
+            "o-day-20"
+          ],
+          "notes_ja": null
+        }
+      ]
+    }
+  },
+  "append": {
+    "offers": [
+      {
+        "id": "o-day-20",
+        "name_ja": "20才割1日券",
+        "official_label_ja": "20才割1日券",
+        "discount_reasons": [
+          "unknown"
+        ],
+        "product_id": "day",
+        "audience_ids": [
+          "adult"
+        ],
+        "calendar_ids": [
+          "cal-all"
+        ],
+        "channel_ids": [
+          "window"
+        ],
+        "sales_period": null,
+        "use_period": null,
+        "price": {
+          "currency": "JPY",
+          "amount": 2000,
+          "notes_ja": null
+        },
+        "requirements": [
+          {
+            "description_ja": "窓口で年齢を証明する書類を提示する。",
+            "proof_ja": "年齢を証明する書類",
+            "source_refs": [
+              "src-price"
+            ]
+          }
+        ],
+        "stacking": {
+          "stackable_with_other_discounts": "not_stackable",
+          "notes_ja": "他の割引との併用不可（架空の公式記載）。"
+        },
+        "source_refs": [
+          "src-price"
+        ],
+        "notes_ja": null,
+        "target_qualification": {
+          "official_label_ja": "2005年4月2日〜2006年4月1日生まれの方",
+          "description_ja": "20歳（2005年4月2日〜2006年4月1日生まれ）の方",
+          "source_refs": [
+            "src-price"
+          ],
+          "notes_ja": null,
+          "nominal_age": 20
+        }
+      }
+    ]
+  }
+}

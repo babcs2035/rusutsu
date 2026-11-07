@@ -1,0 +1,19 @@
+{
+  "case_id": "YM68",
+  "doc_section": "YM2",
+  "base": "ym",
+  "note_ja": "レンタル割引に「Instagramフォロー必須」（ロマンスの神様型）",
+  "merge": {
+    "yukimaji": {
+      "rental_benefit": {
+        "description_ja": "レンタル20％OFF",
+        "price_effect": {
+          "type": "discount_percent",
+          "percent": 20
+        },
+        "applies_with": "discount_coupon",
+        "requirements_ja": "Instagramフォロー必須"
+      }
+    }
+  }
+}

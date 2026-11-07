@@ -1,0 +1,39 @@
+{
+  "case_id": "RT01",
+  "doc_section": "RT",
+  "base": "a",
+  "note_ja": "半日レンタル（13:00〜）3,500円、1日 5,000円",
+  "append": {
+    "rentals": [
+      {
+        "id": "r-set-half",
+        "name_ja": "スキーセット 大人 半日（13:00〜）",
+        "official_label_ja": "スキーセット 大人 半日（13:00〜）",
+        "shop_name_ja": "センターハウス レンタル",
+        "items": [
+          "ski_set"
+        ],
+        "grade_ja": "スタンダード",
+        "audience_ids": [
+          "adult"
+        ],
+        "calendar_ids": [],
+        "channel_ids": [],
+        "duration": {
+          "mode": "half_day",
+          "start_time": "13:00"
+        },
+        "price": {
+          "currency": "JPY",
+          "amount": 3500
+        },
+        "target_qualification": null,
+        "purchase_deadline": null,
+        "source_refs": [
+          "src-price"
+        ],
+        "usable_at_night": null
+      }
+    ]
+  }
+}

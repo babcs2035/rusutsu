@@ -1,0 +1,64 @@
+{
+  "case_id": "CH20",
+  "doc_section": "CH",
+  "base": "a",
+  "note_ja": "レンタルの子どもが身長（130cm以下）で決まる（基準区分に紐付け、条件付き候補）",
+  "merge": {
+    "audiences": [
+      {
+        "id": "adult",
+        "name_ja": "大人",
+        "official_label_ja": "大人",
+        "age_min": null,
+        "age_max": null,
+        "age_basis_ja": null,
+        "school_levels": [],
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ],
+        "is_default": true
+      }
+    ]
+  },
+  "append": {
+    "rentals": [
+      {
+        "id": "r-set-day-130",
+        "name_ja": "スキーセット 子ども（身長130cm以下） 1日",
+        "official_label_ja": "スキーセット 子ども（身長130cm以下） 1日",
+        "shop_name_ja": "センターハウス レンタル",
+        "items": [
+          "ski_set"
+        ],
+        "grade_ja": "スタンダード",
+        "audience_ids": [
+          "adult"
+        ],
+        "calendar_ids": [],
+        "channel_ids": [],
+        "duration": {
+          "mode": "day"
+        },
+        "price": {
+          "currency": "JPY",
+          "amount": 3500
+        },
+        "target_qualification": {
+          "official_label_ja": "身長130cm以下",
+          "description_ja": "身長130cm以下の子ども",
+          "source_refs": [
+            "src-price"
+          ],
+          "notes_ja": null
+        },
+        "purchase_deadline": null,
+        "source_refs": [
+          "src-price"
+        ],
+        "usable_at_night": null,
+        "notes_ja": "金額は文書に無く仮置き。"
+      }
+    ]
+  }
+}

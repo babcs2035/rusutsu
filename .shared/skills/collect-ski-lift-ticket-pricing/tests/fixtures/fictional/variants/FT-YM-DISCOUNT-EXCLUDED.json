@@ -1,0 +1,1 @@
+{"case_id": "FT-YM-DISCOUNT-EXCLUDED", "doc_section": "FT", "base": "ym", "note_ja": "割引クーポンにも除外期間がある（たんばら型。無料と割引が同じ平日限定・同じ除外日12/28〜31）", "merge": {"yukimaji": {"discount_coupon": {"day_rule": "weekday", "day_rule_text_ja": "平日限定", "excluded_date_ranges": [{"start": "2026-12-28", "end": "2026-12-31"}], "period_text_ja": "《平日限定》12/20～2027/3/31（※12/28～12/31を除く）"}}}}

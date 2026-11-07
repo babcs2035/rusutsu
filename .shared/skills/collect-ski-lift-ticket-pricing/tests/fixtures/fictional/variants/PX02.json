@@ -1,0 +1,96 @@
+{
+  "case_id": "PX02",
+  "doc_section": "PX",
+  "base": "p1",
+  "note_ja": "1ルールに4役割（大人・中学生・小学生・未就学）のファミリーパック 12,000円",
+  "append": {
+    "party_rules": [
+      {
+        "id": "rule-four-roles",
+        "name_ja": "ファミリーパック（4役割）",
+        "official_label_ja": "ファミリーパック（4役割）",
+        "description_ja": "大人2名・中学生1名・小学生1名・未就学1名の1日券セットで合計12,000円。",
+        "calendar_ids": [
+          "cal-all"
+        ],
+        "channel_ids": [
+          "window"
+        ],
+        "components": [
+          {
+            "role_ja": "大人",
+            "audience_ids": [
+              "adult"
+            ],
+            "product_ids": [
+              "day"
+            ],
+            "offer_ids": [],
+            "min_count": 2,
+            "max_count": 2,
+            "per_qualifying_count": null,
+            "price_effect": {
+              "type": "fixed_total",
+              "amount": 12000,
+              "percent": null,
+              "notes_ja": "セット全体の合計金額"
+            },
+            "notes_ja": null
+          },
+          {
+            "role_ja": "中学生",
+            "audience_ids": [
+              "junior"
+            ],
+            "product_ids": [
+              "day"
+            ],
+            "offer_ids": [],
+            "min_count": 1,
+            "max_count": 1,
+            "per_qualifying_count": null,
+            "price_effect": null,
+            "notes_ja": null
+          },
+          {
+            "role_ja": "小学生",
+            "audience_ids": [
+              "elementary"
+            ],
+            "product_ids": [
+              "day"
+            ],
+            "offer_ids": [],
+            "min_count": 1,
+            "max_count": 1,
+            "per_qualifying_count": null,
+            "price_effect": null,
+            "notes_ja": null
+          },
+          {
+            "role_ja": "未就学児",
+            "audience_ids": [
+              "preschool"
+            ],
+            "product_ids": [
+              "day"
+            ],
+            "offer_ids": [],
+            "min_count": 1,
+            "max_count": 1,
+            "per_qualifying_count": null,
+            "price_effect": null,
+            "notes_ja": null
+          }
+        ],
+        "sales_period": null,
+        "use_period": null,
+        "requirements": [],
+        "source_refs": [
+          "src-price"
+        ],
+        "notes_ja": null
+      }
+    ]
+  }
+}

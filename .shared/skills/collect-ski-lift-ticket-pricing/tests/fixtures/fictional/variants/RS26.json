@@ -1,0 +1,48 @@
+{
+  "case_id": "RS26",
+  "doc_section": "RS",
+  "base": "rs",
+  "note_ja": "レンタルの子どもが「小学生かつ12歳以下」（AND条件）",
+  "merge": {
+    "rental_audiences": [
+      {
+        "id": "rental-adult",
+        "name_ja": "大人",
+        "official_label_ja": "大人（高校生以上）",
+        "school_levels": [],
+        "age_min": null,
+        "age_max": null,
+        "is_default": true,
+        "source_refs": [
+          "src-price"
+        ]
+      },
+      {
+        "id": "rental-child",
+        "name_ja": "子ども",
+        "official_label_ja": "子ども（小学生かつ12歳以下）",
+        "school_levels": [
+          "elementary_school"
+        ],
+        "age_min": null,
+        "age_max": 12,
+        "is_default": false,
+        "source_refs": [
+          "src-price"
+        ]
+      },
+      {
+        "id": "rental-senior",
+        "name_ja": "シニア",
+        "official_label_ja": "シニア（60歳以上）",
+        "school_levels": [],
+        "age_min": 60,
+        "age_max": null,
+        "is_default": false,
+        "source_refs": [
+          "src-price"
+        ]
+      }
+    ]
+  }
+}

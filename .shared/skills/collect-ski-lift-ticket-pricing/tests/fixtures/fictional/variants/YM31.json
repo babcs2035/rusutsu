@@ -1,0 +1,17 @@
+{
+  "case_id": "YM31",
+  "doc_section": "YM2",
+  "base": "ym",
+  "note_ja": "無料・割引ともナイター利用可（night_policy: allowed）",
+  "merge": {
+    "yukimaji": {
+      "free_coupon": {
+        "night_policy": "allowed",
+        "notes_ja": "ナイター利用可。"
+      },
+      "discount_coupon": {
+        "night_policy": "allowed"
+      }
+    }
+  }
+}

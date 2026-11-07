@@ -1,0 +1,73 @@
+{
+  "case_id": "P24",
+  "doc_section": "P",
+  "base": "p5",
+  "note_ja": "子育て応援パック: 大人1〜2名と18歳以下1名以上で全員1名 3,500円（ファミリー券の施設とは別の施設）",
+  "merge": {
+    "party_rules": [
+      {
+        "id": "rule-kosodate",
+        "name_ja": "子育て応援パック",
+        "official_label_ja": "子育て応援パック",
+        "description_ja": "大人1〜2名と18歳以下1名以上で、全員1名3,500円。",
+        "calendar_ids": [
+          "cal-all"
+        ],
+        "channel_ids": [
+          "window"
+        ],
+        "components": [
+          {
+            "role_ja": "大人（1〜2名）",
+            "audience_ids": [
+              "adult"
+            ],
+            "product_ids": [
+              "day"
+            ],
+            "offer_ids": [],
+            "min_count": 1,
+            "max_count": 2,
+            "per_qualifying_count": null,
+            "price_effect": {
+              "type": "fixed_per_person",
+              "amount": 3500,
+              "percent": null,
+              "notes_ja": null
+            },
+            "notes_ja": null
+          },
+          {
+            "role_ja": "18歳以下（1名以上）",
+            "audience_ids": [
+              "elementary",
+              "junior",
+              "highschool"
+            ],
+            "product_ids": [
+              "day"
+            ],
+            "offer_ids": [],
+            "min_count": 1,
+            "max_count": null,
+            "per_qualifying_count": null,
+            "price_effect": {
+              "type": "fixed_per_person",
+              "amount": 3500,
+              "percent": null,
+              "notes_ja": null
+            },
+            "notes_ja": null
+          }
+        ],
+        "sales_period": null,
+        "use_period": null,
+        "requirements": [],
+        "source_refs": [
+          "src-price"
+        ],
+        "notes_ja": null
+      }
+    ]
+  }
+}

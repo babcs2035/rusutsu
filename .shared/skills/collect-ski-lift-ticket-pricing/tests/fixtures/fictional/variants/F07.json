@@ -1,0 +1,44 @@
+{
+  "case_id": "F07",
+  "doc_section": "F",
+  "base": "f",
+  "note_ja": "通常営業が不明で、ナイター（16:00〜20:00）がある日",
+  "append": {
+    "calendars": [
+      {
+        "id": "cal-nightsat",
+        "name_ja": "土曜",
+        "official_label_ja": null,
+        "included_day_types": [
+          "saturday"
+        ],
+        "included_dates": [],
+        "included_date_ranges": [],
+        "excluded_dates": [],
+        "excluded_date_ranges": [],
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ]
+      }
+    ],
+    "operating_hours": [
+      {
+        "id": "oh-night",
+        "name_ja": "ナイター営業",
+        "official_label_ja": null,
+        "hours_type": "night",
+        "calendar_ids": [
+          "cal-nightsat"
+        ],
+        "start_time": "16:00",
+        "end_time": "20:00",
+        "lifts": [],
+        "notes_ja": null,
+        "source_refs": [
+          "src-info"
+        ]
+      }
+    ]
+  }
+}

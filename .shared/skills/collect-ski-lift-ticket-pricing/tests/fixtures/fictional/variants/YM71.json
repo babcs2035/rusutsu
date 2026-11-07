@@ -1,0 +1,30 @@
+{
+  "case_id": "YM71",
+  "doc_section": "YM2",
+  "base": "ym",
+  "note_ja": "割引が「30%OFF」（カムイみさか・網張・夏油型）",
+  "merge": {
+    "yukimaji": {
+      "discount_coupon": {
+        "product_ids": [
+          "day"
+        ],
+        "price_rules": [
+          {
+            "product_ids": [
+              "day"
+            ],
+            "price_effect": {
+              "type": "discount_percent",
+              "percent": 30
+            },
+            "official_label_ja": "1日リフト券30%OFF",
+            "source_refs": [
+              "src-majibu"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

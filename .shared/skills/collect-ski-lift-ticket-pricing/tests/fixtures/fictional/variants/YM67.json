@@ -1,0 +1,11 @@
+{
+  "case_id": "YM67",
+  "doc_section": "YM2",
+  "base": "ym",
+  "note_ja": "「外部レンタル利用時は雪マジ対象外」（ユートピアサイオト・くじゅう型）",
+  "merge": {
+    "yukimaji": {
+      "rental_restriction_ja": "外部レンタル利用時は雪マジ対象外。場内のレンタルを使うこと。"
+    }
+  }
+}

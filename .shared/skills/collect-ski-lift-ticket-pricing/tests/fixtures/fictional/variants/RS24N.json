@@ -1,0 +1,28 @@
+{
+  "case_id": "RS24N",
+  "doc_section": "RS",
+  "base": "rs",
+  "note_ja": "レンタルが空で、公式に「レンタルなし」と確認済み（data_quality.notes_ja に記録）",
+  "merge": {
+    "rentals": [],
+    "data_quality": {
+      "status": "complete",
+      "human_review_required": [],
+      "illegible_items": [],
+      "unresolved_questions": [
+        {
+          "id": "q-yearend",
+          "question_ja": "年末年始の期間・料金の記載が資料に無い（平日・休日料金のみ）。",
+          "related_ids": [
+            "cal-weekday",
+            "cal-holiday"
+          ],
+          "source_refs": [
+            "src-price"
+          ]
+        }
+      ],
+      "notes_ja": "公式サイトにレンタルの案内が無いことを確認済み（レンタルなし）。"
+    }
+  }
+}

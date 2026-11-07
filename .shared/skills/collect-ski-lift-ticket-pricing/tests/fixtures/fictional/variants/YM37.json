@@ -1,0 +1,47 @@
+{
+  "case_id": "YM37",
+  "doc_section": "YM2",
+  "base": "ym",
+  "note_ja": "割引が回数で変わる（3・4回目 2,000円引き、5回以降 1,000円引き。ふじてん型）",
+  "merge": {
+    "yukimaji": {
+      "discount_coupon": {
+        "product_ids": [
+          "day"
+        ],
+        "max_uses": null,
+        "uses_text_ja": "何度でも利用可（3・4回目は2,000円引き、5回目以降は1,000円引き）",
+        "price_rules": [
+          {
+            "product_ids": [
+              "day"
+            ],
+            "from_use_number": 3,
+            "price_effect": {
+              "type": "discount_amount",
+              "amount": 2000
+            },
+            "official_label_ja": "3・4回目 2,000円引き",
+            "source_refs": [
+              "src-majibu"
+            ]
+          },
+          {
+            "product_ids": [
+              "day"
+            ],
+            "from_use_number": 5,
+            "price_effect": {
+              "type": "discount_amount",
+              "amount": 1000
+            },
+            "official_label_ja": "5回目以降 1,000円引き",
+            "source_refs": [
+              "src-majibu"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

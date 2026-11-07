@@ -1,0 +1,18 @@
+{
+  "case_id": "YM63",
+  "doc_section": "YM2",
+  "base": "ym",
+  "note_ja": "ICカード発行手数料 200円（返金なし。パルコール嬬恋型）",
+  "merge": {
+    "yukimaji": {
+      "fees": [
+        {
+          "name_ja": "ICカード発行手数料",
+          "amount": 200,
+          "refundable": false,
+          "notes_ja": "返金なし"
+        }
+      ]
+    }
+  }
+}

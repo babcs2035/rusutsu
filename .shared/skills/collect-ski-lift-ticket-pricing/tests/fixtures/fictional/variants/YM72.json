@@ -1,0 +1,49 @@
+{
+  "case_id": "YM72",
+  "doc_section": "YM2",
+  "base": "ym",
+  "note_ja": "割引後の金額が平日・土日祝で別（沼尻・苗場型。年末年始は土日祝扱い）",
+  "merge": {
+    "yukimaji": {
+      "discount_coupon": {
+        "product_ids": [
+          "day"
+        ],
+        "price_rules": [
+          {
+            "product_ids": [
+              "day"
+            ],
+            "calendar_ids": [
+              "cal-weekday"
+            ],
+            "price_effect": {
+              "type": "fixed_total",
+              "amount": 2500
+            },
+            "official_label_ja": "平日 2,500円",
+            "source_refs": [
+              "src-majibu"
+            ]
+          },
+          {
+            "product_ids": [
+              "day"
+            ],
+            "calendar_ids": [
+              "cal-holiday"
+            ],
+            "price_effect": {
+              "type": "fixed_total",
+              "amount": 2750
+            },
+            "official_label_ja": "土日祝 2,750円",
+            "source_refs": [
+              "src-majibu"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

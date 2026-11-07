@@ -1,0 +1,27 @@
+{
+  "case_id": "RS24",
+  "doc_section": "RS",
+  "base": "rs",
+  "note_ja": "レンタルが空（未収集）の施設",
+  "merge": {
+    "rentals": [],
+    "data_quality": {
+      "status": "complete",
+      "human_review_required": [],
+      "illegible_items": [],
+      "unresolved_questions": [
+        {
+          "id": "q-yearend",
+          "question_ja": "年末年始の期間・料金の記載が資料に無い（平日・休日料金のみ）。",
+          "related_ids": [
+            "cal-weekday",
+            "cal-holiday"
+          ],
+          "source_refs": [
+            "src-price"
+          ]
+        }
+      ]
+    }
+  }
+}

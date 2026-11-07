@@ -1,0 +1,19 @@
+{
+  "case_id": "YM49",
+  "doc_section": "YM2",
+  "base": "ym",
+  "note_ja": "「年末年始（12/29〜1/1）、土日祝は利用不可」（高鷲型）",
+  "merge": {
+    "yukimaji": {
+      "free_coupon": {
+        "excluded_date_ranges": [
+          {
+            "start": "2026-12-29",
+            "end": "2027-01-01"
+          }
+        ],
+        "holiday_treatment_ja": "年末年始（12/29〜1/1）、土日祝は利用不可"
+      }
+    }
+  }
+}

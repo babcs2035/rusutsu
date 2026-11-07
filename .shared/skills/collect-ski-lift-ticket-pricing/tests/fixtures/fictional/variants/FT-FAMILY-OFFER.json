@@ -1,0 +1,44 @@
+{
+  "case_id": "FT-FAMILY-OFFER",
+  "doc_section": "3-A",
+  "base": "p1",
+  "note_ja": "割引理由が family のoffer（ファミリー用の1日券。同行者ルールではなく offer で表す型）",
+  "append": {
+    "offers": [
+      {
+        "id": "o-day-family",
+        "name_ja": "ファミリー1日券（大人）",
+        "official_label_ja": "ファミリー1日券（大人）",
+        "discount_reasons": [
+          "family"
+        ],
+        "product_id": "day",
+        "audience_ids": [
+          "adult"
+        ],
+        "calendar_ids": [
+          "cal-all"
+        ],
+        "channel_ids": [
+          "window"
+        ],
+        "sales_period": null,
+        "use_period": null,
+        "price": {
+          "currency": "JPY",
+          "amount": 5500,
+          "notes_ja": "金額は文書に無く仮置き。"
+        },
+        "requirements": [],
+        "stacking": {
+          "stackable_with_other_discounts": "not_stackable",
+          "notes_ja": "他の割引との併用不可（架空の公式記載）。"
+        },
+        "source_refs": [
+          "src-price"
+        ],
+        "notes_ja": null
+      }
+    ]
+  }
+}

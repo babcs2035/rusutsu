@@ -1,0 +1,73 @@
+{
+  "case_id": "FT-ILLEGIBLE",
+  "doc_section": "3-A",
+  "base": "a",
+  "note_ja": "料金が判読不能なoffer（amount: null と illegible_items）",
+  "merge": {
+    "data_quality": {
+      "status": "needs_review",
+      "human_review_required": [
+        {
+          "what_ja": "判読不能な料金",
+          "why_ja": "料金表の画像が低解像度で金額を読めない。",
+          "where_ja": "page-001/page.html の料金表画像",
+          "source_refs": [
+            "src-price"
+          ],
+          "related_ids": [
+            "o-night-illegible"
+          ],
+          "notes_ja": null
+        }
+      ],
+      "illegible_items": [
+        {
+          "id": "illegible-night",
+          "description_ja": "料金表画像の該当セルが判読不能。",
+          "source_refs": [
+            "src-price"
+          ],
+          "related_offer_ids": [
+            "o-night-illegible"
+          ]
+        }
+      ]
+    }
+  },
+  "append": {
+    "offers": [
+      {
+        "id": "o-night-illegible",
+        "name_ja": "ナイター料金（判読不能）",
+        "official_label_ja": "ナイター料金（判読不能）",
+        "discount_reasons": [],
+        "product_id": "day",
+        "audience_ids": [
+          "adult"
+        ],
+        "calendar_ids": [
+          "cal-all"
+        ],
+        "channel_ids": [
+          "window"
+        ],
+        "sales_period": null,
+        "use_period": null,
+        "price": {
+          "currency": "JPY",
+          "amount": null,
+          "notes_ja": "料金表の画像が低解像度で金額が判読不能。"
+        },
+        "requirements": [],
+        "stacking": {
+          "stackable_with_other_discounts": "not_stackable",
+          "notes_ja": "他の割引との併用不可（架空の公式記載）。"
+        },
+        "source_refs": [
+          "src-price"
+        ],
+        "notes_ja": null
+      }
+    ]
+  }
+}

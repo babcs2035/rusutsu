@@ -1,0 +1,13 @@
+{
+  "case_id": "YM70",
+  "doc_section": "YM2",
+  "base": "ym",
+  "note_ja": "割引額の記載なし（無料だけ。フェアリーランドかねやま型）",
+  "merge": {
+    "yukimaji": {
+      "discount_coupon": null,
+      "benefit_text_ja": "【無料クーポン】1日リフト券（19歳～22歳の間で2回利用可）",
+      "rental_benefit": null
+    }
+  }
+}

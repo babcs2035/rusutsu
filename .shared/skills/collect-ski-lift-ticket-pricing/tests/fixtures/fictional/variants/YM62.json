@@ -1,0 +1,18 @@
+{
+  "case_id": "YM62",
+  "doc_section": "YM2",
+  "base": "ym",
+  "note_ja": "「1日リフト券無料（入場料600円別途）」。入場料は返金されない追加費用（めがひら・イエティ型）",
+  "merge": {
+    "yukimaji": {
+      "fees": [
+        {
+          "name_ja": "入場料",
+          "amount": 600,
+          "refundable": false,
+          "notes_ja": "別途必要"
+        }
+      ]
+    }
+  }
+}

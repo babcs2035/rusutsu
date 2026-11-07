@@ -1,0 +1,14 @@
+{
+  "case_id": "YM52",
+  "doc_section": "YM2",
+  "base": "ym",
+  "note_ja": "「平日・土曜限定」（恩原高原型）",
+  "merge": {
+    "yukimaji": {
+      "free_coupon": {
+        "day_rule": "weekday_and_saturday",
+        "day_rule_text_ja": "平日・土曜限定"
+      }
+    }
+  }
+}

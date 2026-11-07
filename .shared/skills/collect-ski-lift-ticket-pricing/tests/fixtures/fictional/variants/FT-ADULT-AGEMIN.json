@@ -1,0 +1,24 @@
+{
+  "case_id": "FT-ADULT-AGEMIN",
+  "doc_section": "3-A",
+  "base": "a",
+  "note_ja": "基準区分（大人）に年齢の下限がある（13歳以上）",
+  "merge": {
+    "audiences": [
+      {
+        "id": "adult",
+        "name_ja": "大人",
+        "official_label_ja": "おとな（13歳以上）",
+        "age_min": 13,
+        "age_max": null,
+        "age_basis_ja": "利用日時点の年齢",
+        "school_levels": [],
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ],
+        "is_default": true
+      }
+    ]
+  }
+}

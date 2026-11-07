@@ -330,6 +330,85 @@ function checkFile(file) {
   }
 
   for (const [i, fee] of (data.fees ?? []).entries()) {
+    checkLabel(reporter, `/fees/${i}/unit`, fee.unit, "fee_units", {
+      nullable: true,
+    });
+  }
+
+  if (data.yukimaji) {
+    const y = data.yukimaji;
+    checkLabel(reporter, "/yukimaji/status", y.status, "yukimaji_statuses");
+    if (y.status === "preparing" && (y.free_coupon || y.discount_coupon)) {
+      reporter.error(
+        "/yukimaji/status",
+        "特典内容が書かれているなら status は listed にしてください（preparing は内容が無い施設だけ）",
+      );
+    }
+    if (y.status === "listed" && !y.free_coupon) {
+      reporter.error(
+        "/yukimaji/free_coupon",
+        "雪マジの掲載施設には無料クーポンがあります。掲載文の【無料クーポン】を free_coupon に記録してください",
+      );
+    }
+    const productIds = new Set((data.products ?? []).map((p) => p.id));
+    const calendarIds = new Set((data.calendars ?? []).map((cal) => cal.id));
+    for (const key of ["free_coupon", "discount_coupon"]) {
+      const coupon = y[key];
+      if (!coupon) continue;
+      const at = `/yukimaji/${key}`;
+      checkLabel(reporter, `${at}/day_rule`, coupon.day_rule, "yukimaji_day_rules");
+      checkLabel(
+        reporter,
+        `${at}/night_policy`,
+        coupon.night_policy,
+        "yukimaji_night_policies",
+      );
+      for (const pid of coupon.product_ids ?? []) {
+        if (!productIds.has(pid)) {
+          reporter.error(`${at}/product_ids`, `products に無い券 "${pid}" を参照しています`);
+        }
+      }
+      if (coupon.day_rule === "by_period" && !(coupon.period_rules?.length > 0)) {
+        reporter.error(`${at}/period_rules`, "day_rule が by_period のときは period_rules に期間ごとの曜日条件を書いてください");
+      }
+      if (coupon.day_rule === "listed_dates" && !(coupon.listed_dates?.length > 0)) {
+        reporter.error(`${at}/listed_dates`, "day_rule が listed_dates のときは listed_dates に日付を書いてください");
+      }
+      if (!coupon.period && !coupon.period_approximate) {
+        reporter.error(`${at}/period`, "対象期間が無いなら period_approximate: true と period_text_ja で概数を残してください");
+      }
+      for (const [j, rule] of (coupon.period_rules ?? []).entries()) {
+        checkLabel(reporter, `${at}/period_rules/${j}/day_rule`, rule.day_rule, "yukimaji_day_rules");
+      }
+      for (const [j, rule] of (coupon.price_rules ?? []).entries()) {
+        checkLabel(reporter, `${at}/price_rules/${j}/price_effect/type`, rule.price_effect?.type, "price_effect_types");
+        const type = rule.price_effect?.type;
+        if (key === "free_coupon" && type !== "free") {
+          reporter.error(`${at}/price_rules/${j}/price_effect/type`, "無料クーポンの price_effect は free です");
+        }
+        if ((type === "fixed_total" || type === "discount_amount") && rule.price_effect?.amount == null) {
+          reporter.error(`${at}/price_rules/${j}/price_effect/amount`, "割引後の金額・割引額を amount に書いてください");
+        }
+        if (type === "discount_percent" && rule.price_effect?.percent == null) {
+          reporter.error(`${at}/price_rules/${j}/price_effect/percent`, "割引率を percent に書いてください（半額は 50）");
+        }
+        for (const cid of rule.calendar_ids ?? []) {
+          if (!calendarIds.has(cid)) reporter.error(`${at}/price_rules/${j}/calendar_ids`, `calendars に無い "${cid}" を参照しています`);
+        }
+        for (const pid of rule.product_ids ?? []) {
+          if (!productIds.has(pid)) reporter.error(`${at}/price_rules/${j}/product_ids`, `products に無い券 "${pid}" を参照しています`);
+        }
+      }
+    }
+    if (y.rental_benefit) {
+      checkLabel(reporter, "/yukimaji/rental_benefit/applies_with", y.rental_benefit.applies_with, "yukimaji_rental_benefit_applies", { nullable: true });
+      if (y.rental_benefit.price_effect) {
+        checkLabel(reporter, "/yukimaji/rental_benefit/price_effect/type", y.rental_benefit.price_effect.type, "price_effect_types");
+      }
+    }
+  }
+
+  for (const [i, fee] of (data.fees ?? []).entries()) {
     // ★fees に載るのは「返ってこない追加負担」だけ。
     // 知りたいのは実質いくら払うかなので、返金される保証金は負担ではなく記録しない。
     // 特定の状況でのみ発生する費用も「普通に買ったらいくらか」に答えないので記録しない

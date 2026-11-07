@@ -1,0 +1,1 @@
+{"case_id": "FT-YM-FREE-WEEKEND", "doc_section": "FT", "base": "ym", "note_ja": "無料クーポンが土日祝だけ（羽黒山型。《土日祝限定》、年末年始は除外）", "merge": {"yukimaji": {"free_coupon": {"day_rule": "weekend_holiday", "day_rule_text_ja": "《土日祝限定》"}}}}

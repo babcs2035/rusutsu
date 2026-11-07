@@ -1,0 +1,84 @@
+{
+  "case_id": "PF04",
+  "doc_section": "PF",
+  "base": "a",
+  "note_ja": "早割に「QRコードの提示」が必要",
+  "append": {
+    "channels": [
+      {
+        "id": "web-shop",
+        "name_ja": "公式WEBチケットストア",
+        "official_label_ja": "公式WEBチケットストア",
+        "url": "https://example.com/fictional-a/shop/",
+        "location_ja": null,
+        "purchase_deadline_ja": "利用日前日23:59まで",
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ]
+      }
+    ],
+    "offers": [
+      {
+        "id": "o-day-early",
+        "name_ja": "早割1日券",
+        "official_label_ja": "早割1日券",
+        "discount_reasons": [
+          "online_purchase",
+          "advance_purchase"
+        ],
+        "product_id": "day",
+        "audience_ids": [
+          "adult"
+        ],
+        "calendar_ids": [
+          "cal-all"
+        ],
+        "channel_ids": [
+          "web-shop"
+        ],
+        "sales_period": {
+          "start": "2026-10-01",
+          "end": "2026-11-30",
+          "start_time": null,
+          "end_time": null,
+          "deadline_ja": "11/30まで販売",
+          "notes_ja": null
+        },
+        "use_period": null,
+        "price": {
+          "currency": "JPY",
+          "amount": 4500,
+          "notes_ja": "金額は文書に無く仮置き。"
+        },
+        "requirements": [
+          {
+            "description_ja": "購入後に届くQRコードを窓口で提示する。",
+            "proof_ja": "QRコード",
+            "source_refs": [
+              "src-price"
+            ]
+          }
+        ],
+        "stacking": {
+          "stackable_with_other_discounts": "not_stackable",
+          "notes_ja": "他の割引との併用不可（架空の公式記載）。"
+        },
+        "source_refs": [
+          "src-price"
+        ],
+        "notes_ja": null,
+        "purchase_deadline": {
+          "same_day_allowed": false,
+          "official_text_ja": "利用日前日23:59まで",
+          "notes_ja": null,
+          "source_refs": [
+            "src-price"
+          ],
+          "days_before_use": 1,
+          "deadline_date": null
+        }
+      }
+    ]
+  }
+}

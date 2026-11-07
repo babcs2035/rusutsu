@@ -1,0 +1,11 @@
+{
+  "case_id": "R09",
+  "doc_section": "R",
+  "base": "r",
+  "note_ja": "ウェア上下の単品（wear）が無いデータ（上＋下を足す）",
+  "remove": {
+    "rentals": [
+      "wear-a"
+    ]
+  }
+}

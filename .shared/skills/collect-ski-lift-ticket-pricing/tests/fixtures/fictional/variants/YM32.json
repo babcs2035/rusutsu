@@ -1,0 +1,150 @@
+{
+  "case_id": "YM32",
+  "doc_section": "YM2",
+  "base": "ym",
+  "note_ja": "蔵王温泉型（1日券にナイターが含まれる）で雪マジにナイターの記載なし（night_policy: unknown）",
+  "merge": {
+    "yukimaji": {
+      "free_coupon": {
+        "night_policy": "unknown",
+        "notes_ja": null
+      },
+      "discount_coupon": {
+        "night_policy": "unknown"
+      }
+    },
+    "products": [
+      {
+        "id": "day",
+        "name_ja": "1日券",
+        "official_label_ja": "1日券",
+        "validity": {
+          "hours": null,
+          "days": 1,
+          "points": null,
+          "rides": null,
+          "start_time": null,
+          "end_time": null,
+          "notes_ja": null,
+          "mode": "calendar_day"
+        },
+        "covers_hours_types": [
+          "regular",
+          "night"
+        ],
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ]
+      },
+      {
+        "id": "h4",
+        "name_ja": "4時間券",
+        "official_label_ja": "4時間券",
+        "validity": {
+          "hours": 4,
+          "days": null,
+          "points": null,
+          "rides": null,
+          "start_time": null,
+          "end_time": null,
+          "notes_ja": null,
+          "mode": "hours_from_first_use"
+        },
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ]
+      },
+      {
+        "id": "night",
+        "name_ja": "ナイター券",
+        "official_label_ja": "ナイター券",
+        "validity": {
+          "hours": null,
+          "days": null,
+          "points": null,
+          "rides": null,
+          "start_time": "17:00",
+          "end_time": "21:00",
+          "notes_ja": null,
+          "mode": "fixed_time_window"
+        },
+        "covers_hours_types": [
+          "night"
+        ],
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ]
+      },
+      {
+        "id": "day-night",
+        "name_ja": "1日＋ナイター券",
+        "official_label_ja": "1日＋ナイター券",
+        "validity": {
+          "hours": null,
+          "days": 1,
+          "points": null,
+          "rides": null,
+          "start_time": null,
+          "end_time": null,
+          "notes_ja": null,
+          "mode": "calendar_day"
+        },
+        "covers_hours_types": [
+          "regular",
+          "night"
+        ],
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ]
+      },
+      {
+        "id": "pm-night",
+        "name_ja": "午後＆ナイター券",
+        "official_label_ja": "午後＆ナイター券",
+        "validity": {
+          "hours": null,
+          "days": null,
+          "points": null,
+          "rides": null,
+          "start_time": "13:00",
+          "end_time": "21:00",
+          "notes_ja": null,
+          "mode": "fixed_time_window"
+        },
+        "covers_hours_types": [
+          "night"
+        ],
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ]
+      },
+      {
+        "id": "d2",
+        "name_ja": "2日券",
+        "official_label_ja": "2日券",
+        "validity": {
+          "hours": null,
+          "days": 2,
+          "points": null,
+          "rides": null,
+          "start_time": null,
+          "end_time": null,
+          "notes_ja": null,
+          "mode": "consecutive_days"
+        },
+        "covers_hours_types": [
+          "regular"
+        ],
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ]
+      }
+    ]
+  }
+}

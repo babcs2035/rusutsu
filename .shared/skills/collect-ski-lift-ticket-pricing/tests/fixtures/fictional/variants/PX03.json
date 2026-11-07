@@ -1,0 +1,514 @@
+{
+  "case_id": "PX03",
+  "doc_section": "PX",
+  "base": "p1",
+  "note_ja": "同行者ルールに利用期間（use_period 1/5〜2/28）",
+  "merge": {
+    "party_rules": [
+      {
+        "id": "rule-pack-a1c1",
+        "name_ja": "ファミリーパック（大人1＋小学生1）",
+        "official_label_ja": "ファミリーパック（大人1＋小学生1）",
+        "description_ja": "大人1名と小学生1名の1日券セットで合計8500円。",
+        "calendar_ids": [
+          "cal-all"
+        ],
+        "channel_ids": [
+          "window"
+        ],
+        "components": [
+          {
+            "role_ja": "大人",
+            "audience_ids": [
+              "adult"
+            ],
+            "product_ids": [
+              "day"
+            ],
+            "offer_ids": [],
+            "min_count": 1,
+            "max_count": 1,
+            "per_qualifying_count": null,
+            "price_effect": {
+              "type": "fixed_total",
+              "amount": 8500,
+              "percent": null,
+              "notes_ja": "セット全体の合計金額"
+            },
+            "notes_ja": null
+          },
+          {
+            "role_ja": "小学生",
+            "audience_ids": [
+              "elementary"
+            ],
+            "product_ids": [
+              "day"
+            ],
+            "offer_ids": [],
+            "min_count": 1,
+            "max_count": 1,
+            "per_qualifying_count": null,
+            "price_effect": null,
+            "notes_ja": null
+          }
+        ],
+        "sales_period": null,
+        "use_period": {
+          "start": "2027-01-05",
+          "end": "2027-02-28",
+          "start_time": null,
+          "end_time": null,
+          "deadline_ja": "1/5〜2/28のご利用分",
+          "notes_ja": null
+        },
+        "requirements": [],
+        "source_refs": [
+          "src-price"
+        ],
+        "notes_ja": null
+      },
+      {
+        "id": "rule-pack-a1c2",
+        "name_ja": "ファミリーパック（大人1＋小学生2）",
+        "official_label_ja": "ファミリーパック（大人1＋小学生2）",
+        "description_ja": "大人1名と小学生2名の1日券セットで合計11500円。",
+        "calendar_ids": [
+          "cal-all"
+        ],
+        "channel_ids": [
+          "window"
+        ],
+        "components": [
+          {
+            "role_ja": "大人",
+            "audience_ids": [
+              "adult"
+            ],
+            "product_ids": [
+              "day"
+            ],
+            "offer_ids": [],
+            "min_count": 1,
+            "max_count": 1,
+            "per_qualifying_count": null,
+            "price_effect": {
+              "type": "fixed_total",
+              "amount": 11500,
+              "percent": null,
+              "notes_ja": "セット全体の合計金額"
+            },
+            "notes_ja": null
+          },
+          {
+            "role_ja": "小学生",
+            "audience_ids": [
+              "elementary"
+            ],
+            "product_ids": [
+              "day"
+            ],
+            "offer_ids": [],
+            "min_count": 2,
+            "max_count": 2,
+            "per_qualifying_count": null,
+            "price_effect": null,
+            "notes_ja": null
+          }
+        ],
+        "sales_period": null,
+        "use_period": {
+          "start": "2027-01-05",
+          "end": "2027-02-28",
+          "start_time": null,
+          "end_time": null,
+          "deadline_ja": "1/5〜2/28のご利用分",
+          "notes_ja": null
+        },
+        "requirements": [],
+        "source_refs": [
+          "src-price"
+        ],
+        "notes_ja": null
+      },
+      {
+        "id": "rule-pack-a1c3",
+        "name_ja": "ファミリーパック（大人1＋小学生3）",
+        "official_label_ja": "ファミリーパック（大人1＋小学生3）",
+        "description_ja": "大人1名と小学生3名の1日券セットで合計14500円。",
+        "calendar_ids": [
+          "cal-all"
+        ],
+        "channel_ids": [
+          "window"
+        ],
+        "components": [
+          {
+            "role_ja": "大人",
+            "audience_ids": [
+              "adult"
+            ],
+            "product_ids": [
+              "day"
+            ],
+            "offer_ids": [],
+            "min_count": 1,
+            "max_count": 1,
+            "per_qualifying_count": null,
+            "price_effect": {
+              "type": "fixed_total",
+              "amount": 14500,
+              "percent": null,
+              "notes_ja": "セット全体の合計金額"
+            },
+            "notes_ja": null
+          },
+          {
+            "role_ja": "小学生",
+            "audience_ids": [
+              "elementary"
+            ],
+            "product_ids": [
+              "day"
+            ],
+            "offer_ids": [],
+            "min_count": 3,
+            "max_count": 3,
+            "per_qualifying_count": null,
+            "price_effect": null,
+            "notes_ja": null
+          }
+        ],
+        "sales_period": null,
+        "use_period": {
+          "start": "2027-01-05",
+          "end": "2027-02-28",
+          "start_time": null,
+          "end_time": null,
+          "deadline_ja": "1/5〜2/28のご利用分",
+          "notes_ja": null
+        },
+        "requirements": [],
+        "source_refs": [
+          "src-price"
+        ],
+        "notes_ja": null
+      },
+      {
+        "id": "rule-pack-a1c4",
+        "name_ja": "ファミリーパック（大人1＋小学生4）",
+        "official_label_ja": "ファミリーパック（大人1＋小学生4）",
+        "description_ja": "大人1名と小学生4名の1日券セットで合計17500円。",
+        "calendar_ids": [
+          "cal-all"
+        ],
+        "channel_ids": [
+          "window"
+        ],
+        "components": [
+          {
+            "role_ja": "大人",
+            "audience_ids": [
+              "adult"
+            ],
+            "product_ids": [
+              "day"
+            ],
+            "offer_ids": [],
+            "min_count": 1,
+            "max_count": 1,
+            "per_qualifying_count": null,
+            "price_effect": {
+              "type": "fixed_total",
+              "amount": 17500,
+              "percent": null,
+              "notes_ja": "セット全体の合計金額"
+            },
+            "notes_ja": null
+          },
+          {
+            "role_ja": "小学生",
+            "audience_ids": [
+              "elementary"
+            ],
+            "product_ids": [
+              "day"
+            ],
+            "offer_ids": [],
+            "min_count": 4,
+            "max_count": 4,
+            "per_qualifying_count": null,
+            "price_effect": null,
+            "notes_ja": null
+          }
+        ],
+        "sales_period": null,
+        "use_period": {
+          "start": "2027-01-05",
+          "end": "2027-02-28",
+          "start_time": null,
+          "end_time": null,
+          "deadline_ja": "1/5〜2/28のご利用分",
+          "notes_ja": null
+        },
+        "requirements": [],
+        "source_refs": [
+          "src-price"
+        ],
+        "notes_ja": null
+      },
+      {
+        "id": "rule-pack-a2c1",
+        "name_ja": "ファミリーパック（大人2＋小学生1）",
+        "official_label_ja": "ファミリーパック（大人2＋小学生1）",
+        "description_ja": "大人2名と小学生1名の1日券セットで合計14000円。",
+        "calendar_ids": [
+          "cal-all"
+        ],
+        "channel_ids": [
+          "window"
+        ],
+        "components": [
+          {
+            "role_ja": "大人",
+            "audience_ids": [
+              "adult"
+            ],
+            "product_ids": [
+              "day"
+            ],
+            "offer_ids": [],
+            "min_count": 2,
+            "max_count": 2,
+            "per_qualifying_count": null,
+            "price_effect": {
+              "type": "fixed_total",
+              "amount": 14000,
+              "percent": null,
+              "notes_ja": "セット全体の合計金額"
+            },
+            "notes_ja": null
+          },
+          {
+            "role_ja": "小学生",
+            "audience_ids": [
+              "elementary"
+            ],
+            "product_ids": [
+              "day"
+            ],
+            "offer_ids": [],
+            "min_count": 1,
+            "max_count": 1,
+            "per_qualifying_count": null,
+            "price_effect": null,
+            "notes_ja": null
+          }
+        ],
+        "sales_period": null,
+        "use_period": {
+          "start": "2027-01-05",
+          "end": "2027-02-28",
+          "start_time": null,
+          "end_time": null,
+          "deadline_ja": "1/5〜2/28のご利用分",
+          "notes_ja": null
+        },
+        "requirements": [],
+        "source_refs": [
+          "src-price"
+        ],
+        "notes_ja": null
+      },
+      {
+        "id": "rule-pack-a2c2",
+        "name_ja": "ファミリーパック（大人2＋小学生2）",
+        "official_label_ja": "ファミリーパック（大人2＋小学生2）",
+        "description_ja": "大人2名と小学生2名の1日券セットで合計17000円。",
+        "calendar_ids": [
+          "cal-all"
+        ],
+        "channel_ids": [
+          "window"
+        ],
+        "components": [
+          {
+            "role_ja": "大人",
+            "audience_ids": [
+              "adult"
+            ],
+            "product_ids": [
+              "day"
+            ],
+            "offer_ids": [],
+            "min_count": 2,
+            "max_count": 2,
+            "per_qualifying_count": null,
+            "price_effect": {
+              "type": "fixed_total",
+              "amount": 17000,
+              "percent": null,
+              "notes_ja": "セット全体の合計金額"
+            },
+            "notes_ja": null
+          },
+          {
+            "role_ja": "小学生",
+            "audience_ids": [
+              "elementary"
+            ],
+            "product_ids": [
+              "day"
+            ],
+            "offer_ids": [],
+            "min_count": 2,
+            "max_count": 2,
+            "per_qualifying_count": null,
+            "price_effect": null,
+            "notes_ja": null
+          }
+        ],
+        "sales_period": null,
+        "use_period": {
+          "start": "2027-01-05",
+          "end": "2027-02-28",
+          "start_time": null,
+          "end_time": null,
+          "deadline_ja": "1/5〜2/28のご利用分",
+          "notes_ja": null
+        },
+        "requirements": [],
+        "source_refs": [
+          "src-price"
+        ],
+        "notes_ja": null
+      },
+      {
+        "id": "rule-pack-a2c3",
+        "name_ja": "ファミリーパック（大人2＋小学生3）",
+        "official_label_ja": "ファミリーパック（大人2＋小学生3）",
+        "description_ja": "大人2名と小学生3名の1日券セットで合計20000円。",
+        "calendar_ids": [
+          "cal-all"
+        ],
+        "channel_ids": [
+          "window"
+        ],
+        "components": [
+          {
+            "role_ja": "大人",
+            "audience_ids": [
+              "adult"
+            ],
+            "product_ids": [
+              "day"
+            ],
+            "offer_ids": [],
+            "min_count": 2,
+            "max_count": 2,
+            "per_qualifying_count": null,
+            "price_effect": {
+              "type": "fixed_total",
+              "amount": 20000,
+              "percent": null,
+              "notes_ja": "セット全体の合計金額"
+            },
+            "notes_ja": null
+          },
+          {
+            "role_ja": "小学生",
+            "audience_ids": [
+              "elementary"
+            ],
+            "product_ids": [
+              "day"
+            ],
+            "offer_ids": [],
+            "min_count": 3,
+            "max_count": 3,
+            "per_qualifying_count": null,
+            "price_effect": null,
+            "notes_ja": null
+          }
+        ],
+        "sales_period": null,
+        "use_period": {
+          "start": "2027-01-05",
+          "end": "2027-02-28",
+          "start_time": null,
+          "end_time": null,
+          "deadline_ja": "1/5〜2/28のご利用分",
+          "notes_ja": null
+        },
+        "requirements": [],
+        "source_refs": [
+          "src-price"
+        ],
+        "notes_ja": null
+      },
+      {
+        "id": "rule-pack-a2c4",
+        "name_ja": "ファミリーパック（大人2＋小学生4）",
+        "official_label_ja": "ファミリーパック（大人2＋小学生4）",
+        "description_ja": "大人2名と小学生4名の1日券セットで合計23000円。",
+        "calendar_ids": [
+          "cal-all"
+        ],
+        "channel_ids": [
+          "window"
+        ],
+        "components": [
+          {
+            "role_ja": "大人",
+            "audience_ids": [
+              "adult"
+            ],
+            "product_ids": [
+              "day"
+            ],
+            "offer_ids": [],
+            "min_count": 2,
+            "max_count": 2,
+            "per_qualifying_count": null,
+            "price_effect": {
+              "type": "fixed_total",
+              "amount": 23000,
+              "percent": null,
+              "notes_ja": "セット全体の合計金額"
+            },
+            "notes_ja": null
+          },
+          {
+            "role_ja": "小学生",
+            "audience_ids": [
+              "elementary"
+            ],
+            "product_ids": [
+              "day"
+            ],
+            "offer_ids": [],
+            "min_count": 4,
+            "max_count": 4,
+            "per_qualifying_count": null,
+            "price_effect": null,
+            "notes_ja": null
+          }
+        ],
+        "sales_period": null,
+        "use_period": {
+          "start": "2027-01-05",
+          "end": "2027-02-28",
+          "start_time": null,
+          "end_time": null,
+          "deadline_ja": "1/5〜2/28のご利用分",
+          "notes_ja": null
+        },
+        "requirements": [],
+        "source_refs": [
+          "src-price"
+        ],
+        "notes_ja": null
+      }
+    ]
+  }
+}

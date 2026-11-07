@@ -1,0 +1,75 @@
+{
+  "case_id": "D04",
+  "doc_section": "D",
+  "base": "d",
+  "note_ja": "営業時間（通常）が不明に変わった施設。ナイター・定休日は残る",
+  "merge": {
+    "operating_hours": [
+      {
+        "id": "oh-regular",
+        "name_ja": "営業時間（公式に時刻の記載なし）",
+        "official_label_ja": null,
+        "hours_type": "unknown",
+        "calendar_ids": [
+          "cal-all"
+        ],
+        "start_time": null,
+        "end_time": null,
+        "lifts": [],
+        "notes_ja": "公式に営業時間の記載が無い。推定値は書かない。",
+        "source_refs": [
+          "src-info"
+        ]
+      },
+      {
+        "id": "oh-closed",
+        "name_ja": "定休日",
+        "official_label_ja": null,
+        "hours_type": "closed",
+        "calendar_ids": [
+          "cal-tue"
+        ],
+        "start_time": null,
+        "end_time": null,
+        "lifts": [],
+        "notes_ja": null,
+        "source_refs": [
+          "src-info"
+        ]
+      },
+      {
+        "id": "oh-night",
+        "name_ja": "ナイター営業",
+        "official_label_ja": null,
+        "hours_type": "night",
+        "calendar_ids": [
+          "cal-nightdates"
+        ],
+        "start_time": "17:00",
+        "end_time": "21:00",
+        "lifts": [],
+        "notes_ja": null,
+        "source_refs": [
+          "src-info"
+        ]
+      }
+    ],
+    "data_quality": {
+      "status": "needs_review",
+      "human_review_required": [
+        {
+          "what_ja": "通常営業の時刻",
+          "why_ja": "公式に営業時間の記載が無く確定できない。",
+          "where_ja": "page-002/page.html の営業案内",
+          "source_refs": [
+            "src-price"
+          ],
+          "related_ids": [
+            "oh-regular"
+          ],
+          "notes_ja": null
+        }
+      ]
+    }
+  }
+}

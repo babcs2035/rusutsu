@@ -1,0 +1,13 @@
+{
+  "case_id": "R02",
+  "doc_section": "R",
+  "base": "r",
+  "note_ja": "店舗Bが無いデータ（店舗Aのスキーセット 5,000円が最安）",
+  "remove": {
+    "rentals": [
+      "skis-b",
+      "ski-boots-b",
+      "poles-b"
+    ]
+  }
+}

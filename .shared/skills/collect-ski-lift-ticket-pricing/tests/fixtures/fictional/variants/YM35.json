@@ -1,0 +1,50 @@
+{
+  "case_id": "YM35",
+  "doc_section": "YM2",
+  "base": "ym",
+  "note_ja": "無料が「平日1日券 or 土日祝ナイター券」（ふじてん型）",
+  "merge": {
+    "yukimaji": {
+      "free_coupon": {
+        "product_ids": [
+          "day",
+          "night"
+        ],
+        "day_rule": "all",
+        "day_rule_text_ja": "平日1日券 or 土日祝ナイター券",
+        "price_rules": [
+          {
+            "product_ids": [
+              "day"
+            ],
+            "calendar_ids": [
+              "cal-weekday"
+            ],
+            "price_effect": {
+              "type": "free"
+            },
+            "official_label_ja": "平日1日券",
+            "source_refs": [
+              "src-majibu"
+            ]
+          },
+          {
+            "product_ids": [
+              "night"
+            ],
+            "calendar_ids": [
+              "cal-holiday"
+            ],
+            "price_effect": {
+              "type": "free"
+            },
+            "official_label_ja": "土日祝ナイター券",
+            "source_refs": [
+              "src-majibu"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

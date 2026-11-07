@@ -1,0 +1,60 @@
+{
+  "case_id": "Q04",
+  "doc_section": "Q",
+  "base": "a",
+  "note_ja": "クーポン・引換券の提示で 4,600円",
+  "append": {
+    "offers": [
+      {
+        "id": "o-day-coupon",
+        "name_ja": "クーポン1日券",
+        "official_label_ja": "クーポン1日券",
+        "discount_reasons": [
+          "coupon"
+        ],
+        "product_id": "day",
+        "audience_ids": [
+          "adult"
+        ],
+        "calendar_ids": [
+          "cal-all"
+        ],
+        "channel_ids": [
+          "window"
+        ],
+        "sales_period": null,
+        "use_period": null,
+        "price": {
+          "currency": "JPY",
+          "amount": 4600,
+          "notes_ja": null
+        },
+        "requirements": [
+          {
+            "description_ja": "窓口でクーポン・引換券を提示する。",
+            "proof_ja": "クーポン・引換券",
+            "source_refs": [
+              "src-price"
+            ]
+          }
+        ],
+        "stacking": {
+          "stackable_with_other_discounts": "not_stackable",
+          "notes_ja": "他の割引との併用不可（架空の公式記載）。"
+        },
+        "source_refs": [
+          "src-price"
+        ],
+        "notes_ja": null,
+        "target_qualification": {
+          "official_label_ja": "クーポン・引換券をお持ちの方",
+          "description_ja": "クーポンまたは引換券を持つ方",
+          "source_refs": [
+            "src-price"
+          ],
+          "notes_ja": null
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "case_id": "YM48",
+  "doc_section": "YM2",
+  "base": "ym",
+  "note_ja": "無料は平日、割引は土日祝のみ（湯沢中里・ムイカ型）",
+  "merge": {
+    "yukimaji": {
+      "discount_coupon": {
+        "day_rule": "weekend_holiday",
+        "day_rule_text_ja": "土日祝のみ"
+      }
+    }
+  }
+}

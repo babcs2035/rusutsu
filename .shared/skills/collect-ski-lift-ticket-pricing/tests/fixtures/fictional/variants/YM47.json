@@ -1,0 +1,23 @@
+{
+  "case_id": "YM47",
+  "doc_section": "YM2",
+  "base": "ym",
+  "note_ja": "無料は全日、割引は平日限定（草津温泉・パルコール嬬恋型）",
+  "merge": {
+    "yukimaji": {
+      "free_coupon": {
+        "day_rule": "all",
+        "day_rule_text_ja": "全日利用可",
+        "period": {
+          "start": "2026-12-20",
+          "end": "2027-03-31"
+        },
+        "excluded_date_ranges": []
+      },
+      "discount_coupon": {
+        "day_rule": "weekday",
+        "day_rule_text_ja": "平日限定"
+      }
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "case_id": "YM50",
+  "doc_section": "YM2",
+  "base": "ym",
+  "note_ja": "割引が「月〜木曜限定（祝日を除く）」（ひだ流葉型）",
+  "merge": {
+    "yukimaji": {
+      "discount_coupon": {
+        "day_rule": "mon_thu_excluding_holiday",
+        "day_rule_text_ja": "月〜木曜限定（祝日を除く）"
+      }
+    }
+  }
+}

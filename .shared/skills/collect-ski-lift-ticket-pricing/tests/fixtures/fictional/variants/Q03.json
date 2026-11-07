@@ -1,0 +1,60 @@
+{
+  "case_id": "Q03",
+  "doc_section": "Q",
+  "base": "a",
+  "note_ja": "既存ICカードへのチャージ 4,800円（prior_purchase）",
+  "append": {
+    "offers": [
+      {
+        "id": "o-day-charge",
+        "name_ja": "ICカードチャージ1日券",
+        "official_label_ja": "ICカードチャージ1日券",
+        "discount_reasons": [
+          "prior_purchase"
+        ],
+        "product_id": "day",
+        "audience_ids": [
+          "adult"
+        ],
+        "calendar_ids": [
+          "cal-all"
+        ],
+        "channel_ids": [
+          "window"
+        ],
+        "sales_period": null,
+        "use_period": null,
+        "price": {
+          "currency": "JPY",
+          "amount": 4800,
+          "notes_ja": null
+        },
+        "requirements": [
+          {
+            "description_ja": "既存のICカードにチャージする。",
+            "proof_ja": "お持ちのICカード",
+            "source_refs": [
+              "src-price"
+            ]
+          }
+        ],
+        "stacking": {
+          "stackable_with_other_discounts": "not_stackable",
+          "notes_ja": "他の割引との併用不可（架空の公式記載）。"
+        },
+        "source_refs": [
+          "src-price"
+        ],
+        "notes_ja": null,
+        "target_qualification": {
+          "official_label_ja": "お手持ちのICカードをお持ちの方",
+          "description_ja": "既存のICカードにチャージして購入する方",
+          "source_refs": [
+            "src-price"
+          ],
+          "notes_ja": null
+        }
+      }
+    ]
+  }
+}

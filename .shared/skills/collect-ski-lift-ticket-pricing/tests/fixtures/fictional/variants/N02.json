@@ -1,0 +1,14 @@
+{
+  "case_id": "N02",
+  "doc_section": "N",
+  "base": "n",
+  "note_ja": "土・1日＋ナイターで、＋ナイター券（追加券）が無い施設",
+  "remove": {
+    "products": [
+      "plus-night"
+    ],
+    "offers": [
+      "o-plus-night"
+    ]
+  }
+}

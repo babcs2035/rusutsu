@@ -1,0 +1,49 @@
+{
+  "case_id": "RT05",
+  "doc_section": "RT",
+  "base": "a",
+  "note_ja": "8時間レンタル 4,000円だけ（1日料金なし）",
+  "append": {
+    "rentals": [
+      {
+        "id": "r-set-h8",
+        "name_ja": "スキーセット 大人 8時間",
+        "official_label_ja": "スキーセット 大人 8時間",
+        "shop_name_ja": "センターハウス レンタル",
+        "items": [
+          "ski_set"
+        ],
+        "grade_ja": "スタンダード",
+        "audience_ids": [
+          "adult"
+        ],
+        "calendar_ids": [],
+        "channel_ids": [],
+        "duration": {
+          "mode": "hours",
+          "hours": 8
+        },
+        "price": {
+          "currency": "JPY",
+          "amount": 4000
+        },
+        "target_qualification": null,
+        "purchase_deadline": null,
+        "source_refs": [
+          "src-price"
+        ],
+        "usable_at_night": null
+      }
+    ]
+  },
+  "remove": {
+    "rentals": [
+      "r-set-day",
+      "r-set-h4",
+      "r-skis",
+      "r-boots",
+      "r-poles",
+      "r-wear"
+    ]
+  }
+}

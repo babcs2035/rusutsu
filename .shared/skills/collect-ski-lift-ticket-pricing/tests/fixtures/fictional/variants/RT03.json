@@ -1,0 +1,39 @@
+{
+  "case_id": "RT03",
+  "doc_section": "RT",
+  "base": "a",
+  "note_ja": "ナイター用レンタル（16:00〜）6,000円",
+  "append": {
+    "rentals": [
+      {
+        "id": "r-set-night",
+        "name_ja": "スキーセット 大人 ナイター（16:00〜）",
+        "official_label_ja": "スキーセット 大人 ナイター（16:00〜）",
+        "shop_name_ja": "センターハウス レンタル",
+        "items": [
+          "ski_set"
+        ],
+        "grade_ja": "スタンダード",
+        "audience_ids": [
+          "adult"
+        ],
+        "calendar_ids": [],
+        "channel_ids": [],
+        "duration": {
+          "mode": "night",
+          "start_time": "16:00"
+        },
+        "price": {
+          "currency": "JPY",
+          "amount": 6000
+        },
+        "target_qualification": null,
+        "purchase_deadline": null,
+        "source_refs": [
+          "src-price"
+        ],
+        "usable_at_night": null
+      }
+    ]
+  }
+}

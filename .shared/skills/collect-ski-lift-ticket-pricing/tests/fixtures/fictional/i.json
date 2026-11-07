@@ -1,0 +1,363 @@
+{
+  "schema_version": "1.0.0",
+  "taxonomy_version": "33.0.0",
+  "resort": {
+    "id": "fictional-i"
+  },
+  "season": {
+    "id": "2026-2027",
+    "label_ja": "2026-2027シーズン",
+    "start_date": "2026-12-19",
+    "end_date": "2027-03-31",
+    "notes_ja": "テスト用の架空データ（架空スキー場I（期間別営業型））。実在のスキー場・料金ではない。",
+    "source_refs": [
+      "src-price"
+    ]
+  },
+  "sources": [
+    {
+      "id": "src-price",
+      "url": "https://example.com/fictional-i/price/",
+      "requested_url": "https://example.com/fictional-i/price/",
+      "final_url": "https://example.com/fictional-i/price/",
+      "page_title": "リフト券料金 | 架空スキー場I（期間別営業型）",
+      "http_status": 200,
+      "captured_at": "2026-11-07T00:00:00Z",
+      "content_type": "text/html; charset=utf-8",
+      "content_hash": "0000000000000000000000000000000000000000000000000000000000000001",
+      "path": "page-001/page.html",
+      "linked_from_source_id": null,
+      "user_specified": true,
+      "capture_success": true,
+      "notes_ja": "テスト用の架空資料（料金表）。"
+    },
+    {
+      "id": "src-info",
+      "url": "https://example.com/fictional-i/info/",
+      "requested_url": "https://example.com/fictional-i/info/",
+      "final_url": "https://example.com/fictional-i/info/",
+      "page_title": "営業案内 | 架空スキー場I（期間別営業型）",
+      "http_status": 200,
+      "captured_at": "2026-11-07T00:00:00Z",
+      "content_type": "text/html; charset=utf-8",
+      "content_hash": "0000000000000000000000000000000000000000000000000000000000000002",
+      "path": "page-002/page.html",
+      "linked_from_source_id": null,
+      "user_specified": true,
+      "capture_success": true,
+      "notes_ja": "テスト用の架空資料（営業案内）。"
+    }
+  ],
+  "audiences": [
+    {
+      "id": "adult",
+      "name_ja": "大人",
+      "official_label_ja": "大人",
+      "age_min": null,
+      "age_max": null,
+      "age_basis_ja": null,
+      "school_levels": [],
+      "notes_ja": null,
+      "source_refs": [
+        "src-price"
+      ],
+      "is_default": true
+    }
+  ],
+  "calendars": [
+    {
+      "id": "cal-all",
+      "name_ja": "シーズン全日",
+      "official_label_ja": null,
+      "included_day_types": [
+        "all"
+      ],
+      "included_dates": [],
+      "included_date_ranges": [
+        {
+          "start": "2026-12-19",
+          "end": "2027-03-31"
+        }
+      ],
+      "excluded_dates": [],
+      "excluded_date_ranges": [],
+      "notes_ja": null,
+      "source_refs": [
+        "src-price"
+      ]
+    },
+    {
+      "id": "cal-early",
+      "name_ja": "12/31まで",
+      "official_label_ja": null,
+      "included_day_types": [],
+      "included_dates": [],
+      "included_date_ranges": [
+        {
+          "start": "2026-12-19",
+          "end": "2026-12-31"
+        }
+      ],
+      "excluded_dates": [],
+      "excluded_date_ranges": [],
+      "notes_ja": null,
+      "source_refs": [
+        "src-price"
+      ]
+    },
+    {
+      "id": "cal-late",
+      "name_ja": "1/1以降",
+      "official_label_ja": null,
+      "included_day_types": [],
+      "included_dates": [],
+      "included_date_ranges": [
+        {
+          "start": "2027-01-01",
+          "end": "2027-03-31"
+        }
+      ],
+      "excluded_dates": [],
+      "excluded_date_ranges": [],
+      "notes_ja": null,
+      "source_refs": [
+        "src-price"
+      ]
+    }
+  ],
+  "operating_hours": [
+    {
+      "id": "oh-early",
+      "name_ja": "12/31までの営業",
+      "official_label_ja": null,
+      "hours_type": "regular",
+      "calendar_ids": [
+        "cal-early"
+      ],
+      "start_time": "08:30",
+      "end_time": "16:00",
+      "lifts": [],
+      "notes_ja": null,
+      "source_refs": [
+        "src-info"
+      ]
+    },
+    {
+      "id": "oh-late",
+      "name_ja": "1/1以降の営業",
+      "official_label_ja": null,
+      "hours_type": "regular",
+      "calendar_ids": [
+        "cal-late"
+      ],
+      "start_time": "08:30",
+      "end_time": "16:30",
+      "lifts": [],
+      "notes_ja": null,
+      "source_refs": [
+        "src-info"
+      ]
+    }
+  ],
+  "areas": [],
+  "products": [
+    {
+      "id": "day",
+      "name_ja": "1日券",
+      "official_label_ja": "1日券",
+      "validity": {
+        "hours": null,
+        "days": 1,
+        "points": null,
+        "rides": null,
+        "start_time": null,
+        "end_time": null,
+        "notes_ja": null,
+        "mode": "calendar_day"
+      },
+      "covers_hours_types": [
+        "regular"
+      ],
+      "notes_ja": null,
+      "source_refs": [
+        "src-price"
+      ]
+    },
+    {
+      "id": "pm-early",
+      "name_ja": "午後券（12:30〜営業終了）",
+      "official_label_ja": "午後券（12:30〜営業終了）",
+      "validity": {
+        "hours": null,
+        "days": null,
+        "points": null,
+        "rides": null,
+        "start_time": "12:30",
+        "end_time": "16:00",
+        "notes_ja": "公式表記は「12:30〜営業終了」。終了時刻は営業時間に連動し、12/31までは16:00。",
+        "mode": "fixed_time_window"
+      },
+      "covers_hours_types": [
+        "regular"
+      ],
+      "notes_ja": null,
+      "source_refs": [
+        "src-price"
+      ]
+    },
+    {
+      "id": "pm-late",
+      "name_ja": "午後券（12:30〜営業終了）",
+      "official_label_ja": "午後券（12:30〜営業終了）",
+      "validity": {
+        "hours": null,
+        "days": null,
+        "points": null,
+        "rides": null,
+        "start_time": "12:30",
+        "end_time": "16:30",
+        "notes_ja": "公式表記は「12:30〜営業終了」。終了時刻は営業時間に連動し、1/1以降は16:30。",
+        "mode": "fixed_time_window"
+      },
+      "covers_hours_types": [
+        "regular"
+      ],
+      "notes_ja": null,
+      "source_refs": [
+        "src-price"
+      ]
+    }
+  ],
+  "channels": [
+    {
+      "id": "window",
+      "name_ja": "チケット窓口",
+      "official_label_ja": "チケット窓口",
+      "url": null,
+      "location_ja": "センターハウス",
+      "purchase_deadline_ja": null,
+      "notes_ja": null,
+      "source_refs": [
+        "src-price"
+      ]
+    }
+  ],
+  "offers": [
+    {
+      "id": "o-day",
+      "name_ja": "o-day",
+      "official_label_ja": "o-day",
+      "discount_reasons": [],
+      "product_id": "day",
+      "audience_ids": [
+        "adult"
+      ],
+      "calendar_ids": [
+        "cal-all"
+      ],
+      "channel_ids": [
+        "window"
+      ],
+      "sales_period": null,
+      "use_period": null,
+      "price": {
+        "currency": "JPY",
+        "amount": 4000,
+        "notes_ja": null
+      },
+      "requirements": [],
+      "stacking": {
+        "stackable_with_other_discounts": "not_stackable",
+        "notes_ja": "他の割引との併用不可（架空の公式記載）。"
+      },
+      "source_refs": [
+        "src-price"
+      ],
+      "notes_ja": null
+    },
+    {
+      "id": "o-pm-early",
+      "name_ja": "午後券（12/31まで）",
+      "official_label_ja": "午後券（12/31まで）",
+      "discount_reasons": [],
+      "product_id": "pm-early",
+      "audience_ids": [
+        "adult"
+      ],
+      "calendar_ids": [
+        "cal-early"
+      ],
+      "channel_ids": [
+        "window"
+      ],
+      "sales_period": null,
+      "use_period": null,
+      "price": {
+        "currency": "JPY",
+        "amount": 3000,
+        "notes_ja": null
+      },
+      "requirements": [],
+      "stacking": {
+        "stackable_with_other_discounts": "not_stackable",
+        "notes_ja": "他の割引との併用不可（架空の公式記載）。"
+      },
+      "source_refs": [
+        "src-price"
+      ],
+      "notes_ja": null
+    },
+    {
+      "id": "o-pm-late",
+      "name_ja": "午後券（1/1以降）",
+      "official_label_ja": "午後券（1/1以降）",
+      "discount_reasons": [],
+      "product_id": "pm-late",
+      "audience_ids": [
+        "adult"
+      ],
+      "calendar_ids": [
+        "cal-late"
+      ],
+      "channel_ids": [
+        "window"
+      ],
+      "sales_period": null,
+      "use_period": null,
+      "price": {
+        "currency": "JPY",
+        "amount": 3000,
+        "notes_ja": null
+      },
+      "requirements": [],
+      "stacking": {
+        "stackable_with_other_discounts": "not_stackable",
+        "notes_ja": "他の割引との併用不可（架空の公式記載）。"
+      },
+      "source_refs": [
+        "src-price"
+      ],
+      "notes_ja": null
+    }
+  ],
+  "party_rules": [],
+  "fees": [],
+  "rental_audiences": [],
+  "rentals": [],
+  "calculation_policy": {
+    "currency": "JPY",
+    "tax_included": true,
+    "stacking_default": "unknown",
+    "best_price_hint_ja": null,
+    "notes_ja": "テスト用の架空データ。"
+  },
+  "data_quality": {
+    "status": "complete",
+    "generated_at": "2026-11-07T00:00:00Z",
+    "last_verified_at": "2026-11-07T00:00:00Z",
+    "unresolved_questions": [],
+    "illegible_items": [],
+    "human_review_required": [],
+    "notes_ja": "テスト用の架空データ。"
+  }
+}

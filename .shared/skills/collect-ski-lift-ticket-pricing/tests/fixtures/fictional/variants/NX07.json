@@ -1,0 +1,93 @@
+{
+  "case_id": "NX07",
+  "doc_section": "NX",
+  "base": "a",
+  "note_ja": "券の covers_hours_types が未指定（null）",
+  "merge": {
+    "products": [
+      {
+        "id": "day",
+        "name_ja": "1日券",
+        "official_label_ja": "1日券",
+        "validity": {
+          "hours": null,
+          "days": 1,
+          "points": null,
+          "rides": null,
+          "start_time": null,
+          "end_time": null,
+          "notes_ja": null,
+          "mode": "calendar_day"
+        },
+        "covers_hours_types": null,
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ]
+      },
+      {
+        "id": "h4",
+        "name_ja": "4時間券",
+        "official_label_ja": "4時間券",
+        "validity": {
+          "hours": 4,
+          "days": null,
+          "points": null,
+          "rides": null,
+          "start_time": null,
+          "end_time": null,
+          "notes_ja": "初回利用から連続4時間",
+          "mode": "hours_from_first_use"
+        },
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ]
+      },
+      {
+        "id": "am",
+        "name_ja": "午前券",
+        "official_label_ja": "午前券",
+        "validity": {
+          "hours": null,
+          "days": null,
+          "points": null,
+          "rides": null,
+          "start_time": "08:30",
+          "end_time": "12:30",
+          "notes_ja": null,
+          "mode": "fixed_time_window"
+        },
+        "covers_hours_types": [
+          "regular"
+        ],
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ]
+      },
+      {
+        "id": "pm",
+        "name_ja": "午後券",
+        "official_label_ja": "午後券",
+        "validity": {
+          "hours": null,
+          "days": null,
+          "points": null,
+          "rides": null,
+          "start_time": "12:30",
+          "end_time": "16:30",
+          "notes_ja": null,
+          "mode": "fixed_time_window"
+        },
+        "covers_hours_types": [
+          "regular"
+        ],
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ]
+      }
+    ]
+  }
+}

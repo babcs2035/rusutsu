@@ -1182,7 +1182,6 @@
           "includes_ja": [
             "ソリ",
             "スノーシュー",
-            "ウェア上だけ・下だけ",
             "ファンスキー・ショートスキー",
             "ボーゲンヘルパー等の補助具"
           ],
@@ -1191,6 +1190,40 @@
             "ソリ"
           ],
           "decision_rule_ja": "`official_label_ja` に公式表記を写す。ファンスキー等をスキー板と同一視しない。**ラベルを勝手に追加してはならない。**",
+          "status": "defined"
+        },
+        "wear_top": {
+          "label_ja": "ウェア上だけ",
+          "definition_ja": "ジャケットだけを借りる料金。",
+          "includes_ja": [
+            "ジャケット",
+            "ウェア上"
+          ],
+          "excludes_ja": [
+            "上下セット → wear"
+          ],
+          "official_examples_ja": [
+            "ウェア（上）",
+            "ジャケット"
+          ],
+          "decision_rule_ja": "上下セットが別にあっても、上だけの料金は wear_top で記録する。画面は wear と wear_top＋wear_bottom を比べる。",
+          "status": "defined"
+        },
+        "wear_bottom": {
+          "label_ja": "ウェア下だけ",
+          "definition_ja": "パンツだけを借りる料金。",
+          "includes_ja": [
+            "パンツ",
+            "ウェア下"
+          ],
+          "excludes_ja": [
+            "上下セット → wear"
+          ],
+          "official_examples_ja": [
+            "ウェア（下）",
+            "パンツ"
+          ],
+          "decision_rule_ja": "wear_top と同じ。",
           "status": "defined"
         }
       }
@@ -1304,6 +1337,271 @@
           "excludes_ja": [],
           "official_examples_ja": [],
           "decision_rule_ja": "公式表記を notes_ja に写し、human_review_required へ。",
+          "status": "defined"
+        }
+      }
+    },
+    "fee_units": {
+      "description_ja": "手数料（`fees[].unit`）の課金単位。合計の計算で何倍するかが変わる。",
+      "notes_ja": "省略は per_ticket と同じ。公式表記で単位が読めなければ unknown にして human_review_required に書く。",
+      "labels": {
+        "per_person": {
+          "label_ja": "1人ごと",
+          "definition_ja": "人数分かかる。",
+          "official_examples_ja": [
+            "お1人様につき"
+          ],
+          "status": "defined",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "decision_rule_ja": null
+        },
+        "per_ticket": {
+          "label_ja": "1枚ごと",
+          "definition_ja": "券1枚ごとにかかる。",
+          "official_examples_ja": [
+            "1枚につき"
+          ],
+          "status": "defined",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "decision_rule_ja": null
+        },
+        "per_transaction": {
+          "label_ja": "1決済ごと",
+          "definition_ja": "1回の購入にまとめてかかる。",
+          "official_examples_ja": [
+            "1決済につき",
+            "1回の注文につき"
+          ],
+          "status": "defined",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "decision_rule_ja": null
+        },
+        "unknown": {
+          "label_ja": "不明",
+          "definition_ja": "単位が読めない。",
+          "status": "defined",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null
+        }
+      }
+    },
+    "yukimaji_day_rules": {
+      "description_ja": "雪マジクーポン（`yukimaji.free_coupon` / `discount_coupon` の `day_rule`）の曜日条件。",
+      "notes_ja": "「平日」に祝日・年末年始を含むかは掲載文に無いことが多い。計算側は祝日・年末年始特定日を平日に含めず注記する。公式記載があれば holiday_treatment_ja に書き、そちらを優先する。",
+      "labels": {
+        "all": {
+          "label_ja": "全日",
+          "definition_ja": "曜日の制限なし。",
+          "official_examples_ja": [
+            "《全日利用可》",
+            "12/19～2027/3/22"
+          ],
+          "status": "defined",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "decision_rule_ja": null
+        },
+        "weekday": {
+          "label_ja": "平日のみ",
+          "definition_ja": "月〜金。",
+          "official_examples_ja": [
+            "《平日限定》"
+          ],
+          "status": "defined",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "decision_rule_ja": null
+        },
+        "weekend_holiday": {
+          "label_ja": "土日祝のみ",
+          "definition_ja": "土日と祝日。",
+          "official_examples_ja": [
+            "《土日祝限定》"
+          ],
+          "status": "defined",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "decision_rule_ja": null
+        },
+        "saturday_sunday": {
+          "label_ja": "土日のみ（祝日不可）",
+          "definition_ja": "土曜と日曜だけ。",
+          "official_examples_ja": [
+            "《土・日限定》 ※祝日は利用不可"
+          ],
+          "status": "defined",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "decision_rule_ja": null
+        },
+        "weekday_and_saturday": {
+          "label_ja": "平日と土曜",
+          "definition_ja": "日曜・祝日を除く。",
+          "official_examples_ja": [
+            "《平日・土曜日限定》"
+          ],
+          "status": "defined",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "decision_rule_ja": null
+        },
+        "mon_thu_excluding_holiday": {
+          "label_ja": "月〜木（祝日を除く）",
+          "definition_ja": "月曜から木曜で祝日を除く。",
+          "official_examples_ja": [
+            "《月～木曜限定（祝日を除く）》"
+          ],
+          "status": "defined",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "decision_rule_ja": null
+        },
+        "listed_dates": {
+          "label_ja": "日付の列挙",
+          "definition_ja": "利用できる日が日付で列挙されている。listed_dates に書く。",
+          "official_examples_ja": [
+            "1月12・13・14・19・20・21日…"
+          ],
+          "status": "defined",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "decision_rule_ja": null
+        },
+        "by_period": {
+          "label_ja": "期間で変わる",
+          "definition_ja": "期間ごとに曜日条件が違う。period_rules に書く。",
+          "official_examples_ja": [
+            "■12/19～2/28 ■3/1～3/19の《土日祝日》 ■3/20～3/31（毎日）"
+          ],
+          "status": "defined",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "decision_rule_ja": null
+        },
+        "unknown": {
+          "label_ja": "不明",
+          "definition_ja": "掲載文から読めない。",
+          "status": "defined",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null
+        }
+      }
+    },
+    "yukimaji_night_policies": {
+      "description_ja": "雪マジクーポンでナイターも滑れるか（`night_policy`）。",
+      "notes_ja": "unknown のときは、その施設の1日券の規則に従い「ナイターへの適用は公式で確認」を注記する。",
+      "labels": {
+        "allowed": {
+          "label_ja": "ナイター利用可",
+          "definition_ja": "掲載文に「ナイター利用可」等。",
+          "official_examples_ja": [
+            "どちらもナイター利用可"
+          ],
+          "status": "defined",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "decision_rule_ja": null
+        },
+        "not_allowed": {
+          "label_ja": "ナイター対象外",
+          "definition_ja": "掲載文に「日中のみ」「ナイター利用不可」等。",
+          "official_examples_ja": [
+            "日中営業のみ対象",
+            "ナイターは対象外です"
+          ],
+          "status": "defined",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "decision_rule_ja": null
+        },
+        "unknown": {
+          "label_ja": "記載なし",
+          "definition_ja": "掲載文にナイターの記載がない（読めない場合も含む）。",
+          "status": "defined",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null
+        }
+      }
+    },
+    "yukimaji_statuses": {
+      "description_ja": "雪マジ掲載の状態（`yukimaji.status`）。",
+      "notes_ja": "掲載が無い施設は yukimaji を null にする（status を使わない）。",
+      "labels": {
+        "listed": {
+          "label_ja": "掲載あり",
+          "definition_ja": "特典内容（無料クーポンの対象券と期間）が掲載文に書かれている。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "【無料クーポン】1日リフト券"
+          ],
+          "decision_rule_ja": null,
+          "status": "defined"
+        },
+        "preparing": {
+          "label_ja": "準備中",
+          "definition_ja": "特典内容が「後日追加予定」で、対象券・期間が無い。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "詳細情報は後日追加予定です"
+          ],
+          "decision_rule_ja": null,
+          "status": "defined"
+        }
+      }
+    },
+    "yukimaji_rental_benefit_applies": {
+      "description_ja": "雪マジのレンタル特典がどのクーポンに付くか（`yukimaji.rental_benefit.applies_with`）。",
+      "notes_ja": "掲載文が「割引クーポン: 1日券半額＋レンタル20%OFF」なら discount_coupon。「さらに！レンタルクーポンあり」のように独立して書かれていれば both。",
+      "labels": {
+        "free_coupon": {
+          "label_ja": "無料クーポンに付く",
+          "definition_ja": "無料クーポンの行に書かれている。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
+          "status": "defined"
+        },
+        "discount_coupon": {
+          "label_ja": "割引クーポンに付く",
+          "definition_ja": "割引クーポンの行に書かれている。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "1日リフト券半額＋レンタル20％OFF"
+          ],
+          "decision_rule_ja": null,
+          "status": "defined"
+        },
+        "both": {
+          "label_ja": "どちらでも",
+          "definition_ja": "クーポンと独立して書かれている。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [
+            "さらに！【レンタルクーポン】あり"
+          ],
+          "decision_rule_ja": null,
+          "status": "defined"
+        },
+        "unknown": {
+          "label_ja": "不明",
+          "definition_ja": "どのクーポンに付くか読めない。",
+          "includes_ja": [],
+          "excludes_ja": [],
+          "official_examples_ja": [],
+          "decision_rule_ja": null,
           "status": "defined"
         }
       }

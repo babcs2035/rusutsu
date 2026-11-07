@@ -1,0 +1,15 @@
+{
+  "case_id": "YM55",
+  "doc_section": "YM2",
+  "base": "ym",
+  "note_ja": "無料クーポンに「除外日あり（日付の記載なし）」（郡上ヴァカンス村型）",
+  "merge": {
+    "yukimaji": {
+      "free_coupon": {
+        "excluded_dates_unspecified": true,
+        "excluded_date_ranges": [],
+        "notes_ja": "除外日あり（日付の記載なし）。"
+      }
+    }
+  }
+}

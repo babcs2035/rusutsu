@@ -1,0 +1,184 @@
+{
+  "case_id": "NX09",
+  "doc_section": "NX",
+  "base": "l",
+  "note_ja": "選択日券の有効期間が「購入から7日以内」（usable_within_ja）",
+  "merge": {
+    "products": [
+      {
+        "id": "day",
+        "name_ja": "1日券",
+        "official_label_ja": "1日券",
+        "validity": {
+          "hours": null,
+          "days": 1,
+          "points": null,
+          "rides": null,
+          "start_time": null,
+          "end_time": null,
+          "notes_ja": null,
+          "mode": "calendar_day"
+        },
+        "covers_hours_types": [
+          "regular"
+        ],
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ]
+      },
+      {
+        "id": "d2",
+        "name_ja": "2日券",
+        "official_label_ja": "2日券",
+        "validity": {
+          "hours": null,
+          "days": 2,
+          "points": null,
+          "rides": null,
+          "start_time": null,
+          "end_time": null,
+          "notes_ja": "連続日",
+          "mode": "consecutive_days"
+        },
+        "covers_hours_types": [
+          "regular"
+        ],
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ]
+      },
+      {
+        "id": "d3",
+        "name_ja": "3日券",
+        "official_label_ja": "3日券",
+        "validity": {
+          "hours": null,
+          "days": 3,
+          "points": null,
+          "rides": null,
+          "start_time": null,
+          "end_time": null,
+          "notes_ja": "連続日",
+          "mode": "consecutive_days"
+        },
+        "covers_hours_types": [
+          "regular"
+        ],
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ]
+      },
+      {
+        "id": "d4",
+        "name_ja": "4日券",
+        "official_label_ja": "4日券",
+        "validity": {
+          "hours": null,
+          "days": 4,
+          "points": null,
+          "rides": null,
+          "start_time": null,
+          "end_time": null,
+          "notes_ja": "連続日",
+          "mode": "consecutive_days"
+        },
+        "covers_hours_types": [
+          "regular"
+        ],
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ]
+      },
+      {
+        "id": "d5",
+        "name_ja": "5日券",
+        "official_label_ja": "5日券",
+        "validity": {
+          "hours": null,
+          "days": 5,
+          "points": null,
+          "rides": null,
+          "start_time": null,
+          "end_time": null,
+          "notes_ja": "連続日",
+          "mode": "consecutive_days"
+        },
+        "covers_hours_types": [
+          "regular"
+        ],
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ]
+      },
+      {
+        "id": "d6",
+        "name_ja": "6日券",
+        "official_label_ja": "6日券",
+        "validity": {
+          "hours": null,
+          "days": 6,
+          "points": null,
+          "rides": null,
+          "start_time": null,
+          "end_time": null,
+          "notes_ja": "連続日",
+          "mode": "consecutive_days"
+        },
+        "covers_hours_types": [
+          "regular"
+        ],
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ]
+      },
+      {
+        "id": "sel2",
+        "name_ja": "選択日券（2日）",
+        "official_label_ja": "選択日券（2日）",
+        "validity": {
+          "hours": null,
+          "days": 2,
+          "points": null,
+          "rides": null,
+          "start_time": null,
+          "end_time": null,
+          "notes_ja": "シーズン中に好きな2日",
+          "mode": "selectable_days",
+          "usable_within_ja": "購入から7日以内"
+        },
+        "covers_hours_types": [
+          "regular"
+        ],
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ]
+      },
+      {
+        "id": "h4",
+        "name_ja": "4時間券",
+        "official_label_ja": "4時間券",
+        "validity": {
+          "hours": 4,
+          "days": null,
+          "points": null,
+          "rides": null,
+          "start_time": null,
+          "end_time": null,
+          "notes_ja": null,
+          "mode": "hours_from_first_use"
+        },
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ]
+      }
+    ]
+  }
+}

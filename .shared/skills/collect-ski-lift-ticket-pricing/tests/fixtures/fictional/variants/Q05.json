@@ -1,0 +1,60 @@
+{
+  "case_id": "Q05",
+  "doc_section": "Q",
+  "base": "a",
+  "note_ja": "宿泊者 4,000円（宿泊証明の提示）",
+  "append": {
+    "offers": [
+      {
+        "id": "o-day-guest",
+        "name_ja": "宿泊者1日券",
+        "official_label_ja": "宿泊者1日券",
+        "discount_reasons": [
+          "hotel_guest"
+        ],
+        "product_id": "day",
+        "audience_ids": [
+          "adult"
+        ],
+        "calendar_ids": [
+          "cal-all"
+        ],
+        "channel_ids": [
+          "window"
+        ],
+        "sales_period": null,
+        "use_period": null,
+        "price": {
+          "currency": "JPY",
+          "amount": 4000,
+          "notes_ja": null
+        },
+        "requirements": [
+          {
+            "description_ja": "窓口で宿泊証明を提示する。",
+            "proof_ja": "宿泊証明（予約票など）",
+            "source_refs": [
+              "src-price"
+            ]
+          }
+        ],
+        "stacking": {
+          "stackable_with_other_discounts": "not_stackable",
+          "notes_ja": "他の割引との併用不可（架空の公式記載）。"
+        },
+        "source_refs": [
+          "src-price"
+        ],
+        "notes_ja": null,
+        "target_qualification": {
+          "official_label_ja": "宿泊者",
+          "description_ja": "場内宿泊施設の宿泊者",
+          "source_refs": [
+            "src-price"
+          ],
+          "notes_ja": null
+        }
+      }
+    ]
+  }
+}

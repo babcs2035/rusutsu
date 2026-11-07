@@ -1,0 +1,58 @@
+{
+  "case_id": "R17",
+  "doc_section": "R",
+  "base": "r",
+  "note_ja": "帽子・ネックウォーマー（画面で選べない用具。items は unknown）",
+  "merge": {
+    "data_quality": {
+      "status": "needs_review",
+      "human_review_required": [
+        {
+          "what_ja": "帽子の分類",
+          "why_ja": "taxonomyのrental_item_typesに該当ラベルが無い用具。",
+          "where_ja": "page-001/page.html のレンタル料金表「帽子」行",
+          "source_refs": [
+            "src-price"
+          ],
+          "related_ids": [
+            "hat-a"
+          ],
+          "notes_ja": null
+        }
+      ]
+    }
+  },
+  "append": {
+    "rentals": [
+      {
+        "id": "hat-a",
+        "name_ja": "帽子 大人（店舗A）",
+        "official_label_ja": "帽子 大人（店舗A）",
+        "shop_name_ja": "店舗A",
+        "items": [
+          "unknown"
+        ],
+        "grade_ja": null,
+        "audience_ids": [
+          "rental-adult"
+        ],
+        "calendar_ids": [],
+        "channel_ids": [],
+        "duration": {
+          "mode": "day"
+        },
+        "price": {
+          "currency": "JPY",
+          "amount": 500
+        },
+        "target_qualification": null,
+        "purchase_deadline": null,
+        "source_refs": [
+          "src-price"
+        ],
+        "usable_at_night": null,
+        "notes_ja": "金額は文書に無く仮置き。"
+      }
+    ]
+  }
+}

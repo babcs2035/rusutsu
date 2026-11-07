@@ -1,0 +1,15 @@
+{
+  "case_id": "YM51",
+  "doc_section": "YM2",
+  "base": "ym",
+  "note_ja": "無料が「土・日のみ（祝日不可）」（シャトー塩沢型）",
+  "merge": {
+    "yukimaji": {
+      "free_coupon": {
+        "day_rule": "saturday_sunday",
+        "day_rule_text_ja": "土・日のみ（祝日不可）",
+        "excluded_date_ranges": []
+      }
+    }
+  }
+}

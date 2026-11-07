@@ -1,0 +1,26 @@
+{
+  "case_id": "G02",
+  "doc_section": "G",
+  "base": "g",
+  "note_ja": "営業時間が前季の推定値（8:00〜17:00）で、確度と出典を notes に残す施設",
+  "merge": {
+    "operating_hours": [
+      {
+        "id": "oh-regular",
+        "name_ja": "通常営業",
+        "official_label_ja": null,
+        "hours_type": "regular",
+        "calendar_ids": [
+          "cal-all"
+        ],
+        "start_time": "08:00",
+        "end_time": "17:00",
+        "lifts": [],
+        "notes_ja": "今季の記載が無く、前季（2025-2026）の営業時間からの推定。確度は低い。出典: 前季の営業案内。",
+        "source_refs": [
+          "src-info"
+        ]
+      }
+    ]
+  }
+}

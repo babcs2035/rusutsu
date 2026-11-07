@@ -1,0 +1,58 @@
+{
+  "case_id": "YM61",
+  "doc_section": "YM2",
+  "base": "ym",
+  "note_ja": "割引②「午後＆ナイター券 5,400円→3,000円」（鷲ヶ岳型）",
+  "merge": {
+    "yukimaji": {
+      "discount_coupon": {
+        "product_ids": [
+          "day",
+          "night",
+          "pm-night"
+        ],
+        "price_rules": [
+          {
+            "product_ids": [
+              "day"
+            ],
+            "price_effect": {
+              "type": "discount_percent",
+              "percent": 50
+            },
+            "official_label_ja": "1日リフト券半額",
+            "source_refs": [
+              "src-majibu"
+            ]
+          },
+          {
+            "product_ids": [
+              "night"
+            ],
+            "price_effect": {
+              "type": "discount_amount",
+              "amount": 500
+            },
+            "official_label_ja": "ナイター券500円引き",
+            "source_refs": [
+              "src-majibu"
+            ]
+          },
+          {
+            "product_ids": [
+              "pm-night"
+            ],
+            "price_effect": {
+              "type": "fixed_total",
+              "amount": 3000
+            },
+            "official_label_ja": "午後＆ナイター券 5,400円→3,000円",
+            "source_refs": [
+              "src-majibu"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

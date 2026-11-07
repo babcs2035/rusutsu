@@ -1,0 +1,79 @@
+{
+  "case_id": "FT-STUDENT",
+  "doc_section": "3-A",
+  "base": "a",
+  "note_ja": "学生証の提示が必要な学生割（target_qualification に学生）",
+  "merge": {
+    "data_quality": {
+      "status": "needs_review",
+      "human_review_required": [
+        {
+          "what_ja": "学生割の割引理由",
+          "why_ja": "割引理由を特定できない学生割。",
+          "where_ja": "page-001/page.html の学生割の記載",
+          "source_refs": [
+            "src-price"
+          ],
+          "related_ids": [
+            "o-day-student"
+          ],
+          "notes_ja": null
+        }
+      ]
+    }
+  },
+  "append": {
+    "offers": [
+      {
+        "id": "o-day-student",
+        "name_ja": "学生割1日券",
+        "official_label_ja": "学生割1日券",
+        "discount_reasons": [
+          "unknown"
+        ],
+        "product_id": "day",
+        "audience_ids": [
+          "adult"
+        ],
+        "calendar_ids": [
+          "cal-all"
+        ],
+        "channel_ids": [
+          "window"
+        ],
+        "sales_period": null,
+        "use_period": null,
+        "price": {
+          "currency": "JPY",
+          "amount": 4500,
+          "notes_ja": "金額は文書に無く仮置き。"
+        },
+        "requirements": [
+          {
+            "description_ja": "窓口で学生証を提示する。",
+            "proof_ja": "学生証",
+            "source_refs": [
+              "src-price"
+            ]
+          }
+        ],
+        "stacking": {
+          "stackable_with_other_discounts": "not_stackable",
+          "notes_ja": "他の割引との併用不可（架空の公式記載）。"
+        },
+        "source_refs": [
+          "src-price"
+        ],
+        "notes_ja": null,
+        "target_qualification": {
+          "official_label_ja": "学生（学生証の提示）",
+          "description_ja": "学生証を提示できる学生",
+          "source_refs": [
+            "src-price"
+          ],
+          "notes_ja": null
+        }
+      }
+    ]
+  }
+}

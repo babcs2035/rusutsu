@@ -1,0 +1,69 @@
+{
+  "case_id": "YM33",
+  "doc_section": "YM2",
+  "base": "ym",
+  "note_ja": "無料が「1日券 or ナイター券（金曜のみ）」の選択制",
+  "merge": {
+    "yukimaji": {
+      "free_coupon": {
+        "product_ids": [
+          "day",
+          "night"
+        ],
+        "price_rules": [
+          {
+            "product_ids": [
+              "day"
+            ],
+            "calendar_ids": [
+              "cal-weekday"
+            ],
+            "price_effect": {
+              "type": "free"
+            },
+            "official_label_ja": "1日リフト券",
+            "source_refs": [
+              "src-majibu"
+            ]
+          },
+          {
+            "product_ids": [
+              "night"
+            ],
+            "calendar_ids": [
+              "cal-fri"
+            ],
+            "price_effect": {
+              "type": "free"
+            },
+            "official_label_ja": "ナイター券（金曜のみ）",
+            "source_refs": [
+              "src-majibu"
+            ]
+          }
+        ],
+        "notes_ja": "1日券 or ナイター券（金曜のみ）から選択。"
+      }
+    }
+  },
+  "append": {
+    "calendars": [
+      {
+        "id": "cal-fri",
+        "name_ja": "金曜",
+        "official_label_ja": null,
+        "included_day_types": [
+          "friday"
+        ],
+        "included_dates": [],
+        "included_date_ranges": [],
+        "excluded_dates": [],
+        "excluded_date_ranges": [],
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "case_id": "Q02",
+  "doc_section": "Q",
+  "base": "a",
+  "note_ja": "アプリ・LINE登録割引 4,700円",
+  "append": {
+    "offers": [
+      {
+        "id": "o-day-app",
+        "name_ja": "アプリ登録割引1日券",
+        "official_label_ja": "アプリ登録割引1日券",
+        "discount_reasons": [
+          "app_registration"
+        ],
+        "product_id": "day",
+        "audience_ids": [
+          "adult"
+        ],
+        "calendar_ids": [
+          "cal-all"
+        ],
+        "channel_ids": [
+          "window"
+        ],
+        "sales_period": null,
+        "use_period": null,
+        "price": {
+          "currency": "JPY",
+          "amount": 4700,
+          "notes_ja": null
+        },
+        "requirements": [
+          {
+            "description_ja": "窓口でアプリの登録画面を提示する。",
+            "proof_ja": "アプリの登録画面",
+            "source_refs": [
+              "src-price"
+            ]
+          }
+        ],
+        "stacking": {
+          "stackable_with_other_discounts": "not_stackable",
+          "notes_ja": "他の割引との併用不可（架空の公式記載）。"
+        },
+        "source_refs": [
+          "src-price"
+        ],
+        "notes_ja": null,
+        "target_qualification": {
+          "official_label_ja": "アプリ・LINE登録者",
+          "description_ja": "公式アプリまたはLINEに登録した方",
+          "source_refs": [
+            "src-price"
+          ],
+          "notes_ja": null
+        }
+      }
+    ]
+  }
+}

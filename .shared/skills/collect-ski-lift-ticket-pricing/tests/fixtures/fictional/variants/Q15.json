@@ -1,0 +1,74 @@
+{
+  "case_id": "Q15",
+  "doc_section": "Q",
+  "base": "a",
+  "note_ja": "割引理由ラベルは無いが要証明（予約確認メール・購入画面）のWeb券（購入期限の記載なし）",
+  "append": {
+    "channels": [
+      {
+        "id": "web-shop",
+        "name_ja": "公式WEBチケットストア",
+        "official_label_ja": "公式WEBチケットストア",
+        "url": "https://example.com/fictional-a/shop/",
+        "location_ja": null,
+        "purchase_deadline_ja": "利用日前日23:59まで",
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ]
+      }
+    ],
+    "offers": [
+      {
+        "id": "o-day-web",
+        "name_ja": "1日券（Web）",
+        "official_label_ja": "1日券（Web）",
+        "discount_reasons": [],
+        "product_id": "day",
+        "audience_ids": [
+          "adult"
+        ],
+        "calendar_ids": [
+          "cal-all"
+        ],
+        "channel_ids": [
+          "web-shop"
+        ],
+        "sales_period": null,
+        "use_period": null,
+        "price": {
+          "currency": "JPY",
+          "amount": 4900,
+          "notes_ja": "金額は文書に無く仮置き。"
+        },
+        "requirements": [
+          {
+            "description_ja": "WEBチケットストアで購入し、現地で購入画面を提示する。",
+            "proof_ja": "予約確認メール・購入画面",
+            "source_refs": [
+              "src-price"
+            ]
+          }
+        ],
+        "stacking": {
+          "stackable_with_other_discounts": "not_stackable",
+          "notes_ja": "他の割引との併用不可（架空の公式記載）。"
+        },
+        "source_refs": [
+          "src-price"
+        ],
+        "notes_ja": null,
+        "purchase_deadline": {
+          "same_day_allowed": null,
+          "official_text_ja": null,
+          "notes_ja": "購入期限の記載なし。",
+          "source_refs": [
+            "src-price"
+          ],
+          "days_before_use": null,
+          "deadline_date": null
+        }
+      }
+    ]
+  }
+}

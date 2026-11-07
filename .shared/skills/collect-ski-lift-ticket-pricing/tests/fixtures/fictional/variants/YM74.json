@@ -1,0 +1,21 @@
+{
+  "case_id": "YM74",
+  "doc_section": "YM2",
+  "base": "ym",
+  "note_ja": "「雪マジの利用は 9:00〜15:00」（たいら型）",
+  "merge": {
+    "yukimaji": {
+      "free_coupon": {
+        "time_window": {
+          "start": null,
+          "end": null,
+          "start_time": "09:00",
+          "end_time": "15:00",
+          "deadline_ja": null,
+          "notes_ja": null
+        },
+        "notes_ja": "雪マジの利用は9:00〜15:00。"
+      }
+    }
+  }
+}

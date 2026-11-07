@@ -1,0 +1,40 @@
+{
+  "case_id": "FT-RENTAL-DEFAULT",
+  "doc_section": "3-A",
+  "base": "r",
+  "note_ja": "券の大人は「中学生〜59歳」、レンタルの大人は年齢条件なし（基準区分が券とレンタルで違う）",
+  "merge": {
+    "audiences": [
+      {
+        "id": "adult",
+        "name_ja": "大人",
+        "official_label_ja": "おとな（中学生〜59歳）",
+        "age_min": null,
+        "age_max": 59,
+        "age_basis_ja": "利用日時点の年齢",
+        "school_levels": [],
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ],
+        "is_default": true
+      },
+      {
+        "id": "elementary",
+        "name_ja": "小学生",
+        "official_label_ja": "小学生",
+        "age_min": null,
+        "age_max": null,
+        "age_basis_ja": null,
+        "school_levels": [
+          "elementary_school"
+        ],
+        "notes_ja": null,
+        "source_refs": [
+          "src-price"
+        ],
+        "is_default": false
+      }
+    ]
+  }
+}

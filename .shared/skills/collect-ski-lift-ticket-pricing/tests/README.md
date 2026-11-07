@@ -31,6 +31,9 @@ node .shared/skills/collect-ski-lift-ticket-pricing/tests/run-tests.mjs --with-c
   - 学生区分（大学院生・短大・専門を含むことが明記されたaudience）
   - 昼食付きセット券（`included_items`）
   - 2スキー場共通券（`shared_with_resorts`）
+  - レンタル（`rental_audiences` の券と違う子ども区分、`usable_at_night`、ウェア上だけ・下だけ `wear_top` / `wear_bottom`）
+  - 手数料の課金単位（`fees[].unit`）
+  - 雪マジ（`yukimaji`: 平日限定・年末年始除外・日中のみの無料クーポン、全日・半額・3回までの割引クーポン、返金される保証料、レンタル20%OFF）
 - `daypass-test-2025-2026.json` — 1日券・ナイター・時間券・複数日券の選択。25時間券と、それに追加するトップアップ5時間（`add_on_to_product_ids`）を含む
 - `minimal.json` — 空に近い最小構成（テンプレート相当）
 
@@ -104,3 +107,23 @@ node .shared/skills/collect-ski-lift-ticket-pricing/tests/run-tests.mjs --with-c
   `coverage-` プレフィックスを付けて `fixtures/invalid/` に置く
 
 `.tmp/` はテスト実行時の一時出力（gitignore対象）。
+
+## 架空スキー場の特徴照合（Y01〜Y05）
+
+実在施設にあって架空ケースに無い「構造の特徴」を警告する仕組みのテスト（仕様は `references/fictional-fixtures.md`、特徴の一覧は `references/feature-catalog.md`）。
+`run-tests.mjs` の「Y. 架空ケースの特徴抽出・照合」節で次を確認する。
+
+- **Y01** `extractFeatures` の定義は `scripts/lift-ticket-features.mjs` の1箇所だけで、照合スクリプトは実在・架空の両方にそれを使う。金額の組み合わせ（恐羅漢型・Webが窓口より高い・セット券がバラより安い）、`notes_ja` を読まないこと、`fee.unit` などの新フィールドも単体で確認する。
+- **Y02** 架空ケースに無い特徴を持つ実在施設は `施設名: 特徴（架空ケースなし）` で出て終了コード1。`--json` の結果も確認する。
+- **Y03** `references/coverage-acknowledged.json` に理由付き（`reason_ja`）で載せた特徴は失敗にしない。`reason_ja` が空・空白・欠落なら失敗にする。
+- **Y05** 変異テスト: 架空JSONから特徴を1つ持つ要素（手数料・同行者ルール・レンタル・雪マジ・ナイター営業・時間帯券・資格条件付き割引）を外すと、その特徴が警告に出る。
+- `applyVariant`（remove→merge→append）と `loadFictional`、その結果が schema・taxonomy・coverage の3スクリプトを通ること。`tests/fixtures/fictional/` に本体・variants が置かれていれば全件を3スクリプトに通す（`_` で始まる補助JSON `_minimal-for-tests.json` は架空ケースとしては読まない）。
+- 実データ（`src/private/data/lift-ticket` 全施設）の特徴抽出が例外なく終わり、`coverage-report.md` の 3-A（実在にあって架空に無い特徴）に対応するキーが全部出ること。キー名の対応表はテスト内（`SECTION_3A`）。実データで出るキーはすべて `feature-catalog.md` に載っていること。実データが無い環境では省略する。
+
+手で照合するとき:
+
+```bash
+node scripts/check-fictional-coverage.mjs --real src/private/data/lift-ticket --fictional tests/fixtures/fictional
+node scripts/check-fictional-coverage.mjs --real src/private/data/lift-ticket/<slug>/<season>.json --fictional tests/fixtures/fictional
+node scripts/lift-ticket-features.mjs <data.json>   # その施設の特徴キーを出す
+```
