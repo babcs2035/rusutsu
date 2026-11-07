@@ -1,5 +1,9 @@
 /** 仕様書 PB（過去の不具合の再発防止）の架空スキー場。test() は含めない */
-import type { LiftTicketAudience, LiftTicketOffer } from "../../../types";
+import type {
+  LiftTicketAudience,
+  LiftTicketData,
+  LiftTicketOffer,
+} from "../../../types";
 import {
   type SpecHours,
   type SpecTicket,
@@ -626,3 +630,124 @@ export const noRentalInfoResort = specResort({
   id: "spec-pb-no-rental",
   tickets: [day({ adult: 6000 })],
 });
+
+// ---- 2026-11-07 の計算修正 ----
+const DAY_AND_NIGHT_HOURS: SpecHours[] = [
+  { type: "regular", start: "08:30", end: "16:30" },
+  { type: "night", start: "16:30", end: "20:00" },
+];
+/**
+ * PB85: 「ゲート通過から連続8時間」の券がこのスキー場の1日券（夏油高原型）。
+ * 安いエリア限定1日券を1日券の代わりにしない
+ */
+export const eightHourDayResort = specResort({
+  id: "spec-pb-eight-hour-day",
+  hours: [{ type: "regular", start: "08:30", end: "16:30" }],
+  tickets: [
+    {
+      id: "area",
+      name: "初心者エリア限定1日券",
+      validity: { mode: "calendar_day", days: 1 },
+      covers: ["regular"],
+      areaIds: ["beginner"],
+      prices: { adult: 2000 },
+    },
+    hourTicket("eight", "1日券（ゲート通過から8時間）", 8, 5000),
+  ],
+});
+const withUsableAtNight = (
+  base: ReturnType<typeof specResort>,
+  usable: Record<string, boolean | null>,
+) => ({
+  ...base,
+  rentals: (base.rentals ?? []).map(rental => ({
+    ...rental,
+    usable_at_night: usable[rental.id] ?? null,
+  })),
+});
+/**
+ * PB86・PB87: 日中料金（16:30返却）・ナイター料金・夜まで使える1日料金がある
+ * レンタル（ホワイトワールド尾瀬岩鞍型）
+ */
+const nightRentalBase = (dayAndNightPrice: number) =>
+  withUsableAtNight(
+    specResort({
+      id: `spec-pb-rental-day-night-${dayAndNightPrice}`,
+      hours: DAY_AND_NIGHT_HOURS,
+      tickets: [day({ adult: 6000 }, { covers: ["regular", "night"] })],
+      rentals: [
+        {
+          id: "ski-day",
+          items: ["ski_set"],
+          prices: { adult: 5000 },
+          duration: { mode: "day", end_time: "16:30" },
+        },
+        {
+          id: "ski-night",
+          items: ["ski_set"],
+          prices: { adult: 4000 },
+          duration: { mode: "night", start_time: "16:00" },
+        },
+        {
+          id: "ski-day-night",
+          items: ["ski_set"],
+          prices: { adult: dayAndNightPrice },
+        },
+      ],
+    }),
+    {
+      "ski-day-adult": false,
+      "ski-night-adult": true,
+      "ski-day-night-adult": true,
+    },
+  );
+/** PB86: 1日＋ナイター料金 8,000円が、日中5,000＋ナイター4,000より安い */
+export const dayNightRentalResort = nightRentalBase(8000);
+/** PB87: 1日＋ナイター料金 9,500円が、日中5,000＋ナイター4,000より高い */
+export const dayNightRentalExpensiveResort = nightRentalBase(9500);
+/**
+ * PB88・PB89: 収集データの形の手数料（applies_to_channel_ids・unit）。
+ * Web 5,800円＋1決済ごとの手数料100円、窓口 5,900円（飛騨流葉の送料型）
+ */
+const collectedWebFee = {
+  id: "web-fee",
+  name_ja: "Web決済手数料",
+  amount: 100,
+  applies_to_product_ids: [],
+  applies_to_channel_ids: ["web"],
+  unit: "per_transaction",
+};
+const webAndWindowBase = (id: string, webChannels: string[]) => {
+  const base = specResort({
+    id,
+    tickets: [day({ adult: 5900 })],
+  });
+  const allDays = base.calendars[0]?.id;
+  return {
+    ...base,
+    offers: [
+      ...base.offers,
+      {
+        id: "web-adult",
+        name_ja: "1日券（Web）",
+        product_id: "day",
+        audience_ids: ["adult"],
+        calendar_ids: allDays ? [allDays] : [],
+        channel_ids: webChannels,
+        discount_reasons: ["online_purchase"],
+        price: { currency: "JPY", amount: 5800 },
+        source_refs: ["src"],
+      },
+    ],
+    fees: [collectedWebFee],
+  } as unknown as LiftTicketData;
+};
+/** PB88: Webだけで買える 5,800円に手数料100円が付く */
+export const collectedWebFeeResort = webAndWindowBase("spec-pb-web-fee", [
+  "web",
+]);
+/** PB89: 窓口でもWebでも買える 5,800円。手数料のかからない窓口で買えるので足さない */
+export const collectedEitherChannelResort = webAndWindowBase(
+  "spec-pb-either-channel",
+  ["window", "web"],
+);

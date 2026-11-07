@@ -435,6 +435,8 @@ export type LiftTicketRental = {
   purchase_deadline?: LiftTicketOffer["purchase_deadline"];
   use_period?: LiftTicketPeriod | null;
   sales_period?: LiftTicketPeriod | null;
+  /** 日中に借りた物をナイター終了まで使えるか（公式に記載が無ければ null） */
+  usable_at_night?: boolean | null;
   source_refs?: string[];
   source_quotes?: LiftTicketSourceQuote[];
   notes_ja?: string | null;

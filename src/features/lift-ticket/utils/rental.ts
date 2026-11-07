@@ -806,15 +806,46 @@ export const calculateRentalPlan = (
         if (!night || night.length === 0) return day;
         const nightStart = night[0][0];
         const nightEnd = night.at(-1)?.[1] ?? nightStart;
-        const ends = day.map(option =>
-          toMinutesOrNull(option.rental.duration.end_time),
+        /** 夜まで使える（true）／使えない（false）／不明（null） */
+        const lastsNight = (rental: LiftTicketRental): boolean | null => {
+          if (rental.usable_at_night === true) return true;
+          if (rental.usable_at_night === false) return false;
+          const end = toMinutesOrNull(rental.duration.end_time);
+          if (end == null) return null;
+          if (end >= nightEnd) return true;
+          if (end <= nightStart) return false;
+          return null;
+        };
+        // 「1日＋ナイター」料金のように、1枚で夜まで使える1日料金だけの最安
+        const window = () => windowOf(plan);
+        const allDay = cheapestCover(
+          required,
+          candidates
+            .filter(
+              rental =>
+                lastsNight(rental) === true &&
+                fitsDuration(rental, plan.duration, window) &&
+                availableOn(data, rental, plan.date, today),
+            )
+            .map(rental => ({
+              rental,
+              amount: rental.price.amount ?? 0,
+              times: 1,
+            })),
         );
-        if (ends.every(end => end != null && end >= nightEnd)) return day;
+        const states = day.map(option => lastsNight(option.rental));
+        if (states.every(state => state === true)) return day;
         const extra = nightCover(plan);
-        if (ends.some(end => end != null && end <= nightStart)) {
-          // 日中のレンタルは夜に使えないと分かっている。夜の分を借り足す
-          return extra ? [...day, ...extra] : day;
+        if (states.some(state => state === false)) {
+          // 日中のレンタルは夜に使えないと分かっている。夜の分を借り足す案と、
+          // 夜まで使える1日料金の案の安いほう
+          const withExtra = extra ? [...day, ...extra] : null;
+          if (allDay && (!withExtra || totalOf(allDay) <= totalOf(withExtra)))
+            return allDay;
+          return withExtra ?? day;
         }
+        if (allDay && extra && totalOf(allDay) <= totalOf([...day, ...extra]))
+          return allDay;
         lineWarnings.push(
           "日中のレンタルが夜も使えるかは公式で確認してください",
         );

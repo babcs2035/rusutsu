@@ -357,3 +357,70 @@ test("「あり」にしたときは借りられる板・ブーツ（ストッ�
     { sport: "snowboard", items: ["snowboard", "wear"] },
   );
 });
+
+test("1日＋ナイターでは、夜まで使える1日料金と日中＋ナイターの借り足しの安いほうを選ぶ", () => {
+  const withNight = (rentals: LiftTicketRental[]): LiftTicketData => ({
+    ...data(rentals),
+    operating_hours: [
+      {
+        id: "oh-day",
+        hours_type: "regular",
+        calendar_ids: [],
+        start_time: "08:30",
+        end_time: "16:30",
+      },
+      {
+        id: "oh-night",
+        hours_type: "night",
+        calendar_ids: [],
+        start_time: "16:30",
+        end_time: "20:00",
+      },
+    ],
+  });
+  const nightInput = (party: TicketPartyGroup[]): LiftTicketSearchInput => ({
+    ...input(party),
+    days: [
+      {
+        id: "d0",
+        date: "2027-01-13",
+        duration: { kind: "day", withNight: true },
+      },
+    ],
+  });
+  const dayOnly = rental("ski-set-day", ["ski_set"], 5000, {
+    duration: { mode: "day", end_time: "16:30" },
+    usable_at_night: false,
+  });
+  const nightOnly = rental("ski-set-night", ["ski_set"], 4000, {
+    duration: { mode: "night", start_time: "16:00" },
+    usable_at_night: true,
+  });
+  const dayAndNight = rental("ski-set-daynight", ["ski_set"], 8000, {
+    usable_at_night: true,
+  });
+  const request = group({
+    sport: "ski",
+    items: ["skis", "ski_boots", "poles"],
+  });
+  // 日中5,000＋ナイター4,000 = 9,000 より、1日＋ナイター料金 8,000 が安い
+  assert.equal(
+    calculateRentalPlan(
+      withNight([dayOnly, nightOnly, dayAndNight]),
+      nightInput([request]),
+    ).total,
+    8000,
+  );
+  // 1日＋ナイター料金が借り足しより高ければ、借り足しを選ぶ
+  assert.equal(
+    calculateRentalPlan(
+      withNight([
+        dayOnly,
+        nightOnly,
+        { ...dayAndNight, price: { currency: "JPY", amount: 9500 } },
+      ]),
+      nightInput([request]),
+    ).total,
+    9000,
+  );
+});

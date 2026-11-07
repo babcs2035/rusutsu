@@ -644,11 +644,17 @@ export const durationCandidateProducts = (
   );
   const isExcludedShared = (product: LiftTicketProduct) =>
     hasSingleDayPass && isSharedLiftTicketProduct(product);
+  // 「1日券」が「ゲート通過から連続8時間」のような時間券のスキー場（夏油高原）もある。
+  // 8時間以上の時間券は1日券と同じく、エリア限定の安い券より優先する
+  const isDayLikePass = (product: LiftTicketProduct) =>
+    product.validity?.days === 1 ||
+    (product.validity?.mode === "hours_from_first_use" &&
+      (product.validity?.hours ?? 0) >= 8);
   const hasUnrestrictedDayPass = data.products.some(
     product =>
       !isExcludedShared(product) &&
       (product.area_ids?.length ?? 0) === 0 &&
-      product.validity?.days === 1 &&
+      isDayLikePass(product) &&
       hasUnconditionalStandardOffer(data, product),
   );
   return data.products.filter(product => {
@@ -1372,11 +1378,16 @@ const feeAppliesTo = (
   if (products.length === 0 && channels.length === 0) return false;
   if (products.length > 0 && !(productId && products.includes(productId)))
     return false;
-  if (
-    channels.length > 0 &&
-    !(channelIds ?? []).some(channelId => channels.includes(channelId))
-  )
-    return false;
+  // 窓口でもWebでも買える料金は、手数料のかからない経路で買えるので手数料を足さない。
+  // 料金の販売経路がすべて手数料のかかる経路のときだけ足す
+  if (channels.length > 0) {
+    const offerChannels = channelIds ?? [];
+    if (
+      offerChannels.length === 0 ||
+      !offerChannels.every(channelId => channels.includes(channelId))
+    )
+      return false;
+  }
   return true;
 };
 

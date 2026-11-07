@@ -1,5 +1,8 @@
 import { z } from "zod";
-import type { LiftTicketData } from "@/features/lift-ticket/types";
+import type {
+  LiftTicketData,
+  LiftTicketFee,
+} from "@/features/lift-ticket/types";
 
 const text = z.string();
 const optionalText = text.nullable().optional();
@@ -227,14 +230,49 @@ export const publicLiftTicketDataSchema = z.object({
       ...notes,
     }),
   ),
+  // 収集データは販売経路を applies_to_channel_ids、課金単位を unit（per_transaction
+  // ＝1決済ごと）で持つ。画面の計算が読む channel_ids / charge_unit に変換する
   fees: z.array(
-    z.object({
-      ...named,
-      amount: number,
-      currency: text.optional(),
-      applies_to_product_ids: strings,
-      ...notes,
-    }),
+    z
+      .object({
+        ...named,
+        amount: number,
+        currency: text.optional(),
+        applies_to_product_ids: strings,
+        applies_to_channel_ids: strings,
+        unit: z.string().nullable().optional(),
+        // 変換済み（固定資料など）をもう一度通しても落とさない
+        channel_ids: strings,
+        charge_unit: z
+          .enum(["per_person", "per_ticket", "per_payment"])
+          .optional(),
+        ...notes,
+      })
+      .transform(
+        ({
+          applies_to_channel_ids,
+          unit,
+          channel_ids,
+          charge_unit,
+          ...fee
+        }) => {
+          const chargeUnit: LiftTicketFee["charge_unit"] =
+            charge_unit ??
+            (unit === "per_transaction"
+              ? "per_payment"
+              : unit === "per_person" || unit === "per_ticket"
+                ? unit
+                : undefined);
+          const channels = channel_ids?.length
+            ? channel_ids
+            : applies_to_channel_ids;
+          return {
+            ...fee,
+            ...(channels?.length ? { channel_ids: channels } : {}),
+            ...(chargeUnit ? { charge_unit: chargeUnit } : {}),
+          };
+        },
+      ),
   ),
   rental_audiences: z.array(audience).optional(),
   rentals: z
@@ -273,6 +311,7 @@ export const publicLiftTicketDataSchema = z.object({
           .optional(),
         use_period: period,
         sales_period: period,
+        usable_at_night: z.boolean().nullable().optional(),
         source_refs: strings,
         source_quotes: z
           .array(

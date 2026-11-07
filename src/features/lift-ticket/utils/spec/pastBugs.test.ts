@@ -1,4 +1,4 @@
-// 仕様書 PB-A〜PB-G（過去の不具合の再発防止、PB01〜PB62の計算で確かめられる行。PB-H 表示・PB-I データ検証は対象外）
+// 仕様書 PB-A〜PB-G・PB-J（過去の不具合の再発防止、PB01〜PB62・PB85〜PB89の計算で確かめられる行。PB-H 表示・PB-I データ検証は対象外）
 // PB-A 人物区分は audience.test.ts、PB-B〜PB-G はこのファイル。PB-A の行は audience.test.ts に ID 付きで実装している
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -46,7 +46,12 @@ import {
   cheapNightResort,
   childSharedOnlyResort,
   closedTuesdayResort,
+  collectedEitherChannelResort,
+  collectedWebFeeResort,
+  dayNightRentalExpensiveResort,
+  dayNightRentalResort,
   deadlineDateResort,
+  eightHourDayResort,
   gogoichiResort,
   headcountSetResort,
   holidayRentalResort,
@@ -657,3 +662,51 @@ function specResortLunch(): LiftTicketData {
     ],
   };
 }
+
+// ---------- 2026-11-07 の計算修正（夏油高原・ホワイトワールド尾瀬岩鞍・飛騨流葉で見つかった不具合） ----------
+test("PB85 「ゲート通過から8時間」が1日券のスキー場で、1日は安いエリア限定1日券ではなく8時間券（K03と同じ扱い）", () => {
+  const plan = run(eightHourDayResort, JAN13, DAY);
+  assert.equal(plan.total, 5000);
+});
+const nightRental = (data: LiftTicketData) =>
+  calculateRentalPlan(
+    toClientLiftTicketData(data),
+    dayInput(JAN13, DAY_NIGHT, party({ ...adult(1), rental: SKI3 })),
+  );
+test("PB86 1日＋ナイターのレンタルは、夜まで使える1日料金 8,000円が日中5,000＋ナイター4,000より安ければそれを出す（公開データ変換を通しても夜間利用の可否が残る）", () => {
+  const converted = toClientLiftTicketData(dayNightRentalResort);
+  assert.equal(
+    converted.rentals?.find(rental => rental.id === "ski-day-adult")
+      ?.usable_at_night,
+    false,
+  );
+  assert.equal(nightRental(dayNightRentalResort).total, 8000);
+});
+test("PB87 1日＋ナイター料金 9,500円が日中5,000＋ナイター4,000より高ければ、借り足しの 9,000円を出す", () => {
+  assert.equal(nightRental(dayNightRentalExpensiveResort).total, 9000);
+});
+test("PB88 収集データの形の手数料（applies_to_channel_ids・unit）を公開データ変換で残し、Webだけの料金 5,800円に1決済100円を足す（窓口 5,900円より安い 5,900円）", () => {
+  const converted = toClientLiftTicketData(collectedWebFeeResort);
+  assert.deepEqual(converted.fees[0]?.channel_ids, ["web"]);
+  assert.equal(converted.fees[0]?.charge_unit, "per_payment");
+  // Web 5,800円×2＋100円 = 11,700円（窓口 11,800円より安い。W08と同じ）
+  assert.equal(run(converted, JAN13, DAY, [adult(2)]).total, 11700);
+});
+test("PB89 窓口でもWebでも買える 5,800円には、手数料のかからない窓口で買えるので手数料を足さない", () => {
+  const converted = toClientLiftTicketData(collectedEitherChannelResort);
+  assert.equal(run(converted, JAN13, DAY, [adult(2)]).total, 11600);
+  // 画面側の形（channel_ids）の手数料でも同じ。Webでも買えるだけでは足さない
+  const clientShaped: LiftTicketData = {
+    ...converted,
+    fees: [
+      {
+        id: "web-fee",
+        name_ja: "Web決済手数料",
+        amount: 100,
+        channel_ids: ["web"],
+        charge_unit: "per_payment",
+      },
+    ],
+  };
+  assert.equal(run(clientShaped, JAN13, DAY, [adult(2)]).total, 11600);
+});
