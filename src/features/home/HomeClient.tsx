@@ -68,11 +68,7 @@ import {
   resortPathname,
 } from "@/shared/utils/resortPath";
 import { reloadIfStaleBuild } from "@/shared/utils/staleBuild";
-import type {
-  MapSkiResort,
-  NullableSkiResortDetail,
-  SkiResortDetail,
-} from "@/types/skiResorts";
+import type { MapSkiResort, NullableSkiResortDetail } from "@/types/skiResorts";
 import {
   BOTTOM_SHEET_COLLAPSED_SNAP_POINT,
   BOTTOM_SHEET_EXPANDED_SNAP_POINT,
@@ -82,6 +78,7 @@ import {
   getBottomSheetHeightRatio,
   MOBILE_KEYBOARD_INSET_THRESHOLD,
 } from "./constants";
+import { useCompareResorts } from "./hooks/useCompareResorts";
 import { useHomeGestureGuards } from "./hooks/useHomeGestureGuards";
 import { useMapZoomIntentListener } from "./hooks/useMapZoomIntentListener";
 import { useMobileSearchOverlayEffects } from "./hooks/useMobileSearchOverlayEffects";
@@ -205,17 +202,9 @@ function HomeClientContent({
   const [favoriteCompareIds, setFavoriteCompareIds] = useState<string[] | null>(
     session?.favoriteCompareIds ?? null,
   );
-  const [compareResortData, setCompareResortData] = useState<SkiResortDetail[]>(
-    [],
-  );
   const [isCompareOpen, setIsCompareOpen] = useState(
     session?.isCompareOpen ?? false,
   );
-  usePrefetchRecommendations([
-    selectedResortData?.id === selectedResortId ? selectedResortId : null,
-    ...(isCompareOpen ? compareResortData.slice(0, 4).map(r => r.id) : []),
-  ]);
-  const [isCompareLoading, setIsCompareLoading] = useState(false);
   const [isMobileFilterOverlayOpen, setIsMobileFilterOverlayOpen] = useState(
     session?.isMobileFilterOverlayOpen ?? false,
   );
@@ -495,26 +484,15 @@ function HomeClientContent({
     [activeCompareIds],
   );
   const compareCacheKey = activeCompareIds.join(",");
-  useEffect(() => {
-    let disposed = false;
-    if (!isCompareOpen || !compareCacheKey) {
-      setCompareResortData([]);
-      setIsCompareLoading(false);
-      return;
-    }
-    setIsCompareLoading(true);
-    setCompareResortData([]);
-    void Promise.all(compareCacheKey.split(",").map(getCachedResort)).then(
-      data => {
-        if (disposed) return;
-        setCompareResortData(data.filter(item => item !== null));
-        setIsCompareLoading(false);
-      },
-    );
-    return () => {
-      disposed = true;
-    };
-  }, [compareCacheKey, isCompareOpen]);
+  const {
+    resorts: compareResortData,
+    isLoading: isCompareLoading,
+    prioritize: onCompareMapResortsNeeded,
+  } = useCompareResorts(activeCompareIds, isCompareOpen);
+  usePrefetchRecommendations([
+    selectedResortData?.id === selectedResortId ? selectedResortId : null,
+    ...(isCompareOpen ? compareResortData.slice(0, 4).map(r => r.id) : []),
+  ]);
   useEffect(() => {
     void retainComparedDetails(
       compareCacheKey ? compareCacheKey.split(",") : [],
@@ -1038,7 +1016,6 @@ function HomeClientContent({
       setSelectedFinalizedFeature(null);
       setSelectedElevationProfilePoint(null);
       setIsCompareOpen(true);
-      setIsCompareLoading(true);
       if (isSidePanelLayout) {
         setIsListSheetOpen(false);
       } else {
@@ -1075,8 +1052,6 @@ function HomeClientContent({
     urlHistoryModeRef.current = "push";
     if (favoriteCompareIds === null) setSelectedCompareIds([]);
     setFavoriteCompareIds(null);
-    setCompareResortData([]);
-    setIsCompareLoading(false);
     if (isCompareOpen) {
       closeMobileContentTab();
       setIsCompareOpen(false);
@@ -1148,6 +1123,7 @@ function HomeClientContent({
             initialResorts={initialResorts}
             isCompareLoading={isCompareLoading}
             isCompareOpen={isCompareOpen}
+            onCompareMapResortsNeeded={onCompareMapResortsNeeded}
             isFilterEditorOpen={isFilterEditorOpen}
             isMobileFilterOverlayOpen={isMobileFilterOverlayOpen}
             isPending={isPending || (detailLoading && !selectedResortData)}
@@ -1247,18 +1223,4 @@ function HomeClientContent({
       </ResortLabelNameContext.Provider>
     </CourseNavigationContext.Provider>
   );
-}
-
-async function getCachedResort(id: string): Promise<SkiResortDetail | null> {
-  const cached = await readDetailCache(id);
-  if (!navigator.onLine) return cached;
-  try {
-    const data = await getSkiResortById(id);
-    // 比較中のスキー場も圏外で開けるよう、取得した最新値を保存する。
-    if (data) void writeDetailCache(data, { compared: true });
-    return data ?? cached;
-  } catch (error) {
-    reloadIfStaleBuild(error);
-    return cached;
-  }
 }

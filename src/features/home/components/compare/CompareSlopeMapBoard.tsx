@@ -2,7 +2,14 @@
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { ComponentType, CSSProperties, ReactNode } from "react";
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { FinalizedMapToolbar } from "@/features/map/components/FinalizedMapToolbar";
 import type {
@@ -190,6 +197,39 @@ const useSlopeMapSelection = () => {
   return { selectionByResortId, setSelection };
 };
 
+/**
+ * 同時に画面に作っておく地図の数。
+ * MapLibre は 1 枚ごとに WebGL コンテキストを使い、ブラウザは 1 ページで
+ * 16 枚前後までしか持てない（超えると古い地図が消える）。ホームの地図の分も
+ * 残して、スマホはメモリも考えて少なめにする。
+ */
+const MAX_LIVE_SLOPE_MAPS = { mobile: 5, desktop: 10 } as const;
+
+/**
+ * 見えている順・最近見た順に、地図を残すスキー場を選ぶ。
+ * 戻ったときに作り直さないよう、上限までは見た地図を手放さない。
+ */
+export const nextLiveMapIds = (
+  previous: string[],
+  priority: string[],
+  resortIds: string[],
+  max: number,
+) => {
+  const wanted = priority.filter(id => resortIds.includes(id));
+  const next = [
+    ...wanted,
+    ...previous.filter(id => !wanted.includes(id) && resortIds.includes(id)),
+  ].slice(0, max);
+  const unchanged =
+    next.length === previous.length && next.every(id => previous.includes(id));
+  return unchanged ? previous : next;
+};
+
+/** 地図の代わりに置く枠。地図を作る前と、作らずに残しているカードで使う */
+const SlopeMapPlaceholder = () => (
+  <div className="min-h-0 flex-1 border-t border-gray-200 bg-gray-100" />
+);
+
 const EmptyMessage = () => (
   <p className="py-10 text-center text-sm font-semibold text-gray-500">
     比較するスキー場がありません。
@@ -201,7 +241,9 @@ const EmptyMessage = () => (
  *
  * 1 画面 1 スキー場のカルーセル。地図はプレビュー（操作不可）にして
  * カード全体の左右スワイプを優先し、拡大ボタンからだけ操作できる全画面に入る。
- * MapLibre は WebGL コンテキストを持つので、表示中の 1 枚だけをマウントする。
+ * スワイプのたびに地図を作り直さないよう、表示中と両隣の地図を先に用意し、
+ * 最近見た地図も残す。MapLibre は WebGL コンテキストを持つので、同時に
+ * 残す枚数は MAX_LIVE_SLOPE_MAPS までにする。
  * 表示の切替は上に固定した帯にまとめ、比較中のスキー場すべてに効かせる。
  * 色凡例と設定は通常表示でも使えるよう、この帯に置く。
  */
@@ -209,10 +251,13 @@ export const CompareSlopeMapTab = ({
   resorts,
   DynamicMap,
   mapResorts,
+  onMapResortsNeeded,
 }: {
   resorts: Resort[];
   DynamicMap: ComponentType<JapanResortMapProps>;
   mapResorts: MapSkiResort[];
+  /** 表示中・隣のスキー場。地図データを先に取るために知らせる */
+  onMapResortsNeeded?: (ids: string[]) => void;
 }) => {
   const { selectionByResortId, setSelection } = useSlopeMapSelection();
   const [activeIndex, setActiveIndex] = useState(0);
@@ -224,6 +269,18 @@ export const CompareSlopeMapTab = ({
   const [showOpenOnly, setShowOpenOnly] = useState(false);
   const [mapTileVariant, setMapTileVariant] = useState<MapTileVariant>("photo");
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const resortIdsKey = resorts.map(resort => resort.id).join(",");
+  const [liveMapIds, setLiveMapIds] = useState<string[]>([]);
+  useEffect(() => {
+    const resortIds = resortIdsKey ? resortIdsKey.split(",") : [];
+    const priority = [activeIndex, activeIndex + 1, activeIndex - 1]
+      .map(index => resortIds[index])
+      .filter((id): id is string => id !== undefined);
+    onMapResortsNeeded?.(priority);
+    setLiveMapIds(previous =>
+      nextLiveMapIds(previous, priority, resortIds, MAX_LIVE_SLOPE_MAPS.mobile),
+    );
+  }, [activeIndex, resortIdsKey, onMapResortsNeeded]);
   const hasCourses = resorts.some(
     resort => (resort.finalizedMapData?.courses?.features.length ?? 0) > 0,
   );
@@ -274,7 +331,7 @@ export const CompareSlopeMapTab = ({
             key={resort.id}
             className="h-full w-full min-w-full snap-center px-0.5"
           >
-            {index === activeIndex ? (
+            {index === activeIndex || liveMapIds.includes(resort.id) ? (
               <ResortSlopeMapCard
                 resort={resort}
                 DynamicMap={DynamicMap}
@@ -294,7 +351,7 @@ export const CompareSlopeMapTab = ({
               />
             ) : (
               <SlopeMapCardShell resort={resort} className="h-full">
-                <div className="min-h-0 flex-1 border-t border-gray-200 bg-gray-100" />
+                <SlopeMapPlaceholder />
               </SlopeMapCardShell>
             )}
           </div>
@@ -350,6 +407,8 @@ export const CompareSlopeMapTab = ({
  * なるため、余白・カード見出し・右端のスクロールバー領域を必ず残す。
  * 色分け・地図種別は上の帯（CompareMapHeaderBar）、営業フィルターは各地図に置く。
  * ここでは全カードへ同じ値を配る。
+ * 地図は見えているカードとその近くだけ作り、見た分は上限まで残す。
+ * 件数が増えてもブラウザの地図の上限に届かないようにするため。
  */
 export const CompareSlopeMapBoard = ({
   resorts,
@@ -365,12 +424,15 @@ export const CompareSlopeMapBoard = ({
   onMapTileVariantChange,
   selection,
   onSelectionChange,
+  onMapResortsNeeded,
   className,
   style,
 }: {
   resorts: Resort[];
   DynamicMap: ComponentType<JapanResortMapProps>;
   mapResorts: MapSkiResort[];
+  /** 見えているスキー場。地図データを先に取るために知らせる */
+  onMapResortsNeeded?: (ids: string[]) => void;
   courseColorMode: CourseColorMode;
   onCourseColorModeChange: (mode: CourseColorMode) => void;
   mapDisplaySettings?: MapDisplaySettings;
@@ -384,8 +446,59 @@ export const CompareSlopeMapBoard = ({
   className?: string;
   style?: CSSProperties;
 }) => {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const cardRefs = useRef(new Map<string, HTMLDivElement>());
+  const resortIdsKey = resorts.map(resort => resort.id).join(",");
+  const [liveMapIds, setLiveMapIds] = useState<string[]>([]);
+  const setCardRef = useCallback(
+    (id: string, element: HTMLDivElement | null) => {
+      if (element) cardRefs.current.set(id, element);
+      else cardRefs.current.delete(id);
+    },
+    [],
+  );
+
+  // 見えているカード（少し先まで含む）を監視し、その順に地図を作る
+  useEffect(() => {
+    const root = scrollRef.current;
+    const resortIds = resortIdsKey ? resortIdsKey.split(",") : [];
+    if (!root || resortIds.length === 0) return;
+    const visible = new Set<string>();
+    const apply = () => {
+      const priority = resortIds.filter(id => visible.has(id));
+      onMapResortsNeeded?.(priority);
+      setLiveMapIds(previous =>
+        nextLiveMapIds(
+          previous,
+          priority,
+          resortIds,
+          MAX_LIVE_SLOPE_MAPS.desktop,
+        ),
+      );
+    };
+    const observer = new IntersectionObserver(
+      entries => {
+        for (const entry of entries) {
+          const id = (entry.target as HTMLElement).dataset.resortId;
+          if (!id) continue;
+          if (entry.isIntersecting) visible.add(id);
+          else visible.delete(id);
+        }
+        apply();
+      },
+      // 1 画面分先まで先に作っておく。スクロールした先で地図を待たせない
+      { root, rootMargin: "100% 0px" },
+    );
+    for (const id of resortIds) {
+      const element = cardRefs.current.get(id);
+      if (element) observer.observe(element);
+    }
+    return () => observer.disconnect();
+  }, [resortIdsKey, onMapResortsNeeded]);
+
   return (
     <div
+      ref={scrollRef}
       style={style}
       className={cn(
         "compare-board-scroll @container overflow-y-auto overscroll-contain bg-gray-50",
@@ -397,34 +510,50 @@ export const CompareSlopeMapBoard = ({
       ) : (
         <div className="grid grid-cols-1 gap-8 @[52rem]:grid-cols-2">
           {resorts.map(resort => (
-            <ResortSlopeMapCard
+            <div
               key={resort.id}
-              resort={resort}
-              DynamicMap={DynamicMap}
-              mapResorts={mapResorts}
-              selection={
-                selection?.resortId === resort.id ? selection : EMPTY_SELECTION
-              }
-              onSelectionChange={next =>
-                onSelectionChange(
-                  applyCompareSelection(selection, resort.id, next),
-                )
-              }
-              className="h-[46vh] min-h-[340px] shadow-sm"
-              allowPreviewInteraction
-              // 詳細は右の比較パネルに重ねて出すので、カードには出さない
-              featureDetailPlacement="external"
-              // 表示設定は上の帯にまとめてあるので、カードごとには出さない
-              showInlineMapToolbar={false}
-              courseColorMode={courseColorMode}
-              onCourseColorModeChange={onCourseColorModeChange}
-              mapDisplaySettings={mapDisplaySettings}
-              onMapDisplaySettingsChange={onMapDisplaySettingsChange}
-              showOpenOnly={showOpenOnly}
-              onShowOpenOnlyChange={onShowOpenOnlyChange}
-              mapTileVariant={mapTileVariant}
-              onMapTileVariantChange={onMapTileVariantChange}
-            />
+              data-resort-id={resort.id}
+              ref={element => setCardRef(resort.id, element)}
+            >
+              {liveMapIds.includes(resort.id) ? (
+                <ResortSlopeMapCard
+                  resort={resort}
+                  DynamicMap={DynamicMap}
+                  mapResorts={mapResorts}
+                  selection={
+                    selection?.resortId === resort.id
+                      ? selection
+                      : EMPTY_SELECTION
+                  }
+                  onSelectionChange={next =>
+                    onSelectionChange(
+                      applyCompareSelection(selection, resort.id, next),
+                    )
+                  }
+                  className="h-[46vh] min-h-[340px] shadow-sm"
+                  allowPreviewInteraction
+                  // 詳細は右の比較パネルに重ねて出すので、カードには出さない
+                  featureDetailPlacement="external"
+                  // 表示設定は上の帯にまとめてあるので、カードごとには出さない
+                  showInlineMapToolbar={false}
+                  courseColorMode={courseColorMode}
+                  onCourseColorModeChange={onCourseColorModeChange}
+                  mapDisplaySettings={mapDisplaySettings}
+                  onMapDisplaySettingsChange={onMapDisplaySettingsChange}
+                  showOpenOnly={showOpenOnly}
+                  onShowOpenOnlyChange={onShowOpenOnlyChange}
+                  mapTileVariant={mapTileVariant}
+                  onMapTileVariantChange={onMapTileVariantChange}
+                />
+              ) : (
+                <SlopeMapCardShell
+                  resort={resort}
+                  className="h-[46vh] min-h-[340px] shadow-sm"
+                >
+                  <SlopeMapPlaceholder />
+                </SlopeMapCardShell>
+              )}
+            </div>
           ))}
         </div>
       )}

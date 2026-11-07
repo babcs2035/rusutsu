@@ -1,10 +1,6 @@
 "use server";
 
 import type { ResortOperatingCounts } from "@/features/home/utils/operatingCounts";
-import {
-  parseResortLinksMap,
-  SKI_RESORT_LINKS_DOCUMENT_KEY,
-} from "@/features/lift/server/liftFiles";
 import type {
   LiftTicketSearchInput,
   TicketCalculationResult,
@@ -22,108 +18,26 @@ import {
   calculateRentalBundle,
   type TicketBundleResult,
 } from "@/features/lift-ticket/utils/rentalBundle";
-import { collectSocialAccounts } from "@/features/resort-detail/utils/socialAccounts";
-import {
-  collectNewsLinks,
-  collectTrailMapLinks,
-} from "@/features/resort-detail/utils/trailMapLinks";
-import {
-  resolveResortWeatherIds,
-  weatherLinksMapFromDocument,
-} from "@/features/weather/weatherLinks";
-import { readCurrentResortConditions } from "@/lib/crawlLatestCurrent";
 import { getFinalizedResortMapData } from "@/lib/finalizedResortGeojson";
-import type {
-  FinalizedCourseFeature,
-  FinalizedLiftFeature,
-  FinalizedResortMapData,
-} from "@/lib/finalizedResortGeojsonShared";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { getResortLabelName } from "@/lib/resortAliases";
-import {
-  getLiftTicketDataMap,
-  getResortDecisionData,
-} from "@/lib/resortDecisionData";
+import { getLiftTicketDataMap } from "@/lib/resortDecisionData";
 import { readDisplayGroupsForResort } from "@/lib/resortDisplayGroups";
 import { getResortReadingInfo } from "@/lib/resortReadings";
 import {
-  readSkiResortById,
   readSkiResorts,
   readSkiResortsForMap,
   readSkiResortWeather,
   readYukiMagiList,
 } from "@/lib/skiResortData";
 import { readOperatingSummaries } from "@/server/course-lift/summaryClient";
-import { getDataDocument } from "@/server/data-documents/client";
 import { listLiftTicketSeasons } from "@/server/lift-tickets/client";
+import {
+  readResortMapDataByIds,
+  readSkiResortDetails,
+} from "@/server/ski-resorts/detail";
 import { combineResortMaps } from "@/server/ski-resorts/displayGroupMap";
 import type { SkiResortWithRelations } from "@/types";
-
-type OperationCountSummary = {
-  total: number;
-  open: number;
-  partial: number;
-  hasPartial: boolean;
-};
-
-type FinalizedOperationSummary = {
-  courses: OperationCountSummary | null;
-  lifts: OperationCountSummary | null;
-};
-
-const getOperationSymbol = (status: string | null | undefined) => {
-  if (!status) return null;
-  if (/[○〇◯]/u.test(status)) return "open";
-  if (/[△]/u.test(status)) return "partial";
-  return null;
-};
-
-const isCountableCourseName = (name: string) =>
-  !name.startsWith("無名") && !name.includes("_");
-
-const createOperationCountSummary = (
-  statuses: Array<string | null | undefined>,
-): OperationCountSummary | null => {
-  if (statuses.length === 0) return null;
-
-  const operationSymbols = statuses.map(getOperationSymbol);
-  if (operationSymbols.every(symbol => symbol === null)) return null;
-
-  const open = operationSymbols.filter(symbol => symbol === "open");
-  const partial = operationSymbols.filter(symbol => symbol === "partial");
-
-  return {
-    total: statuses.length,
-    open: open.length,
-    partial: partial.length,
-    hasPartial: partial.length > 0,
-  };
-};
-
-const createCourseOperationSummary = (
-  courses: FinalizedCourseFeature[],
-): OperationCountSummary | null =>
-  createOperationCountSummary(
-    courses
-      .filter(course => isCountableCourseName(course.name))
-      .map(course => course.properties.status),
-  );
-
-const createLiftOperationSummary = (
-  lifts: FinalizedLiftFeature[],
-): OperationCountSummary | null =>
-  createOperationCountSummary(lifts.map(lift => lift.properties.status));
-
-const createFinalizedOperationSummary = (
-  finalizedMapData: FinalizedResortMapData | null,
-): FinalizedOperationSummary => ({
-  courses: finalizedMapData?.courses
-    ? createCourseOperationSummary(finalizedMapData.courses.features)
-    : null,
-  lifts: finalizedMapData?.lifts
-    ? createLiftOperationSummary(finalizedMapData.lifts.features)
-    : null,
-});
 
 // スキーリゾート一覧を取得（リレーション込み）
 export async function getSkiResorts(): Promise<SkiResortWithRelations[]> {
@@ -335,88 +249,28 @@ export async function getResortOperatingCountsForList(
 
 // スキーリゾート詳細を取得
 export async function getSkiResortById(id: string) {
-  const resort = await readSkiResortById(id);
-
-  if (!resort) return null;
-
-  const sourceIds = resort.sourceResortIds?.length
-    ? resort.sourceResortIds
-    : [resort.id];
-  const [finalizedMapData, decisionData, primaryDecisionData, linksDocument] =
-    await Promise.all([
-      getFinalizedResortMapData(resort.id),
-      getResortDecisionData(resort.id),
-      sourceIds[0] !== resort.id ? getResortDecisionData(sourceIds[0]) : null,
-      getDataDocument(SKI_RESORT_LINKS_DOCUMENT_KEY),
-    ]);
-  const simultaneousOptions = await resolveSimultaneousOptions(resort.id);
-  const linksMap = parseResortLinksMap(linksDocument?.content ?? null);
-  const rawLinksMap = weatherLinksMapFromDocument(
-    linksDocument?.content ?? null,
-  );
-  const weatherIds = resolveResortWeatherIds(rawLinksMap, resort.id, sourceIds);
-
-  return {
-    ...resort,
-    ...getResortReadingInfo(resort),
-    ...decisionData,
-    liftTickets: decisionData.liftTickets.length
-      ? decisionData.liftTickets
-      : (primaryDecisionData?.liftTickets ?? []),
-    reviewData:
-      decisionData.reviewData ?? primaryDecisionData?.reviewData ?? null,
-    currentConditions: await Promise.all(
-      [...new Set([resort.id, ...sourceIds])].map(async id => ({
-        id,
-        ...(await readCurrentResortConditions(id)),
-      })),
-    ),
-    socialAccounts: collectSocialAccounts(linksMap, [resort.id, ...sourceIds]),
-    trailMapLinks: collectTrailMapLinks(linksMap, [resort.id, ...sourceIds]),
-    newsLinks: collectNewsLinks(linksMap, [resort.id, ...sourceIds]),
-    weatherIds,
-    // 同時表示の組の地図は、チェックしたときに読む
-    finalizedMapData,
-    simultaneousOptions,
-    finalizedOperationSummary:
-      createFinalizedOperationSummary(finalizedMapData),
-  };
+  const [detail] = await readSkiResortDetails([id], { withMap: true });
+  return detail ?? null;
 }
 
-export type SimultaneousOption = {
-  /** 表示状態を覚えるキー。組のどのスキー場から開いても同じになる */
-  key: string;
-  /** 管理画面で作った組のID */
-  groupId: string;
-  /** 「ニセコ全山」など。null なら相手の名前で「〇〇も同時に表示」と出す */
-  label: string | null;
-  partners: Array<{
-    id: string;
-    nameJa: string;
-    shortName: string | null;
-    /** 組の中での表示名。null なら短縮名 */
-    label: string | null;
-  }>;
-  /** 組の全スキー場（開いたスキー場を含む）の表示名。設定したものだけ */
-  memberLabels: Record<string, string>;
-};
+// 比較用の読み取りは数件ずつに限る。一度に大量のデータを取れる入口にしないため。
+const MAX_COMPARE_DETAIL_IDS = 8;
+const MAX_COMPARE_MAP_IDS = 4;
 
-/** 「〇〇も同時に表示」の選択肢。管理画面で作った同時表示の組 */
-async function resolveSimultaneousOptions(
-  resortId: string,
-): Promise<SimultaneousOption[]> {
-  const groups = await readDisplayGroupsForResort(resortId);
-  return groups.map(group => ({
-    key: `group:${group.id}`,
-    groupId: group.id,
-    label: group.label,
-    partners: group.members.filter(member => member.id !== resortId),
-    memberLabels: Object.fromEntries(
-      group.members.flatMap(member =>
-        member.label ? [[member.id, member.label]] : [],
-      ),
-    ),
-  }));
+/** 比較で使う詳細を、地図（コース・リフトの形）抜きでまとめて返す */
+export async function getSkiResortsForCompare(ids: string[]) {
+  const unique = [...new Set(ids)];
+  if (unique.length === 0 || unique.length > MAX_COMPARE_DETAIL_IDS)
+    throw new Error("Invalid ids");
+  return readSkiResortDetails(unique, { withMap: false });
+}
+
+/** 比較のゲレンデ表示に使う地図データ（コース・リフトの形と営業状況） */
+export async function getResortMapDataForCompare(ids: string[]) {
+  const unique = [...new Set(ids)];
+  if (unique.length === 0 || unique.length > MAX_COMPARE_MAP_IDS)
+    throw new Error("Invalid ids");
+  return readResortMapDataByIds(unique);
 }
 
 /**

@@ -16,6 +16,7 @@ type Props = {
   sortControls: ResortSortControls;
   isCompareLoading: boolean;
   isCompareOpen: boolean;
+  onCompareMapResortsNeeded: (ids: string[]) => void;
   listSheetContentRef: RefObject<HTMLDivElement | null>;
   listSheetSnapPoint: number | string | null;
   snapPoints: (number | string)[];
@@ -38,6 +39,7 @@ export const MobileResultsSheet = ({
   sortControls,
   isCompareLoading,
   isCompareOpen,
+  onCompareMapResortsNeeded,
   listSheetContentRef,
   selectedCompareIdSet,
   liftTicketInput,
@@ -56,6 +58,7 @@ export const MobileResultsSheet = ({
       <SkiResortCompareView
         resorts={compareResorts}
         isLoading={isCompareLoading}
+        onMapResortsNeeded={onCompareMapResortsNeeded}
         initialLiftTicketInput={liftTicketInput}
         onClose={onCloseCompare}
         presentation="inline"

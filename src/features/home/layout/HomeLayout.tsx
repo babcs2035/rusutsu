@@ -96,6 +96,8 @@ type Props = {
   initialResorts: MapSkiResort[];
   isCompareLoading: boolean;
   isCompareOpen: boolean;
+  /** 比較のゲレンデで見えているスキー場。地図データを先に取る */
+  onCompareMapResortsNeeded: (ids: string[]) => void;
   isFilterEditorOpen: boolean;
   isMobileFilterOverlayOpen: boolean;
   isPending: boolean;
@@ -180,6 +182,7 @@ export const HomeLayout = ({
   initialResorts,
   isCompareLoading,
   isCompareOpen,
+  onCompareMapResortsNeeded,
   isFilterEditorOpen,
   isMobileFilterOverlayOpen,
   isPending,
@@ -616,6 +619,7 @@ export const HomeLayout = ({
                     onMapTileVariantChange={setCompareSlopeTileVariant}
                     selection={compareSlopeSelection}
                     onSelectionChange={setCompareSlopeSelection}
+                    onMapResortsNeeded={onCompareMapResortsNeeded}
                     className="pointer-events-auto min-h-0 flex-1 px-6 pt-6 pb-10"
                   />
                 )}
@@ -665,6 +669,7 @@ export const HomeLayout = ({
                   sortControls={sortControls}
                   isCompareLoading={isCompareLoading}
                   isCompareOpen={isCompareOpen}
+                  onCompareMapResortsNeeded={onCompareMapResortsNeeded}
                   listSheetContentRef={listSheetContentRef}
                   listSheetSnapPoint={listSheetSnapPoint}
                   snapPoints={mobileListSheetSnapPoints}

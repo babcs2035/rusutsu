@@ -2,10 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useState, useSyncExternalStore } from "react";
-import type {
-  getSimultaneousView,
-  SimultaneousOption,
-} from "@/actions/skiResorts";
+import type { getSimultaneousView } from "@/actions/skiResorts";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,6 +15,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { getResortLabelName } from "@/lib/resortAliases";
 import { cn } from "@/lib/utils";
+import type { SimultaneousOption } from "@/server/ski-resorts/detail";
 import type { Resort } from "../types";
 
 /**

@@ -46,6 +46,8 @@ type Props = {
    * 渡された間はタブの内容の上に重ねて出す。
    */
   featureDetailOverlay?: ReactNode;
+  /** ゲレンデタブで表示中・隣のスキー場。地図データを先に取るために知らせる */
+  onMapResortsNeeded?: (ids: string[]) => void;
 };
 
 const TABS = [
@@ -72,6 +74,7 @@ export const SkiResortCompareView = ({
   showSlopeTab = true,
   showAccessTab = true,
   featureDetailOverlay = null,
+  onMapResortsNeeded,
 }: Props) => {
   const [activeTab, setActiveTab] = useState<CompareTab>("概要");
   const isSidePanel = useBreakpointValue({ base: false, md: true }) ?? false;
@@ -120,6 +123,7 @@ export const SkiResortCompareView = ({
             resorts={resorts}
             DynamicMap={DynamicMap}
             mapResorts={mapResorts}
+            onMapResortsNeeded={onMapResortsNeeded}
           />
         );
       case "料金":
