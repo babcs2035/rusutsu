@@ -211,8 +211,7 @@ const coverageOf = (
   return null;
 };
 
-const breakpointsOf = (intervals: Interval[]) =>
-  intervals.flatMap(([start, end]) => [start, end]);
+const breakpointsOf = (intervals: Interval[]) => intervals.flat();
 
 /** 組み合わせた券で、範囲 scope の中に滑れる時間の最大（分）。required があればそれを覆えるかも見る */
 const bestCoverage = (coverages: Coverage[], scope: Interval[]) => {

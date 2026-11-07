@@ -1,6 +1,6 @@
 "use client";
 
-import { Circle, Minus, Pencil, Play, Plus, Triangle, X } from "lucide-react";
+import { Circle, Minus, Pencil, Play, Triangle, X } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { requestCommunityComposer } from "@/features/community/composerEvents";

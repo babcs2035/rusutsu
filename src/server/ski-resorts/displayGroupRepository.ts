@@ -121,8 +121,9 @@ export async function saveDisplayGroupDirect(
         await transaction.resortDisplayGroupMember.deleteMany({
           where: { groupId: request.id },
         });
+        const groupId = request.id;
         await transaction.resortDisplayGroupMember.createMany({
-          data: members.map(member => ({ ...member, groupId: request.id! })),
+          data: members.map(member => ({ ...member, groupId })),
         });
         const saved = await transaction.resortDisplayGroup.findUniqueOrThrow({
           where: { id: request.id },
