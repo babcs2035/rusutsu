@@ -12,6 +12,7 @@ import { requireEditor } from "@/lib/requireEditor";
 import { withInternalEditActor } from "@/server/edit-requests/actorContext";
 import { assertBoundedPayload } from "@/server/edit-requests/contract";
 import { validateEditPayload } from "@/server/edit-requests/payloadSchema";
+import { EditConflictError } from "@/server/edit-requests/policy";
 import { dispatchEdit } from "@/server/edit-requests/prepare";
 import {
   EDIT_REQUEST_API_MAX_BYTES,
@@ -42,6 +43,7 @@ export async function POST(request: Request) {
       "WRONG_SERVER",
       "公開データを保持するサーバーへ接続してください。",
     );
+  let isAdmin = false;
   try {
     const command = editRequestApiCommandSchema.parse(
       await readRequestJson(request, EDIT_REQUEST_API_MAX_BYTES),
@@ -62,7 +64,7 @@ export async function POST(request: Request) {
         "このGoogleアカウントは接続先サーバーに登録されていません。サーバー側でログインして権限を設定してください。",
       );
     const result = await withInternalEditActor(account.userId, async () => {
-      await requireEditor();
+      isAdmin = (await requireEditor()).role === "admin";
       switch (command.operation) {
         case "list":
           return listEditRequests();
@@ -109,11 +111,18 @@ export async function POST(request: Request) {
         "INVALID_COMMAND",
         "申請操作の入力形式が不正です。",
       );
+    if (error instanceof EditConflictError)
+      return internalApiError(409, "EDIT_CONFLICT", error.message);
     logInternalApiFailure("Edit request API failed", error);
+    // 管理者には理由を返す。汎用文だけでは保存できない原因を調べられない。
+    const reason =
+      isAdmin && error instanceof Error && error.message
+        ? `（理由: ${error.message.slice(0, 500)}）`
+        : "";
     return internalApiError(
       403,
       "REQUEST_DENIED",
-      "申請操作を実行できません。権限と対象の状態を確認してください。",
+      `申請操作を実行できません。権限と対象の状態を確認してください。${reason}`,
     );
   }
 }

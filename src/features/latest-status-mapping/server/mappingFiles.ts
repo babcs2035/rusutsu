@@ -535,7 +535,7 @@ export const prepareLatestStatusMappingDocument = async (
   historyLoader?: StatusHistoryLoader,
 ): Promise<
   | { ok: true; document: DataDocumentWrite; savedAt: string }
-  | { ok: false; errors: string[] }
+  | { ok: false; errors: string[]; conflict?: true }
 > => {
   const errors = await validateRows(
     temporaryRoot,
@@ -549,8 +549,9 @@ export const prepareLatestStatusMappingDocument = async (
   if (current.hash !== request.mappingFileHash && !allowsAdminOverwrite()) {
     return {
       ok: false,
+      conflict: true,
       errors: [
-        "画面を開いた後に対応表が更新されました。最新データを読み直してください。",
+        "画面を開いた後に対応表が更新されました。最新データを読み直すか、上書き保存を選んでください。",
       ],
     };
   }

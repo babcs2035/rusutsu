@@ -9,7 +9,7 @@ import {
 } from "@/lib/crawlLatestCurrent";
 import { usesRemoteDataApi } from "@/lib/internalDataApiClient";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { requireEditor } from "@/lib/requireEditor";
+import { getCurrentActor, requireEditor } from "@/lib/requireEditor";
 import { readExistingSkiResortIds } from "@/lib/skiResortData";
 import { scheduleSavedElevations } from "@/server/backgroundElevation";
 import {
@@ -427,11 +427,22 @@ export async function saveSlopeEdits(
   };
   // ローカル管理画面が旧版の正本サーバーへ接続している間も、管理者の
   // 明示的な上書きは既存のDataDocument APIで保存できるようにする。
-  if (request.forceOverwrite && usesRemoteDataApi()) {
-    await requireAdmin();
-    return withAdminOverwrite(operation);
+  try {
+    if (request.forceOverwrite && usesRemoteDataApi()) {
+      await requireAdmin();
+      return await withAdminOverwrite(operation);
+    }
+    return await runEdit("slope", request.resortId, request, operation);
+  } catch (error) {
+    // 本番ビルドは例外の内容を画面に出さないため、管理者にだけ理由を返す。
+    const actor = await getCurrentActor().catch(() => null);
+    if (actor?.role !== "admin" || !(error instanceof Error)) throw error;
+    console.error("Failed to save slope edits", error);
+    return {
+      ok: false,
+      errors: [`保存できませんでした（理由: ${error.message.slice(0, 500)}）`],
+    };
   }
-  return runEdit("slope", request.resortId, request, operation);
 }
 
 /** 保存済みの全コースを再計算する。編集途中の下書きは使わない。 */
