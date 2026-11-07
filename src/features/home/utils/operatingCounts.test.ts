@@ -115,7 +115,7 @@ test("標高未取得でもマップのコースがあればgroupIdで数える"
   });
 });
 
-test("対応済みコースがない地図は基本情報の数を分母に混ぜない", () => {
+test("対応表がない地図は地図のgroupIdごとに不明/Nで数える", () => {
   const sections = [course("A", null, false), course("A", null, false)];
   sections.forEach((section, index) => {
     section.name = `A_${index + 1}`;
@@ -143,11 +143,11 @@ test("対応済みコースがない地図は基本情報の数を分母に混�
       ]),
       99,
     ),
-    null,
+    { active: null, total: 8 },
   );
 });
 
-test("公式の集計があっても未対応の地図には分母を作らない", () => {
+test("公式の集計があっても未対応の地図は地図のコース数を分母にする", () => {
   const data = mapData([course("unnamed", null, false)]);
   data.courseStatusSummary = {
     total: 8,
@@ -159,7 +159,10 @@ test("公式の集計があっても未対応の地図には分母を作らな�
     sourceUrls: ["  "],
     updates: [],
   };
-  assert.equal(summarizeCoursesForList(data, 9), null);
+  assert.deepEqual(summarizeCoursesForList(data, 9), {
+    active: null,
+    total: 1,
+  });
 });
 
 test("official aggregate snapshot does not replace current map group counts", () => {

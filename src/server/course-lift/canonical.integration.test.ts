@@ -186,7 +186,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
         const summary = await db.skiResortOperationSummary.findUniqueOrThrow({
           where: { skiResortId: "sample" },
         });
-        assert.equal(summary.courseTotal, null);
+        assert.equal(summary.courseTotal, 4);
         assert.equal(summary.courseActive, null);
       },
     );
@@ -755,7 +755,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
         const summary = await db.skiResortOperationSummary.findUniqueOrThrow({
           where: { skiResortId: "annotated" },
         });
-        assert.equal(summary.courseTotal, null);
+        assert.equal(summary.courseTotal, 1);
         assert.equal(summary.courseActive, null);
         assert.equal(
           (await api.getFinalizedResortMapData("annotated")).courses.features

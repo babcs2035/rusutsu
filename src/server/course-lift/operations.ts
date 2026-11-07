@@ -14,7 +14,7 @@ import {
 import { writeMapOperations, writeOperationSummaries } from "./operationWrites";
 
 type Tx = Prisma.TransactionClient;
-export const OPERATION_SUMMARY_VERSION = 5;
+export const OPERATION_SUMMARY_VERSION = 6;
 export type OperationEntity = {
   id: string;
   name: string | null;
@@ -49,10 +49,13 @@ export function summarizeOperationEntities(
   const mapped = entities.filter(row =>
     row.crawledNames.some(name => name.trim() !== ""),
   );
+  // 一部だけ対応済みなら対応済みだけを分母にする。対応表が無い地図は
+  // 地図の全件を分母にして「不明/N」と出す。
+  const counted = mapped.length ? mapped : entities;
   const hasStatusSource = mapped.some(row => row.hasStatusSource);
   if (kind === "course") {
     const summary = summarizeMapCourseStatuses(
-      mapped.map(row => ({
+      counted.map(row => ({
         ...row,
         groupId: row.groupId ?? row.id,
       })),
@@ -65,12 +68,12 @@ export function summarizeOperationEntities(
     });
     return {
       total: count?.total ?? null,
-      active: count?.active ?? null,
+      active: mapped.length ? (count?.active ?? null) : null,
       source: hasStatusSource ? "mapping" : "map",
     };
   }
   const groups = new Map<string, Array<string | null>>();
-  for (const row of mapped) {
+  for (const row of counted) {
     const key = row.id;
     const statuses = groups.get(key) ?? [];
     statuses.push(row.status);
@@ -86,7 +89,7 @@ export function summarizeOperationEntities(
   return {
     total: states.length || null,
     active:
-      states.length && !states.includes(null)
+      mapped.length && !states.includes(null)
         ? states.filter(Boolean).length
         : null,
     source: hasStatusSource ? "mapping" : "map",

@@ -48,15 +48,20 @@ export const summarizeCourseStatusForList = (
   };
 };
 
-/** 営業情報に対応付けたコースだけを一覧の分母にする。 */
+/**
+ * 営業情報に対応付けたコースだけを一覧の分母にする。
+ * 対応表が1件もない地図は、地図のコース数で「不明/N」にする。
+ */
 export const summarizeCoursesForList = (
   mapData: FinalizedResortMapData | null,
   fallbackTotal: number,
 ): OperatingCount | null => {
-  const courses = mapData?.courses?.features;
-  return courses?.length
-    ? summarizeMappedCourses(courses)
-    : unknownCount(fallbackTotal);
+  const section = mapData?.courses;
+  const courses = section?.features;
+  if (!section || !courses?.length) return unknownCount(fallbackTotal);
+  if (courses.some(isMapped)) return summarizeMappedCourses(courses);
+  const summary = createMapCourseStatusSummary(section);
+  return unknownCount(summary?.total ?? 0);
 };
 
 export const summarizeMappedCourses = (

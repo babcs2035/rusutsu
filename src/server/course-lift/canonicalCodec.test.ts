@@ -182,7 +182,7 @@ test("course unknown status makes active unknown and empty map uses basic fallba
   });
 });
 
-test("unmapped inventory has no denominator regardless of names/elevation", () => {
+test("map without any mapping counts all group IDs as unknown", () => {
   const rows = [
     entity("a1", null, { groupId: "A" }),
     entity("a2", null, { groupId: "A" }),
@@ -193,7 +193,7 @@ test("unmapped inventory has no denominator regardless of names/elevation", () =
   ].map(row => ({ ...row, crawledNames: [], hasStatusSource: false }));
   assert.deepEqual(summarizeOperationEntities(rows, "course", 99), {
     active: null,
-    total: null,
+    total: 5,
     source: "map",
   });
   assert.deepEqual(
@@ -202,7 +202,18 @@ test("unmapped inventory has no denominator regardless of names/elevation", () =
       "course",
       9,
     ),
-    { active: null, total: null, source: "map" },
+    { active: null, total: 5, source: "map" },
+  );
+  assert.deepEqual(
+    summarizeOperationEntities(
+      [entity("a", "○", { crawledNames: [] }), entity("b", null)].map(row => ({
+        ...row,
+        crawledNames: [],
+      })),
+      "lift",
+      99,
+    ),
+    { active: null, total: 2, source: "map" },
   );
   assert.deepEqual(summarizeOperationEntities([], "course", 0), {
     active: null,
