@@ -1231,6 +1231,8 @@ function applyRuleOnce(rule, party, fullParty = party) {
     }
     take = Math.min(take, available);
     if (take <= 0 && min > 0) return null;
+    // 実際にこのcomponentで買う人の区分ごとの人数（保護者がシニアなら senior）
+    const usedById = new Map();
     if (!isQualifier) {
       let left = take;
       for (const id of ids) {
@@ -1238,6 +1240,7 @@ function applyRuleOnce(rule, party, fullParty = party) {
         const used = Math.min(have, left);
         if (used > 0) {
           remaining.set(id, have - used);
+          usedById.set(id, used);
           left -= used;
         }
       }
@@ -1262,16 +1265,19 @@ function applyRuleOnce(rule, party, fullParty = party) {
     } else if (effect.type === "fixed_total" || fixedTotal != null) {
       amount = 0; // セット合計として後で加算する
     } else {
-      // discount_amount / discount_percent は個別料金を基準にする
-      const base = cheapestPerPerson(ids[0]);
-      const unit = base?.price.amount ?? null;
-      if (unit == null) return null;
-      if (effect.type === "discount_amount") {
-        amount = Math.max(0, unit - (effect.amount ?? 0)) * take;
-      } else if (effect.type === "discount_percent") {
-        amount = Math.round((unit * (100 - (effect.percent ?? 0))) / 100) * take;
-      } else {
-        amount = unit * take;
+      // discount_amount / discount_percent は、買う本人の区分の個別料金を基準にする
+      // （画面の計算と同じ。component の先頭区分で計算すると、保護者がシニアでも
+      // 大人料金になっていた）
+      for (const [id, used] of usedById) {
+        const unit = cheapestPerPerson(id)?.price.amount ?? null;
+        if (unit == null) return null;
+        if (effect.type === "discount_amount") {
+          amount += Math.max(0, unit - (effect.amount ?? 0)) * used;
+        } else if (effect.type === "discount_percent") {
+          amount += Math.round((unit * (100 - (effect.percent ?? 0))) / 100) * used;
+        } else {
+          amount += unit * used;
+        }
       }
     }
     total += amount;

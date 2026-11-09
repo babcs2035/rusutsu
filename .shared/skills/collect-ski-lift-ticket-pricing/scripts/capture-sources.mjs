@@ -95,6 +95,18 @@ const DEFAULT_MAX_FOLLOWED = 12;
 const OUT_OF_SCOPE_SOURCE_PATTERN =
   /シーズン券|season(?:[-_\s]?)(?:pass|ticket|price)/iu;
 
+/** 「リフト券・シーズン券」のように通常の券と並んでいる見出し・リンク文字 */
+const IN_SCOPE_TICKET_PATTERN = /リフト(?:券|料金)|料金表|1日券|一日券|時間券/u;
+
+/**
+ * リンク文字・ページ題名が「シーズン券だけ」を指すか。
+ * 通常の券と並んで書かれている（「リフト券・シーズン券」）ページは対象内
+ */
+function isSeasonPassOnlyText(...values) {
+  const text = values.filter((value) => typeof value === "string").join(" ");
+  return OUT_OF_SCOPE_SOURCE_PATTERN.test(text) && !IN_SCOPE_TICKET_PATTERN.test(text);
+}
+
 function isOutOfScopeSource(...values) {
   return OUT_OF_SCOPE_SOURCE_PATTERN.test(
     values.filter((value) => typeof value === "string").join(" "),
@@ -197,8 +209,9 @@ function loadRegistryUrls(sourceDir, resortId) {
   }
   return urls.map((entry) => {
     const url = typeof entry === "string" ? entry : entry.url;
-    const label = typeof entry === "string" ? "" : entry.label_ja;
-    if (isOutOfScopeSource(url, label)) {
+    // 説明文（label_ja）は人が書く要約で、「リフト料金・シーズン券・営業時間」の
+    // ように通常の券と同じページを説明することがあるので判定に使わない。URLだけで判定する
+    if (isOutOfScopeSource(url)) {
       throw new Error(
         `収集対象外のシーズン券URLです。${registryPath} から削除してください: ${url}`,
       );
@@ -630,7 +643,7 @@ function collectFollowCandidates(seasonDir, manifest, alreadyCaptured, limit) {
       if (alreadyCaptured.has(key) || candidates.has(key)) continue;
       const text = typeof link.text === "string" ? link.text : "";
       if (FOLLOW_DENY_PATTERN.test(`${href} ${text}`)) continue;
-      if (isOutOfScopeSource(href, text)) continue;
+      if (isOutOfScopeSource(href) || isSeasonPassOnlyText(text)) continue;
       if (!FOLLOW_HINT_PATTERN.test(`${href} ${text}`)) continue;
       candidates.set(key, { url: href, text, linkedFrom: parentUrl });
     }
@@ -709,11 +722,8 @@ async function main() {
       if (
         linkedFrom == null
           ? isOutOfScopeSource(metadata.final_url)
-          : isOutOfScopeSource(
-              metadata.requested_url,
-              metadata.final_url,
-              metadata.page_title,
-            )
+          : isOutOfScopeSource(metadata.requested_url, metadata.final_url) ||
+            isSeasonPassOnlyText(metadata.page_title)
       ) {
         fs.rmSync(pageDir, { recursive: true, force: true });
         console.error(

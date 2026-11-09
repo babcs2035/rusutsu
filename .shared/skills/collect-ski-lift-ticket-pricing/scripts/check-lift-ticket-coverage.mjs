@@ -28,6 +28,16 @@ if (files.length === 0) {
 
 const OUT_OF_SCOPE_DATA_PATTERN =
   /シーズン券|season(?:[-_\s]?)(?:pass|ticket|price)/iu;
+// 出典ページの名前に日帰り券の語も並ぶもの（「リフト券・シーズン券の料金」）は対象内の資料
+const IN_SCOPE_SOURCE_PATTERN = /リフト(?:券|料金)|料金表|1日券|一日券|時間券/u;
+// 「シーズン券は対象外」のように除外したことを書いた注記は混入ではない
+const EXCLUSION_NOTE_PATTERN =
+  /(?:シーズン券|season(?:[-_\s]?)(?:pass|ticket|price))[^。"]{0,30}(?:対象外|除外|収集しない|記録しない|含めない)/giu;
+
+const mentionsOutOfScope = (value) =>
+  OUT_OF_SCOPE_DATA_PATTERN.test(
+    JSON.stringify(value ?? {}).replace(EXCLUSION_NOTE_PATTERN, ""),
+  );
 
 function checkFile(file) {
   const reporter = new Reporter("coverage");
@@ -55,7 +65,9 @@ function checkFile(file) {
   ];
   for (const name of collections) {
     for (const [i, item] of (data[name] ?? []).entries()) {
-      if (OUT_OF_SCOPE_DATA_PATTERN.test(JSON.stringify(item))) {
+      const inScopeSource =
+        name === "sources" && IN_SCOPE_SOURCE_PATTERN.test(JSON.stringify(item));
+      if (!inScopeSource && mentionsOutOfScope(item)) {
         reporter.error(
           `/${name}/${i}`,
           "収集対象外のシーズン券関連情報が含まれています",
@@ -67,7 +79,7 @@ function checkFile(file) {
     ["calculation_policy", data.calculation_policy],
     ["data_quality", data.data_quality],
   ]) {
-    if (OUT_OF_SCOPE_DATA_PATTERN.test(JSON.stringify(value ?? {}))) {
+    if (mentionsOutOfScope(value)) {
       reporter.error(
         `/${name}`,
         "収集対象外のシーズン券関連情報が含まれています",

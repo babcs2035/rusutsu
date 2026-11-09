@@ -1,0 +1,45 @@
+{
+  "case_id": "FT-RENTAL-LESSON",
+  "doc_section": "FT",
+  "base": "r",
+  "note_ja": "レッスン受講者だけが使えるレンタル割引価格（グリーンピア大沼型。条件付きで自動適用しない）",
+  "append": {
+    "rentals": [
+      {
+        "id": "ski-set-a-lesson",
+        "name_ja": "スキーセット 大人（店舗A） レッスン受講者",
+        "official_label_ja": "スキーセット 大人（店舗A） レッスン受講者",
+        "shop_name_ja": "店舗A",
+        "items": [
+          "ski_set"
+        ],
+        "grade_ja": "スタンダード",
+        "audience_ids": [
+          "rental-adult"
+        ],
+        "calendar_ids": [],
+        "channel_ids": [],
+        "duration": {
+          "mode": "day"
+        },
+        "price": {
+          "currency": "JPY",
+          "amount": 3500
+        },
+        "target_qualification": {
+          "official_label_ja": "スキーレッスン受講者",
+          "description_ja": "架空スクールのレッスンを受講する人",
+          "source_refs": [
+            "src-price"
+          ],
+          "notes_ja": null
+        },
+        "purchase_deadline": null,
+        "source_refs": [
+          "src-price"
+        ],
+        "usable_at_night": null
+      }
+    ]
+  }
+}

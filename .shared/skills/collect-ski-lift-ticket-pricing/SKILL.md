@@ -133,8 +133,17 @@ src/private/data/resorts-temporary/tmp/lift-ticket-discovery/{resort-id}/
 - ナイター営業の有無が公式で見つからなければ、
   `src/private/data/SkiResortWeatherIds.json` の `tenkijp[].tenkijpId` から
   `https://tenki.jp/season/ski/{tenkijpId}/` を開き、「ナイター営業 有/無」で確認する。
-  確認したURLを `sources` に登録して `source_refs` を付ける（ナイターの有無の根拠に
-  だけ使い、料金・時刻の根拠にはしない）。
+  確認したURLを `sources` に登録して `source_refs` を付ける（料金の根拠にはしない）。
+- 時刻（営業時間・ナイター時間・午後券や時間帯固定券の開始/終了）は、シーズンが
+  変わってもほとんど変わらないので、今季の公式資料に無ければ次の順で探して採用する:
+  同じ公式サイトの別ページ → 雪マジ掲載 → tenki.jp
+  （`https://tenki.jp/season/ski/{tenkijpId}/`）→ ウェザーニュース
+  （`SkiResortWeatherIds.json` の `weathernewsSpotId` から
+  `https://weathernews.jp/ski/spot/{id}/`）→ 前シーズンの公式ページ（Wayback を含む）。
+  採用したページは必ず `sources` に登録して `source_refs` を付け、`notes_ja` に
+  「前季の時刻」「tenki.jp の掲載」など出どころを書く（今季の発表で変われば差し替える）。
+  前季の資料から採るのは時刻だけで、金額・日付・営業日には使わない。
+- 「12:00〜リフト終了まで」「〜営業終了まで」の終了は、その日の営業終了時刻とする。
 - 料金表にない人物区分は基準区分（大人）の料金になる。中高生・大学生・シニアの列が
   無い、または「-」のときは、その区分専用の金額を作らず、大人の offer の `audience_ids` に
   その区分を並べる（券によっては計算が大人へ戻らず行が消えるため。並べた後に計算で確認する）。
@@ -158,8 +167,8 @@ src/private/data/resorts-temporary/tmp/lift-ticket-discovery/{resort-id}/
   「7.000円」等）は、前後の並び・曜日・他ページから明らかな方に直して記録する。
 - 公式ページ間で金額が食い違うときは、実際に購入する販売ページ（Webket・Shopify等）、
   次に詳細な料金ページを採用し、食い違いは MISSING.md に書く（質問にしない）。
-- 定休日の記載がなければ定休日はない。営業時間・ナイター開始時刻など料金に影響しない
-  運用情報が不明なら unknown のまま MISSING.md に書く（質問にしない）。
+- 定休日の記載がなければ定休日はない。営業時間・ナイター時刻は上の順で探して採用し、
+  それでも見つからないときだけ unknown のまま MISSING.md に書く（質問にしない）。
 - 1日券でナイターを滑れるかは、「1日券ではナイター利用不可」等の記載がなければ滑れる。
 
 ### 質問する前に自分で調べる

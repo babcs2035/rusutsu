@@ -976,6 +976,31 @@ console.log("== 収集対象外データ: 意味的検証で拒否すること =
         ),
       `${result.stdout}${result.stderr}`,
     );
+
+    // 日帰り券と同じページの出典名や「シーズン券は対象外」の注記は混入ではない
+    const allowed = JSON.parse(
+      fs.readFileSync(
+        path.join(TESTS_DIR, "fixtures", "valid", "minimal.json"),
+        "utf8",
+      ),
+    );
+    if (allowed.sources?.[0]) {
+      allowed.sources[0] = {
+        ...allowed.sources[0],
+        page_title: "リフト券・シーズン券の料金｜テストスキー場",
+      };
+    }
+    allowed.data_quality = {
+      ...allowed.data_quality,
+      notes_ja: "シーズン券・保有者特典は収集対象外。",
+    };
+    fs.writeFileSync(tempFile, JSON.stringify(allowed));
+    const allowedResult = run(SCRIPTS.coverage, [tempFile]);
+    assert(
+      "日帰り券と同じページの出典名と「シーズン券は対象外」の注記はcoverage検証を通る",
+      allowedResult.status === 0,
+      `${allowedResult.stdout}${allowedResult.stderr}`,
+    );
   } finally {
     fs.rmSync(tempDirectory, { recursive: true, force: true });
   }
@@ -2267,6 +2292,38 @@ console.log("== パーティ構成での料金計算（繰り返しと組み合�
     );
   } finally {
     fs.rmSync(pairDir, { recursive: true, force: true });
+  }
+
+  // 保護者の料金は、ルールの先頭区分（大人）ではなく本人の区分で数える。
+  // 祖父母（シニア）＋未就学児が大人料金で計算され、画面の計算とずれていた
+  const guardianDir = fs.mkdtempSync(path.join(os.tmpdir(), "lift-ticket-guardian-"));
+  try {
+    const base = JSON.parse(fs.readFileSync(F, "utf8"));
+    base.offers.push({
+      ...base.offers.find((o) => o.id === "offer-adult-day-standard-weekday"),
+      id: "offer-senior-day-weekday",
+      name_ja: "シニア1日券",
+      official_label_ja: "シニア1日券",
+      audience_ids: ["senior"],
+      price: { currency: "JPY", amount: 4000, notes_ja: null },
+      source_quotes: [],
+    });
+    const rule = base.party_rules.find((r) => r.id === "rule-preschool-free");
+    rule.components[0].audience_ids = ["adult", "senior"];
+    rule.components[1].per_qualifying_count = null;
+    const guardianFile = path.join(guardianDir, "guardian-senior.json");
+    fs.writeFileSync(guardianFile, JSON.stringify(base));
+    const grand = q(
+      ["--date", "2026-01-14", "--party", "senior:1,preschool:1", "--product", "day-pass"],
+      guardianFile,
+    );
+    assert(
+      "保護者がシニアならシニア料金で数える（¥4,000＋未就学児無料）",
+      grand.party_calculation?.best?.total_amount === 4000,
+      JSON.stringify(grand.party_calculation?.best),
+    );
+  } finally {
+    fs.rmSync(guardianDir, { recursive: true, force: true });
   }
 }
 
