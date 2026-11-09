@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { SHARE_IMAGE_VERSION } from "@/features/share/mapCard";
+import { COMPARE_PARAM, encodeCompareCodes } from "@/shared/utils/comparePath";
 
 const PUBLIC_ORIGIN = "https://ktak.dev";
-type Resort = { id: string; nameJa: string };
+type Resort = { id: string; nameJa: string; urlCode: number };
 
 /** 絶対URLを返す。Hostヘッダーやクライアントの描画状態には依存しない。 */
 export function createShareMetadata(
@@ -19,7 +20,7 @@ export function createShareMetadata(
     : `${names[0]}のゲレンデマップ・コースの斜度・リフト・料金・天気を確認できます。`;
   const page = new URL("/rusutsu", PUBLIC_ORIGIN);
   if (comparison)
-    page.searchParams.set("compare", resorts.map(r => r.id).join(","));
+    page.searchParams.set(COMPARE_PARAM, encodeCompareCodes(resorts));
   else page.pathname += `/${resorts[0].id}`;
   const image = new URL("/rusutsu/api/share-image", PUBLIC_ORIGIN);
   image.searchParams.set(

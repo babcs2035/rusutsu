@@ -9,13 +9,11 @@ import {
   getDetailCourseStatusFilter,
   useDetailCourseStatus,
 } from "@/features/map/utils/detailCourseStatusFilter";
-import { isCourseStatusVisible } from "@/features/map/utils/mapDisplaySettings";
 import {
   COURSE_DIFFICULTY_META,
   type FinalizedCourseFeature,
   type FinalizedResortMapData,
   getCourseDifficulty,
-  getSlopeColor,
 } from "@/lib/finalizedResortGeojsonShared";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import { SourceLine, StatusMark } from "../components/CompactInfo";
@@ -25,10 +23,11 @@ import { ObservationTimes } from "../components/ObservationTimes";
 import { ariaSort, SortableHeader } from "../components/SortableHeader";
 import type { Resort } from "../types";
 import {
-  groupSlopeBins,
-  slopeDistribution,
-  sumKnown,
-} from "../utils/courseDistribution";
+  buildLevelColumns,
+  buildSlopeColumns,
+  levelLabel,
+} from "../utils/courseChartColumns";
+import { slopeDistribution } from "../utils/courseDistribution";
 import { createMapCourseStatusSummary } from "../utils/courseStatusSummary";
 import {
   type CourseSymbolField,
@@ -45,7 +44,6 @@ import {
   formatMeters,
   getCourseGroupMetrics,
   getMainCourseGroup,
-  normalizeIconSymbol,
   PISTE_STATUS_DESCRIPTION,
   type StatusSymbol,
 } from "../utils/detailMetrics";
@@ -65,7 +63,7 @@ const colors = {
   advanced: "#1e293b",
   unknown: "#64748b",
 };
-const statusKinds = {
+const _statusKinds = {
   "○": "open",
   "△": "limited",
   "×": "closed",
@@ -163,11 +161,6 @@ function OptionalValue({ label, value }: { label: string; value: string }) {
     value
   );
 }
-/** 「不明」は状況不明の列と紛らわしいので、レベル側は明示する */
-const levelLabel = (key: string) =>
-  key === "unknown"
-    ? "レベル不明"
-    : COURSE_DIFFICULTY_META[key as keyof typeof colors].label;
 export const CoursesTab = ({
   resort,
   finalizedMapData,
@@ -260,43 +253,8 @@ export const CoursesTab = ({
       row.difficulties.includes(key as keyof typeof colors),
     ).length,
   }));
-  // 「営業中のみ」は地図と同じ営業状況で区間を絞る。全体は薄い棒で残す。
-  const isShownFeature = (course: FinalizedCourseFeature) =>
-    !statusFilter ||
-    isCourseStatusVisible(
-      // 地図の getFeatureStatusKind と同じ判定（leaflet を読み込まないよう記号から引く）
-      statusKinds[normalizeIconSymbol(course.properties.status) ?? "不明"],
-      statusFilter,
-    );
-  const levelColumns = Object.keys(colors)
-    .map(key => {
-      const all = features.filter(
-        course => getCourseDifficulty(course.properties.level) === key,
-      );
-      const open = all.filter(isShownFeature);
-      return {
-        key,
-        // 棒は地図と同じ配色にして、地図で見た印象とそのまま結び付くようにする
-        color: COURSE_DIFFICULTY_META[key as keyof typeof colors].color,
-        label: levelLabel(key),
-        distance: sumKnown(all.map(c => c.properties.slopeDistMap)).total ?? 0,
-        hasCourses: all.length > 0,
-        openDistance:
-          sumKnown(open.map(c => c.properties.slopeDistMap)).total ?? 0,
-      };
-    })
-    .filter(column => column.hasCourses);
-  const openSlopeBins = groupSlopeBins(
-    slopeDistribution(features.filter(isShownFeature)).bins,
-  );
-  // 棒は地図と同じ配色にして、地図で見た斜度の印象とそのまま結び付くようにする
-  const slopeColumns = groupSlopeBins(distribution.bins).map((bin, index) => ({
-    key: bin.label,
-    label: bin.label,
-    color: getSlopeColor(bin.sample),
-    distance: bin.distance,
-    openDistance: openSlopeBins[index].distance,
-  }));
+  const levelColumns = buildLevelColumns(features, statusFilter);
+  const { columns: slopeColumns } = buildSlopeColumns(features, statusFilter);
   // 難易度に加え、該当するコースがあるときだけ圧雪・早朝・ナイターでも絞り込める
   const hasSymbol = (sections: SectionSymbol[], symbols: StatusSymbol[]) =>
     sections.some(

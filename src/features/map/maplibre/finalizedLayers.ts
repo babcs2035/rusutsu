@@ -747,8 +747,9 @@ export const createFinalizedLayers = (
       "circle-color": "#FFFFFF",
       "circle-stroke-color": getLiftStationStrokeColor(state),
       "circle-stroke-width": LIFT_STATION_STROKE,
-      "circle-opacity": getLineOpacity(state, "lift"),
-      "circle-stroke-opacity": getLineOpacity(state, "lift"),
+      // 下の線が透けて見えないよう、白丸は常に不透明にする
+      "circle-opacity": 1,
+      "circle-stroke-opacity": 1,
       "circle-pitch-alignment": "map",
     },
   },
@@ -901,16 +902,6 @@ export const applyFinalizedStyleState = (
     FINALIZED_LAYER.liftStation,
     "circle-stroke-color",
     getLiftStationStrokeColor(state),
-  );
-  set(
-    FINALIZED_LAYER.liftStation,
-    "circle-opacity",
-    getLineOpacity(state, "lift"),
-  );
-  set(
-    FINALIZED_LAYER.liftStation,
-    "circle-stroke-opacity",
-    getLineOpacity(state, "lift"),
   );
 
   set(FINALIZED_LAYER.courseArrow, "icon-opacity", [

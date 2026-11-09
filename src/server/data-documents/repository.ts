@@ -97,7 +97,7 @@ export async function writeDataDocumentsInTransaction(
     import("@/server/course-lift/migrationPlan").MapSourceDocument
   > = [];
   const movingKeys = new Set(documents.map(document => document.key));
-  const idRemap = new Map<string, string>();
+  const movedFrom = new Set<string>();
   const ordered = [...documents].sort((a, b) => {
     const rank = (key: string) => {
       const parsed = mapDocumentKind(key);
@@ -123,7 +123,7 @@ export async function writeDataDocumentsInTransaction(
             version: (currentByKey.get(document.key)?.version ?? 0) + 1,
           },
           movingKeys,
-          { idRemap },
+          { movedFrom },
         ),
       );
       continue;
@@ -164,10 +164,12 @@ export async function writeDataDocumentsInTransaction(
     );
   const affectedIds = [
     ...new Set(
-      documents.flatMap(document => {
-        const kind = mapDocumentKind(document.key);
-        return kind ? [kind.resortId] : [];
-      }),
+      [...documents.map(document => document.key), ...movedFrom].flatMap(
+        key => {
+          const kind = mapDocumentKind(key);
+          return kind ? [kind.resortId] : [];
+        },
+      ),
     ),
   ];
   const finalized = canonical

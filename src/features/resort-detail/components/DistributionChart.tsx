@@ -77,6 +77,7 @@ export function DistributionChart({
   columns,
   filtered,
   emptyText,
+  max: scaleMax,
 }: {
   title: string;
   /** 表の下に添える補足（集計から除いたものなど） */
@@ -84,6 +85,8 @@ export function DistributionChart({
   columns: DistributionColumn[];
   filtered: boolean;
   emptyText: string;
+  /** 棒の長さの分母となる距離（m）。複数のチャートで目盛りをそろえるときに渡す */
+  max?: number;
 }) {
   const sum = (values: Array<number | undefined>) =>
     values.reduce<number>((total, value) => total + (value ?? 0), 0);
@@ -92,7 +95,8 @@ export function DistributionChart({
     distance: total,
     openDistance: sum(columns.map(column => column.openDistance)),
   };
-  const max = Math.max(0, ...columns.map(column => column.distance));
+  const ownMax = Math.max(0, ...columns.map(column => column.distance));
+  const max = Math.max(ownMax, scaleMax ?? 0);
   const valueColumns = `${DISTANCE_WIDTH} ${PERCENT_WIDTH}`;
   const renderValues = (row: ValueRow) =>
     filtered ? (
@@ -115,7 +119,7 @@ export function DistributionChart({
         </span>
       </>
     );
-  if (max <= 0)
+  if (ownMax <= 0)
     return (
       <section className="space-y-1">
         <h2 className="text-sm font-bold text-slate-900">{title}</h2>

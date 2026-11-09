@@ -16,20 +16,19 @@ import type {
   OperatingCount,
   ResortOperatingCounts,
 } from "@/features/home/utils/operatingCounts";
+import { LiftTicketConditionsButton } from "@/features/lift-ticket/components/LiftTicketConditionsButton";
 import type {
   LiftTicketSearchInput,
   TicketCalculationResult,
 } from "@/features/lift-ticket/types";
-import { TICKET_PARTY_CATEGORY_LABELS } from "@/features/lift-ticket/utils/calculateLiftTicket";
+import { priceText } from "@/features/lift-ticket/utils/priceText";
 import type { TicketRentalResult } from "@/features/lift-ticket/utils/rental";
 import type { TicketBundleResult } from "@/features/lift-ticket/utils/rentalBundle";
 import { cn } from "@/lib/utils";
 import { CompareResortButton } from "@/shared/components/CompareResortButton";
 import { CopyResortNameButton } from "@/shared/components/CopyResortNameButton";
-import { RubyText } from "@/shared/components/RubyText";
 import type { MapSkiResort } from "@/types/skiResorts";
 import type { ResortSortControls } from "../hooks/useResortSort";
-import { formatVisitDates } from "../utils/formatVisitDates";
 import { groupResortsByRegion } from "../utils/groupResortsByRegion";
 import { GroupedResortList } from "./GroupedResortList";
 import { ResortSortButton } from "./ResortSortButton";
@@ -118,68 +117,6 @@ type Props = {
   onEditLiftTicketConditions: () => void;
 };
 
-const dateLabel = (input: LiftTicketSearchInput) => {
-  const dates = (
-    input.days?.length ? input.days : [{ date: input.visitDate }]
-  ).map(day => day.date);
-  return formatVisitDates(dates);
-};
-
-const conditionsLabel = (input: LiftTicketSearchInput) => {
-  const party = input.party
-    .filter(group => group.count > 0)
-    .map(
-      group =>
-        `${TICKET_PARTY_CATEGORY_LABELS[group.category]}${group.count}名`,
-    )
-    .join("・");
-  const hasRental = input.party.some(
-    group => (group.rental?.items.length ?? 0) > 0,
-  );
-  return [dateLabel(input), party, hasRental ? "レンタルあり" : null]
-    .filter(Boolean)
-    .join("　");
-};
-
-const priceText = (
-  ticket: TicketCalculationResult | null | undefined,
-  rental: TicketRentalResult | null | undefined,
-  bundle: TicketBundleResult | null | undefined,
-) => {
-  if (!ticket) return "不明";
-  if (["unavailable", "outside_season", "closed"].includes(ticket.status)) {
-    return ticket.status === "outside_season" ? "営業期間外" : "不明";
-  }
-  // セット券の合計が出たときは、レンタルを借りる全員の料金が出ている
-  const bundleApplied =
-    bundle != null && bundle.lines.length > 0 && bundle.total != null;
-  // 選んだ用具のレンタル情報が無いスキー場は、詳細の「¥3,900 ＋ゴーグル」を
-  // 一覧の幅に収まるよう「¥3,900＋α」と縮めて出す（「〜」は一部不明のとき）
-  const rentalMissing =
-    (rental?.missingLabels.length ?? 0) > 0 ||
-    (rental?.status === "not_collected" && !bundleApplied);
-  const suffix = (uncertain: boolean) =>
-    rentalMissing ? "＋α" : uncertain ? "〜" : "";
-  // セット券（リフト券＋レンタル）のほうが安いときは、その合計を使う
-  if (bundleApplied) {
-    return `¥${bundle.total?.toLocaleString("ja-JP")}${suffix(false)}`;
-  }
-  const ticketAmount = ticket.ticketTotal ?? ticket.knownTicketTotal;
-  const rentalAmount = rental?.total ?? rental?.knownTotal ?? 0;
-  const uncertain =
-    ticket.status === "partial" ||
-    (rental != null &&
-      rental.status !== "none" &&
-      rental.status !== "complete" &&
-      rental.status !== "not_collected");
-  if (uncertain && ticketAmount + rentalAmount === 0) {
-    return "料金一部不明";
-  }
-  return `¥${(ticketAmount + rentalAmount).toLocaleString("ja-JP")}${suffix(
-    uncertain,
-  )}`;
-};
-
 const ListMetric = ({
   label,
   value,
@@ -190,14 +127,22 @@ const ListMetric = ({
   description?: string;
 }) => (
   <span className="flex min-w-0 items-baseline gap-1 overflow-hidden whitespace-nowrap">
-    <span className="shrink-0 text-[11px] font-semibold text-gray-700 @min-[400px]:text-xs">
+    <span className="shrink-0 text-[11px] font-bold text-gray-800 @min-[400px]:text-xs">
       {label}
     </span>
     <span
       title={description ?? value}
-      className="truncate text-[13px] font-bold leading-tight tabular-nums text-blue-700 @min-[300px]:text-sm @min-[400px]:text-base"
+      className="truncate text-[13px] font-bold leading-tight tabular-nums text-blue-700 @min-[300px]:text-sm"
     >
-      {value}
+      {value.startsWith("不明") ? (
+        <>
+          {/* 「不明/5」は不明だけ薄くし、総数は数字として青で見せる。 */}
+          <span className="font-semibold text-gray-500">不明</span>
+          {value.slice("不明".length)}
+        </>
+      ) : (
+        value
+      )}
     </span>
   </span>
 );
@@ -324,20 +269,11 @@ export const SkiResortList = ({
       )}
 
       <div className="flex min-w-0 shrink-0 items-center gap-1.5 border-b border-gray-100 px-3 pb-2 md:px-4">
-        <button
-          type="button"
-          className="flex h-8 min-w-0 flex-1 items-center gap-1.5 rounded-full bg-gray-950 px-3 text-left text-[13px] font-medium text-white shadow-md hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500"
+        <LiftTicketConditionsButton
+          input={liftTicketInput}
           onClick={onEditLiftTicketConditions}
-          title={conditionsLabel(liftTicketInput)}
-          aria-label={`日程と利用者、レンタルの料金計算条件を編集：${conditionsLabel(liftTicketInput)}`}
-        >
-          <span className="min-w-0 flex-1 truncate">
-            {conditionsLabel(liftTicketInput) || "日程・人数を設定"}
-          </span>
-          <span className="shrink-0 whitespace-nowrap border-l border-white/30 pl-2">
-            編集
-          </span>
-        </button>
+          className="flex-1"
+        />
         <ResortSortButton {...sortControls} />
       </div>
       {(sortControls.locating || sortControls.locationError) && (
@@ -479,16 +415,16 @@ const SkiResortListItem = memo(
           className="w-full cursor-pointer text-left transition-all duration-200 ease-in-out border-b border-gray-100 md:border md:rounded-xl md:border-gray-200 md:bg-white md:px-4 md:py-1 md:shadow-sm hover:md:border-blue-600 hover:md:shadow-md hover:md:-translate-y-0.5 focus-visible:outline-none focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10"
         >
           <div className="flex min-w-0 flex-col py-0.5 md:py-0">
-            <p className="min-w-0 break-words font-bold text-base md:text-lg leading-tight text-gray-900 font-[var(--font-heading)]">
-              <RubyText segments={resort.nameRuby} fallback={resort.nameJa} />
+            <p className="min-w-0 break-words font-bold text-base leading-tight text-gray-900 font-[var(--font-heading)]">
+              {resort.nameJa}
               <CopyResortNameButton
                 name={resort.nameJa}
-                className="ml-1 size-5 align-middle"
+                className="ml-1 size-4 align-middle"
                 onInteract={clearHighlight}
               />
             </p>
             <div className="flex min-w-0 items-center justify-between gap-2">
-              <p className="min-w-0 flex-1 break-words text-xs md:text-sm font-medium leading-snug text-gray-500">
+              <p className="min-w-0 flex-1 break-words text-xs font-medium leading-snug text-gray-500">
                 {resort.prefecture} · {resort.town}
               </p>
               <div
@@ -498,13 +434,13 @@ const SkiResortListItem = memo(
                 <FavoriteButton
                   resortId={resort.id}
                   name={resort.nameJa}
-                  className="size-6 md:size-7"
+                  className="size-6"
                 />
                 <CompareResortButton
                   isSelected={isCompareSelected}
                   resortName={resort.nameJa}
                   size="sm"
-                  className="h-6 md:h-7 min-w-16 md:min-w-18 rounded-lg text-xs md:text-sm transition-smooth"
+                  className="h-6 min-w-16 rounded-lg text-xs transition-smooth"
                   onPointerDown={handleActionPointerDown}
                   onClick={e => {
                     e.stopPropagation();
@@ -514,7 +450,7 @@ const SkiResortListItem = memo(
               </div>
             </div>
             {resort.formerNames.length > 0 && (
-              <p className="min-w-0 break-words text-[0.6875rem] md:text-xs font-medium leading-tight text-gray-400">
+              <p className="min-w-0 break-words text-[0.6875rem] font-medium leading-tight text-gray-400">
                 旧称: {resort.formerNames.map(name => name.name).join("、")}
               </p>
             )}

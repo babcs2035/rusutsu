@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import { Prisma } from "@prisma/client";
 import type { RawGeoFeature } from "@/lib/resortMapMerge";
@@ -171,13 +170,10 @@ export async function writeCanonicalMapDocument(
   movingKeys: Set<string>,
   options: {
     migrating?: boolean;
-    /** 管理者の上書きで複製した線の 元ID→新ID。同じ保存の派生・詳細でも使う。 */
-    idRemap?: Map<string, string>;
+    /** 管理者の上書きで線を移した元のファイル。保存後に表示内容を作り直す。 */
+    movedFrom?: Set<string>;
   } = {},
 ) {
-  const idRemap = options.idRemap ?? new Map<string, string>();
-  const remapped = (id: unknown) =>
-    typeof id === "string" ? (idRemap.get(id) ?? id) : id;
   const kind = mapDocumentKind(document.key);
   if (!kind) throw new Error(`Not a canonical map key: ${document.key}`);
   let metadata: Record<string, unknown>;
@@ -200,13 +196,10 @@ export async function writeCanonicalMapDocument(
           });
     const rowOrder: unknown[] = [];
     for (const [index, entry] of entries.entries()) {
-      const raw =
+      const props =
         kind.kind === "course"
           ? omitPublishedCourseMetrics(record(entry))
           : record(entry);
-      const props = raw.entityId
-        ? { ...raw, entityId: remapped(raw.entityId) }
-        : raw;
       const matches = rows.filter(row =>
         props.entityId
           ? row.id === props.entityId
@@ -397,7 +390,6 @@ export async function writeCanonicalMapDocument(
     for (const [index, feature] of features.entries()) {
       const props = record(feature.properties);
       let id = featureIdentity(props, kind.primaryKey, index);
-      if (kind.derived && props.entityId) id = String(remapped(id));
       if (kind.derived && !props.entityId) {
         const matches =
           kind.kind === "course"
@@ -447,7 +439,7 @@ export async function writeCanonicalMapDocument(
         continue;
       }
       const split = splitFeature(feature, document.key, index);
-      let old =
+      const old =
         kind.kind === "course"
           ? await tx.mapCourse.findUnique({ where: { id } })
           : await tx.mapLift.findUnique({ where: { id } });
@@ -458,12 +450,8 @@ export async function writeCanonicalMapDocument(
       ) {
         if (!allowsAdminOverwrite())
           throw new Error(`Entity ${id} belongs to another document`);
-        // 管理者の上書き: 元のファイルの線は残し、新しい線として複製する
-        const copyId = `copy:${randomUUID()}`;
-        idRemap.set(id, copyId);
-        ids.add(copyId);
-        id = copyId;
-        old = null;
+        // 管理者の上書き: 線をこのファイルへ移す。元のファイルからは消える。
+        options.movedFrom?.add(old.documentKey);
       }
       const invalidated =
         old && !isDeepStrictEqual(old.geometry, split.geometry)

@@ -566,7 +566,7 @@ export const SkiResortDetailView = ({
   const desktopTrailMapSection =
     hasTrailMap && !showTerrainDetail ? (
       <section aria-label="ゲレンデマップ" className="mb-4 space-y-1.5">
-        <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
+        <h2 className="text-base font-semibold text-slate-900">
           ゲレンデマップ
         </h2>
         <div className="h-[clamp(220px,38vh,440px)] overflow-hidden rounded-xl border border-slate-200">

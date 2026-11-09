@@ -2,6 +2,12 @@ import {
   parseResortLinksMap,
   SKI_RESORT_LINKS_DOCUMENT_KEY,
 } from "@/features/lift/server/liftFiles";
+import {
+  type CourseDistance,
+  createCourseDistance,
+} from "@/features/resort-detail/utils/courseChartColumns";
+import { createMapCourseStatusSummary } from "@/features/resort-detail/utils/courseStatusSummary";
+import { createLiftStatusSummary } from "@/features/resort-detail/utils/liftStatusSummary";
 import { collectSocialAccounts } from "@/features/resort-detail/utils/socialAccounts";
 import {
   collectNewsLinks,
@@ -11,6 +17,7 @@ import {
   resolveResortWeatherIds,
   weatherLinksMapFromDocument,
 } from "@/features/weather/weatherLinks";
+import type { CourseStatusSummary } from "@/lib/courseStatusSummary";
 import { readCurrentResortConditions } from "@/lib/crawlLatestCurrent";
 import { getFinalizedResortMapData } from "@/lib/finalizedResortGeojson";
 import type {
@@ -141,10 +148,40 @@ const readResortLinks = async (): Promise<ResortLinks> => {
   };
 };
 
+/** 地図の形を持たなくても営業件数を出せるよう、サーバー側で集計した結果 */
+export type ResortOperationStatus = {
+  courses: CourseStatusSummary | null;
+  lifts: CourseStatusSummary | null;
+  courseSourceUrls: string[];
+  liftSourceUrls: string[];
+  courseObservedAt: string | null;
+  liftObservedAt: string | null;
+  courseSourceLabels: Record<string, string> | undefined;
+  courseUpdates: string[];
+  /** 滑走距離（m）。open は営業状況の出典があるときだけ（○・△のコース） */
+  courseDistance: CourseDistance | null;
+};
+
+export const createResortOperationStatus = (
+  mapData: FinalizedResortMapData | null,
+): ResortOperationStatus => ({
+  courses: createMapCourseStatusSummary(mapData?.courses),
+  lifts: createLiftStatusSummary(mapData?.lifts),
+  courseSourceUrls: mapData?.courses?.sourceUrls ?? [],
+  liftSourceUrls: mapData?.lifts?.sourceUrls ?? [],
+  courseObservedAt: mapData?.courses?.observedAt ?? null,
+  liftObservedAt: mapData?.lifts?.observedAt ?? null,
+  courseSourceLabels: mapData?.courseStatusSummary?.sourceLabels,
+  courseUpdates:
+    mapData?.courses?.features.map(c => c.properties.update ?? "") ?? [],
+  courseDistance: createCourseDistance(mapData?.courses),
+});
+
 const buildSkiResortDetail = async (
   resort: SkiResortDetailRecord,
   links: ResortLinks,
   finalizedMapData: FinalizedResortMapData | null,
+  operationMapData: FinalizedResortMapData | null = finalizedMapData,
 ) => {
   const sourceIds = resort.sourceResortIds?.length
     ? resort.sourceResortIds
@@ -191,6 +228,7 @@ const buildSkiResortDetail = async (
     simultaneousOptions,
     finalizedOperationSummary:
       createFinalizedOperationSummary(finalizedMapData),
+    operationStatus: createResortOperationStatus(operationMapData),
   };
 };
 
@@ -214,10 +252,14 @@ export async function readSkiResortDetails(
   const details = await Promise.all(
     resorts.map(async resort => {
       if (!resort) return null;
-      const finalizedMapData = withMap
-        ? await getFinalizedResortMapData(resort.id)
-        : null;
-      return buildSkiResortDetail(resort, links, finalizedMapData);
+      // 地図を返さない比較でも、営業件数はサーバーで集計して返す
+      const mapData = await getFinalizedResortMapData(resort.id);
+      return buildSkiResortDetail(
+        resort,
+        links,
+        withMap ? mapData : null,
+        mapData,
+      );
     }),
   );
   return details.filter(detail => detail !== null);

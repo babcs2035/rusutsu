@@ -188,6 +188,7 @@ function MapLibreResortMapContent({
   mapStatusFilterShared = false,
   showContextLabels = false,
   embedded = false,
+  compactControls = false,
   mapTileVariant: controlledMapTileVariant,
   onMapTileVariantChange,
   courseColorMode: controlledCourseColorMode,
@@ -1521,7 +1522,7 @@ function MapLibreResortMapContent({
           }
           showHomeButton={!isDetailMap}
           canRotate={canRotate}
-          compact={embedded}
+          compact={embedded || compactControls}
           onUserMapInteraction={onUserMapInteraction}
           onUserMapZoomInteraction={onUserMapZoomInteraction}
         />
@@ -1557,6 +1558,13 @@ function MapLibreResortMapContent({
               }
             />
           )}
+      {compactControls && !showBottomToolbar && !showBottomPreviewStatus && (
+        // 比較のゲレンデ一覧（下の操作行が無い地図）でも、詳細と同じ縮尺を
+        // 右下の出典の上に出し、スキー場の大きさを見比べられるようにする
+        <div className="pointer-events-none absolute right-1.5 bottom-6 z-[760]">
+          <MapScaleSlot map={isReady ? map : null} />
+        </div>
+      )}
       {showBottomPreviewStatus && (
         // 拡大地図の下部パネルと同じ「営業中のみ・投稿・＋投稿」と出典の行。
         // 狭い幅では出典だけを1段上の右端へ逃がし、ボタンに重ねない。

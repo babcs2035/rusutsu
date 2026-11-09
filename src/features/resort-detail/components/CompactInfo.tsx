@@ -113,11 +113,12 @@ export function SourceLine({
  * まだ一度も取得できていない情報だと分かるようにする。
  * 「0件」や「取得日時不明」と読み違えられないよう、色と文言を他と変える。
  */
+/** 未取得は目立たせない。無いことを知らせるだけなので、薄いグレーの小さな札にする */
 export function NotFetchedBadge({ title }: { title?: string }) {
   return (
     <span
       title={title ?? "この情報はまだ取得できていません"}
-      className="inline-flex shrink-0 items-center rounded-md border border-amber-300 bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-800 md:text-sm"
+      className="inline-flex shrink-0 items-center rounded border border-slate-200 bg-slate-100 px-1.5 py-0.5 text-[11px] leading-none font-medium text-slate-500"
     >
       未取得
     </span>

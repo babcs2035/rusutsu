@@ -62,6 +62,7 @@ type Props = {
   showContextLabels?: boolean;
   /** ダイアログ内の小さな地図。現在地・表示位置の保存なし、ボタン小さめ */
   embedded?: boolean;
+  compactControls?: boolean;
   /**
    * 表示設定を呼び出し側で持つ場合に渡す。
    * 比較のゲレンデ一覧のように、複数の地図へ同じ設定を効かせるときに使う。
@@ -113,6 +114,7 @@ export const ResortFinalizedMap = ({
   mapStatusFilterShared,
   showContextLabels = false,
   embedded = false,
+  compactControls = false,
   courseColorMode,
   onCourseColorModeChange,
   mapDisplaySettings,
@@ -182,6 +184,7 @@ export const ResortFinalizedMap = ({
         mapStatusFilterShared={mapStatusFilterShared}
         showContextLabels={showContextLabels}
         embedded={embedded}
+        compactControls={compactControls}
         courseColorMode={courseColorMode}
         onCourseColorModeChange={onCourseColorModeChange}
         mapDisplaySettings={mapDisplaySettings}

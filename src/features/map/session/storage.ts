@@ -4,7 +4,7 @@ import {
   TICKET_RENTAL_ITEMS,
   TICKET_RENTAL_SPORTS,
 } from "@/features/lift-ticket/types";
-import { parseCompareIds } from "@/shared/utils/comparePath";
+import type { CompareUrlCodec } from "@/shared/utils/comparePath";
 import { resortIdFromUrl } from "@/shared/utils/resortPath";
 
 const id = z.string().min(1).max(200);
@@ -170,16 +170,14 @@ export function resolveHomeSession(
   saved: HomeSession | null,
   url: URL,
   resortIds: Set<string>,
+  compareUrl: CompareUrlCodec,
 ): HomeSession | null {
   if (!saved) return null;
   // URL が履歴の各エントリの正なので、ホームの URL ならスキー場を選ばない。
   const explicit = resortIdFromUrl(url);
   const validId = explicit && resortIds.has(explicit) ? explicit : null;
   const hasDetailUrl = explicit !== null;
-  const urlCompareIds =
-    hasDetailUrl || !url.searchParams.has("compare")
-      ? null
-      : parseCompareIds(url.searchParams.getAll("compare"), resortIds);
+  const urlCompareIds = hasDetailUrl ? null : compareUrl.read(url);
   const isUrlCompareOpen = (urlCompareIds?.length ?? 0) > 0;
   return {
     ...saved,

@@ -83,6 +83,10 @@ type Props = {
   expandable?: boolean;
   /** 地図の操作だけにする（投稿中）。拡大・現在地・営業フィルターを出さない */
   minimalControls?: boolean;
+  /** 「営業中のみ」を地図に出すか。比較のように外の帯へまとめるときは false */
+  showOpenOnlyControl?: boolean;
+  /** 拡大・縮小と方位のボタンを小さい版にする */
+  compactControls?: boolean;
   /**
    * 地図に浮かぶコースマップ用ツールバーを出すか。
    * 比較（デスクトップ）は上の帯に同じものをまとめているので出さない。
@@ -133,6 +137,8 @@ export const ResortMapSection = ({
   blockPreviewPointerEvents = false,
   expandable = true,
   minimalControls = false,
+  showOpenOnlyControl = !minimalControls,
+  compactControls = false,
   showInlineMapToolbar = true,
   resizableFeatureDetail = false,
   mapTopControls,
@@ -266,7 +272,8 @@ export const ResortMapSection = ({
       mapResorts={mapResorts}
       presentation={presentation}
       showToolbar={showToolbar}
-      showOpenOnlyControl={!minimalControls}
+      showOpenOnlyControl={showOpenOnlyControl}
+      compactControls={compactControls}
       showLocationControl={!minimalControls}
       mapTopControls={presentation === "preview" ? mapTopControls : undefined}
       mapStatusFilterShared={controlledShowOpenOnly !== undefined}

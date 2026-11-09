@@ -127,6 +127,7 @@ export async function findSkiResortsDirect(): Promise<FullSkiResortRecord[]> {
 
 const mapResortSelect = {
   id: true,
+  urlCode: true,
   mergedIntoId: true,
   sourceResortIds: true,
   nameJa: true,

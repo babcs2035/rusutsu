@@ -15,10 +15,16 @@ export const CompareResortNameCell = ({
   resort,
   onSelectResort,
   className,
+  layout = "stacked",
 }: {
   resort: Resort;
   onSelectResort?: (id: string) => void;
   className?: string;
+  /**
+   * "stacked" は表の狭い先頭列向け（6 文字で折り返し、詳細は名前の下）。
+   * "inline" はカード向け（名前は幅なりに折り返し、詳細は名前の右）
+   */
+  layout?: "stacked" | "inline";
 }) => {
   const labelName = getResortLabelName(
     resort.id,
@@ -26,6 +32,31 @@ export const CompareResortNameCell = ({
     resort.shortName,
   );
   const lines = getResortLabelLines(labelName, 6, resort.id);
+  const detailButton = onSelectResort && (
+    <Button
+      type="button"
+      variant="outline"
+      onClick={() => onSelectResort(resort.id)}
+      className={cn(
+        "h-6 shrink-0 gap-0 px-1.5 text-[11px] font-semibold text-blue-700",
+        layout === "stacked" && "mt-1",
+      )}
+    >
+      詳細
+      <ChevronRight size={11} strokeWidth={2.5} />
+    </Button>
+  );
+
+  if (layout === "inline") {
+    return (
+      <div className={cn("flex min-w-0 items-center gap-2", className)}>
+        <p className="min-w-0 text-sm leading-tight font-bold break-words text-gray-900 font-[var(--font-heading)]">
+          {labelName}
+        </p>
+        {detailButton}
+      </div>
+    );
+  }
 
   return (
     <div className={cn("min-w-0", className)}>
@@ -36,17 +67,7 @@ export const CompareResortNameCell = ({
           </span>
         ))}
       </p>
-      {onSelectResort && (
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => onSelectResort(resort.id)}
-          className="mt-1 h-6 gap-0 px-1.5 text-[11px] font-semibold text-blue-700"
-        >
-          詳細
-          <ChevronRight size={11} strokeWidth={2.5} />
-        </Button>
-      )}
+      {detailButton}
     </div>
   );
 };

@@ -29,11 +29,14 @@ const chunk = <T>(items: T[], size: number): T[][] => {
 /**
  * 比較中のスキー場の詳細。
  *
- * 端末に保存してある分はすぐ出し、裏で最新に差し替える。
- * サーバーからは詳細（地図抜き）を先に小分けで取り、
- * 地図（コース・リフトの形）は別に裏で取る。Server Action は 1 件ずつ
- * 順に送られるので、小分けにして最初の塊が早く返るようにしている。地図は prioritize() で
+ * 詳細（地図抜き）は小分けにして並列で取り、比較対象の全件が
+ * 端末の保存分かサーバーから得られた（または取得失敗が確定した）時点で
+ * 初めて 1 回だけ返す。途中経過は出さないので、件数が増えていく見え方にならない。
+ * 取得に失敗した分は保存分があればそれを使い、無ければ除く。
+ * 地図（コース・リフトの形）は別に裏で小分けに取り、詳細を返した後は届くたびに反映する。
+ * 詳細より先に届いた地図は mapStash に溜める。地図は prioritize() で
  * 画面に見えているスキー場を先に取れるようにする。
+ * isLoading は詳細の初回表示前まで true。オフライン時は保存分だけで確定する。
  * 詳細と地図がそろったスキー場は端末に保存し、次に開いたときに使う。
  */
 export const useCompareResorts = (ids: string[], enabled: boolean) => {
@@ -65,11 +68,14 @@ export const useCompareResorts = (ids: string[], enabled: boolean) => {
     }
     const targetIds = idsKey.split(",");
     let disposed = false;
+    let staleReload = false;
+    // 詳細が出そろうまで publish しない
+    let detailsReady = false;
     const entries = new Map<string, SkiResortDetail>();
     // 詳細より先に届いた地図。詳細が届いたときに合わせる
     const mapStash = new Map<string, FinalizedResortMapData | null>();
     const publish = (settled = false) => {
-      if (disposed) return;
+      if (disposed || (!detailsReady && !settled)) return;
       setState({
         key: idsKey,
         resorts: targetIds.flatMap(id => entries.get(id) ?? []),
@@ -82,27 +88,32 @@ export const useCompareResorts = (ids: string[], enabled: boolean) => {
         void writeDetailCache(entry, { compared: true });
     };
 
+    // 全 chunk を並列に取り、出そろってから 1 回だけ返す
     const loadDetails = async () => {
-      for (const targetChunk of chunk(targetIds, DETAIL_CHUNK_SIZE)) {
-        try {
-          const details = await getSkiResortsForCompare(targetChunk);
-          if (disposed) return;
-          for (const detail of details) {
-            entries.set(detail.id, {
-              ...detail,
-              finalizedMapData:
-                mapStash.get(detail.id) ??
-                entries.get(detail.id)?.finalizedMapData ??
-                null,
-            });
-            save(detail.id);
+      await Promise.all(
+        chunk(targetIds, DETAIL_CHUNK_SIZE).map(async targetChunk => {
+          try {
+            const details = await getSkiResortsForCompare(targetChunk);
+            if (disposed) return;
+            for (const detail of details) {
+              entries.set(detail.id, {
+                ...detail,
+                finalizedMapData:
+                  mapStash.get(detail.id) ??
+                  entries.get(detail.id)?.finalizedMapData ??
+                  null,
+              });
+              save(detail.id);
+            }
+          } catch (error) {
+            if (reloadIfStaleBuild(error)) {
+              staleReload = true;
+              return;
+            }
+            /* 保存してある分があればそれを使い続ける */
           }
-          publish();
-        } catch (error) {
-          if (reloadIfStaleBuild(error)) return;
-          /* 保存してある分があればそれを使い続ける */
-        }
-      }
+        }),
+      );
     };
 
     const loadMaps = async () => {
@@ -134,12 +145,17 @@ export const useCompareResorts = (ids: string[], enabled: boolean) => {
         if (entry) entries.set(targetIds[index], entry);
       });
       if (!navigator.onLine) {
+        detailsReady = true;
         publish(true);
         return;
       }
-      publish();
       pendingMapIdsRef.current = [...targetIds];
-      await Promise.all([loadDetails(), loadMaps()]);
+      const maps = loadMaps();
+      await loadDetails();
+      if (disposed || staleReload) return;
+      detailsReady = true;
+      publish();
+      await maps;
       publish(true);
     };
     void run();

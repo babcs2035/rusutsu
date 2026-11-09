@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { StatusMark } from "@/features/resort-detail/components/CompactInfo";
+import { cn } from "@/lib/utils";
 import { SegmentedControl } from "@/shared/components/SegmentedControl";
 import type { FinalizedFeatureStatus, MapTileVariant } from "../types";
 import {
@@ -28,6 +29,7 @@ export function MapSettingsDialog({
   onStatusChange,
   courseColorMode,
   onCourseColorModeChange,
+  triggerClassName,
 }: {
   settings: MapDisplaySettings;
   onChange: (settings: MapDisplaySettings) => void;
@@ -36,12 +38,17 @@ export function MapSettingsDialog({
   onStatusChange: (status: FinalizedFeatureStatus, checked: boolean) => void;
   courseColorMode: "difficulty" | "slope";
   onCourseColorModeChange: (mode: "difficulty" | "slope") => void;
+  /** 周りのボタンに高さ・文字を合わせるときに渡す */
+  triggerClassName?: string;
 }) {
   return (
     <Dialog>
       <DialogTrigger
         aria-label="地図の設定"
-        className="flex h-6 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-gray-300 bg-white px-2 text-xs font-bold text-black shadow-sm hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-blue-600 md:h-8 md:text-sm"
+        className={cn(
+          "flex h-6 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-gray-300 bg-white px-2 text-xs font-bold text-black shadow-sm hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-blue-600 md:h-8 md:text-sm",
+          triggerClassName,
+        )}
       >
         <Settings
           className="size-[18px]"

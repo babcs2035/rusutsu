@@ -224,6 +224,8 @@ export type JapanResortMapProps = {
    * 現在地を出さず、表示位置も保存・復元しない。操作ボタンは小さくする。
    */
   embedded?: boolean;
+  /** 拡大・縮小と方位のボタンを小さい版にする（比較のゲレンデ一覧） */
+  compactControls?: boolean;
   mapTileVariant?: MapTileVariant;
   onMapTileVariantChange?: (variant: MapTileVariant) => void;
   /**

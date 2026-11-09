@@ -15,7 +15,10 @@ import {
   DEFAULT_MAP_DISPLAY_SETTINGS,
   type MapDisplaySettings,
 } from "../utils/mapDisplaySettings";
-import { MapCourseStatusOptions } from "./MapCourseStatusControl";
+import {
+  MapCourseStatusControl,
+  MapCourseStatusOptions,
+} from "./MapCourseStatusControl";
 import {
   LIFT_STATUS_LEGEND,
   LiftFlowSample,
@@ -50,6 +53,9 @@ const MODE_OPTIONS = [
   { value: "slope", label: "斜度" },
 ] as const satisfies readonly { value: CourseColorMode; label: string }[];
 
+/** 1 行版（タブ行の右）のボタン。タブの文字と同じくらいの高さ・大きさにする */
+const ROW_ITEM_CLASS = "h-7 px-2.5 text-[13px] font-semibold";
+
 const SEGMENT_ITEM_CLASS =
   "h-6 flex-1 px-1.5 text-[11px] md:h-8 md:px-0 md:text-sm @[25rem]:px-2 @[25rem]:text-xs md:@[25rem]:px-2 md:@[25rem]:text-sm";
 
@@ -74,6 +80,7 @@ export const FinalizedMapToolbar = ({
   presentation = "floating",
   showOpenOnly = false,
   communityFilters,
+  openOnlyControl,
   className,
 }: {
   mode: CourseColorMode;
@@ -85,10 +92,18 @@ export const FinalizedMapToolbar = ({
   onShowOpenOnlyChange: (showOpenOnly: boolean) => void;
   mapTileVariant: MapTileVariant;
   onMapTileVariantChange: (variant: MapTileVariant) => void;
-  /** "floating" は地図に浮かせるカード、"bar" は白い帯に並べる中身だけ */
-  presentation?: "floating" | "bar";
+  /**
+   * "floating" は地図に浮かせるカード、"bar" は白い帯に並べる中身だけ、
+   * "row" はタブ行の右側など高さ 1 行分に横一列で収める形
+   */
+  presentation?: "floating" | "bar" | "row";
   showOpenOnly?: boolean;
   communityFilters?: (settings: React.ReactNode) => React.ReactNode;
+  /**
+   * 「営業中のみ」を帯の中に出す（比較のように複数の地図へ 1 つの設定を効かせるとき）。
+   * enabled は営業状況のデータがあるか
+   */
+  openOnlyControl?: { enabled: boolean };
   className?: string;
 }) => {
   if (!hasCourses && !hasLifts && !communityFilters) return null;
@@ -116,6 +131,19 @@ export const FinalizedMapToolbar = ({
   const rowAlignClass =
     presentation === "bar" ? "justify-start" : "justify-end";
 
+  const openOnlyButton = openOnlyControl &&
+    hasCourses &&
+    onMapDisplaySettingsChange && (
+      <MapCourseStatusControl
+        inline
+        bare
+        enabled={openOnlyControl.enabled}
+        checked={showOpenOnly}
+        settings={mapDisplaySettings}
+        onCheckedChange={onShowOpenOnlyChange}
+        onSettingsChange={onMapDisplaySettingsChange}
+      />
+    );
   const settingsControl = (
     <MapSettingsDialog
       settings={mapDisplaySettings}
@@ -148,6 +176,93 @@ export const FinalizedMapToolbar = ({
       </div>,
     );
 
+  const difficultyLegend = (
+    <div className="grid w-full grid-cols-5 gap-0.5 text-[8px] leading-none text-gray-600 @[25rem]:text-[9px]">
+      {DIFFICULTY_KEYS.map(key => (
+        <LegendItem
+          key={key}
+          sample={
+            <span
+              className="h-2 w-full rounded-sm"
+              style={{
+                background: COURSE_DIFFICULTY_META[key].color,
+              }}
+            />
+          }
+        >
+          <span title={COURSE_DIFFICULTY_META[key].label}>
+            {key === "beginnerIntermediate"
+              ? "初中級"
+              : key === "intermediateAdvanced"
+                ? "中上級"
+                : COURSE_DIFFICULTY_META[key].label}
+          </span>
+        </LegendItem>
+      ))}
+    </div>
+  );
+  const courseLegend =
+    showOpenOnly && onMapDisplaySettingsChange ? (
+      <MapCourseStatusOptions
+        settings={mapDisplaySettings}
+        onChange={onMapDisplaySettingsChange}
+      />
+    ) : mode === "slope" ? (
+      <SlopeColorScale />
+    ) : (
+      difficultyLegend
+    );
+  // 1 行に収める形。凡例は幅を固定して細くし、リフトの凡例は説明ダイアログに任せる。
+  // @container を付けると inline-size の封じ込めで幅 0 になるので付けない
+  // 1 行に収める形。ボタンはタブの文字に合わせて低く小さくし、
+  // リフトの凡例は説明ダイアログに任せる。
+  // @container を付けると inline-size の封じ込めで幅 0 になるので付けない
+  if (presentation === "row")
+    return (
+      <div
+        className={cn("flex shrink-0 items-center gap-2", className)}
+        data-map-legends="true"
+      >
+        {/* 「営業中のみ」はほかの画面と同じく左端に置く */}
+        {openOnlyButton}
+        {hasCourses && (
+          <div className="flex w-52 min-w-0 shrink items-center">
+            {courseLegend}
+          </div>
+        )}
+        <MapLineLegendDialog />
+        {hasCourses && (
+          <SegmentedControl
+            options={MODE_OPTIONS}
+            value={mode}
+            onChange={onModeChange}
+            itemClassName={ROW_ITEM_CLASS}
+            ariaLabel={option => `コースの色分けを${option.label}に切り替え`}
+          />
+        )}
+        <SegmentedControl
+          options={Object.entries(GSI_TILE_LAYERS).map(([value, layer]) => ({
+            value: value as MapTileVariant,
+            label: layer.label,
+          }))}
+          value={mapTileVariant}
+          onChange={onMapTileVariantChange}
+          itemClassName={ROW_ITEM_CLASS}
+          ariaLabel={option => `${option.label}に切り替え`}
+        />
+        <MapSettingsDialog
+          settings={mapDisplaySettings}
+          onChange={changeSettings}
+          variant={mapTileVariant}
+          onBackgroundChange={changeBackground}
+          onStatusChange={changeStatus}
+          courseColorMode={mode}
+          onCourseColorModeChange={onModeChange}
+          triggerClassName="h-7 px-2 text-[13px] md:h-7 md:text-[13px] [&_svg]:size-4"
+        />
+      </div>
+    );
+
   const content = (
     <div
       className={cn(
@@ -158,40 +273,7 @@ export const FinalizedMapToolbar = ({
     >
       <div className="flex min-w-0 items-stretch gap-2" data-map-legends="true">
         {hasCourses && (
-          <div className="flex min-w-0 flex-1 items-center">
-            {showOpenOnly && onMapDisplaySettingsChange ? (
-              <MapCourseStatusOptions
-                settings={mapDisplaySettings}
-                onChange={onMapDisplaySettingsChange}
-              />
-            ) : mode === "slope" ? (
-              <SlopeColorScale />
-            ) : (
-              <div className="grid w-full grid-cols-5 gap-0.5 text-[8px] leading-none text-gray-600 @[25rem]:text-[9px]">
-                {DIFFICULTY_KEYS.map(key => (
-                  <LegendItem
-                    key={key}
-                    sample={
-                      <span
-                        className="h-2 w-full rounded-sm"
-                        style={{
-                          background: COURSE_DIFFICULTY_META[key].color,
-                        }}
-                      />
-                    }
-                  >
-                    <span title={COURSE_DIFFICULTY_META[key].label}>
-                      {key === "beginnerIntermediate"
-                        ? "初中級"
-                        : key === "intermediateAdvanced"
-                          ? "中上級"
-                          : COURSE_DIFFICULTY_META[key].label}
-                    </span>
-                  </LegendItem>
-                ))}
-              </div>
-            )}
-          </div>
+          <div className="flex min-w-0 flex-1 items-center">{courseLegend}</div>
         )}
         {hasLifts && (
           <div
@@ -216,6 +298,7 @@ export const FinalizedMapToolbar = ({
         {!hasLifts && <MapLineLegendDialog />}
       </div>
       <div className={cn("flex flex-nowrap items-center gap-1", rowAlignClass)}>
+        {openOnlyButton}
         {hasCourses && (
           <SegmentedControl
             className="min-w-0 flex-1"

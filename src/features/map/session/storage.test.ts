@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { DEFAULT_FILTERS } from "@/features/filters/constants";
+import { createCompareUrlCodec } from "@/shared/utils/comparePath";
 import { distanceKm } from "../utils/distance";
 import {
   type HomeSession,
@@ -8,6 +9,12 @@ import {
   mapSessionSchema,
   resolveHomeSession,
 } from "./storage";
+
+const compareUrl = createCompareUrlCodec([
+  { id: "rusutsu", urlCode: 1 },
+  { id: "niseko", urlCode: 2 },
+  { id: "kiroro", urlCode: 3 },
+]);
 
 const session: HomeSession = {
   version: 1,
@@ -53,6 +60,7 @@ test("再読み込み時は URL が同じスキー場でも全画面の親タブ
       session,
       new URL("https://example.com/rusutsu?resort=rusutsu"),
       new Set(["rusutsu"]),
+      compareUrl,
     )?.mobileContentTab,
     "info",
   );
@@ -62,6 +70,7 @@ test("別のスキー場への直接リンクを優先し、古いコース選�
     session,
     new URL("https://example.com/rusutsu?resort=niseko"),
     new Set(["rusutsu", "niseko"]),
+    compareUrl,
   );
   assert.equal(result?.selectedResortId, "niseko");
   assert.equal(result?.selectedFeature, null);
@@ -73,12 +82,17 @@ test("スキー場のパスを直接リンクとして扱い、ホームのパ�
     session,
     new URL("https://example.com/rusutsu/niseko"),
     known,
+    compareUrl,
   );
   assert.equal(linked?.selectedResortId, "niseko");
   assert.equal(linked?.mobileContentTab, "info");
   assert.equal(
-    resolveHomeSession(session, new URL("https://example.com/rusutsu"), known)
-      ?.selectedResortId,
+    resolveHomeSession(
+      session,
+      new URL("https://example.com/rusutsu"),
+      known,
+      compareUrl,
+    )?.selectedResortId,
     null,
   );
 });
@@ -91,10 +105,9 @@ test("比較URLは保存済み比較を上書きし、IDを重複排除して復
   };
   const result = resolveHomeSession(
     saved,
-    new URL(
-      "https://example.com/rusutsu?compare=niseko,rusutsu,niseko,missing",
-    ),
+    new URL("https://example.com/rusutsu?c=02010299"),
     new Set(["rusutsu", "niseko", "kiroro"]),
+    compareUrl,
   );
   assert.equal(result?.selectedResortId, null);
   assert.deepEqual(result?.selectedCompareIds, ["kiroro", "rusutsu"]);
@@ -111,8 +124,9 @@ test("詳細URLはcompareより優先し、compare無しでは保存リストだ
   const known = new Set(["rusutsu", "niseko", "kiroro"]);
   const detail = resolveHomeSession(
     saved,
-    new URL("https://example.com/rusutsu/niseko?compare=rusutsu"),
+    new URL("https://example.com/rusutsu/niseko?c=01"),
     known,
+    compareUrl,
   );
   assert.equal(detail?.selectedResortId, "niseko");
   assert.equal(detail?.isCompareOpen, false);
@@ -121,6 +135,7 @@ test("詳細URLはcompareより優先し、compare無しでは保存リストだ
     saved,
     new URL("https://example.com/rusutsu"),
     known,
+    compareUrl,
   );
   assert.equal(home?.isCompareOpen, false);
   assert.equal(home?.favoriteCompareIds, null);
@@ -134,8 +149,9 @@ test("不正または未知だけの比較URLは stale comparison を開かな�
   };
   const result = resolveHomeSession(
     saved,
-    new URL("https://example.com/rusutsu?compare=unknown,INVALID"),
+    new URL("https://example.com/rusutsu?c=99-x"),
     new Set(["rusutsu"]),
+    compareUrl,
   );
   assert.equal(result?.isCompareOpen, false);
   assert.deepEqual(result?.selectedCompareIds, ["rusutsu"]);
@@ -146,6 +162,7 @@ test("削除されたスキー場と破損した保存データは復元しな�
       session,
       new URL("https://example.com/rusutsu"),
       new Set(),
+      compareUrl,
     )?.selectedResortId,
     null,
   );

@@ -374,7 +374,7 @@ export const FeatureNotes = ({
           label="最新情報"
           labelClassName="border-amber-300 bg-amber-50 text-amber-900"
           texts={comments}
-          className="border-l-2 border-amber-300 pl-2 text-sm leading-snug text-slate-900 md:text-base"
+          className="border-l-2 border-amber-300 pl-2 text-sm leading-snug text-slate-900"
         />
       )}
       {descriptions.length > 0 && (
@@ -383,7 +383,7 @@ export const FeatureNotes = ({
           label={descriptionLabel}
           labelClassName="border-slate-300 bg-slate-50 text-slate-600"
           texts={descriptions}
-          className="border-l-2 border-slate-200 pl-2 text-sm leading-snug text-slate-600 md:text-base"
+          className="border-l-2 border-slate-200 pl-2 text-sm leading-snug text-slate-600"
         />
       )}
     </div>

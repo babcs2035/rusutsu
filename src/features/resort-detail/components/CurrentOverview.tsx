@@ -1,8 +1,10 @@
 import { ExternalLink } from "lucide-react";
 import type { CourseStatusSummary } from "@/lib/courseStatusSummary";
+import type { ResortOperationStatus } from "@/server/ski-resorts/detail";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import type { Resort } from "../types";
 import { removeGeneratedCommentLinks } from "../utils/commentContent";
+import { createCourseDistance } from "../utils/courseChartColumns";
 import { createMapCourseStatusSummary } from "../utils/courseStatusSummary";
 import {
   conditionText,
@@ -36,22 +38,42 @@ export const createMapCourseSummary = (
         updates: [],
       };
 
+const createResortOperationStatusFromMap = (
+  mapData: NonNullable<Resort["finalizedMapData"]>,
+): ResortOperationStatus => ({
+  courses: createMapCourseStatusSummary(mapData.courses),
+  lifts: createLiftStatusSummary(mapData.lifts),
+  courseSourceUrls: mapData.courses?.sourceUrls ?? [],
+  liftSourceUrls: mapData.lifts?.sourceUrls ?? [],
+  courseObservedAt: mapData.courses?.observedAt ?? null,
+  liftObservedAt: mapData.lifts?.observedAt ?? null,
+  courseSourceLabels: mapData.courseStatusSummary?.sourceLabels,
+  courseUpdates:
+    mapData.courses?.features.map(c => c.properties.update ?? "") ?? [],
+  courseDistance: createCourseDistance(mapData.courses),
+});
+
 export function CurrentOverview({
   resort,
   summaryOnly = false,
   onShowCourseDetail,
   onShowLiftDetail,
+  operationStatus,
 }: {
   resort: Resort;
+  /** 地図抜きの詳細に付く営業集計。finalizedMapData があればそちらを優先する */
+  operationStatus?: ResortOperationStatus;
   summaryOnly?: boolean;
   /** 渡すと、コース／リフトのブロックにそれぞれ「詳細」ボタンを出す */
   onShowCourseDetail?: () => void;
   onShowLiftDetail?: () => void;
 }) {
-  const courses = resort.finalizedMapData?.courses;
   const newsLinks = resort.newsLinks ?? [];
-  const lifts = resort.finalizedMapData?.lifts;
-  const courseStatus = createMapCourseStatusSummary(courses);
+  // 地図があればそこから、無ければサーバーで集計済みの operationStatus を使う
+  const status = resort.finalizedMapData
+    ? createResortOperationStatusFromMap(resort.finalizedMapData)
+    : (operationStatus ?? resort.operationStatus);
+  const courseStatus = status?.courses ?? null;
   // 「〇〇も同時に表示」中は、相手のスキー場のコンディションもまとめて出す。
   const simultaneous = useSimultaneousView(resort);
   const conditions = [
@@ -61,22 +83,24 @@ export function CurrentOverview({
   // 「未取得」は出典が1つも登録されていないこと。出典があって中身が空のときは
   // 取得はできているので、件数を「不明」として出す。
   const hasCourseSource = hasSourceUrl(
-    courseStatus?.sourceUrls ?? courses?.sourceUrls,
+    courseStatus?.sourceUrls ?? status?.courseSourceUrls,
   );
-  const hasLiftSource = hasSourceUrl(lifts?.sourceUrls);
+  const hasLiftSource = hasSourceUrl(status?.liftSourceUrls);
   const hasAnyCondition = conditions.some(item => item.weather);
   const courseSummary = courseStatus;
-  const liftSummary = createLiftStatusSummary(lifts);
+  const liftSummary = status?.lifts ?? null;
   const operationEntries = [
     ...(hasCourseSource
       ? [
           {
             label: "コース",
-            time: courseStatus?.observedAt ?? courses?.observedAt,
+            time: courseStatus?.observedAt ?? status?.courseObservedAt,
           },
         ]
       : []),
-    ...(hasLiftSource ? [{ label: "リフト", time: lifts?.observedAt }] : []),
+    ...(hasLiftSource
+      ? [{ label: "リフト", time: status?.liftObservedAt }]
+      : []),
   ];
   const conditionEntries = (summaryOnly ? [] : conditions)
     .filter(item => item.weather && hasSourceUrl(item.weather.sourceUrls))
@@ -101,20 +125,21 @@ export function CurrentOverview({
       aria-label="営業・気象情報"
       className="@container/overview space-y-2"
     >
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        {!summaryOnly && (
-          <h2 className="text-base font-semibold text-slate-900 @min-[28rem]/overview:text-lg">
-            営業状況
-          </h2>
-        )}
-        {observationEntries.length > 0 ? (
-          <div className={`min-w-0 ${summaryOnly ? "ml-auto" : ""}`}>
-            <ObservationTimes align="left" entries={observationEntries} />
-          </div>
-        ) : (
-          <NotFetchedBadge title="営業状況はまだ取得できていません" />
-        )}
-      </div>
+      {/* 比較カード（summaryOnly）で未取得なら、下の表に未取得が出るので見出し行ごと省く */}
+      {(!summaryOnly || observationEntries.length > 0) && (
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          {!summaryOnly && (
+            <h2 className="text-base font-semibold text-slate-900">営業状況</h2>
+          )}
+          {observationEntries.length > 0 ? (
+            <div className={`min-w-0 ${summaryOnly ? "ml-auto" : ""}`}>
+              <ObservationTimes align="left" entries={observationEntries} />
+            </div>
+          ) : (
+            <NotFetchedBadge title="営業状況はまだ取得できていません" />
+          )}
+        </div>
+      )}
       {/* コースとリフトは常に横に並べ、縦の場所を取らないようにする */}
       <div className="grid grid-cols-2 gap-1.5 @min-[28rem]/overview:gap-2">
         <div className="min-w-0">
@@ -129,14 +154,9 @@ export function CurrentOverview({
                   label="コース"
                   showLabel={false}
                   showFetched={false}
-                  urls={courseStatus?.sourceUrls ?? courses?.sourceUrls}
-                  urlLabels={
-                    resort.finalizedMapData?.courseStatusSummary?.sourceLabels
-                  }
-                  updates={
-                    courseStatus?.updates ??
-                    courses?.features.map(c => c.properties.update ?? "")
-                  }
+                  urls={courseStatus?.sourceUrls ?? status?.courseSourceUrls}
+                  urlLabels={status?.courseSourceLabels}
+                  updates={courseStatus?.updates ?? status?.courseUpdates}
                 />
               ) : undefined
             }
@@ -155,7 +175,7 @@ export function CurrentOverview({
                   label="リフト"
                   showLabel={false}
                   showFetched={false}
-                  urls={lifts?.sourceUrls}
+                  urls={status?.liftSourceUrls}
                   updates={liftSummary?.updates}
                 />
               ) : undefined
@@ -189,7 +209,7 @@ export function CurrentOverview({
           {hasAnyCondition && (
             <section aria-label="コンディション" className="space-y-1.5">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                <h3 className="text-sm font-semibold text-slate-900 @min-[28rem]/overview:text-base">
+                <h3 className="text-sm font-semibold text-slate-900">
                   コンディション
                 </h3>
                 {conditionSeparate && (
@@ -231,9 +251,7 @@ export function CurrentOverview({
               className="space-y-1.5 border-t border-slate-200 pt-2"
               aria-label="コメント"
             >
-              <h3 className="text-sm font-semibold text-slate-900 @min-[28rem]/overview:text-base">
-                コメント
-              </h3>
+              <h3 className="text-sm font-semibold text-slate-900">コメント</h3>
               {conditions.map(item => {
                 const value = record(item.comment?.data).value;
                 return item.comment ? (

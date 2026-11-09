@@ -2,7 +2,7 @@ import type { CourseStatusSummary } from "@/lib/courseStatusSummary";
 import { sumKnown } from "../utils/courseDistribution";
 import { Fraction, formatKm } from "./DistributionChart";
 
-type StatusKey = "open" | "partial" | "closed" | "unknown";
+export type StatusKey = "open" | "partial" | "closed" | "unknown";
 
 export type LiftStatusChartRow = {
   label: string;
@@ -13,12 +13,17 @@ export type LiftStatusChartRow = {
 };
 
 /** 地図のリフト線と同じ色相（青・赤・グレー・紫）を、棒で見やすい明るさにする */
-const SEGMENTS: Array<{ key: StatusKey; label: string; color: string }> = [
+export const LIFT_STATUS_SEGMENTS: Array<{
+  key: StatusKey;
+  label: string;
+  color: string;
+}> = [
   { key: "open", label: "運行", color: "#38BDF8" },
   { key: "partial", label: "待機", color: "#F87171" },
   { key: "closed", label: "運休", color: "#94A3B8" },
   { key: "unknown", label: "不明", color: "#C4B5FD" },
 ];
+const SEGMENTS = LIFT_STATUS_SEGMENTS;
 
 /** DistributionChart と同じ罫線・列の組み方にして、コースタブと見た目をそろえる */
 const ROW_CLASS = "border-b border-slate-200 py-0.5";
@@ -32,17 +37,23 @@ const VALUE_CLASS = `${NUMBER_CELL_CLASS} font-semibold text-slate-900 tabular-n
  * 運行は○だけを数え、待機（△）は含めない。
  */
 export function LiftStatusChart({
+  title = "種別",
   rows,
   unavailable,
+  max: scaleMax,
 }: {
+  /** 表の左上の見出し。比較ではスキー場名を入れる */
+  title?: string;
   rows: LiftStatusChartRow[];
   /** 出典が未登録で、営業状況そのものが取得できていない */
   unavailable: boolean;
+  /** 棒の長さの分母となる距離（m）。複数のチャートで目盛りをそろえるときに渡す */
+  max?: number;
 }) {
   if (!rows.length) return null;
   const barLength = (row: LiftStatusChartRow) =>
     SEGMENTS.reduce((value, s) => value + row.statusDistances[s.key], 0);
-  const max = Math.max(0, ...rows.map(barLength));
+  const max = Math.max(0, scaleMax ?? 0, ...rows.map(barLength));
   const sum = (key: "total" | StatusKey) =>
     rows.reduce((value, row) => value + row.summary[key], 0);
   const sumDistance = (key: StatusKey) =>
@@ -109,7 +120,7 @@ export function LiftStatusChart({
         <h2
           className={`col-span-2 ${ROW_CLASS} self-stretch text-sm font-bold text-slate-900`}
         >
-          種別
+          {title}
         </h2>
         <span className={HEADER_CLASS}>距離</span>
         <span className={HEADER_CLASS}>本数</span>

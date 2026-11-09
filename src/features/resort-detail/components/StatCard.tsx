@@ -31,7 +31,7 @@ export const StatCard = ({
         {title}
       </p>
       <p
-        className={`mt-1 md:mt-1.5 font-bold ${valueColor} text-sm md:text-base lg:text-lg leading-tight`}
+        className={`mt-1 md:mt-1.5 font-bold ${valueColor} text-sm md:text-base leading-tight`}
       >
         {value}
       </p>

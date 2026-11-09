@@ -13,6 +13,8 @@ datasource db {
 
 model SkiResort {
   id                 String                     @id // e.g., "able-hakuba-goryu"
+  /// 比較URL用の短い番号（2桁の36進数で1〜1295）。削除・統合後も再利用しない。
+  urlCode            Int                        @unique @default(autoincrement())
   nameJa             String
   nameEn             String
   shortName          String?
@@ -299,8 +301,25 @@ model User {
   communityLikes         CommunityLike[]
   communityNotifications CommunityNotification[]
   contributionPhotos     ContributionPhoto[]
+  skiTrackImports        SkiTrackImport[]
 
   @@map("users")
+}
+
+// Private statistics only: uploaded archives and raw GPS locations are not retained.
+model SkiTrackImport {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileHash   String   @db.VarChar(64)
+  fileName   String   @db.VarChar(255)
+  analysis   Json
+  recordedAt DateTime @db.Timestamptz(3)
+  importedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([userId, fileHash])
+  @@index([userId, recordedAt])
+  @@map("ski_track_imports")
 }
 
 model Account {

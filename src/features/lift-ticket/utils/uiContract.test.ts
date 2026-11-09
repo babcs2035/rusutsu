@@ -116,7 +116,15 @@ for (const spec of OFFICIAL_CASES.filter(c =>
       const result = plan(category, null);
       assert.equal(result.total, spec.categories[category]);
       assertPrice(result.days[0].result, spec.categories[category], true);
-      if (spec.categories[category] == null) {
+      const dayResult = result.days[0].result;
+      if (
+        spec.categories[category] == null &&
+        spec.noPriceCategories?.includes(category) &&
+        dayResult.lines.length === 0
+      ) {
+        // 日券が無い施設（ロープウェイの往復券・片道券だけ等）は「1日」に料金行を出さない
+        assert.equal(dayResult.status, "unavailable");
+      } else if (spec.categories[category] == null) {
         assert.match(
           result.days[0].result.lines.map(line => line.note).join(" "),
           spec.noPriceCategories?.includes(category)

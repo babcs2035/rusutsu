@@ -15,12 +15,13 @@ const summary = {
   updates: [],
 };
 
-test("通常表示は○△×と不明の件数を並べ、説明ボタンを持つ", () => {
+test("通常表示は○△×と不明の件数を並べ、本数は出さず、説明ボタンを持つ", () => {
   const html = renderToStaticMarkup(
     createElement(CourseStatusTable, { summary }),
   );
   const text = html.replace(/<[^>]+>/g, "");
-  assert.match(text, /40本/);
+  // 本数は ○△×不明 の合計で分かるので出さない
+  assert.doesNotMatch(text, /\d+本/);
   for (const value of [5, 2, 30, 3])
     assert.match(html, new RegExp(`>${value}</span>`));
   assert.match(html, /コースの記号と集計方法について/);
@@ -36,7 +37,8 @@ test("未取得は記号の列を出さず、不明の件数だけを出す", ()
   );
   const text = html.replace(/<[^>]+>/g, "");
   assert.match(text, /未取得/);
-  assert.match(text, /40本/);
+  assert.match(text, /不明40/);
+  assert.doesNotMatch(text, /\d+本/);
   // ○△×のアイコンは出さない（全部0にしかならないため）
   assert.doesNotMatch(html, /stroke-width="3"/);
 });
@@ -58,7 +60,7 @@ test("リフトも太線の記号と4つの件数を表示する", () => {
     }),
   );
   assert.match(html, /リフト/);
-  assert.match(html.replace(/<[^>]+>/g, ""), /4本/);
+  assert.doesNotMatch(html.replace(/<[^>]+>/g, ""), /\d+本/);
   assert.equal((html.match(/stroke-width="3"/g) ?? []).length, 3);
   assert.match(html, /size-3.5/);
 });

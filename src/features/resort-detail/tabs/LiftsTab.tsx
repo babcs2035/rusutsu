@@ -12,7 +12,6 @@ import { LiftStatusChart } from "../components/LiftStatusChart";
 import { ObservationTimes } from "../components/ObservationTimes";
 import { ariaSort, SortableHeader } from "../components/SortableHeader";
 import type { Resort } from "../types";
-import { sumKnown } from "../utils/courseDistribution";
 import { hasSourceUrl } from "../utils/currentConditions";
 import {
   formatElevationRange,
@@ -21,14 +20,10 @@ import {
   getLiftElevationRange,
   normalizeIconSymbol,
   type StatusSymbol,
-  summarizeCourseStatuses,
 } from "../utils/detailMetrics";
+import { buildLiftChartRows } from "../utils/liftChartRows";
 import { createLiftStatusSummary } from "../utils/liftStatusSummary";
-import {
-  getLiftTypeLabel,
-  groupByLiftType,
-  type LiftTypeLabel,
-} from "../utils/liftTypes";
+import { getLiftTypeLabel, type LiftTypeLabel } from "../utils/liftTypes";
 import {
   nextTableSort,
   type SortValue,
@@ -166,39 +161,15 @@ export const LiftsTab = ({
   const liftStatus =
     createLiftStatusSummary(section) ?? createMapCourseSummary(rows.length);
   const hasSource = hasSourceUrl(section?.sourceUrls);
-  // 種別ごとの行は同じリフト集合を分けたものなので、足すと合計に一致する。
-  const typeRows: Array<{
-    label: LiftTypeLabel;
-    status: StatusSymbol | null;
-    distance: number | null;
-  }> = rows.map(row => ({
-    label: getLiftTypeLabel({
+  const chartRows = buildLiftChartRows(
+    rows.map(row => ({
+      name: row.name,
       type: row.properties.type,
       speed: row.properties.speed,
-      name: row.name,
-    }),
-    status: normalizeIconSymbol(row.properties.status),
-    distance: row.properties.distance,
-  }));
-  const typeGroups = groupByLiftType(typeRows, row => row.label);
-  const statusDistance = (
-    groupRows: typeof typeRows,
-    status: StatusSymbol | null,
-  ) =>
-    sumKnown(
-      groupRows.filter(row => row.status === status).map(row => row.distance),
-    ).total ?? 0;
-  const chartRows = typeGroups.map(group => ({
-    label: group.label,
-    summary: summarizeCourseStatuses(group.rows.map(row => row.status)),
-    distance: sumKnown(group.rows.map(row => row.distance)).total,
-    statusDistances: {
-      open: statusDistance(group.rows, "○"),
-      partial: statusDistance(group.rows, "△"),
-      closed: statusDistance(group.rows, "×"),
-      unknown: statusDistance(group.rows, null),
-    },
-  }));
+      status: normalizeIconSymbol(row.properties.status),
+      distance: row.properties.distance,
+    })),
+  );
   const types = [
     ...new Set(
       rows

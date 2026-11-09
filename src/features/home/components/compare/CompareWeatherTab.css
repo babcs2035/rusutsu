@@ -1,155 +1,72 @@
+/*
+ * 天気カードは常にコンパクト表示（幅 386px の Snow Forecast 埋め込み＋下部の標高切替）。
+ * カード幅はグリッド（COMPARE_WEATHER_GRID_CLASS）が決める。
+ * リンクチップの文字・余白はカード自身のコンテナ幅に合わせて詰める。
+ */
 .weather-panel-container {
   container-type: inline-size;
-  /* 下の @container は named query であり，container-name がないと常に非一致になる */
   container-name: weather-panel-container;
 }
 
-.weather-panel-container .weather-panel-content {
-  flex-direction: row;
-}
-
-.weather-panel-container .weather-info {
-  flex: 1 1 auto;
-  width: auto;
-  max-width: none;
-  min-width: var(--weather-info-width, 0px);
-}
-
-.weather-panel-container .weather-feed {
-  flex: 0 0 var(--feed-width);
-  width: var(--feed-width);
-  max-width: 100%;
+.weather-panel-container .weather-info-name {
+  margin-bottom: 0.25rem;
 }
 
 .weather-panel-container .weather-links {
-  flex-direction: column;
-  align-items: flex-start;
-  overflow-x: visible;
+  flex-direction: row;
+  align-items: center;
   flex-wrap: nowrap;
-  padding-bottom: 0;
 }
 
 .weather-panel-container .weather-link {
-  width: 116px;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 1.75rem;
+  padding-inline: 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
 }
 
-.weather-panel-container .weather-info-name {
-  margin-bottom: 2rem;
+/* 各サイト複数地点のときだけ折り返す */
+.weather-panel-container .weather-links-multiple {
+  flex-wrap: wrap;
 }
 
-/*
- * デスクトップ（コンテナ幅 > 686px）のフィード寸法。
- * この CSS がこれらの値の単一情報源である（compare/constants.ts 側の
- * 対応定数は削除済み）。値を変更した場合は下のコンテナクエリ閾値
- * calc(180px + 32px + 474px) も併せて確認すること。
- */
+.weather-panel-container .weather-links-multiple .weather-link {
+  flex: 0 0 auto;
+}
+
+@container weather-panel-container (max-width: 360px) {
+  .weather-panel-container .weather-link {
+    padding-inline: 0.25rem;
+    font-size: 10px;
+  }
+}
+
 .weather-panel-container .snow-forecast-viewport {
-  display: flex;
-  height: 170px;
+  height: 143px;
 }
 
-.weather-panel-container .snow-forecast-feed-crop {
-  width: 690px;
-  height: 230px;
-}
-
-.weather-panel-container .snow-forecast-feed-transform {
-  transform: scale(0.92);
-}
-
-/*
- * モバイルフッターの表示制御はこの CSS に集約する。
- * Tailwind の `hidden` クラスを付けない理由: 比較ビューの
- * `.scrollable-tabs .hidden { display: contents !important }`
- * に上書きされ，コンテナクエリの display: flex が勝てなくなるため。
- */
-.weather-panel-container .snow-forecast-mobile-footer {
+.weather-panel-container .snow-forecast-desktop-elevation-controls {
   display: none;
 }
 
-@container weather-panel-container (max-width: calc(180px + 32px + 474px)) {
-  .weather-panel-container .weather-panel-content {
-    flex-direction: column;
-  }
+.weather-panel-container .snow-forecast-feed-crop {
+  height: 131.56px;
+  width: 386.4px;
+  max-width: 100%;
+}
 
-  .weather-panel-container .weather-info {
-    flex: 0 0 auto;
-    max-width: none;
-    min-width: 0;
-    width: 100%;
-  }
+.weather-panel-container .snow-forecast-feed-transform {
+  transform: translate(-40px, -35px) scale(0.92);
+}
 
-  .weather-panel-container .weather-feed {
-    flex: 1 1 auto;
-    width: 100%;
-  }
+.weather-panel-container .snow-forecast-mobile-footer {
+  display: flex;
+}
 
-  /*
-   * 狭い幅では Snow Forecast のフィードを早く見せたい。
-   * リンクは 32px 高のチップにして 1 行に並べ、幅が足りなければ
-   * 縮めて省略する（Snow Forecast 〜 Windy は必ず 1 画面に収める）。
-   */
-  .weather-panel-container .weather-links {
-    flex-direction: row;
-    align-items: center;
-    flex-wrap: nowrap;
-    gap: 0.375rem;
-    overflow-x: auto;
-    padding-bottom: 0;
-  }
-
-  .weather-panel-container .weather-link {
-    flex: 0 1 auto;
-    width: auto;
-    min-width: 3.25rem;
-    min-height: 2rem;
-    height: 2rem;
-    padding-inline: 0.5rem;
-    border-radius: 0.5rem;
-    font-size: 11px;
-    line-height: 1;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
-
-  .weather-panel-container .weather-links-multiple {
-    flex-wrap: wrap;
-    overflow-x: visible;
-  }
-
-  .weather-panel-container .weather-links-multiple .weather-link {
-    flex: 0 0 auto;
-    max-width: 100%;
-  }
-
-  .weather-panel-container .weather-info-name {
-    margin-bottom: 0.375rem;
-  }
-
-  .weather-panel-container .snow-forecast-viewport {
-    height: 143px;
-  }
-
-  .weather-panel-container .snow-forecast-desktop-elevation-controls {
-    display: none;
-  }
-
-  /* モバイルのクロップ寸法（単一情報源: この CSS） */
-  .weather-panel-container .snow-forecast-feed-crop {
-    height: 131.56px;
-    width: 386.4px;
-  }
-
-  .weather-panel-container .snow-forecast-feed-transform {
-    transform: translate(-40px, -35px) scale(0.92);
-  }
-
-  .weather-panel-container .snow-forecast-mobile-footer {
-    display: flex;
-  }
-
-  .weather-panel-container .snow-forecast-desktop-source {
-    display: none;
-  }
+.weather-panel-container .snow-forecast-desktop-source {
+  display: none;
 }

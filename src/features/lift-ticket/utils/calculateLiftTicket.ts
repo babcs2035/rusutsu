@@ -841,6 +841,9 @@ const DEFAULT_SCHOOL_AGE_RANGES: Partial<
   high_school: [16, 18],
 };
 
+/** 年齢未入力の未就学児で、全年齢が同じ料金になるかを確かめる範囲 */
+const PRESCHOOL_AGE_RANGE = [0, 6] as const;
+
 const ageRangeOf = (group: TicketPartyGroup) =>
   group.age != null
     ? ([group.age, group.age] as const)
@@ -1056,6 +1059,12 @@ const isFullDayLike = (product: LiftTicketProduct) =>
 const includesRental = (product: LiftTicketProduct) =>
   (product.included_items ?? []).some(item => item.type === "rental");
 
+/** 特定日・こどもデーの割引、または「20歳無料」のような年齢世代の料金 */
+const isSpecialDayOrAgeGenerationOffer = (offer: LiftTicketOffer) =>
+  offer.discount_reasons?.some(reason =>
+    ["special_day", "kids_day"].includes(reason),
+  ) || ageGenerationCondition(offer) != null;
+
 const getAutomaticSpecialProductIds = (
   data: LiftTicketData,
   baseProduct: LiftTicketProduct,
@@ -1079,12 +1088,7 @@ const getAutomaticSpecialProductIds = (
         const mode = product.validity?.mode;
         return mode == null || mode === "unknown" || isFullDayLike(product);
       })
-      .filter(
-        offer =>
-          offer.discount_reasons?.some(reason =>
-            ["special_day", "kids_day"].includes(reason),
-          ) || ageGenerationCondition(offer) != null,
-      )
+      .filter(isSpecialDayOrAgeGenerationOffer)
       .map(offer => offer.product_id)
   );
 };
@@ -1411,6 +1415,56 @@ const feePerPerson = (
       0,
     );
 
+type GroupLineResult = {
+  line: TicketCalculationLine;
+  conditionalOffers: TicketConditionalOffer[];
+};
+
+/**
+ * 年齢未入力の小中高生を、通常の在学年齢それぞれで計算し、全員同じ券・同じ額なら
+ * その結果を年齢なしで返す。1人でも額や券が違う・決まらないなら null（年齢を聞く）。
+ * 条件付き候補は全年齢に共通するものだけ残す。
+ */
+const settleWithoutAge = (
+  group: TicketPartyGroup,
+  calculateWithAge: (age: number) => GroupLineResult,
+): GroupLineResult | null => {
+  const category =
+    group.category === "disabled"
+      ? (group.baseCategory ?? "adult")
+      : group.category;
+  const range =
+    category === "preschool"
+      ? PRESCHOOL_AGE_RANGE
+      : DEFAULT_SCHOOL_AGE_RANGES[category];
+  if (range == null) return null;
+  const results: GroupLineResult[] = [];
+  for (let age = range[0]; age <= range[1]; age++) {
+    results.push(calculateWithAge(age));
+  }
+  const [first] = results;
+  if (
+    first == null ||
+    first.line.unitAmount == null ||
+    results.some(
+      result =>
+        result.line.unitAmount !== first.line.unitAmount ||
+        result.line.offerName !== first.line.offerName ||
+        result.line.productName !== first.line.productName,
+    )
+  )
+    return null;
+  const commonConditionalOffers = first.conditionalOffers.filter(offer =>
+    results.every(result =>
+      result.conditionalOffers.some(other => other.id === offer.id),
+    ),
+  );
+  return {
+    line: { ...first.line, groupLabel: formatPartyGroupLabel(group) },
+    conditionalOffers: commonConditionalOffers,
+  };
+};
+
 const calculateGroupLine = (
   data: LiftTicketData,
   group: TicketPartyGroup,
@@ -1420,7 +1474,7 @@ const calculateGroupLine = (
   numberBySourceId: Map<string, number>,
   heldProductIds: ReadonlySet<string>,
   partyCount = 1,
-) => {
+): GroupLineResult => {
   if (
     group.category === "disabled" &&
     group.baseCategory == null &&
@@ -1510,6 +1564,21 @@ const calculateGroupLine = (
     };
   }
   if (needsAgeForGroup(data, group)) {
+    // 施設に年齢区分があっても、この券・この日に在学年齢の誰でも同じ料金なら
+    // 年齢を聞かない（若者割が平日1日券だけの施設で、高校生の土日券に年齢を求めていた）
+    const settled = settleWithoutAge(group, age =>
+      calculateGroupLine(
+        data,
+        { ...group, age },
+        baseProduct,
+        dateString,
+        today,
+        numberBySourceId,
+        heldProductIds,
+        partyCount,
+      ),
+    );
+    if (settled) return settled;
     return {
       line: {
         ...createUnresolvedLine(
@@ -1543,6 +1612,13 @@ const calculateGroupLine = (
       )
       .filter(offer => {
         if (!allowedProductIds.has(offer.product_id)) return false;
+        // 特定日の割引があるので加えた別の券は、その割引の行だけ使う。通常料金まで
+        // 混ぜると、温泉パック1日券を選んでも普通の1日券の額を返していた（美唄）
+        if (
+          offer.product_id !== baseProduct.id &&
+          !isSpecialDayOrAgeGenerationOffer(offer)
+        )
+          return false;
         if (!offerMatchesDate(data, offer, dateString)) return false;
         // 今日の時点で買えない券（販売終了の早割など）は、計算にも候補にも出さない
         if (
@@ -1664,16 +1740,21 @@ const calculateGroupLine = (
       })
       .map(offer => offer.id),
   );
+  // 障がい者料金は障がい者として照会した人にそのまま使う。ただし「市民割」など
+  // 割引の理由が別に付いた障がい者料金は、入力だけでは確定できないので条件付きで別掲する
+  const isAutomaticDisabilityOffer = (offer: LiftTicketOffer) =>
+    group.category === "disabled" &&
+    (offer.discount_reasons?.length ?? 0) === 0 &&
+    (offer.audience_ids ?? []).some(
+      audienceId =>
+        audienceById.get(audienceId)?.is_disability_qualified === true,
+    );
   const automaticOffers = matchingOffers.filter(
     offer =>
       cheaperPurchaseMethodOfferIds.has(offer.id) ||
       isAutomaticallyApplicableCalendarOffer(offer) ||
       automaticAgeGenerationWarnings(offer, group) != null ||
-      (group.category === "disabled" &&
-        (offer.audience_ids ?? []).some(
-          audienceId =>
-            audienceById.get(audienceId)?.is_disability_qualified === true,
-        )),
+      isAutomaticDisabilityOffer(offer),
   );
   const resolvedMainOffers = [...standardOffers, ...automaticOffers]
     .filter((offer, index, all) => all.indexOf(offer) === index)
@@ -1694,13 +1775,7 @@ const calculateGroupLine = (
         !isAutomaticallyApplicableCalendarOffer(offer) &&
         !cheaperPurchaseMethodOfferIds.has(offer.id) &&
         ageGenerationCondition(offer) == null &&
-        !(
-          group.category === "disabled" &&
-          (offer.audience_ids ?? []).some(
-            audienceId =>
-              audienceById.get(audienceId)?.is_disability_qualified === true,
-          )
-        ),
+        !isAutomaticDisabilityOffer(offer),
     )
     .map(offer => ({
       offer,

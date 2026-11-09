@@ -61,7 +61,10 @@ import type {
 import { useWarmShareImage } from "@/features/share/useWarmShareImage";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
-import { parseCompareIds, writeCompareIds } from "@/shared/utils/comparePath";
+import {
+  COMPARE_PARAM,
+  createCompareUrlCodec,
+} from "@/shared/utils/comparePath";
 import {
   resortDocumentTitle,
   resortIdFromPathname,
@@ -132,6 +135,7 @@ export function HomeClient({ initialResorts }: Props) {
         stored ?? defaults,
         new URL(window.location.href),
         new Set(initialResorts.map(resort => resort.id)),
+        createCompareUrlCodec(initialResorts),
       ),
     });
   }, [initialResorts]);
@@ -157,6 +161,10 @@ function HomeClientContent({
 }: Props & { session: HomeSession | null }) {
   const favorites = useFavorites();
   const resortLabelNames = useResortAliases(initialResorts);
+  const compareUrl = useMemo(
+    () => createCompareUrlCodec(initialResorts),
+    [initialResorts],
+  );
   // マップコンポーネントを SSR 無効で動的インポート
   const DynamicMap = useMemo(
     () =>
@@ -406,7 +414,7 @@ function HomeClientContent({
       shouldShowCompareUrl ? null : selectedResortId,
     );
     url.searchParams.delete("resort");
-    writeCompareIds(url, shouldShowCompareUrl ? compareIds : []);
+    compareUrl.write(url, shouldShowCompareUrl ? compareIds : []);
     const historyMode = urlHistoryModeRef.current;
     urlHistoryModeRef.current = "push";
     if (url.href === window.location.href) return;
@@ -414,7 +422,7 @@ function HomeClientContent({
     const isResortChange =
       resortIdFromPathname(window.location.pathname) !== nextResortId;
     const wasCompareOpen = new URL(window.location.href).searchParams.has(
-      "compare",
+      COMPARE_PARAM,
     );
     const isCompareTransition = wasCompareOpen !== shouldShowCompareUrl;
     // state は null で渡す。Next の内部 state を渡すとルーターに反映されず、
@@ -437,6 +445,7 @@ function HomeClientContent({
     favoriteCompareIds,
     isCompareOpen,
     selectedElevationProfilePoint,
+    compareUrl,
   ]);
 
   // --- データ絞り込みロジック ---
@@ -951,9 +960,7 @@ function HomeClientContent({
           navigation.close();
         return;
       }
-      const compareIds = url.searchParams.has("compare")
-        ? parseCompareIds(url.searchParams.getAll("compare"), resortIds)
-        : [];
+      const compareIds = compareUrl.read(url) ?? [];
       if (compareIds.length > 0) {
         navigation.restoreCompare(compareIds);
         return;
@@ -963,7 +970,7 @@ function HomeClientContent({
     };
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [initialResorts]);
+  }, [initialResorts, compareUrl]);
   useEffect(() => {
     const resort = initialResorts.find(item => item.id === selectedResortId);
     document.title = isCompareOpen

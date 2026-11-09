@@ -46,7 +46,7 @@ export function ResortComment({
   return (
     <div className="space-y-1">
       {fallback && (
-        <div className="whitespace-pre-line break-words text-sm leading-relaxed text-slate-700 md:text-base">
+        <div className="whitespace-pre-line break-words text-sm leading-relaxed text-slate-700">
           {parts.map(part => {
             const key = offset;
             offset += part.text.length;

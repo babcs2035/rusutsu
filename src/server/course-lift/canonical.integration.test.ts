@@ -989,7 +989,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
       },
     );
     await t.test(
-      "admin overwrite copies lines whose IDs belong to another document",
+      "admin overwrite moves lines whose IDs belong to another document",
       async () => {
         const base = await db.skiResort.findUniqueOrThrow({
           where: { id: "sample" },
@@ -1029,23 +1029,23 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
         await api.withAdminOverwrite(() =>
           api.writeDataDocumentsDirect(copied),
         );
-        const osmRow = await db.mapCourse.findUniqueOrThrow({
+        const moved = await db.mapCourse.findUniqueOrThrow({
           where: { id: "osm-1" },
         });
-        assert.equal(osmRow.documentKey, osmKey);
-        const curatedRows = await db.mapCourse.findMany({
-          where: { documentKey: curatedKey, archivedAt: null },
-        });
-        assert.equal(curatedRows.length, 1);
-        assert.match(curatedRows[0].id, /^copy:/);
-        assert.equal(curatedRows[0].name, "OSM線");
-        assert.notEqual(curatedRows[0].groupId, "osm-group");
-        assert.ok(curatedRows[0].derivedGeometry);
+        assert.equal(moved.documentKey, curatedKey);
+        assert.equal(moved.archivedAt, null);
+        assert.equal(moved.name, "OSM線");
+        assert.notEqual(moved.groupId, "osm-group");
+        assert.ok(moved.derivedGeometry);
         const osmDocument = JSON.parse(
           (await api.getDataDocumentDirect(osmKey)).content,
         );
-        assert.equal(osmDocument.features.length, 1);
-        assert.equal(osmDocument.features[0].properties.entityId, "osm-1");
+        assert.equal(osmDocument.features.length, 0);
+        const curatedDocument = JSON.parse(
+          (await api.getDataDocumentDirect(curatedKey)).content,
+        );
+        assert.equal(curatedDocument.features.length, 1);
+        assert.equal(curatedDocument.features[0].properties.entityId, "osm-1");
       },
     );
   } finally {

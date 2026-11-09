@@ -5,19 +5,10 @@ import type {
   LiftTicketSearchInput,
   TicketCalculationResult,
 } from "@/features/lift-ticket/types";
-import {
-  calculateLiftTicketForSeasons,
-  calculateLiftTicketPlan,
-  selectLiftTicketSeason,
-} from "@/features/lift-ticket/utils/calculateLiftTicket";
-import {
-  calculateRentalPlan,
-  type TicketRentalResult,
-} from "@/features/lift-ticket/utils/rental";
-import {
-  calculateRentalBundle,
-  type TicketBundleResult,
-} from "@/features/lift-ticket/utils/rentalBundle";
+import { calculateLiftTicketForSeasons } from "@/features/lift-ticket/utils/calculateLiftTicket";
+import type { TicketRentalResult } from "@/features/lift-ticket/utils/rental";
+import type { TicketBundleResult } from "@/features/lift-ticket/utils/rentalBundle";
+import { calculateResortPrice } from "@/features/lift-ticket/utils/resortPriceCalculation";
 import { getFinalizedResortMapData } from "@/lib/finalizedResortGeojson";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { getResortLabelName } from "@/lib/resortAliases";
@@ -172,28 +163,7 @@ export async function calculateLiftTicketAndRentalForList(
     }
   > = {};
   for (const id of uniqueIds) {
-    const seasons = seasonsByResortId.get(id) ?? [];
-    try {
-      const season =
-        selectLiftTicketSeason(seasons, input.visitDate) ?? seasons[0];
-      const rental = season ? calculateRentalPlan(season, input) : null;
-      results[id] = {
-        ticket: calculateLiftTicketForSeasons(seasons, input),
-        rental,
-        // セット券（リフト券＋レンタル）が別々に買うより安ければ、その合計を使う
-        bundle:
-          season && rental && rental.status !== "none" && input.days?.length
-            ? calculateRentalBundle(
-                season,
-                input,
-                calculateLiftTicketPlan(season, input),
-                rental,
-              )
-            : null,
-      };
-    } catch {
-      results[id] = { ticket: null, rental: null, bundle: null };
-    }
+    results[id] = calculateResortPrice(seasonsByResortId.get(id) ?? [], input);
   }
   return results;
 }

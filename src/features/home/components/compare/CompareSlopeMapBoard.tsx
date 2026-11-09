@@ -11,7 +11,6 @@ import {
   useState,
 } from "react";
 import { Button } from "@/components/ui/button";
-import { FinalizedMapToolbar } from "@/features/map/components/FinalizedMapToolbar";
 import type {
   CourseColorMode,
   ElevationProfileMapPoint,
@@ -19,10 +18,7 @@ import type {
   MapTileVariant,
   SelectedMapFeature,
 } from "@/features/map/types";
-import {
-  DEFAULT_MAP_DISPLAY_SETTINGS,
-  type MapDisplaySettings,
-} from "@/features/map/utils/mapDisplaySettings";
+import type { MapDisplaySettings } from "@/features/map/utils/mapDisplaySettings";
 import { StatusMark } from "@/features/resort-detail/components/CompactInfo";
 import { FinalizedFeatureDetail } from "@/features/resort-detail/components/FinalizedFeatureDetail";
 import type { FeatureDetailPlacement } from "@/features/resort-detail/components/ResortMapSection";
@@ -71,16 +67,24 @@ const unknownSummary = (total: number): CourseStatusSummary => ({
   updates: [],
 });
 
-const getCourseSummary = (resort: Resort): CourseStatusSummary => {
+export const getCourseSummary = (resort: Resort): CourseStatusSummary => {
   const mapData = resort.finalizedMapData;
   return (
-    createMapCourseStatusSummary(mapData?.courses) ??
+    (mapData
+      ? createMapCourseStatusSummary(mapData.courses)
+      : resort.operationStatus?.courses) ??
     unknownSummary(resort.numberOfCourses ?? 0)
   );
 };
 
-const getLiftSummary = (resort: Resort): CourseStatusSummary => {
+export const getLiftSummary = (resort: Resort): CourseStatusSummary => {
   const section = resort.finalizedMapData?.lifts;
+  if (!resort.finalizedMapData && resort.operationStatus) {
+    const { lifts, liftSourceUrls } = resort.operationStatus;
+    if (!hasSourceUrl(liftSourceUrls))
+      return unknownSummary(lifts?.total ?? resort.numberOfLifts ?? 0);
+    return lifts ?? unknownSummary(0);
+  }
   if (!hasSourceUrl(section?.sourceUrls)) {
     return unknownSummary(
       section?.features.length ?? resort.numberOfLifts ?? 0,
@@ -138,25 +142,45 @@ const CenteredStatusText = ({
   );
 };
 
-/** 比較の見出しは、元の件数表示と同じ14pxの1行に収める。 */
-const OperationCount = ({
+/**
+ * ○△×不明の件数を 1 行に並べる。
+ * sm はゲレンデのカード見出し（14px）、md は概要カードで数字を主役にする大きさ。
+ */
+export const OperationCount = ({
   label,
   summary,
   lift = false,
+  size = "sm",
 }: {
   label: string;
   summary: CourseStatusSummary;
   lift?: boolean;
+  size?: "sm" | "md";
 }) => (
   <span
     role="group"
     aria-label={label}
-    className="inline-flex h-5 shrink-0 items-center gap-1 whitespace-nowrap"
+    className={cn(
+      "inline-flex shrink-0 items-center gap-1 whitespace-nowrap",
+      size === "md" ? "h-6 gap-1.5" : "h-5",
+    )}
   >
-    <CenteredStatusText className="text-xs font-semibold text-gray-500">
+    <CenteredStatusText
+      className={cn(
+        "font-semibold",
+        size === "md" ? "text-sm text-slate-900" : "text-xs text-gray-500",
+      )}
+    >
       {label}
     </CenteredStatusText>
-    <span className="inline-flex items-center gap-0.5 text-sm leading-none font-bold tabular-nums text-slate-900 [&_[role=img]]:size-3 [&_svg]:size-3">
+    <span
+      className={cn(
+        "inline-flex items-center leading-none font-bold tabular-nums text-slate-900",
+        size === "md"
+          ? "gap-1.5 text-base [&_[role=img]]:size-3.5 [&_svg]:size-3.5"
+          : "gap-0.5 text-sm [&_[role=img]]:size-3 [&_svg]:size-3",
+      )}
+    >
       {(
         [
           ["○", summary.open],
@@ -252,22 +276,32 @@ export const CompareSlopeMapTab = ({
   DynamicMap,
   mapResorts,
   onMapResortsNeeded,
+  courseColorMode,
+  onCourseColorModeChange,
+  mapDisplaySettings,
+  onMapDisplaySettingsChange,
+  showOpenOnly,
+  onShowOpenOnlyChange,
+  mapTileVariant,
+  onMapTileVariantChange,
 }: {
   resorts: Resort[];
   DynamicMap: ComponentType<JapanResortMapProps>;
   mapResorts: MapSkiResort[];
   /** 表示中・隣のスキー場。地図データを先に取るために知らせる */
   onMapResortsNeeded?: (ids: string[]) => void;
+  /** 表示設定は比較画面全体で 1 つ持ち、タブ行のツールバーから変える */
+  courseColorMode: CourseColorMode;
+  onCourseColorModeChange: (mode: CourseColorMode) => void;
+  mapDisplaySettings: MapDisplaySettings;
+  onMapDisplaySettingsChange: (settings: MapDisplaySettings) => void;
+  showOpenOnly: boolean;
+  onShowOpenOnlyChange: (showOpenOnly: boolean) => void;
+  mapTileVariant: MapTileVariant;
+  onMapTileVariantChange: (variant: MapTileVariant) => void;
 }) => {
   const { selectionByResortId, setSelection } = useSlopeMapSelection();
   const [activeIndex, setActiveIndex] = useState(0);
-  const [courseColorMode, setCourseColorMode] =
-    useState<CourseColorMode>("slope");
-  const [mapDisplaySettings, onMapDisplaySettingsChange] = useState(
-    DEFAULT_MAP_DISPLAY_SETTINGS,
-  );
-  const [showOpenOnly, setShowOpenOnly] = useState(false);
-  const [mapTileVariant, setMapTileVariant] = useState<MapTileVariant>("photo");
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const resortIdsKey = resorts.map(resort => resort.id).join(",");
   const [liveMapIds, setLiveMapIds] = useState<string[]>([]);
@@ -281,13 +315,6 @@ export const CompareSlopeMapTab = ({
       nextLiveMapIds(previous, priority, resortIds, MAX_LIVE_SLOPE_MAPS.mobile),
     );
   }, [activeIndex, resortIdsKey, onMapResortsNeeded]);
-  const hasCourses = resorts.some(
-    resort => (resort.finalizedMapData?.courses?.features.length ?? 0) > 0,
-  );
-  const hasLifts = resorts.some(
-    resort => (resort.finalizedMapData?.lifts?.features.length ?? 0) > 0,
-  );
-
   const handleScroll = useCallback(() => {
     const element = scrollRef.current;
     if (!element || element.clientWidth === 0) return;
@@ -307,20 +334,6 @@ export const CompareSlopeMapTab = ({
 
   return (
     <div className="relative flex h-full min-h-0 flex-col">
-      <div className="scroll-touch shrink-0 overflow-x-auto border-b border-gray-200 bg-white pb-1.5">
-        <FinalizedMapToolbar
-          presentation="bar"
-          mode={courseColorMode}
-          onModeChange={setCourseColorMode}
-          hasCourses={hasCourses}
-          hasLifts={hasLifts}
-          mapDisplaySettings={mapDisplaySettings}
-          onMapDisplaySettingsChange={onMapDisplaySettingsChange}
-          onShowOpenOnlyChange={setShowOpenOnly}
-          mapTileVariant={mapTileVariant}
-          onMapTileVariantChange={setMapTileVariant}
-        />
-      </div>
       <div
         ref={scrollRef}
         onScroll={handleScroll}
@@ -340,14 +353,16 @@ export const CompareSlopeMapTab = ({
                 onSelectionChange={next => setSelection(resort.id, next)}
                 className="h-full"
                 showInlineMapToolbar={false}
+                // 縮尺は詳細と同じものを右下に出す
+                compactControls
                 courseColorMode={courseColorMode}
-                onCourseColorModeChange={setCourseColorMode}
+                onCourseColorModeChange={onCourseColorModeChange}
                 mapDisplaySettings={mapDisplaySettings}
                 onMapDisplaySettingsChange={onMapDisplaySettingsChange}
                 showOpenOnly={showOpenOnly}
-                onShowOpenOnlyChange={setShowOpenOnly}
+                onShowOpenOnlyChange={onShowOpenOnlyChange}
                 mapTileVariant={mapTileVariant}
-                onMapTileVariantChange={setMapTileVariant}
+                onMapTileVariantChange={onMapTileVariantChange}
               />
             ) : (
               <SlopeMapCardShell resort={resort} className="h-full">
@@ -402,10 +417,10 @@ export const CompareSlopeMapTab = ({
 /**
  * 比較のゲレンデ表示（デスクトップ）。左側の地図エリアを丸ごと使う。
  *
- * 幅が広ければ 2 列、狭ければ 1 列で縦に積む。
+ * 幅に応じて 1〜3 列（3 列は非常に広い画面だけ）で並べる。
  * 地図で埋め尽くすと、ホイールもドラッグも地図に吸われて縦スクロールできなく
  * なるため、余白・カード見出し・右端のスクロールバー領域を必ず残す。
- * 色分け・地図種別は上の帯（CompareMapHeaderBar）、営業フィルターは各地図に置く。
+ * 色分け・地図種別はタブ行のツールバー（SkiResortCompareView）、営業フィルターは各地図に置く。
  * ここでは全カードへ同じ値を配る。
  * 地図は見えているカードとその近くだけ作り、見た分は上限まで残す。
  * 件数が増えてもブラウザの地図の上限に届かないようにするため。
@@ -508,7 +523,7 @@ export const CompareSlopeMapBoard = ({
       {resorts.length === 0 ? (
         <EmptyMessage />
       ) : (
-        <div className="grid grid-cols-1 gap-8 @[52rem]:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 @[52rem]:grid-cols-2 @[84rem]:grid-cols-3">
           {resorts.map(resort => (
             <div
               key={resort.id}
@@ -536,6 +551,7 @@ export const CompareSlopeMapBoard = ({
                   featureDetailPlacement="external"
                   // 表示設定は上の帯にまとめてあるので、カードごとには出さない
                   showInlineMapToolbar={false}
+                  compactControls
                   courseColorMode={courseColorMode}
                   onCourseColorModeChange={onCourseColorModeChange}
                   mapDisplaySettings={mapDisplaySettings}
@@ -684,6 +700,7 @@ const ResortSlopeMapCard = ({
   allowPreviewInteraction = false,
   featureDetailPlacement = "below",
   showInlineMapToolbar = true,
+  compactControls = false,
   courseColorMode,
   onCourseColorModeChange,
   mapDisplaySettings,
@@ -703,6 +720,8 @@ const ResortSlopeMapCard = ({
   allowPreviewInteraction?: boolean;
   featureDetailPlacement?: FeatureDetailPlacement;
   showInlineMapToolbar?: boolean;
+  /** 拡大・縮小と方位のボタンを小さい版にする */
+  compactControls?: boolean;
   courseColorMode?: CourseColorMode;
   onCourseColorModeChange?: (mode: CourseColorMode) => void;
   mapDisplaySettings?: MapDisplaySettings;
@@ -776,6 +795,9 @@ const ResortSlopeMapCard = ({
         featureDetail={featureDetail}
         featureDetailPlacement={featureDetailPlacement}
         showInlineMapToolbar={showInlineMapToolbar}
+        // 「営業中のみ」は比較全体で 1 つ。上の帯に出すので地図には出さない
+        showOpenOnlyControl={false}
+        compactControls={compactControls}
         previewHeightClassName="min-h-0 flex-1"
         selectedHeightClassName="h-[48%] min-h-[160px] shrink-0"
         allowPreviewInteraction={allowPreviewInteraction}

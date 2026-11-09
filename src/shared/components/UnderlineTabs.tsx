@@ -54,7 +54,7 @@ export const UnderlineTabs = <TTab extends string>({
             "relative shrink-0 whitespace-nowrap border-b-2 px-1.5 text-[13px] transition-colors",
             !fit && "md:px-4",
             compact ? "h-9 md:h-10" : "h-11 md:h-12",
-            fit ? "@min-[28rem]/tabs:text-base" : "md:text-base",
+            fit ? "@min-[28rem]/tabs:text-sm" : "md:text-sm",
             fill ? "min-w-0 flex-1" : "min-w-0",
             fill && !fit && "md:min-w-[6rem]",
             isActive

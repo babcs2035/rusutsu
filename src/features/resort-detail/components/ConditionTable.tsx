@@ -15,7 +15,17 @@ const fields = [
   { key: "condition", label: "雪質・状態", unit: "" },
 ];
 
-export function ConditionTable({ data }: { data: unknown }) {
+export function ConditionTable({
+  data,
+  hideLocation = false,
+  fields: fieldKeys,
+}: {
+  data: unknown;
+  /** 地点列を隠す（地点が1つで名前を出したくないとき） */
+  hideLocation?: boolean;
+  /** 表示する項目を key で限定する。省略時は全項目 */
+  fields?: string[];
+}) {
   const points = Object.entries(record(data)).map(([name, value]) => ({
     name,
     values: record(value),
@@ -23,15 +33,18 @@ export function ConditionTable({ data }: { data: unknown }) {
       record(value).updateTime ?? record(value).update ?? record(value).time,
     ),
   }));
-  const columns = fields.filter(field =>
-    points.some(point => observationText(point.values[field.key]) !== null),
-  );
+  const columns = fields
+    .filter(field => !fieldKeys || fieldKeys.includes(field.key))
+    .filter(field =>
+      points.some(point => observationText(point.values[field.key]) !== null),
+    );
   const hasUpdates = points.some(point => point.updatedAt);
   const showLocation =
-    hasUpdates || !(points.length === 1 && points[0].name === "中腹");
+    !hideLocation &&
+    (hasUpdates || !(points.length === 1 && points[0].name === "中腹"));
   if (!columns.length)
     return (
-      <p className="text-sm text-slate-700 md:text-base">
+      <p className="text-sm text-slate-700">
         コンディションの情報はありません。
       </p>
     );
@@ -40,10 +53,7 @@ export function ConditionTable({ data }: { data: unknown }) {
     // ページ全体をスクロールするタブバーなど、外側の sticky 要素と
     // z-index・描画順で干渉しないようにする（高速スクロール時に一瞬重なる不具合の対策）。
     <div className="@container/conditions isolate overflow-x-auto rounded-lg border border-slate-200">
-      <table
-        aria-label="コンディション"
-        className="w-full text-sm md:@min-[28rem]/conditions:text-base"
-      >
+      <table aria-label="コンディション" className="w-full text-sm">
         <thead>
           <tr className="bg-slate-100 text-left text-xs text-slate-700 md:@min-[28rem]/conditions:text-sm">
             {showLocation && (

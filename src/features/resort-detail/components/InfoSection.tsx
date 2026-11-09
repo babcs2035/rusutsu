@@ -35,18 +35,18 @@ export const InfoSection = ({
 }) => {
   const compareBtnClassName = cn(
     "flex shrink-0 items-center justify-center rounded-lg gap-1 transition-colors",
-    "h-7 md:h-8",
+    "h-7",
   );
 
   return (
     <div className="w-full px-3.5 py-2.5 border-b border-gray-200">
       <div className="flex items-start justify-between gap-1.5">
-        <h2 className="flex-1 min-w-0 pt-0.5 text-gray-900 text-lg md:text-xl leading-snug font-bold font-[var(--font-heading)]">
+        <h2 className="flex-1 min-w-0 pt-0.5 text-gray-900 text-lg leading-snug font-bold font-[var(--font-heading)]">
           <RubyText segments={resort.nameRuby} fallback={resort.nameJa} />
           {/* 名前のすぐ後ろに置く。行ボックスを広げないよう行送りより小さくする */}
           <CopyResortNameButton
             name={resort.nameJa}
-            className="ml-1 size-5 align-middle"
+            className="ml-1 size-4 align-middle"
           />
         </h2>
         <div className="flex shrink-0 items-center gap-1">
@@ -54,7 +54,7 @@ export const InfoSection = ({
           <Button
             type="button"
             variant="ghost"
-            className="flex size-7 min-h-7 shrink-0 items-center justify-center rounded-full border border-gray-200 shadow-sm hover:bg-gray-50 hover:text-gray-900 text-lg p-0 text-gray-500 md:size-8 md:min-h-8 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10"
+            className="flex size-7 min-h-7 shrink-0 items-center justify-center rounded-full border border-gray-200 shadow-sm hover:bg-gray-50 hover:text-gray-900 text-lg p-0 text-gray-500 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10"
             onClick={onClose}
             aria-label="詳細を閉じる"
           >
@@ -67,8 +67,8 @@ export const InfoSection = ({
           旧称: <FormerResortNames names={resort.formerNames} />
         </p>
       )}
-      <div className="mt-1 md:mt-2 flex items-center gap-2">
-        <p className="flex-1 min-w-0 text-xs md:text-sm text-blue-600 font-medium">
+      <div className="mt-1 flex items-center gap-2">
+        <p className="flex-1 min-w-0 text-xs text-blue-600 font-medium">
           {resort.prefecture}・{resort.town}
           {resort.yukiMagi && (
             <Badge
@@ -84,7 +84,7 @@ export const InfoSection = ({
           resortName={resort.nameJa}
           className={cn(
             compareBtnClassName,
-            "w-auto min-w-[5.75rem] md:w-[5.75rem] px-2 text-xs",
+            "w-auto min-w-[5.75rem] px-2 text-xs",
           )}
           onClick={() => onToggleCompare(resort.id, !isCompareSelected)}
         />

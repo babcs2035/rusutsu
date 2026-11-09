@@ -26,6 +26,7 @@ import {
   saveCommunityProfile,
 } from "@/features/community/actions";
 import { CommunityNotificationsLink } from "@/features/community/CommunityNotificationsLink";
+import { SkiTracksHistory } from "@/features/ski-tracks/SkiTracksHistory";
 import { reloadIfStaleBuild } from "@/shared/utils/staleBuild";
 import {
   publicLogout,
@@ -94,6 +95,7 @@ function FavoritesState({
     step: "choice" | "browser";
   } | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [skiTracksOpen, setSkiTracksOpen] = useState(false);
   const [needsCommunityName, setNeedsCommunityName] = useState(false);
   const [communityNameMode, setCommunityNameMode] = useState<
     "GOOGLE" | "NICKNAME" | "ANONYMOUS"
@@ -339,6 +341,16 @@ function FavoritesState({
             {session?.user?.email}
           </DialogDescription>
           <CommunityNotificationsLink />
+          <Button
+            variant="outline"
+            className="h-auto min-h-8 whitespace-normal py-2"
+            onClick={() => {
+              setAccountOpen(false);
+              setSkiTracksOpen(true);
+            }}
+          >
+            SkiTracksの滑走履歴をアップロード
+          </Button>
           {needsCommunityName && (
             <section className="space-y-2 rounded-lg border border-sky-200 bg-sky-50 p-3">
               <h3 className="font-semibold">
@@ -404,6 +416,28 @@ function FavoritesState({
           >
             ログアウト
           </Button>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={skiTracksOpen && !!userId}
+        onOpenChange={open => {
+          setSkiTracksOpen(open);
+          if (!open) setAccountOpen(true);
+        }}
+      >
+        <DialogContent
+          className="z-[1000] flex h-[min(48rem,calc(100dvh-2rem))] max-h-[calc(100dvh-2rem)] flex-col gap-3 overflow-hidden sm:max-w-lg"
+          overlayClassName="z-[999]"
+        >
+          <DialogTitle className="text-base md:text-base">
+            SkiTracksの滑走履歴
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            滑走履歴のアップロードとコース利用傾向
+          </DialogDescription>
+          <div className="min-h-0 overflow-y-auto overscroll-contain pr-1">
+            {skiTracksOpen && userId && <SkiTracksHistory key={userId} />}
+          </div>
         </DialogContent>
       </Dialog>
       <Toaster position="bottom-center" style={{ zIndex: 1000 }} />

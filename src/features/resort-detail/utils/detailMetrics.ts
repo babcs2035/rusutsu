@@ -654,7 +654,8 @@ const HOURS_BAND = {
 
 /**
  * 断面図の横軸に添える帯。レベル・圧雪は値が分かれば常に出し、
- * 早朝・ナイターは途中で変わる場合だけ出す。値が分からない区間は色を付けない。
+ * ナイターは営業区間があれば出す。早朝は途中で変わる場合だけ出す。
+ * 値が分からない区間は色を付けない。
  */
 export const createCourseProfileBands = (
   courses: FinalizedCourseFeature[],
@@ -685,8 +686,8 @@ export const createCourseProfileBands = (
       }),
     });
   for (const key of ["morning", "night"] as const) {
-    if (runs[key].length < 2 || !runs[key].some(run => run.value === "○"))
-      continue;
+    if (!runs[key].some(run => run.value === "○")) continue;
+    if (key === "morning" && runs[key].length < 2) continue;
     bands.push({
       key,
       runs: runs[key].map(run => ({

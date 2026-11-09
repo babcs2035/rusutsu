@@ -22,13 +22,10 @@ import { DEFAULT_LIFT_TICKET_SEARCH_INPUT } from "@/features/lift-ticket/utils/c
 import { waitForDetailSaved } from "@/features/map/session/prepareDetail";
 import { useScreenState } from "@/features/map/session/useScreenState";
 import type {
-  CourseColorMode,
   ElevationProfileMapPoint,
   JapanResortMapProps,
-  MapTileVariant,
   SelectedMapFeature,
 } from "@/features/map/types";
-import { DEFAULT_MAP_DISPLAY_SETTINGS } from "@/features/map/utils/mapDisplaySettings";
 import {
   SimultaneousToggle,
   useDisplayedResortMapData,
@@ -51,13 +48,6 @@ import type {
   SkiResortDetail,
 } from "@/types/skiResorts";
 import { ComparisonActions } from "../components/ComparisonActions";
-import { CompareMapHeaderBar } from "../components/compare/CompareMapHeaderBar";
-import type { CompareSlopeSelection } from "../components/compare/CompareSlopeMapBoard";
-import {
-  CompareSlopeFeatureDetail,
-  CompareSlopeMapBoard,
-} from "../components/compare/CompareSlopeMapBoard";
-import type { CompareLeftPane } from "../components/compare/types";
 import { DesktopSearchPanel } from "../components/DesktopSearchPanel";
 import { MobileResultsSheet } from "../components/MobileResultsSheet";
 import { MobileSearchOverlay } from "../components/MobileSearchOverlay";
@@ -69,13 +59,6 @@ import { SearchButton } from "../components/SearchButton";
 import { SkiResortCompareView } from "../components/SkiResortCompareView";
 import { useResortSort } from "../hooks/useResortSort";
 import type { MapViewRestoreRequest } from "../types";
-
-/**
- * 比較の左エリアの右端。比較パネルの手前で止める。
- * 地図エリアは検索パネルのぶんだけ既に狭いので、その差だけを詰める。
- */
-const COMPARE_LEFT_PANE_RIGHT =
-  "max(0px, calc(var(--compare-panel-width) - var(--desktop-search-panel-width)))";
 
 const MOBILE_CONTENT_TAB_OPTIONS = [
   { value: "map", label: "地図" },
@@ -268,47 +251,17 @@ export const HomeLayout = ({
     window.addEventListener(COMPOSE_STATE_EVENT, handle);
     return () => window.removeEventListener(COMPOSE_STATE_EVENT, handle);
   }, []);
-  // デスクトップの比較では、左の地図エリアを「ゲレンデ（コースマップ一覧）」と
-  // 「アクセス（位置の地図）」で切り替える。既定はゲレンデ
-  const [compareLeftPane, setCompareLeftPane] =
-    useState<CompareLeftPane>("slope");
-  // ゲレンデ一覧の表示設定。比較中のスキー場すべてに同じものを効かせるため、
-  // 地図ごとではなくここで持つ
-  const [compareCourseColorMode, setCompareCourseColorMode] =
-    useState<CourseColorMode>("slope");
-  const [compareMapDisplaySettings, setCompareMapDisplaySettings] = useState(
-    DEFAULT_MAP_DISPLAY_SETTINGS,
-  );
-  const [compareShowOpenOnly, setCompareShowOpenOnly] = useState(false);
-  const [compareSlopeTileVariant, setCompareSlopeTileVariant] =
-    useState<MapTileVariant>("photo");
-  // 選んだコース・リフトは右の比較パネルに重ねて出すので、
-  // カードごとではなく比較全体で 1 つだけ持つ
-  const [compareSlopeSelection, setCompareSlopeSelection] =
-    useState<CompareSlopeSelection | null>(null);
   // デスクトップの詳細で、左の地図を画面いっぱいに広げているか
   const [isDesktopMapExpanded, setIsDesktopMapExpanded] = useScreenState(
     `rusutsu:panel:v1:${selectedResortId}:desktopExpanded`,
     expandedSchema,
     false,
   );
-  const isDesktopCompare = isSidePanelLayout && isCompareOpen;
   const isDesktopDetailMapExpanded =
     isSidePanelLayout &&
     Boolean(selectedResortId) &&
     !isCompareOpen &&
     isDesktopMapExpanded;
-
-  useEffect(() => {
-    if (isCompareOpen) return;
-    setCompareLeftPane("slope");
-  }, [isCompareOpen]);
-
-  // 地図を切り替えたり比較を閉じたら、選択も外す
-  useEffect(() => {
-    if (isCompareOpen && compareLeftPane === "slope") return;
-    setCompareSlopeSelection(null);
-  }, [compareLeftPane, isCompareOpen]);
 
   // 詳細を閉じたら全画面も畳む。比較を開いたときも同じ
   useEffect(() => {
@@ -332,14 +285,6 @@ export const HomeLayout = ({
     setIsDesktopMapExpanded,
   ]);
 
-  // 比較中のスキー場にコース・リフトが 1 つもなければ、
-  // 帯のコース設定（色分け・凡例）は出しても意味がない
-  const compareHasCourses = compareResortData.some(
-    resort => (resort.finalizedMapData?.courses?.features.length ?? 0) > 0,
-  );
-  const compareHasLifts = compareResortData.some(
-    resort => (resort.finalizedMapData?.lifts?.features.length ?? 0) > 0,
-  );
   const liftTicketInput =
     filters.liftTicket ?? DEFAULT_LIFT_TICKET_SEARCH_INPUT;
   // 比較中の地図はデスクトップの背景地図だけ。モバイルは比較タブの中で完結する
@@ -460,20 +405,6 @@ export const HomeLayout = ({
     ? `calc(${MOBILE_SEARCH_TOP_BAR_HEIGHT} + 2.25rem)`
     : MOBILE_SEARCH_TOP_BAR_HEIGHT;
 
-  const compareSelectedSlopeResort = compareSlopeSelection
-    ? (compareResortData.find(
-        resort => resort.id === compareSlopeSelection.resortId,
-      ) ?? null)
-    : null;
-  const compareSlopeFeatureDetail =
-    compareSlopeSelection && compareSelectedSlopeResort ? (
-      <CompareSlopeFeatureDetail
-        resort={compareSelectedSlopeResort}
-        selection={compareSlopeSelection}
-        onSelectionChange={setCompareSlopeSelection}
-      />
-    ) : null;
-
   return (
     <main
       onPointerDownCapture={onMainPointerDownCapture}
@@ -577,54 +508,6 @@ export const HomeLayout = ({
                 : undefined
             }
           >
-            {/*
-              比較の左エリア。上に白い帯（切替と表示設定）を固定し、
-              その下だけがスクロールする。ゲレンデ一覧は地図の上に重ねる。
-              地図を unmount すると、戻ったときにタイルの読み直しと
-              表示位置のリセットが起きるため。
-              右端は比較パネルの手前で止める。全幅にするとカードもスクロールバーも
-              パネルの下に潜ってしまう。地図エリアは検索パネルのぶんだけ
-              既に狭いので、その差だけを詰める。
-            */}
-            {isDesktopCompare && (
-              <div
-                className="pointer-events-none absolute top-0 bottom-0 left-0 z-[80] flex flex-col"
-                style={{ right: COMPARE_LEFT_PANE_RIGHT }}
-              >
-                <CompareMapHeaderBar
-                  pane={compareLeftPane}
-                  onPaneChange={setCompareLeftPane}
-                  courseColorMode={compareCourseColorMode}
-                  onCourseColorModeChange={setCompareCourseColorMode}
-                  mapDisplaySettings={compareMapDisplaySettings}
-                  onMapDisplaySettingsChange={setCompareMapDisplaySettings}
-                  onShowOpenOnlyChange={setCompareShowOpenOnly}
-                  mapTileVariant={compareSlopeTileVariant}
-                  onMapTileVariantChange={setCompareSlopeTileVariant}
-                  hasCourses={compareHasCourses}
-                  hasLifts={compareHasLifts}
-                />
-                {compareLeftPane === "slope" && (
-                  <CompareSlopeMapBoard
-                    resorts={compareResortData}
-                    DynamicMap={DynamicMap}
-                    mapResorts={initialResorts}
-                    courseColorMode={compareCourseColorMode}
-                    onCourseColorModeChange={setCompareCourseColorMode}
-                    mapDisplaySettings={compareMapDisplaySettings}
-                    onMapDisplaySettingsChange={setCompareMapDisplaySettings}
-                    showOpenOnly={compareShowOpenOnly}
-                    onShowOpenOnlyChange={setCompareShowOpenOnly}
-                    mapTileVariant={compareSlopeTileVariant}
-                    onMapTileVariantChange={setCompareSlopeTileVariant}
-                    selection={compareSlopeSelection}
-                    onSelectionChange={setCompareSlopeSelection}
-                    onMapResortsNeeded={onCompareMapResortsNeeded}
-                    className="pointer-events-auto min-h-0 flex-1 px-6 pt-6 pb-10"
-                  />
-                )}
-              </div>
-            )}
             {isSidePanelLayout &&
               Boolean(selectedResortId) &&
               !isCompareOpen && (
@@ -823,9 +706,7 @@ export const HomeLayout = ({
           DynamicMap={DynamicMap}
           mapResorts={initialResorts}
           onSelectResort={onSelectResort}
-          showSlopeTab={false}
-          showAccessTab={false}
-          featureDetailOverlay={compareSlopeFeatureDetail}
+          onMapResortsNeeded={onCompareMapResortsNeeded}
         />
       )}
     </main>

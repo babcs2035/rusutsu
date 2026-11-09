@@ -64,7 +64,7 @@ export const FinalizedFeatureDetail = ({
       <div className="flex shrink-0 items-start justify-between gap-2 border-b border-gray-200 py-2 pr-2 pl-3 md:pr-3 md:pl-4">
         {/* 長い名前は折り返し、チップは名前の文末にそのまま続ける */}
         <div className="min-w-0 pt-0.5 leading-7 [&>span]:mr-1">
-          <h2 className="mr-1.5 inline break-words align-middle text-base leading-snug font-bold text-gray-900 font-[var(--font-heading)] md:text-lg">
+          <h2 className="mr-1.5 inline break-words align-middle text-base leading-snug font-bold text-gray-900 font-[var(--font-heading)]">
             {title}
           </h2>
           {courseGroup ? (

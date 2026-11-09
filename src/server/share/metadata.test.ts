@@ -6,6 +6,7 @@ const resorts = (n: number) =>
   Array.from({ length: n }, (_, i) => ({
     id: `resort-${i + 1}`,
     nameJa: `スキー場${i + 1}`,
+    urlCode: i + 1,
   }));
 
 test("single resort metadata uses absolute basePath canonical and image URLs", () => {
@@ -32,10 +33,7 @@ test("single resort metadata uses absolute basePath canonical and image URLs", (
 test("comparison canonical retains every ordered ID while image is capped at four", () => {
   const metadata = createShareMetadata(resorts(6), true);
   const canonical = new URL(String(metadata.alternates?.canonical));
-  assert.equal(
-    canonical.searchParams.get("compare"),
-    "resort-1,resort-2,resort-3,resort-4,resort-5,resort-6",
-  );
+  assert.equal(canonical.searchParams.get("c"), "010203040506");
   assert.ok(Array.isArray(metadata.openGraph?.images));
   const image = metadata.openGraph.images[0];
   assert.ok(image);

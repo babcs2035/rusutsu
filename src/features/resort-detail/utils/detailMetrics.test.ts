@@ -368,12 +368,17 @@ test("圧雪が区間で違うときは圧雪でない区間だけ位置を添�
   );
 });
 
-test("全区間が同じなら位置を付けず、帯はレベルと圧雪だけ出す", () => {
+test("全区間が同じなら位置を付けず、早朝の帯は出さずナイターの帯は出す", () => {
   const courses = [
-    section("only", 1, { piste: "○", level: "初級", morning: "○" }, [
-      [0, 0, 1000],
-      [0, 0.001, 950],
-    ]),
+    section(
+      "only",
+      1,
+      { piste: "○", level: "初級", morning: "○", night: "○" },
+      [
+        [0, 0, 1000],
+        [0, 0.001, 950],
+      ],
+    ),
   ];
   const tags = getCourseGroupTags({
     id: "group",
@@ -384,7 +389,10 @@ test("全区間が同じなら位置を付けず、帯はレベルと圧雪だ�
     tags.grooming.map(item => item.label),
     ["圧雪"],
   );
-  assert.deepEqual(tags.hours, [{ label: "早朝", kind: "morning" }]);
+  assert.deepEqual(tags.hours, [
+    { label: "早朝", kind: "morning" },
+    { label: "ナイター", kind: "night" },
+  ]);
   assert.deepEqual(
     createCourseProfileBands(courses).map(band => [
       band.key,
@@ -393,6 +401,7 @@ test("全区間が同じなら位置を付けず、帯はレベルと圧雪だ�
     [
       ["level", ["初級"]],
       ["piste", ["圧雪"]],
+      ["night", ["ナイター"]],
     ],
   );
 });

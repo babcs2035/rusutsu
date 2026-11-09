@@ -137,14 +137,10 @@ export function CourseStatusTable({
       <div className="flex min-w-0 items-center">
         <h3
           id={headingId}
-          className="flex min-w-0 flex-wrap items-baseline gap-x-0.5 text-sm font-semibold text-slate-900 @min-[12rem]/status-summary:text-base"
+          className="flex min-w-0 flex-wrap items-baseline gap-x-0.5 text-sm font-semibold text-slate-900"
         >
+          {/* 本数は ○△×不明 の合計で分かるので出さない */}
           <span className="whitespace-nowrap">{name}</span>
-          {summary && (
-            <span className="whitespace-nowrap text-[11px] font-normal text-slate-600 @min-[12rem]/status-summary:text-sm">
-              {`${summary.total}本`}
-            </span>
-          )}
         </h3>
         {!unavailable && (
           <StatusLegendDialog
@@ -191,7 +187,7 @@ export function CourseStatusTable({
               />
             )}
             <span
-              className={`inline-flex h-6 items-center text-base leading-none font-bold tabular-nums text-slate-900 ${inline ? "" : "@min-[12rem]/status-summary:h-7 @min-[12rem]/status-summary:text-lg"}`}
+              className={`inline-flex h-6 items-center text-base leading-none font-bold tabular-nums text-slate-900 ${inline ? "" : "@min-[12rem]/status-summary:h-7"}`}
             >
               {column.count ?? "—"}
             </span>
