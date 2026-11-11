@@ -110,7 +110,8 @@ test("20歳でも対象期間外は通常料金になり、資格割引は条件
   );
   assert.equal(hotelOffer?.unitAmount, 5500);
   assert.match(hotelOffer?.conditions.join(" ") ?? "", /苗場プリンスホテル/);
-  assert.match(hotelOffer?.conditions.join(" ") ?? "", /利用日の前日まで/);
+  // 「利用日の前日まで」は利用日から逆算した日付で出す
+  assert.match(hotelOffer?.conditions.join(" ") ?? "", /12\/15までにWebで購入/);
 });
 
 test("年齢が20歳でなければ平日20才無料を適用しない", () => {

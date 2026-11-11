@@ -533,7 +533,7 @@ export const TicketPlanCard = ({
 
         {/* WEB購入の案内は、日ごとに繰り返さず最後に1回だけ出す。出典は各料金の下に出す */}
         <div className="mt-3 flex flex-col gap-2">
-          {/* 見出しの合計（レンタル込み）と同じ基準で「窓口で買う場合」を出す */}
+          {/* 見出しの合計（レンタル込み）と同じ基準で「通常料金（窓口）」を出す */}
           <PurchaseSummary lines={shownLines} total={total} />
         </div>
       </div>

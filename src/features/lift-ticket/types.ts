@@ -542,6 +542,10 @@ export type TicketCalculationLine = {
   purchaseNote?: string | null;
   /** 購入ページのURL */
   purchaseUrl?: string | null;
+  /** 利用日より前に買う必要があるとき、買える最後の日（「2/3までにWebで購入」） */
+  purchaseDeadline?: string | null;
+  /** Webで買う料金か（購入ページのURLが無くても Web で買う券） */
+  purchaseOnline?: boolean;
   /** 親子パックなど複数人セットの料金。画面では「誰と誰のセットか」を出す */
   partySet?: {
     /** 「親子パック」 */

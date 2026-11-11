@@ -1261,9 +1261,33 @@ const monthDay = (date: string) => {
 };
 
 /**
+ * Web・前売の券を買える最後の日。販売終了日・固定の締切日・
+ * 「利用日の〇日前まで」のうち一番早い日。利用日当日まで買えるなら null
+ */
+export const lastPurchaseDateOf = (
+  offer: Pick<LiftTicketOffer, "sales_period" | "purchase_deadline">,
+  visitDate: string,
+) => {
+  const deadline = offer.purchase_deadline;
+  const daysBefore = Math.max(
+    deadline?.days_before_use ?? 0,
+    deadline?.same_day_allowed === false ? 1 : 0,
+  );
+  const last = [
+    addDays(visitDate, -daysBefore),
+    offer.sales_period?.end,
+    deadline?.deadline_date,
+  ]
+    .filter((date): date is string => Boolean(date))
+    .reduce((earliest, date) => (date < earliest ? date : earliest));
+  return last < visitDate ? last : null;
+};
+
+/**
  * Web・前売料金の買い方を短く表す。
- * 「Webで購入（当日購入可）」「Webで事前購入（利用日の3日前まで・11/30まで販売）」と、
- * 販売開始前なら「12/19から販売開始」の注意だけを返す
+ * 「Webで購入」、利用日より前に買う必要があれば「2/3までにWebで購入」と、
+ * 販売開始前なら「12/19から販売開始」の注意を返す。
+ * ★期限は1つの日付にまとめる（「利用日の3日前まで・11/30まで販売」と並べない）
  */
 const purchaseMethodOf = (
   data: LiftTicketData,
@@ -1271,25 +1295,12 @@ const purchaseMethodOf = (
   visitDate: string,
   today: string,
 ) => {
-  const deadline = offer.purchase_deadline;
   const online = (offer.discount_reasons ?? []).includes("online_purchase");
   const where = online ? "Webで" : "";
-  const daysBefore = Math.max(
-    deadline?.days_before_use ?? 0,
-    deadline?.same_day_allowed === false ? 1 : 0,
-  );
-  // 早割のように利用日より前に販売が終わる券は、いつまでに買うかが要る
-  const end = offer.sales_period?.end;
-  const limits = [
-    daysBefore > 0
-      ? `利用日の${daysBefore === 1 ? "前日" : `${daysBefore}日前`}まで`
-      : deadline?.same_day_allowed === true
-        ? "当日購入可"
-        : null,
-    end && end < visitDate ? `${monthDay(end)}まで販売` : null,
-  ].filter((limit): limit is string => Boolean(limit));
-  const verb = daysBefore > 0 ? "事前購入" : "購入";
-  const note = `${where}${verb}${limits.length > 0 ? `（${limits.join("・")}）` : ""}`;
+  const deadline = lastPurchaseDateOf(offer, visitDate);
+  const note = deadline
+    ? `${monthDay(deadline)}までに${where}購入`
+    : `${where}購入`;
   const channelById = new Map(
     data.channels.map(channel => [channel.id, channel]),
   );
@@ -1300,7 +1311,7 @@ const purchaseMethodOf = (
   const start = offer.sales_period?.start;
   const warning =
     start && start > today ? `${monthDay(start)}から販売開始です` : null;
-  return { note, url, warning };
+  return { note, url, warning, deadline, online };
 };
 
 export const formatPartyGroupLabel = (group: TicketPartyGroup) => {
@@ -1895,6 +1906,8 @@ const calculateGroupLine = (
         : bestStandardOffer.price.amount * group.count,
     purchaseNote: purchase?.note ?? null,
     purchaseUrl: purchase?.url ?? null,
+    purchaseDeadline: purchase?.deadline ?? null,
+    purchaseOnline: purchase?.online ?? false,
     warnings,
   };
 

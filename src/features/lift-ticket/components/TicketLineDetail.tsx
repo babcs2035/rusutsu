@@ -10,8 +10,17 @@ const yen = (amount: number) => `¥${amount.toLocaleString("ja-JP")}`;
 const isSalesStartWarning = (warning: string) =>
   /から販売開始です$/u.test(warning);
 
-/** オンラインで買う料金か（購入ページのURLがある） */
-const isOnlineLine = (line: TicketCalculationLine) => line.purchaseUrl != null;
+/** オンラインで買う料金か（購入ページのURLがある、または Web で買う券） */
+const isOnlineLine = (line: TicketCalculationLine) =>
+  line.purchaseUrl != null || line.purchaseOnline === true;
+
+/** Web・前売で安くなった料金か（窓口でそのまま買う料金ではない） */
+const isPurchaseMethodLine = (line: TicketCalculationLine) =>
+  line.purchaseNote != null || isOnlineLine(line);
+
+/** 「2027-02-03」→「2/3」 */
+const monthDayOf = (date: string) =>
+  `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}`;
 
 /**
  * 行に出す券名。オンライン料金・通常料金は券種名だけ。年齢割引などを
@@ -136,8 +145,11 @@ export const hasOnlineLine = (lines: TicketCalculationLine[]) =>
   lines.some(isOnlineLine);
 
 /**
- * カードの下に1回だけ出す、WEB購入の案内。
- * 「窓口で買う場合 ¥50,100」と購入ページ、販売開始日。
+ * カードの下に1回だけ出す、Web・前売の買い方。
+ * 「2/3までにWebで購入」（利用日より前に買う必要があるときだけ）、
+ * 「通常料金（窓口） ¥7,800」、購入ページ、販売開始日。
+ * ★期限は1つの日付だけ出す。日ごとに期限が違うときは一番早い日（その日までに
+ * まとめて買えば間に合う）。当日まで買える券には期限を出さない。
  * lines は画面に出した行と、その行を何回買うか（日数・枚数）。
  */
 export const PurchaseSummary = ({
@@ -147,48 +159,66 @@ export const PurchaseSummary = ({
   lines: Array<{ line: TicketCalculationLine; multiplier: number }>;
   total: number | null;
 }) => {
-  const online = lines.filter(({ line }) => isOnlineLine(line));
-  if (online.length === 0) return null;
-  const urls = [...new Set(online.map(({ line }) => line.purchaseUrl ?? ""))];
-  const counterExtra = online.reduce(
+  const purchased = lines.filter(({ line }) => isPurchaseMethodLine(line));
+  if (purchased.length === 0) return null;
+  const urls = [
+    ...new Set(
+      purchased
+        .map(({ line }) => line.purchaseUrl)
+        .filter((url): url is string => Boolean(url)),
+    ),
+  ];
+  const counterExtra = purchased.reduce(
     (sum, { line, multiplier }) =>
       line.standardSubtotal != null && line.subtotal != null
         ? sum + (line.standardSubtotal - line.subtotal) * multiplier
         : sum,
     0,
   );
+  const deadlines = purchased
+    .map(({ line }) => line.purchaseDeadline)
+    .filter((date): date is string => Boolean(date))
+    .sort();
+  const online = purchased.some(({ line }) => isOnlineLine(line));
   const salesStarts = [
     ...new Set(
-      online.flatMap(({ line }) =>
+      purchased.flatMap(({ line }) =>
         (line.warnings ?? []).filter(isSalesStartWarning),
       ),
     ),
   ];
   return (
     <div className="flex flex-col gap-1 border-t border-orange-200 pt-2 text-sm">
+      {deadlines.length > 0 && (
+        <p className="font-semibold text-orange-900">
+          {monthDayOf(deadlines[0])}までに{online ? "Webで" : ""}購入
+        </p>
+      )}
       {total != null && counterExtra > 0 && (
         <div className="flex items-baseline justify-between gap-3 text-gray-600">
-          <span>窓口で買う場合</span>
+          <span>通常料金（窓口）</span>
           <span className="font-mono">{yen(total + counterExtra)}</span>
         </div>
       )}
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        {urls.map(url => (
-          <ExternalLinkComponent
-            key={url}
-            href={url}
-            className="inline-flex items-center gap-0.5 font-semibold text-blue-700 underline underline-offset-2"
-          >
-            WEBで購入
-            <ExternalLink className="size-3.5" aria-hidden="true" />
-          </ExternalLinkComponent>
-        ))}
-        {salesStarts.map(warning => (
-          <span key={warning} className="text-gray-600 text-xs">
-            {warning.replace(/です$/u, "")}
-          </span>
-        ))}
-      </div>
+      {(urls.length > 0 || salesStarts.length > 0) && (
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          {urls.map(url => (
+            <ExternalLinkComponent
+              key={url}
+              href={url}
+              className="inline-flex items-center gap-0.5 font-semibold text-blue-700 underline underline-offset-2"
+            >
+              WEBで購入
+              <ExternalLink className="size-3.5" aria-hidden="true" />
+            </ExternalLinkComponent>
+          ))}
+          {salesStarts.map(warning => (
+            <span key={warning} className="text-gray-600 text-xs">
+              {warning.replace(/です$/u, "")}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

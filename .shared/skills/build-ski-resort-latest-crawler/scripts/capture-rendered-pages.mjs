@@ -14,7 +14,13 @@ function parseArgs(argv) {
     const arg = argv[i];
     const value = argv[i + 1];
 
-    if (arg === "--url" && value) {
+    if (arg === "--help" || arg === "-h") {
+      console.log(
+        "Usage: capture-rendered-pages.mjs --out <dir> --url <url> [--url <url> ...] [--wait-for <selector>] [--wait-ms 1500]\n" +
+          "Saves page-NN.html and console-errors.json, and prints one JSON line per page (status, finalUrl, title).",
+      );
+      process.exit(0);
+    } else if (arg === "--url" && value) {
       urls.push(value);
       i++;
     } else if (arg === "--out" && value) {
@@ -67,8 +73,9 @@ try {
       }
     });
 
+    let response = null;
     try {
-      await page.goto(url, {
+      response = await page.goto(url, {
         waitUntil: "domcontentloaded",
         timeout: 60000,
       });
@@ -87,6 +94,20 @@ try {
     } finally {
       const filename = `page-${String(i + 1).padStart(2, "0")}.html`;
       await fs.writeFile(path.join(outDir, filename), await page.content());
+      // 404・リダイレクト・シーズン終了ページを見落とさないよう、毎ページ結果を出す。
+      const status = response?.status() ?? null;
+      console.log(
+        JSON.stringify({
+          file: filename,
+          url,
+          status,
+          finalUrl: page.url(),
+          title: await page.title().catch(() => null),
+          ...(status !== null && status >= 400
+            ? { warning: "HTTP error" }
+            : {}),
+        }),
+      );
       await page.close();
     }
   }
@@ -98,6 +119,7 @@ try {
   await browser.close();
 }
 
+console.log(`Done: ${urls.length} page(s) saved to ${outDir}`);
 if (failed) {
   process.exitCode = 1;
 }

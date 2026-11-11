@@ -1,17 +1,18 @@
 ---
 name: build-ski-resort-latest-crawler
-description: 指定されたスキー場公式URLをPlaywrightと冬季Waybackアーカイブで調査し、src/private/scripts/crawl_latest/resortsの営業情報クローラーを実装・修正・監査する。URL探索は行わず、コース、リフト、天気、積雪、コメント等の取得、既存クローラーの不具合調査、DOM変更に強い抽出設計に使う。
+description: スキー場の公式サイトから当日の営業情報URL（天気・コメント・コース・リフト）とお知らせ一覧URLを調査し、Playwrightと冬季Waybackアーカイブで確かめて、src/private/scripts/crawl_latest/resortsの営業情報クローラーを実装・修正・監査する。URLの指定がなくてもスキー場名・IDから調査して実装まで行う。公式に営業情報がなければクローラーは作らず、お知らせ一覧だけSkiResortLinksへ登録する。既存クローラーの不具合調査、DOM変更に強い抽出設計にも使う。
 ---
 
 # Build Ski Resort Latest Crawler
 
-指定された公式URLから、根拠を検証できる情報だけを取得するクローラーを完成させる。
+公式URLの調査から、根拠を検証できる情報だけを取得するクローラーの実装・検証までを一貫して行う。
 
 ## 入力と範囲
 
-- 必須入力はスキー場IDと調査対象の公式URL。対象を特定できない場合だけ確認する。
-- 別サイトや別スキー場のURLは探索しない。同じURLのWaybackアーカイブと、ページが直接参照するAPI・CSS・JavaScript・画像は調査してよい。
-- 提供URLに掲載され、既存型で正確に表現できるカテゴリは省略しない。一方、掲載のない情報や意味を確認できない値は作らない。
+- 必須入力はスキー場ID（またはスキー場名）。URLは任意。対象を特定できない場合だけ確認する。
+- URLの指定がない、または一部カテゴリしか指定がない場合は、Stage 0で公式サイト内を調査して不足を埋める。URLが全カテゴリ指定され「このURLだけ」と言われた場合は調査を広げない。
+- 調査は対象スキー場の公式ドメイン（系列・運営会社・自治体・観光協会の公式ページを含む）に限る。別スキー場や情報サービスのページは取得元にしない。公式ページのWaybackアーカイブと、ページが直接参照するAPI・CSS・JavaScript・画像は調査してよい。
+- 調査・指定したURLに掲載され、既存型で正確に表現できるカテゴリは省略しない。一方、掲載のない情報や意味を確認できない値は作らない。
 
 ### 取得元と出典
 
@@ -70,6 +71,16 @@ description: 指定されたスキー場公式URLをPlaywrightと冬季Wayback�
 - 総トークンと費用・利用枠の消費は別に評価する。委譲だけでは削減を保証しない。完了時に使用モデル・委譲範囲・再試行の有無を短く示し、実測できない削減率は述べない。
 
 ## ワークフロー
+
+### 0. 公式URLを調査する
+
+[url-discovery.md](references/url-discovery.md) を読み、weatherUrl / commentUrl / courseUrl / liftUrl と newsUrl（お知らせ一覧）を公式サイトと冬季アーカイブで調べる。
+
+- commentUrl はスキー場が営業日ごとに書く当日の営業コメント欄。newsUrl はお知らせ・ニュース一覧で、クローラーでは読まず `SkiResortLinks` の `newsUrls` に登録するだけ（`src/private/scripts/addResortLinks.ts`）。
+- 夏に空でも冬に載ることが多いので、オフシーズンは必ず `scripts/find-winter-snapshots.mjs` で冬季アーカイブを確認する。
+- 結果は `src/private/data/resorts-temporary/latest_status_sources/<resort-id>.json` に記録する。
+- 4カテゴリすべてが公式に掲載なし（冬季アーカイブも含めて確認）なら、**クローラーは実装しない**。`decision: "no_crawler"` と根拠を記録し、見つかった newsUrl・公式サイトURLの登録だけ行って完了報告する。
+- 1カテゴリでも見つかれば、見つかったカテゴリだけを対象に次へ進む。
 
 ### 1. 公式DOMを調査する
 
@@ -148,7 +159,24 @@ node .shared/skills/build-ski-resort-latest-crawler/scripts/capture-rendered-pag
 
 ## 完了報告
 
-最終回答に「状態・取得範囲の監査」を含め、簡潔に次を示す。
+最終回答の先頭に Stage 0 の結果を、次の形式で示す（URLは省略せず全部書く。同じURLの重複可。なければ「掲載なし」）。
+
+```
+weatherUrl:
+- https://...
+commentUrl:
+- https://...
+courseUrl:
+- https://...
+liftUrl:
+- https://...
+newsUrl:
+- https://...（newsUrls へ登録済み / 既存）
+```
+
+続けて、状態凡例のURLと文言、更新日時の表記例、観測地点名の実際の表記、掲載なしカテゴリの根拠、冬のみ掲載のカテゴリとアーカイブ日時、確認できなかった点を箇条書きにする。クローラーを作らなかった場合はここで終える。
+
+実装した場合は「状態・取得範囲の監査」を含め、簡潔に次を示す。
 
 - 現行ページと冬季アーカイブの対象URL・日時、カテゴリ別・状態別件数、警告
 - コース／リフトの各状態について、根拠と実際に変換経路へ通した結果

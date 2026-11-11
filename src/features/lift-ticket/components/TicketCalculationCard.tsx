@@ -70,10 +70,6 @@ export const TicketCalculationCard = ({
 
   const displayedTotal =
     result.ticketTotal == null ? result.knownTicketTotal : result.ticketTotal;
-  // 料金行の出典は内訳の上に1回だけ出し、条件付き割引には追加分だけ出す
-  const lineSources = [
-    ...new Set(result.lines.flatMap(line => line.sourceNumbers)),
-  ].sort((left, right) => left - right);
 
   return (
     <Alert
@@ -133,9 +129,7 @@ export const TicketCalculationCard = ({
       {!compact && (
         <ConditionalOffers
           offers={result.conditionalOffers}
-          sourcesOf={offer =>
-            offer.sourceNumbers.filter(number => !lineSources.includes(number))
-          }
+          sourcesOf={offer => offer.sourceNumbers}
           references={result.references}
           className="mt-3"
         />

@@ -90,6 +90,14 @@ src/private/data/resorts-temporary/tmp/lift-ticket-discovery/{resort-id}/
 - 通常料金、無料料金、Web・前売・会員・宿泊者・障がい者等の条件付き料金
 - 利用期間、販売期間、購入期限、購入経路、対象者、必要証明、必須手数料
 - 営業時間、ナイター営業日、定休日
+- Web・前売の券の買い方（画面に「2/3までにWebで購入」と、並べて「通常料金（窓口）」を出すため）:
+  販売開始日・販売終了日（`sales_period`）、当日に買えるか・利用日の何日前までか・
+  固定の締切日（`purchase_deadline`。公式に記載が無くても欄を作り、記載なしと書く）、
+  購入ページのURL（`channels[].url`）、同じ券を窓口でも売るなら同じ区分・日付の窓口料金
+  （Web・前売だけで売る商品には不要）
+- 料金の記載場所の手がかり（出典リンクでページ内のその箇所へ飛ばすため）:
+  料金表が画像・PDFなら、それを載せているHTMLページも `sources` に保存して
+  `linked_from_source_id` で結ぶ（画像ファイルだけを出典にしない）
 - レンタル用具の料金（公式サイト・公式案内の場内ショップ。セット・単品・ウェア・小物を
   対象者・期間・グレードごとに `rentals` へ。書き方は `references/data-model.md` の rentals）。
   レンタル料金表に年度表記が無いだけでは収集を止めない（下の Stage 1 の7を参照）
@@ -170,6 +178,16 @@ src/private/data/resorts-temporary/tmp/lift-ticket-discovery/{resort-id}/
 - 定休日の記載がなければ定休日はない。営業時間・ナイター時刻は上の順で探して採用し、
   それでも見つからないときだけ unknown のまま MISSING.md に書く（質問にしない）。
 - 1日券でナイターを滑れるかは、「1日券ではナイター利用不可」等の記載がなければ滑れる。
+- **無料施設**（公式に「無料」「料金不要」と書かれたスキー場・ロープトー）は、定休日・営業期間外を
+  除くどの照会にも0円を返すようにする。全audienceを `audience_ids` に並べた「無料（全日・全時間）」の
+  1日券を1件作り（ナイター営業があれば `covers_hours_types` に night も含める）、金額0円・
+  `source_refs` は「無料」と書かれたページにする。定休日・営業期間は公式どおり calendar に記録する。
+  今季の営業期間が未発表なら前季の公式の期間（月日）を当てはめ、notes_ja と MISSING.md に残す。
+  年度表記が無いだけでは止めない（上の常設料金表と同じ扱い）。
+- 営業期間が「12月中旬〜3月下旬」「12月末〜3月中」のように旬・月だけで書かれていれば、広めに日付へ
+  置き換える（開始は上旬=1日・中旬=11日・下旬/末=21日・月だけ=1日、終了は上旬=10日・中旬=20日・
+  下旬/末/月だけ=月末）。`season.start_date`/`end_date` を null のままにしない（期間外の日に
+  営業中と答えてしまう）。置き換えたことを notes_ja と MISSING.md に書く。
 
 ### 質問する前に自分で調べる
 
@@ -338,6 +356,15 @@ URL調査のみの依頼はここで報告して終了する。
    抽出を止める。人間が公式資料から確定した場合だけ `--accept-season` を使う。
    matchでも各料金表・販売商品・脚注のシーズンを個別に照合する。
    古い料金表と今季の営業日を組み合わせて今季料金を作らない。
+   **年度表記の無い常設の料金表**（`undetermined`）は止めずに収集する（2026-11-10 利用者の指示）。
+   画面に前シーズンの表記・今季と合わない日付（「2025～2026」「令和7年度の営業は終了」等）が
+   無ければ、公式に現在掲載されている料金として `--accept-season` で取得し、
+   `data_quality.notes_ja` に「料金表に年度表記なし（照合日 YYYY-MM-DD）」と書く
+   （human_review_required にしない）。登録URLは定期的に取り直すので、掲載が変われば差し替える。
+   止めるのは料金表そのもの（表題・見出し・注記）に前シーズンの表記がある場合だけで、
+   その文言を notes_ja に引用する。同じページの営業期間・お知らせが前季のままでも料金表は収集し、
+   今季の営業期間が未発表なら前季の公式の期間（月日）を今季に当てはめて notes_ja と MISSING.md に
+   「営業期間は前季の月日を仮置き」と残す（この場合に限り、前季の日付を使ってよい）。
    **レンタル料金はこの判定の例外**で、年度表記が無い（`undetermined`）だけでは止めない。
    画面に前シーズンの表記や今季と合わない日付が無ければ、現在掲載の料金として記録する
    （`--accept-season` で取得してよい。扱いの正本は `references/extraction-rules.md` の
@@ -346,28 +373,47 @@ URL調査のみの依頼はここで報告して終了する。
    「年度未確認」「今季のものか確認できない」は記録しない理由にならない。
 8. 新規作成ではテンプレートから作業領域の `{season-id}.draft.json` を作り、
    資料にある情報だけを記録する。
-9. 料金の記載場所（`source_quotes`）を付ける。出典ページを実ブラウザで描画し、
-   金額の文言と直前のセルを照合して、各料金のマスを指すテキストフラグメント用の
-   文言を書き込む（詳細は `references/data-model.md` の「source_quotes」）:
+9. 料金の記載場所（`source_quotes`）を付ける。1本目で画像・PDFの出典を載せている
+   ページと結び、2本目が出典ページを実ブラウザで開いて、料金ごとに合う箇所を
+   行見出し・列見出し・見出しで選び、強調がそこに当たることを撮影で確かめてから書く。
+   3本目は付いた引用を全件確かめ直し、合わないものを外す
+   （詳細は `references/data-model.md` の「source_quotes」）:
 
    ```bash
+   node src/private/scripts/lift-ticket-quotes/link-file-sources.mjs --write --file <draft.json>
    node src/private/scripts/lift-ticket-quotes/attach-quotes.mjs --write --file <draft.json>
-   node src/private/scripts/lift-ticket-quotes/verify-quotes.mjs 2 --prune --file <draft.json>
+   node src/private/scripts/lift-ticket-quotes/verify-quotes.mjs --prune --file <draft.json>
    ```
 
-   1本目が金額と前後の見出し（券種・区分・期間）を照合して付け、2本目が実際に
-   リンクを開いて、その金額がハイライトされるか、その位置までスクロールするかを
-   確かめる（サイトの装飾でハイライトの色が出ないページ、折りたたみの中の表は
-   スクロールだけになる）。どちらも起きない・別の場所に飛ぶ出典は、2本目が引用を
-   外して `src/private/scripts/lift-ticket-quotes/dead-sources.json` に記録する。
-   付かなかった料金はリンクがページを開くだけになるので、手で補わなくてよい。
-   金額や出典URLを修正したら、この2本をやり直す。
+   合格の基準（詳細は `references/data-model.md` の「source_quotes」）:
+   - **強調が正しい料金のマスに当たったことを、中身で確かめる。** 色が付いた・
+     スクロールしただけでは合格にしない。強調された箇所の表の行見出し・列見出し
+     （大人／こども等の区分）・直前の見出しが、その料金の券種・区分・割引名と合い、
+     別の区分（大人の料金なのに「こども」の列）や別の割引（通常券なのに「早割」の表）を
+     指していないことを確かめる。NASPAでは大人の早割 ¥4,800 が、ページで先に出る
+     こども1日券の ¥4,800 を指していた。
+   - **全件を確かめる**（出典ページごとの抜き取りにしない）。
+   - 金額に色が付かない（開いた後にサイトが金額を書き直す、金額が画像・PDFの中、
+     折りたたみの中）ときは、同じ行・同じ枠にある書き換えられない文字（表の行見出し・
+     券名・画像の直前の見出し）を強調し、そこへ飛んだときに金額の箇所が画面内に
+     見えることを確かめる。条件付き割引も同じ。
+   - 中身が確かめられない料金には付けない（間違った場所を指すより、ページを開く
+     だけのほうがよい）。付かなかった料金は手で補わない。
+   金額・出典URL・券種・区分を修正したら、この3本をやり直す。
 10. 機械検証3本を通す:
 
    ```bash
    node .shared/skills/collect-ski-lift-ticket-pricing/scripts/validate-lift-ticket.mjs <draft.json>
    node .shared/skills/collect-ski-lift-ticket-pricing/scripts/check-taxonomy.mjs <draft.json>
    node .shared/skills/collect-ski-lift-ticket-pricing/scripts/check-lift-ticket-coverage.mjs <draft.json>
+   ```
+
+   続けて、画面の機能に要る情報の不足を点検する（判定の意味は
+   `.shared/skills/repair-ski-lift-ticket-data/references/gap-checks.md`）。
+   出た項目は公式資料で埋めるか、公式に無いことを `notes_ja` / MISSING.md に残す:
+
+   ```bash
+   node .shared/skills/repair-ski-lift-ticket-data/scripts/find-lift-ticket-gaps.mjs --file <draft.json>
    ```
 
 ## Stage 1b: 雪マジの取得

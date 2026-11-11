@@ -158,7 +158,19 @@ export const operatingSegmentsOn = (data: LiftTicketData, date: string) => {
   if (!byType.has("regular") && byType.has("early_morning") && !hasUnknown) {
     byType.set("regular", byType.get("early_morning") ?? []);
   }
-  if (!byType.has("regular")) {
+  // 他の日には通常営業の時刻が載っていて、この日はナイターだけが載っている日
+  // （川西小松の火・木・金）は、昼を営業しないナイターだけの日として扱う
+  const nightOnly =
+    !byType.has("regular") &&
+    byType.has("night") &&
+    !hasUnknown &&
+    (data.operating_hours ?? []).some(
+      entry =>
+        entry.hours_type === "regular" &&
+        toMinutes(entry.start_time) != null &&
+        toMinutes(entry.end_time) != null,
+    );
+  if (!byType.has("regular") && !nightOnly) {
     // S8: 通常営業の時刻が不明なら 8:00〜17:00。ナイターがあれば終了をナイター開始にそろえる
     const nightStart = byType.get("night")?.[0]?.[0];
     const close =
@@ -166,7 +178,7 @@ export const operatingSegmentsOn = (data: LiftTicketData, date: string) => {
     byType.set("regular", [[ASSUMED_OPEN, close]]);
     assumed = true;
   }
-  return { byType, assumed };
+  return { byType, assumed, nightOnly };
 };
 
 type Coverage =
@@ -399,11 +411,14 @@ export const calculateDurationOptions = (
     return unavailableOptions("closed", result.notes);
   }
 
-  const { byType, assumed } = operatingSegmentsOn(data, date);
+  const { byType, assumed, nightOnly } = operatingSegmentsOn(data, date);
   const regular = byType.get("regular") ?? [];
   const night = byType.get("night") ?? [];
   const notes: string[] = [];
   if (assumed) notes.push("営業時間不明のため8:00〜17:00と仮定");
+  // ナイターだけの日は「1日」もナイターの営業時間を指す
+  if (nightOnly)
+    notes.push(`この日はナイター営業のみです（${windowLabelOf(night)}）`);
 
   const wantsNight =
     duration.kind === "night" ||
@@ -418,7 +433,7 @@ export const calculateDurationOptions = (
   const scope: Interval[] =
     duration.kind === "night"
       ? night
-      : duration.kind === "day" && !duration.withNight
+      : duration.kind === "day" && !duration.withNight && !nightOnly
         ? regular
         : mergeIntervals([...regular, ...night]);
   const scopeMinutes = measure(bridge(scope));
@@ -661,6 +676,9 @@ export const calculateDurationOptions = (
       qualifying.filter(
         combo =>
           combo !== primary &&
+          // その日・その人数構成で料金が決まらない券（平日限定パックの土曜、
+          // 学生限定パックの大人）は出さない。¥NaN と出ていた
+          combo.total < UNPRICED &&
           combo.products.length === 1 &&
           (combo.products[0].included_items ?? []).some(
             item => item.type !== "rental",

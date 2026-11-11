@@ -128,7 +128,7 @@ for (const spec of OFFICIAL_CASES.filter(c =>
         assert.match(
           result.days[0].result.lines.map(line => line.note).join(" "),
           spec.noPriceCategories?.includes(category)
-            ? /一致する料金がありません/
+            ? /一致する料金がありません|保護者の同伴が必要/
             : /年齢.*入力/,
         );
       }

@@ -63,11 +63,9 @@ test("販売期間中で通常料金より安い早割は、計算結果その�
   assert.equal(result.payableTotal, 6000);
   assert.equal(result.lines[0].offerName, "早割 苗場エリア1日券（おとな）");
   assert.equal(result.lines[0].standardUnitAmount, 7800);
-  // 買い方は1行に短くまとめる（いつまでに買うかだけ）
-  assert.equal(
-    result.lines[0].purchaseNote,
-    "Webで事前購入（利用日の3日前まで・11/30まで販売）",
-  );
+  // 期限は1つの日付にまとめる。販売終了 11/30 と「利用日（1/10）の3日前」の早いほう
+  assert.equal(result.lines[0].purchaseNote, "11/30までにWebで購入");
+  assert.equal(result.lines[0].purchaseDeadline, "2025-11-30");
   assert.equal(
     result.conditionalOffers.some(offer => offer.offerName.includes("早割")),
     false,
@@ -128,4 +126,14 @@ test("料金表は販売中の早割を販売期間付きで載せ、販売終�
   assert.ok(onSale.notes.includes("販売期間: 2025/10/1〜2025/11/30"));
 
   assert.equal(findEarlyRow("2025-12-01"), undefined);
+});
+
+test("購入期限は「利用日の〇日前」が販売終了より早ければその日を出す", () => {
+  const result = calculateLiftTicket(
+    withEarlyBird(6000, "2026-03-31"),
+    input("2026-02-06", "2025-11-15"),
+    "prod-naeba-1day",
+  );
+  assert.equal(result.lines[0].purchaseNote, "2/3までにWebで購入");
+  assert.equal(result.lines[0].purchaseDeadline, "2026-02-03");
 });

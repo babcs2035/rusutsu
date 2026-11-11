@@ -340,15 +340,59 @@ export const publicLiftTicketDataSchema = z.object({
   }),
 }) satisfies z.ZodType<LiftTicketData>;
 
+const IMAGE_SOURCE_URL = /\.(png|jpe?g|gif|webp|svg)($|[?#])/iu;
+
+/**
+ * 画像の出典は、その画像を載せている公式ページのURLに置き換える。
+ * 出典リンクで画像ファイルだけを開かず、ページのその位置（画像の近くの見出し）へ飛ばす。
+ * PDFは開けばそのまま読めるので置き換えない。載せているページが記録されていなければ画像のURLのまま
+ */
+export const pageUrlsOfSources = (
+  sources: Array<{
+    id: string;
+    url?: string | null;
+    linked_from_source_id?: string | null;
+  }>,
+) => {
+  const byId = new Map(sources.map(source => [source.id, source]));
+  return new Map(
+    sources.map(source => {
+      let current = source;
+      const seen = new Set<string>();
+      while (
+        IMAGE_SOURCE_URL.test(current.url ?? "") &&
+        current.linked_from_source_id &&
+        !seen.has(current.id)
+      ) {
+        seen.add(current.id);
+        const parent = byId.get(current.linked_from_source_id);
+        if (!parent?.url) break;
+        current = parent;
+      }
+      return [source.id, current.url ?? null];
+    }),
+  );
+};
+
+const rawSourcesOf = (value: unknown) => {
+  const sources = (value as { sources?: unknown } | null)?.sources;
+  return Array.isArray(sources)
+    ? sources.filter(
+        (source): source is { id: string } => typeof source?.id === "string",
+      )
+    : [];
+};
+
 export function toClientLiftTicketData(value: unknown): LiftTicketData {
   const projected = publicLiftTicketDataSchema.parse(value);
+  const pageUrls = pageUrlsOfSources(rawSourcesOf(value));
   return {
     ...projected,
     sources: (projected.sources ?? [])
       .filter(source => Boolean(source.url))
       .map(source => ({
         id: source.id,
-        url: source.url,
+        url: pageUrls.get(source.id) ?? source.url,
         page_title: source.page_title ?? null,
       })),
   };
