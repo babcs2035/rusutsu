@@ -15,6 +15,7 @@ type DetailLinkSource = {
     weather?: { sourceUrls: string[] } | null;
     news?: { sourceUrls: string[] } | null;
   }>;
+  /** 新しいシーズンが先頭 */
   liftTickets?: Array<{
     main_links?: {
       lift_price_url?: string | null;
@@ -22,6 +23,8 @@ type DetailLinkSource = {
       rental_price_url?: string | null;
       rental_purchase_url?: string | null;
     } | null;
+    sources?: Array<{ id: string; url?: string | null }>;
+    channels?: Array<{ url?: string | null }>;
   }>;
   yukiMagi?: { url?: string | null } | null;
 };
@@ -39,10 +42,19 @@ const item = (
 
 export const detailLinkItems = (resort: DetailLinkSource): ResortLinkItem[] => {
   const conditions = resort.currentConditions ?? [];
-  // リフト券は新しいシーズンが先頭。同じURLは一覧側で1つにまとまる
-  const mainLinks = (resort.liftTickets ?? []).flatMap(ticket =>
-    ticket.main_links ? [ticket.main_links] : [],
-  );
+  // リフト券は最新のシーズンだけを見る。主なリンク（main_links）が未設定のデータでは、
+  // 料金の出典の先頭と、URLのある販売経路で代える
+  const ticket = resort.liftTickets?.[0];
+  const ticketLinks = ticket
+    ? {
+        price: ticket.main_links?.lift_price_url ?? ticket.sources?.[0]?.url,
+        purchase:
+          ticket.main_links?.lift_purchase_url ??
+          ticket.channels?.find(channel => channel.url)?.url,
+        rentalPrice: ticket.main_links?.rental_price_url,
+        rentalPurchase: ticket.main_links?.rental_purchase_url,
+      }
+    : null;
   return [
     ...(resort.operationStatus?.courseSourceUrls ?? []).flatMap((url, i) =>
       item("courseStatus", "official", url, i),
@@ -60,12 +72,10 @@ export const detailLinkItems = (resort: DetailLinkSource): ResortLinkItem[] => {
         item("news", "official", url, i),
       ),
     ),
-    ...mainLinks.flatMap(links => [
-      ...item("liftTicketPrice", "official", links.lift_price_url),
-      ...item("webPurchase", "official", links.lift_purchase_url),
-      ...item("rentalPrice", "official", links.rental_price_url),
-      ...item("rentalPrice", "official", links.rental_purchase_url, 1, "予約"),
-    ]),
+    ...item("liftTicketPrice", "official", ticketLinks?.price),
+    ...item("webPurchase", "official", ticketLinks?.purchase),
+    ...item("rentalPrice", "official", ticketLinks?.rentalPrice),
+    ...item("rentalPrice", "official", ticketLinks?.rentalPurchase, 1, "予約"),
     ...item("yukiMagi", "yukiMagi", resort.yukiMagi?.url),
     ...(typeof resort.latitude === "number" &&
     typeof resort.longitude === "number"

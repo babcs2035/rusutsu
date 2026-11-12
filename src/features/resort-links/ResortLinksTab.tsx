@@ -76,9 +76,14 @@ function LinkChips({ links }: { links: ResortLinkItem[] }) {
   }
   return (
     <dd className="flex min-w-0 flex-wrap items-center gap-1">
-      {official.map(link => {
+      {official.map((link, index) => {
+        // 名前の無いリンクが並ぶときは、番号で区別する（公式・公式2）
+        const unnamedBefore = official
+          .slice(0, index)
+          .filter(other => !other.label).length;
         const text =
-          link.label ?? (link.source === "official" ? "公式" : "開く");
+          link.label ??
+          `${link.source === "official" ? "公式" : "開く"}${unnamedBefore > 0 ? unnamedBefore + 1 : ""}`;
         if (!link.note)
           return <LinkChip key={linkKey(link)} link={link} text={text} />;
         // 補足つきは1行を使い、補足は1行に収める（長ければ省略）

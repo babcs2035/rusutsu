@@ -38,12 +38,13 @@ test("詳細データが持つURL（営業状況・リフト券・雪マジ）�
     ],
     liftTickets: [
       {
-        main_links: {
-          lift_price_url: "https://rusutsu.com/winter-lift-tickets/",
-          lift_purchase_url: null,
-        },
+        main_links: null,
+        sources: [
+          { id: "src-price", url: "https://rusutsu.com/winter-lift-tickets/" },
+        ],
+        channels: [{ url: null }],
       },
-      { main_links: null },
+      { main_links: { lift_price_url: "https://rusutsu.com/old-season/" } },
     ],
     yukiMagi: { url: "https://www.jalan.net/majibu/client/detail/1/" },
   });
