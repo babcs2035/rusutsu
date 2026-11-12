@@ -40,6 +40,8 @@ Rusutsu は、日本全国のスキー場情報（基本情報・コース/リ�
 - Prisma Studio: `mise run db:studio`
 - 個別クローラー: `mise run crawl:ski-areas` / `crawl:gelendes` / `crawl:weathers` / `crawl:forecasts`
 - 全クローラー一括: `mise run crawl:all`（上記4件 + snowDepths/snowFalls/latestReports/yukiMagi/amedas を順次実行）
+- ツアー会社サイトのリンク収集: `mise run crawl:tour-links [-- <siteId...>]`（結果は `src/private/data/tour-links/<siteId>.json`。本番アプリ内では毎週月曜4時に自動実行）
+- リンクの本番反映: `mise run resort-links:publish -- --official <resortId...>` / `-- --source <siteId...>`（既定は差分の確認だけ、`--check` で形式のみ、`--apply` で `resort_links` へ反映）
 
 ## ディレクトリ構成
 - `src/app`: Next.js App Router のエントリ（`layout.tsx`, `page.tsx`, `admin/` 管理画面, `api/` API ルート。ページ本体は features 側に実装）

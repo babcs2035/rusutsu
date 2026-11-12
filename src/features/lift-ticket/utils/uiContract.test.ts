@@ -175,9 +175,11 @@ for (const spec of OFFICIAL_CASES.filter(c =>
         result.total,
         spec.disabilityAmounts[baseCategory] as number,
       );
+      // 期待値は入園料などの必須の手数料を含む支払額（上の合計と同じ基準）
       assertPrice(
         result.days[0].result,
         spec.disabilityAmounts[baseCategory] as number,
+        true,
       );
     });
   }
