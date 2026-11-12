@@ -44,7 +44,6 @@ import {
 import { nearestCourseId } from "@/features/community/location";
 import { COMMUNITY_KIND_COLORS } from "@/features/community/mapOverlay";
 import { useCommunityMapLayer } from "@/features/community/mapPostStore";
-import { cn } from "@/lib/utils";
 import { FinalizedMapToolbar } from "./components/FinalizedMapToolbar";
 import { MapCourseStatusControl } from "./components/MapCourseStatusControl";
 import { MapErrorBoundary } from "./components/MapErrorBoundary";
@@ -1627,38 +1626,39 @@ function MapLibreResortMapContent({
             className="pointer-events-auto flex w-full max-w-[27rem] flex-col gap-1"
             data-map-bottom-panel="true"
           >
-            {linkedAreaControl && (
-              // パネルの行間（gap-1）を打ち消し、「営業中のみ」の行に寄せる
-              <div className="-mb-[3px] flex min-w-0">{linkedAreaControl}</div>
-            )}
             <div
-              // 「〇〇も同時に表示」と間が空かないよう、ボタンは上で揃える
-              className={cn(
-                "flex min-h-7 w-full flex-nowrap gap-1",
-                linkedAreaControl ? "items-start" : "items-center",
-              )}
+              // 縮尺・出典は「〇〇も同時に表示」と「営業中のみ」の2行の右に置き、
+              // 縮尺の高さで「営業中のみ」と凡例の間が空かないようにする
+              className="flex w-full min-w-0 items-end gap-1"
               data-map-action-row="true"
             >
-              {showMapOpenOnlyControl && !embedded && (
-                <MapCourseStatusControl
-                  inline
-                  enabled={hasCourseOperatingData(finalizedMapData)}
-                  checked={showOpenOnly}
-                  settings={mapDisplaySettings}
-                  onCheckedChange={setShowOpenOnly}
-                  onSettingsChange={setMapDisplaySettings}
-                />
-              )}
-              {showCommunityControls && selectedResortId && (
-                <CommunityMapControls
-                  resortId={selectedResortId}
-                  enabled={showCommunityPosts}
-                  onEnabledChange={communityLayer.setEnabled}
-                  available={communityLayer.available}
-                  error={communityLayer.summaryError}
-                  onRetry={communityLayer.retry}
-                />
-              )}
+              <div className="flex min-w-0 flex-1 flex-col items-start gap-px">
+                {linkedAreaControl && (
+                  <div className="flex min-w-0">{linkedAreaControl}</div>
+                )}
+                <div className="flex min-h-7 min-w-0 flex-nowrap items-center gap-1">
+                  {showMapOpenOnlyControl && !embedded && (
+                    <MapCourseStatusControl
+                      inline
+                      enabled={hasCourseOperatingData(finalizedMapData)}
+                      checked={showOpenOnly}
+                      settings={mapDisplaySettings}
+                      onCheckedChange={setShowOpenOnly}
+                      onSettingsChange={setMapDisplaySettings}
+                    />
+                  )}
+                  {showCommunityControls && selectedResortId && (
+                    <CommunityMapControls
+                      resortId={selectedResortId}
+                      enabled={showCommunityPosts}
+                      onEnabledChange={communityLayer.setEnabled}
+                      available={communityLayer.available}
+                      error={communityLayer.summaryError}
+                      onRetry={communityLayer.retry}
+                    />
+                  )}
+                </div>
+              </div>
               <div className="ml-auto flex shrink-0 flex-col items-end gap-0.5">
                 <MapScaleSlot map={isReady ? map : null} />
                 <MapAttributionSlot map={isReady ? map : null} />

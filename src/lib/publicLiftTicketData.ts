@@ -52,6 +52,15 @@ const audience = z.object({
  */
 export const publicLiftTicketDataSchema = z.object({
   schema_version: text,
+  main_links: z
+    .object({
+      lift_price_url: optionalText,
+      lift_purchase_url: optionalText,
+      rental_price_url: optionalText,
+      rental_purchase_url: optionalText,
+    })
+    .nullable()
+    .optional(),
   resort: z.object({ id: text }),
   season: z.object({
     id: text,
@@ -137,6 +146,7 @@ export const publicLiftTicketDataSchema = z.object({
       audience_ids: strings,
       calendar_ids: strings,
       channel_ids: strings,
+      purchase_url: optionalText,
       target_genders: target,
       target_qualification: target,
       sales_period: period,
@@ -246,6 +256,17 @@ export const publicLiftTicketDataSchema = z.object({
         charge_unit: z
           .enum(["per_person", "per_ticket", "per_payment"])
           .optional(),
+        source_refs: strings,
+        source_quotes: z
+          .array(
+            z.object({
+              source_id: text,
+              text,
+              prefix: optionalText,
+              suffix: optionalText,
+            }),
+          )
+          .optional(),
         ...notes,
       })
       .transform(
@@ -285,6 +306,7 @@ export const publicLiftTicketDataSchema = z.object({
         audience_ids: strings,
         calendar_ids: strings,
         channel_ids: strings,
+        purchase_url: optionalText,
         duration: z.object({
           mode: text,
           hours: number,

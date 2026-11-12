@@ -113,7 +113,8 @@ export const TicketCalculationCard = ({
                     references={result.references}
                     quotes={line.sourceQuotes}
                     single
-                    className="mt-0.5"
+                    compact
+                    className="ml-1.5 align-middle"
                   />
                 }
               />

@@ -22,7 +22,7 @@ export function startScheduler() {
   globalForScheduler.hasSchedulerStarted = true;
   console.log("🚀 Starting scheduler...");
 
-  // 雪マジのみ定期実行する。デプロイ・再起動時には実行しない。
+  // 定期実行するのは雪マジとツアーリンクだけ。デプロイ・再起動時には実行しない。
   cron.schedule(
     "0 3 * * *",
     () => {
@@ -40,7 +40,25 @@ export function startScheduler() {
     },
   );
 
+  // ツアー会社サイトのリンクは週1回。サイトの一覧はほとんど変わらず、巡回に十数分かかるため。
+  cron.schedule(
+    "0 4 * * 1",
+    () => {
+      console.log("⏰ Running scheduled tour link crawl at Mon 04:00 JST...");
+      runCrawlerIfNeeded("tourLinks")
+        .then(result => {
+          console.log(result.message);
+        })
+        .catch(err => {
+          console.error("❌ Scheduled tour link run failed:", err);
+        });
+    },
+    {
+      timezone: "Asia/Tokyo",
+    },
+  );
+
   console.log(
-    "📅 Scheduler initialized: YukiMagi job set for 03:00 JST daily.",
+    "📅 Scheduler initialized: YukiMagi 03:00 JST daily, tour links Mon 04:00 JST.",
   );
 }

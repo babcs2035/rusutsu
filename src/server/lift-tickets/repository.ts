@@ -10,6 +10,7 @@ import {
   liftTicketSeasonSchema,
   liftTicketSeasonSummarySchema,
   liftTicketSeasonWriteSchema,
+  mainLinkColumnsOfLiftTicket,
   statusOfLiftTicket,
 } from "./contract";
 
@@ -88,6 +89,8 @@ export async function writeLiftTicketSeasonInTransaction(
   const key = { skiResortId: write.resortId, seasonId: write.seasonId };
   const status = statusOfLiftTicket(write.data);
   const data = write.data as Prisma.InputJsonObject;
+  // メインのリンクは文書が正本。保存のたびに列へ写す
+  const mainLinks = mainLinkColumnsOfLiftTicket(write.data);
   const current = await transaction.liftTicketSeason.findUnique({
     where: { skiResortId_seasonId: key },
     select: { version: true },
@@ -97,8 +100,8 @@ export async function writeLiftTicketSeasonInTransaction(
     throw new LiftTicketConflictError(actualVersion);
   const row = await transaction.liftTicketSeason.upsert({
     where: { skiResortId_seasonId: key },
-    create: { ...key, status, data },
-    update: { status, data, version: { increment: 1 } },
+    create: { ...key, status, data, ...mainLinks },
+    update: { status, data, ...mainLinks, version: { increment: 1 } },
     select: seasonSelect,
   });
   return toSeason(row);

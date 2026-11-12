@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
+import { toClientLiftTicketData } from "@/lib/publicLiftTicketData";
 import type {
   LiftTicketData,
   TicketDayDuration,
@@ -617,4 +618,60 @@ test("セットが得にならない・買えない場合は1日券のまま", (
     ],
   );
   assert.equal(family.multiDay, null, "子供が混ざる日はセット券で買えない");
+});
+
+/** 夏油高原。早割WEB券はレターパックの送料600円（1決済ごと）がかかる */
+const GETO = path.join(
+  process.cwd(),
+  "src/private/data/lift-ticket/geto-kogen/2026-2027.json",
+);
+
+/** りんご今日話国。リフト券とは別に入園料500円/人がかかる */
+const RINGO = path.join(
+  process.cwd(),
+  "src/private/data/lift-ticket/ringo-kyowakoku/2026-2027.json",
+);
+
+test("送料は券と別の行で出し、出典と窓口では不要なことが分かる", () => {
+  const result = plan(GETO, [["2027-01-12", DAY]], toClientLiftTicketData);
+  const day = result.days[0].result;
+  assert.equal(result.total, 6400);
+  assert.equal(day.lines[0].subtotal, 5800);
+  assert.equal(day.fees.length, 1);
+  assert.equal(day.fees[0].total, 600);
+  assert.equal(day.fees[0].purchaseMethodOnly, true);
+  assert.ok(day.fees[0].sourceNumbers.length > 0);
+  assert.ok(day.fees[0].sourceQuotes);
+  assert.ok(
+    day.fees[0].sourceNumbers.every(number =>
+      result.references.some(reference => reference.number === number),
+    ),
+  );
+});
+
+test("1決済ごとの送料は、複数日をまとめて買えば1回だけ足す", () => {
+  const result = plan(
+    GETO,
+    [
+      ["2027-01-12", DAY],
+      ["2027-01-13", DAY],
+    ],
+    toClientLiftTicketData,
+  );
+  assert.equal(result.total, 5800 * 2 + 600);
+  assert.equal(
+    result.days.flatMap(day => day.result.fees).length,
+    1,
+    "送料は最初の日だけに付く",
+  );
+});
+
+test("入園料は1人ごとに券と別の行で足し、窓口の料金からも引かない", () => {
+  const result = plan(RINGO, [["2027-01-16", DAY]], toClientLiftTicketData);
+  const day = result.days[0].result;
+  assert.equal(day.lines[0].subtotal, 3000);
+  assert.equal(day.fees[0].name, "入園料");
+  assert.equal(day.fees[0].total, 500);
+  assert.equal(day.fees[0].purchaseMethodOnly, undefined);
+  assert.equal(result.total, 3500);
 });

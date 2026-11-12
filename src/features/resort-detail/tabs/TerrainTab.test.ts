@@ -92,6 +92,7 @@ test("コメント本文がなくてもcommentUrlを表示し、取得日時は�
   assert.match(html, /aria-label="コメント"/);
   assert.match(html, /href="https:\/\/example.com\/news"/);
   assert.match(html, /href="https:\/\/example.com\/blog"/);
-  assert.equal((html.match(/公式情報/g) ?? []).length, 2);
+  assert.doesNotMatch(html, /公式情報/);
+  assert.equal((html.match(/コメントの出典を開く/g) ?? []).length, 2);
   assert.doesNotMatch(html, /javascript:|2026\/1\/1 08:00/);
 });

@@ -67,6 +67,10 @@ description: 収集済みのリフト券JSON（src/private/data/lift-ticket/）�
      公式URLを確かめて登録してから取る。検索結果の要約を根拠にしない。
    - 公式に無いことは作らない。`notes_ja`・`data_quality`・MISSING.md に残す。
    - 料金・券種・区分・出典URLを変えた料金は、`source_quotes` を付け直す。
+   - メインのリンク（`main-links-missing`）は、`references/gap-checks.md` の
+     「メインのリンクの決め方」に従う。あわせて、券ごとの商品ページを offer の
+     `purchase_url` に書き（`web-offer-product-page-not-linked`）、レンタルの購入ページが
+     あればそのWeb料金を集める（`rental-web-price-not-collected`）。
 
 4. **出典リンクを直す（優先度Aと `price-without-quote`・`file-source-without-page`）。**
    収集スキルの Stage 1 の9のスクリプト3本を、そのスキー場の草案に流す。
@@ -90,6 +94,9 @@ description: 収集済みのリフト券JSON（src/private/data/lift-ticket/）�
 - 点検した件数と、項目ごとの不足件数（直す前 → 直した後）
 - 直したスキー場と、直した項目
 - 出典リンクを外した件数と、その理由（別の区分・別の割引を指していた等）
+- メインのリンクを入れたスキー場の件数と、1つの欄に候補が2つ以上あったスキー場
+  （スキー場ごとに「欄・入れたURL・載せなかったURL」を1件1文で、URLを添えて並べる）
+- Webのレンタル料金を足したスキー場と、足した件数
 - 公式に無く埋められなかった項目（MISSING.md に書いた行）。判断が要る事項は、各行に対応する公式URLを添える
 - 機械検証・独立監査・料金照会の結果、本番反映の結果
 - 点検スクリプトで見つけられない種類の誤りに気づいたら、その内容（`references/gap-checks.md` と点検スクリプトに項目を足す）

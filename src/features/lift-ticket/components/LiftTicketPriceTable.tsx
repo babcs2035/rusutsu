@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ReportErrorButton } from "@/features/corrections/ReportErrorButton";
@@ -9,7 +9,8 @@ import type { LiftTicketData } from "../types";
 import { sharedResortsOf } from "../types";
 import type { PriceEntry, PriceRow, PriceTable } from "../utils/priceTable";
 import { buildLiftTicketPriceTables } from "../utils/priceTable";
-import { SourceLinks } from "./SourceLinks";
+import { splitSources } from "../utils/sources";
+import { LinkChip, SourceLinks } from "./SourceLinks";
 
 /** 単独券（このスキー場だけ）か共通券（他のスキー場でも使える）か */
 type TableMode = "single" | "shared";
@@ -257,17 +258,49 @@ export const PriceGrid = ({
   </Card>
 );
 
-/** 表の金額が拠っている出典（重複を除く） */
+/**
+ * メインのリンクが未登録のスキー場で、表の見出しに出す出典。
+ * 半分以上の行が使っている出典だけを出す（券ごとの商品ページを何十個も並べない）
+ */
 export const tableSourcesOf = (table: PriceTable) =>
-  [
-    ...new Set(
-      table.rows.flatMap(row =>
-        [...row.cells.values()].flatMap(cell =>
-          cell.entries.flatMap(entry => entry.sourceNumbers),
-        ),
+  splitSources(
+    table.rows.map(row =>
+      [...row.cells.values()].flatMap(cell =>
+        cell.entries.flatMap(entry => entry.sourceNumbers),
       ),
     ),
-  ].sort((left, right) => left - right);
+  ).common;
+
+/**
+ * 料金表の見出しに出すリンク。メインのリンク（公式の料金表と、Webの購入ページの入口）
+ * だけを出す。未登録のスキー場は、表の多くの行が拠っている出典を出す
+ */
+export const TableLinks = ({
+  priceUrl,
+  purchaseUrl,
+  fallback,
+}: {
+  priceUrl?: string | null;
+  purchaseUrl?: string | null;
+  /** メインのリンクが無いときに出すもの */
+  fallback: ReactNode;
+}) =>
+  priceUrl || purchaseUrl ? (
+    <span className="inline-flex flex-wrap gap-1">
+      {priceUrl && (
+        <LinkChip href={priceUrl} title={priceUrl}>
+          出典
+        </LinkChip>
+      )}
+      {purchaseUrl && (
+        <LinkChip href={purchaseUrl} title={purchaseUrl} tone="purchase">
+          購入
+        </LinkChip>
+      )}
+    </span>
+  ) : (
+    fallback
+  );
 
 export const LiftTicketPriceTable = ({
   data,
@@ -304,6 +337,9 @@ export const LiftTicketPriceTable = ({
     { key: "base", title: "通常料金", table: tables.base },
     { key: "discount", title: "条件付きの料金", table: tables.discount },
   ].filter(section => section.table.rows.length > 0);
+  const hasMainLinks = Boolean(
+    data.main_links?.lift_price_url || data.main_links?.lift_purchase_url,
+  );
 
   const fees = data.fees.filter(fee => fee.amount != null);
   const tags = new Set(
@@ -341,16 +377,25 @@ export const LiftTicketPriceTable = ({
         </div>
       )}
 
-      {sections.map(section => (
+      {sections.map((section, index) => (
         <div key={section.key} className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <p className="text-gray-900 text-sm font-semibold font-[var(--font-heading)]">
               {section.title}
             </p>
-            <SourceLinks
-              numbers={tableSourcesOf(section.table)}
-              references={tables.references}
-            />
+            {/* メインのリンクは最初の表にだけ出す（同じリンクを表ごとに繰り返さない） */}
+            {(index === 0 || !hasMainLinks) && (
+              <TableLinks
+                priceUrl={data.main_links?.lift_price_url}
+                purchaseUrl={data.main_links?.lift_purchase_url}
+                fallback={
+                  <SourceLinks
+                    numbers={tableSourcesOf(section.table)}
+                    references={tables.references}
+                  />
+                }
+              />
+            )}
           </div>
           {section.key === "discount" && (
             <p className="text-gray-500 text-xs">

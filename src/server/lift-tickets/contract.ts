@@ -93,6 +93,35 @@ export type LiftTicketSeasonWrite = z.infer<typeof liftTicketSeasonWriteSchema>;
 export const statusOfLiftTicket = (data: Record<string, unknown>) =>
   documentIdentitySchema.parse(data).data_quality.status;
 
+const mainLinkUrlSchema = z.string().min(1).nullish().catch(null);
+const documentMainLinksSchema = z
+  .object({
+    main_links: z
+      .object({
+        lift_price_url: mainLinkUrlSchema,
+        lift_purchase_url: mainLinkUrlSchema,
+        rental_price_url: mainLinkUrlSchema,
+        rental_purchase_url: mainLinkUrlSchema,
+      })
+      .nullish()
+      .catch(null),
+  })
+  .catch({ main_links: null });
+
+/**
+ * 文書の main_links を、lift_ticket_seasons の列の形で取り出す。
+ * 未登録・形が違う文書は4つとも null（文書の構造の検証は Skill の検証が持つ）
+ */
+export const mainLinkColumnsOfLiftTicket = (data: Record<string, unknown>) => {
+  const links = documentMainLinksSchema.parse(data).main_links;
+  return {
+    liftPriceUrl: links?.lift_price_url ?? null,
+    liftPurchaseUrl: links?.lift_purchase_url ?? null,
+    rentalPriceUrl: links?.rental_price_url ?? null,
+    rentalPurchaseUrl: links?.rental_purchase_url ?? null,
+  };
+};
+
 export const liftTicketSeasonGetResponseSchema = z.strictObject({
   season: liftTicketSeasonSchema.nullable(),
 });

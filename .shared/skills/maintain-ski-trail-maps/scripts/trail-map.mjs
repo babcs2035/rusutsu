@@ -551,7 +551,11 @@ async function apply(args) {
   // 対象外の施設・対象施設の他の項目が変わっていないこと
   for (const id of new Set([...Object.keys(links), ...Object.keys(after)]))
     for (const f of new Set([...Object.keys(links[id] ?? {}), ...Object.keys(after[id] ?? {})]))
-      if (!(touched.has(id) && LINK_FIELDS.includes(f))) assert.deepEqual(after[id]?.[f], links[id]?.[f], `${id}.${f} が意図せず変わった`);
+      if (!(touched.has(id) && LINK_FIELDS.includes(f))) {
+        // 対象施設に項目を新しく作ったときの空欄（雛形の []）は変更とみなさない
+        const addedEmpty = touched.has(id) && links[id]?.[f] === undefined && Array.isArray(after[id]?.[f]) && !after[id][f].length;
+        if (!addedEmpty) assert.deepEqual(after[id]?.[f], links[id]?.[f], `${id}.${f} が意図せず変わった`);
+      }
 
   const preview = { canonicalVersion: document.version, write, applied, skipped, problems };
   console.log(JSON.stringify(preview, null, 1));

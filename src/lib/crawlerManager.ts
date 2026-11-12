@@ -13,7 +13,8 @@ export type CrawlerName =
   | "snowFalls"
   | "latestReports"
   | "yukiMagi"
-  | "amedas";
+  | "amedas"
+  | "tourLinks";
 
 /**
  * クローラーの実行ログを記録

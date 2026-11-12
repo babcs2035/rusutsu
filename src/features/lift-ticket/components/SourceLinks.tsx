@@ -1,4 +1,5 @@
 import { ExternalLink } from "lucide-react";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import type { LiftTicketSourceQuote } from "../types";
@@ -39,25 +40,59 @@ export const SourceLinks = ({
   return (
     <span className={cn("inline-flex flex-wrap gap-1", className)}>
       {links.map(reference => (
-        <ExternalLinkComponent
+        <LinkChip
           key={reference.number}
           href={withSourceQuote(reference.url, quotes?.[reference.number])}
           title={reference.url}
           aria-label={reference.title ? `出典: ${reference.title}` : "出典"}
-          className={cn(
-            "max-w-full rounded-md border border-blue-100 bg-blue-50 font-medium text-blue-700 underline underline-offset-2 hover:bg-blue-100 hover:text-blue-800",
-            compact
-              ? "min-h-5 px-1.5 py-0 text-[0.6875rem] md:text-xs"
-              : "min-h-6 px-2 py-0.5 text-xs md:text-sm",
-          )}
+          compact={compact}
         >
-          <span className="min-w-0 truncate">出典</span>
-          <ExternalLink
-            className={cn("shrink-0", compact ? "size-3" : "size-3.5")}
-            aria-hidden="true"
-          />
-        </ExternalLinkComponent>
+          出典
+        </LinkChip>
       ))}
     </span>
   );
 };
+
+/**
+ * 青い枠のリンク。「出典」は薄い青、「購入」は濃い青で、買う操作だと分かるようにする。
+ * 文字は折り返さない
+ */
+export const LinkChip = ({
+  href,
+  children,
+  tone = "source",
+  compact = false,
+  className,
+  ...props
+}: {
+  href: string;
+  children: ReactNode;
+  tone?: "source" | "purchase";
+  /** 小さい文字の行に添えるとき。周りの文字より大きく見せない */
+  compact?: boolean;
+  className?: string;
+  title?: string;
+  "aria-label"?: string;
+}) => (
+  <ExternalLinkComponent
+    href={href}
+    className={cn(
+      "max-w-full whitespace-nowrap rounded-md border font-medium",
+      tone === "purchase"
+        ? "border-blue-600 bg-blue-600 text-white hover:bg-blue-700"
+        : "border-blue-100 bg-blue-50 text-blue-700 underline underline-offset-2 hover:bg-blue-100 hover:text-blue-800",
+      compact
+        ? "min-h-5 px-1.5 py-0 text-[0.6875rem] md:text-xs"
+        : "min-h-6 px-2 py-0.5 text-xs md:text-sm",
+      className,
+    )}
+    {...props}
+  >
+    <span className="min-w-0 truncate">{children}</span>
+    <ExternalLink
+      className={cn("shrink-0", compact ? "size-3" : "size-3.5")}
+      aria-hidden="true"
+    />
+  </ExternalLinkComponent>
+);

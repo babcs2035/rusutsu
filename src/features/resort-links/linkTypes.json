@@ -1,0 +1,264 @@
+{
+  "$comment": "スキー場リンク一覧の固定の型。グループと種類の並び順は全スキー場で同じ。owners は「誰が集めるか」: officialSkill=公式リンク収集スキル（resort_links）, externalCrawler=外部サイトのクローラー（resort_links）, legacyLinks=SkiResortLinks.json, statusCrawler=営業状況クローラー, liftTicket=リフト券データ, yukiMagi=雪マジのテーブル, derived=緯度経度から作る",
+  "groups": [
+    {
+      "id": "basic",
+      "label": "基本",
+      "types": [
+        {
+          "type": "officialTop",
+          "label": "公式サイト",
+          "owners": ["legacyLinks"]
+        },
+        {
+          "type": "news",
+          "label": "お知らせ",
+          "owners": ["statusCrawler", "legacyLinks"]
+        },
+        {
+          "type": "googleMaps",
+          "label": "Googleマップ",
+          "owners": ["legacyLinks"]
+        }
+      ]
+    },
+    {
+      "id": "slope",
+      "label": "ゲレンデ",
+      "types": [
+        {
+          "type": "courseInfo",
+          "label": "コース情報",
+          "owners": ["officialSkill"]
+        },
+        {
+          "type": "courseStatus",
+          "label": "コース営業状況",
+          "owners": ["statusCrawler"]
+        },
+        {
+          "type": "liftStatus",
+          "label": "リフト営業状況",
+          "owners": ["statusCrawler"]
+        },
+        {
+          "type": "parkInfo",
+          "label": "パーク情報",
+          "owners": ["officialSkill"]
+        },
+        {
+          "type": "parkStatus",
+          "label": "パーク状況",
+          "owners": ["officialSkill"]
+        },
+        {
+          "type": "liveCamera",
+          "label": "ライブカメラ",
+          "owners": ["officialSkill"]
+        },
+        {
+          "type": "trailMap",
+          "label": "ゲレンデマップ",
+          "owners": ["legacyLinks"]
+        },
+        {
+          "type": "trailMapPage",
+          "label": "マップ掲載ページ",
+          "owners": ["legacyLinks"]
+        }
+      ]
+    },
+    {
+      "id": "price",
+      "label": "料金",
+      "types": [
+        {
+          "type": "liftTicketPrice",
+          "label": "リフト券料金",
+          "owners": ["liftTicket"]
+        },
+        { "type": "webPurchase", "label": "Web購入", "owners": ["liftTicket"] },
+        {
+          "type": "rentalPrice",
+          "label": "レンタル料金",
+          "owners": ["liftTicket"]
+        },
+        {
+          "type": "officialDiscount",
+          "label": "公式割引",
+          "owners": ["officialSkill"]
+        },
+        {
+          "type": "pass",
+          "label": "シーズン券・共通パス",
+          "owners": ["officialSkill", "externalCrawler"]
+        },
+        { "type": "yukiMagi", "label": "雪マジ", "owners": ["yukiMagi"] },
+        {
+          "type": "externalDiscount",
+          "label": "外部割引",
+          "owners": ["externalCrawler", "officialSkill"]
+        }
+      ]
+    },
+    {
+      "id": "facility",
+      "label": "施設",
+      "types": [
+        {
+          "type": "restaurant",
+          "label": "ゲレ食",
+          "owners": ["officialSkill"]
+        },
+        {
+          "type": "rentalShop",
+          "label": "レンタル店",
+          "owners": ["officialSkill"]
+        },
+        {
+          "type": "skiSchool",
+          "label": "スキースクール",
+          "owners": ["legacyLinks"]
+        },
+        {
+          "type": "snowboardSchool",
+          "label": "スノーボードスクール",
+          "owners": ["legacyLinks"]
+        },
+        { "type": "kidsPark", "label": "キッズ", "owners": ["officialSkill"] },
+        { "type": "onsen", "label": "温泉", "owners": ["officialSkill"] },
+        { "type": "lodging", "label": "宿泊", "owners": ["officialSkill"] }
+      ]
+    },
+    {
+      "id": "car",
+      "label": "車",
+      "types": [
+        {
+          "type": "carAccess",
+          "label": "アクセス案内",
+          "owners": ["officialSkill"]
+        },
+        { "type": "parking", "label": "駐車場", "owners": ["officialSkill"] },
+        {
+          "type": "roadCamera",
+          "label": "道路カメラ",
+          "owners": ["externalCrawler"]
+        },
+        {
+          "type": "roadInfo",
+          "label": "道路情報",
+          "owners": ["externalCrawler"]
+        }
+      ]
+    },
+    {
+      "id": "transit",
+      "label": "公共交通",
+      "types": [
+        {
+          "type": "transitAccess",
+          "label": "アクセス案内",
+          "owners": ["officialSkill", "externalCrawler"]
+        },
+        {
+          "type": "busTimetable",
+          "label": "バス時刻表",
+          "owners": ["officialSkill"]
+        },
+        {
+          "type": "busTour",
+          "label": "バスツアー",
+          "owners": ["externalCrawler", "officialSkill"]
+        }
+      ]
+    },
+    {
+      "id": "video",
+      "label": "動画",
+      "types": [
+        {
+          "type": "officialYoutube",
+          "label": "公式YouTube",
+          "owners": ["legacyLinks"]
+        },
+        {
+          "type": "sakudoRevolution",
+          "label": "索道レボリューション",
+          "owners": ["externalCrawler"]
+        },
+        {
+          "type": "gelandePlusTube",
+          "label": "ゲレンデ+.tube",
+          "owners": ["legacyLinks"]
+        },
+        {
+          "type": "skiResortInfo",
+          "label": "スキー場情報局",
+          "owners": ["legacyLinks"]
+        },
+        { "type": "espeYuki", "label": "えすぺゆき", "owners": ["legacyLinks"] }
+      ]
+    },
+    {
+      "id": "sns",
+      "label": "SNS",
+      "types": [
+        { "type": "x", "label": "X", "owners": ["legacyLinks"] },
+        {
+          "type": "instagram",
+          "label": "Instagram",
+          "owners": ["legacyLinks"]
+        },
+        { "type": "facebook", "label": "Facebook", "owners": ["legacyLinks"] },
+        { "type": "line", "label": "LINE", "owners": ["legacyLinks"] },
+        { "type": "threads", "label": "Threads", "owners": ["legacyLinks"] },
+        { "type": "tiktok", "label": "TikTok", "owners": ["officialSkill"] }
+      ]
+    },
+    {
+      "id": "weather",
+      "label": "天気",
+      "types": [
+        {
+          "type": "officialSnowReport",
+          "label": "公式の積雪・天気",
+          "owners": ["statusCrawler"]
+        },
+        {
+          "type": "snowForecast",
+          "label": "Snow Forecast",
+          "owners": ["legacyLinks"]
+        },
+        { "type": "tenkijp", "label": "tenki.jp", "owners": ["legacyLinks"] },
+        {
+          "type": "weathernews",
+          "label": "ウェザーニュース",
+          "owners": ["legacyLinks"]
+        },
+        { "type": "windy", "label": "Windy", "owners": ["derived"] }
+      ]
+    },
+    {
+      "id": "otherSites",
+      "label": "他サイト",
+      "types": [
+        {
+          "type": "surfsnow",
+          "label": "SURF&SNOW",
+          "owners": ["externalCrawler"]
+        },
+        {
+          "type": "snowjapan",
+          "label": "SnowJapan",
+          "owners": ["externalCrawler"]
+        },
+        {
+          "type": "skiresortInfoIntl",
+          "label": "skiresort.info",
+          "owners": ["externalCrawler"]
+        }
+      ]
+    }
+  ]
+}

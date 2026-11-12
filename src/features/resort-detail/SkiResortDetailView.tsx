@@ -33,6 +33,7 @@ import type {
   JapanResortMapProps,
   SelectedMapFeature,
 } from "@/features/map/types";
+import { ResortLinksTab } from "@/features/resort-links/ResortLinksTab";
 import { useBreakpointValue } from "@/hooks/use-breakpoint-value";
 import { getResortSearchName } from "@/lib/resortAliases";
 import { cn } from "@/lib/utils";
@@ -97,13 +98,13 @@ type Props = {
   liftTicketInput?: LiftTicketSearchInput;
 };
 
-const tabSchema = z.enum(["ゲレンデ", "SNS", "料金", "天気", "投稿"]);
+const tabSchema = z.enum(["ゲレンデ", "SNS", "料金", "天気", "投稿", "リンク"]);
 const terrainSchema = z.enum(["コース", "リフト"]);
 const areaSchema = z.enum(["地図", "ゲレンデマップ"]);
 const booleanSchema = z.boolean();
 const originSchema = z.enum(["map", "list"]);
 
-const TABS = ["ゲレンデ", "SNS", "料金", "天気", "投稿"];
+const TABS = ["ゲレンデ", "SNS", "料金", "天気", "投稿", "リンク"];
 const MAP_AREA_TABS = ["地図", "ゲレンデマップ"] as const;
 
 /**
@@ -615,6 +616,7 @@ export const SkiResortDetailView = ({
           highlightOnMap
         />
       )}
+      {activeTab === "リンク" && <ResortLinksTab resort={resort} />}
     </div>
   );
 

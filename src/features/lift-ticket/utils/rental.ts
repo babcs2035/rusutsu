@@ -22,6 +22,7 @@ import {
   getTodayInJapan,
   isPurchasableOn,
   periodContains,
+  purchaseQuoteOf,
   seasonContains,
   sourceQuotesOf,
 } from "./calculateLiftTicket";
@@ -445,6 +446,10 @@ export type TicketRentalPick = {
   /** 借りる日（複数日料金なら期間の日付すべて） */
   dates: string[];
   purchaseNote: string | null;
+  /** Webで予約・購入する料金の購入ページ（商品ページがあればそれ、無ければ販売経路のURL） */
+  purchaseUrl?: string | null;
+  /** 購入ページの中で、この料金が書かれている場所 */
+  purchaseQuote?: LiftTicketSourceQuote | null;
   sourceNumbers: number[];
   sourceQuotes?: Record<number, LiftTicketSourceQuote>;
 };
@@ -615,6 +620,12 @@ export const calculateRentalPlan = (
       .map(id => channelById.get(id))
       .find(Boolean);
     const deadline = rental.purchase_deadline?.official_text_ja;
+    const purchaseUrl =
+      rental.purchase_url ||
+      ((rental.channel_ids ?? [])
+        .map(id => channelById.get(id)?.url)
+        .find((url): url is string => Boolean(url)) ??
+        null);
     return {
       rentalId: rental.id,
       name: (() => {
@@ -632,6 +643,8 @@ export const calculateRentalPlan = (
       purchaseNote: channel
         ? [channel.name_ja, deadline].filter(Boolean).join("・")
         : null,
+      purchaseUrl,
+      purchaseQuote: purchaseQuoteOf(data, rental, purchaseUrl),
       sourceQuotes: sourceQuotesOf(rental, numberBySourceId),
       sourceNumbers: [
         ...new Set(

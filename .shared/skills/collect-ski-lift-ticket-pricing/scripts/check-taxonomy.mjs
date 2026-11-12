@@ -886,6 +886,8 @@ function checkYearEndDefined(reporter, data) {
  * 未就学児向けに**条件なしの0円offer**が存在すると、個別購入の経路で
  * 全員無料になり上限が意味を失う（実際にこの穴があった）。
  * 同伴条件は `target_qualification` に書いて、条件なしでは選べないようにする。
+ * 「スキーこどもの日」のように、特定日（special_day）の calendar に限った
+ * 0円offerは、公式にその日だけ同伴なしで無料になる料金なので対象外とする。
  */
 function checkPartyRuleBypass(reporter, data) {
   for (const [i, rule] of (data.party_rules ?? []).entries()) {
@@ -898,6 +900,10 @@ function checkPartyRuleBypass(reporter, data) {
         if (offer.price?.amount !== 0) continue;
         if (!(offer.audience_ids ?? []).some((id) => audiences.includes(id))) continue;
         if (hasTargetRestriction(offer)) continue;
+        const specialDayOnly =
+          (offer.discount_reasons ?? []).includes("special_day") &&
+          (offer.calendar_ids ?? []).length > 0;
+        if (specialDayOnly) continue;
         reporter.error(
           `/offers/${k}`,
           `無条件の0円offer「${offer.official_label_ja ?? offer.name_ja}」があるため、party_rule「${rule.official_label_ja ?? rule.name_ja}」の人数上限（/party_rules/${i}/components/${j}）が回避されます。同伴条件を target_qualification に記録して、条件なしでは選べないようにしてください`,

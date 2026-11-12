@@ -1,0 +1,77 @@
+{
+  "$comment": "resort_links の source（出どころ）の表示名。official 以外は外部サイト。クローラーのサイトIDと同じにする",
+  "sources": [
+    { "id": "official", "name": "公式" },
+    {
+      "id": "orion",
+      "name": "オリオンツアー",
+      "url": "https://www.orion-ski.jp/ski_area"
+    },
+    {
+      "id": "roadplan",
+      "name": "トラベルロード",
+      "url": "https://roadplan.net/skis/"
+    },
+    {
+      "id": "travelInn",
+      "name": "トラベルイン",
+      "url": "https://www.travel-inn.co.jp/ski/gelande/"
+    },
+    {
+      "id": "bigHoliday",
+      "name": "ビッグホリデー",
+      "url": "https://ski.bigs.jp/gelaende/"
+    },
+    {
+      "id": "jreTravel",
+      "name": "JR SKISKI",
+      "url": "https://www.jre-travel.com/seasonal/ski/"
+    },
+    {
+      "id": "sunshineTour",
+      "name": "サンシャインツアー",
+      "url": "https://www.sunshinetour.co.jp/skitour/"
+    },
+    {
+      "id": "ana",
+      "name": "ANA",
+      "url": "https://www.ana.co.jp/ja/jp/domestic/theme/promo_ski/"
+    },
+    {
+      "id": "jamjam",
+      "name": "ジャムジャムツアー",
+      "url": "https://jamjamtour.jp/ski_tour/gelande"
+    },
+    {
+      "id": "tobuTop",
+      "name": "東武トップツアーズ",
+      "url": "https://tobutoptours.jp/ski_snowboard/"
+    },
+    {
+      "id": "knt",
+      "name": "近畿日本ツーリスト",
+      "url": "https://www.knt.co.jp/yado/sp/ski/"
+    },
+    {
+      "id": "clubTourism",
+      "name": "クラブツーリズム",
+      "url": "https://www.club-t.com/sp/ski/"
+    },
+    {
+      "id": "nta",
+      "name": "日本旅行",
+      "url": "https://www.nta.co.jp/kokunai/season/ski/"
+    },
+    {
+      "id": "accessNetwork",
+      "name": "北海道アクセスネットワーク",
+      "url": "https://www.access-n.jp/"
+    },
+    { "id": "rado", "name": "ラド観光", "url": "https://www.rado.co.jp/ski/" },
+    {
+      "id": "chuoBusTeikan",
+      "name": "北海道中央バス",
+      "url": "https://teikan.chuo-bus.co.jp/"
+    }
+  ]
+}

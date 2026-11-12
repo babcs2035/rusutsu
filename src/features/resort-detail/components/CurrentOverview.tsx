@@ -251,7 +251,26 @@ export function CurrentOverview({
               className="space-y-1.5 border-t border-slate-200 pt-2"
               aria-label="コメント"
             >
-              <h3 className="text-sm font-semibold text-slate-900">コメント</h3>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                <h3 className="text-sm font-semibold text-slate-900">
+                  コメント
+                </h3>
+                {conditions.map(
+                  item =>
+                    item.comment && (
+                      <div key={item.id} className="min-w-0">
+                        <SourceLine
+                          compact
+                          label="コメント"
+                          showFetched={false}
+                          showLabel={false}
+                          showPublished={false}
+                          urls={item.comment.sourceUrls}
+                        />
+                      </div>
+                    ),
+                )}
+              </div>
               {conditions.map(item => {
                 const value = record(item.comment?.data).value;
                 return item.comment ? (

@@ -9,6 +9,8 @@ import { calculateLiftTicketForSeasons } from "@/features/lift-ticket/utils/calc
 import type { TicketRentalResult } from "@/features/lift-ticket/utils/rental";
 import type { TicketBundleResult } from "@/features/lift-ticket/utils/rentalBundle";
 import { calculateResortPrice } from "@/features/lift-ticket/utils/resortPriceCalculation";
+import { legacyLinkItems } from "@/features/resort-links/legacy";
+import type { ResortLinkItem } from "@/features/resort-links/model";
 import { getFinalizedResortMapData } from "@/lib/finalizedResortGeojson";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { getResortLabelName } from "@/lib/resortAliases";
@@ -23,7 +25,9 @@ import {
 } from "@/lib/skiResortData";
 import { readOperatingSummaries } from "@/server/course-lift/summaryClient";
 import { listLiftTicketSeasons } from "@/server/lift-tickets/client";
+import { findResortLinks } from "@/server/resort-links/client";
 import {
+  readLegacyResortLinks,
   readResortMapDataByIds,
   readSkiResortDetails,
 } from "@/server/ski-resorts/detail";
@@ -221,6 +225,47 @@ export async function getResortOperatingCountsForList(
 export async function getSkiResortById(id: string) {
   const [detail] = await readSkiResortDetails([id], { withMap: true });
   return detail ?? null;
+}
+
+const MAX_LINK_LIST_RESORT_IDS = 20;
+
+/**
+ * リンク一覧（リンクのタブ）を開いたときに読む。
+ * リンクのテーブル（公式ページ・ツアー・割引）と、旧来のリンク文書の分をまとめて返す。
+ * 営業状況・リフト券のURLは詳細データがすでに持っているので、ここでは読まない。
+ */
+export async function getResortLinkList(
+  resortIds: string[],
+): Promise<ResortLinkItem[]> {
+  const ids = [...new Set(resortIds)];
+  if (
+    ids.length === 0 ||
+    ids.length > MAX_LINK_LIST_RESORT_IDS ||
+    ids.some(id => !RESORT_ID_PATTERN.test(id))
+  )
+    throw new Error("Invalid ids");
+  const [records, legacy] = await Promise.all([
+    // リンクのテーブルが使えなくても、ほかのリンクは表示する
+    findResortLinks(ids).catch(error => {
+      console.warn("リンクのテーブルを読めませんでした:", error);
+      return [];
+    }),
+    readLegacyResortLinks(ids),
+  ]);
+  return [
+    ...records.map(
+      ({ type, source, category, label, url, note, sortOrder }) => ({
+        type,
+        source,
+        category,
+        label,
+        url,
+        note,
+        sortOrder,
+      }),
+    ),
+    ...legacy.flatMap(links => legacyLinkItems(links)),
+  ];
 }
 
 // 比較用の読み取りは数件ずつに限る。一度に大量のデータを取れる入口にしないため。

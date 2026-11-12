@@ -3,20 +3,13 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import type { TicketCalculationLine } from "../types";
+import { isOnlineLine, isPurchaseMethodLine } from "../utils/planView";
 
 const yen = (amount: number) => `¥${amount.toLocaleString("ja-JP")}`;
 
 /** 「12/19から販売開始です」。日ごとに繰り返さず、カードの下に1回だけ出す */
 const isSalesStartWarning = (warning: string) =>
   /から販売開始です$/u.test(warning);
-
-/** オンラインで買う料金か（購入ページのURLがある、または Web で買う券） */
-const isOnlineLine = (line: TicketCalculationLine) =>
-  line.purchaseUrl != null || line.purchaseOnline === true;
-
-/** Web・前売で安くなった料金か（窓口でそのまま買う料金ではない） */
-const isPurchaseMethodLine = (line: TicketCalculationLine) =>
-  line.purchaseNote != null || isOnlineLine(line);
 
 /** 「2027-02-03」→「2/3」 */
 const monthDayOf = (date: string) =>
@@ -33,11 +26,20 @@ const ticketNameOf = (line: TicketCalculationLine) =>
       ? line.offerName
       : (line.productName ?? line.offerName);
 
-/** 券名と「WEB価格」の目印（購入ページで買うと適用される料金） */
-export const TicketName = ({ line }: { line: TicketCalculationLine }) => (
+/**
+ * 券名と「WEB価格」の目印（購入ページで買うと適用される料金）。
+ * 買い方の見出し（「Web」「早割」）の中に出すときは、目印を繰り返さない
+ */
+export const TicketName = ({
+  line,
+  badge = true,
+}: {
+  line: TicketCalculationLine;
+  badge?: boolean;
+}) => (
   <>
     <span className="font-semibold">{ticketNameOf(line)}</span>
-    {isOnlineLine(line) && (
+    {badge && isOnlineLine(line) && (
       <span className="ml-1.5 rounded bg-blue-100 px-1.5 py-0.5 align-middle text-blue-700 text-xs font-semibold">
         WEB価格
       </span>
@@ -54,11 +56,17 @@ export const sharesTicket = (lines: TicketCalculationLine[]) =>
   new Set(lines.map(line => `${ticketNameOf(line)}|${isOnlineLine(line)}`))
     .size === 1;
 
+/** 枠の中の行がすべて同じ券か（1行だけでもよい）。券名を日付の横に1回だけ出すのに使う */
+export const hasSingleTicket = (lines: TicketCalculationLine[]) =>
+  lines.length > 0 &&
+  new Set(lines.map(line => `${ticketNameOf(line)}|${isOnlineLine(line)}`))
+    .size === 1;
+
 /**
- * 1枚の券の行。「券名［WEB価格］ 誰が何人」と金額だけを出す。
+ * 1枚の券の行。「券名［WEB価格］ 誰が何人［出典］」と金額を1行に出す。
  *
- * ★購入ページ・窓口との差額・販売開始日は日ごとに繰り返さず、
- * カードの下に1回だけ出す（PurchaseSummary）。
+ * ★出典は行を増やさず、人数の右に並べる。購入ページ・窓口との差額・販売開始日は
+ * 日ごとに繰り返さない（料金カードは買い方の見出しに、比較表は PurchaseSummary に出す）。
  */
 export const TicketLineDetail = ({
   line,
@@ -66,6 +74,7 @@ export const TicketLineDetail = ({
   multiplierUnit = "枚",
   showAmount = true,
   showTicket = true,
+  badge = true,
   sources = null,
 }: {
   line: TicketCalculationLine;
@@ -77,7 +86,9 @@ export const TicketLineDetail = ({
   showAmount?: boolean;
   /** 券名を枠の見出しに出したときは false */
   showTicket?: boolean;
-  /** この券の料金の出典（行の下に出す） */
+  /** 買い方の見出しの中に出すときは false（「WEB価格」を繰り返さない） */
+  badge?: boolean;
+  /** この券の料金の出典（人数の右に並べる） */
   sources?: ReactNode;
 }) => {
   const subtotal = line.subtotal == null ? null : line.subtotal * multiplier;
@@ -91,9 +102,9 @@ export const TicketLineDetail = ({
   );
   return (
     <div className="flex flex-col gap-0.5">
-      <div className="flex items-baseline justify-between gap-3">
+      <div className="flex items-baseline justify-between gap-2">
         <p className="min-w-0 text-sm text-gray-900">
-          {showTicket && <TicketName line={line} />}
+          {showTicket && <TicketName line={line} badge={badge} />}
           <span
             className={cn(
               "whitespace-nowrap",
@@ -103,6 +114,7 @@ export const TicketLineDetail = ({
             {line.partySet ? "" : `${person} ${line.count}名`}
             {multiplier > 1 ? ` × ${multiplier}${multiplierUnit}` : ""}
           </span>
+          {sources}
         </p>
         {showAmount && (
           <p className="flex-shrink-0 text-sm font-semibold text-gray-900 font-mono">
@@ -135,14 +147,9 @@ export const TicketLineDetail = ({
           ※ {warning}
         </p>
       ))}
-      {sources}
     </div>
   );
 };
-
-/** 行のどれかがオンライン購入か。合計の見出しに「WEB購入の料金」を付ける */
-export const hasOnlineLine = (lines: TicketCalculationLine[]) =>
-  lines.some(isOnlineLine);
 
 /**
  * カードの下に1回だけ出す、Web・前売の買い方。
@@ -155,9 +162,12 @@ export const hasOnlineLine = (lines: TicketCalculationLine[]) =>
 export const PurchaseSummary = ({
   lines,
   total,
+  purchaseFeeTotal = 0,
 }: {
   lines: Array<{ line: TicketCalculationLine; multiplier: number }>;
   total: number | null;
+  /** total に含めた、Web・前売にだけかかる送料・手数料（窓口なら不要） */
+  purchaseFeeTotal?: number;
 }) => {
   const purchased = lines.filter(({ line }) => isPurchaseMethodLine(line));
   if (purchased.length === 0) return null;
@@ -197,7 +207,9 @@ export const PurchaseSummary = ({
       {total != null && counterExtra > 0 && (
         <div className="flex items-baseline justify-between gap-3 text-gray-600">
           <span>通常料金（窓口）</span>
-          <span className="font-mono">{yen(total + counterExtra)}</span>
+          <span className="font-mono">
+            {yen(total - purchaseFeeTotal + counterExtra)}
+          </span>
         </div>
       )}
       {(urls.length > 0 || salesStarts.length > 0) && (

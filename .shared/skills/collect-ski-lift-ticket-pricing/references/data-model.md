@@ -9,6 +9,7 @@
 {
   "schema_version": "1.0.0",
   "taxonomy_version": "2.0.0",
+  "main_links": {},
   "resort": {},
   "season": {},
   "sources": [],
@@ -57,6 +58,41 @@ Web・前売り割引 / 子供デー・レディースデー / 道民割・県�
 居住・在勤・在学の違い / 学生割・宿泊者割・会員割 /
 幼児無料・親子券・ファミリーパック / ICカード保証金・発行手数料 /
 グループ全体での最安購入方法 / どこで・いつまでに購入する必要があるか。
+
+## main_links（メインのリンク）
+
+そのスキー場の料金の入口になるページ。画面は、料金表の見出し・リンク一覧・計算結果の
+買い方の見出し（「Web［購入］」「通常［出典］」）に、ここのリンクだけを出す。
+券ごとの商品ページや割引ごとのお知らせは、ここではなく各料金の `purchase_url`・`source_refs` に書く
+（キロロは券種×シーズンごとの商品ページ20件が料金表の見出しに並んでいた）。
+
+```json
+"main_links": {
+  "lift_price_url": "https://www.kiroro.co.jp/ja/lift_price/",
+  "lift_purchase_url": "https://webstore.kiroro.co.jp/JP/lift-pass",
+  "rental_price_url": "https://www.kiroro.co.jp/ja/rental_price/",
+  "rental_purchase_url": "https://webstore.kiroro.co.jp/JP/rental"
+}
+```
+
+| 欄 | 入れるページ | 画面での使い方 |
+| --- | --- | --- |
+| `lift_price_url` | 公式のリフト料金表が載っているページ | 出典 |
+| `lift_purchase_url` | リフト券をWebで買うページの入口（リフト券の一覧・トップ） | 購入 |
+| `rental_price_url` | 公式のレンタル料金表が載っているページ | 出典 |
+| `rental_purchase_url` | レンタルをWebで予約・購入するページの入口 | 購入 |
+
+- 4つとも欄を作る。公式を調べて無ければ `null`（Web販売が無い、レンタルを案内していない）。
+  欄ごと無いJSONは「まだ決めていない」として点検に出る。
+- 1つの欄に1つのURL。出典用は、通常料金の表が載っているページを選ぶ。料金表が画像・PDFなら、
+  それを載せているHTMLページにする。購入用は、公式の料金ページが「購入する」「Webチケット」で
+  案内している先の、リフト券（レンタル）の一覧が出るページにする。
+- 候補が2つ以上あって絞れないとき（料金表がエリア別・クラス別に2ページある、購入サイトが
+  公式ストアと外部サイトの2つある）は、通常料金がより多く載っているほう・公式が先に案内している
+  ほうを入れ、載せなかったURLと理由を `notes_ja` に書いて完了報告に並べる。
+- `lift_purchase_url` は、Web料金の offer が参照する channel の `url` と同じページにする。
+- 保存時に、DBの `lift_ticket_seasons` の列（`liftPriceUrl` / `liftPurchaseUrl` /
+  `rentalPriceUrl` / `rentalPurchaseUrl`）へ写される。列を直接は書き換えない。
 
 ## sources（保存資料）
 
@@ -433,8 +469,9 @@ products / offers / party_rules のいずれにも記録しない。
 料金の計算には効かない。利用者に必要なのは購入ページのURLと公式の呼び名だけ）。
 
 - `name_ja`: 公式の呼び名をそのまま（「WEBチケットストア」「リフト券売り場」）
-- `url`: 購入ページのURL。**`online_purchase` の割引offerが参照するchannelに
-  URLが1つも無いと taxonomyチェックが落ちる**（購入ページへ連れて行けない）
+- `url`: 購入ページの入口のURL（リフト券の一覧・トップ。`main_links.lift_purchase_url` と同じ）。
+  券ごとの商品ページは offer の `purchase_url` に書く。**`online_purchase` の割引offerが
+  参照するchannelにURLが1つも無いと taxonomyチェックが落ちる**（購入ページへ連れて行けない）
 - `purchase_deadline_ja`: 購入期限がchannel側に書かれている場合、公式表記のまま
 
 ## offers（料金オファー）
@@ -443,6 +480,11 @@ products / offers / party_rules のいずれにも記録しない。
 満たすか＋いくらか**」を表す。
 
 - `official_label_ja`: 公式サイト上の名称（例: 「WEB前売スペシャル」）
+- `purchase_url`: Web・前売の料金で、その券だけの商品ページがあるときのURL
+  （キロロの「ハイシーズン 1日券」の商品ページ）。画面は計算結果のその料金の行から
+  このページへ飛ばす。商品ページが無く一覧ページで買うなら書かない（channel の `url` を使う）。
+  商品ページは `sources` にも保存し、`source_refs` と `source_quotes` で金額の場所を指す
+  （画面はリンクにその場所のハイライトを付ける）。窓口の料金には書かない
 - **offerの種類を表す分類フィールドは持たない。** かつて `offer_type`
   （`standard | discounted | free | package | dynamic`）があったが、
   `product_type` / `calendar_type` と同じく他フィールドから100%導出でき、
@@ -748,8 +790,12 @@ party_rules を適用し、**個別購入の合計と比べて安い方**を返�
   「以降1日＋5,000円」「6日目以降1日ごと」は `extra_day` に `after_days`（何日目より後か。
   省略は1）を書き、基準の料金（`day` / `days`）と同じ `items`・対象者で記録する。
   画面は「基準の料金＋追加日×残りの日数」と、1日ずつ・N日間の料金を比べて安いほうを使う。
-- `channel_ids` / `purchase_deadline`: Web予約割引など、予約経路と期限で金額が
+- `channel_ids` / `purchase_deadline` / `purchase_url`: Web予約割引など、予約経路と期限で金額が
   違う料金だけに書く（offerと同じ書き方）。窓口で当日借りる料金には書かない。
+  ★**公式がWebのレンタル料金を出しているなら、窓口の料金とは別の件として必ず集める**
+  （キロロは Webストアにレンタルの料金があるのに、料金ページの窓口料金しか無かった）。
+  購入ページのある channel を `channel_ids` に書くと、画面は「Web」の買い方の中に出す。
+  用具ごとの商品ページがあれば `purchase_url` に書く。
 - ★**`usable_at_night`**: 日中のレンタルをナイター終了まで使えるか。公式に「ナイター終了まで」
   等があれば `true`、「17:00まで返却」等があれば `false`、記載が無ければ `null`。
   ナイター営業がある施設では `null` のままにせず、レンタルページ・FAQ を調べた結果を

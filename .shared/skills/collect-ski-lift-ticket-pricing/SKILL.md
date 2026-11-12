@@ -90,17 +90,24 @@ src/private/data/resorts-temporary/tmp/lift-ticket-discovery/{resort-id}/
 - 通常料金、無料料金、Web・前売・会員・宿泊者・障がい者等の条件付き料金
 - 利用期間、販売期間、購入期限、購入経路、対象者、必要証明、必須手数料
 - 営業時間、ナイター営業日、定休日
-- Web・前売の券の買い方（画面に「2/3までにWebで購入」と、並べて「通常料金（窓口）」を出すため）:
+- Web・前売の券の買い方（画面は買い方を「早割（11/30まで）・Web・通常」の段階に分けて出す。
+  利用日の2日以上前に締め切る料金が早割、前日・当日まで買える料金がWebになるので、期限を正確に書く）:
   販売開始日・販売終了日（`sales_period`）、当日に買えるか・利用日の何日前までか・
   固定の締切日（`purchase_deadline`。公式に記載が無くても欄を作り、記載なしと書く）、
-  購入ページのURL（`channels[].url`）、同じ券を窓口でも売るなら同じ区分・日付の窓口料金
+  購入ページの入口のURL（`channels[].url`）、券ごとの商品ページがあればそのURL
+  （offer の `purchase_url`）、同じ券を窓口でも売るなら同じ区分・日付の窓口料金
   （Web・前売だけで売る商品には不要）
+- メインのリンク（`main_links`。料金表の見出し・リンク一覧・計算結果の「購入」「出典」に出す）:
+  公式のリフト料金表のページ、リフト券をWebで買うページの入口、公式のレンタル料金表のページ、
+  レンタルをWebで予約・購入するページの入口の4つ。無いものは null（data-model の main_links）
 - 料金の記載場所の手がかり（出典リンクでページ内のその箇所へ飛ばすため）:
   料金表が画像・PDFなら、それを載せているHTMLページも `sources` に保存して
   `linked_from_source_id` で結ぶ（画像ファイルだけを出典にしない）
 - レンタル用具の料金（公式サイト・公式案内の場内ショップ。セット・単品・ウェア・小物を
   対象者・期間・グレードごとに `rentals` へ。書き方は `references/data-model.md` の rentals）。
   レンタル料金表に年度表記が無いだけでは収集を止めない（下の Stage 1 の7を参照）
+- Webで予約・購入するレンタル料金（公式のWebストア・予約サイトに窓口と違う料金があれば、
+  窓口の料金とは別に集める。data-model の rentals）
 - レンタルの「日中のレンタルが夜も使えるか」（`usable_at_night`）。ナイター営業がある施設では
   レンタルページ・FAQで必ず調べ、記載が無ければ null のまま `unresolved_questions` に残す
 - 雪マジ（マジ☆部）の掲載内容（`yukimaji`。書き方は `references/data-model.md` の yukimaji）。
@@ -600,6 +607,8 @@ rm -rf src/private/data/resorts-temporary/tmp/lift-ticket/<resort-id>
 - 機械検証、独立監査、シナリオテストの結果
 - 判読不能、unknown、未解決事項、human_review_required
 - `data_quality.status`
+- `main_links` に入れた4つのURL。候補が2つ以上あって1つに絞ったものは、
+  載せなかったURLと理由を1件1文で並べる
 - 本番DBへの反映結果（新規作成 / 更新 / 変更なし、反映しなかった場合はその理由）
 - `lift-ticket/MISSING.md` に書いた行
 

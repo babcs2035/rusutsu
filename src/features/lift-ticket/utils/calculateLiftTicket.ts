@@ -9,6 +9,7 @@ import type {
   LiftTicketSearchInput,
   LiftTicketSourceQuote,
   PriceReference,
+  TicketCalculationFee,
   TicketCalculationLine,
   TicketCalculationResult,
   TicketConditionalOffer,
@@ -1130,7 +1131,7 @@ export const sourceQuotesOf = (
 
 /** offer の根拠資料 → 出典番号（料金表と同じ番号を使う） */
 const sourceNumbersOf = (
-  offer: LiftTicketOffer,
+  offer: { source_refs?: string[] },
   numberBySourceId: Map<string, number>,
 ) =>
   [
@@ -1284,6 +1285,26 @@ export const lastPurchaseDateOf = (
 };
 
 /**
+ * 購入ページの中で、この料金が書かれている場所。
+ * 購入ページと同じURLの出典に付いた source_quotes を使う
+ */
+export const purchaseQuoteOf = (
+  data: LiftTicketData,
+  item: { source_quotes?: LiftTicketSourceQuote[] | null },
+  purchaseUrl: string | null,
+) => {
+  if (!purchaseUrl) return null;
+  const urlBySourceId = new Map(
+    (data.sources ?? []).map(source => [source.id, source.url]),
+  );
+  return (
+    (item.source_quotes ?? []).find(
+      quote => urlBySourceId.get(quote.source_id) === purchaseUrl,
+    ) ?? null
+  );
+};
+
+/**
  * Web・前売料金の買い方を短く表す。
  * 「Webで購入」、利用日より前に買う必要があれば「2/3までにWebで購入」と、
  * 販売開始前なら「12/19から販売開始」の注意を返す。
@@ -1304,14 +1325,24 @@ const purchaseMethodOf = (
   const channelById = new Map(
     data.channels.map(channel => [channel.id, channel]),
   );
+  // 券ごとの商品ページがあればそこへ。無ければ販売経路の入口へ
   const url =
-    (offer.channel_ids ?? [])
+    offer.purchase_url ||
+    ((offer.channel_ids ?? [])
       .map(channelId => channelById.get(channelId)?.url)
-      .find((value): value is string => Boolean(value)) ?? null;
+      .find((value): value is string => Boolean(value)) ??
+      null);
   const start = offer.sales_period?.start;
   const warning =
     start && start > today ? `${monthDay(start)}から販売開始です` : null;
-  return { note, url, warning, deadline, online };
+  return {
+    note,
+    url,
+    quote: purchaseQuoteOf(data, offer, url),
+    warning,
+    deadline,
+    online,
+  };
 };
 
 export const formatPartyGroupLabel = (group: TicketPartyGroup) => {
@@ -1730,7 +1761,8 @@ const calculateGroupLine = (
     candidate => candidate.price.amount != null,
   );
   // 今買える早割・WEB前売は、通常料金より安い場合だけ計算結果に使う
-  // （同額なら窓口でそのまま買える通常料金のほうを見せる）
+  // （同額なら窓口でそのまま買える通常料金のほうを見せる）。
+  // 買い方を「Web」に絞った計算（prefersPurchaseMethodOnTie）では、同額でもWebを使う
   // 比べるのは手数料込みの額（Web 5,800円＋手数料100円は窓口 5,900円と同額）
   const feeOfOffer = (offer: LiftTicketOffer) =>
     feePerPerson(data, offer.product_id, offer.channel_ids, partyCount);
@@ -1746,7 +1778,9 @@ const calculateGroupLine = (
         return (
           amount != null &&
           (bestStandardEffective == null ||
-            amount + feeOfOffer(offer) < bestStandardEffective)
+            amount + feeOfOffer(offer) < bestStandardEffective ||
+            (data.prefersPurchaseMethodOnTie === true &&
+              amount + feeOfOffer(offer) === bestStandardEffective))
         );
       })
       .map(offer => offer.id),
@@ -1906,6 +1940,7 @@ const calculateGroupLine = (
         : bestStandardOffer.price.amount * group.count,
     purchaseNote: purchase?.note ?? null,
     purchaseUrl: purchase?.url ?? null,
+    purchaseQuote: purchase?.quote ?? null,
     purchaseDeadline: purchase?.deadline ?? null,
     purchaseOnline: purchase?.online ?? false,
     warnings,
@@ -2520,7 +2555,15 @@ export const calculateLiftTicket = (
       unit === "per_payment"
         ? 1
         : matched.reduce((sum, line) => sum + line.count, 0);
-    return [{ fee, unit, total: (fee.amount ?? 0) * units }];
+    const purchaseMethodOnly = matched.every(
+      line =>
+        line.purchaseNote != null ||
+        line.purchaseUrl != null ||
+        line.purchaseOnline === true,
+    );
+    return [
+      { fee, unit, total: (fee.amount ?? 0) * units, purchaseMethodOnly },
+    ];
   });
   const feeTotal = appliedFees.reduce((sum, applied) => sum + applied.total, 0);
   const UNIT_LABELS = {
@@ -2554,12 +2597,18 @@ export const calculateLiftTicket = (
     lines,
     fees: appliedFees
       .filter(({ fee }) => fee.amount != null)
-      .map(({ fee, unit, total }) => ({
-        name: fee.name_ja,
-        amount: fee.amount ?? 0,
-        total,
-        chargeUnit: unit,
-      })),
+      .map(({ fee, unit, total, purchaseMethodOnly }) => {
+        const sourceQuotes = sourceQuotesOf(fee, numberBySourceId);
+        return {
+          name: fee.name_ja,
+          amount: fee.amount ?? 0,
+          total,
+          chargeUnit: unit,
+          ...(purchaseMethodOnly ? { purchaseMethodOnly } : {}),
+          sourceNumbers: sourceNumbersOf(fee, numberBySourceId),
+          ...(sourceQuotes ? { sourceQuotes } : {}),
+        };
+      }),
     ticketTotal: isComplete ? knownTicketTotal : null,
     knownTicketTotal,
     payableTotal: isComplete ? knownTicketTotal + feeTotal : null,
@@ -2575,6 +2624,9 @@ export const calculateLiftTicket = (
         lines.some(line => line.sourceNumbers.includes(reference.number)) ||
         conditionalOffers.some(offer =>
           offer.sourceNumbers.includes(reference.number),
+        ) ||
+        appliedFees.some(({ fee }) =>
+          sourceNumbersOf(fee, numberBySourceId).includes(reference.number),
         ),
     ),
   };
@@ -3365,9 +3417,12 @@ const formatHoursLeft = (hours: number) =>
   `${Number.isInteger(hours) ? hours : Math.round(hours * 10) / 10}時間`;
 
 const resultSourceNumbersOf = (result: TicketCalculationResult) =>
-  [...new Set(result.lines.flatMap(line => line.sourceNumbers))].sort(
-    (left, right) => left - right,
-  );
+  [
+    ...new Set([
+      ...result.lines.flatMap(line => line.sourceNumbers),
+      ...result.fees.flatMap(fee => fee.sourceNumbers),
+    ]),
+  ].sort((left, right) => left - right);
 
 /**
  * 日ごとの計画からリフト券の合計を出す。
@@ -3383,7 +3438,7 @@ export const calculateLiftTicketPlan = (
   input: LiftTicketSearchInput,
 ): TicketPlanResult => {
   const plans = input.days ?? [];
-  const days: TicketPlanDay[] = plans.map(plan => {
+  const dailyDays: TicketPlanDay[] = plans.map(plan => {
     const dayInput = { ...input, visitDate: plan.date, days: undefined };
     const options = calculateDurationOptions(
       data,
@@ -3402,6 +3457,39 @@ export const calculateLiftTicketPlan = (
         ...base,
         status: base.status === "unavailable" ? options.status : base.status,
         notes: [...new Set([...options.notes, ...base.notes])],
+      },
+    };
+  });
+
+  // ★1決済ごとの手数料（ECの送料など）は、全日の券をまとめて買えば1回で済む。
+  // 日ごとに計算すると日数ぶん足されるので、一番早い日だけに付ける
+  const chargedPaymentFees = new Set<string>();
+  const firstDayOrder = [...dailyDays].sort((left, right) =>
+    left.plan.date.localeCompare(right.plan.date),
+  );
+  const repeatedFeesByDay = new Map<TicketPlanDay, TicketCalculationFee[]>();
+  for (const day of firstDayOrder) {
+    const repeated: TicketCalculationFee[] = [];
+    for (const fee of day.result.fees) {
+      if (fee.chargeUnit !== "per_payment") continue;
+      if (chargedPaymentFees.has(fee.name)) repeated.push(fee);
+      else chargedPaymentFees.add(fee.name);
+    }
+    if (repeated.length > 0) repeatedFeesByDay.set(day, repeated);
+  }
+  const days: TicketPlanDay[] = dailyDays.map(day => {
+    const repeated = repeatedFeesByDay.get(day);
+    if (!repeated) return day;
+    const saving = repeated.reduce((sum, fee) => sum + fee.total, 0);
+    return {
+      ...day,
+      result: {
+        ...day.result,
+        fees: day.result.fees.filter(fee => !repeated.includes(fee)),
+        payableTotal:
+          day.result.payableTotal == null
+            ? null
+            : day.result.payableTotal - saving,
       },
     };
   });

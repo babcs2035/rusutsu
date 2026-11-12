@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { LiftTicketData } from "../types";
 import { buildRentalPriceTables } from "../utils/rentalPriceTable";
-import { PriceGrid, tableSourcesOf } from "./LiftTicketPriceTable";
+import { PriceGrid, TableLinks, tableSourcesOf } from "./LiftTicketPriceTable";
 import { SourceLinks } from "./SourceLinks";
 
 /**
@@ -29,6 +29,9 @@ export const RentalPriceTable = ({ data }: { data: LiftTicketData }) => {
     { key: "conditional", title: "条件付きの料金", table: tables.conditional },
   ].filter(section => section.table.rows.length > 0);
   if (tables.durations.length === 0) return null;
+  const hasMainLinks = Boolean(
+    data.main_links?.rental_price_url || data.main_links?.rental_purchase_url,
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -56,16 +59,25 @@ export const RentalPriceTable = ({ data }: { data: LiftTicketData }) => {
           })}
         </div>
       )}
-      {sections.map(section => (
+      {sections.map((section, index) => (
         <div key={section.key} className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <p className="text-gray-900 text-sm font-semibold font-[var(--font-heading)]">
               {section.title}
             </p>
-            <SourceLinks
-              numbers={tableSourcesOf(section.table)}
-              references={tables.references}
-            />
+            {/* メインのリンクは最初の表にだけ出す（同じリンクを表ごとに繰り返さない） */}
+            {(index === 0 || !hasMainLinks) && (
+              <TableLinks
+                priceUrl={data.main_links?.rental_price_url}
+                purchaseUrl={data.main_links?.rental_purchase_url}
+                fallback={
+                  <SourceLinks
+                    numbers={tableSourcesOf(section.table)}
+                    references={tables.references}
+                  />
+                }
+              />
+            )}
           </div>
           {section.key === "conditional" && (
             <p className="text-gray-500 text-xs">

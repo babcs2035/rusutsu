@@ -310,6 +310,8 @@ export type LiftTicketOffer = {
   audience_ids?: string[];
   calendar_ids?: string[];
   channel_ids?: string[];
+  /** この料金をWebで買う商品ページ。無ければ channel の url を使う */
+  purchase_url?: string | null;
   target_genders?: LiftTicketTarget | null;
   target_qualification?: LiftTicketTarget | null;
   sales_period?: LiftTicketPeriod | null;
@@ -399,6 +401,9 @@ export type LiftTicketFee = {
    * 返却で返金する旨を name_ja / notes_ja に書く
    */
   charge_unit?: "per_person" | "per_ticket" | "per_payment";
+  /** 手数料額の根拠（sources の id）と記載場所。画面の「出典」に使う */
+  source_refs?: string[];
+  source_quotes?: LiftTicketSourceQuote[];
   notes_ja?: string | null;
 };
 
@@ -416,6 +421,8 @@ export type LiftTicketRental = {
   audience_ids?: string[];
   calendar_ids?: string[];
   channel_ids?: string[];
+  /** この料金をWebで予約・購入する商品ページ。無ければ channel の url を使う */
+  purchase_url?: string | null;
   duration: {
     mode: string;
     hours?: number | null;
@@ -450,8 +457,30 @@ export type LiftTicketSource = {
   notes_ja?: string | null;
 };
 
+/**
+ * 料金の「メインのリンク」。料金表の見出しと、計算結果の「購入」「出典」に出す。
+ * DBでは lift_ticket_seasons の列にも写して持つ
+ */
+export type LiftTicketMainLinks = {
+  /** 公式のリフト料金表のページ（出典用） */
+  lift_price_url?: string | null;
+  /** リフト券をWebで買うページの入口（購入用） */
+  lift_purchase_url?: string | null;
+  /** 公式のレンタル料金表のページ（出典用） */
+  rental_price_url?: string | null;
+  /** レンタルをWebで予約・購入するページの入口（購入用） */
+  rental_purchase_url?: string | null;
+  notes_ja?: string | null;
+};
+
 export type LiftTicketData = {
   schema_version: string;
+  main_links?: LiftTicketMainLinks | null;
+  /**
+   * 画面の中だけで使う印（保存データには無い）。Web・前売の料金が窓口と同額でも、
+   * Web・前売のほうを採用する。買い方を「Web」に絞って計算するときに付ける
+   */
+  prefersPurchaseMethodOnTie?: boolean;
   // スキー場の名称・都道府県・公式サイトURLは SkiResort マスタが正本なので持たない
   resort: {
     id: string;
@@ -540,8 +569,10 @@ export type TicketCalculationLine = {
    * 窓口でそのまま買える料金なら null
    */
   purchaseNote?: string | null;
-  /** 購入ページのURL */
+  /** 購入ページのURL（券ごとの商品ページがあればそれ、無ければ販売経路のURL） */
   purchaseUrl?: string | null;
+  /** 購入ページの中で、この料金が書かれている場所。リンクでその文言をハイライトする */
+  purchaseQuote?: LiftTicketSourceQuote | null;
   /** 利用日より前に買う必要があるとき、買える最後の日（「2/3までにWebで購入」） */
   purchaseDeadline?: string | null;
   /** Webで買う料金か（購入ページのURLが無くても Web で買う券） */
@@ -586,6 +617,14 @@ export type TicketCalculationFee = {
   total: number;
   /** 課金の単位（画面の「1決済あたり」等の表示用） */
   chargeUnit?: "per_person" | "per_ticket" | "per_payment";
+  /**
+   * Web・前売の買い方にだけかかる手数料（ECの送料など）。窓口で通常料金を
+   * 買えばかからないので、「通常料金（窓口）」の額からは除く
+   */
+  purchaseMethodOnly?: boolean;
+  /** 手数料額の出典番号と記載場所（料金の行と同じ番号） */
+  sourceNumbers: number[];
+  sourceQuotes?: Record<number, LiftTicketSourceQuote>;
 };
 
 export type TicketCalculationResult = {

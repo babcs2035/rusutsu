@@ -1,23 +1,24 @@
 "use client";
 
+import { ChevronRight } from "lucide-react";
+import { type ReactNode, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import type { PriceReference, TicketCalculationLine } from "../types";
-import type { TicketPlanResult } from "../utils/calculateLiftTicket";
-import type { TicketRentalResult } from "../utils/rental";
-import {
-  planWithoutBundledGroups,
-  type TicketBundleResult,
-} from "../utils/rentalBundle";
+import type {
+  PriceReference,
+  TicketCalculationFee,
+  TicketCalculationLine,
+} from "../types";
+import type { TicketPlanTier } from "../utils/planView";
+import type { PurchaseTierKey } from "../utils/purchaseTiers";
+import { withSourceQuote } from "../utils/sourceQuote";
 import { BundleSummary } from "./BundleSummary";
 import { ConditionalOffers } from "./ConditionalOffers";
 import { DurationAlternatives } from "./DurationAlternatives";
 import { RentalSummary } from "./RentalSummary";
-import { SourceLinks } from "./SourceLinks";
+import { LinkChip, SourceLinks } from "./SourceLinks";
 import {
-  hasOnlineLine,
-  PurchaseSummary,
-  sharesTicket,
+  hasSingleTicket,
   TicketLineDetail,
   TicketName,
 } from "./TicketLineDetail";
@@ -25,54 +26,114 @@ import {
 const yen = (amount: number) => `¥${amount.toLocaleString("ja-JP")}`;
 
 /**
- * 枠の中の券の行。全員が同じ券なら券名を1回だけ出す。
- * 券が1行だけなら金額は枠の見出しと同じなので行には出さない
+ * 券の行の出典。人数の右に並べる。
+ * Web・前売の料金は、券ごとの商品ページ（その料金の場所が分かる購入ページ）へ飛ばす。
+ * 見出しの「購入」と同じページしか無いときと、窓口の料金は、料金の出典へ飛ばす
  */
+const LineSource = ({
+  line,
+  references,
+  tierUrl,
+}: {
+  line: TicketCalculationLine;
+  references: PriceReference[];
+  /** 買い方の見出しに出した「購入」のリンク先 */
+  tierUrl: string | null;
+}) =>
+  line.purchaseUrl && (line.purchaseQuote || line.purchaseUrl !== tierUrl) ? (
+    <LinkChip
+      href={withSourceQuote(line.purchaseUrl, line.purchaseQuote ?? undefined)}
+      title={line.purchaseUrl}
+      aria-label="出典（購入ページ）"
+      compact
+      className="ml-1.5 align-middle"
+    >
+      出典
+    </LinkChip>
+  ) : (
+    <SourceLinks
+      numbers={line.sourceNumbers}
+      references={references}
+      quotes={line.sourceQuotes}
+      single
+      compact
+      className="ml-1.5 align-middle"
+    />
+  );
+
+/** 段の中の券の行。「誰が何人［出典］ 金額」を1行ずつ出す */
 const TicketLines = ({
   lines,
   multiplier,
   multiplierUnit,
-  showAmounts = lines.length > 1,
+  showTicket,
   references,
+  tierUrl,
 }: {
   lines: TicketCalculationLine[];
   multiplier: number;
   multiplierUnit: "枚" | "日";
-  /** 枠の中に券が複数種類あるときは、1人でも行ごとの金額を出す */
-  showAmounts?: boolean;
-  /** 券の料金の根拠。各行の下に1つずつ出す */
+  /** 券名を段の見出しに出したときは false */
+  showTicket: boolean;
   references: PriceReference[];
-}) => {
-  const shared = sharesTicket(lines);
-  return (
-    <div className="mt-1.5 flex flex-col gap-1">
-      {shared && (
-        <p className="text-sm text-gray-900">
-          <TicketName line={lines[0]} />
-        </p>
-      )}
-      {lines.map(line => (
-        <TicketLineDetail
-          key={line.groupId}
-          line={line}
-          multiplier={multiplier}
-          multiplierUnit={multiplierUnit}
-          showAmount={showAmounts}
-          showTicket={!shared}
-          sources={
+  tierUrl: string | null;
+}) => (
+  <div className="mt-1 flex flex-col gap-1">
+    {lines.map(line => (
+      <TicketLineDetail
+        key={line.groupId}
+        line={line}
+        multiplier={multiplier}
+        multiplierUnit={multiplierUnit}
+        showTicket={showTicket}
+        badge={false}
+        sources={
+          <LineSource line={line} references={references} tierUrl={tierUrl} />
+        }
+      />
+    ))}
+  </div>
+);
+
+/** 段の金額に含めた送料・手数料（「配送料 ¥600」）。足した額を必ず見せる */
+const FeeLines = ({
+  fees,
+  multiplier,
+  references,
+}: {
+  fees: TicketCalculationFee[];
+  multiplier: number;
+  /** 手数料額の根拠。券の行と同じく名前の右に出す */
+  references: PriceReference[];
+}) =>
+  fees.length === 0 ? null : (
+    <div className="mt-1 flex flex-col gap-1">
+      {fees.map(fee => (
+        <div
+          key={fee.name}
+          className="flex items-baseline justify-between gap-3 text-sm"
+        >
+          <p className="min-w-0 text-gray-900">
+            {fee.name}
+            {multiplier > 1 ? (
+              <span className="ml-2 text-gray-600">× {multiplier}日</span>
+            ) : null}
             <SourceLinks
-              numbers={line.sourceNumbers}
+              numbers={fee.sourceNumbers ?? []}
               references={references}
-              quotes={line.sourceQuotes}
+              quotes={fee.sourceQuotes}
               single
-              className="mt-0.5"
+              compact
+              className="ml-1.5 align-middle"
             />
-          }
-        />
+          </p>
+          <p className="flex-shrink-0 font-semibold text-gray-900 font-mono">
+            {yen(fee.total * multiplier)}
+          </p>
+        </div>
       ))}
     </div>
   );
-};
 
 const weekdayOf = (date: string) => {
   if (!date) return "";
@@ -83,182 +144,311 @@ const weekdayOf = (date: string) => {
 const shortDateOf = (date: string) =>
   `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}（${weekdayOf(date)}）`;
 
+/** 「2026-11-30」→「11/30」 */
+const monthDayOf = (date: string) =>
+  `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}`;
+
+const dateLabelOf = (dates: string[]) => {
+  if (dates.length === 1 && !dates[0]) return "日付未入力";
+  const consecutive = dates.every(
+    (date, i) =>
+      i === 0 ||
+      Date.parse(`${date}T12:00:00Z`) -
+        Date.parse(`${dates[i - 1]}T12:00:00Z`) ===
+        86400000,
+  );
+  if (dates.length === 1) return shortDateOf(dates[0]);
+  return consecutive
+    ? `${shortDateOf(dates[0])}〜${shortDateOf(dates[dates.length - 1])}`
+    : dates.map(shortDateOf).join("・");
+};
+
+/** 段の見出し。「1/12（火） 1日券」と、段が複数あるときの小計 */
+const SectionHeading = ({
+  title,
+  detail,
+  amount,
+}: {
+  title: string;
+  detail?: ReactNode;
+  amount?: string | null;
+}) => (
+  <div className="flex items-baseline justify-between gap-3">
+    <p className="min-w-0 text-sm text-gray-900">
+      <span className="font-bold">{title}</span>
+      {detail && (
+        <span className="ml-2 inline-block whitespace-nowrap">{detail}</span>
+      )}
+    </p>
+    {amount && (
+      <p className="flex-shrink-0 text-sm font-bold font-mono text-gray-900">
+        {amount}
+      </p>
+    )}
+  </div>
+);
+
 /**
- * 日ごとの料金と合計を出す。
+ * 1つの買い方の内訳。日ごとの券・複数日券・セット券・レンタルを段に分けて並べる。
+ *
+ * ★**同じ金額を何度も並べない。** 段の小計は、段が2つ以上あって、その段に
+ * 行が複数ある（または追加費用がある）ときだけ出す。行が1つなら行の金額で足りる
+ */
+const TierBody = ({ tier }: { tier: TicketPlanTier }) => {
+  const { view } = tier;
+  const { plan } = view;
+  const tierUrl = tier.link?.kind === "purchase" ? tier.link.url : null;
+  const multiDay = plan.multiDay;
+  const sectionCount =
+    view.dayGroups.length +
+    (multiDay ? 1 : 0) +
+    (view.bundleApplied ? 1 : 0) +
+    (view.rental && view.rentalShown ? 1 : 0);
+  const several = sectionCount > 1;
+
+  // 日の段と複数日券の段を日付順に並べる（複数日券が途中の日だけをまかなうこともある）
+  const dated: Array<{ date: string; key: string; node: ReactNode }> = [
+    ...view.dayGroups.map(({ indices }) => {
+      const day = plan.days[indices[0]];
+      const dayCount = indices.length;
+      const { lines, fees } = day.result;
+      const single = hasSingleTicket(lines);
+      return {
+        date: day.plan.date,
+        key: day.plan.id,
+        node: (
+          <>
+            <SectionHeading
+              title={dateLabelOf(indices.map(i => plan.days[i].plan.date))}
+              detail={single && <TicketName line={lines[0]} badge={false} />}
+              amount={
+                several && (lines.length > 1 || fees.length > 0)
+                  ? day.result.payableTotal == null
+                    ? "未確定"
+                    : yen(day.result.payableTotal * dayCount)
+                  : null
+              }
+            />
+            {day.result.status === "closed" && (
+              <p className="mt-1 text-sm text-orange-900">
+                この日は営業していません
+                {day.result.notes[0] ? `（${day.result.notes[0]}）` : ""}
+              </p>
+            )}
+            {day.result.status === "outside_season" && (
+              <p className="mt-1 text-sm text-orange-900">
+                {day.result.notes[0]}
+              </p>
+            )}
+            {lines.length > 0 && (
+              <TicketLines
+                lines={lines}
+                multiplier={dayCount}
+                multiplierUnit="日"
+                showTicket={!single}
+                references={plan.references}
+                tierUrl={tierUrl}
+              />
+            )}
+            <FeeLines
+              fees={fees}
+              multiplier={dayCount}
+              references={plan.references}
+            />
+            <DurationAlternatives options={day.options} dayCount={dayCount} />
+            <ConditionalOffers
+              className="mt-2"
+              dayCount={dayCount}
+              offers={day.result.conditionalOffers}
+              sourcesOf={offer => offer.sourceNumbers}
+              references={plan.references}
+            />
+          </>
+        ),
+      };
+    }),
+    ...(multiDay
+      ? [
+          {
+            date: multiDay.dates[0],
+            key: "multi-day",
+            node: (
+              <>
+                <SectionHeading
+                  title={dateLabelOf(multiDay.dates)}
+                  detail={
+                    !multiDay.ticketSet &&
+                    hasSingleTicket(multiDay.lines) && (
+                      <TicketName line={multiDay.lines[0]} badge={false} />
+                    )
+                  }
+                  amount={
+                    several &&
+                    (multiDay.ticketSet != null ||
+                      multiDay.lines.length > 1 ||
+                      multiDay.addOns.length > 0)
+                      ? yen(multiDay.ticketTotal)
+                      : null
+                  }
+                />
+                {multiDay.ticketSet ? (
+                  <p className="mt-1 text-sm text-gray-900">
+                    {multiDay.productName} × {multiDay.ticketCount}
+                    セット
+                    <span className="ml-2 whitespace-nowrap text-xs text-gray-600 md:text-sm">
+                      {multiDay.ticketSet.ticketsPerSet * multiDay.ticketCount}
+                      枚（のべ{multiDay.ticketSet.coveredPersonDays}
+                      人日分）
+                    </span>
+                    <SourceLinks
+                      numbers={multiDay.sourceNumbers}
+                      references={plan.references}
+                      compact
+                      className="ml-1.5 align-middle"
+                    />
+                  </p>
+                ) : (
+                  <TicketLines
+                    lines={multiDay.lines}
+                    multiplier={multiDay.ticketCount}
+                    multiplierUnit="枚"
+                    showTicket={!hasSingleTicket(multiDay.lines)}
+                    references={plan.references}
+                    tierUrl={tierUrl}
+                  />
+                )}
+                {/* 足りない時間を足す追加券（トップアップ5時間など） */}
+                {multiDay.addOns.map(addOn => (
+                  <TicketLines
+                    key={`${addOn.productId}:${addOn.date}`}
+                    lines={addOn.lines}
+                    multiplier={addOn.ticketCount}
+                    multiplierUnit="枚"
+                    showTicket
+                    references={plan.references}
+                    tierUrl={tierUrl}
+                  />
+                ))}
+                {(multiDay.notes ?? []).map(note => (
+                  <p
+                    key={note}
+                    className="mt-1 text-xs text-orange-900 md:text-sm"
+                  >
+                    {note}
+                  </p>
+                ))}
+                {(plan.multiDayAlternatives ?? []).map(alternative => (
+                  <p
+                    key={alternative.productId}
+                    className="mt-1 flex items-baseline justify-between gap-3 text-xs text-gray-700 md:text-sm"
+                  >
+                    <span className="min-w-0">
+                      同じ金額で: {alternative.productName}
+                      {(alternative.notes ?? []).length > 0 &&
+                        `（${(alternative.notes ?? []).join("・")}）`}
+                    </span>
+                    <span className="flex-shrink-0 font-mono">
+                      {yen(alternative.ticketTotal)}
+                    </span>
+                  </p>
+                ))}
+                <ConditionalOffers
+                  className="mt-2"
+                  offers={multiDay.conditionalOffers}
+                  sourcesOf={offer => offer.sourceNumbers}
+                  references={plan.references}
+                />
+              </>
+            ),
+          },
+        ]
+      : []),
+  ].sort((left, right) => left.date.localeCompare(right.date));
+
+  const sections: Array<{ key: string; node: ReactNode }> = [
+    ...dated,
+    ...(view.bundleApplied
+      ? [
+          {
+            key: "bundle",
+            node: (
+              <BundleSummary bundle={view.bundleApplied} showTotal={several} />
+            ),
+          },
+        ]
+      : []),
+    ...(view.rental && view.rentalShown
+      ? [
+          {
+            key: "rental",
+            node: (
+              <RentalSummary
+                rental={view.rental}
+                dayCount={view.tripDayCount}
+                link={tier.rentalLink}
+                showTotal={several}
+              />
+            ),
+          },
+        ]
+      : []),
+  ];
+
+  return (
+    <div className="flex flex-col divide-y divide-orange-100">
+      {tier.salesStarts.length > 0 && (
+        <p className="pb-2 text-xs text-gray-600">
+          {tier.salesStarts.join("・")}
+        </p>
+      )}
+      {sections.map(section => (
+        <div key={section.key} className="py-2 first:pt-0 last:pb-0">
+          {section.node}
+        </div>
+      ))}
+      {/* セット券の料金が年齢で分かれ、年齢が空欄なので比べられなかった */}
+      {view.bundle && view.bundle.ageNeededGroupIds.length > 0 && (
+        <p className="py-2 text-xs font-semibold text-red-600 last:pb-0">
+          年齢を入れると、セット券の料金とも比べます
+        </p>
+      )}
+      {/* 会員・クーポンなど条件を満たせば使えるセット券。合計には含めない */}
+      {view.bundle && view.bundle.conditionalOffers.length > 0 && (
+        <div className="py-2 last:pb-0">
+          <ConditionalOffers
+            offers={view.bundle.conditionalOffers}
+            sourcesOf={offer => offer.sourceNumbers}
+            references={view.references}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
+
+/**
+ * 買い方ごとの合計と内訳を出す。
+ *
+ * ★**買い方は「早割 → Web → 通常」の段階に分け、安い順に並べる。** 最初は一番安い段階だけを
+ * 開き、ほかは見出し（「通常［出典］ ¥14,700」）だけを出す。開くと同じ形の内訳が出る。
+ * 見出しのリンクはメインのリンク（Web・早割は購入ページ、通常は公式の料金表）、
+ * 行のリンクはその料金の出典。窓口でしか買えない日は段階を分けず、内訳だけを出す。
  *
  * ★**2日以上滑る場合は「連続2日券」「25時間券（＋トップアップ）」と「1日ずつ」を比べて安いほうを出す。**
- * 採用した券でまかなう日は、その日の欄にも採用した券を出す。採用しなかった
- * 1日ずつの券や金額は並べない（使わない券の料金は利用者に要らない）。
- *
- * ★**同じ金額を何度も並べない。** 日ごとの小計は、2日以上あって
- * その日の内訳が複数行ある（または追加費用がある）ときだけ出す。
- * 1人1日なら「合計」と内訳の2か所で足りる。
+ * 採用しなかった券や金額は並べない（使わない券の料金は利用者に要らない）。
  */
-export const TicketPlanCard = ({
-  plan: fullPlan,
-  rental: fullRental = null,
-  bundle = null,
-}: {
-  plan: TicketPlanResult;
-  /** レンタルを選んだ人がいれば、リフト券の合計に足して内訳を出す */
-  rental?: TicketRentalResult | null;
-  /** リフト券とレンタルのセット券。別々に買うより安いときだけ使う */
-  bundle?: TicketBundleResult | null;
-}) => {
-  // セット券を使う人は、リフト券もレンタルもセット券の枠に移す
-  const bundleApplied =
-    bundle != null && bundle.lines.length > 0 ? bundle : null;
-  const plan = bundleApplied
-    ? planWithoutBundledGroups(fullPlan, bundleApplied)
-    : fullPlan;
-  const bundledIds = new Set(
-    bundleApplied?.lines.flatMap(line => line.memberGroupIds ?? [line.groupId]),
-  );
-  const rental: TicketRentalResult | null =
-    bundleApplied && fullRental
-      ? fullRental.status === "not_collected"
-        ? bundleApplied.unbundledRenterGroupIds.length > 0
-          ? fullRental
-          : null
-        : (() => {
-            const lines = fullRental.lines.filter(
-              line => !bundledIds.has(line.groupId),
-            );
-            const complete = lines.every(line => line.subtotal != null);
-            const knownTotal = lines.reduce(
-              (sum, line) => sum + (line.subtotal ?? 0),
-              0,
-            );
-            return lines.length === 0
-              ? null
-              : {
-                  ...fullRental,
-                  lines,
-                  knownTotal,
-                  total: complete ? knownTotal : null,
-                };
-          })()
-      : fullRental;
-  const tripDayCount = fullPlan.days.length;
-  const usesMultiDay = plan.multiDay != null;
-  // 借りられない用具だけを選んだ人しかいなければ、レンタルの枠は出さない
-  const rentalShown =
-    rental != null &&
-    (rental.status === "complete" || rental.status === "partial") &&
-    rental.lines.some(line => line.picks.length > 0 || line.subtotal == null);
-  // レンタル情報が無い物は合計に含めず、「¥3,900 ＋ゴーグル」と添えて注釈を出す
-  const rentalNotCollected = rental?.status === "not_collected";
-  const missingRentalLabels = rentalNotCollected
-    ? ["レンタル"]
-    : (fullRental?.missingLabels ?? []);
-  const missingRentalNote =
-    missingRentalLabels.length === 0
-      ? null
-      : rentalNotCollected
-        ? "※このスキー場のレンタル情報はありませんでした"
-        : `※${missingRentalLabels.join("・")}のレンタル情報はありませんでした`;
-  // 区分によって貸出が無い用具（小学生のウェアなど）は合計に含めず、その旨だけ添える
-  const unavailableRentalLabels = rentalNotCollected
-    ? []
-    : (fullRental?.unavailableLabels ?? []);
-  const unavailableRentalNote =
-    unavailableRentalLabels.length === 0
-      ? null
-      : `※${unavailableRentalLabels.join("・")}は貸出がありません`;
-  // リフト券もレンタルも出たときだけ合計を出す。どちらかが未確定なら合計も未確定
-  const separateTotal = !rentalShown
-    ? plan.total
-    : plan.total == null || rental.total == null
-      ? null
-      : plan.total + rental.total;
-  const total = bundleApplied ? bundleApplied.total : separateTotal;
-  const withRental = rentalShown || bundleApplied != null;
-  const references = bundle
-    ? [
-        ...plan.references,
-        ...bundle.references.filter(
-          reference =>
-            !plan.references.some(other => other.number === reference.number),
-        ),
-      ]
-    : plan.references;
-
-  // ★**券も金額も同じ日は1つにまとめて「× 3日」と出す**（同じ内訳を繰り返さない）
-  const dayGroups: Array<{ indices: number[] }> = [];
-  const signatureOf = (index: number) => {
-    const day = plan.days[index];
-    const covered =
-      usesMultiDay && plan.multiDay?.dates.includes(day.plan.date);
-    return JSON.stringify([
-      covered,
-      day.result.status,
-      day.result.notes[0] ?? null,
-      day.result.payableTotal,
-      day.result.lines,
-      day.result.conditionalOffers.map(offer => [offer.id, offer.subtotal]),
-    ]);
-  };
-  const groupBySignature = new Map<string, { indices: number[] }>();
-  plan.days.forEach((day, index) => {
-    // 複数日券・25時間券でまかなう日は、その券の枠にまとめて出す（日ごとの枠は作らない）
-    if (usesMultiDay && plan.multiDay?.dates.includes(day.plan.date)) return;
-    const signature = signatureOf(index);
-    const existing = groupBySignature.get(signature);
-    if (existing) {
-      existing.indices.push(index);
-      return;
-    }
-    const group = { indices: [index] };
-    groupBySignature.set(signature, group);
-    dayGroups.push(group);
-  });
-
-  // 日の枠と複数日券の枠を日付順に並べる（複数日券が途中の日だけをまかなうこともある）
-  const sortedDates = [...plan.days.map(day => day.plan.date)].sort();
-  const orderOfDate = (date: string) => sortedDates.indexOf(date);
-
-  const dateLabelOf = (indices: number[]) =>
-    dateLabelOfDates(indices.map(index => plan.days[index].plan.date));
-  function dateLabelOfDates(dates: string[]) {
-    if (dates.length === 1 && !dates[0]) return "日付未入力";
-    const short = shortDateOf;
-    const consecutive = dates.every(
-      (date, i) =>
-        i === 0 ||
-        Date.parse(`${date}T12:00:00Z`) -
-          Date.parse(`${dates[i - 1]}T12:00:00Z`) ===
-          86400000,
-    );
-    if (dates.length === 1) return short(dates[0]);
-    return consecutive
-      ? `${short(dates[0])}〜${short(dates[dates.length - 1])}`
-      : dates.map(short).join("・");
-  }
-
-  // 画面に出す券の行と、その行を買う回数（日数・枚数）。WEB購入の案内に使う
-  const shownLines = [
-    ...dayGroups.flatMap(({ indices }) => {
-      const day = plan.days[indices[0]];
-      if (usesMultiDay && plan.multiDay?.dates.includes(day.plan.date)) {
-        return [];
-      }
-      return day.result.lines.map(line => ({
-        line,
-        multiplier: indices.length,
-      }));
-    }),
-    ...(plan.multiDay?.lines ?? []).map(line => ({
-      line,
-      multiplier: plan.multiDay?.ticketCount ?? 1,
-    })),
-    ...(plan.multiDay?.addOns ?? []).flatMap(addOn =>
-      addOn.lines.map(line => ({ line, multiplier: addOn.ticketCount })),
-    ),
-  ];
+export const TicketPlanCard = ({ tiers }: { tiers: TicketPlanTier[] }) => {
+  // 利用者が開閉した段階。触っていない段階は、一番安いものだけ開く
+  const [toggled, setToggled] = useState<
+    Partial<Record<PurchaseTierKey, boolean>>
+  >({});
+  const cheapest = tiers[0];
+  const fullPlan = cheapest?.view.fullPlan;
 
   // 全日が同じ理由で計算できない場合（日付・人数の未入力など）は、
   // 未確定の行を並べるより理由を1つ出したほうが分かりやすい
   const blockingNote =
+    fullPlan &&
     fullPlan.days.length > 0 &&
     fullPlan.days.every(
       day =>
@@ -268,7 +458,7 @@ export const TicketPlanCard = ({
       ? fullPlan.days[0].result.notes[0]
       : null;
 
-  if (fullPlan.days.length === 0 || blockingNote) {
+  if (!cheapest || !fullPlan || fullPlan.days.length === 0 || blockingNote) {
     return (
       <Card>
         <CardContent className="p-4 text-center">
@@ -280,262 +470,134 @@ export const TicketPlanCard = ({
     );
   }
 
+  const { view } = cheapest;
+  const { total, tripDayCount } = view;
+  // 窓口の料金しか無ければ、買い方の見出しは出さない
+  const plain = tiers.length === 1 && cheapest.key === "counter";
+
   return (
-    <div className="flex flex-col gap-3">
-      <div
-        className={cn(
-          "rounded-xl border p-4",
-          total == null
-            ? "bg-gray-50 border-gray-200"
-            : "bg-orange-50 border-orange-300",
-        )}
-      >
-        <div className="flex items-baseline justify-between gap-3">
-          {/* 金額の横の「＋ゴーグル」が長くても、見出しは潰さない */}
-          <div className="min-w-0 max-w-[55%] shrink-0">
-            <p className="text-sm font-semibold text-gray-700">
-              {tripDayCount === 1 ? "合計" : `${tripDayCount}日の合計`}
-            </p>
-            {(withRental ||
-              hasOnlineLine(shownLines.map(({ line }) => line))) && (
-              <p className="text-xs text-gray-600">
-                {[
-                  withRental && "リフト券＋レンタル",
-                  hasOnlineLine(shownLines.map(({ line }) => line)) &&
-                    "WEB購入の料金",
-                ]
-                  .filter(Boolean)
-                  .join("・")}
-              </p>
-            )}
-          </div>
-          {total == null ? (
-            <p className="text-sm font-semibold text-gray-600">未確定</p>
-          ) : (
-            <p className="min-w-0 text-right">
-              <span className="text-2xl font-bold text-gray-900 font-mono whitespace-nowrap">
-                {yen(total)}
-              </span>
-              {/* 収まらなければ「＋ゴーグル」「＋グローブ」の単位で次の行へ回す */}
-              {[
-                ...new Set(
-                  missingRentalLabels.flatMap(label => label.split("＋")),
-                ),
-              ].map(label => (
-                <span
-                  key={label}
-                  className="ml-1 inline-block text-sm font-bold text-gray-700 whitespace-nowrap"
-                >
-                  ＋{label}
-                </span>
-              ))}
-            </p>
+    <div
+      className={cn(
+        "rounded-xl border p-2.5",
+        total == null
+          ? "bg-gray-50 border-gray-200"
+          : "bg-orange-50 border-orange-300",
+      )}
+    >
+      <div className="flex items-baseline justify-between gap-3 px-1">
+        {/* 金額の横の「＋ゴーグル」が長くても、見出しは潰さない */}
+        <p className="min-w-0 max-w-[55%] shrink-0 text-sm font-semibold text-gray-700">
+          {tripDayCount === 1 ? "合計" : `${tripDayCount}日の合計`}
+          {view.withRental && (
+            <span className="ml-1.5 whitespace-nowrap text-xs font-normal text-gray-600">
+              リフト券＋レンタル
+            </span>
           )}
-        </div>
-        {missingRentalNote && (
-          <p className="mt-1 text-xs text-orange-900">{missingRentalNote}</p>
-        )}
-        {unavailableRentalNote && (
-          <p className="mt-1 text-xs text-orange-900">
-            {unavailableRentalNote}
-          </p>
-        )}
-
-        {/* 1日（または同じ内容の日のまとまり）ごとに白い枠で囲み、日付を見出しにする */}
-        <div className="mt-3 flex flex-col gap-2">
-          {dayGroups.map(({ indices }) => {
-            const index = indices[0];
-            const day = plan.days[index];
-            const dayCount = indices.length;
-            const covered =
-              usesMultiDay && plan.multiDay?.dates.includes(day.plan.date);
-            return (
-              <div
-                key={day.plan.id}
-                className="rounded-lg border border-orange-200 bg-white px-3 py-2.5"
-                style={{ order: orderOfDate(day.plan.date) }}
+        </p>
+        {total == null ? (
+          <p className="text-sm font-semibold text-gray-600">未確定</p>
+        ) : (
+          <p className="min-w-0 text-right">
+            <span className="text-2xl font-bold text-gray-900 font-mono whitespace-nowrap">
+              {yen(total)}
+            </span>
+            {/* 収まらなければ「＋ゴーグル」「＋グローブ」の単位で次の行へ回す */}
+            {[
+              ...new Set(
+                view.missingRentalLabels.flatMap(label => label.split("＋")),
+              ),
+            ].map(label => (
+              <span
+                key={label}
+                className="ml-1 inline-block text-sm font-bold text-gray-700 whitespace-nowrap"
               >
-                <div className="flex items-baseline justify-between gap-3">
-                  <p className="min-w-0 text-base font-bold text-gray-900">
-                    {dateLabelOf(indices)}
-                  </p>
-                  {!covered && (
-                    <p className="flex-shrink-0 text-base font-bold font-mono text-gray-900">
-                      {day.result.payableTotal == null
-                        ? "未確定"
-                        : yen(day.result.payableTotal * dayCount)}
-                    </p>
-                  )}
-                </div>
-                {covered && plan.multiDay && (
-                  <p className="mt-1 text-sm text-gray-600">
-                    {plan.multiDay.productName}で滑る
-                  </p>
-                )}
-                {day.result.status === "closed" && (
-                  <p className="mt-1 text-sm text-orange-900">
-                    この日は営業していません
-                    {day.result.notes[0] ? `（${day.result.notes[0]}）` : ""}
-                  </p>
-                )}
-                {day.result.status === "outside_season" && (
-                  <p className="mt-1 text-sm text-orange-900">
-                    {day.result.notes[0]}
-                  </p>
-                )}
-
-                {/* 券が1枚なら金額は見出しと同じなので行には出さない */}
-                {!covered && day.result.lines.length > 0 && (
-                  <TicketLines
-                    lines={day.result.lines}
-                    multiplier={dayCount}
-                    multiplierUnit="日"
-                    references={plan.references}
-                  />
-                )}
-
-                {!covered && (
-                  <DurationAlternatives
-                    options={day.options}
-                    dayCount={dayCount}
-                  />
-                )}
-
-                {!covered && (
-                  <ConditionalOffers
-                    className="mt-2"
-                    dayCount={dayCount}
-                    offers={day.result.conditionalOffers}
-                    sourcesOf={offer => offer.sourceNumbers}
-                    references={plan.references}
-                  />
-                )}
-              </div>
-            );
-          })}
-
-          {usesMultiDay && plan.multiDay && (
-            <div
-              className="rounded-lg border border-orange-200 bg-white px-3 py-2.5"
-              style={{ order: orderOfDate(plan.multiDay.dates[0]) }}
-            >
-              <div className="flex items-baseline justify-between gap-3">
-                <p className="min-w-0 text-base font-bold text-gray-900">
-                  {dateLabelOfDates(plan.multiDay.dates)}
-                </p>
-                <p className="flex-shrink-0 text-base font-bold text-gray-900 font-mono">
-                  {yen(plan.multiDay.ticketTotal)}
-                </p>
-              </div>
-              <div className="mt-1 flex flex-col gap-0.5">
-                {plan.multiDay.ticketSet ? (
-                  <p className="text-sm text-gray-900">
-                    {plan.multiDay.productName} × {plan.multiDay.ticketCount}
-                    セット
-                    <span className="ml-2 whitespace-nowrap text-xs text-gray-600 md:text-sm">
-                      {plan.multiDay.ticketSet.ticketsPerSet *
-                        plan.multiDay.ticketCount}
-                      枚（のべ{plan.multiDay.ticketSet.coveredPersonDays}
-                      人日分）
-                    </span>
-                  </p>
-                ) : (
-                  <TicketLines
-                    lines={plan.multiDay.lines}
-                    multiplier={plan.multiDay.ticketCount}
-                    multiplierUnit="枚"
-                    showAmounts={
-                      plan.multiDay.lines.length > 1 ||
-                      plan.multiDay.addOns.length > 0
-                    }
-                    references={plan.references}
-                  />
-                )}
-                {/* 足りない時間を足す追加券（トップアップ5時間など） */}
-                {plan.multiDay.addOns.map(addOn => (
-                  <TicketLines
-                    key={`${addOn.productId}:${addOn.date}`}
-                    lines={addOn.lines}
-                    multiplier={addOn.ticketCount}
-                    multiplierUnit="枚"
-                    showAmounts
-                    references={plan.references}
-                  />
-                ))}
-                {plan.multiDay.ticketSet && (
-                  <SourceLinks
-                    numbers={plan.multiDay.sourceNumbers}
-                    references={plan.references}
-                  />
-                )}
-              </div>
-              {(plan.multiDay.notes ?? []).map(note => (
-                <p
-                  key={note}
-                  className="mt-1 text-xs text-orange-900 md:text-sm"
-                >
-                  {note}
-                </p>
-              ))}
-              {(plan.multiDayAlternatives ?? []).map(alternative => (
-                <p
-                  key={alternative.productId}
-                  className="mt-1 flex items-baseline justify-between gap-3 text-xs text-gray-700 md:text-sm"
-                >
-                  <span className="min-w-0">
-                    同じ金額で: {alternative.productName}
-                    {(alternative.notes ?? []).length > 0 &&
-                      `（${(alternative.notes ?? []).join("・")}）`}
-                  </span>
-                  <span className="flex-shrink-0 font-mono">
-                    {yen(alternative.ticketTotal)}
-                  </span>
-                </p>
-              ))}
-              <ConditionalOffers
-                className="mt-2"
-                offers={plan.multiDay.conditionalOffers}
-                sourcesOf={offer => offer.sourceNumbers}
-                references={plan.references}
-              />
-            </div>
-          )}
-        </div>
-
-        {bundleApplied && (
-          <div className="mt-2">
-            <BundleSummary bundle={bundleApplied} />
-          </div>
-        )}
-
-        {/* セット券の料金が年齢で分かれ、年齢が空欄なので比べられなかった */}
-        {bundle && bundle.ageNeededGroupIds.length > 0 && (
-          <p className="mt-2 rounded-lg border border-orange-200 bg-white px-3 py-2 text-xs font-semibold text-red-600">
-            年齢を入れると、セット券の料金とも比べます
+                ＋{label}
+              </span>
+            ))}
           </p>
         )}
+      </div>
+      {view.missingRentalNote && (
+        <p className="mt-1 px-1 text-xs text-orange-900">
+          {view.missingRentalNote}
+        </p>
+      )}
+      {view.unavailableRentalNote && (
+        <p className="mt-1 px-1 text-xs text-orange-900">
+          {view.unavailableRentalNote}
+        </p>
+      )}
 
-        {rental && rentalShown && (
-          <div className="mt-2">
-            <RentalSummary rental={rental} dayCount={tripDayCount} />
-          </div>
-        )}
-
-        {/* 会員・クーポンなど条件を満たせば使えるセット券。合計には含めない */}
-        {bundle && bundle.conditionalOffers.length > 0 && (
-          <ConditionalOffers
-            className="mt-2"
-            offers={bundle.conditionalOffers}
-            sourcesOf={offer => offer.sourceNumbers}
-            references={references}
-          />
-        )}
-
-        {/* WEB購入の案内は、日ごとに繰り返さず最後に1回だけ出す。出典は各料金の下に出す */}
-        <div className="mt-3 flex flex-col gap-2">
-          {/* 見出しの合計（レンタル込み）と同じ基準で「通常料金（窓口）」を出す */}
-          <PurchaseSummary lines={shownLines} total={total} />
-        </div>
+      <div className="mt-2 flex flex-col gap-1.5">
+        {tiers.map((tier, index) => {
+          const open = plain || (toggled[tier.key] ?? index === 0);
+          const toggle = () =>
+            setToggled(current => ({ ...current, [tier.key]: !open }));
+          return (
+            <div
+              key={tier.key}
+              className="rounded-lg border border-orange-200 bg-white"
+            >
+              {!plain && (
+                <div className="flex items-center gap-2 px-2 py-2">
+                  <button
+                    type="button"
+                    aria-expanded={open}
+                    data-purchase-tier={tier.key}
+                    onClick={toggle}
+                    className="flex min-w-0 items-center gap-1 text-left"
+                  >
+                    <ChevronRight
+                      className={cn(
+                        "size-4 shrink-0 text-gray-500 transition-transform",
+                        open && "rotate-90",
+                      )}
+                      aria-hidden="true"
+                    />
+                    <span className="whitespace-nowrap text-base font-bold text-gray-900">
+                      {tier.label}
+                    </span>
+                    {tier.deadline && (
+                      <span className="whitespace-nowrap text-xs text-gray-600">
+                        （{monthDayOf(tier.deadline)}まで）
+                      </span>
+                    )}
+                  </button>
+                  {tier.link && (
+                    <LinkChip
+                      href={tier.link.url}
+                      tone={tier.link.kind}
+                      title={tier.link.url}
+                      className="shrink-0"
+                    >
+                      {tier.link.kind === "purchase" ? "購入" : "出典"}
+                    </LinkChip>
+                  )}
+                  {/* 金額を押しても開閉できる。キーボードとスクリーンリーダーは左の見出しを使う */}
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    aria-hidden="true"
+                    onClick={toggle}
+                    className="min-w-0 flex-1 whitespace-nowrap text-right text-base font-bold font-mono text-gray-900"
+                  >
+                    {tier.view.total == null ? "未確定" : yen(tier.view.total)}
+                  </button>
+                </div>
+              )}
+              {open && (
+                <div
+                  className={cn(
+                    "px-2 pb-2",
+                    plain ? "pt-2" : "border-t border-orange-100 pt-2",
+                  )}
+                >
+                  <TierBody tier={tier} />
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

@@ -296,6 +296,85 @@ const checkFile = file => {
   // 出典リンクが正しい箇所を指しているかは、ページを開かないと分からないので
   // ここでは見ない（verify-quotes.mjs で全件確かめる）
 
+  // 9. メインのリンク（料金表の見出し・リンク一覧・計算結果の「購入」「出典」に出す）
+  const hostOf = url => {
+    try {
+      return new URL(url).hostname;
+    } catch {
+      return null;
+    }
+  };
+  const plainUrl = url => (url ?? "").split("#")[0].replace(/\/$/u, "");
+  const links = data.main_links;
+  const onlineOffers = offers.filter(o =>
+    (o.discount_reasons ?? []).includes("online_purchase"),
+  );
+  if (!links)
+    add(
+      "main-links-missing",
+      "main_links",
+      "main_links の欄が無い（料金表の見出しに出すリンクが決まっていない）",
+    );
+  else {
+    if (!links.lift_price_url && offers.length > 0)
+      add(
+        "main-links-missing",
+        "main_links.lift_price_url",
+        "公式のリフト料金表のページが無い",
+      );
+    if (!links.lift_purchase_url && onlineOffers.length > 0)
+      add(
+        "main-links-missing",
+        "main_links.lift_purchase_url",
+        "Web料金があるのに、リフト券の購入ページの入口が無い",
+      );
+    if (!links.rental_price_url && (data.rentals ?? []).length > 0)
+      add(
+        "main-links-missing",
+        "main_links.rental_price_url",
+        "レンタル料金があるのに、公式のレンタル料金表のページが無い",
+      );
+    // レンタルの購入ページがあるのに、Webで予約・購入する料金を1件も集めていない
+    if (
+      links.rental_purchase_url &&
+      !(data.rentals ?? []).some(
+        r =>
+          r.purchase_url || (r.channel_ids ?? []).some(id => channels.get(id)?.url),
+      )
+    )
+      add(
+        "rental-web-price-not-collected",
+        "rentals",
+        `${links.rental_purchase_url} のWeb料金が rentals に無い`,
+      );
+  }
+  // 券ごとの商品ページが出典に入っているのに、購入先（purchase_url）になっていない。
+  // 画面の「出典」がその券の商品ページへ飛ばず、表の見出しに商品ページが並ぶ
+  const unlinked = onlineOffers.filter(offer => {
+    if (offer.purchase_url) return false;
+    const channelUrls = (offer.channel_ids ?? [])
+      .map(id => channels.get(id)?.url)
+      .filter(Boolean);
+    return (offer.source_refs ?? []).some(id => {
+      const url = sources.get(id)?.url;
+      return (
+        url &&
+        !FILE_SOURCE.test(url) &&
+        channelUrls.some(
+          channelUrl =>
+            hostOf(channelUrl) === hostOf(url) &&
+            plainUrl(channelUrl) !== plainUrl(url),
+        )
+      );
+    });
+  });
+  if (unlinked.length > 0)
+    add(
+      "web-offer-product-page-not-linked",
+      `${unlinked.length}/${onlineOffers.length}`,
+      `購入サイトの個別ページが出典にあるのに purchase_url が無い（例: ${unlinked[0].id}）`,
+    );
+
   // 10. 後から加わった収集項目（レンタル・夜のレンタル・雪マジ・ナイターの有無）
   const notes = JSON.stringify([
     data.data_quality ?? {},

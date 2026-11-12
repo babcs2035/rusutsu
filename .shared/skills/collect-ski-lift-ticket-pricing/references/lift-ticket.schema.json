@@ -338,6 +338,58 @@
         }
       }
     },
+    "main_links": {
+      "description": "このスキー場の料金の「メインのリンク」。料金表の見出し・リンク一覧画面・計算結果の「購入」「出典」ボタンに出す。保存時にDBの列（リフト料金URL・リフト購入URL・レンタル料金URL・レンタル購入URL）へ写す。4つとも欄を作り、無いものは null にする（null は「公式で確かめたが無い」）。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lift_price_url",
+        "lift_purchase_url",
+        "rental_price_url",
+        "rental_purchase_url"
+      ],
+      "properties": {
+        "lift_price_url": {
+          "description": "公式のリフト料金表が載っているページ（出典用）。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri"
+        },
+        "lift_purchase_url": {
+          "description": "リフト券をWebで買うページの入口（購入用）。券ごとの商品ページではなく、リフト券の一覧・トップ。Web販売が無ければ null。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri"
+        },
+        "rental_price_url": {
+          "description": "公式のレンタル料金表が載っているページ（出典用）。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri"
+        },
+        "rental_purchase_url": {
+          "description": "レンタルをWebで予約・購入するページの入口（購入用）。無ければ null。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri"
+        },
+        "notes_ja": {
+          "description": "メインのリンクが1種類につき2つ以上あって1つに絞れなかったとき（料金表がエリア別に2ページある等）、載せなかった候補のURLと理由。",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
     "yukimaji": {
       "anyOf": [
         {
@@ -1472,6 +1524,14 @@
             "type": "string"
           }
         },
+        "purchase_url": {
+          "description": "この料金をWebで買う（予約する）ページ。券ごと・用具ごとの商品ページがあればそのURL。無ければ省略し、画面は channel の url → main_links の購入URL の順に使う。Web・前売の料金にだけ書く。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri"
+        },
         "channel_ids": {
           "type": "array",
           "items": {
@@ -1892,6 +1952,38 @@
             null
           ],
           "description": "課金の単位（taxonomy.json の fee_units）。1人ごと／1枚ごと／1決済ごと。省略・null は per_ticket と同じに扱う"
+        },
+        "source_quotes": {
+          "type": "array",
+          "description": "手数料額が書かれている場所。出典リンクで #:~:text= によりその文言をハイライトする。text・prefix は出典ページの表示テキストと完全一致させる。",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "source_id",
+              "text"
+            ],
+            "properties": {
+              "source_id": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "prefix": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "suffix": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
         }
       },
       "description": "★**券の料金とは別に払う「返ってこない追加負担」だけ**を記録する（ICカード発行手数料・システム利用料・送料など）。\n★**返金される保証金（ICカードデポジット等）は記録しない。** 返却すれば戻ってくるので実質の負担ではない。返金の有無を表すフラグも持たない — 載っているものは全て負担、というだけにする。\n★**特定の状況でのみ発生する費用も記録しない**（再発行手数料＝紛失時、キャンセル料など）。\n券の提示価格に返金される保証金が含まれている場合は、**offerの price を実質負担（保証金を差し引いた額）で記録し**、公式提示額と差し引いた理由を price.notes_ja に書く。知りたいのは実質いくら払うかであって、内訳の分類ではない。"
@@ -1976,6 +2068,14 @@
           "items": {
             "type": "string"
           }
+        },
+        "purchase_url": {
+          "description": "この料金をWebで買う（予約する）ページ。券ごと・用具ごとの商品ページがあればそのURL。無ければ省略し、画面は channel の url → main_links の購入URL の順に使う。Web・前売の料金にだけ書く。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri"
         },
         "channel_ids": {
           "type": "array",

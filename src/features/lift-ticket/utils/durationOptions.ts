@@ -609,6 +609,16 @@ export const calculateDurationOptions = (
       notes.push(operatingNote(scope));
   }
 
+  // 「1日＋ナイター」を2枚まででも覆えない日（白銀台は営業12時間・最長5時間券）は、
+  // 2枚で滑れる時間がいちばん長い組み合わせを出す。3枚以上は現実の買い方と合わない
+  if (primaryCombo == null && duration.kind === "day" && duration.withNight) {
+    const longest = combos
+      .filter(combo => !combo.restricted)
+      .sort((a, b) => measure(b.covered) - measure(a.covered) || byPrice(a, b));
+    primaryCombo = longest[0] ?? null;
+    if (primaryCombo) notes.push(operatingNote(scope));
+  }
+
   if (primaryCombo == null)
     return unavailableOptions(
       "unavailable",

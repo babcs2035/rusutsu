@@ -5,6 +5,7 @@ node = "24.19.0"
 [tasks]
 "recommendations:rebuild" = { description = "コース推薦特徴量を再計算（既定dry-run、--applyで開発／接続先DBへ反映）", run = "node --import tsx src/private/scripts/rebuildCourseRecommendations.ts" }
 "reviews:publish" = { description = "レビューJSONの本番差分を確認（--applyで反映）", run = "node --import tsx scripts/publishReview.ts" }
+"resort-links:publish" = { description = "収集したリンク（公式・外部サイト）の本番差分を確認（--applyで反映）", run = "node --import tsx scripts/publishResortLinks.ts" }
 "lift-ticket:publish" = { description = "リフト券JSONの本番差分を確認（--applyで反映、--pullで本番→ローカル）", run = "node --import tsx scripts/publishLiftTicket.ts" }
 "links:strip-tracking-params" = { description = "SNSリンクの?stkn=等トラッキングトークンを除去（--applyで反映）", run = "pnpm tsx src/private/scripts/stripLinkTrackingParams.ts" }
 # --- Project Setup ---
@@ -48,6 +49,7 @@ start = { description = "プロダクションサーバー起動", run = "pnpm s
 "crawl:gelendes" = { description = "詳細情報 (Gelendes) の更新", run = "pnpm tsx src/private/scripts/crawlGelendes.ts" }
 "crawl:weathers" = { description = "天気 (Weathers) の更新", run = "pnpm tsx src/private/scripts/crawlWeathers.ts" }
 "crawl:forecasts" = { description = "予報 (Forecasts) の更新", run = "pnpm tsx src/private/scripts/crawlForecasts.ts" }
+"crawl:tour-links" = { description = "ツアー会社サイトのスキー場別リンクを収集（反映は resort-links:publish -- --source）", run = "pnpm tsx src/private/scripts/tour-links/run.ts" }
 "crawl:latest" = { description = "スキー場別crawl_latestを一括または個別実行", run = "node --import tsx scripts/runCrawlLatestBatch.ts" }
 
 "crawl:all" = { description = "全データのクローリング実行", run = [

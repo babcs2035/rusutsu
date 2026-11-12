@@ -29,7 +29,11 @@ import { getResortDecisionData } from "@/lib/resortDecisionData";
 import { readDisplayGroupsForResort } from "@/lib/resortDisplayGroups";
 import { getResortReadingInfo } from "@/lib/resortReadings";
 import { readSkiResortById } from "@/lib/skiResortData";
-import { getDataDocument } from "@/server/data-documents/client";
+import {
+  getDataDocument,
+  listDataDocuments,
+} from "@/server/data-documents/client";
+import { currentEditCapture } from "@/server/edit-requests/capture";
 import type { SkiResortDetailRecord } from "@/server/ski-resorts/repository";
 
 type OperationCountSummary = {
@@ -140,13 +144,38 @@ type ResortLinks = {
   rawLinksMap: ReturnType<typeof weatherLinksMapFromDocument>;
 };
 
+/**
+ * この文書は全スキー場分で約75万文字ある。詳細を開くたびに本文を読んで解析し直さないよう、
+ * 読んだ結果を版（hash）と一緒に覚えておき、版が変わったときだけ読み直す。
+ * 版の確認は本文を読まない一覧の問い合わせで行う。
+ */
+let cachedResortLinks: { hash: string; links: ResortLinks } | null = null;
+
 const readResortLinks = async (): Promise<ResortLinks> => {
+  // 申請の下書きを重ねて読む場面では、覚えた内容を使わない
+  if (!currentEditCapture() && cachedResortLinks) {
+    const summaries = await listDataDocuments(SKI_RESORT_LINKS_DOCUMENT_KEY);
+    const current = summaries.find(
+      summary => summary.key === SKI_RESORT_LINKS_DOCUMENT_KEY,
+    );
+    if (current?.hash === cachedResortLinks.hash)
+      return cachedResortLinks.links;
+  }
   const document = await getDataDocument(SKI_RESORT_LINKS_DOCUMENT_KEY);
-  return {
+  const links = {
     linksMap: parseResortLinksMap(document?.content ?? null),
     rawLinksMap: weatherLinksMapFromDocument(document?.content ?? null),
   };
+  if (document && !currentEditCapture())
+    cachedResortLinks = { hash: document.hash, links };
+  return links;
 };
+
+/** リンク一覧用。旧来のリンク文書から、指定スキー場の分だけを取り出す */
+export async function readLegacyResortLinks(resortIds: readonly string[]) {
+  const { linksMap } = await readResortLinks();
+  return resortIds.map(id => linksMap[id]).filter(Boolean);
+}
 
 /** 地図の形を持たなくても営業件数を出せるよう、サーバー側で集計した結果 */
 export type ResortOperationStatus = {

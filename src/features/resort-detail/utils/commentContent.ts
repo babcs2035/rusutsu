@@ -96,3 +96,38 @@ export function parseCommentContent(
   for (const child of template.content.childNodes) visit(child);
   return parts;
 }
+
+const BLANK_CHAR = /[ \t\r\f\v 　]/u;
+/**
+ * 取得元の都合で空行が何行も続くコメントがあるので、続く空行は1行にまとめる。
+ * スペースだけの行も空行として扱い、本文の先頭と末尾の空行は除く。
+ * リンクの範囲は変えない。
+ */
+export function collapseBlankLines(parts: CommentPart[]): CommentPart[] {
+  const result: CommentPart[] = [];
+  const append = (text: string, href?: string) => {
+    if (!text) return;
+    const previous = result.at(-1);
+    if (previous && previous.href === href) previous.text += text;
+    else result.push({ text, ...(href ? { href } : {}) });
+  };
+  let newlines = 0;
+  let indent: Array<{ char: string; href?: string }> = [];
+  for (const part of parts) {
+    for (const char of part.text) {
+      if (char === "\n") {
+        newlines++;
+        indent = [];
+      } else if (BLANK_CHAR.test(char)) {
+        indent.push({ char, href: part.href });
+      } else {
+        if (result.length) append("\n".repeat(Math.min(newlines, 2)));
+        for (const item of indent) append(item.char, item.href);
+        append(char, part.href);
+        newlines = 0;
+        indent = [];
+      }
+    }
+  }
+  return result;
+}

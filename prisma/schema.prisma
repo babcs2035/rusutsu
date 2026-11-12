@@ -105,6 +105,7 @@ model SkiResort {
   crawlLatestCurrents CrawlLatestCurrent[]
   operationSummary    SkiResortOperationSummary?
   communityPosts      CommunityPost[]
+  resortLinks         ResortLink[]
 
   @@index([mergedIntoId])
   @@map("ski_resorts")
@@ -151,18 +152,58 @@ model Ticket {
 // 構造の正本は Skill の lift-ticket.schema.json なので、中身は JSON のまま持つ。
 // json（jsonbではない）はキー順を保つため、ローカルのバックアップJSONと差分が揃う。
 model LiftTicketSeason {
-  skiResortId String
-  skiResort   SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade)
-  seasonId    String    @db.VarChar(9) // "2025-2026"
-  status      String    @db.VarChar(20) // data.data_quality.status
-  data        Json      @db.Json
-  version     Int       @default(1)
-  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
-  updatedAt   DateTime  @default(now()) @updatedAt @db.Timestamptz(3)
+  skiResortId       String
+  skiResort         SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade)
+  seasonId          String    @db.VarChar(9) // "2025-2026"
+  status            String    @db.VarChar(20) // data.data_quality.status
+  data              Json      @db.Json
+  // data.main_links の写し（保存時に文書から取り出す）。リンク一覧のように、
+  // 料金の文書全体を読まずにメインのリンクだけを引く画面で使う。
+  liftPriceUrl      String? // 公式のリフト料金表のページ（出典用）
+  liftPurchaseUrl   String? // リフト券をWebで買うページの入口（購入用）
+  rentalPriceUrl    String? // 公式のレンタル料金表のページ（出典用）
+  rentalPurchaseUrl String? // レンタルをWebで予約・購入するページの入口（購入用）
+  version           Int       @default(1)
+  createdAt         DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime  @default(now()) @updatedAt @db.Timestamptz(3)
 
   @@id([skiResortId, seasonId])
   @@index([seasonId])
   @@map("lift_ticket_seasons")
+}
+
+// =====================================
+// スキー場ごとのリンク
+// =====================================
+
+/// 公式ページ・外部サイトのツアー/割引・動画などを、1リンク=1行で持つ。
+/// 営業状況のURL（クローラー）とリフト券の出典（lift_ticket_seasons）は持ち主が別なので入れない。
+model ResortLink {
+  id          String    @id @default(cuid())
+  skiResortId String
+  skiResort   SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade)
+  /// 種類（courseInfo, parking, busTour, externalDiscount など）。増えてもマイグレーションは要らない
+  type        String    @db.VarChar(50)
+  /// 出どころ。"official" か外部サイトのID（orion, jaf など）
+  source      String    @db.VarChar(50)
+  /// 種類の中の小分類（外部割引の presale / membership など）
+  category    String?   @db.VarChar(50)
+  /// 出発地・店名・リフト名など、同じ種類のリンクを区別する名前
+  label       String?   @db.VarChar(200)
+  /// 飛び先（#id や #:~:text=）を含めたURL
+  url         String    @db.Text
+  note        String?   @db.VarChar(500)
+  sortOrder   Int       @default(0)
+  /// 最後に書いた主体。skill / crawler は自動更新、admin / editRequest は人の手直し
+  editorKind  String    @db.VarChar(20)
+  /// スキル名・クローラー名・ユーザーID
+  editorId    String?   @db.VarChar(100)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime  @default(now()) @updatedAt @db.Timestamptz(3)
+
+  @@index([skiResortId, sortOrder])
+  @@index([source, type])
+  @@map("resort_links")
 }
 
 // =====================================
