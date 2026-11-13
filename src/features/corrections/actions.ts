@@ -25,6 +25,7 @@ import {
   anonymousSubmissionKey,
   limitAnonymous,
 } from "@/server/community/rateLimit";
+import { remoteCommunity } from "@/server/community/remoteClient";
 import {
   CORRECTION_LIFT_FIELDS,
   CORRECTION_RESORT_FIELDS,
@@ -43,6 +44,10 @@ import {
   correctionLinks,
   validateCorrectionLinks,
 } from "@/server/corrections/links";
+import {
+  correctionAdjustmentSchema,
+  correctionDecisionSchema,
+} from "@/server/corrections/remoteContract";
 import { getDataDocument } from "@/server/data-documents/client";
 import { writeDataDocumentsInTransaction } from "@/server/data-documents/repository";
 import { hashDataDocumentContent } from "@/server/data-documents/repositoryCore";
@@ -52,6 +57,7 @@ import {
 } from "@/server/derivedGeometry";
 import { assertBoundedPayload } from "@/server/edit-requests/contract";
 import { drainEditRequestJobs } from "@/server/edit-requests/jobs";
+import { remoteEditRequestResult } from "@/server/edit-requests/remoteClient";
 import { adminSkiResortUpdateSchema } from "@/server/ski-resorts/adminContract";
 import { updateAdminSkiResortInTransaction } from "@/server/ski-resorts/repository";
 import { featureIdentity } from "@/shared/course-lift/identity";
@@ -93,10 +99,15 @@ export async function submitCorrection(
 ) {
   try {
     const parsed = submitCorrectionSchema.parse(input);
-    if (usesRemoteDataApi())
-      throw new Error(
-        "正本データAPI接続中は、修正提案の受付を一時停止しています。",
+    if (usesRemoteDataApi()) {
+      const result = await remoteCommunity(
+        { operation: "correction", input: parsed },
+        photos,
       );
+      return result.ok
+        ? { ok: true as const, requestId: result.data.requestId }
+        : result;
+    }
     const submissionKey = await anonymousSubmissionKey(parsed.operationKey);
     const prior = await prisma.editRequest.findUnique({
       where: { submissionKey },
@@ -284,8 +295,25 @@ export async function decideCorrectionItem(
   let nextVersion = expectedVersion;
   let resultingDecision = "";
   try {
-    if (usesRemoteDataApi())
-      throw new Error("正本データAPI接続中は修正の反映を停止しています。");
+    if (usesRemoteDataApi()) {
+      const result = await remoteEditRequestResult(
+        {
+          operation: "correction-decide",
+          id,
+          version: expectedVersion,
+          index,
+          decision,
+          comment,
+        },
+        correctionDecisionSchema,
+      );
+      if (result.ok) {
+        revalidatePath("/admin/corrections");
+        revalidatePath(`/admin/corrections/${id}`);
+        revalidatePath("/", "layout");
+      }
+      return result;
+    }
     await prisma.$transaction(
       async tx => {
         const actor = await tx.user.findUnique({
@@ -395,6 +423,20 @@ export async function adjustCorrectionItem(
 ) {
   const admin = await requireAdmin();
   try {
+    if (usesRemoteDataApi()) {
+      const result = await remoteEditRequestResult(
+        {
+          operation: "correction-adjust",
+          id,
+          version: expectedVersion,
+          index,
+          proposed,
+        },
+        correctionAdjustmentSchema,
+      );
+      if (result.ok) revalidatePath(`/admin/corrections/${id}`);
+      return result;
+    }
     await prisma.$transaction(
       async tx => {
         const actor = await tx.user.findUnique({

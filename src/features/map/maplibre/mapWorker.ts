@@ -1,5 +1,5 @@
 import { setWorkerUrl } from "maplibre-gl";
-import { BASE_PATH } from "../constants";
+import { MAPLIBRE_WORKER_URL } from "./mapWorkerUrl";
 
 /**
  * ワーカーの場所を教える。
@@ -13,4 +13,4 @@ import { BASE_PATH } from "../constants";
  * 地図を作るモジュールが複数あるので、副作用だけをこのファイルに切り出して
  * import 一行で持ち込めるようにしている。呼ばれるのは最初の import のときだけ。
  */
-setWorkerUrl(`${BASE_PATH}/maplibre/maplibre-gl-worker.mjs`);
+setWorkerUrl(MAPLIBRE_WORKER_URL);

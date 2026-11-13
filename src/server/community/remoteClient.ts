@@ -23,7 +23,7 @@ import {
 
 async function remoteRequest(command: CommunityCommand, photos?: FormData) {
   // Do not accept a user ID, email, role or Google identity from the browser.
-  const session = await auth();
+  const session = command.operation === "correction" ? null : await auth();
   const id = session?.user?.id;
   const account = id
     ? await prisma.account.findFirst({
@@ -37,14 +37,23 @@ async function remoteRequest(command: CommunityCommand, photos?: FormData) {
     );
   // 写真はCookieを読めない経路からも取得するので、リアクションの識別子を付けない
   const reaction =
-    id || command.operation === "photo"
+    id || command.operation === "photo" || command.operation === "correction"
       ? null
       : await reactionIdentity(command.operation === "react");
   const payload = JSON.stringify({
     command: commandSchema.parse(command),
     googleAccountId: account?.providerAccountId ?? null,
-    ...(command.operation === "report" || (command.operation === "react" && !id)
+    ...(command.operation === "report" ||
+    command.operation === "correction" ||
+    (command.operation === "react" && !id)
       ? { anonymousIdentity: await anonymousSubmissionKey("rate-limit") }
+      : {}),
+    ...(command.operation === "correction"
+      ? {
+          submissionKey: await anonymousSubmissionKey(
+            command.input.operationKey,
+          ),
+        }
       : {}),
     ...(reaction ? { reactionIdentity: reaction } : {}),
   });
@@ -56,16 +65,22 @@ async function remoteRequest(command: CommunityCommand, photos?: FormData) {
     form.set("command", payload);
     const files = [...photos.entries()];
     if (
-      files.length > 1 ||
+      files.length > (command.operation === "correction" ? 3 : 1) ||
       files.some(
         ([key, file]) =>
-          !/^photos:[a-f0-9-]{36}$/i.test(key) ||
+          !(command.operation === "correction"
+            ? key === "photos"
+            : /^photos:[a-f0-9-]{36}$/i.test(key)) ||
           !(file instanceof File) ||
           !file.size ||
           file.size > 8 * 1024 * 1024,
       )
     )
-      throw new Error("写真は1枚8MB以内、投稿ごとに1枚までです。");
+      throw new Error(
+        command.operation === "correction"
+          ? "写真は1枚8MB以内、3枚までです。"
+          : "写真は1枚8MB以内、投稿ごとに1枚までです。",
+      );
     for (const [key, file] of files) form.append(key, file);
     body = form;
   }
@@ -98,9 +113,12 @@ async function remoteRequest(command: CommunityCommand, photos?: FormData) {
       (response.status === 404 || response.status === 405) &&
       error?.error?.code !== "NOT_FOUND"
         ? "接続先が投稿APIに未対応です。今回の変更を本番サーバーにも反映してください。"
-        : typeof error?.error?.message === "string"
-          ? error.error.message
-          : "投稿APIからデータを取得できませんでした。";
+        : command.operation === "correction" &&
+            error?.error?.code === "INVALID_COMMAND"
+          ? "接続先が情報修正APIに未対応です。今回の変更を本番サーバーにも反映してください。"
+          : typeof error?.error?.message === "string"
+            ? error.error.message
+            : "投稿APIからデータを取得できませんでした。";
     throw new InternalDataApiError(message, response.status);
   }
   return response;

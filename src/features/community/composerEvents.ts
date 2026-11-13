@@ -36,7 +36,42 @@ export type ComposeRequest = {
   resortId: string;
   target?: { kind: "COURSE" | "LIFT"; id: string };
   postId?: string;
+  /** 閉じたら戻る先。自分の投稿一覧から編集したときは一覧へ戻す */
+  returnTo?: "account-posts";
 };
+
+export const OPEN_RESORT_COMPOSER_EVENT = "rusutsu:open-resort-composer";
+export const COMPOSER_RETURN_EVENT = "rusutsu:composer-return";
+// 詳細がまだ開いていないスキー場の投稿画面を開くとき、詳細が届くまで預かる
+let pendingCompose: ComposeRequest | null = null;
+export function peekPendingCompose(resortId?: string | null) {
+  return pendingCompose && pendingCompose.resortId === resortId
+    ? pendingCompose
+    : null;
+}
+export function takePendingCompose(resortId?: string | null) {
+  const request = peekPendingCompose(resortId);
+  if (request) pendingCompose = null;
+  return request;
+}
+/**
+ * 画面を移らずに、そのスキー場の詳細を開いて投稿画面を出す。
+ * 詳細が開いていればそのまま渡し、開いていなければ一覧画面に開いてもらう。
+ */
+export function openResortComposer(request: ComposeRequest) {
+  if (requestCommunityComposer(request)) return;
+  pendingCompose = request;
+  window.dispatchEvent(
+    new CustomEvent(OPEN_RESORT_COMPOSER_EVENT, { detail: request }),
+  );
+}
+/** 投稿画面を閉じたとき、開く前の画面へ戻してもらう */
+export function returnFromComposer(returnTo: ComposeRequest["returnTo"]) {
+  if (!returnTo) return;
+  window.dispatchEvent(
+    new CustomEvent(COMPOSER_RETURN_EVENT, { detail: { returnTo } }),
+  );
+}
 
 // A mounted resort detail handles this synchronously. Outside that view the
 // caller can navigate to the resort URL, which opens the same panel.

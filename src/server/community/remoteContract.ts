@@ -13,10 +13,12 @@ import {
   reportDraftSchema,
   reportEntrySchema,
 } from "@/features/community/contract";
+import { submitCorrectionSchema } from "@/server/corrections/contract";
 
 export const COMMUNITY_API_PATH = "/api/internal/v1/community";
 export const MAX_COMMAND_JSON_BYTES = 1024 * 1024;
 export const MAX_MULTIPART_BYTES = 8 * 1024 * 1024 + 1024 * 1024;
+export const MAX_CORRECTION_MULTIPART_BYTES = 27 * 1024 * 1024;
 
 const versionSchema = z.number().int().positive();
 const operationKeySchema = z.string().uuid();
@@ -58,6 +60,10 @@ const updateInputSchema = z.strictObject({
   removePhotoIds: z.array(idSchema).max(6),
 });
 const commandSchemaBase = z.discriminatedUnion("operation", [
+  z.strictObject({
+    operation: z.literal("correction"),
+    input: submitCorrectionSchema,
+  }),
   z.strictObject({ operation: z.literal("courses"), resortId: idSchema }),
   z.strictObject({ operation: z.literal("feed"), input: feedInputSchema }),
   z.strictObject({
@@ -127,6 +133,10 @@ export const requestSchema = z.strictObject({
   command: commandSchema,
   googleAccountId: z.string().min(1).max(200).nullable(),
   anonymousIdentity: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .optional(),
+  submissionKey: z
     .string()
     .regex(/^[a-f0-9]{64}$/)
     .optional(),
@@ -215,6 +225,7 @@ const notificationSchema: z.ZodType<CommunityNotificationDto> = z.strictObject({
 });
 
 export const successPayloadSchemas = {
+  correction: z.strictObject({ requestId: z.string().min(1).max(100) }),
   courses: mapDataSchema,
   feed: z.strictObject({
     posts: z.array(postSchema),

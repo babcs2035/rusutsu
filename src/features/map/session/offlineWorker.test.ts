@@ -2,12 +2,17 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { runInNewContext } from "node:vm";
+import { MAPLIBRE_WORKER_URL } from "../maplibre/mapWorkerUrl";
 
 const source = readFileSync("public/map-sw.js", "utf8");
+const workerURL = (version: string) =>
+  `https://example.com/rusutsu/maplibre/maplibre-gl-worker.mjs?v=${version}`;
 function worker(
   fetcher: (request: Request) => Promise<Response>,
   storageBlocked = false,
 ) {
+  // インメモリ保存は同じミリ秒で完了するため、閲覧順を確実に進める。
+  let usedAt = Date.now();
   const handlers = new Map<string, (event: unknown) => void>();
   const stores = new Map<string, Map<string, Response>>();
   const key = (request: Request | string) =>
@@ -42,6 +47,11 @@ function worker(
     Response,
     Headers,
     URL,
+    Date: class extends Date {
+      static now() {
+        return ++usedAt;
+      }
+    },
     setTimeout,
     clearTimeout,
   });
@@ -190,6 +200,25 @@ test("保存済みでも通信できれば最新の画面を開く", async () =>
   assert.equal(await response?.text(), "latest");
 });
 
+test("旧い未バージョンのworkerキャッシュは現行URLに一致しない", async () => {
+  const runtime = worker(async () => {
+    throw new TypeError("offline");
+  });
+  const assets = await runtime.caches.open("rusutsu-map-v1-assets");
+  await assets.put(
+    "https://example.com/rusutsu/maplibre/maplibre-gl-worker.mjs",
+    new Response("old worker"),
+  );
+  const request = {
+    url: `https://example.com${MAPLIBRE_WORKER_URL}`,
+    method: "GET",
+    mode: "cors",
+  };
+  const response = runtime.dispatch(request);
+  assert.ok(response);
+  await assert.rejects(response);
+});
+
 test("応答しない通信でも待ち時間後に保存画面を開く", async () => {
   const runtime = worker(() => new Promise(() => {}));
   await (await runtime.caches.open("rusutsu-map-v1-home")).put(
@@ -263,29 +292,28 @@ test("詳細保存の途中失敗を記録し、取得済みタイルを残し�
   );
 });
 
-test("新版の起動資産を取得できなければ既存HTMLを置き換えない", async () => {
-  const runtime = worker(async request => {
-    if (
-      String(request).includes("missing.js") ||
-      request.url?.includes("missing.js")
-    )
-      return new Response("missing", { status: 404 });
-    return new Response(
-      '<html><script src="/rusutsu/_next/static/missing.js"></script></html>',
-      { headers: { "content-type": "text/html" } },
+for (const missing of ["missing.js", "maplibre-gl-worker.mjs"]) {
+  test(`新版の起動資産 ${missing} を取得できなければ既存HTMLを置き換えない`, async () => {
+    const runtime = worker(async request => {
+      if (request.url?.includes(missing))
+        return new Response("missing", { status: 404 });
+      return new Response(
+        `<html><script src="/rusutsu/_next/static/missing.js"></script><meta name="rusutsu-map-worker" content="${MAPLIBRE_WORKER_URL}"></html>`,
+        { headers: { "content-type": "text/html" } },
+      );
+    });
+    const cache = await runtime.caches.open("rusutsu-map-v1-home");
+    await cache.put(
+      "https://example.com/rusutsu",
+      new Response("old complete home"),
+    );
+    await runtime.saveHome();
+    assert.equal(
+      await (await cache.match("https://example.com/rusutsu"))?.text(),
+      "old complete home",
     );
   });
-  const cache = await runtime.caches.open("rusutsu-map-v1-home");
-  await cache.put(
-    "https://example.com/rusutsu",
-    new Response("old complete home"),
-  );
-  await runtime.saveHome();
-  assert.equal(
-    await (await cache.match("https://example.com/rusutsu"))?.text(),
-    "old complete home",
-  );
-});
+}
 
 test("直近2件の詳細だけ残し、残す詳細と共有するタイルは消さない", async () => {
   const runtime = worker(async () => new Response("saved"));
@@ -366,31 +394,41 @@ test("比較などで表示しただけのタイルも圏外で再表示でき�
 
 test("新しい版の画面を保存したら旧ビルドの JS だけを消す", async () => {
   let version = "a";
+  let online = true;
   const runtime = worker(async request => {
+    if (!online) throw new TypeError("offline");
     if (String(request.url ?? request).endsWith("/rusutsu"))
       return new Response(
-        `<html><script src="/rusutsu/_next/static/chunks/${version}.js"></script></html>`,
+        `<html><script src="/rusutsu/_next/static/chunks/${version}.js"></script><meta name="rusutsu-map-worker" content="/rusutsu/maplibre/maplibre-gl-worker.mjs?v=${version}"></html>`,
         { headers: { "content-type": "text/html" } },
       );
-    return new Response("asset");
+    return new Response(`worker-${version}`);
   });
   const assets = await runtime.caches.open("rusutsu-map-v1-assets");
   const asset = (name: string) =>
     `https://example.com/rusutsu/_next/static/chunks/${name}.js`;
+  const workerAsset = (name: string) => workerURL(name);
   await runtime.saveHome();
   // 同じ版の遅延 chunk は残る。
   await runtime.message({ type: "WARM_MAP", assets: [asset("lazy")] });
   await runtime.saveHome();
   assert.ok(await assets.match(asset("a")));
   assert.ok(await assets.match(asset("lazy")));
+  assert.equal(
+    await (await assets.match(workerAsset("a")))?.text(),
+    "worker-a",
+  );
   version = "b";
   await runtime.saveHome();
   assert.ok(await assets.match(asset("b")));
   assert.equal(await assets.match(asset("a")), undefined);
   assert.equal(await assets.match(asset("lazy")), undefined);
-  assert.ok(
-    await assets.match(
-      "https://example.com/rusutsu/maplibre/maplibre-gl-worker.mjs",
-    ),
-  );
+  assert.ok(await assets.match(workerAsset("b")));
+  online = false;
+  const response = await runtime.dispatch({
+    url: workerAsset("b"),
+    method: "GET",
+    mode: "cors",
+  });
+  assert.equal(await response?.text(), "worker-b");
 });

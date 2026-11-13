@@ -179,6 +179,17 @@ export async function getPostDetail(postId: string) {
     direct.getPostDetail(postId),
   );
 }
+/**
+ * 投稿画面を開くときに要るアカウントと（編集なら）投稿を1回でまとめて返す。
+ * サーバーアクションはブラウザから1件ずつ順に送られるので、分けると待ちが重なる。
+ */
+export async function getComposerSetup(postId?: string) {
+  const [account, detail] = await Promise.all([
+    getCommunityAccount(),
+    postId ? getPostDetail(postId) : null,
+  ]);
+  return { account, detail };
+}
 export async function setPostReaction(
   postId: string,
   kind: string,

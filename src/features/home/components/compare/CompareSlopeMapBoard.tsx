@@ -155,18 +155,20 @@ export const OperationCount = ({
   summary,
   lift = false,
   size = "sm",
+  compact = false,
 }: {
   label: string;
   summary: CourseStatusSummary;
   lift?: boolean;
   size?: "sm" | "md";
+  compact?: boolean;
 }) => (
   <span
     role="group"
     aria-label={label}
     className={cn(
       "inline-flex shrink-0 items-center gap-1 whitespace-nowrap",
-      size === "md" ? "h-6 gap-1.5" : "h-5",
+      size === "md" ? (compact ? "h-6 gap-1" : "h-6 gap-1.5") : "h-5",
     )}
   >
     <CenteredStatusText
@@ -181,8 +183,9 @@ export const OperationCount = ({
       className={cn(
         "inline-flex items-center leading-none font-bold tabular-nums text-slate-900",
         size === "md"
-          ? "gap-1.5 text-base [&_[role=img]]:size-3.5 [&_svg]:size-3.5"
+          ? "text-base [&_[role=img]]:size-3.5 [&_svg]:size-3.5"
           : "gap-0.5 text-sm [&_[role=img]]:size-3 [&_svg]:size-3",
+        size === "md" && (compact ? "gap-1" : "gap-1.5"),
       )}
     >
       {(

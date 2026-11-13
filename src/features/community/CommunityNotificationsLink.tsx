@@ -1,10 +1,14 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { getNotifications } from "./actions";
 
-export function CommunityNotificationsLink() {
+export function CommunityNotificationsLink({
+  onOpen,
+}: {
+  onOpen: (view: "posts" | "settings") => void;
+}) {
   const [count, setCount] = useState(0);
   useEffect(() => {
     let active = true;
@@ -16,24 +20,26 @@ export function CommunityNotificationsLink() {
     };
   }, []);
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-      <Link
-        className="text-sm font-medium text-sky-800 underline"
-        href="/account/posts"
+    <div className="grid grid-cols-2 gap-2">
+      <Button
+        variant="outline"
+        className="h-12 text-sm font-semibold text-gray-800"
+        onClick={() => onOpen("posts")}
       >
         自分の投稿
-      </Link>
-      <Link
-        className="text-sm font-medium text-sky-800 underline"
-        href="/account/community"
+      </Button>
+      <Button
+        variant="outline"
+        className="h-12 text-sm font-semibold text-gray-800"
+        onClick={() => onOpen("settings")}
       >
-        コミュニティ設定・通知
+        設定
         {count > 0 && (
           <span className="ml-1 rounded-full bg-red-600 px-1.5 py-0.5 text-xs text-white">
             {count}
           </span>
         )}
-      </Link>
+      </Button>
     </div>
   );
 }

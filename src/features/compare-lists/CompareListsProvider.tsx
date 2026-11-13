@@ -16,6 +16,7 @@ import {
   deleteCompareList,
   listCompareLists,
   saveCompareList,
+  updateCompareListResorts,
 } from "./actions";
 import type { CompareListSummary } from "./types";
 
@@ -31,6 +32,14 @@ type CompareListsContextValue = {
     resortIds: string[];
   }) => Promise<CompareListSummary | null>;
   remove: (id: string) => Promise<boolean>;
+  addResorts: (
+    id: string,
+    resortIds: string[],
+  ) => Promise<CompareListSummary | null>;
+  removeResort: (
+    id: string,
+    resortId: string,
+  ) => Promise<CompareListSummary | null>;
 };
 
 const CompareListsContext = createContext<CompareListsContextValue | null>(
@@ -66,12 +75,10 @@ export function CompareListsProvider({
     setState({
       userId: account,
       ready: true,
-      lists: lists
-        .map(list => ({
-          ...list,
-          resortIds: list.resortIds.filter(id => available.current.has(id)),
-        }))
-        .filter(list => list.resortIds.length > 0),
+      lists: lists.map(list => ({
+        ...list,
+        resortIds: list.resortIds.filter(id => available.current.has(id)),
+      })),
     });
   }, []);
 
@@ -111,6 +118,7 @@ export function CompareListsProvider({
         toast.error(result.error);
         return null;
       }
+      if (currentUser.current !== userId) return null;
       accept(userId, result.lists);
       toast.success(
         input.id ? "比較リストを更新しました" : "比較リストに保存しました",
@@ -138,6 +146,39 @@ export function CompareListsProvider({
     }
   };
 
+  const updateResorts = async (
+    id: string,
+    resortIds: string[],
+    operation: "add" | "remove",
+  ) => {
+    if (!userId) return null;
+    try {
+      const result = await updateCompareListResorts({
+        expectedUserId: userId,
+        id,
+        resortIds,
+        operation,
+      });
+      if (!result.ok) {
+        toast.error(result.error);
+        return null;
+      }
+      if (currentUser.current !== userId) return null;
+      accept(userId, result.lists);
+      toast.success(
+        operation === "add"
+          ? "比較リストに追加しました"
+          : "比較リストから外しました",
+        { duration: 1200 },
+      );
+      return result.lists.find(list => list.id === id) ?? null;
+    } catch (error) {
+      if (reloadIfStaleBuild(error)) return null;
+      toast.error("比較リストを更新できませんでした。");
+      return null;
+    }
+  };
+
   const ready = status !== "loading" && state.userId === userId && state.ready;
   return (
     <CompareListsContext.Provider
@@ -147,6 +188,8 @@ export function CompareListsProvider({
         lists: ready ? state.lists : [],
         save,
         remove,
+        addResorts: (id, resortIds) => updateResorts(id, resortIds, "add"),
+        removeResort: (id, resortId) => updateResorts(id, [resortId], "remove"),
       }}
     >
       {children}

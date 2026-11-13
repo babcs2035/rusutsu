@@ -54,7 +54,7 @@ export const REACTION_KINDS = [
 export type ReactionKind = (typeof REACTION_KINDS)[number];
 export const REACTION_LABELS: Record<ReactionKind, string> = {
   LIKE: "いいね",
-  HELPFUL: "参考になった",
+  HELPFUL: "Good",
   STILL_THERE: "まだあった",
   GONE: "なかった",
 };

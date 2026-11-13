@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { submitCorrection } from "@/features/corrections/actions";
 import { usesRemoteDataApi } from "@/lib/internalDataApiClient";
 import { prisma } from "@/lib/prisma";
 import { withInternalCommunityActor } from "@/server/community/actorContext";
@@ -7,7 +8,7 @@ import { communityPhotoResponse } from "@/server/community/photoResponse";
 import {
   type CommunityCommand,
   MAX_COMMAND_JSON_BYTES,
-  MAX_MULTIPART_BYTES,
+  MAX_CORRECTION_MULTIPART_BYTES,
   requestSchema,
 } from "@/server/community/remoteContract";
 import {
@@ -26,6 +27,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const publicOperations = new Set<CommunityCommand["operation"]>([
+  "correction",
   "courses",
   "feed",
   "mapEntries",
@@ -41,7 +43,10 @@ const publicOperations = new Set<CommunityCommand["operation"]>([
 async function readCommand(request: Request) {
   const photos = new FormData();
   if (request.headers.get("content-type")?.startsWith("multipart/form-data;")) {
-    const bytes = await readRequestBytes(request, MAX_MULTIPART_BYTES);
+    const bytes = await readRequestBytes(
+      request,
+      MAX_CORRECTION_MULTIPART_BYTES,
+    );
     let form: FormData;
     try {
       form = await new Response(new Uint8Array(bytes), {
@@ -58,7 +63,10 @@ async function readCommand(request: Request) {
     }
     if (
       [...form.keys()].some(
-        key => key !== "command" && !/^photos:[a-f0-9-]{36}$/i.test(key),
+        key =>
+          key !== "command" &&
+          key !== "photos" &&
+          !/^photos:[a-f0-9-]{36}$/i.test(key),
       ) ||
       form.getAll("command").length !== 1
     )
@@ -90,7 +98,8 @@ async function readCommand(request: Request) {
     const parsed = requestSchema.parse(payload);
     if (
       parsed.command.operation !== "publish" &&
-      parsed.command.operation !== "update"
+      parsed.command.operation !== "update" &&
+      parsed.command.operation !== "correction"
     )
       throw new RequestBodyError(
         422,
@@ -99,16 +108,23 @@ async function readCommand(request: Request) {
       );
     const files = [...form.entries()].filter(([key]) => key !== "command");
     if (
-      files.length > 1 ||
+      files.length > (parsed.command.operation === "correction" ? 3 : 1) ||
       files.some(
-        ([, file]) =>
-          !(file instanceof File) || !file.size || file.size > 8 * 1024 * 1024,
+        ([key, file]) =>
+          !(parsed.command.operation === "correction"
+            ? key === "photos"
+            : /^photos:[a-f0-9-]{36}$/i.test(key)) ||
+          !(file instanceof File) ||
+          !file.size ||
+          file.size > 8 * 1024 * 1024,
       )
     )
       throw new RequestBodyError(
         413,
         "PAYLOAD_TOO_LARGE",
-        "写真は1枚8MB以内、投稿ごとに1枚までです。",
+        parsed.command.operation === "correction"
+          ? "写真は1枚8MB以内、3枚までです。"
+          : "写真は1枚8MB以内、投稿ごとに1枚までです。",
       );
     for (const [key, file] of files) photos.append(key, file);
     return { parsed, photos };
@@ -126,6 +142,12 @@ async function dispatch(
   photos: FormData,
 ) {
   switch (command.operation) {
+    case "correction": {
+      const result = await submitCorrection(command.input, photos);
+      return result.ok
+        ? { ok: true, data: { requestId: result.requestId } }
+        : result;
+    }
     case "courses":
       return operations.getCommunityCourses(command.resortId);
     case "feed":
@@ -192,8 +214,13 @@ export async function POST(request: Request) {
     );
   try {
     const { parsed, photos } = await readCommand(request);
-    const { command, googleAccountId, anonymousIdentity, reactionIdentity } =
-      parsed;
+    const {
+      command,
+      googleAccountId,
+      anonymousIdentity,
+      reactionIdentity,
+      submissionKey,
+    } = parsed;
     let userId: string | null = null;
     if (googleAccountId) {
       const account = await prisma.account.findUnique({
@@ -224,6 +251,8 @@ export async function POST(request: Request) {
     }
     if (
       (command.operation === "report" && !anonymousIdentity) ||
+      (command.operation === "correction" &&
+        (!anonymousIdentity || !submissionKey)) ||
       (command.operation === "react" &&
         !userId &&
         (!anonymousIdentity || !reactionIdentity))
@@ -234,7 +263,12 @@ export async function POST(request: Request) {
         "送信元の確認に失敗しました。",
       );
     return await withInternalCommunityActor(
-      { userId, anonymousIdentity, reactionIdentity },
+      {
+        userId,
+        anonymousIdentity,
+        reactionIdentity,
+        ...(command.operation === "correction" ? { submissionKey } : {}),
+      },
       async () => {
         if (command.operation === "photo")
           return communityPhotoResponse(command.photoId, command.size);

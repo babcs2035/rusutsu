@@ -3,17 +3,22 @@ import Link from "next/link";
 import { signOut } from "@/auth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { prisma } from "@/lib/prisma";
+import { InternalDataApiError } from "@/lib/internalDataApiClient";
 import { getCurrentActor } from "@/lib/requireEditor";
 import { ROLE_LABELS } from "@/lib/roles";
+import { listCorrections } from "@/server/corrections/repository";
 
 export async function AdminHeader() {
   const user = await getCurrentActor();
   const pendingCorrections =
     user?.role === "admin"
-      ? await prisma.editRequest.count({
-          where: { kind: "public-correction", status: "PENDING" },
-        })
+      ? await listCorrections()
+          .then(result => result.pendingCount)
+          .catch(error => {
+            // 修正APIの未配置・停止で、他の管理画面まで開けなくしない。
+            if (!(error instanceof InternalDataApiError)) throw error;
+            return null;
+          })
       : 0;
 
   return (

@@ -20,6 +20,29 @@ const kind = z.enum(
 );
 const identity = { googleAccountId: z.string().min(1).max(512) };
 export const editRequestApiCommandSchema = z.discriminatedUnion("operation", [
+  z.strictObject({ ...identity, operation: z.literal("correction-list") }),
+  z.strictObject({
+    ...identity,
+    operation: z.literal("correction-get"),
+    id: requestIdSchema,
+  }),
+  z.strictObject({
+    ...identity,
+    operation: z.literal("correction-decide"),
+    id: requestIdSchema,
+    version: requestVersionSchema,
+    index: z.number().int().min(0).max(199),
+    decision: z.enum(["approve", "reject", "manual"]),
+    comment: reviewCommentSchema,
+  }),
+  z.strictObject({
+    ...identity,
+    operation: z.literal("correction-adjust"),
+    id: requestIdSchema,
+    version: requestVersionSchema,
+    index: z.number().int().min(0).max(199),
+    proposed: z.unknown(),
+  }),
   z.strictObject({ ...identity, operation: z.literal("list") }),
   z.strictObject({
     ...identity,

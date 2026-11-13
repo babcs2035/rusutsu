@@ -71,7 +71,7 @@ test("community reports: atomic daily report lifecycle and privacy", {
               args.path === "server-only"
                 ? "export {}"
                 : args.path === "@/lib/skiResortData"
-                  ? `import {prisma} from '@/lib/prisma'; export async function readSkiResortById(id){const resort=await prisma.skiResort.findFirst({where:{id,isActive:true},select:{id:true,nameJa:true,longitude:true,latitude:true}});return resort;}`
+                  ? `import {prisma} from '@/lib/prisma'; export async function readAdminSkiResorts(){return prisma.skiResort.findMany();} export async function readSkiResortById(id){const resort=await prisma.skiResort.findFirst({where:{id,isActive:true},select:{id:true,nameJa:true,longitude:true,latitude:true}});return resort;}`
                   : args.path === "community-test-runtime"
                     ? `import {AsyncLocalStorage} from 'node:async_hooks'; export const runtime=new AsyncLocalStorage();`
                     : args.path === "@/auth"
@@ -82,7 +82,7 @@ test("community reports: atomic daily report lifecycle and privacy", {
                           ? `export const revalidations=[]; export function revalidatePath(...args){revalidations.push(args);}`
                           : args.path === "next/server"
                             ? `export function after(){}`
-                            : `export async function getFinalizedResortMapData(){return {courses:{features:[{groupId:'test-course-a',displayName:'A',coordinates:[[140,43],[140.01,43.01]]},{groupId:'test-course-b',displayName:'B',coordinates:[[140,43],[140.02,43.02]]}]},lifts:{features:[{id:'test-lift-a',name:'第1リフト',properties:{distance:1200},coordinates:[[140,43],[140.005,43.005]]}]}};}`,
+                            : `export * from "${path.resolve("src/lib/finalizedResortGeojson.ts")}"; export async function getFinalizedResortMapData(){return {courses:{features:[{groupId:'test-course-a',displayName:'A',coordinates:[[140,43],[140.01,43.01]]},{groupId:'test-course-b',displayName:'B',coordinates:[[140,43],[140.02,43.02]]}]},lifts:{features:[{id:'test-lift-a',name:'第1リフト',properties:{distance:1200},coordinates:[[140,43],[140.005,43.005]]}]}};}`,
           }));
         },
       },

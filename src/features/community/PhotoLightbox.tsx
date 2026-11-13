@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useEffect, useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import type { PublicPhoto } from "./contract";
 
 type Rect = { top: number; left: number; width: number; height: number };
@@ -37,6 +38,11 @@ export function PhotoLightbox({
   onClose: () => void;
 }) {
   const [rect, setRect] = useState<Rect | null>(null);
+  // ダイアログ（自分の投稿など）の中で開いたときは、ダイアログの中に重ねる。
+  // 外に出すとダイアログの下に隠れ、閉じる操作でダイアログまで閉じてしまう。
+  const dialogHost =
+    anchor?.closest<HTMLElement>('[data-slot="dialog-content"]') ?? null;
+  const [hostHeight, setHostHeight] = useState<number | null>(null);
   // 描画前に位置を決め、開いた瞬間に画面全体からパネルへ跳ねないようにする
   useLayoutEffect(() => {
     const panel = anchor?.closest<HTMLElement>(
@@ -57,18 +63,24 @@ export function PhotoLightbox({
       );
     };
     update();
+    if (dialogHost) setHostHeight(dialogHost.clientHeight);
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
-  }, [anchor]);
+  }, [anchor, dialogHost]);
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") {
+        // 写真だけ閉じ、後ろのダイアログには伝えない
+        event.stopPropagation();
+        onClose();
+      }
       if (event.key === "ArrowLeft" && index > 0) onIndexChange(index - 1);
       if (event.key === "ArrowRight" && index < photos.length - 1)
         onIndexChange(index + 1);
     };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
+    // ダイアログより先に受け取るため、捕捉段階で聞く
+    window.addEventListener("keydown", handleKey, true);
+    return () => window.removeEventListener("keydown", handleKey, true);
   }, [index, onClose, onIndexChange, photos.length]);
 
   const photo = photos[index];
@@ -81,8 +93,11 @@ export function PhotoLightbox({
       role="dialog"
       aria-modal="true"
       aria-label="写真の拡大表示"
-      className="fixed inset-0 z-[950] flex items-center justify-center bg-black/40 p-6"
-      style={rect ?? undefined}
+      className={cn(
+        "inset-0 flex items-center justify-center bg-black/40 p-6",
+        dialogHost ? "absolute z-[60]" : "fixed z-[950]",
+      )}
+      style={dialogHost ? undefined : (rect ?? undefined)}
       onClick={event => {
         // ポータルでもクリックは親の投稿カードへ伝わるので、ここで止める
         event.stopPropagation();
@@ -95,7 +110,8 @@ export function PhotoLightbox({
         className="relative rounded-lg bg-cover bg-center shadow-2xl"
         style={{
           aspectRatio: `${photo.width} / ${photo.height}`,
-          width: `min(100%, calc((100dvh - 6rem) * ${photo.width / photo.height}))`,
+          // 縦長の写真でも、重ねる先（画面またはダイアログ）の高さに収める
+          width: `min(100%, calc((${dialogHost && hostHeight ? `${hostHeight}px` : "100dvh"} - 6rem) * ${photo.width / photo.height}))`,
           backgroundImage: `url(${photo.thumbnailSrc ?? photo.src ?? `${photoUrl(photo.id)}?size=thumb`})`,
         }}
       >
@@ -148,6 +164,6 @@ export function PhotoLightbox({
         )}
       </div>
     </div>,
-    document.body,
+    dialogHost ?? document.body,
   );
 }

@@ -17,6 +17,11 @@ import {
 } from "react";
 import { flushSync } from "react-dom";
 import { getSkiResortById } from "@/actions/skiResorts";
+import {
+  COMPOSER_RETURN_EVENT,
+  type ComposeRequest,
+  OPEN_RESORT_COMPOSER_EVENT,
+} from "@/features/community/composerEvents";
 import { CompareListsProvider } from "@/features/compare-lists/CompareListsProvider";
 import type {
   CompareListSummary,
@@ -100,6 +105,7 @@ import type {
   ReturnViewState,
   VisualViewportState,
 } from "./types";
+import { idsAfterFavoriteCompareTabChange } from "./utils/compareFavorites";
 import {
   getSearchResultListScrollElement,
   isKeyboardInputElement,
@@ -962,6 +968,42 @@ function HomeClientContent({
       },
     };
   });
+  // 自分の投稿一覧から編集したとき。画面を移らずにそのスキー場の詳細を開き、
+  // 投稿画面を閉じたら詳細も閉じて一覧（ダイアログ）へ戻す。
+  // 開く前に見ていたスキー場（なければ一覧）。閉じたらそこへ戻す
+  const openedForComposerRef = useRef<{
+    previousResortId: string | null;
+  } | null>(null);
+  useEffect(() => {
+    const open = (event: Event) => {
+      const request = (event as CustomEvent<ComposeRequest>).detail;
+      if (!request) return;
+      const navigation = historyNavigationRef.current;
+      if (navigation.isCompareOpen) navigation.closeCompare();
+      openedForComposerRef.current = {
+        previousResortId: navigation.selectedResortId,
+      };
+      navigation.select(request.resortId);
+    };
+    const back = () => {
+      const opened = openedForComposerRef.current;
+      if (!opened) return;
+      openedForComposerRef.current = null;
+      if (opened.previousResortId) {
+        historyNavigationRef.current.select(opened.previousResortId);
+        return;
+      }
+      // 投稿画面の地図操作で寄った分は、自分で動かしたものではないので元の地図へ戻す
+      hasUserInteractedWithMapInDetailRef.current = false;
+      historyNavigationRef.current.close();
+    };
+    window.addEventListener(OPEN_RESORT_COMPOSER_EVENT, open);
+    window.addEventListener(COMPOSER_RETURN_EVENT, back);
+    return () => {
+      window.removeEventListener(OPEN_RESORT_COMPOSER_EVENT, open);
+      window.removeEventListener(COMPOSER_RETURN_EVENT, back);
+    };
+  }, []);
   useEffect(() => {
     const resortIds = new Set(initialResorts.map(resort => resort.id));
     const handlePopState = () => {
@@ -1029,7 +1071,7 @@ function HomeClientContent({
 
   const handleOpenCompare = useCallback(
     (ids = selectedCompareIds, source: CompareSource = SELECTION_SOURCE) => {
-      if (ids.length === 0) return;
+      if (ids.length === 0 && source.kind !== "list") return;
       urlHistoryModeRef.current = "push";
       // お気に入り・保存したリストの比較は一時的な表示。手で選んだ比較は書き換えない
       setFavoriteCompareIds(source.kind === "selection" ? null : ids);
@@ -1118,6 +1160,18 @@ function HomeClientContent({
   const homeCompare = {
     source: compareSource,
     ids: activeCompareIds,
+    onTabChange: () => {
+      if (compareSource.kind !== "favorites" || !favorites?.ready) return;
+      setFavoriteCompareIds(ids =>
+        ids === null
+          ? null
+          : idsAfterFavoriteCompareTabChange(
+              compareSource,
+              ids,
+              favorites?.ids ?? [],
+            ),
+      );
+    },
     openList: (list: CompareListSummary) =>
       void handleOpenCompare(list.resortIds, {
         kind: "list",

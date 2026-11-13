@@ -2,7 +2,14 @@
 
 import { Portal } from "@radix-ui/react-portal";
 import type { ComponentType } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { z } from "zod";
 import { CommunityComposer } from "@/features/community/CommunityComposer";
 import { CommunityFeed } from "@/features/community/CommunityFeed";
@@ -11,9 +18,12 @@ import {
   COMPOSE_EVENT,
   type ComposeRequest,
   MAP_TARGET_EVENT,
+  peekPendingCompose,
+  returnFromComposer,
   setCommunityComposeActive,
   setCommunityMapPickMode,
   setCommunityMapPoint,
+  takePendingCompose,
 } from "@/features/community/composerEvents";
 import type { ReportMapTarget } from "@/features/community/contract";
 import {
@@ -51,6 +61,7 @@ import { getResortSearchName } from "@/lib/resortAliases";
 import { cn } from "@/lib/utils";
 import { AnimatedPanel } from "@/shared/components/AnimatedPanel";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
+import { PanelHeader } from "@/shared/components/PanelHeader";
 import type { MapSkiResort, NullableSkiResortDetail } from "@/types/skiResorts";
 import { DetailTabs } from "./components/DetailTabs";
 import { FinalizedFeatureDetail } from "./components/FinalizedFeatureDetail";
@@ -131,6 +142,7 @@ const DetailLoadingPanel = ({
   isCompareSelected,
   onToggleCompare,
   onClose,
+  onCancelCompose,
 }: {
   summary: MapSkiResort | null;
   /** モバイルは上のコンテキストヘッダーが名前と操作を出すので、パネル側では出さない */
@@ -138,13 +150,25 @@ const DetailLoadingPanel = ({
   isCompareSelected: boolean;
   onToggleCompare: (id: string, selected: boolean) => void;
   onClose: () => void;
+  /**
+   * 投稿・編集のURLで開いたとき。詳細の見出しを挟まず、投稿画面の読み込み中と
+   * 同じ見出しを出す（届いたら投稿画面がそのまま引き継ぐ）。
+   */
+  onCancelCompose?: () => void;
 }) => (
   <div
     className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-white"
     aria-live="polite"
     aria-busy="true"
   >
-    {showHeader && summary && (
+    {onCancelCompose && (
+      <PanelHeader
+        title="現地レポート"
+        onClose={onCancelCompose}
+        closeLabel="投稿を閉じる"
+      />
+    )}
+    {!onCancelCompose && showHeader && summary && (
       <InfoSection
         resort={{
           id: summary.id,
@@ -230,6 +254,17 @@ export const SkiResortDetailView = ({
   const [composeTarget, setComposeTarget] = useState<ReportMapTarget | null>(
     null,
   );
+  // 投稿・編集を頼まれて（URLまたは自分の投稿一覧から）、詳細の到着を
+  // 待っている間。詳細画面を挟まずに投稿画面の読み込み中を出す。
+  const [composePending, setComposePending] = useState(false);
+  const summaryId = resortSummary?.id;
+  // 描画前に決めて、詳細の見出しが一瞬出るのを防ぐ
+  useLayoutEffect(() => {
+    setComposePending(
+      Boolean(peekPendingCompose(summaryId)) ||
+        new URL(window.location.href).searchParams.get("compose") === "1",
+    );
+  }, [summaryId]);
   // 「情報を修正」。投稿と同じく、詳細パネルを入力画面に切り替える
   const [correctionRequest, setCorrectionRequest] =
     useState<CorrectionRequest | null>(null);
@@ -291,7 +326,10 @@ export const SkiResortDetailView = ({
     window.addEventListener(CORRECTION_EVENT, openCorrection);
     const url = new URL(window.location.href);
     setCorrectionRequest(correctionRequestFromUrl(composeResortId, url));
-    if (url.searchParams.get("compose") === "1") {
+    setComposePending(false);
+    const pending = takePendingCompose(composeResortId);
+    if (pending) setComposeRequest(pending);
+    else if (url.searchParams.get("compose") === "1") {
       const courseId = url.searchParams.get("courseId");
       const liftId = url.searchParams.get("liftId");
       setComposeRequest({
@@ -378,7 +416,7 @@ export const SkiResortDetailView = ({
     },
     [onSelectedFinalizedFeatureChange],
   );
-  const closeComposer = () => {
+  const clearComposeUrl = () => {
     const url = new URL(window.location.href);
     for (const key of ["compose", "edit", "courseId", "liftId"])
       url.searchParams.delete(key);
@@ -387,6 +425,10 @@ export const SkiResortDetailView = ({
       "",
       url.pathname + url.search + url.hash,
     );
+  };
+  const closeComposer = () => {
+    returnFromComposer(composeRequest?.returnTo);
+    clearComposeUrl();
     handlePickMode(null);
     setComposeRequest(null);
     setComposeTarget(null);
@@ -412,6 +454,17 @@ export const SkiResortDetailView = ({
       url.pathname + url.search + url.hash,
     );
   }, [composeRequest]);
+  // 読み込み中から投稿中として扱い、スマホ上部のスキー場見出しを出さない
+  const pendingComposerResortId =
+    composePending && !resortData ? resortSummary?.id : undefined;
+  useLayoutEffect(() => {
+    if (!pendingComposerResortId) return;
+    const resortId = pendingComposerResortId;
+    setCommunityComposeActive(resortId, true);
+    return () => {
+      setCommunityComposeActive(resortId, false);
+    };
+  }, [pendingComposerResortId]);
   useEffect(() => {
     if (!activeComposerResortId) return;
     const resortId = activeComposerResortId;
@@ -564,6 +617,15 @@ export const SkiResortDetailView = ({
         isCompareSelected={isCompareSelected}
         onToggleCompare={onToggleCompare}
         onClose={onClose}
+        onCancelCompose={
+          composePending
+            ? () => {
+                returnFromComposer(takePendingCompose(summaryId)?.returnTo);
+                clearComposeUrl();
+                setComposePending(false);
+              }
+            : undefined
+        }
       />
     );
     return (

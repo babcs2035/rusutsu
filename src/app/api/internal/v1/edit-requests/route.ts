@@ -1,6 +1,10 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import {
+  adjustCorrectionItem,
+  decideCorrectionItem,
+} from "@/features/corrections/actions";
+import {
   approveEditRequest,
   rejectEditRequest,
   saveRequestCandidate,
@@ -9,6 +13,10 @@ import {
 import { usesRemoteDataApi } from "@/lib/internalDataApiClient";
 import { prisma } from "@/lib/prisma";
 import { requireEditor } from "@/lib/requireEditor";
+import {
+  getCorrection,
+  listCorrections,
+} from "@/server/corrections/repository";
 import { withInternalEditActor } from "@/server/edit-requests/actorContext";
 import { assertBoundedPayload } from "@/server/edit-requests/contract";
 import { validateEditPayload } from "@/server/edit-requests/payloadSchema";
@@ -66,6 +74,25 @@ export async function POST(request: Request) {
     const result = await withInternalEditActor(account.userId, async () => {
       isAdmin = (await requireEditor()).role === "admin";
       switch (command.operation) {
+        case "correction-list":
+          return listCorrections();
+        case "correction-get":
+          return getCorrection(command.id);
+        case "correction-decide":
+          return decideCorrectionItem(
+            command.id,
+            command.version,
+            command.index,
+            command.decision,
+            command.comment,
+          );
+        case "correction-adjust":
+          return adjustCorrectionItem(
+            command.id,
+            command.version,
+            command.index,
+            command.proposed,
+          );
         case "list":
           return listEditRequests();
         case "get":

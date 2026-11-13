@@ -1,20 +1,15 @@
 "use client";
 
 import { Search, X } from "lucide-react";
-import { useId, useRef, useState } from "react";
+import { useId, useRef } from "react";
 import { flushSync } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AccountButton } from "@/features/favorites/AccountButton";
 import { FilterPanel } from "@/features/filters/FilterPanel";
 import type { Filters } from "@/features/filters/types";
-import {
-  areFiltersEqual,
-  matchesFilters,
-} from "@/features/filters/utils/filterResorts";
 import { DEFAULT_LIFT_TICKET_SEARCH_INPUT } from "@/features/lift-ticket/utils/calculateLiftTicket";
 import { cn } from "@/lib/utils";
-import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import type { MapSkiResort } from "@/types/skiResorts";
 import type { ResortSortControls } from "../hooks/useResortSort";
 import { ComparisonActions } from "./ComparisonActions";
@@ -43,6 +38,8 @@ type Props = {
   onSelectResort: (id: string) => void;
   onToggleCompare: (id: string, selected: boolean) => void;
   onHoverResortChange: (id: string | null) => void;
+  /** 一覧が見えていない間は、一覧の料金を計算しない */
+  liftTicketPaused?: boolean;
 };
 
 export const DesktopSearchPanel = ({
@@ -67,37 +64,22 @@ export const DesktopSearchPanel = ({
   onSelectResort,
   onToggleCompare,
   onHoverResortChange,
+  liftTicketPaused = false,
 }: Props) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const filterPanelId = useId();
-  const [draft, setDraft] = useState({ applied: filters, filters });
-  const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
-  // 外部の条件変更（スマホからの検索など）に合わせて入力値も更新する。
-  if (draft.applied !== filters) {
-    setDraft({ applied: filters, filters });
-  }
-  const draftFilters = draft.applied === filters ? draft.filters : filters;
-  const updateDraftFilters = (nextFilters: Filters) => {
-    setDraft({ applied: filters, filters: nextFilters });
-  };
   const search = () => {
     inputRef.current?.blur();
-    onFilterChange(draftFilters);
     onSearch();
   };
   const open = () => {
-    updateDraftFilters(filters);
     flushSync(() => onExpandedChange(true));
     inputRef.current?.focus({ preventScroll: true });
   };
   const close = () => {
     inputRef.current?.blur();
-    updateDraftFilters(filters);
     onExpandedChange(false);
   };
-  const draftResultCount = resorts.filter(resort =>
-    matchesFilters(resort, draftFilters),
-  ).length;
   const editLiftTicketConditions = () => {
     onExpandedChange(true);
     window.setTimeout(() => {
@@ -138,14 +120,14 @@ export const DesktopSearchPanel = ({
                 name="keyword"
                 autoComplete="off"
                 placeholder="スキー場名を入力"
-                value={draftFilters.keyword}
+                value={filters.keyword}
                 className={cn(
                   "h-12 w-full rounded-full border-0 bg-transparent pl-10 text-base font-medium text-gray-800 shadow-none md:text-base",
-                  draftFilters.keyword ? "pr-11" : "pr-3",
+                  filters.keyword ? "pr-11" : "pr-3",
                 )}
                 onChange={event =>
-                  updateDraftFilters({
-                    ...draftFilters,
+                  onFilterChange({
+                    ...filters,
                     keyword: event.target.value,
                   })
                 }
@@ -166,14 +148,14 @@ export const DesktopSearchPanel = ({
                   search();
                 }}
               />
-              {draftFilters.keyword && (
+              {filters.keyword && (
                 <Button
                   type="button"
                   variant="ghost"
                   aria-label="検索キーワードをクリア"
                   className="absolute inset-y-0 right-2.5 my-auto h-7 w-7 min-w-7 rounded-full p-0 text-gray-600 shadow-none hover:bg-gray-50"
                   onClick={() => {
-                    updateDraftFilters({ ...draftFilters, keyword: "" });
+                    onFilterChange({ ...filters, keyword: "" });
                     inputRef.current?.focus();
                   }}
                 >
@@ -201,13 +183,7 @@ export const DesktopSearchPanel = ({
                   variant="ghost"
                   aria-label="検索を閉じる"
                   className="h-10 w-10 min-w-10 rounded-full border border-gray-200 bg-white p-0 text-gray-700 shadow-sm hover:bg-gray-50 hover:text-gray-900"
-                  onClick={() => {
-                    if (!areFiltersEqual(draftFilters, filters)) {
-                      setDiscardDialogOpen(true);
-                      return;
-                    }
-                    close();
-                  }}
+                  onClick={close}
                 >
                   <X size={18} strokeWidth={2.5} />
                 </Button>
@@ -217,24 +193,16 @@ export const DesktopSearchPanel = ({
             )}
           </div>
         </form>
-        <ConfirmDialog
-          open={discardDialogOpen}
-          onOpenChange={setDiscardDialogOpen}
-          title="変更の破棄"
-          description="変更を破棄しますか？"
-          onConfirm={close}
-          confirmLabel="破棄する"
-        />
         {isFilterEditorOpen && (
           <div id={filterPanelId} className="flex min-h-0 flex-1 flex-col">
             <FilterPanel
-              filters={draftFilters}
+              filters={filters}
               resorts={resorts}
-              resultCount={draftResultCount}
+              resultCount={filteredResorts.length}
               isExpanded
               canCollapse={false}
               onExpandedChange={onExpandedChange}
-              onFilterChange={updateDraftFilters}
+              onFilterChange={onFilterChange}
               onKeyboardInputBlur={onKeyboardInputBlur}
               onKeyboardInputFocus={onKeyboardInputFocus}
               onSearch={search}
@@ -243,13 +211,15 @@ export const DesktopSearchPanel = ({
             />
           </div>
         )}
-        <ComparisonActions
-          compareCount={compareCount}
-          isCompareOpen={isCompareOpen}
-          onOpenCompare={onOpenCompare}
-          onClearCompare={onClearCompare}
-          onCompareFavorites={onCompareFavorites}
-        />
+        {!isFilterEditorOpen && (
+          <ComparisonActions
+            compareCount={compareCount}
+            isCompareOpen={isCompareOpen}
+            onOpenCompare={onOpenCompare}
+            onClearCompare={onClearCompare}
+            onCompareFavorites={onCompareFavorites}
+          />
+        )}
         {!isFilterEditorOpen && (
           <div
             data-ski-resort-list-scroll-container="true"
@@ -267,6 +237,7 @@ export const DesktopSearchPanel = ({
               onHoverResortChange={onHoverResortChange}
               showHeader={false}
               onEditLiftTicketConditions={editLiftTicketConditions}
+              liftTicketPaused={liftTicketPaused}
               featureLines={{
                 yukiMagi: filters.yukiMagi,
                 evCharger: filters.evCharger,

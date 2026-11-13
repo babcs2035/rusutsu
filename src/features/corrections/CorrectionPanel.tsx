@@ -252,7 +252,8 @@ function Workspace({
   // --- 画面ごとの、地図とパネルの分け方 -----------------------------------
   const geometry = screen.type === "geometry" ? screen : null;
   const layout: CorrectionLayout = geometry
-    ? editor.active || geometry.scopeIds?.length === 1
+    ? (editor.active && editor.mode === "draw") ||
+      geometry.scopeIds?.length === 1
       ? "map-tools"
       : "map-list"
     : "form";
@@ -622,6 +623,9 @@ function Workspace({
         features={features}
         edits={edits}
         onEdit={handleEdit}
+        onSelect={feature =>
+          onSelectedLineChange({ kind: feature.kind, id: feature.id })
+        }
         onEditAll={handleEditAll}
         onReset={handleReset}
         focusId={selectedLine?.id ?? null}

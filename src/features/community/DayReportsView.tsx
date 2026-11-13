@@ -5,6 +5,7 @@ import type { Map as MapLibreMap } from "maplibre-gl";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { ResortFinalizedMap } from "@/features/map/components/ResortFinalizedMap";
@@ -12,6 +13,7 @@ import useMediaQuery from "@/hooks/use-media-query";
 import type { FinalizedResortMapData } from "@/lib/finalizedResortGeojsonShared";
 import { cn } from "@/lib/utils";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
+import { PanelCloseButton } from "@/shared/components/PanelCloseButton";
 import { SegmentedControl } from "@/shared/components/SegmentedControl";
 import type { MapSkiResort } from "@/types/skiResorts";
 import { communityComposerUrl } from "./composerEvents";
@@ -95,13 +97,22 @@ export function DayReportsView({
   data,
   maps,
   initialPostId,
+  onClose,
 }: {
   data: DayReports;
   /** 投稿のあるスキー場ごとの地図。投稿の多い順 */
   maps: DayReportMap[];
   /** 最初から開いておく投稿（1件の投稿へのリンクから来たとき） */
   initialPostId?: string;
+  onClose?: () => void;
 }) {
+  const router = useRouter();
+  const close =
+    onClose ??
+    (() => {
+      if (window.history.length > 1) router.back();
+      else router.replace("/");
+    });
   const [isDesktop] = useMediaQuery("(min-width: 768px)");
   const resorts = useMemo(
     () =>
@@ -251,6 +262,7 @@ export function DayReportsView({
             observedOn={data.observedOn}
             text={dayShareText(data.posts, data.observedOn)}
           />
+          <PanelCloseButton onClose={close} />
         </div>
         {resorts.length > 1 && (
           // 1日に複数のスキー場を滑った日だけ、スキー場を切り替える
@@ -402,7 +414,8 @@ export function DayReportsView({
             <Plus className="size-3.5" strokeWidth={3} />
             投稿
           </Link>
-          {data.viewerId === author.id && (
+          {/* 自分の投稿一覧から開いたときは×で一覧へ戻るので出さない */}
+          {data.viewerId === author.id && !onClose && (
             <Link
               href="/account/posts"
               className="ml-auto text-xs font-medium whitespace-nowrap text-sky-800 underline"

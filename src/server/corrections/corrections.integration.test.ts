@@ -8,6 +8,7 @@ import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import sharp from "sharp";
 import type { SubmitCorrectionInput } from "@/server/corrections/contract";
+import { verifyRemoteCorrections } from "./remoteIntegration";
 
 type TestActor = {
   userId: string | null;
@@ -25,6 +26,11 @@ type TestApi = typeof import("@/features/corrections/actions") &
   typeof import("@/lib/prisma") & {
     runtime: AsyncLocalStorage<TestActor>;
     photoGET: typeof import("@/app/api/community/photos/[photoId]/route").GET;
+    internalCommunityPOST: typeof import("@/app/api/internal/v1/community/route").POST;
+    internalEditRequestPOST: typeof import("@/app/api/internal/v1/edit-requests/route").POST;
+    listCorrections: typeof import("@/server/corrections/repository").listCorrections;
+    getCorrection: typeof import("@/server/corrections/repository").getCorrection;
+    disconnectPrisma: typeof import("@/lib/prisma").disconnectPrisma;
   } & typeof import("@/server/data-documents/repositoryCore");
 
 type TestFeatureCollection = {
@@ -56,7 +62,7 @@ test("anonymous corrections: PostgreSQL idempotency, review CAS, geometry, bulk 
   const outfile = path.join(root, "integration.mjs");
   await build({
     stdin: {
-      contents: `export {runtime} from 'corrections-test-runtime'; export {prisma,disconnectPrisma} from '@/lib/prisma'; export {submitCorrection,decideCorrectionItem,adjustCorrectionItem} from '@/features/corrections/actions'; export {hashDataDocumentContent} from '@/server/data-documents/repositoryCore'; export {GET as photoGET} from '@/app/api/community/photos/[photoId]/route';`,
+      contents: `export {runtime} from 'corrections-test-runtime'; export {prisma,disconnectPrisma} from '@/lib/prisma'; export {submitCorrection,decideCorrectionItem,adjustCorrectionItem} from '@/features/corrections/actions'; export {listCorrections,getCorrection} from '@/server/corrections/repository'; export {hashDataDocumentContent} from '@/server/data-documents/repositoryCore'; export {GET as photoGET} from '@/app/api/community/photos/[photoId]/route'; export {POST as internalCommunityPOST} from '@/app/api/internal/v1/community/route'; export {POST as internalEditRequestPOST} from '@/app/api/internal/v1/edit-requests/route';`,
       resolveDir: process.cwd(),
       loader: "ts",
     },
@@ -72,7 +78,7 @@ test("anonymous corrections: PostgreSQL idempotency, review CAS, geometry, bulk 
           builder.onResolve(
             {
               filter:
-                /^(server-only|corrections-test-runtime|next\/headers|next\/cache|next\/server|@\/auth|@\/lib\/requireEditor)$/,
+                /^(server-only|corrections-test-runtime|next\/headers|next\/cache|next\/server|@\/auth)$/,
             },
             args => ({ path: args.path, namespace: "corrections-test" }),
           );
@@ -93,7 +99,7 @@ test("anonymous corrections: PostgreSQL idempotency, review CAS, geometry, bulk 
                           ? "export function after(){}"
                           : args.path === "@/auth"
                             ? "import {runtime} from 'corrections-test-runtime'; export async function auth(){const id=runtime.getStore()?.userId;return id?{user:{id}}:null;}"
-                            : `import {runtime} from 'corrections-test-runtime'; export async function getCurrentActor(){return runtime.getStore()?.actor ?? null;}`,
+                            : "export {};",
             }),
           );
         },
@@ -306,6 +312,12 @@ test("anonymous corrections: PostgreSQL idempotency, review CAS, geometry, bulk 
         },
       });
     }
+
+    await verifyRemoteCorrections(api, root, databaseUrl ?? "", {
+      resortId,
+      adminId,
+      editorId,
+    });
 
     const owner = anonymous(),
       opKey = randomUUID();

@@ -21,12 +21,18 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { AccountCommunityDialog } from "@/features/community/AccountCommunityDialog";
 import {
   getCommunityAccount,
   saveCommunityProfile,
 } from "@/features/community/actions";
 import { CommunityNotificationsLink } from "@/features/community/CommunityNotificationsLink";
+import {
+  COMPOSER_RETURN_EVENT,
+  openResortComposer,
+} from "@/features/community/composerEvents";
 import { SkiTracksHistory } from "@/features/ski-tracks/SkiTracksHistory";
+import { PanelHeader } from "@/shared/components/PanelHeader";
 import { reloadIfStaleBuild } from "@/shared/utils/staleBuild";
 import {
   publicLogout,
@@ -95,6 +101,29 @@ function FavoritesState({
     step: "choice" | "browser";
   } | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [communityView, setCommunityView] = useState<
+    "posts" | "settings" | null
+  >(null);
+  // 開くたびに作り直す（編集中に隠したまま残っている一覧を使い回さない）
+  const [communityKey, setCommunityKey] = useState(0);
+  // 自分の投稿一覧から編集を開いている間は一覧を隠し、閉じたら戻す
+  const [editingPost, setEditingPost] = useState<{
+    id: string;
+    token: number;
+  } | null>(null);
+  const [communitySuspended, setCommunitySuspended] = useState(false);
+  useEffect(() => {
+    const back = (event: Event) => {
+      const detail = (event as CustomEvent<{ returnTo?: string }>).detail;
+      if (detail?.returnTo !== "account-posts") return;
+      setCommunitySuspended(false);
+      setEditingPost(current =>
+        current ? { ...current, token: current.token + 1 } : current,
+      );
+    };
+    window.addEventListener(COMPOSER_RETURN_EVENT, back);
+    return () => window.removeEventListener(COMPOSER_RETURN_EVENT, back);
+  }, []);
   const [skiTracksOpen, setSkiTracksOpen] = useState(false);
   const [needsCommunityName, setNeedsCommunityName] = useState(false);
   const [communityNameMode, setCommunityNameMode] = useState<
@@ -333,91 +362,132 @@ function FavoritesState({
         open={accountOpen && !!session?.user}
         onOpenChange={setAccountOpen}
       >
-        <DialogContent className="z-[1000]" overlayClassName="z-[999]">
-          <DialogTitle>アカウント</DialogTitle>
-          <DialogDescription>
-            {session?.user?.name}
-            <br />
-            {session?.user?.email}
-          </DialogDescription>
-          <CommunityNotificationsLink />
-          <Button
-            variant="outline"
-            className="h-auto min-h-8 whitespace-normal py-2"
-            onClick={() => {
-              setAccountOpen(false);
-              setSkiTracksOpen(true);
-            }}
-          >
-            SkiTracksの滑走履歴をアップロード
-          </Button>
-          {needsCommunityName && (
-            <section className="space-y-2 rounded-lg border border-sky-200 bg-sky-50 p-3">
-              <h3 className="font-semibold">
-                投稿に使う公開名を選んでください
-              </h3>
-              <p className="text-xs text-gray-700">
-                Googleの名前は「Googleアカウント名」を選んだ場合だけ公開されます。
-              </p>
-              {(
-                [
-                  ["GOOGLE", "Googleアカウント名"],
-                  ["NICKNAME", "ニックネーム"],
-                  ["ANONYMOUS", "匿名"],
-                ] as const
-              ).map(([mode, label]) => (
-                <label key={mode} className="flex items-center gap-2 text-sm">
+        <DialogContent
+          showCloseButton={false}
+          className="z-[1000] gap-0 overflow-hidden p-0 text-sm font-sans"
+          overlayClassName="z-[999]"
+        >
+          <DialogTitle className="sr-only">アカウント</DialogTitle>
+          <PanelHeader
+            title="アカウント"
+            onClose={() => setAccountOpen(false)}
+          />
+          <div className="grid max-h-[calc(100dvh-7rem)] gap-3 overflow-y-auto p-4">
+            <DialogDescription className="break-words text-sm md:text-sm">
+              {session?.user?.name}
+              <br />
+              {session?.user?.email}
+            </DialogDescription>
+            <CommunityNotificationsLink
+              onOpen={view => {
+                setAccountOpen(false);
+                setCommunitySuspended(false);
+                setEditingPost(null);
+                setCommunityKey(key => key + 1);
+                setCommunityView(view);
+              }}
+            />
+            <Button
+              variant="outline"
+              className="h-12 w-full text-sm font-semibold text-gray-800"
+              onClick={() => {
+                setAccountOpen(false);
+                setSkiTracksOpen(true);
+              }}
+            >
+              SkiTracksの滑走履歴をアップロード
+            </Button>
+            {needsCommunityName && (
+              <section className="space-y-2 rounded-lg border border-sky-200 bg-sky-50 p-3">
+                <h3 className="font-semibold">
+                  投稿に使う公開名を選んでください
+                </h3>
+                <p className="text-xs text-gray-700">
+                  Googleの名前は「Googleアカウント名」を選んだ場合だけ公開されます。
+                </p>
+                {(
+                  [
+                    ["GOOGLE", "Googleアカウント名"],
+                    ["NICKNAME", "ニックネーム"],
+                    ["ANONYMOUS", "匿名"],
+                  ] as const
+                ).map(([mode, label]) => (
+                  <label key={mode} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="radio"
+                      checked={communityNameMode === mode}
+                      onChange={() => setCommunityNameMode(mode)}
+                    />
+                    {label}
+                  </label>
+                ))}
+                {communityNameMode === "NICKNAME" && (
                   <input
-                    type="radio"
-                    checked={communityNameMode === mode}
-                    onChange={() => setCommunityNameMode(mode)}
+                    className="h-9 w-full rounded border bg-white px-2 text-sm"
+                    value={communityNickname}
+                    onChange={event => setCommunityNickname(event.target.value)}
+                    maxLength={40}
+                    placeholder="ニックネーム"
                   />
-                  {label}
-                </label>
-              ))}
-              {communityNameMode === "NICKNAME" && (
-                <input
-                  className="h-9 w-full rounded border bg-white px-2 text-sm"
-                  value={communityNickname}
-                  onChange={event => setCommunityNickname(event.target.value)}
-                  maxLength={40}
-                  placeholder="ニックネーム"
-                />
-              )}
-              <Button
-                size="sm"
-                disabled={
-                  communityNameMode === "NICKNAME" && !communityNickname.trim()
-                }
-                onClick={() =>
-                  startTransition(async () => {
-                    const result = await saveCommunityProfile(
-                      communityNameMode,
-                      communityNickname,
-                    );
-                    if (result.ok) setNeedsCommunityName(false);
-                    else setCommunitySetupError(result.error);
-                  })
-                }
-              >
-                公開名を保存
-              </Button>
-              {communitySetupError && (
-                <p className="text-xs text-red-700">{communitySetupError}</p>
-              )}
-            </section>
-          )}
-          <Button
-            variant="outline"
-            onClick={() => {
-              setAccountOpen(false);
-              logout();
-            }}
-          >
-            ログアウト
-          </Button>
+                )}
+                <Button
+                  size="sm"
+                  disabled={
+                    communityNameMode === "NICKNAME" &&
+                    !communityNickname.trim()
+                  }
+                  onClick={() =>
+                    startTransition(async () => {
+                      const result = await saveCommunityProfile(
+                        communityNameMode,
+                        communityNickname,
+                      );
+                      if (result.ok) setNeedsCommunityName(false);
+                      else setCommunitySetupError(result.error);
+                    })
+                  }
+                >
+                  公開名を保存
+                </Button>
+                {communitySetupError && (
+                  <p className="text-xs text-red-700">{communitySetupError}</p>
+                )}
+              </section>
+            )}
+            <Button
+              variant="outline"
+              className="h-12 w-full text-sm font-semibold text-gray-800"
+              onClick={() => {
+                setAccountOpen(false);
+                logout();
+              }}
+            >
+              ログアウト
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
+      {communityView && session?.user && (
+        <AccountCommunityDialog
+          key={communityKey}
+          initialView={communityView}
+          suspended={communitySuspended}
+          editedPost={editingPost}
+          onEdit={post => {
+            setCommunitySuspended(true);
+            setEditingPost({ id: post.id, token: 0 });
+            openResortComposer({
+              resortId: post.resortId,
+              postId: post.id,
+              returnTo: "account-posts",
+            });
+          }}
+          onClose={() => {
+            setCommunityView(null);
+            setAccountOpen(true);
+          }}
+        />
+      )}
       <Dialog
         open={skiTracksOpen && !!userId}
         onOpenChange={open => {
@@ -426,16 +496,22 @@ function FavoritesState({
         }}
       >
         <DialogContent
-          className="z-[1000] flex h-[min(48rem,calc(100dvh-2rem))] max-h-[calc(100dvh-2rem)] flex-col gap-3 overflow-hidden sm:max-w-lg"
+          showCloseButton={false}
+          className="z-[1000] flex h-dvh max-h-dvh max-w-full flex-col gap-0 overflow-hidden rounded-none border-0 p-0 text-sm font-sans sm:max-w-full md:h-[min(48rem,calc(100dvh-2rem))] md:max-w-lg md:rounded-lg md:border"
           overlayClassName="z-[999]"
         >
-          <DialogTitle className="text-base md:text-base">
-            SkiTracksの滑走履歴
-          </DialogTitle>
+          <DialogTitle className="sr-only">SkiTracksの滑走履歴</DialogTitle>
+          <PanelHeader
+            title="SkiTracksの滑走履歴"
+            onClose={() => {
+              setSkiTracksOpen(false);
+              setAccountOpen(true);
+            }}
+          />
           <DialogDescription className="sr-only">
             滑走履歴のアップロードとコース利用傾向
           </DialogDescription>
-          <div className="min-h-0 overflow-y-auto overscroll-contain pr-1">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 md:p-4">
             {skiTracksOpen && userId && <SkiTracksHistory key={userId} />}
           </div>
         </DialogContent>

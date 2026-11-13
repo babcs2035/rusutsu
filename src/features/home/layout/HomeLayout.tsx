@@ -679,6 +679,8 @@ export const HomeLayout = ({
         onSelectResort={onSelectResort}
         onToggleCompare={onToggleCompare}
         onHoverResortChange={onSetHoveredResortId}
+        // スマホではこの一覧は隠れている。詳細を開いている間も裏に隠れる
+        liftTicketPaused={Boolean(selectedResortId) || !isSidePanelLayout}
       />
 
       <AnimatedPanel

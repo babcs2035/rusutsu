@@ -287,8 +287,6 @@ async function saveHome(response) {
     return;
   const html = await response.clone().text();
   const paths = assetPaths(html);
-  // ワーカーはページ外から取得されるので、起動資産として明示的に保存する。
-  paths.push(new URL("/rusutsu/maplibre/maplibre-gl-worker.mjs", homeURL));
   const cache = await caches.open(HOME);
   // 旧版は旧ビルドを消さずに溜めたため、上限で新しい資産を保存できず
   // 古い HTML が残り続けた。保存中の HTML と新しい HTML が使わない分を先に消す。
@@ -311,7 +309,11 @@ async function saveHome(response) {
   await purgeOldBuild(paths);
 }
 const assetPaths = html =>
-  [...html.matchAll(/(?:src|href)="([^"]+)"/g)]
+  [
+    ...html.matchAll(/(?:src|href)="([^"]+)"/g),
+    // 本体と同じ版のワーカーを保存してから HTML を採用する。
+    ...html.matchAll(/<meta name="rusutsu-map-worker" content="([^"]+)"/g),
+  ]
     .map(match => new URL(match[1].replaceAll("&amp;", "&"), homeURL))
     .filter(isAsset);
 const buildOf = paths =>

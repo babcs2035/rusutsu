@@ -2,12 +2,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CorrectionReview } from "@/features/corrections/CorrectionReview";
-import { prisma } from "@/lib/prisma";
 import { readAdminSkiResorts } from "@/lib/skiResortData";
 import {
   correctionLinkPlatform,
   correctionLinks,
 } from "@/server/corrections/links";
+import { getCorrection } from "@/server/corrections/repository";
 import { getDataDocument } from "@/server/data-documents/client";
 import { requireAdminPage } from "@/server/edit-requests/authPages";
 import { featureIdentity } from "@/shared/course-lift/identity";
@@ -16,16 +16,8 @@ type Props = { params: Promise<{ requestId: string }> };
 export default async function CorrectionDetailPage({ params }: Props) {
   await requireAdminPage();
   const { requestId } = await params;
-  const request = await prisma.editRequest.findUnique({
-    where: { id: requestId },
-    include: {
-      photos: {
-        select: { id: true, mimeType: true, width: true, height: true },
-      },
-      events: { orderBy: { createdAt: "asc" } },
-    },
-  });
-  if (request?.kind !== "public-correction") notFound();
+  const { request, pending } = await getCorrection(requestId);
+  if (!request) notFound();
   const payload = request.candidatePayload as {
     items?: Array<Record<string, unknown>>;
     comment?: string;
@@ -100,15 +92,6 @@ export default async function CorrectionDetailPage({ params }: Props) {
       return { ...item, current, submittedProposed: original?.proposed };
     }),
   );
-  const pending = await prisma.editRequest.findMany({
-    where: {
-      resortId: request.resortId,
-      kind: "public-correction",
-      status: "PENDING",
-      id: { not: request.id },
-    },
-    select: { id: true, candidatePayload: true },
-  });
   const competing = items.map(item => ({
     ...item,
     competingCount: pending.filter(other => {

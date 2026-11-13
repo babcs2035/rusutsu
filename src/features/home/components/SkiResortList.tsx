@@ -62,6 +62,7 @@ type ListLiftTicketResults =
 const useListLiftTicketResults = (
   resorts: MapSkiResort[],
   input: LiftTicketSearchInput,
+  paused: boolean,
 ): ListLiftTicketResults => {
   const requestKey = useMemo(() => {
     const ids = [
@@ -79,9 +80,15 @@ const useListLiftTicketResults = (
     key: string;
     value: ListLiftTicketResults;
   } | null>(null);
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   useEffect(() => {
-    if (requestKey === null) return;
+    // 一覧が見えていない間は計算しない。サーバーアクションは1件ずつ順に
+    // 処理されるので、裏で計算すると詳細や投稿の読み込みを待たせる。
+    if (requestKey === null || paused) return;
+    // 見えない間に止めていた一覧へ戻ったとき、同じ条件の結果があれば使い回す
+    if (stateRef.current?.key === requestKey) return;
     const { ids, input: requestInput } = JSON.parse(requestKey) as {
       ids: string[];
       input: LiftTicketSearchInput;
@@ -99,7 +106,7 @@ const useListLiftTicketResults = (
     return () => {
       cancelled = true;
     };
-  }, [requestKey]);
+  }, [requestKey, paused]);
 
   if (requestKey === null) return { status: "idle" };
   return state?.key === requestKey ? state.value : { status: "loading" };
@@ -117,9 +124,15 @@ type Props = {
   onEditLiftTicketConditions: () => void;
   /** 絞り込みで選んだ項目だけ、コース・リフトの下に1行ずつ出す */
   featureLines?: ResortFeatureLines;
+  /** 一覧が見えていない間（詳細を開いている・幅が足りず隠れている）は料金を計算しない */
+  liftTicketPaused?: boolean;
 };
 
 export type ResortFeatureLines = { yukiMagi: boolean; evCharger: boolean };
+
+const LIST_LABEL_TYPOGRAPHY = "text-[11px] font-bold @min-[400px]:text-xs";
+const LIST_VALUE_TYPOGRAPHY =
+  "text-[13px] font-bold leading-tight tabular-nums @min-[300px]:text-sm";
 
 const ListMetric = ({
   label,
@@ -131,12 +144,12 @@ const ListMetric = ({
   description?: string;
 }) => (
   <span className="flex min-w-0 items-baseline gap-1 overflow-hidden whitespace-nowrap">
-    <span className="shrink-0 text-[11px] font-bold text-gray-800 @min-[400px]:text-xs">
+    <span className={cn("shrink-0 text-gray-800", LIST_LABEL_TYPOGRAPHY)}>
       {label}
     </span>
     <span
       title={description ?? value}
-      className="truncate text-[13px] font-bold leading-tight tabular-nums text-blue-700 @min-[300px]:text-sm"
+      className={cn("truncate text-blue-700", LIST_VALUE_TYPOGRAPHY)}
     >
       {value.startsWith("不明") ? (
         <>
@@ -152,10 +165,34 @@ const ListMetric = ({
 );
 
 /** 雪マジ・EV充電の1行。必ず1行に収め、はみ出す分は省略（…）にする */
-const FeatureLine = ({ label, value }: { label: string; value: string }) => (
-  <p className="mt-1 flex min-w-0 items-baseline gap-1 whitespace-nowrap px-1.5 text-xs leading-4">
-    <span className="shrink-0 font-bold text-gray-800">{label}</span>
-    <span title={value} className="min-w-0 truncate text-gray-700">
+const FeatureLine = ({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: "pink" | "green";
+}) => (
+  <p
+    className={cn(
+      "@container mt-1 flex min-w-0 items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-1 text-xs leading-4",
+      tone === "pink" ? "bg-pink-50" : "bg-emerald-50",
+    )}
+  >
+    <span
+      className={cn(
+        "shrink-0 rounded px-1.5 py-0.5 text-white",
+        LIST_LABEL_TYPOGRAPHY,
+        tone === "pink" ? "bg-pink-600" : "bg-emerald-700",
+      )}
+    >
+      {label}
+    </span>
+    <span
+      title={value}
+      className={cn("min-w-0 truncate text-gray-700", LIST_VALUE_TYPOGRAPHY)}
+    >
       {value}
     </span>
   </p>
@@ -211,6 +248,7 @@ export const SkiResortList = ({
   liftTicketInput,
   onEditLiftTicketConditions,
   featureLines,
+  liftTicketPaused = false,
 }: Props) => {
   const listRef = useRef<HTMLUListElement>(null);
   const sortOrder = sortControls.order;
@@ -221,7 +259,11 @@ export const SkiResortList = ({
     // 並び替えたあとは、順位の先頭から見せる。
     listRef.current?.scrollTo({ top: 0 });
   }, [sortOrder]);
-  const liftTicketResults = useListLiftTicketResults(resorts, liftTicketInput);
+  const liftTicketResults = useListLiftTicketResults(
+    resorts,
+    liftTicketInput,
+    liftTicketPaused,
+  );
   const regions = useMemo(
     () => (sortOrder === "prefecture" ? groupResortsByRegion(resorts) : []),
     [resorts, sortOrder],
@@ -512,10 +554,18 @@ const SkiResortListItem = memo(
               />
             </div>
             {showYukiMagi && resort.yukiMagiSummary && (
-              <FeatureLine label="雪マジ" value={resort.yukiMagiSummary} />
+              <FeatureLine
+                label="雪マジ"
+                value={resort.yukiMagiSummary}
+                tone="pink"
+              />
             )}
             {showEvCharger && resort.evChargerSummary && (
-              <FeatureLine label="EV" value={resort.evChargerSummary} />
+              <FeatureLine
+                label="EV"
+                value={resort.evChargerSummary}
+                tone="green"
+              />
             )}
           </div>
         </div>

@@ -1,10 +1,11 @@
 "use client";
 
 import { Portal } from "@radix-ui/react-portal";
-import { Heart, X } from "lucide-react";
+import { List, X } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { AddCompareListResortsButton } from "@/features/compare-lists/AddCompareListResortsButton";
 import { SaveCompareListButton } from "@/features/compare-lists/SaveCompareListButton";
 import type { CompareSource } from "@/features/compare-lists/types";
 import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
@@ -100,6 +101,11 @@ export const SkiResortCompareView = ({
   const homeCompare = useHomeCompare();
   const source = homeCompare?.source ?? SELECTION_SOURCE;
   const compareIds = homeCompare?.ids ?? resorts.map(resort => resort.id);
+  const handleTabChange = (tab: CompareTab) => {
+    if (tab === activeTab) return;
+    homeCompare?.onTabChange();
+    setActiveTab(tab);
+  };
   const isSidePanel = useBreakpointValue({ base: false, md: true }) ?? false;
   const isSheetContentScrollable = canScrollContent ?? isSidePanel;
 
@@ -162,7 +168,6 @@ export const SkiResortCompareView = ({
         : "p-4";
 
   const toolbar: ReactNode = (() => {
-    if (isLoading) return null;
     switch (activeTab) {
       case "ゲレンデ":
         return (
@@ -201,6 +206,14 @@ export const SkiResortCompareView = ({
         <div className="flex h-full min-h-64 items-center justify-center">
           <LoadingSpinner text="比較データを読み込み中..." />
         </div>
+      );
+    }
+
+    if (source.kind === "list" && compareIds.length === 0) {
+      return (
+        <p className="p-3 text-sm text-gray-500">
+          スキー場が登録されていません。右上の追加ボタンから追加できます。
+        </p>
       );
     }
 
@@ -319,7 +332,7 @@ export const SkiResortCompareView = ({
           <UnderlineTabs
             tabs={TABS}
             activeTab={activeTab}
-            onTabChange={setActiveTab}
+            onTabChange={handleTabChange}
             className="min-w-0 flex-1 border-b-0 md:w-auto md:flex-none"
             compact
             fill={false}
@@ -329,45 +342,43 @@ export const SkiResortCompareView = ({
               {toolbar}
             </div>
           )}
-          {/* お気に入り・保存したリストから開いたときは、何の比較かを見出しに出す */}
-          {source.kind === "favorites" && (
-            <span
-              className="ml-auto flex shrink-0 items-center gap-1 text-xs font-semibold text-pink-600 md:text-sm"
-              title="お気に入りの比較"
-            >
-              <Heart className="size-4" fill="currentColor" />
-              <span className="hidden md:inline">お気に入り</span>
-            </span>
-          )}
+          {/* リスト名はPCで表示し、スマホは操作に幅を使う。 */}
           {source.kind === "list" && (
             <span
-              className="ml-auto hidden max-w-60 min-w-0 truncate text-sm font-semibold text-gray-900 md:block"
+              className="ml-auto hidden max-w-60 min-w-0 items-center gap-1 text-sm font-semibold text-gray-900 md:flex"
               title={source.name}
             >
-              {source.name}
+              <List className="size-4 shrink-0 text-blue-700" />
+              <span className="truncate">{source.name}</span>
             </span>
           )}
           {/* 読み込み中も件数が 0 にならないよう、取得済みの数ではなく比較対象の数を出す */}
           <span
             className={cn(
               "hidden shrink-0 text-xs tabular-nums text-gray-500 md:block",
-              source.kind === "selection" && "ml-auto",
+              source.kind !== "list" && "ml-auto",
             )}
           >
             {compareIds.length}件
           </span>
-          <div
-            className={cn(
-              "shrink-0",
-              source.kind !== "favorites" && "ml-auto md:ml-0",
-            )}
-          >
-            <SaveCompareListButton
-              resortIds={compareIds}
-              source={source}
-              onSaved={list => homeCompare?.onListSaved(list)}
-            />
-          </div>
+          {source.kind === "selection" && (
+            <div className="ml-auto shrink-0 md:ml-0">
+              <SaveCompareListButton
+                resortIds={compareIds}
+                source={source}
+                onSaved={list => homeCompare?.onListSaved(list)}
+              />
+            </div>
+          )}
+          {source.kind === "list" && (
+            <div className="ml-auto shrink-0 md:ml-0">
+              <AddCompareListResortsButton
+                listId={source.id}
+                resorts={mapResorts}
+                onSaved={list => homeCompare?.onListSaved(list)}
+              />
+            </div>
+          )}
           <Button
             variant="ghost"
             onClick={onClose}

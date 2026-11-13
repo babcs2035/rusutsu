@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, CircleSlash, Heart, ThumbsUp } from "lucide-react";
+import { Check, CircleSlash, ThumbsUp } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { setPostReaction } from "@/features/community/actions";
@@ -142,9 +142,8 @@ export function PostReactions({
       {/* 狭いカード（320pxのスマホ）では、ボタンの間隔と余白を詰めて1行に収める */}
       <div className="-ml-2.5 flex items-center gap-2 @max-[18rem]:-ml-1.5 @max-[18rem]:gap-1">
         {reactions
-          .filter(reaction => !EXISTENCE_REACTIONS.includes(reaction.kind))
+          .filter(reaction => reaction.kind === "HELPFUL")
           .map(reaction => {
-            const like = reaction.kind === "LIKE";
             const label = REACTION_LABELS[reaction.kind];
             return (
               <Button
@@ -158,28 +157,14 @@ export function PostReactions({
                 aria-pressed={reaction.mine}
                 className={cn(
                   iconButton,
-                  like
-                    ? "hover:bg-pink-50 hover:text-pink-500"
-                    : "hover:bg-sky-50 hover:text-sky-600",
-                  reaction.mine && (like ? "text-pink-500" : "text-sky-600"),
+                  "hover:bg-sky-50 hover:text-sky-600",
+                  reaction.mine && "text-sky-600",
                 )}
                 onClick={() => void toggle(reaction.kind)}
               >
-                {like ? (
-                  <Heart
-                    className={cn(
-                      "size-[18px]",
-                      reaction.mine && "fill-pink-500",
-                    )}
-                  />
-                ) : (
-                  <ThumbsUp
-                    className={cn(
-                      "size-[18px]",
-                      reaction.mine && "fill-sky-100",
-                    )}
-                  />
-                )}
+                <ThumbsUp
+                  className={cn("size-[18px]", reaction.mine && "fill-sky-100")}
+                />
                 {reaction.count}
               </Button>
             );

@@ -42,7 +42,7 @@ export function GeometryScreen({
   features: CorrectionFeature[];
   /** この線だけを直す（コース・リフトの詳細から開いたとき）。追加は出さない */
   scopeIds?: string[];
-  /** スマホ。線を選んでいる間は一覧を畳み、地図を広く使う */
+  /** スマホ。線を描いている間は一覧を畳み、地図を広く使う */
   compact: boolean;
   onSelectFromList: (id: string) => void;
 }) {
@@ -64,14 +64,19 @@ export function GeometryScreen({
     ...visible.filter(line => line.isNew),
     ...visible.filter(line => !line.isNew),
   ];
-  const toolsOnly = compact && Boolean(active);
+  const toolsOnly = compact && Boolean(active) && mode === "draw";
   const activeRow = useRef<HTMLLIElement | null>(null);
+  const selectedFromList = useRef(false);
   const activeId = active?.id;
-  // 地図で選んだ線の行を、一覧の見える位置に出す
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 選択が変わったときだけ動かす
+  // 一覧から選んだときは位置を保つ。地図での選択や描画から戻ったときは行を見せる
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 選択と一覧の表示が変わったときだけ動かす
   useEffect(() => {
+    if (selectedFromList.current) {
+      selectedFromList.current = false;
+      return;
+    }
     activeRow.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }, [activeId]);
+  }, [activeId, toolsOnly]);
 
   const history = (
     <>
@@ -102,7 +107,7 @@ export function GeometryScreen({
 
   const tools = active && (
     <div className="space-y-1.5">
-      {active.isNew ? (
+      {active.isNew && (
         <Input
           aria-label={`${label}名`}
           className="h-8"
@@ -111,14 +116,6 @@ export function GeometryScreen({
           value={active.name}
           onChange={event => editor.rename(active.id, event.target.value)}
         />
-      ) : (
-        // 上の帯に名前が出ている画面（スマホ・対象を絞った修正）では繰り返さない
-        !toolsOnly &&
-        !restricted && (
-          <p className="text-sm font-bold break-words text-gray-900">
-            {lineName(active)}
-          </p>
-        )
       )}
       <p className="text-xs leading-snug text-gray-600">
         {mode === "draw"
@@ -147,9 +144,9 @@ export function GeometryScreen({
           onClick={() => editor.remove(active.id)}
         >
           <Trash2 aria-hidden="true" />
-          {active.isNew ? "この線を消す" : `この${label}の削除を提案`}
+          {active.isNew ? "この線を消す" : `${label}の削除を提案`}
         </Button>
-        {!lockedId && !compact && (
+        {!lockedId && !toolsOnly && (
           <Button
             type="button"
             variant="outline"
@@ -200,16 +197,9 @@ export function GeometryScreen({
         )}
         {history}
       </div>
-      {/* 操作は一覧の外に置き、一覧をスクロールしても選んだ線の操作が隠れないようにする */}
-      {tools && (
-        <div
-          className={cn(
-            "shrink-0 px-3 py-2 md:px-4",
-            !toolsOnly && !lockedId && "border-b border-blue-100 bg-blue-50",
-          )}
-        >
-          {tools}
-        </div>
+      {/* スマホの描画中と単独対象では一覧外に操作を表示 */}
+      {tools && (toolsOnly || lockedId) && (
+        <div className="shrink-0 px-3 py-2 md:px-4">{tools}</div>
       )}
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         {lockedId && !active && (
@@ -247,45 +237,55 @@ export function GeometryScreen({
                     key={line.id}
                     ref={selected ? activeRow : undefined}
                     className={cn(
-                      "flex min-h-10 items-center gap-2 px-3 md:px-4",
+                      "flex flex-col items-stretch px-3 md:px-4",
                       selected && "bg-blue-50",
                     )}
                   >
-                    <button
-                      type="button"
-                      aria-pressed={selected}
-                      disabled={line.deleted}
-                      className={cn(
-                        "min-w-0 flex-1 py-2 text-left text-sm font-semibold break-words",
-                        line.deleted
-                          ? "text-gray-400 line-through"
-                          : "text-gray-900",
-                      )}
-                      onClick={() => onSelectFromList(line.id)}
-                    >
-                      {lineName(line)}
-                    </button>
-                    {change && (
-                      <span
-                        className={cn(
-                          "shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap",
-                          change === "delete"
-                            ? "bg-red-100 text-red-800"
-                            : "bg-amber-100 text-amber-800",
-                        )}
-                      >
-                        {CHANGE_LABEL[change]}
-                      </span>
-                    )}
-                    {line.deleted && (
-                      <Button
+                    <div className="flex min-h-10 items-center gap-2">
+                      <button
                         type="button"
-                        variant="outline"
-                        className="h-7 px-2 text-xs font-semibold whitespace-nowrap"
-                        onClick={() => editor.restore(line.id)}
+                        aria-pressed={selected}
+                        disabled={line.deleted}
+                        className={cn(
+                          "min-w-0 flex-1 py-2 text-left text-sm font-semibold break-words",
+                          line.deleted
+                            ? "text-gray-400 line-through"
+                            : "text-gray-900",
+                        )}
+                        onClick={() => {
+                          selectedFromList.current = line.id !== activeId;
+                          onSelectFromList(line.id);
+                        }}
                       >
-                        取り消す
-                      </Button>
+                        {lineName(line)}
+                      </button>
+                      {change && (
+                        <span
+                          className={cn(
+                            "shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap",
+                            change === "delete"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-amber-100 text-amber-800",
+                          )}
+                        >
+                          {CHANGE_LABEL[change]}
+                        </span>
+                      )}
+                      {line.deleted && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-7 px-2 text-xs font-semibold whitespace-nowrap"
+                          onClick={() => editor.restore(line.id)}
+                        >
+                          取り消す
+                        </Button>
+                      )}
+                    </div>
+                    {selected && tools && (
+                      <div className="border-t border-blue-100 py-2">
+                        {tools}
+                      </div>
                     )}
                   </li>
                 );

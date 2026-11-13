@@ -57,6 +57,7 @@ export function BulkScreen({
   features,
   edits,
   onEdit,
+  onSelect,
   onEditAll,
   onReset,
   focusId,
@@ -66,9 +67,10 @@ export function BulkScreen({
   features: CorrectionFeature[];
   edits: PropEdits;
   onEdit: (feature: CorrectionFeature, field: string, value: unknown) => void;
+  onSelect: (feature: CorrectionFeature) => void;
   onEditAll: (list: CorrectionFeature[], field: string, value: Mark) => void;
   onReset: (feature: CorrectionFeature, field: string) => void;
-  /** 地図で選んだ線。その行を見える位置に出して目立たせる */
+  /** 選択中の線。地図から選んだときはその行を見える位置に出す */
   focusId: string | null;
   onAddPosition: () => void;
 }) {
@@ -78,8 +80,12 @@ export function BulkScreen({
   );
   const marks = [...LEGEND[field].map(item => item.mark), null];
   const focusRow = useRef<HTMLLIElement | null>(null);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 地図で選び直したときだけ動かす
+  const selectedFromList = useRef<string | null>(null);
   useEffect(() => {
+    if (selectedFromList.current === focusId) {
+      selectedFromList.current = null;
+      return;
+    }
     focusRow.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [focusId]);
 
@@ -157,9 +163,18 @@ export function BulkScreen({
                     )}
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm leading-tight font-semibold break-words text-gray-900">
+                      <button
+                        type="button"
+                        aria-pressed={feature.id === focusId}
+                        className="block w-full text-left text-sm leading-tight font-semibold break-words text-gray-900 focus-visible:outline-2 focus-visible:outline-blue-500"
+                        onClick={() => {
+                          selectedFromList.current =
+                            feature.id === focusId ? null : feature.id;
+                          onSelect(feature);
+                        }}
+                      >
                         {feature.name}
-                      </p>
+                      </button>
                       {(edited || segmented) && (
                         <p className="text-[11px] leading-tight text-gray-500">
                           {edited ? "現在の登録: " : ""}
@@ -175,7 +190,12 @@ export function BulkScreen({
                             <button
                               type="button"
                               className="ml-1.5 text-blue-700 underline underline-offset-2"
-                              onClick={() => onReset(feature, field)}
+                              onClick={() => {
+                                selectedFromList.current =
+                                  feature.id === focusId ? null : feature.id;
+                                onSelect(feature);
+                                onReset(feature, field);
+                              }}
                             >
                               戻す
                             </button>
@@ -199,7 +219,12 @@ export function BulkScreen({
                               "h-8 px-0",
                               mark ? "w-8 text-sm font-bold" : "w-10",
                             )}
-                            onClick={() => onEdit(feature, field, mark)}
+                            onClick={() => {
+                              selectedFromList.current =
+                                feature.id === focusId ? null : feature.id;
+                              onSelect(feature);
+                              onEdit(feature, field, mark);
+                            }}
                           >
                             <MarkIcon mark={mark} />
                           </Button>

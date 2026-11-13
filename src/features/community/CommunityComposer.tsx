@@ -40,8 +40,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  getCommunityAccount,
-  getPostDetail,
+  getComposerSetup,
   prepareCommunityPhoto,
   saveCommunityProfile,
   startCommunityLogin,
@@ -366,11 +365,12 @@ export function CommunityComposer({
         } catch {
           /* Preview stays off. */
         }
-        const accountResult =
+        const setup =
           signedOut && !canPreview
             ? null
-            : await getCommunityAccount().catch(() => undefined);
+            : await getComposerSetup(postId).catch(() => undefined);
         if (!alive) return;
+        const accountResult = setup === undefined ? undefined : setup?.account;
         if (accountResult === undefined) {
           setLoadingError("投稿の準備に失敗しました。");
           return;
@@ -412,8 +412,11 @@ export function CommunityComposer({
         let currentVersion: number | null = null;
         let currentPhotos: PublicPhoto[] = [];
         if (postId) {
-          const detail = await getPostDetail(postId);
-          if (!alive) return;
+          const detail = setup?.detail;
+          if (!detail) {
+            setLoadingError("投稿の準備に失敗しました。");
+            return;
+          }
           if (!detail.ok) {
             setLoadingError(detail.error);
             return;

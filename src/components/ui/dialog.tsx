@@ -42,14 +42,19 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  closeDisabled = false,
   overlayClassName,
+  keepMounted,
   ...props
 }: DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean;
+  closeDisabled?: boolean;
   overlayClassName?: string;
+  /** 閉じても中身を破棄しない（開き直したとき入力・スクロール位置を保つ） */
+  keepMounted?: boolean;
 }) {
   return (
-    <DialogPortal>
+    <DialogPortal keepMounted={keepMounted}>
       <DialogOverlay className={overlayClassName} />
       <DialogPrimitive.Popup
         data-slot="dialog-content"
@@ -63,6 +68,7 @@ function DialogContent({
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
+            disabled={closeDisabled}
             render={
               <Button
                 variant="ghost"

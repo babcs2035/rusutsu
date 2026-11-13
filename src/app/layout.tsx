@@ -2,6 +2,7 @@ import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Geist, Manrope } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { MAPLIBRE_WORKER_URL } from "@/features/map/maplibre/mapWorkerUrl";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { ExternalLinksInNewTab } from "@/shared/components/ExternalLinksInNewTab";
@@ -37,6 +38,8 @@ export const metadata: Metadata = {
     apple: "/rusutsu/favicon.png",
   },
   manifest: "/rusutsu/manifest.json",
+  // Service Worker が HTML と同じ版の地図ワーカーを保存するために使う。
+  other: { "rusutsu-map-worker": MAPLIBRE_WORKER_URL },
   description:
     "日本全国のスキー場情報を多元的なソースから集約・統合し，可視化するプラットフォーム．積雪・天気・コース情報を一目で見やすく．",
   appleWebApp: {

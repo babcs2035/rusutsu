@@ -46,6 +46,7 @@ export async function anonymousSubmissionKey(operationKey: string) {
   const internal = internalCommunityActor();
   if (internal?.anonymousIdentity && operationKey === "rate-limit")
     return internal.anonymousIdentity;
+  if (internal?.submissionKey) return internal.submissionKey;
   const jar = await cookies();
   let identity = jar.get("rusutsu-contribution-id")?.value;
   if (!identity || !/^[a-f0-9-]{36}$/.test(identity)) {

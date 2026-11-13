@@ -56,17 +56,24 @@ export function ResortFeatureChips({
   hasEvCharger,
   data,
   size = "md",
+  layout = "row",
 }: {
   hasYukiMagi: boolean;
   hasEvCharger: boolean;
   /** 詳細の読み込み前は null。チップは同じ見た目で出し、押せないようにする */
   data: ResortFeatureData | null;
   size?: "sm" | "md";
+  layout?: "row" | "column";
 }) {
   const showEv = hasEvCharger || Boolean(data?.evChargers?.length);
   if (!hasYukiMagi && !showEv) return null;
   return (
-    <span className="inline-flex shrink-0 items-center gap-1">
+    <span
+      className={cn(
+        "inline-flex shrink-0 gap-1",
+        layout === "column" ? "flex-col items-start" : "items-center",
+      )}
+    >
       {hasYukiMagi && (
         <FeatureDialog
           label="雪マジ"

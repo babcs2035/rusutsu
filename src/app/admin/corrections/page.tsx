@@ -1,14 +1,10 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { listCorrections } from "@/server/corrections/repository";
 import { requireAdminPage } from "@/server/edit-requests/authPages";
 
 export default async function CorrectionsPage() {
   await requireAdminPage();
-  const requests = await prisma.editRequest.findMany({
-    where: { kind: "public-correction" },
-    orderBy: { createdAt: "desc" },
-    take: 200,
-  });
+  const { requests } = await listCorrections();
   return (
     <main className="mx-auto max-w-4xl p-4">
       <h1 className="mb-4 text-xl font-bold">情報修正の確認</h1>

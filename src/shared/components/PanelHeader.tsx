@@ -1,5 +1,7 @@
-import { ChevronLeft, X } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
+import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { PanelCloseButton } from "./PanelCloseButton";
 
 /**
  * 詳細パネルを投稿・修正の画面に切り替えたときの見出し。
@@ -12,6 +14,7 @@ export function PanelHeader({
   onClose,
   closeLabel = "閉じる",
   closeDisabled = false,
+  actions,
 }: {
   title: string;
   onBack?: () => void;
@@ -19,6 +22,7 @@ export function PanelHeader({
   onClose?: () => void;
   closeLabel?: string;
   closeDisabled?: boolean;
+  actions?: ReactNode;
 }) {
   return (
     <div className="flex shrink-0 items-center justify-between gap-2 border-b border-gray-200 py-2 pr-2 pl-3 md:pr-3 md:pl-4">
@@ -39,17 +43,13 @@ export function PanelHeader({
         </h2>
       </div>
       <div className="flex shrink-0 items-center gap-1">
+        {actions}
         {onClose && (
-          <Button
-            type="button"
-            aria-label={closeLabel}
-            variant="ghost"
-            className="flex size-7 min-h-7 shrink-0 items-center justify-center rounded-full border border-gray-200 p-0 text-gray-500 shadow-sm hover:bg-gray-50 hover:text-gray-900 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10 md:size-8 md:min-h-8"
+          <PanelCloseButton
+            label={closeLabel}
             disabled={closeDisabled}
-            onClick={onClose}
-          >
-            <X size={18} strokeWidth={2.5} />
-          </Button>
+            onClose={onClose}
+          />
         )}
       </div>
     </div>
