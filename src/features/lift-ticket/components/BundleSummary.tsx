@@ -30,7 +30,7 @@ export const BundleSummary = ({
           </span>
         </p>
         {showTotal && (
-          <p className="flex-shrink-0 text-sm font-bold font-mono text-gray-900">
+          <p className="flex-shrink-0 text-base font-bold font-mono text-gray-900">
             {yen(subtotal)}
           </p>
         )}
@@ -59,7 +59,7 @@ export const BundleSummary = ({
                   />
                 </p>
                 {(bundle.lines.length > 1 || !showTotal) && (
-                  <p className="flex-shrink-0 font-semibold font-mono">
+                  <p className="flex-shrink-0 text-base font-semibold font-mono">
                     {yen(line.subtotal)}
                   </p>
                 )}

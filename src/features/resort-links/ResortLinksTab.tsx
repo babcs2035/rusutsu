@@ -26,7 +26,7 @@ const loadedLinks = new Map<string, ResortLinkItem[]>();
 const MAX_REMEMBERED_RESORTS = 30;
 
 const chipClassName =
-  "max-w-full rounded-full px-2 py-1 text-xs font-medium hover:no-underline";
+  "max-w-full whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium hover:no-underline";
 
 /** 外部サイト（ツアー会社など）のリンクか。公式と、種類そのものがサイト名のもの（tenki.jp など）は違う */
 const isSiteLink = (link: ResortLinkItem) =>
@@ -38,15 +38,18 @@ const linkKey = (link: ResortLinkItem) =>
 function LinkChip({
   link,
   text,
+  title,
   className,
 }: {
   link: ResortLinkItem;
   text: string;
+  title?: string;
   className?: string;
 }) {
   return (
     <ExternalLinkComponent
       href={link.url}
+      title={title}
       className={cn(
         chipClassName,
         className,
@@ -144,27 +147,82 @@ function LinkChips({ links }: { links: ResortLinkItem[] }) {
   );
 }
 
+/** 種類名のボタンで並べられるのは、公式などのリンクが3件まで（ツアー会社のように多いものは行にまとめる） */
+const MAX_NAMED_BUTTONS = 3;
+
+type LinkTypeView = ResortLinkGroupView["types"][number];
+
+const canUseTypeButtons = (type: LinkTypeView) =>
+  type.links.length === 1 ||
+  (type.links.length <= MAX_NAMED_BUTTONS &&
+    type.links.every(link => !isSiteLink(link)));
+
+/** 種類名のボタン（例: 「コース営業状況」）。押すとそのページを別タブで開く */
+function TypeButtons({ type }: { type: LinkTypeView }) {
+  return type.links.map((link, index) => {
+    // 1件なら種類名だけ。複数なら区別の名前か番号を添える（レンタル料金（予約）・ゲレンデマップ 2）
+    const suffix =
+      type.links.length === 1
+        ? ""
+        : link.label
+          ? `（${link.label}）`
+          : index > 0
+            ? ` ${index + 1}`
+            : "";
+    const detail = [link.label, link.note].filter(Boolean).join(" / ");
+    return (
+      <LinkChip
+        key={linkKey(link)}
+        link={link}
+        text={`${type.label}${suffix}`}
+        title={detail || undefined}
+        className="px-2.5 py-1.5"
+      />
+    );
+  });
+}
+
 function LinkGroups({ groups }: { groups: ResortLinkGroupView[] }) {
   return (
-    <div className="space-y-4">
-      {groups.map(group => (
-        <section key={group.id} aria-label={group.label}>
-          <h3 className="mb-1 text-sm font-semibold text-slate-900">
-            {group.label}
-          </h3>
-          <dl className="divide-y divide-slate-100 border-y border-slate-100">
-            {group.types.map(type => (
-              <div
-                key={type.type}
-                className="grid grid-cols-[7.5rem_minmax(0,1fr)] gap-x-2 py-1.5"
-              >
-                <dt className="pt-1 text-xs text-slate-600">{type.label}</dt>
-                <LinkChips links={type.links} />
+    <div className="space-y-3">
+      {groups.map(group => {
+        const buttonTypes = group.types.filter(canUseTypeButtons);
+        const rowTypes = group.types.filter(type => !canUseTypeButtons(type));
+        return (
+          <section key={group.id} aria-label={group.label}>
+            <h3 className="mb-1.5 text-sm font-semibold text-slate-900">
+              {group.label}
+            </h3>
+            {buttonTypes.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {buttonTypes.map(type => (
+                  <TypeButtons key={type.type} type={type} />
+                ))}
               </div>
-            ))}
-          </dl>
-        </section>
-      ))}
+            )}
+            {rowTypes.length > 0 && (
+              <dl
+                className={cn(
+                  "divide-y divide-slate-100 border-y border-slate-100",
+                  buttonTypes.length > 0 && "mt-1.5",
+                )}
+              >
+                {rowTypes.map(type => (
+                  <div
+                    key={type.type}
+                    className="grid grid-cols-[7.5rem_minmax(0,1fr)] gap-x-2 py-1.5"
+                  >
+                    <dt className="pt-1 text-xs text-slate-600">
+                      {type.label}
+                    </dt>
+                    <LinkChips links={type.links} />
+                  </div>
+                ))}
+              </dl>
+            )}
+          </section>
+        );
+      })}
     </div>
   );
 }

@@ -703,6 +703,11 @@ fixed_per_person | discount_amount | discount_percent`）を持たせる。
 大人数用ルールを先に並べれば、上限人数までセット料金を適用し、残りを通常料金にできる。
 未指定のルールは従来どおり繰り返し適用できる（例: 親子ペア券×2）。
 
+Web限定のファミリー券など、購入URLのある channel だけで売るルールは、offer と同じく
+`sales_period`（販売期間）と `purchase_deadline`（「来場前日までに購入」）を書く。
+書かないと、当日の照会でも Web 価格のファミリー券が選ばれる（野辺山で検出、2026-11-13）。
+同じ channel の Web 券の offer と同じ期限にする。窓口だけで売るルールには書かない。
+
 **この構造は実際に料金計算に使われる。**
 `lookup-price.mjs --party "adult:2,elementary:2"` がパーティ構成に
 party_rules を適用し、**個別購入の合計と比べて安い方**を返す

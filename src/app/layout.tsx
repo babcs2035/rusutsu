@@ -4,6 +4,7 @@ import { Bricolage_Grotesque, Geist, Manrope } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import { ExternalLinksInNewTab } from "@/shared/components/ExternalLinksInNewTab";
 import { SITE_TITLE } from "@/shared/utils/resortPath";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
@@ -97,6 +98,7 @@ export default function RootLayout({
     >
       <body className={cn(manrope.className, "bg-[var(--bg-light)]")}>
         <TooltipProvider>{children}</TooltipProvider>
+        <ExternalLinksInNewTab />
         <GoogleAnalytics gaId="G-YMEM5C2F4C" />
       </body>
     </html>

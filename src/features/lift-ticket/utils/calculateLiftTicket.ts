@@ -1086,6 +1086,13 @@ const getAutomaticSpecialProductIds = (
         // レンタル付きのセット券と、リフト券だけの券を混ぜない
         // （レディースDAYの1日券をセット券の料金として出していた）
         if (includesRental(product) !== withRental) return false;
+        // 初心者エリア限定の券（スノーエスカレーター等）の特定日料金を、全山の券の
+        // 代わりにしない（胎内で土日の小学生がエスカレーター無料券0円になっていた）
+        if (
+          (product.area_ids?.length ?? 0) > 0 &&
+          (baseProduct.area_ids?.length ?? 0) === 0
+        )
+          return false;
         const mode = product.validity?.mode;
         return mode == null || mode === "unknown" || isFullDayLike(product);
       })

@@ -26,21 +26,33 @@ export default async function ShareMapPage({
       <ShareMapRender {...data} size={size as ShareMapSize} />
       <p>
         背景：
-        <a href="https://maps.gsi.go.jp/development/ichiran.html#seamlessphoto">
+        <a
+          href="https://maps.gsi.go.jp/development/ichiran.html#seamlessphoto"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           国土地理院
         </a>
         を加工し、Rusutsuがコース・リフト・斜度表示を追記。
       </p>
       <p>
         標高：
-        <a href="https://maps.gsi.go.jp/development/elevation_s.html">
+        <a
+          href="https://maps.gsi.go.jp/development/elevation_s.html"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           国土地理院
         </a>
         。斜度はRusutsuの計算値。
       </p>
       <p>
         OSM由来のコースデータ：
-        <a href="https://www.openstreetmap.org/copyright">
+        <a
+          href="https://www.openstreetmap.org/copyright"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           © OpenStreetMap contributors / ODbL
         </a>
       </p>

@@ -34,9 +34,12 @@ const IN_SCOPE_SOURCE_PATTERN = /リフト(?:券|料金)|料金表|1日券|一�
 const EXCLUSION_NOTE_PATTERN =
   /(?:シーズン券|season(?:[-_\s]?)(?:pass|ticket|price))[^。"]{0,30}(?:対象外|除外|収集しない|記録しない|含めない)/giu;
 
+// source_quotes は出典ページ内の位置を示すページの文字（前後の文言）で、データの内容ではない
 const mentionsOutOfScope = (value) =>
   OUT_OF_SCOPE_DATA_PATTERN.test(
-    JSON.stringify(value ?? {}).replace(EXCLUSION_NOTE_PATTERN, ""),
+    JSON.stringify(value ?? {}, (key, v) =>
+      key === "source_quotes" ? undefined : v,
+    ).replace(EXCLUSION_NOTE_PATTERN, ""),
   );
 
 function checkFile(file) {

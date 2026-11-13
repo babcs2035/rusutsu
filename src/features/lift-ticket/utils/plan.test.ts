@@ -24,7 +24,7 @@ const NO_DAY_PASS = path.join(
 /** 恐羅漢。「2日券(9時間券)」は時間で数えない連続2日券 */
 const OSORAKAN = path.join(
   process.cwd(),
-  "src/private/data/lift-ticket/osorakan-snow-park/2026-2027.json",
+  "src/private/data/lift-ticket-test-fixtures/ui/osorakan-snow-park/2026-2027.json",
 );
 
 /** 青森スプリング。「1日券5枚セット」（selectable_days）が全日券と平日券の2種類ある */
@@ -623,13 +623,13 @@ test("セットが得にならない・買えない場合は1日券のまま", (
 /** 夏油高原。早割WEB券はレターパックの送料600円（1決済ごと）がかかる */
 const GETO = path.join(
   process.cwd(),
-  "src/private/data/lift-ticket/geto-kogen/2026-2027.json",
+  "src/private/data/lift-ticket-test-fixtures/ui/geto-kogen/2026-2027.json",
 );
 
 /** りんご今日話国。リフト券とは別に入園料500円/人がかかる */
 const RINGO = path.join(
   process.cwd(),
-  "src/private/data/lift-ticket/ringo-kyowakoku/2026-2027.json",
+  "src/private/data/lift-ticket-test-fixtures/ui/ringo-kyowakoku/2026-2027.json",
 );
 
 test("送料は券と別の行で出し、出典と窓口では不要なことが分かる", () => {
@@ -641,7 +641,9 @@ test("送料は券と別の行で出し、出典と窓口では不要なこと�
   assert.equal(day.fees[0].total, 600);
   assert.equal(day.fees[0].purchaseMethodOnly, true);
   assert.ok(day.fees[0].sourceNumbers.length > 0);
-  assert.ok(day.fees[0].sourceQuotes);
+  // 金額の場所（source_quotes）は付けられない資料もある。付いていれば出典ページを指す
+  for (const quote of Object.values(day.fees[0].sourceQuotes ?? {}))
+    assert.ok(quote.source_id);
   assert.ok(
     day.fees[0].sourceNumbers.every(number =>
       result.references.some(reference => reference.number === number),

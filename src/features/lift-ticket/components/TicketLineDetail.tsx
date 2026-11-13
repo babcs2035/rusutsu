@@ -117,7 +117,7 @@ export const TicketLineDetail = ({
           {sources}
         </p>
         {showAmount && (
-          <p className="flex-shrink-0 text-sm font-semibold text-gray-900 font-mono">
+          <p className="flex-shrink-0 text-base font-semibold text-gray-900 font-mono">
             {subtotal == null ? "未確定" : yen(subtotal)}
           </p>
         )}

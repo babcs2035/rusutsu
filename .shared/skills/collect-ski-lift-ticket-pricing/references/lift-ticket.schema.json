@@ -1823,6 +1823,55 @@
         "sales_period": {
           "$ref": "#/$defs/nullablePeriod"
         },
+        "purchase_deadline": {
+          "description": "Web限定のセット券・ファミリー券など、遠隔購入する人数構成ルールの購入期限（「来場前日までに購入」）。offer.purchase_deadline と同じ書き方。窓口だけで売るルールには書かない。",
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "same_day_allowed",
+            "official_text_ja"
+          ],
+          "properties": {
+            "same_day_allowed": {
+              "description": "利用日当日に買えるか。true＝当日購入可（「当日OK」「利用15分前まで」）、false＝前日以前に買う必要がある（前売り）、null＝**公式に記載がない**（推測してはいけない。人間に通知される）",
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "days_before_use": {
+              "description": "利用日の何日前までに買う必要があるか（**1日単位**）。「前日まで」＝1、「3日前まで」＝3、当日購入可なら 0 か null。**照会日から「あと何日あるので買えるか」を判定するために使う**。当日内の分単位の期限（「利用15分前まで」等）はここに入れず official_text_ja だけに書く（1日単位の判定には効かないため）",
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "deadline_date": {
+              "description": "「〇月〇日まで販売」のように利用日と無関係な固定期限。照会日がこの日を過ぎていれば買えない",
+              "$ref": "#/$defs/nullableDate"
+            },
+            "official_text_ja": {
+              "description": "期限の公式表記をそのまま（「利用日前日23:59まで」「リフト利用開始15分前まで」「1/31まで販売」）。same_day_allowed が null のときのみ null にできる",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "notes_ja": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "source_refs": {
+              "$ref": "#/$defs/sourceRefs"
+            }
+          }
+        },
         "use_period": {
           "$ref": "#/$defs/nullablePeriod"
         },

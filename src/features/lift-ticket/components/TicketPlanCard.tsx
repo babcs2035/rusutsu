@@ -127,7 +127,7 @@ const FeeLines = ({
               className="ml-1.5 align-middle"
             />
           </p>
-          <p className="flex-shrink-0 font-semibold text-gray-900 font-mono">
+          <p className="flex-shrink-0 text-base font-semibold text-gray-900 font-mono">
             {yen(fee.total * multiplier)}
           </p>
         </div>
@@ -181,7 +181,7 @@ const SectionHeading = ({
       )}
     </p>
     {amount && (
-      <p className="flex-shrink-0 text-sm font-bold font-mono text-gray-900">
+      <p className="flex-shrink-0 text-base font-bold font-mono text-gray-900">
         {amount}
       </p>
     )}
@@ -395,7 +395,7 @@ const TierBody = ({ tier }: { tier: TicketPlanTier }) => {
   ];
 
   return (
-    <div className="flex flex-col divide-y divide-orange-100">
+    <div className="flex flex-col divide-y divide-gray-100">
       {tier.salesStarts.length > 0 && (
         <p className="pb-2 text-xs text-gray-600">
           {tier.salesStarts.join("・")}
@@ -425,6 +425,27 @@ const TierBody = ({ tier }: { tier: TicketPlanTier }) => {
     </div>
   );
 };
+
+/** 段階の金額。料金に含められなかったレンタルは「＋ゴーグル」と添える */
+const TierAmount = ({
+  total,
+  labels,
+}: {
+  total: number | null;
+  labels: string[];
+}) =>
+  total == null ? (
+    "未確定"
+  ) : (
+    <>
+      {yen(total)}
+      {labels.map(label => (
+        <span key={label} className="ml-1 text-xs font-bold text-gray-700">
+          ＋{label}
+        </span>
+      ))}
+    </>
+  );
 
 /**
  * 買い方ごとの合計と内訳を出す。
@@ -471,64 +492,27 @@ export const TicketPlanCard = ({ tiers }: { tiers: TicketPlanTier[] }) => {
   }
 
   const { view } = cheapest;
-  const { total, tripDayCount } = view;
   // 窓口の料金しか無ければ、買い方の見出しは出さない
   const plain = tiers.length === 1 && cheapest.key === "counter";
+  // 料金に含められなかったレンタル（「＋ゴーグル」）。段階の金額の横に添える
+  const missingLabels = [
+    ...new Set(view.missingRentalLabels.flatMap(label => label.split("＋"))),
+  ];
 
   return (
-    <div
-      className={cn(
-        "rounded-xl border p-2.5",
-        total == null
-          ? "bg-gray-50 border-gray-200"
-          : "bg-orange-50 border-orange-300",
-      )}
-    >
-      <div className="flex items-baseline justify-between gap-3 px-1">
-        {/* 金額の横の「＋ゴーグル」が長くても、見出しは潰さない */}
-        <p className="min-w-0 max-w-[55%] shrink-0 text-sm font-semibold text-gray-700">
-          {tripDayCount === 1 ? "合計" : `${tripDayCount}日の合計`}
-          {view.withRental && (
-            <span className="ml-1.5 whitespace-nowrap text-xs font-normal text-gray-600">
-              リフト券＋レンタル
-            </span>
-          )}
-        </p>
-        {total == null ? (
-          <p className="text-sm font-semibold text-gray-600">未確定</p>
-        ) : (
-          <p className="min-w-0 text-right">
-            <span className="text-2xl font-bold text-gray-900 font-mono whitespace-nowrap">
-              {yen(total)}
-            </span>
-            {/* 収まらなければ「＋ゴーグル」「＋グローブ」の単位で次の行へ回す */}
-            {[
-              ...new Set(
-                view.missingRentalLabels.flatMap(label => label.split("＋")),
-              ),
-            ].map(label => (
-              <span
-                key={label}
-                className="ml-1 inline-block text-sm font-bold text-gray-700 whitespace-nowrap"
-              >
-                ＋{label}
-              </span>
-            ))}
-          </p>
-        )}
-      </div>
+    <div>
       {view.missingRentalNote && (
-        <p className="mt-1 px-1 text-xs text-orange-900">
+        <p className="mb-1 px-1 text-xs text-orange-900">
           {view.missingRentalNote}
         </p>
       )}
       {view.unavailableRentalNote && (
-        <p className="mt-1 px-1 text-xs text-orange-900">
+        <p className="mb-1 px-1 text-xs text-orange-900">
           {view.unavailableRentalNote}
         </p>
       )}
 
-      <div className="mt-2 flex flex-col gap-1.5">
+      <div className="flex flex-col gap-1.5">
         {tiers.map((tier, index) => {
           const open = plain || (toggled[tier.key] ?? index === 0);
           const toggle = () =>
@@ -536,8 +520,28 @@ export const TicketPlanCard = ({ tiers }: { tiers: TicketPlanTier[] }) => {
           return (
             <div
               key={tier.key}
-              className="rounded-lg border border-orange-200 bg-white"
+              className="rounded-lg border border-gray-200 bg-white"
             >
+              {plain && (
+                <div className="flex items-baseline justify-between gap-2 px-2 py-2">
+                  <p className="min-w-0 whitespace-nowrap text-base font-bold text-gray-900">
+                    {tier.view.tripDayCount === 1
+                      ? "合計"
+                      : `${tier.view.tripDayCount}日の合計`}
+                    {tier.view.withRental && (
+                      <span className="ml-1.5 text-xs font-normal text-gray-600">
+                        リフト券＋レンタル
+                      </span>
+                    )}
+                  </p>
+                  <p className="min-w-0 whitespace-nowrap text-right text-lg font-bold font-mono text-gray-900">
+                    <TierAmount
+                      total={tier.view.total}
+                      labels={missingLabels}
+                    />
+                  </p>
+                </div>
+              )}
               {!plain && (
                 <div className="flex items-center gap-2 px-2 py-2">
                   <button
@@ -579,19 +583,17 @@ export const TicketPlanCard = ({ tiers }: { tiers: TicketPlanTier[] }) => {
                     tabIndex={-1}
                     aria-hidden="true"
                     onClick={toggle}
-                    className="min-w-0 flex-1 whitespace-nowrap text-right text-base font-bold font-mono text-gray-900"
+                    className="min-w-0 flex-1 whitespace-nowrap text-right text-lg font-bold font-mono text-gray-900"
                   >
-                    {tier.view.total == null ? "未確定" : yen(tier.view.total)}
+                    <TierAmount
+                      total={tier.view.total}
+                      labels={missingLabels}
+                    />
                   </button>
                 </div>
               )}
               {open && (
-                <div
-                  className={cn(
-                    "px-2 pb-2",
-                    plain ? "pt-2" : "border-t border-orange-100 pt-2",
-                  )}
-                >
+                <div className="border-t border-gray-100 px-2 pt-2 pb-2">
                   <TierBody tier={tier} />
                 </div>
               )}

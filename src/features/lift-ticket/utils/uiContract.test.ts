@@ -127,8 +127,9 @@ for (const spec of OFFICIAL_CASES.filter(c =>
       } else if (spec.categories[category] == null) {
         assert.match(
           result.days[0].result.lines.map(line => line.note).join(" "),
+          // 特定の日（春休みの無料デー等）にだけ料金がある区分は「この日は対象外」と日付を理由に出す
           spec.noPriceCategories?.includes(category)
-            ? /一致する料金がありません|保護者の同伴が必要/
+            ? /一致する料金がありません|保護者の同伴が必要|この日は対象外の券です/
             : /年齢.*入力/,
         );
       }
@@ -336,6 +337,12 @@ for (const spec of OFFICIAL_CASES.filter(c =>
     test(`${spec.resort}: ${hours}時間検索 ${category}の代替券と料金`, () => {
       const result = plan(category, age, spec.date, { kind: "hours", hours });
       assert.equal(result.total, amount);
+      // 分けて使える時間券（3時間ポイント券など）が安ければ、プラン全体はその券
+      // （multiDay）で決まり、日ごとの内訳は1日券のまま残る
+      if (result.multiDay?.kind === "hours_pool") {
+        assert.equal(result.multiDay.productId, product);
+        return;
+      }
       assertPrice(result.days[0].result, amount, true);
       assert.equal(result.days[0].result.productId, product);
     });
@@ -373,6 +380,8 @@ for (const spec of OFFICIAL_CASES.filter(c =>
         return;
       }
       assert.equal(result.total, amount);
+      // 分けて使える時間券で決まったプランは、日ごとの内訳でなく multiDay を見る
+      if (result.multiDay?.kind === "hours_pool") return;
       assertPrice(result.days[0].result, amount, true);
     });
   }

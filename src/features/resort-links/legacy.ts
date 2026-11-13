@@ -30,6 +30,12 @@ const LEGACY_LINK_TYPES: Record<
   weathernewsUrls: { type: "weathernews", source: "weathernews" },
 };
 
+/** 説明欄が点検用のメモ（掲載状況・年度など）で、画面の名前に使えない項目 */
+const NOTE_ONLY_DESCRIPTIONS = new Set<keyof ResortLinks>([
+  "mapUrls",
+  "mapPageUrls",
+]);
+
 export const legacyLinkItems = (
   links: Partial<ResortLinks> | undefined,
 ): ResortLinkItem[] =>
@@ -41,7 +47,9 @@ export const legacyLinkItems = (
               type,
               source,
               category: null,
-              label: link.description?.trim() || null,
+              label: NOTE_ONLY_DESCRIPTIONS.has(key as keyof ResortLinks)
+                ? null
+                : link.description?.trim() || null,
               url: link.url,
               note: null,
               sortOrder: index,

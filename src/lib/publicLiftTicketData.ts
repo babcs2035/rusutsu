@@ -23,6 +23,16 @@ const period = z
   })
   .nullable()
   .optional();
+/** 購入期限。券・レンタル・人数構成ルール（Web限定のファミリー券）で同じ形 */
+const purchaseDeadline = z
+  .object({
+    same_day_allowed: z.boolean().nullable().optional(),
+    days_before_use: number,
+    deadline_date: optionalText,
+    official_text_ja: optionalText,
+  })
+  .nullable()
+  .optional();
 const target = z
   .object({
     official_label_ja: optionalText,
@@ -151,15 +161,7 @@ export const publicLiftTicketDataSchema = z.object({
       target_qualification: target,
       sales_period: period,
       use_period: period,
-      purchase_deadline: z
-        .object({
-          same_day_allowed: z.boolean().nullable().optional(),
-          days_before_use: number,
-          deadline_date: optionalText,
-          official_text_ja: optionalText,
-        })
-        .nullable()
-        .optional(),
+      purchase_deadline: purchaseDeadline,
       price: z
         .object({
           currency: text.optional(),
@@ -226,6 +228,7 @@ export const publicLiftTicketDataSchema = z.object({
         .optional(),
       sales_period: period,
       use_period: period,
+      purchase_deadline: purchaseDeadline,
       source_refs: strings,
       source_quotes: z
         .array(
@@ -322,15 +325,7 @@ export const publicLiftTicketDataSchema = z.object({
           ...notes,
         }),
         target_qualification: target,
-        purchase_deadline: z
-          .object({
-            same_day_allowed: z.boolean().nullable().optional(),
-            days_before_use: number,
-            deadline_date: optionalText,
-            official_text_ja: optionalText,
-          })
-          .nullable()
-          .optional(),
+        purchase_deadline: purchaseDeadline,
         use_period: period,
         sales_period: period,
         usable_at_night: z.boolean().nullable().optional(),

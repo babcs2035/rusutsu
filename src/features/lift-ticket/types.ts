@@ -376,6 +376,8 @@ export type LiftTicketPartyRule = {
   components?: LiftTicketPartyRuleComponent[];
   sales_period?: LiftTicketPeriod | null;
   use_period?: LiftTicketPeriod | null;
+  /** Web限定のファミリー券など、遠隔購入するルールの購入期限（「来場前日まで」） */
+  purchase_deadline?: LiftTicketOffer["purchase_deadline"];
   source_refs?: string[];
   source_quotes?: LiftTicketSourceQuote[];
   notes_ja?: string | null;

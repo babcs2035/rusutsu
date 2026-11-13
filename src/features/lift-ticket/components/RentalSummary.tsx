@@ -67,7 +67,7 @@ export const RentalSummary = ({
           )}
         </p>
         {showTotal && (
-          <p className="flex-shrink-0 text-sm font-bold font-mono text-gray-900">
+          <p className="flex-shrink-0 text-base font-bold font-mono text-gray-900">
             {rental.total == null ? "未確定" : yen(rental.total)}
           </p>
         )}
@@ -85,7 +85,7 @@ export const RentalSummary = ({
               </p>
               {line.subtotal != null &&
                 (rental.lines.length > 1 || !showTotal) && (
-                  <p className="flex-shrink-0 font-semibold font-mono">
+                  <p className="flex-shrink-0 text-base font-semibold font-mono">
                     {yen(line.subtotal)}
                   </p>
                 )}
