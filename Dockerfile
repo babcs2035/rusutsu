@@ -83,6 +83,8 @@ COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/scripts ./src/pri
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/SkiAreaNameDict.json ./src/private/data/SkiAreaNameDict.json
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/SkiResortNameAliases.json ./src/private/data/SkiResortNameAliases.json
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/SkiResortLinks.json ./src/private/data/SkiResortLinks.json
+# EV充電の管理画面で出す、近くの充電器の候補（buildEvChargerCandidates.py が作る）
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/ev-charging/admin-candidates.json ./src/private/data/ev-charging/admin-candidates.json
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/reviews ./src/private/data/reviews
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/resorts-temporary/latest_status_mapping ./src/private/data/resorts-temporary/latest_status_mapping
 # Historical crawl results also support status-name mapping before the first DB result.

@@ -11,7 +11,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { communityPhotoResponse } from "./photoResponse";
 import type { PhotoPreviewSize } from "./photos";
-import { anonymousSubmissionKey } from "./rateLimit";
+import { anonymousSubmissionKey, reactionIdentity } from "./rateLimit";
 import {
   COMMUNITY_API_PATH,
   type CommunityCommand,
@@ -35,12 +35,18 @@ async function remoteRequest(command: CommunityCommand, photos?: FormData) {
     throw new Error(
       "Googleアカウントの本人確認ができません。再ログインしてください。",
     );
+  // 写真はCookieを読めない経路からも取得するので、リアクションの識別子を付けない
+  const reaction =
+    id || command.operation === "photo"
+      ? null
+      : await reactionIdentity(command.operation === "react");
   const payload = JSON.stringify({
     command: commandSchema.parse(command),
     googleAccountId: account?.providerAccountId ?? null,
-    ...(command.operation === "report"
+    ...(command.operation === "report" || (command.operation === "react" && !id)
       ? { anonymousIdentity: await anonymousSubmissionKey("rate-limit") }
       : {}),
+    ...(reaction ? { reactionIdentity: reaction } : {}),
   });
   if (Buffer.byteLength(payload) > MAX_COMMAND_JSON_BYTES)
     throw new Error("投稿の入力が大きすぎます。");

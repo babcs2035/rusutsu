@@ -21,7 +21,7 @@ export const useFilterPanelState = ({
   const keywordId = useId();
   const statusId = useId();
   const yukiMagiId = useId();
-  const beginnerFriendlyId = useId();
+  const evChargerId = useId();
   const minVerticalId = useId();
   const minBaseElevationId = useId();
   const maxBaseElevationId = useId();
@@ -89,7 +89,7 @@ export const useFilterPanelState = ({
   };
 
   const handleCheckboxChange = (
-    name: "status" | "yukiMagi" | "beginnerFriendly",
+    name: "status" | "yukiMagi" | "evCharger",
     checked: boolean,
   ) => {
     onFilterChange({ ...filters, [name]: checked });
@@ -123,7 +123,7 @@ export const useFilterPanelState = ({
     setResetDialogOpen,
     handleTextInputChange,
     ids: {
-      beginnerFriendlyId,
+      evChargerId,
       keywordId,
       maxBaseElevationId,
       maxTopElevationId,

@@ -1,10 +1,12 @@
 "use client";
 
 import { Portal } from "@radix-ui/react-portal";
-import { X } from "lucide-react";
+import { Heart, X } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { SaveCompareListButton } from "@/features/compare-lists/SaveCompareListButton";
+import type { CompareSource } from "@/features/compare-lists/types";
 import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
 import { FinalizedMapToolbar } from "@/features/map/components/FinalizedMapToolbar";
 import {
@@ -26,6 +28,7 @@ import { AnimatedPanel } from "@/shared/components/AnimatedPanel";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
 import { UnderlineTabs } from "@/shared/components/UnderlineTabs";
 import type { MapSkiResort } from "@/types/skiResorts";
+import { useHomeCompare } from "../compareContext";
 import { CompareAccessTab } from "./compare/CompareAccessTab";
 import { CompareDataTab } from "./compare/CompareDataTab";
 import {
@@ -33,8 +36,8 @@ import {
   CompareLiftTicketConditionsDialog,
 } from "./compare/CompareLiftTicketConditions";
 import { CompareLiftTicketTab } from "./compare/CompareLiftTicketTab";
+import { CompareLinksTab } from "./compare/CompareLinksTab";
 import { CompareOverviewTab } from "./compare/CompareOverviewTab";
-import { CompareReviewsTab } from "./compare/CompareReviewsTab";
 import type { CompareSlopeSelection } from "./compare/CompareSlopeMapBoard";
 import {
   CompareSlopeFeatureDetail,
@@ -63,12 +66,14 @@ const TABS = [
   "ゲレンデ",
   "データ",
   "料金",
-  "レビュー",
+  "リンク集",
   "天気",
   "アクセス",
 ] as const;
 
 type CompareTab = (typeof TABS)[number];
+
+const SELECTION_SOURCE: CompareSource = { kind: "selection" };
 
 /**
  * スキー場比較。
@@ -92,6 +97,9 @@ export const SkiResortCompareView = ({
   onMapResortsNeeded,
 }: Props) => {
   const [activeTab, setActiveTab] = useState<CompareTab>("概要");
+  const homeCompare = useHomeCompare();
+  const source = homeCompare?.source ?? SELECTION_SOURCE;
+  const compareIds = homeCompare?.ids ?? resorts.map(resort => resort.id);
   const isSidePanel = useBreakpointValue({ base: false, md: true }) ?? false;
   const isSheetContentScrollable = canScrollContent ?? isSidePanel;
 
@@ -140,8 +148,18 @@ export const SkiResortCompareView = ({
       ? mapDisplaySettings.courseStatuses
       : null;
 
-  // 地図で埋めるタブは外側でスクロールさせず高さいっぱいに使う
-  const isFullHeightTab = activeTab === "アクセス" || activeTab === "ゲレンデ";
+  // 地図で埋めるタブと、中で縦横に送るリンク集は、外側でスクロールさせず高さいっぱいに使う
+  const isFullHeightTab =
+    activeTab === "アクセス" ||
+    activeTab === "ゲレンデ" ||
+    activeTab === "リンク集";
+  const fullHeightPadding = !isSidePanel
+    ? "p-2"
+    : activeTab === "ゲレンデ"
+      ? ""
+      : activeTab === "リンク集"
+        ? "p-3"
+        : "p-4";
 
   const toolbar: ReactNode = (() => {
     if (isLoading) return null;
@@ -263,8 +281,14 @@ export const SkiResortCompareView = ({
         return (
           <CompareLiftTicketTab resorts={resorts} input={liftTicketInput} />
         );
-      case "レビュー":
-        return <CompareReviewsTab resorts={resorts} />;
+      case "リンク集":
+        return (
+          <CompareLinksTab
+            resorts={resorts}
+            isSidePanel={isSidePanel}
+            onSelectResort={onSelectResort}
+          />
+        );
       case "天気":
         return (
           <CompareWeatherTab resorts={resorts} isSidePanel={isSidePanel} />
@@ -305,9 +329,45 @@ export const SkiResortCompareView = ({
               {toolbar}
             </div>
           )}
-          <span className="ml-auto hidden shrink-0 text-xs tabular-nums text-gray-500 md:block">
-            {resorts.length}件
+          {/* お気に入り・保存したリストから開いたときは、何の比較かを見出しに出す */}
+          {source.kind === "favorites" && (
+            <span
+              className="ml-auto flex shrink-0 items-center gap-1 text-xs font-semibold text-pink-600 md:text-sm"
+              title="お気に入りの比較"
+            >
+              <Heart className="size-4" fill="currentColor" />
+              <span className="hidden md:inline">お気に入り</span>
+            </span>
+          )}
+          {source.kind === "list" && (
+            <span
+              className="ml-auto hidden max-w-60 min-w-0 truncate text-sm font-semibold text-gray-900 md:block"
+              title={source.name}
+            >
+              {source.name}
+            </span>
+          )}
+          {/* 読み込み中も件数が 0 にならないよう、取得済みの数ではなく比較対象の数を出す */}
+          <span
+            className={cn(
+              "hidden shrink-0 text-xs tabular-nums text-gray-500 md:block",
+              source.kind === "selection" && "ml-auto",
+            )}
+          >
+            {compareIds.length}件
           </span>
+          <div
+            className={cn(
+              "shrink-0",
+              source.kind !== "favorites" && "ml-auto md:ml-0",
+            )}
+          >
+            <SaveCompareListButton
+              resortIds={compareIds}
+              source={source}
+              onSaved={list => homeCompare?.onListSaved(list)}
+            />
+          </div>
           <Button
             variant="ghost"
             onClick={onClose}
@@ -329,10 +389,7 @@ export const SkiResortCompareView = ({
           className={cn(
             "min-h-0 flex-1",
             isFullHeightTab
-              ? cn(
-                  "overflow-hidden",
-                  isSidePanel ? (activeTab === "ゲレンデ" ? "" : "p-4") : "p-2",
-                )
+              ? cn("overflow-hidden", fullHeightPadding)
               : cn(
                   "p-2 md:p-3",
                   isSheetContentScrollable

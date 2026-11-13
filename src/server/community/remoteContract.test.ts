@@ -168,6 +168,7 @@ test("public report entries require their attached photo list", () => {
     author: { id: "author-1", publicName: "Author" },
     createdAt: "2026-10-25T00:00:00.000Z",
     updatedAt: "2026-10-25T00:00:00.000Z",
+    // 旧版の接続先が返す項目は読み捨て、reactions が無ければ空にする
     likeCount: 0,
     commentCount: 0,
     liked: false,
@@ -177,7 +178,13 @@ test("public report entries require their attached photo list", () => {
     viewerId: null,
     nextCursor: null,
   };
-  assert.equal(successPayloadSchemas.feed.safeParse(feed).success, true);
+  const parsedFeed = successPayloadSchemas.feed.safeParse(feed);
+  assert.equal(parsedFeed.success, true);
+  if (parsedFeed.success) {
+    const parsed = parsedFeed.data.posts[0] as Record<string, unknown>;
+    assert.deepEqual(parsed.reactions, []);
+    assert.equal("likeCount" in parsed, false);
+  }
   const missingPhotos = structuredClone(feed);
   delete (missingPhotos.posts[0].entries[0] as { photos?: unknown }).photos;
   assert.equal(
@@ -246,4 +253,68 @@ test("map reads accept all four kinds and target-only photo entries without priv
       }).success,
       true,
     );
+});
+
+test("reaction, my posts and day reports commands are accepted", () => {
+  const parse = (command: unknown, extra: Record<string, unknown> = {}) =>
+    requestSchema.safeParse({ googleAccountId: null, command, ...extra });
+  const hex = "a".repeat(64);
+  for (const kind of ["LIKE", "HELPFUL", "STILL_THERE", "GONE"])
+    assert.equal(
+      parse(
+        { operation: "react", postId: "post-1", kind, active: true },
+        { anonymousIdentity: hex, reactionIdentity: hex },
+      ).success,
+      true,
+      kind,
+    );
+  assert.equal(
+    parse({ operation: "react", postId: "p", kind: "WOW", active: true })
+      .success,
+    false,
+  );
+  assert.equal(
+    parse(
+      { operation: "react", postId: "p", kind: "LIKE", active: true },
+      { reactionIdentity: "short" },
+    ).success,
+    false,
+  );
+  assert.equal(parse({ operation: "myPosts" }).success, true);
+  assert.equal(parse({ operation: "myPosts", cursor: "post-1" }).success, true);
+  assert.equal(
+    parse({
+      operation: "dayReports",
+      authorId: "user-1",
+      observedOn: "2026-01-10",
+    }).success,
+    true,
+  );
+  assert.equal(
+    parse({ operation: "dayReports", authorId: "user-1", observedOn: "x" })
+      .success,
+    false,
+  );
+});
+
+test("removed comment and like commands are rejected", () => {
+  const parse = (command: unknown) =>
+    requestSchema.safeParse({ googleAccountId: "g", command }).success;
+  assert.equal(parse({ operation: "like", postId: "p", liked: true }), false);
+  assert.equal(
+    parse({ operation: "comment", postId: "p", body: "x", operationKey: "k" }),
+    false,
+  );
+  assert.equal(
+    parse({ operation: "deleteComment", commentId: "c", version: 1 }),
+    false,
+  );
+  const report = {
+    operation: "report",
+    targetId: "p",
+    reason: "迷惑行為",
+    body: "",
+  };
+  assert.equal(parse({ ...report, targetKind: "POST" }), true);
+  assert.equal(parse({ ...report, targetKind: "COMMENT" }), false);
 });

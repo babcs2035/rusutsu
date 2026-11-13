@@ -17,6 +17,11 @@ import {
 } from "react";
 import { flushSync } from "react-dom";
 import { getSkiResortById } from "@/actions/skiResorts";
+import { CompareListsProvider } from "@/features/compare-lists/CompareListsProvider";
+import type {
+  CompareListSummary,
+  CompareSource,
+} from "@/features/compare-lists/types";
 import {
   RecommendationProvider,
   usePrefetchRecommendations,
@@ -72,6 +77,7 @@ import {
 } from "@/shared/utils/resortPath";
 import { reloadIfStaleBuild } from "@/shared/utils/staleBuild";
 import type { MapSkiResort, NullableSkiResortDetail } from "@/types/skiResorts";
+import { HomeCompareContext } from "./compareContext";
 import {
   BOTTOM_SHEET_COLLAPSED_SNAP_POINT,
   BOTTOM_SHEET_EXPANDED_SNAP_POINT,
@@ -100,6 +106,8 @@ import {
   scheduleRestoreSearchResultListScroll,
 } from "./utils/dom";
 
+const SELECTION_SOURCE: CompareSource = { kind: "selection" };
+const FAVORITES_SOURCE: CompareSource = { kind: "favorites" };
 type Props = {
   initialResorts: MapSkiResort[];
 };
@@ -145,12 +153,14 @@ export function HomeClient({ initialResorts }: Props) {
     return <LoadingSpinner className="h-dvh" text="地図を準備しています..." />;
   return (
     <FavoritesProvider resortIds={boot.resorts.map(resort => resort.id)}>
-      <RecommendationProvider>
-        <HomeClientContent
-          initialResorts={boot.resorts}
-          session={boot.session}
-        />
-      </RecommendationProvider>
+      <CompareListsProvider resortIds={boot.resorts.map(resort => resort.id)}>
+        <RecommendationProvider>
+          <HomeClientContent
+            initialResorts={boot.resorts}
+            session={boot.session}
+          />
+        </RecommendationProvider>
+      </CompareListsProvider>
     </FavoritesProvider>
   );
 }
@@ -209,6 +219,10 @@ function HomeClientContent({
   // お気に入り比較は一時的な表示。手動で選んだ比較リストは書き換えない。
   const [favoriteCompareIds, setFavoriteCompareIds] = useState<string[] | null>(
     session?.favoriteCompareIds ?? null,
+  );
+  // 比較をお気に入り・保存したリストから開いたか。お気に入りや保存の表示を切り替える
+  const [compareSource, setCompareSource] = useState<CompareSource>(
+    session?.compareSource ?? SELECTION_SOURCE,
   );
   const [isCompareOpen, setIsCompareOpen] = useState(
     session?.isCompareOpen ?? false,
@@ -385,6 +399,7 @@ function HomeClientContent({
       isMobileFilterOverlayOpen,
       selectedCompareIds,
       favoriteCompareIds,
+      compareSource,
       isCompareOpen,
       selectedElevationProfilePoint,
       mobileSearchReturn: mobileSearchReturnStateRef.current
@@ -443,6 +458,7 @@ function HomeClientContent({
     mobileDraftFilters,
     selectedCompareIds,
     favoriteCompareIds,
+    compareSource,
     isCompareOpen,
     selectedElevationProfilePoint,
     compareUrl,
@@ -934,6 +950,7 @@ function HomeClientContent({
         setSelectedFinalizedFeature(null);
         setSelectedElevationProfilePoint(null);
         setFavoriteCompareIds(ids);
+        setCompareSource(SELECTION_SOURCE);
         setIsCompareOpen(true);
         setMobileContentTab("info");
         setHoveredResortId(null);
@@ -1001,6 +1018,7 @@ function HomeClientContent({
       if (!selected) {
         if (activeCompareIds.length === 1) {
           setFavoriteCompareIds(null);
+          setCompareSource(SELECTION_SOURCE);
           setIsCompareOpen(false);
         }
         return;
@@ -1010,10 +1028,12 @@ function HomeClientContent({
   );
 
   const handleOpenCompare = useCallback(
-    (ids = selectedCompareIds, fromFavorites = false) => {
+    (ids = selectedCompareIds, source: CompareSource = SELECTION_SOURCE) => {
       if (ids.length === 0) return;
       urlHistoryModeRef.current = "push";
-      setFavoriteCompareIds(fromFavorites ? ids : null);
+      // お気に入り・保存したリストの比較は一時的な表示。手で選んだ比較は書き換えない
+      setFavoriteCompareIds(source.kind === "selection" ? null : ids);
+      setCompareSource(source);
 
       setMobileContentTab("info");
       setHoveredResortId(null);
@@ -1053,12 +1073,14 @@ function HomeClientContent({
     closeMobileContentTab();
     setIsCompareOpen(false);
     setFavoriteCompareIds(null);
+    setCompareSource(SELECTION_SOURCE);
     restoreReturnViewState();
   };
   const handleClearCompare = useCallback(() => {
     urlHistoryModeRef.current = "push";
     if (favoriteCompareIds === null) setSelectedCompareIds([]);
     setFavoriteCompareIds(null);
+    setCompareSource(SELECTION_SOURCE);
     if (isCompareOpen) {
       closeMobileContentTab();
       setIsCompareOpen(false);
@@ -1093,141 +1115,162 @@ function HomeClientContent({
     !selectedResortId &&
     (isCompareOpen || mobileContentTab === "info");
 
+  const homeCompare = {
+    source: compareSource,
+    ids: activeCompareIds,
+    openList: (list: CompareListSummary) =>
+      void handleOpenCompare(list.resortIds, {
+        kind: "list",
+        id: list.id,
+        name: list.name,
+      }),
+    onListSaved: (list: CompareListSummary) => {
+      setFavoriteCompareIds(list.resortIds);
+      setCompareSource({ kind: "list", id: list.id, name: list.name });
+    },
+  };
+
   return (
-    <CourseNavigationContext.Provider
-      value={(id, feature) => {
-        handleSelectResort(id);
-        setSelectedFinalizedFeature(feature);
-        setSelectedElevationProfilePoint(null);
-      }}
-    >
-      <ResortLabelNameContext.Provider value={resortLabelNames}>
-        <MapSessionProvider onSelectResort={handleSelectResort}>
-          {detailError && !selectedResortData && (
-            <div
-              role="status"
-              className="fixed left-1/2 top-24 z-[1000] w-72 -translate-x-1/2 rounded-md border bg-white p-3 text-sm shadow-lg"
-            >
-              スキー場を読み込めませんでした。
-              <button
-                type="button"
-                onClick={() => setDetailRetry(value => value + 1)}
-                className="ml-2 min-h-11 text-blue-600"
+    <HomeCompareContext.Provider value={homeCompare}>
+      <CourseNavigationContext.Provider
+        value={(id, feature) => {
+          handleSelectResort(id);
+          setSelectedFinalizedFeature(feature);
+          setSelectedElevationProfilePoint(null);
+        }}
+      >
+        <ResortLabelNameContext.Provider value={resortLabelNames}>
+          <MapSessionProvider onSelectResort={handleSelectResort}>
+            {detailError && !selectedResortData && (
+              <div
+                role="status"
+                className="fixed left-1/2 top-24 z-[1000] w-72 -translate-x-1/2 rounded-md border bg-white p-3 text-sm shadow-lg"
               >
-                再試行
-              </button>
-            </div>
-          )}
-          <HomeLayout
-            DynamicMap={DynamicMap}
-            compareResortData={compareResortData}
-            filteredResortIdSet={filteredResortIdSet}
-            filteredResortIds={filteredResortIds}
-            filteredResorts={filteredResorts}
-            filters={filters}
-            hasActiveFilters={hasActiveFilters}
-            hoveredResortId={hoveredResortId}
-            initialResorts={initialResorts}
-            isCompareLoading={isCompareLoading}
-            isCompareOpen={isCompareOpen}
-            onCompareMapResortsNeeded={onCompareMapResortsNeeded}
-            isFilterEditorOpen={isFilterEditorOpen}
-            isMobileFilterOverlayOpen={isMobileFilterOverlayOpen}
-            isPending={isPending || (detailLoading && !selectedResortData)}
-            isSidePanelLayout={isSidePanelLayout}
-            listSheetContentRef={listSheetContentRef}
-            listSheetSnapPoint={listSheetSnapPoint}
-            mapInteractionMode={mapInteractionMode}
-            mobileContentTab={mobileContentTab}
-            mobileFilterOverlayRef={mobileFilterOverlayRef}
-            mobileListSheetSnapPoints={mobileListSheetSnapPoints}
-            mobileDraftFilteredResortCount={mobileDraftFilteredResortCount}
-            mobileDraftHasChanges={hasMobileDraftFilterChanges}
-            mobileDraftFilters={mobileDraftFilters}
-            mobileSearchFilterBottomPadding={mobileSearchFilterBottomPadding}
-            mobileSearchFilterScrollRef={mobileSearchFilterScrollRef}
-            mobileSearchPanelInputRef={mobileSearchPanelInputRef}
-            restoreViewRequest={restoreViewRequest}
-            searchViewportBottomPaddingRatio={searchViewportBottomPaddingRatio}
-            searchViewportRequestKey={searchViewportRequestKey}
-            selectedCompareIdSet={selectedCompareIdSet}
-            selectedCompareIds={activeCompareIds}
-            selectedElevationProfilePoint={selectedElevationProfilePoint}
-            selectedFinalizedFeature={selectedFinalizedFeature}
-            selectedResortData={selectedResortData}
-            selectedResortId={selectedResortId}
-            selectedResortSummary={selectedResortSummary}
-            shouldRenderMobileListSheet={shouldRenderMobileListSheet}
-            onCloseCompare={handleCloseCompare}
-            onClearCompare={() => setClearCompareDialogOpen(true)}
-            onCloseDetail={handleCloseDetail}
-            onCloseMobileFilterOverlay={handleCloseMobileFilterOverlay}
-            onFilterChange={handleFilterChange}
-            onFilterKeyboardInputBlur={handleFilterKeyboardInputBlur}
-            onFilterKeyboardInputFocus={handleFilterKeyboardInputFocus}
-            onMainPointerDownCapture={handleMainPointerDownCapture}
-            onMapViewChange={handleMapViewChange}
-            onMobileFilterAreaPointerDown={handleMobileFilterAreaPointerDown}
-            onMobileFilterChange={setMobileDraftFilters}
-            onMobileKeywordChange={handleMobileKeywordChange}
-            onMobileKeywordClear={handleMobileKeywordClear}
-            onMobileSearchButtonKeywordClear={
-              handleMobileSearchButtonKeywordClear
-            }
-            onMobileSearchButtonPointerDown={
-              handleMobileSearchButtonPointerDown
-            }
-            onMobileContentTabChange={handleMobileContentTabChange}
-            onMobileSearchFilterInputBlur={handleMobileSearchFilterInputBlur}
-            onMobileSearchFilterInputFocus={handleMobileSearchFilterInputFocus}
-            onMobileSearchSubmit={handleMobileSearchSubmit}
-            onOpenCompare={() => void handleOpenCompare()}
-            onCompareFavorites={() =>
-              void handleOpenCompare(
-                favorites?.ids.filter(id =>
-                  initialResorts.some(r => r.id === id),
-                ) ?? [],
-                true,
-              )
-            }
-            onOpenMobileFilterOverlay={handleOpenMobileFilterOverlay}
-            onSearch={handleSearch}
-            onMobileSearch={handleMobileSearch}
-            onSelectResort={handleSelectResort}
-            onSelectedFinalizedFeatureChange={
-              handleSelectedFinalizedFeatureChange
-            }
-            onSelectedElevationProfilePointChange={
-              setSelectedElevationProfilePoint
-            }
-            onSetFilterEditorOpen={setIsFilterEditorOpen}
-            onSetHoveredResortId={setHoveredResortId}
-            onSetListSheetOpen={setIsListSheetOpen}
-            onSetListSheetSnapPoint={setListSheetSnapPoint}
-            onToggleCompare={handleToggleCompare}
-            onUserMapInteraction={handleUserMapInteraction}
-            onUserMapZoomInteraction={handleUserMapZoomInteraction}
-          />
-          <ConfirmDialog
-            open={clearCompareDialogOpen}
-            onOpenChange={setClearCompareDialogOpen}
-            title="比較の選択をクリアしますか？"
-            description=""
-            onConfirm={handleClearCompare}
-            confirmLabel="クリアする"
-            className="z-[1000]"
-            overlayClassName="z-[999]"
-          />
-          <ConfirmDialog
-            open={discardFilterChangesDialogOpen}
-            onOpenChange={setDiscardFilterChangesDialogOpen}
-            title="変更の破棄"
-            description="変更を破棄しますか？"
-            onConfirm={handleConfirmCloseMobileFilterOverlay}
-            confirmLabel="破棄する"
-          />
-        </MapSessionProvider>
-      </ResortLabelNameContext.Provider>
-    </CourseNavigationContext.Provider>
+                スキー場を読み込めませんでした。
+                <button
+                  type="button"
+                  onClick={() => setDetailRetry(value => value + 1)}
+                  className="ml-2 min-h-11 text-blue-600"
+                >
+                  再試行
+                </button>
+              </div>
+            )}
+            <HomeLayout
+              DynamicMap={DynamicMap}
+              compareResortData={compareResortData}
+              filteredResortIdSet={filteredResortIdSet}
+              filteredResortIds={filteredResortIds}
+              filteredResorts={filteredResorts}
+              filters={filters}
+              hasActiveFilters={hasActiveFilters}
+              hoveredResortId={hoveredResortId}
+              initialResorts={initialResorts}
+              isCompareLoading={isCompareLoading}
+              isCompareOpen={isCompareOpen}
+              onCompareMapResortsNeeded={onCompareMapResortsNeeded}
+              isFilterEditorOpen={isFilterEditorOpen}
+              isMobileFilterOverlayOpen={isMobileFilterOverlayOpen}
+              isPending={isPending || (detailLoading && !selectedResortData)}
+              isSidePanelLayout={isSidePanelLayout}
+              listSheetContentRef={listSheetContentRef}
+              listSheetSnapPoint={listSheetSnapPoint}
+              mapInteractionMode={mapInteractionMode}
+              mobileContentTab={mobileContentTab}
+              mobileFilterOverlayRef={mobileFilterOverlayRef}
+              mobileListSheetSnapPoints={mobileListSheetSnapPoints}
+              mobileDraftFilteredResortCount={mobileDraftFilteredResortCount}
+              mobileDraftHasChanges={hasMobileDraftFilterChanges}
+              mobileDraftFilters={mobileDraftFilters}
+              mobileSearchFilterBottomPadding={mobileSearchFilterBottomPadding}
+              mobileSearchFilterScrollRef={mobileSearchFilterScrollRef}
+              mobileSearchPanelInputRef={mobileSearchPanelInputRef}
+              restoreViewRequest={restoreViewRequest}
+              searchViewportBottomPaddingRatio={
+                searchViewportBottomPaddingRatio
+              }
+              searchViewportRequestKey={searchViewportRequestKey}
+              selectedCompareIdSet={selectedCompareIdSet}
+              selectedCompareIds={activeCompareIds}
+              selectedElevationProfilePoint={selectedElevationProfilePoint}
+              selectedFinalizedFeature={selectedFinalizedFeature}
+              selectedResortData={selectedResortData}
+              selectedResortId={selectedResortId}
+              selectedResortSummary={selectedResortSummary}
+              shouldRenderMobileListSheet={shouldRenderMobileListSheet}
+              onCloseCompare={handleCloseCompare}
+              onClearCompare={() => setClearCompareDialogOpen(true)}
+              onCloseDetail={handleCloseDetail}
+              onCloseMobileFilterOverlay={handleCloseMobileFilterOverlay}
+              onFilterChange={handleFilterChange}
+              onFilterKeyboardInputBlur={handleFilterKeyboardInputBlur}
+              onFilterKeyboardInputFocus={handleFilterKeyboardInputFocus}
+              onMainPointerDownCapture={handleMainPointerDownCapture}
+              onMapViewChange={handleMapViewChange}
+              onMobileFilterAreaPointerDown={handleMobileFilterAreaPointerDown}
+              onMobileFilterChange={setMobileDraftFilters}
+              onMobileKeywordChange={handleMobileKeywordChange}
+              onMobileKeywordClear={handleMobileKeywordClear}
+              onMobileSearchButtonKeywordClear={
+                handleMobileSearchButtonKeywordClear
+              }
+              onMobileSearchButtonPointerDown={
+                handleMobileSearchButtonPointerDown
+              }
+              onMobileContentTabChange={handleMobileContentTabChange}
+              onMobileSearchFilterInputBlur={handleMobileSearchFilterInputBlur}
+              onMobileSearchFilterInputFocus={
+                handleMobileSearchFilterInputFocus
+              }
+              onMobileSearchSubmit={handleMobileSearchSubmit}
+              onOpenCompare={() => void handleOpenCompare()}
+              onCompareFavorites={() =>
+                void handleOpenCompare(
+                  favorites?.ids.filter(id =>
+                    initialResorts.some(r => r.id === id),
+                  ) ?? [],
+                  FAVORITES_SOURCE,
+                )
+              }
+              onOpenMobileFilterOverlay={handleOpenMobileFilterOverlay}
+              onSearch={handleSearch}
+              onMobileSearch={handleMobileSearch}
+              onSelectResort={handleSelectResort}
+              onSelectedFinalizedFeatureChange={
+                handleSelectedFinalizedFeatureChange
+              }
+              onSelectedElevationProfilePointChange={
+                setSelectedElevationProfilePoint
+              }
+              onSetFilterEditorOpen={setIsFilterEditorOpen}
+              onSetHoveredResortId={setHoveredResortId}
+              onSetListSheetOpen={setIsListSheetOpen}
+              onSetListSheetSnapPoint={setListSheetSnapPoint}
+              onToggleCompare={handleToggleCompare}
+              onUserMapInteraction={handleUserMapInteraction}
+              onUserMapZoomInteraction={handleUserMapZoomInteraction}
+            />
+            <ConfirmDialog
+              open={clearCompareDialogOpen}
+              onOpenChange={setClearCompareDialogOpen}
+              title="比較の選択をクリアしますか？"
+              description=""
+              onConfirm={handleClearCompare}
+              confirmLabel="クリアする"
+              className="z-[1000]"
+              overlayClassName="z-[999]"
+            />
+            <ConfirmDialog
+              open={discardFilterChangesDialogOpen}
+              onOpenChange={setDiscardFilterChangesDialogOpen}
+              title="変更の破棄"
+              description="変更を破棄しますか？"
+              onConfirm={handleConfirmCloseMobileFilterOverlay}
+              confirmLabel="破棄する"
+            />
+          </MapSessionProvider>
+        </ResortLabelNameContext.Provider>
+      </CourseNavigationContext.Provider>
+    </HomeCompareContext.Provider>
   );
 }

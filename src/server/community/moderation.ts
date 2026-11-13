@@ -54,6 +54,7 @@ export async function drainModerationJobs() {
       });
       if (claim.count !== 1) continue;
       try {
+        // 対象は投稿だけ。廃止したコメントのジョブが残っていても処理済みにする。
         const target =
           job.targetKind === "POST"
             ? await prisma.communityPost.findUnique({
@@ -63,9 +64,7 @@ export async function drainModerationJobs() {
                   entries: { orderBy: { position: "asc" } },
                 },
               })
-            : await prisma.communityComment.findUnique({
-                where: { id: job.targetId },
-              });
+            : null;
         if (
           !target ||
           target.version !== job.targetVersion ||
@@ -84,21 +83,18 @@ export async function drainModerationJobs() {
           {
             type: "text",
             text:
-              ("entries" in target
-                ? target.entries.flatMap(entry => [
-                    entry.targetName,
-                    entry.body,
-                    entry.size ?? "",
-                  ])
-                : [target.body]
-              )
+              target.entries
+                .flatMap(entry => [
+                  entry.targetName,
+                  entry.body,
+                  entry.size ?? "",
+                ])
                 .filter(Boolean)
                 .join("\n") || "スキー場の現地情報",
           },
         ];
-        const photoReviewPending =
-          "photos" in target && target.photos.length > 0 && !localEndpoint;
-        if (localEndpoint && "photos" in target)
+        const photoReviewPending = target.photos.length > 0 && !localEndpoint;
+        if (localEndpoint)
           for (const photo of target.photos)
             input.push({
               type: "image_url",
@@ -135,26 +131,15 @@ export async function drainModerationJobs() {
             where: { id: job.id },
           });
           if (active?.status !== "RUNNING") return;
-          if (checked.results.some(entry => entry.flagged)) {
-            if (job.targetKind === "POST")
-              await tx.communityPost.updateMany({
-                where: {
-                  id: job.targetId,
-                  version: job.targetVersion,
-                  status: "VISIBLE",
-                },
-                data: { status: "HIDDEN", version: { increment: 1 } },
-              });
-            else
-              await tx.communityComment.updateMany({
-                where: {
-                  id: job.targetId,
-                  version: job.targetVersion,
-                  status: "VISIBLE",
-                },
-                data: { status: "HIDDEN", version: { increment: 1 } },
-              });
-          }
+          if (checked.results.some(entry => entry.flagged))
+            await tx.communityPost.updateMany({
+              where: {
+                id: job.targetId,
+                version: job.targetVersion,
+                status: "VISIBLE",
+              },
+              data: { status: "HIDDEN", version: { increment: 1 } },
+            });
           await tx.communityModerationJob.update({
             where: { id: job.id },
             data: {

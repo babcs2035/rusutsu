@@ -60,8 +60,49 @@ const audience = z.object({
  * object boundary; new admin/source fields are never implicitly made public.
  * Keep sources and operating_hours: citations and day-ticket duration use them.
  */
+/** 雪マジのクーポン。一覧の1行と詳細のモーダルに使う項目だけを出す */
+const yukimajiCoupon = z
+  .object({
+    period: z
+      .object({ start: optionalText, end: optionalText })
+      .nullable()
+      .optional(),
+    period_text_ja: optionalText,
+    day_rule: optionalText,
+    day_rule_text_ja: optionalText,
+    uses_text_ja: optionalText,
+    price_rules: z
+      .array(
+        z.object({
+          price_effect: z
+            .object({
+              type: optionalText,
+              amount: number,
+              percent: number,
+            })
+            .nullable()
+            .optional(),
+        }),
+      )
+      .nullable()
+      .optional(),
+  })
+  .nullable()
+  .optional();
+
 export const publicLiftTicketDataSchema = z.object({
   schema_version: text,
+  yukimaji: z
+    .object({
+      status: optionalText,
+      majibu_url: optionalText,
+      benefit_text_ja: optionalText,
+      period_text_ja: optionalText,
+      free_coupon: yukimajiCoupon,
+      discount_coupon: yukimajiCoupon,
+    })
+    .nullable()
+    .optional(),
   main_links: z
     .object({
       lift_price_url: optionalText,

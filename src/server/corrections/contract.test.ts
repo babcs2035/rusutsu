@@ -91,3 +91,34 @@ test("correction payload rejects invalid coordinates and out-of-line ranges", ()
     false,
   );
 });
+
+test("evidence URLs are optional, limited to three, and must be http(s)", () => {
+  const base = {
+    operationKey,
+    resortId: "test-resort",
+    items: [{ targetKind: "other", field: "other-report", proposed: "閉店" }],
+  };
+  assert.equal(submitCorrectionSchema.safeParse(base).success, true);
+  assert.deepEqual(
+    submitCorrectionSchema.parse({
+      ...base,
+      evidenceUrls: [" https://example.com/a ", "http://example.com/b"],
+    }).evidenceUrls,
+    ["https://example.com/a", "http://example.com/b"],
+  );
+  for (const evidenceUrls of [
+    ["javascript:alert(1)"],
+    ["example.com"],
+    [
+      "https://a.example",
+      "https://b.example",
+      "https://c.example",
+      "https://d.example",
+    ],
+  ])
+    assert.equal(
+      submitCorrectionSchema.safeParse({ ...base, evidenceUrls }).success,
+      false,
+      JSON.stringify(evidenceUrls),
+    );
+});

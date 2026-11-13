@@ -76,6 +76,17 @@ test("lifts are counted independently and ignore unmapped entries", () => {
   );
 });
 
+test("lifts count only ○ as operating, not △", () => {
+  assert.deepEqual(
+    summarizeMappedLifts([
+      lift("open", "○"),
+      lift("partial", "△"),
+      lift("closed", "×"),
+    ]),
+    { active: 1, total: 3 },
+  );
+});
+
 test("no mapped courses or lifts returns no denominator", () => {
   assert.equal(summarizeMappedCourses([course("unmapped", "○", false)]), null);
   assert.equal(summarizeMappedLifts([lift("unmapped", "○", false)]), null);

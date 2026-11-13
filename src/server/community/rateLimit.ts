@@ -63,6 +63,31 @@ export async function anonymousSubmissionKey(operationKey: string) {
     .digest("hex");
 }
 
+/**
+ * ログインなしのリアクションを、同じブラウザから1回に数えるための識別子。
+ * 修正依頼の頻度制限とは別に、1年間同じ値を使う。Cookieの値そのものは保存しない。
+ */
+export async function reactionIdentity(create: boolean) {
+  const internal = internalCommunityActor();
+  if (internal) return internal.reactionIdentity ?? null;
+  const jar = await cookies();
+  let identity = jar.get("rusutsu-reaction-id")?.value;
+  if (!identity || !/^[a-f0-9-]{36}$/.test(identity)) {
+    if (!create) return null;
+    identity = randomUUID();
+    jar.set("rusutsu-reaction-id", identity, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.AUTH_URL?.startsWith("https://") ?? false,
+      path: "/rusutsu",
+      maxAge: 365 * 86400,
+    });
+  }
+  return createHmac("sha256", process.env.AUTH_SECRET || "local-contributions")
+    .update(`${identity}:reaction`)
+    .digest("hex");
+}
+
 export async function limitAnonymous(
   scope: string,
   limit = 10,

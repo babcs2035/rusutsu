@@ -94,6 +94,10 @@ type Props = {
   showInlineMapToolbar?: boolean;
   /** 投稿中は地図を固定し、下部パネルを3段階で伸縮する */
   resizableFeatureDetail?: boolean;
+  /** 地図の下に積む詳細の枠。既定は残りの高さいっぱい（"below" のときだけ効く） */
+  featureDetailClassName?: string;
+  /** 地図の上に全面で重ねるもの（位置を修正するときの編集用の地図） */
+  mapOverlay?: ReactNode;
   mapTopControls?: ReactNode;
   detailViewportResetKey?: number;
   /** 表示設定を呼び出し側で持つ場合に渡す（比較のゲレンデ一覧など） */
@@ -141,6 +145,8 @@ export const ResortMapSection = ({
   compactControls = false,
   showInlineMapToolbar = true,
   resizableFeatureDetail = false,
+  featureDetailClassName = "min-h-0 flex-1",
+  mapOverlay,
   mapTopControls,
   detailViewportResetKey = 0,
   courseColorMode: controlledCourseColorMode,
@@ -499,6 +505,7 @@ export const ResortMapSection = ({
             )}
         </div>
         {!isExpanded && renderOverlayDetail()}
+        {!isExpanded && mapOverlay}
         {expandable && !minimalControls && !isExpanded && (
           <Button
             type="button"
@@ -515,7 +522,9 @@ export const ResortMapSection = ({
         !isExpanded &&
         isBelowDetail &&
         !resizableFeatureDetail && (
-          <div className="min-h-0 flex-1 border-t border-gray-200">
+          <div
+            className={cn("border-t border-gray-200", featureDetailClassName)}
+          >
             {featureDetail}
           </div>
         )}
@@ -537,6 +546,7 @@ export const ResortMapSection = ({
             >
               {renderMap("expanded", !hasSelection)}
               {renderOverlayDetail()}
+              {mapOverlay}
               {renderResizableDetail()}
               {/* 選択中は詳細パネル側の × が「選択解除」を担うため出さない */}
               {(!hasSelection || !isBelowDetail) && (
@@ -558,7 +568,12 @@ export const ResortMapSection = ({
               )}
             </div>
             {hasSelection && isBelowDetail && !resizableFeatureDetail && (
-              <div className="min-h-0 flex-1 border-t border-gray-200">
+              <div
+                className={cn(
+                  "border-t border-gray-200",
+                  featureDetailClassName,
+                )}
+              >
                 {featureDetail}
               </div>
             )}

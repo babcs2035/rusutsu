@@ -1,5 +1,6 @@
 "use client";
 
+import { Trash2, Undo2 } from "lucide-react";
 import type {
   GeoJSONSource,
   Map as MapLibreMap,
@@ -9,6 +10,7 @@ import type {
 import { Map as MapLibreMapClass, Popup } from "maplibre-gl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { Button } from "@/components/ui/button";
 // ワーカー URL の設定。import した時点で副作用として走る
 import "@/features/map/maplibre/mapWorker";
 import { getCoordinateBounds } from "@/features/map/maplibre/viewport";
@@ -21,7 +23,13 @@ import {
   createEditorLayers,
   EDITOR_LAYER,
   EDITOR_SOURCE,
+  HIT_RADIUS,
   LINE_HIT_WIDTH,
+  RADIUS,
+  TOUCH_MIDPOINT_HIT_RADIUS,
+  TOUCH_MIDPOINT_RADIUS,
+  TOUCH_VERTEX_HIT_RADIUS,
+  TOUCH_VERTEX_RADIUS,
 } from "./editorLayers";
 import {
   pickFeature,
@@ -81,6 +89,8 @@ type EditorMapProps = {
   // 値が変わるたびに全コースへ fitBounds する
   fitBoundsKey?: number;
   fitBoundsToBackground?: boolean;
+  // 値が変わるたびに、選択中の線が収まる位置へ寄せる（一覧から選んだとき用）
+  focusActiveKey?: number;
   showTileSwitcher?: boolean;
   correctionPreview?: boolean;
   correctionSelection?: { lineId: string; from: number; to: number };
@@ -107,7 +117,16 @@ type EditorMapProps = {
   // 線の名前を地図上に出す
   showLabels?: boolean;
   labelText?: (line: EditorMapLine, index: number) => string;
+  // 背景を白黒にする（公開の地図の「白黒／カラー」と同じ見え方）
+  monochrome?: boolean;
+  /**
+   * 描いている間の「1点戻す／描き終える」を地図の上に出すか。
+   * 既定は指で操作する端末だけ。横の一覧に同じボタンが無い画面では "always" にする。
+   */
+  drawToolbar?: "touch" | "always";
 };
+
+const TOUCH_QUERY = "(pointer: coarse), (max-width: 47.999em)";
 
 type DragTarget = { kind: "vertex"; index: number } | { kind: "midstation" };
 
@@ -140,6 +159,7 @@ export function EditorMap({
   googleMapsApiKey,
   fitBoundsKey = 0,
   fitBoundsToBackground = false,
+  focusActiveKey = 0,
   showTileSwitcher = true,
   correctionPreview = false,
   correctionSelection: correctionSelectionProp,
@@ -161,12 +181,25 @@ export function EditorMap({
   visible = true,
   showLabels = false,
   labelText,
+  monochrome = false,
+  drawToolbar = "touch",
 }: EditorMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const labelLayerRef = useRef<EditorLabelLayer | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [hoveredCourseId, setHoveredCourseId] = useState<string | null>(null);
+  // タップで選んだ点。スマホには右クリックもキーボードも無いので、
+  // 点を選んでから地図の上の「この点を削除」で消す。
+  const [selectedVertex, setSelectedVertex] = useState<number | null>(null);
+  const [isTouch, setIsTouch] = useState(false);
+  useEffect(() => {
+    const query = window.matchMedia(TOUCH_QUERY);
+    const update = () => setIsTouch(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
 
   const [internalLayerId, setInternalLayerId] =
     useState<TileLayerId>("gsiPale");
@@ -187,6 +220,12 @@ export function EditorMap({
 
   const activeCourse =
     courses.find(course => course.id === activeCourseId) ?? null;
+  // 線・モード・点の数が変わると番号がずれるので、選択を外す
+  const vertexCount = activeCourse?.coordinates.length ?? 0;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 対象が変わったときだけ選択を外す
+  useEffect(() => {
+    setSelectedVertex(null);
+  }, [activeCourseId, mode, vertexCount]);
 
   // イベントハンドラは地図に一度だけ登録するので、最新の値は ref から読む
   const latest = useRef({
@@ -375,8 +414,13 @@ export function EditorMap({
     [backgroundLines],
   );
   const vertexCollection = useMemo(
-    () => buildVertexCollection(activeCourse, mode),
-    [activeCourse, mode],
+    () =>
+      buildVertexCollection(
+        activeCourse,
+        mode,
+        mode === "edit" ? selectedVertex : null,
+      ),
+    [activeCourse, mode, selectedVertex],
   );
   const midpointCollection = useMemo(
     () => buildMidpointCollection(activeCourse, mode),
@@ -469,6 +513,52 @@ export function EditorMap({
     }
   }, [effectiveLayerId, isReady, map]);
 
+  // 白黒はタイルの彩度だけを落とす。線の色はそのまま残る
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Google タイルは後から足されるので、背景が替わるたびに当て直す
+  useEffect(() => {
+    if (!map || !isReady) return;
+    for (const id of ALL_TILE_IDS) {
+      const target = tileLayerId(id);
+      if (!map.getLayer(target)) continue;
+      map.setPaintProperty(target, "raster-saturation", monochrome ? -1 : 0);
+    }
+  }, [effectiveLayerId, googleTileUrl, isReady, map, monochrome]);
+
+  // 指で操作する端末では、点を大きく描き、つかめる範囲も広げる
+  useEffect(() => {
+    if (!map || !isReady) return;
+    map.setPaintProperty(
+      EDITOR_LAYER.vertex,
+      "circle-radius",
+      isTouch
+        ? TOUCH_VERTEX_RADIUS
+        : [
+            "match",
+            ["get", "kind"],
+            "last",
+            RADIUS.lastVertex,
+            "split",
+            RADIUS.splitVertex,
+            RADIUS.vertex,
+          ],
+    );
+    map.setPaintProperty(
+      EDITOR_LAYER.vertexHit,
+      "circle-radius",
+      isTouch ? TOUCH_VERTEX_HIT_RADIUS : HIT_RADIUS.vertex,
+    );
+    map.setPaintProperty(
+      EDITOR_LAYER.midpoint,
+      "circle-radius",
+      isTouch ? TOUCH_MIDPOINT_RADIUS : RADIUS.midpoint,
+    );
+    map.setPaintProperty(
+      EDITOR_LAYER.midpointHit,
+      "circle-radius",
+      isTouch ? TOUCH_MIDPOINT_HIT_RADIUS : HIT_RADIUS.midpoint,
+    );
+  }, [isReady, isTouch, map]);
+
   // --- 視点 ---------------------------------------------------------------
   // biome-ignore lint/correctness/useExhaustiveDependencies: center の変更時のみ視点を移動する
   useEffect(() => {
@@ -499,6 +589,14 @@ export function EditorMap({
     if (!bounds) return;
     map.fitBounds(bounds, { padding: 40 });
   }, [fitBoundsKey, isReady, map]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: focusActiveKey の変更時のみ選択中の線へ寄せる
+  useEffect(() => {
+    if (!map || !isReady || focusActiveKey === 0) return;
+    const bounds = getCoordinateBounds(activeCourse?.coordinates ?? []);
+    if (!bounds) return;
+    map.fitBounds(bounds, { padding: 56, maxZoom: 17, duration: 400 });
+  }, [focusActiveKey, isReady, map]);
 
   // --- タップ・右クリック・ドラッグ ---------------------------------------
   useEffect(() => {
@@ -540,6 +638,9 @@ export function EditorMap({
         if (current.mode === "split") current.onSplitVertex?.(index);
         else if (current.mode === "draw" && vertex.properties?.kind === "last")
           current.onFinishDraw?.();
+        // 編集中は点を選ぶ。もう一度押すと選択を外す
+        else if (current.mode === "edit")
+          setSelectedVertex(selected => (selected === index ? null : index));
         return;
       }
 
@@ -595,9 +696,8 @@ export function EditorMap({
       current.onDeleteVertex?.(Number(vertex.properties?.index));
     };
 
-    const handleMouseDown = (event: MapMouseEvent) => {
-      // 右クリック（コンテキストメニュー）や中クリックはドラッグ開始として扱わない
-      if (event.originalEvent.button !== 0) return;
+    /** 押した位置に点や中間駅があれば、つかんで動かし始める */
+    const beginDrag = (event: MapMouseEvent | MapTouchEvent) => {
       const current = latest.current;
       const canDragVertex = current.mode === "edit" || current.mode === "draw";
       const canDragMidstation =
@@ -626,9 +726,29 @@ export function EditorMap({
       map.getCanvas().style.cursor = "grabbing";
     };
 
+    const handleMouseDown = (event: MapMouseEvent) => {
+      // 右クリック（コンテキストメニュー）や中クリックはドラッグ開始として扱わない
+      if (event.originalEvent.button !== 0) return;
+      beginDrag(event);
+    };
+
+    // 指1本で点に触れたときだけつかむ。2本目が触れたら拡大・縮小に譲る
+    const handleTouchStart = (event: MapTouchEvent) => {
+      if (event.points.length !== 1) {
+        stopDrag();
+        return;
+      }
+      dragMovedRef.current = false;
+      beginDrag(event);
+    };
+
     const handleDragMove = (event: MapMouseEvent | MapTouchEvent) => {
       const target = draggingRef.current;
       if (!target) return;
+      // 点を動かしている間は、ページのスクロールや地図の移動を起こさない
+      if (event.originalEvent.cancelable) event.originalEvent.preventDefault();
+      if (!dragMovedRef.current && target.kind === "vertex")
+        setSelectedVertex(target.index);
       dragMovedRef.current = true;
       const lngLat: LngLat = [event.lngLat.lng, event.lngLat.lat];
       if (target.kind === "midstation") {
@@ -638,29 +758,33 @@ export function EditorMap({
       }
     };
 
-    const stopDrag = () => {
+    function stopDrag() {
       if (!draggingRef.current) return;
       draggingRef.current = null;
-      map.dragPan.enable();
-      map.getCanvas().style.cursor = "";
-    };
+      map?.dragPan.enable();
+      if (map) map.getCanvas().style.cursor = "";
+    }
 
     map.on("click", handleClick);
     map.on("contextmenu", handleContextMenu);
     map.on("mousedown", handleMouseDown);
+    map.on("touchstart", handleTouchStart);
     map.on("mousemove", handleDragMove);
     map.on("touchmove", handleDragMove);
     document.addEventListener("mouseup", stopDrag);
     document.addEventListener("touchend", stopDrag);
+    document.addEventListener("touchcancel", stopDrag);
 
     return () => {
       map.off("click", handleClick);
       map.off("contextmenu", handleContextMenu);
       map.off("mousedown", handleMouseDown);
+      map.off("touchstart", handleTouchStart);
       map.off("mousemove", handleDragMove);
       map.off("touchmove", handleDragMove);
       document.removeEventListener("mouseup", stopDrag);
       document.removeEventListener("touchend", stopDrag);
+      document.removeEventListener("touchcancel", stopDrag);
     };
   }, [isReady, map]);
 
@@ -842,10 +966,58 @@ export function EditorMap({
     };
   }, [isReady, map, mode]);
 
+  const showDrawToolbar =
+    mode === "draw" && (drawToolbar === "always" || isTouch) && !!activeCourse;
+  const showVertexToolbar =
+    mode === "edit" && selectedVertex !== null && !!activeCourse;
+
   return (
     // isolate で重なりの文脈を閉じ、地図の上の要素がダイアログより前へ出ないようにする
     <div className="relative isolate h-full w-full" data-editor-map="true">
       <div ref={containerRef} className="h-full w-full" />
+      {(showDrawToolbar || showVertexToolbar) && (
+        // 指が届きやすい地図の下端に置く。著作権表示（右下）とは重ねない
+        <div className="pointer-events-none absolute inset-x-0 bottom-7 z-20 flex justify-center gap-2 px-2">
+          {showDrawToolbar && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                className="pointer-events-auto h-9 bg-white px-3 text-sm font-semibold shadow-md"
+                disabled={vertexCount === 0}
+                onClick={() => onDeleteVertex?.(vertexCount - 1)}
+              >
+                <Undo2 aria-hidden="true" />
+                1点戻す
+              </Button>
+              <Button
+                type="button"
+                className="pointer-events-auto h-9 px-3 text-sm font-semibold shadow-md"
+                disabled={vertexCount < 2}
+                onClick={() => onFinishDraw?.()}
+              >
+                描き終える
+              </Button>
+            </>
+          )}
+          {showVertexToolbar && (
+            <Button
+              type="button"
+              variant="outline"
+              className="pointer-events-auto h-9 border-red-300 bg-white px-3 text-sm font-semibold text-red-700 shadow-md hover:bg-red-50 hover:text-red-800"
+              disabled={vertexCount <= 2}
+              onClick={() => {
+                if (selectedVertex === null) return;
+                onDeleteVertex?.(selectedVertex);
+                setSelectedVertex(null);
+              }}
+            >
+              <Trash2 aria-hidden="true" />
+              この点を削除
+            </Button>
+          )}
+        </div>
+      )}
       {showTileSwitcher && (
         <EditorTileSwitcher
           layerId={layerId}

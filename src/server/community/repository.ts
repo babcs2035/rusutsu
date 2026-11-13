@@ -1,15 +1,18 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
-import type {
-  CommunityAccount,
-  CommunityMapData,
-  CommunityMapSummary,
-  FeedInput,
-  MapEntriesInput,
-  PublicMapEntry,
-  PublicPost,
-  ReportEntryDraft,
+import {
+  type CommunityAccount,
+  type CommunityMapData,
+  type CommunityMapSummary,
+  type FeedInput,
+  type MapEntriesInput,
+  type PostReaction,
+  type PublicMapEntry,
+  type PublicPost,
+  type ReactionKind,
+  type ReportEntryDraft,
+  reactionKindsFor,
 } from "@/features/community/contract";
 import { communityMapData } from "@/features/community/mapData";
 import { todayInJapan } from "@/features/community/mapOverlay";
@@ -17,6 +20,7 @@ import { getFinalizedResortMapData } from "@/lib/finalizedResortGeojson";
 import { prisma } from "@/lib/prisma";
 import { readSkiResortById } from "@/lib/skiResortData";
 import { internalCommunityActor } from "./actorContext";
+import { reactionIdentity } from "./rateLimit";
 
 export type Tx = Prisma.TransactionClient;
 export async function viewerId() {
@@ -29,6 +33,16 @@ export async function requireUserId() {
   const id = await viewerId();
   if (!id) throw new Error("Googleでログインしてから投稿してください。");
   return id;
+}
+/**
+ * リアクションを押した人の区別。ログイン中はユーザー、そうでなければ
+ * ブラウザごとの識別子。読むだけのときは識別子を新しく作らない。
+ */
+export async function reactionActor(create = false) {
+  const userId = await viewerId();
+  if (userId) return { key: `u:${userId}`, userId };
+  const identity = await reactionIdentity(create);
+  return identity ? { key: `a:${identity}`, userId: null } : null;
 }
 export async function writableUser(tx: Tx, id: string, needsProfile = true) {
   // Lock the account until commit, including against a racing suspension or
@@ -52,9 +66,6 @@ export const publicPostInclude = {
         orderBy: { createdAt: "asc" as const },
       },
     },
-  },
-  _count: {
-    select: { likes: true, comments: { where: { status: "VISIBLE" } } },
   },
 } satisfies Prisma.CommunityPostInclude;
 type IncludedPost = Prisma.CommunityPostGetPayload<{
@@ -90,21 +101,55 @@ export function accountDto(user: {
   };
 }
 
+/** 投稿ごとに、付けられるリアクションを0件のものも含めて画面の順に並べる。 */
+export async function readReactions(
+  posts: { id: string; entries: { kind: string }[] }[],
+  actorKey: string | null,
+) {
+  const postIds = posts.map(post => post.id);
+  const [counts, mine] = postIds.length
+    ? await Promise.all([
+        prisma.communityReaction.groupBy({
+          by: ["postId", "kind"],
+          where: { postId: { in: postIds } },
+          _count: { _all: true },
+          _max: { createdAt: true },
+        }),
+        actorKey
+          ? prisma.communityReaction.findMany({
+              where: { actorKey, postId: { in: postIds } },
+              select: { postId: true, kind: true },
+            })
+          : [],
+      ])
+    : [[], []];
+  const countByKey = new Map(
+    counts.map(row => [`${row.postId}:${row.kind}`, row]),
+  );
+  const mineKeys = new Set(mine.map(row => `${row.postId}:${row.kind}`));
+  return new Map(
+    posts.map(post => [
+      post.id,
+      reactionKindsFor(
+        post.entries[0]?.kind as ReportEntryDraft["kind"] | undefined,
+      ).map((kind: ReactionKind): PostReaction => {
+        const row = countByKey.get(`${post.id}:${kind}`);
+        return {
+          kind,
+          count: row?._count._all ?? 0,
+          latestAt: row?._max.createdAt?.toISOString() ?? null,
+          mine: mineKeys.has(`${post.id}:${kind}`),
+        };
+      }),
+    ]),
+  );
+}
+
 export async function serializePosts(
   rows: IncludedPost[],
-  currentViewerId: string | null,
+  actorKey: string | null,
 ): Promise<PublicPost[]> {
-  const likes =
-    currentViewerId && rows.length
-      ? await prisma.communityLike.findMany({
-          where: {
-            userId: currentViewerId,
-            postId: { in: rows.map(row => row.id) },
-          },
-          select: { postId: true },
-        })
-      : [];
-  const likedIds = new Set(likes.map(like => like.postId));
+  const reactions = await readReactions(rows, actorKey);
   return rows.map(row => ({
     id: row.id,
     resortId: row.resortId,
@@ -137,14 +182,12 @@ export async function serializePosts(
     author: { id: row.author.id, publicName: row.author.publicName ?? "匿名" },
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
-    likeCount: row._count.likes,
-    commentCount: row._count.comments,
-    liked: likedIds.has(row.id),
+    reactions: reactions.get(row.id) ?? [],
   }));
 }
 
 export async function readFeed(input: FeedInput) {
-  const id = await viewerId();
+  const actor = await reactionActor();
   const rows = await prisma.communityPost.findMany({
     where: {
       resortId: input.resortIds?.length
@@ -181,8 +224,8 @@ export async function readFeed(input: FeedInput) {
     include: publicPostInclude,
   });
   return {
-    posts: await serializePosts(rows.slice(0, 50), id),
-    viewerId: id,
+    posts: await serializePosts(rows.slice(0, 50), actor?.key ?? null),
+    viewerId: actor?.userId ?? null,
     nextCursor: rows.length > 50 ? rows[49].id : null,
   };
 }

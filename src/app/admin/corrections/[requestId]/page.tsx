@@ -35,7 +35,15 @@ export default async function CorrectionDetailPage({ params }: Props) {
     items?: Array<Record<string, unknown>>;
     context?: unknown;
     comment?: string;
+    evidenceUrls?: unknown;
   };
+  // 送信者が入力した文字列なので、http(s) のものだけをリンクにする
+  const evidenceUrls = (
+    Array.isArray(submitted.evidenceUrls) ? submitted.evidenceUrls : []
+  ).filter(
+    (value): value is string =>
+      typeof value === "string" && /^https?:\/\//.test(value),
+  );
   const resorts = await readAdminSkiResorts();
   const resort = resorts.find(value => value.id === request.resortId);
   const mapKeys = new Set(
@@ -135,6 +143,25 @@ export default async function CorrectionDetailPage({ params }: Props) {
         <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-all rounded bg-slate-50 p-2 text-xs">
           {JSON.stringify(submitted.context ?? {}, null, 2)}
         </pre>
+        <h3 className="mt-3 text-sm font-semibold">参考URL</h3>
+        {evidenceUrls.length ? (
+          <ul className="mt-1 space-y-1 text-sm">
+            {evidenceUrls.map(url => (
+              <li key={url}>
+                <a
+                  className="break-all text-blue-700 underline"
+                  href={url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                >
+                  {url}
+                </a>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-slate-500">入力なし</p>
+        )}
         <h3 className="mt-3 text-sm font-semibold">添付写真</h3>
         {request.photos.length ? (
           <div className="mt-2 flex flex-wrap gap-2">

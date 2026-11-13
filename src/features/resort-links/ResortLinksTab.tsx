@@ -1,19 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { getResortLinkList } from "@/actions/skiResorts";
+import Image from "next/image";
+import { type ReactNode, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { Resort } from "@/features/resort-detail/types";
 import { cn } from "@/lib/utils";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
-import { detailLinkItems } from "./detailItems";
 import linkSourcesJson from "./linkSources.json";
-import {
-  groupResortLinks,
-  type ResortLinkGroupView,
-  type ResortLinkItem,
-} from "./model";
+import type { ResortLinkGroupView, ResortLinkItem } from "./model";
+import { useResortLinkGroups } from "./useResortLinkGroups";
 
 /** 1つの種類で最初に見せる件数。ツアー会社や動画は数十件になることがある */
 const INITIAL_LINKS_PER_TYPE = 8;
@@ -21,16 +17,35 @@ const SOURCE_NAMES = new Map(
   linkSourcesJson.sources.map(source => [source.id, source.name]),
 );
 
-// タブを開き直すたびに読み直さないよう、読んだ結果を覚えておく
-const loadedLinks = new Map<string, ResortLinkItem[]>();
-const MAX_REMEMBERED_RESORTS = 30;
-
 const chipClassName =
   "max-w-full whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium hover:no-underline";
 
 /** 外部サイト（ツアー会社など）のリンクか。公式と、種類そのものがサイト名のもの（tenki.jp など）は違う */
 const isSiteLink = (link: ResortLinkItem) =>
   link.source !== "official" && SOURCE_NAMES.has(link.source);
+
+/** SNSの種類に添えるロゴ（public/social）。X は白の原画を明るい背景で黒く見せる */
+const SOCIAL_ICONS: Record<string, { src: string; className?: string }> = {
+  x: { src: "x.svg", className: "invert" },
+  instagram: { src: "instagram.png" },
+  facebook: { src: "facebook.png" },
+};
+
+function TypeIcon({ type }: { type: string }) {
+  const icon = SOCIAL_ICONS[type];
+  if (!icon) return null;
+  return (
+    <Image
+      src={`/rusutsu/social/${icon.src}`}
+      alt=""
+      aria-hidden="true"
+      width={16}
+      height={16}
+      unoptimized
+      className={cn("size-4 shrink-0 object-contain", icon.className)}
+    />
+  );
+}
 
 const linkKey = (link: ResortLinkItem) =>
   `${link.source}\n${link.label}\n${link.url}`;
@@ -40,11 +55,13 @@ function LinkChip({
   text,
   title,
   className,
+  icon,
 }: {
   link: ResortLinkItem;
   text: string;
   title?: string;
   className?: string;
+  icon?: ReactNode;
 }) {
   return (
     <ExternalLinkComponent
@@ -58,6 +75,7 @@ function LinkChip({
           : "bg-slate-100 text-slate-700 hover:bg-slate-200",
       )}
     >
+      {icon}
       <span className="truncate">{text}</span>
     </ExternalLinkComponent>
   );
@@ -177,120 +195,92 @@ function TypeButtons({ type }: { type: LinkTypeView }) {
         text={`${type.label}${suffix}`}
         title={detail || undefined}
         className="px-2.5 py-1.5"
+        icon={<TypeIcon type={type.type} />}
       />
     );
   });
 }
 
-function LinkGroups({ groups }: { groups: ResortLinkGroupView[] }) {
+/**
+ * 1グループ分のリンク（見出しなし）。種類名のボタンを先に並べ、件数の多い種類は行にまとめる。
+ * 比較のリンク集では、グループを行・スキー場を列にした表のマスにそのまま入れる。
+ */
+export function LinkGroupBody({ group }: { group: ResortLinkGroupView }) {
+  const buttonTypes = group.types.filter(canUseTypeButtons);
+  const rowTypes = group.types.filter(type => !canUseTypeButtons(type));
+  return (
+    <>
+      {buttonTypes.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {buttonTypes.map(type => (
+            <TypeButtons key={type.type} type={type} />
+          ))}
+        </div>
+      )}
+      {rowTypes.length > 0 && (
+        <dl
+          className={cn(
+            "divide-y divide-slate-100 border-y border-slate-100",
+            buttonTypes.length > 0 && "mt-1.5",
+          )}
+        >
+          {rowTypes.map(type => (
+            <div
+              key={type.type}
+              className="grid grid-cols-[7.5rem_minmax(0,1fr)] gap-x-2 py-1.5"
+            >
+              <dt className="flex items-start gap-1 pt-1 text-xs text-slate-600">
+                <TypeIcon type={type.type} />
+                {type.label}
+              </dt>
+              <LinkChips links={type.links} />
+            </div>
+          ))}
+        </dl>
+      )}
+    </>
+  );
+}
+
+/** グループ名の小見出しつきで、全グループを縦に並べる */
+export function LinkGroups({ groups }: { groups: ResortLinkGroupView[] }) {
   return (
     <div className="space-y-3">
-      {groups.map(group => {
-        const buttonTypes = group.types.filter(canUseTypeButtons);
-        const rowTypes = group.types.filter(type => !canUseTypeButtons(type));
-        return (
-          <section key={group.id} aria-label={group.label}>
-            <h3 className="mb-1.5 text-sm font-semibold text-slate-900">
-              {group.label}
-            </h3>
-            {buttonTypes.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {buttonTypes.map(type => (
-                  <TypeButtons key={type.type} type={type} />
-                ))}
-              </div>
-            )}
-            {rowTypes.length > 0 && (
-              <dl
-                className={cn(
-                  "divide-y divide-slate-100 border-y border-slate-100",
-                  buttonTypes.length > 0 && "mt-1.5",
-                )}
-              >
-                {rowTypes.map(type => (
-                  <div
-                    key={type.type}
-                    className="grid grid-cols-[7.5rem_minmax(0,1fr)] gap-x-2 py-1.5"
-                  >
-                    <dt className="pt-1 text-xs text-slate-600">
-                      {type.label}
-                    </dt>
-                    <LinkChips links={type.links} />
-                  </div>
-                ))}
-              </dl>
-            )}
-          </section>
-        );
-      })}
+      {groups.map(group => (
+        <section key={group.id} aria-label={group.label}>
+          <h3 className="mb-1.5 text-sm font-semibold text-slate-900">
+            {group.label}
+          </h3>
+          <LinkGroupBody group={group} />
+        </section>
+      ))}
     </div>
   );
 }
 
 /**
  * スキー場のリンク一覧。どのスキー場でも同じグループ・同じ並び順で出し、リンクの無い種類は出さない。
- * 営業状況・リフト券のURLは詳細データから、公式ページ・ツアー・SNSなどはタブを開いたときに読む。
+ * 営業状況・リフト券のURLは詳細データから、公式ページ・ツアー・SNS（X・Instagram・Facebook はロゴつき）などはタブを開いたときに読む。
  */
 export function ResortLinksTab({ resort }: { resort: Resort }) {
-  const resortIds = useMemo(
-    () => [...new Set([resort.id, ...(resort.sourceResortIds ?? [])])],
-    [resort.id, resort.sourceResortIds],
-  );
-  const cacheKey = resortIds.join(",");
-  const [loaded, setLoaded] = useState<{
-    key: string;
-    items: ResortLinkItem[] | null;
-    failed: boolean;
-  }>(() => ({
-    key: cacheKey,
-    items: loadedLinks.get(cacheKey) ?? null,
-    failed: false,
-  }));
+  const resorts = useMemo(() => [resort], [resort]);
+  const [entry] = useResortLinkGroups(resorts);
 
-  useEffect(() => {
-    const remembered = loadedLinks.get(cacheKey);
-    if (remembered) {
-      setLoaded({ key: cacheKey, items: remembered, failed: false });
-      return;
-    }
-    let cancelled = false;
-    setLoaded({ key: cacheKey, items: null, failed: false });
-    getResortLinkList(resortIds)
-      .then(items => {
-        if (loadedLinks.size >= MAX_REMEMBERED_RESORTS)
-          loadedLinks.delete(loadedLinks.keys().next().value ?? "");
-        loadedLinks.set(cacheKey, items);
-        if (!cancelled) setLoaded({ key: cacheKey, items, failed: false });
-      })
-      .catch(() => {
-        if (!cancelled) setLoaded({ key: cacheKey, items: [], failed: true });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [cacheKey, resortIds]);
-
-  const items = loaded.key === cacheKey ? loaded.items : null;
-  const groups = useMemo(
-    () =>
-      groupResortLinks([...(items ?? []), ...detailLinkItems(resort)])
-        .map(group => ({
-          ...group,
-          types: group.types.filter(type => type.links.length > 0),
-        }))
-        .filter(group => group.types.length > 0),
-    [items, resort],
-  );
-
-  if (items === null) return <LoadingSpinner className="h-48 bg-transparent" />;
+  if (!entry || entry.isLoading)
+    return <LoadingSpinner className="h-48 bg-transparent" />;
   return (
-    <section aria-label="リンク" className="min-w-0">
-      <LinkGroups groups={groups} />
-      {loaded.failed && (
-        <p className="mt-3 text-xs text-slate-500">
-          一部のリンクを読み込めませんでした。
-        </p>
-      )}
+    <section aria-label="リンク集" className="min-w-0">
+      <LinkGroups groups={entry.groups} />
+      {entry.failed && <LinkLoadFailedNote />}
     </section>
+  );
+}
+
+/** リンクのテーブルを読めなかったときの一言。詳細データが持つリンクは出ている */
+export function LinkLoadFailedNote() {
+  return (
+    <p className="mt-3 text-xs text-slate-500">
+      一部のリンクを読み込めませんでした。
+    </p>
   );
 }

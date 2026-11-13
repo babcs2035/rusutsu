@@ -7,14 +7,14 @@ import { requireAdmin } from "@/lib/requireAdmin";
 
 export async function reviewCommunityContent(form: FormData) {
   const actor = await requireAdmin();
-  const { targetKind, targetId, version, decision } = z
+  const { targetId, version, decision } = z
     .object({
-      targetKind: z.enum(["POST", "COMMENT"]),
       targetId: idSchema,
       version: z.coerce.number().int().positive(),
       decision: z.enum(["HIDE", "RESTORE", "DELETE"]),
     })
     .parse(Object.fromEntries(form));
+  const targetKind = "POST";
   await prisma.$transaction(async tx => {
     const currentAdmin = await tx.user.findUnique({
       where: { id: actor.id },
@@ -22,33 +22,22 @@ export async function reviewCommunityContent(form: FormData) {
     });
     if (currentAdmin?.role !== "admin")
       throw new Error("管理者権限が必要です。");
-    const current =
-      targetKind === "POST"
-        ? await tx.communityPost.findUnique({ where: { id: targetId } })
-        : await tx.communityComment.findUnique({ where: { id: targetId } });
+    const current = await tx.communityPost.findUnique({
+      where: { id: targetId },
+    });
     if (!current || current.version !== version)
       throw new Error("対象が更新されました。再確認してください。");
     const where = { id: targetId, version };
     const changed =
       decision === "DELETE"
-        ? targetKind === "POST"
-          ? await tx.communityPost.deleteMany({ where })
-          : await tx.communityComment.deleteMany({ where })
-        : targetKind === "POST"
-          ? await tx.communityPost.updateMany({
-              where,
-              data: {
-                status: decision === "HIDE" ? "HIDDEN" : "VISIBLE",
-                version: { increment: 1 },
-              },
-            })
-          : await tx.communityComment.updateMany({
-              where,
-              data: {
-                status: decision === "HIDE" ? "HIDDEN" : "VISIBLE",
-                version: { increment: 1 },
-              },
-            });
+        ? await tx.communityPost.deleteMany({ where })
+        : await tx.communityPost.updateMany({
+            where,
+            data: {
+              status: decision === "HIDE" ? "HIDDEN" : "VISIBLE",
+              version: { increment: 1 },
+            },
+          });
     if (changed.count !== 1) throw new Error("対象が更新されました。");
     await tx.communityModerationJob.updateMany({
       where: {

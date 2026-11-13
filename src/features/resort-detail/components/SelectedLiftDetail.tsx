@@ -113,11 +113,7 @@ export const SelectedLiftDetail = ({
           resortId ? { resortId, targetIds: [lift.id] } : undefined
         }
         postTarget={{ kind: "LIFT", id: lift.id }}
-        correctionContext={{
-          kind: "lift",
-          targetKind: "lift",
-          targetId: lift.id,
-        }}
+        correctionTarget={{ kind: "lift", ids: [lift.id], name: lift.name }}
       />
 
       <LiftMetrics

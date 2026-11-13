@@ -548,45 +548,9 @@ test("community reports: atomic daily report lifecycle and privacy", {
       ),
     );
     assertFailure(await run(b, () => api.deletePost(created.id, 1)));
-    assertSuccess(await run(b, () => api.setPostLike(created.id, true)));
-    assertSuccess(await run(b, () => api.setPostLike(created.id, true)));
-    assert.equal(
-      await db.communityLike.count({ where: { postId: created.id } }),
-      1,
-    );
-    const commentKey = randomUUID();
-    const comment = assertSuccess(
-      await run(b, () => api.saveComment(created.id, "よいですね", commentKey)),
-    );
-    assert.equal(
-      assertSuccess(
-        await run(b, () =>
-          api.saveComment(created.id, "よいですね", commentKey),
-        ),
-      ).id,
-      comment.id,
-    );
-    assertFailure(
-      await run(a, () =>
-        api.saveComment(created.id, "他人の編集", randomUUID(), comment.id, 1),
-      ),
-    );
-    assertSuccess(
-      await run(b, () =>
-        api.saveComment(
-          created.id,
-          "編集しました",
-          randomUUID(),
-          comment.id,
-          1,
-        ),
-      ),
-    );
-    assertFailure(await run(b, () => api.deleteComment(comment.id, 1)));
     assertSuccess(
       await run(g, () =>
         api.reportCommunityContent(
-          "POST",
           created.id,
           "不適切な内容",
           "確認してください",
@@ -776,6 +740,136 @@ test("community reports: atomic daily report lifecycle and privacy", {
       created.id,
     );
 
+    // リアクション: ログインなしでも押せる。同じ人は1種類につき1件
+    const reactionsOf = async (
+      actor: ReturnType<typeof account>,
+      postId: string,
+    ) =>
+      assertSuccess(await run(actor, () => api.getPostDetail(postId))).post
+        .reactions;
+    const likeOf = (rows: { kind: string; count: number; mine: boolean }[]) =>
+      rows.find(row => row.kind === "LIKE");
+    const react = (
+      actor: ReturnType<typeof account>,
+      postId: string,
+      kind: string,
+      active = true,
+    ) => run(actor, () => api.setPostReaction(postId, kind, active));
+    const notifications = (postId: string) =>
+      db.communityNotification.count({
+        where: { postId, dedupeKey: { startsWith: "reaction:" } },
+      });
+    assertSuccess(await react(b, created.id, "LIKE"));
+    assertSuccess(await react(b, created.id, "LIKE"));
+    assert.equal(
+      await db.communityReaction.count({ where: { postId: created.id } }),
+      1,
+    );
+    assert.deepEqual(
+      [likeOf(await reactionsOf(b, created.id))].map(r => [r?.count, r?.mine]),
+      [[1, true]],
+    );
+    assert.equal(likeOf(await reactionsOf(g, created.id))?.mine, false);
+    const feedPost = assertSuccess(
+      await run(b, () => api.getCommunityFeed({ resortId })),
+    ).posts.find(post => post.id === created.id);
+    assert.equal(likeOf(feedPost?.reactions ?? [])?.count, 1);
+    assert.equal(likeOf(feedPost?.reactions ?? [])?.mine, true);
+    assert.equal(
+      feedPost?.reactions.some(row => row.kind === "STILL_THERE"),
+      false,
+    );
+    assert.equal(await notifications(created.id), 1);
+    assertSuccess(await react(b, created.id, "LIKE", false));
+    assert.equal(
+      await db.communityReaction.count({ where: { postId: created.id } }),
+      0,
+    );
+    assert.equal(await notifications(created.id), 0);
+    assertSuccess(await react(a, created.id, "LIKE"));
+    assert.equal(await notifications(created.id), 0);
+    assertSuccess(await react(a, created.id, "LIKE", false));
+
+    // 未ログイン: Cookieが同じなら同じ人、別なら別の人
+    const g2 = account(null);
+    assertSuccess(await react(g, created.id, "LIKE"));
+    assertSuccess(await react(g, created.id, "LIKE"));
+    assert.equal(likeOf(await reactionsOf(g, created.id))?.count, 1);
+    assertSuccess(await react(g2, created.id, "LIKE"));
+    assert.equal(likeOf(await reactionsOf(g, created.id))?.count, 2);
+    assert.equal(likeOf(await reactionsOf(g2, created.id))?.mine, true);
+    assertSuccess(await react(g, created.id, "LIKE", false));
+    assertSuccess(await react(g2, created.id, "LIKE", false));
+    assert.equal(
+      await db.communityReaction.count({ where: { postId: created.id } }),
+      0,
+    );
+
+    // 「まだあった」「なかった」はコブ・パークだけで、どちらか片方だけ残る
+    assertFailure(await react(b, created.id, "STILL_THERE"));
+    const liftPost = assertSuccess(await publish(a, draft(lift(randomUUID()))));
+    assertFailure(await react(b, liftPost.id, "STILL_THERE"));
+    assertFailure(await react(b, liftPost.id, "GONE"));
+    assertSuccess(await react(b, pointPost.id, "STILL_THERE"));
+    assertSuccess(await react(b, pointPost.id, "GONE"));
+    assert.deepEqual(
+      (await reactionsOf(b, pointPost.id))
+        .filter(row => row.mine)
+        .map(row => row.kind),
+      ["GONE"],
+    );
+    assert.equal(await notifications(pointPost.id), 1);
+    assertSuccess(await react(b, pointPost.id, "GONE", false));
+    assert.equal(await notifications(pointPost.id), 0);
+
+    // 自分の投稿（非表示を含む）と、1日分の投稿
+    const mine = assertSuccess(await run(a, () => api.getMyPosts()));
+    assert.ok(mine.posts.every(post => post.author.id === owner));
+    assert.equal(
+      mine.posts.find(post => post.id === flaggedResult.id)?.status,
+      "HIDDEN",
+    );
+    assert.equal(
+      mine.posts.find(post => post.id === created.id)?.status,
+      "VISIBLE",
+    );
+    assert.equal(
+      assertSuccess(await run(b, () => api.getMyPosts())).posts.length,
+      0,
+    );
+    assertFailure(await run(g, () => api.getMyPosts()));
+    const dayOf = (observedTime: string) => ({
+      ...draft(mogul(randomUUID())),
+      observedOn: "2026-01-11",
+      observedTime,
+    });
+    const late = assertSuccess(await publish(a, dayOf("15:00")));
+    const early = assertSuccess(await publish(a, dayOf("08:30")));
+    const secret = assertSuccess(await publish(a, dayOf("11:00")));
+    await db.communityPost.update({
+      where: { id: secret.id },
+      data: { status: "HIDDEN" },
+    });
+    assert.deepEqual(
+      assertSuccess(
+        await run(g, () => api.getDayReports(owner, "2026-01-11")),
+      ).posts.map(post => post.id),
+      [early.id, late.id],
+    );
+    const otherDay = assertSuccess(
+      await run(g, () => api.getDayReports(owner, "2026-01-10")),
+    ).posts.map(post => post.id);
+    assert.ok(otherDay.includes(created.id));
+    assert.ok(
+      ![early.id, late.id, secret.id].some(id => otherDay.includes(id)),
+    );
+
+    // 他の人の投稿へ付けたリアクションは、アカウント削除で消える
+    const otherPost = assertSuccess(
+      await publish(b, draft(course(randomUUID(), "test-course-a"))),
+    );
+    assertSuccess(await react(a, otherPost.id, "LIKE"));
+    assert.equal(await notifications(otherPost.id), 1);
     assertFailure(
       await run(a, () => api.deleteCommunityAccount("wrong" as never)),
     );
@@ -795,16 +889,18 @@ test("community reports: atomic daily report lifecycle and privacy", {
       0,
     );
     assert.equal(
-      await db.communityLike.count({
-        where: { userId: other, postId: created.id },
+      await db.communityReaction.count({ where: { userId: owner } }),
+      0,
+    );
+    assert.equal(
+      await db.communityNotification.count({
+        where: { dedupeKey: { endsWith: `:u:${owner}` } },
       }),
       0,
     );
     assert.equal(
-      await db.communityComment.count({
-        where: { authorId: other, postId: created.id },
-      }),
-      0,
+      await db.communityPost.count({ where: { id: otherPost.id } }),
+      1,
     );
     assert.equal(await db.editRequest.count({ where: { resortId } }), 0);
   } finally {
@@ -814,19 +910,8 @@ test("community reports: atomic daily report lifecycle and privacy", {
         select: { id: true },
       })
     ).map(row => row.id);
-    const commentIds = (
-      await db.communityComment.findMany({
-        where: { post: { resortId } },
-        select: { id: true },
-      })
-    ).map(row => row.id);
     await db.communityReport.deleteMany({
-      where: {
-        OR: [
-          { targetKind: "POST", targetId: { in: postIds } },
-          { targetKind: "COMMENT", targetId: { in: commentIds } },
-        ],
-      },
+      where: { targetKind: "POST", targetId: { in: postIds } },
     });
     await db.skiResort.deleteMany({ where: { id: resortId } });
     await db.user.deleteMany({ where: { id: { in: [owner, other, admin] } } });

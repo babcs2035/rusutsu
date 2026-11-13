@@ -6,9 +6,10 @@ import {
   idSchema,
   mapEntriesInputSchema,
   observedOnSchema,
-  type PublicComment,
+  type PostReaction,
   type PublicMapEntry,
   type PublicPost,
+  REACTION_KINDS,
   reportDraftSchema,
   reportEntrySchema,
 } from "@/features/community/contract";
@@ -82,26 +83,24 @@ const commandSchemaBase = z.discriminatedUnion("operation", [
   }),
   z.strictObject({ operation: z.literal("detail"), postId: idSchema }),
   z.strictObject({
-    operation: z.literal("like"),
+    operation: z.literal("react"),
     postId: idSchema,
-    liked: z.boolean(),
+    kind: z.enum(REACTION_KINDS),
+    active: z.boolean(),
+    proof: anonymousProofSchema,
   }),
   z.strictObject({
-    operation: z.literal("comment"),
-    postId: idSchema,
-    body: z.string().trim().min(1).max(2000),
-    operationKey: operationKeySchema,
-    commentId: idSchema.optional(),
-    version: versionSchema.optional(),
+    operation: z.literal("myPosts"),
+    cursor: idSchema.optional(),
   }),
   z.strictObject({
-    operation: z.literal("deleteComment"),
-    commentId: idSchema,
-    version: versionSchema,
+    operation: z.literal("dayReports"),
+    authorId: idSchema,
+    observedOn: observedOnSchema,
   }),
   z.strictObject({
     operation: z.literal("report"),
-    targetKind: z.enum(["POST", "COMMENT"]),
+    targetKind: z.literal("POST"),
     targetId: idSchema,
     reason: reportReasonSchema,
     body: z.string().trim().max(2000),
@@ -128,6 +127,11 @@ export const requestSchema = z.strictObject({
   command: commandSchema,
   googleAccountId: z.string().min(1).max(200).nullable(),
   anonymousIdentity: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .optional(),
+  // ログインなしのリアクションを同じブラウザから1回に数えるための識別子
+  reactionIdentity: z
     .string()
     .regex(/^[a-f0-9]{64}$/)
     .optional(),
@@ -167,7 +171,13 @@ const publicReportEntrySchema = reportEntrySchema.safeExtend({
   targetName: z.string(),
   photos: z.array(photoSchema),
 });
-const postSchema: z.ZodType<PublicPost> = z.strictObject({
+const reactionSchema: z.ZodType<PostReaction> = z.strictObject({
+  kind: z.enum(REACTION_KINDS),
+  count: z.number().int().nonnegative(),
+  latestAt: z.string().nullable(),
+  mine: z.boolean(),
+});
+const postShape = {
   observedOn: z.string(),
   observedTime: z.string(),
   entries: z.array(publicReportEntrySchema),
@@ -178,17 +188,11 @@ const postSchema: z.ZodType<PublicPost> = z.strictObject({
   author: authorSchema,
   createdAt: z.string(),
   updatedAt: z.string(),
-  likeCount: z.number().int(),
-  commentCount: z.number().int(),
-  liked: z.boolean(),
-});
-const commentSchema: z.ZodType<PublicComment> = z.strictObject({
-  id: z.string(),
-  body: z.string(),
-  author: authorSchema,
-  createdAt: z.string(),
-  version: z.number().int(),
-});
+  // 接続先がリアクション対応前の版でも一覧を読めるよう、無ければ空にする。
+  // 旧版が返すいいね数・コメント数は読み捨てる。
+  reactions: z.array(reactionSchema).default([]),
+};
+const postSchema: z.ZodType<PublicPost, unknown> = z.object(postShape);
 const mapEntrySchema: z.ZodType<PublicMapEntry> = z.strictObject({
   id: z.string(),
   postId: z.string(),
@@ -233,14 +237,24 @@ export const successPayloadSchemas = {
   }),
   update: z.strictObject({ id: z.string() }),
   deletePost: emptySchema,
-  detail: z.strictObject({
+  // 旧版が返すコメント一覧は読み捨てる
+  detail: z.object({
     post: postSchema,
-    comments: z.array(commentSchema),
     viewerId: z.string().nullable(),
   }),
-  like: emptySchema,
-  comment: z.strictObject({ id: z.string() }),
-  deleteComment: emptySchema,
+  react: z.strictObject({ reactions: z.array(reactionSchema) }),
+  myPosts: z.strictObject({
+    posts: z.array(
+      z.object({ ...postShape, status: z.enum(["VISIBLE", "HIDDEN"]) }),
+    ),
+    nextCursor: z.string().nullable(),
+  }),
+  dayReports: z.strictObject({
+    author: authorSchema,
+    observedOn: z.string(),
+    posts: z.array(postSchema),
+    viewerId: z.string().nullable(),
+  }),
   report: emptySchema,
   publicProfile: z.strictObject({
     author: authorSchema,

@@ -37,7 +37,8 @@ export const filtersSchema = z.object({
   prefectures: z.array(z.string()).max(47),
   status: z.boolean(),
   yukiMagi: z.boolean(),
-  beginnerFriendly: z.boolean(),
+  // 以前の「初級者向け」は読み捨て、EV充電は以前の保存に無いので false にする
+  evCharger: z.boolean().default(false),
   minVertical: numeric,
   minBaseElevation: numeric,
   maxBaseElevation: numeric,
@@ -81,6 +82,17 @@ export const homeSessionSchema = z.object({
   isMobileFilterOverlayOpen: z.boolean().optional(),
   selectedCompareIds: z.array(id).max(2000).optional(),
   favoriteCompareIds: z.array(id).max(2000).nullable().optional(),
+  compareSource: z
+    .union([
+      z.object({ kind: z.literal("selection") }),
+      z.object({ kind: z.literal("favorites") }),
+      z.object({
+        kind: z.literal("list"),
+        id: z.string().min(1).max(64),
+        name: z.string().max(80),
+      }),
+    ])
+    .optional(),
   isCompareOpen: z.boolean().optional(),
   selectedElevationProfilePoint: z
     .object({
@@ -184,6 +196,11 @@ export function resolveHomeSession(
     selectedResortId: validId,
     selectedCompareIds: saved.selectedCompareIds ?? [],
     favoriteCompareIds: isUrlCompareOpen ? urlCompareIds : null,
+    // URL の比較を開き直すときだけ、お気に入り・リストの表示を引き継ぐ
+    compareSource:
+      isUrlCompareOpen && saved.isCompareOpen
+        ? saved.compareSource
+        : { kind: "selection" },
     isCompareOpen: isUrlCompareOpen,
     isMobileFilterOverlayOpen:
       isUrlCompareOpen || (explicit && explicit !== saved.selectedResortId)

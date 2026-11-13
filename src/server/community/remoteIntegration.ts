@@ -166,6 +166,7 @@ export async function verifyRemoteCommunity(
       command: unknown,
       googleAccountId: string | null,
       bearer = token,
+      identities: Record<string, string> = {},
     ) =>
       fetch(endpoint, {
         method: "POST",
@@ -173,7 +174,7 @@ export async function verifyRemoteCommunity(
           Authorization: `Bearer ${bearer}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ command, googleAccountId }),
+        body: JSON.stringify({ command, googleAccountId, ...identities }),
       });
     const accountId = (localId: string) => `community-google-${localId}`;
     const validPrivateCommand = {
@@ -456,38 +457,75 @@ export async function verifyRemoteCommunity(
       404,
     );
 
-    const liked = await request(
-      { operation: "like", postId, liked: true },
-      accountId(ids.other),
-    );
-    assert.equal((await liked.json()).result.ok, true);
+    for (const kind of ["LIKE", "HELPFUL"]) {
+      const reacted = await request(
+        { operation: "react", postId, kind, active: true },
+        accountId(ids.other),
+      );
+      assert.equal((await reacted.json()).result.ok, true);
+    }
     assert.equal(
       (
         await remote.query(
-          'SELECT count(*)::int AS count FROM community_likes WHERE "postId"=$1 AND "userId"=$2',
+          'SELECT count(*)::int AS count FROM community_reactions WHERE "postId"=$1 AND "userId"=$2',
           [postId, canonicalIds.other],
+        )
+      ).rows[0].count,
+      2,
+    );
+    // 未ログインは、送信元の確認とブラウザの識別子の両方が要る
+    const hex = (char: string) => char.repeat(64);
+    const anonymousReact = (identities: Record<string, string>) =>
+      request(
+        { operation: "react", postId, kind: "LIKE", active: true },
+        null,
+        token,
+        identities,
+      );
+    assert.equal(
+      (await anonymousReact({ anonymousIdentity: hex("a") })).status,
+      422,
+    );
+    assert.equal(
+      (await anonymousReact({ reactionIdentity: hex("b") })).status,
+      422,
+    );
+    const anonymousBoth = {
+      anonymousIdentity: hex("a"),
+      reactionIdentity: hex("b"),
+    };
+    for (let i = 0; i < 2; i++)
+      assert.equal(
+        (await (await anonymousReact(anonymousBoth)).json()).result.ok,
+        true,
+      );
+    assert.equal(
+      (
+        await remote.query(
+          'SELECT count(*)::int AS count FROM community_reactions WHERE "postId"=$1 AND "actorKey"=$2',
+          [postId, `a:${hex("b")}`],
         )
       ).rows[0].count,
       1,
     );
-    const commented = await request(
-      {
-        operation: "comment",
-        postId,
-        body: "remote comment",
-        operationKey: crypto.randomUUID(),
-      },
-      accountId(ids.other),
-    );
-    assert.equal((await commented.json()).result.ok, true);
-    assert.equal(
-      (
-        await remote.query(
-          'SELECT count(*)::int AS count FROM community_comments WHERE "postId"=$1 AND "authorId"=$2',
-          [postId, canonicalIds.other],
+    const day = (
+      await (
+        await request(
+          {
+            operation: "dayReports",
+            authorId: canonicalIds.owner,
+            observedOn: "2026-10-25",
+          },
+          null,
         )
-      ).rows[0].count,
-      1,
+      ).json()
+    ).result;
+    assert.equal(day.ok, true);
+    assert.ok(
+      day.data.posts.some(
+        (post: { id: string; reactions: { count: number }[] }) =>
+          post.id === postId && post.reactions.some(row => row.count > 0),
+      ),
     );
     const notifications = await request({ operation: "notifications" }, key);
     const notificationData = (await notifications.json()).result.data;
@@ -539,13 +577,13 @@ export async function verifyRemoteCommunity(
     );
 
     const outageResult = await request(
-      { operation: "like", postId, liked: true },
+      { operation: "react", postId, kind: "HELPFUL", active: false },
       key,
       "temporarily-disabled-token",
     );
     assert.notEqual(outageResult.status, 200);
     assert.equal(
-      await api.prisma.communityLike.count({ where: { postId } }),
+      await api.prisma.communityReaction.count({ where: { postId } }),
       0,
     );
     process.env.DATA_API_BASE_URL = "http://127.0.0.1:1/rusutsu";

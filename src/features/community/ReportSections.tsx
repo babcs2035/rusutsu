@@ -16,10 +16,13 @@ export function reportEntryTitle(entry: PublicReportEntry) {
 export function ReportSections({
   entries,
   bare = false,
+  hideTitle = false,
 }: {
   entries: PublicReportEntry[];
   /** 投稿カードの中では枠を重ねず、カードの余白だけで並べる */
   bare?: boolean;
+  /** 呼び出し側が種類と対象名を見出しに出しているときは、ここでは繰り返さない */
+  hideTitle?: boolean;
 }) {
   const [opened, setOpened] = useState<{
     entryId: string;
@@ -39,16 +42,18 @@ export function ReportSections({
               : "rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2"
           }
         >
-          <h4 className="text-sm font-semibold text-slate-800">
-            <span className="mr-1.5 text-xs font-medium text-slate-500">
-              {ENTRY_KINDS[entry.kind]}
-            </span>
-            {reportEntryTitle(entry)}
-          </h4>
+          {!hideTitle && (
+            <h4 className="text-sm font-semibold text-slate-800">
+              <span className="mr-1.5 text-xs font-medium text-slate-500">
+                {ENTRY_KINDS[entry.kind]}
+              </span>
+              {reportEntryTitle(entry)}
+            </h4>
+          )}
           <div
             className={cn(
               "space-y-1 text-sm text-slate-700",
-              bare ? "mt-1" : "mt-2",
+              !hideTitle && (bare ? "mt-1" : "mt-2"),
             )}
           >
             {entry.status && <p>状況：{entry.status}</p>}

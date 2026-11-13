@@ -43,6 +43,32 @@ export const SIZED_ITEM_TYPES: readonly string[] = [
   "ウォール",
   "ヒップ・スパイン",
 ];
+// 投稿へのリアクション。ログインなしでも押せる。
+// 「まだあった」「なかった」は、コブ・パークへあとから行った人が残す確認で、どちらか片方だけを持てる。
+export const REACTION_KINDS = [
+  "LIKE",
+  "HELPFUL",
+  "STILL_THERE",
+  "GONE",
+] as const;
+export type ReactionKind = (typeof REACTION_KINDS)[number];
+export const REACTION_LABELS: Record<ReactionKind, string> = {
+  LIKE: "いいね",
+  HELPFUL: "参考になった",
+  STILL_THERE: "まだあった",
+  GONE: "なかった",
+};
+export const EXISTENCE_REACTIONS: readonly ReactionKind[] = [
+  "STILL_THERE",
+  "GONE",
+];
+/** その種類の投稿に付けられるリアクション。画面に並べる順。 */
+export const reactionKindsFor = (
+  entryKind: keyof typeof ENTRY_KINDS | undefined,
+): readonly ReactionKind[] =>
+  entryKind === "MOGUL" || entryKind === "ITEM"
+    ? REACTION_KINDS
+    : REACTION_KINDS.filter(kind => !EXISTENCE_REACTIONS.includes(kind));
 export const idSchema = z.string().min(1).max(200);
 export const observedTimeSchema = z
   .string()
@@ -177,9 +203,26 @@ export type PublicPost = Omit<ReportDraft, "entries"> & {
   createdAt: string;
   updatedAt: string;
   entries: PublicReportEntry[];
-  likeCount: number;
-  commentCount: number;
-  liked: boolean;
+  /** その投稿に付けられる種類を、0件のものも含めて画面の順に並べる */
+  reactions: PostReaction[];
+};
+export type PostReaction = {
+  kind: ReactionKind;
+  count: number;
+  /** いちばん新しく押された日時。「まだあった／なかった」の確認日に使う */
+  latestAt: string | null;
+  /** 見ている人が押しているか */
+  mine: boolean;
+};
+/** 自分の投稿の一覧では、確認のため非表示になっている投稿も本人に見せる */
+export type OwnPost = PublicPost & { status: "VISIBLE" | "HIDDEN" };
+/** 1人が1日（滑走日）に投稿したレポートをまとめた共有ページの中身 */
+export type DayReports = {
+  author: PublicAuthor;
+  observedOn: string;
+  posts: PublicPost[];
+  /** 見ている人がログイン中ならそのID。本人にだけ管理への入口を出す */
+  viewerId: string | null;
 };
 export type PublicMapEntry = {
   id: string;
@@ -205,13 +248,6 @@ export type MapEntriesInput = z.infer<typeof mapEntriesInputSchema>;
 export type CommunityMapSummary = {
   total: number;
   latestObservedOn: string | null;
-};
-export type PublicComment = {
-  id: string;
-  body: string;
-  author: PublicAuthor;
-  createdAt: string;
-  version: number;
 };
 export type FeedInput = {
   resortId: string;

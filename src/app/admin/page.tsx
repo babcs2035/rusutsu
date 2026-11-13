@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic";
 const TOOL_LINKS: Array<{ href: string; label: string }> = [
   { href: "/admin/resort", label: "スキー場マスター編集" },
   { href: "/admin/links", label: "リンク編集" },
+  { href: "/admin/ev-chargers", label: "EV充電" },
   { href: "/admin/resort-relations", label: "スキー場の関係一覧" },
   { href: "/admin/lift", label: "リフト入力" },
   { href: "/admin/slope", label: "コース入力" },

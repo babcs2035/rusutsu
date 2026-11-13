@@ -87,11 +87,16 @@ model SkiResort {
   status           String?
   review           Float?
 
+  /// スキー中に使えるEV充電器（管理画面で手入力）。null は未確認、[] は確認済みで無し。
+  /// 要素は { kind, kw, count, operator, url, note }（evChargers.ts の型）
+  evChargers Json?
+
   yukiMagiId String?
   yukiMagi   YukiMagi? @relation(fields: [yukiMagiId], references: [id])
 
   // Relations
   favorites           Favorite[]
+  compareListItems    CompareListItem[]
   courses             Course[]
   lifts               Lift[]
   tickets             Ticket[]
@@ -332,14 +337,14 @@ model User {
   image                  String?
   role                   String                  @default("viewer") // "viewer" | "editor" | "admin"; DB CHECKで制限
   favorites              Favorite[]
+  compareLists           CompareList[]
   accounts               Account[]
   sessions               Session[]
   publicName             String?                 @db.VarChar(40)
   nameMode               String?                 @db.VarChar(16)
   suspendedAt            DateTime?
   communityPosts         CommunityPost[]
-  communityComments      CommunityComment[]
-  communityLikes         CommunityLike[]
+  communityReactions     CommunityReaction[]
   communityNotifications CommunityNotification[]
   contributionPhotos     ContributionPhoto[]
   skiTrackImports        SkiTrackImport[]
@@ -877,8 +882,7 @@ model CommunityPost {
   createdAt     DateTime                @default(now()) @db.Timestamptz(3)
   updatedAt     DateTime                @updatedAt @db.Timestamptz(3)
   photos        ContributionPhoto[]
-  comments      CommunityComment[]
-  likes         CommunityLike[]
+  reactions     CommunityReaction[]
   notifications CommunityNotification[]
   entries       CommunityEntry[]
 
@@ -919,33 +923,21 @@ model CommunityEntry {
   @@map("community_entries")
 }
 
-model CommunityComment {
-  id           String        @id @default(cuid())
-  postId       String
-  post         CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  authorId     String
-  author       User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  body         String        @db.VarChar(2000)
-  status       String        @default("VISIBLE") @db.VarChar(16)
-  version      Int           @default(1)
-  operationKey String        @db.VarChar(64)
-  createdAt    DateTime      @default(now()) @db.Timestamptz(3)
-  updatedAt    DateTime      @updatedAt @db.Timestamptz(3)
-
-  @@unique([authorId, operationKey])
-  @@index([postId, status, createdAt])
-  @@map("community_comments")
-}
-
-model CommunityLike {
+// 投稿へのリアクション。ログインなしでも押せるので、押した人は actorKey で区別する。
+// "u:<ユーザーID>" またはブラウザごとの識別子から作った "a:<ハッシュ>"。
+model CommunityReaction {
   postId    String
-  userId    String
   post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actorKey  String        @db.VarChar(80)
+  userId    String?
+  user      User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String        @db.VarChar(16)
   createdAt DateTime      @default(now()) @db.Timestamptz(3)
 
-  @@id([postId, userId])
-  @@map("community_likes")
+  @@id([postId, actorKey, kind])
+  @@index([postId, kind])
+  @@index([userId])
+  @@map("community_reactions")
 }
 
 model CommunityNotification {
@@ -1074,6 +1066,33 @@ model Favorite {
   @@id([userId, skiResortId])
   @@index([skiResortId])
   @@map("favorites")
+}
+
+// Named comparison lists saved by a signed-in user (e.g. 「北海道でよく行く」).
+model CompareList {
+  id        String            @id @default(cuid())
+  userId    String
+  name      String            @db.VarChar(40)
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CompareListItem[]
+  createdAt DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime          @updatedAt @db.Timestamptz(3)
+
+  @@index([userId, updatedAt])
+  @@map("compare_lists")
+}
+
+// Ordered resorts in a comparison list. Removed resorts drop out with the FK.
+model CompareListItem {
+  listId      String
+  skiResortId String
+  position    Int
+  list        CompareList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  skiResort   SkiResort   @relation(fields: [skiResortId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([listId, skiResortId])
+  @@index([skiResortId])
+  @@map("compare_list_items")
 }
 
 // Rebuilt transactionally from canonical map documents; no GeoJSON at query time.

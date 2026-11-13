@@ -1,6 +1,6 @@
 "use client";
 
-import { MapPin, Navigation } from "lucide-react";
+import { MapPin, Navigation, Zap } from "lucide-react";
 import { type Map as MapLibreMap, Marker } from "maplibre-gl";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -77,6 +77,21 @@ export const MapLibreResortActionPopup = ({
       <p className="font-[var(--font-heading)] text-sm font-bold leading-snug text-gray-900">
         {resort.nameJa}
       </p>
+      {/* 車で行く先を選ぶ場面なので、スキー場にあるEV充電器も経路の隣に出す。無ければ何も出さない */}
+      {resort.evChargerSummary && (
+        <p className="flex max-w-[15rem] items-start gap-1 text-xs leading-snug text-gray-700">
+          <Zap
+            size={13}
+            strokeWidth={2.5}
+            className="mt-px shrink-0 text-emerald-600"
+            aria-hidden="true"
+          />
+          <span>
+            <span className="font-semibold text-emerald-700">EV充電</span>{" "}
+            {resort.evChargerSummary}
+          </span>
+        </p>
+      )}
       {(googleMapsUrl || directionsUrl) && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           {directionsUrl && (

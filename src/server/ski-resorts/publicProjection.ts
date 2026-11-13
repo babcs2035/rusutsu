@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { z } from "zod";
+import { parseEvChargers } from "@/shared/utils/evChargers";
 import {
   formerNamesSchema,
   nameRubySchema,
@@ -64,6 +65,11 @@ const publicResortScalars = z.object({
   status: optionalText,
   review: optionalNumber,
   yukiMagiId: optionalText,
+  // 旧データAPIは返さないので、無ければ未確認にする
+  evChargers: z
+    .unknown()
+    .optional()
+    .transform(value => parseEvChargers(value)),
 });
 const course = z.object({
   id: text,

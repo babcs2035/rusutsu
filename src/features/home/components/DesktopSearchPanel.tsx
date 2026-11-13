@@ -246,7 +246,6 @@ export const DesktopSearchPanel = ({
         <ComparisonActions
           compareCount={compareCount}
           isCompareOpen={isCompareOpen}
-          resultCount={!isFilterEditorOpen ? filteredResorts.length : undefined}
           onOpenCompare={onOpenCompare}
           onClearCompare={onClearCompare}
           onCompareFavorites={onCompareFavorites}
@@ -268,6 +267,10 @@ export const DesktopSearchPanel = ({
               onHoverResortChange={onHoverResortChange}
               showHeader={false}
               onEditLiftTicketConditions={editLiftTicketConditions}
+              featureLines={{
+                yukiMagi: filters.yukiMagi,
+                evCharger: filters.evCharger,
+              }}
             />
           </div>
         )}

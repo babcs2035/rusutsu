@@ -40,7 +40,9 @@
     ".next-qa/types/**/*.ts",
     ".next-qa/dev/types/**/*.ts",
     ".next/qa-resort-links/types/**/*.ts",
-    ".next/qa-resort-links/dev/types/**/*.ts"
+    ".next/qa-resort-links/dev/types/**/*.ts",
+    ".next-compare-lists/types/**/*.ts",
+    ".next-compare-lists/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

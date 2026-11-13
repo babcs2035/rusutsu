@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { evChargersSchema } from "@/shared/utils/evChargers";
 import { readingFieldsSchema } from "./readingContract";
 
 export const skiResortIdSchema = z
@@ -81,6 +82,8 @@ export const adminSkiResortUpdateSchema = z
     condition: nullableText(1_000),
     status: nullableText(1_000),
     review: z.number().finite().min(0).max(5).nullable(),
+    /** 省略したら変えない（スキー場編集フォームは扱わず、EV充電の画面だけが送る） */
+    evChargers: evChargersSchema.optional(),
   })
   .strict();
 

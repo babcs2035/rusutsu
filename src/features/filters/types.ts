@@ -16,7 +16,7 @@ export type Filters = {
   prefectures: string[];
   status: boolean;
   yukiMagi: boolean;
-  beginnerFriendly: boolean;
+  evCharger: boolean;
   minVertical: NumericFilterValue;
   minBaseElevation: NumericFilterValue;
   maxBaseElevation: NumericFilterValue;

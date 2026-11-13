@@ -2,7 +2,6 @@
 
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FavoriteButton } from "@/features/favorites/FavoriteButton";
 import { cn } from "@/lib/utils";
@@ -11,12 +10,19 @@ import { CopyResortNameButton } from "@/shared/components/CopyResortNameButton";
 import { FormerResortNames } from "@/shared/components/FormerResortNames";
 import { RubyText } from "@/shared/components/RubyText";
 import type { Resort } from "../types";
+import {
+  ResortFeatureChips,
+  type ResortFeatureData,
+} from "./ResortFeatureChips";
 
 type ResortInfo = Pick<
   Resort,
   "id" | "nameJa" | "nameRuby" | "formerNames" | "prefecture" | "town"
 > & {
   yukiMagi: boolean;
+  hasEvCharger?: boolean;
+  /** 読み込み前は null。雪マジ・EV充電のチップは押せない */
+  features?: ResortFeatureData | null;
 };
 
 export const InfoSection = ({
@@ -68,16 +74,15 @@ export const InfoSection = ({
         </p>
       )}
       <div className="mt-1 flex items-center gap-2">
-        <p className="flex-1 min-w-0 text-xs text-blue-600 font-medium">
-          {resort.prefecture}・{resort.town}
-          {resort.yukiMagi && (
-            <Badge
-              variant="secondary"
-              className="ml-2 rounded-full bg-pink-50 text-pink-700 text-[0.6875rem] font-semibold whitespace-nowrap"
-            >
-              雪マジ
-            </Badge>
-          )}
+        <p className="flex flex-1 min-w-0 items-center gap-2 text-xs text-blue-600 font-medium">
+          <span className="min-w-0 truncate">
+            {resort.prefecture}・{resort.town}
+          </span>
+          <ResortFeatureChips
+            hasYukiMagi={resort.yukiMagi}
+            hasEvCharger={resort.hasEvCharger ?? false}
+            data={resort.features ?? null}
+          />
         </p>
         <CompareResortButton
           isSelected={isCompareSelected}

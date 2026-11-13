@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { SHARE_IMAGE_VERSION } from "@/features/share/mapCard";
 import { COMPARE_PARAM, encodeCompareCodes } from "@/shared/utils/comparePath";
 
-const PUBLIC_ORIGIN = "https://ktak.dev";
+export const PUBLIC_ORIGIN = "https://ktak.dev";
 type Resort = { id: string; nameJa: string; urlCode: number };
 
 /** 絶対URLを返す。Hostヘッダーやクライアントの描画状態には依存しない。 */

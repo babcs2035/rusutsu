@@ -20,8 +20,12 @@ export type ResortOperatingCounts = {
 const isMapped = (feature: { statusMappingNames?: string[] }) =>
   feature.statusMappingNames?.some(name => name.trim() !== "") ?? false;
 
+/** リフトは○だけを稼働に数える。△は動いていない扱い。 */
 const isOpen = (status: string | null | undefined) =>
-  status && /[○〇◯△]/u.test(status);
+  status && /[○〇◯]/u.test(status);
+
+const isPartial = (status: string | null | undefined) =>
+  status?.includes("△") ?? false;
 
 const isClosed = (status: string | null | undefined) =>
   status && /[×✕✖]/u.test(status);
@@ -83,7 +87,8 @@ export const summarizeMappedLifts = (
   summarize(
     lifts.filter(isMapped).map(lift => {
       if (isOpen(lift.properties.status)) return true;
-      if (isClosed(lift.properties.status)) return false;
+      if (isClosed(lift.properties.status) || isPartial(lift.properties.status))
+        return false;
       return null;
     }),
   );

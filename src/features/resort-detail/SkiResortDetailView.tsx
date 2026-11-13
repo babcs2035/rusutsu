@@ -26,6 +26,18 @@ import {
   useCommunityMapPostHost,
   useOpenCommunityMapPosts,
 } from "@/features/community/mapPostStore";
+import {
+  type CorrectionLayout,
+  type CorrectionLineRef,
+  CorrectionPanel,
+} from "@/features/corrections/CorrectionPanel";
+import {
+  CORRECTION_EVENT,
+  CORRECTION_QUERY_KEYS,
+  type CorrectionRequest,
+  correctionRequestFromUrl,
+  setCorrectionActive,
+} from "@/features/corrections/correctionEvents";
 import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
 import { useScreenState } from "@/features/map/session/useScreenState";
 import type {
@@ -43,6 +55,7 @@ import type { MapSkiResort, NullableSkiResortDetail } from "@/types/skiResorts";
 import { DetailTabs } from "./components/DetailTabs";
 import { FinalizedFeatureDetail } from "./components/FinalizedFeatureDetail";
 import { MapAreaTabs } from "./components/MapAreaTabs";
+import { resortFeatureDataOf } from "./components/ResortFeatureChips";
 import { ResortMapSection } from "./components/ResortMapSection";
 import {
   SimultaneousToggle,
@@ -56,7 +69,6 @@ import {
   TicketsTab,
   WeatherTab,
 } from "./tabs/DetailTabContent";
-import { SnsTab } from "./tabs/OverviewTab";
 import {
   createFinalizedCourseGroups,
   findSelectedCourseGroup,
@@ -98,13 +110,13 @@ type Props = {
   liftTicketInput?: LiftTicketSearchInput;
 };
 
-const tabSchema = z.enum(["ゲレンデ", "SNS", "料金", "天気", "投稿", "リンク"]);
+const tabSchema = z.enum(["ゲレンデ", "料金", "天気", "リンク集", "投稿"]);
 const terrainSchema = z.enum(["コース", "リフト"]);
 const areaSchema = z.enum(["地図", "ゲレンデマップ"]);
 const booleanSchema = z.boolean();
 const originSchema = z.enum(["map", "list"]);
 
-const TABS = ["ゲレンデ", "SNS", "料金", "天気", "投稿", "リンク"];
+const TABS = ["ゲレンデ", "料金", "天気", "リンク集", "投稿"];
 const MAP_AREA_TABS = ["地図", "ゲレンデマップ"] as const;
 
 /**
@@ -142,6 +154,7 @@ const DetailLoadingPanel = ({
           prefecture: summary.prefecture,
           town: summary.town,
           yukiMagi: Boolean(summary.yukiMagiId),
+          hasEvCharger: Boolean(summary.evChargerSummary),
         }}
         isCompareSelected={isCompareSelected}
         onToggleCompare={onToggleCompare}
@@ -217,6 +230,15 @@ export const SkiResortDetailView = ({
   const [composeTarget, setComposeTarget] = useState<ReportMapTarget | null>(
     null,
   );
+  // 「情報を修正」。投稿と同じく、詳細パネルを入力画面に切り替える
+  const [correctionRequest, setCorrectionRequest] =
+    useState<CorrectionRequest | null>(null);
+  const [correctionLayout, setCorrectionLayout] =
+    useState<CorrectionLayout>("form");
+  const [correctionMapHost, setCorrectionMapHost] =
+    useState<HTMLElement | null>(null);
+  const correctingRef = useRef(false);
+  correctingRef.current = correctionRequest != null;
   const composeResortId = resortData?.id;
   const composeResortIds = useRef<string[]>([]);
   composeResortIds.current = [
@@ -238,12 +260,14 @@ export const SkiResortDetailView = ({
   useEffect(() => {
     setComposeRequest(null);
     setComposeTarget(null);
+    setCorrectionRequest(null);
     if (!composeResortId) return;
     const open = (event: Event) => {
       const request = (event as CustomEvent<ComposeRequest>).detail;
       if (!request || !composeResortIds.current.includes(request.resortId))
         return;
       event.preventDefault();
+      if (correctingRef.current) return;
       if (request.target) setComposeTarget(request.target);
       setComposeRequest(current =>
         current && !request.postId ? current : request,
@@ -255,9 +279,18 @@ export const SkiResortDetailView = ({
       ).detail;
       if (detail?.resortId === composeResortId) setComposeTarget(detail.target);
     };
+    // 修正中に投稿を開くと入力した修正が消えるので、修正を閉じるまで受け付けない
+    const openCorrection = (event: Event) => {
+      const request = (event as CustomEvent<CorrectionRequest>).detail;
+      if (request?.resortId !== composeResortId) return;
+      event.preventDefault();
+      setCorrectionRequest(current => current ?? request);
+    };
     window.addEventListener(COMPOSE_EVENT, open);
     window.addEventListener(MAP_TARGET_EVENT, pick);
+    window.addEventListener(CORRECTION_EVENT, openCorrection);
     const url = new URL(window.location.href);
+    setCorrectionRequest(correctionRequestFromUrl(composeResortId, url));
     if (url.searchParams.get("compose") === "1") {
       const courseId = url.searchParams.get("courseId");
       const liftId = url.searchParams.get("liftId");
@@ -274,7 +307,19 @@ export const SkiResortDetailView = ({
     return () => {
       window.removeEventListener(COMPOSE_EVENT, open);
       window.removeEventListener(MAP_TARGET_EVENT, pick);
+      window.removeEventListener(CORRECTION_EVENT, openCorrection);
       setCommunityMapPickMode(composeResortId, null);
+      // 修正中に別のスキー場へ移ったら、移った先で修正パネルが開かないようURLの印を消す
+      if (correctingRef.current) {
+        const current = new URL(window.location.href);
+        for (const key of CORRECTION_QUERY_KEYS)
+          current.searchParams.delete(key);
+        window.history.replaceState(
+          window.history.state,
+          "",
+          current.pathname + current.search + current.hash,
+        );
+      }
     };
   }, [composeResortId]);
   // 投稿中に地図で選んだコース・リフトは投稿の対象にする。閉じたら、
@@ -376,6 +421,91 @@ export const SkiResortDetailView = ({
     };
   }, [activeComposerResortId]);
 
+  // --- 情報を修正 ---------------------------------------------------------
+  const correcting = correctionRequest != null;
+  const correctionResortId = correcting ? composeResortId : undefined;
+  // 修正を始める前の選択。閉じたら元の詳細に戻す
+  const selectionBeforeCorrection = useRef<SelectedMapFeature | null>(null);
+  useEffect(() => {
+    if (correcting) selectionBeforeCorrection.current = latestSelection.current;
+    else setCorrectionLayout("form");
+  }, [correcting]);
+  useEffect(() => {
+    if (!correctionResortId) return;
+    setCorrectionActive(correctionResortId, true);
+    return () => setCorrectionActive(correctionResortId, false);
+  }, [correctionResortId]);
+  useEffect(() => {
+    if (!correctionRequest) return;
+    const url = new URL(window.location.href);
+    for (const key of CORRECTION_QUERY_KEYS) url.searchParams.delete(key);
+    url.searchParams.set("correct", "1");
+    if (correctionRequest.target?.ids.length)
+      url.searchParams.set(
+        correctionRequest.target.kind === "slope"
+          ? "correctCourse"
+          : "correctLift",
+        correctionRequest.target.ids.join(","),
+      );
+    window.history.replaceState(
+      window.history.state,
+      "",
+      url.pathname + url.search + url.hash,
+    );
+  }, [correctionRequest]);
+  const closeCorrection = () => {
+    const url = new URL(window.location.href);
+    for (const key of CORRECTION_QUERY_KEYS) url.searchParams.delete(key);
+    window.history.replaceState(
+      window.history.state,
+      "",
+      url.pathname + url.search + url.hash,
+    );
+    setCorrectionRequest(null);
+    correctionLine.current = null;
+    onSelectedFinalizedFeatureChange(selectionBeforeCorrection.current);
+  };
+  // 修正パネルが一覧で開いた線。分かれたコースのどの線かを覚えておく
+  const correctionLine = useRef<CorrectionLineRef | null>(null);
+  const correctionCourses = displayedMapData?.courses?.features;
+  const selectedCorrectionLine = useMemo<CorrectionLineRef | null>(() => {
+    if (!correcting || !selectedFinalizedFeature) return null;
+    if (selectedFinalizedFeature.kind === "lift")
+      return { kind: "lift", id: selectedFinalizedFeature.id };
+    const group = findSelectedCourseGroup(
+      createFinalizedCourseGroups(correctionCourses ?? []),
+      selectedFinalizedFeature,
+    );
+    // 地図の選択はコースのまとまり。パネルが開いている線がその中にあればそれを指す
+    const course =
+      group?.courses.find(item => item.id === correctionLine.current?.id) ??
+      group?.courses[0];
+    return course ? { kind: "slope", id: course.id } : null;
+  }, [correcting, correctionCourses, selectedFinalizedFeature]);
+  const handleCorrectionLineChange = useCallback(
+    (line: CorrectionLineRef | null) => {
+      correctionLine.current = line;
+      const current = latestSelection.current;
+      if (!line) {
+        if (current) onSelectedFinalizedFeatureChange(null);
+        return;
+      }
+      if (line.kind === "lift") {
+        if (current?.kind !== "lift" || current.id !== line.id)
+          onSelectedFinalizedFeatureChange({ kind: "lift", id: line.id });
+        return;
+      }
+      const course = correctionCourses?.find(item => item.id === line.id);
+      if (!course) return;
+      if (current?.kind !== "course" || current.id !== course.groupId)
+        onSelectedFinalizedFeatureChange({
+          kind: "course",
+          id: course.groupId,
+        });
+    },
+    [correctionCourses, onSelectedFinalizedFeatureChange],
+  );
+
   // 地図で開いた投稿は、コースを選んだときと同じ場所（スマホは地図の下、
   // PCは右パネル）に出す。コースの選択・投稿の開始とは同時に開かない。
   const { open: openPosts } = useOpenCommunityMapPosts(composeResortId);
@@ -389,9 +519,12 @@ export const SkiResortDetailView = ({
       onSelectedFinalizedFeatureChange(null);
   }, [onSelectedFinalizedFeatureChange, openPostsKey]);
   useEffect(() => {
-    if (composeResortId && (selectedFinalizedFeature || composing))
+    if (
+      composeResortId &&
+      (selectedFinalizedFeature || composing || correcting)
+    )
       openCommunityMapPosts(composeResortId, null);
-  }, [composeResortId, composing, selectedFinalizedFeature]);
+  }, [composeResortId, composing, correcting, selectedFinalizedFeature]);
 
   const selectFeatureFromMap = useCallback(
     (feature: SelectedMapFeature | null) => {
@@ -481,6 +614,7 @@ export const SkiResortDetailView = ({
     prefecture: resort.prefecture,
     town: resort.town,
     yukiMagi: Boolean(resort.yukiMagi),
+    features: resortFeatureDataOf(resort),
   };
   // 「〇〇も同時に表示」は都道府県・市町村とタブの間に置き、すべてのタブに効かせる
   const simultaneousControl = resort.simultaneousOptions?.length ? (
@@ -593,30 +727,20 @@ export const SkiResortDetailView = ({
           onSelectedFinalizedFeatureChange={selectFeatureFromList}
         />
       )}
-      <div
-        className={
-          activeTab !== "SNS"
-            ? "invisible absolute inset-x-0 top-0 pointer-events-none"
-            : undefined
-        }
-        aria-hidden={activeTab !== "SNS"}
-        inert={activeTab !== "SNS"}
-      >
-        <SnsTab resort={resort} />
-      </div>
       {activeTab === "料金" && (
         <TicketsTab resort={resort} searchInput={liftTicketInput} />
       )}
       {activeTab === "天気" && <WeatherTab resort={resort} />}
+      {activeTab === "リンク集" && <ResortLinksTab resort={resort} />}
       {/* 外側の余白はほかのタブと同じ（タブ本文の枠が持つ） */}
       {activeTab === "投稿" && (
         <CommunityFeed
           resortId={resort.id}
           resortIds={simultaneous.partners.map(partner => partner.id)}
           highlightOnMap
+          correctable
         />
       )}
-      {activeTab === "リンク" && <ResortLinksTab resort={resort} />}
     </div>
   );
 
@@ -652,6 +776,25 @@ export const SkiResortDetailView = ({
         </div>
       </div>
     ) : null;
+  const correction =
+    correctionRequest && correctionRequest.resortId === resort.id ? (
+      <CorrectionPanel
+        key={`${resort.id}:${correctionRequest.target?.ids.join(",") ?? "all"}`}
+        resortId={resort.id}
+        center={[resort.longitude, resort.latitude]}
+        target={correctionRequest.target}
+        compact={!isSidePanel}
+        mapHost={correctionMapHost}
+        selectedLine={selectedCorrectionLine}
+        onSelectedLineChange={handleCorrectionLineChange}
+        onLayoutChange={setCorrectionLayout}
+        onClose={closeCorrection}
+      />
+    ) : null;
+  // 位置を直す間は、いつもの地図の上に編集用の地図を重ねる。
+  // いつもの地図は作り直さず、閉じたら元の表示のまま戻る。
+  const correctionMapActive =
+    Boolean(correction) && correctionLayout !== "form";
   const postDetail = openPosts ? (
     <CommunityMapPreview
       key={openPosts.key}
@@ -662,7 +805,12 @@ export const SkiResortDetailView = ({
   ) : null;
   // スマホの投稿はコース詳細と同じく、上の地図をそのまま使い下だけを差し替える。
   const mobileFeatureDetail =
-    composer && !isSidePanel ? composer : (renderFeatureDetail() ?? postDetail);
+    composer && !isSidePanel
+      ? composer
+      : correction && !isSidePanel
+        ? correction
+        : (renderFeatureDetail() ?? postDetail);
+  const mobileCorrection = Boolean(correction) && !composer && !isSidePanel;
 
   // スマホは地図を常に同じ位置に置いたまま、その下だけを詳細に差し替える。
   // 位置が変わると地図が作り直され、選択状態が失われる。
@@ -699,7 +847,7 @@ export const SkiResortDetailView = ({
           : "h-full min-h-0 overflow-y-auto overscroll-contain"
       }
     >
-      {composer ? null : hideMobileInfoSection ? (
+      {composer || correction ? null : hideMobileInfoSection ? (
         // 名前と所在地は上の見出しが出すので、同時表示の操作だけをタブの上に置く
         simultaneousControl &&
         !mobileFeatureDetail && (
@@ -783,7 +931,34 @@ export const SkiResortDetailView = ({
                 }
                 resortId={resort.id}
                 previewHeightClassName="h-full shrink-0"
-                selectedHeightClassName="h-[38%] min-h-[180px] shrink-0"
+                // 修正中は、入力が主役の画面では地図を低く、位置を直す画面では地図を広く使う
+                selectedHeightClassName={
+                  !mobileCorrection
+                    ? "h-[38%] min-h-[180px] shrink-0"
+                    : correctionMapActive
+                      ? "min-h-0 flex-1"
+                      : "h-[30%] min-h-[150px] shrink-0"
+                }
+                expandedSelectedHeightClassName={
+                  mobileCorrection && correctionMapActive
+                    ? "min-h-0 flex-1"
+                    : undefined
+                }
+                featureDetailClassName={
+                  !mobileCorrection || !correctionMapActive
+                    ? undefined
+                    : correctionLayout === "map-list"
+                      ? "h-[46%] shrink-0"
+                      : "flex max-h-[60%] shrink-0 flex-col"
+                }
+                mapOverlay={
+                  mobileCorrection && correctionMapActive ? (
+                    <div
+                      ref={setCorrectionMapHost}
+                      className="absolute inset-0 z-[760]"
+                    />
+                  ) : undefined
+                }
                 finalizedMapData={displayedMapData}
                 mapResorts={mapResorts}
                 selectedFinalizedFeature={selectedFinalizedFeature}
@@ -796,6 +971,7 @@ export const SkiResortDetailView = ({
                 // 投稿中と投稿タブの地図は場所を見るためのもの。地図の操作ボタンは出さない
                 minimalControls={
                   Boolean(composer) ||
+                  mobileCorrection ||
                   Boolean(postDetail) ||
                   (!mobileFeatureDetail && activeTab === "投稿")
                 }
@@ -820,6 +996,41 @@ export const SkiResortDetailView = ({
   // 何も選んでいなければパネルごと畳んで地図を邪魔しない。
   const shouldRenderDesktopPanel =
     isSidePanel && (!isDesktopMapExpanded || Boolean(desktopFeatureDetail));
+
+  if (correction && !composer && isSidePanel)
+    return (
+      <Portal>
+        {correctionMapActive && (
+          <div
+            ref={setCorrectionMapHost}
+            className="fixed inset-y-0 left-0 z-[410] bg-gray-200"
+            style={{
+              right: isDesktopMapExpanded
+                ? 0
+                : "var(--desktop-detail-panel-width)",
+            }}
+          />
+        )}
+        <div
+          className={cn(
+            "fixed inset-0 z-[420] flex justify-end pointer-events-none",
+            isDesktopMapExpanded && "p-3",
+          )}
+        >
+          <AnimatedPanel
+            data-ski-resort-detail-panel="true"
+            visible
+            rootClassName="h-full w-full md:w-auto"
+            contentClassName={cn(
+              "@container/resort-detail relative flex h-full min-h-0 w-full flex-col overflow-hidden border border-gray-200 bg-white pointer-events-auto shadow-2xl md:w-[var(--desktop-detail-panel-width)]",
+              isDesktopMapExpanded && "md:w-[min(400px,40vw)] rounded-xl",
+            )}
+          >
+            {correction}
+          </AnimatedPanel>
+        </div>
+      </Portal>
+    );
 
   if (composer && isSidePanel)
     return (

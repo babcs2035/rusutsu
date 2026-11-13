@@ -191,6 +191,8 @@ const showsVertices = (mode: EditorMapMode) =>
 export const buildVertexCollection = (
   activeLine: EditorMapLine | null,
   mode: EditorMapMode,
+  /** タップして選んだ点。削除ボタンの対象として縁の色を変える */
+  selectedIndex: number | null = null,
 ): FeatureCollection => {
   if (!activeLine || !showsVertices(mode)) return EMPTY_COLLECTION;
 
@@ -207,7 +209,13 @@ export const buildVertexCollection = (
         : mode === "draw" && index === lastIndex
           ? "last"
           : "vertex";
-    return [pointFeature(coordinate, { index, kind })];
+    return [
+      pointFeature(coordinate, {
+        index,
+        kind,
+        selected: index === selectedIndex,
+      }),
+    ];
   });
 
   return { type: "FeatureCollection", features };

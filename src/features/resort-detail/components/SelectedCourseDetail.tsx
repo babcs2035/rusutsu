@@ -204,10 +204,11 @@ export const SelectedCourseDetail = ({
             : undefined
         }
         postTarget={{ kind: "COURSE", id: courseGroup.id }}
-        correctionContext={{
+        correctionTarget={{
           kind: "slope",
-          targetKind: "slope",
-          targetId: selectedCourse.id,
+          // 上部・下部などに分かれたコースは、表示中のまとまりの線をすべて対象にする
+          ids: courseGroup.courses.map(course => course.id),
+          name: courseGroup.displayName,
         }}
       />
 

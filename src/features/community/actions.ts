@@ -76,6 +76,10 @@ async function execute<K extends keyof CommunitySuccessPayloads>(
       "detail",
       "publicProfile",
       "notifications",
+      "myPosts",
+      "dayReports",
+      // 押した結果は画面がその場で反映するので、全体を読み直さない
+      "react",
     ].includes(operation)
   )
     revalidatePath("/", "layout");
@@ -175,30 +179,41 @@ export async function getPostDetail(postId: string) {
     direct.getPostDetail(postId),
   );
 }
-export async function setPostLike(postId: string, liked: boolean) {
-  return execute({ operation: "like", postId, liked }, () =>
-    direct.setPostLike(postId, liked),
-  );
-}
-export async function saveComment(
+export async function setPostReaction(
   postId: string,
-  body: string,
-  operationKey: string,
-  commentId?: string,
-  version?: number,
+  kind: string,
+  active: boolean,
+  proof?: AnonymousProof,
 ) {
-  return execute(
-    { operation: "comment", postId, body, operationKey, commentId, version },
-    () => direct.saveComment(postId, body, operationKey, commentId, version),
+  const { commandSchema } = await import("@/server/community/remoteContract");
+  const command = commandSchema.safeParse({
+    operation: "react",
+    postId,
+    kind,
+    active,
+    proof,
+  });
+  if (!command.success)
+    return {
+      ok: false as const,
+      error: command.error.issues[0]?.message ?? "入力を確認してください。",
+    };
+  if (command.data.operation !== "react") throw new Error("Invalid operation");
+  return execute(command.data, () =>
+    direct.setPostReaction(postId, kind, active, proof),
   );
 }
-export async function deleteComment(commentId: string, version: number) {
-  return execute({ operation: "deleteComment", commentId, version }, () =>
-    direct.deleteComment(commentId, version),
+export async function getMyPosts(cursor?: string) {
+  return execute({ operation: "myPosts", ...(cursor ? { cursor } : {}) }, () =>
+    direct.getMyPosts(cursor),
+  );
+}
+export async function getDayReports(authorId: string, observedOn: string) {
+  return execute({ operation: "dayReports", authorId, observedOn }, () =>
+    direct.getDayReports(authorId, observedOn),
   );
 }
 export async function reportCommunityContent(
-  targetKind: "POST" | "COMMENT",
   targetId: string,
   reason: string,
   body: string,
@@ -207,7 +222,7 @@ export async function reportCommunityContent(
   const { commandSchema } = await import("@/server/community/remoteContract");
   const command = commandSchema.safeParse({
     operation: "report",
-    targetKind,
+    targetKind: "POST",
     targetId,
     reason,
     body,
@@ -220,7 +235,7 @@ export async function reportCommunityContent(
     };
   if (command.data.operation !== "report") throw new Error("Invalid operation");
   return execute(command.data, () =>
-    direct.reportCommunityContent(targetKind, targetId, reason, body, proof),
+    direct.reportCommunityContent(targetId, reason, body, proof),
   );
 }
 export async function getPublicProfile(userId: string) {

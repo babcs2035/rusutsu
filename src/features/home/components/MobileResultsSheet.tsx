@@ -6,7 +6,7 @@ import type { JapanResortMapProps } from "@/features/map/types";
 import type { MapSkiResort, SkiResortDetail } from "@/types/skiResorts";
 import type { ResortSortControls } from "../hooks/useResortSort";
 import { SkiResortCompareView } from "./SkiResortCompareView";
-import { SkiResortList } from "./SkiResortList";
+import { type ResortFeatureLines, SkiResortList } from "./SkiResortList";
 
 type Props = {
   DynamicMap: ComponentType<JapanResortMapProps>;
@@ -22,6 +22,7 @@ type Props = {
   snapPoints: (number | string)[];
   selectedCompareIdSet: Set<string>;
   liftTicketInput: LiftTicketSearchInput;
+  featureLines: ResortFeatureLines;
   onCloseCompare: () => void;
   onEditLiftTicketConditions: () => void;
   onHoverResortChange: (id: string | null) => void;
@@ -43,6 +44,7 @@ export const MobileResultsSheet = ({
   listSheetContentRef,
   selectedCompareIdSet,
   liftTicketInput,
+  featureLines,
   onCloseCompare,
   onEditLiftTicketConditions,
   onHoverResortChange,
@@ -83,6 +85,7 @@ export const MobileResultsSheet = ({
           onHoverResortChange={onHoverResortChange}
           showHeader={false}
           onEditLiftTicketConditions={onEditLiftTicketConditions}
+          featureLines={featureLines}
         />
       </div>
     )}

@@ -6,12 +6,18 @@ import { z } from "zod";
 import {
   type ActionResult,
   type CommunityMapData,
+  type DayReports,
+  EXISTENCE_REACTIONS,
   type FeedInput,
   idSchema,
   type MapEntriesInput,
   mapEntriesInputSchema,
+  type OwnPost,
   observedOnSchema,
+  REACTION_KINDS,
   type ReportDraft,
+  type ReportEntryDraft,
+  reactionKindsFor,
   reportDraftSchema,
 } from "@/features/community/contract";
 import { reportLocationError } from "@/features/community/location";
@@ -28,9 +34,11 @@ import {
   accountDto,
   courseOptions,
   publicPostInclude,
+  reactionActor,
   readFeed,
   readMapEntries,
   readMapSummary,
+  readReactions,
   requireUserId,
   serializePosts,
   type Tx,
@@ -158,7 +166,7 @@ async function queueModeration(
 async function notify(
   tx: Tx,
   userId: string,
-  actorId: string,
+  actorId: string | null,
   postId: string,
   kind: string,
   dedupeKey: string,
@@ -371,162 +379,161 @@ export async function deletePost(postId: string, version: number) {
 export async function getPostDetail(postId: string) {
   return result(async () => {
     idSchema.parse(postId);
-    const id = await viewerId();
+    const actor = await reactionActor();
     const post = await prisma.communityPost.findFirst({
       where: { id: postId, status: "VISIBLE" },
       include: publicPostInclude,
     });
     if (!post) throw new Error("投稿が見つかりません。");
-    const comments = await prisma.communityComment.findMany({
-      where: { postId, status: "VISIBLE" },
-      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-      take: 200,
-      include: { author: { select: { id: true, publicName: true } } },
-    });
     return {
-      post: (await serializePosts([post], id))[0],
-      comments: comments.map(row => ({
-        id: row.id,
-        body: row.body,
-        version: row.version,
-        createdAt: row.createdAt.toISOString(),
-        author: {
-          id: row.authorId,
-          publicName: row.author.publicName ?? "匿名",
-        },
-      })),
-      viewerId: id,
+      post: (await serializePosts([post], actor?.key ?? null))[0],
+      viewerId: actor?.userId ?? null,
     };
   });
 }
-export async function setPostLike(postId: string, liked: boolean) {
-  return result(async () => {
-    const id = await requireUserId();
-    idSchema.parse(postId);
-    z.boolean().parse(liked);
-    await consumeWriteLimit("like", id, 100);
-    await prisma.$transaction(async tx => {
-      await writableUser(tx, id);
-      const post = await tx.communityPost.findFirst({
-        where: { id: postId, status: "VISIBLE" },
-      });
-      if (!post) throw new Error("投稿が見つかりません。");
-      if (liked) {
-        await tx.communityLike.upsert({
-          where: { postId_userId: { postId, userId: id } },
-          create: { postId, userId: id },
-          update: {},
-        });
-        await notify(
-          tx,
-          post.authorId,
-          id,
-          postId,
-          "LIKE",
-          `like:${postId}:${id}`,
-        );
-      } else {
-        await tx.communityLike.deleteMany({ where: { postId, userId: id } });
-        await tx.communityNotification.deleteMany({
-          where: { dedupeKey: `like:${postId}:${id}` },
-        });
-      }
-    });
-    refresh();
-    return {};
-  });
-}
-export async function saveComment(
+/**
+ * リアクションを付ける・外す。ログインなしでも押せる。
+ * 「まだあった」と「なかった」はどちらか片方だけ残す。
+ */
+export async function setPostReaction(
   postId: string,
-  body: string,
-  operationKey: string,
-  commentId?: string,
-  version?: number,
+  kind: string,
+  active: boolean,
+  proof?: AnonymousProof,
 ) {
   return result(async () => {
-    const id = await requireUserId();
     idSchema.parse(postId);
-    operationKeySchema.parse(operationKey);
-    const text = z.string().trim().min(1).max(2000).parse(body);
-    if (commentId) {
-      idSchema.parse(commentId);
-      versionSchema.parse(version);
-    }
-    await consumeWriteLimit("comment", id, 40);
-    const saved = await prisma.$transaction(async tx => {
-      await writableUser(tx, id);
+    const reaction = z.enum(REACTION_KINDS).parse(kind);
+    z.boolean().parse(active);
+    const actor = await reactionActor(true);
+    if (!actor) throw new Error("リアクションを保存できませんでした。");
+    if (actor.userId) await consumeWriteLimit("reaction", actor.userId, 100);
+    else await limitAnonymous("community-reaction", 30, proof);
+    await prisma.$transaction(async tx => {
+      if (actor.userId) await writableUser(tx, actor.userId, false);
       const post = await tx.communityPost.findFirst({
         where: { id: postId, status: "VISIBLE" },
+        select: {
+          authorId: true,
+          entries: { select: { kind: true }, orderBy: { position: "asc" } },
+        },
       });
       if (!post) throw new Error("投稿が見つかりません。");
-      let savedId: string;
-      let savedVersion: number;
-      if (commentId) {
-        const changed = await tx.communityComment.updateMany({
-          where: {
-            id: commentId,
-            postId,
-            authorId: id,
-            version,
-            status: "VISIBLE",
-          },
-          data: { body: text, version: { increment: 1 } },
+      if (
+        !reactionKindsFor(
+          post.entries[0]?.kind as ReportEntryDraft["kind"] | undefined,
+        ).includes(reaction)
+      )
+        throw new Error("この投稿には付けられないリアクションです。");
+      const dedupeKey = `reaction:${postId}:${reaction}:${actor.key}`;
+      if (!active) {
+        await tx.communityReaction.deleteMany({
+          where: { postId, actorKey: actor.key, kind: reaction },
         });
-        if (changed.count !== 1)
-          throw new Error("コメントが更新されたか、編集できません。");
-        savedId = commentId;
-        savedVersion = (version as number) + 1;
-      } else {
-        const existing = await tx.communityComment.findUnique({
-          where: { authorId_operationKey: { authorId: id, operationKey } },
-        });
-        if (existing) return { id: existing.id };
-        const comment = await tx.communityComment.create({
-          data: { postId, authorId: id, body: text, operationKey },
-        });
-        savedId = comment.id;
-        savedVersion = comment.version;
-        await notify(
-          tx,
-          post.authorId,
-          id,
-          postId,
-          "COMMENT",
-          `comment:${savedId}`,
-        );
+        await tx.communityNotification.deleteMany({ where: { dedupeKey } });
+        return;
       }
-      await queueModeration(tx, "COMMENT", savedId, savedVersion);
-      return { id: savedId };
+      const opposite = EXISTENCE_REACTIONS.includes(reaction)
+        ? EXISTENCE_REACTIONS.find(value => value !== reaction)
+        : undefined;
+      if (opposite) {
+        await tx.communityReaction.deleteMany({
+          where: { postId, actorKey: actor.key, kind: opposite },
+        });
+        await tx.communityNotification.deleteMany({
+          where: { dedupeKey: `reaction:${postId}:${opposite}:${actor.key}` },
+        });
+      }
+      await tx.communityReaction.upsert({
+        where: {
+          postId_actorKey_kind: { postId, actorKey: actor.key, kind: reaction },
+        },
+        create: {
+          postId,
+          actorKey: actor.key,
+          userId: actor.userId,
+          kind: reaction,
+        },
+        update: {},
+      });
+      await notify(
+        tx,
+        post.authorId,
+        actor.userId,
+        postId,
+        reaction,
+        dedupeKey,
+      );
     });
-    refresh();
-    after(() => drainModerationJobs());
-    return saved;
+    const entries = await prisma.communityEntry.findMany({
+      where: { postId },
+      select: { kind: true },
+      orderBy: { position: "asc" },
+    });
+    return {
+      reactions:
+        (await readReactions([{ id: postId, entries }], actor.key)).get(
+          postId,
+        ) ?? [],
+    };
   });
 }
-export async function deleteComment(commentId: string, version: number) {
+/** 自分の投稿の一覧。確認のため非表示になっている投稿も本人には出す。 */
+export async function getMyPosts(cursor?: string) {
   return result(async () => {
     const id = await requireUserId();
-    idSchema.parse(commentId);
-    versionSchema.parse(version);
-    await prisma.$transaction(async tx => {
-      const removed = await tx.communityComment.deleteMany({
-        where: { id: commentId, authorId: id, version },
-      });
-      if (removed.count !== 1)
-        throw new Error("コメントが更新されたか、削除できません。");
-      await tx.communityNotification.deleteMany({
-        where: { dedupeKey: `comment:${commentId}` },
-      });
-      await tx.communityModerationJob.deleteMany({
-        where: { targetKind: "COMMENT", targetId: commentId },
-      });
+    if (cursor !== undefined) idSchema.parse(cursor);
+    const rows = await prisma.communityPost.findMany({
+      where: { authorId: id },
+      include: publicPostInclude,
+      orderBy: [
+        { observedOn: "desc" },
+        { observedTime: "desc" },
+        { createdAt: "desc" },
+        { id: "desc" },
+      ],
+      take: 51,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     });
-    refresh();
-    return {};
-  });
+    const page = rows.slice(0, 50);
+    const posts = await serializePosts(page, `u:${id}`);
+    return {
+      posts: posts.map(
+        (post, index): OwnPost => ({
+          ...post,
+          status: page[index].status === "HIDDEN" ? "HIDDEN" : "VISIBLE",
+        }),
+      ),
+      nextCursor: rows.length > 50 ? rows[49].id : null,
+    };
+  }, "投稿を読み込めませんでした。時間を置いて再度お試しください。");
+}
+/** 1人が1日（滑走日）に投稿したレポート。SNSで共有するページに使う。 */
+export async function getDayReports(authorId: string, observedOn: string) {
+  return result(async (): Promise<DayReports> => {
+    idSchema.parse(authorId);
+    observedOnSchema.parse(observedOn);
+    const actor = await reactionActor();
+    const author = await prisma.user.findUnique({
+      where: { id: authorId },
+      select: { id: true, publicName: true },
+    });
+    if (!author) throw new Error("投稿が見つかりません。");
+    const rows = await prisma.communityPost.findMany({
+      where: { authorId, observedOn, status: "VISIBLE" },
+      include: publicPostInclude,
+      orderBy: [{ observedTime: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+      take: 100,
+    });
+    return {
+      author: { id: author.id, publicName: author.publicName ?? "匿名" },
+      observedOn,
+      posts: await serializePosts(rows, actor?.key ?? null),
+      viewerId: actor?.userId ?? null,
+    };
+  }, "投稿を読み込めませんでした。時間を置いて再度お試しください。");
 }
 export async function reportCommunityContent(
-  targetKind: "POST" | "COMMENT",
   targetId: string,
   reason: string,
   body: string,
@@ -535,29 +542,20 @@ export async function reportCommunityContent(
   return result(async () => {
     const report = z
       .strictObject({
-        targetKind: z.enum(["POST", "COMMENT"]),
         targetId: idSchema,
         reason: z.enum(["不適切な内容", "迷惑行為", "個人情報", "その他"]),
         body: z.string().trim().max(2000),
       })
-      .parse({ targetKind, targetId, reason, body });
+      .parse({ targetId, reason, body });
     await limitAnonymous("community-report", 10, proof);
-    const found =
-      targetKind === "POST"
-        ? await prisma.communityPost.findFirst({
-            where: { id: targetId, status: "VISIBLE" },
-            select: { id: true },
-          })
-        : await prisma.communityComment.findFirst({
-            where: {
-              id: targetId,
-              status: "VISIBLE",
-              post: { status: "VISIBLE" },
-            },
-            select: { id: true },
-          });
+    const found = await prisma.communityPost.findFirst({
+      where: { id: targetId, status: "VISIBLE" },
+      select: { id: true },
+    });
     if (!found) throw new Error("対象が見つかりません。");
-    await prisma.communityReport.create({ data: report });
+    await prisma.communityReport.create({
+      data: { ...report, targetKind: "POST" },
+    });
     return {};
   });
 }
@@ -577,7 +575,7 @@ export async function getPublicProfile(userId: string) {
     });
     return {
       author: { id: user.id, publicName: user.publicName ?? "匿名" },
-      posts: await serializePosts(rows, await viewerId()),
+      posts: await serializePosts(rows, (await reactionActor())?.key ?? null),
     };
   });
 }
@@ -625,29 +623,15 @@ export async function deleteCommunityAccount(confirm: "削除") {
         where: { authorId: id },
         select: { id: true },
       });
-      const comments = await tx.communityComment.findMany({
-        where: { authorId: id },
-        select: { id: true },
-      });
       await tx.communityModerationJob.deleteMany({
         where: {
-          OR: [
-            { targetKind: "POST", targetId: { in: posts.map(row => row.id) } },
-            {
-              targetKind: "COMMENT",
-              targetId: { in: comments.map(row => row.id) },
-            },
-          ],
+          targetKind: "POST",
+          targetId: { in: posts.map(row => row.id) },
         },
       });
-      // Remove actor notifications even when the recipient is another user.
+      // 本人が押したリアクションの通知は、受け取った人が別のユーザーでも消す
       await tx.communityNotification.deleteMany({
-        where: {
-          OR: [
-            { dedupeKey: { in: comments.map(row => `comment:${row.id}`) } },
-            { dedupeKey: { endsWith: `:${id}` } },
-          ],
-        },
+        where: { dedupeKey: { endsWith: `:u:${id}` } },
       });
       await tx.user.delete({ where: { id } });
     });

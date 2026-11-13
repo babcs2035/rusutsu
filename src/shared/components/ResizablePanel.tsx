@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronDown, ChevronUp } from "lucide-react";
 import {
   type ReactNode,
   type PointerEvent as ReactPointerEvent,
@@ -22,6 +23,14 @@ type ResizablePanelProps = {
   side?: "left" | "right";
   /** 値が変わったら中身を先頭までスクロールし直す。工程の切り替えなどに使う */
   scrollResetKey?: string;
+  /**
+   * スマホで地図の下に積むときの高さを、このパネルが持つ。
+   * 上端のつまみで「入力欄を広く／地図を広く」を切り替えられる。
+   * 地図の無い工程（パネルだけの画面）では渡さない。
+   */
+  mobileStacked?: boolean;
+  /** true の間はスマホで地図を広くする（線を描いている間など）。つまみでの切り替えは残る */
+  mobileMapFocus?: boolean;
 };
 
 const clamp = (value: number, min: number, max: number): number =>
@@ -54,7 +63,13 @@ export function ResizablePanel({
   className,
   side = "left",
   scrollResetKey,
+  mobileStacked = false,
+  mobileMapFocus = false,
 }: ResizablePanelProps) {
+  // スマホでは地図が上、パネルが下。指で線を直すときは地図を広く使いたいので、
+  // パネルを低くできるようにする。描き始めと描き終わりには自動で切り替える。
+  const [mobileCompact, setMobileCompact] = useState(mobileMapFocus);
+  useEffect(() => setMobileCompact(mobileMapFocus), [mobileMapFocus]);
   const [width, setWidth] = useState(defaultWidth);
   const [isResizing, setIsResizing] = useState(false);
   const startRef = useRef({ x: 0, width: defaultWidth });
@@ -130,9 +145,30 @@ export function ResizablePanel({
 
   return (
     <div
-      className={cn("relative flex h-full min-h-0 shrink-0", className)}
+      className={cn(
+        "relative flex h-full min-h-0 shrink-0",
+        mobileStacked &&
+          "max-md:flex-col max-md:transition-[height] max-md:duration-200",
+        mobileStacked && (mobileCompact ? "max-md:h-[30%]" : "max-md:h-[55%]"),
+        className,
+      )}
       style={{ width }}
     >
+      {mobileStacked && (
+        <button
+          type="button"
+          aria-expanded={!mobileCompact}
+          className="flex h-7 w-full shrink-0 items-center justify-center gap-1 border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-600 md:hidden"
+          onClick={() => setMobileCompact(compact => !compact)}
+        >
+          {mobileCompact ? (
+            <ChevronUp className="size-3.5" aria-hidden="true" />
+          ) : (
+            <ChevronDown className="size-3.5" aria-hidden="true" />
+          )}
+          {mobileCompact ? "入力欄を広げる" : "地図を広げる"}
+        </button>
+      )}
       <div
         ref={scrollRef}
         className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-y-auto"

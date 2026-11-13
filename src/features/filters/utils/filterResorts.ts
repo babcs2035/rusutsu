@@ -36,6 +36,11 @@ const matchesKeyword = (resort: MapSkiResort, keyword: string) => {
   return tokens.every(token => haystack.includes(token));
 };
 
+/** 一覧の稼働数で、コースかリフトのどちらかが1以上動いていれば営業中とみなす */
+const isOperating = (resort: MapSkiResort) =>
+  (resort.operatingCounts.courses?.active ?? 0) > 0 ||
+  (resort.operatingCounts.lifts?.active ?? 0) > 0;
+
 export const isFilterActive = (filters: Filters) => {
   const liftTicket = filters.liftTicket ?? DEFAULT_LIFT_TICKET_SEARCH_INPUT;
   return (
@@ -43,7 +48,7 @@ export const isFilterActive = (filters: Filters) => {
     filters.prefectures.length > 0 ||
     filters.status ||
     filters.yukiMagi ||
-    filters.beginnerFriendly ||
+    filters.evCharger ||
     hasNumericFilterValue(filters.minVertical) ||
     hasNumericFilterValue(filters.minBaseElevation) ||
     hasNumericFilterValue(filters.maxBaseElevation) ||
@@ -62,7 +67,7 @@ export const areFiltersEqual = (left: Filters, right: Filters) => {
     left.keyword === right.keyword &&
     left.status === right.status &&
     left.yukiMagi === right.yukiMagi &&
-    left.beginnerFriendly === right.beginnerFriendly &&
+    left.evCharger === right.evCharger &&
     left.minVertical === right.minVertical &&
     left.minBaseElevation === right.minBaseElevation &&
     left.maxBaseElevation === right.maxBaseElevation &&
@@ -115,11 +120,9 @@ export const areFiltersEqual = (left: Filters, right: Filters) => {
 };
 
 export const matchesFilters = (resort: MapSkiResort, filters: Filters) => {
-  if (filters.status && !resort.status?.includes("滑走可")) return false;
+  if (filters.status && !isOperating(resort)) return false;
   if (filters.yukiMagi && !resort.yukiMagiId) return false;
-  if (filters.beginnerFriendly && resort.beginnersCoursesPercent < 30) {
-    return false;
-  }
+  if (filters.evCharger && !resort.evChargerSummary) return false;
   if (
     filters.prefectures.length > 0 &&
     !filters.prefectures.includes(resort.prefecture)

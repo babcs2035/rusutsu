@@ -1,10 +1,15 @@
 "use client";
 
 import { Circle, Minus, Pencil, Play, Triangle, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useLayoutEffect, useRef, useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { requestCommunityComposer } from "@/features/community/composerEvents";
-import { CorrectionLink } from "@/features/corrections/CorrectionLink";
+import {
+  type CorrectionTarget,
+  correctionUrl,
+  requestCorrection,
+} from "@/features/corrections/correctionEvents";
 import { cn } from "@/lib/utils";
 import type { GroomingLabel, StatusSymbol } from "../utils/detailMetrics";
 import { getYoutubeSearchUrl } from "../utils/featureLinks";
@@ -119,7 +124,7 @@ export const FeatureHeadline = ({
   sources,
   reportContext,
   postTarget,
-  correctionContext,
+  correctionTarget,
 }: {
   kind: "course" | "lift";
   status: { symbol: StatusSymbol | null; text: string };
@@ -132,9 +137,10 @@ export const FeatureHeadline = ({
   };
   /** 投稿の対象。reportContext の resortId と組み合わせて使う */
   postTarget?: { kind: "COURSE" | "LIFT"; id: string };
-  /** 「情報を修正」で開く修正画面の文脈 */
-  correctionContext?: unknown;
+  /** 「情報を修正」で直す対象。詳細パネルがその場で修正画面に切り替わる */
+  correctionTarget?: CorrectionTarget;
 }) => {
+  const router = useRouter();
   const statusStyle = status.symbol
     ? STATUS_STYLE[status.symbol]
     : UNKNOWN_STATUS_STYLE;
@@ -193,18 +199,22 @@ export const FeatureHeadline = ({
               ＋投稿
             </Button>
           )}
-          {resortId && correctionContext !== undefined && (
-            <CorrectionLink
-              resortId={resortId}
-              context={correctionContext}
-              className={cn(
-                buttonVariants({ variant: "outline", size: "sm" }),
-                ACTION_CLASS,
-              )}
+          {resortId && correctionTarget && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className={ACTION_CLASS}
+              onClick={() => {
+                const request = { resortId, target: correctionTarget };
+                // 詳細パネルが無い画面（比較など）では、そのスキー場の詳細を開いて修正を始める
+                if (!requestCorrection(request))
+                  router.push(correctionUrl(request));
+              }}
             >
               <Pencil aria-hidden="true" />
               情報を修正
-            </CorrectionLink>
+            </Button>
           )}
           {searchWord && (
             <a

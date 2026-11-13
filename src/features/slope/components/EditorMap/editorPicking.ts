@@ -14,8 +14,9 @@ export const paddedBox = (
 ];
 
 /**
- * 指定レイヤーを上から順に当てて、最初に当たったものを返す。
+ * 指定レイヤーを上から順に当てて、最初に当たったレイヤーのものを返す。
  * 点は円ぴったりだと掴みにくいので、少し広げた四角で当てる。
+ * 点が込み合って複数当たったときは、押した位置にいちばん近い点を選ぶ。
  */
 export const pickFeature = (
   map: MapLibreMap,
@@ -25,10 +26,24 @@ export const pickFeature = (
 ) => {
   for (const layer of layers) {
     if (!map.getLayer(layer)) continue;
-    const [feature] = map.queryRenderedFeatures(paddedBox(point, padding), {
+    const features = map.queryRenderedFeatures(paddedBox(point, padding), {
       layers: [layer],
     });
-    if (feature) return feature;
+    let nearest = features[0];
+    if (!nearest) continue;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+    for (const feature of features) {
+      if (feature.geometry.type !== "Point") continue;
+      const [lng, lat] = feature.geometry.coordinates;
+      if (lng === undefined || lat === undefined) continue;
+      const projected = map.project([lng, lat]);
+      const distance = Math.hypot(projected.x - point.x, projected.y - point.y);
+      if (distance < nearestDistance) {
+        nearest = feature;
+        nearestDistance = distance;
+      }
+    }
+    return nearest;
   }
   return null;
 };

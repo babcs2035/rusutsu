@@ -10,10 +10,22 @@ import {
   saveCommunityProfile,
   startCommunityLogin,
 } from "@/features/community/actions";
-import type {
-  CommunityAccount,
-  CommunityNotificationDto,
+import {
+  type CommunityAccount,
+  type CommunityNotificationDto,
+  REACTION_LABELS,
+  type ReactionKind,
 } from "@/features/community/contract";
+
+// 通知の種類（リアクションの種類）を日本語にする。未知の種類はそのまま出す
+const notificationText = (kind: string) => {
+  const label = REACTION_LABELS[kind as ReactionKind];
+  if (!label) return kind;
+  return kind === "STILL_THERE" || kind === "GONE"
+    ? `「${label}」が付きました`
+    : `${label}が付きました`;
+};
+
 export default function CommunityAccountPage() {
   const [account, setAccount] = useState<CommunityAccount | null>(null);
   const [mode, setMode] = useState<"GOOGLE" | "NICKNAME" | "ANONYMOUS">(
@@ -46,9 +58,14 @@ export default function CommunityAccountPage() {
   useEffect(refresh, []);
   return (
     <main className="mx-auto max-w-xl space-y-5 p-4">
-      <Link href="/" className="text-sm underline">
-        ← 戻る
-      </Link>
+      <div className="flex items-center justify-between gap-2 text-sm">
+        <Link href="/" className="underline">
+          ← 戻る
+        </Link>
+        <Link href="/account/posts" className="underline">
+          自分の投稿
+        </Link>
+      </div>
       <h1 className="text-xl font-bold">コミュニティ設定</h1>
       <section className="space-y-2">
         <h2 className="font-semibold">公開名</h2>
@@ -121,7 +138,8 @@ export default function CommunityAccountPage() {
             className="block rounded border p-2 text-sm"
             href={`/community/post/${n.postId}`}
           >
-            {n.kind} · {new Date(n.createdAt).toLocaleString("ja-JP")}
+            {notificationText(n.kind)} ·{" "}
+            {new Date(n.createdAt).toLocaleString("ja-JP")}
             {!n.readAt && <b className="ml-2 text-sky-700">未読</b>}
           </Link>
         ))}
@@ -129,7 +147,7 @@ export default function CommunityAccountPage() {
       <section className="space-y-2 border-t pt-4">
         <h2 className="font-semibold text-red-800">アカウント削除</h2>
         <p className="text-xs text-gray-600">
-          投稿・写真・コメント・いいねなど、コミュニティのデータを削除します。
+          投稿・写真・リアクションなど、コミュニティのデータを削除します。
         </p>
         <button
           type="button"

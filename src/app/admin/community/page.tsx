@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { REACTION_LABELS } from "@/features/community/contract";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/requireAdmin";
 import {
@@ -10,19 +11,16 @@ import {
 
 function ReviewButtons({
   id,
-  kind,
   version,
   status,
 }: {
   id: string;
-  kind: string;
   version: number;
   status: string;
 }) {
   return (
     <form action={reviewCommunityContent} className="flex flex-wrap gap-2">
       <input type="hidden" name="targetId" value={id} />
-      <input type="hidden" name="targetKind" value={kind} />
       <input type="hidden" name="version" value={version} />
       <button
         type="submit"
@@ -53,7 +51,7 @@ export default async function CommunityAdminPage({
     1,
     Math.min(10000, Number((await searchParams).page) || 1),
   );
-  const [reports, posts, comments, pending, failed, hidden, suspended] =
+  const [reports, posts, pending, failed, hidden, suspended] =
     await Promise.all([
       prisma.communityReport.findMany({
         where: { status: "PENDING" },
@@ -70,12 +68,6 @@ export default async function CommunityAdminPage({
           entries: { orderBy: { position: "asc" } },
         },
       }),
-      prisma.communityComment.findMany({
-        where: { status: "HIDDEN" },
-        orderBy: { createdAt: "desc" },
-        take: 50,
-        include: { author: { select: { publicName: true } } },
-      }),
       prisma.communityModerationJob.count({
         where: { status: { in: ["PENDING", "RUNNING"] } },
       }),
@@ -87,6 +79,19 @@ export default async function CommunityAdminPage({
         take: 100,
       }),
     ]);
+  const reactionRows = await prisma.communityReaction.groupBy({
+    by: ["postId", "kind"],
+    where: { postId: { in: posts.map(post => post.id) } },
+    _count: { _all: true },
+  });
+  const reactionText = (postId: string) =>
+    reactionRows
+      .filter(row => row.postId === postId)
+      .map(
+        row =>
+          `${REACTION_LABELS[row.kind as keyof typeof REACTION_LABELS] ?? row.kind} ${row._count._all}`,
+      )
+      .join(" · ");
   return (
     <main className="mx-auto max-w-5xl space-y-5 p-4 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -124,19 +129,15 @@ export default async function CommunityAdminPage({
             className="space-y-2 rounded border bg-white p-3"
           >
             <p>
-              {report.reason} ·{" "}
-              {report.targetKind === "POST" ? "投稿" : "コメント"}{" "}
-              {report.targetId}
+              {report.reason} · 投稿 {report.targetId}
             </p>
             <p className="whitespace-pre-wrap">{report.body}</p>
-            {report.targetKind === "POST" && (
-              <Link
-                className="underline"
-                href={`/community/post/${report.targetId}`}
-              >
-                公開画面
-              </Link>
-            )}
+            <Link
+              className="underline"
+              href={`/community/post/${report.targetId}`}
+            >
+              公開画面
+            </Link>
             <form action={resolveCommunityReport}>
               <input type="hidden" name="id" value={report.id} />
               <button type="submit" className="rounded border px-3 py-1">
@@ -164,6 +165,7 @@ export default async function CommunityAdminPage({
               </Link>
             </div>
             <p>{post.resortId}</p>
+            {reactionText(post.id) && <p>{reactionText(post.id)}</p>}
             {post.entries.map(entry => (
               <div key={entry.id} className="rounded border bg-slate-50 p-2">
                 <b>
@@ -196,7 +198,6 @@ export default async function CommunityAdminPage({
             </div>
             <ReviewButtons
               id={post.id}
-              kind="POST"
               version={post.version}
               status={post.status}
             />
@@ -234,30 +235,6 @@ export default async function CommunityAdminPage({
             <Link href={`/admin/community?page=${page + 1}`}>次へ</Link>
           )}
         </div>
-      </section>
-      <section className="space-y-2">
-        <h2 className="text-lg font-bold">非表示のコメント</h2>
-        {comments.map(comment => (
-          <article
-            key={comment.id}
-            className="space-y-2 rounded border bg-white p-3"
-          >
-            <p>{comment.author.publicName ?? "匿名"}</p>
-            <p className="whitespace-pre-wrap">{comment.body}</p>
-            <Link
-              href={`/community/post/${comment.postId}`}
-              className="underline"
-            >
-              対象投稿
-            </Link>
-            <ReviewButtons
-              id={comment.id}
-              kind="COMMENT"
-              version={comment.version}
-              status={comment.status}
-            />
-          </article>
-        ))}
       </section>
       <section className="space-y-2">
         <h2 className="text-lg font-bold">投稿を停止中のアカウント</h2>

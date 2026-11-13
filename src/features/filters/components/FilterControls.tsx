@@ -289,8 +289,8 @@ export const FilterToggle = ({
       aria-pressed={checked}
       className={
         checked
-          ? "inline-flex items-center justify-center rounded-md border text-ellipsis overflow-hidden whitespace-nowrap text-xs font-medium leading-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 outline-none select-none disabled:pointer-events-none disabled:opacity-50 h-7 px-2 min-w-0 transition-colors bg-blue-600 border-blue-600 text-white hover:brightness-95"
-          : "inline-flex items-center justify-center rounded-md border text-ellipsis overflow-hidden whitespace-nowrap text-xs font-medium leading-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 outline-none select-none disabled:pointer-events-none disabled:opacity-50 h-7 px-2 min-w-0 transition-colors border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+          ? "inline-flex items-center justify-center rounded-md border text-ellipsis overflow-hidden whitespace-nowrap text-xs font-medium leading-none focus-visible:ring-0 outline-none select-none disabled:pointer-events-none disabled:opacity-50 h-7 px-2 min-w-0 transition-colors bg-blue-600 border-blue-600 text-white hover:bg-blue-700 hover:text-white"
+          : "inline-flex items-center justify-center rounded-md border text-ellipsis overflow-hidden whitespace-nowrap text-xs font-medium leading-none focus-visible:ring-0 outline-none select-none disabled:pointer-events-none disabled:opacity-50 h-7 px-2 min-w-0 transition-colors border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-900"
       }
       onClick={() => onChange(!checked)}
     >

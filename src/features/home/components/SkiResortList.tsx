@@ -115,7 +115,11 @@ type Props = {
   showHeader?: boolean;
   liftTicketInput: LiftTicketSearchInput;
   onEditLiftTicketConditions: () => void;
+  /** 絞り込みで選んだ項目だけ、コース・リフトの下に1行ずつ出す */
+  featureLines?: ResortFeatureLines;
 };
+
+export type ResortFeatureLines = { yukiMagi: boolean; evCharger: boolean };
 
 const ListMetric = ({
   label,
@@ -145,6 +149,16 @@ const ListMetric = ({
       )}
     </span>
   </span>
+);
+
+/** 雪マジ・EV充電の1行。必ず1行に収め、はみ出す分は省略（…）にする */
+const FeatureLine = ({ label, value }: { label: string; value: string }) => (
+  <p className="mt-1 flex min-w-0 items-baseline gap-1 whitespace-nowrap px-1.5 text-xs leading-4">
+    <span className="shrink-0 font-bold text-gray-800">{label}</span>
+    <span title={value} className="min-w-0 truncate text-gray-700">
+      {value}
+    </span>
+  </p>
 );
 
 const OperatingMetric = ({
@@ -196,6 +210,7 @@ export const SkiResortList = ({
   showHeader = true,
   liftTicketInput,
   onEditLiftTicketConditions,
+  featureLines,
 }: Props) => {
   const listRef = useRef<HTMLUListElement>(null);
   const sortOrder = sortControls.order;
@@ -251,6 +266,8 @@ export const SkiResortList = ({
       onHoverResortChange={onHoverResortChange}
       liftTicketResults={liftTicketResults}
       operatingCounts={operatingCounts}
+      showYukiMagi={featureLines?.yukiMagi ?? false}
+      showEvCharger={featureLines?.evCharger ?? false}
     />
   );
 
@@ -275,6 +292,9 @@ export const SkiResortList = ({
           className="flex-1"
         />
         <ResortSortButton {...sortControls} />
+        <span className="shrink-0 whitespace-nowrap pl-0.5 text-sm font-bold tabular-nums text-gray-900">
+          {resorts.length.toLocaleString("ja-JP")}件
+        </span>
       </div>
       {(sortControls.locating || sortControls.locationError) && (
         <p
@@ -338,6 +358,8 @@ const SkiResortListItem = memo(
     onHoverResortChange,
     liftTicketResults,
     operatingCounts,
+    showYukiMagi,
+    showEvCharger,
   }: {
     resort: MapSkiResort;
     isCompareSelected: boolean;
@@ -346,6 +368,8 @@ const SkiResortListItem = memo(
     onHoverResortChange?: (id: string | null) => void;
     liftTicketResults: ListLiftTicketResults;
     operatingCounts: Record<string, ResortOperatingCounts> | null;
+    showYukiMagi: boolean;
+    showEvCharger: boolean;
   }) => {
     const highlightResort = () => {
       if (!canUseHoverHighlight()) return;
@@ -487,6 +511,12 @@ const SkiResortListItem = memo(
                 }
               />
             </div>
+            {showYukiMagi && resort.yukiMagiSummary && (
+              <FeatureLine label="雪マジ" value={resort.yukiMagiSummary} />
+            )}
+            {showEvCharger && resort.evChargerSummary && (
+              <FeatureLine label="EV" value={resort.evChargerSummary} />
+            )}
           </div>
         </div>
       </li>

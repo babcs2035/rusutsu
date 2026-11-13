@@ -14,7 +14,7 @@ import {
 import { writeMapOperations, writeOperationSummaries } from "./operationWrites";
 
 type Tx = Prisma.TransactionClient;
-export const OPERATION_SUMMARY_VERSION = 6;
+export const OPERATION_SUMMARY_VERSION = 7;
 export type OperationEntity = {
   id: string;
   name: string | null;
@@ -80,9 +80,11 @@ export function summarizeOperationEntities(
     groups.set(key, statuses);
   }
   const states = [...groups.values()].map(statuses =>
-    statuses.some(status => symbol(status) === "○" || symbol(status) === "△")
+    statuses.some(status => symbol(status) === "○")
       ? true
-      : statuses.every(status => symbol(status) === "×")
+      : statuses.every(
+            status => symbol(status) === "×" || symbol(status) === "△",
+          )
         ? false
         : null,
   );

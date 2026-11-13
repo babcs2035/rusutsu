@@ -61,7 +61,7 @@ const COLOR = {
  * 点の半径。Leaflet 版は直径で指定していたので、その半分。
  * 白い縁は circle-stroke で描く（divIcon の box-shadow は再現できない）。
  */
-const RADIUS = {
+export const RADIUS = {
   vertex: 7,
   lastVertex: 8,
   splitVertex: 8,
@@ -74,6 +74,29 @@ const RADIUS = {
 const POINT_STROKE_WIDTH = 2;
 
 /**
+ * 指で操作する端末での点の大きさ。
+ *
+ * 寄ったときは指先で狙えるよう、見た目も当たり判定も大きくする。
+ * 引いたときは点どうしが重なって線が見えなくなるので、縮尺に合わせて小さくする。
+ */
+const byTouchZoom = (far: number, middle: number, near: number) =>
+  [
+    "interpolate",
+    ["linear"],
+    ["zoom"],
+    13,
+    far,
+    15,
+    middle,
+    17,
+    near,
+  ] as unknown as ExpressionSpecification;
+export const TOUCH_VERTEX_RADIUS = byTouchZoom(4, 6, 9);
+export const TOUCH_VERTEX_HIT_RADIUS = byTouchZoom(12, 18, 24);
+export const TOUCH_MIDPOINT_RADIUS = byTouchZoom(2.5, 3.5, 5);
+export const TOUCH_MIDPOINT_HIT_RADIUS = byTouchZoom(8, 13, 18);
+
+/**
  * 当たり判定の広さ。
  *
  * 見た目の太さで判定すると、拡大していないと線をつかめない。公式マップ並みに
@@ -83,7 +106,7 @@ const POINT_STROKE_WIDTH = 2;
  */
 export const LINE_HIT_WIDTH = 26;
 
-const HIT_RADIUS = {
+export const HIT_RADIUS = {
   vertex: RADIUS.lastVertex + 8,
   midpoint: RADIUS.midpoint + 9,
   midstation: RADIUS.midstation + 6,
@@ -339,8 +362,19 @@ export const createEditorLayers = (): LayerSpecification[] => [
         COLOR.lastVertex,
         COLOR.splitVertex,
       ),
-      "circle-stroke-width": POINT_STROKE_WIDTH,
-      "circle-stroke-color": "#FFFFFF",
+      // 選んだ点は黄色の太い縁で囲み、削除ボタンの対象が分かるようにする
+      "circle-stroke-width": [
+        "case",
+        ["boolean", ["get", "selected"], false],
+        4,
+        POINT_STROKE_WIDTH,
+      ],
+      "circle-stroke-color": [
+        "case",
+        ["boolean", ["get", "selected"], false],
+        "#FACC15",
+        "#FFFFFF",
+      ],
     },
   },
   createPointHitLayer(

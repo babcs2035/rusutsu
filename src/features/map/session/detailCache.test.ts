@@ -10,7 +10,7 @@ import {
 test("旧キャッシュは復元せず、再取得して保存した詳細を次回復元する", async t => {
   const data = {
     id: "test",
-    socialAccounts: { X: [], Instagram: [], Facebook: [] },
+    name: "テスト",
   };
   const entries = new Map<string, Record<string, unknown>>([
     ["test", { id: "test", data: { id: "test" }, savedAt: 1 }],

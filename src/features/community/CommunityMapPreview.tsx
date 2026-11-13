@@ -15,6 +15,7 @@ import {
   type PublicPost,
 } from "./contract";
 import { COMMUNITY_KIND_COLORS } from "./mapOverlay";
+import { PostReactions } from "./PostReactions";
 import { ReportSections } from "./ReportSections";
 
 type PreviewDetail = { post: PublicPost };
@@ -244,6 +245,7 @@ export function CommunityMapPreview({
               {matchingEntry && (
                 <ReportSections entries={[matchingEntry]} bare />
               )}
+              <PostReactions post={activePost} showPostedAt={false} />
             </div>
           )}
         </div>

@@ -32,7 +32,9 @@ const publicOperations = new Set<CommunityCommand["operation"]>([
   "mapSummary",
   "detail",
   "publicProfile",
+  "dayReports",
   "report",
+  "react",
   "photo",
 ]);
 
@@ -150,21 +152,19 @@ async function dispatch(
       return operations.deletePost(command.postId, command.version);
     case "detail":
       return operations.getPostDetail(command.postId);
-    case "like":
-      return operations.setPostLike(command.postId, command.liked);
-    case "comment":
-      return operations.saveComment(
+    case "react":
+      return operations.setPostReaction(
         command.postId,
-        command.body,
-        command.operationKey,
-        command.commentId,
-        command.version,
+        command.kind,
+        command.active,
+        command.proof,
       );
-    case "deleteComment":
-      return operations.deleteComment(command.commentId, command.version);
+    case "myPosts":
+      return operations.getMyPosts(command.cursor);
+    case "dayReports":
+      return operations.getDayReports(command.authorId, command.observedOn);
     case "report":
       return operations.reportCommunityContent(
-        command.targetKind,
         command.targetId,
         command.reason,
         command.body,
@@ -192,7 +192,8 @@ export async function POST(request: Request) {
     );
   try {
     const { parsed, photos } = await readCommand(request);
-    const { command, googleAccountId, anonymousIdentity } = parsed;
+    const { command, googleAccountId, anonymousIdentity, reactionIdentity } =
+      parsed;
     let userId: string | null = null;
     if (googleAccountId) {
       const account = await prisma.account.findUnique({
@@ -221,14 +222,19 @@ export async function POST(request: Request) {
         "Googleでログインしてから投稿してください。",
       );
     }
-    if (command.operation === "report" && !anonymousIdentity)
+    if (
+      (command.operation === "report" && !anonymousIdentity) ||
+      (command.operation === "react" &&
+        !userId &&
+        (!anonymousIdentity || !reactionIdentity))
+    )
       return internalApiError(
         422,
         "MISSING_IDENTITY",
         "送信元の確認に失敗しました。",
       );
     return await withInternalCommunityActor(
-      { userId, anonymousIdentity },
+      { userId, anonymousIdentity, reactionIdentity },
       async () => {
         if (command.operation === "photo")
           return communityPhotoResponse(command.photoId, command.size);

@@ -8,7 +8,6 @@ import {
 } from "@/features/resort-detail/utils/courseChartColumns";
 import { createMapCourseStatusSummary } from "@/features/resort-detail/utils/courseStatusSummary";
 import { createLiftStatusSummary } from "@/features/resort-detail/utils/liftStatusSummary";
-import { collectSocialAccounts } from "@/features/resort-detail/utils/socialAccounts";
 import {
   collectNewsLinks,
   collectTrailMapLinks,
@@ -242,10 +241,6 @@ const buildSkiResortDetail = async (
         ...(await readCurrentResortConditions(id)),
       })),
     ),
-    socialAccounts: collectSocialAccounts(links.linksMap, [
-      resort.id,
-      ...sourceIds,
-    ]),
     trailMapLinks: collectTrailMapLinks(links.linksMap, [
       resort.id,
       ...sourceIds,

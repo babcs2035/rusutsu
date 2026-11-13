@@ -1,6 +1,5 @@
 "use client";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { ComponentType, CSSProperties, ReactNode } from "react";
 import {
   useCallback,
@@ -10,7 +9,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { Button } from "@/components/ui/button";
 import type {
   CourseColorMode,
   ElevationProfileMapPoint,
@@ -34,6 +32,12 @@ import type { CourseStatusSummary } from "@/lib/courseStatusSummary";
 import { getResortSearchName } from "@/lib/resortAliases";
 import { cn } from "@/lib/utils";
 import type { MapSkiResort } from "@/types/skiResorts";
+import {
+  COMPARE_CAROUSEL_PAGE_CLASS,
+  COMPARE_CAROUSEL_TRACK_CLASS,
+  CompareCarouselPager,
+  useCompareCarousel,
+} from "./CompareCarousel";
 import type { Resort } from "./types";
 
 type FeatureSelection = {
@@ -301,8 +305,8 @@ export const CompareSlopeMapTab = ({
   onMapTileVariantChange: (variant: MapTileVariant) => void;
 }) => {
   const { selectionByResortId, setSelection } = useSlopeMapSelection();
-  const [activeIndex, setActiveIndex] = useState(0);
-  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const { activeIndex, scrollRef, handleScroll, scrollToIndex } =
+    useCompareCarousel();
   const resortIdsKey = resorts.map(resort => resort.id).join(",");
   const [liveMapIds, setLiveMapIds] = useState<string[]>([]);
   useEffect(() => {
@@ -315,21 +319,6 @@ export const CompareSlopeMapTab = ({
       nextLiveMapIds(previous, priority, resortIds, MAX_LIVE_SLOPE_MAPS.mobile),
     );
   }, [activeIndex, resortIdsKey, onMapResortsNeeded]);
-  const handleScroll = useCallback(() => {
-    const element = scrollRef.current;
-    if (!element || element.clientWidth === 0) return;
-
-    const index = Math.round(element.scrollLeft / element.clientWidth);
-    setActiveIndex(previous => (previous === index ? previous : index));
-  }, []);
-
-  const scrollToIndex = useCallback((index: number) => {
-    const element = scrollRef.current;
-    if (!element) return;
-
-    element.scrollTo({ left: index * element.clientWidth, behavior: "smooth" });
-  }, []);
-
   if (resorts.length === 0) return <EmptyMessage />;
 
   return (
@@ -337,13 +326,10 @@ export const CompareSlopeMapTab = ({
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="scroll-touch flex min-h-0 w-full flex-1 snap-x snap-mandatory overflow-x-auto overflow-y-hidden"
+        className={COMPARE_CAROUSEL_TRACK_CLASS}
       >
         {resorts.map((resort, index) => (
-          <div
-            key={resort.id}
-            className="h-full w-full min-w-full snap-center px-0.5"
-          >
+          <div key={resort.id} className={COMPARE_CAROUSEL_PAGE_CLASS}>
             {index === activeIndex || liveMapIds.includes(resort.id) ? (
               <ResortSlopeMapCard
                 resort={resort}
@@ -373,43 +359,11 @@ export const CompareSlopeMapTab = ({
         ))}
       </div>
 
-      {resorts.length > 1 && (
-        <div className="flex shrink-0 items-center justify-center gap-3 py-2">
-          <Button
-            type="button"
-            variant="ghost"
-            aria-label="前のスキー場"
-            disabled={activeIndex === 0}
-            onClick={() => scrollToIndex(activeIndex - 1)}
-            className="h-8 w-8 min-w-8 rounded-full p-0 text-gray-500"
-          >
-            <ChevronLeft size={18} />
-          </Button>
-          <div className="flex items-center gap-1.5">
-            {resorts.map((resort, index) => (
-              <span
-                key={resort.id}
-                className={cn(
-                  "h-1.5 rounded-full transition-all",
-                  index === activeIndex
-                    ? "w-4 bg-blue-600"
-                    : "w-1.5 bg-gray-300",
-                )}
-              />
-            ))}
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            aria-label="次のスキー場"
-            disabled={activeIndex === resorts.length - 1}
-            onClick={() => scrollToIndex(activeIndex + 1)}
-            className="h-8 w-8 min-w-8 rounded-full p-0 text-gray-500"
-          >
-            <ChevronRight size={18} />
-          </Button>
-        </div>
-      )}
+      <CompareCarouselPager
+        ids={resorts.map(resort => resort.id)}
+        activeIndex={activeIndex}
+        onIndexChange={scrollToIndex}
+      />
     </div>
   );
 };

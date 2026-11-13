@@ -1,3 +1,4 @@
+import type { YukimajiDocument } from "@/shared/utils/yukimajiSummary";
 export const TICKET_PARTY_CATEGORIES = [
   "preschool",
   "elementary",
@@ -477,6 +478,8 @@ export type LiftTicketMainLinks = {
 
 export type LiftTicketData = {
   schema_version: string;
+  /** 雪マジ（マジ部）の掲載内容。maintain-ski-yukimaji スキルが更新する */
+  yukimaji?: YukimajiDocument;
   main_links?: LiftTicketMainLinks | null;
   /**
    * 画面の中だけで使う印（保存データには無い）。Web・前売の料金が窓口と同額でも、

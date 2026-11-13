@@ -268,6 +268,25 @@ export async function getResortLinkList(
   ];
 }
 
+const MAX_LINK_LIST_RESORTS = 8;
+
+/**
+ * 複数のスキー場のリンク一覧を、スキー場ごとに分けて1回で返す（比較のリンク集）。
+ * 1スキー場分は、結合元も含めたIDの組で渡す。結果は渡した順。
+ */
+export async function getResortLinkLists(
+  resortIdGroups: string[][],
+): Promise<ResortLinkItem[][]> {
+  if (
+    !Array.isArray(resortIdGroups) ||
+    resortIdGroups.length === 0 ||
+    resortIdGroups.length > MAX_LINK_LIST_RESORTS ||
+    !resortIdGroups.every(Array.isArray)
+  )
+    throw new Error("Invalid ids");
+  return Promise.all(resortIdGroups.map(ids => getResortLinkList(ids)));
+}
+
 // 比較用の読み取りは数件ずつに限る。一度に大量のデータを取れる入口にしないため。
 const MAX_COMPARE_DETAIL_IDS = 8;
 const MAX_COMPARE_MAP_IDS = 4;

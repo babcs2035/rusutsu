@@ -3,6 +3,7 @@
 import { ChevronRight } from "lucide-react";
 import { type ReactNode, useMemo } from "react";
 import { Button } from "@/components/ui/button";
+import { FavoriteButton } from "@/features/favorites/FavoriteButton";
 import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
 import { priceText } from "@/features/lift-ticket/utils/priceText";
 import { calculateResortPrice } from "@/features/lift-ticket/utils/resortPriceCalculation";
@@ -11,6 +12,10 @@ import {
   Fraction,
   formatKm,
 } from "@/features/resort-detail/components/DistributionChart";
+import {
+  ResortFeatureChips,
+  resortFeatureDataOf,
+} from "@/features/resort-detail/components/ResortFeatureChips";
 import { createCourseDistance } from "@/features/resort-detail/utils/courseChartColumns";
 import {
   conditionText,
@@ -128,22 +133,37 @@ const ResortCard = ({
       // overview コンテナの幅で縮むので、カードにも同じ名前を付ける）
       className="@container/overview flex min-w-0 flex-col gap-2 rounded-xl border border-gray-200 bg-white p-2.5"
     >
-      {/* 1 行目: 名前（所在地）と詳細 */}
+      {/* 1 行目: 名前（所在地）・雪マジとEV充電のチップ・詳細。
+          チップは詳細ヘッダーと同じ部品を、同じく所在地のすぐ後ろに置く。
+          営業状況の行は、出典が 2 つあるとカード幅（約 350px）を使い切るので置けない */}
       <div className="flex min-w-0 items-center gap-2">
         <h3 className="min-w-0 text-sm leading-tight font-bold break-words text-gray-900 font-[var(--font-heading)]">
           {getResortLabelName(resort.id, resort.nameJa, resort.shortName)}
           {location && (
-            <span className="ml-1 text-xs font-normal text-gray-500">
+            // チップと並んで幅が足りないときは、所在地を途中で折らずに丸ごと次の行へ送る
+            <span className="ml-1 inline-block max-w-full truncate align-bottom text-xs font-normal text-gray-500">
               ({location})
             </span>
           )}
         </h3>
+        <ResortFeatureChips
+          hasYukiMagi={Boolean(resort.yukiMagi)}
+          hasEvCharger={false}
+          data={resortFeatureDataOf(resort)}
+          size="sm"
+        />
+        {/* お気に入りの登録・解除。お気に入りの比較でも、外したスキー場は比較に残す */}
+        <FavoriteButton
+          resortId={resort.id}
+          name={resort.nameJa}
+          className="-my-1 ml-auto size-7"
+        />
         {onSelectResort && (
           <Button
             type="button"
             variant="outline"
             onClick={() => onSelectResort(resort.id)}
-            className="ml-auto h-6 shrink-0 gap-0 px-1.5 text-[11px] font-semibold text-blue-700"
+            className="h-6 shrink-0 gap-0 px-1.5 text-[11px] font-semibold text-blue-700"
           >
             詳細
             <ChevronRight size={11} strokeWidth={2.5} />

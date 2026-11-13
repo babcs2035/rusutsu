@@ -6,7 +6,7 @@ export const DEFAULT_FILTERS: Filters = {
   prefectures: [],
   status: false,
   yukiMagi: false,
-  beginnerFriendly: false,
+  evCharger: false,
   minVertical: null,
   minBaseElevation: null,
   maxBaseElevation: null,

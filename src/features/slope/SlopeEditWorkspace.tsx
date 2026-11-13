@@ -1124,8 +1124,10 @@ export function SlopeEditWorkspace({
             </div>
 
             <ResizablePanel
-              className={`max-md:w-full! max-md:border-t max-md:[&>button]:hidden ${mapIsVisible ? "max-md:h-[55%]" : "h-auto! w-full! flex-1 [&>button]:hidden"}`}
+              className={`max-md:w-full! max-md:border-t max-md:[&>button[aria-label]]:hidden ${mapIsVisible ? "" : "h-auto! w-full! flex-1 [&>button]:hidden"}`}
               side="right"
+              mobileStacked={mapIsVisible}
+              mobileMapFocus={isDrawing}
               storageKey={PANEL_WIDTH_KEY}
               scrollResetKey={step}
               defaultWidth={470}

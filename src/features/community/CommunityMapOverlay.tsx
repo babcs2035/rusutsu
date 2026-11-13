@@ -257,6 +257,14 @@ export function CommunityMapFilters({
 /** 投稿の写真・点。コース名などのラベル（同じ地図のマーカー）より必ず上に出す。 */
 const MARKER_Z_INDEX = "5";
 
+/** 一覧と地図を行き来する画面で、選んだ投稿の印を青い枠で囲み、ほかの印より上に出す。 */
+function setMarkerHighlight(button: HTMLElement, highlighted: boolean) {
+  button.style.boxShadow = highlighted
+    ? "0 0 0 2px #fff, 0 0 0 5px #2563eb"
+    : "";
+  button.style.zIndex = highlighted ? "6" : MARKER_Z_INDEX;
+}
+
 /** 投稿を表す点。複数あれば件数を中に書く。 */
 export function communityDotElement(color: string, count = 1) {
   const element = document.createElement("span");
@@ -351,6 +359,7 @@ export function CommunityMapOverlay({
   posts,
   mapData,
   filterKey,
+  highlightOpen = false,
 }: {
   map: MapLibreMap;
   resortId: string;
@@ -358,12 +367,16 @@ export function CommunityMapOverlay({
   posts: PublicMapEntry[];
   mapData: FinalizedResortMapData | null;
   filterKey: string;
+  /** 開いている投稿を含む印を枠で囲む（1日分の現地レポートのページ） */
+  highlightOpen?: boolean;
 }) {
   const { open, hosted } = useOpenCommunityMapPosts(resortId);
   const markersRef = useRef(
     new Map<string, { marker: Marker; group: MapEntryGroup }>(),
   );
   const openKeyRef = useRef<string | null>(null);
+  // 開いている投稿。地図を動かして印を作り直したあとも同じ印を囲む
+  const openEntryIds = useRef(new Set<string>());
   const [previewSize, setPreviewSize] = useState({ height: 320, small: false });
   useEffect(() => {
     const updateSize = () => {
@@ -436,6 +449,11 @@ export function CommunityMapOverlay({
           if (group.posts.length === 1)
             highlightCommunityMapEntry(resortId, group.posts[0].entry);
         });
+        if (highlightOpen)
+          setMarkerHighlight(
+            element,
+            group.posts.some(post => openEntryIds.current.has(post.entry.id)),
+          );
         markers.set(group.key, {
           group,
           marker: new Marker({ element, anchor: "center" })
@@ -455,7 +473,16 @@ export function CommunityMapOverlay({
       for (const { marker } of markers.values()) marker.remove();
       markers.clear();
     };
-  }, [enabled, map, resolved, close, resortId]);
+  }, [enabled, map, resolved, close, resortId, highlightOpen]);
+  useEffect(() => {
+    openEntryIds.current = new Set(open?.posts.map(post => post.id));
+    if (!highlightOpen) return;
+    for (const { marker, group } of markersRef.current.values())
+      setMarkerHighlight(
+        marker.getElement(),
+        group.posts.some(post => openEntryIds.current.has(post.entry.id)),
+      );
+  }, [open, highlightOpen]);
   // 開いた投稿だけ写真をやめて点にし、閉じたら写真に戻す。
   const openKey = open?.key ?? null;
   useEffect(() => {

@@ -1,6 +1,7 @@
 import type L from "leaflet";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import type { ReactNode } from "react";
+import type { PublicMapEntry } from "@/features/community/contract";
 import type { MapDisplaySettings } from "@/features/map/utils/mapDisplaySettings";
 import type {
   FinalizedResortMapData,
@@ -175,6 +176,11 @@ export type JapanResortMapProps = {
   onMapReady?: (map: MapLibreMap) => void;
   onCommunityPointPick?: (coordinates: [number, number]) => void;
   communityPoint?: [number, number] | null;
+  /**
+   * この投稿だけを地図に出す（1日分の現地レポートのページ）。
+   * 渡すと「投稿」の切り替え・期間・種類の操作は出さず、選んだ投稿の印を枠で囲む。
+   */
+  communityEntries?: PublicMapEntry[];
   resorts: MapSkiResort[];
   filteredResortIdSet?: Set<string>;
   isFilterActive?: boolean;

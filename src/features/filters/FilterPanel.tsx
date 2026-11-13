@@ -81,7 +81,7 @@ export const FilterPanel = ({
     setIsElevationDetailOpen,
   } = useFilterPanelState({ filters, resorts, onFilterChange });
   const {
-    beginnerFriendlyId,
+    evChargerId,
     keywordId,
     maxBaseElevationId,
     maxTopElevationId,
@@ -265,12 +265,10 @@ export const FilterPanel = ({
               onChange={checked => handleCheckboxChange("yukiMagi", checked)}
             />
             <FilterToggle
-              id={beginnerFriendlyId}
-              label="初級者向け"
-              checked={filters.beginnerFriendly}
-              onChange={checked =>
-                handleCheckboxChange("beginnerFriendly", checked)
-              }
+              id={evChargerId}
+              label="EV充電あり"
+              checked={filters.evCharger}
+              onChange={checked => handleCheckboxChange("evCharger", checked)}
             />
           </div>
 

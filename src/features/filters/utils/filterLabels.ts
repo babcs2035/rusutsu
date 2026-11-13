@@ -121,7 +121,7 @@ export const getActiveFilterLabels = (
   }
   if (filters.yukiMagi) labels.push("雪マジ対象");
   if (filters.status) labels.push("営業中のみ");
-  if (filters.beginnerFriendly) labels.push("初級者向け");
+  if (filters.evCharger) labels.push("EV充電あり");
   if (isLiftTicketFilterActive(liftTicket)) {
     const partyCount = liftTicket.party.reduce(
       (total, group) => total + group.count,

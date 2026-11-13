@@ -210,6 +210,19 @@ export const submitCorrectionSchema = z.object({
   returnTo: z.string().max(2000).optional(),
   items: z.array(correctionItemSchema).min(1).max(200),
   comment: z.string().trim().max(5000).optional(),
+  // 修正の根拠になるページ。写真と同じく任意
+  evidenceUrls: z
+    .array(
+      z
+        .string()
+        .trim()
+        .max(2000)
+        .refine(value => /^https?:\/\/\S+$/.test(value), {
+          message: "参考URLは http:// か https:// から始めてください。",
+        }),
+    )
+    .max(3)
+    .optional(),
 });
 
 export type SubmitCorrectionInput = z.input<typeof submitCorrectionSchema>;

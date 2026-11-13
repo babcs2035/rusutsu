@@ -4,6 +4,8 @@ import { AsyncLocalStorage } from "node:async_hooks";
 type CommunityActor = {
   userId: string | null;
   anonymousIdentity?: string;
+  /** ログインなしのリアクションの識別子（呼び出し元サーバーがCookieから作る） */
+  reactionIdentity?: string;
 };
 
 // Established only after the internal API authenticates its server caller and

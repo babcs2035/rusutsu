@@ -12,11 +12,10 @@ import type {
 } from "react";
 import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { COMPOSE_STATE_EVENT } from "@/features/community/composerEvents";
+import { CORRECTION_STATE_EVENT } from "@/features/corrections/correctionEvents";
 import { FavoriteButton } from "@/features/favorites/FavoriteButton";
-import { useFavorites } from "@/features/favorites/FavoritesProvider";
 import type { Filters } from "@/features/filters/types";
 import { DEFAULT_LIFT_TICKET_SEARCH_INPUT } from "@/features/lift-ticket/utils/calculateLiftTicket";
 import { waitForDetailSaved } from "@/features/map/session/prepareDetail";
@@ -26,6 +25,11 @@ import type {
   JapanResortMapProps,
   SelectedMapFeature,
 } from "@/features/map/types";
+import {
+  ResortFeatureChips,
+  type ResortFeatureData,
+  resortFeatureDataOf,
+} from "@/features/resort-detail/components/ResortFeatureChips";
 import {
   SimultaneousToggle,
   useDisplayedResortMapData,
@@ -47,7 +51,10 @@ import type {
   NullableSkiResortDetail,
   SkiResortDetail,
 } from "@/types/skiResorts";
-import { ComparisonActions } from "../components/ComparisonActions";
+import {
+  ComparisonActions,
+  useHasComparisonActions,
+} from "../components/ComparisonActions";
 import { DesktopSearchPanel } from "../components/DesktopSearchPanel";
 import { MobileResultsSheet } from "../components/MobileResultsSheet";
 import { MobileSearchOverlay } from "../components/MobileSearchOverlay";
@@ -228,7 +235,6 @@ export const HomeLayout = ({
   onUserMapInteraction,
   onUserMapZoomInteraction,
 }: Props) => {
-  const favorites = useFavorites();
   // 「〇〇も同時に表示」中は、組のスキー場をまとめた地図を出す
   const selectedMapData = useDisplayedResortMapData(selectedResortData ?? null);
   const [composingResortId, setComposingResortId] = useState<string | null>(
@@ -248,8 +254,13 @@ export const HomeLayout = ({
             : current,
       );
     };
+    // 現地レポートの投稿中と情報の修正中は、どちらも詳細パネルを入力画面に切り替える
     window.addEventListener(COMPOSE_STATE_EVENT, handle);
-    return () => window.removeEventListener(COMPOSE_STATE_EVENT, handle);
+    window.addEventListener(CORRECTION_STATE_EVENT, handle);
+    return () => {
+      window.removeEventListener(COMPOSE_STATE_EVENT, handle);
+      window.removeEventListener(CORRECTION_STATE_EVENT, handle);
+    };
   }, []);
   // デスクトップの詳細で、左の地図を画面いっぱいに広げているか
   const [isDesktopMapExpanded, setIsDesktopMapExpanded] = useScreenState(
@@ -396,11 +407,9 @@ export const HomeLayout = ({
   }, [hasMainMap, isDetailReady, selectedResortId]);
   const { sortedResorts, controls: sortControls } =
     useResortSort(filteredResorts);
-  const shouldShowMobileResultCount = mobileContentTab === "info";
-  const shouldShowMobileComparisonActions =
-    shouldShowMobileResultCount ||
-    selectedCompareIds.length > 0 ||
-    Boolean(favorites && (!favorites.ready || favorites.ids.length >= 2));
+  const shouldShowMobileComparisonActions = useHasComparisonActions(
+    selectedCompareIds.length,
+  );
   const mobileSearchChromeHeight = shouldShowMobileComparisonActions
     ? `calc(${MOBILE_SEARCH_TOP_BAR_HEIGHT} + 2.25rem)`
     : MOBILE_SEARCH_TOP_BAR_HEIGHT;
@@ -436,9 +445,6 @@ export const HomeLayout = ({
             />
             <ComparisonActions
               compareCount={selectedCompareIds.length}
-              resultCount={
-                shouldShowMobileResultCount ? filteredResorts.length : undefined
-              }
               onOpenCompare={onOpenCompare}
               onClearCompare={onClearCompare}
               onCompareFavorites={onCompareFavorites}
@@ -488,6 +494,15 @@ export const HomeLayout = ({
                 selectedResortData?.yukiMagi ??
                   selectedResortSummary?.yukiMagiId,
               )}
+              detailHasEvCharger={Boolean(
+                selectedResortData?.evChargers?.length ??
+                  selectedResortSummary?.evChargerSummary,
+              )}
+              detailFeatures={
+                selectedResortData
+                  ? resortFeatureDataOf(selectedResortData)
+                  : null
+              }
               detailResortId={selectedResortId}
               isDetailCompareSelected={
                 selectedResortId
@@ -558,6 +573,10 @@ export const HomeLayout = ({
                   snapPoints={mobileListSheetSnapPoints}
                   selectedCompareIdSet={selectedCompareIdSet}
                   liftTicketInput={liftTicketInput}
+                  featureLines={{
+                    yukiMagi: filters.yukiMagi,
+                    evCharger: filters.evCharger,
+                  }}
                   onCloseCompare={onCloseCompare}
                   onEditLiftTicketConditions={() => {
                     onOpenMobileFilterOverlay();
@@ -762,6 +781,9 @@ type MobileContextHeaderProps = {
   detailPrefecture: string;
   detailTown: string;
   detailYukiMagi: boolean;
+  detailHasEvCharger: boolean;
+  /** 詳細の読み込み前は null（雪マジ・EV充電のチップは押せない） */
+  detailFeatures: ResortFeatureData | null;
   detailResortId: string | null;
   isDetailCompareSelected: boolean;
   onCloseDetail: () => void;
@@ -775,6 +797,8 @@ const MobileContextHeader = ({
   detailPrefecture,
   detailTown,
   detailYukiMagi,
+  detailHasEvCharger,
+  detailFeatures,
   detailResortId,
   isDetailCompareSelected,
   onCloseDetail,
@@ -811,14 +835,12 @@ const MobileContextHeader = ({
             {detailLocation && (
               <span className="truncate">{detailLocation}</span>
             )}
-            {detailYukiMagi && (
-              <Badge
-                variant="secondary"
-                className="h-4 shrink-0 rounded-full bg-pink-50 px-1.5 text-pink-700 text-[0.625rem] font-semibold whitespace-nowrap"
-              >
-                雪マジ
-              </Badge>
-            )}
+            <ResortFeatureChips
+              hasYukiMagi={detailYukiMagi}
+              hasEvCharger={detailHasEvCharger}
+              data={detailFeatures}
+              size="sm"
+            />
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1">

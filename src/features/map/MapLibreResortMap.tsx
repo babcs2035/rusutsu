@@ -156,6 +156,7 @@ function MapLibreResortMapContent({
   onMapReady,
   onCommunityPointPick,
   communityPoint,
+  communityEntries,
   onRecover,
   onAutoRecover,
   resorts,
@@ -342,17 +343,20 @@ function MapLibreResortMapContent({
       ? true
       : window.matchMedia(COARSE_POINTER_MEDIA_QUERY).matches,
   );
+  // 呼び出し側が投稿を渡したときは、期間で取得する投稿の代わりにそれだけを出す
+  const hasFixedCommunityEntries = communityEntries !== undefined;
   const communityLayer = useCommunityMapLayer(
     selectedResortId,
-    !embedded && interactionMode !== "compare",
+    !embedded && interactionMode !== "compare" && !hasFixedCommunityEntries,
   );
-  const showCommunityPosts = communityLayer.enabled;
+  const showCommunityPosts = hasFixedCommunityEntries || communityLayer.enabled;
   const communityPosts = useMemo(
     () =>
+      communityEntries ??
       communityLayer.entries.filter(post =>
         communityLayer.kinds.includes(post.kind),
       ),
-    [communityLayer.entries, communityLayer.kinds],
+    [communityEntries, communityLayer.entries, communityLayer.kinds],
   );
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [isInteracting, setIsInteracting] = useState(false);
@@ -1435,6 +1439,7 @@ function MapLibreResortMapContent({
     !!selectedResortId &&
     !embedded &&
     !isPreviewMap &&
+    !hasFixedCommunityEntries &&
     interactionMode !== "compare";
   const hasBottomToolbar =
     !isPreviewMap &&
@@ -1582,7 +1587,9 @@ function MapLibreResortMapContent({
             onSettingsChange={setMapDisplaySettings}
             stacked={linkedAreaControl}
             trailing={
-              selectedResortId && interactionMode !== "compare" ? (
+              selectedResortId &&
+              !hasFixedCommunityEntries &&
+              interactionMode !== "compare" ? (
                 <CommunityMapControls
                   resortId={selectedResortId}
                   enabled={showCommunityPosts}
@@ -1612,7 +1619,12 @@ function MapLibreResortMapContent({
             enabled={showCommunityPosts}
             posts={communityPosts}
             mapData={finalizedMapData}
-            filterKey={`${communityLayer.period}:${communityLayer.kinds.join(",")}`}
+            filterKey={
+              hasFixedCommunityEntries
+                ? "fixed"
+                : `${communityLayer.period}:${communityLayer.kinds.join(",")}`
+            }
+            highlightOpen={hasFixedCommunityEntries}
           />
         )}
       {showBottomToolbar && (

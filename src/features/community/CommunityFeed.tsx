@@ -1,7 +1,8 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   Select,
@@ -16,6 +17,10 @@ import type {
   PublicPost,
   PublicReportEntry,
 } from "@/features/community/contract";
+import {
+  correctionUrl,
+  requestCorrection,
+} from "@/features/corrections/correctionEvents";
 import type { SelectedMapFeature } from "@/features/map/types";
 import { cn } from "@/lib/utils";
 import {
@@ -28,7 +33,7 @@ import {
   getPeriodStart,
   todayInJapan,
 } from "./mapOverlay";
-import { PostInteractions } from "./PostInteractions";
+import { PostReactions } from "./PostReactions";
 import { ReportSections } from "./ReportSections";
 
 const PERIODS: Record<CommunityPeriod, string> = {
@@ -113,6 +118,7 @@ export function CommunityFeed({
   compact = false,
   hideHeading = false,
   highlightOnMap = false,
+  correctable = false,
 }: {
   resortId: string;
   /** 「〇〇も同時に表示」中に、一緒に並べる組のスキー場 */
@@ -124,7 +130,10 @@ export function CommunityFeed({
   hideHeading?: boolean;
   /** 投稿を押したとき、地図にその投稿の対象と場所を出す */
   highlightOnMap?: boolean;
+  /** 「＋投稿」の右に、スキー場の情報を直す「情報を修正」を出す */
+  correctable?: boolean;
 }) {
+  const router = useRouter();
   const [posts, setPosts] = useState<PublicPost[]>([]);
   const [sort, setSort] = useState<"observed" | "created">("observed");
   const [kind, setKind] = useState<keyof typeof KINDS>("");
@@ -204,6 +213,14 @@ export function CommunityFeed({
       投稿
     </Link>
   );
+  const sortSelect = (
+    <ToolbarSelect
+      label="並び順"
+      value={sort}
+      items={SORTS}
+      onChange={setSort}
+    />
+  );
   return (
     <section className="space-y-2" aria-label="みんなの投稿">
       {compact ? (
@@ -229,7 +246,14 @@ export function CommunityFeed({
         </div>
       ) : (
         <div className="space-y-1">
-          <div className="grid grid-cols-[repeat(3,minmax(0,1fr))_auto] items-center gap-1">
+          <div
+            className={cn(
+              "grid items-center gap-1",
+              correctable
+                ? "grid-cols-[repeat(2,minmax(0,1fr))_auto_auto]"
+                : "grid-cols-[repeat(3,minmax(0,1fr))_auto]",
+            )}
+          >
             <ToolbarSelect<CommunityPeriod | "custom">
               label="表示期間"
               value={period}
@@ -251,13 +275,21 @@ export function CommunityFeed({
               items={KINDS}
               onChange={setKind}
             />
-            <ToolbarSelect
-              label="並び順"
-              value={sort}
-              items={SORTS}
-              onChange={setSort}
-            />
+            {!correctable && sortSelect}
             {postLink}
+            {correctable && (
+              <button
+                type="button"
+                className="inline-flex h-8 shrink-0 items-center gap-0.5 rounded-md border border-slate-300 bg-white px-1.5 text-xs font-semibold whitespace-nowrap text-slate-700 shadow-sm hover:bg-slate-50"
+                onClick={() => {
+                  if (!requestCorrection({ resortId }))
+                    router.push(correctionUrl({ resortId }));
+                }}
+              >
+                <Pencil className="size-3.5" aria-hidden="true" />
+                情報を修正
+              </button>
+            )}
           </div>
           <div className="flex items-center gap-1 text-xs text-gray-600">
             <input
@@ -277,6 +309,10 @@ export function CommunityFeed({
               min={from || undefined}
               onChange={event => setTo(event.target.value)}
             />
+            {/* 「情報を修正」を上の段に置く分、並び順は日付の右へ下ろす */}
+            {correctable && (
+              <div className="w-[5.75rem] shrink-0">{sortSelect}</div>
+            )}
           </div>
         </div>
       )}
@@ -372,7 +408,7 @@ export function PostCard({
       <div className="mt-1.5">
         <ReportSections entries={post.entries} bare />
       </div>
-      <PostInteractions post={post} />
+      <PostReactions post={post} />
       {onSelect && (
         <button
           type="button"

@@ -35,6 +35,10 @@ import {
   submitCorrectionSchema,
 } from "@/server/corrections/contract";
 import {
+  type CorrectionFeature,
+  readCorrectionFeatures,
+} from "@/server/corrections/features";
+import {
   correctionLinkPlatform,
   correctionLinks,
   validateCorrectionLinks,
@@ -61,6 +65,27 @@ const publicCorrectionError = (error: unknown, fallback: string) =>
         !("code" in error)
       ? error.message.slice(0, 1000)
       : fallback;
+
+/** 修正パネルに出すコース・リフトの現在の登録内容。公開している地図と同じ情報だけを返す */
+export async function getCorrectionFeatures(
+  resortId: string,
+): Promise<
+  { ok: true; features: CorrectionFeature[] } | { ok: false; error: string }
+> {
+  try {
+    if (!/^[a-z0-9-]{1,100}$/.test(resortId))
+      throw new Error("スキー場が見つかりません。");
+    return { ok: true, features: await readCorrectionFeatures(resortId) };
+  } catch (error) {
+    return {
+      ok: false,
+      error: publicCorrectionError(
+        error,
+        "現在の登録内容を読み込めませんでした。",
+      ),
+    };
+  }
+}
 
 export async function submitCorrection(
   input: SubmitCorrectionInput,
@@ -90,6 +115,9 @@ export async function submitCorrection(
       resortId: parsed.resortId,
       context: parsed.context,
       comment: parsed.comment,
+      ...(parsed.evidenceUrls?.length
+        ? { evidenceUrls: parsed.evidenceUrls }
+        : {}),
       items,
       returnTo: safeReturnTo(parsed.returnTo, parsed.resortId),
     };

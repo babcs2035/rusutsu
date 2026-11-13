@@ -10,6 +10,14 @@ import {
   adminSkiResortRecordSchema,
   adminSkiResortUpdateSchema,
 } from "@/server/ski-resorts/adminContract";
+import {
+  parseEvChargers,
+  summarizeEvChargers,
+} from "@/shared/utils/evChargers";
+import {
+  summarizeYukimaji,
+  type YukimajiDocument,
+} from "@/shared/utils/yukimajiSummary";
 import { projectResort } from "./detailProjection";
 import {
   mergeResortSummary,
@@ -107,6 +115,7 @@ const adminSkiResortSelect = {
   condition: true,
   status: true,
   review: true,
+  evChargers: true,
 } satisfies Prisma.SkiResortSelect;
 
 type AdminSkiResortRow = Prisma.SkiResortGetPayload<{
@@ -143,25 +152,63 @@ const mapResortSelect = {
   verticalDrop: true,
   numberOfCourses: true,
   numberOfLifts: true,
-  beginnersCoursesPercent: true,
-  status: true,
   yukiMagiId: true,
+  yukiMagi: { select: { tag: true } },
+  evChargers: true,
 } satisfies Prisma.SkiResortSelect;
 
+type MapResortRow = Prisma.SkiResortGetPayload<{
+  select: typeof mapResortSelect;
+}>;
+
+/**
+ * 地図・一覧には充電器・雪マジの中身を送らず、一覧カードに出す1行（無ければ null）だけを渡す。
+ * 雪マジはリフト券データの yukimaji 欄を優先し、無ければ雪マジのテーブルの区分を出す。
+ */
+const projectMapResort = (
+  { evChargers, yukiMagi, ...resort }: MapResortRow,
+  yukimajiByResortId: Map<string, string>,
+) => ({
+  ...resort,
+  evChargerSummary: summarizeEvChargers(parseEvChargers(evChargers)),
+  yukiMagiSummary: resort.yukiMagiId
+    ? ([resort.id, resort.sourceResortIds[0]]
+        .map(id => (id ? yukimajiByResortId.get(id) : undefined))
+        .find(Boolean) ??
+      yukiMagi?.tag ??
+      null)
+    : null,
+});
+
+/** スキー場ごとに最新シーズンのリフト券データから、雪マジの1行を作る */
+async function findYukimajiSummariesDirect() {
+  const rows = await prisma.$queryRaw<
+    Array<{ skiResortId: string; yukimaji: YukimajiDocument }>
+  >`SELECT DISTINCT ON ("skiResortId") "skiResortId", data -> 'yukimaji' AS yukimaji
+    FROM lift_ticket_seasons
+    ORDER BY "skiResortId", "seasonId" DESC`;
+  return new Map(
+    rows.flatMap(row => {
+      const summary = summarizeYukimaji(row.yukimaji);
+      return summary ? [[row.skiResortId, summary] as const] : [];
+    }),
+  );
+}
+
 export async function findSkiResortsForEditorDirect() {
-  return prisma.skiResort.findMany({
-    where: publicResortWhere,
-    select: mapResortSelect,
-    orderBy: { nameJa: "asc" },
-  });
+  return findSkiResortsForMapDirect();
 }
 
 export async function findSkiResortsForMapDirect() {
-  return prisma.skiResort.findMany({
-    where: publicResortWhere,
-    select: mapResortSelect,
-    orderBy: { nameJa: "asc" },
-  });
+  const [rows, yukimajiByResortId] = await Promise.all([
+    prisma.skiResort.findMany({
+      where: publicResortWhere,
+      select: mapResortSelect,
+      orderBy: { nameJa: "asc" },
+    }),
+    findYukimajiSummariesDirect(),
+  ]);
+  return rows.map(row => projectMapResort(row, yukimajiByResortId));
 }
 
 export async function findSkiResortByIdDirect(
@@ -256,11 +303,18 @@ export async function updateAdminSkiResortInTransaction(
     Math.max(Date.now(), expectedDate.getTime() + 1),
   );
 
-  const { nameRuby, formerNames, ...scalars } = data;
+  const { nameRuby, formerNames, evChargers, ...scalars } = data;
 
   const update = await transaction.skiResort.updateMany({
     where: { id, updatedAt: expectedDate },
-    data: { ...scalars, updatedAt: nextUpdatedAt },
+    data: {
+      ...scalars,
+      // null（未確認）は JSON の null ではなく列の NULL にする
+      ...(evChargers === undefined
+        ? {}
+        : { evChargers: evChargers ?? Prisma.DbNull }),
+      updatedAt: nextUpdatedAt,
+    },
   });
 
   if (update.count === 0) {
@@ -374,6 +428,8 @@ export async function mergeAdminSkiResortsDirect(
         const {
           nameRuby: _ruby,
           formerNames: _former,
+          // 結合先は代表のスキー場の充電器をそのまま引き継ぐ
+          evChargers,
           ...scalars
         } = adminSkiResortUpdateSchema.parse(editable);
         const sourceResortIds = [
@@ -385,6 +441,7 @@ export async function mergeAdminSkiResortsDirect(
         const created = await transaction.skiResort.create({
           data: {
             ...scalars,
+            evChargers: evChargers ?? Prisma.DbNull,
             id: request.id,
             nameJa: request.nameJa,
             nameEn: request.nameEn,
