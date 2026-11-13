@@ -11,6 +11,9 @@ type HomeCompareContextValue = {
   source: CompareSource;
   /** 比較中のスキー場（読み込み前から確定している件数の元） */
   ids: string[];
+  /** 手で選んだ比較で外したが、タブを切り替えるまで表示しておくスキー場 */
+  pendingRemovals: string[];
+  togglePendingRemoval: (id: string) => void;
   /** お気に入り比較でタブを切り替えたときに、外したスキー場を反映する */
   onTabChange: () => void;
   /** 保存した比較リストを開く */

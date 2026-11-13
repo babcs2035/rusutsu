@@ -22,7 +22,10 @@ import {
   type ComposeRequest,
   OPEN_RESORT_COMPOSER_EVENT,
 } from "@/features/community/composerEvents";
-import { CompareListsProvider } from "@/features/compare-lists/CompareListsProvider";
+import {
+  CompareListsProvider,
+  useCompareLists,
+} from "@/features/compare-lists/CompareListsProvider";
 import type {
   CompareListSummary,
   CompareSource,
@@ -176,6 +179,7 @@ function HomeClientContent({
   session,
 }: Props & { session: HomeSession | null }) {
   const favorites = useFavorites();
+  const compareLists = useCompareLists();
   const resortLabelNames = useResortAliases(initialResorts);
   const compareUrl = useMemo(
     () => createCompareUrlCodec(initialResorts),
@@ -226,6 +230,10 @@ function HomeClientContent({
   const [favoriteCompareIds, setFavoriteCompareIds] = useState<string[] | null>(
     session?.favoriteCompareIds ?? null,
   );
+  // 手で選んだ比較の画面で外したスキー場。タブを切り替えるまでカードを残す
+  const [pendingCompareRemovals, setPendingCompareRemovals] = useState<
+    string[]
+  >([]);
   // 比較をお気に入り・保存したリストから開いたか。お気に入りや保存の表示を切り替える
   const [compareSource, setCompareSource] = useState<CompareSource>(
     session?.compareSource ?? SELECTION_SOURCE,
@@ -1069,8 +1077,20 @@ function HomeClientContent({
     [activeCompareIds, isCompareOpen, favoriteCompareIds],
   );
 
+  /** 比較画面で外したスキー場を、手で選んだ比較から実際に外す */
+  const commitCompareRemovals = useCallback(() => {
+    if (pendingCompareRemovals.length === 0) return selectedCompareIds;
+    const removed = new Set(pendingCompareRemovals);
+    const next = selectedCompareIds.filter(id => !removed.has(id));
+    setSelectedCompareIds(next);
+    setPendingCompareRemovals([]);
+    return next;
+  }, [pendingCompareRemovals, selectedCompareIds]);
+
   const handleOpenCompare = useCallback(
-    (ids = selectedCompareIds, source: CompareSource = SELECTION_SOURCE) => {
+    (ids?: string[], source: CompareSource = SELECTION_SOURCE) => {
+      const selectionIds = commitCompareRemovals();
+      ids ??= selectionIds;
       if (ids.length === 0 && source.kind !== "list") return;
       urlHistoryModeRef.current = "push";
       // お気に入り・保存したリストの比較は一時的な表示。手で選んだ比較は書き換えない
@@ -1092,7 +1112,7 @@ function HomeClientContent({
         setIsListSheetOpen(true);
       }
     },
-    [isSidePanelLayout, saveReturnViewState, selectedCompareIds],
+    [commitCompareRemovals, isSidePanelLayout, saveReturnViewState],
   );
 
   const handleMainPointerDownCapture = useCallback(
@@ -1112,6 +1132,7 @@ function HomeClientContent({
 
   const handleCloseCompare = (fromHistory = false) => {
     if (!fromHistory) urlHistoryModeRef.current = "push";
+    commitCompareRemovals();
     closeMobileContentTab();
     setIsCompareOpen(false);
     setFavoriteCompareIds(null);
@@ -1121,6 +1142,7 @@ function HomeClientContent({
   const handleClearCompare = useCallback(() => {
     urlHistoryModeRef.current = "push";
     if (favoriteCompareIds === null) setSelectedCompareIds([]);
+    setPendingCompareRemovals([]);
     setFavoriteCompareIds(null);
     setCompareSource(SELECTION_SOURCE);
     if (isCompareOpen) {
@@ -1160,7 +1182,32 @@ function HomeClientContent({
   const homeCompare = {
     source: compareSource,
     ids: activeCompareIds,
+    pendingRemovals: pendingCompareRemovals,
+    togglePendingRemoval: (id: string) =>
+      setPendingCompareRemovals(ids =>
+        ids.includes(id) ? ids.filter(other => other !== id) : [...ids, id],
+      ),
     onTabChange: () => {
+      if (compareSource.kind === "selection") {
+        // 外したスキー場は、タブを切り替えたときに消す。全部外したら比較を閉じる
+        if (commitCompareRemovals().length === 0) {
+          setFavoriteCompareIds(null);
+          setIsCompareOpen(false);
+        }
+        return;
+      }
+      if (compareSource.kind === "list") {
+        // 比較リストから外したスキー場は、タブを切り替えたときに消す
+        const list = compareLists?.ready
+          ? compareLists.lists.find(item => item.id === compareSource.id)
+          : undefined;
+        if (!list) return;
+        const kept = new Set(list.resortIds);
+        setFavoriteCompareIds(ids =>
+          ids === null ? null : ids.filter(id => kept.has(id)),
+        );
+        return;
+      }
       if (compareSource.kind !== "favorites" || !favorites?.ready) return;
       setFavoriteCompareIds(ids =>
         ids === null

@@ -25,6 +25,7 @@ import {
 } from "@/features/resort-detail/utils/currentConditions";
 import { getResortLabelName } from "@/lib/resortAliases";
 import { cn } from "@/lib/utils";
+import { CompareResortButton } from "@/shared/components/CompareResortButton";
 import {
   getCourseSummary,
   getLiftSummary,
@@ -153,6 +154,15 @@ const ResortCard = ({
               resortId={resort.id}
               name={resort.nameJa}
               className="-my-1 size-7"
+            />
+          )}
+          {compare?.source.kind === "selection" && (
+            <CompareResortButton
+              isSelected={!compare.pendingRemovals.includes(resort.id)}
+              resortName={resort.nameJa}
+              size="sm"
+              className="h-6 min-w-16 rounded-lg text-xs transition-smooth"
+              onClick={() => compare.togglePendingRemoval(resort.id)}
             />
           )}
           {compare?.source.kind === "list" && (

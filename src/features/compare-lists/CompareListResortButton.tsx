@@ -1,12 +1,14 @@
 "use client";
 
-import { ListMinus, LoaderCircle } from "lucide-react";
 import { useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { useHomeCompare } from "@/features/home/compareContext";
+import { CompareResortButton } from "@/shared/components/CompareResortButton";
 import { useCompareLists } from "./CompareListsProvider";
 
-/** 保存した比較リストだけを編集し、お気に入りには触れない。 */
+/**
+ * 保存した比較リストだけを編集し、お気に入りには触れない。
+ * 外してもカードはタブを切り替えるまで残し、もう一度押せば戻せる。
+ */
 export function CompareListResortButton({
   resortId,
   name,
@@ -17,34 +19,27 @@ export function CompareListResortButton({
   const compare = useHomeCompare();
   const lists = useCompareLists();
   const busy = useRef(false);
-  const [removing, setRemoving] = useState(false);
+  const [saving, setSaving] = useState(false);
   if (compare?.source.kind !== "list" || !lists) return null;
   const listId = compare.source.id;
-  const label = `${name}を比較リストから外す`;
+  const list = lists.lists.find(item => item.id === listId);
+  const isSelected = list ? list.resortIds.includes(resortId) : true;
   return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon"
-      className="-my-1 size-7 shrink-0 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
-      aria-label={label}
-      title={label}
-      disabled={!lists.ready || removing}
+    <CompareResortButton
+      isSelected={isSelected}
+      resortName={name}
+      size="sm"
+      className="h-6 min-w-16 rounded-lg text-xs transition-smooth"
+      disabled={!lists.ready || saving}
       onClick={async () => {
         if (busy.current) return;
         busy.current = true;
-        setRemoving(true);
-        const saved = await lists.removeResort(listId, resortId);
+        setSaving(true);
+        if (isSelected) await lists.removeResort(listId, resortId);
+        else await lists.addResorts(listId, [resortId]);
         busy.current = false;
-        setRemoving(false);
-        if (saved) compare.onListSaved(saved);
+        setSaving(false);
       }}
-    >
-      {removing ? (
-        <LoaderCircle className="size-4 animate-spin" />
-      ) : (
-        <ListMinus className="size-5" />
-      )}
-    </Button>
+    />
   );
 }
