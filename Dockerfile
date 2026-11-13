@@ -3,7 +3,7 @@
 # ==============================================================================
 # Base Stage
 # ==============================================================================
-FROM node:26-slim AS base
+FROM node:24-slim AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME/bin:$PNPM_HOME:$PATH"
 RUN npm install -g pnpm@12.18.0
@@ -28,7 +28,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Generate Prisma Client
-# Node 26 + arm64 does not have the WASM DMMF bug (prisma/prisma#29464)
+# Node 26 breaks under QEMU arm64 (prisma/prisma#29464); keep Node 24 here
 RUN pnpm exec prisma generate
 
 # Playwright install (Note: Only needed if build process uses it, otherwise move to runner)
