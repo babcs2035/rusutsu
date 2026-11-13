@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { mock } from "node:test";
+import { AppRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { FeatureHeadline, FeatureTags } from "./FeatureHeadline";
@@ -20,20 +21,34 @@ test("レベル・圧雪・早朝・ナイターはラベルなしの値チッ�
 
 test("営業状況は記号つきチップを一度だけ出し、出典は掲載名の箇所へ飛ばす", () => {
   const html = renderToStaticMarkup(
-    createElement(FeatureHeadline, {
-      kind: "course",
-      status: { symbol: "×", text: "クローズ" },
-      sources: [
-        {
-          urls: ["https://example.com/status"],
-          update: "2026/4/2 8:04 更新",
-          matches: [
-            { mapName: "林間（上部）", officialNames: ["林間A"] },
-            { mapName: "林間（下部）", officialNames: ["林間B"] },
-          ],
+    createElement(
+      AppRouterContext.Provider,
+      {
+        value: {
+          back: mock.fn(),
+          forward: mock.fn(),
+          refresh: mock.fn(),
+          push: mock.fn(),
+          replace: mock.fn(),
+          prefetch: mock.fn(),
+          bfcacheId: "test",
         },
-      ],
-    }),
+      },
+      createElement(FeatureHeadline, {
+        kind: "course",
+        status: { symbol: "×", text: "クローズ" },
+        sources: [
+          {
+            urls: ["https://example.com/status"],
+            update: "2026/4/2 8:04 更新",
+            matches: [
+              { mapName: "林間（上部）", officialNames: ["林間A"] },
+              { mapName: "林間（下部）", officialNames: ["林間B"] },
+            ],
+          },
+        ],
+      }),
+    ),
   );
   const text = html.replace(/<[^>]+>/g, "");
   assert.equal((text.match(/クローズ/g) ?? []).length, 1);
