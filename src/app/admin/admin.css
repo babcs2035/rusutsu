@@ -39,7 +39,7 @@ body:has(.admin-request-workspace) {
 
   /* ダイアログは body に portal されるため .admin-shell の外も対象。 */
   body:has(.admin-shell)
-  :is([data-slot="dialog-content"], [data-slot="alert-dialog-content"]) {
+    :is([data-slot="dialog-content"], [data-slot="alert-dialog-content"]) {
     width: calc(100% - 2rem);
     max-height: calc(100dvh - 2rem);
     overflow-y: auto;

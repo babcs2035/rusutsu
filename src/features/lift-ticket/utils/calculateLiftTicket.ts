@@ -1554,23 +1554,21 @@ const calculateGroupLine = (
     !(
       // 「4歳以上の未就学児」の下限未満には、明記された幼児無料を使える。
       // 学校区分の上限年齢を超えた人を別の年齢料金へ移すことはしない。
-      (
-        schoolAudiences.every(
-          a => a.age_min != null && (group.age as number) < a.age_min,
-        ) &&
-        data.audiences.some(
-          a =>
-            !a.is_default &&
-            !a.is_disability_qualified &&
-            (a.school_levels?.length ?? 0) === 0 &&
-            audienceDirectlyMatchesGroup(a, schoolGroup) &&
-            data.offers.some(
-              offer =>
-                offer.product_id === baseProduct.id &&
-                offer.audience_ids?.includes(a.id) &&
-                isUnconditionalStandardOffer(offer),
-            ),
-        )
+      schoolAudiences.every(
+        a => a.age_min != null && (group.age as number) < a.age_min,
+      ) &&
+      data.audiences.some(
+        a =>
+          !a.is_default &&
+          !a.is_disability_qualified &&
+          (a.school_levels?.length ?? 0) === 0 &&
+          audienceDirectlyMatchesGroup(a, schoolGroup) &&
+          data.offers.some(
+            offer =>
+              offer.product_id === baseProduct.id &&
+              offer.audience_ids?.includes(a.id) &&
+              isUnconditionalStandardOffer(offer),
+          ),
       )
     )
   ) {
