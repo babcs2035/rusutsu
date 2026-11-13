@@ -1,6 +1,6 @@
 [tools]
-node = "24.19.0"
-"npm:pnpm" = "11.20.0"
+node = "26.13.1"
+"npm:pnpm" = "12.18.0"
 
 [tasks]
 "recommendations:rebuild" = { description = "コース推薦特徴量を再計算（既定dry-run、--applyで開発／接続先DBへ反映）", run = "node --import tsx src/private/scripts/rebuildCourseRecommendations.ts" }

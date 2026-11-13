@@ -3,10 +3,10 @@
 # ==============================================================================
 # Base Stage
 # ==============================================================================
-FROM node:24-slim AS base
+FROM node:26-slim AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME/bin:$PNPM_HOME:$PATH"
-RUN npm install -g pnpm@11.20.0
+RUN npm install -g pnpm@12.18.0
 WORKDIR /app
 
 # ==============================================================================
@@ -28,7 +28,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Generate Prisma Client
-# Node 24 + arm64 does not have the WASM DMMF bug (prisma/prisma#29464)
+# Node 26 + arm64 does not have the WASM DMMF bug (prisma/prisma#29464)
 RUN pnpm exec prisma generate
 
 # Playwright install (Note: Only needed if build process uses it, otherwise move to runner)
@@ -62,7 +62,7 @@ RUN groupadd --system --gid 1001 nodejs && \
 # Install global tools
 RUN mkdir -p "$PNPM_HOME/bin" \
     && pnpm config set global-bin-dir "$PNPM_HOME/bin" \
-    && pnpm add -g prisma@7.9.1 tsx@4.23.11
+    && pnpm add -g prisma@7.10.1 tsx@4.23.15
 
 # Copy standalone build
 COPY --from=build-cache --chown=nextjs:nodejs /app/.next/standalone ./
