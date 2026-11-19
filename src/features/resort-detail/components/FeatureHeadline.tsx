@@ -107,11 +107,10 @@ export const FeatureTags = ({
 // 地図の「＋投稿」「営業中のみ」と同じ文字・枠
 const ACTION_CLASS =
   "h-8 gap-1 rounded-md border border-slate-300 bg-white px-1.5 text-sm font-semibold whitespace-nowrap text-slate-700 shadow-sm hover:bg-slate-50 md:text-[13px]";
-// 投稿は青、動画は YouTube の赤で塗る
+// 投稿は青で塗り、動画は白地に YouTube の赤文字で示す
 const POST_CLASS =
   "border-blue-600 bg-blue-600 text-white hover:bg-blue-700 hover:text-white";
-const VIDEO_CLASS =
-  "border-red-600 bg-red-600 text-white hover:bg-red-700 hover:text-white";
+const VIDEO_CLASS = "text-red-600 hover:bg-red-50 hover:text-red-700";
 
 /**
  * 営業状況を一番目立つチップで出し、その右に出典を折り返して添える。

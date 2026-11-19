@@ -1,0 +1,41 @@
+/*
+ * 天気リンクの行。文字・余白は行自身のコンテナ幅に合わせて詰める。
+ * 比較カード（約360px）の中身幅 344px 以下で一段詰める。
+ */
+.weather-links-container {
+  container-type: inline-size;
+  container-name: weather-link-row;
+}
+
+.weather-links-container .weather-links {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.weather-links-container .weather-link {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 1.75rem;
+  padding-inline: 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* 各サイト複数地点のときだけ折り返す */
+.weather-links-container .weather-links-multiple {
+  flex-wrap: wrap;
+}
+
+.weather-links-container .weather-links-multiple .weather-link {
+  flex: 0 0 auto;
+}
+
+@container weather-link-row (max-width: 344px) {
+  .weather-links-container .weather-link {
+    padding-inline: 0.25rem;
+    font-size: 10px;
+  }
+}

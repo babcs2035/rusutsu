@@ -1,9 +1,39 @@
 import { useMemo } from "react";
-import { getWeathernewsLinks } from "@/features/weather/weatherLinks";
-import type { Elevation, Resort, SnowForecastLink, WeatherLink } from "./types";
+import type { SkiResortDetail } from "@/types/skiResorts";
+import { getWeathernewsLinks } from "./weatherLinks";
+
+/** 天気リンクを作るのに要るスキー場の項目 */
+export type WeatherLinkResort = Pick<
+  SkiResortDetail,
+  "weatherIds" | "latitude" | "longitude"
+>;
+export type Elevation = "top" | "mid" | "bot";
+export type WeatherLink = {
+  kind: "snowForecast" | "tenkiJp" | "weathernews" | "windy";
+  id: string;
+  label: string;
+  url: string | null;
+  /** タイル背景の Tailwind クラス */
+  bg: string;
+  /** タイル背景のホバー時 Tailwind クラス */
+  hoverBg: string;
+  /** タイル文字の Tailwind クラス */
+  color: string;
+};
+export type SnowForecastLink = {
+  id: string;
+  displayName: string;
+  url: string;
+};
+
+export const ELEVATION_OPTIONS: Array<{ label: string; value: Elevation }> = [
+  { label: "山頂", value: "top" },
+  { label: "中腹", value: "mid" },
+  { label: "山麓", value: "bot" },
+];
 
 export function useWeatherLinks(
-  resort: Resort,
+  resort: WeatherLinkResort,
   snowForecastElevation: Elevation,
 ) {
   return useMemo(() => {
@@ -72,7 +102,7 @@ export function useWeatherLinks(
   }, [resort, snowForecastElevation]);
 }
 
-function getTenkiJpLinks(resort: Resort) {
+export function getTenkiJpLinks(resort: WeatherLinkResort) {
   const tenkiJpEntries = resort.weatherIds?.tenkijp;
 
   if (!tenkiJpEntries || tenkiJpEntries.length === 0) return [];
@@ -85,7 +115,7 @@ function getTenkiJpLinks(resort: Resort) {
 }
 
 export function getSnowForecastLinks(
-  resort: Resort,
+  resort: WeatherLinkResort,
   elevation: Elevation = "mid",
 ): SnowForecastLink[] {
   const links: SnowForecastLink[] = [];

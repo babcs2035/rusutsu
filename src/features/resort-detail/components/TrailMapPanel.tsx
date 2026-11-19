@@ -12,9 +12,14 @@ const proxiedUrl = (url: string) =>
   `/rusutsu/api/trail-map?url=${encodeURIComponent(url)}`;
 
 function TrailMapItem({ url }: { url: string }) {
-  // 拡張子のないURLがPDFだと <img> が失敗するので、その場合はPDFとして出し直す
-  const [imageFailed, setImageFailed] = useState(false);
-  if (isPdf(url) || imageFailed) {
+  // 直接の <img> が失敗したら（http の画像・外部表示の拒否など）中継の <img> で出し直し、
+  // それも失敗したら拡張子のないPDFとみなして iframe で出す。
+  // 画像を iframe で出すと枠に合わせて縮まず、原寸の左上だけが映るので画像は必ず <img> で出す。
+  const [stage, setStage] = useState<"direct" | "proxy" | "frame">(
+    // https のページから http の画像は読めない（ブラウザが https に直して失敗する）ので最初から中継
+    isPdf(url) ? "frame" : url.startsWith("http:") ? "proxy" : "direct",
+  );
+  if (stage === "frame") {
     return (
       <iframe
         src={`${proxiedUrl(url)}#toolbar=0&navpanes=0&view=Fit`}
@@ -26,9 +31,10 @@ function TrailMapItem({ url }: { url: string }) {
   return (
     // biome-ignore lint/performance/noImgElement: 外部サイトが公開する画像をそのまま表示するため next/image の最適化は使わない
     <img
-      src={url}
+      key={stage}
+      src={stage === "direct" ? url : proxiedUrl(url)}
       alt="ゲレンデマップ"
-      onError={() => setImageFailed(true)}
+      onError={() => setStage(stage === "direct" ? "proxy" : "frame")}
       className="mx-auto max-h-full w-auto max-w-full object-contain"
     />
   );

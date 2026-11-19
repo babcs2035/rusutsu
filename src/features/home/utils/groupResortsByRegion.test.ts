@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { groupResortsByRegion } from "./groupResortsByRegion";
+import {
+  groupResortsByRegion,
+  initialRegionExpansion,
+} from "./groupResortsByRegion";
 
 const resorts = [
   { id: "nagano-a", prefecture: "長野県" },
@@ -73,4 +76,67 @@ test("所在地が不明な検索結果も落とさずに表示する", () => {
 
 test("検索結果が空なら地方・都道府県の行も表示しない", () => {
   assert.deepEqual(groupResortsByRegion([]), []);
+});
+
+const many = (prefecture: string, count: number) =>
+  Array.from({ length: count }, (_, index) => ({
+    id: `${prefecture}-${index}`,
+    prefecture,
+  }));
+
+test("20件以下なら地方・都道府県まで全部開く", () => {
+  const expansion = initialRegionExpansion(groupResortsByRegion(resorts));
+  assert.deepEqual(expansion.regions, ["北海道・東北", "関東", "中部"]);
+  assert.deepEqual(expansion.prefectures, [
+    "北海道",
+    "群馬県",
+    "新潟県",
+    "長野県",
+  ]);
+});
+
+test("1つの都道府県に収まるなら、20件を超えても全部開く", () => {
+  const expansion = initialRegionExpansion(
+    groupResortsByRegion(many("北海道", 120)),
+  );
+  assert.deepEqual(expansion, {
+    regions: ["北海道・東北"],
+    prefectures: ["北海道"],
+  });
+});
+
+test("見出しが14行以下なら地方だけ開く", () => {
+  const expansion = initialRegionExpansion(
+    groupResortsByRegion([
+      ...many("北海道", 15),
+      ...many("長野県", 15),
+      ...many("新潟県", 5),
+    ]),
+  );
+  assert.deepEqual(expansion, {
+    regions: ["北海道・東北", "中部"],
+    prefectures: [],
+  });
+});
+
+test("見出しが14行を超えるなら全部閉じる", () => {
+  const prefectures = [
+    "北海道",
+    "青森県",
+    "岩手県",
+    "秋田県",
+    "宮城県",
+    "山形県",
+    "福島県",
+    "群馬県",
+    "栃木県",
+    "新潟県",
+    "長野県",
+    "富山県",
+  ];
+  const expansion = initialRegionExpansion(
+    groupResortsByRegion(prefectures.flatMap(name => many(name, 3))),
+  );
+  // 3地方＋12県＝15行
+  assert.deepEqual(expansion, { regions: [], prefectures: [] });
 });

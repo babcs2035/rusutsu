@@ -7,6 +7,30 @@ import { getResortLabelLines } from "@/lib/resortLabelWrap";
 import { cn } from "@/lib/utils";
 import type { Resort } from "./types";
 
+/** 比較から、そのスキー場の詳細を開くボタン。比較の各タブで同じものを使う */
+export const CompareResortDetailButton = ({
+  resortId,
+  onSelectResort,
+  className,
+}: {
+  resortId: string;
+  onSelectResort: (id: string) => void;
+  className?: string;
+}) => (
+  <Button
+    type="button"
+    variant="outline"
+    onClick={() => onSelectResort(resortId)}
+    className={cn(
+      "h-6 shrink-0 gap-0 px-1.5 text-[11px] font-semibold text-blue-700",
+      className,
+    )}
+  >
+    詳細
+    <ChevronRight size={11} strokeWidth={2.5} />
+  </Button>
+);
+
 /**
  * 比較表の先頭列。地図のラベルと同じ表示名を、決めた位置で折り返して出す。
  * 都道府県・市町村は幅を食うだけなので出さない。
@@ -33,18 +57,11 @@ export const CompareResortNameCell = ({
   );
   const lines = getResortLabelLines(labelName, 6, resort.id);
   const detailButton = onSelectResort && (
-    <Button
-      type="button"
-      variant="outline"
-      onClick={() => onSelectResort(resort.id)}
-      className={cn(
-        "h-6 shrink-0 gap-0 px-1.5 text-[11px] font-semibold text-blue-700",
-        layout === "stacked" && "mt-1",
-      )}
-    >
-      詳細
-      <ChevronRight size={11} strokeWidth={2.5} />
-    </Button>
+    <CompareResortDetailButton
+      resortId={resort.id}
+      onSelectResort={onSelectResort}
+      className={cn(layout === "stacked" && "mt-1")}
+    />
   );
 
   if (layout === "inline") {

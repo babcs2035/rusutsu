@@ -32,6 +32,7 @@ import {
   readSkiResortDetails,
 } from "@/server/ski-resorts/detail";
 import { combineResortMaps } from "@/server/ski-resorts/displayGroupMap";
+import { withMapElevation } from "@/shared/utils/resortElevation";
 import type { SkiResortWithRelations } from "@/types";
 
 // スキーリゾート一覧を取得（リレーション込み）
@@ -71,7 +72,7 @@ export async function getSkiResortsForMap() {
   };
 
   return resorts.map(resort => ({
-    ...resort,
+    ...withMapElevation(resort, operatingSummaries[resort.id]?.elevation),
     ...getResortReadingInfo(resort),
     liftTicketResortId: liftTicketResortIdOf(resort),
     operatingCounts: operatingSummaries[resort.id] ?? {

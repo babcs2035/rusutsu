@@ -1,27 +1,36 @@
 "use client";
 
-import { LoaderCircle, LocateFixed, X } from "lucide-react";
+import { LoaderCircle, LocateFixed } from "lucide-react";
 import { type Map as MapLibreMap, Marker } from "maplibre-gl";
-import { useEffect, useMemo, useState } from "react";
-import type { MapSkiResort } from "@/types/skiResorts";
+import { useEffect, useRef, useState } from "react";
 import { useMapSession } from "../session/MapSessionProvider";
-import { distanceKm } from "../utils/distance";
 
 export function MapLocationControl({
   map,
-  resorts,
   interactive,
   expanded,
+  rightOffset = 0,
 }: {
   map: MapLibreMap | null;
-  resorts: MapSkiResort[];
   interactive: boolean;
   expanded: boolean;
+  /** 詳細パネルが地図の右側に被っている幅（px） */
+  rightOffset?: number;
 }) {
   const location = useMapSession();
   const position = location?.position;
   const [centerPending, setCenterPending] = useState(false);
-  const [showNearby, setShowNearby] = useState(false);
+  // 許可されていない状態で押し直し、また拒否されたときだけ一瞬知らせる
+  const retryFrom = useRef<number | null>(null);
+  const [deniedNotice, setDeniedNotice] = useState(false);
+  const deniedAt = location?.deniedAt ?? 0;
+  useEffect(() => {
+    if (retryFrom.current === null || deniedAt <= retryFrom.current) return;
+    retryFrom.current = null;
+    setDeniedNotice(true);
+    const timer = setTimeout(() => setDeniedNotice(false), 2500);
+    return () => clearTimeout(timer);
+  }, [deniedAt]);
   useEffect(() => {
     if (!map || !position) return;
     const element = document.createElement("div");
@@ -84,41 +93,31 @@ export function MapLocationControl({
     });
     setCenterPending(false);
   }, [centerPending, map, position]);
-  const nearby = useMemo(
-    () =>
-      position
-        ? resorts
-            .map(resort => ({ resort, distance: distanceKm(position, resort) }))
-            .sort((a, b) => a.distance - b.distance)
-            .slice(0, 5)
-        : [],
-    [position, resorts],
-  );
   if (!location || !interactive) return null;
   return (
     <div
-      className={`absolute right-3 ${expanded ? "top-16" : "top-[calc(var(--mobile-map-top-offset,0px)+0.75rem)]"} z-[760] flex max-w-[calc(100%-1.5rem)] flex-col items-end gap-2`}
+      style={{ right: `${rightOffset + 12}px` }}
+      className={`absolute ${expanded ? "top-16" : "top-[calc(var(--mobile-map-top-offset,0px)+0.75rem)]"} z-[760] flex max-w-[calc(100%-1.5rem)] flex-col items-end gap-2`}
     >
       <div className="flex gap-2">
-        {position && (
-          <button
-            type="button"
-            className="h-11 rounded-md border bg-white px-3 text-sm shadow-sm"
-            onClick={() => setShowNearby(value => !value)}
-            aria-expanded={showNearby}
-          >
-            近くのスキー場
-          </button>
-        )}
         <button
           type="button"
-          aria-label="現在地を表示"
+          aria-label={
+            location.unavailable
+              ? "現在地を表示（位置情報が許可されていません）"
+              : "現在地を表示"
+          }
+          title={
+            location.unavailable ? "位置情報が許可されていません" : undefined
+          }
           disabled={location.loading}
           onClick={() => {
+            retryFrom.current = location.unavailable ? location.deniedAt : null;
+            setDeniedNotice(false);
             setCenterPending(true);
             location.request();
           }}
-          className="flex h-11 w-11 items-center justify-center rounded-md border bg-white text-blue-600 shadow-sm disabled:opacity-60"
+          className={`flex h-11 w-11 items-center justify-center rounded-md border bg-white text-blue-600 shadow-sm disabled:opacity-60 ${location.unavailable ? "opacity-40" : ""}`}
         >
           {location.loading ? (
             <LoaderCircle size={20} className="animate-spin" />
@@ -126,51 +125,14 @@ export function MapLocationControl({
             <LocateFixed size={20} />
           )}
         </button>
-        {location.enabled && (
-          <button
-            type="button"
-            aria-label="現在地の取得を停止"
-            className="flex h-11 w-11 items-center justify-center rounded-md border bg-white shadow-sm"
-            onClick={() => {
-              location.stop();
-              setCenterPending(false);
-              setShowNearby(false);
-            }}
-          >
-            <X size={18} />
-          </button>
-        )}
       </div>
-      {location.error && (
+      {deniedNotice && (
         <p
           role="status"
-          className="max-w-72 rounded-md border bg-white p-3 text-sm shadow-sm"
+          className="rounded-md border bg-white px-3 py-2 text-sm shadow-sm"
         >
-          {location.error}
+          位置情報が許可されていません
         </p>
-      )}
-      {showNearby && position && (
-        <div className="max-h-60 w-64 max-w-full overflow-y-auto rounded-md border bg-white p-2 shadow-md">
-          <p className="px-2 py-1 text-xs text-gray-500">
-            現在地からの直線距離順
-          </p>
-          {nearby.map(({ resort, distance }) => (
-            <button
-              type="button"
-              key={resort.id}
-              onClick={() => {
-                setShowNearby(false);
-                location.selectResort(resort.id);
-              }}
-              className="flex min-h-11 w-full items-center justify-between gap-2 rounded px-2 text-left text-sm hover:bg-gray-100"
-            >
-              <span>{resort.nameJa}</span>
-              <span className="shrink-0 text-xs text-gray-500">
-                {distance.toFixed(1)} km
-              </span>
-            </button>
-          ))}
-        </div>
       )}
     </div>
   );

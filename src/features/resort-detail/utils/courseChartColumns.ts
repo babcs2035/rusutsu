@@ -1,7 +1,4 @@
-import {
-  isCourseStatusVisible,
-  OPEN_COURSE_STATUSES,
-} from "@/features/map/utils/mapDisplaySettings";
+import { isCourseStatusVisible } from "@/features/map/utils/mapDisplaySettings";
 import {
   COURSE_DIFFICULTY_META,
   type FinalizedCourseFeature,
@@ -9,6 +6,10 @@ import {
   getCourseDifficulty,
   getSlopeColor,
 } from "@/lib/finalizedResortGeojsonShared";
+import {
+  courseLengthMeters,
+  summarizeCourseDistance,
+} from "@/shared/course-lift/courseDistance";
 import type { DistributionColumn } from "../components/DistributionChart";
 import {
   groupSlopeBins,
@@ -53,6 +54,12 @@ const createVisibilityTest =
       statusFilter,
     );
 
+const lengthOf = (course: FinalizedCourseFeature) =>
+  courseLengthMeters(
+    course.properties.slopeDistMap,
+    course.properties.horizontalDistMap,
+  );
+
 export function buildLevelColumns(
   features: FinalizedCourseFeature[],
   statusFilter: CourseStatusFilter | null,
@@ -70,9 +77,9 @@ export function buildLevelColumns(
         // 棒は地図と同じ配色にして、地図で見た印象とそのまま結び付くようにする
         color: COURSE_DIFFICULTY_META[key].color,
         label: levelLabel(key),
-        distance: sumKnown(all.map(c => c.properties.slopeDistMap)).total ?? 0,
-        openDistance:
-          sumKnown(open.map(c => c.properties.slopeDistMap)).total ?? 0,
+        // 標高が未取得の線は水平距離で代える（一覧の並び替えと同じ距離）
+        distance: sumKnown(all.map(lengthOf)).total ?? 0,
+        openDistance: sumKnown(open.map(lengthOf)).total ?? 0,
       },
     ];
   });
@@ -106,16 +113,13 @@ export type CourseDistance = { total: number; open: number | null };
 export const createCourseDistance = (
   courses: FinalizedResortMapData["courses"] | null | undefined,
 ): CourseDistance | null => {
-  const columns = buildLevelColumns(
-    courses?.features ?? [],
-    OPEN_COURSE_STATUSES,
+  const summary = summarizeCourseDistance(
+    (courses?.features ?? []).map(course => ({
+      slopeDistance: course.properties.slopeDistMap,
+      horizontalDistance: course.properties.horizontalDistMap,
+      status: course.properties.status,
+    })),
+    hasSourceUrl(courses?.sourceUrls),
   );
-  const total = columns.reduce((sum, column) => sum + column.distance, 0);
-  if (total <= 0) return null;
-  return {
-    total,
-    open: hasSourceUrl(courses?.sourceUrls)
-      ? columns.reduce((sum, column) => sum + (column.openDistance ?? 0), 0)
-      : null,
-  };
+  return summary && { total: summary.total, open: summary.open };
 };

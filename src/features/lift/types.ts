@@ -104,7 +104,7 @@ export type LiftSourceData = {
 export type ResortOption = {
   id: string;
   nameJa: string;
-  // 検索ワードの先頭に使う名前（地図表示用の省略名を優先）
+  // 検索ワードの先頭に使うスキー場の正式名（「スキー場」込み）
   searchName: string;
   // 地図のラベルに出す名前。DB に無い仮 ID では ID をそのまま出す
   labelName: string;

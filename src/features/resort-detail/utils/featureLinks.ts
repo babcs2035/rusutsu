@@ -2,6 +2,8 @@
  * コース・リフトの詳細から外部へ出るリンク周り。
  */
 
+import { buildDefaultSearchWord } from "@/shared/utils/searchWord";
+
 const YOUTUBE_SEARCH_URL = "https://www.youtube.com/results";
 
 export const getYoutubeSearchUrl = (query: string) =>
@@ -10,24 +12,22 @@ export const getYoutubeSearchUrl = (query: string) =>
 /**
  * 動画を探すときの検索語。
  *
- * 基本情報に searchWord があればそれを使う。無いスキー場もあるので、
- * その場合は「スキー場の省略名 + コース名」で組み立てる。
+ * 基本情報に searchWord があればそれを使う。無いコースもあるので、
+ * その場合は編集画面の自動生成と同じ「スキー場の正式名 + コース名」で組み立てる。
  */
 export const getFeatureSearchWord = ({
   searchWord,
-  resortLabelName,
+  resortSearchWordName,
   featureName,
 }: {
   searchWord: string | null | undefined;
-  resortLabelName: string;
+  resortSearchWordName: string;
   featureName: string;
 }): string => {
   const trimmed = searchWord?.trim();
   if (trimmed) return trimmed;
 
-  return [resortLabelName.trim(), featureName.trim()]
-    .filter(part => part.length > 0)
-    .join(" ");
+  return buildDefaultSearchWord(resortSearchWordName, featureName);
 };
 
 /** 「2026-04-06 07:28 更新」→「更新日時: 2026-04-06 07:28」 */

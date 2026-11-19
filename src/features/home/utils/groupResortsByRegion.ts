@@ -54,3 +54,34 @@ export function groupResortsByRegion<T extends { prefecture: string }>(
   }
   return regions;
 }
+
+/** これ以下の件数なら、スキー場名まで全部開く */
+export const EXPAND_ALL_MAX_RESORTS = 20;
+/** 地方＋都道府県の見出しがこの行数以下なら、地方だけ開く（スマホで引き出せば全部見える目安） */
+export const EXPAND_REGIONS_MAX_HEADINGS = 14;
+
+export type ResortGroupExpansion = {
+  regions: string[];
+  prefectures: string[];
+};
+
+/**
+ * 検索結果の最初の開き方。
+ * 20件以下か1つの都道府県に収まるなら全部、見出しが14行以下なら地方だけ、それ以外は全部閉じる。
+ */
+export function initialRegionExpansion<T>(
+  regions: ResortRegion<T>[],
+): ResortGroupExpansion {
+  const prefectures = regions.flatMap(region =>
+    region.prefectures.map(prefecture => prefecture.name),
+  );
+  const total = regions.reduce((sum, region) => sum + region.count, 0);
+  const regionNames = regions.map(region => region.name);
+  if (total <= EXPAND_ALL_MAX_RESORTS || prefectures.length === 1) {
+    return { regions: regionNames, prefectures };
+  }
+  if (regionNames.length + prefectures.length <= EXPAND_REGIONS_MAX_HEADINGS) {
+    return { regions: regionNames, prefectures: [] };
+  }
+  return { regions: [], prefectures: [] };
+}

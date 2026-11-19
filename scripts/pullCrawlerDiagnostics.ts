@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { gunzipSync } from "node:zlib";
 import dotenv from "dotenv";
 import { normalizeInternalDataApiBaseUrl } from "@/lib/internalDataApiBaseUrl";
 
@@ -148,6 +149,14 @@ const findLatestDiagnosticRun = async (
   throw new Error(`${resortId} に取得可能な失敗・警告DOMがありません。`);
 };
 
+// 診断APIは保存済みgzipをContent-Encodingなしの本文としてそのまま返すため、
+// response.text()で読むとバイナリがUTF-8として壊れる。バイト列で受け取り、
+// gzipの先頭バイト(1f 8b)なら展開してHTMLとして保存する。
+export const decodeArtifactBody = (body: Buffer): Buffer =>
+  body.length >= 2 && body[0] === 0x1f && body[1] === 0x8b
+    ? gunzipSync(body)
+    : body;
+
 const downloadArtifacts = async (
   run: RunDetail,
   options: CliOptions,
@@ -172,10 +181,11 @@ const downloadArtifacts = async (
     const fileName = `${safeSegment(artifact.id, "artifact ID")}-${path
       .basename(artifact.pageKey)
       .replace(/[^A-Za-z0-9._-]/gu, "-")}`;
-    await fs.writeFile(path.join(directory, fileName), await response.text(), {
-      encoding: "utf8",
-      mode: 0o600,
-    });
+    await fs.writeFile(
+      path.join(directory, fileName),
+      decodeArtifactBody(Buffer.from(await response.arrayBuffer())),
+      { mode: 0o600 },
+    );
     downloaded += 1;
   }
 

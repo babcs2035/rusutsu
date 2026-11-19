@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { summarizeCourseStatusForList } from "@/features/home/utils/operatingCounts";
 import { summarizeMapCourseStatuses } from "@/features/resort-detail/utils/courseStatusSummary";
+import { summarizeCourseDistance } from "@/shared/course-lift/courseDistance";
 import {
   courseGroupingRoute,
   readCourseGrouping,
@@ -14,7 +15,8 @@ import {
 import { writeMapOperations, writeOperationSummaries } from "./operationWrites";
 
 type Tx = Prisma.TransactionClient;
-export const OPERATION_SUMMARY_VERSION = 7;
+// 8: コースの滑走距離（総距離・滑走可能距離）を集計に追加
+export const OPERATION_SUMMARY_VERSION = 9;
 export type OperationEntity = {
   id: string;
   name: string | null;
@@ -255,6 +257,25 @@ export async function refreshMapOperations(
   return { warningCount, warningKinds: [...warningKinds] };
 }
 
+/** 地図のコースの最高点と最低点。標高差は両者の差として使う */
+export function summarizeCourseElevation(
+  rows: ReadonlyArray<{
+    minElevation: number | null;
+    maxElevation: number | null;
+  }>,
+): { top: number; base: number } | null {
+  const mins = rows.flatMap(row =>
+    row.minElevation == null ? [] : [row.minElevation],
+  );
+  const maxes = rows.flatMap(row =>
+    row.maxElevation == null ? [] : [row.maxElevation],
+  );
+  if (!mins.length || !maxes.length) return null;
+  const top = Math.round(Math.max(...maxes));
+  const base = Math.round(Math.min(...mins));
+  return top > base ? { top, base } : null;
+}
+
 /** 保存済み集計も詳細と同じ地図のコース・現在値から集計する。 */
 export async function calculateMapOperationSummaries(
   tx: Tx,
@@ -300,6 +321,10 @@ export async function calculateMapOperationSummaries(
       elevationReady: true,
       hasStatusSource: true,
       statusSnapshotId: true,
+      slopeDistance: true,
+      horizontalDistance: true,
+      minElevation: true,
+      maxElevation: true,
     },
   });
   const lifts = await tx.mapLift.findMany({
@@ -382,11 +407,18 @@ export async function calculateMapOperationSummaries(
           record(row.properties).courseGrouping != null && !grouping,
       };
     });
+    const projectedCourseRows = projectRows(groupedCourseRows, "COURSES");
     const course = summarizeOperationEntities(
-      projectRows(groupedCourseRows, "COURSES"),
+      projectedCourseRows,
       "course",
       resort.numberOfCourses,
     );
+    // 詳細の「滑走距離」と同じ計算。古い営業状況は projectRows で不明になっている
+    const distance = summarizeCourseDistance(
+      projectedCourseRows,
+      projectedCourseRows.some(row => row.hasStatusSource),
+    );
+    const elevation = summarizeCourseElevation(courseRows);
     const lift = summarizeOperationEntities(
       projectRows(liftRows, "LIFTS"),
       "lift",
@@ -401,6 +433,13 @@ export async function calculateMapOperationSummaries(
       liftActive: lift.active,
       courseCountSource: course.source,
       liftCountSource: lift.source,
+      courseDistanceTotal: distance?.total ?? null,
+      courseDistanceOpen: distance?.open ?? null,
+      courseDistanceFallbackLines: distance?.fallbackLines ?? 0,
+      courseDistanceMissingLines:
+        distance?.missingLines ?? projectedCourseRows.length,
+      mapTopElevation: elevation?.top ?? null,
+      mapBaseElevation: elevation?.base ?? null,
       calculationVersion: OPERATION_SUMMARY_VERSION,
     };
   });

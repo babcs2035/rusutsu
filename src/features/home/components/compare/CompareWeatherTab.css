@@ -1,7 +1,7 @@
 /*
  * 天気カードは常にコンパクト表示（幅 386px の Snow Forecast 埋め込み＋下部の標高切替）。
  * カード幅はグリッド（COMPARE_WEATHER_GRID_CLASS）が決める。
- * リンクチップの文字・余白はカード自身のコンテナ幅に合わせて詰める。
+ * リンクの行は features/weather/WeatherLinkChips.css が自分の幅で詰める。
  */
 .weather-panel-container {
   container-type: inline-size;
@@ -10,39 +10,6 @@
 
 .weather-panel-container .weather-info-name {
   margin-bottom: 0.25rem;
-}
-
-.weather-panel-container .weather-links {
-  flex-direction: row;
-  align-items: center;
-  flex-wrap: nowrap;
-}
-
-.weather-panel-container .weather-link {
-  flex: 1 1 auto;
-  min-width: 0;
-  height: 1.75rem;
-  padding-inline: 0.5rem;
-  border-radius: 0.375rem;
-  font-size: 11px;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-/* 各サイト複数地点のときだけ折り返す */
-.weather-panel-container .weather-links-multiple {
-  flex-wrap: wrap;
-}
-
-.weather-panel-container .weather-links-multiple .weather-link {
-  flex: 0 0 auto;
-}
-
-@container weather-panel-container (max-width: 360px) {
-  .weather-panel-container .weather-link {
-    padding-inline: 0.25rem;
-    font-size: 10px;
-  }
 }
 
 .weather-panel-container .snow-forecast-viewport {

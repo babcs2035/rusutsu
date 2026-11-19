@@ -35,6 +35,9 @@ export const FINALIZED_LAYER = {
   liftFlowSlow: "finalized-lift-flow-slow",
   liftFlowNormal: "finalized-lift-flow-normal",
   liftFlowFast: "finalized-lift-flow-fast",
+  liftFlowSlowOpen: "finalized-lift-flow-slow-open",
+  liftFlowNormalOpen: "finalized-lift-flow-normal-open",
+  liftFlowFastOpen: "finalized-lift-flow-fast-open",
   liftStation: "finalized-lift-station",
   courseHit: "finalized-course-hit",
   liftHit: "finalized-lift-hit",
@@ -118,44 +121,116 @@ export const LIFT_FLOW_WIDTH_FACTOR = 0.74;
  * 4 要素・同じ周期になるように組み立てる。
  */
 const FLOW_PERIOD = 14;
-/** 2 色が同じ長さになるように、周期のちょうど半分を塗る */
-const FLOW_DASH = FLOW_PERIOD / 2;
-/**
- * 1 周期を何コマで送るか。
- *
- * MapLibre は破線の 1 周期を「line-dasharray の合計 × floor(線幅)」px として
- * 描く。floor が効くので、縮小して線が細いときは 1 周期が 14px しかない。
- * そこへ 0.5 単位ずつずらすと 1 コマの移動量が 0.5px になり、
- * 端のまるめがコマごとに変わって塗りが伸び縮みして見える（尺取り虫）。
- * 1 単位＝整数 px ちょうどずつ送れば、どの縮尺でも形を保ったまま流れる。
- */
-const FLOW_STEPS = FLOW_PERIOD;
 
-export const FLOW_DASH_FRAMES: number[][] = Array.from(
-  { length: FLOW_STEPS },
-  (_, index) => {
-    const phase = (FLOW_PERIOD * index) / FLOW_STEPS;
-    if (phase + FLOW_DASH <= FLOW_PERIOD) {
-      return [0, phase, FLOW_DASH, FLOW_PERIOD - phase - FLOW_DASH];
+/** 1 周期のコマ数。速さごとの frameMs × この数で 1 周期を流し終える */
+const FLOW_STEPS = 14;
+/** 縞を伸ばし始めるズームと、1 ズームごとに伸ばす倍率 */
+const FLOW_GROWTH_START_ZOOM = 14;
+const FLOW_GROWTH_PER_ZOOM = 2 ** 0.2;
+
+/**
+ * ズームに合う縞の段階（z14 以下は 0、そこから 1 ズームごとに 1）。
+ *
+ * 縞の位置はいつもリフトの始点から数えるので、縞の長さを変えると
+ * すべての縞が始点を中心に伸び縮みする。拡大の途中で付け直すと、
+ * 縞が始点側（流れと逆向き）へずれて見えるため、途中では変えない。
+ *
+ * MapLibre は破線の 1 周期を
+ * 「line-dasharray の合計 × 整数ズームでの線幅 × 2^(ズームの小数部)」px で描く。
+ * 整数ズームの間は地図と一緒に伸び、整数ズームをまたぐ所で
+ * MapLibre 自身が縞を付け直す（約 0.3 秒で切り替える）。
+ * 段階を変えるのはその付け直しと同じ所だけにして、縞が大きくなるぶんを
+ * 少し足す（線幅は拡大してもあまり太くならず、そのままだと
+ * 拡大するほど 1 本のリフトに縞が詰まって細かく見えるため）。
+ */
+export const getFlowDashLevel = (zoom: number) =>
+  Math.max(0, Math.floor(zoom) - FLOW_GROWTH_START_ZOOM);
+
+const round3 = (value: number) => Math.round(value * 1000) / 1000;
+
+const FLOW_DASH_FRAMES_BY_LEVEL = new Map<number, number[][]>();
+
+/**
+ * 段階ごとの流れる破線のコマ。1 コマで 1/14 周期ずつ送る。
+ * 2 色が同じ長さになるように、周期のちょうど半分を塗る。
+ */
+export const getFlowDashFrames = (level: number): number[][] => {
+  const cached = FLOW_DASH_FRAMES_BY_LEVEL.get(level);
+  if (cached) return cached;
+  const period = round3(FLOW_PERIOD * FLOW_GROWTH_PER_ZOOM ** level);
+  const dash = round3(period / 2);
+  const frames = Array.from({ length: FLOW_STEPS }, (_, index) => {
+    const phase = round3((period * index) / FLOW_STEPS);
+    // 丸めの誤差で 0.001 の切れ端ができないよう、少しの差は周期内とみなす
+    if (phase + dash <= period + 0.002) {
+      return [0, phase, dash, Math.max(0, round3(period - phase - dash))];
     }
     // 周期をまたぐぶんは先頭に回す。末尾の隙間 0 で次の周期の頭とつながる
-    const head = phase + FLOW_DASH - FLOW_PERIOD;
-    return [head, FLOW_PERIOD - FLOW_DASH, FLOW_DASH - head, 0];
-  },
-);
+    const head = round3(phase + dash - period);
+    return [head, round3(period - dash), round3(dash - head), 0];
+  });
+  FLOW_DASH_FRAMES_BY_LEVEL.set(level, frames);
+  return frames;
+};
+
+export const FLOW_STEP_COUNT = FLOW_STEPS;
+export const FLOW_DASH_FRAMES = getFlowDashFrames(0);
 
 /**
  * 速さごとの流れるレイヤー。line-dasharray は式にできないので分ける。
  *
- * frameMs は 1 コマぶんの間隔で、1 周期（FLOW_PERIOD コマ）を流し終えるまでの
- * 時間はその 14 倍になる。高速リフトと低速リフトの差が読み取りにくかったため、
+ * frameMs は 1 コマぶんの間隔で、1 周期を流し終えるまでの時間はその 14 倍になる。
+ * 高速リフトと低速リフトの差が読み取りにくかったため、
  * fast:normal:slow をおよそ 1:2.5:5 まで広げている（以前は 1:1.7:2.5 程度）。
  */
 export const LIFT_FLOW_LAYERS = [
-  { id: FINALIZED_LAYER.liftFlowSlow, speed: "slow", frameMs: 200 },
-  { id: FINALIZED_LAYER.liftFlowNormal, speed: "normal", frameMs: 100 },
-  { id: FINALIZED_LAYER.liftFlowFast, speed: "fast", frameMs: 40 },
+  {
+    id: FINALIZED_LAYER.liftFlowSlowOpen,
+    speed: "slow",
+    frameMs: 200,
+    open: true,
+  },
+  {
+    id: FINALIZED_LAYER.liftFlowNormalOpen,
+    speed: "normal",
+    frameMs: 100,
+    open: true,
+  },
+  {
+    id: FINALIZED_LAYER.liftFlowFastOpen,
+    speed: "fast",
+    frameMs: 40,
+    open: true,
+  },
+  {
+    id: FINALIZED_LAYER.liftFlowSlow,
+    speed: "slow",
+    frameMs: 200,
+    open: false,
+  },
+  {
+    id: FINALIZED_LAYER.liftFlowNormal,
+    speed: "normal",
+    frameMs: 100,
+    open: false,
+  },
+  { id: FINALIZED_LAYER.liftFlowFast, speed: "fast", frameMs: 40, open: false },
 ] as const;
+
+/**
+ * 流れる破線を重ねるリフト。
+ *
+ * 運行中とそれ以外でもレイヤーを分け、コマを別々に数える。
+ * 「営業中のみ」のときは運行中以外のコマ送りだけを止めるので、
+ * 押した瞬間の縞のまま止まり、外すとその位置から流れ出す。
+ */
+export const getLiftFlowFilter = (
+  layer: (typeof LIFT_FLOW_LAYERS)[number],
+): FilterSpecification => [
+  "all",
+  ["==", ["coalesce", ["get", "flowSpeed"], "normal"], layer.speed],
+  [layer.open ? "==" : "!=", ["get", "status"], "open"],
+];
 
 /**
  * 流れる破線の濃さ。
@@ -714,13 +789,14 @@ export const createFinalizedLayers = (
     },
   },
   // すべてのリフトに流れる破線を重ねる。速さで流す間隔を変えたいので、
-  // line-dasharray を式にできない都合上、速さごとにレイヤーを分ける
+  // line-dasharray を式にできない都合上、速さごとにレイヤーを分ける。
+  // 「営業中のみ」で運行中以外だけ止められるよう、運行中かどうかでも分ける
   ...LIFT_FLOW_LAYERS.map(
     (layer): LayerSpecification => ({
       id: layer.id,
       type: "line",
       source: FINALIZED_SOURCE.lifts,
-      filter: ["==", ["coalesce", ["get", "flowSpeed"], "normal"], layer.speed],
+      filter: getLiftFlowFilter(layer),
       // キャップは butt のまま。round にすると MapLibre が周期をまたぐ
       // 塗り（先頭の切れ端と末尾）をつなげてくれず、コマによって
       // 短い点が余分に描かれてしまう。

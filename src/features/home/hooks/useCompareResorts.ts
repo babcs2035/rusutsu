@@ -18,6 +18,18 @@ const EMPTY_RESORTS: SkiResortDetail[] = [];
 const DETAIL_CHUNK_SIZE = 8;
 /** 地図データは 1 回で何件取るか。見えている分が早く返るよう小さめにする */
 const MAP_CHUNK_SIZE = 4;
+/**
+ * 取り終えた比較データを、取り直さずに使い続ける時間。
+ * 詳細を見て比較へ戻ったときや、同じ比較を開き直したときはこの間は通信しない。
+ * 過ぎていたら、今の表示を出したまま裏で取り直して差し替える
+ */
+export const COMPARE_DATA_FRESH_MS = 10 * 60 * 1000;
+
+const isFresh = (
+  fetched: { key: string; at: number } | null,
+  key: string,
+): boolean =>
+  fetched?.key === key && Date.now() - fetched.at < COMPARE_DATA_FRESH_MS;
 
 const chunk = <T>(items: T[], size: number): T[][] => {
   const chunks: T[][] = [];
@@ -38,8 +50,15 @@ const chunk = <T>(items: T[], size: number): T[][] => {
  * 画面に見えているスキー場を先に取れるようにする。
  * isLoading は詳細の初回表示前まで true。オフライン時は保存分だけで確定する。
  * 詳細と地図がそろったスキー場は端末に保存し、次に開いたときに使う。
+ * 取り終えてから COMPARE_DATA_FRESH_MS の間は取り直さない。
+ * visible は比較が画面に出ているか（詳細の裏に残している間は false）。
+ * 出たときに古くなっていれば取り直す。
  */
-export const useCompareResorts = (ids: string[], enabled: boolean) => {
+export const useCompareResorts = (
+  ids: string[],
+  enabled: boolean,
+  visible = enabled,
+) => {
   // 開いた直後（effect が走る前）に空表示を出さないよう、key ごとに持つ
   const [state, setState] = useState<{
     key: string;
@@ -49,7 +68,22 @@ export const useCompareResorts = (ids: string[], enabled: boolean) => {
   }>({ key: "", resorts: [], settled: false });
   // まだ地図を取っていないスキー場。先頭から順に取る
   const pendingMapIdsRef = useRef<string[]>([]);
+  // 最後に詳細と地図を取り終えた比較と時刻
+  const fetchedRef = useRef<{ key: string; at: number } | null>(null);
+  const [refreshToken, setRefreshToken] = useState(0);
   const idsKey = ids.join(",");
+
+  // 詳細から比較へ戻ったときに古くなっていれば、裏で取り直す。
+  // 比較を開き直したとき（enabled が変わったとき）は下の effect が取り直す
+  const wasEnabledRef = useRef(enabled);
+  useEffect(() => {
+    const wasEnabled = wasEnabledRef.current;
+    wasEnabledRef.current = enabled;
+    if (!enabled || !wasEnabled || !visible || !idsKey) return;
+    if (fetchedRef.current?.key !== idsKey) return;
+    if (!isFresh(fetchedRef.current, idsKey))
+      setRefreshToken(token => token + 1);
+  }, [enabled, visible, idsKey]);
 
   const prioritize = useCallback((priorityIds: string[]) => {
     const pending = pendingMapIdsRef.current;
@@ -61,11 +95,14 @@ export const useCompareResorts = (ids: string[], enabled: boolean) => {
     ];
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: refreshToken は古くなった比較を取り直す合図
   useEffect(() => {
     if (!enabled || !idsKey) {
       pendingMapIdsRef.current = [];
       return;
     }
+    // 同じ比較を取り終えて間もないなら、手元の表示をそのまま使う
+    if (isFresh(fetchedRef.current, idsKey)) return;
     const targetIds = idsKey.split(",");
     let disposed = false;
     let staleReload = false;
@@ -156,6 +193,8 @@ export const useCompareResorts = (ids: string[], enabled: boolean) => {
       detailsReady = true;
       publish();
       await maps;
+      if (disposed) return;
+      fetchedRef.current = { key: idsKey, at: Date.now() };
       publish(true);
     };
     void run();
@@ -164,7 +203,7 @@ export const useCompareResorts = (ids: string[], enabled: boolean) => {
       disposed = true;
       pendingMapIdsRef.current = [];
     };
-  }, [enabled, idsKey]);
+  }, [enabled, idsKey, refreshToken]);
 
   const resorts =
     enabled && state.key === idsKey ? state.resorts : EMPTY_RESORTS;

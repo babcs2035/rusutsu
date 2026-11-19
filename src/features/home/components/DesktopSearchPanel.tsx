@@ -12,7 +12,10 @@ import { DEFAULT_LIFT_TICKET_SEARCH_INPUT } from "@/features/lift-ticket/utils/c
 import { cn } from "@/lib/utils";
 import type { MapSkiResort } from "@/types/skiResorts";
 import type { ResortSortControls } from "../hooks/useResortSort";
-import { ComparisonActions } from "./ComparisonActions";
+import {
+  ComparisonActions,
+  useHasComparisonActions,
+} from "./ComparisonActions";
 import { SearchButton } from "./SearchButton";
 import { SkiResortList } from "./SkiResortList";
 
@@ -68,6 +71,8 @@ export const DesktopSearchPanel = ({
 }: Props) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const filterPanelId = useId();
+  // 比較チップの行があれば件数はその右端へ。無ければ並び替えの右に残す
+  const hasComparisonActions = useHasComparisonActions(compareCount);
   const search = () => {
     inputRef.current?.blur();
     onSearch();
@@ -79,14 +84,6 @@ export const DesktopSearchPanel = ({
   const close = () => {
     inputRef.current?.blur();
     onExpandedChange(false);
-  };
-  const editLiftTicketConditions = () => {
-    onExpandedChange(true);
-    window.setTimeout(() => {
-      const calculator = document.getElementById("lift-ticket-calculator");
-      calculator?.scrollIntoView({ behavior: "smooth", block: "center" });
-      calculator?.focus({ preventScroll: true });
-    }, 120);
   };
 
   return (
@@ -214,6 +211,7 @@ export const DesktopSearchPanel = ({
         {!isFilterEditorOpen && (
           <ComparisonActions
             compareCount={compareCount}
+            resultCount={filteredResorts.length}
             isCompareOpen={isCompareOpen}
             onOpenCompare={onOpenCompare}
             onClearCompare={onClearCompare}
@@ -236,7 +234,10 @@ export const DesktopSearchPanel = ({
               onToggleCompare={onToggleCompare}
               onHoverResortChange={onHoverResortChange}
               showHeader={false}
-              onEditLiftTicketConditions={editLiftTicketConditions}
+              showResultCount={!hasComparisonActions}
+              onLiftTicketInputChange={liftTicket =>
+                onFilterChange({ ...filters, liftTicket })
+              }
               liftTicketPaused={liftTicketPaused}
               featureLines={{
                 yukiMagi: filters.yukiMagi,

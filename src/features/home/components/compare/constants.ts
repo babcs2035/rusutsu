@@ -1,5 +1,3 @@
-import type { Elevation } from "./types";
-
 /**
  * 比較のカード並び。1 画面にできるだけ多くのスキー場を出すため、
  * コンテナ幅 340px 前後ごとに列を増やす（@container を付けた親の中で使う）
@@ -26,8 +24,4 @@ export const DESKTOP_SNOW_FORECAST_FEED_INITIAL_SCROLL_X = 20;
 export const DESKTOP_SNOW_FORECAST_FEED_INITIAL_SCROLL_Y = 10;
 export const SNOW_FORECAST_FEED_INITIAL_SCROLL_Y_RATIO = 0.58;
 
-export const ELEVATION_OPTIONS: Array<{ label: string; value: Elevation }> = [
-  { label: "山頂", value: "top" },
-  { label: "中腹", value: "mid" },
-  { label: "山麓", value: "bot" },
-];
+export { ELEVATION_OPTIONS } from "@/features/weather/useWeatherLinks";

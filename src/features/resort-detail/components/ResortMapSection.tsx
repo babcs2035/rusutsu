@@ -65,6 +65,8 @@ type Props = {
   featureDetail: ReactNode | null;
   /** 詳細の置き場所。既定は地図の下 */
   featureDetailPlacement?: FeatureDetailPlacement;
+  /** 現在地ボタンを出すか。比較画面の地図では出さない */
+  showLocationControl?: boolean;
   /** 未選択時の地図の高さ */
   previewHeightClassName?: string;
   /** 選択時の地図の高さ。残りが下の詳細になる（"below" のときだけ効く） */
@@ -142,6 +144,7 @@ export const ResortMapSection = ({
   expandable = true,
   minimalControls = false,
   showOpenOnlyControl = !minimalControls,
+  showLocationControl = true,
   compactControls = false,
   showInlineMapToolbar = true,
   resizableFeatureDetail = false,
@@ -280,7 +283,7 @@ export const ResortMapSection = ({
       showToolbar={showToolbar}
       showOpenOnlyControl={showOpenOnlyControl}
       compactControls={compactControls}
-      showLocationControl={!minimalControls}
+      showLocationControl={showLocationControl && !minimalControls}
       mapTopControls={presentation === "preview" ? mapTopControls : undefined}
       mapStatusFilterShared={controlledShowOpenOnly !== undefined}
       courseColorMode={courseColorMode}

@@ -129,7 +129,13 @@ function measureInPage({ selector, quote, hash }) {
   const norm = s => (s || "").replace(/\s+/g, "");
   const CHROME =
     "header, nav, footer, aside, [role=navigation], [role=banner], [role=contentinfo], [class*=menu], [class*=Menu], [id*=menu], [class*=chat], [id*=chat]";
-  const inChrome = n => !!n.closest(CHROME);
+  // body・html に menu などのクラスが付いたサイトでは、ページ全体をメニュー扱いにしない
+  const inChrome = n => {
+    for (let c = n.closest(CHROME); c; c = c.parentElement?.closest(CHROME)) {
+      if (c !== document.body && c !== document.documentElement) return true;
+    }
+    return false;
+  };
   const isFixed = n => {
     for (; n && n !== document.body; n = n.parentElement) {
       const p = getComputedStyle(n).position;
@@ -141,7 +147,9 @@ function measureInPage({ selector, quote, hash }) {
     const r = n.getBoundingClientRect();
     return r.width > 0 && r.height > 0 && getComputedStyle(n).visibility !== "hidden";
   };
-  const unique = id => document.querySelectorAll(`[id="${CSS.escape(id)}"]`).length === 1;
+  // 古いサイトは window.CSS を上書きしていることがあるので CSS.escape を使わない
+  const unique = id =>
+    document.querySelectorAll(`[id="${id.replace(/["\\]/g, "\\$&")}"]`).length === 1;
   const findText = q => {
     q = norm(q);
     if (!q) return null;
@@ -320,6 +328,9 @@ async function audit(ids, run, write) {
       );
       for (const [i, { item, index }] of entries.entries()) {
         const row = { index, type: item.type, label: item.label ?? null, url: item.url, problems: [] };
+        // 1ページ＝1件。同じ種類で同じページを節ごとに分けた2件目以降を指摘する
+        if (entries.slice(0, i).some(other => other.item.type === item.type))
+          row.problems.push("同じ種類で同じページの項目がほかにある。1件にまとめる（節ごとに分けない）");
         const d = measured.desktop;
         if (d.error) row.problems.push(`開けない: ${d.error}`);
         else if ([401, 403, 429].includes(d.status))

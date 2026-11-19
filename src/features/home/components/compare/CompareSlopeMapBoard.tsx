@@ -29,7 +29,10 @@ import {
 } from "@/features/resort-detail/utils/detailMetrics";
 import { createLiftStatusSummary } from "@/features/resort-detail/utils/liftStatusSummary";
 import type { CourseStatusSummary } from "@/lib/courseStatusSummary";
-import { getResortSearchName } from "@/lib/resortAliases";
+import {
+  getResortSearchName,
+  getResortSearchWordName,
+} from "@/lib/resortAliases";
 import { cn } from "@/lib/utils";
 import type { MapSkiResort } from "@/types/skiResorts";
 import {
@@ -38,6 +41,7 @@ import {
   CompareCarouselPager,
   useCompareCarousel,
 } from "./CompareCarousel";
+import { CompareResortDetailButton } from "./CompareResortNameCell";
 import type { Resort } from "./types";
 
 type FeatureSelection = {
@@ -283,6 +287,7 @@ export const CompareSlopeMapTab = ({
   DynamicMap,
   mapResorts,
   onMapResortsNeeded,
+  onSelectResort,
   courseColorMode,
   onCourseColorModeChange,
   mapDisplaySettings,
@@ -297,6 +302,8 @@ export const CompareSlopeMapTab = ({
   mapResorts: MapSkiResort[];
   /** 表示中・隣のスキー場。地図データを先に取るために知らせる */
   onMapResortsNeeded?: (ids: string[]) => void;
+  /** 「詳細」で開くスキー場。渡さなければボタンを出さない */
+  onSelectResort?: (id: string) => void;
   /** 表示設定は比較画面全体で 1 つ持ち、タブ行のツールバーから変える */
   courseColorMode: CourseColorMode;
   onCourseColorModeChange: (mode: CourseColorMode) => void;
@@ -341,6 +348,7 @@ export const CompareSlopeMapTab = ({
                 selection={selectionByResortId[resort.id] ?? EMPTY_SELECTION}
                 onSelectionChange={next => setSelection(resort.id, next)}
                 className="h-full"
+                onSelectResort={onSelectResort}
                 showInlineMapToolbar={false}
                 // 縮尺は詳細と同じものを右下に出す
                 compactControls
@@ -354,7 +362,11 @@ export const CompareSlopeMapTab = ({
                 onMapTileVariantChange={onMapTileVariantChange}
               />
             ) : (
-              <SlopeMapCardShell resort={resort} className="h-full">
+              <SlopeMapCardShell
+                resort={resort}
+                onSelectResort={onSelectResort}
+                className="h-full"
+              >
                 <SlopeMapPlaceholder />
               </SlopeMapCardShell>
             )}
@@ -397,6 +409,7 @@ export const CompareSlopeMapBoard = ({
   selection,
   onSelectionChange,
   onMapResortsNeeded,
+  onSelectResort,
   className,
   style,
 }: {
@@ -405,6 +418,8 @@ export const CompareSlopeMapBoard = ({
   mapResorts: MapSkiResort[];
   /** 見えているスキー場。地図データを先に取るために知らせる */
   onMapResortsNeeded?: (ids: string[]) => void;
+  /** 「詳細」で開くスキー場。渡さなければボタンを出さない */
+  onSelectResort?: (id: string) => void;
   courseColorMode: CourseColorMode;
   onCourseColorModeChange: (mode: CourseColorMode) => void;
   mapDisplaySettings?: MapDisplaySettings;
@@ -503,6 +518,7 @@ export const CompareSlopeMapBoard = ({
                     )
                   }
                   className="h-[46vh] min-h-[340px] shadow-sm"
+                  onSelectResort={onSelectResort}
                   allowPreviewInteraction
                   // 詳細は右の比較パネルに重ねて出すので、カードには出さない
                   featureDetailPlacement="external"
@@ -521,6 +537,7 @@ export const CompareSlopeMapBoard = ({
               ) : (
                 <SlopeMapCardShell
                   resort={resort}
+                  onSelectResort={onSelectResort}
                   className="h-[46vh] min-h-[340px] shadow-sm"
                 >
                   <SlopeMapPlaceholder />
@@ -600,6 +617,10 @@ export const CompareSlopeFeatureDetail = ({
             resort.nameJa,
             resort.shortName,
           )}
+          resortSearchWordName={getResortSearchWordName(
+            resort.id,
+            resort.nameJa,
+          )}
           courseObservedAt={resort.finalizedMapData?.courses?.observedAt}
           liftObservedAt={resort.finalizedMapData?.lifts?.observedAt}
           courseSourceUrls={resort.finalizedMapData?.courses?.sourceUrls ?? []}
@@ -620,10 +641,12 @@ export const CompareSlopeFeatureDetail = ({
 
 const SlopeMapCardShell = ({
   resort,
+  onSelectResort,
   children,
   className,
 }: {
   resort: Resort;
+  onSelectResort?: (id: string) => void;
   children?: ReactNode;
   className?: string;
 }) => (
@@ -634,10 +657,19 @@ const SlopeMapCardShell = ({
     )}
   >
     <div className="@container shrink-0 px-3 py-2">
-      {/* 名前は省略しない。どのスキー場の地図かが分からなくなるため */}
-      <p className="text-sm leading-tight font-bold break-words text-gray-900 font-[var(--font-heading)]">
-        {resort.nameJa}
-      </p>
+      <div className="flex min-w-0 items-center gap-2">
+        {/* 名前は省略しない。どのスキー場の地図かが分からなくなるため */}
+        <p className="min-w-0 text-sm leading-tight font-bold break-words text-gray-900 font-[var(--font-heading)]">
+          {resort.nameJa}
+        </p>
+        {onSelectResort && (
+          <CompareResortDetailButton
+            resortId={resort.id}
+            onSelectResort={onSelectResort}
+            className="ml-auto"
+          />
+        )}
+      </div>
       <div className="mt-1 flex items-center gap-2">
         <OperationCount label="コース" summary={getCourseSummary(resort)} />
         <OperationCount label="リフト" summary={getLiftSummary(resort)} lift />
@@ -653,6 +685,7 @@ const ResortSlopeMapCard = ({
   mapResorts,
   selection,
   onSelectionChange,
+  onSelectResort,
   className,
   allowPreviewInteraction = false,
   featureDetailPlacement = "below",
@@ -672,6 +705,7 @@ const ResortSlopeMapCard = ({
   mapResorts: MapSkiResort[];
   selection: FeatureSelection;
   onSelectionChange: (next: Partial<FeatureSelection>) => void;
+  onSelectResort?: (id: string) => void;
   className?: string;
   /** デスクトップの並びは、その場で地図を動かせるようにする */
   allowPreviewInteraction?: boolean;
@@ -717,6 +751,7 @@ const ResortSlopeMapCard = ({
           resort.nameJa,
           resort.shortName,
         )}
+        resortSearchWordName={getResortSearchWordName(resort.id, resort.nameJa)}
         courseObservedAt={resort.finalizedMapData?.courses?.observedAt}
         liftObservedAt={resort.finalizedMapData?.lifts?.observedAt}
         courseSourceUrls={resort.finalizedMapData?.courses?.sourceUrls ?? []}
@@ -735,7 +770,11 @@ const ResortSlopeMapCard = ({
     ) : null;
 
   return (
-    <SlopeMapCardShell resort={resort} className={className}>
+    <SlopeMapCardShell
+      resort={resort}
+      onSelectResort={onSelectResort}
+      className={className}
+    >
       <ResortMapSection
         DynamicMap={DynamicMap}
         resortId={resort.id}
@@ -754,6 +793,8 @@ const ResortSlopeMapCard = ({
         showInlineMapToolbar={showInlineMapToolbar}
         // 「営業中のみ」は比較全体で 1 つ。上の帯に出すので地図には出さない
         showOpenOnlyControl={false}
+        // 現在地は比較では使わない
+        showLocationControl={false}
         compactControls={compactControls}
         previewHeightClassName="min-h-0 flex-1"
         selectedHeightClassName="h-[48%] min-h-[160px] shrink-0"

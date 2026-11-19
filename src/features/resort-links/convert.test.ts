@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   externalSiteRows,
+  type OfficialLinkFile,
   officialLinkFileSchema,
   officialLinkRows,
   siteLinkLabel,
@@ -68,7 +69,7 @@ test("書かれていない種類・担当外の種類・URLの無い found は�
   );
 });
 
-test("外部サイトはツアーとバスのみを分け、共通券はスキー場ごとの行にする", () => {
+test("外部サイトはツアーとバスのみを分け、ツアーは1スキー場1件・名前なし、共通券はスキー場ごとの行にする", () => {
   const rows = externalSiteRows({
     siteId: "accessNetwork",
     siteName: "北海道アクセスネットワーク",
@@ -80,6 +81,14 @@ test("外部サイトはツアーとバスのみを分け、共通券はスキ�
         kind: "tour",
         label: "ルスツリゾート：リフト券パック （札幌市内⇒ルスツ）",
         note: "クローラーのメモ",
+        resortIds: ["rusutsu-resort"],
+        method: "exact",
+      },
+      {
+        name: "ルスツリゾート",
+        url: "https://example.com/pack2",
+        kind: "tour",
+        label: "関西発",
         resortIds: ["rusutsu-resort"],
         method: "exact",
       },
@@ -103,7 +112,7 @@ test("外部サイトはツアーとバスのみを分け、共通券はスキ�
   assert.deepEqual(
     rows.map(row => [row.resortId, row.type, row.label, row.note]),
     [
-      ["rusutsu-resort", "busTour", "リフト券パック （札幌市内⇒ルスツ）", null],
+      ["rusutsu-resort", "busTour", null, null],
       ["rusutsu-resort", "transitAccess", "新千歳空港⇔ルスツ・ニセコ", null],
       [
         "niseko-village-ski-resort",
@@ -126,4 +135,35 @@ test("ラベルの先頭のスキー場名だけを落とす", () => {
     "Mt.T (谷川岳)",
   );
   assert.equal(siteLinkLabel(undefined, "苗場"), null);
+});
+
+test("公式リンクは同じページを出発地ごとに分けず1行にする", () => {
+  const rows = officialLinkRows({
+    resortId: "tsugaike-mountain-resort",
+    checkedAt: "2026-11-19",
+    officialSites: ["https://www.tsugaike.gr.jp/"],
+    items: OFFICIAL_SKILL_LINK_TYPES.map<OfficialLinkFile["items"][number]>(
+      type =>
+        type === "transitAccess"
+          ? {
+              type,
+              status: "found" as const,
+              url: "https://www.tsugaike.gr.jp/access",
+              jumpUrl: "https://www.tsugaike.gr.jp/access#bus",
+              label: "バス",
+            }
+          : { type, status: "none" as const, note: "なし" },
+    ).concat({
+      type: "transitAccess",
+      status: "found",
+      url: "https://www.tsugaike.gr.jp/access/",
+      label: "電車",
+    }),
+    legacyFindings: [],
+    notes: [],
+  });
+  assert.deepEqual(
+    rows.map(row => [row.type, row.label, row.url]),
+    [["transitAccess", null, "https://www.tsugaike.gr.jp/access"]],
+  );
 });

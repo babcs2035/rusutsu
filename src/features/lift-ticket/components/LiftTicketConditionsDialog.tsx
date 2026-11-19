@@ -8,27 +8,12 @@ import {
   DialogPortal,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { LiftTicketConditionsButton } from "@/features/lift-ticket/components/LiftTicketConditionsButton";
-import { TicketPartyEditor } from "@/features/lift-ticket/components/TicketPartyEditor";
-import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
+import type { LiftTicketSearchInput } from "../types";
+import { SEARCH_RENTAL_OPTIONS } from "../utils/rental";
+import { TicketPartyEditor } from "./TicketPartyEditor";
 
-export const CompareLiftTicketConditionsButton = ({
-  input,
-  onClick,
-  className,
-}: {
-  input: LiftTicketSearchInput;
-  onClick: () => void;
-  className?: string;
-}) => (
-  <LiftTicketConditionsButton
-    input={input}
-    onClick={onClick}
-    className={className}
-  />
-);
-
-export const CompareLiftTicketConditionsDialog = ({
+/** 料金の計算条件を編集するモーダル（一覧・比較で共用）。中身は検索欄の「料金を計算する」と同じ。 */
+export const LiftTicketConditionsDialog = ({
   open,
   onOpenChange,
   value,
@@ -53,7 +38,12 @@ export const CompareLiftTicketConditionsDialog = ({
           <XIcon size={16} />
         </DialogPrimitive.Close>
         <div className="mt-2">
-          <TicketPartyEditor value={value} onChange={onChange} />
+          {/* 検索欄の「料金を計算する」と同じ項目（レンタル含む）を出す */}
+          <TicketPartyEditor
+            value={value}
+            onChange={onChange}
+            rentalOptions={SEARCH_RENTAL_OPTIONS}
+          />
         </div>
       </DialogPrimitive.Popup>
     </DialogPortal>

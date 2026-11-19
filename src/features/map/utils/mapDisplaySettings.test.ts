@@ -7,6 +7,8 @@ import {
   createFinalizedLayers,
   EMPTY_STYLE_STATE,
   FINALIZED_LAYER,
+  getFlowDashFrames,
+  getFlowDashLevel,
   getLineColor,
   getLineOpacity,
 } from "../maplibre/finalizedLayers";
@@ -131,7 +133,7 @@ test("通常時は全状態、営業中のみは初期○・△、不明は選�
   );
 });
 
-test("営業中のみ・非圧雪表示の設定でリフトの全レイヤーを変えない", () => {
+test("営業中のみでもリフトのレイヤーは変えず、縞は運行中とそれ以外で分ける", () => {
   const off = createFinalizedLayers(EMPTY_STYLE_STATE, 24).filter(layer =>
     layer.id.includes("lift"),
   );
@@ -139,7 +141,22 @@ test("営業中のみ・非圧雪表示の設定でリフトの全レイヤー�
     { ...EMPTY_STYLE_STATE, showOpenOnly: true, showUngroomed: false },
     24,
   ).filter(layer => layer.id.includes("lift"));
+  // 止める・流すはコマ送りで切り替えるので、レイヤー自体は同じまま
   assert.deepEqual(on, off);
+  const flowFilters = off
+    .filter(layer => layer.id.includes("lift-flow"))
+    .map(layer => JSON.stringify("filter" in layer ? layer.filter : null));
+  assert.equal(flowFilters.length, 6);
+  assert.equal(
+    flowFilters.filter(text => text.includes('["==",["get","status"],"open"]'))
+      .length,
+    3,
+  );
+  assert.equal(
+    flowFilters.filter(text => text.includes('["!=",["get","status"],"open"]'))
+      .length,
+    3,
+  );
   const masks = [true, false].map(showUngroomed =>
     createFinalizedLayers({ ...EMPTY_STYLE_STATE, showUngroomed }, 24).find(
       layer => layer.id === FINALIZED_LAYER.courseUngroomedMask,
@@ -186,4 +203,25 @@ test("営業中のみでもコースの濃さは変えない", () => {
     getLineOpacity({ ...EMPTY_STYLE_STATE, showOpenOnly: true }, "course"),
     getLineOpacity(EMPTY_STYLE_STATE, "course"),
   );
+});
+
+test("流れる縞の長さは整数ズームをまたぐ所でだけ変わり、拡大するほど長くなる", () => {
+  // 拡大の途中で付け直すと縞が始点側へずれて見えるので、整数ズームの間は同じ段階
+  for (const zoom of [12, 14, 15, 16]) {
+    assert.equal(getFlowDashLevel(zoom), getFlowDashLevel(zoom + 0.99));
+  }
+  const periods = [13, 14, 15, 16, 17].map(zoom =>
+    getFlowDashFrames(getFlowDashLevel(zoom))[0].reduce((a, b) => a + b, 0),
+  );
+  assert.equal(periods[0], periods[1]);
+  for (let index = 2; index < periods.length; index++) {
+    assert.ok(periods[index] > periods[index - 1]);
+  }
+  // どのコマも [塗り, 隙間, 塗り, 隙間] の 4 要素で、負の値や細い切れ端がない
+  for (const level of [0, 1, 2, 3]) {
+    for (const frame of getFlowDashFrames(level)) {
+      assert.equal(frame.length, 4);
+      assert.ok(frame.every(value => value === 0 || value >= 0.01));
+    }
+  }
 });

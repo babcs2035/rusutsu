@@ -71,6 +71,7 @@ import type {
   ElevationProfileMapPoint,
   SelectedMapFeature,
 } from "@/features/map/types";
+import { useSimultaneousView } from "@/features/resort-detail/components/SimultaneousToggle";
 import { useWarmShareImage } from "@/features/share/useWarmShareImage";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
@@ -387,14 +388,20 @@ function HomeClientContent({
     };
   }, [selectedResortId, detailRetry]);
 
+  // 「〇〇も同時に表示」中は相手のスキー場のコース・リフトも選べるので、
+  // 組をまとめた地図で、選んだ線がまだあるかを確かめる
+  const simultaneousView = useSimultaneousView(selectedResortData ?? null);
+  const displayedGeometry = simultaneousView.mapData;
+  const isDisplayedGeometryLoading = simultaneousView.loading;
   useEffect(() => {
     if (
       !selectedFinalizedFeature ||
       !selectedResortData ||
-      selectedResortData.id !== selectedResortId
+      selectedResortData.id !== selectedResortId ||
+      isDisplayedGeometryLoading
     )
       return;
-    const geometry = selectedResortData.finalizedMapData;
+    const geometry = displayedGeometry;
     const selected = selectedFinalizedFeature;
     const exists =
       selected.kind === "course"
@@ -404,7 +411,13 @@ function HomeClientContent({
           )
         : geometry?.lifts?.features.some(lift => lift.id === selected.id);
     if (!exists) setSelectedFinalizedFeature(null);
-  }, [selectedFinalizedFeature, selectedResortData, selectedResortId]);
+  }, [
+    displayedGeometry,
+    isDisplayedGeometryLoading,
+    selectedFinalizedFeature,
+    selectedResortData,
+    selectedResortId,
+  ]);
 
   useEffect(() => {
     const value: HomeSession = {
@@ -435,10 +448,11 @@ function HomeClientContent({
     // 地図移動は URL 履歴を増やさない。スキー場の切り替えだけ履歴に積み、
     // ブラウザの戻る・進むで前のスキー場（またはホーム）へ戻れるようにする。
     const url = new URL(window.location.href);
-    const compareIds = isCompareOpen
+    const isCompareShown = isCompareOpen && !selectedResortId;
+    const compareIds = isCompareShown
       ? (favoriteCompareIds ?? selectedCompareIds)
       : [];
-    const shouldShowCompareUrl = isCompareOpen && compareIds.length > 0;
+    const shouldShowCompareUrl = isCompareShown && compareIds.length > 0;
     url.pathname = resortPathname(
       shouldShowCompareUrl ? null : selectedResortId,
     );
@@ -510,13 +524,17 @@ function HomeClientContent({
     isCompareOpen && favoriteCompareIds !== null
       ? favoriteCompareIds
       : selectedCompareIds;
+  // 比較から詳細を開いている間も比較は閉じず、詳細の裏に残す。
+  // 画面に出ているのは比較が開いていて、詳細を開いていないときだけ
+  const isCompareVisible = isCompareOpen && !selectedResortId;
+  const isCompareBehindDetail = isCompareOpen && Boolean(selectedResortId);
   useWarmShareImage(
-    isCompareOpen
+    isCompareVisible
       ? activeCompareIds
       : selectedResortId
         ? [selectedResortId]
         : [],
-    isCompareOpen,
+    isCompareVisible,
   );
   const selectedCompareIdSet = useMemo(
     () => new Set(activeCompareIds),
@@ -527,10 +545,10 @@ function HomeClientContent({
     resorts: compareResortData,
     isLoading: isCompareLoading,
     prioritize: onCompareMapResortsNeeded,
-  } = useCompareResorts(activeCompareIds, isCompareOpen);
+  } = useCompareResorts(activeCompareIds, isCompareOpen, isCompareVisible);
   usePrefetchRecommendations([
     selectedResortData?.id === selectedResortId ? selectedResortId : null,
-    ...(isCompareOpen ? compareResortData.slice(0, 4).map(r => r.id) : []),
+    ...(isCompareVisible ? compareResortData.slice(0, 4).map(r => r.id) : []),
   ]);
   useEffect(() => {
     void retainComparedDetails(
@@ -548,7 +566,7 @@ function HomeClientContent({
         : null,
     [initialResorts, selectedResortId],
   );
-  const mapInteractionMode = isCompareOpen
+  const mapInteractionMode = isCompareVisible
     ? "compare"
     : selectedResortId
       ? "detail"
@@ -889,17 +907,17 @@ function HomeClientContent({
       if (id === selectedResortId) return;
       setMobileContentTab("info");
       setHoveredResortId(null);
-      saveReturnViewState();
+      // 比較から開いた詳細は、閉じると比較へ戻す。比較は閉じずに裏へ残し、
+      // 比較を閉じたときの戻り先（比較を開く前の画面）も上書きしない
+      if (!isCompareOpen) saveReturnViewState();
       hasUserInteractedWithMapInDetailRef.current = false;
-      setIsCompareOpen(false);
-      setFavoriteCompareIds(null);
       setSelectedFinalizedFeature(null);
       setSelectedElevationProfilePoint(null);
       setSelectedResortId(id);
       setIsListSheetOpen(false); // モーダルを開くときにボトムシートを閉じる
       setSelectedResortData(null);
     },
-    [saveReturnViewState, selectedResortId],
+    [isCompareOpen, saveReturnViewState, selectedResortId],
   );
 
   // 詳細・比較を閉じる際，開く前のタブへ戻す。地図タブから開いたなら地図タブ，
@@ -920,6 +938,18 @@ function HomeClientContent({
   }, [hasSearched, isSidePanelLayout]);
 
   const handleCloseDetail = () => {
+    if (isCompareOpen) {
+      // 比較から開いた詳細は、裏に残した比較へそのまま戻す（再取得・再描画しない）
+      setSelectedResortId(null);
+      setSelectedResortData(null);
+      setSelectedFinalizedFeature(null);
+      setSelectedElevationProfilePoint(null);
+      setHoveredResortId(null);
+      hasUserInteractedWithMapInDetailRef.current = false;
+      setMobileContentTab("info");
+      if (!isSidePanelLayout) setIsListSheetOpen(true);
+      return;
+    }
     // 戻り状態の有無で復帰方法が変わるため、閉じる前に確認しておく
     // （closeMobileContentTab / restoreReturnViewState が参照・破棄する）。
     const hasReturnViewState = returnViewStateRef.current !== null;
@@ -959,6 +989,11 @@ function HomeClientContent({
       close: handleCloseDetail,
       closeCompare: () => handleCloseCompare(true),
       restoreCompare: ids => {
+        // 比較から開いた詳細でブラウザの戻るを押したときは、裏の比較へ戻すだけ
+        if (isCompareOpen && ids.join(",") === activeCompareIds.join(",")) {
+          handleCloseDetail();
+          return;
+        }
         setSelectedResortId(null);
         setSelectedResortData(null);
         setSelectedFinalizedFeature(null);
@@ -1020,7 +1055,9 @@ function HomeClientContent({
       const navigation = historyNavigationRef.current;
       urlHistoryModeRef.current = "replace";
       if (pathId) {
-        if (navigation.isCompareOpen) navigation.closeCompare();
+        // 比較から詳細へ「進む」ときは比較を裏に残す。それ以外の詳細へ移るときは閉じる
+        if (navigation.isCompareOpen && navigation.selectedResortId)
+          navigation.closeCompare();
         if (resortIds.has(pathId) && pathId !== navigation.selectedResortId)
           navigation.select(pathId);
         else if (!resortIds.has(pathId) && navigation.selectedResortId)
@@ -1032,21 +1069,22 @@ function HomeClientContent({
         navigation.restoreCompare(compareIds);
         return;
       }
-      if (navigation.isCompareOpen) navigation.closeCompare();
+      // 比較の裏で詳細を開いているときは、詳細を閉じてから比較を閉じる
       if (navigation.selectedResortId) navigation.close();
+      if (navigation.isCompareOpen) navigation.closeCompare();
     };
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, [initialResorts, compareUrl]);
   useEffect(() => {
     const resort = initialResorts.find(item => item.id === selectedResortId);
-    document.title = isCompareOpen
+    document.title = isCompareVisible
       ? `スキー場比較 ${activeCompareIds.length}件 | Rusutsu`
       : resortDocumentTitle(resort?.nameJa ?? null);
   }, [
     initialResorts,
     selectedResortId,
-    isCompareOpen,
+    isCompareVisible,
     activeCompareIds.length,
   ]);
 
@@ -1177,7 +1215,7 @@ function HomeClientContent({
   const shouldRenderMobileListSheet =
     !isSidePanelLayout &&
     !selectedResortId &&
-    (isCompareOpen || mobileContentTab === "info");
+    (isCompareVisible || mobileContentTab === "info");
 
   const homeCompare = {
     source: compareSource,
@@ -1189,6 +1227,15 @@ function HomeClientContent({
       ),
     onTabChange: () => {
       if (compareSource.kind === "selection") {
+        // URLから開いた比較は、手で選んだ比較とは別に ids を持つ
+        if (favoriteCompareIds !== null) {
+          const removed = new Set(pendingCompareRemovals);
+          const next = favoriteCompareIds.filter(id => !removed.has(id));
+          setPendingCompareRemovals([]);
+          setFavoriteCompareIds(next.length > 0 ? next : null);
+          if (next.length === 0) setIsCompareOpen(false);
+          return;
+        }
         // 外したスキー場は、タブを切り替えたときに消す。全部外したら比較を閉じる
         if (commitCompareRemovals().length === 0) {
           setFavoriteCompareIds(null);
@@ -1268,7 +1315,8 @@ function HomeClientContent({
               hoveredResortId={hoveredResortId}
               initialResorts={initialResorts}
               isCompareLoading={isCompareLoading}
-              isCompareOpen={isCompareOpen}
+              isCompareOpen={isCompareVisible}
+              isCompareBehindDetail={isCompareBehindDetail}
               onCompareMapResortsNeeded={onCompareMapResortsNeeded}
               isFilterEditorOpen={isFilterEditorOpen}
               isMobileFilterOverlayOpen={isMobileFilterOverlayOpen}

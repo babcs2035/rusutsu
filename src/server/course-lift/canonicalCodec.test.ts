@@ -2,13 +2,17 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { MapCourse } from "@prisma/client";
 import {
+  elevationRange,
   entityFeature,
   liftAttributes,
   mapDocumentKind,
   splitDerivedFeature,
   splitFeature,
 } from "./canonicalCodec";
-import { summarizeOperationEntities } from "./operations";
+import {
+  summarizeCourseElevation,
+  summarizeOperationEntities,
+} from "./operations";
 
 test("numeric tower counts and construction years survive legacy imports", () => {
   assert.equal(liftAttributes({ towers: 19, year: 1995 }).towers, "19");
@@ -89,6 +93,8 @@ test("geometry is kept once and map metrics are extracted into numeric columns",
   assert.equal(derived.horizontalDistance, 90);
   assert.equal(derived.calculatedMaxSlope, 20);
   assert.equal(derived.elevationReady, true);
+  assert.equal(derived.minElevation, 970);
+  assert.equal(derived.maxElevation, 1000);
   assert.equal(derived.derivedProperties.slope_deg, undefined);
   assert.equal(derived.derivedProperties.horizontal_dist_map, undefined);
   assert.equal(derived.derivedProperties.distance, undefined);
@@ -304,4 +310,42 @@ test("only map, mapping and detail document families are virtualized", () => {
     null,
   );
   assert.equal(mapDocumentKind("reviews/sample/detail.json"), null);
+});
+
+test("elevation range reads only numeric altitudes of line strings", () => {
+  assert.deepEqual(
+    elevationRange({
+      type: "LineString",
+      coordinates: [
+        [140, 43, 812.4],
+        [140, 43],
+        [140, 43, 655.6],
+      ],
+    }),
+    { minElevation: 655.6, maxElevation: 812.4 },
+  );
+  assert.deepEqual(
+    elevationRange({ type: "LineString", coordinates: [[140, 43]] }),
+    { minElevation: null, maxElevation: null },
+  );
+  assert.deepEqual(
+    elevationRange({ type: "Point", coordinates: [140, 43, 900] }),
+    { minElevation: null, maxElevation: null },
+  );
+});
+
+test("resort elevation uses the highest and lowest course points", () => {
+  assert.deepEqual(
+    summarizeCourseElevation([
+      { minElevation: 600.4, maxElevation: 990.6 },
+      { minElevation: 421.6, maxElevation: 700 },
+      { minElevation: null, maxElevation: null },
+    ]),
+    { top: 991, base: 422 },
+  );
+  assert.equal(
+    summarizeCourseElevation([{ minElevation: null, maxElevation: null }]),
+    null,
+  );
+  assert.equal(summarizeCourseElevation([]), null);
 });

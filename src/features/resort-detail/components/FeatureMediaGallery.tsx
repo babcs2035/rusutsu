@@ -63,6 +63,8 @@ export function FeatureMediaGallery({
               src={url}
               title={`${name}のYouTube動画 ${index + 1}`}
               loading="lazy"
+              // 本番の same-origin ポリシーのままだと送り元が届かず、YouTube がエラー153を返す
+              referrerPolicy="strict-origin-when-cross-origin"
               allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
               className="aspect-video w-full border-0"

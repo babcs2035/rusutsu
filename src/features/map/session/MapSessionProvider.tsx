@@ -22,6 +22,10 @@ type LocationState = {
   position: UserPosition | null;
   loading: boolean;
   enabled: boolean;
+  /** 位置情報が許可されていない、または使えない環境 */
+  unavailable: boolean;
+  /** 最後に拒否・利用不可と判定した時刻。押し直しの結果を見分けるのに使う */
+  deniedAt: number;
   error: string | null;
   selectResort: (id: string) => void;
   request: () => void;
@@ -43,6 +47,8 @@ export function MapSessionProvider({
   const [enabled, setEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [unavailable, setUnavailable] = useState(false);
+  const [deniedAt, setDeniedAt] = useState(0);
   const [attempt, setAttempt] = useState(0);
   const [visible, setVisible] = useState(true);
   const generation = useRef(0);
@@ -88,6 +94,8 @@ export function MapSessionProvider({
     }
     if (!window.isSecureContext || !navigator.geolocation) {
       setError("現在地を取得できません。HTTPSで開いてください。");
+      setUnavailable(true);
+      setDeniedAt(Date.now());
       setLoading(false);
       setEnabled(false);
       return;
@@ -114,6 +122,7 @@ export function MapSessionProvider({
         });
         setLoading(false);
         setError(null);
+        setUnavailable(false);
         clearTimeout(expiry);
         expiry = setTimeout(() => {
           setPosition(null);
@@ -131,7 +140,11 @@ export function MapSessionProvider({
               ? "現在地の取得に時間がかかっています。もう一度お試しください。"
               : "現在地を取得できません。電波の届く場所でお試しください。",
         );
-        if (failure.code === 1) setEnabled(false);
+        if (failure.code === 1) {
+          setEnabled(false);
+          setUnavailable(true);
+          setDeniedAt(Date.now());
+        }
       },
       { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 },
     );
@@ -148,6 +161,8 @@ export function MapSessionProvider({
         position,
         loading,
         enabled,
+        unavailable,
+        deniedAt,
         error,
         request,
         stop,

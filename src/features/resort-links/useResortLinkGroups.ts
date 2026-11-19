@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { getResortLinkLists } from "@/actions/skiResorts";
 import type { Resort } from "@/features/resort-detail/types";
-import { detailLinkItems } from "./detailItems";
+import { DETAIL_WEATHER_TYPES, detailLinkItems } from "./detailItems";
 import {
   groupResortLinks,
   type ResortLinkGroupView,
@@ -106,7 +106,11 @@ export const useResortLinkGroups = (
           groups:
             items === null
               ? []
-              : groupResortLinks([...items, ...detailLinkItems(resort)])
+              : groupResortLinks([
+                  // 天気サイトは天気タブと同じリンクだけ（旧データの全地点は出さない）
+                  ...items.filter(item => !DETAIL_WEATHER_TYPES.has(item.type)),
+                  ...detailLinkItems(resort),
+                ])
                   .map(group => ({
                     ...group,
                     types: group.types.filter(type => type.links.length > 0),

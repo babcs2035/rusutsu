@@ -1,4 +1,13 @@
-// 検索ワードには、地図表示用の省略名があればそれを優先して使う。
+/**
+ * コース・リフトの動画検索ワードに付けるスキー場名。
+ * 省略名は動画の題名と合わないことがあるので、正式名（「スキー場」込み）を使う。
+ */
+export const getResortSearchWordName = (
+  resortId: string,
+  nameJa: string,
+): string => nameJa.trim() || resortId;
+
+// 管理画面の絞り込みや地図ラベルの元になる名前。省略名があれば優先する。
 export const getResortSearchName = (
   resortId: string,
   fallbackName: string,

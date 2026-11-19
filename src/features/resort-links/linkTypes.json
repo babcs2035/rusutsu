@@ -1,5 +1,5 @@
 {
-  "$comment": "スキー場リンク一覧の固定の型。グループと種類の並び順は全スキー場で同じ。owners は「誰が集めるか」: officialSkill=公式リンク収集スキル（resort_links）, externalCrawler=外部サイトのクローラー（resort_links）, legacyLinks=SkiResortLinks.json, statusCrawler=営業状況クローラー, liftTicket=リフト券データ, yukiMagi=雪マジのテーブル, derived=緯度経度から作る",
+  "$comment": "スキー場リンク一覧の固定の型。グループと種類の並び順は全スキー場で同じ。owners は「誰が集めるか」: officialSkill=公式リンク収集スキル（resort_links）, externalCrawler=外部サイトのクローラー（resort_links）, legacyLinks=SkiResortLinks.json, statusCrawler=営業状況クローラー, liftTicket=リフト券データ, yukiMagi=雪マジのテーブル, derived=緯度経度から作る。displayAs は画面で別の種類にまとめて出す（同じページは1つ）",
   "groups": [
     {
       "id": "basic",
@@ -77,11 +77,21 @@
           "label": "リフト券料金",
           "owners": ["liftTicket"]
         },
-        { "type": "webPurchase", "label": "Web購入", "owners": ["liftTicket"] },
+        {
+          "type": "webPurchase",
+          "label": "Web購入",
+          "owners": ["liftTicket"]
+        },
         {
           "type": "rentalPrice",
-          "label": "レンタル料金",
+          "label": "レンタル",
           "owners": ["liftTicket"]
+        },
+        {
+          "type": "rentalShop",
+          "label": "レンタル店",
+          "owners": ["officialSkill"],
+          "displayAs": "rentalPrice"
         },
         {
           "type": "officialDiscount",
@@ -93,7 +103,11 @@
           "label": "シーズン券・共通パス",
           "owners": ["officialSkill", "externalCrawler"]
         },
-        { "type": "yukiMagi", "label": "雪マジ", "owners": ["yukiMagi"] },
+        {
+          "type": "yukiMagi",
+          "label": "雪マジ",
+          "owners": ["yukiMagi"]
+        },
         {
           "type": "externalDiscount",
           "label": "外部割引",
@@ -111,11 +125,6 @@
           "owners": ["officialSkill"]
         },
         {
-          "type": "rentalShop",
-          "label": "レンタル店",
-          "owners": ["officialSkill"]
-        },
-        {
           "type": "skiSchool",
           "label": "スキースクール",
           "owners": ["legacyLinks"]
@@ -125,9 +134,21 @@
           "label": "スノーボードスクール",
           "owners": ["legacyLinks"]
         },
-        { "type": "kidsPark", "label": "キッズ", "owners": ["officialSkill"] },
-        { "type": "onsen", "label": "温泉", "owners": ["officialSkill"] },
-        { "type": "lodging", "label": "宿泊", "owners": ["officialSkill"] }
+        {
+          "type": "kidsPark",
+          "label": "キッズ",
+          "owners": ["officialSkill"]
+        },
+        {
+          "type": "onsen",
+          "label": "温泉",
+          "owners": ["officialSkill"]
+        },
+        {
+          "type": "lodging",
+          "label": "宿泊",
+          "owners": ["officialSkill"]
+        }
       ]
     },
     {
@@ -136,10 +157,14 @@
       "types": [
         {
           "type": "carAccess",
-          "label": "アクセス案内",
+          "label": "アクセス",
           "owners": ["officialSkill"]
         },
-        { "type": "parking", "label": "駐車場", "owners": ["officialSkill"] },
+        {
+          "type": "parking",
+          "label": "駐車場",
+          "owners": ["officialSkill"]
+        },
         {
           "type": "roadCamera",
           "label": "道路カメラ",
@@ -158,14 +183,20 @@
       "types": [
         {
           "type": "transitAccess",
-          "label": "アクセス案内",
+          "label": "アクセス",
           "owners": ["officialSkill", "externalCrawler"]
         },
         {
           "type": "busTimetable",
           "label": "バス時刻表",
           "owners": ["officialSkill"]
-        },
+        }
+      ]
+    },
+    {
+      "id": "tour",
+      "label": "バスツアー",
+      "types": [
         {
           "type": "busTour",
           "label": "バスツアー",
@@ -197,23 +228,47 @@
           "label": "スキー場情報局",
           "owners": ["legacyLinks"]
         },
-        { "type": "espeYuki", "label": "えすぺゆき", "owners": ["legacyLinks"] }
+        {
+          "type": "espeYuki",
+          "label": "えすぺゆき",
+          "owners": ["legacyLinks"]
+        }
       ]
     },
     {
       "id": "sns",
       "label": "SNS",
       "types": [
-        { "type": "x", "label": "X", "owners": ["legacyLinks"] },
+        {
+          "type": "x",
+          "label": "X",
+          "owners": ["legacyLinks"]
+        },
         {
           "type": "instagram",
           "label": "Instagram",
           "owners": ["legacyLinks"]
         },
-        { "type": "facebook", "label": "Facebook", "owners": ["legacyLinks"] },
-        { "type": "line", "label": "LINE", "owners": ["legacyLinks"] },
-        { "type": "threads", "label": "Threads", "owners": ["legacyLinks"] },
-        { "type": "tiktok", "label": "TikTok", "owners": ["officialSkill"] }
+        {
+          "type": "facebook",
+          "label": "Facebook",
+          "owners": ["legacyLinks"]
+        },
+        {
+          "type": "line",
+          "label": "LINE",
+          "owners": ["legacyLinks"]
+        },
+        {
+          "type": "threads",
+          "label": "Threads",
+          "owners": ["legacyLinks"]
+        },
+        {
+          "type": "tiktok",
+          "label": "TikTok",
+          "owners": ["officialSkill"]
+        }
       ]
     },
     {
@@ -230,13 +285,21 @@
           "label": "Snow Forecast",
           "owners": ["legacyLinks"]
         },
-        { "type": "tenkijp", "label": "tenki.jp", "owners": ["legacyLinks"] },
+        {
+          "type": "tenkijp",
+          "label": "tenki.jp",
+          "owners": ["legacyLinks"]
+        },
         {
           "type": "weathernews",
           "label": "ウェザーニュース",
           "owners": ["legacyLinks"]
         },
-        { "type": "windy", "label": "Windy", "owners": ["derived"] }
+        {
+          "type": "windy",
+          "label": "Windy",
+          "owners": ["derived"]
+        }
       ]
     },
     {

@@ -74,22 +74,3 @@ export type ReviewArticleFile = {
   resortId: string;
   full: string;
 } & Record<ReviewCategoryId, ReviewArticleCategory>;
-
-export type ResortReviewCategory = {
-  id: ReviewCategoryId;
-  label: string;
-  score: ReviewScore | null;
-  good: string | null;
-  concern: string | null;
-  courses: string[];
-  article: string | null;
-  hasResearchDetail: boolean;
-};
-
-export type ResortReviewData = {
-  sourceSlug: string;
-  fullArticle: string | null;
-  articleSource: "article_json" | null;
-  categories: ResortReviewCategory[];
-  dataIssues: string[];
-};

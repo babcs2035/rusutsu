@@ -23,8 +23,10 @@ type Props = {
   selectedCompareIdSet: Set<string>;
   liftTicketInput: LiftTicketSearchInput;
   featureLines: ResortFeatureLines;
+  /** 件数を並び替えの右に出すか。比較チップの行があるときはそちらに出す */
+  showResultCount: boolean;
   onCloseCompare: () => void;
-  onEditLiftTicketConditions: () => void;
+  onLiftTicketInputChange: (input: LiftTicketSearchInput) => void;
   onHoverResortChange: (id: string | null) => void;
   onOpenChange: (open: boolean) => void;
   onSelectResort: (id: string) => void;
@@ -45,8 +47,9 @@ export const MobileResultsSheet = ({
   selectedCompareIdSet,
   liftTicketInput,
   featureLines,
+  showResultCount,
   onCloseCompare,
-  onEditLiftTicketConditions,
+  onLiftTicketInputChange,
   onHoverResortChange,
   onSelectResort,
   onToggleCompare,
@@ -61,7 +64,8 @@ export const MobileResultsSheet = ({
         resorts={compareResorts}
         isLoading={isCompareLoading}
         onMapResortsNeeded={onCompareMapResortsNeeded}
-        initialLiftTicketInput={liftTicketInput}
+        liftTicketInput={liftTicketInput}
+        onLiftTicketInputChange={onLiftTicketInputChange}
         onClose={onCloseCompare}
         presentation="inline"
         canScrollContent
@@ -84,8 +88,9 @@ export const MobileResultsSheet = ({
           onToggleCompare={onToggleCompare}
           onHoverResortChange={onHoverResortChange}
           showHeader={false}
-          onEditLiftTicketConditions={onEditLiftTicketConditions}
+          onLiftTicketInputChange={onLiftTicketInputChange}
           featureLines={featureLines}
+          showResultCount={showResultCount}
         />
       </div>
     )}

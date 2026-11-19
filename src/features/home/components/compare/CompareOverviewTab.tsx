@@ -1,8 +1,6 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
 import { type ReactNode, useMemo } from "react";
-import { Button } from "@/components/ui/button";
 import { CompareListResortButton } from "@/features/compare-lists/CompareListResortButton";
 import { FavoriteButton } from "@/features/favorites/FavoriteButton";
 import { useHomeCompare } from "@/features/home/compareContext";
@@ -26,6 +24,7 @@ import {
 import { getResortLabelName } from "@/lib/resortAliases";
 import { cn } from "@/lib/utils";
 import { CompareResortButton } from "@/shared/components/CompareResortButton";
+import { CompareResortDetailButton } from "./CompareResortNameCell";
 import {
   getCourseSummary,
   getLiftSummary,
@@ -172,15 +171,10 @@ const ResortCard = ({
             />
           )}
           {onSelectResort && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onSelectResort(resort.id)}
-              className="h-6 shrink-0 gap-0 px-1.5 text-[11px] font-semibold text-blue-700"
-            >
-              詳細
-              <ChevronRight size={11} strokeWidth={2.5} />
-            </Button>
+            <CompareResortDetailButton
+              resortId={resort.id}
+              onSelectResort={onSelectResort}
+            />
           )}
         </div>
       </div>

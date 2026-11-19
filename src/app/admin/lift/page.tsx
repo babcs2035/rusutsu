@@ -11,7 +11,10 @@ import {
   readLiftConfirmedMap,
 } from "@/features/lift/server/liftFiles";
 import type { ResortOption } from "@/features/lift/types";
-import { getResortLabelName, getResortSearchName } from "@/lib/resortAliases";
+import {
+  getResortLabelName,
+  getResortSearchWordName,
+} from "@/lib/resortAliases";
 import { readSkiResortsForEditor } from "@/lib/skiResortData";
 import { requireEditingPage } from "@/server/edit-requests/authPages";
 import { getRequestEditContext } from "@/server/edit-requests/repository";
@@ -49,7 +52,7 @@ export default async function LiftEditPage({
   const resortOptions: ResortOption[] = resorts.map(resort => ({
     id: resort.id,
     nameJa: resort.nameJa,
-    searchName: getResortSearchName(resort.id, resort.nameJa, resort.shortName),
+    searchName: getResortSearchWordName(resort.id, resort.nameJa),
     labelName: getResortLabelName(resort.id, resort.nameJa, resort.shortName),
     nameEn: resort.nameEn,
     prefecture: resort.prefecture,
@@ -72,7 +75,7 @@ export default async function LiftEditPage({
     orphanOptions.push({
       id,
       nameJa: "",
-      searchName: getResortSearchName(id, id),
+      searchName: getResortSearchWordName(id, ""),
       // DB に名前が無いので ID をそのままラベルに出す
       labelName: getResortLabelName(id, id),
       nameEn: "",

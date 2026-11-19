@@ -57,7 +57,10 @@ import type {
 } from "@/features/map/types";
 import { ResortLinksTab } from "@/features/resort-links/ResortLinksTab";
 import { useBreakpointValue } from "@/hooks/use-breakpoint-value";
-import { getResortSearchName } from "@/lib/resortAliases";
+import {
+  getResortSearchName,
+  getResortSearchWordName,
+} from "@/lib/resortAliases";
 import { cn } from "@/lib/utils";
 import { AnimatedPanel } from "@/shared/components/AnimatedPanel";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
@@ -216,7 +219,7 @@ export const SkiResortDetailView = ({
   const simultaneous = useSimultaneousView(resortData ?? null);
   const displayedMapData = simultaneous.mapData;
   const stateKey = `rusutsu:detail:v1:${resortData?.id ?? "loading"}`;
-  const [activeTab, setActiveTab] = useScreenState<string>(
+  const [storedTab, setActiveTab] = useScreenState<string>(
     `${stateKey}:tab`,
     tabSchema,
     TABS[0],
@@ -666,6 +669,9 @@ export const SkiResortDetailView = ({
   }
 
   const resort = resortData;
+  const tabs = TABS;
+  // 保存されたタブが今の一覧に無いときは先頭を出す
+  const activeTab = tabs.includes(storedTab) ? storedTab : tabs[0];
   const trailMapLinks = resort.trailMapLinks;
   const hasTrailMap = (trailMapLinks?.mapUrls.length ?? 0) > 0;
   const resortInfo = {
@@ -734,6 +740,7 @@ export const SkiResortDetailView = ({
           resort.nameJa,
           resort.shortName,
         )}
+        resortSearchWordName={getResortSearchWordName(resort.id, resort.nameJa)}
         courseObservedAt={displayedMapData?.courses?.observedAt}
         liftObservedAt={displayedMapData?.lifts?.observedAt}
         courseSourceUrls={displayedMapData?.courses?.sourceUrls ?? []}
@@ -887,7 +894,7 @@ export const SkiResortDetailView = ({
           className="min-h-0 flex-1 overflow-y-auto"
         >
           <DetailTabs
-            tabs={TABS}
+            tabs={tabs}
             activeTab={activeTab}
             onTabChange={setActiveTab}
           />
@@ -929,7 +936,7 @@ export const SkiResortDetailView = ({
       )}
       {!mobileFeatureDetail && (
         <DetailTabs
-          tabs={TABS}
+          tabs={tabs}
           activeTab={activeTab}
           onTabChange={setActiveTab}
         />

@@ -21,14 +21,15 @@ import { LiftMetrics } from "./LiftMetrics";
 export const SelectedLiftDetail = ({
   lift,
   resortId,
-  resortLabelName,
+  resortSearchWordName,
   sourceUrls,
   selectedElevationProfilePoint,
   onSelectedElevationProfilePointChange,
 }: {
   lift: FinalizedLiftFeature;
   resortId?: string;
-  resortLabelName: string;
+  /** 動画検索語の先頭に付ける正式名 */
+  resortSearchWordName: string;
   sourceUrls: string[];
   selectedElevationProfilePoint: ElevationProfileMapPoint | null;
   onSelectedElevationProfilePointChange: (
@@ -62,7 +63,7 @@ export const SelectedLiftDetail = ({
     : lift.properties.vertical;
   const searchWord = getFeatureSearchWord({
     searchWord: lift.properties.searchWord,
-    resortLabelName,
+    resortSearchWordName,
     featureName: lift.name,
   });
   const properties = lift.properties;

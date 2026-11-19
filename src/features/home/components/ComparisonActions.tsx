@@ -13,6 +13,8 @@ type Props = {
   compareCount: number;
   isCompareOpen?: boolean;
   className?: string;
+  /** 検索結果の件数。チップの行の右端に出す（行が無いときは一覧の並び替えの右） */
+  resultCount?: number;
   onOpenCompare: () => void;
   onClearCompare: () => void;
   onCompareFavorites: () => void;
@@ -22,7 +24,7 @@ type Props = {
 export const COMPARISON_CHIP_CLASS =
   "h-8 rounded-md px-1 text-xs font-semibold shadow-md @min-[21rem]/comparison-actions:px-1.5 @min-[24rem]/comparison-actions:px-2.5 @min-[24rem]/comparison-actions:text-[13px]";
 
-/** 比較チップの行を出すか。検索結果の件数は並び替えの横に出すので、ここでは数えない */
+/** 比較チップの行を出すか。件数だけのために行を増やさないので、件数は数えない */
 export function useHasComparisonActions(compareCount: number) {
   const favorites = useFavorites();
   const compareLists = useCompareLists();
@@ -37,6 +39,7 @@ export function ComparisonActions({
   compareCount,
   isCompareOpen = false,
   className,
+  resultCount,
   onOpenCompare,
   onClearCompare,
   onCompareFavorites,
@@ -90,6 +93,11 @@ export function ComparisonActions({
           )}
         />
       </div>
+      {resultCount !== undefined && (
+        <span className="shrink-0 whitespace-nowrap pl-0.5 text-sm font-bold tabular-nums text-gray-900">
+          {resultCount.toLocaleString("ja-JP")}件
+        </span>
+      )}
     </div>
   );
 }

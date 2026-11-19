@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { AddCompareListResortsButton } from "@/features/compare-lists/AddCompareListResortsButton";
 import { SaveCompareListButton } from "@/features/compare-lists/SaveCompareListButton";
 import type { CompareSource } from "@/features/compare-lists/types";
+import { LiftTicketConditionsButton } from "@/features/lift-ticket/components/LiftTicketConditionsButton";
+import { LiftTicketConditionsDialog } from "@/features/lift-ticket/components/LiftTicketConditionsDialog";
 import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
 import { FinalizedMapToolbar } from "@/features/map/components/FinalizedMapToolbar";
 import {
@@ -32,10 +34,6 @@ import type { MapSkiResort } from "@/types/skiResorts";
 import { useHomeCompare } from "../compareContext";
 import { CompareAccessTab } from "./compare/CompareAccessTab";
 import { CompareDataTab } from "./compare/CompareDataTab";
-import {
-  CompareLiftTicketConditionsButton,
-  CompareLiftTicketConditionsDialog,
-} from "./compare/CompareLiftTicketConditions";
 import { CompareLiftTicketTab } from "./compare/CompareLiftTicketTab";
 import { CompareLinksTab } from "./compare/CompareLinksTab";
 import { CompareOverviewTab } from "./compare/CompareOverviewTab";
@@ -54,22 +52,29 @@ type Props = {
   onClose: () => void;
   presentation?: "sheet" | "inline";
   canScrollContent?: boolean;
-  initialLiftTicketInput: LiftTicketSearchInput;
+  /** 料金の計算条件。一覧・検索欄と同じもの */
+  liftTicketInput: LiftTicketSearchInput;
+  onLiftTicketInputChange: (input: LiftTicketSearchInput) => void;
   DynamicMap: ComponentType<JapanResortMapProps>;
   mapResorts: MapSkiResort[];
   onSelectResort: (id: string) => void;
   /** ゲレンデ・データで見えているスキー場。地図データを先に取るために知らせる */
   onMapResortsNeeded?: (ids: string[]) => void;
+  /**
+   * 比較から開いた詳細の裏に隠しているか。破棄せずに隠し、
+   * 詳細を閉じたらタブ・スクロール・地図をそのまま出す（PC の sheet 表示だけ）
+   */
+  hidden?: boolean;
 };
 
 const TABS = [
   "概要",
   "ゲレンデ",
-  "データ",
   "料金",
   "リンク集",
   "天気",
   "アクセス",
+  "データ",
 ] as const;
 
 type CompareTab = (typeof TABS)[number];
@@ -91,11 +96,13 @@ export const SkiResortCompareView = ({
   onClose,
   presentation = "sheet",
   canScrollContent,
-  initialLiftTicketInput,
+  liftTicketInput,
+  onLiftTicketInputChange,
   DynamicMap,
   mapResorts,
   onSelectResort,
   onMapResortsNeeded,
+  hidden = false,
 }: Props) => {
   const [activeTab, setActiveTab] = useState<CompareTab>("概要");
   const homeCompare = useHomeCompare();
@@ -109,10 +116,6 @@ export const SkiResortCompareView = ({
   const isSidePanel = useBreakpointValue({ base: false, md: true }) ?? false;
   const isSheetContentScrollable = canScrollContent ?? isSidePanel;
 
-  // 料金の条件。概要の料金行と料金タブで同じものを使う
-  const [liftTicketInput, setLiftTicketInput] = useState(
-    initialLiftTicketInput,
-  );
   const [isConditionsOpen, setConditionsOpen] = useState(false);
 
   // ゲレンデの表示設定。比較中のスキー場すべてに同じものを効かせる
@@ -189,7 +192,7 @@ export const SkiResortCompareView = ({
       case "概要":
       case "料金":
         return (
-          <CompareLiftTicketConditionsButton
+          <LiftTicketConditionsButton
             input={liftTicketInput}
             onClick={() => setConditionsOpen(true)}
             className="w-full @[80rem]/compare-header:w-auto @[80rem]/compare-header:max-w-md"
@@ -243,6 +246,7 @@ export const SkiResortCompareView = ({
             selection={slopeSelection}
             onSelectionChange={setSlopeSelection}
             onMapResortsNeeded={onMapResortsNeeded}
+            onSelectResort={onSelectResort}
             className="h-full px-6 pt-4 pb-10"
           />
         ) : (
@@ -251,6 +255,7 @@ export const SkiResortCompareView = ({
             DynamicMap={DynamicMap}
             mapResorts={mapResorts}
             onMapResortsNeeded={onMapResortsNeeded}
+            onSelectResort={onSelectResort}
             courseColorMode={courseColorMode}
             onCourseColorModeChange={setCourseColorMode}
             mapDisplaySettings={mapDisplaySettings}
@@ -292,7 +297,11 @@ export const SkiResortCompareView = ({
         );
       case "料金":
         return (
-          <CompareLiftTicketTab resorts={resorts} input={liftTicketInput} />
+          <CompareLiftTicketTab
+            resorts={resorts}
+            input={liftTicketInput}
+            onSelectResort={onSelectResort}
+          />
         );
       case "リンク集":
         return (
@@ -304,7 +313,11 @@ export const SkiResortCompareView = ({
         );
       case "天気":
         return (
-          <CompareWeatherTab resorts={resorts} isSidePanel={isSidePanel} />
+          <CompareWeatherTab
+            resorts={resorts}
+            isSidePanel={isSidePanel}
+            onSelectResort={onSelectResort}
+          />
         );
       case "アクセス":
         return (
@@ -423,11 +436,11 @@ export const SkiResortCompareView = ({
         )}
       </div>
 
-      <CompareLiftTicketConditionsDialog
+      <LiftTicketConditionsDialog
         open={isConditionsOpen}
         onOpenChange={setConditionsOpen}
         value={liftTicketInput}
-        onChange={setLiftTicketInput}
+        onChange={onLiftTicketInputChange}
       />
     </div>
   );
@@ -445,7 +458,14 @@ export const SkiResortCompareView = ({
   return (
     isSidePanel && (
       <Portal>
-        <div className="fixed inset-0 z-[100] hidden md:block">
+        <div
+          className={cn(
+            "fixed inset-0 z-[100] hidden md:block",
+            hidden && "invisible pointer-events-none",
+          )}
+          aria-hidden={hidden}
+          inert={hidden}
+        >
           <AnimatedPanel
             data-ski-resort-compare-panel="true"
             visible={isSidePanel}

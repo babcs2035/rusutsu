@@ -4,16 +4,7 @@ import path from "node:path";
 import { test } from "node:test";
 import type { LiftTicketData } from "@/features/lift-ticket/types";
 import {
-  REVIEW_CATEGORY_IDS,
-  type ReviewArticleFile,
-} from "@/features/reviews/types";
-import type {
-  DataDocument,
-  DataDocumentSummary,
-} from "@/server/data-documents/contract";
-import {
   createResortDecisionDataLoader,
-  type ResortDecisionDataDocumentReader,
   type ResortDecisionLiftTicketReader,
 } from "./resortDecisionData";
 
@@ -24,53 +15,6 @@ const TICKET_FILE = path.join(
   RESORT,
   "2025-2026.json",
 );
-
-const asSummary = (document: DataDocument): DataDocumentSummary => ({
-  key: document.key,
-  mediaType: document.mediaType,
-  hash: document.hash,
-  version: document.version,
-  source: document.source,
-});
-
-const jsonDocument = (
-  key: string,
-  content: string,
-  source: DataDocument["source"] = "bundled",
-): DataDocument => ({
-  key,
-  content,
-  mediaType: "application/json",
-  hash: source === "database" ? "d".repeat(64) : "b".repeat(64),
-  version: source === "database" ? 1 : 0,
-  source,
-});
-
-class MemoryDocumentReader implements ResortDecisionDataDocumentReader {
-  readonly documents = new Map<string, DataDocument>();
-  readonly getCalls: string[] = [];
-  readonly listCalls: string[] = [];
-
-  constructor(documents: readonly DataDocument[] = []) {
-    for (const document of documents) this.set(document);
-  }
-
-  set(document: DataDocument) {
-    this.documents.set(document.key, document);
-  }
-
-  async get(key: string) {
-    this.getCalls.push(key);
-    return this.documents.get(key) ?? null;
-  }
-
-  async list(prefix: string) {
-    this.listCalls.push(prefix);
-    return [...this.documents.values()]
-      .filter(document => document.key.startsWith(prefix))
-      .map(asSummary);
-  }
-}
 
 class MemoryTicketReader implements ResortDecisionLiftTicketReader {
   readonly findCalls: string[][] = [];
@@ -90,7 +34,6 @@ const ticketData = async () =>
 
 const load = async () => {
   const { getLiftTicketDataMap } = createResortDecisionDataLoader(
-    new MemoryDocumentReader(),
     new MemoryTicketReader(await ticketData()),
   );
   const map = await getLiftTicketDataMap([RESORT]);
@@ -159,10 +102,7 @@ test("出典にページタイトルを渡す（ホバー表示に使う）", as
 test("DBの更新をmodule cacheなしで次の読み込みへ反映する", async () => {
   const parsed = (await ticketData()) as unknown as LiftTicketData;
   const tickets = new MemoryTicketReader({ ...parsed });
-  const { getLiftTicketDataMap } = createResortDecisionDataLoader(
-    new MemoryDocumentReader(),
-    tickets,
-  );
+  const { getLiftTicketDataMap } = createResortDecisionDataLoader(tickets);
 
   const before = await getLiftTicketDataMap([RESORT]);
   assert.equal(
@@ -181,50 +121,6 @@ test("DBの更新をmodule cacheなしで次の読み込みへ反映する", asy
   assert.deepEqual(tickets.findCalls, [[RESORT], [RESORT]]);
 });
 
-test("レビューの統合IDを正本DataDocumentキーへ解決する", async () => {
-  const category = {
-    score: "◎" as const,
-    good: "**DBの長所**",
-    bad: "DBの注意点",
-    courses: [],
-  };
-  const article = {
-    resortId: "shiga-kogen-central",
-    full: "**DBの概要**",
-    ...Object.fromEntries(
-      REVIEW_CATEGORY_IDS.map(categoryId => [categoryId, category]),
-    ),
-  } as ReviewArticleFile;
-  const reader = new MemoryDocumentReader([
-    jsonDocument(
-      "reviews/shiga-kogen-central/article.json",
-      JSON.stringify(article),
-      "database",
-    ),
-  ]);
-  const { getResortDecisionData } = createResortDecisionDataLoader(
-    reader,
-    new MemoryTicketReader(),
-  );
-
-  const result = await getResortDecisionData("shiga-kogen-giant");
-
-  assert.equal(result.reviewData?.sourceSlug, "shiga-kogen-central");
-  assert.equal(result.reviewData?.fullArticle, "DBの概要");
-  assert.equal(result.reviewData?.categories[0]?.good, "**DBの長所**");
-  assert.ok(
-    result.reviewData?.dataIssues.includes(
-      "調査詳細（detail.json）がありません。",
-    ),
-  );
-  assert.ok(
-    reader.getCalls.includes("reviews/shiga-kogen-central/detail.json"),
-  );
-  assert.ok(
-    reader.getCalls.includes("reviews/shiga-kogen-central/article.json"),
-  );
-});
-
 test("管理用の未知フィールドは料金文書のどの階層からも公開しない", async () => {
   const parsed: unknown = await ticketData();
   const addPrivateFields = (value: unknown): unknown => {
@@ -241,7 +137,6 @@ test("管理用の未知フィールドは料金文書のどの階層からも�
     return value;
   };
   const map = await createResortDecisionDataLoader(
-    new MemoryDocumentReader(),
     new MemoryTicketReader(addPrivateFields(parsed) as Record<string, unknown>),
   ).getLiftTicketDataMap([RESORT]);
   const projected = map.get(RESORT)?.[0];

@@ -51,6 +51,15 @@ export type OperationSummaryWrite = {
   liftActive: number | null;
   courseCountSource: string;
   liftCountSource: string;
+  /** 滑走距離（m）。斜面距離が無い線は水平距離で代える */
+  courseDistanceTotal: number | null;
+  /** ○・△のコースの滑走距離（m）。営業状況の出典が無ければ null */
+  courseDistanceOpen: number | null;
+  courseDistanceFallbackLines: number;
+  courseDistanceMissingLines: number;
+  /** 地図のコースの最高・最低標高（m）。コースに標高が無ければ null */
+  mapTopElevation: number | null;
+  mapBaseElevation: number | null;
   calculationVersion: number;
 };
 
@@ -65,19 +74,29 @@ export async function writeOperationSummaries(
     ${row.courseTotal}::integer, ${row.courseActive}::integer,
     ${row.liftTotal}::integer, ${row.liftActive}::integer,
     ${row.courseCountSource}::text, ${row.liftCountSource}::text,
+    ${row.courseDistanceTotal}::integer, ${row.courseDistanceOpen}::integer,
+    ${row.courseDistanceFallbackLines}::integer, ${row.courseDistanceMissingLines}::integer,
+    ${row.mapTopElevation}::integer, ${row.mapBaseElevation}::integer,
     ${row.calculationVersion}::integer, NOW()
   )`,
   );
   await tx.$executeRaw(Prisma.sql`
     INSERT INTO "ski_resort_operation_summaries"
       ("skiResortId", "hasMap", "courseTotal", "courseActive", "liftTotal", "liftActive",
-       "courseCountSource", "liftCountSource", "calculationVersion", "updatedAt")
+       "courseCountSource", "liftCountSource", "courseDistanceTotal", "courseDistanceOpen",
+       "courseDistanceFallbackLines", "courseDistanceMissingLines", "mapTopElevation", "mapBaseElevation",
+       "calculationVersion", "updatedAt")
     VALUES ${Prisma.join(values)}
     ON CONFLICT ("skiResortId") DO UPDATE SET
       "hasMap" = EXCLUDED."hasMap", "courseTotal" = EXCLUDED."courseTotal",
       "courseActive" = EXCLUDED."courseActive", "liftTotal" = EXCLUDED."liftTotal",
       "liftActive" = EXCLUDED."liftActive", "courseCountSource" = EXCLUDED."courseCountSource",
-      "liftCountSource" = EXCLUDED."liftCountSource", "calculationVersion" = EXCLUDED."calculationVersion",
+      "liftCountSource" = EXCLUDED."liftCountSource",
+      "courseDistanceTotal" = EXCLUDED."courseDistanceTotal", "courseDistanceOpen" = EXCLUDED."courseDistanceOpen",
+      "courseDistanceFallbackLines" = EXCLUDED."courseDistanceFallbackLines",
+      "courseDistanceMissingLines" = EXCLUDED."courseDistanceMissingLines",
+      "mapTopElevation" = EXCLUDED."mapTopElevation", "mapBaseElevation" = EXCLUDED."mapBaseElevation",
+      "calculationVersion" = EXCLUDED."calculationVersion",
       "updatedAt" = EXCLUDED."updatedAt"
   `);
 }

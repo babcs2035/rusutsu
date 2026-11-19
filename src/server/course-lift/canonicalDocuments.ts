@@ -464,6 +464,8 @@ export async function writeCanonicalMapDocument(
               elevationDifference: null,
               calculatedAverageSlope: null,
               calculatedMaxSlope: null,
+              minElevation: null,
+              maxElevation: null,
             }
           : {};
       const baseMetrics = split.baseMetrics;
@@ -476,6 +478,8 @@ export async function writeCanonicalMapDocument(
               elevationDifference: baseMetrics.elevationDifference,
               calculatedAverageSlope: baseMetrics.calculatedAverageSlope,
               calculatedMaxSlope: baseMetrics.calculatedMaxSlope,
+              minElevation: baseMetrics.minElevation,
+              maxElevation: baseMetrics.maxElevation,
             }
           : {};
       const common = {
@@ -591,6 +595,8 @@ export async function writeCanonicalMapDocument(
           elevationDifference: null,
           calculatedAverageSlope: null,
           calculatedMaxSlope: null,
+          minElevation: null,
+          maxElevation: null,
         }
       : { archivedAt: new Date() };
     if (kind.kind === "course") await tx.mapCourse.updateMany({ where, data });

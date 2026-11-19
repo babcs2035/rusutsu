@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "mode": "local-files",
+  "startedAt": "2026-11-16T19:36:04.735Z",
+  "finishedAt": "2026-11-16T19:36:10.560Z",
+  "durationMs": 5825,
+  "total": 1,
+  "counts": {
+    "success": 1,
+    "warning": 0,
+    "failed": 0,
+    "timeout": 0
+  },
+  "results": [
+    {
+      "resortId": "taiheizan-opas",
+      "status": "success",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 5824,
+      "warnings": [],
+      "apiResult": null,
+      "batchError": null
+    }
+  ]
+}

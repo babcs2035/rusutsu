@@ -8,7 +8,10 @@ import { SlopeEditClient } from "@/features/slope/SlopeEditClient";
 import { readOsmSlopeConfirmedMap } from "@/features/slope/server/slopeConfirmation";
 import { listSlopeBeforeResortIds } from "@/features/slope/server/slopeFiles";
 import type { ResortOption } from "@/features/slope/types";
-import { getResortLabelName, getResortSearchName } from "@/lib/resortAliases";
+import {
+  getResortLabelName,
+  getResortSearchWordName,
+} from "@/lib/resortAliases";
 import { readSkiResortsForEditor } from "@/lib/skiResortData";
 import { requireEditingPage } from "@/server/edit-requests/authPages";
 import { getRequestEditContext } from "@/server/edit-requests/repository";
@@ -53,7 +56,7 @@ export default async function SlopeEditPage({
   const resortOptions: ResortOption[] = resorts.map(resort => ({
     id: resort.id,
     nameJa: resort.nameJa,
-    searchName: getResortSearchName(resort.id, resort.nameJa, resort.shortName),
+    searchName: getResortSearchWordName(resort.id, resort.nameJa),
     labelName: getResortLabelName(resort.id, resort.nameJa, resort.shortName),
     nameEn: resort.nameEn,
     prefecture: resort.prefecture,

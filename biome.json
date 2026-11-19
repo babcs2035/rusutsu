@@ -53,7 +53,8 @@
       "!**/out",
       "!**/build",
       "!**/coverage",
-      "!**/public"
+      "!**/public",
+      "!**/crawl_latest/shared/fixtures/**"
     ],
     "rules": {
       "preset": "recommended",

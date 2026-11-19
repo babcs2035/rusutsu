@@ -1,3 +1,9 @@
+import {
+  getSnowForecastLinks,
+  getTenkiJpLinks,
+  type WeatherLinkResort,
+} from "@/features/weather/useWeatherLinks";
+import { getWeathernewsLinks } from "@/features/weather/weatherLinks";
 import type { ResortLinkItem } from "./model";
 
 /**
@@ -27,7 +33,30 @@ type DetailLinkSource = {
     channels?: Array<{ url?: string | null }>;
   }>;
   yukiMagi?: { url?: string | null } | null;
+  weatherIds?: WeatherLinkResort["weatherIds"];
 };
+
+/** 天気タブと同じ天気サイトのリンク。リンク集でも天気タブと同じ地点だけを出す */
+export const DETAIL_WEATHER_TYPES = new Set([
+  "snowForecast",
+  "tenkijp",
+  "weathernews",
+  "windy",
+]);
+
+const weatherItems = (
+  type: string,
+  links: Array<{ displayName: string; url: string }>,
+): ResortLinkItem[] =>
+  links.flatMap((link, index) =>
+    item(
+      type,
+      type,
+      link.url,
+      index,
+      links.length > 1 ? link.displayName : null,
+    ),
+  );
 
 const item = (
   type: string,
@@ -77,6 +106,19 @@ export const detailLinkItems = (resort: DetailLinkSource): ResortLinkItem[] => {
     ...item("rentalPrice", "official", ticketLinks?.rentalPrice),
     ...item("rentalPrice", "official", ticketLinks?.rentalPurchase, 1, "予約"),
     ...item("yukiMagi", "yukiMagi", resort.yukiMagi?.url),
+    ...weatherItems(
+      "snowForecast",
+      getSnowForecastLinks({
+        weatherIds: resort.weatherIds ?? null,
+        latitude: resort.latitude ?? null,
+        longitude: resort.longitude ?? null,
+      } as WeatherLinkResort),
+    ),
+    ...weatherItems(
+      "tenkijp",
+      getTenkiJpLinks({ weatherIds: resort.weatherIds } as WeatherLinkResort),
+    ),
+    ...weatherItems("weathernews", getWeathernewsLinks(resort.weatherIds)),
     ...(typeof resort.latitude === "number" &&
     typeof resort.longitude === "number"
       ? item(

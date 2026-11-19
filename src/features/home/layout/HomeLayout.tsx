@@ -17,6 +17,7 @@ import { COMPOSE_STATE_EVENT } from "@/features/community/composerEvents";
 import { CORRECTION_STATE_EVENT } from "@/features/corrections/correctionEvents";
 import { FavoriteButton } from "@/features/favorites/FavoriteButton";
 import type { Filters } from "@/features/filters/types";
+import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
 import { DEFAULT_LIFT_TICKET_SEARCH_INPUT } from "@/features/lift-ticket/utils/calculateLiftTicket";
 import { waitForDetailSaved } from "@/features/map/session/prepareDetail";
 import { useScreenState } from "@/features/map/session/useScreenState";
@@ -85,7 +86,12 @@ type Props = {
   hoveredResortId: string | null;
   initialResorts: MapSkiResort[];
   isCompareLoading: boolean;
+  /** 比較が画面に出ているか（比較から詳細を開いている間は false） */
   isCompareOpen: boolean;
+  /**
+   * 比較から詳細を開いているか。比較は作り直さないよう、詳細の裏に隠して残す
+   */
+  isCompareBehindDetail: boolean;
   /** 比較のゲレンデで見えているスキー場。地図データを先に取る */
   onCompareMapResortsNeeded: (ids: string[]) => void;
   isFilterEditorOpen: boolean;
@@ -172,6 +178,7 @@ export const HomeLayout = ({
   initialResorts,
   isCompareLoading,
   isCompareOpen,
+  isCompareBehindDetail,
   onCompareMapResortsNeeded,
   isFilterEditorOpen,
   isMobileFilterOverlayOpen,
@@ -298,6 +305,9 @@ export const HomeLayout = ({
 
   const liftTicketInput =
     filters.liftTicket ?? DEFAULT_LIFT_TICKET_SEARCH_INPUT;
+  // 一覧・比較のモーダルで変えた料金の条件は、検索欄と同じ条件へ書き込む
+  const changeLiftTicketInput = (liftTicket: LiftTicketSearchInput) =>
+    onFilterChange({ ...filters, liftTicket });
   // 比較中の地図はデスクトップの背景地図だけ。モバイルは比較タブの中で完結する
   const mapSearchResultResortIds = hasActiveFilters ? filteredResortIds : [];
   const shouldShowMobileSearchScreen =
@@ -445,6 +455,7 @@ export const HomeLayout = ({
             />
             <ComparisonActions
               compareCount={selectedCompareIds.length}
+              resultCount={sortedResorts.length}
               onOpenCompare={onOpenCompare}
               onClearCompare={onClearCompare}
               onCompareFavorites={onCompareFavorites}
@@ -556,52 +567,55 @@ export const HomeLayout = ({
                 <DynamicMap {...mainMapProps} />
               </div>
             )}
-            {!shouldRenderMap &&
-              !selectedResortId &&
-              shouldRenderMobileListSheet && (
-                <MobileResultsSheet
-                  DynamicMap={DynamicMap}
-                  mapResorts={initialResorts}
-                  compareResorts={compareResortData}
-                  filteredResorts={sortedResorts}
-                  sortControls={sortControls}
-                  isCompareLoading={isCompareLoading}
-                  isCompareOpen={isCompareOpen}
-                  onCompareMapResortsNeeded={onCompareMapResortsNeeded}
-                  listSheetContentRef={listSheetContentRef}
-                  listSheetSnapPoint={listSheetSnapPoint}
-                  snapPoints={mobileListSheetSnapPoints}
-                  selectedCompareIdSet={selectedCompareIdSet}
-                  liftTicketInput={liftTicketInput}
-                  featureLines={{
-                    yukiMagi: filters.yukiMagi,
-                    evCharger: filters.evCharger,
-                  }}
-                  onCloseCompare={onCloseCompare}
-                  onEditLiftTicketConditions={() => {
-                    onOpenMobileFilterOverlay();
-                    window.setTimeout(() => {
-                      const calculator = document.getElementById(
-                        "lift-ticket-calculator",
-                      );
-                      calculator?.scrollIntoView({
-                        behavior: "smooth",
-                        block: "center",
-                      });
-                      calculator?.focus({ preventScroll: true });
-                    }, 180);
-                  }}
-                  onHoverResortChange={onSetHoveredResortId}
-                  onOpenChange={open => {
-                    onSetListSheetOpen(open && mobileContentTab === "info");
-                    if (!open && isCompareOpen) {
-                      onCloseCompare();
-                    }
-                  }}
-                  onSelectResort={onSelectResort}
-                  onSetSnapPoint={onSetListSheetSnapPoint}
-                  onToggleCompare={onToggleCompare}
-                />
+            {!isSidePanelLayout &&
+              (isCompareBehindDetail ||
+                (!shouldRenderMap &&
+                  !selectedResortId &&
+                  shouldRenderMobileListSheet)) && (
+                // 比較から詳細を開いている間も比較を破棄せず隠す。
+                // 詳細を閉じたときに、タブ・スクロール・地図をそのまま出すため
+                <div
+                  className={
+                    isCompareBehindDetail
+                      ? "invisible pointer-events-none absolute inset-0"
+                      : "absolute inset-0"
+                  }
+                  aria-hidden={isCompareBehindDetail}
+                  inert={isCompareBehindDetail}
+                >
+                  <MobileResultsSheet
+                    DynamicMap={DynamicMap}
+                    mapResorts={initialResorts}
+                    compareResorts={compareResortData}
+                    filteredResorts={sortedResorts}
+                    sortControls={sortControls}
+                    isCompareLoading={isCompareLoading}
+                    isCompareOpen={isCompareOpen || isCompareBehindDetail}
+                    onCompareMapResortsNeeded={onCompareMapResortsNeeded}
+                    listSheetContentRef={listSheetContentRef}
+                    listSheetSnapPoint={listSheetSnapPoint}
+                    snapPoints={mobileListSheetSnapPoints}
+                    selectedCompareIdSet={selectedCompareIdSet}
+                    liftTicketInput={liftTicketInput}
+                    featureLines={{
+                      yukiMagi: filters.yukiMagi,
+                      evCharger: filters.evCharger,
+                    }}
+                    showResultCount={!shouldShowMobileComparisonActions}
+                    onCloseCompare={onCloseCompare}
+                    onLiftTicketInputChange={changeLiftTicketInput}
+                    onHoverResortChange={onSetHoveredResortId}
+                    onOpenChange={open => {
+                      onSetListSheetOpen(open && mobileContentTab === "info");
+                      if (!open && isCompareOpen) {
+                        onCloseCompare();
+                      }
+                    }}
+                    onSelectResort={onSelectResort}
+                    onSetSnapPoint={onSetListSheetSnapPoint}
+                    onToggleCompare={onToggleCompare}
+                  />
+                </div>
               )}
             {!shouldRenderMap && selectedResortId && (
               <SkiResortDetailView
@@ -718,11 +732,13 @@ export const HomeLayout = ({
         )}
       </AnimatedPanel>
 
-      {isCompareOpen && isSidePanelLayout && (
+      {(isCompareOpen || isCompareBehindDetail) && isSidePanelLayout && (
         <SkiResortCompareView
+          hidden={isCompareBehindDetail}
           resorts={compareResortData}
           isLoading={isCompareLoading}
-          initialLiftTicketInput={liftTicketInput}
+          liftTicketInput={liftTicketInput}
+          onLiftTicketInputChange={changeLiftTicketInput}
           onClose={onCloseCompare}
           DynamicMap={DynamicMap}
           mapResorts={initialResorts}

@@ -26,6 +26,24 @@ const responseSchema = z.object({
       hasMap: z.boolean(),
       courses: countSchema.nullable(),
       lifts: countSchema.nullable(),
+      // 距離の列を持たない古いAPIでも一覧を出せるよう、無いときは null にする
+      courseDistance: z
+        .object({
+          total: z.number().int().positive(),
+          open: z.number().int().nonnegative().nullable(),
+        })
+        .refine(value => value.open === null || value.open <= value.total)
+        .nullish()
+        .transform(value => value ?? null),
+      // 標高の列を持たない古いAPIでは、掲載元の標高をそのまま使う
+      elevation: z
+        .object({
+          top: z.number().int(),
+          base: z.number().int(),
+        })
+        .refine(value => value.top > value.base)
+        .nullish()
+        .transform(value => value ?? null),
     }),
   ),
 });
@@ -86,6 +104,20 @@ export async function findOperatingSummariesDirect(): Promise<
                   row.liftTotal === null
                     ? null
                     : { total: row.liftTotal, active: row.liftActive },
+                courseDistance:
+                  row.courseDistanceTotal === null
+                    ? null
+                    : {
+                        total: row.courseDistanceTotal,
+                        open: row.courseDistanceOpen,
+                      },
+                elevation:
+                  row.mapTopElevation === null || row.mapBaseElevation === null
+                    ? null
+                    : {
+                        top: row.mapTopElevation,
+                        base: row.mapBaseElevation,
+                      },
               },
             ]),
           );

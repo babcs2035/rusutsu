@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
-import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
+import { useLayoutEffect, useRef, useState } from "react";
+import { SnowForecastFooter } from "./SnowForecastFooter";
+import { SnowForecastLoading } from "./SnowForecastLoading";
+import type { Elevation } from "./useWeatherLinks";
 
-type Elevation = "top" | "mid" | "bot";
+/**
+ * 予報の左端にある余白の分だけ、最初から右へ送っておく。
+ * 比較の天気カード（CompareWeatherTab.css の translate(-40px) scale(0.92)）と
+ * 同じ位置から見せる。手で横スクロールはできる
+ */
+const INITIAL_SCROLL_X = 44;
 
 export const SnowForecastEmbed = ({
   snowForecastSlug,
@@ -19,80 +22,44 @@ export const SnowForecastEmbed = ({
   const [elevation, setElevation] = useState<Elevation>("mid");
   const feedUrl = `https://ja.snow-forecast.com/resorts/${snowForecastSlug}/forecasts/feed/${elevation}/m`;
   const detailUrl = `https://ja.snow-forecast.com/resorts/${snowForecastSlug}/6day/${elevation}`;
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
+  const isLoading = loadedUrl !== feedUrl;
+
+  // 地点が変わったときだけ初期位置へ戻す。標高の切り替えでは今の位置を保つ
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 地点の切り替えで送り直す
+  useLayoutEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollLeft = INITIAL_SCROLL_X;
+  }, [snowForecastSlug]);
 
   return (
-    <div>
-      <ElevationSelector
-        value={elevation}
-        onChange={value => setElevation(value as Elevation)}
-        options={[
-          { label: "山頂", value: "top" },
-          { label: "中腹", value: "mid" },
-          { label: "山麓", value: "bot" },
-        ]}
-      />
-      <Card className="mt-4 overflow-hidden">
-        <CardContent className="p-0">
-          <div className="overflow-x-auto overflow-y-hidden scroll-touch">
-            <iframe
-              title={`${resortName} Snow-Forecast`}
-              src={feedUrl}
-              width="100%"
-              height={260}
-              scrolling="auto"
-              loading="lazy"
-              className="min-w-[720px] block border-0 bg-transparent"
-            />
-          </div>
-
-          <Separator className="border-gray-100" />
-          <div className="px-4 py-3">
-            <p className="text-sm text-gray-600">
-              詳細な予報は{" "}
-              <ExternalLinkComponent
-                href={detailUrl}
-                className="text-blue-600 hover:text-blue-700"
-              >
-                snow-forecast.com
-              </ExternalLinkComponent>{" "}
-              からご確認ください
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+    // 枠は比較の天気カードの埋め込みと同じ
+    <div className="flex min-w-0 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white">
+      <div className="relative">
+        {isLoading && <SnowForecastLoading />}
+        <div
+          ref={scrollRef}
+          className="overflow-x-auto overflow-y-hidden scroll-touch"
+        >
+          <iframe
+            title={`${resortName} Snow-Forecast`}
+            src={feedUrl}
+            width="100%"
+            height={260}
+            scrolling="auto"
+            loading="lazy"
+            onLoad={() => setLoadedUrl(feedUrl)}
+            className="min-w-[720px] block border-0 bg-transparent"
+          />
+        </div>
+      </div>
+      <div>
+        <SnowForecastFooter
+          elevation={elevation}
+          onElevationChange={setElevation}
+          detailUrl={detailUrl}
+        />
+      </div>
     </div>
   );
 };
-
-/**
- * 標高を選択するための共通UIコンポーネント
- */
-const ElevationSelector = ({
-  value,
-  onChange,
-  options,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  options: { label: string; value: string }[];
-}) => (
-  <div className="flex w-full justify-center">
-    <div className="flex gap-1 rounded-full bg-gray-100 border border-gray-200 p-1 shadow-sm">
-      {options.map(option => (
-        <Button
-          key={option.value}
-          onClick={() => onChange(option.value)}
-          size="sm"
-          variant={value === option.value ? "default" : "ghost"}
-          className={cn(
-            "rounded-full font-semibold transition-all duration-200 w-auto min-w-[5rem] md:min-w-[6rem]",
-            value !== option.value &&
-              "text-gray-500 hover:bg-gray-50 hover:text-gray-900",
-          )}
-        >
-          {option.label}
-        </Button>
-      ))}
-    </div>
-  </div>
-);

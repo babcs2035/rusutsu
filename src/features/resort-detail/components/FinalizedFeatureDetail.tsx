@@ -27,6 +27,7 @@ export const FinalizedFeatureDetail = ({
   courseGroup,
   lift,
   resortLabelName,
+  resortSearchWordName,
   courseSourceUrls,
   liftSourceUrls,
   selectedElevationProfilePoint,
@@ -41,6 +42,8 @@ export const FinalizedFeatureDetail = ({
   lift: FinalizedLiftFeature | null;
   /** 地図のラベルに出している省略名。検索語の組み立てに使う */
   resortLabelName: string;
+  /** 動画検索語の先頭に付ける正式名（「スキー場」込み） */
+  resortSearchWordName: string;
   courseSourceUrls: string[];
   courseObservedAt?: string | null;
   liftObservedAt?: string | null;
@@ -115,6 +118,7 @@ export const FinalizedFeatureDetail = ({
               mapData={mapData}
               courseGroup={courseGroup}
               resortLabelName={resortLabelName}
+              resortSearchWordName={resortSearchWordName}
               sourceUrls={courseSourceUrls}
               selectedElevationProfilePoint={selectedElevationProfilePoint}
               onSelectedElevationProfilePointChange={
@@ -126,7 +130,7 @@ export const FinalizedFeatureDetail = ({
               key={lift.id}
               resortId={resortId}
               lift={lift}
-              resortLabelName={resortLabelName}
+              resortSearchWordName={resortSearchWordName}
               sourceUrls={liftSourceUrls}
               selectedElevationProfilePoint={selectedElevationProfilePoint}
               onSelectedElevationProfilePointChange={

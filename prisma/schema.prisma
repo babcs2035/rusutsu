@@ -729,6 +729,9 @@ model MapCourse {
   elevationDifference    Float?
   calculatedAverageSlope Float?
   calculatedMaxSlope     Float?
+  /// 線の最低・最高標高（m）。座標の標高から保存時に出し、集計で座標を読まずに済ませる
+  minElevation           Float?
+  maxElevation           Float?
   elevationReady         Boolean         @default(false)
   crawledNames           String[]        @default([])
   mappingAssigned        Boolean         @default(false)
@@ -792,6 +795,9 @@ model MapLift {
   elevationDifference    Float?
   calculatedAverageSlope Float?
   calculatedMaxSlope     Float?
+  /// 線の最低・最高標高（m）。座標の標高から保存時に出す
+  minElevation           Float?
+  maxElevation           Float?
   elevationReady         Boolean   @default(false)
   crawledNames           String[]  @default([])
   mappingAssigned        Boolean   @default(false)
@@ -1120,17 +1126,28 @@ model CourseRecommendationFeature {
 
 // Read model for search results. No geometry or crawler payload is read by lists.
 model SkiResortOperationSummary {
-  skiResortId        String    @id
-  skiResort          SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "summary_resort_fk")
-  hasMap             Boolean
-  courseTotal        Int?
-  courseActive       Int?
-  liftTotal          Int?
-  liftActive         Int?
-  courseCountSource  String
-  liftCountSource    String
-  calculationVersion Int       @default(1)
-  updatedAt          DateTime  @updatedAt
+  skiResortId                 String    @id
+  skiResort                   SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "summary_resort_fk")
+  hasMap                      Boolean
+  courseTotal                 Int?
+  courseActive                Int?
+  liftTotal                   Int?
+  liftActive                  Int?
+  courseCountSource           String
+  liftCountSource             String
+  /// 滑走距離（m）。標高未取得で斜面距離が無い線は水平距離で代える
+  courseDistanceTotal         Int?
+  /// ○・△のコースの滑走距離（m）。営業状況の出典が無ければ null
+  courseDistanceOpen          Int?
+  /// 斜面距離が無く水平距離で代えた線の本数（点検用）
+  courseDistanceFallbackLines Int       @default(0)
+  /// 距離が無く合計に入らなかった線の本数（点検用）
+  courseDistanceMissingLines  Int       @default(0)
+  /// 地図のコースの最高・最低標高（m）。標高差は両者の差。地図のコースが無ければ null
+  mapTopElevation             Int?
+  mapBaseElevation            Int?
+  calculationVersion          Int       @default(1)
+  updatedAt                   DateTime  @updatedAt
 
   @@map("ski_resort_operation_summaries")
 }

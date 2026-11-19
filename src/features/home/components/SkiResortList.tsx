@@ -1,5 +1,6 @@
 "use client";
 
+import { ExternalLink } from "lucide-react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import {
   memo,
@@ -13,10 +14,12 @@ import {
 import { calculateLiftTicketAndRentalForList } from "@/actions/skiResorts";
 import { FavoriteButton } from "@/features/favorites/FavoriteButton";
 import type {
+  CourseDistanceTotals,
   OperatingCount,
   ResortOperatingCounts,
 } from "@/features/home/utils/operatingCounts";
 import { LiftTicketConditionsButton } from "@/features/lift-ticket/components/LiftTicketConditionsButton";
+import { LiftTicketConditionsDialog } from "@/features/lift-ticket/components/LiftTicketConditionsDialog";
 import type {
   LiftTicketSearchInput,
   TicketCalculationResult,
@@ -24,10 +27,12 @@ import type {
 import { priceText } from "@/features/lift-ticket/utils/priceText";
 import type { TicketRentalResult } from "@/features/lift-ticket/utils/rental";
 import type { TicketBundleResult } from "@/features/lift-ticket/utils/rentalBundle";
+import { distanceKm } from "@/features/map/utils/distance";
 import { cn } from "@/lib/utils";
 import { CompareResortButton } from "@/shared/components/CompareResortButton";
 import { CopyResortNameButton } from "@/shared/components/CopyResortNameButton";
 import type { MapSkiResort } from "@/types/skiResorts";
+import { useGoogleMapsLinks } from "../hooks/useGoogleMapsLinks";
 import type { ResortSortControls } from "../hooks/useResortSort";
 import { groupResortsByRegion } from "../utils/groupResortsByRegion";
 import { GroupedResortList } from "./GroupedResortList";
@@ -108,7 +113,10 @@ const useListLiftTicketResults = (
     };
   }, [requestKey, paused]);
 
-  if (requestKey === null) return { status: "idle" };
+  if (!input.visitDate) return { status: "idle" };
+  // 日程は入っているが料金データのあるスキー場が一覧に無いときは、
+  // 「日程を設定」ではなく各行を「不明」にする
+  if (requestKey === null) return { status: "done", results: {} };
   return state?.key === requestKey ? state.value : { status: "loading" };
 };
 
@@ -121,12 +129,27 @@ type Props = {
   onHoverResortChange?: (id: string | null) => void;
   showHeader?: boolean;
   liftTicketInput: LiftTicketSearchInput;
-  onEditLiftTicketConditions: () => void;
+  /** 料金の計算条件を変える。検索欄と同じ条件に書き込む */
+  onLiftTicketInputChange: (input: LiftTicketSearchInput) => void;
   /** 絞り込みで選んだ項目だけ、コース・リフトの下に1行ずつ出す */
   featureLines?: ResortFeatureLines;
   /** 一覧が見えていない間（詳細を開いている・幅が足りず隠れている）は料金を計算しない */
   liftTicketPaused?: boolean;
+  /** 件数を並び替えの右に出すか。比較チップの行があるときはそちらに出す */
+  showResultCount?: boolean;
 };
+
+/**
+ * 施設リンクが未登録のスキー場は、名前と都道府県で Google マップを検索する。
+ * 座標だけのリンクだと、施設の情報（口コミ・営業時間など）が出ないため。
+ */
+const googleMapsSearchUrl = (resort: MapSkiResort) =>
+  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${resort.nameJa} ${resort.prefecture}`)}`;
+
+const hasListCoordinate = (resort: MapSkiResort) =>
+  Number.isFinite(resort.latitude) &&
+  Number.isFinite(resort.longitude) &&
+  !(resort.latitude === 0 && resort.longitude === 0);
 
 export type ResortFeatureLines = { yukiMagi: boolean; evCharger: boolean };
 
@@ -198,6 +221,71 @@ const FeatureLine = ({
   </p>
 );
 
+/** 近い順のときの1行。現在地からの距離と Google マップへのリンク */
+const DistanceLine = ({
+  distance,
+  mapsUrl,
+}: {
+  distance: number;
+  mapsUrl: string;
+}) => (
+  <p className="mt-1 flex min-w-0 items-center gap-1 whitespace-nowrap rounded-md bg-gray-100 px-1.5 py-1 text-xs leading-4">
+    <span className="min-w-0 flex-1 truncate text-xs font-medium tabular-nums text-gray-600 @min-[300px]:text-[13px]">
+      現在地から{" "}
+      <span className="font-bold text-gray-900">
+        {distance < 10 ? distance.toFixed(1) : Math.round(distance)}km
+      </span>
+    </span>
+    <a
+      href={mapsUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      data-ski-resort-list-actions="true"
+      onPointerDown={event => event.stopPropagation()}
+      onClick={event => event.stopPropagation()}
+      className={cn(
+        "inline-flex shrink-0 items-center gap-0.5 text-blue-700 underline underline-offset-2",
+        LIST_LABEL_TYPOGRAPHY,
+      )}
+    >
+      Google マップ
+      <ExternalLink className="size-3" aria-hidden="true" />
+    </a>
+  </p>
+);
+
+/** 10km以上は整数（39/40km）、それ未満は小数1桁（4.5/9.8km）で欄に収める */
+const formatKm = (meters: number) => {
+  const km = meters / 1000;
+  return km >= 10 ? String(Math.round(km)) : km.toFixed(1);
+};
+
+/** 滑走可能距離が長い順のときだけ、コースの欄の値を「可能/総距離km」にする */
+const CourseDistanceMetric = ({
+  distance,
+  isLoading,
+}: {
+  distance: CourseDistanceTotals | null | undefined;
+  isLoading: boolean;
+}) => {
+  const value = isLoading
+    ? "集計中…"
+    : distance
+      ? `${distance.open === null ? "不明" : formatKm(distance.open)}/${formatKm(distance.total)}km`
+      : "不明";
+  return (
+    <ListMetric
+      label="コース"
+      value={value}
+      description={
+        distance && !isLoading
+          ? `コース ${value}：滑走可能なコースの距離／全コースの滑走距離`
+          : undefined
+      }
+    />
+  );
+};
+
 const OperatingMetric = ({
   label,
   count,
@@ -234,6 +322,13 @@ const OperatingMetric = ({
   );
 };
 
+/** 検索結果の件数。比較チップの行の右端か、並び替えの右に出す */
+export const ResultCount = ({ count }: { count: number }) => (
+  <span className="shrink-0 whitespace-nowrap pl-0.5 text-sm font-bold tabular-nums text-gray-900">
+    {count.toLocaleString("ja-JP")}件
+  </span>
+);
+
 /**
  * 右カラムまたはボトムシートに表示されるスキー場一覧コンポーネント
  */
@@ -246,19 +341,25 @@ export const SkiResortList = ({
   onHoverResortChange,
   showHeader = true,
   liftTicketInput,
-  onEditLiftTicketConditions,
+  onLiftTicketInputChange,
   featureLines,
   liftTicketPaused = false,
+  showResultCount = true,
 }: Props) => {
   const listRef = useRef<HTMLUListElement>(null);
+  const [isConditionsOpen, setConditionsOpen] = useState(false);
   const sortOrder = sortControls.order;
-  const previousSortOrder = useRef(sortOrder);
+  const sortKey = `${sortOrder}:${sortControls.prefectureOrder}`;
+  const previousSortKey = useRef(sortKey);
   useEffect(() => {
-    if (previousSortOrder.current === sortOrder) return;
-    previousSortOrder.current = sortOrder;
+    if (previousSortKey.current === sortKey) return;
+    previousSortKey.current = sortKey;
     // 並び替えたあとは、順位の先頭から見せる。
     listRef.current?.scrollTo({ top: 0 });
-  }, [sortOrder]);
+  }, [sortKey]);
+  const googleMapsLinks = useGoogleMapsLinks(
+    sortControls.distanceFrom !== null,
+  );
   const liftTicketResults = useListLiftTicketResults(
     resorts,
     liftTicketInput,
@@ -267,6 +368,15 @@ export const SkiResortList = ({
   const regions = useMemo(
     () => (sortOrder === "prefecture" ? groupResortsByRegion(resorts) : []),
     [resorts, sortOrder],
+  );
+  // 検索結果の顔ぶれ。並び替えでは変わらないよう、IDを並べ直してから連結する
+  const resultKey = useMemo(
+    () =>
+      resorts
+        .map(resort => resort.id)
+        .sort()
+        .join(","),
+    [resorts],
   );
   const operatingCounts = useMemo(
     () =>
@@ -310,6 +420,13 @@ export const SkiResortList = ({
       operatingCounts={operatingCounts}
       showYukiMagi={featureLines?.yukiMagi ?? false}
       showEvCharger={featureLines?.evCharger ?? false}
+      showCourseDistance={sortOrder === "openDistance"}
+      distance={
+        sortControls.distanceFrom && hasListCoordinate(resort)
+          ? distanceKm(sortControls.distanceFrom, resort)
+          : null
+      }
+      mapsUrl={googleMapsLinks?.[resort.id] ?? googleMapsSearchUrl(resort)}
     />
   );
 
@@ -327,16 +444,14 @@ export const SkiResortList = ({
         </div>
       )}
 
-      <div className="flex min-w-0 shrink-0 items-center gap-1.5 border-b border-gray-100 px-3 pb-2 md:px-4">
+      <div className="@container/sort-row flex min-w-0 shrink-0 items-center gap-1.5 border-b border-gray-100 px-3 pb-2 md:px-4">
         <LiftTicketConditionsButton
           input={liftTicketInput}
-          onClick={onEditLiftTicketConditions}
-          className="flex-1"
+          onClick={() => setConditionsOpen(true)}
+          className="min-w-[7.5rem] flex-1"
         />
         <ResortSortButton {...sortControls} />
-        <span className="shrink-0 whitespace-nowrap pl-0.5 text-sm font-bold tabular-nums text-gray-900">
-          {resorts.length.toLocaleString("ja-JP")}件
-        </span>
+        {showResultCount && <ResultCount count={resorts.length} />}
       </div>
       {(sortControls.locating || sortControls.locationError) && (
         <p
@@ -375,18 +490,28 @@ export const SkiResortList = ({
           className={cn(
             "@container/resort-list flex-grow list-none overflow-y-auto pt-0 pb-[env(safe-area-inset-bottom,0px)] md:gap-3 md:py-4",
             sortOrder === "prefecture"
-              ? "scroll-pt-[4.75rem] px-3 md:pt-0"
+              ? "scroll-pt-[4.25rem] px-3 md:pt-0"
               : "px-4",
           )}
           onScroll={() => onHoverResortChange?.(null)}
         >
           {sortOrder === "prefecture" ? (
-            <GroupedResortList regions={regions} renderResort={renderResort} />
+            <GroupedResortList
+              regions={regions}
+              resultKey={resultKey}
+              renderResort={renderResort}
+            />
           ) : (
             resorts.map(renderResort)
           )}
         </ul>
       )}
+      <LiftTicketConditionsDialog
+        open={isConditionsOpen}
+        onOpenChange={setConditionsOpen}
+        value={liftTicketInput}
+        onChange={onLiftTicketInputChange}
+      />
     </div>
   );
 };
@@ -402,6 +527,9 @@ const SkiResortListItem = memo(
     operatingCounts,
     showYukiMagi,
     showEvCharger,
+    showCourseDistance,
+    distance,
+    mapsUrl,
   }: {
     resort: MapSkiResort;
     isCompareSelected: boolean;
@@ -412,6 +540,11 @@ const SkiResortListItem = memo(
     operatingCounts: Record<string, ResortOperatingCounts> | null;
     showYukiMagi: boolean;
     showEvCharger: boolean;
+    showCourseDistance: boolean;
+    /** 近い順のときだけ、現在地からの直線距離（km） */
+    distance: number | null;
+    /** そのスキー場の Google マップ（施設のページ） */
+    mapsUrl: string;
   }) => {
     const highlightResort = () => {
       if (!canUseHoverHighlight()) return;
@@ -489,6 +622,11 @@ const SkiResortListItem = memo(
                 onInteract={clearHighlight}
               />
             </p>
+            {resort.formerNames.length > 0 && (
+              <p className="min-w-0 break-words text-[0.6875rem] font-medium leading-tight text-gray-400">
+                旧称: {resort.formerNames.map(name => name.name).join("、")}
+              </p>
+            )}
             <div className="flex min-w-0 items-center justify-between gap-2">
               <p className="min-w-0 flex-1 break-words text-xs font-medium leading-snug text-gray-500">
                 {resort.prefecture} · {resort.town}
@@ -515,24 +653,32 @@ const SkiResortListItem = memo(
                 />
               </div>
             </div>
-            {resort.formerNames.length > 0 && (
-              <p className="min-w-0 break-words text-[0.6875rem] font-medium leading-tight text-gray-400">
-                旧称: {resort.formerNames.map(name => name.name).join("、")}
-              </p>
-            )}
             <div
-              className="@container mt-2 grid min-w-0 grid-cols-3 items-baseline gap-1 overflow-hidden rounded-md bg-sky-50 px-1.5 py-1"
+              className={cn(
+                "@container mt-2 grid min-w-0 items-baseline gap-1 overflow-hidden rounded-md bg-sky-50 px-1.5 py-1",
+                // 距離（128/150km）は件数より長いので、そのときだけコース列を広げる
+                showCourseDistance
+                  ? "grid-cols-[7.25rem_auto_minmax(0,1fr)]"
+                  : "grid-cols-3",
+              )}
               onPointerDown={event => event.stopPropagation()}
               role="group"
               aria-label="営業コース、運行リフト、料金"
             >
-              <OperatingMetric
-                label="コース"
-                count={operating?.courses}
-                hasMap={operating?.hasMap}
-                isLoading={operatingCounts === null}
-                fallbackTotal={resort.numberOfCourses}
-              />
+              {showCourseDistance ? (
+                <CourseDistanceMetric
+                  distance={operating?.courseDistance}
+                  isLoading={operatingCounts === null}
+                />
+              ) : (
+                <OperatingMetric
+                  label="コース"
+                  count={operating?.courses}
+                  hasMap={operating?.hasMap}
+                  isLoading={operatingCounts === null}
+                  fallbackTotal={resort.numberOfCourses}
+                />
+              )}
               <OperatingMetric
                 label="リフト"
                 count={operating?.lifts}
@@ -544,7 +690,9 @@ const SkiResortListItem = memo(
                 label="料金"
                 value={
                   liftTicketResults.status === "done"
-                    ? priceText(ticketResult, rentalResult, bundleResult)
+                    ? priceText(ticketResult, rentalResult, bundleResult, {
+                        compact: true,
+                      })
                     : liftTicketResults.status === "loading"
                       ? "計算中…"
                       : liftTicketResults.status === "error"
@@ -566,6 +714,9 @@ const SkiResortListItem = memo(
                 value={resort.evChargerSummary}
                 tone="green"
               />
+            )}
+            {distance !== null && (
+              <DistanceLine distance={distance} mapsUrl={mapsUrl} />
             )}
           </div>
         </div>

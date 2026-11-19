@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { OFFICIAL_SKILL_LINK_TYPES } from "./model";
+import { linkPageKey, OFFICIAL_SKILL_LINK_TYPES } from "./model";
 
 /**
  * 収集したファイルを、resort_links へ入れる行に直す。
@@ -121,28 +121,40 @@ const dedupe = (rows: ResortLinkRow[]): ResortLinkRow[] => {
   });
 };
 
-export const officialLinkRows = (file: OfficialLinkFile): ResortLinkRow[] =>
-  dedupe(
-    file.items.flatMap((item, index) =>
-      item.status === "found" && item.url
-        ? [
-            {
-              resortId: file.resortId,
-              type: item.type,
-              category: item.category ?? null,
-              label: item.label ?? null,
-              url: item.jumpUrl ?? item.url,
-              note: item.note ?? null,
-              sortOrder: index,
-            },
-          ]
-        : [],
-    ),
-  );
+/**
+ * 公式リンクの行。同じ種類で同じページ（ページ内の位置違いを含む）を指す項目は1行にする。
+ * 出発地ごとに節があっても1ページの案内なので、名前が食い違うときは名前・補足・位置を外してページだけを残す
+ */
+export const officialLinkRows = (file: OfficialLinkFile): ResortLinkRow[] => {
+  const byPage = new Map<string, ResortLinkRow>();
+  file.items.forEach((item, index) => {
+    if (item.status !== "found" || !item.url) return;
+    const key = `${item.type}\n${linkPageKey(item.type, item.url)}`;
+    const kept = byPage.get(key);
+    if (!kept) {
+      byPage.set(key, {
+        resortId: file.resortId,
+        type: item.type,
+        category: item.category ?? null,
+        label: item.label ?? null,
+        url: item.jumpUrl ?? item.url,
+        note: item.note ?? null,
+        sortOrder: index,
+      });
+      return;
+    }
+    kept.url = kept.url.split("#")[0];
+    if (kept.label !== (item.label ?? null)) kept.label = null;
+    if (kept.note !== (item.note ?? null)) kept.note = null;
+  });
+  return dedupe([...byPage.values()]);
+};
 
 export const externalSiteFileSchema = z.object({
   siteId: z.string(),
   siteName: z.string(),
+  /** 出発地の地方ごとにページが分かれるサイト（ラド観光）。ツアーを出発地ごとに1件にし、出発地の名前を残す */
+  perOrigin: z.boolean().optional(),
   crawledAt: z.string(),
   entries: z.array(
     z.object({
@@ -184,18 +196,35 @@ export const siteLinkLabel = (
  * ツアーは busTour、バス・電車だけのプランは公共交通のアクセス（transitAccess）へ回す。
  * 共通券など複数スキー場にまたがるリンクは、スキー場ごとに1行にする。
  */
-export const externalSiteRows = (file: ExternalSiteFile): ResortLinkRow[] =>
-  dedupe(
+export const externalSiteRows = (file: ExternalSiteFile): ResortLinkRow[] => {
+  // バスツアーは1社×1スキー場＝そのサイトのスキー場ページ1件。出発地で分けるのは perOrigin のサイトだけ
+  const tourResorts = new Set<string>();
+  return dedupe(
     file.entries.flatMap((entry, index) =>
-      entry.resortIds.map(resortId => ({
-        resortId,
-        type: entry.kind === "tour" ? "busTour" : "transitAccess",
-        category: null,
-        label: siteLinkLabel(entry.label, entry.name),
-        url: entry.url,
-        // クローラーのメモ（「バスのみ」など）は種類とラベルで分かるので、画面には出さない
-        note: null,
-        sortOrder: index,
-      })),
+      entry.resortIds.flatMap(resortId => {
+        if (entry.kind === "tour") {
+          const slot = file.perOrigin
+            ? `${resortId}\n${entry.label ?? ""}`
+            : resortId;
+          if (tourResorts.has(slot)) return [];
+          tourResorts.add(slot);
+        }
+        return [
+          {
+            resortId,
+            type: entry.kind === "tour" ? "busTour" : "transitAccess",
+            category: null,
+            label:
+              entry.kind === "tour"
+                ? null
+                : siteLinkLabel(entry.label, entry.name),
+            url: entry.url,
+            // クローラーのメモ（「バスのみ」など）は種類とラベルで分かるので、画面には出さない
+            note: null,
+            sortOrder: index,
+          },
+        ];
+      }),
     ),
   );
+};

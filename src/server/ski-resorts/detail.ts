@@ -1,3 +1,4 @@
+import type { ResortOperatingCounts } from "@/features/home/utils/operatingCounts";
 import {
   parseResortLinksMap,
   SKI_RESORT_LINKS_DOCUMENT_KEY,
@@ -28,12 +29,14 @@ import { getResortDecisionData } from "@/lib/resortDecisionData";
 import { readDisplayGroupsForResort } from "@/lib/resortDisplayGroups";
 import { getResortReadingInfo } from "@/lib/resortReadings";
 import { readSkiResortById } from "@/lib/skiResortData";
+import { readOperatingSummaries } from "@/server/course-lift/summaryClient";
 import {
   getDataDocument,
   listDataDocuments,
 } from "@/server/data-documents/client";
 import { currentEditCapture } from "@/server/edit-requests/capture";
 import type { SkiResortDetailRecord } from "@/server/ski-resorts/repository";
+import { withMapElevation } from "@/shared/utils/resortElevation";
 
 type OperationCountSummary = {
   total: number;
@@ -233,8 +236,6 @@ const buildSkiResortDetail = async (
     liftTickets: decisionData.liftTickets.length
       ? decisionData.liftTickets
       : (primaryDecisionData?.liftTickets ?? []),
-    reviewData:
-      decisionData.reviewData ?? primaryDecisionData?.reviewData ?? null,
     currentConditions: await Promise.all(
       [...new Set([resort.id, ...sourceIds])].map(async id => ({
         id,
@@ -269,13 +270,21 @@ export async function readSkiResortDetails(
   { withMap }: { withMap: boolean },
 ): Promise<SkiResortDetailData[]> {
   if (ids.length === 0) return [];
-  const [links, resorts] = await Promise.all([
+  const [links, resorts, summaries] = await Promise.all([
     readResortLinks(),
     Promise.all(ids.map(id => readSkiResortById(id))),
+    // 標高は付加情報なので、集計を読めなくても掲載元の値で詳細を出す
+    readOperatingSummaries().catch(
+      (error): Record<string, ResortOperatingCounts> => {
+        console.warn("地図の標高の集計を取得できませんでした:", error);
+        return {};
+      },
+    ),
   ]);
   const details = await Promise.all(
-    resorts.map(async resort => {
-      if (!resort) return null;
+    resorts.map(async source => {
+      if (!source) return null;
+      const resort = withMapElevation(source, summaries[source.id]?.elevation);
       // 地図を返さない比較でも、営業件数はサーバーで集計して返す
       const mapData = await getFinalizedResortMapData(resort.id);
       return buildSkiResortDetail(

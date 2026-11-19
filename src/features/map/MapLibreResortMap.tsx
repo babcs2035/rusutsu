@@ -1456,6 +1456,14 @@ function MapLibreResortMapContent({
     surfaceRef,
     showBottomToolbar,
   );
+  const locationRightOverlap = useDetailPanelRightOverlap(
+    surfaceRef,
+    isReady &&
+      !embedded &&
+      showLocationControl &&
+      interactionMode !== "compare" &&
+      !isPreviewMap,
+  );
 
   useEffect(() => {
     if (map && isReady) onMapReady?.(map);
@@ -1471,14 +1479,17 @@ function MapLibreResortMapContent({
       className="relative z-0 h-full w-full"
     >
       <div ref={containerRef} className="h-full w-full" />
-      {isReady && !embedded && showLocationControl && (
-        <MapLocationControl
-          map={map}
-          resorts={resorts}
-          interactive={!isPreviewMap}
-          expanded={mapPresentation === "expanded"}
-        />
-      )}
+      {isReady &&
+        !embedded &&
+        showLocationControl &&
+        interactionMode !== "compare" && (
+          <MapLocationControl
+            map={map}
+            interactive={!isPreviewMap}
+            expanded={mapPresentation === "expanded"}
+            rightOffset={locationRightOverlap}
+          />
+        )}
       {failed && (
         <div
           role="status"

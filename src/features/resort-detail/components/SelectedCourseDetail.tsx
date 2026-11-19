@@ -31,6 +31,8 @@ import { FeatureMediaGallery } from "./FeatureMediaGallery";
 type Props = {
   courseGroup: FinalizedCourseGroup;
   resortLabelName: string;
+  /** 動画検索語の先頭に付ける正式名 */
+  resortSearchWordName: string;
   sourceUrls: string[];
   resortId?: string;
   mapData?: FinalizedResortMapData | null;
@@ -43,6 +45,7 @@ type Props = {
 export const SelectedCourseDetail = ({
   courseGroup,
   resortLabelName,
+  resortSearchWordName,
   sourceUrls,
   resortId,
   mapData,
@@ -73,7 +76,7 @@ export const SelectedCourseDetail = ({
   ].filter(comment => !repeatedLabels.has(comment.trim()));
   const searchWord = getFeatureSearchWord({
     searchWord: selectedCourse.properties.searchWord,
-    resortLabelName,
+    resortSearchWordName,
     featureName: courseGroup.displayName,
   });
   const notesContent = (

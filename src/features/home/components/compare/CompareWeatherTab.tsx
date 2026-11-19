@@ -2,35 +2,48 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { getResortLabelName } from "@/lib/resortAliases";
-import { cn } from "@/lib/utils";
-import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
-import { CompactSnowForecastEmbed } from "./CompactSnowForecastEmbed";
-import { COMPARE_WEATHER_GRID_CLASS } from "./constants";
-import type { Elevation, Resort, WeatherLink } from "./types";
 import {
   getSnowForecastLinks,
   useWeatherLinks,
-} from "./useCompareWeatherLinks";
+} from "@/features/weather/useWeatherLinks";
+import { WeatherLinkChips } from "@/features/weather/WeatherLinkChips";
+import { getResortLabelName } from "@/lib/resortAliases";
+import { CompactSnowForecastEmbed } from "./CompactSnowForecastEmbed";
+import { CompareResortDetailButton } from "./CompareResortNameCell";
+import { COMPARE_WEATHER_GRID_CLASS } from "./constants";
+import type { Elevation, Resort } from "./types";
 import "./CompareWeatherTab.css";
 
 export const CompareWeatherTab = ({
   resorts,
+  onSelectResort,
 }: {
   resorts: Resort[];
   isSidePanel: boolean;
+  /** 「詳細」で開くスキー場。渡さなければボタンを出さない */
+  onSelectResort?: (id: string) => void;
 }) => (
   // 他タブと同じく @container の親でカードを横に並べる（列数は constants.ts）
   <div className="@container min-w-0">
     <div className={COMPARE_WEATHER_GRID_CLASS}>
       {resorts.map(resort => (
-        <ResortWeatherPanel key={resort.id} resort={resort} />
+        <ResortWeatherPanel
+          key={resort.id}
+          resort={resort}
+          onSelectResort={onSelectResort}
+        />
       ))}
     </div>
   </div>
 );
 
-const ResortWeatherPanel = ({ resort }: { resort: Resort }) => {
+const ResortWeatherPanel = ({
+  resort,
+  onSelectResort,
+}: {
+  resort: Resort;
+  onSelectResort?: (id: string) => void;
+}) => {
   const [snowForecastElevation, setSnowForecastElevation] =
     useState<Elevation>("mid");
   const [selectedSnowForecastId, setSelectedSnowForecastId] = useState<
@@ -45,11 +58,6 @@ const ResortWeatherPanel = ({ resort }: { resort: Resort }) => {
     snowForecastLinks[0] ??
     null;
   const links = useWeatherLinks(resort, snowForecastElevation);
-  const availableLinks = links.filter(
-    (link): link is WeatherLink & { url: string } => Boolean(link.url),
-  );
-  const hasMultipleLinks =
-    new Set(availableLinks.map(link => link.kind)).size < availableLinks.length;
 
   useEffect(() => {
     if (snowForecastLinks.length === 0) {
@@ -66,25 +74,20 @@ const ResortWeatherPanel = ({ resort }: { resort: Resort }) => {
     <div className="weather-panel-container min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-white px-2 pt-2 pb-2 shadow-sm">
       <div className="weather-panel-content flex w-full min-w-0 flex-col gap-1.5">
         <div className="weather-info flex-shrink-0">
-          <h3 className="weather-info-name text-sm text-gray-900 font-semibold leading-tight font-[var(--font-heading)]">
-            {getResortLabelName(resort.id, resort.nameJa, resort.shortName)}
-          </h3>
+          <div className="weather-info-name flex min-w-0 items-center gap-2">
+            <h3 className="min-w-0 text-sm text-gray-900 font-semibold leading-tight break-words font-[var(--font-heading)]">
+              {getResortLabelName(resort.id, resort.nameJa, resort.shortName)}
+            </h3>
+            {onSelectResort && (
+              <CompareResortDetailButton
+                resortId={resort.id}
+                onSelectResort={onSelectResort}
+                className="ml-auto"
+              />
+            )}
+          </div>
 
-          {availableLinks.length > 0 && (
-            <div
-              className={cn(
-                "weather-links flex gap-1",
-                hasMultipleLinks && "weather-links-multiple",
-              )}
-            >
-              {availableLinks.map(link => (
-                <WeatherLinkButton
-                  key={`${link.kind}-${link.id}`}
-                  link={link}
-                />
-              ))}
-            </div>
-          )}
+          <WeatherLinkChips links={links} />
         </div>
 
         <div className="weather-feed min-w-0">
@@ -111,24 +114,3 @@ const ResortWeatherPanel = ({ resort }: { resort: Resort }) => {
     </div>
   );
 };
-
-const WeatherLinkButton = ({
-  link,
-}: {
-  link: WeatherLink & { url: string };
-}) => (
-  <ExternalLinkComponent
-    href={link.url}
-    className={cn(
-      "weather-link",
-      // 幅の狭いパネルでの高さ・余白は CompareWeatherTab.css のコンテナクエリ側で詰める
-      "flex items-center justify-center rounded-md text-xs font-extrabold text-center",
-      "transition-colors duration-150",
-      link.bg,
-      link.hoverBg,
-      link.color,
-    )}
-  >
-    <span className="whitespace-nowrap">{link.label}</span>
-  </ExternalLinkComponent>
-);

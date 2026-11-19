@@ -19,6 +19,7 @@ import { ConditionTable } from "./ConditionTable";
 import { CourseStatusTable } from "./CourseStatusTable";
 import { ObservationTimes } from "./ObservationTimes";
 import { ResortComment } from "./ResortComment";
+import { ResortElevation } from "./ResortElevation";
 import { useSimultaneousView } from "./SimultaneousToggle";
 
 /** 出典がないときは営業状況が分からないので、地図のコース数だけを「不明」として出す。 */
@@ -125,6 +126,8 @@ export function CurrentOverview({
       aria-label="営業・気象情報"
       className="@container/overview space-y-2"
     >
+      {/* 山頂・山麓は営業の前提になる固定の情報なので、営業状況の見出しの上に1行で添える */}
+      {!summaryOnly && <ResortElevation resort={resort} />}
       {/* 比較カード（summaryOnly）で未取得なら、下の表に未取得が出るので見出し行ごと省く */}
       {(!summaryOnly || observationEntries.length > 0) && (
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">

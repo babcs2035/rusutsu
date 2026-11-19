@@ -11,10 +11,17 @@ export type OperatingCount = {
   total: number;
 };
 
+/** 滑走距離（m）。open は営業状況の出典があるときだけ */
+export type CourseDistanceTotals = { total: number; open: number | null };
+
 export type ResortOperatingCounts = {
   hasMap: boolean;
   courses: OperatingCount | null;
   lifts: OperatingCount | null;
+  /** 保存済み集計から読んだ滑走距離。地図のコースが無ければ null */
+  courseDistance?: CourseDistanceTotals | null;
+  /** 地図のコースから出した山頂・山麓の標高（m）。地図に標高が無ければ null */
+  elevation?: { top: number; base: number } | null;
 };
 
 const isMapped = (feature: { statusMappingNames?: string[] }) =>

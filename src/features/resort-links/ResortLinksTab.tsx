@@ -17,8 +17,12 @@ const SOURCE_NAMES = new Map(
   linkSourcesJson.sources.map(source => [source.id, source.name]),
 );
 
+/**
+ * 天気タブのリンクと同じ角の立った四角いチップ。数十個並ぶので天気タブの extrabold より1段軽い bold にする
+ * （日本語は600でも700でも同じ太さなので、英字の Manrope を日本語の太さに合わせる意味もある）
+ */
 const chipClassName =
-  "max-w-full whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium hover:no-underline";
+  "inline-flex max-w-full items-center gap-1 whitespace-nowrap rounded-md px-2.5 py-1.5 text-xs font-bold leading-4 transition-colors duration-150 hover:no-underline";
 
 /** 外部サイト（ツアー会社など）のリンクか。公式と、種類そのものがサイト名のもの（tenki.jp など）は違う */
 const isSiteLink = (link: ResortLinkItem) =>
@@ -71,8 +75,8 @@ function LinkChip({
         chipClassName,
         className,
         link.source === "official"
-          ? "bg-blue-50 text-blue-900 hover:bg-blue-100"
-          : "bg-slate-100 text-slate-700 hover:bg-slate-200",
+          ? "bg-blue-50 text-blue-700 hover:bg-blue-100"
+          : "bg-slate-100 text-slate-800 hover:bg-slate-200",
       )}
     >
       {icon}
@@ -82,105 +86,73 @@ function LinkChip({
 }
 
 /**
- * 1つの種類のリンク。公式は区別の名前（出発地・店名など）をチップにする。
- * 外部サイトは、1件ならサイト名のチップ、複数（出発地別など）ならサイト名の後ろに並べる。
+ * 件数の多い種類のリンク（えすぺゆきの動画、外部割引など）。種類名の小見出しの下に、区別の名前のチップを並べる。
+ * 補足つきは1行を使い、補足は1行に収める（長ければ省略）
  */
-function LinkChips({ links }: { links: ResortLinkItem[] }) {
+function ManyLinks({ type }: { type: LinkTypeView }) {
   const [expanded, setExpanded] = useState(false);
+  const links = ownLinks(type);
   const shown = expanded ? links : links.slice(0, INITIAL_LINKS_PER_TYPE);
   const hidden = links.length - shown.length;
-  const official = shown.filter(link => !isSiteLink(link));
-  const bySite = new Map<string, ResortLinkItem[]>();
-  for (const link of shown) {
-    if (!isSiteLink(link)) continue;
-    bySite.set(link.source, [...(bySite.get(link.source) ?? []), link]);
-  }
   return (
-    <dd className="flex min-w-0 flex-wrap items-center gap-1">
-      {official.map((link, index) => {
-        // 名前の無いリンクが並ぶときは、番号で区別する（公式・公式2）
-        const unnamedBefore = official
-          .slice(0, index)
-          .filter(other => !other.label).length;
-        const text =
-          link.label ??
-          `${link.source === "official" ? "公式" : "開く"}${unnamedBefore > 0 ? unnamedBefore + 1 : ""}`;
-        if (!link.note)
-          return <LinkChip key={linkKey(link)} link={link} text={text} />;
-        // 補足つきは1行を使い、補足は1行に収める（長ければ省略）
-        return (
-          <span
-            key={linkKey(link)}
-            className="flex min-w-0 basis-full items-center gap-1.5"
-          >
-            <LinkChip
-              link={link}
-              text={text}
-              className="max-w-[70%] shrink-0"
-            />
-            <span className="min-w-0 truncate text-xs text-slate-500">
-              {link.note}
-            </span>
-          </span>
-        );
-      })}
-      {[...bySite].map(([source, siteLinks]) => {
-        const name = SOURCE_NAMES.get(source) ?? source;
-        if (siteLinks.length === 1 && !siteLinks[0].label)
+    <div className="min-w-0">
+      <p className="mb-1 flex items-center gap-1 text-xs font-semibold text-slate-600">
+        <TypeIcon type={type.type} />
+        {type.label}
+      </p>
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+        {shown.map((link, index) => {
+          const text = link.label ?? `${type.label} ${index + 1}`;
+          if (!link.note)
+            return <LinkChip key={linkKey(link)} link={link} text={text} />;
           return (
-            <LinkChip
-              key={linkKey(siteLinks[0])}
-              link={siteLinks[0]}
-              text={name}
-            />
-          );
-        return (
-          <span
-            key={source}
-            className="flex min-w-0 basis-full flex-wrap items-center gap-1"
-          >
-            <span className="text-xs text-slate-600">{name}</span>
-            {siteLinks.map(link => (
+            <span
+              key={linkKey(link)}
+              className="flex min-w-0 basis-full items-center gap-1.5"
+            >
               <LinkChip
-                key={linkKey(link)}
                 link={link}
-                text={link.label ?? "開く"}
+                text={text}
+                className="max-w-[70%] shrink-0"
               />
-            ))}
-          </span>
-        );
-      })}
-      {links.length > INITIAL_LINKS_PER_TYPE && (
-        <Button
-          variant="ghost"
-          size="xs"
-          className="whitespace-nowrap text-slate-600"
-          aria-expanded={expanded}
-          onClick={() => setExpanded(value => !value)}
-        >
-          {expanded ? "たたむ" : `ほか${hidden}件`}
-        </Button>
-      )}
-    </dd>
+              <span className="min-w-0 truncate text-xs text-slate-500">
+                {link.note}
+              </span>
+            </span>
+          );
+        })}
+        {links.length > INITIAL_LINKS_PER_TYPE && (
+          <Button
+            variant="ghost"
+            size="xs"
+            className="whitespace-nowrap text-slate-600"
+            aria-expanded={expanded}
+            onClick={() => setExpanded(value => !value)}
+          >
+            {expanded ? "たたむ" : `ほか${hidden}件`}
+          </Button>
+        )}
+      </div>
+    </div>
   );
 }
 
-/** 種類名のボタンで並べられるのは、公式などのリンクが3件まで（ツアー会社のように多いものは行にまとめる） */
+/** 種類名のボタンで並べられるのは、公式などのリンクが3件まで（多いものは種類名の小見出しの下にまとめる） */
 const MAX_NAMED_BUTTONS = 3;
 
 type LinkTypeView = ResortLinkGroupView["types"][number];
 
-const canUseTypeButtons = (type: LinkTypeView) =>
-  type.links.length === 1 ||
-  (type.links.length <= MAX_NAMED_BUTTONS &&
-    type.links.every(link => !isSiteLink(link)));
+/** 公式など、種類名のボタンで出すリンク（外部サイトは会社名のボタンで別に出す） */
+const ownLinks = (type: LinkTypeView) =>
+  type.links.filter(link => !isSiteLink(link));
 
 /** 種類名のボタン（例: 「コース営業状況」）。押すとそのページを別タブで開く */
 function TypeButtons({ type }: { type: LinkTypeView }) {
-  return type.links.map((link, index) => {
-    // 1件なら種類名だけ。複数なら区別の名前か番号を添える（レンタル料金（予約）・ゲレンデマップ 2）
+  const links = ownLinks(type);
+  return links.map((link, index) => {
+    // 1件なら種類名だけ。複数なら区別の名前か番号を添える（レンタル（予約）・ゲレンデマップ 2）
     const suffix =
-      type.links.length === 1
+      links.length === 1
         ? ""
         : link.label
           ? `（${link.label}）`
@@ -194,51 +166,53 @@ function TypeButtons({ type }: { type: LinkTypeView }) {
         link={link}
         text={`${type.label}${suffix}`}
         title={detail || undefined}
-        className="px-2.5 py-1.5"
         icon={<TypeIcon type={type.type} />}
       />
     );
   });
 }
 
+/** 外部サイト（ツアー会社など）のリンクは、会社名のボタン1つ。押すとそのサイトのスキー場ページを開く */
+function SiteButtons({ type }: { type: LinkTypeView }) {
+  return type.links
+    .filter(isSiteLink)
+    .map(link => (
+      <LinkChip
+        key={linkKey(link)}
+        link={link}
+        text={`${SOURCE_NAMES.get(link.source) ?? link.source}${link.label ? `（${link.label}）` : ""}`}
+        title={`${type.label}: ${SOURCE_NAMES.get(link.source) ?? link.source}`}
+      />
+    ));
+}
+
 /**
- * 1グループ分のリンク（見出しなし）。種類名のボタンを先に並べ、件数の多い種類は行にまとめる。
+ * 1グループ分のリンク（見出しなし）。種類名のボタンと会社名のボタンを横に並べ、
+ * 公式のリンクが4件以上ある種類だけ、種類名の小見出しの下にまとめる。
  * 比較のリンク集では、グループを行・スキー場を列にした表のマスにそのまま入れる。
  */
 export function LinkGroupBody({ group }: { group: ResortLinkGroupView }) {
-  const buttonTypes = group.types.filter(canUseTypeButtons);
-  const rowTypes = group.types.filter(type => !canUseTypeButtons(type));
+  const many = (type: LinkTypeView) =>
+    ownLinks(type).length > MAX_NAMED_BUTTONS;
+  const inline = group.types.filter(type => !many(type));
+  const manyTypes = group.types.filter(many);
   return (
-    <>
-      {buttonTypes.length > 0 && (
+    <div className="space-y-2">
+      {(inline.length > 0 ||
+        group.types.some(type => type.links.some(isSiteLink))) && (
         <div className="flex flex-wrap gap-1.5">
-          {buttonTypes.map(type => (
+          {inline.map(type => (
             <TypeButtons key={type.type} type={type} />
+          ))}
+          {group.types.map(type => (
+            <SiteButtons key={type.type} type={type} />
           ))}
         </div>
       )}
-      {rowTypes.length > 0 && (
-        <dl
-          className={cn(
-            "divide-y divide-slate-100 border-y border-slate-100",
-            buttonTypes.length > 0 && "mt-1.5",
-          )}
-        >
-          {rowTypes.map(type => (
-            <div
-              key={type.type}
-              className="grid grid-cols-[7.5rem_minmax(0,1fr)] gap-x-2 py-1.5"
-            >
-              <dt className="flex items-start gap-1 pt-1 text-xs text-slate-600">
-                <TypeIcon type={type.type} />
-                {type.label}
-              </dt>
-              <LinkChips links={type.links} />
-            </div>
-          ))}
-        </dl>
-      )}
-    </>
+      {manyTypes.map(type => (
+        <ManyLinks key={type.type} type={type} />
+      ))}
+    </div>
   );
 }
 

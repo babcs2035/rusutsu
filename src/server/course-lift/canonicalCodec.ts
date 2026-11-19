@@ -134,6 +134,29 @@ export function splitFeature(
   return { id, fields, geometry, properties, metadata, baseMetrics };
 }
 
+/** LineString の座標の3番目（標高）の最低・最高。標高が無ければ null */
+export function elevationRange(geometry: unknown): {
+  minElevation: number | null;
+  maxElevation: number | null;
+} {
+  const geometryRecord = record(geometry);
+  const coordinates = geometryRecord.coordinates;
+  const elevations =
+    geometryRecord.type === "LineString" && Array.isArray(coordinates)
+      ? coordinates.flatMap(point =>
+          Array.isArray(point) && Number.isFinite(point[2])
+            ? [Number(point[2])]
+            : [],
+        )
+      : [];
+  return elevations.length
+    ? {
+        minElevation: Math.min(...elevations),
+        maxElevation: Math.max(...elevations),
+      }
+    : { minElevation: null, maxElevation: null };
+}
+
 export function splitDerivedFeature(feature: MapFeature, index: number) {
   const properties = { ...record(feature.properties) };
   const { geometry, properties: _properties, ...metadata } = feature;
@@ -171,6 +194,7 @@ export function splitDerivedFeature(feature: MapFeature, index: number) {
     derivedMetadata: metadata,
     elevationReady,
     ...fields,
+    ...elevationRange(geometry),
   };
 }
 

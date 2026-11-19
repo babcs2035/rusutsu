@@ -31,10 +31,13 @@ export const priceText = (
   ticket: TicketCalculationResult | null | undefined,
   rental: TicketRentalResult | null | undefined,
   bundle: TicketBundleResult | null | undefined,
+  /** 一覧の狭い欄では「営業期間外」を「期間外」と縮める */
+  { compact = false }: { compact?: boolean } = {},
 ) => {
   if (!ticket) return "不明";
   if (["unavailable", "outside_season", "closed"].includes(ticket.status)) {
-    return ticket.status === "outside_season" ? "営業期間外" : "不明";
+    if (ticket.status !== "outside_season") return "不明";
+    return compact ? "期間外" : "営業期間外";
   }
   // セット券の合計が出たときは、レンタルを借りる全員の料金が出ている
   const bundleApplied =

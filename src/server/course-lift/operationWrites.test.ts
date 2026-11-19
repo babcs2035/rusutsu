@@ -36,6 +36,12 @@ const operationSummary = (
   liftActive: 4,
   courseCountSource: "server-mapping",
   liftCountSource: "legacy-count",
+  courseDistanceTotal: 15_400,
+  courseDistanceOpen: 9_800,
+  courseDistanceFallbackLines: 1,
+  courseDistanceMissingLines: 0,
+  mapTopElevation: 990,
+  mapBaseElevation: 422,
   calculationVersion: 4,
   ...overrides,
 });
@@ -130,6 +136,9 @@ test("batches legacy operation summaries and skips empty input", async () => {
   assert.ok(calls[0].values.includes("legacy-count"));
   assert.ok(calls[0].values.includes(12));
   assert.ok(calls[0].values.includes(8));
+  assert.match(calls[0].sql, /"mapTopElevation" = EXCLUDED\."mapTopElevation"/);
+  assert.ok(calls[0].values.includes(990));
+  assert.ok(calls[0].values.includes(422));
   assert.ok(calls[0].values.includes("resort-2"));
   assert.ok(calls[0].values.includes(null));
   assert.ok(calls[0].values.includes("none"));

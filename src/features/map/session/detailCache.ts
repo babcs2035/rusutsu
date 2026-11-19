@@ -1,7 +1,7 @@
 import type { SkiResortDetail } from "@/types/skiResorts";
 
 // 古い営業情報を含む詳細も復元させない。再取得した現在値で保存し直す。
-const DETAIL_CACHE_VERSION = 3;
+const DETAIL_CACHE_VERSION = 4;
 // 圏外で開き直すのは直近の詳細だけ。直前の 1 件まで残す。比較中のものは別に全件残す。
 const RETAINED_VIEWS = 2;
 
