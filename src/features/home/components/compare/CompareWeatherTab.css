@@ -21,13 +21,13 @@
 }
 
 .weather-panel-container .snow-forecast-feed-crop {
+  /* 予報全体の幅（750px × 0.92）。左の余白は初期スクロールで送り、手で横スクロールできる */
   height: 131.56px;
-  width: 386.4px;
-  max-width: 100%;
+  width: 690px;
 }
 
 .weather-panel-container .snow-forecast-feed-transform {
-  transform: translate(-40px, -35px) scale(0.92);
+  transform: translateY(-35px) scale(0.92);
 }
 
 .weather-panel-container .snow-forecast-mobile-footer {

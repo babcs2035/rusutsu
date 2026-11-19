@@ -20,8 +20,7 @@ export const DESKTOP_WEATHER_RESORT_INFO_WIDTH = "180px";
 export const SNOW_FORECAST_FEED_TOTAL_WIDTH = "474px";
 export const SNOW_FORECAST_SOURCE_WIDTH = 750;
 export const SNOW_FORECAST_SOURCE_HEIGHT = 250;
-export const DESKTOP_SNOW_FORECAST_FEED_INITIAL_SCROLL_X = 20;
-export const DESKTOP_SNOW_FORECAST_FEED_INITIAL_SCROLL_Y = 10;
-export const SNOW_FORECAST_FEED_INITIAL_SCROLL_Y_RATIO = 0.58;
+// 予報の左端の余白を飛ばす初期位置。詳細画面（WeatherChart.tsx）と同じ位置から見せる
+export const SNOW_FORECAST_FEED_INITIAL_SCROLL_X = 40;
 
 export { ELEVATION_OPTIONS } from "@/features/weather/useWeatherLinks";

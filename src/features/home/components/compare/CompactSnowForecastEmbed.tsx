@@ -7,10 +7,8 @@ import { SnowForecastLoading } from "@/features/weather/SnowForecastLoading";
 import { cn } from "@/lib/utils";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import {
-  DESKTOP_SNOW_FORECAST_FEED_INITIAL_SCROLL_X,
-  DESKTOP_SNOW_FORECAST_FEED_INITIAL_SCROLL_Y,
   ELEVATION_OPTIONS,
-  SNOW_FORECAST_FEED_INITIAL_SCROLL_Y_RATIO,
+  SNOW_FORECAST_FEED_INITIAL_SCROLL_X,
   SNOW_FORECAST_SOURCE_HEIGHT,
   SNOW_FORECAST_SOURCE_WIDTH,
 } from "./constants";
@@ -48,17 +46,10 @@ export const CompactSnowForecastEmbed = ({
     requestAnimationFrame(() => {
       const maxScrollX =
         scrollContainer.scrollWidth - scrollContainer.clientWidth;
-      const maxScrollY =
-        scrollContainer.scrollHeight - scrollContainer.clientHeight;
-      const shouldApplyInitialScrollX =
-        window.matchMedia("(min-width: 48em)").matches;
-
-      scrollContainer.scrollLeft = shouldApplyInitialScrollX
-        ? Math.min(DESKTOP_SNOW_FORECAST_FEED_INITIAL_SCROLL_X, maxScrollX)
-        : 0;
-      scrollContainer.scrollTop = shouldApplyInitialScrollX
-        ? Math.min(DESKTOP_SNOW_FORECAST_FEED_INITIAL_SCROLL_Y, maxScrollY)
-        : maxScrollY * SNOW_FORECAST_FEED_INITIAL_SCROLL_Y_RATIO;
+      scrollContainer.scrollLeft = Math.min(
+        SNOW_FORECAST_FEED_INITIAL_SCROLL_X,
+        maxScrollX,
+      );
     });
   }, []);
 
