@@ -118,11 +118,48 @@ const pageKey = url => {
   const u = new URL(url);
   return `${u.hostname.replace(/^www\./, "")}${u.pathname.replace(/\/+$/, "")}`;
 };
+/**
+ * 開いた後に着いたページの比べ方。アソビューは掲載元ごとのチャネル番号（/channel/ticket/<チャネル>/<商品>）が違っても、
+ * 商品番号が同じなら同じページ（画面の linkPageKey と同じ決まり）
+ */
+const landingKey = url => {
+  const asoview = new URL(url).pathname.match(/\/(?:channel\/tickets?\/[^/]+|item\/ticket)\/(ticket\d+)/);
+  return asoview ? `asoview.com/ticket/${asoview[1]}` : pageKey(url);
+};
 /** 公式サイトと同じサイトか（サブドメイン違いは同じとみなす） */
 const sameSite = (host, officialHosts) => {
   const h = host.replace(/^www\./, "");
   return officialHosts.some(o => h === o || h.endsWith(`.${o}`) || o.endsWith(`.${h}`));
 };
+
+/**
+ * ページの主題（タイトルと h1）に出てくるはずの言葉。主題が別のページ（コース紹介・よくある質問・トップなど）の
+ * 1節を、その種類のリンクとして載せていないかを見る。言葉が無い種類（外部サービス・SNS）は見ない
+ */
+const SUBJECT_WORDS = {
+  courseInfo: /コース|ゲレンデ|course|slope|trail|マップ|map/i,
+  parkInfo: /パーク|park|キッカー|ジブ/i,
+  parkStatus: /パーク|park|キッカー|ジブ/i,
+  liveCamera: /カメラ|camera|ライブ|live/i,
+  officialDiscount: /割|早|前売|セット|クーポン|特典|お得|チケット|リフト券|料金|ticket|discount|price/i,
+  pass: /シーズン|パス|回数|season|pass/i,
+  rentalShop: /レンタル|rental/i,
+  restaurant: /レストラン|食|グルメ|カフェ|飯|フード|dining|restaurant|food|cafe/i,
+  kidsPark: /キッズ|子ども|子供|こども|ちびっ?こ|託児|そり|ソリ|雪遊び|スノーランド|ファミリー|kids|family/i,
+  onsen: /温泉|入浴|湯|onsen|spa|bath/i,
+  lodging: /宿|泊|ホテル|ロッジ|ペンション|コテージ|ヴィラ|hotel|lodge|stay|accommodation/i,
+  carAccess: /アクセス|交通|車|ドライブ|access/i,
+  parking: /駐車|パーキング|アクセス|parking|access/i,
+  transitAccess: /アクセス|交通|バス|電車|シャトル|access|bus|shuttle/i,
+  busTimetable: /時刻|ダイヤ|バス|シャトル|timetable|bus|shuttle/i,
+};
+// サイト共通のタイトルしか無いページもあるので、URLの道筋（/livecam/ など）も主題に含める
+const pageSubject = () =>
+  [document.title, ...[...document.querySelectorAll("h1")].map(h => h.innerText), decodeURIComponent(location.pathname)]
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 200);
 
 /** ページの中で、手がかり（セレクタ・id・文字）の位置と、飛び先に使える id / 文字を調べる */
 function measureInPage({ selector, quote, hash }) {
@@ -274,7 +311,8 @@ async function audit(ids, run, write) {
       const response = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
       await page.waitForLoadState("networkidle", { timeout: 8_000 }).catch(() => {});
       if (settleMs) await page.waitForTimeout(settleMs);
-      return { status: response?.status() ?? 0, value: await fn(page) };
+      // リダイレクト後に着いたページ（掲載元ごとに番号が違うだけで同じ商品に飛ぶ販売サイトがある）
+      return { status: response?.status() ?? 0, finalUrl: page.url(), value: await fn(page) };
     } catch (e) {
       return { error: String(e.message || e).split("\n")[0].slice(0, 160) };
     } finally {
@@ -319,8 +357,12 @@ async function audit(ids, run, write) {
             }
             return [
               name,
+              // 最後の1つはページの主題（タイトルと h1）
               await withPage(context, base, 0, page =>
-                Promise.all(hints.map(hint => page.evaluate(measureInPage, hint))),
+                Promise.all([
+                  ...hints.map(hint => page.evaluate(measureInPage, hint)),
+                  page.evaluate(pageSubject),
+                ]),
               ),
             ];
           }),
@@ -332,10 +374,19 @@ async function audit(ids, run, write) {
         if (entries.slice(0, i).some(other => other.item.type === item.type))
           row.problems.push("同じ種類で同じページの項目がほかにある。1件にまとめる（節ごとに分けない）");
         const d = measured.desktop;
+        if (d.finalUrl) row.landedAt = d.finalUrl;
         if (d.error) row.problems.push(`開けない: ${d.error}`);
         else if ([401, 403, 429].includes(d.status))
           row.problems.push(`自動アクセスを拒否された（HTTP ${d.status}）。人のブラウザで開けるか確かめる`);
         else if (d.status >= 400) row.problems.push(`開けない: HTTP ${d.status}`);
+
+        // ページの主題がその種類か（別の主題のページの1節を載せていないか）
+        const subject = isPdf ? null : d.value?.[hints.length];
+        if (typeof subject === "string" && SUBJECT_WORDS[item.type] && !SUBJECT_WORDS[item.type].test(subject))
+          row.problems.push(
+            `ページの主題が「${LINK_TYPES.find(t => t.type === item.type)?.label}」に見えない（${subject || "タイトルなし"}）。` +
+              "その種類が主題のページを探す（観光協会などエリアの公式サイトも見る）。無ければ none。この節で足りるなら accept に理由",
+          );
 
         // 公式サイトのページか、公式ページに載っているリンクか
         if (!sameSite(host, officialHosts)) {
@@ -429,6 +480,18 @@ async function audit(ids, run, write) {
         }
       }
     });
+    // 書いたURLは違っても、開くと同じページに着く同じ種類の項目（別の種類なら画面が1つのボタンにまとめる）
+    const landed = new Map();
+    for (const row of report.toSorted((a, b) => a.index - b.index)) {
+      if (!row.landedAt) continue;
+      const key = `${row.type}\n${landingKey(row.landedAt)}`;
+      const first = landed.get(key);
+      if (!first) landed.set(key, row);
+      else if (landingKey(first.url) !== landingKey(row.url))
+        row.problems.push(
+          `開くと「${first.label ?? first.type}」と同じページ（${row.landedAt}）に着く。1件にする`,
+        );
+    }
     report.sort((a, b) => a.index - b.index);
     await writeFile(path.join(run, "audit", `${id}.json`), `${JSON.stringify(report, null, 2)}\n`);
     if (write) await writeFile(filePath, `${JSON.stringify(file, null, 2)}\n`);
