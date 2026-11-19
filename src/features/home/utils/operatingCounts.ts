@@ -22,6 +22,8 @@ export type ResortOperatingCounts = {
   courseDistance?: CourseDistanceTotals | null;
   /** 地図のコースから出した山頂・山麓の標高（m）。地図に標高が無ければ null */
   elevation?: { top: number; base: number } | null;
+  /** ○・△のコースだけの山頂・山麓（m）。営業状況が無いか滑走できるコースが無ければ null */
+  openElevation?: { top: number; base: number } | null;
 };
 
 const isMapped = (feature: { statusMappingNames?: string[] }) =>

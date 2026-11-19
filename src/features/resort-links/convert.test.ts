@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  dropRowsCoveredByOfficial,
   externalSiteRows,
   type OfficialLinkFile,
   officialLinkFileSchema,
@@ -165,5 +166,31 @@ test("公式リンクは同じページを出発地ごとに分けず1行にす�
   assert.deepEqual(
     rows.map(row => [row.type, row.label, row.url]),
     [["transitAccess", null, "https://www.tsugaike.gr.jp/access"]],
+  );
+});
+
+test("外部サイトの行は、公式が同じタブに同じページを持っていれば外す", () => {
+  const row = (url: string) => ({
+    resortId: "hyonosen-kokusai",
+    type: "externalDiscount",
+    category: "presale",
+    label: null,
+    url,
+    note: null,
+    sortOrder: 0,
+  });
+  const sold = "https://www.asoview.com/channel/tickets/DS75xNiB9D/";
+  const { kept, dropped } = dropRowsCoveredByOfficial(
+    [row(sold), row("https://www.asoview.com/item/other/")],
+    "asoview",
+    () => [{ ...row(sold), type: "webPurchase", source: "official" }],
+  );
+  assert.deepEqual(
+    kept.map(r => r.url),
+    ["https://www.asoview.com/item/other/"],
+  );
+  assert.deepEqual(
+    dropped.map(r => r.coveredBy),
+    ["webPurchase"],
   );
 });

@@ -1,10 +1,11 @@
 "use client";
 
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import type { NumericFilterName, NumericFilterValue } from "../types";
 
 export const PrefectureFilter = ({
@@ -19,10 +20,10 @@ export const PrefectureFilter = ({
   onRegionPrefecturesChange: (prefectures: string[], checked: boolean) => void;
 }) => (
   <div>
-    <div className="flex items-center gap-2 text-gray-700 font-medium md:text-sm h-7 text-sm">
+    <div className="flex items-center gap-2 text-gray-900 font-bold h-7 text-sm">
       <span>都道府県で選ぶ</span>
       {selectedPrefectures.length > 0 && (
-        <span className="text-blue-600 font-medium md:text-xs text-xs">
+        <span className="text-blue-600 font-semibold text-xs">
           {selectedPrefectures.length}件選択中
         </span>
       )}
@@ -41,7 +42,7 @@ export const PrefectureFilter = ({
             >
               <CardContent className="p-0">
                 <div className="flex items-center justify-between px-2 py-1.5">
-                  <span className="text-gray-700 font-medium truncate text-xs md:text-xs">
+                  <span className="text-gray-800 font-bold truncate text-xs">
                     {region}
                   </span>
                   <Button
@@ -95,7 +96,7 @@ export const ToggleSection = ({
     <Button
       type="button"
       variant="ghost"
-      className="justify-start text-left text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10 w-full h-7 text-sm transition-colors"
+      className="justify-start text-left text-sm font-semibold text-gray-800 hover:bg-gray-50 hover:text-gray-900 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10 w-full h-7 text-sm transition-colors"
       onClick={onToggle}
       aria-expanded={isOpen}
     >
@@ -145,7 +146,7 @@ export const ElevationFilterRow = ({
   <div className="grid grid-cols-[64px_max-content_max-content] items-center gap-1.5 md:gap-2">
     <Label
       htmlFor={minId}
-      className="text-gray-500 font-medium whitespace-nowrap block md:text-sm text-sm"
+      className="text-gray-800 font-semibold whitespace-nowrap block text-sm"
     >
       {label}
     </Label>
@@ -197,10 +198,10 @@ export const CompactMetricFilter = ({
   onChange: (name: NumericFilterName, value: string) => void;
   onFocus?: () => void;
 }) => (
-  <div className="flex items-center justify-center gap-1 min-w-0">
+  <div className="grid grid-cols-[3.5rem_auto_auto] items-center justify-start gap-1 min-w-0">
     <Label
       htmlFor={id}
-      className="text-gray-500 font-medium whitespace-nowrap block md:text-sm text-sm"
+      className="text-gray-800 font-semibold whitespace-nowrap block text-sm"
     >
       {label}
     </Label>
@@ -215,8 +216,8 @@ export const CompactMetricFilter = ({
       onChange={onChange}
       onFocus={onFocus}
     />
-    <span className="flex-shrink-0 text-gray-600 font-medium text-sm md:text-xs">
-      {unit}
+    <span className="flex-shrink-0 whitespace-nowrap text-gray-700 font-semibold text-sm md:text-xs">
+      {unit}以上
     </span>
   </div>
 );
@@ -261,7 +262,7 @@ const CompactNumberInput = ({
       }}
     />
     {(unit || suffix) && (
-      <span className="flex-shrink-0 text-gray-600 font-medium md:text-xs text-sm">
+      <span className="flex-shrink-0 text-gray-700 font-semibold md:text-xs text-sm">
         {unit}
         {suffix}
       </span>
@@ -269,32 +270,56 @@ const CompactNumberInput = ({
   </div>
 );
 
+const TOGGLE_BASE_CLASS =
+  "inline-flex items-center justify-center rounded-md border text-ellipsis overflow-hidden whitespace-nowrap text-xs leading-none focus-visible:ring-0 outline-none select-none disabled:pointer-events-none disabled:opacity-50 h-7 min-w-0 transition-colors";
+const TOGGLE_ON_CLASS =
+  "font-bold bg-blue-600 border-blue-600 text-white hover:bg-blue-700 hover:text-white";
+const TOGGLE_OFF_CLASS =
+  "font-semibold border-gray-300 bg-white text-gray-800 hover:bg-gray-50 hover:text-gray-900";
+
+/**
+ * 絞り込みのオン・オフ。`link` を渡すと、右にそのサービスのサイトを別タブで開く小さなボタンを付ける。
+ */
 export const FilterToggle = ({
   id,
   label,
   checked,
   onChange,
+  link,
 }: {
   id: string;
   label: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
+  link?: { href: string; name: string };
 }) => {
   // checkedColor は常に "brand.500" (#3b82f6 = blue-600) で使用されるため固定する
-  return (
+  const toggle = (
     <Button
       id={id}
       type="button"
       variant="outline"
       aria-pressed={checked}
-      className={
-        checked
-          ? "inline-flex items-center justify-center rounded-md border text-ellipsis overflow-hidden whitespace-nowrap text-xs font-medium leading-none focus-visible:ring-0 outline-none select-none disabled:pointer-events-none disabled:opacity-50 h-7 px-2 min-w-0 transition-colors bg-blue-600 border-blue-600 text-white hover:bg-blue-700 hover:text-white"
-          : "inline-flex items-center justify-center rounded-md border text-ellipsis overflow-hidden whitespace-nowrap text-xs font-medium leading-none focus-visible:ring-0 outline-none select-none disabled:pointer-events-none disabled:opacity-50 h-7 px-2 min-w-0 transition-colors border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-900"
-      }
+      className={`${TOGGLE_BASE_CLASS} ${checked ? TOGGLE_ON_CLASS : TOGGLE_OFF_CLASS} ${
+        link ? "flex-1 rounded-r-none px-1.5" : "px-2"
+      }`}
       onClick={() => onChange(!checked)}
     >
       {label}
     </Button>
+  );
+  if (!link) return toggle;
+  return (
+    <div className="flex min-w-0">
+      {toggle}
+      <ExternalLinkComponent
+        href={link.href}
+        aria-label={`${link.name}のサイトを開く`}
+        title={`${link.name}のサイトを開く`}
+        className="h-7 w-6 shrink-0 justify-center rounded-r-md border border-l-0 border-gray-300 bg-white text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-800"
+      >
+        <ExternalLink className="h-3 w-3" aria-hidden />
+      </ExternalLinkComponent>
+    </div>
   );
 };

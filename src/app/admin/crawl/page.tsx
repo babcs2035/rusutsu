@@ -3,6 +3,7 @@ import Link from "next/link";
 import { OverviewFilters } from "@/features/crawl-monitor/components/OverviewFilters";
 import { OverviewTable } from "@/features/crawl-monitor/components/OverviewTable";
 import { Pagination } from "@/features/crawl-monitor/components/Pagination";
+import { PassProgramStatusNotice } from "@/features/crawl-monitor/components/PassProgramStatusNotice";
 import {
   buildOverviewEntries,
   countAttention,
@@ -15,6 +16,7 @@ import {
 } from "@/features/crawl-monitor/utils/query";
 import { fetchCrawlMonitorOverview } from "@/server/crawl-latest/adminClient";
 import { requireAdminPage } from "@/server/edit-requests/authPages";
+import { readPassProgramStatus } from "@/server/pass-programs/client";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "クローラー監視 | 管理画面" };
@@ -26,7 +28,10 @@ export default async function CrawlMonitorPage({
 }) {
   await requireAdminPage();
   const query = parseOverviewQuery(await searchParams);
-  const overview = await fetchCrawlMonitorOverview(query.sourceModes);
+  const [overview, passProgramStatus] = await Promise.all([
+    fetchCrawlMonitorOverview(query.sourceModes),
+    readPassProgramStatus(),
+  ]);
   const now = Date.now();
 
   const entries = buildOverviewEntries(overview.rows, query, now);
@@ -63,6 +68,10 @@ export default async function CrawlMonitorPage({
         更新停止 {counts.stale}。スキー場名を押すと、そのスキー場の取得内容と
         履歴を確認できます。
       </p>
+
+      {passProgramStatus && (
+        <PassProgramStatusNotice status={passProgramStatus} />
+      )}
 
       <div className="mb-4">
         <OverviewFilters query={query} prefectures={prefectures} />

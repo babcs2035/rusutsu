@@ -15,6 +15,7 @@ import { reloadIfStaleBuild } from "@/shared/utils/staleBuild";
 import {
   deleteCompareList,
   listCompareLists,
+  renameCompareList,
   saveCompareList,
   updateCompareListResorts,
 } from "./actions";
@@ -32,6 +33,7 @@ type CompareListsContextValue = {
     resortIds: string[];
   }) => Promise<CompareListSummary | null>;
   remove: (id: string) => Promise<boolean>;
+  rename: (id: string, name: string) => Promise<CompareListSummary | null>;
   addResorts: (
     id: string,
     resortIds: string[],
@@ -146,6 +148,29 @@ export function CompareListsProvider({
     }
   };
 
+  const rename: CompareListsContextValue["rename"] = async (id, name) => {
+    if (!userId) return null;
+    try {
+      const result = await renameCompareList({
+        expectedUserId: userId,
+        id,
+        name,
+      });
+      if (!result.ok) {
+        toast.error(result.error);
+        return null;
+      }
+      if (currentUser.current !== userId) return null;
+      accept(userId, result.lists);
+      toast.success("リスト名を変更しました", { duration: 1200 });
+      return result.lists.find(list => list.id === id) ?? null;
+    } catch (error) {
+      if (reloadIfStaleBuild(error)) return null;
+      toast.error("リスト名を変更できませんでした。");
+      return null;
+    }
+  };
+
   const updateResorts = async (
     id: string,
     resortIds: string[],
@@ -188,6 +213,7 @@ export function CompareListsProvider({
         lists: ready ? state.lists : [],
         save,
         remove,
+        rename,
         addResorts: (id, resortIds) => updateResorts(id, resortIds, "add"),
         removeResort: (id, resortId) => updateResorts(id, [resortId], "remove"),
       }}

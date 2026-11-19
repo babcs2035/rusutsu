@@ -9,12 +9,13 @@ import type {
   TicketRentalRequest,
 } from "../../types";
 import { sharedResortsOf } from "../../types";
-import {
-  calculateLiftTicketForSeasons,
-  calculateLiftTicketPlan,
-} from "../calculateLiftTicket";
+import { calculateLiftTicketPlan } from "../calculateLiftTicket";
 import { buildLiftTicketPriceTables } from "../priceTable";
 import { calculateRentalPlan } from "../rental";
+import {
+  calculateResortPriceTiers,
+  summarizeResortPrice,
+} from "../resortPriceCalculation";
 import { dataWarningsOf } from "../structureFeatures";
 import {
   adult,
@@ -388,11 +389,24 @@ test("PB38 2日券を使う日に木曜レディースDAYがある。1日ずつ�
 });
 test("PB39 一覧・比較画面で大人1名・1日は詳細と同じ計算結果（25時間券や33,000円を出さない）", () => {
   const input = dayInput("2027-01-18", DAY, party(adult(1)));
-  const detail = calculateLiftTicketPlan(hoursPoolResort, input);
-  const list = calculateLiftTicketForSeasons([hoursPoolResort], input);
-  assert.equal(detail.total, 16700);
-  assert.equal(list?.payableTotal, detail.total);
-  assert.equal(list?.productName, detail.days[0].result.productName);
+  const detail = calculateResortPriceTiers([hoursPoolResort], input);
+  const list = summarizeResortPrice([hoursPoolResort], input);
+  assert.equal(detail?.tiers[0].view.total, 16700);
+  assert.deepEqual(list, {
+    kind: "price",
+    total: 16700,
+    rentalMissing: false,
+  });
+});
+test("PB39b 一覧・比較画面で2日以上も詳細と同じ合計（初日の1枚分だけを出さない）", () => {
+  const input = daysInput(
+    [{ date: "2027-01-18" }, { date: "2027-01-25" }],
+    party(adult(1)),
+  );
+  const detail = calculateResortPriceTiers([multiDayResort], input);
+  const list = summarizeResortPrice([multiDayResort], input);
+  assert.equal(detail?.tiers[0].view.total, 11000);
+  assert.deepEqual(list, { kind: "price", total: 11000, rentalMissing: false });
 });
 test("PB40 2〜10日券（シーズン中に不連続で使える）。1/18と1/25は2日券を使える", () => {
   const plan = multi(multiDayResort, [

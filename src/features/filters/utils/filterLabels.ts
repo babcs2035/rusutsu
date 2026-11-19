@@ -1,6 +1,7 @@
 import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
 import { DEFAULT_LIFT_TICKET_SEARCH_INPUT } from "@/features/lift-ticket/utils/calculateLiftTicket";
 import { formatRentalRequest } from "@/features/lift-ticket/utils/rental";
+import { PASS_PROGRAMS } from "@/shared/passPrograms";
 import type { Filters, NumericFilterValue, RegionOption } from "../types";
 
 export const hasNumericFilterValue = (
@@ -119,9 +120,10 @@ export const getActiveFilterLabels = (
   if (filters.prefectures.length > 0) {
     labels.push(getPrefectureFilterLabel(filters.prefectures, regionOptions));
   }
-  if (filters.yukiMagi) labels.push("雪マジ対象");
-  if (filters.status) labels.push("営業中のみ");
-  if (filters.evCharger) labels.push("EV充電あり");
+  if (filters.yukiMagi) labels.push("雪マジ");
+  for (const program of PASS_PROGRAMS)
+    if (filters.passPrograms.includes(program.id)) labels.push(program.label);
+  if (filters.evCharger) labels.push("EV充電");
   if (isLiftTicketFilterActive(liftTicket)) {
     const partyCount = liftTicket.party.reduce(
       (total, group) => total + group.count,
@@ -137,14 +139,21 @@ export const getActiveFilterLabels = (
       }`,
     );
   }
+  const isOpenBasis = filters.scaleBasis === "open";
   if (hasNumericFilterValue(filters.minVertical))
-    labels.push(`標高差 ${filters.minVertical}m〜`);
+    labels.push(
+      `${isOpenBasis ? "営業標高差" : "標高差"} ${filters.minVertical}m〜`,
+    );
+  if (hasNumericFilterValue(filters.minCourseDistance))
+    labels.push(
+      `${isOpenBasis ? "営業距離" : "滑走距離"} ${filters.minCourseDistance}km〜`,
+    );
   if (
     hasNumericFilterValue(filters.minBaseElevation) ||
     hasNumericFilterValue(filters.maxBaseElevation)
   ) {
     labels.push(
-      `山麓標高 ${formatMetersRangeLabel(
+      `${isOpenBasis ? "営業中の山麓" : "山麓標高"} ${formatMetersRangeLabel(
         filters.minBaseElevation,
         filters.maxBaseElevation,
       )}`,
@@ -155,15 +164,19 @@ export const getActiveFilterLabels = (
     hasNumericFilterValue(filters.maxTopElevation)
   ) {
     labels.push(
-      `山頂標高 ${formatMetersRangeLabel(
+      `${isOpenBasis ? "営業中の山頂" : "山頂標高"} ${formatMetersRangeLabel(
         filters.minTopElevation,
         filters.maxTopElevation,
       )}`,
     );
   }
   if (hasNumericFilterValue(filters.minCourses))
-    labels.push(`コース ${filters.minCourses}本以上`);
+    labels.push(
+      `${isOpenBasis ? "営業コース" : "コース"} ${filters.minCourses}本以上`,
+    );
   if (hasNumericFilterValue(filters.minLifts))
-    labels.push(`リフト ${filters.minLifts}本以上`);
+    labels.push(
+      `${isOpenBasis ? "営業リフト" : "リフト"} ${filters.minLifts}本以上`,
+    );
   return labels;
 };

@@ -21,7 +21,7 @@ export const courseLengthMeters = (
       : null;
 
 /** ○・△は滑走できる区間として数える（地図の「営業中のみ」と同じ） */
-const isSkiable = (status: string | null | undefined) =>
+export const isSkiable = (status: string | null | undefined) =>
   Boolean(status && /[○〇◯△]/u.test(status));
 
 export type CourseDistanceLine = {

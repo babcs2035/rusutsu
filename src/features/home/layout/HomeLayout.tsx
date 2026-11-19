@@ -92,6 +92,8 @@ type Props = {
    * 比較から詳細を開いているか。比較は作り直さないよう、詳細の裏に隠して残す
    */
   isCompareBehindDetail: boolean;
+  /** リストから詳細を開いているか。リストも詳細の裏に隠して残す */
+  isListBehindDetail: boolean;
   /** 比較のゲレンデで見えているスキー場。地図データを先に取る */
   onCompareMapResortsNeeded: (ids: string[]) => void;
   isFilterEditorOpen: boolean;
@@ -179,6 +181,7 @@ export const HomeLayout = ({
   isCompareLoading,
   isCompareOpen,
   isCompareBehindDetail,
+  isListBehindDetail,
   onCompareMapResortsNeeded,
   isFilterEditorOpen,
   isMobileFilterOverlayOpen,
@@ -569,19 +572,20 @@ export const HomeLayout = ({
             )}
             {!isSidePanelLayout &&
               (isCompareBehindDetail ||
+                isListBehindDetail ||
                 (!shouldRenderMap &&
                   !selectedResortId &&
                   shouldRenderMobileListSheet)) && (
-                // 比較から詳細を開いている間も比較を破棄せず隠す。
-                // 詳細を閉じたときに、タブ・スクロール・地図をそのまま出すため
+                // 比較・リストから詳細を開いている間も破棄せず隠す。
+                // 詳細を閉じたときに、タブ・開閉・スクロール・地図をそのまま出すため
                 <div
                   className={
-                    isCompareBehindDetail
+                    isCompareBehindDetail || isListBehindDetail
                       ? "invisible pointer-events-none absolute inset-0"
                       : "absolute inset-0"
                   }
-                  aria-hidden={isCompareBehindDetail}
-                  inert={isCompareBehindDetail}
+                  aria-hidden={isCompareBehindDetail || isListBehindDetail}
+                  inert={isCompareBehindDetail || isListBehindDetail}
                 >
                   <MobileResultsSheet
                     DynamicMap={DynamicMap}

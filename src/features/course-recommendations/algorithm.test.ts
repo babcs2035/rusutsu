@@ -141,7 +141,7 @@ test("continuous sections connect in section order, reject gaps, ambiguous order
     0,
   );
 });
-test("numeric main route 2 beats 10, main sections only; malformed route data excludes entire group", () => {
+test("numeric main route 2 beats 10; secondary routes are kept as sources only; malformed route data excludes entire group", () => {
   const routes = [
     course({
       id: "ten",
@@ -165,9 +165,13 @@ test("numeric main route 2 beats 10, main sections only; malformed route data ex
     }),
   ];
   const result = extractCourseFeatures("r", routes);
-  assert.equal(result.length, 1);
-  assert.equal(result[0].routeKey, "g:route:2");
-  assert.deepEqual(result[0].courseIds, ["two-lower", "two-upper"]);
+  assert.equal(result.length, 2);
+  const main = result.find(r => r.isMainRoute);
+  assert.equal(main?.routeKey, "g:route:2");
+  assert.deepEqual(main?.courseIds, ["two-lower", "two-upper"]);
+  const secondary = result.find(r => !r.isMainRoute);
+  assert.equal(secondary?.routeKey, "g:route:10");
+  assert.deepEqual(secondary?.courseIds, ["ten"]);
   assert.equal(routeNumber("g:route:10"), 10);
   assert.equal(
     extractCourseFeatures("r", [
@@ -403,5 +407,25 @@ test("list selection requests the numeric main route; a clicked secondary route 
       course({ recommendationGroupingInvalid: true }),
     ]),
     null,
+  );
+});
+test("a secondary route can be searched from, but is never recommended as a candidate", () => {
+  const source = feature({ resortId: "source", key: "s:route:2" });
+  const main = feature({ resortId: "other", key: "o:route:1" });
+  const secondary = feature({
+    resortId: "other",
+    key: "o:route:2",
+    isMainRoute: false,
+  });
+  const results = rankCourses(
+    { ...source, isMainRoute: false, geometryHash: "source" },
+    [
+      { ...secondary, geometryHash: "secondary", resortName: "other" },
+      { ...main, geometryHash: "main", resortName: "other" },
+    ],
+  );
+  assert.deepEqual(
+    results.map(r => r.key),
+    ["o:route:1"],
   );
 });

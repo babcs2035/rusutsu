@@ -12,6 +12,7 @@ const schema = z.object({
   resortId: z.string().min(1).max(200),
   selected: featureSchema.optional(),
   favoriteIds: favoriteIdsSchema,
+  scope: z.enum(["favorites", "all"]).default("favorites"),
 });
 export async function POST(request: Request) {
   const denied = requireInternalApiRequest(request, "admin-data");
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success)
     return Response.json({ error: "Invalid request" }, { status: 400 });
-  const { resortId, selected, favoriteIds } = parsed.data;
+  const { resortId, selected, favoriteIds, scope } = parsed.data;
   return Response.json(
     {
       ...(selected
@@ -27,8 +28,13 @@ export async function POST(request: Request) {
             resortId,
             selected,
             favoriteIds,
+            scope,
           )
-        : await getCourseRecommendationIndexDirect(resortId, favoriteIds)),
+        : await getCourseRecommendationIndexDirect(
+            resortId,
+            favoriteIds,
+            scope,
+          )),
       calculationVersion: RECOMMENDATION.version,
     },
     { headers: { "Cache-Control": "no-store" } },

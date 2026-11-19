@@ -6,6 +6,7 @@ import { RequestBodyError, readRequestJson } from "@/server/readRequestBody";
 const schema = z.object({
   resortId: z.string().min(1).max(200),
   guestFavorites: favoriteIdsSchema,
+  scope: z.enum(["favorites", "all"]).default("favorites"),
 });
 const headers = { "Cache-Control": "private, no-store", Vary: "Cookie" };
 
@@ -19,9 +20,9 @@ export async function POST(request: Request) {
         { error: "Invalid request" },
         { status: 400, headers },
       );
-    const { resortId, guestFavorites } = parsed.data;
+    const { resortId, guestFavorites, scope } = parsed.data;
     return Response.json(
-      await getCourseRecommendationIndex(resortId, guestFavorites),
+      await getCourseRecommendationIndex(resortId, guestFavorites, scope),
       { headers },
     );
   } catch (error) {

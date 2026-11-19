@@ -47,10 +47,12 @@ test("a failed request is evicted so retry can succeed", async () => {
 test("instant index lookup respects the requested main route and never substitutes a secondary route", () => {
   const index = {
     status: "ready" as const,
+    scope: "favorites" as const,
     courses: [
       {
         groupId: "group",
         routeKey: "group:route:2",
+        isMainRoute: true,
         courseIds: ["main"],
         recommendations: [],
       },
@@ -68,6 +70,36 @@ test("instant index lookup respects the requested main route and never substitut
     selectCachedRecommendations(index, { kind: "course", id: "group" }).status,
     "source_unavailable",
   );
+  assert.equal(
+    selectCachedRecommendations(index, {
+      kind: "course",
+      id: "group",
+      routeId: "group:route:2",
+    }).status,
+    "no_match",
+  );
+});
+test("a clicked secondary route uses its own stored features", () => {
+  const index = {
+    status: "ready" as const,
+    scope: "all" as const,
+    courses: [
+      {
+        groupId: "group",
+        routeKey: "group:route:1",
+        isMainRoute: true,
+        courseIds: ["main"],
+        recommendations: [],
+      },
+      {
+        groupId: "group",
+        routeKey: "group:route:2",
+        isMainRoute: false,
+        courseIds: ["branch"],
+        recommendations: [],
+      },
+    ],
+  };
   assert.equal(
     selectCachedRecommendations(index, {
       kind: "course",

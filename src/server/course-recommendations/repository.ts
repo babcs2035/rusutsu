@@ -15,20 +15,93 @@ type Unavailable =
   | "no_other_favorites"
   | "candidates_unavailable";
 
-/** Two indexed reads for the whole resort, not one query per selected course. */
-async function loadRecommendationPool(resortId: string, favoriteIds: string[]) {
-  if (!favoriteIds.length) return { status: "no_favorites" as const };
+export type RecommendationScope = "favorites" | "all";
+const resortSelect = {
+  id: true,
+  nameJa: true,
+  shortName: true,
+  sourceResortIds: true,
+  isActive: true,
+  mergedInto: { select: { sourceResortIds: true } },
+} as const;
+type PoolResort = Awaited<
+  ReturnType<typeof prisma.skiResort.findMany<{ select: typeof resortSelect }>>
+>[number];
+type PoolRow = Awaited<
+  ReturnType<typeof prisma.courseRecommendationFeature.findMany>
+>[number];
+
+// Missing metrics are never interpreted as flat terrain.
+const validRow = (row: PoolRow) =>
+  Number.isFinite(row.maxSlope) &&
+  row.slopeDistances.length === RECOMMENDATION.profileDegrees + 1 &&
+  row.slopeDistances.every(Number.isFinite);
+
+/**
+ * 全スキー場から探すときの特徴量（約1,600コース・1.6MB）。
+ * 毎回DBから読むと数百msかかるので、プロセス内に60秒だけ持つ。
+ */
+const ALL_POOL_TTL = 60_000;
+let allPool: {
+  expires: number;
+  promise: Promise<{ resorts: PoolResort[]; rows: PoolRow[] }>;
+} | null = null;
+function loadAllPool() {
+  if (allPool && allPool.expires > Date.now()) return allPool.promise;
+  const entry = {
+    expires: Number.POSITIVE_INFINITY,
+    promise: Promise.all([
+      prisma.skiResort.findMany({ select: resortSelect }),
+      prisma.courseRecommendationFeature.findMany({
+        where: { calculationVersion: RECOMMENDATION.version },
+      }),
+    ]).then(([resorts, rows]) => ({ resorts, rows: rows.filter(validRow) })),
+  };
+  allPool = entry;
+  entry.promise.then(
+    () => {
+      entry.expires = Date.now() + ALL_POOL_TTL;
+    },
+    () => {
+      if (allPool === entry) allPool = null;
+    },
+  );
+  return entry.promise;
+}
+
+async function loadScopedRows(
+  resortId: string,
+  favoriteIds: string[],
+  scope: RecommendationScope,
+) {
+  if (scope === "all") return loadAllPool();
   const resorts = await prisma.skiResort.findMany({
     where: { id: { in: [...new Set([resortId, ...favoriteIds])] } },
-    select: {
-      id: true,
-      nameJa: true,
-      shortName: true,
-      sourceResortIds: true,
-      isActive: true,
-      mergedInto: { select: { sourceResortIds: true } },
+    select: resortSelect,
+  });
+  const ids = resorts.map(r => r.id);
+  const rows = await prisma.courseRecommendationFeature.findMany({
+    where: {
+      resortId: { in: ids },
+      calculationVersion: RECOMMENDATION.version,
     },
   });
+  return { resorts, rows: rows.filter(validRow) };
+}
+
+/** お気に入りだけ、または全スキー場を候補にする。検索元のスキー場は常に除く */
+async function loadRecommendationPool(
+  resortId: string,
+  favoriteIds: string[],
+  scope: RecommendationScope,
+) {
+  if (scope === "favorites" && !favoriteIds.length)
+    return { status: "no_favorites" as const };
+  const { resorts, rows: allRows } = await loadScopedRows(
+    resortId,
+    favoriteIds,
+    scope,
+  );
   const sourceResort = resorts.find(r => r.id === resortId);
   if (!sourceResort) return { status: "source_unavailable" as const };
   const sourceId = sourceResort.id;
@@ -37,9 +110,10 @@ async function loadRecommendationPool(resortId: string, favoriteIds: string[]) {
     ...sourceResort.sourceResortIds,
     ...(sourceResort.mergedInto?.sourceResortIds ?? []),
   ]);
+  const favorites = new Set(favoriteIds);
   const candidates = resorts.filter(
     r =>
-      favoriteIds.includes(r.id) &&
+      (scope === "all" || favorites.has(r.id)) &&
       r.isActive &&
       ![
         r.id,
@@ -47,25 +121,15 @@ async function loadRecommendationPool(resortId: string, favoriteIds: string[]) {
         ...(r.mergedInto?.sourceResortIds ?? []),
       ].some(id => sourceMembers.has(id)),
   );
-  const byCanonical = new Map<string, (typeof resorts)[number]>();
+  const byCanonical = new Map<string, PoolResort>();
   for (const r of candidates.sort((a, b) => a.id.localeCompare(b.id, "en")))
     byCanonical.set(r.id, r);
   if (!byCanonical.size) return { status: "no_other_favorites" as const };
-  const stored = await prisma.courseRecommendationFeature.findMany({
-    where: {
-      resortId: { in: [sourceId, ...byCanonical.keys()] },
-      calculationVersion: RECOMMENDATION.version,
-    },
-  });
-  // Missing metrics are never interpreted as flat terrain.
-  const rows = stored.filter(
-    row =>
-      Number.isFinite(row.maxSlope) &&
-      row.slopeDistances.length === RECOMMENDATION.profileDegrees + 1 &&
-      row.slopeDistances.every(Number.isFinite),
+  const rows = allRows.filter(
+    row => row.resortId === sourceId || byCanonical.has(row.resortId),
   );
   // 地図のラベルと同じ省略名にする
-  const labelName = (r: (typeof resorts)[number]) =>
+  const labelName = (r: PoolResort) =>
     getResortLabelName(r.id, r.nameJa, r.shortName);
   const convert = (row: (typeof rows)[number]): RecommendationCandidate => ({
     ...row,
@@ -106,16 +170,18 @@ export async function searchCourseRecommendationsDirect(
   resortId: string,
   selected: SelectedMapFeature,
   favoriteIds: string[],
+  scope: RecommendationScope = "favorites",
 ) {
   if (selected.kind !== "course")
     return { status: "source_unavailable" as const, recommendations: [] };
-  const pool = await loadRecommendationPool(resortId, favoriteIds);
+  const pool = await loadRecommendationPool(resortId, favoriteIds, scope);
   if (pool.status !== "ready")
     return { status: pool.status, recommendations: [] };
   const source = pool.sources.find(row =>
     selected.routeId
       ? row.routeKey === selected.routeId
-      : row.groupId === selected.id || row.courseIds.includes(selected.id),
+      : row.isMainRoute &&
+        (row.groupId === selected.id || row.courseIds.includes(selected.id)),
   );
   // Never replace a secondary route selection with a main route.
   if (
@@ -134,14 +200,16 @@ export async function searchCourseRecommendationsDirect(
 export async function getCourseRecommendationIndexDirect(
   resortId: string,
   favoriteIds: string[],
+  scope: RecommendationScope = "favorites",
 ) {
-  const pool = await loadRecommendationPool(resortId, favoriteIds);
+  const pool = await loadRecommendationPool(resortId, favoriteIds, scope);
   if (pool.status !== "ready") return { status: pool.status, courses: [] };
   return {
     status: "ready" as const,
     courses: pool.sources.map(source => ({
       groupId: source.groupId,
       routeKey: source.routeKey,
+      isMainRoute: source.isMainRoute,
       courseIds: source.courseIds,
       recommendations: pool.rank(source),
     })),
@@ -151,9 +219,15 @@ export async function recommendCoursesDirect(
   resortId: string,
   selected: SelectedMapFeature,
   favoriteIds: string[],
+  scope: RecommendationScope = "favorites",
 ) {
   return (
-    await searchCourseRecommendationsDirect(resortId, selected, favoriteIds)
+    await searchCourseRecommendationsDirect(
+      resortId,
+      selected,
+      favoriteIds,
+      scope,
+    )
   ).recommendations;
 }
 export type CourseRecommendationSearch = Awaited<

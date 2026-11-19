@@ -6,12 +6,17 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import dotenv from "dotenv";
 import {
+  dropRowsCoveredByOfficial,
   externalSiteFileSchema,
   externalSiteRows,
+  officialFileLinkItems,
   officialLinkFileSchema,
   officialLinkRows,
   type ResortLinkRow,
 } from "../src/features/resort-links/convert";
+import { legacyLinkItems } from "../src/features/resort-links/legacy";
+import { liftTicketLinkItems } from "../src/features/resort-links/liftTicketLinks";
+import type { ResortLinkItem } from "../src/features/resort-links/model";
 import { normalizeInternalDataApiBaseUrl } from "../src/lib/internalDataApiBaseUrl";
 import {
   RESORT_LINK_OFFICIAL_SOURCE,
@@ -30,10 +35,64 @@ const USAGE =
 const API_PATH = "/api/internal/v1/resort-links";
 export const OFFICIAL_LINKS_DIR = "src/private/data/resort-links";
 export const EXTERNAL_LINKS_DIR = "src/private/data/tour-links";
+const LIFT_TICKET_DIR = "src/private/data/lift-ticket";
+const LEGACY_LINKS_FILE = "src/private/data/SkiResortLinks.json";
 const OFFICIAL_EDITOR_ID = "collect-ski-resort-official-links";
 const EXTERNAL_EDITOR_ID = "tour-links";
 
 type Target = { kind: "official" | "source"; id: string };
+
+const readJsonIfExists = async (file: string): Promise<unknown> => {
+  try {
+    return JSON.parse(await fs.readFile(file, "utf8"));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw error;
+  }
+};
+
+let legacyDocument: Promise<Record<string, unknown>> | null = null;
+
+/**
+ * 公式リンクのファイル以外で、そのスキー場の画面に公式として出るリンク
+ * （リフト券データの最新シーズン・旧リンク文書）。外部サイトの行が公式と同じページかの判定に使う
+ */
+async function linksOwnedElsewhere(
+  resortId: string,
+): Promise<ResortLinkItem[]> {
+  legacyDocument ??= readJsonIfExists(LEGACY_LINKS_FILE).then(
+    value => (value ?? {}) as Record<string, unknown>,
+  );
+  const ticketDir = path.join(LIFT_TICKET_DIR, resortId);
+  const season = (await fs.readdir(ticketDir).catch(() => []))
+    .filter(name => /^\d{4}-\d{4}\.json$/u.test(name))
+    .sort()
+    .at(-1);
+  const ticket = season
+    ? ((await readJsonIfExists(path.join(ticketDir, season))) as Parameters<
+        typeof liftTicketLinkItems
+      >[0])
+    : null;
+  const legacy = (await legacyDocument)[resortId] as Parameters<
+    typeof legacyLinkItems
+  >[0];
+  return [
+    ...liftTicketLinkItems(ticket),
+    ...legacyLinkItems(legacy).filter(link => link.source === "official"),
+  ];
+}
+
+/** そのスキー場の、画面に公式として出るリンクすべて（外部サイトのリンクを外す判定に使う） */
+async function officialLinksOf(resortId: string): Promise<ResortLinkItem[]> {
+  const raw = await readJsonIfExists(
+    path.join(OFFICIAL_LINKS_DIR, `${resortId}.json`),
+  );
+  const file = raw ? officialLinkFileSchema.safeParse(raw) : null;
+  return [
+    ...(await linksOwnedElsewhere(resortId)),
+    ...(file?.success ? officialFileLinkItems(file.data) : []),
+  ];
+}
 
 /** 件数が大きく減る入れ替えは、サイト側の不調で取り損ねた可能性が高いので止める */
 export const shrinksTooMuch = (currentCount: number, nextCount: number) =>
@@ -79,15 +138,31 @@ async function readTarget(target: Target): Promise<{
   );
   if (file.siteId !== target.id)
     throw new Error(`siteId がファイル名と違います: ${file.siteId}`);
+  // 公式が同じタブに同じページを持っていれば、外部サイトの行は入れない
+  const rows = externalSiteRows(file);
+  const officialLinks = new Map<string, ResortLinkItem[]>();
+  for (const resortId of new Set(rows.map(row => row.resortId)))
+    officialLinks.set(resortId, await officialLinksOf(resortId));
+  const { kept, dropped } = dropRowsCoveredByOfficial(
+    rows,
+    target.id,
+    resortId => officialLinks.get(resortId) ?? [],
+  );
   return {
     write: resortLinkReplaceSchema.parse({
       scope: { kind: "source", source: target.id },
       editor: { kind: "crawler", id: EXTERNAL_EDITOR_ID },
-      links: externalSiteRows(file),
+      links: kept,
     }),
-    skipped: file.entries
-      .filter(entry => entry.resortIds.length === 0)
-      .map(entry => `スキー場に対応づかない: ${entry.name}`),
+    skipped: [
+      ...file.entries
+        .filter(entry => entry.resortIds.length === 0)
+        .map(entry => `スキー場に対応づかない: ${entry.name}`),
+      ...dropped.map(
+        row =>
+          `公式に同じページがあるので外す: ${row.resortId} ${row.type} → ${row.coveredBy} ${row.url}`,
+      ),
+    ],
   };
 }
 

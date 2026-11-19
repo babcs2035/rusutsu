@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { linkPageKey, OFFICIAL_SKILL_LINK_TYPES } from "./model";
+import {
+  findCoveredLinks,
+  linkPageKey,
+  OFFICIAL_SKILL_LINK_TYPES,
+  type ResortLinkItem,
+} from "./model";
 
 /**
  * 収集したファイルを、resort_links へ入れる行に直す。
@@ -227,4 +232,52 @@ export const externalSiteRows = (file: ExternalSiteFile): ResortLinkRow[] => {
       }),
     ),
   );
+};
+
+/** 公式リンクのファイルで、画面に出す項目（found）をリンクの形にする */
+export const officialFileLinkItems = (
+  file: OfficialLinkFile,
+): ResortLinkItem[] =>
+  file.items.flatMap((item, index) =>
+    item.status === "found" && item.url
+      ? [
+          {
+            type: item.type,
+            source: "official",
+            category: item.category ?? null,
+            label: item.label ?? null,
+            url: item.url,
+            note: item.note ?? null,
+            sortOrder: index,
+          },
+        ]
+      : [],
+  );
+
+/**
+ * 外部サイトの行から、そのスキー場の公式（リフト券データ・旧リンク・公式リンク）が同じタブに
+ * 同じページを持っている行を外す。割引サイトが公式と同じ販売ページを返したときなど
+ */
+export const dropRowsCoveredByOfficial = (
+  rows: readonly ResortLinkRow[],
+  source: string,
+  officialLinksOf: (resortId: string) => readonly ResortLinkItem[],
+) => {
+  const kept: ResortLinkRow[] = [];
+  const dropped: Array<ResortLinkRow & { coveredBy: string }> = [];
+  const byResort = Map.groupBy(rows, row => row.resortId);
+  for (const [resortId, list] of byResort) {
+    const external = list.map(row => ({ ...row, source }));
+    const covered = new Map(
+      findCoveredLinks([...officialLinksOf(resortId), ...external]).map(
+        ({ link, coveredBy }) => [link, coveredBy],
+      ),
+    );
+    external.forEach((link, index) => {
+      const coveredBy = covered.get(link);
+      if (coveredBy) dropped.push({ ...list[index], coveredBy });
+      else kept.push(list[index]);
+    });
+  }
+  return { kept, dropped };
 };

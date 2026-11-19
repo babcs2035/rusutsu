@@ -4,8 +4,8 @@ import type { Filters } from "./types";
 export const DEFAULT_FILTERS: Filters = {
   keyword: "",
   prefectures: [],
-  status: false,
   yukiMagi: false,
+  passPrograms: [],
   evCharger: false,
   minVertical: null,
   minBaseElevation: null,
@@ -14,6 +14,8 @@ export const DEFAULT_FILTERS: Filters = {
   maxTopElevation: null,
   minCourses: null,
   minLifts: null,
+  minCourseDistance: null,
+  scaleBasis: "total",
   liftTicket: DEFAULT_LIFT_TICKET_SEARCH_INPUT,
 };
 

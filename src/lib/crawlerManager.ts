@@ -14,7 +14,8 @@ export type CrawlerName =
   | "latestReports"
   | "yukiMagi"
   | "amedas"
-  | "tourLinks";
+  | "tourLinks"
+  | "passPrograms";
 
 /**
  * クローラーの実行ログを記録

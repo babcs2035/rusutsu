@@ -148,3 +148,23 @@ export async function updateCompareListResorts(input: {
   }
   return { ok: true as const, id, lists: await readLists(userId) };
 }
+
+/** 名前だけを変える。項目は触らないので、端末上の古い一覧で中身を上書きしない。 */
+export async function renameCompareList(input: {
+  expectedUserId: string;
+  id: string;
+  name: string;
+}) {
+  const userId = await requireUser(input.expectedUserId);
+  const id = z.string().min(1).max(64).parse(input.id);
+  const parsed = nameSchema.safeParse(input.name);
+  if (!parsed.success)
+    return { ok: false as const, error: "リスト名を入力してください。" };
+  const updated = await prisma.compareList.updateMany({
+    where: { id, userId },
+    data: { name: parsed.data },
+  });
+  if (!updated.count)
+    return { ok: false as const, error: "リストが見つかりません。" };
+  return { ok: true as const, id, lists: await readLists(userId) };
+}

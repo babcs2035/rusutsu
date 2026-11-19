@@ -1,7 +1,10 @@
 import type { Prisma } from "@prisma/client";
 import { summarizeCourseStatusForList } from "@/features/home/utils/operatingCounts";
 import { summarizeMapCourseStatuses } from "@/features/resort-detail/utils/courseStatusSummary";
-import { summarizeCourseDistance } from "@/shared/course-lift/courseDistance";
+import {
+  isSkiable,
+  summarizeCourseDistance,
+} from "@/shared/course-lift/courseDistance";
 import {
   courseGroupingRoute,
   readCourseGrouping,
@@ -16,7 +19,7 @@ import { writeMapOperations, writeOperationSummaries } from "./operationWrites";
 
 type Tx = Prisma.TransactionClient;
 // 8: コースの滑走距離（総距離・滑走可能距離）を集計に追加
-export const OPERATION_SUMMARY_VERSION = 9;
+export const OPERATION_SUMMARY_VERSION = 10;
 export type OperationEntity = {
   id: string;
   name: string | null;
@@ -419,6 +422,12 @@ export async function calculateMapOperationSummaries(
       projectedCourseRows.some(row => row.hasStatusSource),
     );
     const elevation = summarizeCourseElevation(courseRows);
+    // 営業中の標高差は、滑走距離の「営業中」と同じ ○・△ のコースから出す
+    const openElevation = projectedCourseRows.some(row => row.hasStatusSource)
+      ? summarizeCourseElevation(
+          projectedCourseRows.filter(row => isSkiable(row.status)),
+        )
+      : null;
     const lift = summarizeOperationEntities(
       projectRows(liftRows, "LIFTS"),
       "lift",
@@ -440,6 +449,8 @@ export async function calculateMapOperationSummaries(
         distance?.missingLines ?? projectedCourseRows.length,
       mapTopElevation: elevation?.top ?? null,
       mapBaseElevation: elevation?.base ?? null,
+      mapOpenTopElevation: openElevation?.top ?? null,
+      mapOpenBaseElevation: openElevation?.base ?? null,
       calculationVersion: OPERATION_SUMMARY_VERSION,
     };
   });

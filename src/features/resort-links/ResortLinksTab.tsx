@@ -8,7 +8,11 @@ import { cn } from "@/lib/utils";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
 import linkSourcesJson from "./linkSources.json";
-import type { ResortLinkGroupView, ResortLinkItem } from "./model";
+import {
+  mergedLinkName,
+  type ResortLinkGroupView,
+  type ResortLinkItem,
+} from "./model";
 import { useResortLinkGroups } from "./useResortLinkGroups";
 
 /** 1つの種類で最初に見せる件数。ツアー会社や動画は数十件になることがある */
@@ -102,7 +106,9 @@ function ManyLinks({ type }: { type: LinkTypeView }) {
       </p>
       <div className="flex min-w-0 flex-wrap items-center gap-1.5">
         {shown.map((link, index) => {
-          const text = link.label ?? `${type.label} ${index + 1}`;
+          const text = link.mergedTypes?.length
+            ? mergedLinkName([type.type, ...link.mergedTypes])
+            : (link.label ?? `${type.label} ${index + 1}`);
           if (!link.note)
             return <LinkChip key={linkKey(link)} link={link} text={text} />;
           return (
@@ -150,6 +156,17 @@ const ownLinks = (type: LinkTypeView) =>
 function TypeButtons({ type }: { type: LinkTypeView }) {
   const links = ownLinks(type);
   return links.map((link, index) => {
+    // 同じページに別の種類もある（料金表にレンタルも載っているなど）ときは、名前を並べたボタン1つ
+    if (link.mergedTypes?.length)
+      return (
+        <LinkChip
+          key={linkKey(link)}
+          link={link}
+          text={mergedLinkName([type.type, ...link.mergedTypes])}
+          title={link.note ?? undefined}
+          icon={<TypeIcon type={type.type} />}
+        />
+      );
     // 1件なら種類名だけ。複数なら区別の名前か番号を添える（レンタル（予約）・ゲレンデマップ 2）
     const suffix =
       links.length === 1

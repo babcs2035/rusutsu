@@ -1,12 +1,11 @@
 "use client";
 
 import { type ReactNode, useMemo } from "react";
-import { CompareListResortButton } from "@/features/compare-lists/CompareListResortButton";
 import { FavoriteButton } from "@/features/favorites/FavoriteButton";
 import { useHomeCompare } from "@/features/home/compareContext";
 import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
 import { priceText } from "@/features/lift-ticket/utils/priceText";
-import { calculateResortPrice } from "@/features/lift-ticket/utils/resortPriceCalculation";
+import { summarizeResortPrice } from "@/features/lift-ticket/utils/resortPriceCalculation";
 import { SourceLine } from "@/features/resort-detail/components/CompactInfo";
 import {
   Fraction,
@@ -50,11 +49,7 @@ const maxSnowDepth = (resort: Resort) => {
 const priceOf = (resort: Resort, input: LiftTicketSearchInput) => {
   if (!resort.liftTickets?.length) return null;
   if (!input.visitDate) return "日程を設定";
-  const { ticket, rental, bundle } = calculateResortPrice(
-    resort.liftTickets,
-    input,
-  );
-  return priceText(ticket, rental, bundle);
+  return priceText(summarizeResortPrice(resort.liftTickets, input));
 };
 
 /** 地図が届いていればそこから、まだならサーバーで集計した値を使う */
@@ -162,12 +157,6 @@ const ResortCard = ({
               size="sm"
               className="h-6 min-w-16 rounded-lg text-xs transition-smooth"
               onClick={() => compare.togglePendingRemoval(resort.id)}
-            />
-          )}
-          {compare?.source.kind === "list" && (
-            <CompareListResortButton
-              resortId={resort.id}
-              name={resort.nameJa}
             />
           )}
           {onSelectResort && (

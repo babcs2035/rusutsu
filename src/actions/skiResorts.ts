@@ -1,14 +1,11 @@
 "use server";
 
 import type { ResortOperatingCounts } from "@/features/home/utils/operatingCounts";
-import type {
-  LiftTicketSearchInput,
-  TicketCalculationResult,
-} from "@/features/lift-ticket/types";
-import { calculateLiftTicketForSeasons } from "@/features/lift-ticket/utils/calculateLiftTicket";
-import type { TicketRentalResult } from "@/features/lift-ticket/utils/rental";
-import type { TicketBundleResult } from "@/features/lift-ticket/utils/rentalBundle";
-import { calculateResortPrice } from "@/features/lift-ticket/utils/resortPriceCalculation";
+import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
+import {
+  type ResortPriceSummary,
+  summarizeResortPrice,
+} from "@/features/lift-ticket/utils/resortPriceCalculation";
 import { legacyLinkItems } from "@/features/resort-links/legacy";
 import type { ResortLinkItem } from "@/features/resort-links/model";
 import { getFinalizedResortMapData } from "@/lib/finalizedResortGeojson";
@@ -42,7 +39,7 @@ export async function getSkiResorts(): Promise<SkiResortWithRelations[]> {
 
 // スキーリゾート一覧を地図表示用に軽量取得
 // 料金データ本体は送らず、どのスキー場の料金データを使うかだけを持たせる。
-// 料金は日付を入れたときに calculateLiftTicketsForList でサーバー計算する。
+// 料金は日付を入れたときに calculateLiftTicketAndRentalForList でサーバー計算する。
 export async function getSkiResortsForMap() {
   const [resorts, liftTicketSeasons, operatingSummaries] = await Promise.all([
     readSkiResortsForMap(),
@@ -75,6 +72,8 @@ export async function getSkiResortsForMap() {
     ...withMapElevation(resort, operatingSummaries[resort.id]?.elevation),
     ...getResortReadingInfo(resort),
     liftTicketResortId: liftTicketResortIdOf(resort),
+    // 対象サービスを返す前のデータAPIでは欄が無い
+    passProgramIds: resort.passProgramIds ?? [],
     operatingCounts: operatingSummaries[resort.id] ?? {
       hasMap: false,
       courses:
@@ -92,56 +91,11 @@ export async function getSkiResortsForMap() {
 const RESORT_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const MAX_LIST_CALCULATION_RESORTS = 500;
 
-// 一覧の各スキー場について、同じ日程・メンバーでの料金を計算して結果だけ返す。
-export async function calculateLiftTicketsForList(
-  resortIds: string[],
-  input: LiftTicketSearchInput,
-): Promise<Record<string, TicketCalculationResult | null>> {
-  if (
-    !Array.isArray(resortIds) ||
-    resortIds.length > MAX_LIST_CALCULATION_RESORTS ||
-    !resortIds.every(
-      id => typeof id === "string" && RESORT_ID_PATTERN.test(id),
-    ) ||
-    typeof input?.visitDate !== "string" ||
-    !/^\d{4}-\d{2}-\d{2}$/u.test(input.visitDate) ||
-    !Array.isArray(input.party) ||
-    input.party.length > 50 ||
-    (input.days !== undefined &&
-      (!Array.isArray(input.days) || input.days.length > 31))
-  ) {
-    throw new Error("料金計算の条件が不正です。");
-  }
-  const uniqueIds = [...new Set(resortIds)];
-  const seasonsByResortId = await getLiftTicketDataMap(uniqueIds);
-  const results: Record<string, TicketCalculationResult | null> = {};
-  for (const id of uniqueIds) {
-    try {
-      results[id] = calculateLiftTicketForSeasons(
-        seasonsByResortId.get(id) ?? [],
-        input,
-      );
-    } catch {
-      results[id] = null;
-    }
-  }
-  return results;
-}
-
-/** 一覧用にリフト券と、利用者が選んだレンタル用具の料金を計算する。 */
+/** 一覧用の料金。詳細の料金タブと同じ計算（summarizeResortPrice）で出す。 */
 export async function calculateLiftTicketAndRentalForList(
   resortIds: string[],
   input: LiftTicketSearchInput,
-): Promise<
-  Record<
-    string,
-    {
-      ticket: TicketCalculationResult | null;
-      rental: TicketRentalResult | null;
-      bundle: TicketBundleResult | null;
-    }
-  >
-> {
+): Promise<Record<string, ResortPriceSummary>> {
   if (
     !Array.isArray(resortIds) ||
     resortIds.length > MAX_LIST_CALCULATION_RESORTS ||
@@ -159,16 +113,9 @@ export async function calculateLiftTicketAndRentalForList(
   }
   const uniqueIds = [...new Set(resortIds)];
   const seasonsByResortId = await getLiftTicketDataMap(uniqueIds);
-  const results: Record<
-    string,
-    {
-      ticket: TicketCalculationResult | null;
-      rental: TicketRentalResult | null;
-      bundle: TicketBundleResult | null;
-    }
-  > = {};
+  const results: Record<string, ResortPriceSummary> = {};
   for (const id of uniqueIds) {
-    results[id] = calculateResortPrice(seasonsByResortId.get(id) ?? [], input);
+    results[id] = summarizeResortPrice(seasonsByResortId.get(id) ?? [], input);
   }
   return results;
 }

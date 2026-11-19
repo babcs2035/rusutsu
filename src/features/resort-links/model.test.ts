@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   groupResortLinks,
+  linkPageKey,
+  mergedLinkName,
   OFFICIAL_SKILL_LINK_TYPES,
   RESORT_LINK_GROUPS,
   RESORT_LINK_TYPES,
@@ -170,5 +172,128 @@ test("公式ページが案内するツアー会社は、その会社のボタ�
       ["rado", "https://example.com/osa"],
       ["rado", "https://example.com/ngo"],
     ],
+  );
+});
+
+test("同じタブで別の種類が同じページを指すときは、名前を並べたボタン1つにまとめる", () => {
+  const lift = "https://www.nango-ski.com/lift/";
+  const groups = groupResortLinks([
+    item({ type: "pass", source: "official", url: lift, label: "シーズン券" }),
+    item({
+      type: "rentalPrice",
+      source: "official",
+      url: `${lift}#:~:text=%E3%83%AC%E3%83%B3%E3%82%BF%E3%83%AB`,
+    }),
+    item({ type: "liftTicketPrice", source: "official", url: lift }),
+    item({
+      type: "skiSchool",
+      source: "official",
+      url: "https://a.jp/school/",
+    }),
+    item({
+      type: "snowboardSchool",
+      source: "official",
+      url: "https://a.jp/school/",
+    }),
+    // 別のタブ（車・公共交通）の同じアクセスのページはそれぞれ出す
+    item({
+      type: "carAccess",
+      source: "official",
+      url: "https://a.jp/access/",
+    }),
+    item({ type: "parking", source: "official", url: "https://a.jp/access/" }),
+    item({
+      type: "transitAccess",
+      source: "official",
+      url: "https://a.jp/access/",
+    }),
+  ]);
+  const price = linksOf(groups, "liftTicketPrice");
+  assert.deepEqual(
+    price?.map(link => [link.url, link.mergedTypes]),
+    [[lift, ["rentalPrice", "pass"]]],
+  );
+  assert.equal(
+    mergedLinkName(["liftTicketPrice", "rentalPrice", "pass"]),
+    "リフト券・レンタル・シーズン券",
+  );
+  assert.deepEqual(linksOf(groups, "rentalPrice"), []);
+  assert.deepEqual(linksOf(groups, "pass"), []);
+  assert.equal(
+    mergedLinkName([
+      "skiSchool",
+      ...(linksOf(groups, "skiSchool")?.[0]?.mergedTypes ?? []),
+    ]),
+    "スクール",
+  );
+  assert.equal(mergedLinkName(["carAccess", "parking"]), "アクセス・駐車場");
+  assert.equal(linksOf(groups, "transitAccess")?.length, 1);
+});
+
+test("ゲレンデは同じページでもまとめず、種類ごとにその位置へ飛ぶ", () => {
+  const page = "https://www.nango-ski.com/gelande/freepark/";
+  const groups = groupResortLinks([
+    item({ type: "parkInfo", source: "official", url: page }),
+    item({
+      type: "parkStatus",
+      source: "official",
+      url: `${page}#:~:text=%E3%82%A2%E3%82%A4%E3%83%86%E3%83%A0`,
+    }),
+  ]);
+  assert.equal(linksOf(groups, "parkInfo")?.[0]?.url, page);
+  assert.equal(
+    linksOf(groups, "parkStatus")?.[0]?.url,
+    `${page}#:~:text=%E3%82%A2%E3%82%A4%E3%83%86%E3%83%A0`,
+  );
+});
+
+test("まとめた名前が長いときは先頭の名前と「ほか」にする", () => {
+  assert.equal(
+    mergedLinkName([
+      "liftTicketPrice",
+      "rentalPrice",
+      "webPurchase",
+      "officialDiscount",
+      "pass",
+    ]),
+    "リフト券・レンタル・Web購入ほか",
+  );
+});
+
+test("外部サイトのリンクは、公式に同じページがあればタブの並びに関係なく外す", () => {
+  const asoview = "https://www.asoview.com/channel/tickets/DS75xNiB9D/";
+  const groups = groupResortLinks([
+    item({ type: "pass", source: "asoview", url: asoview }),
+    item({ type: "externalDiscount", source: "official", url: asoview }),
+    item({
+      type: "externalDiscount",
+      source: "asoview",
+      url: "https://www.asoview.com/item/ticket/other/",
+    }),
+  ]);
+  assert.deepEqual(linksOf(groups, "pass"), []);
+  assert.deepEqual(
+    linksOf(groups, "externalDiscount")?.map(link => link.source),
+    ["official", "asoview"],
+  );
+});
+
+test("アソビューは掲載元のチャネル番号が違っても、同じ商品なら同じページ", () => {
+  assert.equal(
+    linkPageKey(
+      "externalDiscount",
+      "https://www.asoview.com/channel/ticket/bZLEert5mh/ticket0000035654",
+    ),
+    linkPageKey(
+      "externalDiscount",
+      "https://www.asoview.com/channel/ticket/vIh3IOvbXp/ticket0000035654/",
+    ),
+  );
+  assert.equal(
+    linkPageKey(
+      "externalDiscount",
+      "https://www.asoview.com/item/ticket/ticket0000035654/",
+    ),
+    "asoview.com/ticket/ticket0000035654",
   );
 });

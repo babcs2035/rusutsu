@@ -44,6 +44,15 @@ const responseSchema = z.object({
         .refine(value => value.top > value.base)
         .nullish()
         .transform(value => value ?? null),
+      // 営業中の標高を持たない古いAPIでは、営業中の標高差で絞り込めない扱いにする
+      openElevation: z
+        .object({
+          top: z.number().int(),
+          base: z.number().int(),
+        })
+        .refine(value => value.top > value.base)
+        .nullish()
+        .transform(value => value ?? null),
     }),
   ),
 });
@@ -117,6 +126,14 @@ export async function findOperatingSummariesDirect(): Promise<
                     : {
                         top: row.mapTopElevation,
                         base: row.mapBaseElevation,
+                      },
+                openElevation:
+                  row.mapOpenTopElevation === null ||
+                  row.mapOpenBaseElevation === null
+                    ? null
+                    : {
+                        top: row.mapOpenTopElevation,
+                        base: row.mapOpenBaseElevation,
                       },
               },
             ]),

@@ -3,6 +3,11 @@
   "sources": [
     { "id": "official", "name": "公式" },
     {
+      "id": "nsdKids",
+      "name": "NSDキッズプログラム",
+      "url": "https://www.nippon-ski.jp/kids/"
+    },
+    {
       "id": "orion",
       "name": "オリオンツアー",
       "url": "https://www.orion-ski.jp/ski_area"

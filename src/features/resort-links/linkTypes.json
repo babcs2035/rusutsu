@@ -1,14 +1,16 @@
 {
-  "$comment": "スキー場リンク一覧の固定の型。グループと種類の並び順は全スキー場で同じ。owners は「誰が集めるか」: officialSkill=公式リンク収集スキル（resort_links）, externalCrawler=外部サイトのクローラー（resort_links）, legacyLinks=SkiResortLinks.json, statusCrawler=営業状況クローラー, liftTicket=リフト券データ, yukiMagi=雪マジのテーブル, derived=緯度経度から作る。displayAs は画面で別の種類にまとめて出す（同じページは1つ）",
+  "$comment": "スキー場リンク一覧の固定の型。グループと種類の並び順は全スキー場で同じ。owners は「誰が集めるか」: officialSkill=公式リンク収集スキル（resort_links）, externalCrawler=外部サイトのクローラー（resort_links）, legacyLinks=SkiResortLinks.json, statusCrawler=営業状況クローラー, liftTicket=リフト券データ, yukiMagi=雪マジのテーブル, derived=緯度経度から作る。displayAs は画面で別の種類にまとめて出す（同じページは1つ）。同じタブで別の種類が同じページを指すときは、1つのボタンにまとめて名前を「・」でつなぐ（例: リフト券・レンタル・Web購入）。samePagePriority はそのボタンを置く種類と名前の順、shortLabel はまとめたときの短い名前。mergeSamePage: false のタブ（ゲレンデ）はまとめず、種類ごとにそのページの位置へ飛ぶ",
   "groups": [
     {
       "id": "basic",
       "label": "基本",
+      "samePagePriority": ["officialTop", "news", "googleMaps"],
       "types": [
         {
           "type": "officialTop",
           "label": "公式サイト",
-          "owners": ["legacyLinks"]
+          "owners": ["legacyLinks"],
+          "shortLabel": "公式サイト"
         },
         {
           "type": "news",
@@ -25,6 +27,7 @@
     {
       "id": "slope",
       "label": "ゲレンデ",
+      "mergeSamePage": false,
       "types": [
         {
           "type": "courseInfo",
@@ -71,11 +74,21 @@
     {
       "id": "price",
       "label": "料金",
+      "samePagePriority": [
+        "liftTicketPrice",
+        "rentalPrice",
+        "webPurchase",
+        "officialDiscount",
+        "pass",
+        "yukiMagi",
+        "externalDiscount"
+      ],
       "types": [
         {
           "type": "liftTicketPrice",
           "label": "リフト券料金",
-          "owners": ["liftTicket"]
+          "owners": ["liftTicket"],
+          "shortLabel": "リフト券"
         },
         {
           "type": "webPurchase",
@@ -96,12 +109,14 @@
         {
           "type": "officialDiscount",
           "label": "公式割引",
-          "owners": ["officialSkill"]
+          "owners": ["officialSkill"],
+          "shortLabel": "割引"
         },
         {
           "type": "pass",
           "label": "シーズン券・共通パス",
-          "owners": ["officialSkill", "externalCrawler"]
+          "owners": ["officialSkill", "externalCrawler"],
+          "shortLabel": "シーズン券"
         },
         {
           "type": "yukiMagi",
@@ -118,6 +133,14 @@
     {
       "id": "facility",
       "label": "施設",
+      "samePagePriority": [
+        "lodging",
+        "restaurant",
+        "onsen",
+        "skiSchool",
+        "snowboardSchool",
+        "kidsPark"
+      ],
       "types": [
         {
           "type": "restaurant",
@@ -154,6 +177,7 @@
     {
       "id": "car",
       "label": "車",
+      "samePagePriority": ["carAccess", "parking", "roadCamera", "roadInfo"],
       "types": [
         {
           "type": "carAccess",
@@ -180,6 +204,7 @@
     {
       "id": "transit",
       "label": "公共交通",
+      "samePagePriority": ["transitAccess", "busTimetable"],
       "types": [
         {
           "type": "transitAccess",
@@ -189,7 +214,8 @@
         {
           "type": "busTimetable",
           "label": "バス時刻表",
-          "owners": ["officialSkill"]
+          "owners": ["officialSkill"],
+          "shortLabel": "時刻表"
         }
       ]
     },

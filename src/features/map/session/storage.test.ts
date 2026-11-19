@@ -281,3 +281,18 @@ test("地図設定の4状態・表示スイッチを保存し、旧形式の保�
     false,
   );
 });
+
+test("以前の「営業中のみ」は読み捨て、シーズン券の選択は知っているものだけ復元する", () => {
+  const { passPrograms: _passPrograms, ...withoutPasses } = DEFAULT_FILTERS;
+  const old = homeSessionSchema.parse({
+    ...session,
+    filters: { ...withoutPasses, status: true },
+  });
+  assert.equal("status" in old.filters, false);
+  assert.deepEqual(old.filters.passPrograms, []);
+  const restored = homeSessionSchema.parse({
+    ...session,
+    filters: { ...DEFAULT_FILTERS, passPrograms: ["macEarth", "unknown"] },
+  });
+  assert.deepEqual(restored.filters.passPrograms, ["macEarth"]);
+});

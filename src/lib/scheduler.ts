@@ -40,6 +40,24 @@ export function startScheduler() {
     },
   );
 
+  // シーズン券・キッズパスの対象スキー場一覧。1日1回取り直し、変わったら管理画面に出す
+  cron.schedule(
+    "30 3 * * *",
+    () => {
+      console.log("⏰ Running scheduled pass program crawl at 03:30 JST...");
+      runCrawlerIfNeeded("passPrograms")
+        .then(result => {
+          console.log(result.message);
+        })
+        .catch(err => {
+          console.error("❌ Scheduled pass program run failed:", err);
+        });
+    },
+    {
+      timezone: "Asia/Tokyo",
+    },
+  );
+
   // ツアー会社サイトのリンクは週1回。サイトの一覧はほとんど変わらず、巡回に十数分かかるため。
   cron.schedule(
     "0 4 * * 1",
@@ -59,6 +77,6 @@ export function startScheduler() {
   );
 
   console.log(
-    "📅 Scheduler initialized: YukiMagi 03:00 JST daily, tour links Mon 04:00 JST.",
+    "📅 Scheduler initialized: YukiMagi 03:00 JST daily, pass programs 03:30 JST daily, tour links Mon 04:00 JST.",
   );
 }

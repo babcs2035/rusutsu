@@ -60,6 +60,9 @@ export type OperationSummaryWrite = {
   /** 地図のコースの最高・最低標高（m）。コースに標高が無ければ null */
   mapTopElevation: number | null;
   mapBaseElevation: number | null;
+  /** ○・△のコースだけの最高・最低標高（m） */
+  mapOpenTopElevation: number | null;
+  mapOpenBaseElevation: number | null;
   calculationVersion: number;
 };
 
@@ -77,6 +80,7 @@ export async function writeOperationSummaries(
     ${row.courseDistanceTotal}::integer, ${row.courseDistanceOpen}::integer,
     ${row.courseDistanceFallbackLines}::integer, ${row.courseDistanceMissingLines}::integer,
     ${row.mapTopElevation}::integer, ${row.mapBaseElevation}::integer,
+    ${row.mapOpenTopElevation}::integer, ${row.mapOpenBaseElevation}::integer,
     ${row.calculationVersion}::integer, NOW()
   )`,
   );
@@ -85,7 +89,7 @@ export async function writeOperationSummaries(
       ("skiResortId", "hasMap", "courseTotal", "courseActive", "liftTotal", "liftActive",
        "courseCountSource", "liftCountSource", "courseDistanceTotal", "courseDistanceOpen",
        "courseDistanceFallbackLines", "courseDistanceMissingLines", "mapTopElevation", "mapBaseElevation",
-       "calculationVersion", "updatedAt")
+       "mapOpenTopElevation", "mapOpenBaseElevation", "calculationVersion", "updatedAt")
     VALUES ${Prisma.join(values)}
     ON CONFLICT ("skiResortId") DO UPDATE SET
       "hasMap" = EXCLUDED."hasMap", "courseTotal" = EXCLUDED."courseTotal",
@@ -96,6 +100,8 @@ export async function writeOperationSummaries(
       "courseDistanceFallbackLines" = EXCLUDED."courseDistanceFallbackLines",
       "courseDistanceMissingLines" = EXCLUDED."courseDistanceMissingLines",
       "mapTopElevation" = EXCLUDED."mapTopElevation", "mapBaseElevation" = EXCLUDED."mapBaseElevation",
+      "mapOpenTopElevation" = EXCLUDED."mapOpenTopElevation",
+      "mapOpenBaseElevation" = EXCLUDED."mapOpenBaseElevation",
       "calculationVersion" = EXCLUDED."calculationVersion",
       "updatedAt" = EXCLUDED."updatedAt"
   `);

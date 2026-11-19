@@ -5,6 +5,7 @@ import {
   startTransition,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import { Button } from "@/components/ui/button";
@@ -18,11 +19,17 @@ import type {
   CourseRecommendationSearch,
 } from "@/server/course-recommendations/repository";
 import { DetailButton } from "@/shared/components/DetailButton";
+import { SegmentedControl } from "@/shared/components/SegmentedControl";
 import { recommendationGrade, recommendationSelection } from "./algorithm";
 import { CourseComparisonDialog } from "./CourseComparisonDialog";
 import { selectCachedRecommendations } from "./cache";
 import { prefetchComparisonMapData } from "./comparisonData";
 import { useRecommendationCache } from "./RecommendationProvider";
+
+const SCOPE_OPTIONS = [
+  { value: "favorites", label: "お気に入り" },
+  { value: "all", label: "全体" },
+] as const;
 
 const GRADE_CLASS = {
   A: "bg-emerald-600 text-white",
@@ -63,7 +70,7 @@ export function SimilarCourses({
   const cache = useRecommendationCache();
   const selected = recommendationSelection(courseGroup.id, courseGroup.courses);
   const key =
-    favorites?.ready && favorites.ids.length && selected && cache
+    favorites?.ready && selected && cache
       ? JSON.stringify({ resortId, selected, scope: cache.scope })
       : null;
   const [state, setState] = useState<{
@@ -114,6 +121,11 @@ export function SimilarCourses({
       clearTimeout(deadline);
     };
   }, [key, retry, cache, resortId]);
+  // 範囲を切り替えて取り直す間は、直前の一覧を薄く残して高さを保つ
+  const shown = useRef<{
+    selection: string;
+    results: CourseRecommendation[];
+  } | null>(null);
   if (!key) return children ? children(null, null) : null;
   const cached = cache?.store.peek(resortId);
   const immediate =
@@ -138,20 +150,43 @@ export function SimilarCourses({
             error: false,
           }
         : loaded;
+  const selectionKey = JSON.stringify([resortId, selected]);
+  if (current && !current.error && current.results.length)
+    shown.current = { selection: selectionKey, results: current.results };
+  const pending =
+    !current && shown.current?.selection === selectionKey
+      ? shown.current.results
+      : null;
+  const searchScope = cache?.searchScope ?? "all";
+  const scopeSwitch = cache?.hasFavorites ? (
+    <SegmentedControl
+      options={SCOPE_OPTIONS}
+      value={searchScope}
+      onChange={cache.setSearchScope}
+      itemClassName="h-6 px-2 text-[11px]"
+      ariaLabel={option => `${option.label}のスキー場から探す`}
+    />
+  ) : null;
+  const scopeLabel =
+    searchScope === "all" ? "全スキー場から" : "お気に入りのスキー場から";
+  const results = current?.results ?? pending ?? [];
   const content = (
     <section className="min-w-0" aria-label="斜度の近いコース">
       {showHeading ? (
-        <FeatureSectionTitle aside="お気に入りのスキー場から">
+        <FeatureSectionTitle aside={scopeSwitch ?? scopeLabel}>
           斜度の近いコース
         </FeatureSectionTitle>
       ) : (
-        <p className="mb-1 text-xs text-slate-500">お気に入りのスキー場から</p>
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <p className="text-xs text-slate-500">{scopeLabel}</p>
+          {scopeSwitch}
+        </div>
       )}
-      {!current ? (
+      {!current && !pending ? (
         <p role="status" className="py-1 text-xs text-slate-500">
           検索中…
         </p>
-      ) : current.error || current.status === "api_outdated" ? (
+      ) : current && (current.error || current.status === "api_outdated") ? (
         <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
           <p>斜度の近いコースを取得できませんでした。</p>
           <Button
@@ -166,18 +201,23 @@ export function SimilarCourses({
             再検索
           </Button>
         </div>
-      ) : current.results.length === 0 ? (
+      ) : current && current.results.length === 0 ? (
         <p className="py-1 text-xs text-slate-500">
           {current.status === "source_unavailable"
             ? "比較に必要なコースデータがありません。"
             : current.status === "candidates_unavailable"
-              ? "お気に入りに比較できるコースデータがありません。"
+              ? searchScope === "all"
+                ? "比較できるコースデータがありません。"
+                : "お気に入りに比較できるコースデータがありません。"
               : current.status === "no_other_favorites"
-                ? "ほかのスキー場をお気に入りに追加すると表示されます。"
+                ? "お気に入りにほかのスキー場がありません。"
                 : "条件に合うコースがありません。"}
         </p>
       ) : (
-        <table className="w-full table-fixed overflow-hidden rounded-lg border border-slate-200 text-left">
+        <table
+          aria-busy={!current}
+          className={`w-full table-fixed overflow-hidden rounded-lg border border-slate-200 text-left transition-opacity ${current ? "" : "opacity-50"}`}
+        >
           <colgroup>
             <col className="w-[4.5rem]" />
             <col className="w-[24%]" />
@@ -201,7 +241,7 @@ export function SimilarCourses({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {current.results.slice(0, 3).map(result => {
+            {results.slice(0, 3).map(result => {
               const course = {
                 ...result,
                 resortName:

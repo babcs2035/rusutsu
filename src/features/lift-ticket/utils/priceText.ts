@@ -1,8 +1,7 @@
 import { formatVisitDates } from "@/features/home/utils/formatVisitDates";
-import type { LiftTicketSearchInput, TicketCalculationResult } from "../types";
+import type { LiftTicketSearchInput } from "../types";
 import { TICKET_PARTY_CATEGORY_LABELS } from "./calculateLiftTicket";
-import type { TicketRentalResult } from "./rental";
-import type { TicketBundleResult } from "./rentalBundle";
+import type { ResortPriceSummary } from "./resortPriceCalculation";
 
 export const dateLabel = (input: LiftTicketSearchInput) => {
   const dates = (
@@ -27,44 +26,26 @@ export const conditionsLabel = (input: LiftTicketSearchInput) => {
     .join("　");
 };
 
+/**
+ * 一覧・比較に出す料金。詳細の料金タブの一番安い段階の見出し金額と同じ値を出す。
+ * 選んだ用具のレンタル情報が無いときは、詳細の「¥3,900 ＋ゴーグル」を
+ * 狭い欄に収まるよう「¥3,900＋α」と縮める
+ */
 export const priceText = (
-  ticket: TicketCalculationResult | null | undefined,
-  rental: TicketRentalResult | null | undefined,
-  bundle: TicketBundleResult | null | undefined,
-  /** 一覧の狭い欄では「営業期間外」を「期間外」と縮める */
+  summary: ResortPriceSummary | null | undefined,
+  /** 一覧の狭い欄では「営業期間外」を「期間外」、「料金一部不明」を「一部不明」と縮める */
   { compact = false }: { compact?: boolean } = {},
 ) => {
-  if (!ticket) return "不明";
-  if (["unavailable", "outside_season", "closed"].includes(ticket.status)) {
-    if (ticket.status !== "outside_season") return "不明";
-    return compact ? "期間外" : "営業期間外";
+  switch (summary?.kind) {
+    case "price":
+      return `¥${summary.total.toLocaleString("ja-JP")}${
+        summary.rentalMissing ? "＋α" : ""
+      }`;
+    case "partial":
+      return compact ? "一部不明" : "料金一部不明";
+    case "outside_season":
+      return compact ? "期間外" : "営業期間外";
+    default:
+      return "不明";
   }
-  // セット券の合計が出たときは、レンタルを借りる全員の料金が出ている
-  const bundleApplied =
-    bundle != null && bundle.lines.length > 0 && bundle.total != null;
-  // 選んだ用具のレンタル情報が無いスキー場は、詳細の「¥3,900 ＋ゴーグル」を
-  // 一覧の幅に収まるよう「¥3,900＋α」と縮めて出す（「〜」は一部不明のとき）
-  const rentalMissing =
-    (rental?.missingLabels.length ?? 0) > 0 ||
-    (rental?.status === "not_collected" && !bundleApplied);
-  const suffix = (uncertain: boolean) =>
-    rentalMissing ? "＋α" : uncertain ? "〜" : "";
-  // セット券（リフト券＋レンタル）のほうが安いときは、その合計を使う
-  if (bundleApplied) {
-    return `¥${bundle.total?.toLocaleString("ja-JP")}${suffix(false)}`;
-  }
-  const ticketAmount = ticket.ticketTotal ?? ticket.knownTicketTotal;
-  const rentalAmount = rental?.total ?? rental?.knownTotal ?? 0;
-  const uncertain =
-    ticket.status === "partial" ||
-    (rental != null &&
-      rental.status !== "none" &&
-      rental.status !== "complete" &&
-      rental.status !== "not_collected");
-  if (uncertain && ticketAmount + rentalAmount === 0) {
-    return "料金一部不明";
-  }
-  return `¥${(ticketAmount + rentalAmount).toLocaleString("ja-JP")}${suffix(
-    uncertain,
-  )}`;
 };

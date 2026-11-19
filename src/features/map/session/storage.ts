@@ -4,6 +4,7 @@ import {
   TICKET_RENTAL_ITEMS,
   TICKET_RENTAL_SPORTS,
 } from "@/features/lift-ticket/types";
+import { isPassProgramId } from "@/shared/passPrograms";
 import type { CompareUrlCodec } from "@/shared/utils/comparePath";
 import { resortIdFromUrl } from "@/shared/utils/resortPath";
 
@@ -35,8 +36,14 @@ const numeric = z.number().nonnegative().nullable();
 export const filtersSchema = z.object({
   keyword: z.string().max(500),
   prefectures: z.array(z.string()).max(47),
-  status: z.boolean(),
+  // 以前の「営業中のみ」は読み捨てる
   yukiMagi: z.boolean(),
+  // 以前の保存には無いので空にする。知らないサービスは読み捨てる
+  passPrograms: z
+    .array(z.string())
+    .max(20)
+    .default([])
+    .transform(ids => ids.filter(isPassProgramId)),
   // 以前の「初級者向け」は読み捨て、EV充電は以前の保存に無いので false にする
   evCharger: z.boolean().default(false),
   minVertical: numeric,
@@ -46,6 +53,9 @@ export const filtersSchema = z.object({
   maxTopElevation: numeric,
   minCourses: numeric,
   minLifts: numeric,
+  // 以前の保存には無いので null にする
+  minCourseDistance: numeric.default(null),
+  scaleBasis: z.enum(["total", "open"]).default("total"),
   liftTicket: z.object({
     visitDate: z.string(),
     usePreference: z.enum(["full_day", "half_day"]),

@@ -42,6 +42,8 @@ const operationSummary = (
   courseDistanceMissingLines: 0,
   mapTopElevation: 990,
   mapBaseElevation: 422,
+  mapOpenTopElevation: 900,
+  mapOpenBaseElevation: 500,
   calculationVersion: 4,
   ...overrides,
 });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useMemo, useState } from "react";
+import type { PassProgramId } from "@/shared/passPrograms";
 import type { MapSkiResort } from "@/types/skiResorts";
 import { DEFAULT_FILTERS, REGION_PREFECTURES } from "../constants";
 import type { Filters, NumericFilterName } from "../types";
@@ -19,9 +20,9 @@ export const useFilterPanelState = ({
 }: Params) => {
   const [isElevationDetailOpen, setIsElevationDetailOpen] = useState(false);
   const keywordId = useId();
-  const statusId = useId();
   const yukiMagiId = useId();
   const evChargerId = useId();
+  const passProgramIdPrefix = useId();
   const minVerticalId = useId();
   const minBaseElevationId = useId();
   const maxBaseElevationId = useId();
@@ -29,6 +30,7 @@ export const useFilterPanelState = ({
   const maxTopElevationId = useId();
   const minCoursesId = useId();
   const minLiftsId = useId();
+  const minCourseDistanceId = useId();
 
   const availablePrefectureSet = useMemo(
     () => new Set(resorts.map(resort => resort.prefecture).filter(Boolean)),
@@ -89,10 +91,18 @@ export const useFilterPanelState = ({
   };
 
   const handleCheckboxChange = (
-    name: "status" | "yukiMagi" | "evCharger",
+    name: "yukiMagi" | "evCharger",
     checked: boolean,
   ) => {
     onFilterChange({ ...filters, [name]: checked });
+  };
+
+  const handlePassProgramChange = (id: PassProgramId, checked: boolean) => {
+    const others = filters.passPrograms.filter(selected => selected !== id);
+    onFilterChange({
+      ...filters,
+      passPrograms: checked ? [...others, id] : others,
+    });
   };
 
   const handleReset = () => {
@@ -114,6 +124,7 @@ export const useFilterPanelState = ({
     collapsedDetailLabels,
     handleCheckboxChange,
     handleKeywordClear,
+    handlePassProgramChange,
     handleNumericInputChange,
     handlePrefectureChange,
     handleRegionPrefecturesChange,
@@ -128,11 +139,12 @@ export const useFilterPanelState = ({
       maxBaseElevationId,
       maxTopElevationId,
       minBaseElevationId,
+      minCourseDistanceId,
       minCoursesId,
       minLiftsId,
       minTopElevationId,
       minVerticalId,
-      statusId,
+      passProgramIdPrefix,
       yukiMagiId,
     },
     isElevationDetailOpen,

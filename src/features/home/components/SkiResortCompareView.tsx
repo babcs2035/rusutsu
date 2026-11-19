@@ -5,7 +5,7 @@ import { List, X } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { AddCompareListResortsButton } from "@/features/compare-lists/AddCompareListResortsButton";
+import { EditCompareListButton } from "@/features/compare-lists/EditCompareListButton";
 import { SaveCompareListButton } from "@/features/compare-lists/SaveCompareListButton";
 import type { CompareSource } from "@/features/compare-lists/types";
 import { LiftTicketConditionsButton } from "@/features/lift-ticket/components/LiftTicketConditionsButton";
@@ -383,9 +383,10 @@ export const SkiResortCompareView = ({
               />
             </div>
           )}
+          {/* スマホは概要・料金の条件の行に置き、タブの行は×だけにする */}
           {source.kind === "list" && (
-            <div className="ml-auto shrink-0 md:ml-0">
-              <AddCompareListResortsButton
+            <div className="hidden shrink-0 md:block">
+              <EditCompareListButton
                 listId={source.id}
                 resorts={mapResorts}
                 onSaved={list => homeCompare?.onListSaved(list)}
@@ -402,8 +403,17 @@ export const SkiResortCompareView = ({
           </Button>
         </div>
         {toolbar && (
-          <div className="flex items-center border-t border-gray-100 px-2 py-1.5 @[80rem]/compare-header:hidden md:px-3">
-            {toolbar}
+          <div className="flex items-center gap-2 border-t border-gray-100 px-2 py-1.5 @[80rem]/compare-header:hidden md:px-3">
+            <div className="flex min-w-0 flex-1 items-center">{toolbar}</div>
+            {source.kind === "list" &&
+              (activeTab === "概要" || activeTab === "料金") && (
+                <EditCompareListButton
+                  listId={source.id}
+                  resorts={mapResorts}
+                  onSaved={list => homeCompare?.onListSaved(list)}
+                  className="md:hidden"
+                />
+              )}
           </div>
         )}
       </div>

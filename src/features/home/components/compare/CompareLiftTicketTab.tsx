@@ -1,9 +1,9 @@
 "use client";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { TicketCalculationCard } from "@/features/lift-ticket/components/TicketCalculationCard";
+import { TicketPlanCard } from "@/features/lift-ticket/components/TicketPlanCard";
 import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
-import { calculateLiftTicketForSeasons } from "@/features/lift-ticket/utils/calculateLiftTicket";
+import { calculateResortPriceTiers } from "@/features/lift-ticket/utils/resortPriceCalculation";
 import { CompareResortDetailButton } from "./CompareResortNameCell";
 import { COMPARE_CARD_GRID_CLASS } from "./constants";
 import type { Resort } from "./types";
@@ -21,7 +21,9 @@ export const CompareLiftTicketTab = ({
   <div className="@container w-full">
     <div className={COMPARE_CARD_GRID_CLASS}>
       {resorts.map(resort => {
-        const result = calculateLiftTicketForSeasons(resort.liftTickets, input);
+        // 詳細の料金タブと同じ計算・同じカードで出す
+        const tiers =
+          calculateResortPriceTiers(resort.liftTickets, input)?.tiers ?? [];
         return (
           <Card key={resort.id}>
             <CardContent className="p-4">
@@ -37,7 +39,7 @@ export const CompareLiftTicketTab = ({
                   />
                 )}
               </div>
-              <TicketCalculationCard result={result} />
+              <TicketPlanCard tiers={tiers} />
             </CardContent>
           </Card>
         );

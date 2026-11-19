@@ -264,6 +264,8 @@ function HomeClientContent({
   const [mobileContentTab, setMobileContentTab] = useState<"info" | "map">(
     session?.mobileContentTab ?? "map",
   );
+  // スマホのリストから詳細を開いたか。リストを詳細の裏に隠して残すために使う
+  const [isDetailOpenedFromList, setIsDetailOpenedFromList] = useState(false);
   const [isPending] = useTransition();
   const [discardFilterChangesDialogOpen, setDiscardFilterChangesDialogOpen] =
     useState(false);
@@ -528,6 +530,13 @@ function HomeClientContent({
   // 画面に出ているのは比較が開いていて、詳細を開いていないときだけ
   const isCompareVisible = isCompareOpen && !selectedResortId;
   const isCompareBehindDetail = isCompareOpen && Boolean(selectedResortId);
+  // リストから開いた詳細の間も、リストは破棄せず裏に残す。
+  // 閉じたときに地方・都道府県の開閉とスクロール位置をそのまま出すため
+  const isListBehindDetail =
+    !isSidePanelLayout &&
+    !isCompareOpen &&
+    isDetailOpenedFromList &&
+    Boolean(selectedResortId);
   useWarmShareImage(
     isCompareVisible
       ? activeCompareIds
@@ -910,6 +919,12 @@ function HomeClientContent({
       // 比較から開いた詳細は、閉じると比較へ戻す。比較は閉じずに裏へ残し、
       // 比較を閉じたときの戻り先（比較を開く前の画面）も上書きしない
       if (!isCompareOpen) saveReturnViewState();
+      // 詳細から別のスキー場へ移ったときは、最初に開いた画面の判定を保つ
+      if (!selectedResortId) {
+        setIsDetailOpenedFromList(
+          !isCompareOpen && mobileContentTab === "info" && isListSheetOpen,
+        );
+      }
       hasUserInteractedWithMapInDetailRef.current = false;
       setSelectedFinalizedFeature(null);
       setSelectedElevationProfilePoint(null);
@@ -917,7 +932,13 @@ function HomeClientContent({
       setIsListSheetOpen(false); // モーダルを開くときにボトムシートを閉じる
       setSelectedResortData(null);
     },
-    [isCompareOpen, saveReturnViewState, selectedResortId],
+    [
+      isCompareOpen,
+      isListSheetOpen,
+      mobileContentTab,
+      saveReturnViewState,
+      selectedResortId,
+    ],
   );
 
   // 詳細・比較を閉じる際，開く前のタブへ戻す。地図タブから開いたなら地図タブ，
@@ -1317,6 +1338,7 @@ function HomeClientContent({
               isCompareLoading={isCompareLoading}
               isCompareOpen={isCompareVisible}
               isCompareBehindDetail={isCompareBehindDetail}
+              isListBehindDetail={isListBehindDetail}
               onCompareMapResortsNeeded={onCompareMapResortsNeeded}
               isFilterEditorOpen={isFilterEditorOpen}
               isMobileFilterOverlayOpen={isMobileFilterOverlayOpen}

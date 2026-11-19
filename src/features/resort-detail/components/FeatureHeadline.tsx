@@ -2,7 +2,7 @@
 
 import { Circle, Minus, Pencil, Play, Triangle, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useLayoutEffect, useRef, useState } from "react";
+import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { requestCommunityComposer } from "@/features/community/composerEvents";
 import {
@@ -404,10 +404,17 @@ export const FeatureSectionTitle = ({
   aside,
 }: {
   children: string;
-  aside?: string;
+  /** 文字なら薄い注記、要素（切り替えなど）ならそのまま右端に置く */
+  aside?: ReactNode;
 }) => (
-  <div className="mb-1 flex items-baseline justify-between gap-2">
+  <div
+    className={`mb-1 flex justify-between gap-2 ${typeof aside === "string" ? "items-baseline" : "items-center"}`}
+  >
     <h3 className="text-xs font-semibold text-slate-500">{children}</h3>
-    {aside && <span className="text-[11px] text-slate-400">{aside}</span>}
+    {typeof aside === "string" ? (
+      <span className="text-[11px] text-slate-400">{aside}</span>
+    ) : (
+      aside
+    )}
   </div>
 );

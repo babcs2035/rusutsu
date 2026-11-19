@@ -59,7 +59,7 @@ test("詳細データが持つURL（営業状況・リフト券・雪マジ）�
       "windy",
     ],
   );
-  // 同じページがコースとリフトの両方にあっても、種類ごとに1件ずつ出る
+  // ゲレンデのタブは、同じページがコースとリフトの両方にあっても種類ごとに1件ずつ出る
   const slope = groupResortLinks(items).find(group => group.id === "slope");
   assert.deepEqual(
     slope?.types.filter(type => type.links.length > 0).map(type => type.type),

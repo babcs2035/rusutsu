@@ -1,7 +1,7 @@
 "use client";
 
 import { Filter, RotateCcw, Search, SlidersHorizontal, X } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,13 +11,7 @@ import { SEARCH_RENTAL_OPTIONS } from "@/features/lift-ticket/utils/rental";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import type { MapSkiResort } from "@/types/skiResorts";
-import {
-  CompactMetricFilter,
-  ElevationFilterRow,
-  FilterToggle,
-  PrefectureFilter,
-  ToggleSection,
-} from "./components/FilterControls";
+import { FilterConditionFields } from "./components/FilterConditionFields";
 import { useFilterPanelState } from "./hooks/useFilterPanelState";
 import type { Filters } from "./types";
 
@@ -37,8 +31,6 @@ type Props = {
   showKeywordSearch?: boolean;
   title?: string;
 };
-
-const MOBILE_NUMBER_INPUT_WIDTH = "3.25rem";
 
 const ResultCountBadge = ({ count }: { count: number }) => (
   <Badge
@@ -66,33 +58,13 @@ export const FilterPanel = ({
 }: Props) => {
   const {
     collapsedDetailLabels,
-    handleCheckboxChange,
     handleKeywordClear,
-    handleNumericInputChange,
-    handlePrefectureChange,
-    handleRegionPrefecturesChange,
     handleResetConfirm,
     resetDialogOpen,
     setResetDialogOpen,
     handleTextInputChange,
-    ids,
-    isElevationDetailOpen,
-    regionOptions,
-    setIsElevationDetailOpen,
+    ids: { keywordId },
   } = useFilterPanelState({ filters, resorts, onFilterChange });
-  const {
-    evChargerId,
-    keywordId,
-    maxBaseElevationId,
-    maxTopElevationId,
-    minBaseElevationId,
-    minCoursesId,
-    minLiftsId,
-    minTopElevationId,
-    minVerticalId,
-    statusId,
-    yukiMagiId,
-  } = ids;
 
   const isCollapsed = !isExpanded;
 
@@ -233,9 +205,6 @@ export const FilterPanel = ({
             <AlertTitle className="text-blue-900 font-bold text-sm">
               料金を計算する
             </AlertTitle>
-            <AlertDescription className="mt-1 text-xs leading-relaxed">
-              日程・利用者ごとにリフト券とレンタル料金を計算します。
-            </AlertDescription>
             <div className="mt-2">
               <TicketPartyEditor
                 value={filters.liftTicket ?? DEFAULT_LIFT_TICKET_SEARCH_INPUT}
@@ -250,107 +219,12 @@ export const FilterPanel = ({
             </div>
           </Alert>
 
-          {/* Quick filters */}
-          <div className="grid grid-cols-3 gap-1.5 md:gap-2">
-            <FilterToggle
-              id={statusId}
-              label="営業中のみ"
-              checked={filters.status}
-              onChange={checked => handleCheckboxChange("status", checked)}
-            />
-            <FilterToggle
-              id={yukiMagiId}
-              label="雪マジ対象"
-              checked={filters.yukiMagi}
-              onChange={checked => handleCheckboxChange("yukiMagi", checked)}
-            />
-            <FilterToggle
-              id={evChargerId}
-              label="EV充電あり"
-              checked={filters.evCharger}
-              onChange={checked => handleCheckboxChange("evCharger", checked)}
-            />
-          </div>
-
-          {/* Metric filters */}
-          <div className="flex flex-col gap-2 md:gap-3">
-            <div className="grid grid-cols-3 gap-1.5 md:gap-2">
-              <CompactMetricFilter
-                label="標高差"
-                id={minVerticalId}
-                name="minVertical"
-                value={filters.minVertical}
-                inputWidth={MOBILE_NUMBER_INPUT_WIDTH}
-                unit="m"
-                onBlur={onKeyboardInputBlur}
-                onChange={handleNumericInputChange}
-                onFocus={onKeyboardInputFocus}
-              />
-              <CompactMetricFilter
-                label="コース数"
-                id={minCoursesId}
-                name="minCourses"
-                value={filters.minCourses}
-                inputWidth={MOBILE_NUMBER_INPUT_WIDTH}
-                unit=""
-                onBlur={onKeyboardInputBlur}
-                onChange={handleNumericInputChange}
-                onFocus={onKeyboardInputFocus}
-              />
-              <CompactMetricFilter
-                label="リフト数"
-                id={minLiftsId}
-                name="minLifts"
-                value={filters.minLifts}
-                inputWidth={MOBILE_NUMBER_INPUT_WIDTH}
-                unit=""
-                onBlur={onKeyboardInputBlur}
-                onChange={handleNumericInputChange}
-                onFocus={onKeyboardInputFocus}
-              />
-            </div>
-            <ToggleSection
-              isOpen={isElevationDetailOpen}
-              label="詳細フィルタ"
-              onToggle={() => setIsElevationDetailOpen(prev => !prev)}
-            >
-              <div className="flex flex-col gap-1.5">
-                <ElevationFilterRow
-                  label="山麓標高"
-                  minId={minBaseElevationId}
-                  minName="minBaseElevation"
-                  minValue={filters.minBaseElevation}
-                  maxId={maxBaseElevationId}
-                  maxName="maxBaseElevation"
-                  maxValue={filters.maxBaseElevation}
-                  unit="m"
-                  onBlur={onKeyboardInputBlur}
-                  onChange={handleNumericInputChange}
-                  onFocus={onKeyboardInputFocus}
-                />
-                <ElevationFilterRow
-                  label="山頂標高"
-                  minId={minTopElevationId}
-                  minName="minTopElevation"
-                  minValue={filters.minTopElevation}
-                  maxId={maxTopElevationId}
-                  maxName="maxTopElevation"
-                  maxValue={filters.maxTopElevation}
-                  unit="m"
-                  onBlur={onKeyboardInputBlur}
-                  onChange={handleNumericInputChange}
-                  onFocus={onKeyboardInputFocus}
-                />
-              </div>
-            </ToggleSection>
-          </div>
-
-          {/* Prefecture filter */}
-          <PrefectureFilter
-            regionOptions={regionOptions}
-            selectedPrefectures={filters.prefectures}
-            onPrefectureChange={handlePrefectureChange}
-            onRegionPrefecturesChange={handleRegionPrefecturesChange}
+          <FilterConditionFields
+            filters={filters}
+            resorts={resorts}
+            onFilterChange={onFilterChange}
+            onKeyboardInputBlur={onKeyboardInputBlur}
+            onKeyboardInputFocus={onKeyboardInputFocus}
           />
         </div>
       )}

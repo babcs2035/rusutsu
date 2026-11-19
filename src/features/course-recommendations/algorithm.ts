@@ -5,7 +5,7 @@ import {
 } from "@/lib/finalizedResortGeojsonShared";
 
 export const RECOMMENDATION = {
-  version: 3,
+  version: 4,
   /** slopeDistances[x] is the sliding distance at or above x degrees. */
   profileDegrees: 60,
   maxSlopeNormalization: 10,
@@ -34,6 +34,8 @@ export type CourseFeature = {
   courseIds: string[];
   name: string;
   routeKey: string | null;
+  /** 最小番号のルート（ルート分けのないコースも含む）。候補になれるのはこれだけ */
+  isMainRoute: boolean;
   distance: number;
   logDistance: number;
   maxSlope: number;
@@ -214,7 +216,8 @@ function connect(courses: FinalizedCourseFeature[]): GeoCoordinate[] | null {
   return joined;
 }
 
-/** Main routes only, on both sides of a query. Missing values never enter a zero-degree bin. */
+/** Every route can be a search source; only main routes may become candidates.
+ * Missing values never enter a zero-degree bin. */
 export function extractCourseFeatures(
   resortId: string,
   courses: FinalizedCourseFeature[],
@@ -234,8 +237,11 @@ export function extractCourseFeatures(
       )
     )
       continue;
-    let chosen = all;
-    let routeKey: string | null = null;
+    const routes: Array<{
+      routeKey: string | null;
+      chosen: FinalizedCourseFeature[];
+      isMainRoute: boolean;
+    }> = [];
     if (all.some(c => c.groupKind === "routes")) {
       if (
         all.some(
@@ -244,56 +250,68 @@ export function extractCourseFeatures(
       )
         continue;
       const main = Math.min(...all.map(c => routeNumber(c.routeKey) as number));
-      const keys = new Set(
+      const mainKeys = new Set(
         all.filter(c => routeNumber(c.routeKey) === main).map(c => c.routeKey),
       );
-      if (keys.size !== 1) continue;
-      routeKey = [...keys][0] ?? null;
-      chosen = all.filter(c => c.routeKey === routeKey);
+      if (mainKeys.size !== 1) continue;
+      for (const routeKey of new Set(all.map(c => c.routeKey as string)))
+        routes.push({
+          routeKey,
+          chosen: all.filter(c => c.routeKey === routeKey),
+          isMainRoute: mainKeys.has(routeKey),
+        });
+    } else routes.push({ routeKey: null, chosen: all, isMainRoute: true });
+    for (const { routeKey, chosen, isMainRoute } of routes) {
+      const feature = routeFeature(resortId, groupId, routeKey, chosen);
+      if (feature) output.push({ ...feature, isMainRoute });
     }
-    if (new Set(chosen.map(c => c.displayName)).size !== 1) continue;
-    const coordinates = connect(chosen);
-    if (!coordinates) continue;
-    const samples = resample(coordinates, RECOMMENDATION.sampleMeters);
-    if (samples.length < 2) continue;
-    const slopes = calculateCoordinateSlopes(samples);
-    const segments: Array<{ slope: number; length: number }> = [];
-    let distance = 0;
-    for (let i = 1; i < samples.length; i++) {
-      const a = samples[i - 1],
-        b = samples[i];
-      const slope = ((slopes[i - 1] ?? NaN) + (slopes[i] ?? NaN)) / 2;
-      const length = Math.hypot(
-        horizontalDistance(a, b),
-        (a[2] as number) - (b[2] as number),
-      );
-      if (!Number.isFinite(slope) || !Number.isFinite(length)) {
-        distance = NaN;
-        break;
-      }
-      segments.push({ slope, length });
-      distance += length;
-    }
-    if (!Number.isFinite(distance) || distance < RECOMMENDATION.minimumDistance)
-      continue;
-    // Same 40m point slopes as the map's maximum slope, not segment averages.
-    const maxSlope = Math.max(0, ...(slopes as number[]));
-    if (!Number.isFinite(maxSlope)) continue;
-    output.push({
-      resortId,
-      key: routeKey ?? groupId,
-      groupId,
-      courseIds: chosen.map(c => c.id).sort(),
-      name: chosen[0].displayName,
-      routeKey,
-      distance,
-      logDistance: Math.log(distance),
-      maxSlope,
-      slopeDistances: slopeDistanceProfile(segments),
-      grooming: aggregateGrooming(chosen.map(c => c.properties.piste)),
-    });
   }
   return output;
+}
+
+function routeFeature(
+  resortId: string,
+  groupId: string,
+  routeKey: string | null,
+  chosen: FinalizedCourseFeature[],
+): Omit<CourseFeature, "isMainRoute"> | null {
+  if (new Set(chosen.map(c => c.displayName)).size !== 1) return null;
+  const coordinates = connect(chosen);
+  if (!coordinates) return null;
+  const samples = resample(coordinates, RECOMMENDATION.sampleMeters);
+  if (samples.length < 2) return null;
+  const slopes = calculateCoordinateSlopes(samples);
+  const segments: Array<{ slope: number; length: number }> = [];
+  let distance = 0;
+  for (let i = 1; i < samples.length; i++) {
+    const a = samples[i - 1],
+      b = samples[i];
+    const slope = ((slopes[i - 1] ?? NaN) + (slopes[i] ?? NaN)) / 2;
+    const length = Math.hypot(
+      horizontalDistance(a, b),
+      (a[2] as number) - (b[2] as number),
+    );
+    if (!Number.isFinite(slope) || !Number.isFinite(length)) return null;
+    segments.push({ slope, length });
+    distance += length;
+  }
+  if (distance < RECOMMENDATION.minimumDistance) return null;
+  // Same 40m point slopes as the map's maximum slope, not segment averages.
+  const maxSlope = Math.max(0, ...(slopes as number[]));
+  if (!Number.isFinite(maxSlope)) return null;
+  return {
+    resortId,
+    key: routeKey ?? groupId,
+    groupId,
+    courseIds: chosen.map(c => c.id).sort(),
+    name: chosen[0].displayName,
+    routeKey,
+    distance,
+    logDistance: Math.log(distance),
+    maxSlope,
+    slopeDistances: slopeDistanceProfile(segments),
+    grooming: aggregateGrooming(chosen.map(c => c.properties.piste)),
+  };
 }
 
 /** 1-D Wasserstein distance in degrees between length-normalized profiles. */
@@ -364,28 +382,84 @@ export type RecommendationCandidate = CourseFeature & {
   geometryHash: string;
   resortName: string;
 };
+/** Score only, so a query against every resort can skip building detail objects. */
+function similarityScore(
+  source: CourseFeature,
+  threshold: number,
+  candidate: CourseFeature,
+) {
+  const maxSlope =
+    1 -
+    Math.min(
+      1,
+      Math.abs(source.maxSlope - candidate.maxSlope) /
+        RECOMMENDATION.maxSlopeNormalization,
+    );
+  const steep =
+    1 -
+    Math.min(
+      1,
+      Math.abs(
+        Math.log(
+          (source.slopeDistances[threshold] +
+            RECOMMENDATION.steepOffsetMeters) /
+            (candidate.slopeDistances[threshold] +
+              RECOMMENDATION.steepOffsetMeters),
+        ),
+      ) / Math.log(RECOMMENDATION.distanceRatio),
+    );
+  const slope =
+    1 -
+    Math.min(
+      1,
+      wasserstein(source, candidate) / RECOMMENDATION.slopeNormalization,
+    );
+  const length =
+    1 -
+    Math.min(
+      1,
+      Math.abs(source.logDistance - candidate.logDistance) /
+        Math.log(RECOMMENDATION.distanceRatio),
+    );
+  return (
+    100 *
+    (RECOMMENDATION.maxSlopeWeight * maxSlope +
+      RECOMMENDATION.steepDistanceWeight * steep +
+      RECOMMENDATION.slopeWeight * slope +
+      RECOMMENDATION.distanceWeight * length)
+  );
+}
+
+/** Candidates are main routes of other resorts; a secondary route is never recommended. */
 export function rankCourses(
   source: CourseFeature & { geometryHash: string },
   candidates: RecommendationCandidate[],
 ) {
+  const threshold = steepThreshold(source.maxSlope);
+  const scored: Array<{ course: RecommendationCandidate; score: number }> = [];
+  for (const course of candidates)
+    if (
+      course.isMainRoute &&
+      course.resortId !== source.resortId &&
+      course.geometryHash !== source.geometryHash
+    )
+      scored.push({
+        course,
+        score: similarityScore(source, threshold, course),
+      });
+  scored.sort(
+    (a, b) =>
+      b.score - a.score ||
+      a.course.resortId.localeCompare(b.course.resortId, "en") ||
+      a.course.key.localeCompare(b.course.key, "en"),
+  );
   const seen = new Set<string>([source.geometryHash]);
-  return candidates
-    .filter(
-      c =>
-        c.resortId !== source.resortId &&
-        c.geometryHash !== source.geometryHash,
-    )
-    .map(course => ({ ...course, ...similarity(source, course) }))
-    .sort(
-      (a, b) =>
-        b.score - a.score ||
-        a.resortId.localeCompare(b.resortId, "en") ||
-        a.key.localeCompare(b.key, "en"),
-    )
-    .filter(course => {
-      if (seen.has(course.geometryHash)) return false;
-      seen.add(course.geometryHash);
-      return true;
-    })
-    .slice(0, RECOMMENDATION.limit);
+  const top: RecommendationCandidate[] = [];
+  for (const { course } of scored) {
+    if (top.length >= RECOMMENDATION.limit) break;
+    if (seen.has(course.geometryHash)) continue;
+    seen.add(course.geometryHash);
+    top.push(course);
+  }
+  return top.map(course => ({ ...course, ...similarity(source, course) }));
 }

@@ -94,6 +94,9 @@ model SkiResort {
   yukiMagiId String?
   yukiMagi   YukiMagi? @relation(fields: [yukiMagiId], references: [id])
 
+  /// シーズン券・キッズパスなどの対象スキー場一覧（NSDキッズ・マックアースなど）への掲載
+  passPrograms PassProgramResort[]
+
   // Relations
   favorites           Favorite[]
   compareListItems    CompareListItem[]
@@ -323,6 +326,29 @@ model YukiMagi {
   skiResorts SkiResort[]
 
   @@map("yuki_magi")
+}
+
+/// シーズン券・キッズパスなどのサービスが公開している対象スキー場一覧の1件。
+/// programId は src/shared/passPrograms.ts の id。クローラーが毎日取り直し、
+/// 一覧から消えた行は removedAt を付けて残す（追加・削除を管理画面で知らせるため）
+model PassProgramResort {
+  id          String     @id @default(cuid())
+  programId   String     @db.VarChar(30)
+  /// サービス側の一覧に書かれている名前
+  name        String     @db.VarChar(200)
+  /// サービス側のスキー場ページ（NSDキッズのみ）
+  url         String?    @db.Text
+  prefecture  String?    @db.VarChar(20)
+  /// 名寄せできなかった名前は null（管理画面に要対応として出す）
+  skiResortId String?
+  skiResort   SkiResort? @relation(fields: [skiResortId], references: [id], onDelete: SetNull)
+  firstSeenAt DateTime   @default(now()) @db.Timestamptz(3)
+  lastSeenAt  DateTime   @default(now()) @db.Timestamptz(3)
+  removedAt   DateTime?  @db.Timestamptz(3)
+
+  @@unique([programId, name])
+  @@index([skiResortId])
+  @@map("pass_program_resorts")
 }
 
 // =====================================
@@ -1109,6 +1135,8 @@ model CourseRecommendationFeature {
   courseIds          String[]
   name               String
   routeKey           String?
+  /// 最小番号のルート。別ルートは検索元にだけ使い、候補にはしない
+  isMainRoute        Boolean  @default(true)
   distance           Float
   logDistance        Float
   maxSlope           Float
@@ -1146,6 +1174,9 @@ model SkiResortOperationSummary {
   /// 地図のコースの最高・最低標高（m）。標高差は両者の差。地図のコースが無ければ null
   mapTopElevation             Int?
   mapBaseElevation            Int?
+  /// ○・△のコースだけの最高・最低標高（m）。営業状況の出典が無い、または滑走できるコースが無ければ null
+  mapOpenTopElevation         Int?
+  mapOpenBaseElevation        Int?
   calculationVersion          Int       @default(1)
   updatedAt                   DateTime  @updatedAt
 

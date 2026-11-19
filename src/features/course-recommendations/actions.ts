@@ -13,20 +13,16 @@ import {
   type CourseRecommendationIndex,
   type CourseRecommendationSearch,
   getCourseRecommendationIndexDirect,
+  type RecommendationScope,
   searchCourseRecommendationsDirect,
 } from "@/server/course-recommendations/repository";
 import { RECOMMENDATION } from "./algorithm";
 
-export async function getCourseRecommendations(
-  resortId: string,
-  selected: z.infer<typeof featureSchema>,
-  guestFavorites: string[],
-) {
-  z.string().min(1).max(200).parse(resortId);
-  const feature = featureSchema.parse(selected);
+const scopeSchema = z.enum(["favorites", "all"]);
+async function favoriteIdsFor(guestFavorites: string[]) {
   const requested = favoriteIdsSchema.parse(guestFavorites);
   const session = await auth();
-  const ids = session?.user?.id
+  return session?.user?.id
     ? (
         await prisma.favorite.findMany({
           where: { userId: session.user.id },
@@ -34,15 +30,35 @@ export async function getCourseRecommendations(
         })
       ).map(f => f.skiResortId)
     : requested;
-  if (!ids.length)
-    return { status: "no_favorites" as const, recommendations: [] };
+}
+/** お気に入りが無ければ、選択に関係なく全スキー場から探す */
+const effectiveScope = (
+  scope: RecommendationScope,
+  ids: string[],
+): RecommendationScope => (ids.length ? scope : "all");
+
+export async function getCourseRecommendations(
+  resortId: string,
+  selected: z.infer<typeof featureSchema>,
+  guestFavorites: string[],
+  requestedScope: RecommendationScope = "favorites",
+) {
+  z.string().min(1).max(200).parse(resortId);
+  const feature = featureSchema.parse(selected);
+  const ids = await favoriteIdsFor(guestFavorites);
+  const scope = effectiveScope(scopeSchema.parse(requestedScope), ids);
   if (usesRemoteDataApi()) {
     const response = await fetchInternalDataApi(
       "/api/internal/v1/course-recommendations",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resortId, selected: feature, favoriteIds: ids }),
+        body: JSON.stringify({
+          resortId,
+          selected: feature,
+          favoriteIds: ids,
+          scope,
+        }),
         signal: AbortSignal.timeout(2500),
       },
     );
@@ -60,43 +76,39 @@ export async function getCourseRecommendations(
         result.status ?? (result.recommendations.length ? "ready" : "no_match"),
     };
   }
-  return searchCourseRecommendationsDirect(resortId, feature, ids);
+  return searchCourseRecommendationsDirect(resortId, feature, ids, scope);
 }
 
 export async function getCourseRecommendationIndex(
   resortId: string,
   guestFavorites: string[],
+  requestedScope: RecommendationScope = "favorites",
 ) {
   z.string().min(1).max(200).parse(resortId);
-  const requested = favoriteIdsSchema.parse(guestFavorites);
-  const session = await auth();
-  const ids = session?.user?.id
-    ? (
-        await prisma.favorite.findMany({
-          where: { userId: session.user.id },
-          select: { skiResortId: true },
-        })
-      ).map(f => f.skiResortId)
-    : requested;
+  const ids = await favoriteIdsFor(guestFavorites);
+  const scope = effectiveScope(scopeSchema.parse(requestedScope), ids);
   if (!usesRemoteDataApi())
-    return getCourseRecommendationIndexDirect(resortId, ids);
+    return {
+      ...(await getCourseRecommendationIndexDirect(resortId, ids, scope)),
+      scope,
+    };
   const response = await fetchInternalDataApi(
     "/api/internal/v1/course-recommendations",
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ resortId, favoriteIds: ids }),
+      body: JSON.stringify({ resortId, favoriteIds: ids, scope }),
       signal: AbortSignal.timeout(2500),
     },
     { acceptedErrorStatuses: [400] },
   );
   if (response.status === 400)
-    return { status: "api_outdated" as const, courses: [] };
+    return { status: "api_outdated" as const, courses: [], scope };
   const result: CourseRecommendationIndex & { calculationVersion?: number } =
     await response.json();
   if (result.calculationVersion !== RECOMMENDATION.version)
-    return { status: "api_outdated" as const, courses: [] };
-  return result;
+    return { status: "api_outdated" as const, courses: [], scope };
+  return { ...result, scope };
 }
 export type RecommendationIndexResult = Awaited<
   ReturnType<typeof getCourseRecommendationIndex>

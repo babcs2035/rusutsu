@@ -10,14 +10,9 @@ export const RESORT_SORT_OPTIONS = [
     shortLabel: "近い順",
   },
   {
-    value: "courses",
-    label: "コース数が多い順",
-    shortLabel: "コース数順",
-  },
-  {
-    value: "openCourses",
-    label: "滑走可能コースが多い順",
-    shortLabel: "滑走可能順",
+    value: "totalDistance",
+    label: "総滑走距離が長い順",
+    shortLabel: "総滑走距離順",
   },
   {
     value: "openDistance",
@@ -28,6 +23,11 @@ export const RESORT_SORT_OPTIONS = [
     value: "openLifts",
     label: "運行中リフトが多い順",
     shortLabel: "運行数順",
+  },
+  {
+    value: "liftPrice",
+    label: "リフト料金が安い順",
+    shortLabel: "料金が安い順",
   },
 ] as const;
 
@@ -44,12 +44,7 @@ export type SortPosition = { latitude: number; longitude: number };
 
 type SortableResort = Pick<
   MapSkiResort,
-  | "id"
-  | "nameJa"
-  | "latitude"
-  | "longitude"
-  | "numberOfCourses"
-  | "operatingCounts"
+  "id" | "nameJa" | "latitude" | "longitude" | "operatingCounts"
 > & {
   /** ふりがなを連結した読み。無いときは正式名で並べる */
   reading?: string | null;
@@ -96,6 +91,8 @@ export function sortResorts<T extends SortableResort>(
   order: ResortSortOrder,
   position: SortPosition | null = null,
   prefectureOrder: PrefectureInnerOrder = "distance",
+  /** 料金が安い順のときの合計金額（スキー場ID→円）。金額が出ないスキー場は末尾 */
+  prices: ReadonlyMap<string, number> | null = null,
 ): T[] {
   const values = new Map(
     resorts.map(resort => {
@@ -115,16 +112,16 @@ export function sortResorts<T extends SortableResort>(
               ? position
                 ? resortDistance(resort, position)
                 : null
-              : order === "courses"
-                ? -resort.numberOfCourses
-                : order === "openCourses"
-                  ? counts.courses?.active == null
+              : order === "totalDistance"
+                ? total === null
+                  ? null
+                  : -total
+                : order === "openLifts"
+                  ? counts.lifts?.active == null
                     ? null
-                    : -counts.courses.active
-                  : order === "openLifts"
-                    ? counts.lifts?.active == null
-                      ? null
-                      : -counts.lifts.active
+                    : -counts.lifts.active
+                  : order === "liftPrice"
+                    ? (prices?.get(resort.id) ?? null)
                     : null;
       const secondary =
         order === "openDistance" && total !== null ? -total : null;

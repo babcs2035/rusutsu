@@ -65,7 +65,8 @@ export function selectCachedRecommendations(
       selected.kind === "course" &&
       (selected.routeId
         ? c.routeKey === selected.routeId
-        : c.groupId === selected.id || c.courseIds.includes(selected.id)),
+        : c.isMainRoute &&
+          (c.groupId === selected.id || c.courseIds.includes(selected.id))),
   );
   if (
     !source ||

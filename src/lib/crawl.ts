@@ -15,6 +15,7 @@ const CRAWLER_LOCK_KEYS: Record<CrawlerName, number> = {
   yukiMagi: 8,
   amedas: 9,
   tourLinks: 10,
+  passPrograms: 11,
 };
 
 /**
@@ -145,6 +146,13 @@ async function executeCrawler(crawlerName: CrawlerName): Promise<void> {
         "@/private/scripts/crawlTourLinks"
       );
       await runCrawlTourLinks();
+      break;
+    }
+    case "passPrograms": {
+      const { runCrawlPassPrograms } = await import(
+        "@/private/scripts/crawlPassPrograms"
+      );
+      await runCrawlPassPrograms();
       break;
     }
     default:

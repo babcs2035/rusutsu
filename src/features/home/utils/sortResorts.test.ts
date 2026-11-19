@@ -56,45 +56,19 @@ test("sorts names by reading in kana order, ignoring hiragana/katakana", () => {
   ]);
 });
 
-test("sorts courses by basic course count regardless of mapped coverage", () => {
-  const input = [
-    resort("low-coverage", { courses: 30, counts: counts(2, 8) }),
-    resort("high-coverage", { courses: 20, counts: counts(18, 20) }),
-    resort("no-status", { courses: 10 }),
-  ];
-  assert.deepEqual(ids(sortResorts(input, "courses")), [
-    "low-coverage",
-    "high-coverage",
-    "no-status",
-  ]);
-});
-
-test("open course and lift orders place unknown statuses after known zero", () => {
+test("open lift order places unknown statuses after known zero", () => {
   const input = [
     resort("unknown", { counts: counts(null, 100) }),
     resort("closed", { counts: counts(0) }),
     resort("open", { counts: counts(4) }),
     resort("no-data"),
   ];
-  for (const order of ["openCourses", "openLifts"] as const) {
-    assert.deepEqual(ids(sortResorts(input, order)), [
-      "open",
-      "closed",
-      "no-data",
-      "unknown",
-    ]);
-  }
-});
-
-test("equal operating counts use names and select the requested metric", () => {
-  const input = [
-    resort("B", { counts: counts(3) }),
-    resort("A", {
-      counts: { ...counts(3), lifts: { active: 1, total: 2 } },
-    }),
-  ];
-  assert.deepEqual(ids(sortResorts(input, "openCourses")), ["A", "B"]);
-  assert.deepEqual(ids(sortResorts(input, "openLifts")), ["B", "A"]);
+  assert.deepEqual(ids(sortResorts(input, "openLifts")), [
+    "open",
+    "closed",
+    "no-data",
+    "unknown",
+  ]);
 });
 
 test("distance uses current location and puts invalid coordinates last", () => {
@@ -163,4 +137,35 @@ test("open distance order breaks ties by total distance and puts unknown last", 
     "closed-small",
     "unknown",
   ]);
+});
+
+test("total distance order puts longer resorts first and unmapped last", () => {
+  const input = [
+    withDistance("no-map", null),
+    withDistance("small", { total: 5_000, open: 5_000 }),
+    withDistance("large", { total: 50_000, open: 0 }),
+  ];
+  assert.deepEqual(ids(sortResorts(input, "totalDistance")), [
+    "large",
+    "small",
+    "no-map",
+  ]);
+});
+
+test("lift price order puts cheaper first and unknown prices last", () => {
+  const input = [
+    resort("unknown"),
+    resort("expensive", { name: "い" }),
+    resort("cheap"),
+    resort("same-a", { name: "あ" }),
+  ];
+  const prices = new Map([
+    ["expensive", 8000],
+    ["cheap", 3000],
+    ["same-a", 8000],
+  ]);
+  assert.deepEqual(
+    ids(sortResorts(input, "liftPrice", null, "distance", prices)),
+    ["cheap", "same-a", "expensive", "unknown"],
+  );
 });

@@ -2783,23 +2783,6 @@ export const calculateDayPassResult = (
   return mergeDayAndNightResults(dayResult, nightResult);
 };
 
-export const calculateLiftTicketForSeasons = (
-  seasons: LiftTicketData[],
-  input: LiftTicketSearchInput,
-  explicitProductId?: string | null,
-) => {
-  const season =
-    selectLiftTicketSeason(seasons, input.visitDate) ?? seasons[0] ?? null;
-  if (!season) return null;
-  // 一覧・比較も詳細の料金タブと同じ計算にする。日の計画が1件なら、その日の
-  // 結果をそのまま返す（券は計画の長さから選ぶ。「1日」なら1日券）。
-  // 以前は days を無視して券を点数で選び、サホロで25時間券が出ていた
-  if (explicitProductId === undefined && input.days?.length === 1) {
-    return calculateLiftTicketPlan(season, input).days[0].result;
-  }
-  return calculateLiftTicket(season, input, explicitProductId);
-};
-
 export const formatLiftTicketPrice = (price: LiftTicketPrice | undefined) => {
   const mode = priceModeOf(price);
   if (mode === "free") return "無料";

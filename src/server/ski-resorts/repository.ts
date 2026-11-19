@@ -10,6 +10,7 @@ import {
   adminSkiResortRecordSchema,
   adminSkiResortUpdateSchema,
 } from "@/server/ski-resorts/adminContract";
+import { isPassProgramId } from "@/shared/passPrograms";
 import {
   parseEvChargers,
   summarizeEvChargers,
@@ -155,6 +156,7 @@ const mapResortSelect = {
   yukiMagiId: true,
   yukiMagi: { select: { tag: true } },
   evChargers: true,
+  passPrograms: { where: { removedAt: null }, select: { programId: true } },
 } satisfies Prisma.SkiResortSelect;
 
 type MapResortRow = Prisma.SkiResortGetPayload<{
@@ -166,10 +168,14 @@ type MapResortRow = Prisma.SkiResortGetPayload<{
  * 雪マジはリフト券データの yukimaji 欄を優先し、無ければ雪マジのテーブルの区分を出す。
  */
 const projectMapResort = (
-  { evChargers, yukiMagi, ...resort }: MapResortRow,
+  { evChargers, yukiMagi, passPrograms, ...resort }: MapResortRow,
   yukimajiByResortId: Map<string, string>,
 ) => ({
   ...resort,
+  /** 対象スキー場一覧に載っているシーズン券・キッズパス（src/shared/passPrograms.ts の id） */
+  passProgramIds: [
+    ...new Set(passPrograms.map(program => program.programId)),
+  ].filter(isPassProgramId),
   evChargerSummary: summarizeEvChargers(parseEvChargers(evChargers)),
   yukiMagiSummary: resort.yukiMagiId
     ? ([resort.id, resort.sourceResortIds[0]]

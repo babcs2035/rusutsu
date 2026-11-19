@@ -79,9 +79,10 @@ const TicketLines = ({
   tierUrl: string | null;
 }) => (
   <div className="mt-1 flex flex-col gap-1">
-    {lines.map(line => (
+    {lines.map((line, index) => (
       <TicketLineDetail
-        key={line.groupId}
+        // biome-ignore lint/suspicious/noArrayIndexKey: 2日券を2枚買うときなど、内容が全く同じ行が並ぶ。行は計算結果から毎回作り直すので並びは変わらない
+        key={`${line.groupId}:${index}`}
         line={line}
         multiplier={multiplier}
         multiplierUnit={multiplierUnit}

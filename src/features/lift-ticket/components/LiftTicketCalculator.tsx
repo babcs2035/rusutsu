@@ -7,18 +7,10 @@ import { useScreenState } from "@/features/map/session/useScreenState";
 import type { LiftTicketData, LiftTicketSearchInput } from "../types";
 import {
   ageRequiredGroupIdsOf,
-  calculateLiftTicketPlan,
   DEFAULT_LIFT_TICKET_SEARCH_INPUT,
-  selectLiftTicketSeason,
 } from "../utils/calculateLiftTicket";
-import { buildPlanTiers } from "../utils/planView";
-import {
-  dataForPurchaseTier,
-  firstVisitDateOf,
-  purchaseTierKeysOf,
-} from "../utils/purchaseTiers";
-import { calculateRentalPlan, SEARCH_RENTAL_OPTIONS } from "../utils/rental";
-import { calculateRentalBundle } from "../utils/rentalBundle";
+import { SEARCH_RENTAL_OPTIONS } from "../utils/rental";
+import { calculateResortPriceTiers } from "../utils/resortPriceCalculation";
 import { TicketPartyEditor } from "./TicketPartyEditor";
 import { TicketPlanCard } from "./TicketPlanCard";
 
@@ -39,30 +31,14 @@ export const LiftTicketCalculator = ({
     filtersSchema.shape.liftTicket,
     initialInput,
   );
-  const data =
-    selectLiftTicketSeason(seasons, input.visitDate) ?? seasons[0] ?? null;
-
-  // 買い方（早割・Web・通常）ごとに、その買い方で買える料金だけで計算する。
-  // Web・前売の料金が無いスキー場は通常の1回だけ
-  const tierInputs = useMemo(() => {
-    if (!data) return null;
-    const visitDate = firstVisitDateOf(input);
-    return purchaseTierKeysOf(data, visitDate).map(key => {
-      const tierData = dataForPurchaseTier(data, key, visitDate);
-      // 日ごとの計画から合計を出す。2日以上なら「連続2日券」と「1日券×2」を比べる
-      const plan = calculateLiftTicketPlan(tierData, input);
-      // 選べる用具は検索画面と同じにする（検索で選んだ条件をそのまま残す）。
-      // このスキー場で借りられない物は、合計の横に「＋ゴーグル」と添えて知らせる
-      const rental = calculateRentalPlan(tierData, input);
-      // リフト券とレンタルのセット券が、別々に買うより安ければ使う
-      const bundle = calculateRentalBundle(tierData, input, plan, rental);
-      return { key, plan, rental, bundle };
-    });
-  }, [data, input]);
-  const tiers = useMemo(
-    () => (data && tierInputs ? buildPlanTiers(data, tierInputs) : null),
-    [data, tierInputs],
+  // 一覧・比較と同じ関数で計算する（画面ごとに金額を変えない）
+  const calculated = useMemo(
+    () => calculateResortPriceTiers(seasons, input),
+    [seasons, input],
   );
+  const data = calculated?.data ?? null;
+  const tierInputs = calculated?.tierInputs ?? null;
+  const tiers = calculated?.tiers ?? null;
   // 一番安い買い方の結果（年齢の入力が要る人の判定と、誤りの報告に使う）
   const cheapest =
     tierInputs?.find(tier => tier.key === tiers?.[0]?.key) ?? null;
