@@ -1,4 +1,5 @@
 /** 投稿画面の動的な読込だけを HTTP で取得し，mutation は Server Actions に委ねる． */
+import type { getAccountDayReports as readDayMaps } from "@/server/community/accountDayReports";
 import type * as Queries from "@/server/community/queries";
 import { withBasePath } from "@/shared/utils/basePath";
 
@@ -62,4 +63,11 @@ export function getDayReports(
   ...[authorId, observedOn]: Parameters<typeof Queries.getDayReports>
 ): ReturnType<typeof Queries.getDayReports> {
   return query({ operation: "dayReports", authorId, observedOn });
+}
+
+/** 投稿一覧を維持したまま，滑走日の投稿と共有用地図を取得する． */
+export function getAccountDayReports(
+  ...[authorId, observedOn]: Parameters<typeof readDayMaps>
+): ReturnType<typeof readDayMaps> {
+  return query({ operation: "dayMaps", authorId, observedOn });
 }

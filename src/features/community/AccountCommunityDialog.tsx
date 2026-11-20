@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
 import { PanelHeader } from "@/shared/components/PanelHeader";
-import { getAccountDayReports } from "./accountDayReports";
+import { getAccountDayReports } from "@/shared/queries/community";
 import { CommunitySettingsView } from "./CommunitySettingsView";
 import type { OwnPost } from "./contract";
 import { DayReportsView } from "./DayReportsView";
@@ -63,7 +63,12 @@ export function AccountCommunityDialog({
     const current = ++request.current;
     setDay({ authorId, observedOn });
     setResult(null);
-    const loaded = await getAccountDayReports(authorId, observedOn);
+    const loaded = await getAccountDayReports(authorId, observedOn).catch(
+      (): DayResult => ({
+        ok: false,
+        error: "地図を読み込めませんでした。もう一度お試しください。",
+      }),
+    );
     if (request.current === current) setResult(loaded);
   };
   return (

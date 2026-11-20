@@ -1,9 +1,10 @@
-"use server";
+/** 共有ページと同じ正本を使い，投稿一覧に滑走日の地図を返す． */
+import "server-only";
 
+import { idSchema, observedOnSchema } from "@/features/community/contract";
+import { dayResorts } from "@/features/community/dayShare";
+import { getDayReports } from "@/server/community/queries";
 import { getShareMaps } from "@/server/share/data";
-import { getDayReports } from "@/shared/queries/community";
-import { idSchema, observedOnSchema } from "./contract";
-import { dayResorts } from "./dayShare";
 
 /** 投稿一覧を閉じずに、その日の地図と投稿を表示する。 */
 export async function getAccountDayReports(

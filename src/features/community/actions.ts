@@ -71,47 +71,6 @@ export async function saveCommunityProfile(
     direct.saveCommunityProfile(mode, nickname),
   );
 }
-export async function publishReport(input: unknown, photos: FormData) {
-  // Runtime validation stays on both sides of the network boundary.
-  const { commandSchema } = await import("@/server/community/remoteContract");
-  const command = commandSchema.safeParse({ operation: "publish", input });
-  if (!command.success)
-    return {
-      ok: false as const,
-      error: command.error.issues[0]?.message ?? "入力を確認してください。",
-    };
-  if (command.data.operation !== "publish")
-    throw new Error("Invalid operation");
-  return execute(
-    command.data,
-    () => direct.publishReport(input, photos),
-    photos,
-  );
-}
-export async function updateReport(
-  postId: string,
-  version: number,
-  input: unknown,
-  photos: FormData,
-  removePhotoIds: string[],
-) {
-  const { commandSchema } = await import("@/server/community/remoteContract");
-  const command = commandSchema.safeParse({
-    operation: "update",
-    input: { postId, version, report: input, removePhotoIds },
-  });
-  if (!command.success)
-    return {
-      ok: false as const,
-      error: command.error.issues[0]?.message ?? "入力を確認してください。",
-    };
-  if (command.data.operation !== "update") throw new Error("Invalid operation");
-  return execute(
-    command.data,
-    () => direct.updateReport(postId, version, input, photos, removePhotoIds),
-    photos,
-  );
-}
 export async function deletePost(postId: string, version: number) {
   return execute({ operation: "deletePost", postId, version }, () =>
     direct.deletePost(postId, version),

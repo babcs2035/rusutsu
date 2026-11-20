@@ -40,7 +40,6 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  prepareCommunityPhoto,
   saveCommunityProfile,
   startCommunityLogin,
 } from "@/features/community/actions";
@@ -73,6 +72,7 @@ import {
   currentTokyoDateTime,
   geolocationMessage,
 } from "./composerDraft";
+import { prepareComposerPhoto } from "./composerPhoto";
 import { DayShareActions } from "./DayShareActions";
 import {
   type DraftScope,
@@ -85,7 +85,6 @@ import { rideTimeFromSpeed, speedFromRideTime } from "./liftRideTime";
 import { nearestCourseId, reportLocationError } from "./location";
 import { reportResortId, resortReportMap } from "./mapData";
 import { type LightboxPhoto, PhotoLightbox } from "./PhotoLightbox";
-import { readPhotoMetadata } from "./photoGps";
 import { submitReport } from "./submitReport";
 
 type Kind = ReportEntryDraft["kind"];
@@ -344,6 +343,8 @@ export function CommunityComposer({
     setRestoredNotice("");
     for (const photo of newPhotosRef.current) URL.revokeObjectURL(photo.url);
     setNewPhotos([]);
+    setPhotoPreview(null);
+    setProcessingPhotos(false);
     setSavedPhotos([]);
     setRemovedPhotoIds([]);
     setVersion(null);
@@ -896,51 +897,18 @@ export function CommunityComposer({
     const scope = draftScope.current;
     setProcessingPhotos(true);
     setError("");
-    const accepted: { file: File; url: string }[] = [];
     try {
-      let takenAt: { observedOn: string; observedTime: string | null } | null =
-        null;
-      let gps: [number, number] | null = null;
-      for (const original of selected) {
-        const metadata = await readPhotoMetadata(original);
-        takenAt ??= metadata.observedOn
-          ? {
-              observedOn: metadata.observedOn,
-              observedTime: metadata.observedTime,
-            }
-          : null;
-        gps ??= metadata.gps
-          ? [metadata.gps.longitude, metadata.gps.latitude]
-          : null;
-        let file = original;
-        if (
-          /^image\/hei[cf]/i.test(original.type) ||
-          /\.(?:heic|heif)$/i.test(original.name)
-        ) {
-          const form = new FormData();
-          form.append("photo", original);
-          const result = await prepareCommunityPhoto(form);
-          if (!result.ok) throw new Error(result.error);
-          const bytes = Uint8Array.from(atob(result.data.base64), character =>
-            character.charCodeAt(0),
-          );
-          const name =
-            original.name.replace(/\.(?:heic|heif)$/i, "") || "photo";
-          file = new File([bytes], `${name}.webp`, { type: "image/webp" });
-        }
-        accepted.push({ file, url: URL.createObjectURL(file) });
-      }
+      const { file, takenAt, gps } = await prepareComposerPhoto(selected[0]);
       // 準備中に種類を選び直したら、別の項目には付けない。
       if (
         !mounted.current ||
         draftScope.current !== scope ||
         reportRef.current.entries[0]?.clientKey !== entryKey
       ) {
-        for (const photo of accepted) URL.revokeObjectURL(photo.url);
         return;
       }
       for (const photo of newPhotosRef.current) URL.revokeObjectURL(photo.url);
-      setNewPhotos(accepted);
+      setNewPhotos([{ file, url: URL.createObjectURL(file) }]);
       setRemovedPhotoIds(savedPhotos.map(photo => photo.id));
       photosMissing.current = false;
       if (takenAt && !timeEdited.current) {
@@ -952,7 +920,6 @@ export function CommunityComposer({
       if (gps && current && !locationEdited.current && current.latitude == null)
         applyPoint(gps, undefined, false);
     } catch (cause) {
-      for (const photo of accepted) URL.revokeObjectURL(photo.url);
       if (!mounted.current || draftScope.current !== scope) return;
       setError(
         cause instanceof Error ? cause.message : "写真を準備できませんでした。",

@@ -1,6 +1,7 @@
 /** 投稿・本人情報の動的な読込を，更新操作と actor の指定から分離する． */
 import { z } from "zod";
 import { idSchema, observedOnSchema } from "@/features/community/contract";
+import { getAccountDayReports } from "@/server/community/accountDayReports";
 import * as queries from "@/server/community/queries";
 import { feedInputSchema } from "@/server/community/remoteContract";
 import { respondToPublicQuery } from "@/server/publicQueryHttp";
@@ -17,6 +18,11 @@ const schema = z.discriminatedUnion("operation", [
   z.strictObject({ operation: z.literal("notifications") }),
   z.strictObject({
     operation: z.literal("dayReports"),
+    authorId: idSchema,
+    observedOn: observedOnSchema,
+  }),
+  z.strictObject({
+    operation: z.literal("dayMaps"),
     authorId: idSchema,
     observedOn: observedOnSchema,
   }),
@@ -49,6 +55,8 @@ export async function POST(request: Request): Promise<Response> {
           return queries.getNotifications();
         case "dayReports":
           return queries.getDayReports(command.authorId, command.observedOn);
+        case "dayMaps":
+          return getAccountDayReports(command.authorId, command.observedOn);
       }
     },
   );

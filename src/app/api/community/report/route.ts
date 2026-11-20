@@ -1,5 +1,8 @@
 import { auth } from "@/auth";
-import { publishReport, updateReport } from "@/features/community/actions";
+import {
+  publishReport,
+  updateReport,
+} from "@/server/community/reportMutations";
 import { handleReportSubmission } from "@/server/community/reportSubmission";
 
 export const runtime = "nodejs";
