@@ -276,14 +276,15 @@ export function MyPostsView({
                 );
               })}
               {nextCursor && (
-                <button
+                <Button
                   type="button"
+                  variant="outline"
                   disabled={loadingMore}
-                  className="w-full rounded border border-gray-200 py-2 text-sm"
+                  className="w-full"
                   onClick={more}
                 >
                   {loadingMore ? "読み込み中…" : "もっと見る"}
-                </button>
+                </Button>
               )}
             </>
           )}

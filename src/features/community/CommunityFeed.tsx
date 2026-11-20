@@ -4,6 +4,7 @@ import { Pencil, Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -294,9 +295,11 @@ export function CommunityFeed({
             {!correctable && sortSelect}
             {postLink}
             {correctable && (
-              <button
+              <Button
                 type="button"
-                className="inline-flex h-8 shrink-0 items-center gap-0.5 rounded-md border border-slate-300 bg-white px-1.5 text-xs font-semibold whitespace-nowrap text-slate-700 shadow-sm hover:bg-slate-50"
+                variant="outline"
+                size="sm"
+                className="h-8 shrink-0 px-1.5 text-xs font-semibold shadow-sm"
                 onClick={() => {
                   if (!requestCorrection({ resortId }))
                     router.push(correctionUrl({ resortId }));
@@ -304,7 +307,7 @@ export function CommunityFeed({
               >
                 <Pencil className="size-3.5" aria-hidden="true" />
                 情報を修正
-              </button>
+              </Button>
             )}
           </div>
           <div className="flex items-center gap-1 text-xs text-gray-600">
@@ -359,13 +362,14 @@ export function CommunityFeed({
         </div>
       )}
       {!compact && nextCursor && (
-        <button
+        <Button
           type="button"
-          className="w-full rounded border py-2 text-sm"
+          variant="outline"
+          className="w-full"
           onClick={loadMore}
         >
           もっと見る
-        </button>
+        </Button>
       )}
     </section>
   );

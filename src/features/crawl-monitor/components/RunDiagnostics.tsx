@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import type { CrawlMonitorRunDetail } from "@/server/crawl-latest/adminContract";
 import { withBasePath } from "@/shared/utils/basePath";
 import { CATEGORY_LABELS, formatJst, SEVERITY_LABELS } from "../utils/labels";
@@ -114,13 +115,14 @@ export function RunDiagnostics({
             >
               ダウンロード
             </a>
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="xs"
               onClick={() => setPreview(null)}
-              className="rounded border border-gray-300 px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
             >
               閉じる
-            </button>
+            </Button>
           </div>
           <iframe
             key={previewUrl(preview)}

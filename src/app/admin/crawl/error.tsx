@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
 
 /**
  * 監視画面は正本データAPI越しに本番を読むため、接続先が古いとHTTP 400/404で失敗する。
@@ -41,13 +42,13 @@ export default function CrawlMonitorError({
           </ul>
         </div>
       ) : null}
-      <button
+      <Button
         type="button"
         onClick={() => retry()}
         className="h-9 rounded-md bg-gray-900 px-4 text-sm font-medium text-white hover:bg-gray-800"
       >
         再試行
-      </button>
+      </Button>
     </div>
   );
 }

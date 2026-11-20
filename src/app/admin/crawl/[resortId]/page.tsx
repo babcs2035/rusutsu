@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import { CountTrend } from "@/features/crawl-monitor/components/CountTrend";
 import { CurrentSnapshots } from "@/features/crawl-monitor/components/CurrentSnapshots";
 import { MappingCoverage } from "@/features/crawl-monitor/components/MappingCoverage";
@@ -143,12 +144,12 @@ export default async function CrawlMonitorResortPage({
           >
             <input type="hidden" name="origin" value={origin} />
             <SourceModeSelect sourceModes={sourceModes} />
-            <button
+            <Button
               type="submit"
               className="h-9 rounded-md bg-gray-900 px-4 text-sm font-medium text-white hover:bg-gray-800"
             >
               切り替える
-            </button>
+            </Button>
           </form>
         ) : null}
       </div>
