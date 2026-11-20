@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSubmissionNavigation } from "@/features/edit-requests/navigation";
-import { loadLatestStatusMapping, saveLatestStatusMapping } from "../actions";
+import { loadLatestStatusMapping } from "@/shared/queries/editor";
+import { saveLatestStatusMapping } from "../actions";
 import type {
   LatestStatusMappingKind,
   LatestStatusMappingRow,

@@ -7,7 +7,6 @@ import {
   readMappingStatusHistory,
 } from "@/lib/crawlLatestCurrent";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { requireEditor } from "@/lib/requireEditor";
 import { scheduleSavedElevations } from "@/server/backgroundElevation";
 import {
   getDataDocument,
@@ -23,41 +22,20 @@ import {
   isValidResortId,
   lift20mDocumentKey,
   liftBeforeDocumentKey,
-  listLiftBeforeResortIds,
   parseLiftBeforeGeojson,
   readLiftBeforeDocument,
-  readLiftDetailEntries,
-  readResortLinks,
   serializeLiftBeforeGeojson,
   writeLiftConfirmed,
   writeResortLinks,
 } from "./server/liftFiles";
 import type {
   LiftBeforeFeature,
-  LiftSourceData,
   ResortLinks,
   SaveLiftPayload,
   SaveRequest,
   SaveResult,
 } from "./types";
 import { sourceDataToLifts } from "./utils/loadSource";
-
-// 既存の lift_before / lift_detail をサーバー側で読み込む
-export async function loadLiftSourceData(
-  resortId: string,
-): Promise<LiftSourceData> {
-  await requireEditor();
-  const [document, details] = await Promise.all([
-    readLiftBeforeDocument(resortId),
-    readLiftDetailEntries(resortId),
-  ]);
-  if (document === null) return { geojson: null, details, fileHash: null };
-  return {
-    geojson: parseLiftBeforeGeojson(document.content),
-    details,
-    fileHash: document.hash,
-  };
-}
 
 const isFinitePair = (value: unknown): value is [number, number] =>
   Array.isArray(value) &&
@@ -371,12 +349,6 @@ export async function refreshLiftElevations(
   }
 }
 
-// スキー場一覧に lift_before の有無を付与するためのIDリスト
-export async function listLiftBeforeIds(): Promise<string[]> {
-  await requireEditor();
-  return listLiftBeforeResortIds();
-}
-
 // スキー場の確認済みフラグを切り替える（lift_confirmed.json を更新）
 export async function setLiftConfirmed(
   resortId: string,
@@ -385,12 +357,6 @@ export async function setLiftConfirmed(
   await requireAdmin();
   const map = await writeLiftConfirmed(resortId, confirmed);
   return { confirmedAt: map[resortId] ?? null };
-}
-
-// スキー場全体の参考リンク（SkiResortLinks.json）を読み込む
-export async function loadResortLinks(resortId: string): Promise<ResortLinks> {
-  await requireEditor();
-  return readResortLinks(resortId);
 }
 
 // スキー場全体の参考リンク（SkiResortLinks.json）を保存する

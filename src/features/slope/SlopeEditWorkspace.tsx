@@ -22,7 +22,6 @@ import {
 import { useLatestStatusMapping } from "@/features/latest-status-mapping/hooks/useLatestStatusMapping";
 import { useMappingProceedGuard } from "@/features/latest-status-mapping/hooks/useMappingProceedGuard";
 import { splitGeometryAssignments } from "@/features/latest-status-mapping/utils/geometryAssignments";
-import { loadLiftSourceData, loadResortLinks } from "@/features/lift/actions";
 import { sourceDataToLifts } from "@/features/lift/utils/loadSource";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { ResizablePanel } from "@/shared/components/ResizablePanel";
@@ -30,12 +29,13 @@ import { ResortEditorHeader } from "@/shared/components/resort-editor/ResortEdit
 import { ResortEditorTools } from "@/shared/components/resort-editor/ResortEditorTools";
 import { useResortEditorLinks } from "@/shared/components/resort-editor/useResortEditorLinks";
 import { StepIndicator } from "@/shared/components/StepIndicator";
-import { updateResortScopedList } from "@/shared/utils/resortScopedList";
 import {
-  applySlopeFeatureOrder,
+  loadLiftSourceData,
+  loadResortLinks,
   loadSlopeSourceData,
-  setOsmSlopeConfirmed,
-} from "./actions";
+} from "@/shared/queries/editor";
+import { updateResortScopedList } from "@/shared/utils/resortScopedList";
+import { applySlopeFeatureOrder, setOsmSlopeConfirmed } from "./actions";
 import { AssignStep } from "./components/AssignStep";
 import { ConfirmStep } from "./components/ConfirmStep";
 import { CourseGroupingStep } from "./components/CourseGroupingStep";

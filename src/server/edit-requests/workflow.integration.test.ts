@@ -33,6 +33,7 @@ test("editor requests: real PostgreSQL authorization, corrections, atomicity and
       export { prisma, disconnectPrisma } from '@/lib/prisma';
       export * from '@/features/edit-requests/actions';
       export * from '@/server/edit-requests/repository';
+      export * from '@/server/edit-requests/editorQueries';
       export * from '@/lib/requireAdmin';
       export * from '@/lib/requireEditor';
       export * from '@/app/admin/actions';
@@ -51,6 +52,7 @@ test("editor requests: real PostgreSQL authorization, corrections, atomicity and
       export { adminSkiResortUpdateSchema } from '@/server/ski-resorts/adminContract';
       export { REVIEW_CATEGORY_IDS } from '@/features/reviews/types';
       export { POST as internalEditRequestPOST } from '@/app/api/admin/edit-requests/route';
+      export { POST as editorQuery } from '@/app/api/admin/editor/queries/route';
     `,
       resolveDir: process.cwd(),
       sourcefile: "editor-integration.ts",
@@ -178,6 +180,44 @@ test("editor requests: real PostgreSQL authorization, corrections, atomicity and
   });
   let requestId: string;
   try {
+    await t.test(
+      "editor query requires the current DB role and never accepts actor from JSON",
+      async () => {
+        const query = (body: object) =>
+          api.editorQuery(
+            new Request("http://localhost/rusutsu/api/admin/editor/queries", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body),
+            }),
+          ) as Promise<Response>;
+        const filtered = { operation: "lift", resortId: testId };
+        assert.equal((await actor(null, () => query(filtered))).status, 401);
+        assert.equal(
+          (
+            await actor("integration-viewer", () =>
+              query({
+                ...filtered,
+                actor: "integration-admin",
+              }),
+            )
+          ).status,
+          403,
+        );
+        const response = await actor("integration-editor", () =>
+          query(filtered),
+        );
+        assert.equal(response.status, 200);
+        assert.equal(
+          response.headers.get("Cache-Control"),
+          "private, no-store",
+        );
+        assert.deepEqual(
+          await response.json(),
+          await api.loadLiftSourceData(testId),
+        );
+      },
+    );
     await t.test(
       "editor submission does not mutate canonical data or expose users / another editor's request",
       async () => {

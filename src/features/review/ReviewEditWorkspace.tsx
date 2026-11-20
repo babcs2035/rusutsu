@@ -40,7 +40,8 @@ import {
 } from "@/features/reviews/types";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
-import { loadReviewForEdit, saveReviewFiles } from "./actions";
+import { loadReviewForEdit } from "@/shared/queries/editor";
+import { saveReviewFiles } from "./actions";
 import type { ReviewEditData, ReviewResortOption } from "./types";
 
 type EditorMode = "warnings" | "detail" | "article";

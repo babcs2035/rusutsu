@@ -29,12 +29,9 @@ import { ResortEditorHeader } from "@/shared/components/resort-editor/ResortEdit
 import { ResortEditorTools } from "@/shared/components/resort-editor/ResortEditorTools";
 import { useResortEditorLinks } from "@/shared/components/resort-editor/useResortEditorLinks";
 import { StepIndicator } from "@/shared/components/StepIndicator";
+import { loadLiftSourceData, loadResortLinks } from "@/shared/queries/editor";
 import { updateResortScopedList } from "@/shared/utils/resortScopedList";
-import {
-  loadLiftSourceData,
-  loadResortLinks,
-  setLiftConfirmed,
-} from "./actions";
+import { setLiftConfirmed } from "./actions";
 import { AssignStep } from "./components/AssignStep";
 import { ConfirmStep } from "./components/ConfirmStep";
 import { DetailStep } from "./components/DetailStep";

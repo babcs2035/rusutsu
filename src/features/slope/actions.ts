@@ -9,7 +9,7 @@ import {
 } from "@/lib/crawlLatestCurrent";
 import { usesRemoteDataApi } from "@/lib/internalDataApiClient";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { getCurrentActor, requireEditor } from "@/lib/requireEditor";
+import { getCurrentActor } from "@/lib/requireEditor";
 import { readExistingSkiResortIds } from "@/lib/skiResortData";
 import { scheduleSavedElevations } from "@/server/backgroundElevation";
 import {
@@ -30,7 +30,6 @@ import { writeOsmSlopeConfirmed } from "./server/slopeConfirmation";
 import {
   osmSlope10mDocumentKey,
   parseSlopeBeforeGeojson,
-  parseSlopeDetailEntries,
   readSlopeBeforeDocument,
   readSlopeDetailDocument,
   serializeSlopeGeojson,
@@ -45,7 +44,6 @@ import type {
   SaveRequest,
   SaveResult,
   SlopeBeforeFeature,
-  SlopeSourceData,
 } from "./types";
 import { reorderItemsByNameOrder } from "./utils/courseOrder";
 
@@ -167,26 +165,6 @@ export async function applySlopeFeatureOrder(
       writtenFile: `${directoryName}/${request.resortId}.geojson`,
     };
   });
-}
-
-export async function loadSlopeSourceData(
-  resortId: string,
-  sourceKind: SaveRequest["sourceKind"] = "curated",
-): Promise<SlopeSourceData> {
-  await requireEditor();
-  const [beforeDocument, detailDocument] = await Promise.all([
-    readSlopeBeforeDocument(resortId, sourceKind),
-    sourceKind === "curated" ? readSlopeDetailDocument(resortId) : null,
-  ]);
-  const beforeRaw = beforeDocument?.content ?? null;
-  const detailRaw = detailDocument?.content ?? null;
-  return {
-    sourceKind,
-    geojson: beforeRaw === null ? null : parseSlopeBeforeGeojson(beforeRaw),
-    details: detailRaw === null ? null : parseSlopeDetailEntries(detailRaw),
-    fileHash: beforeDocument?.hash ?? null,
-    detailFileHash: detailDocument?.hash ?? null,
-  };
 }
 
 export async function saveSlopeEdits(

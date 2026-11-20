@@ -1,22 +1,9 @@
 "use server";
 
-import { requireEditor } from "@/lib/requireEditor";
-
 import { runEdit } from "@/server/edit-requests/workflow";
 
-import { readReviewForEdit, writeReviewFiles } from "./server/reviewFiles";
-import type {
-  ReviewActionResult,
-  ReviewEditData,
-  SaveReviewRequest,
-} from "./types";
-
-export async function loadReviewForEdit(
-  resortId: string,
-): Promise<ReviewEditData> {
-  await requireEditor();
-  return readReviewForEdit(resortId);
-}
+import { writeReviewFiles } from "./server/reviewFiles";
+import type { ReviewActionResult, SaveReviewRequest } from "./types";
 
 export async function saveReviewFiles(
   request: SaveReviewRequest,

@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { ResortEditorLinkDraft } from "@/shared/components/resort-editor/useResortEditorLinks";
+import { loadSlopeSourceData } from "@/shared/queries/editor";
 import { hasLinkDraftChanges } from "@/shared/utils/editorDraft";
-import { loadSlopeSourceData } from "../actions";
 import { DRAFT_STORAGE_PREFIX } from "../constants";
 import type {
   DraftSummary,
