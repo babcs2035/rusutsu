@@ -51,7 +51,7 @@ compose run --rm --no-deps --user 0 --entrypoint node app scripts/ops/prepare-ar
 compose --profile crawlers run --rm --no-deps --user 0 --entrypoint node crawl-latest-scheduler scripts/ops/prepare-artifact-directories.ts /app/var/crawler-worker-artifacts
 compose --profile crawlers stop crawl-latest-scheduler app
 compose up -d --wait db
-compose run --rm --no-deps app prisma migrate deploy
+compose run --rm --no-deps app node node_modules/prisma/build/index.js migrate deploy
 if [[ "$initialize" == true ]]; then
   compose run --rm --no-deps app node --import tsx scripts/importCanonicalDataDocuments.ts --initialize
   compose run --rm --no-deps app node --import tsx scripts/importSkiResortShortNames.ts --initialize

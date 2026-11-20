@@ -1,9 +1,23 @@
+import { existsSync } from "node:fs";
 import { access, readdir } from "node:fs/promises";
+
+for (const file of [
+  ".env",
+  ".env.local",
+  ".env.production",
+  "backups",
+  "src/private/data/backups",
+  "src/private/data/resorts-temporary/tmp",
+  "src/private/data/resorts-temporary/logs",
+]) {
+  if (existsSync(file)) throw new Error("Private local data in runtime image.");
+}
 
 const required = [
   "server.js",
   "prisma/schema.prisma",
   "prisma.config.ts",
+  "node_modules/prisma/build/index.js",
   "scripts/importCanonicalDataDocuments.ts",
   "scripts/importSkiResortShortNames.ts",
   "scripts/canonicalImportRuntime.ts",

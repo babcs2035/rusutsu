@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1@sha256:572cebbc2b15e6f84c077742952674889cb63cd5e9b80abdffcbe587b6f19183
 
 # ==============================================================================
 # Base Stage
@@ -7,6 +7,8 @@ FROM node:24-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23f
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME/bin:$PNPM_HOME:$PATH"
 RUN corepack enable && corepack install --global pnpm@12.18.0
+RUN apt-get update && apt-get install -y --no-install-recommends openssl \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 # ==============================================================================
@@ -53,18 +55,13 @@ ENV TZ=Asia/Tokyo
 ENV PLAYWRIGHT_BROWSERS_PATH=/home/nextjs/.cache/ms-playwright
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y tzdata openssl \
-    && pnpm dlx playwright install-deps chromium \
+RUN apt-get update && apt-get install -y tzdata \
+    && pnpm dlx playwright@1.65.0 install-deps chromium \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd --system --gid 1001 nodejs && \
     useradd --system --uid 1001 --gid nodejs nextjs
-
-# Install global tools
-RUN mkdir -p "$PNPM_HOME/bin" \
-    && pnpm config set global-bin-dir "$PNPM_HOME/bin" \
-    && pnpm add -g prisma@7.10.1 tsx@4.23.15
 
 # Copy standalone build
 COPY --from=build-cache --chown=nextjs:nodejs /app/.next/standalone ./

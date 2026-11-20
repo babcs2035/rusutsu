@@ -4,6 +4,7 @@ allowBuilds:
   prisma: true
   sharp: true
 overrides:
+  '@prisma/config>effect': 3.22.1
   reselect: 5.2.0
 
 strictDepBuilds: true
