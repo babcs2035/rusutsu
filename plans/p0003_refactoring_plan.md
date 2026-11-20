@@ -226,12 +226,12 @@ font は `next/font/google` の自己配信から Google Fonts の CDN へ切り
 - 切替前に app/API/worker の対応版，停止・再開，退避対象，確認と復帰の手順を定める．旧 bundle・Service Worker・CLI の切替で未保存の下書き・写真・選択を強制 reload により失わせず，mutation の冪等キーを維持する．巻き戻しも対応版を一組で戻す．
 - DB の値・ID・hash/version，指定外の権限，業務結果，地図・入力保持に差があれば反映を止める．削除候補に最新 7 世代，current/rollback，別プロジェクト，volume が含まれる場合も停止する．本番操作は確認済みの対象へ限定する．
 
-共通の確認には既存の入口を使い，R10 で整理したコマンドへ集約する．
+共通の確認には mise の既存 task を使い，個別試験も test の引数で選択する．同じ処理を実装する package script を task から呼び，CI と手元で検査方法を揃える．
 
 ```sh
-pnpm biome ci ./src ./scripts
-pnpm exec tsc --noEmit --incremental false
-pnpm test
-LIFT_TICKET_DATA_ROOT=src/private/data/lift-ticket pnpm exec tsx --test src/features/lift-ticket/utils/uiContract.test.ts
+mise run check
+mise run test
+LIFT_TICKET_DATA_ROOT=src/private/data/lift-ticket mise run test -- --unit src/features/lift-ticket/utils/uiContract.test.ts
+mise run build
 git diff --check
 ```

@@ -164,7 +164,7 @@ DB変更対象は`build-db-manifest.py`に列挙したschema/migrations/import/b
 
 `backup-database.sh`は既存db内の`pg_dump --format=custom`で取得し、空でないことと`pg_restore --list`を確認する。
 同VPSの非公開フォルダーへ`database.dump`、`archive.list`、`metadata.json`、`SHA256SUMS`を保存する。
-`local-backup.mjs`がチェックサム・メタデータ・ファイル構成を照合する。
+`local-backup.ts`がチェックサム・メタデータ・ファイル構成を照合する。
 完了した世代のみ保持整理の対象とし、既定で30世代と最低7日を残す。壊れた世代・symlink・無関係ファイルは削除しない。
 外部アップロード・GitHub artifactへの保存・暗号鍵の利用はしない。
 

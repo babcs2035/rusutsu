@@ -90,11 +90,11 @@ mise run typecheck
 再実行用のブラウザテスト:
 
 ```sh
-mise exec -- node scripts/testOfflineOverview.mjs
+mise exec -- node scripts/testOfflineOverview.ts
 # 実配信。外部サイトの速度・稼働状況に依存する。
-mise exec -- node scripts/testOfflineDetail.mjs
+mise exec -- node scripts/testOfflineDetail.ts
 # 配信の不安定さを分離する再現テスト。地理的な画像内容は検証しない。
-OFFLINE_TEST_FIXTURE_TILES=1 mise exec -- node scripts/testOfflineDetail.mjs
+OFFLINE_TEST_FIXTURE_TILES=1 mise exec -- node scripts/testOfflineDetail.ts
 ```
 
 既定URLは `http://localhost:3001/rusutsu`。`OFFLINE_TEST_URL` で変更できる。各実行は空のキャッシュで始める。実機iPhoneの画面ロック、OSによるページ破棄・タブの再生成、ブラウザの容量回収は、自動ブラウザのオフライン再読み込みとは別の実機確認が必要。
@@ -113,7 +113,7 @@ OFFLINE_TEST_FIXTURE_TILES=1 mise exec -- node scripts/testOfflineDetail.mjs
 - `src/features/resort-detail/SkiResortDetailView.tsx`: 詳細タブ・選択元・表示状態の復元。
 - `src/features/resort-detail/tabs/CoursesTab.tsx`、`LiftsTab.tsx`、`OverviewTab.tsx`、`TicketsTab.tsx` と `src/features/lift-ticket/components/LiftTicketCalculator.tsx`: 一覧の絞り込み、SNS内の選択、料金入力の保存。
 - `public/map-sw.js`: 起動HTML、資産、背景、公式マップ画像の保存、容量・同時通信制限、保存状態、失敗時の既存キャッシュ保持。
-- `src/features/map/session/*.test.ts` と `scripts/testOfflineDetail.mjs`、`scripts/testOfflineOverview.mjs`: 単体テストと空のキャッシュから行う本番ブラウザ検証。
+- `src/features/map/session/*.test.ts` と `scripts/testOfflineDetail.ts`、`scripts/testOfflineOverview.ts`: 単体テストと空のキャッシュから行う本番ブラウザ検証。
 
 既存の編集途中のUI変更は残している。上記一覧はこの復元対応で触ったファイルであり、作業ツリー全体の差分をすべて今回追加したという意味ではない。
 
@@ -121,4 +121,4 @@ OFFLINE_TEST_FIXTURE_TILES=1 mise exec -- node scripts/testOfflineDetail.mjs
 ### 直近2件の保持ルールの追加検証
 
 - `mise exec -- node --import tsx --test src/features/map/session/*.test.ts`: ホーム経由の履歴、他タブの保護、共有タイルの保護、古い保存処理による復活防止、25件巡回を検証。
-- `mise exec -- node scripts/testOfflineRetention.mjs`: 実ChromiumのsessionStorage / IndexedDBでAの画面状態削除、B・Cの再読み込み、別タブがAを手放した後の削除、25件巡回、再訪、編集下書きの保護を確認。ネットワーク配信はローカルのテストHTMLで代替し、保存処理は本番モジュールを実行する。
+- `mise exec -- node scripts/testOfflineRetention.ts`: 実ChromiumのsessionStorage / IndexedDBでAの画面状態削除、B・Cの再読み込み、別タブがAを手放した後の削除、25件巡回、再訪、編集下書きの保護を確認。ネットワーク配信はローカルのテストHTMLで代替し，保存処理は本番モジュールを実行する。

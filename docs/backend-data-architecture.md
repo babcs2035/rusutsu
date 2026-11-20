@@ -329,7 +329,7 @@ UI変更やcrawlerファイル追加だけなら、配備前コピーは省く�
 
 `backup-database.sh`は既存db内でPostgreSQL custom-format dumpを取り、空でないことと `pg_restore --list` を検証する。
 保存先は運用領域の `backups/`。database.dump、archive.list、metadata.json、SHA256SUMSを0600で置く。
-`local-backup.mjs`で構成・チェックサムを確認し、完了した世代だけを確定する。
+`local-backup.ts`で構成・チェックサムを確認し、完了した世代だけを確定する。
 30世代と最低7日を保持し、破損・symlink・無関係なファイルは保持整理で消さない。
 コピーが失敗すればapp停止・migrationへ進まない。外部転送やGitHub artifact保存は行わない。
 

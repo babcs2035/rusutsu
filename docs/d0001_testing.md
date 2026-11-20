@@ -10,6 +10,8 @@
 | `mise run test -- --db` | migration 後の DB 統合試験だけを直列実行 |
 | `mise run test -- --browser` | 起動済みの production サーバーでオフライン・保持状態を確認 |
 
+個別の試験を実行するときはモードの後ろにファイル名を指定する．例えば `mise run test -- --unit src/server/publicQueryHttp.test.ts` で HTTP の読込契約だけを検証できる．
+
 手元で `TEST_DATABASE_URL` を指定しない場合，runner が Docker の試験専用コンテナを作成する．DB は tmpfs に保存し，試験の終了時に自分が作成したコンテナだけを削除する．開発中の DB コンテナと volume は使わない．既存の試験 DB を指定する場合は localhost の `rusutsu_test_<数字>` に限定し，`DATABASE_URL` の設定を自動流用しない．CI では `TEST_DATABASE_URL` が必須であり，未設定を skip として扱わない．
 
 DB suite は同じ DB を使い，suite ごとに migration 履歴以外の fixture を初期化する．remote の認証・権限を検査するケースだけは，同じ DB の専用 schema で別サーバーの状態を表現する．これらの schema は試験が削除する．試験以外のデータを置かない．
@@ -27,4 +29,4 @@ DB suite は同じ DB を使い，suite ごとに migration 履歴以外の fixt
 | 運用 | 保存・保持・復元，配備の順序と失敗時の停止，秘密の非出力，別プロジェクトの保護 |
 | ブラウザ | 検索・詳細・比較・投稿の遷移，地図・入力・下書き・scroll の保持，通信断と復帰 |
 
-同じ仕様をすべての層で反復しない．試験を削除するときは，残る試験がその仕様を検出する根拠を確認する．料金の公式期待値は `LIFT_TICKET_DATA_ROOT=src/private/data/lift-ticket pnpm exec tsx --test src/features/lift-ticket/utils/uiContract.test.ts` でも確認できる．期待値を実装の出力から作り直さない．
+同じ仕様をすべての層で反復しない．試験を削除するときは，残る試験がその仕様を検出する根拠を確認する．料金の公式期待値は `LIFT_TICKET_DATA_ROOT=src/private/data/lift-ticket mise run test -- --unit src/features/lift-ticket/utils/uiContract.test.ts` でも確認できる．期待値を実装の出力から作り直さない．

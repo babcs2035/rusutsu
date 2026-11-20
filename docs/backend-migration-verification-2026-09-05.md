@@ -58,7 +58,7 @@ DBは `audit_fresh` / `audit_existing`、接続は127.0.0.1:55432、データ領
 `.next/static`にも3つのダミーtoken、scope token環境変数名、旧短縮名JSON importは含まれなかった。
 外部タイル等の通信は遮断したため、外部地図・OAuthの実動作確認にはならない。
 
-`scripts/auditBackendHttp.mjs` はloopback URLと `AUDIT_DISPOSABLE_DB=true` を要求する。
+`scripts/auditBackendHttp.ts` はloopback URLと `AUDIT_DISPOSABLE_DB=true` を要求する。
 人工 `audit-resort` がある使い捨てDB専用で、運用DBには実行しない。
 実HTTPによる17チェックが最終buildで成功した。
 
