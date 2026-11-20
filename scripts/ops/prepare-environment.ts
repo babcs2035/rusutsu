@@ -4,12 +4,24 @@ import { pathToFileURL } from "node:url";
 import {
   communityKeys,
   loginKeys,
+  type ProductionSettings,
   publicUrl,
   tokenKeys,
   validateSettings,
-} from "./production-settings.mjs";
+} from "./production-settings.ts";
 
-function environment(container) {
+type Container = {
+  Config?: {
+    Env?: string[];
+    Image?: string;
+    Labels?: Record<string, string>;
+  };
+  Mounts?: Array<{ Destination?: string; Type?: string; Name?: string }>;
+  HostConfig?: { PortBindings?: Record<string, Array<{ HostPort: string }>> };
+};
+
+/** Reads a container's environment array into a key-value map. */
+function environment(container: Container): Record<string, string> {
   return Object.fromEntries(
     (container.Config?.Env ?? []).map(entry => {
       const index = entry.indexOf("=");
@@ -18,12 +30,17 @@ function environment(container) {
   );
 }
 
-export function prepareEnvironment(containers, settings) {
+/** Rebuilds deployment settings while preserving the existing DB identity. */
+export function prepareEnvironment(
+  containers: Container[],
+  settings: ProductionSettings,
+): Record<string, string> {
   const [db, app] = containers;
   if (!db || !app)
     throw new Error("Both existing DB and app containers are required.");
   const project = db.Config?.Labels?.["com.docker.compose.project"];
   if (
+    typeof project !== "string" ||
     !/^[a-z0-9][a-z0-9_-]*$/.test(project ?? "") ||
     app.Config?.Labels?.["com.docker.compose.project"] !== project ||
     db.Config?.Labels?.["com.docker.compose.service"] !== "db" ||
@@ -54,7 +71,7 @@ export function prepareEnvironment(containers, settings) {
         `Cannot recover existing ${key}; no new credentials will be generated.`,
       );
   }
-  let databaseUrl;
+  let databaseUrl: URL;
   try {
     databaseUrl = new URL(appEnv.DATABASE_URL);
     if (
@@ -72,9 +89,9 @@ export function prepareEnvironment(containers, settings) {
     );
   }
   const updates = validateSettings(settings);
-  let baseUrl = updates.DATA_API_BASE_URL;
+  let baseUrl: string | undefined = updates.API_BASE_URL;
   if (!baseUrl) {
-    let auth;
+    let auth: URL;
     try {
       auth = new URL(appEnv.AUTH_URL);
       if (
@@ -88,13 +105,13 @@ export function prepareEnvironment(containers, settings) {
       baseUrl = publicUrl(`${auth.origin}/rusutsu`);
     } catch {
       throw new Error(
-        "Set GitHub Variable DATA_API_BASE_URL to the production HTTPS URL including /rusutsu.",
+        "Set GitHub Variable API_BASE_URL to the production HTTPS URL including /rusutsu.",
       );
     }
   }
   baseUrl = publicUrl(baseUrl);
   /** @type {Record<string, string>} */
-  const result = {
+  const result: Record<string, string> = {
     COMPOSE_PROJECT_NAME: project,
     POSTGRES_VOLUME: mounts[0].Name,
     POSTGRES_USER: dbEnv.POSTGRES_USER,
@@ -105,7 +122,7 @@ export function prepareEnvironment(containers, settings) {
     DB_PORT: publishedPort(db, "5432/tcp"),
     AUTH_URL: new URL(baseUrl).origin,
     AUTH_TRUST_HOST: appEnv.AUTH_TRUST_HOST || "true",
-    DATA_API_BASE_URL: baseUrl,
+    API_BASE_URL: baseUrl,
     // Deploy the daily 14:00 JST schedule even if an old app had a different cron.
     CRAWL_LATEST_CRON: "0 14 * * *",
   };
@@ -128,7 +145,8 @@ export function prepareEnvironment(containers, settings) {
   return result;
 }
 
-function publishedPort(container, port) {
+/** Finds the existing published host port for a container port. */
+function publishedPort(container: Container, port: string): string {
   const bindings = container.HostConfig?.PortBindings?.[port];
   if (!bindings?.length || !/^\d+$/.test(bindings[0].HostPort)) {
     throw new Error(
@@ -138,7 +156,8 @@ function publishedPort(container, port) {
   return bindings[0].HostPort;
 }
 
-export function shellEnvironment(values) {
+/** Serializes values as safely quoted shell exports. */
+export function shellEnvironment(values: Record<string, string>): string {
   return Object.entries(values)
     .map(([key, value]) => {
       if (
@@ -155,12 +174,13 @@ export function shellEnvironment(values) {
     .join("");
 }
 
+/** Converts private Docker metadata and validated settings into a mode-0600 file. */
 async function main() {
   try {
     let input = "";
     for await (const chunk of process.stdin) input += chunk;
-    let settings;
-    let containers;
+    let settings: ProductionSettings;
+    let containers: Container[];
     try {
       settings = JSON.parse(
         Buffer.from(
@@ -187,7 +207,11 @@ async function main() {
       "Existing database, volume, ports and login settings preserved; API settings prepared.",
     );
   } catch (error) {
-    console.error(error.message);
+    console.error(
+      error instanceof Error
+        ? error.message
+        : "Environment preparation failed.",
+    );
     process.exitCode = 1;
   }
 }

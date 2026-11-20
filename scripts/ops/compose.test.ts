@@ -12,10 +12,8 @@ const required = {
   POSTGRES_PASSWORD: "test-db-password",
   PRODUCTION_DATABASE_URL: "postgresql://test:test-db-password@db:5432/test",
   POSTGRES_VOLUME: "already-existing-data",
-  DATA_API_BASE_URL: "https://example.test/rusutsu",
-  INTERNAL_DATA_API_ADMIN_TOKEN: "a".repeat(64),
-  INTERNAL_DATA_API_CRAWLER_TOKEN: "b".repeat(64),
-  INTERNAL_DATA_API_DIAGNOSTICS_TOKEN: "c".repeat(64),
+  API_BASE_URL: "https://example.test/rusutsu",
+  API_BEARER_TOKEN: "a".repeat(64),
 };
 
 function config(env: Partial<NodeJS.ProcessEnv>, json = false) {
@@ -43,15 +41,11 @@ test("production Compose isolates tokens and waits for DB/API health", {
   assert.equal(result.status, 0, result.stderr);
   const compose = JSON.parse(result.stdout);
   const { app, "crawl-latest-scheduler": worker } = compose.services;
-  assert.equal(app.environment.DATA_API_BASE_URL, undefined);
+  assert.equal(app.environment.API_BASE_URL, undefined);
   assert.equal(compose.volumes.postgres_data.external, true);
   assert.equal(compose.volumes.postgres_data.name, "already-existing-data");
   assert.equal(worker.environment.DATABASE_URL, undefined);
-  assert.equal(worker.environment.INTERNAL_DATA_API_ADMIN_TOKEN, undefined);
-  assert.equal(
-    worker.environment.INTERNAL_DATA_API_DIAGNOSTICS_TOKEN,
-    undefined,
-  );
+  assert.equal(worker.environment.API_BEARER_TOKEN, required.API_BEARER_TOKEN);
   assert.equal(worker.depends_on.app.condition, "service_healthy");
   assert.equal(worker.environment.CRAWL_LATEST_CRON, "0 14 * * *");
   assert.equal(worker.environment.TZ, "Asia/Tokyo");

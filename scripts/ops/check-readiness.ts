@@ -1,4 +1,4 @@
-const base = process.argv[2] ?? "http://127.0.0.1:3000/rusutsu";
+const base: string = process.argv[2] ?? "http://127.0.0.1:3000/rusutsu";
 try {
   const url = new URL(base);
   if (
@@ -28,3 +28,5 @@ try {
   console.error("Rusutsu readiness check failed.");
   process.exit(1);
 }
+
+export {};

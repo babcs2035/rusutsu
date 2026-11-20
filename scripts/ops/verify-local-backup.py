@@ -69,11 +69,11 @@ INSERT INTO retained_document VALUES (1, '{"text":"manual edit must survive"}');
 '''
     docker('exec', '-i', db, 'psql', '-U', 'local_test', '-d', 'local_test', '-v', 'ON_ERROR_STOP=1', input=sql)
     preflight = ['run', '--rm', '--network', 'container:' + db,
-        '--mount', 'type=bind,source=' + str(repo / 'scripts/ops/check-existing-database.mjs') + ',target=/app/scripts/ops/check-existing-database.mjs,readonly',
+        '--mount', 'type=bind,source=' + str(repo / 'scripts/ops/check-existing-database.ts') + ',target=/app/scripts/ops/check-existing-database.ts,readonly',
         '--entrypoint', 'node']
-    good = docker(*preflight, '-e', 'DATABASE_URL=postgresql://local_test:disposable_only@localhost:5432/local_test', args.image, 'scripts/ops/check-existing-database.mjs')
+    good = docker(*preflight, '-e', 'DATABASE_URL=postgresql://local_test:disposable_only@localhost:5432/local_test', args.image, 'scripts/ops/check-existing-database.ts')
     assert 'reachable and nonempty' in good.stdout
-    bad = docker(*preflight, '-e', 'DATABASE_URL=postgresql://local_test:disposable_only@localhost:5432/missing_database', args.image, 'scripts/ops/check-existing-database.mjs', check=False)
+    bad = docker(*preflight, '-e', 'DATABASE_URL=postgresql://local_test:disposable_only@localhost:5432/missing_database', args.image, 'scripts/ops/check-existing-database.ts', check=False)
     assert bad.returncode != 0 and 'No reset' in bad.stderr
     print('PASS: new app preflight accepts the populated test DB and rejects a missing DB')
     state = root / 'state'

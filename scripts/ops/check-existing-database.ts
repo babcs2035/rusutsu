@@ -1,5 +1,7 @@
 import pg from "pg";
 
+type ResortCountRow = { count: number };
+
 const client = new pg.Client({
   connectionString: process.env.DATABASE_URL,
   connectionTimeoutMillis: 10_000,
@@ -8,7 +10,7 @@ const client = new pg.Client({
 });
 try {
   await client.connect();
-  const result = await client.query(
+  const result = await client.query<ResortCountRow>(
     'SELECT count(*)::int AS count FROM "ski_resorts"',
   );
   if (!result.rows[0]?.count) throw new Error("No existing resort master.");

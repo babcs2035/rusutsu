@@ -10,9 +10,9 @@ import {
 } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
-import { finalize } from "./local-backup.mjs";
-import { shellEnvironment } from "./prepare-environment.mjs";
-import { existingContainers, settings } from "./test-fixtures.mjs";
+import { finalize } from "./local-backup.ts";
+import { shellEnvironment } from "./prepare-environment.ts";
+import { existingContainers, settings } from "./test-fixtures.ts";
 
 const opsRoot = path.resolve("scripts/ops");
 // Docker/DB are simulated here; Node helpers and generated shell settings run
@@ -23,8 +23,14 @@ args=sys.argv[1:]
 root=pathlib.Path(os.environ['OPS_TEST_ROOT'])
 mode=os.environ.get('OPS_TEST_FAILURE','')
 with (root/'calls').open('a') as f: f.write('docker '+' '.join(args)+' [profiles='+os.environ.get('COMPOSE_PROFILES','')+']\\n')
-if args[0]=='inspect':
+if args[0]=='image' and args[1]=='inspect':
+    if '--format' in args:
+        template=args[args.index('--format')+1]
+        if '.Id' in template: print('sha256:'+'a'*64)
+        else: print('ghcr.io/babcs2035/rusutsu@sha256:'+'a'*64)
+elif args[0]=='inspect':
     if '--format' not in args: print((root/'containers.json').read_text())
+    elif '.Image' in args[args.index('--format')+1]: print('sha256:'+'a'*64)
     elif 'Labels' in args[args.index('--format')+1]: print('test-project')
     else: print('test-image')
 elif args[0]=='run' and '--name' in args:
@@ -35,7 +41,15 @@ elif args[0]=='run' and '--workdir' in args:
     script=args[start:]
     script[0]=str(pathlib.Path(os.environ['OPS_TEST_SCRIPTS'])/script[0])
     state=pathlib.Path(os.environ['OPS_TEST_STATE'])
-    if script[0].endswith('prepare-environment.mjs'): script.append(str(state))
+    if script[0].endswith('prepare-environment.ts'): script.append(str(state))
+    if script[0].endswith('image-cleanup.ts') and script[1]=='record':
+        sha,image_id,digest=script[2],script[3],script[4]
+        prev=None
+        pf=state/'previous-image.json'
+        if pf.exists(): prev=json.loads(pf.read_text())['current']
+        rec={"current":{"repository":"ghcr.io/babcs2035/rusutsu","tag":sha,"sha":sha,"imageId":image_id,"digest":digest},"previous":prev}
+        (state/'deployed-image.json').write_text(json.dumps(rec)+'\\n')
+        sys.exit(0)
     env=dict(os.environ,OPS_BACKUP_TEST_ROOT=str(root/'project'/'backups'),OPS_BACKUP_LEGACY_TEST_ROOT=str(state/'backups'))
     sys.exit(subprocess.run([os.environ['OPS_TEST_NODE']]+script,env=env).returncode)
 elif args[0]=='exec':
@@ -50,8 +64,8 @@ elif args[0]=='exec':
         print('; PostgreSQL archive contents')
 elif args[0]=='compose':
     if '--format' in args:
-        app={k:os.environ.get(k,'') for k in ['AUTH_URL','INTERNAL_DATA_API_ADMIN_TOKEN','INTERNAL_DATA_API_CRAWLER_TOKEN','INTERNAL_DATA_API_DIAGNOSTICS_TOKEN']}
-        app['PUBLIC_READINESS_URL']=os.environ.get('DATA_API_BASE_URL','')
+        app={k:os.environ.get(k,'') for k in ['AUTH_URL','API_BEARER_TOKEN']}
+        app['PUBLIC_READINESS_URL']=os.environ.get('API_BASE_URL','')
         print(json.dumps({'services':{'app':{'environment':app}},'volumes':{'postgres_data':{'external':True,'name':'existing-data'}}}))
     elif any('check-existing-database' in a for a in args) and mode=='connection': sys.exit(1)
     elif 'migrate' in args and mode=='migration': sys.exit(1)
@@ -250,7 +264,7 @@ test("unchanged DB paths skip backup but still migrate and require public readin
     assert.ok(rebuild > canonical);
     assert.ok(rebuild < f.calls().indexOf("up -d --wait --wait-timeout"));
     assert.ok(
-      f.calls().includes("check-readiness.mjs https://example.test/rusutsu"),
+      f.calls().includes("check-readiness.ts https://example.test/rusutsu"),
     );
     assert.match(
       readFileSync(path.join(f.stateRoot, "runtime.env.sh"), "utf8"),
@@ -271,18 +285,18 @@ test("initialization backs up first, then migrates/imports and records only afte
     const result = f.run("deploy.sh", { INITIALIZE_CANONICAL_DATA: "true" });
     assert.equal(result.status, 0, result.stderr);
     const positions = [
-      "check-existing-database.mjs",
+      "check-existing-database.ts",
       "pg_dump",
       "pg_restore",
-      "local-backup.mjs finalize",
-      "prepare-artifact-directories.mjs",
+      "local-backup.ts finalize",
+      "prepare-artifact-directories.ts",
       "prisma migrate deploy",
       "importCanonicalDataDocuments.ts --initialize",
       "importSkiResortShortNames.ts --initialize",
       "migrateCanonicalMaps.ts --deploy",
       "rebuildCourseRecommendations.ts --apply",
       "up -d --wait --wait-timeout",
-      "check-readiness.mjs",
+      "check-readiness.ts",
     ].map(s => f.calls().indexOf(s));
     assert.ok(
       positions.every(
@@ -293,6 +307,12 @@ test("initialization backs up first, then migrates/imports and records only afte
       readFileSync(path.join(f.stateRoot, "deployed-image-sha"), "utf8").trim(),
       "a".repeat(40),
     );
+    const record = JSON.parse(
+      readFileSync(path.join(f.stateRoot, "deployed-image.json"), "utf8"),
+    );
+    assert.equal(record.current.imageId, `sha256:${"a".repeat(64)}`);
+    assert.equal(record.current.digest, `sha256:${"a".repeat(64)}`);
+    assert.equal(record.previous, null);
   } finally {
     f.clean();
   }
@@ -377,39 +397,19 @@ for (const enabled of [false, true]) {
   });
 }
 
-test("duplicate API Secrets fail before any DB backup or change", () => {
-  const f = fixture();
-  try {
-    const invalid = {
-      ...settings,
-      INTERNAL_DATA_API_CRAWLER_TOKEN: settings.INTERNAL_DATA_API_ADMIN_TOKEN,
-    };
-    const result = f.run("deploy.sh", {
-      RUSUTSU_SETTINGS_B64: Buffer.from(JSON.stringify(invalid)).toString(
-        "base64",
-      ),
-    });
-    assert.notEqual(result.status, 0);
-    assert.doesNotMatch(f.calls(), /pg_dump|prisma migrate deploy| stop /);
-    assert.ok(!result.stderr.includes(settings.INTERNAL_DATA_API_ADMIN_TOKEN));
-  } finally {
-    f.clean();
-  }
-});
-
 test("canonical container rejects remote client mode without leaking its URL", () => {
   const result = spawnSync(
     process.execPath,
-    [path.join(opsRoot, "start-app.mjs")],
+    [path.join(opsRoot, "start-app.ts")],
     {
       env: {
         ...process.env,
-        DATA_API_BASE_URL: "https://private-host.test/rusutsu",
+        API_BASE_URL: "https://private-host.test/rusutsu",
       },
       encoding: "utf8",
     },
   );
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /must not set DATA_API_BASE_URL/);
+  assert.match(result.stderr, /must not set API_BASE_URL/);
   assert.ok(!result.stderr.includes("private-host"));
 });

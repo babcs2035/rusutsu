@@ -20,7 +20,7 @@ import {
   migrateLegacyBackups,
   prune,
   verifyGeneration,
-} from "./local-backup.mjs";
+} from "./local-backup.ts";
 
 function fixture() {
   const root = mkdtempSync(path.join(os.tmpdir(), "rusutsu-local-backup-"));

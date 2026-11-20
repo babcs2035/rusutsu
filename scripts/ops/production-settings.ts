@@ -1,9 +1,7 @@
 import { appendFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
-export const tokenKeys = ["ADMIN", "CRAWLER", "DIAGNOSTICS"].map(
-  scope => `INTERNAL_DATA_API_${scope}_TOKEN`,
-);
+export const tokenKeys = ["API_BEARER_TOKEN"];
 export const loginKeys = [
   "AUTH_SECRET",
   "GOOGLE_CLIENT_ID",
@@ -18,27 +16,29 @@ export const communityKeys = [
   "CONTRIBUTION_TRUST_PROXY",
 ];
 
-export function validateSettings(settings) {
-  for (const key of tokenKeys) {
-    if (!/^[a-fA-F0-9]{64}$/.test(settings[key] ?? "")) {
-      throw new Error(
-        `GitHub Secret ${key} must contain 64 hexadecimal characters.`,
-      );
-    }
+export type ProductionSettings = Record<string, string | undefined>;
+
+/** Validates deploy secrets and returns only supported production settings. */
+export function validateSettings(
+  settings: ProductionSettings,
+): Record<string, string> {
+  if (!/^[a-fA-F0-9]{64}$/.test(settings.API_BEARER_TOKEN ?? "")) {
+    throw new Error(
+      "GitHub Secret API_BEARER_TOKEN must contain 64 hexadecimal characters.",
+    );
   }
-  if (new Set(tokenKeys.map(key => settings[key])).size !== tokenKeys.length) {
-    throw new Error("Use a different value for each API token Secret.");
-  }
-  if (settings.DATA_API_BASE_URL) publicUrl(settings.DATA_API_BASE_URL);
+  if (settings.API_BASE_URL) publicUrl(settings.API_BASE_URL);
   return Object.fromEntries(
-    [...tokenKeys, ...loginKeys, ...communityKeys, "DATA_API_BASE_URL"].map(
-      key => [key, settings[key] || ""],
-    ),
+    [...tokenKeys, ...loginKeys, ...communityKeys, "API_BASE_URL"].map(key => [
+      key,
+      settings[key] || "",
+    ]),
   );
 }
 
-export function publicUrl(value) {
-  let url;
+/** Normalizes a public Rusutsu URL after enforcing its HTTPS base path. */
+export function publicUrl(value: string): string {
+  let url: URL;
   try {
     url = new URL(value);
   } catch {
@@ -71,7 +71,9 @@ if (
     appendFileSync(process.env.GITHUB_ENV, `RUSUTSU_SETTINGS_B64=${encoded}\n`);
     console.log("Production settings validated; secret values are hidden.");
   } catch (error) {
-    console.error(error.message);
+    console.error(
+      error instanceof Error ? error.message : "Production settings failed.",
+    );
     process.exitCode = 1;
   }
 }

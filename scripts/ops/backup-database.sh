@@ -43,7 +43,7 @@ if [[ "${1:-}" != --operation-lock-held ]]; then
   owns_lock=true
   load_runtime_environment
 fi
-migrated_generations="$(ops_node local-backup.mjs migrate-legacy)"
+migrated_generations="$(ops_node local-backup.ts migrate-legacy)"
 if [[ -n "$migrated_generations" ]]; then
   work="$(mktemp -d "$BACKUP_DIR/.migration-check-XXXXXXXX")"
   while IFS= read -r generation; do
@@ -56,7 +56,7 @@ if [[ -n "$migrated_generations" ]]; then
       > "$work/$generation.archive.list"
     test -s "$work/$generation.archive.list" \
       || ops_die 'Migrated PostgreSQL archive validation failed.'
-    ops_node local-backup.mjs confirm-legacy "$generation"
+    ops_node local-backup.ts confirm-legacy "$generation"
   done <<< "$migrated_generations"
   rm -rf -- "$work"
   work=''
@@ -68,5 +68,5 @@ docker exec "$OPS_DB_CONTAINER" sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES
 test -s "$work/database.dump" || ops_die 'PostgreSQL backup was empty.'
 docker exec -i "$OPS_DB_CONTAINER" pg_restore --list < "$work/database.dump" > "$work/archive.list"
 test -s "$work/archive.list" || ops_die 'PostgreSQL archive validation failed.'
-backup_id="$(ops_node local-backup.mjs finalize "${work##*/}")"
+backup_id="$(ops_node local-backup.ts finalize "${work##*/}")"
 printf 'Verified VPS-local database backup: %s\n' "$backup_id"

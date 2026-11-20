@@ -10,11 +10,8 @@ import {
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import {
-  prepareEnvironment,
-  shellEnvironment,
-} from "./prepare-environment.mjs";
-import { existingContainers, settings } from "./test-fixtures.mjs";
+import { prepareEnvironment, shellEnvironment } from "./prepare-environment.ts";
+import { existingContainers, settings } from "./test-fixtures.ts";
 
 test("bootstrap preserves DB identity/credentials, OAuth and ports and normalizes the public origin", () => {
   const output = prepareEnvironment(existingContainers(), settings);
@@ -25,7 +22,7 @@ test("bootstrap preserves DB identity/credentials, OAuth and ports and normalize
   assert.equal(output.APP_PORT, "13000");
   assert.equal(output.DB_PORT, "15432");
   assert.equal(output.AUTH_URL, "https://example.test");
-  assert.equal(output.DATA_API_BASE_URL, "https://example.test/rusutsu");
+  assert.equal(output.API_BASE_URL, "https://example.test/rusutsu");
   assert.equal(output.CRAWL_LATEST_CRON, "0 14 * * *");
 });
 
@@ -53,17 +50,14 @@ test("community moderation settings survive deploys and explicit updates", () =>
   assert.equal(changed.OPENAI_API_KEY, "test-provider-key");
 });
 
-test("explicit GitHub URL overrides the old origin while API scopes remain independent", () => {
+test("explicit GitHub API URL overrides the existing public origin", () => {
   const output = prepareEnvironment(existingContainers(), {
     ...settings,
-    DATA_API_BASE_URL: "https://new.example.test/rusutsu/",
+    API_BASE_URL: "https://new.example.test/rusutsu/",
   });
   assert.equal(output.AUTH_URL, "https://new.example.test");
-  assert.equal(output.DATA_API_BASE_URL, "https://new.example.test/rusutsu");
-  assert.equal(
-    output.INTERNAL_DATA_API_CRAWLER_TOKEN,
-    settings.INTERNAL_DATA_API_CRAWLER_TOKEN,
-  );
+  assert.equal(output.API_BASE_URL, "https://new.example.test/rusutsu");
+  assert.equal(output.API_BEARER_TOKEN, settings.API_BEARER_TOKEN);
 });
 
 for (const failure of [
@@ -76,7 +70,6 @@ for (const failure of [
   "bad-url",
   "missing-auth",
   "weak-token",
-  "duplicate-token",
 ]) {
   test(`bootstrap rejects ${failure} without printing secret values`, () => {
     const containers = existingContainers();
@@ -94,16 +87,12 @@ for (const failure of [
     if (failure === "wrong-db")
       containers[0].Config.Env[2] = "POSTGRES_DB=other_database";
     if (failure === "bad-url")
-      updates.DATA_API_BASE_URL = "http://sentinel-host/rusutsu";
+      updates.API_BASE_URL = "http://sentinel-host/rusutsu";
     if (failure === "missing-auth")
       containers[1].Config.Env = containers[1].Config.Env.filter(
         s => !s.startsWith("AUTH_SECRET="),
       );
-    if (failure === "weak-token")
-      updates.INTERNAL_DATA_API_ADMIN_TOKEN = "short";
-    if (failure === "duplicate-token")
-      updates.INTERNAL_DATA_API_CRAWLER_TOKEN =
-        updates.INTERNAL_DATA_API_ADMIN_TOKEN;
+    if (failure === "weak-token") updates.API_BEARER_TOKEN = "short";
     assert.throws(
       () => prepareEnvironment(containers, updates),
       error => {
@@ -150,7 +139,7 @@ test("GitHub settings payload is masked and incomplete Secrets never emit a payl
     const file = path.join(directory, "github-env");
     const result = spawnSync(
       process.execPath,
-      ["scripts/ops/production-settings.mjs"],
+      ["scripts/ops/production-settings.ts"],
       {
         env: { ...process.env, ...settings, GITHUB_ENV: file },
         encoding: "utf8",
@@ -160,19 +149,18 @@ test("GitHub settings payload is masked and incomplete Secrets never emit a payl
     const payload = readFileSync(file, "utf8").trim().split("=")[1];
     assert.ok(result.stdout.includes(`::add-mask::${payload}`));
     assert.equal(
-      JSON.parse(Buffer.from(payload, "base64").toString())
-        .INTERNAL_DATA_API_ADMIN_TOKEN,
-      settings.INTERNAL_DATA_API_ADMIN_TOKEN,
+      JSON.parse(Buffer.from(payload, "base64").toString()).API_BEARER_TOKEN,
+      settings.API_BEARER_TOKEN,
     );
-    assert.ok(!result.stdout.includes(settings.INTERNAL_DATA_API_ADMIN_TOKEN));
+    assert.ok(!result.stdout.includes(settings.API_BEARER_TOKEN));
     const failed = spawnSync(
       process.execPath,
-      ["scripts/ops/production-settings.mjs"],
+      ["scripts/ops/production-settings.ts"],
       {
         env: {
           ...process.env,
           ...settings,
-          INTERNAL_DATA_API_ADMIN_TOKEN: "",
+          API_BEARER_TOKEN: "",
           GITHUB_ENV: path.join(directory, "rejected"),
         },
         encoding: "utf8",

@@ -1,11 +1,16 @@
-export const settings = {
-  INTERNAL_DATA_API_ADMIN_TOKEN: "a".repeat(64),
-  INTERNAL_DATA_API_CRAWLER_TOKEN: "b".repeat(64),
-  INTERNAL_DATA_API_DIAGNOSTICS_TOKEN: "c".repeat(64),
-  DATA_API_BASE_URL: "",
+export const settings: Record<string, string> = {
+  API_BEARER_TOKEN: "a".repeat(64),
+  API_BASE_URL: "",
 };
 
-export function existingContainers() {
+/** Builds disposable Docker metadata for deployment operation tests. */
+export function existingContainers(): Array<{
+  Config: { Image: string; Labels: Record<string, string>; Env: string[] };
+  Mounts?: Array<{ Type: string; Name: string; Destination: string }>;
+  HostConfig: {
+    PortBindings: Record<string, Array<{ HostIp: string; HostPort: string }>>;
+  };
+}> {
   const base = { "com.docker.compose.project": "test-project" };
   return [
     {

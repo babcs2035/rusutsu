@@ -9,7 +9,8 @@ if (
 )
   throw new Error("Only crawler artifact volumes may be initialized.");
 mkdirSync(root, { recursive: true });
-function visit(file) {
+/** Restricts the permitted crawler volume tree to the runtime user. */
+function visit(file: string): void {
   const stat = lstatSync(file);
   if (stat.isSymbolicLink()) return;
   chownSync(file, 1001, 1001);

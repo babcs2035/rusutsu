@@ -24,19 +24,29 @@ const expectedFiles = [
   "metadata.json",
 ];
 
-async function hashFile(file) {
+type BackupMetadata = {
+  generation: string;
+  format: "postgresql-custom";
+  storage: "vps-local";
+  createdAt: string;
+};
+
+/** Computes a SHA-256 digest without loading a dump into memory. */
+async function hashFile(file: string): Promise<string> {
   const hash = createHash("sha256");
   for await (const chunk of createReadStream(file)) hash.update(chunk);
   return hash.digest("hex");
 }
 
-function assertDirectory(directory) {
+/** Rejects symlinks and non-directory backup roots. */
+function assertDirectory(directory: string): void {
   const stat = lstatSync(directory);
   if (!stat.isDirectory() || stat.isSymbolicLink())
     throw new Error("Invalid backup directory.");
 }
 
-function regular(file) {
+/** Checks that a backup member is a regular file, not a symlink. */
+function regular(file: string): boolean {
   return (
     existsSync(file) &&
     lstatSync(file).isFile() &&
@@ -45,7 +55,10 @@ function regular(file) {
 }
 
 /** Verifies a completed generation and returns its metadata. */
-export async function verifyGeneration(root, name) {
+export async function verifyGeneration(
+  root: string,
+  name: string,
+): Promise<BackupMetadata> {
   if (!generationPattern.test(name))
     throw new Error("Invalid backup generation name.");
   const directory = path.join(root, name);
@@ -54,7 +67,12 @@ export async function verifyGeneration(root, name) {
 }
 
 /** Finalizes a complete dump atomically, verifies it, then applies retention. */
-export async function finalize(root, incomplete, name, completedAt) {
+export async function finalize(
+  root: string,
+  incomplete: string,
+  name?: string,
+  completedAt?: string,
+): Promise<string> {
   if (
     !/^\.incomplete-[A-Za-z0-9]{8}$/.test(incomplete) ||
     (name !== undefined && !generationPattern.test(name))
@@ -104,7 +122,7 @@ export async function finalize(root, incomplete, name, completedAt) {
 }
 
 /** Keeps the newest verified generations and leaves invalid entries for review. */
-export async function prune(root, keep = 7) {
+export async function prune(root: string, keep = 7): Promise<string[]> {
   if (!Number.isInteger(keep) || keep < 1)
     throw new Error("Invalid backup retention.");
   const valid = [];
@@ -128,7 +146,10 @@ export async function prune(root, keep = 7) {
 }
 
 /** Copies verified generations without pruning or deleting their legacy sources. */
-export async function migrateLegacyBackups(legacyRoot, targetRoot) {
+export async function migrateLegacyBackups(
+  legacyRoot: string,
+  targetRoot: string,
+): Promise<string[]> {
   if (path.resolve(legacyRoot) === path.resolve(targetRoot)) return [];
   if (!existsSync(legacyRoot)) return [];
   assertDirectory(legacyRoot);
@@ -137,7 +158,7 @@ export async function migrateLegacyBackups(legacyRoot, targetRoot) {
   for (const name of readdirSync(legacyRoot)) {
     if (!generationPattern.test(name)) continue;
     const source = path.join(legacyRoot, name);
-    let sourceMetadata;
+    let sourceMetadata: BackupMetadata;
     try {
       sourceMetadata = await verifyGeneration(legacyRoot, name);
     } catch {
@@ -187,7 +208,11 @@ export async function migrateLegacyBackups(legacyRoot, targetRoot) {
 }
 
 /** Removes a legacy source only after the caller confirms the copied dump parses. */
-export async function confirmLegacyBackup(legacyRoot, targetRoot, name) {
+export async function confirmLegacyBackup(
+  legacyRoot: string,
+  targetRoot: string,
+  name: string,
+): Promise<void> {
   const sourceMetadata = await verifyGeneration(legacyRoot, name);
   const targetMetadata = await verifyGeneration(targetRoot, name);
   if (targetMetadata.createdAt !== sourceMetadata.createdAt)
@@ -202,7 +227,11 @@ export async function confirmLegacyBackup(legacyRoot, targetRoot, name) {
   rmSync(path.join(legacyRoot, name), { recursive: true });
 }
 
-async function verifyGenerationContents(directory, name) {
+/** Verifies the members and checksum metadata inside one generation. */
+async function verifyGenerationContents(
+  directory: string,
+  name: string,
+): Promise<BackupMetadata> {
   if (!generationPattern.test(name))
     throw new Error("Invalid backup generation name.");
   if (readdirSync(directory).sort().join() !== expectedFiles.join())
@@ -238,9 +267,10 @@ async function verifyGenerationContents(directory, name) {
   }
   if (!lstatSync(path.join(directory, "database.dump")).size)
     throw new Error("Backup is empty.");
-  return metadata;
+  return metadata as BackupMetadata;
 }
 
+/** Runs the requested backup operation using the mounted private roots. */
 async function main() {
   try {
     const root = process.env.OPS_BACKUP_TEST_ROOT || "/backup";
