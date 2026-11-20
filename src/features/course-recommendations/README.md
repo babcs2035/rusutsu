@@ -99,6 +99,6 @@ mise run recommendations:rebuild -- --apply --resort=shiga-kogen-central
 
 ## 検証
 
-`mise run test`、`mise run check`、Webpack本番ビルドを使用する。DB統合テストは `FAVORITES_TEST_DATABASE_URL` がある場合だけ専用ローカルDB `rusutsu_favorites_test_<数字>` で実行する。通常実行ではDBが必要な2件をスキップする。
+`mise run test`、`mise run check`、Webpack本番ビルドを使用する。DB統合テスト（`*.integration.test.ts`）は `mise run test -- --db` で単一の使い捨てテスト DB（`TEST_DATABASE_URL`、未設定なら Docker で自動作成）を使う。CI では `TEST_DATABASE_URL` が必須で、DB テストの skip は許されない。
 
 基準角度の境界値、プロファイルの区間分割・向き変更・登り返し、検索元の基準で候補を測ること、10mと20mの急斜面がほぼ同等になること、同じ平均で構成が違う分布、全線平坦、低いスコアでも候補を返すこと、圧雪状態によらず点数順になること、A/B/C境界を確認する。既存のメインルート・欠損・自己推薦除外・安定した同点順位を維持する。DBでは特徴量の作成・更新・ID移行・旧versionの行の除外、APIのゲスト／ログイン別お気に入りとアカウント分離、旧APIのversion不一致を確認する。キャッシュでは同時取得の共有・期限・エラー後再試行・非メインルートを確認する。
