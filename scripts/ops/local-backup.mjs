@@ -1,9 +1,12 @@
 import { createHash } from "node:crypto";
 import {
   chmodSync,
+  constants,
+  copyFileSync,
   createReadStream,
   existsSync,
   lstatSync,
+  mkdtempSync,
   readdirSync,
   readFileSync,
   renameSync,
@@ -27,6 +30,12 @@ async function hashFile(file) {
   return hash.digest("hex");
 }
 
+function assertDirectory(directory) {
+  const stat = lstatSync(directory);
+  if (!stat.isDirectory() || stat.isSymbolicLink())
+    throw new Error("Invalid backup directory.");
+}
+
 function regular(file) {
   return (
     existsSync(file) &&
@@ -35,15 +44,167 @@ function regular(file) {
   );
 }
 
+/** Verifies a completed generation and returns its metadata. */
 export async function verifyGeneration(root, name) {
   if (!generationPattern.test(name))
     throw new Error("Invalid backup generation name.");
   const directory = path.join(root, name);
+  assertDirectory(directory);
+  return verifyGenerationContents(directory, name);
+}
+
+/** Finalizes a complete dump atomically, verifies it, then applies retention. */
+export async function finalize(root, incomplete, name, completedAt) {
   if (
-    !lstatSync(directory).isDirectory() ||
-    lstatSync(directory).isSymbolicLink()
+    !/^\.incomplete-[A-Za-z0-9]{8}$/.test(incomplete) ||
+    (name !== undefined && !generationPattern.test(name))
   )
-    throw new Error("Invalid backup directory.");
+    throw new Error("Invalid backup path.");
+  const createdAt = completedAt ?? new Date().toISOString();
+  if (!Number.isFinite(Date.parse(createdAt)))
+    throw new Error("Invalid backup completion time.");
+  const suffix = incomplete.slice(".incomplete-".length);
+  const stamp = createdAt.replace(/[-:]/gu, "").replace(/\.\d{3}/u, "");
+  const generation = name ?? `rusutsu-db-${stamp}-${suffix}`;
+  if (!generationPattern.test(generation))
+    throw new Error("Invalid backup generation name.");
+  const directory = path.join(root, incomplete);
+  assertDirectory(directory);
+  for (const file of ["database.dump", "archive.list"]) {
+    if (
+      !regular(path.join(directory, file)) ||
+      !lstatSync(path.join(directory, file)).size
+    )
+      throw new Error("Backup/archive is empty or invalid.");
+    chmodSync(path.join(directory, file), 0o600);
+  }
+  const metadata = {
+    generation,
+    format: "postgresql-custom",
+    storage: "vps-local",
+    createdAt,
+  };
+  writeFileSync(
+    path.join(directory, "metadata.json"),
+    JSON.stringify(metadata),
+    { mode: 0o600 },
+  );
+  const checksums = [];
+  for (const file of ["database.dump", "archive.list", "metadata.json"])
+    checksums.push(`${await hashFile(path.join(directory, file))}  ${file}\n`);
+  writeFileSync(path.join(directory, "SHA256SUMS"), checksums.join(""), {
+    mode: 0o600,
+  });
+  const target = path.join(root, generation);
+  if (existsSync(target)) throw new Error("Backup generation already exists.");
+  renameSync(directory, target);
+  await verifyGeneration(root, generation);
+  await prune(root);
+  return generation;
+}
+
+/** Keeps the newest verified generations and leaves invalid entries for review. */
+export async function prune(root, keep = 7) {
+  if (!Number.isInteger(keep) || keep < 1)
+    throw new Error("Invalid backup retention.");
+  const valid = [];
+  for (const name of readdirSync(root)) {
+    if (!generationPattern.test(name)) continue;
+    try {
+      const metadata = await verifyGeneration(root, name);
+      valid.push({ name, createdAt: Date.parse(metadata.createdAt) });
+    } catch {
+      // Preserve corrupt, incomplete, symlinked, and unrelated paths for review.
+      console.warn("Skipping an invalid backup generation during retention.");
+    }
+  }
+  valid.sort(
+    (left, right) =>
+      right.createdAt - left.createdAt || right.name.localeCompare(left.name),
+  );
+  for (const { name } of valid.slice(keep))
+    rmSync(path.join(root, name), { recursive: true });
+  return valid.slice(0, keep).map(({ name }) => name);
+}
+
+/** Copies verified generations without pruning or deleting their legacy sources. */
+export async function migrateLegacyBackups(legacyRoot, targetRoot) {
+  if (path.resolve(legacyRoot) === path.resolve(targetRoot)) return [];
+  if (!existsSync(legacyRoot)) return [];
+  assertDirectory(legacyRoot);
+  assertDirectory(targetRoot);
+  const migrated = [];
+  for (const name of readdirSync(legacyRoot)) {
+    if (!generationPattern.test(name)) continue;
+    const source = path.join(legacyRoot, name);
+    let sourceMetadata;
+    try {
+      sourceMetadata = await verifyGeneration(legacyRoot, name);
+    } catch {
+      // Keep invalid and incomplete legacy entries untouched for inspection.
+      console.warn("Leaving an invalid legacy backup generation in place.");
+      continue;
+    }
+
+    const target = path.join(targetRoot, name);
+    if (existsSync(target)) {
+      const targetMetadata = await verifyGeneration(targetRoot, name);
+      if (targetMetadata.createdAt !== sourceMetadata.createdAt)
+        throw new Error("Conflicting backup generation exists at target.");
+      for (const file of expectedFiles) {
+        if (
+          (await hashFile(path.join(legacyRoot, name, file))) !==
+          (await hashFile(path.join(targetRoot, name, file)))
+        )
+          throw new Error("Conflicting backup generation exists at target.");
+      }
+      migrated.push(name);
+      continue;
+    }
+
+    const temporary = mkdtempSync(
+      path.join(targetRoot, ".migration-incomplete-"),
+    );
+    try {
+      chmodSync(temporary, 0o700);
+      for (const file of expectedFiles) {
+        copyFileSync(
+          path.join(source, file),
+          path.join(temporary, file),
+          constants.COPYFILE_EXCL,
+        );
+        chmodSync(path.join(temporary, file), 0o600);
+      }
+      await verifyGenerationContents(temporary, name);
+      renameSync(temporary, target);
+      await verifyGeneration(targetRoot, name);
+      migrated.push(name);
+    } finally {
+      if (existsSync(temporary)) rmSync(temporary, { recursive: true });
+    }
+  }
+  return migrated;
+}
+
+/** Removes a legacy source only after the caller confirms the copied dump parses. */
+export async function confirmLegacyBackup(legacyRoot, targetRoot, name) {
+  const sourceMetadata = await verifyGeneration(legacyRoot, name);
+  const targetMetadata = await verifyGeneration(targetRoot, name);
+  if (targetMetadata.createdAt !== sourceMetadata.createdAt)
+    throw new Error("Conflicting backup generation exists at target.");
+  for (const file of expectedFiles) {
+    if (
+      (await hashFile(path.join(legacyRoot, name, file))) !==
+      (await hashFile(path.join(targetRoot, name, file)))
+    )
+      throw new Error("Conflicting backup generation exists at target.");
+  }
+  rmSync(path.join(legacyRoot, name), { recursive: true });
+}
+
+async function verifyGenerationContents(directory, name) {
+  if (!generationPattern.test(name))
+    throw new Error("Invalid backup generation name.");
   if (readdirSync(directory).sort().join() !== expectedFiles.join())
     throw new Error("Incomplete backup generation.");
   for (const file of expectedFiles) {
@@ -56,10 +217,11 @@ export async function verifyGeneration(root, name) {
   if (
     metadata.generation !== name ||
     metadata.format !== "postgresql-custom" ||
-    metadata.storage !== "vps-local"
-  ) {
+    metadata.storage !== "vps-local" ||
+    typeof metadata.createdAt !== "string" ||
+    !Number.isFinite(Date.parse(metadata.createdAt))
+  )
     throw new Error("Invalid backup metadata.");
-  }
   const sums = readFileSync(path.join(directory, "SHA256SUMS"), "utf8")
     .trim()
     .split("\n");
@@ -76,92 +238,46 @@ export async function verifyGeneration(root, name) {
   }
   if (!lstatSync(path.join(directory, "database.dump")).size)
     throw new Error("Backup is empty.");
-}
-
-export async function finalize(root, incomplete, name) {
-  if (
-    !/^\.incomplete-[A-Za-z0-9]{8}$/.test(incomplete) ||
-    !generationPattern.test(name)
-  )
-    throw new Error("Invalid backup path.");
-  const directory = path.join(root, incomplete);
-  if (
-    !lstatSync(directory).isDirectory() ||
-    lstatSync(directory).isSymbolicLink()
-  )
-    throw new Error("Invalid temporary directory.");
-  for (const file of ["database.dump", "archive.list"]) {
-    if (
-      !regular(path.join(directory, file)) ||
-      !lstatSync(path.join(directory, file)).size
-    )
-      throw new Error("Backup/archive is empty or invalid.");
-    chmodSync(path.join(directory, file), 0o600);
-  }
-  const metadata = {
-    generation: name,
-    format: "postgresql-custom",
-    storage: "vps-local",
-    createdAt: new Date().toISOString(),
-  };
-  writeFileSync(
-    path.join(directory, "metadata.json"),
-    JSON.stringify(metadata),
-    { mode: 0o600 },
-  );
-  const checksums = [];
-  for (const file of ["database.dump", "archive.list", "metadata.json"])
-    checksums.push(`${await hashFile(path.join(directory, file))}  ${file}\n`);
-  writeFileSync(path.join(directory, "SHA256SUMS"), checksums.join(""), {
-    mode: 0o600,
-  });
-  const target = path.join(root, name);
-  if (existsSync(target)) throw new Error("Backup generation already exists.");
-  renameSync(directory, target);
-  await verifyGeneration(root, name);
-  await prune(root);
-}
-
-export async function prune(root, keep = 30, days = 7) {
-  if (
-    !Number.isInteger(keep) ||
-    keep < 1 ||
-    !Number.isInteger(days) ||
-    days < 1
-  )
-    throw new Error("Invalid backup retention.");
-  const valid = [];
-  for (const name of readdirSync(root).sort().reverse()) {
-    if (!generationPattern.test(name)) continue;
-    try {
-      await verifyGeneration(root, name);
-      valid.push(name);
-    } catch {
-      // Preserve corrupt, incomplete, symlinked, and unrelated paths for review.
-    }
-  }
-  for (const name of valid.slice(keep)) {
-    const stamp = generationPattern.exec(name)[1];
-    const date = Date.parse(
-      `${stamp.slice(0, 4)}-${stamp.slice(4, 6)}-${stamp.slice(6, 8)}T${stamp.slice(9, 11)}:${stamp.slice(11, 13)}:${stamp.slice(13, 15)}Z`,
-    );
-    if (date < Date.now() - days * 86400000)
-      rmSync(path.join(root, name), { recursive: true });
-  }
+  return metadata;
 }
 
 async function main() {
   try {
-    const root = process.env.OPS_BACKUP_TEST_ROOT || "/operations/backups";
-    if (process.argv[2] === "finalize")
-      await finalize(root, process.argv[3], process.argv[4]);
-    else if (process.argv[2] === "verify-latest") {
-      const newest = readdirSync(root)
-        .filter(name => generationPattern.test(name))
-        .sort()
-        .at(-1);
+    const root = process.env.OPS_BACKUP_TEST_ROOT || "/backup";
+    if (process.argv[2] === "finalize") {
+      const generation = await finalize(root, process.argv[3], process.argv[4]);
+      console.log(generation);
+    } else if (process.argv[2] === "migrate-legacy") {
+      const migrated = await migrateLegacyBackups(
+        process.env.OPS_BACKUP_LEGACY_TEST_ROOT || "/operations/backups",
+        root,
+      );
+      for (const name of migrated) console.log(name);
+    } else if (process.argv[2] === "confirm-legacy") {
+      await confirmLegacyBackup(
+        process.env.OPS_BACKUP_LEGACY_TEST_ROOT || "/operations/backups",
+        root,
+        process.argv[3],
+      );
+    } else if (process.argv[2] === "verify-latest") {
+      const candidates = [];
+      for (const name of readdirSync(root)) {
+        if (!generationPattern.test(name)) continue;
+        try {
+          const metadata = await verifyGeneration(root, name);
+          candidates.push({ name, createdAt: Date.parse(metadata.createdAt) });
+        } catch {
+          // Ignore invalid generations without deleting or restoring them.
+          console.warn("Ignoring an invalid backup generation during lookup.");
+        }
+      }
+      candidates.sort(
+        (left, right) =>
+          right.createdAt - left.createdAt ||
+          right.name.localeCompare(left.name),
+      );
+      const newest = candidates[0]?.name;
       if (!newest) throw new Error("No completed local backup exists.");
-      await verifyGeneration(root, newest);
       console.log(newest);
     } else throw new Error("Unknown local backup operation.");
   } catch {

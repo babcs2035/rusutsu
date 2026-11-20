@@ -11,6 +11,7 @@ cleanup() {
 }
 trap cleanup EXIT
 load_runtime_environment
+ops_node local-backup.mjs migrate-legacy
 generation="$(ops_node local-backup.mjs verify-latest)"
 [[ "$generation" =~ ^rusutsu-db-[0-9]{8}T[0-9]{6}Z-[A-Za-z0-9]{8}$ ]] || ops_die 'Invalid verified backup generation.'
 container_id="$(docker run -d --network none \

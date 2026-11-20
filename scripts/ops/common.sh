@@ -20,13 +20,28 @@ initialize_operations() {
   mkdir -p "$OPS_STATE_DIR"
   OPS_STATE_DIR="$(cd "$OPS_STATE_DIR" && pwd -P)"
   local ancestor="$OPS_STATE_DIR"
+  local git_root=''
   while [[ "$ancestor" != / ]]; do
-    [[ ! -e "$ancestor/.git" ]] || ops_die 'Operations data must be outside all Git worktrees.'
+    if [[ -f "$ancestor/.git" || -e "$ancestor/.git/HEAD" ]]; then
+      git_root="$ancestor"
+      break
+    fi
     ancestor="${ancestor%/*}"
     [[ -n "$ancestor" ]] || ancestor=/
   done
+  if [[ -n "$git_root" ]]; then
+    command -v git >/dev/null 2>&1 || ops_die 'Git is required to verify ignored operations data inside a worktree.'
+    local relative_state="${OPS_STATE_DIR#"$git_root"/}"
+    [[ -n "$relative_state" && "$relative_state" != "$OPS_STATE_DIR" ]] || ops_die 'Operations data must not be the Git worktree root.'
+    git -C "$git_root" check-ignore --quiet -- "$relative_state" \
+      || ops_die 'Operations data inside a Git worktree must be explicitly ignored.'
+  fi
   chmod 700 "$OPS_STATE_DIR"
-  BACKUP_DIR="$OPS_STATE_DIR/backups"
+  : "${DEPLOY_TARGET:?DEPLOY_TARGET must identify the deployed project directory.}"
+  [[ "$DEPLOY_TARGET" == /* && "$DEPLOY_TARGET" != / ]] || ops_die 'DEPLOY_TARGET must be an absolute project directory.'
+  [[ -d "$DEPLOY_TARGET" && ! -L "$DEPLOY_TARGET" ]] || ops_die 'DEPLOY_TARGET must be an existing non-symlink directory.'
+  DEPLOY_TARGET="$(cd -- "$DEPLOY_TARGET" && pwd -P)"
+  BACKUP_DIR="$DEPLOY_TARGET/backups"
   [[ ! -L "$BACKUP_DIR" ]] || ops_die 'Backup directory must not be a symlink.'
   mkdir -p "$BACKUP_DIR"
   chmod 700 "$BACKUP_DIR"
@@ -38,6 +53,7 @@ ops_node() {
   docker run --rm -i --network none --user "$(id -u):$(id -g)" \
     --mount "type=bind,source=$OPS_SCRIPTS_DIR,target=/ops,readonly" \
     --mount "type=bind,source=$OPS_STATE_DIR,target=/operations" \
+    --mount "type=bind,source=$BACKUP_DIR,target=/backup" \
     --workdir /ops --env RUSUTSU_SETTINGS_B64 --entrypoint node "$OPS_IMAGE" "$@"
 }
 

@@ -5,6 +5,7 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
+  renameSync,
   rmSync,
   statSync,
   symlinkSync,
@@ -13,13 +14,19 @@ import {
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { finalize, prune, verifyGeneration } from "./local-backup.mjs";
+import {
+  confirmLegacyBackup,
+  finalize,
+  migrateLegacyBackups,
+  prune,
+  verifyGeneration,
+} from "./local-backup.mjs";
 
 function fixture() {
   const root = mkdtempSync(path.join(os.tmpdir(), "rusutsu-local-backup-"));
   return {
     root,
-    async create(stamp: string, suffix: string) {
+    async create(stamp: string, suffix: string, completionTime?: string) {
       const temporary = `.incomplete-${suffix}`;
       mkdirSync(path.join(root, temporary), { mode: 0o700 });
       writeFileSync(
@@ -31,7 +38,12 @@ function fixture() {
         "archive fixture",
       );
       const name = `rusutsu-db-${stamp}-${suffix}`;
-      await finalize(root, temporary, name);
+      const completedAt =
+        completionTime ??
+        new Date(
+          `${stamp.slice(0, 4)}-${stamp.slice(4, 6)}-${stamp.slice(6, 8)}T${stamp.slice(9, 11)}:${stamp.slice(11, 13)}:${stamp.slice(13, 15)}Z`,
+        ).toISOString();
+      await finalize(root, temporary, name, completedAt);
       return name;
     },
     clean() {
@@ -58,26 +70,168 @@ test("completed local backup records checksums and restricts file permissions", 
   }
 });
 
-test("retention preserves minimum count, recent generations, corrupt files and unrelated paths", async () => {
+test("retention keeps the seven newest verified generations by completion time", async () => {
   const f = fixture();
   try {
-    const old = await f.create("20200101T000000Z", "aaaaaaaa");
-    const newer = await f.create("20210101T000000Z", "bbbbbbbb");
-    const corrupt = await f.create("20200102T000000Z", "cccccccc");
+    const generations = [];
+    for (let index = 1; index <= 9; index++) {
+      generations.push(
+        await f.create(`20260${index}01T000000Z`, `0000000${index}`),
+      );
+    }
+    const corrupt = "rusutsu-db-20261201T000000Z-cccccccc";
+    mkdirSync(path.join(f.root, corrupt), { mode: 0o700 });
     writeFileSync(path.join(f.root, corrupt, "database.dump"), "corrupt");
     mkdirSync(path.join(f.root, "unrelated"));
     mkdirSync(path.join(f.root, ".incomplete-dddddddd"));
-    await prune(f.root, 1, 7);
-    assert.ok(!readdirSync(f.root).includes(old));
-    for (const name of [newer, corrupt, "unrelated", ".incomplete-dddddddd"])
-      assert.ok(readdirSync(f.root).includes(name));
-    const recent = await f.create("20990101T000000Z", "eeeeeeee");
-    const recent2 = await f.create("20990102T000000Z", "ffffffff");
-    await prune(f.root, 1, 7);
-    assert.ok(readdirSync(f.root).includes(recent));
-    assert.ok(readdirSync(f.root).includes(recent2));
+    const retained = await prune(f.root);
+    assert.deepEqual(retained, generations.slice(-7).reverse());
+    const entries = readdirSync(f.root);
+    assert.ok(!entries.includes(generations[0]));
+    assert.ok(!entries.includes(generations[1]));
+    assert.ok(entries.includes(corrupt));
+    assert.ok(entries.includes("unrelated"));
+    assert.ok(entries.includes(".incomplete-dddddddd"));
   } finally {
     f.clean();
+  }
+});
+
+test("retention orders generations by completion metadata, not their names", async () => {
+  const f = fixture();
+  try {
+    const laterNamedButEarlier = await f.create(
+      "20260930T000000Z",
+      "aaaaaaaa",
+      "2026-09-01T00:00:00.000Z",
+    );
+    const earlierNamedButLater = await f.create(
+      "20260901T000000Z",
+      "bbbbbbbb",
+      "2026-09-30T00:00:00.000Z",
+    );
+    assert.deepEqual(await prune(f.root, 1), [earlierNamedButLater]);
+    assert.ok(!readdirSync(f.root).includes(laterNamedButEarlier));
+    assert.ok(readdirSync(f.root).includes(earlierNamedButLater));
+  } finally {
+    f.clean();
+  }
+});
+
+test("generated generation timestamp is taken from successful finalization", async () => {
+  const f = fixture();
+  try {
+    const temporary = ".incomplete-aaaaaaaa";
+    mkdirSync(path.join(f.root, temporary), { mode: 0o700 });
+    writeFileSync(path.join(f.root, temporary, "database.dump"), "PGDMP");
+    writeFileSync(path.join(f.root, temporary, "archive.list"), "archive");
+    const name = await finalize(
+      f.root,
+      temporary,
+      undefined,
+      "2026-09-05T12:34:56.789Z",
+    );
+    assert.equal(name, "rusutsu-db-20260905T123456Z-aaaaaaaa");
+    const metadata = await verifyGeneration(f.root, name);
+    assert.equal(metadata.createdAt, "2026-09-05T12:34:56.789Z");
+  } finally {
+    f.clean();
+  }
+});
+
+test("failed finalization does not prune completed generations", async () => {
+  const f = fixture();
+  try {
+    const prior = await f.create("20260905T000000Z", "aaaaaaaa");
+    const temporary = ".incomplete-bbbbbbbb";
+    mkdirSync(path.join(f.root, temporary), { mode: 0o700 });
+    writeFileSync(path.join(f.root, temporary, "database.dump"), "PGDMP");
+    await assert.rejects(
+      finalize(f.root, temporary, "rusutsu-db-20260906T000000Z-bbbbbbbb"),
+      /invalid/i,
+    );
+    assert.ok(readdirSync(f.root).includes(prior));
+    assert.ok(readdirSync(f.root).includes(temporary));
+  } finally {
+    f.clean();
+  }
+});
+
+test("legacy migration copies and verifies before source removal confirmation", async () => {
+  const source = fixture();
+  const target = fixture();
+  try {
+    const generation = await source.create("20260905T000000Z", "aaaaaaaa");
+    const corrupt = await source.create("20260904T000000Z", "bbbbbbbb");
+    writeFileSync(path.join(source.root, corrupt, "database.dump"), "corrupt");
+    mkdirSync(path.join(source.root, "unrelated"));
+
+    assert.deepEqual(await migrateLegacyBackups(source.root, target.root), [
+      generation,
+    ]);
+    await verifyGeneration(target.root, generation);
+    assert.ok(readdirSync(source.root).includes(generation));
+    assert.ok(readdirSync(source.root).includes(corrupt));
+    assert.ok(readdirSync(source.root).includes("unrelated"));
+    assert.deepEqual(await migrateLegacyBackups(source.root, target.root), [
+      generation,
+    ]);
+    await confirmLegacyBackup(source.root, target.root, generation);
+    assert.ok(!readdirSync(source.root).includes(generation));
+  } finally {
+    source.clean();
+    target.clean();
+  }
+});
+
+test("legacy migration leaves a conflicting source generation untouched", async () => {
+  const source = fixture();
+  const target = fixture();
+  try {
+    const generation = await source.create("20260905T000000Z", "aaaaaaaa");
+    await target.create("20260905T000000Z", "aaaaaaaa");
+    writeFileSync(
+      path.join(target.root, generation, "database.dump"),
+      "different dump",
+    );
+    await assert.rejects(
+      migrateLegacyBackups(source.root, target.root),
+      /checksum|conflicting/i,
+    );
+    assert.ok(readdirSync(source.root).includes(generation));
+  } finally {
+    source.clean();
+    target.clean();
+  }
+});
+
+test("legacy migration does not prune until a new backup is finalized", async () => {
+  const source = fixture();
+  const target = fixture();
+  const individual = [];
+  try {
+    const generations = [];
+    for (let index = 1; index <= 8; index++) {
+      const one = fixture();
+      individual.push(one);
+      const name = await one.create(
+        `20260${index}01T000000Z`,
+        `0000000${index}`,
+      );
+      generations.push(name);
+      renameSync(path.join(one.root, name), path.join(source.root, name));
+    }
+
+    assert.equal(
+      (await migrateLegacyBackups(source.root, target.root)).length,
+      8,
+    );
+    const copied = readdirSync(target.root).sort();
+    assert.deepEqual(copied, generations.sort());
+  } finally {
+    source.clean();
+    target.clean();
+    for (const one of individual) one.clean();
   }
 });
 
