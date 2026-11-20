@@ -3,6 +3,7 @@ import cron from "node-cron";
 import { z } from "zod";
 import { usesRemoteDataApi } from "@/lib/internalDataApiClient";
 import { prisma, withPostgresAdvisoryLock } from "@/lib/prisma";
+import { boundResponseBody } from "@/server/boundedResponse";
 import { privateModerationEndpoint } from "./moderationEndpoint";
 
 export const moderationResponseSchema = z.object({
@@ -16,6 +17,7 @@ export const moderationResponseSchema = z.object({
     )
     .min(1),
 });
+const MAX_MODERATION_RESPONSE_BYTES = 1024 * 1024;
 
 // Never touches users or account permissions. Administrative actions also
 // increment versions, so an in-flight AI decision cannot override a review.
@@ -124,8 +126,15 @@ export async function drainModerationJobs() {
             signal: AbortSignal.timeout(30_000),
           },
         );
-        if (!response.ok) throw new Error(`Moderation HTTP ${response.status}`);
-        const checked = moderationResponseSchema.parse(await response.json());
+        if (!response.ok || !response.body) {
+          await response.body?.cancel();
+          throw new Error(`Moderation HTTP ${response.status}`);
+        }
+        const checked = moderationResponseSchema.parse(
+          await new Response(
+            boundResponseBody(response.body, MAX_MODERATION_RESPONSE_BYTES),
+          ).json(),
+        );
         await prisma.$transaction(async tx => {
           const active = await tx.communityModerationJob.findUnique({
             where: { id: job.id },

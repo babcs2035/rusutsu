@@ -10,6 +10,11 @@ import { prisma } from "@/lib/prisma";
 import { consumeWriteLimit } from "@/server/community/rateLimit";
 import { RequestBodyError, readRequestBytes } from "@/server/readRequestBody";
 import { analyzeUpload } from "./analyzeUpload";
+import { MAX_SAVED_TRACKS, saveAnalyzedTrack } from "./repository";
+
+const historyFull = {
+  error: "保存できる履歴は500件までです。不要な履歴を削除してください。",
+};
 
 const dto = (row: {
   id: string;
@@ -59,7 +64,7 @@ export async function handleSkiTracks(
       const rows = await prisma.skiTrackImport.findMany({
         where: { userId },
         orderBy: [{ recordedAt: "desc" }, { id: "desc" }],
-        take: 500,
+        take: MAX_SAVED_TRACKS,
       });
       return respond({ tracks: rows.map(dto) });
     }
@@ -100,27 +105,17 @@ export async function handleSkiTracks(
       where: { userId_fileHash: { userId, fileHash } },
     });
     if (existing) return respond({ track: dto(existing), duplicate: true });
-    if ((await prisma.skiTrackImport.count({ where: { userId } })) >= 500)
-      return respond(
-        {
-          error:
-            "保存できる履歴は500件までです。不要な履歴を削除してください。",
-        },
-        400,
-      );
+    if (
+      (await prisma.skiTrackImport.count({ where: { userId } })) >=
+      MAX_SAVED_TRACKS
+    )
+      return respond(historyFull, 400);
     const analysis = await analyzeUpload(parseSkiz(bytes));
-    const row = await prisma.skiTrackImport.upsert({
-      where: { userId_fileHash: { userId, fileHash } },
-      create: {
-        userId,
-        fileHash,
-        fileName: name,
-        recordedAt: new Date(analysis.start),
-        analysis: analysis as unknown as Prisma.InputJsonValue,
-      },
-      update: {},
-    });
-    return respond({ track: dto(row), duplicate: false });
+    const result = await saveAnalyzedTrack(userId, fileHash, name, analysis);
+    if (result.status === "missing")
+      return respond({ error: "ログインしてからご利用ください。" }, 401);
+    if (result.status === "full") return respond(historyFull, 400);
+    return respond({ track: dto(result.row), duplicate: result.duplicate });
   } catch (error) {
     if (error instanceof SkizFormatError)
       return respond(
