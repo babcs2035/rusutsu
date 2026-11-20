@@ -47,10 +47,16 @@ export function createKeywordTokenCache(
 }
 
 const getKeywordTokens = createKeywordTokenCache();
+const resortKeywordHaystacks = new WeakMap<MapSkiResort, string>();
 
 const matchesKeyword = (resort: MapSkiResort, tokens: string[]) => {
   if (tokens.length === 0) return true;
-  const haystack = buildKeywordHaystack(resort);
+  // 一覧の DTO は読込時のスナップショットなので，同じ施設を検索する間は再利用できる．
+  let haystack = resortKeywordHaystacks.get(resort);
+  if (haystack === undefined) {
+    haystack = buildKeywordHaystack(resort);
+    resortKeywordHaystacks.set(resort, haystack);
+  }
   return tokens.every(token => haystack.includes(token));
 };
 
