@@ -20,6 +20,8 @@ type HomeCompareContextValue = {
   openList: (list: CompareListSummary) => void;
   /** 比較をリストへ保存したあと、そのリストを開いている状態にする */
   onListSaved: (list: CompareListSummary) => void;
+  /** お気に入り比較の編集画面で保存したあと、比較中の並びをそろえる */
+  onFavoritesSaved: (ids: string[]) => void;
 };
 
 export const HomeCompareContext = createContext<HomeCompareContextValue | null>(

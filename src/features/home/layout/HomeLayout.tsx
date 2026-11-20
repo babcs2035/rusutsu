@@ -35,6 +35,11 @@ import {
   SimultaneousToggle,
   useDisplayedResortMapData,
 } from "@/features/resort-detail/components/SimultaneousToggle";
+import {
+  type DetailHeaderActions,
+  DetailHeaderActionsContext,
+  useDetailHeaderActions,
+} from "@/features/resort-detail/detailHeaderActions";
 import { SkiResortDetailView } from "@/features/resort-detail/SkiResortDetailView";
 import { cn } from "@/lib/utils";
 import { AnimatedPanel } from "@/shared/components/AnimatedPanel";
@@ -52,6 +57,7 @@ import type {
   NullableSkiResortDetail,
   SkiResortDetail,
 } from "@/types/skiResorts";
+import { useHomeCompare } from "../compareContext";
 import {
   ComparisonActions,
   useHasComparisonActions,
@@ -426,331 +432,342 @@ export const HomeLayout = ({
   const mobileSearchChromeHeight = shouldShowMobileComparisonActions
     ? `calc(${MOBILE_SEARCH_TOP_BAR_HEIGHT} + 2.25rem)`
     : MOBILE_SEARCH_TOP_BAR_HEIGHT;
+  // 比較リスト・お気に入りの比較から開いた詳細では「比較」を出さない。
+  // お気に入りの比較から開いたときは、ハートも出さない（編集は比較画面で行う）
+  const compareSourceKind = useHomeCompare()?.source.kind ?? "selection";
+  const detailHeaderActions: DetailHeaderActions = {
+    compare: !isCompareBehindDetail || compareSourceKind === "selection",
+    favorite: !isCompareBehindDetail || compareSourceKind !== "favorites",
+  };
 
   return (
-    <main
-      onPointerDownCapture={onMainPointerDownCapture}
-      className="fixed inset-0 min-h-0 w-screen overflow-hidden flex flex-col md:flex-row bg-gray-100"
-    >
-      <div
-        className={cn(
-          "relative flex h-full w-full flex-col bg-white",
-          // 詳細で地図を広げているときは、検索パネルと詳細パネルの上に出す
-          isDesktopDetailMapExpanded && "md:fixed md:inset-0 md:z-[400]",
-        )}
+    <DetailHeaderActionsContext.Provider value={detailHeaderActions}>
+      <main
+        onPointerDownCapture={onMainPointerDownCapture}
+        className="fixed inset-0 min-h-0 w-screen overflow-hidden flex flex-col md:flex-row bg-gray-100"
       >
-        {/*
+        <div
+          className={cn(
+            "relative flex h-full w-full flex-col bg-white",
+            // 詳細で地図を広げているときは、検索パネルと詳細パネルの上に出す
+            isDesktopDetailMapExpanded && "md:fixed md:inset-0 md:z-[400]",
+          )}
+        >
+          {/*
           検索画面では検索欄と比較チップを地図に重ねる。
           詳細・比較画面ではこの検索用の操作を出さない。
         */}
-        {shouldShowMobileTopChrome && shouldShowMobileSearchButton && (
-          <div
-            data-map-top-controls="true"
-            className="pointer-events-none fixed top-0 right-0 left-0 z-[150] hide-desktop flex-col"
-          >
-            <MobileSearchHeader
-              activeTab={mobileContentTab}
-              keyword={filters.keyword}
-              onKeywordClear={onMobileSearchButtonKeywordClear}
-              onOpenSearch={onOpenMobileFilterOverlay}
-              onPointerDown={onMobileSearchButtonPointerDown}
-              onTabChange={onMobileContentTabChange}
-            />
-            <ComparisonActions
-              compareCount={selectedCompareIds.length}
-              resultCount={sortedResorts.length}
-              onOpenCompare={onOpenCompare}
-              onClearCompare={onClearCompare}
-              onCompareFavorites={onCompareFavorites}
-            />
-          </div>
-        )}
-        {/*
+          {shouldShowMobileTopChrome && shouldShowMobileSearchButton && (
+            <div
+              data-map-top-controls="true"
+              className="pointer-events-none fixed top-0 right-0 left-0 z-[150] hide-desktop flex-col"
+            >
+              <MobileSearchHeader
+                activeTab={mobileContentTab}
+                keyword={filters.keyword}
+                onKeywordClear={onMobileSearchButtonKeywordClear}
+                onOpenSearch={onOpenMobileFilterOverlay}
+                onPointerDown={onMobileSearchButtonPointerDown}
+                onTabChange={onMobileContentTabChange}
+              />
+              <ComparisonActions
+                compareCount={selectedCompareIds.length}
+                resultCount={sortedResorts.length}
+                onOpenCompare={onOpenCompare}
+                onClearCompare={onClearCompare}
+                onCompareFavorites={onCompareFavorites}
+              />
+            </div>
+          )}
+          {/*
           地図は検索欄の背後まで描画する。リストだけは検索欄と比較チップの
           高さを空け、先頭のスキー場が固定操作に隠れないようにする。
         */}
-        <div
-          className="flex-1 min-h-0 flex flex-col"
-          style={
-            !isSidePanelLayout &&
-            shouldShowMobileSearchButton &&
-            !shouldRenderMap
-              ? { paddingTop: mobileSearchChromeHeight }
-              : undefined
-          }
-        >
-          {shouldShowMobileContextHeader && (
-            <MobileContextHeader
-              detailTitle={
-                selectedResortData?.nameJa ??
-                selectedResortSummary?.nameJa ??
-                "読み込み中"
-              }
-              detailNameRuby={
-                selectedResortData?.nameRuby ??
-                selectedResortSummary?.nameRuby ??
-                null
-              }
-              detailFormerNames={
-                selectedResortData?.formerNames ??
-                selectedResortSummary?.formerNames ??
-                []
-              }
-              detailPrefecture={
-                selectedResortData?.prefecture ??
-                selectedResortSummary?.prefecture ??
-                ""
-              }
-              detailTown={
-                selectedResortData?.town ?? selectedResortSummary?.town ?? ""
-              }
-              detailYukiMagi={Boolean(
-                selectedResortData?.yukiMagi ??
-                  selectedResortSummary?.yukiMagiId,
-              )}
-              detailHasEvCharger={Boolean(
-                selectedResortData?.evChargers?.length ??
-                  selectedResortSummary?.evChargerSummary,
-              )}
-              detailFeatures={
-                selectedResortData
-                  ? resortFeatureDataOf(selectedResortData)
-                  : null
-              }
-              detailResortId={selectedResortId}
-              isDetailCompareSelected={
-                selectedResortId
-                  ? selectedCompareIdSet.has(selectedResortId)
-                  : false
-              }
-              onCloseDetail={onCloseDetail}
-              onToggleCompare={onToggleCompare}
-            />
-          )}
           <div
-            className="flex-1 min-h-0 relative"
+            className="flex-1 min-h-0 flex flex-col"
             style={
-              !isSidePanelLayout && shouldShowMobileSearchButton
-                ? ({
-                    "--mobile-map-top-offset": mobileSearchChromeHeight,
-                  } as CSSProperties)
+              !isSidePanelLayout &&
+              shouldShowMobileSearchButton &&
+              !shouldRenderMap
+                ? { paddingTop: mobileSearchChromeHeight }
                 : undefined
             }
           >
-            {isSidePanelLayout &&
-              Boolean(selectedResortId) &&
-              !isCompareOpen && (
-                <Button
-                  type="button"
-                  aria-label={
-                    isDesktopMapExpanded ? "地図を元に戻す" : "地図を拡大"
-                  }
-                  onClick={() => setIsDesktopMapExpanded(current => !current)}
-                  className="absolute top-3 left-3 z-[90] h-10 w-10 min-w-10 rounded-md border border-gray-200 bg-white p-0 text-gray-700 shadow-sm hover:bg-gray-50 hover:text-gray-900 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10"
-                >
-                  {isDesktopMapExpanded ? (
-                    <Minimize2 size={17} strokeWidth={2.5} />
-                  ) : (
-                    <Maximize2 size={17} strokeWidth={2.5} />
-                  )}
-                </Button>
-              )}
-            {renderMainMap && (
-              // スマホで詳細・比較・検索を開いている間も地図は破棄せず隠す。
-              // 閉じたときに地図を作り直さず、前の画面をすぐ出すため。
-              <div
-                className={
-                  shouldRenderMap
-                    ? "absolute inset-0"
-                    : "invisible pointer-events-none absolute inset-0"
+            {shouldShowMobileContextHeader && (
+              <MobileContextHeader
+                detailTitle={
+                  selectedResortData?.nameJa ??
+                  selectedResortSummary?.nameJa ??
+                  "読み込み中"
                 }
-                aria-hidden={!shouldRenderMap}
-                inert={!shouldRenderMap}
-              >
-                <DynamicMap {...mainMapProps} />
-              </div>
+                detailNameRuby={
+                  selectedResortData?.nameRuby ??
+                  selectedResortSummary?.nameRuby ??
+                  null
+                }
+                detailFormerNames={
+                  selectedResortData?.formerNames ??
+                  selectedResortSummary?.formerNames ??
+                  []
+                }
+                detailPrefecture={
+                  selectedResortData?.prefecture ??
+                  selectedResortSummary?.prefecture ??
+                  ""
+                }
+                detailTown={
+                  selectedResortData?.town ?? selectedResortSummary?.town ?? ""
+                }
+                detailYukiMagi={Boolean(
+                  selectedResortData?.yukiMagi ??
+                    selectedResortSummary?.yukiMagiId,
+                )}
+                detailHasEvCharger={Boolean(
+                  selectedResortData?.evChargers?.length ??
+                    selectedResortSummary?.evChargerSummary,
+                )}
+                detailFeatures={
+                  selectedResortData
+                    ? resortFeatureDataOf(selectedResortData)
+                    : null
+                }
+                detailResortId={selectedResortId}
+                isDetailCompareSelected={
+                  selectedResortId
+                    ? selectedCompareIdSet.has(selectedResortId)
+                    : false
+                }
+                onCloseDetail={onCloseDetail}
+                onToggleCompare={onToggleCompare}
+              />
             )}
-            {!isSidePanelLayout &&
-              (isCompareBehindDetail ||
-                isListBehindDetail ||
-                (!shouldRenderMap &&
-                  !selectedResortId &&
-                  shouldRenderMobileListSheet)) && (
-                // 比較・リストから詳細を開いている間も破棄せず隠す。
-                // 詳細を閉じたときに、タブ・開閉・スクロール・地図をそのまま出すため
+            <div
+              className="flex-1 min-h-0 relative"
+              style={
+                !isSidePanelLayout && shouldShowMobileSearchButton
+                  ? ({
+                      "--mobile-map-top-offset": mobileSearchChromeHeight,
+                    } as CSSProperties)
+                  : undefined
+              }
+            >
+              {isSidePanelLayout &&
+                Boolean(selectedResortId) &&
+                !isCompareOpen && (
+                  <Button
+                    type="button"
+                    aria-label={
+                      isDesktopMapExpanded ? "地図を元に戻す" : "地図を拡大"
+                    }
+                    onClick={() => setIsDesktopMapExpanded(current => !current)}
+                    className="absolute top-3 left-3 z-[90] h-10 w-10 min-w-10 rounded-md border border-gray-200 bg-white p-0 text-gray-700 shadow-sm hover:bg-gray-50 hover:text-gray-900 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10"
+                  >
+                    {isDesktopMapExpanded ? (
+                      <Minimize2 size={17} strokeWidth={2.5} />
+                    ) : (
+                      <Maximize2 size={17} strokeWidth={2.5} />
+                    )}
+                  </Button>
+                )}
+              {renderMainMap && (
+                // スマホで詳細・比較・検索を開いている間も地図は破棄せず隠す。
+                // 閉じたときに地図を作り直さず、前の画面をすぐ出すため。
                 <div
                   className={
-                    isCompareBehindDetail || isListBehindDetail
-                      ? "invisible pointer-events-none absolute inset-0"
-                      : "absolute inset-0"
+                    shouldRenderMap
+                      ? "absolute inset-0"
+                      : "invisible pointer-events-none absolute inset-0"
                   }
-                  aria-hidden={isCompareBehindDetail || isListBehindDetail}
-                  inert={isCompareBehindDetail || isListBehindDetail}
+                  aria-hidden={!shouldRenderMap}
+                  inert={!shouldRenderMap}
                 >
-                  <MobileResultsSheet
-                    DynamicMap={DynamicMap}
-                    mapResorts={initialResorts}
-                    compareResorts={compareResortData}
-                    filteredResorts={sortedResorts}
-                    sortControls={sortControls}
-                    isCompareLoading={isCompareLoading}
-                    isCompareOpen={isCompareOpen || isCompareBehindDetail}
-                    onCompareMapResortsNeeded={onCompareMapResortsNeeded}
-                    listSheetContentRef={listSheetContentRef}
-                    listSheetSnapPoint={listSheetSnapPoint}
-                    snapPoints={mobileListSheetSnapPoints}
-                    selectedCompareIdSet={selectedCompareIdSet}
-                    liftTicketInput={liftTicketInput}
-                    featureLines={{
-                      yukiMagi: filters.yukiMagi,
-                      evCharger: filters.evCharger,
-                    }}
-                    showResultCount={!shouldShowMobileComparisonActions}
-                    onCloseCompare={onCloseCompare}
-                    onLiftTicketInputChange={changeLiftTicketInput}
-                    onHoverResortChange={onSetHoveredResortId}
-                    onOpenChange={open => {
-                      onSetListSheetOpen(open && mobileContentTab === "info");
-                      if (!open && isCompareOpen) {
-                        onCloseCompare();
-                      }
-                    }}
-                    onSelectResort={onSelectResort}
-                    onSetSnapPoint={onSetListSheetSnapPoint}
-                    onToggleCompare={onToggleCompare}
+                  <DynamicMap {...mainMapProps} />
+                </div>
+              )}
+              {!isSidePanelLayout &&
+                (isCompareBehindDetail ||
+                  isListBehindDetail ||
+                  (!shouldRenderMap &&
+                    !selectedResortId &&
+                    shouldRenderMobileListSheet)) && (
+                  // 比較・リストから詳細を開いている間も破棄せず隠す。
+                  // 詳細を閉じたときに、タブ・開閉・スクロール・地図をそのまま出すため
+                  <div
+                    className={
+                      isCompareBehindDetail || isListBehindDetail
+                        ? "invisible pointer-events-none absolute inset-0"
+                        : "absolute inset-0"
+                    }
+                    aria-hidden={isCompareBehindDetail || isListBehindDetail}
+                    inert={isCompareBehindDetail || isListBehindDetail}
+                  >
+                    <MobileResultsSheet
+                      DynamicMap={DynamicMap}
+                      mapResorts={initialResorts}
+                      compareResorts={compareResortData}
+                      filteredResorts={sortedResorts}
+                      sortControls={sortControls}
+                      isCompareLoading={isCompareLoading}
+                      isCompareOpen={isCompareOpen || isCompareBehindDetail}
+                      onCompareMapResortsNeeded={onCompareMapResortsNeeded}
+                      listSheetContentRef={listSheetContentRef}
+                      listSheetSnapPoint={listSheetSnapPoint}
+                      snapPoints={mobileListSheetSnapPoints}
+                      selectedCompareIdSet={selectedCompareIdSet}
+                      liftTicketInput={liftTicketInput}
+                      featureLines={{
+                        yukiMagi: filters.yukiMagi,
+                        evCharger: filters.evCharger,
+                      }}
+                      showResultCount={!shouldShowMobileComparisonActions}
+                      onCloseCompare={onCloseCompare}
+                      onLiftTicketInputChange={changeLiftTicketInput}
+                      onHoverResortChange={onSetHoveredResortId}
+                      onOpenChange={open => {
+                        onSetListSheetOpen(open && mobileContentTab === "info");
+                        if (!open && isCompareOpen) {
+                          onCloseCompare();
+                        }
+                      }}
+                      onSelectResort={onSelectResort}
+                      onSetSnapPoint={onSetListSheetSnapPoint}
+                      onToggleCompare={onToggleCompare}
+                    />
+                  </div>
+                )}
+              {!shouldRenderMap && selectedResortId && (
+                <SkiResortDetailView
+                  DynamicMap={DynamicMap}
+                  mapResorts={initialResorts}
+                  resortData={selectedResortData}
+                  resortSummary={selectedResortSummary}
+                  isLoading={isPending}
+                  isCompareSelected={selectedCompareIdSet.has(selectedResortId)}
+                  onToggleCompare={onToggleCompare}
+                  selectedFinalizedFeature={selectedFinalizedFeature}
+                  selectedElevationProfilePoint={selectedElevationProfilePoint}
+                  onSelectedFinalizedFeatureChange={
+                    onSelectedFinalizedFeatureChange
+                  }
+                  onSelectedElevationProfilePointChange={
+                    onSelectedElevationProfilePointChange
+                  }
+                  onClose={onCloseDetail}
+                  onSelectResort={onSelectResort}
+                  mobileContentTab="info"
+                  mobilePresentation="inline"
+                  hideMobileInfoSection
+                  liftTicketInput={filters.liftTicket ?? undefined}
+                />
+              )}
+              {shouldShowMobileSearchScreen && (
+                <div className="absolute inset-0 z-[200] md:hidden">
+                  <MobileSearchOverlay
+                    filters={mobileDraftFilters}
+                    resorts={initialResorts}
+                    filteredResortCount={mobileDraftFilteredResortCount}
+                    isOpen={isMobileFilterOverlayOpen}
+                    isSidePanelLayout={isSidePanelLayout}
+                    overlayRef={mobileFilterOverlayRef}
+                    inputRef={mobileSearchPanelInputRef}
+                    scrollRef={mobileSearchFilterScrollRef}
+                    filterBottomPadding={mobileSearchFilterBottomPadding}
+                    hasChanges={mobileDraftHasChanges}
+                    onClose={onCloseMobileFilterOverlay}
+                    onFilterAreaPointerDown={onMobileFilterAreaPointerDown}
+                    onFilterChange={onMobileFilterChange}
+                    onInputBlur={onMobileSearchFilterInputBlur}
+                    onInputFocus={onMobileSearchFilterInputFocus}
+                    onKeywordChange={onMobileKeywordChange}
+                    onKeywordClear={onMobileKeywordClear}
+                    onSearch={onMobileSearch}
+                    onSubmit={onMobileSearchSubmit}
                   />
                 </div>
               )}
-            {!shouldRenderMap && selectedResortId && (
-              <SkiResortDetailView
-                DynamicMap={DynamicMap}
-                mapResorts={initialResorts}
-                resortData={selectedResortData}
-                resortSummary={selectedResortSummary}
-                isLoading={isPending}
-                isCompareSelected={selectedCompareIdSet.has(selectedResortId)}
-                onToggleCompare={onToggleCompare}
-                selectedFinalizedFeature={selectedFinalizedFeature}
-                selectedElevationProfilePoint={selectedElevationProfilePoint}
-                onSelectedFinalizedFeatureChange={
-                  onSelectedFinalizedFeatureChange
-                }
-                onSelectedElevationProfilePointChange={
-                  onSelectedElevationProfilePointChange
-                }
-                onClose={onCloseDetail}
-                onSelectResort={onSelectResort}
-                mobileContentTab="info"
-                mobilePresentation="inline"
-                hideMobileInfoSection
-                liftTicketInput={filters.liftTicket ?? undefined}
-              />
-            )}
-            {shouldShowMobileSearchScreen && (
-              <div className="absolute inset-0 z-[200] md:hidden">
-                <MobileSearchOverlay
-                  filters={mobileDraftFilters}
-                  resorts={initialResorts}
-                  filteredResortCount={mobileDraftFilteredResortCount}
-                  isOpen={isMobileFilterOverlayOpen}
-                  isSidePanelLayout={isSidePanelLayout}
-                  overlayRef={mobileFilterOverlayRef}
-                  inputRef={mobileSearchPanelInputRef}
-                  scrollRef={mobileSearchFilterScrollRef}
-                  filterBottomPadding={mobileSearchFilterBottomPadding}
-                  hasChanges={mobileDraftHasChanges}
-                  onClose={onCloseMobileFilterOverlay}
-                  onFilterAreaPointerDown={onMobileFilterAreaPointerDown}
-                  onFilterChange={onMobileFilterChange}
-                  onInputBlur={onMobileSearchFilterInputBlur}
-                  onInputFocus={onMobileSearchFilterInputFocus}
-                  onKeywordChange={onMobileKeywordChange}
-                  onKeywordClear={onMobileKeywordClear}
-                  onSearch={onMobileSearch}
-                  onSubmit={onMobileSearchSubmit}
-                />
-              </div>
-            )}
+            </div>
           </div>
         </div>
-      </div>
 
-      <DesktopSearchPanel
-        showAccount={!selectedResortId && !isCompareOpen}
-        filters={filters}
-        resorts={initialResorts}
-        filteredResorts={sortedResorts}
-        sortControls={sortControls}
-        compareCount={selectedCompareIds.length}
-        isCompareOpen={isCompareOpen}
-        isFilterEditorOpen={isFilterEditorOpen}
-        selectedCompareIdSet={selectedCompareIdSet}
-        onExpandedChange={onSetFilterEditorOpen}
-        onFilterChange={onFilterChange}
-        onKeywordClear={onMobileSearchButtonKeywordClear}
-        onKeyboardInputBlur={onFilterKeyboardInputBlur}
-        onKeyboardInputFocus={onFilterKeyboardInputFocus}
-        onClearCompare={onClearCompare}
-        onOpenCompare={onOpenCompare}
-        onCompareFavorites={onCompareFavorites}
-        onSearch={onSearch}
-        onSelectResort={onSelectResort}
-        onToggleCompare={onToggleCompare}
-        onHoverResortChange={onSetHoveredResortId}
-        // スマホではこの一覧は隠れている。詳細を開いている間も裏に隠れる
-        liftTicketPaused={Boolean(selectedResortId) || !isSidePanelLayout}
-      />
+        <DesktopSearchPanel
+          showAccount={!selectedResortId && !isCompareOpen}
+          filters={filters}
+          resorts={initialResorts}
+          filteredResorts={sortedResorts}
+          sortControls={sortControls}
+          compareCount={selectedCompareIds.length}
+          isCompareOpen={isCompareOpen}
+          isFilterEditorOpen={isFilterEditorOpen}
+          selectedCompareIdSet={selectedCompareIdSet}
+          onExpandedChange={onSetFilterEditorOpen}
+          onFilterChange={onFilterChange}
+          onKeywordClear={onMobileSearchButtonKeywordClear}
+          onKeyboardInputBlur={onFilterKeyboardInputBlur}
+          onKeyboardInputFocus={onFilterKeyboardInputFocus}
+          onClearCompare={onClearCompare}
+          onOpenCompare={onOpenCompare}
+          onCompareFavorites={onCompareFavorites}
+          onSearch={onSearch}
+          onSelectResort={onSelectResort}
+          onToggleCompare={onToggleCompare}
+          onHoverResortChange={onSetHoveredResortId}
+          // スマホではこの一覧は隠れている。詳細を開いている間も裏に隠れる
+          liftTicketPaused={Boolean(selectedResortId) || !isSidePanelLayout}
+        />
 
-      <AnimatedPanel
-        visible={Boolean(
-          selectedResortId && (isSidePanelLayout || shouldRenderMap),
-        )}
-        rootClassName={cn(
-          "fixed inset-0 md:flex pointer-events-none",
-          // 全画面地図のときは、その上に選択中のコースを重ねる
-          isDesktopDetailMapExpanded ? "z-[420]" : "z-[60]",
-        )}
-      >
-        {selectedResortId && (isSidePanelLayout || shouldRenderMap) && (
-          <SkiResortDetailView
+        <AnimatedPanel
+          visible={Boolean(
+            selectedResortId && (isSidePanelLayout || shouldRenderMap),
+          )}
+          rootClassName={cn(
+            "fixed inset-0 md:flex pointer-events-none",
+            // 全画面地図のときは、その上に選択中のコースを重ねる
+            isDesktopDetailMapExpanded ? "z-[420]" : "z-[60]",
+          )}
+        >
+          {selectedResortId && (isSidePanelLayout || shouldRenderMap) && (
+            <SkiResortDetailView
+              DynamicMap={DynamicMap}
+              mapResorts={initialResorts}
+              resortData={selectedResortData}
+              resortSummary={selectedResortSummary}
+              isLoading={isPending}
+              isCompareSelected={selectedCompareIdSet.has(selectedResortId)}
+              onToggleCompare={onToggleCompare}
+              selectedFinalizedFeature={selectedFinalizedFeature}
+              selectedElevationProfilePoint={selectedElevationProfilePoint}
+              onSelectedFinalizedFeatureChange={
+                onSelectedFinalizedFeatureChange
+              }
+              onSelectedElevationProfilePointChange={
+                onSelectedElevationProfilePointChange
+              }
+              onClose={onCloseDetail}
+              onSelectResort={onSelectResort}
+              mobileContentTab="info"
+              hideMobileInfoSection
+              isDesktopMapExpanded={isDesktopDetailMapExpanded}
+              liftTicketInput={filters.liftTicket ?? undefined}
+            />
+          )}
+        </AnimatedPanel>
+
+        {(isCompareOpen || isCompareBehindDetail) && isSidePanelLayout && (
+          <SkiResortCompareView
+            hidden={isCompareBehindDetail}
+            resorts={compareResortData}
+            isLoading={isCompareLoading}
+            liftTicketInput={liftTicketInput}
+            onLiftTicketInputChange={changeLiftTicketInput}
+            onClose={onCloseCompare}
             DynamicMap={DynamicMap}
             mapResorts={initialResorts}
-            resortData={selectedResortData}
-            resortSummary={selectedResortSummary}
-            isLoading={isPending}
-            isCompareSelected={selectedCompareIdSet.has(selectedResortId)}
-            onToggleCompare={onToggleCompare}
-            selectedFinalizedFeature={selectedFinalizedFeature}
-            selectedElevationProfilePoint={selectedElevationProfilePoint}
-            onSelectedFinalizedFeatureChange={onSelectedFinalizedFeatureChange}
-            onSelectedElevationProfilePointChange={
-              onSelectedElevationProfilePointChange
-            }
-            onClose={onCloseDetail}
             onSelectResort={onSelectResort}
-            mobileContentTab="info"
-            hideMobileInfoSection
-            isDesktopMapExpanded={isDesktopDetailMapExpanded}
-            liftTicketInput={filters.liftTicket ?? undefined}
+            onMapResortsNeeded={onCompareMapResortsNeeded}
           />
         )}
-      </AnimatedPanel>
-
-      {(isCompareOpen || isCompareBehindDetail) && isSidePanelLayout && (
-        <SkiResortCompareView
-          hidden={isCompareBehindDetail}
-          resorts={compareResortData}
-          isLoading={isCompareLoading}
-          liftTicketInput={liftTicketInput}
-          onLiftTicketInputChange={changeLiftTicketInput}
-          onClose={onCloseCompare}
-          DynamicMap={DynamicMap}
-          mapResorts={initialResorts}
-          onSelectResort={onSelectResort}
-          onMapResortsNeeded={onCompareMapResortsNeeded}
-        />
-      )}
-    </main>
+      </main>
+    </DetailHeaderActionsContext.Provider>
   );
 };
 
@@ -826,6 +843,7 @@ const MobileContextHeader = ({
   onCloseDetail,
   onToggleCompare,
 }: MobileContextHeaderProps) => {
+  const actions = useDetailHeaderActions();
   const detailLocation = [detailPrefecture, detailTown]
     .filter(Boolean)
     .join("・");
@@ -866,10 +884,10 @@ const MobileContextHeader = ({
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          {detailResortId && (
+          {detailResortId && actions.favorite && (
             <FavoriteButton resortId={detailResortId} name={detailTitle} />
           )}
-          {detailResortId && (
+          {detailResortId && actions.compare && (
             <CompareResortButton
               isSelected={isDetailCompareSelected}
               resortName={detailTitle}

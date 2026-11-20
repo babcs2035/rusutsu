@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { EditCompareListButton } from "@/features/compare-lists/EditCompareListButton";
 import { SaveCompareListButton } from "@/features/compare-lists/SaveCompareListButton";
 import type { CompareSource } from "@/features/compare-lists/types";
+import { EditFavoritesButton } from "@/features/favorites/EditFavoritesButton";
 import { LiftTicketConditionsButton } from "@/features/lift-ticket/components/LiftTicketConditionsButton";
 import { LiftTicketConditionsDialog } from "@/features/lift-ticket/components/LiftTicketConditionsDialog";
 import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
@@ -212,10 +213,10 @@ export const SkiResortCompareView = ({
       );
     }
 
-    if (source.kind === "list" && compareIds.length === 0) {
+    if (source.kind !== "selection" && compareIds.length === 0) {
       return (
         <p className="p-3 text-sm text-gray-500">
-          スキー場が登録されていません。右上の追加ボタンから追加できます。
+          スキー場が登録されていません。「編集」から追加できます。
         </p>
       );
     }
@@ -337,6 +338,23 @@ export const SkiResortCompareView = ({
     ? (resorts.find(resort => resort.id === slopeSelection.resortId) ?? null)
     : null;
 
+  // 保存済みリスト・お気に入りの比較は、その場で中身と並びを編集できる
+  const editButton = (className?: string) =>
+    source.kind === "list" ? (
+      <EditCompareListButton
+        listId={source.id}
+        resorts={mapResorts}
+        onSaved={list => homeCompare?.onListSaved(list)}
+        className={className}
+      />
+    ) : source.kind === "favorites" ? (
+      <EditFavoritesButton
+        resorts={mapResorts}
+        onSaved={ids => homeCompare?.onFavoritesSaved(ids)}
+        className={className}
+      />
+    ) : null;
+
   const comparePanelContent = (
     // タブ行は固定し、タブの中身だけスクロールさせる
     <div className="relative flex h-full min-h-0 flex-col">
@@ -384,14 +402,8 @@ export const SkiResortCompareView = ({
             </div>
           )}
           {/* スマホは概要・料金の条件の行に置き、タブの行は×だけにする */}
-          {source.kind === "list" && (
-            <div className="hidden shrink-0 md:block">
-              <EditCompareListButton
-                listId={source.id}
-                resorts={mapResorts}
-                onSaved={list => homeCompare?.onListSaved(list)}
-              />
-            </div>
+          {source.kind !== "selection" && (
+            <div className="hidden shrink-0 md:block">{editButton()}</div>
           )}
           <Button
             variant="ghost"
@@ -405,15 +417,9 @@ export const SkiResortCompareView = ({
         {toolbar && (
           <div className="flex items-center gap-2 border-t border-gray-100 px-2 py-1.5 @[80rem]/compare-header:hidden md:px-3">
             <div className="flex min-w-0 flex-1 items-center">{toolbar}</div>
-            {source.kind === "list" &&
-              (activeTab === "概要" || activeTab === "料金") && (
-                <EditCompareListButton
-                  listId={source.id}
-                  resorts={mapResorts}
-                  onSaved={list => homeCompare?.onListSaved(list)}
-                  className="md:hidden"
-                />
-              )}
+            {source.kind !== "selection" &&
+              (activeTab === "概要" || activeTab === "料金") &&
+              editButton("md:hidden")}
           </div>
         )}
       </div>

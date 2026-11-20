@@ -55,3 +55,38 @@ export async function updateResorts(
       })),
     });
 }
+
+/**
+ * 項目の並び順だけを保存する。トランザクション内で呼び出す。
+ * 端末上の一覧が古くても、ほかの端末で足したスキー場は消さずに後ろへ付ける。
+ */
+export async function reorderResorts(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  id: string,
+  requested: string[],
+) {
+  const updated = await tx.compareList.updateMany({
+    where: { id, userId },
+    data: { updatedAt: new Date() },
+  });
+  if (!updated.count) throw new CompareListError("リストが見つかりません。");
+  const current = (
+    await tx.compareListItem.findMany({
+      where: { listId: id },
+      orderBy: { position: "asc" },
+      select: { skiResortId: true },
+    })
+  ).map(item => item.skiResortId);
+  const existing = new Set(current);
+  const wanted = new Set(requested);
+  const ordered = [
+    ...requested.filter(resortId => existing.has(resortId)),
+    ...current.filter(resortId => !wanted.has(resortId)),
+  ];
+  for (const [position, skiResortId] of ordered.entries())
+    await tx.compareListItem.updateMany({
+      where: { listId: id, skiResortId },
+      data: { position },
+    });
+}

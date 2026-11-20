@@ -35,8 +35,10 @@ import { SkiTracksHistory } from "@/features/ski-tracks/SkiTracksHistory";
 import { PanelHeader } from "@/shared/components/PanelHeader";
 import { reloadIfStaleBuild } from "@/shared/utils/staleBuild";
 import {
+  addFavorites,
   publicLogout,
   readLoginHistory,
+  reorderFavorites,
   startPublicLogin,
   syncFavorites,
   updateFavorite,
@@ -52,6 +54,12 @@ type FavoritesContextValue = {
   ids: string[];
   ready: boolean;
   toggle: (id: string) => void;
+  /** 編集画面から。選んだスキー場をまとめて末尾へ足す */
+  add: (ids: string[]) => Promise<string[] | null>;
+  /** 編集画面から。1件外す */
+  remove: (id: string) => Promise<string[] | null>;
+  /** 編集画面から。並び順を保存する。どれも保存後の並び（失敗は null）を返す */
+  reorder: (ids: string[]) => Promise<string[] | null>;
   login: (id?: string) => void;
   logout: () => void;
   openAccount: () => void;
@@ -325,6 +333,57 @@ function FavoritesState({
       }
     });
   };
+  /**
+   * 編集画面からの変更。画面には先に反映し、保存できなかったら元に戻す。
+   * ゲストはこのブラウザの保存を書き換える（編集画面が出るのは保存先を選んだあと）。
+   */
+  const edit = async (
+    next: string[],
+    request: (account: string) => Promise<{ ids: string[] }>,
+    messages: { success?: string; failure: string },
+  ): Promise<string[] | null> => {
+    if (!ready || busy.current.size) return null;
+    const account = userId;
+    const previous = snapshot.ids;
+    ++generation.current;
+    if (!account) {
+      try {
+        persist({ version: 1, method: "browser", ids: next });
+        setSnapshot({ userId: null, ids: next, ready: true });
+        if (messages.success)
+          toast.success(`このブラウザの${messages.success}`, {
+            duration: 1000,
+          });
+        return next;
+      } catch {
+        toast.error("このブラウザには保存できませんでした。");
+        return null;
+      }
+    }
+    const key = "__edit__";
+    busy.current.add(key);
+    setBusyIds(new Set(busy.current));
+    setSnapshot({ userId: account, ids: next, ready: true });
+    try {
+      const result = await request(account);
+      if (currentUser.current !== account) return null;
+      const ids = result.ids.filter(id => availableResorts.has(id));
+      setSnapshot({ userId: account, ids, ready: true });
+      if (messages.success) toast.success(messages.success, { duration: 1000 });
+      return ids;
+    } catch (error) {
+      if (reloadIfStaleBuild(error)) return null;
+      if (currentUser.current === account) {
+        setSnapshot({ userId: account, ids: previous, ready: true });
+        toast.error(messages.failure);
+        void update();
+      }
+      return null;
+    } finally {
+      busy.current.delete(key);
+      setBusyIds(new Set(busy.current));
+    }
+  };
   const logout = () => {
     ++generation.current;
     setSnapshot({ userId: null, ids: [], ready: false });
@@ -349,6 +408,33 @@ function FavoritesState({
         login,
         logout,
         openAccount: () => setAccountOpen(true),
+        add: ids => {
+          const added = ids.filter(id => !snapshot.ids.includes(id));
+          return edit(
+            [...snapshot.ids, ...added],
+            account => addFavorites(added, account),
+            {
+              success: "お気に入りに追加しました",
+              failure: "保存できませんでした。ログイン状態をご確認ください。",
+            },
+          );
+        },
+        remove: id =>
+          edit(
+            snapshot.ids.filter(other => other !== id),
+            account =>
+              updateFavorite(id, false, account).then(() => ({
+                ids: snapshot.ids.filter(other => other !== id),
+              })),
+            {
+              success: "お気に入りから解除しました",
+              failure: "保存できませんでした。ログイン状態をご確認ください。",
+            },
+          ),
+        reorder: next =>
+          edit(next, account => reorderFavorites(next, account), {
+            failure: "並び順を保存できませんでした。",
+          }),
         toggle: id => {
           if (!ready || busyIds.has(id)) return;
           if (!userId && local.current.method === null && !ids.includes(id))

@@ -7,6 +7,7 @@ import { COMPARE_LIST_NAME_MAX, type CompareListSummary } from "./types";
 import {
   CompareListError,
   MAX_COMPARE_LIST_RESORTS,
+  reorderResorts,
   updateResorts,
 } from "./updateResorts";
 
@@ -166,5 +167,24 @@ export async function renameCompareList(input: {
   });
   if (!updated.count)
     return { ok: false as const, error: "リストが見つかりません。" };
+  return { ok: true as const, id, lists: await readLists(userId) };
+}
+
+/** 並び順だけを保存する。項目の追加・解除はしない。 */
+export async function reorderCompareList(input: {
+  expectedUserId: string;
+  id: string;
+  resortIds: string[];
+}) {
+  const userId = await requireUser(input.expectedUserId);
+  const id = z.string().min(1).max(64).parse(input.id);
+  const requested = [...new Set(resortIdsSchema.parse(input.resortIds))];
+  try {
+    await prisma.$transaction(tx => reorderResorts(tx, userId, id, requested));
+  } catch (error) {
+    if (error instanceof CompareListError)
+      return { ok: false as const, error: error.message };
+    throw error;
+  }
   return { ok: true as const, id, lists: await readLists(userId) };
 }

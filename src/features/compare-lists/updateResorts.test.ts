@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Prisma } from "@prisma/client";
-import { CompareListError, updateResorts } from "./updateResorts";
+import {
+  CompareListError,
+  reorderResorts,
+  updateResorts,
+} from "./updateResorts";
 
 function fakeTx({
   count = 1,
@@ -135,4 +139,37 @@ test("does not create rows when every requested resort is already present", asyn
   });
   await updateResorts(tx, "user-1", "list-1", ["already"], "add");
   assert.equal(calls.touched.includes("createMany"), false);
+});
+
+test("reorderResorts keeps items missing from a stale request at the end", async () => {
+  const positions = new Map<string, number>();
+  const tx = {
+    compareList: { updateMany: async () => ({ count: 1 }) },
+    compareListItem: {
+      findMany: async () =>
+        ["a", "b", "c", "d"].map(skiResortId => ({ skiResortId })),
+      updateMany: async (args: {
+        where: { skiResortId: string };
+        data: { position: number };
+      }) => {
+        positions.set(args.where.skiResortId, args.data.position);
+        return { count: 1 };
+      },
+    },
+  } as unknown as Prisma.TransactionClient;
+  await reorderResorts(tx, "user", "list", ["c", "missing", "a"]);
+  assert.deepEqual(
+    [...positions].sort((x, y) => x[1] - y[1]).map(([id]) => id),
+    ["c", "a", "b", "d"],
+  );
+});
+
+test("reorderResorts rejects another user's list", async () => {
+  const tx = {
+    compareList: { updateMany: async () => ({ count: 0 }) },
+  } as unknown as Prisma.TransactionClient;
+  await assert.rejects(
+    reorderResorts(tx, "user", "list", ["a"]),
+    CompareListError,
+  );
 });

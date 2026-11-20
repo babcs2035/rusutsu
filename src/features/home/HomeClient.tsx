@@ -1297,6 +1297,10 @@ function HomeClientContent({
       setFavoriteCompareIds(list.resortIds);
       setCompareSource({ kind: "list", id: list.id, name: list.name });
     },
+    onFavoritesSaved: (ids: string[]) => {
+      if (compareSource.kind !== "favorites") return;
+      setFavoriteCompareIds(ids);
+    },
   };
 
   return (

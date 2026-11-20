@@ -1093,6 +1093,8 @@ model Favorite {
   skiResortId String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   skiResort   SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  // 利用者が並べた順。同じ値の間は追加した順に並べる
+  position    Int       @default(0)
   createdAt   DateTime  @default(now())
 
   @@id([userId, skiResortId])

@@ -129,7 +129,27 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
     const merged = await run(a, () =>
       api.syncFavorites(["candidate", "candidate", "missing"], "user-a"),
     );
-    assert.deepEqual(merged.ids, ["candidate", "source"]);
+    // 追加した順（先に足した source が先頭）
+    assert.deepEqual(merged.ids, ["source", "candidate"]);
+    assert.deepEqual(
+      (await run(a, () => api.addFavorites(["third", "missing"], "user-a")))
+        .ids,
+      ["source", "candidate", "third"],
+    );
+    // 渡されなかったもの（ほかの端末で足したもの）は今の順のまま後ろに付ける
+    assert.deepEqual(
+      (await run(a, () => api.reorderFavorites(["third", "source"], "user-a")))
+        .ids,
+      ["third", "source", "candidate"],
+    );
+    assert.deepEqual(
+      (await run(a, () => api.syncFavorites([], "user-a"))).ids,
+      ["third", "source", "candidate"],
+    );
+    await assert.rejects(
+      run(b, () => api.reorderFavorites(["source"], "user-a")),
+    );
+    await run(a, () => api.updateFavorite("third", false, "user-a"));
     await run(a, () => api.syncFavorites(["candidate"], "user-a"));
     assert.equal(await db.favorite.count({ where: { userId: "user-a" } }), 2);
     assert.deepEqual(

@@ -16,6 +16,7 @@ import {
   deleteCompareList,
   listCompareLists,
   renameCompareList,
+  reorderCompareList,
   saveCompareList,
   updateCompareListResorts,
 } from "./actions";
@@ -41,6 +42,10 @@ type CompareListsContextValue = {
   removeResort: (
     id: string,
     resortId: string,
+  ) => Promise<CompareListSummary | null>;
+  reorder: (
+    id: string,
+    resortIds: string[],
   ) => Promise<CompareListSummary | null>;
 };
 
@@ -204,6 +209,31 @@ export function CompareListsProvider({
     }
   };
 
+  const reorder: CompareListsContextValue["reorder"] = async (
+    id,
+    resortIds,
+  ) => {
+    if (!userId) return null;
+    try {
+      const result = await reorderCompareList({
+        expectedUserId: userId,
+        id,
+        resortIds,
+      });
+      if (!result.ok) {
+        toast.error(result.error);
+        return null;
+      }
+      if (currentUser.current !== userId) return null;
+      accept(userId, result.lists);
+      return result.lists.find(list => list.id === id) ?? null;
+    } catch (error) {
+      if (reloadIfStaleBuild(error)) return null;
+      toast.error("並び順を保存できませんでした。");
+      return null;
+    }
+  };
+
   const ready = status !== "loading" && state.userId === userId && state.ready;
   return (
     <CompareListsContext.Provider
@@ -216,6 +246,7 @@ export function CompareListsProvider({
         rename,
         addResorts: (id, resortIds) => updateResorts(id, resortIds, "add"),
         removeResort: (id, resortId) => updateResorts(id, [resortId], "remove"),
+        reorder,
       }}
     >
       {children}
