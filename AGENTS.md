@@ -27,10 +27,10 @@ Rusutsu は、日本全国のスキー場情報（基本情報・コース/リ�
 
 - セットアップ: `mise run setup`（.env作成 → pnpm install → playwright install → DB起動 → migrate → generate → seed）
 - 開発サーバ: `mise run dev`（= `pnpm dev`, `next dev`）
-- Lint: `mise run lint`（= `pnpm lint` = `biome check --write src`）
-- Format: `mise run format`（= `pnpm format` = `biome format --write src`）
+- Lint: `mise run lint`（= `pnpm lint` = `biome check src scripts`、読み取り専用）
+- Format: `mise run format`（= `pnpm format` = `biome format --write src scripts`）
 - 型チェック: `mise run typecheck`（= `pnpm typecheck` = `tsc --noEmit`）
-- 一括チェック: `mise run check`（format → lint → typecheck の順に実行）
+- 一括チェック: `mise run check`（lint → typecheck の順に実行、読み取り専用）
 - ビルド: `mise run build`（= `pnpm build` = `next build`）
 - DBコンテナ起動/停止: `mise run db:up` / `mise run db:down`
 - マイグレーション実行: `mise run db:migrate`（= `pnpm prisma migrate dev`）

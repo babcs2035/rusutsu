@@ -105,14 +105,16 @@ schema と repository の所有者を，認証・本人の状態，施設・共�
 
 | 資源 | `/api/admin` 以下の統合先 |
 | --- | --- |
-| 施設・統合・表示グループ | `resorts`，`resorts/:id`，`resorts/merges`，`resorts/unlinks`，`resort-groups/:id` |
-| 施設のリンク・料金・レビューの保存／公開・雪マジ | `resorts/:id/links`，`resorts/:id/ticket-seasons/:season`，`resorts/:id/review`，`resorts/:id/yukimaji` |
-| 共通パスの掲載・追加／削除・名寄せ状況 | `pass-programs`，`pass-programs/status` |
-| 地図・固定 ID の行・文書 | `maps/resorts/:resortId`，`maps/entities/:kind/:id`，`documents` |
-| 営業集計・収集前の比較値・推薦 | `operations/summaries`，`operations/baselines/:resortId`，`course-recommendations` |
-| 収集実行・監視・現在値・対応履歴 | `crawl/runs`，`crawl/runs/:runId`，`crawl/monitor`，`crawl/issues`，`crawl/current`，`crawl/mappings/:resortId` |
+| 施設・統合・表示グループ | `resorts`，`resorts/:id`，`resorts/merges`，`resorts/unlinks`，`resort-groups` |
+| 施設のリンク・料金・レビューの保存／公開・雪マジ | `resort-links`，`lift-tickets`，`reviews`，`yukimaji` |
+| 共通パスの掲載・追加／削除・名寄せ状況 | `pass-programs`（名寄せ状況は `view` クエリ） |
+| 地図・固定 ID の行・文書 | `maps/resorts`，`maps/entities`，`documents` |
+| 営業集計・収集前の比較値・推薦 | `operations/summaries`，`operations/baselines`，`course-recommendations` |
+| 収集実行・監視・現在値・対応履歴 | `crawl/runs`，`crawl/monitor`，`crawl/current` |
 | artifact の登録・検索・取得 | `crawl/artifacts`，`crawl/artifacts/:id/content` |
-| 申請・投稿の管理と remote 操作 | `edit-requests`，`edit-requests/:id/actions`，`community/...` |
+| 申請・投稿の管理と remote 操作 | `edit-requests`，`community` |
+
+- 識別子（`resortId`，`runId`，`kind`/`id`，`seasonId` 等）は REST のサブパスではなくクエリパラメータで受け，実行の issue・対応履歴（mapping）も `crawl/runs` の `include`／`crawl/monitor`・`crawl/current` の `view` に集約する．申請の操作（承認・却下・取り下げ・修正）は `edit-requests` のコマンド型 POST（`operation` フィールド）で扱う．これにより route 数を抑え，DTO・エラー・token 検証を `internalApiHttp` に一元化した．
 
 - 内部 token の設定は `API_BEARER_TOKEN` 一つ，接続先は `API_BASE_URL` に統一する．既存の ADMIN/CRAWLER/DIAGNOSTICS の 3 token と `DATA_API_BASE_URL`，旧名の別名設定，token 別 scope の分岐を廃止する．`.env.example`，ローカル設定のキー，GitHub Secrets/Variables，workflow，Compose，設定生成・検証，全 client/worker/CLI，試験・文書を同時更新する．秘密の値は表示・記録しない．
 - 単一 token は信頼するサーバー処理の共通資格情報とし，従来の token 別の制限は廃止する．人の操作では session/actor と現在の権限・所有者を検査する．proxy のログイン redirect で機械要求を遮らず，各 route でも認証する．
@@ -165,7 +167,7 @@ font は `next/font/google` の自己配信から Google Fonts の CDN へ切り
 - 公開・管理・ログイン・比較・詳細・投稿・訂正・全編集画面で，既存 shadcn/ui・Base UI の Button/Input/Select/Tabs/Dialog/AlertDialog/Collapsible/Tooltip/Table/Toast/Spinner を使う．不足は既存 variant を拡張し，自作の基本部品を増やさない．
 - 同じ役割の色・文字・余白・border・radius・focus・disabled を token へ揃える．お気に入りのピンク，比較の青，営業・難易度・斜度・投稿種別の意味色を維持する．
 - ToggleSection は Collapsible，UnderlineTabs は既存 Tabs へ内部を移す．開閉・選択・mount・keyboard/focus・保持状態を一致させる．ライブラリを使う LoadingSpinner/ConfirmDialog，FilterConditionFields，WeatherLinkChips，LinkGroups 等の既存共有部品を直接再利用する．
-- 通常・読み込み・空・エラー・完了でヘッダー・×・幅・高さを揃える．比較リスト編集の重なる画面，天気 iframe 内の横 scroll と比較列の scroll，地図・断面図の連動を維持する．詳細・比較へログインボタンを置かない．
+- 通常・読み込み・空・エラー・完了でヘッダー・×・幅・高さを揃える．比較リスト編集の重なる画面，天気 iframe 内の横 scroll と比較列の scroll，地図・断面図の連動を維持する．詳細・比較の画面本体へ常設のログイン／アカウントボタンを置かない．例外として，比較リスト保存ダイアログ内で未ログインかつ保存を試みたときだけ表示される「ログインして保存」は機能上の必須プロンプトであり，この禁止の対象外とする．
 
 **完了条件:** [UI 指針](../docs/d0010_ui-guidelines.md)に従い，PC と 375 px，詳細 346/500 px，該当 popup 320 px で画像・操作・computed style を比較する．4 サイトの天気リンクが各 1 件のときの横一列，閉じる／戻る，入力保持，レスポンシブな余白と折り返しを確認する．
 
