@@ -37,11 +37,11 @@ const readJson = async (file, fallback = null) =>
   existsSync(file) ? JSON.parse(await readFile(file, "utf8")) : fallback;
 
 async function api(pathAndQuery) {
-  const base = process.env.DATA_API_BASE_URL?.trim().replace(/\/+$/, "");
-  const token = process.env.INTERNAL_DATA_API_ADMIN_TOKEN?.trim();
+  const base = process.env.API_BASE_URL?.trim().replace(/\/+$/, "");
+  const token = process.env.API_BEARER_TOKEN?.trim();
   if (!base || !token)
-    throw new Error(".env.local に DATA_API_BASE_URL と INTERNAL_DATA_API_ADMIN_TOKEN が必要です");
-  const res = await fetch(`${base}/api/internal/v1/${pathAndQuery}`, {
+    throw new Error(".env.local に API_BASE_URL と API_BEARER_TOKEN が必要です");
+  const res = await fetch(`${base}/api/admin/${pathAndQuery}`, {
     headers: { Authorization: `Bearer ${token}` },
     signal: AbortSignal.timeout(60_000),
   });
@@ -53,9 +53,9 @@ const urlsIn = text => [...new Set(text.match(/https?:\/\/[^\s"'`<>)\\]+/g) ?? [
 
 // ---------------------------------------------------------------- prepare
 async function prepare(ids, run) {
-  const { resorts } = await api(`ski-resorts?view=names&ids=${ids.join(",")}`);
+  const { resorts } = await api(`resorts?view=names&ids=${ids.join(",")}`);
   const linksDoc = JSON.parse(
-    (await api("data-documents?key=SkiResortLinks.json")).document.content,
+    (await api("documents?key=SkiResortLinks.json")).document.content,
   );
   await mkdir(path.join(run, "brief"), { recursive: true });
   for (const id of ids) {

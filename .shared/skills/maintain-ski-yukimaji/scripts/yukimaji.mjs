@@ -53,16 +53,16 @@ const parseArgs = (argv) => {
 const fetchListing = async () => {
   dotenv.config({ path: ".env.local", quiet: true });
   dotenv.config({ quiet: true });
-  const base = process.env.DATA_API_BASE_URL?.trim();
-  const token = process.env.INTERNAL_DATA_API_ADMIN_TOKEN?.trim();
+  const base = process.env.API_BASE_URL?.trim();
+  const token = process.env.API_BEARER_TOKEN?.trim();
   if (!base || !token) {
     throw new Error(
-      ".env.local に DATA_API_BASE_URL と INTERNAL_DATA_API_ADMIN_TOKEN が必要です",
+      ".env.local に API_BASE_URL と API_BEARER_TOKEN が必要です",
     );
   }
   // 接続先はベースパス付き（https://…/rusutsu）なので、URL の結合でパスを落とさない
   const response = await fetch(
-    `${base.replace(/\/+$/u, "")}/api/internal/v1/yuki-magi`,
+    `${base.replace(/\/+$/u, "")}/api/admin/yukimaji`,
     {
       headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
     },

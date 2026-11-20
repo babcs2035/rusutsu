@@ -72,19 +72,19 @@ export const writeJson = async (file, value) => {
 // ---------- 正本（本番の DataDocument API） ----------
 
 function apiBase() {
-  const raw = process.env.DATA_API_BASE_URL?.trim();
-  if (!raw) throw new Error("DATA_API_BASE_URL が未設定です（.env.local）");
+  const raw = process.env.API_BASE_URL?.trim();
+  if (!raw) throw new Error("API_BASE_URL が未設定です（.env.local）");
   const base = raw.replace(/\/+$/u, "");
   const u = new URL(base);
   if (u.protocol !== "https:" && !["localhost", "127.0.0.1"].includes(u.hostname))
-    throw new Error("DATA_API_BASE_URL は https のみ");
+    throw new Error("API_BASE_URL は https のみ");
   return base;
 }
 
 export async function api(p, init = {}) {
-  const token = process.env.INTERNAL_DATA_API_ADMIN_TOKEN?.trim();
-  if (!token) throw new Error("INTERNAL_DATA_API_ADMIN_TOKEN が未設定です");
-  const r = await fetch(`${apiBase()}/api/internal/v1/${p}`, {
+  const token = process.env.API_BEARER_TOKEN?.trim();
+  if (!token) throw new Error("API_BEARER_TOKEN が未設定です");
+  const r = await fetch(`${apiBase()}/api/admin/${p}`, {
     ...init,
     headers: {
       Authorization: `Bearer ${token}`,
@@ -102,8 +102,8 @@ export async function api(p, init = {}) {
 
 export async function readCanonical() {
   const [doc, admin] = await Promise.all([
-    api(`data-documents?key=${LINKS_KEY}`),
-    api("ski-resorts?view=admin"),
+    api(`documents?key=${LINKS_KEY}`),
+    api("resorts?view=admin"),
   ]);
   if (!doc.document) throw new Error(`${LINKS_KEY} が見つかりません`);
   return {

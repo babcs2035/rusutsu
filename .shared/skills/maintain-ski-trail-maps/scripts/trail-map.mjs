@@ -569,7 +569,7 @@ async function apply(args) {
   await mkdir(backup, { recursive: true });
   await writeFile(path.join(backup, "before.json"), document.content);
   await writeFile(path.join(backup, "after.json"), content);
-  await api("data-documents", { method: "PUT", body: JSON.stringify({ documents: [{ key: LINKS_KEY, content, mediaType: document.mediaType, expectedHash: document.hash }] }) });
+  await api("documents", { method: "PUT", body: JSON.stringify({ documents: [{ key: LINKS_KEY, content, mediaType: document.mediaType, expectedHash: document.hash }] }) });
   const saved = await readCanonical();
   assert.equal(saved.document.content, content, "読み戻しが一致しない");
   const record = path.join(PATHS.records, `${today()}-trail-maps`, "applied.json");
