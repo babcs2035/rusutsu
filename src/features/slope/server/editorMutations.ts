@@ -1,0 +1,495 @@
+/** 編集申請と画面の更新が，同じ入力検証と保存処理を使う． */
+import "server-only";
+
+import path from "node:path";
+import { prepareLatestStatusMappingDocument } from "@/features/latest-status-mapping/server/mappingFiles";
+import { isValidResortId } from "@/features/lift/server/liftFiles";
+import {
+  readMappingCrawlLatestStatus,
+  readMappingStatusHistory,
+} from "@/lib/crawlLatestCurrent";
+import { usesRemoteDataApi } from "@/lib/internalDataApiClient";
+import { requireAdmin } from "@/lib/requireAdmin";
+import { getCurrentActor } from "@/lib/requireEditor";
+import { readExistingSkiResortIds } from "@/lib/skiResortData";
+import { scheduleSavedElevations } from "@/server/backgroundElevation";
+import {
+  getDataDocument,
+  writeDataDocuments,
+} from "@/server/data-documents/client";
+import { DataDocumentConflictError } from "@/server/data-documents/contract";
+import { synchronizeDerivedGeometry } from "@/server/derivedGeometry";
+import {
+  allowsAdminOverwrite,
+  withAdminOverwrite,
+} from "@/server/edit-requests/overwriteContext";
+import { saveRelatedEditorLinks } from "@/server/edit-requests/relatedLinks";
+import { runEdit } from "@/server/edit-requests/workflow";
+import { featureIdentity } from "@/shared/course-lift/identity";
+import { preserveFeature } from "@/shared/course-lift/preserveFeature";
+import type {
+  ApplySlopeFeatureOrderRequest,
+  ApplySlopeFeatureOrderResult,
+  SaveCoursePayload,
+  SaveRequest,
+  SaveResult,
+  SlopeBeforeFeature,
+} from "../types";
+import { reorderItemsByNameOrder } from "../utils/courseOrder";
+import { writeOsmSlopeConfirmed } from "./slopeConfirmation";
+import {
+  osmSlope10mDocumentKey,
+  parseSlopeBeforeGeojson,
+  readSlopeBeforeDocument,
+  readSlopeDetailDocument,
+  serializeSlopeGeojson,
+  slope10mDocumentKey,
+  slopeBeforeDocumentKey,
+} from "./slopeFiles";
+import { validateSaveRequest } from "./validateSaveRequest";
+
+export async function applySlopeFeatureOrder(
+  request: ApplySlopeFeatureOrderRequest,
+): Promise<ApplySlopeFeatureOrderResult> {
+  return runEdit("slope-order", request.resortId, request, async () => {
+    if (request.sourceKind !== "curated" && request.sourceKind !== "osm") {
+      return { ok: false, errors: ["不正なコース線の種別です。"] };
+    }
+
+    const orderedNames = [
+      ...new Set(
+        request.orderedGeojsonNames.map(name => name.trim()).filter(Boolean),
+      ),
+    ];
+    if (orderedNames.length === 0) {
+      return { ok: false, errors: ["並べ替えるコース線がありません。"] };
+    }
+
+    const currentDocument = await readSlopeBeforeDocument(
+      request.resortId,
+      request.sourceKind,
+    );
+    const directoryName =
+      request.sourceKind === "osm" ? "slope_before_osm" : "slope_before";
+    if (currentDocument === null) {
+      return {
+        ok: false,
+        errors: [`${directoryName}/${request.resortId}.geojson がありません。`],
+      };
+    }
+    // 並び順だけを最新のGeoJSONへ適用する。読み込み時の内容を保存し直すと、
+    // その後に加わったコースや詳細が消えるため、書き込み時のhashは最新値を使う。
+    const rebased = currentDocument.hash !== request.fileHash;
+    const currentRaw = currentDocument.content;
+    const geojson = parseSlopeBeforeGeojson(currentRaw);
+    if (!geojson) {
+      return { ok: false, errors: ["コース線GeoJSONを解析できませんでした。"] };
+    }
+    const reordered = {
+      ...geojson,
+      features: reorderItemsByNameOrder(
+        geojson.features.map(
+          (feature, index): SlopeBeforeFeature => ({
+            ...feature,
+            properties: {
+              ...feature.properties,
+              entityId: featureIdentity(
+                feature.properties,
+                slopeBeforeDocumentKey(request.resortId, request.sourceKind),
+                index,
+              ),
+            },
+          }),
+        ),
+        orderedNames,
+        feature => feature.properties?.name,
+      ),
+    };
+    const derivedKey =
+      request.sourceKind === "osm"
+        ? osmSlope10mDocumentKey(request.resortId)
+        : slope10mDocumentKey(request.resortId);
+    const derivedDocument = await getDataDocument(derivedKey);
+    const existingDerived = derivedDocument
+      ? parseSlopeBeforeGeojson(derivedDocument.content)
+      : null;
+    const synchronizedDerived = synchronizeDerivedGeometry({
+      previousBefore: geojson,
+      nextBefore: reordered,
+      existingDerived,
+      intervalM: 10,
+      kind: "slope",
+    });
+    let writtenHash: string;
+    try {
+      const beforeKey = slopeBeforeDocumentKey(
+        request.resortId,
+        request.sourceKind,
+      );
+      const written = await writeDataDocuments([
+        {
+          key: beforeKey,
+          content: serializeSlopeGeojson(reordered),
+          mediaType: "application/geo+json",
+          expectedHash: currentDocument.hash,
+        },
+        {
+          key: derivedKey,
+          content: serializeSlopeGeojson(synchronizedDerived),
+          mediaType: "application/geo+json",
+          expectedHash: derivedDocument?.hash ?? null,
+        },
+      ]);
+      const writtenBefore = written.find(
+        document => document.key === beforeKey,
+      );
+      if (!writtenBefore) {
+        throw new Error("slope_before の並べ替え結果がありません。");
+      }
+      writtenHash = writtenBefore.hash;
+    } catch (error) {
+      if (error instanceof DataDocumentConflictError) {
+        return {
+          ok: false,
+          errors: [
+            `読み込み後に ${directoryName} または公開用GeoJSONが変更されています。ページを再読み込みして、最新のデータから並べ替えてください。`,
+          ],
+        };
+      }
+      throw error;
+    }
+
+    return {
+      ok: true,
+      fileHash: writtenHash,
+      rebased,
+      writtenFile: `${directoryName}/${request.resortId}.geojson`,
+    };
+  });
+}
+
+export async function saveSlopeEdits(
+  request: SaveRequest,
+): Promise<SaveResult> {
+  const operation = async (): Promise<SaveResult> => {
+    const errors = validateSaveRequest(request);
+    if (
+      request.mapping &&
+      (request.mapping.resortId !== request.resortId ||
+        request.mapping.kind !== "courses")
+    )
+      return { ok: false, errors: ["対応表の対象が一致しません。"] };
+    const preparedMapping = request.mapping
+      ? await prepareLatestStatusMappingDocument(
+          path.join(process.cwd(), "src/private/data/resorts-temporary"),
+          request.mapping,
+          readMappingCrawlLatestStatus,
+          readMappingStatusHistory,
+        )
+      : null;
+    if (preparedMapping && !preparedMapping.ok) return preparedMapping;
+    if (errors.length > 0) return { ok: false, errors };
+
+    const requestedResortIds = [
+      ...new Set([
+        request.resortId,
+        ...request.courses.map(course => course.targetSkiId),
+      ]),
+    ];
+    const existingResortIds = new Set(
+      await readExistingSkiResortIds(requestedResortIds),
+    );
+    const missingResortIds = requestedResortIds.filter(
+      resortId => !existingResortIds.has(resortId),
+    );
+    if (missingResortIds.length > 0) {
+      return {
+        ok: false,
+        errors: [
+          `存在しないスキー場IDが含まれています: ${missingResortIds.join(", ")}`,
+        ],
+      };
+    }
+
+    const [currentBeforeDocument, currentDetailDocument] = await Promise.all([
+      readSlopeBeforeDocument(request.resortId, request.sourceKind),
+      request.sourceKind === "curated"
+        ? readSlopeDetailDocument(request.resortId)
+        : null,
+    ]);
+    const currentBeforeHash = currentBeforeDocument?.hash ?? null;
+    const currentDetailHash = currentDetailDocument?.hash ?? null;
+    if (
+      !request.forceOverwrite &&
+      !allowsAdminOverwrite() &&
+      (currentBeforeHash !== request.fileHash ||
+        currentDetailHash !== request.detailFileHash)
+    ) {
+      return {
+        ok: false,
+        conflict: true,
+        errors: [
+          `読み込み後に ${request.sourceKind === "osm" ? "slope_before_osm" : "slope_before または slope_detail"} が変更されています。現在の編集内容を優先する場合は、上書き保存を選んでください。`,
+        ],
+      };
+    }
+
+    const originalFeatures = currentBeforeDocument
+      ? (parseSlopeBeforeGeojson(currentBeforeDocument.content)?.features ?? [])
+      : [];
+    const toFeature = (course: SaveCoursePayload): SlopeBeforeFeature =>
+      preserveFeature(
+        {
+          type: "Feature",
+          properties: { ...course.properties, resort: course.targetSkiId },
+          geometry: {
+            type: "LineString",
+            coordinates: course.coordinates,
+          },
+        },
+        originalFeatures,
+        slopeBeforeDocumentKey(request.resortId, request.sourceKind),
+      );
+
+    const sourceFeatures: SlopeBeforeFeature[] = [];
+    const movedByTarget = new Map<string, SlopeBeforeFeature[]>();
+    for (const course of request.courses) {
+      const feature = toFeature(course);
+      if (course.targetSkiId === request.resortId) {
+        sourceFeatures.push(feature);
+        continue;
+      }
+      const targetFeatures = movedByTarget.get(course.targetSkiId) ?? [];
+      targetFeatures.push(feature);
+      movedByTarget.set(course.targetSkiId, targetFeatures);
+    }
+    sourceFeatures.push(...request.preservedFeatures);
+
+    const writes: Array<{
+      resortId: string;
+      features: SlopeBeforeFeature[];
+      expectedHash: string | null;
+      previousGeojson: ReturnType<typeof parseSlopeBeforeGeojson>;
+    }> = [
+      {
+        resortId: request.resortId,
+        features: sourceFeatures,
+        expectedHash: currentBeforeHash,
+        previousGeojson: currentBeforeDocument
+          ? parseSlopeBeforeGeojson(currentBeforeDocument.content)
+          : null,
+      },
+    ];
+
+    for (const [targetId, movedFeatures] of movedByTarget) {
+      const targetDocument = await readSlopeBeforeDocument(
+        targetId,
+        request.sourceKind,
+      );
+      const targetRaw = targetDocument?.content ?? null;
+      const targetGeojson =
+        targetRaw === null ? null : parseSlopeBeforeGeojson(targetRaw);
+      if (targetRaw !== null && targetGeojson === null) {
+        return {
+          ok: false,
+          errors: [
+            `移動先 ${targetId} の slope_before_osm を解析できないため保存を中止しました。`,
+          ],
+        };
+      }
+      const movedOsmIds = new Set(
+        movedFeatures.flatMap(feature => {
+          const id = feature.properties?.["@id"];
+          return typeof id === "string" && id.startsWith("way/") ? [id] : [];
+        }),
+      );
+      const targetFeatures = targetGeojson?.features ?? [];
+      if (
+        targetFeatures.some(feature => {
+          const id = feature.properties?.["@id"];
+          return typeof id === "string" && movedOsmIds.has(id);
+        })
+      )
+        return {
+          ok: false,
+          errors: [
+            `移動先 ${targetId} に同じOSM IDの線があります。既存の線を上書きせず保存を中止しました。移動先を確認してください。`,
+          ],
+        };
+      writes.push({
+        resortId: targetId,
+        features: [...targetFeatures, ...movedFeatures],
+        expectedHash: targetDocument?.hash ?? null,
+        previousGeojson: targetGeojson,
+      });
+    }
+
+    const proposedGeojson = writes.map(write => ({
+      ...write,
+      geojson: {
+        ...write.previousGeojson,
+        type: "FeatureCollection" as const,
+        features: write.features,
+      },
+    }));
+    const derivedDocuments = await Promise.all(
+      proposedGeojson.map(async write => {
+        const key =
+          request.sourceKind === "osm"
+            ? osmSlope10mDocumentKey(write.resortId)
+            : slope10mDocumentKey(write.resortId);
+        const current = await getDataDocument(key);
+        return {
+          key,
+          current,
+          geojson: synchronizeDerivedGeometry({
+            previousBefore: write.previousGeojson,
+            nextBefore: write.geojson,
+            existingDerived: current
+              ? parseSlopeBeforeGeojson(current.content)
+              : null,
+            intervalM: 10,
+            kind: "slope",
+          }),
+        };
+      }),
+    );
+
+    try {
+      await saveRelatedEditorLinks(request.resortId, request.linkRequests);
+      const savedDocuments = await writeDataDocuments([
+        ...(preparedMapping?.ok ? [preparedMapping.document] : []),
+        ...proposedGeojson.map(write => ({
+          key: slopeBeforeDocumentKey(write.resortId, request.sourceKind),
+          content: serializeSlopeGeojson(write.geojson),
+          mediaType: "application/geo+json",
+          expectedHash: write.expectedHash,
+        })),
+        ...derivedDocuments.map(document => ({
+          key: document.key,
+          content: serializeSlopeGeojson(document.geojson),
+          mediaType: "application/geo+json",
+          expectedHash: document.current?.hash ?? null,
+        })),
+      ]);
+      for (const [index, derived] of derivedDocuments.entries()) {
+        const saved = savedDocuments.find(
+          document => document.key === derived.key,
+        );
+        if (saved)
+          scheduleSavedElevations(
+            saved,
+            "slope",
+            proposedGeojson[index].geojson,
+          );
+      }
+    } catch (error) {
+      if (error instanceof DataDocumentConflictError) {
+        return {
+          ok: false,
+          conflict: true,
+          errors: [
+            `保存中にデータが更新されました。現在の編集内容を優先する場合は、もう一度上書き保存してください。`,
+          ],
+        };
+      }
+      throw error;
+    }
+
+    return {
+      ok: true,
+      writtenFiles: writes.flatMap(write => [
+        `${request.sourceKind === "osm" ? "slope_before_osm" : "slope_before"}/${write.resortId}.geojson`,
+        `${request.sourceKind === "osm" ? "slope_10m_osm" : "slope_10m"}/${write.resortId}.geojson`,
+      ]),
+    };
+  };
+  // ローカル管理画面が旧版の正本サーバーへ接続している間も、管理者の
+  // 明示的な上書きは既存のDataDocument APIで保存できるようにする。
+  try {
+    if (request.forceOverwrite && usesRemoteDataApi()) {
+      await requireAdmin();
+      return await withAdminOverwrite(operation);
+    }
+    return await runEdit("slope", request.resortId, request, operation);
+  } catch (error) {
+    // 本番ビルドは例外の内容を画面に出さないため、管理者にだけ理由を返す。
+    const actor = await getCurrentActor().catch(() => null);
+    if (actor?.role !== "admin" || !(error instanceof Error)) throw error;
+    console.error("Failed to save slope edits", error);
+    // conflict を付けて、管理者が上書き保存を選べるようにする
+    return {
+      ok: false,
+      conflict: true,
+      errors: [
+        `保存できませんでした（理由: ${error.message.slice(0, 500)}）`,
+        ...(request.forceOverwrite
+          ? []
+          : ["現在の編集内容を優先する場合は、上書き保存を選んでください。"]),
+      ],
+    };
+  }
+}
+
+/** 保存済みの全コースを再計算する。編集途中の下書きは使わない。 */
+export async function refreshSlopeElevations(
+  resortId: string,
+  sourceKind: SaveRequest["sourceKind"] = "curated",
+): Promise<SaveResult> {
+  await requireAdmin();
+  if (!isValidResortId(resortId) || !["curated", "osm"].includes(sourceKind))
+    return { ok: false, errors: ["不正なスキー場IDまたはコースの種類です。"] };
+  try {
+    const before = await readSlopeBeforeDocument(resortId, sourceKind);
+    const source = before ? parseSlopeBeforeGeojson(before.content) : null;
+    if (!before || !source || source.features.length === 0)
+      return { ok: false, errors: ["保存済みのコースデータがありません。"] };
+    const key =
+      sourceKind === "osm"
+        ? osmSlope10mDocumentKey(resortId)
+        : slope10mDocumentKey(resortId);
+    const existing = await getDataDocument(key);
+    const sampled = synchronizeDerivedGeometry({
+      previousBefore: null,
+      nextBefore: source,
+      existingDerived: null,
+      intervalM: 10,
+      kind: "slope",
+    });
+    const written = await writeDataDocuments([
+      {
+        key: slopeBeforeDocumentKey(resortId, sourceKind),
+        content: before.content,
+        mediaType: "application/geo+json",
+        expectedHash: before.hash,
+      },
+      {
+        key,
+        content: existing?.content ?? serializeSlopeGeojson(sampled),
+        mediaType: "application/geo+json",
+        expectedHash: existing?.hash ?? null,
+      },
+    ]);
+    const saved = written.find(document => document.key === key);
+    if (saved) scheduleSavedElevations(saved, "slope", source, { force: true });
+    return { ok: true, writtenFiles: [key] };
+  } catch (error) {
+    return {
+      ok: false,
+      errors: [
+        error instanceof DataDocumentConflictError
+          ? "保存済みのコースが変更されました。再実行してください。"
+          : `標高取得を開始できませんでした: ${error instanceof Error ? error.message : String(error)}`,
+      ],
+    };
+  }
+}
+
+export async function setOsmSlopeConfirmed(
+  resortId: string,
+  confirmed: boolean,
+): Promise<{ confirmedAt: string | null }> {
+  await requireAdmin();
+  const map = await writeOsmSlopeConfirmed(resortId, confirmed);
+  return { confirmedAt: map[resortId] ?? null };
+}

@@ -1,14 +1,14 @@
 import "server-only";
-import { saveLatestStatusMapping } from "@/features/latest-status-mapping/actions";
-import { saveLiftEdits } from "@/features/lift/actions";
-import { saveResortLink } from "@/features/links/actions";
-import { saveReviewFiles } from "@/features/review/actions";
-import { publishReviewUpload } from "@/features/review/publicationActions";
+import { saveLatestStatusMapping } from "@/features/latest-status-mapping/server/editorMutations";
+import { saveLiftEdits } from "@/features/lift/server/editorMutations";
+import { saveResortLink } from "@/features/links/server/editorMutations";
+import { saveReviewFiles } from "@/features/review/server/editorMutations";
+import { publishReviewUpload } from "@/features/review/server/editorPublication";
 import {
   applySlopeFeatureOrder,
   saveSlopeEdits,
-} from "@/features/slope/actions";
-import { saveTicketFile } from "@/features/ticket/actions";
+} from "@/features/slope/server/editorMutations";
+import { saveTicketFile } from "@/features/ticket/server/editorMutations";
 import { updateAdminSkiResort } from "@/lib/skiResortData";
 import { collectEdit } from "./capture";
 import { assertBoundedPayload, type EditKind, type EditPlan } from "./contract";

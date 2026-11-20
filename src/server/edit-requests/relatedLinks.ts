@@ -1,6 +1,6 @@
 import "server-only";
-import { saveResortLink } from "@/features/links/actions";
 import { type LinkSaveRequest, linkSaveSchema } from "@/features/links/model";
+import { saveResortLink } from "@/features/links/server/editorMutations";
 export async function saveRelatedEditorLinks(
   resortId: string,
   requests: LinkSaveRequest[] = [],
