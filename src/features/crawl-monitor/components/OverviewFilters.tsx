@@ -1,10 +1,16 @@
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
 import { withBasePath } from "@/shared/utils/basePath";
 import {
   OVERVIEW_STATUS_FILTERS,
   OVERVIEW_STATUS_LABELS,
   type OverviewQuery,
 } from "../utils/query";
-import { SELECT_CLASS, SourceModeSelect } from "./SourceModeSelect";
+import { SourceModeSelect } from "./SourceModeSelect";
 
 /**
  * 絞り込みはGETのformにする。JavaScript不要で、結果のURLをそのまま共有できる。
@@ -22,7 +28,7 @@ export function OverviewFilters({
       action={withBasePath("/admin/crawl")}
       className="flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-white p-3"
     >
-      <label className="flex flex-col gap-1 text-xs text-gray-600">
+      <Label className="flex flex-col gap-1 text-xs text-gray-600">
         スキー場名 / ID
         <input
           type="search"
@@ -31,43 +37,35 @@ export function OverviewFilters({
           placeholder="例: ルスツ, rusutsu"
           className="h-9 w-56 rounded-md border border-gray-300 px-2 text-sm"
         />
-      </label>
-      <label className="flex flex-col gap-1 text-xs text-gray-600">
+      </Label>
+      <Label className="flex flex-col gap-1 text-xs text-gray-600">
         都道府県
-        <select
-          name="prefecture"
-          defaultValue={query.prefecture}
-          className={SELECT_CLASS}
-        >
-          <option value="">すべて</option>
+        <NativeSelect name="prefecture" defaultValue={query.prefecture}>
+          <NativeSelectOption value="">すべて</NativeSelectOption>
           {prefectures.map(prefecture => (
-            <option key={prefecture} value={prefecture}>
+            <NativeSelectOption key={prefecture} value={prefecture}>
               {prefecture}
-            </option>
+            </NativeSelectOption>
           ))}
-        </select>
-      </label>
-      <label className="flex flex-col gap-1 text-xs text-gray-600">
+        </NativeSelect>
+      </Label>
+      <Label className="flex flex-col gap-1 text-xs text-gray-600">
         状態
-        <select
-          name="status"
-          defaultValue={query.status}
-          className={SELECT_CLASS}
-        >
+        <NativeSelect name="status" defaultValue={query.status}>
           {OVERVIEW_STATUS_FILTERS.map(status => (
-            <option key={status} value={status}>
+            <NativeSelectOption key={status} value={status}>
               {OVERVIEW_STATUS_LABELS[status]}
-            </option>
+            </NativeSelectOption>
           ))}
-        </select>
-      </label>
+        </NativeSelect>
+      </Label>
       <SourceModeSelect sourceModes={query.sourceModes} />
-      <button
+      <Button
         type="submit"
         className="h-9 rounded-md bg-gray-900 px-4 text-sm font-medium text-white hover:bg-gray-800"
       >
         絞り込む
-      </button>
+      </Button>
     </form>
   );
 }

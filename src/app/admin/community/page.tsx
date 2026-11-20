@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { REACTION_LABELS } from "@/features/community/contract";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/requireAdmin";
@@ -22,22 +24,22 @@ function ReviewButtons({
     <form action={reviewCommunityContent} className="flex flex-wrap gap-2">
       <input type="hidden" name="targetId" value={id} />
       <input type="hidden" name="version" value={version} />
-      <button
+      <Button
         type="submit"
         name="decision"
         value={status === "VISIBLE" ? "HIDE" : "RESTORE"}
-        className="rounded border px-3 py-1"
+        variant="outline"
       >
         {status === "VISIBLE" ? "一時非表示" : "復旧する"}
-      </button>
-      <button
+      </Button>
+      <Button
         type="submit"
         name="decision"
         value="DELETE"
-        className="rounded border px-3 py-1 text-red-700"
+        variant="destructive"
       >
         削除する
-      </button>
+      </Button>
     </form>
   );
 }
@@ -116,9 +118,9 @@ export default async function CommunityAdminPage({
       )}
       {failed > 0 && (
         <form action={retryCommunityModeration}>
-          <button type="submit" className="rounded border bg-white px-3 py-2">
+          <Button type="submit" variant="outline">
             失敗したAIチェックを再試行
-          </button>
+          </Button>
         </form>
       )}
       <section className="space-y-2">
@@ -140,9 +142,9 @@ export default async function CommunityAdminPage({
             </Link>
             <form action={resolveCommunityReport}>
               <input type="hidden" name="id" value={report.id} />
-              <button type="submit" className="rounded border px-3 py-1">
+              <Button type="submit" variant="outline">
                 確認済みにする
-              </button>
+              </Button>
             </form>
           </article>
         ))}
@@ -209,17 +211,17 @@ export default async function CommunityAdminPage({
               >
                 <input type="hidden" name="userId" value={post.authorId} />
                 <input type="hidden" name="suspend" value="true" />
-                <label>
+                <Label>
                   投稿を停止するには「変更」と入力{" "}
                   <input
                     name="confirm"
                     className="w-20 rounded border p-1"
                     required
                   />
-                </label>
-                <button type="submit" className="rounded border px-2">
+                </Label>
+                <Button type="submit" variant="outline">
                   投稿を停止
-                </button>
+                </Button>
               </form>
               <p className="text-xs">
                 本人による削除は引き続き可能です。AIはこの操作を行いません。
@@ -247,17 +249,17 @@ export default async function CommunityAdminPage({
             <span>{user.publicName ?? "匿名"}</span>
             <input type="hidden" name="userId" value={user.id} />
             <input type="hidden" name="suspend" value="false" />
-            <label>
+            <Label>
               「変更」と入力{" "}
               <input
                 name="confirm"
                 className="w-20 rounded border p-1"
                 required
               />
-            </label>
-            <button type="submit" className="rounded border px-2">
+            </Label>
+            <Button type="submit" variant="outline">
               投稿を再開
-            </button>
+            </Button>
           </form>
         ))}
       </section>

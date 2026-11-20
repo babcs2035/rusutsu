@@ -1,4 +1,10 @@
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
 import type { CrawlMonitorIssueCodeSummary } from "@/server/crawl-latest/adminContract";
 import { withBasePath } from "@/shared/utils/basePath";
 import {
@@ -7,7 +13,7 @@ import {
   SEVERITY_LABELS,
 } from "../utils/labels";
 import { buildQueryString, type IssueQuery } from "../utils/query";
-import { SELECT_CLASS, SourceModeSelect } from "./SourceModeSelect";
+import { SourceModeSelect } from "./SourceModeSelect";
 import { StatusPill } from "./StatusPill";
 
 const DAY_OPTIONS = [
@@ -40,37 +46,32 @@ export function IssueFilters({
         action={withBasePath("/admin/crawl/issues")}
         className="flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-white p-3"
       >
-        <label className="flex flex-col gap-1 text-xs text-gray-600">
+        <Label className="flex flex-col gap-1 text-xs text-gray-600">
           重大度
-          <select
-            name="severity"
-            defaultValue={query.severity ?? ""}
-            className={SELECT_CLASS}
-          >
-            <option value="">すべて</option>
+          <NativeSelect name="severity" defaultValue={query.severity ?? ""}>
+            <NativeSelectOption value="">すべて</NativeSelectOption>
             {(["ERROR", "WARNING"] as const).map(severity => (
-              <option key={severity} value={severity}>
+              <NativeSelectOption key={severity} value={severity}>
                 {SEVERITY_LABELS[severity]}
-              </option>
+              </NativeSelectOption>
             ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-xs text-gray-600">
+          </NativeSelect>
+        </Label>
+        <Label className="flex flex-col gap-1 text-xs text-gray-600">
           カテゴリ
-          <select
+          <NativeSelect
             name="categoryKind"
             defaultValue={query.categoryKind ?? ""}
-            className={SELECT_CLASS}
           >
-            <option value="">すべて</option>
+            <NativeSelectOption value="">すべて</NativeSelectOption>
             {CATEGORY_KINDS.map(kind => (
-              <option key={kind} value={kind}>
+              <NativeSelectOption key={kind} value={kind}>
                 {CATEGORY_LABELS[kind]}
-              </option>
+              </NativeSelectOption>
             ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-xs text-gray-600">
+          </NativeSelect>
+        </Label>
+        <Label className="flex flex-col gap-1 text-xs text-gray-600">
           スキー場ID
           <input
             type="search"
@@ -79,23 +80,22 @@ export function IssueFilters({
             placeholder="例: rusutsu-resort"
             className="h-9 w-48 rounded-md border border-gray-300 px-2 text-sm"
           />
-        </label>
-        <label className="flex flex-col gap-1 text-xs text-gray-600">
+        </Label>
+        <Label className="flex flex-col gap-1 text-xs text-gray-600">
           期間
-          <select
+          <NativeSelect
             name="days"
             defaultValue={query.days === null ? "" : String(query.days)}
-            className={SELECT_CLASS}
           >
             {DAY_OPTIONS.map(option => (
-              <option key={option.value} value={option.value}>
+              <NativeSelectOption key={option.value} value={option.value}>
                 {option.label}
-              </option>
+              </NativeSelectOption>
             ))}
-          </select>
-        </label>
+          </NativeSelect>
+        </Label>
         <SourceModeSelect sourceModes={query.sourceModes} />
-        <label className="flex items-center gap-2 pb-2 text-xs text-gray-700">
+        <Label className="flex items-center gap-2 pb-2 text-xs text-gray-700">
           <input
             type="checkbox"
             name="blockingOnly"
@@ -104,16 +104,16 @@ export function IssueFilters({
             className="size-4"
           />
           公開値に反映されなかったものだけ
-        </label>
+        </Label>
         {query.code ? (
           <input type="hidden" name="code" value={query.code} />
         ) : null}
-        <button
+        <Button
           type="submit"
           className="h-9 rounded-md bg-gray-900 px-4 text-sm font-medium text-white hover:bg-gray-800"
         >
           絞り込む
-        </button>
+        </Button>
       </form>
 
       {codes.length > 0 ? (
