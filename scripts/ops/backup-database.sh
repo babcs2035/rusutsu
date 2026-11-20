@@ -38,28 +38,25 @@ check_backup_capacity() {
   fi
 }
 
+case "${1:-}" in
+  ''|--operation-lock-held|--dry-run) ;;
+  *) ops_die 'Usage: backup-database.sh [--dry-run]' ;;
+esac
 if [[ "${1:-}" != --operation-lock-held ]]; then
   lock_operations
   owns_lock=true
   load_runtime_environment
 fi
+if [[ "${1:-}" == --dry-run ]]; then
+  ops_node local-backup.ts plan-legacy
+  exit 0
+fi
 migrated_generations="$(ops_node local-backup.ts migrate-legacy)"
 if [[ -n "$migrated_generations" ]]; then
-  work="$(mktemp -d "$BACKUP_DIR/.migration-check-XXXXXXXX")"
   while IFS= read -r generation; do
-    [[ "$generation" =~ ^rusutsu-db-[0-9]{8}T[0-9]{6}Z-[A-Za-z0-9]{8}$ ]] \
-      || ops_die 'Invalid migrated backup generation.'
-    # Parse the copied dump itself before deleting the legacy copy. archive.list
-    # alone is only recorded evidence; this repeats pg_restore's TOC check.
-    docker exec -i "$OPS_DB_CONTAINER" pg_restore --list \
-      < "$BACKUP_DIR/$generation/database.dump" \
-      > "$work/$generation.archive.list"
-    test -s "$work/$generation.archive.list" \
-      || ops_die 'Migrated PostgreSQL archive validation failed.'
+    bash "$OPS_SCRIPTS_DIR/restore-backup-test.sh" --operation-lock-held "$generation"
     ops_node local-backup.ts confirm-legacy "$generation"
   done <<< "$migrated_generations"
-  rm -rf -- "$work"
-  work=''
 fi
 check_backup_capacity
 work="$(mktemp -d "$BACKUP_DIR/.incomplete-XXXXXXXX")"

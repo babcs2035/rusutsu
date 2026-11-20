@@ -36,6 +36,8 @@ elif args[0]=='inspect':
 elif args[0]=='run' and '--name' in args:
     if mode=='lock': sys.exit(1)
     print('owned-lock-container')
+elif args[0]=='run' and '--pull' in args:
+    print('disposable-restore-container')
 elif args[0]=='run' and '--workdir' in args:
     start=args.index('--entrypoint')+3
     script=args[start:]
@@ -60,7 +62,7 @@ elif args[0]=='exec':
         if mode!='empty': sys.stdout.buffer.write(b'PGDMP-private-data')
     elif 'pg_restore' in args:
         sys.stdin.buffer.read()
-        if mode=='archive': sys.exit(1)
+        if mode=='archive' or (mode=='restore' and '--exit-on-error' in args): sys.exit(1)
         print('; PostgreSQL archive contents')
 elif args[0]=='compose':
     if '--format' in args:
@@ -104,8 +106,12 @@ function fixture() {
   return {
     root,
     stateRoot,
-    run(script: string, extraEnv: Record<string, string> = {}) {
-      return spawnSync("bash", [path.join(opsRoot, script)], {
+    run(
+      script: string,
+      extraEnv: Record<string, string> = {},
+      args: string[] = [],
+    ) {
+      return spawnSync("bash", [path.join(opsRoot, script), ...args], {
         cwd: path.join(root, "project"),
         env: {
           ...process.env,
@@ -186,7 +192,7 @@ test("insufficient free space stops before dumping and preserves backups", async
   }
 });
 
-test("unreadable migrated dump leaves its legacy generation in place", async () => {
+test("legacy backup preview copies nothing and failed restore preserves the source", async () => {
   const f = fixture();
   try {
     const legacyRoot = path.join(f.stateRoot, "backups");
@@ -208,11 +214,18 @@ test("unreadable migrated dump leaves its legacy generation in place", async () 
       "2026-09-06T00:00:00.000Z",
     );
 
+    const preview = f.run("backup-database.sh", {}, ["--dry-run"]);
+    assert.equal(preview.status, 0, preview.stderr);
+    assert.equal(preview.stdout.trim(), generation);
+    assert.deepEqual(readdirSync(path.join(f.root, "project", "backups")), []);
+
     const result = f.run("backup-database.sh", {
-      OPS_TEST_FAILURE: "archive",
+      OPS_TEST_FAILURE: "restore",
     });
     assert.notEqual(result.status, 0);
     assert.ok(!f.calls().includes("pg_dump"));
+    assert.match(f.calls(), /pg_restore --exit-on-error/);
+    assert.doesNotMatch(f.calls(), /confirm-legacy/);
     assert.ok(readdirSync(legacyRoot).includes(generation));
     assert.ok(
       readdirSync(path.join(f.root, "project", "backups")).includes(generation),
@@ -228,7 +241,7 @@ for (const failure of ["dump", "empty", "archive", "connection", "lock"]) {
     try {
       const result = f.run("deploy.sh", { OPS_TEST_FAILURE: failure });
       assert.notEqual(result.status, 0);
-      assert.ok(!f.calls().includes("prisma migrate deploy"));
+      assert.ok(!f.calls().includes("migrate deploy"));
       assert.ok(!f.calls().includes(" stop "));
       assert.deepEqual(
         readdirSync(path.join(f.root, "project", "backups")),
@@ -255,12 +268,12 @@ test("unchanged DB paths skip backup but still migrate and require public readin
     assert.equal(result.status, 0, result.stderr);
     assert.ok(!f.calls().includes("pg_dump"));
     assert.ok(!f.calls().includes("importCanonicalDataDocuments"));
-    assert.ok(f.calls().includes("prisma migrate deploy"));
+    assert.ok(f.calls().includes("migrate deploy"));
     const rebuild = f
       .calls()
       .indexOf("rebuildCourseRecommendations.ts --apply");
     const canonical = f.calls().indexOf("migrateCanonicalMaps.ts --deploy");
-    assert.ok(canonical > f.calls().indexOf("prisma migrate deploy"));
+    assert.ok(canonical > f.calls().indexOf("migrate deploy"));
     assert.ok(rebuild > canonical);
     assert.ok(rebuild < f.calls().indexOf("up -d --wait --wait-timeout"));
     assert.ok(
@@ -290,7 +303,7 @@ test("initialization backs up first, then migrates/imports and records only afte
       "pg_restore",
       "local-backup.ts finalize",
       "prepare-artifact-directories.ts",
-      "prisma migrate deploy",
+      "migrate deploy",
       "importCanonicalDataDocuments.ts --initialize",
       "importSkiResortShortNames.ts --initialize",
       "migrateCanonicalMaps.ts --deploy",

@@ -168,11 +168,11 @@ DB変更対象は`build-db-manifest.py`に列挙したschema/migrations/import/b
 
 `Daily database backup` は毎日 03:00 JST に実行を予定する．初回の CI/CD で配備したスクリプトと設定を使う．
 
-旧保存先 `~/.local/state/rusutsu/<project>/backups/` の検証済み世代は，配備先にコピーして構成・チェックサム・dump の一覧を再検査する．コピーが確認できた世代から旧ファイルを除く．中断後に残った一時ディレクトリは，配備・バックアップが動作していないことと対象パスを確認してから整理する．
+旧保存先 `~/.local/state/rusutsu/<project>/backups/` から移行する世代は，配備先で `DEPLOY_TARGET="$PWD" bash scripts/ops/backup-database.sh --dry-run` を実行して確認する．次のバックアップで検証済み世代を配備先へコピーし，チェックサムを照合して，一時 PostgreSQL に復元できた世代から旧コピーを除く．中断後に残った一時ディレクトリは，配備・バックアップが動作していないことと対象パスを確認してから整理する．
 手動で`test_restore=true`を付けると、コピー後に同VPSで復元試験する。
 
 復元試験はチェックサムを確認し、ネットワークなし・PGDATAがtmpfsの一時PostgreSQLへ復元する。
-既存DB接続情報・volumeを使わず、スキー場件数を確認して自身の試験コンテナだけを片付ける。
+一時 DB でスキー場，認証，写真，申請，クロール現在値のテーブルを確認し，試験コンテナを片付ける．
 日次処理・復元試験とも新しいGitHub設定は不要。
 
 誤削除の復旧時は、完了記録を消して全投入し直さない。

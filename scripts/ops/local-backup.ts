@@ -150,6 +150,7 @@ export async function prune(root: string, keep = 7): Promise<string[]> {
 export async function migrateLegacyBackups(
   legacyRoot: string,
   targetRoot: string,
+  preview = false,
 ): Promise<string[]> {
   if (path.resolve(legacyRoot) === path.resolve(targetRoot)) return [];
   if (!existsSync(legacyRoot)) return [];
@@ -180,6 +181,10 @@ export async function migrateLegacyBackups(
         )
           throw new Error("Conflicting backup generation exists at target.");
       }
+      migrated.push(name);
+      continue;
+    }
+    if (preview) {
       migrated.push(name);
       continue;
     }
@@ -219,7 +224,7 @@ export async function migrateLegacyBackups(
   return migrated;
 }
 
-/** Removes a legacy source only after the caller confirms the copied dump parses. */
+/** Removes a legacy source once the caller has restored the copy in isolation. */
 export async function confirmLegacyBackup(
   legacyRoot: string,
   targetRoot: string,
@@ -289,10 +294,11 @@ async function main() {
     if (process.argv[2] === "finalize") {
       const generation = await finalize(root, process.argv[3], process.argv[4]);
       console.log(generation);
-    } else if (process.argv[2] === "migrate-legacy") {
+    } else if (["migrate-legacy", "plan-legacy"].includes(process.argv[2])) {
       const migrated = await migrateLegacyBackups(
         process.env.OPS_BACKUP_LEGACY_TEST_ROOT || "/operations/backups",
         root,
+        process.argv[2] === "plan-legacy",
       );
       for (const name of migrated) console.log(name);
     } else if (process.argv[2] === "confirm-legacy") {

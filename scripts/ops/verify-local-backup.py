@@ -1,6 +1,6 @@
 """Exercise the real VPS-local backup scripts using ONLY disposable local DBs.
 
-Usage: python3 scripts/ops/verify-local-backup.py --image LOCAL_NODE_IMAGE
+Usage: uv run --no-project scripts/ops/verify-local-backup.py --image LOCAL_NODE_IMAGE
 The image must already exist and contain Node. No image push/pull is performed.
 No existing DB, volume, API or external storage is accessed.
 """
@@ -19,7 +19,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--image', required=True)
 args = parser.parse_args()
 repo = pathlib.Path(__file__).resolve().parents[2]
-root = pathlib.Path(tempfile.mkdtemp(prefix='rusutsu-local-ops-', dir='/private/tmp' if pathlib.Path('/private/tmp').exists() else None))
+tmp = repo / 'src/private/data/resorts-temporary/tmp'
+tmp.mkdir(parents=True, exist_ok=True)
+root = pathlib.Path(tempfile.mkdtemp(prefix='rusutsu-local-ops-', dir=tmp))
 project = 'rusutsu-ops-test-' + uuid.uuid4().hex[:10]
 containers = []
 
@@ -33,6 +35,16 @@ def script(name, check=True):
     if check and result.returncode:
         raise RuntimeError(name + ' failed: ' + result.stdout + result.stderr)
     return result
+
+
+def wait_for_postgres(container, user, database):
+    """Wait for the final TCP server, after initialization has completed."""
+    for _ in range(60):
+        if docker('exec', container, 'pg_isready', '-h', '127.0.0.1', '-U', user,
+                  '-d', database, check=False).returncode == 0:
+            return
+        time.sleep(1)
+    raise RuntimeError('Disposable database failed to start.')
 
 
 try:
@@ -56,16 +68,21 @@ try:
         '-e', 'POSTGRES_USER=local_test', '-e', 'POSTGRES_PASSWORD=disposable_only', '-e', 'POSTGRES_DB=local_test', 'postgres:16-alpine').stdout.strip())
     containers.append(docker('run', '-d', '--name', app, '--network', 'none', '--label', 'com.docker.compose.project=' + project,
         '--label', 'com.docker.compose.service=app', '--entrypoint', 'node', args.image, '-e', 'setTimeout(() => {}, 600000)').stdout.strip())
-    for _ in range(60):
-        if docker('exec', db, 'pg_isready', '-U', 'local_test', '-d', 'local_test', check=False).returncode == 0:
-            break
-        time.sleep(1)
-    else:
-        raise RuntimeError('Disposable database failed to start.')
+    wait_for_postgres(db, 'local_test', 'local_test')
     sql = '''CREATE TABLE ski_resorts (id text PRIMARY KEY, "nameJa" text NOT NULL);
 INSERT INTO ski_resorts VALUES ('one','Sample One'), ('two','Sample Two');
 CREATE TABLE retained_document (id integer PRIMARY KEY, content jsonb NOT NULL);
 INSERT INTO retained_document VALUES (1, '{"text":"manual edit must survive"}');
+CREATE TABLE users (id text PRIMARY KEY, email text);
+INSERT INTO users VALUES ('u', 'anonymous@example.invalid');
+CREATE TABLE accounts (id text PRIMARY KEY, user_id text REFERENCES users(id));
+INSERT INTO accounts VALUES ('a', 'u');
+CREATE TABLE contribution_photos (id text PRIMARY KEY, data bytea);
+INSERT INTO contribution_photos VALUES ('p', decode('0100ff', 'hex'));
+CREATE TABLE edit_requests (id text PRIMARY KEY, document jsonb, version int);
+INSERT INTO edit_requests VALUES ('e', '{"before":"abc"}', 7);
+CREATE TABLE crawl_latest_currents (id text PRIMARY KEY, snapshot jsonb);
+INSERT INTO crawl_latest_currents VALUES ('c', '{"state":"COMPLETE"}');
 '''
     docker('exec', '-i', db, 'psql', '-U', 'local_test', '-d', 'local_test', '-v', 'ON_ERROR_STOP=1', input=sql)
     preflight = ['run', '--rm', '--network', 'container:' + db,
@@ -81,13 +98,14 @@ INSERT INTO retained_document VALUES (1, '{"text":"manual edit must survive"}');
     runtime = state / 'runtime.env.sh'
     runtime.write_text("export COMPOSE_PROJECT_NAME='" + project + "'\n")
     runtime.chmod(0o600)
-    env = dict(os.environ, RUSUTSU_DB_CONTAINER=db, RUSUTSU_APP_CONTAINER=app, RUSUTSU_OPS_STATE_DIR=str(state))
+    env = dict(os.environ, RUSUTSU_DB_CONTAINER=db, RUSUTSU_APP_CONTAINER=app,
+               RUSUTSU_OPS_STATE_DIR=str(state), DEPLOY_TARGET=str(root))
     env.pop('APP_IMAGE', None)
     env.pop('RUSUTSU_SETTINGS_B64', None)
     result = script('backup-database.sh')
     assert 'Verified VPS-local database backup' in result.stdout
     print('PASS: actual pg_dump, pg_restore archive check and Node checksum generation on Docker')
-    generations = list((state / 'backups').iterdir())
+    generations = list((root / 'backups').iterdir())
     assert len(generations) == 1
     files = sorted(p.name for p in generations[0].iterdir())
     assert files == ['SHA256SUMS', 'archive.list', 'database.dump', 'metadata.json']
@@ -101,26 +119,36 @@ INSERT INTO retained_document VALUES (1, '{"text":"manual edit must survive"}');
     restored = docker('run', '-d', '--network', 'none', '--mount', 'type=tmpfs,destination=/var/lib/postgresql/data',
         '-e', 'POSTGRES_USER=verify', '-e', 'POSTGRES_PASSWORD=disposable_only', '-e', 'POSTGRES_DB=verify', 'postgres:16-alpine').stdout.strip()
     containers.append(restored)
-    for _ in range(60):
-        if docker('exec', restored, 'pg_isready', '-U', 'verify', '-d', 'verify', check=False).returncode == 0:
-            break
-        time.sleep(1)
+    wait_for_postgres(restored, 'verify', 'verify')
     with (generations[0] / 'database.dump').open('rb') as dump:
         subprocess.run(['docker', 'exec', '-i', restored, 'pg_restore', '--exit-on-error', '--no-owner', '--no-privileges', '-U', 'verify', '-d', 'verify'], stdin=dump, check=True, capture_output=True)
-    rows = docker('exec', restored, 'psql', '-U', 'verify', '-d', 'verify', '-Atc', "SELECT content->>'text' FROM retained_document;").stdout.strip()
-    assert rows == 'manual edit must survive'
-    assert docker('exec', restored, 'psql', '-U', 'verify', '-d', 'verify', '-Atc', 'SELECT count(*) FROM ski_resorts;').stdout.strip() == '2'
-    print('PASS: resort rows and a manually edited JSON document survive the real restore')
+    for table in ['ski_resorts', 'retained_document', 'users', 'accounts',
+                  'contribution_photos', 'edit_requests', 'crawl_latest_currents']:
+        query = f'SELECT to_jsonb(row) FROM {table} AS row ORDER BY id'
+        before = docker('exec', db, 'psql', '-U', 'local_test', '-d', 'local_test', '-Atc', query)
+        after = docker('exec', restored, 'psql', '-U', 'verify', '-d', 'verify', '-Atc', query)
+        assert before.stdout == after.stdout, table
+    print('PASS: original values, IDs, references and photo bytes match the restored records')
+    legacy_root = state / 'backups'
+    legacy_root.mkdir(mode=0o700)
+    legacy_generation = legacy_root / generations[0].name
+    generations[0].rename(legacy_generation)
+    result = script('backup-database.sh')
+    assert 'Restore succeeded' in result.stdout
+    assert not legacy_generation.exists()
+    assert generations[0].is_dir()
+    print('PASS: legacy generation is restored successfully before its original is removed')
     lock = docker('run', '-d', '--name', 'rusutsu-operation-' + project, '--network', 'none', '--entrypoint', 'node', args.image,
         '-e', 'setTimeout(() => {}, 600000)').stdout.strip()
     containers.append(lock)
     assert script('backup-database.sh', check=False).returncode != 0
-    assert len(list((state / 'backups').iterdir())) == 1
+    assert len(list((root / 'backups').iterdir())) == 2
     docker('rm', '-f', lock)
     containers.remove(lock)
     print('PASS: a concurrent operation is rejected before making another dump')
-    with (generations[0] / 'database.dump').open('ab') as dump:
-        dump.write(b'corrupt')
+    for generation in (root / 'backups').iterdir():
+        with (generation / 'database.dump').open('ab') as dump:
+            dump.write(b'corrupt')
     assert script('restore-backup-test.sh', check=False).returncode != 0
     assert docker('exec', db, 'psql', '-U', 'local_test', '-d', 'local_test', '-Atc', 'SELECT count(*) FROM ski_resorts;').stdout.strip() == '2'
     print('PASS: corrupt backup is rejected and the source test database remains unchanged')
