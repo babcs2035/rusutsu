@@ -67,12 +67,21 @@ const nextConfig: NextConfig = {
   },
   allowedDevOrigins: ["10.100.160.132", "*.trycloudflare.com", "192.168.10.25"],
   output: "standalone",
+  outputFileTracingIncludes: {
+    "/api/share-image": [
+      // Playwright resolves its browser metadata dynamically at runtime.
+      "node_modules/playwright-core/browsers.json",
+      "node_modules/.pnpm/playwright-core@*/node_modules/playwright-core/browsers.json",
+    ],
+  },
   outputFileTracingExcludes: {
     // Cover named trace entries such as next-server as well as URL routes.
     "**": [
-      "./src/private/data/resorts-temporary/tmp/**/*",
-      "./src/private/data/resorts-temporary/logs/**/*",
-      "./src/private/data/resorts-temporary/crawl_latest_dom/**/*",
+      "**/.env*",
+      "**/backups/**/*",
+      "**/resorts-temporary/tmp/**/*",
+      "**/resorts-temporary/logs/**/*",
+      "**/resorts-temporary/crawl_latest_dom/**/*",
     ],
   },
   experimental: {

@@ -17,12 +17,13 @@ pnpm-debug.log*
 **/crawl_latest_dom
 var
 backups
+**/backups
 **/*.dump
 **/*.dump.age
 **/rusutsu-db-*
 **/__pycache__
 **/pending.env.sh
 **/runtime.env.sh
-src/private/data/resorts-temporary/tmp
-src/private/data/resorts-temporary/logs
+**/resorts-temporary/tmp
+**/resorts-temporary/logs
 production-settings.json

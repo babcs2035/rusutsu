@@ -6,7 +6,7 @@
     "dev": "pnpm maplibre:worker && next dev --hostname 127.0.0.1",
     "dev:lan": "pnpm maplibre:worker && next dev --hostname 0.0.0.0",
     "build": "pnpm maplibre:worker && next build",
-    "postbuild": "mkdir -p .next/standalone/public && cp -r public/. .next/standalone/public/ && cp -r .next/static/. .next/standalone/.next/static/",
+    "postbuild": "node scripts/prepareStandalone.ts",
     "start": "next start",
     "format": "biome format --write src scripts",
     "lint": "biome check src scripts",

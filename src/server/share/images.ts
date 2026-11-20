@@ -26,6 +26,7 @@ import { shareImageOverlay, shareImageSlots } from "./imageLayout";
 
 const cacheRoot = () =>
   path.resolve(
+    /* turbopackIgnore: true */
     process.env.SHARE_IMAGE_CACHE_ROOT ||
       "src/private/data/resorts-temporary/tmp/share-images",
   );
@@ -89,32 +90,39 @@ function renderOrigin() {
 
 async function cached(filename: string) {
   try {
-    return await readFile(path.join(cacheRoot(), filename));
+    return await readFile(
+      /* turbopackIgnore: true */ path.join(cacheRoot(), filename),
+    );
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
     throw error;
   }
 }
 async function save(filename: string, bytes: Buffer) {
-  await mkdir(cacheRoot(), { recursive: true });
+  await mkdir(/* turbopackIgnore: true */ cacheRoot(), { recursive: true });
   const temporary = path.join(cacheRoot(), `${filename}.${randomUUID()}.tmp`);
   try {
-    await writeFile(temporary, bytes);
-    await rename(temporary, path.join(cacheRoot(), filename));
+    await writeFile(/* turbopackIgnore: true */ temporary, bytes);
+    await rename(
+      temporary,
+      /* turbopackIgnore: true */ path.join(cacheRoot(), filename),
+    );
   } finally {
-    await unlink(temporary).catch(() => undefined);
+    await unlink(/* turbopackIgnore: true */ temporary).catch(() => undefined);
   }
 }
 
 /** 保存済み素材は30日保持。キャッシュの版が増え続けないよう上限も設ける。 */
 async function prune() {
-  const files = await readdir(cacheRoot());
+  const files = await readdir(/* turbopackIgnore: true */ cacheRoot());
   const entries = await Promise.all(
     files
       .filter(f => f.endsWith(".png") || f.endsWith(".jpg"))
       .map(async filename => ({
         filename,
-        info: await stat(path.join(cacheRoot(), filename)).catch(() => null),
+        info: await stat(
+          /* turbopackIgnore: true */ path.join(cacheRoot(), filename),
+        ).catch(() => null),
       })),
   );
   entries.sort((a, b) => (b.info?.mtimeMs ?? 0) - (a.info?.mtimeMs ?? 0));
@@ -126,7 +134,9 @@ async function prune() {
           (entry.info?.mtimeMs ?? 0) < Date.now() - 30 * 86400_000,
       )
       .map(entry =>
-        unlink(path.join(cacheRoot(), entry.filename)).catch(() => undefined),
+        unlink(
+          /* turbopackIgnore: true */ path.join(cacheRoot(), entry.filename),
+        ).catch(() => undefined),
       ),
   );
 }

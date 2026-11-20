@@ -73,14 +73,19 @@ export class BundledFileDataDocumentSource
 
     let realRoot: string;
     try {
-      realRoot = await fs.realpath(this.root);
-      const candidate = path.resolve(realRoot, ...key.split("/"));
+      realRoot = await fs.realpath(/* turbopackIgnore: true */ this.root);
+      const candidate = path.resolve(
+        /* turbopackIgnore: true */ realRoot,
+        ...key.split("/"),
+      );
       if (!isInsideRoot(realRoot, candidate)) return null;
 
       let currentPath = realRoot;
       for (const segment of key.split("/")) {
         currentPath = path.join(currentPath, segment);
-        const segmentStat = await fs.lstat(currentPath);
+        const segmentStat = await fs.lstat(
+          /* turbopackIgnore: true */ currentPath,
+        );
         if (segmentStat.isSymbolicLink()) return null;
       }
     } catch (error) {
@@ -88,13 +93,16 @@ export class BundledFileDataDocumentSource
       throw error;
     }
 
-    const file = path.resolve(realRoot, ...key.split("/"));
-    const stat = await fs.lstat(file);
+    const file = path.resolve(
+      /* turbopackIgnore: true */ realRoot,
+      ...key.split("/"),
+    );
+    const stat = await fs.lstat(/* turbopackIgnore: true */ file);
     if (!stat.isFile()) return null;
     if (stat.size > DATA_DOCUMENT_MAX_CONTENT_LENGTH) {
       throw new Error(`Bundled document exceeds byte limit: ${key}`);
     }
-    const content = await fs.readFile(file, "utf8");
+    const content = await fs.readFile(/* turbopackIgnore: true */ file, "utf8");
     return dataDocumentSchema.parse({
       key,
       content,
@@ -109,7 +117,7 @@ export class BundledFileDataDocumentSource
     const prefix = dataDocumentPrefixSchema.parse(untrustedPrefix);
     let realRoot: string;
     try {
-      realRoot = await fs.realpath(this.root);
+      realRoot = await fs.realpath(/* turbopackIgnore: true */ this.root);
     } catch (error) {
       if (isMissingPathError(error)) return [];
       throw error;
@@ -146,7 +154,9 @@ export class BundledFileDataDocumentSource
     prefix: string,
     output: string[],
   ): Promise<void> {
-    const entries = await fs.readdir(directory, { withFileTypes: true });
+    const entries = await fs.readdir(/* turbopackIgnore: true */ directory, {
+      withFileTypes: true,
+    });
     for (const entry of entries) {
       if (entry.isSymbolicLink()) continue;
       const relativePath = relativeDirectory
