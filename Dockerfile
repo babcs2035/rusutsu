@@ -24,6 +24,7 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 # ==============================================================================
 FROM base AS build-cache
 ARG DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
+ARG RUSUTSU_CSP_ENFORCE="false"
 ENV DATABASE_URL=${DATABASE_URL}
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
@@ -35,7 +36,7 @@ COPY . .
 RUN pnpm exec prisma generate
 
 # Build Next.js application
-RUN --mount=type=cache,id=nextjs,target=/app/.next/cache pnpm build
+RUN --mount=type=cache,id=nextjs,target=/app/.next/cache RUSUTSU_CSP_ENFORCE="$RUSUTSU_CSP_ENFORCE" pnpm build
 
 # ==============================================================================
 # Stage 3: Production runner

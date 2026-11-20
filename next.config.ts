@@ -3,13 +3,13 @@ import type { NextConfig } from "next";
 // Report-Only CSP: 地図タイル・天気 iframe・写真・OAuth・Google Fonts を許可し、
 // 違反を /api/csp-report に集めてから強制（enforce）へ切り替える。
 // 'unsafe-inline' は Next.js の RSC インラインスクリプト／スタイルのため必須。
-const CSP_REPORT_ONLY = [
+const CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob: https://*.googleusercontent.com https://tile.openstreetmap.org https://tile.googleapis.com https://cyberjapandata.gsi.go.jp https://cyberjapandata2.gsi.go.jp",
   "font-src 'self' https://fonts.gstatic.com",
-  "connect-src 'self' https://tile.googleapis.com https://www.google-analytics.com https://*.google-analytics.com",
+  "connect-src 'self' https://tile.openstreetmap.org https://tile.googleapis.com https://cyberjapandata.gsi.go.jp https://cyberjapandata2.gsi.go.jp https://www.google-analytics.com https://*.google-analytics.com",
   "frame-src 'self' https://ja.snow-forecast.com",
   "worker-src 'self' blob:",
   "child-src 'self' blob:",
@@ -32,8 +32,12 @@ const nextConfig: NextConfig = {
         source: "/:path*",
         headers: [
           {
-            key: "Content-Security-Policy-Report-Only",
-            value: CSP_REPORT_ONLY,
+            key:
+              process.env.NODE_ENV === "production" &&
+              process.env.RUSUTSU_CSP_ENFORCE === "true"
+                ? "Content-Security-Policy"
+                : "Content-Security-Policy-Report-Only",
+            value: CSP,
           },
           {
             key: "Referrer-Policy",
