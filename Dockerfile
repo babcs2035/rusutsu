@@ -27,16 +27,12 @@ ARG DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 ENV DATABASE_URL=${DATABASE_URL}
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
+RUN node node_modules/playwright/cli.js install chromium
 COPY . .
 
 # Generate Prisma Client
 # Node 26 breaks under QEMU arm64 (prisma/prisma#29464); keep Node 24 here
 RUN pnpm exec prisma generate
-
-# Playwright install (Note: Only needed if build process uses it, otherwise move to runner)
-# Installing here to ensure binaries are available for copy
-RUN pnpm exec playwright install-deps chromium && \
-    pnpm exec playwright install chromium
 
 # Build Next.js application
 RUN --mount=type=cache,id=nextjs,target=/app/.next/cache pnpm build
@@ -76,12 +72,15 @@ COPY --from=build-cache --chown=nextjs:nodejs /app/src/server ./src/server
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/shared ./src/shared
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/features/course-recommendations/algorithm.ts ./src/features/course-recommendations/algorithm.ts
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/features/latest-status-mapping ./src/features/latest-status-mapping
-COPY --from=build-cache --chown=nextjs:nodejs /app/src/features/resort-detail/utils/detailMetrics.ts ./src/features/resort-detail/utils/detailMetrics.ts
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/features/resort-detail/utils/detailMetrics.ts /app/src/features/resort-detail/utils/courseStatusSummary.ts ./src/features/resort-detail/utils/
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/features/home/utils/operatingCounts.ts ./src/features/home/utils/operatingCounts.ts
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/features/resort-links/convert.ts /app/src/features/resort-links/model.ts /app/src/features/resort-links/linkTypes.json /app/src/features/resort-links/linkSources.json ./src/features/resort-links/
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/scripts ./src/private/scripts
 # Frozen sources for EXPLICIT one-time import/recovery. App startup never imports.
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/SkiAreaNameDict.json ./src/private/data/SkiAreaNameDict.json
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/SkiResortNameAliases.json ./src/private/data/SkiResortNameAliases.json
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/SkiResortLinks.json ./src/private/data/SkiResortLinks.json
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/pass-programs/aliases.json ./src/private/data/pass-programs/aliases.json
 # EV充電の管理画面で出す、近くの充電器の候補（buildEvChargerCandidates.py が作る）
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/ev-charging/admin-candidates.json ./src/private/data/ev-charging/admin-candidates.json
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/reviews ./src/private/data/reviews
@@ -119,7 +118,7 @@ USER nextjs
 # Verify the final image, including files not discoverable by Next's tracer.
 # These commands do not connect to a DB or crawl any external website.
 RUN node scripts/ops/check-runtime-files.ts && \
-    node --import tsx --eval 'import("./src/server/course-recommendations/projection.ts")' && \
+    node --conditions=react-server --import tsx --input-type=module --eval 'await Promise.all([import("./src/server/course-recommendations/projection.ts"), import("./src/private/scripts/crawlTourLinks.ts"), import("./src/private/scripts/crawlPassPrograms.ts")])' && \
     node --import tsx scripts/importCanonicalDataDocuments.ts --dry-run && \
     node --import tsx scripts/importSkiResortShortNames.ts --dry-run
 
