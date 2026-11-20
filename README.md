@@ -821,7 +821,7 @@ features/weather/
 *   **開発とチェック**:
     *   `mise run dev` - Next.js 開発サーバー起動 ( http://localhost:3000/rusutsu )
     *   `mise run dev:lan` - 明示的にLANへ公開して開発サーバー起動（通常は使用しない）
-    *   `mise run check` - 一括チェック ( format → lint → typecheck )
+    *   `mise run check` - 一括チェック（読み取り専用の lint → typecheck）
     *   `mise run format` / `mise run lint` - Biome によるフォーマット / リント
     *   `mise run typecheck` - TypeScript 型チェック
     *   `mise run build` - 本番ビルド
@@ -841,7 +841,7 @@ features/weather/
     *   `mise run docker:build` - Docker イメージ再構築
     *   `mise run docker:logs` - コンテナログ表示
 *   **各種クローラー実行**:
-    *   `mise run crawl:all` - パイプライン全体実行（ski-areas → gelendes → weathers → forecasts → snowDepths → snowFalls → latestReports → yukiMagi → amedas の順）
+    *   `mise run crawl:all` - パイプライン全体実行（ski-areas → gelendes → weathers → forecasts → snowDepths → snowFalls → latestReports → yukiMagi → pass-programs → amedas の順）
     *   `mise run crawl:ski-areas` / `crawl:gelendes` / `crawl:weathers` / `crawl:forecasts` - 個別タスク実行
 *   **テスト**:
     *   `mise run test` で単体・契約試験と使い捨て DB の統合試験を実行する．

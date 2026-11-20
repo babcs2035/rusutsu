@@ -6,7 +6,7 @@
 `20260906120000_add_resort_readings`で506件の辞書スナップショットを既存IDへ一度だけ移行する。
 公開・検索・管理画面はDB/APIの値を使用し、空欄にしても元のJSONへ戻らない。
 
-レビュー公開は`PUT /api/admin/review-publications`で受け付ける。
+レビュー公開は `PUT /api/admin/reviews` で受け付ける。
 管理画面の取り込みとCLIは共通の構造検証を通し、detail/articleの両方をexpectedHash付きで一括保存する。
 CLIは接続先・入力内容・確認時の本番hashをプランに保持し、変更を検出したら再確認を求める。
 操作方法は[日常のデータ編集・レビュー公開手順](d0008_content-publishing-guide.md)を参照。
