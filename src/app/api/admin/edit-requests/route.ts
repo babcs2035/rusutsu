@@ -1,22 +1,22 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { usesRemoteDataApi } from "@/lib/internalDataApiClient";
+import { prisma } from "@/lib/prisma";
+import { requireEditor } from "@/lib/requireEditor";
 import {
   adjustCorrectionItem,
   decideCorrectionItem,
-} from "@/features/corrections/actions";
+} from "@/server/corrections/mutations";
+import {
+  getCorrection,
+  listCorrections,
+} from "@/server/corrections/repository";
 import {
   approveEditRequest,
   rejectEditRequest,
   saveRequestCandidate,
   withdrawEditRequest,
-} from "@/features/edit-requests/actions";
-import { usesRemoteDataApi } from "@/lib/internalDataApiClient";
-import { prisma } from "@/lib/prisma";
-import { requireEditor } from "@/lib/requireEditor";
-import {
-  getCorrection,
-  listCorrections,
-} from "@/server/corrections/repository";
+} from "@/server/edit-requests/actions";
 import { withInternalEditActor } from "@/server/edit-requests/actorContext";
 import { assertBoundedPayload } from "@/server/edit-requests/contract";
 import { validateEditPayload } from "@/server/edit-requests/payloadSchema";

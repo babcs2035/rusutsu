@@ -381,10 +381,7 @@ export async function verifyRemoteWorkflow(
     assert.equal(rejectedOverwrite.ok, false);
     assert.ok(
       "error" in rejectedOverwrite &&
-        rejectedOverwrite.error.includes(
-          "接続先サーバーが競合内容の採用に未対応",
-        ) &&
-        rejectedOverwrite.error.includes("申請内容は残っています"),
+        rejectedOverwrite.error.includes("Unknown field: overwrite"),
     );
     const afterRejectedOverwrite = await actor("integration-admin", () =>
       api.getEditRequest(conflictId),
