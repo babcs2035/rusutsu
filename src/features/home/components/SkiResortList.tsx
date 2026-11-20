@@ -11,7 +11,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { calculateLiftTicketAndRentalForList } from "@/actions/skiResorts";
 import { FavoriteButton } from "@/features/favorites/FavoriteButton";
 import type {
   CourseDistanceTotals,
@@ -27,6 +26,7 @@ import { distanceKm } from "@/features/map/utils/distance";
 import { cn } from "@/lib/utils";
 import { CompareResortButton } from "@/shared/components/CompareResortButton";
 import { CopyResortNameButton } from "@/shared/components/CopyResortNameButton";
+import { calculateLiftTicketAndRentalForList } from "@/shared/queries/resorts";
 import type { MapSkiResort } from "@/types/skiResorts";
 import { useGoogleMapsLinks } from "../hooks/useGoogleMapsLinks";
 import type { ResortSortControls } from "../hooks/useResortSort";

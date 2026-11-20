@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { getCommunityFeed } from "./actions";
+import { getCommunityFeed } from "@/shared/queries/community";
 import type { PublicPost } from "./contract";
 
 export function CommunityPhotoGallery({

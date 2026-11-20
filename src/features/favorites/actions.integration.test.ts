@@ -11,7 +11,7 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
   skip: !testDatabase,
 }, async () => {
   process.env.DATABASE_URL = testDatabase;
-  process.env.DATA_API_BASE_URL = "";
+  process.env.API_BASE_URL = "";
   const root = path.join(
     process.cwd(),
     "src/private/data/resorts-temporary/tmp/favorites",
@@ -26,7 +26,7 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
       export * from '@/features/favorites/actions';
       export * from '@/server/course-recommendations/projection';
       export * from '@/server/course-recommendations/repository';
-      export * from '@/features/course-recommendations/actions';
+      export * from '@/server/course-recommendations/queries';
       export { POST as recommendationIndexRoute } from '@/app/api/course-recommendations/route';
       export { writeDataDocumentsInTransaction } from '@/server/data-documents/repository';
       export { authConfig } from '@/lib/auth.config';
@@ -399,11 +399,11 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
     );
     sourceHash = await write("source", JSON.stringify(migrated), sourceHash);
     const savedFetch = globalThis.fetch;
-    const savedApiUrl = process.env.DATA_API_BASE_URL;
-    const savedToken = process.env.INTERNAL_DATA_API_ADMIN_TOKEN;
+    const savedApiUrl = process.env.API_BASE_URL;
+    const savedToken = process.env.API_BEARER_TOKEN;
     try {
-      process.env.DATA_API_BASE_URL = "https://canonical.test/rusutsu";
-      process.env.INTERNAL_DATA_API_ADMIN_TOKEN = "isolated-test-token";
+      process.env.API_BASE_URL = "https://canonical.test/rusutsu";
+      process.env.API_BEARER_TOKEN = "isolated-test-token";
       globalThis.fetch = async () =>
         Response.json({ recommendations: current.recommendations });
       assert.equal(
@@ -453,11 +453,10 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
       );
     } finally {
       globalThis.fetch = savedFetch;
-      if (savedApiUrl === undefined) delete process.env.DATA_API_BASE_URL;
-      else process.env.DATA_API_BASE_URL = savedApiUrl;
-      if (savedToken === undefined)
-        delete process.env.INTERNAL_DATA_API_ADMIN_TOKEN;
-      else process.env.INTERNAL_DATA_API_ADMIN_TOKEN = savedToken;
+      if (savedApiUrl === undefined) delete process.env.API_BASE_URL;
+      else process.env.API_BASE_URL = savedApiUrl;
+      if (savedToken === undefined) delete process.env.API_BEARER_TOKEN;
+      else process.env.API_BEARER_TOKEN = savedToken;
     }
 
     sourceHash = await write(

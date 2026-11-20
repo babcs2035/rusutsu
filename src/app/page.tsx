@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { cache } from "react";
-import { getSkiResortsForMap } from "@/actions/skiResorts";
 import { HomeClient } from "@/features/home/HomeClient";
 import { createShareMetadata } from "@/server/share/metadata";
+import { getSkiResortsForMap } from "@/server/ski-resorts/queries";
 import { createCompareUrlCodec } from "@/shared/utils/comparePath";
 
 export const dynamic = "force-dynamic";

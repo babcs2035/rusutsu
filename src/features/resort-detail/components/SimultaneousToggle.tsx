@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useState, useSyncExternalStore } from "react";
-import type { getSimultaneousView } from "@/actions/skiResorts";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,6 +15,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { getResortLabelName } from "@/lib/resortAliases";
 import { cn } from "@/lib/utils";
 import type { SimultaneousOption } from "@/server/ski-resorts/detail";
+import type { getSimultaneousView } from "@/shared/queries/resorts";
 import type { Resort } from "../types";
 
 /**
@@ -69,7 +69,7 @@ const loadGroupView = async (resortId: string, groupId: string) => {
   notify();
   try {
     // Server Action はチェックしたときに読み込む（テストなどサーバー外でも描画できる）
-    const { getSimultaneousView } = await import("@/actions/skiResorts");
+    const { getSimultaneousView } = await import("@/shared/queries/resorts");
     const data = await getSimultaneousView(resortId, groupId);
     groupViews.set(
       cacheKey,

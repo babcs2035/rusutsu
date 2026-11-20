@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { getNotifications } from "./actions";
+import { getNotifications } from "@/shared/queries/community";
 
 export function CommunityNotificationsLink({
   onOpen,
@@ -12,9 +12,13 @@ export function CommunityNotificationsLink({
   const [count, setCount] = useState(0);
   useEffect(() => {
     let active = true;
-    void getNotifications().then(result => {
-      if (active && result.ok) setCount(result.data.unreadCount);
-    });
+    void getNotifications()
+      .then(result => {
+        if (active && result.ok) setCount(result.data.unreadCount);
+      })
+      .catch(() => {
+        /* 取得できないときは未読バッジを 0 のままにする。 */
+      });
     return () => {
       active = false;
     };

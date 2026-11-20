@@ -2,14 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  getResortMapDataForCompare,
-  getSkiResortsForCompare,
-} from "@/actions/skiResorts";
-import {
   readDetailCache,
   writeDetailCache,
 } from "@/features/map/session/detailCache";
 import type { FinalizedResortMapData } from "@/lib/finalizedResortGeojsonShared";
+import {
+  getResortMapDataForCompare,
+  getSkiResortsForCompare,
+} from "@/shared/queries/resorts";
 import { reloadIfStaleBuild } from "@/shared/utils/staleBuild";
 import type { SkiResortDetail } from "@/types/skiResorts";
 

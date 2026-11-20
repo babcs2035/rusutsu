@@ -1,18 +1,12 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { auth, signIn, signOut } from "@/auth";
 import type { AnonymousProof } from "@/features/corrections/anonymousCheck";
-import { usesRemoteDataApi } from "@/lib/internalDataApiClient";
+import { executeCommunityOperation as execute } from "@/server/community/dispatch";
 import * as direct from "@/server/community/operations";
 import { normalizePhoto } from "@/server/community/photos";
-import { remoteCommunity } from "@/server/community/remoteClient";
-import type {
-  CommunityCommand,
-  CommunitySuccessPayloads,
-} from "@/server/community/remoteContract";
-import type { ActionResult, FeedInput, MapEntriesInput } from "./contract";
+import type { ActionResult } from "./contract";
 
 // Local image preparation only. No database writes and no third-party upload.
 export async function prepareCommunityPhoto(form: FormData): Promise<
@@ -53,39 +47,6 @@ export async function prepareCommunityPhoto(form: FormData): Promise<
   }
 }
 
-async function execute<K extends keyof CommunitySuccessPayloads>(
-  command: Extract<CommunityCommand, { operation: K }> & { operation: K },
-  local: () => Promise<ActionResult<CommunitySuccessPayloads[K]>>,
-  photos?: FormData,
-): Promise<ActionResult<CommunitySuccessPayloads[K]>> {
-  if (!usesRemoteDataApi()) return local();
-  const result = await remoteCommunity<K>(command, photos);
-  const operation = (command as { operation: K }).operation;
-  if (
-    result.ok &&
-    ![
-      // The composer refreshes its feed/map after saving. A layout refresh
-      // refetches all resort data and can unmount the success screen.
-      "publish",
-      "update",
-      "courses",
-      "feed",
-      "mapEntries",
-      "mapSummary",
-      "account",
-      "detail",
-      "publicProfile",
-      "notifications",
-      "myPosts",
-      "dayReports",
-      // 押した結果は画面がその場で反映するので、全体を読み直さない
-      "react",
-    ].includes(operation)
-  )
-    revalidatePath("/", "layout");
-  return result;
-}
-
 export async function startCommunityLogin(returnTo: string) {
   const destination = new URL(
     z.string().max(1500).parse(returnTo),
@@ -102,24 +63,6 @@ export async function startCommunityLogin(returnTo: string) {
   });
 }
 
-export async function getCommunityFeed(input: FeedInput) {
-  return execute({ operation: "feed", input }, () =>
-    direct.getCommunityFeed(input),
-  );
-}
-export async function getCommunityMapEntries(input: MapEntriesInput) {
-  return execute({ operation: "mapEntries", input }, () =>
-    direct.getCommunityMapEntries(input),
-  );
-}
-export async function getCommunityMapSummary(resortId: string) {
-  return execute({ operation: "mapSummary", resortId }, () =>
-    direct.getCommunityMapSummary(resortId),
-  );
-}
-export async function getCommunityAccount() {
-  return execute({ operation: "account" }, direct.getCommunityAccount);
-}
 export async function saveCommunityProfile(
   mode: "GOOGLE" | "NICKNAME" | "ANONYMOUS",
   nickname: string,
@@ -174,22 +117,7 @@ export async function deletePost(postId: string, version: number) {
     direct.deletePost(postId, version),
   );
 }
-export async function getPostDetail(postId: string) {
-  return execute({ operation: "detail", postId }, () =>
-    direct.getPostDetail(postId),
-  );
-}
-/**
- * 投稿画面を開くときに要るアカウントと（編集なら）投稿を1回でまとめて返す。
- * サーバーアクションはブラウザから1件ずつ順に送られるので、分けると待ちが重なる。
- */
-export async function getComposerSetup(postId?: string) {
-  const [account, detail] = await Promise.all([
-    getCommunityAccount(),
-    postId ? getPostDetail(postId) : null,
-  ]);
-  return { account, detail };
-}
+
 export async function setPostReaction(
   postId: string,
   kind: string,
@@ -214,16 +142,7 @@ export async function setPostReaction(
     direct.setPostReaction(postId, kind, active, proof),
   );
 }
-export async function getMyPosts(cursor?: string) {
-  return execute({ operation: "myPosts", ...(cursor ? { cursor } : {}) }, () =>
-    direct.getMyPosts(cursor),
-  );
-}
-export async function getDayReports(authorId: string, observedOn: string) {
-  return execute({ operation: "dayReports", authorId, observedOn }, () =>
-    direct.getDayReports(authorId, observedOn),
-  );
-}
+
 export async function reportCommunityContent(
   targetId: string,
   reason: string,
@@ -249,14 +168,7 @@ export async function reportCommunityContent(
     direct.reportCommunityContent(targetId, reason, body, proof),
   );
 }
-export async function getPublicProfile(userId: string) {
-  return execute({ operation: "publicProfile", userId }, () =>
-    direct.getPublicProfile(userId),
-  );
-}
-export async function getNotifications() {
-  return execute({ operation: "notifications" }, direct.getNotifications);
-}
+
 export async function markNotificationsRead() {
   return execute(
     { operation: "readNotifications" },

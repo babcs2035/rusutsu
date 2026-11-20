@@ -1,24 +1,11 @@
 import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata, Viewport } from "next";
-import { Bricolage_Grotesque, Geist, Manrope } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { MAPLIBRE_WORKER_URL } from "@/features/map/maplibre/mapWorkerUrl";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { ExternalLinksInNewTab } from "@/shared/components/ExternalLinksInNewTab";
 import { SITE_TITLE } from "@/shared/utils/resortPath";
-
-const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
-
-const bricolage = Bricolage_Grotesque({
-  subsets: ["latin"],
-  variable: "--font-bricolage",
-});
-
-const manrope = Manrope({
-  subsets: ["latin"],
-  variable: "--font-manrope",
-});
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -90,16 +77,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="ja"
-      className={cn(
-        bricolage.variable,
-        manrope.variable,
-        "font-sans",
-        geist.variable,
-      )}
-    >
-      <body className={cn(manrope.className, "bg-[var(--bg-light)]")}>
+    <html lang="ja" className="font-sans">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@200..800&family=Geist:wght@100..900&family=Manrope:wght@200..800&display=swap"
+        />
+      </head>
+      <body className={cn("font-manrope", "bg-[var(--bg-light)]")}>
         <TooltipProvider>{children}</TooltipProvider>
         <ExternalLinksInNewTab />
         <GoogleAnalytics gaId="G-YMEM5C2F4C" />

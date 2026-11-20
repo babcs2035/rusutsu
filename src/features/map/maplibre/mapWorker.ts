@@ -7,7 +7,7 @@ import { MAPLIBRE_WORKER_URL } from "./mapWorkerUrl";
  * MapLibre は import.meta.url からワーカーの URL を組み立てるが、
  * Next.js のバンドル後はそれが http(s) にならず空文字になる。そのまま動かすと
  * HTML をワーカーとして読み込もうとして GeoJSON のタイル化が始まらず、
- * コースもリフトも一本も描かれない。実体は scripts/copyMaplibreWorker.mjs が
+ * コースもリフトも一本も描かれない。実体は scripts/copyMaplibreWorker.ts が
  * public/maplibre へ依存も含めてまとめている。
  *
  * 地図を作るモジュールが複数あるので、副作用だけをこのファイルに切り出して

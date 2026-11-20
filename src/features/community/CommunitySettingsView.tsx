@@ -6,8 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   deleteCommunityAccount,
-  getCommunityAccount,
-  getNotifications,
   markNotificationsRead,
   saveCommunityProfile,
   startCommunityLogin,
@@ -20,6 +18,10 @@ import {
 } from "@/features/community/contract";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
 import { PanelHeader } from "@/shared/components/PanelHeader";
+import {
+  getCommunityAccount,
+  getNotifications,
+} from "@/shared/queries/community";
 
 const notificationText = (kind: string) => {
   const label = REACTION_LABELS[kind as ReactionKind];

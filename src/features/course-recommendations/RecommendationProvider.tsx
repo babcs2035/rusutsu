@@ -10,7 +10,7 @@ import {
   useState,
 } from "react";
 import { useFavorites } from "@/features/favorites/FavoritesProvider";
-import type { RecommendationIndexResult } from "./actions";
+import type { RecommendationIndexResult } from "@/server/course-recommendations/queries";
 import { createResultCache } from "./cache";
 
 type Cache = ReturnType<typeof createResultCache<RecommendationIndexResult>>;

@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
-import { getDayReports } from "@/features/community/actions";
 import { idSchema, observedOnSchema } from "@/features/community/contract";
 import { DayReportsView } from "@/features/community/DayReportsView";
 import { dayResorts } from "@/features/community/dayShare";
 import { createDayShareMetadata } from "@/server/community/dayShareMetadata";
+import { getDayReports } from "@/server/community/queries";
 import { getShareMaps, getShareResorts } from "@/server/share/data";
 
 export const dynamic = "force-dynamic";

@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getPublicProfile } from "@/features/community/actions";
 import { PostCard } from "@/features/community/CommunityFeed";
 import type { PublicAuthor, PublicPost } from "@/features/community/contract";
+import { getPublicProfile } from "@/shared/queries/community";
 export default function CommunityProfile() {
   const { id } = useParams<{ id: string }>();
   const [author, setAuthor] = useState<PublicAuthor | null>(null);

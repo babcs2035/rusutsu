@@ -6,13 +6,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  deletePost,
-  getCommunityAccount,
-  getMyPosts,
-  getPostDetail,
-  startCommunityLogin,
-} from "@/features/community/actions";
+import { deletePost, startCommunityLogin } from "@/features/community/actions";
 import { communityComposerUrl } from "@/features/community/composerEvents";
 import type { OwnPost } from "@/features/community/contract";
 import {
@@ -27,6 +21,11 @@ import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { DetailButton } from "@/shared/components/DetailButton";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
 import { PanelHeader } from "@/shared/components/PanelHeader";
+import {
+  getCommunityAccount,
+  getMyPosts,
+  getPostDetail,
+} from "@/shared/queries/community";
 
 /** 滑走日（新しい順）ごとにまとめる。入力が滑走日の新しい順なので順序を保つ。 */
 function groupByDay(posts: OwnPost[]) {

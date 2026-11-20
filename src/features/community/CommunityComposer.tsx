@@ -40,7 +40,6 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  getComposerSetup,
   prepareCommunityPhoto,
   saveCommunityProfile,
   startCommunityLogin,
@@ -66,6 +65,7 @@ import { cn } from "@/lib/utils";
 import { Chips, Field } from "@/shared/components/FormParts";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
 import { PanelHeader } from "@/shared/components/PanelHeader";
+import { getComposerSetup } from "@/shared/queries/community";
 import styles from "./CommunityComposer.module.css";
 import { rememberCommunityPost } from "./CommunityMapOverlay";
 import {

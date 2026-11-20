@@ -34,9 +34,9 @@ async function readArtifactHtml(
 ): Promise<string | Response> {
   if (usesRemoteDataApi()) {
     const response = await fetchInternalDataApi(
-      `/api/internal/v1/crawl-latest-artifacts/${artifactId}/content`,
+      `/api/admin/crawl/artifacts/${artifactId}/content`,
       {},
-      { scope: "diagnostics-read", acceptedErrorStatuses: [404, 409, 410] },
+      { acceptedErrorStatuses: [404, 409, 410] },
     );
     if (!response.ok) {
       return errorResponse(response.status, "診断DOMを取得できませんでした。");

@@ -1,8 +1,8 @@
 "use client";
 
-import { getSkiResortById } from "@/actions/skiResorts";
 import { readDetailCache } from "@/features/map/session/detailCache";
 import type { FinalizedResortMapData } from "@/lib/finalizedResortGeojsonShared";
+import { getSkiResortById } from "@/shared/queries/resorts";
 
 /**
  * 比較先スキー場の地図データ。

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { getDayReports, getPostDetail } from "./actions";
+import { getDayReports, getPostDetail } from "@/shared/queries/community";
 import { dayReportsPath, dayShareText, dayShareTitle } from "./dayShare";
 import { ShareDayButton } from "./ShareDayButton";
 

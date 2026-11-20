@@ -3,6 +3,11 @@
 import { ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
@@ -92,13 +97,15 @@ export const ToggleSection = ({
   onToggle: () => void;
   children: React.ReactNode;
 }) => (
-  <div>
-    <Button
+  <Collapsible
+    open={isOpen}
+    onOpenChange={nextOpen => {
+      if (nextOpen !== isOpen) onToggle();
+    }}
+  >
+    <CollapsibleTrigger
       type="button"
-      variant="ghost"
-      className="justify-start text-left text-sm font-semibold text-gray-800 hover:bg-gray-50 hover:text-gray-900 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10 w-full h-7 text-sm transition-colors"
-      onClick={onToggle}
-      aria-expanded={isOpen}
+      className="inline-flex w-full h-7 items-center justify-start gap-1.5 rounded-lg border border-transparent bg-transparent px-2.5 text-left text-sm font-semibold text-gray-800 whitespace-nowrap transition-colors outline-none select-none hover:bg-gray-50 hover:text-gray-900 aria-expanded:bg-transparent aria-expanded:text-gray-800 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10"
     >
       <span className="inline-block h-[13px] w-[13px]">
         {isOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
@@ -109,13 +116,15 @@ export const ToggleSection = ({
           {meta}
         </span>
       )}
-    </Button>
-    {isOpen && (
-      <div className="border-l-2 border-gray-200 ml-2 pl-2 mt-0.5">
-        {children}
-      </div>
-    )}
-  </div>
+    </CollapsibleTrigger>
+    {/* 従来どおり，閉じている間は入力欄を unmount する． */}
+    <CollapsibleContent
+      keepMounted={false}
+      className="border-l-2 border-gray-200 ml-2 pl-2 mt-0.5"
+    >
+      {children}
+    </CollapsibleContent>
+  </Collapsible>
 );
 
 export const ElevationFilterRow = ({

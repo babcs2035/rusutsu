@@ -1,7 +1,7 @@
 "use server";
 
 import { getShareMaps } from "@/server/share/data";
-import { getDayReports } from "./actions";
+import { getDayReports } from "@/shared/queries/community";
 import { idSchema, observedOnSchema } from "./contract";
 import { dayResorts } from "./dayShare";
 

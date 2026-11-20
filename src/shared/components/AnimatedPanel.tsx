@@ -1,7 +1,6 @@
 "use client";
 
 import type { ComponentProps, CSSProperties, ReactNode } from "react";
-import { useEffect, useState } from "react";
 
 /**
  * CSS transition によるフェードイン/スライドアニメーションを提供するパネル。
@@ -39,14 +38,6 @@ export function AnimatedPanel({
   style,
   ...rest
 }: AnimatedPanelProps) {
-  const [animating, setAnimating] = useState(visible);
-
-  useEffect(() => {
-    if (visible !== animating) {
-      setAnimating(visible);
-    }
-  }, [visible, animating]);
-
   return (
     <div {...rest} className={rootClassName} style={style}>
       <div

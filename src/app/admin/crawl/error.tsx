@@ -32,14 +32,11 @@ export default function CrawlMonitorError({
           <p className="mb-1 font-medium">よくある原因</p>
           <ul className="list-disc pl-5">
             <li>
-              接続先（DATA_API_BASE_URL）のサーバーが、この画面より古い版で動いている。
+              接続先（API_BASE_URL）のサーバーが、この画面より古い版で動いている。
               画面が送る新しいパラメータが弾かれてHTTP
               400になる。サーバーへ最新を デプロイすると解消する。
             </li>
-            <li>
-              INTERNAL_DATA_API_DIAGNOSTICS_TOKEN
-              が未設定、または一致していない。
-            </li>
+            <li>API_BEARER_TOKEN が未設定、または一致していない。</li>
             <li>接続先のサーバーが起動していない、URLが違う。</li>
           </ul>
         </div>

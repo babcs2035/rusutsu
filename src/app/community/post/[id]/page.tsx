@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { deletePost, getPostDetail } from "@/features/community/actions";
+import { deletePost } from "@/features/community/actions";
 import { communityComposerUrl } from "@/features/community/composerEvents";
 import type { PublicPost } from "@/features/community/contract";
 import { dayReportsPath } from "@/features/community/dayShare";
@@ -13,6 +13,7 @@ import { PostReportButton } from "@/features/community/PostReportButton";
 import { ReportSections } from "@/features/community/ReportSections";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { DetailButton } from "@/shared/components/DetailButton";
+import { getPostDetail } from "@/shared/queries/community";
 
 export default function CommunityPostDetail() {
   const { id } = useParams<{ id: string }>();

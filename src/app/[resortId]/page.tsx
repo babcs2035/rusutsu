@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { cache } from "react";
-import { getSkiResortsForMap } from "@/actions/skiResorts";
 import { HomeClient } from "@/features/home/HomeClient";
 import { createShareMetadata } from "@/server/share/metadata";
+import { getSkiResortsForMap } from "@/server/ski-resorts/queries";
 import { isResortIdSegment } from "@/shared/utils/resortPath";
 
 export const dynamic = "force-dynamic";

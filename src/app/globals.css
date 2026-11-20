@@ -56,6 +56,9 @@
 }
 
 :root {
+  --font-sans: "Geist", Arial, Helvetica, sans-serif;
+  --font-bricolage: "Bricolage Grotesque", Arial, Helvetica, sans-serif;
+  --font-manrope: "Manrope", Arial, Helvetica, sans-serif;
   --background: hsl(0 0% 100%);
   --foreground: hsl(222.2 84% 4.9%);
   --card: hsl(0 0% 100%);
@@ -88,9 +91,6 @@
   --sidebar-accent-foreground: hsl(240 5.9% 10%);
   --sidebar-border: hsl(220 13% 91%);
   --sidebar-ring: hsl(217.2 91.2% 59.8%);
-
-  --font-bricolage: var(--font-bricolage);
-  --font-manrope: var(--font-manrope);
 
   /* Brand colors (Chakra brand → Tailwind) */
   --brand-main: #3b82f6;

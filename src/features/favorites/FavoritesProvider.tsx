@@ -22,10 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { AccountCommunityDialog } from "@/features/community/AccountCommunityDialog";
-import {
-  getCommunityAccount,
-  saveCommunityProfile,
-} from "@/features/community/actions";
+import { saveCommunityProfile } from "@/features/community/actions";
 import { CommunityNotificationsLink } from "@/features/community/CommunityNotificationsLink";
 import {
   COMPOSER_RETURN_EVENT,
@@ -33,6 +30,7 @@ import {
 } from "@/features/community/composerEvents";
 import { SkiTracksHistory } from "@/features/ski-tracks/SkiTracksHistory";
 import { PanelHeader } from "@/shared/components/PanelHeader";
+import { getCommunityAccount } from "@/shared/queries/community";
 import { reloadIfStaleBuild } from "@/shared/utils/staleBuild";
 import {
   publicLogout,
@@ -162,13 +160,17 @@ function FavoritesState({
     }
     if (checkedCommunityUser.current === userId) return;
     checkedCommunityUser.current = userId;
-    void getCommunityAccount().then(result => {
-      if (!result.ok || result.data?.publicName) return;
-      setNeedsCommunityName(true);
-      setCommunityNameMode(result.data?.nameMode ?? "ANONYMOUS");
-      setCommunityNickname(result.data?.publicName ?? "");
-      setAccountOpen(true);
-    });
+    void getCommunityAccount()
+      .then(result => {
+        if (!result.ok || result.data?.publicName) return;
+        setNeedsCommunityName(true);
+        setCommunityNameMode(result.data?.nameMode ?? "ANONYMOUS");
+        setCommunityNickname(result.data?.publicName ?? "");
+        setAccountOpen(true);
+      })
+      .catch(() => {
+        /* 取得できないときは表示名設定のDialogを開かないだけ。 */
+      });
   }, [userId]);
   const refresh = useCallback(() => {
     if (status === "loading" || busy.current.size) return;

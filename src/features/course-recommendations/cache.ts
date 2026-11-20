@@ -1,5 +1,5 @@
 import type { SelectedMapFeature } from "@/features/map/types";
-import type { RecommendationIndexResult } from "./actions";
+import type { RecommendationIndexResult } from "@/server/course-recommendations/queries";
 
 /** Memory only; the provider creates a new cache for every account/favorite set. */
 export function createResultCache<T>(

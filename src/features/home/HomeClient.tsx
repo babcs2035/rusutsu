@@ -16,7 +16,6 @@ import {
   useTransition,
 } from "react";
 import { flushSync } from "react-dom";
-import { getSkiResortById } from "@/actions/skiResorts";
 import {
   COMPOSER_RETURN_EVENT,
   type ComposeRequest,
@@ -75,6 +74,7 @@ import { useSimultaneousView } from "@/features/resort-detail/components/Simulta
 import { useWarmShareImage } from "@/features/share/useWarmShareImage";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
+import { getSkiResortById } from "@/shared/queries/resorts";
 import {
   COMPARE_PARAM,
   createCompareUrlCodec,

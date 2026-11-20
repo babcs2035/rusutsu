@@ -11,7 +11,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getCommunityFeed } from "@/features/community/actions";
 import type {
   FeedInput,
   PublicPost,
@@ -23,6 +22,7 @@ import {
 } from "@/features/corrections/correctionEvents";
 import type { SelectedMapFeature } from "@/features/map/types";
 import { cn } from "@/lib/utils";
+import { getCommunityFeed } from "@/shared/queries/community";
 import {
   communityComposerUrl,
   highlightCommunityPost,
@@ -141,6 +141,7 @@ export function CommunityFeed({
   const [to, setTo] = useState("");
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);
+  const [failed, setFailed] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const period = matchingPeriod(from, to);
   const query: FeedInput = {
@@ -157,14 +158,25 @@ export function CommunityFeed({
   useEffect(() => {
     let active = true;
     setBusy(true);
-    void getCommunityFeed(JSON.parse(queryKey) as FeedInput).then(result => {
-      if (!active) return;
-      if (result.ok) {
-        setPosts(result.data.posts);
-        setNextCursor(result.data.nextCursor);
-      }
-      setBusy(false);
-    });
+    setFailed(false);
+    void getCommunityFeed(JSON.parse(queryKey) as FeedInput)
+      .then(result => {
+        if (!active) return;
+        if (result.ok) {
+          setPosts(result.data.posts);
+          setNextCursor(result.data.nextCursor);
+        } else {
+          setFailed(true);
+        }
+        setBusy(false);
+      })
+      .catch(() => {
+        // 圏外などで取得できないときは「読み込み中…」で止まらせない。
+        if (active) {
+          setFailed(true);
+          setBusy(false);
+        }
+      });
     return () => {
       active = false;
     };
@@ -183,12 +195,16 @@ export function CommunityFeed({
   );
   const loadMore = () => {
     if (!nextCursor) return;
-    void getCommunityFeed({ ...query, cursor: nextCursor }).then(result => {
-      if (result.ok) {
-        setPosts(all => [...all, ...result.data.posts]);
-        setNextCursor(result.data.nextCursor);
-      }
-    });
+    void getCommunityFeed({ ...query, cursor: nextCursor })
+      .then(result => {
+        if (result.ok) {
+          setPosts(all => [...all, ...result.data.posts]);
+          setNextCursor(result.data.nextCursor);
+        }
+      })
+      .catch(() => {
+        /* 失敗しても「もっと見る」は残るので、再クリックで再試行できる。 */
+      });
   };
   const target = courseId
     ? { kind: "COURSE" as const, id: courseId }
@@ -318,6 +334,8 @@ export function CommunityFeed({
       )}
       {busy ? (
         <p className="text-xs text-gray-500">読み込み中…</p>
+      ) : failed ? (
+        <p className="text-sm text-gray-500">投稿を読み込めませんでした。</p>
       ) : posts.length === 0 ? (
         <p className="text-sm text-gray-500">まだ投稿はありません。</p>
       ) : (

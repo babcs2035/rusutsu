@@ -29,8 +29,26 @@ const buildKeywordHaystack = (resort: MapSkiResort) =>
     ].join(" "),
   );
 
-const matchesKeyword = (resort: MapSkiResort, keyword: string) => {
-  const tokens = toSearchTokens(keyword);
+type KeywordTokenizer = (keyword: string) => string[];
+
+/** Cache normalized keyword tokens once for each filter object and keyword. */
+export function createKeywordTokenCache(
+  tokenize: KeywordTokenizer = toSearchTokens,
+): (filters: Filters) => string[] {
+  const cache = new WeakMap<Filters, { keyword: string; tokens: string[] }>();
+  return filters => {
+    const previous = cache.get(filters);
+    if (previous?.keyword === filters.keyword) return previous.tokens;
+
+    const tokens = tokenize(filters.keyword);
+    cache.set(filters, { keyword: filters.keyword, tokens });
+    return tokens;
+  };
+}
+
+const getKeywordTokens = createKeywordTokenCache();
+
+const matchesKeyword = (resort: MapSkiResort, tokens: string[]) => {
   if (tokens.length === 0) return true;
   const haystack = buildKeywordHaystack(resort);
   return tokens.every(token => haystack.includes(token));
@@ -133,7 +151,7 @@ export const matchesFilters = (resort: MapSkiResort, filters: Filters) => {
   }
   if (
     filters.keyword.trim() !== "" &&
-    !matchesKeyword(resort, filters.keyword)
+    !matchesKeyword(resort, getKeywordTokens(filters))
   ) {
     return false;
   }

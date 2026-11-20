@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { getResortLinkLists } from "@/actions/skiResorts";
 import type { Resort } from "@/features/resort-detail/types";
+import { getResortLinkLists } from "@/shared/queries/resorts";
 import { DETAIL_WEATHER_TYPES, detailLinkItems } from "./detailItems";
 import {
   groupResortLinks,
