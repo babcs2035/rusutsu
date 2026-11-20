@@ -19,7 +19,6 @@ lock_operations
 trap 'rm -f -- "$OPS_STATE_DIR/pending.env.sh" "$OPS_STATE_DIR/pending.env.sh.tmp"; release_operations' EXIT
 # Keep a verified rollback image record before any container is replaced.
 previous_record="$OPS_STATE_DIR/deployed-image.json"
-pending_record="$OPS_STATE_DIR/deployed-image.json.tmp"
 if [[ -f "$previous_record" && ! -L "$previous_record" ]]; then
   cp -- "$previous_record" "$OPS_STATE_DIR/previous-image.json.tmp"
   mv -- "$OPS_STATE_DIR/previous-image.json.tmp" "$OPS_STATE_DIR/previous-image.json"

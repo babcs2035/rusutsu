@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   checkPruneCandidates,
+  nextDeploymentRecord,
   selectImageCleanupPlan,
 } from "./image-cleanup.ts";
 
@@ -71,6 +72,14 @@ test("cleanup refuses a running image that differs from the immutable record", (
     () =>
       selectImageCleanupPlan({ ...input(), runningAppImageId: imageId("f") }),
     /Running app image/,
+  );
+});
+
+test("deploying the same image twice preserves the previous distinct rollback", () => {
+  const { deployment } = input();
+  assert.deepEqual(
+    nextDeploymentRecord(deployment.current, deployment),
+    deployment,
   );
 });
 

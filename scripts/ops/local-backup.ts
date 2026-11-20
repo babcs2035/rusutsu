@@ -11,6 +11,7 @@ import {
   readFileSync,
   renameSync,
   rmSync,
+  statfsSync,
   writeFileSync,
 } from "node:fs";
 import path from "node:path";
@@ -183,6 +184,17 @@ export async function migrateLegacyBackups(
       continue;
     }
 
+    // 新規ダンプに先立って旧世代をコピーするときも，保存先の容量を使い切らない．
+    const bytes = expectedFiles.reduce(
+      (total, file) =>
+        total + lstatSync(path.join(source, file), { bigint: true }).size,
+      BigInt(0),
+    );
+    const { bavail, bsize } = statfsSync(targetRoot, { bigint: true });
+    if (bytes > bavail * bsize)
+      throw new Error(
+        "Insufficient free space to copy a legacy backup generation.",
+      );
     const temporary = mkdtempSync(
       path.join(targetRoot, ".migration-incomplete-"),
     );

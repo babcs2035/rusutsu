@@ -200,6 +200,24 @@ function validateDeploymentImage(image: DeploymentImage, name: string): void {
   }
 }
 
+/** 同じイメージの再配備でも，実際に切り戻せる直前の別イメージを保持する． */
+export function nextDeploymentRecord(
+  current: DeploymentImage,
+  existing: DeploymentRecord | null,
+): DeploymentRecord {
+  validateDeploymentImage(current, "current");
+  if (!existing) return { current, previous: null };
+  validateDeploymentImage(existing.current, "previous current");
+  if (existing.previous) validateDeploymentImage(existing.previous, "previous");
+  return {
+    current,
+    previous:
+      existing.current.imageId === current.imageId
+        ? existing.previous
+        : existing.current,
+  };
+}
+
 function splitTag(value: string): [string, string | undefined] {
   const separator = value.lastIndexOf(":");
   return separator < 0
@@ -219,6 +237,14 @@ async function readJson<T>(file: string): Promise<T> {
   return JSON.parse(await readFile(file, "utf8")) as T;
 }
 
+/** Docker の整形出力を行単位で読み，空の候補一覧も扱う． */
+async function readJsonLines<T>(file: string): Promise<T[]> {
+  return (await readFile(file, "utf8"))
+    .split("\n")
+    .filter(Boolean)
+    .map((line): T => JSON.parse(line));
+}
+
 /** Load Docker snapshots from the private operations directory and write a reviewed plan. */
 async function planFromSnapshot(
   requestedSha: string,
@@ -227,12 +253,14 @@ async function planFromSnapshot(
   const deployment = await readJson<DeploymentRecord>(
     path.join(directory, "deployed-image.json"),
   );
-  const images = await readJson<InspectedImage[]>(
-    path.join(directory, "images.json"),
+  const images = await readJsonLines<InspectedImage>(
+    path.join(directory, "images.jsonl"),
   );
-  const containers = await readJson<InspectedContainer[]>(
-    path.join(directory, "containers.json"),
-  );
+  const containers = (
+    await readJsonLines<string>(
+      path.join(directory, "container-image-ids.jsonl"),
+    )
+  ).map(Image => ({ Image }));
   const runningAppImageId = (
     await readFile(path.join(directory, "running-app-image-id"), "utf8")
   ).trim();
@@ -245,7 +273,7 @@ async function planFromSnapshot(
   });
   await writeFile(
     path.join(directory, "tag-removals.txt"),
-    plan.tagRemovals.map(({ tag, imageId }) => `${tag}\t${imageId}`).join("\n"),
+    plan.tagRemovals.map(({ tag, imageId }) => `${tag}\t${imageId}\n`).join(""),
   );
   await writeFile(
     path.join(directory, "prune-eligible-image-ids.txt"),
@@ -262,8 +290,8 @@ async function checkPruneFromSnapshot(directory: string): Promise<void> {
   )
     .split("\n")
     .filter(Boolean);
-  const danglingImages = await readJson<InspectedImage[]>(
-    path.join(directory, "dangling-images.json"),
+  const danglingImages = await readJsonLines<InspectedImage>(
+    path.join(directory, "dangling-images.jsonl"),
   );
   const check = checkPruneCandidates(eligibleImageIds, danglingImages);
   await writeFile(
@@ -289,17 +317,14 @@ async function recordDeployment(
     imageId,
     digest,
   };
-  validateDeploymentImage(current, "current");
   const previousFile = path.join(directory, "previous-image.json");
-  let previous: DeploymentImage | null = null;
+  let existing: DeploymentRecord | null = null;
   try {
-    const previousRecord = await readJson<DeploymentRecord>(previousFile);
-    validateDeploymentImage(previousRecord.current, "previous current");
-    previous = previousRecord.current;
+    existing = await readJson<DeploymentRecord>(previousFile);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
-  const next: DeploymentRecord = { current, previous };
+  const next = nextDeploymentRecord(current, existing);
   const temporary = path.join(directory, "deployed-image.json.tmp");
   await writeFile(temporary, `${JSON.stringify(next)}\n`, { mode: 0o600 });
   await rename(temporary, path.join(directory, "deployed-image.json"));

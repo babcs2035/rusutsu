@@ -28,5 +28,11 @@ done
 docker exec -i "$container_id" pg_restore --exit-on-error --no-owner --no-privileges \
   -U restore_check -d restore_check < "$BACKUP_DIR/$generation/database.dump"
 docker exec "$container_id" psql -U restore_check -d restore_check -v ON_ERROR_STOP=1 \
-  -c 'SELECT count(*) AS restored_resorts FROM "ski_resorts";'
+  -c 'SELECT
+    (SELECT count(*) FROM ski_resorts) AS restored_resorts,
+    (SELECT count(*) FROM users) AS restored_users,
+    (SELECT count(*) FROM accounts) AS restored_accounts,
+    (SELECT count(*) FROM contribution_photos) AS restored_photos,
+    (SELECT count(*) FROM edit_requests) AS restored_requests,
+    (SELECT count(*) FROM crawl_latest_currents) AS restored_current_snapshots;'
 echo 'Restore succeeded in an isolated disposable PostgreSQL container on this VPS.'
