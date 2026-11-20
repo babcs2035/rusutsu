@@ -86,7 +86,13 @@ export const summarizeResortPrice = (
       return { kind: "unknown" };
     }
     return { kind: "partial" };
-  } catch {
+  } catch (error) {
+    // 業務上の欠測（unknown）と区別して計算バグを検知できるようにログへ出す。
+    // 表示は欠測のまま維持し、一覧・詳細の挙動を変えない。
+    console.error(
+      "summarizeResortPrice: unexpected calculation error, treating as unknown",
+      error,
+    );
     return { kind: "unknown" };
   }
 };
