@@ -1,4 +1,10 @@
 "use server";
 
-/** ブラウザーから認可済みの編集処理を呼び出す入口． */
-export { saveResortLink } from "./server/editorMutations";
+import * as editor from "./server/editorMutations";
+
+/** ブラウザーから saveResortLink の認可済み処理を呼び出す． */
+export async function saveResortLink(
+  ...args: Parameters<typeof editor.saveResortLink>
+): ReturnType<typeof editor.saveResortLink> {
+  return editor.saveResortLink(...args);
+}

@@ -1,4 +1,10 @@
 "use server";
 
-/** ブラウザーから認可済みの編集処理を呼び出す入口． */
-export { saveLatestStatusMapping } from "./server/editorMutations";
+import * as editor from "./server/editorMutations";
+
+/** ブラウザーから saveLatestStatusMapping の認可済み処理を呼び出す． */
+export async function saveLatestStatusMapping(
+  ...args: Parameters<typeof editor.saveLatestStatusMapping>
+): ReturnType<typeof editor.saveLatestStatusMapping> {
+  return editor.saveLatestStatusMapping(...args);
+}
