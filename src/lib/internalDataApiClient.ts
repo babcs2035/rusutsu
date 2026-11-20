@@ -1,10 +1,12 @@
 import "server-only";
 
 import { normalizeInternalDataApiBaseUrl } from "@/lib/internalDataApiBaseUrl";
-import type { InternalDataApiScope } from "@/lib/internalDataApiScopes";
+import { boundResponseBody } from "@/server/boundedResponse";
 
-const INTERNAL_PATH_PREFIX = "/api/internal/v1/";
+const INTERNAL_PATH_PREFIX = "/api/admin/";
 const DEFAULT_TIMEOUT_MS = 30_000;
+// Maximum document request is 64 MiB; multi-document responses include encoding overhead.
+const MAX_RESPONSE_BYTES = 128 * 1024 * 1024;
 const RETRY_DELAYS_MS = [250, 500] as const;
 const RETRYABLE_STATUSES = new Set([502, 503, 504]);
 
@@ -27,7 +29,7 @@ const waitForRetry = (delayMs: number, signal: AbortSignal): Promise<void> =>
   });
 
 const configuredBaseUrl = (): string | null => {
-  const value = process.env.DATA_API_BASE_URL?.trim();
+  const value = process.env.API_BASE_URL?.trim();
   return value ? normalizeInternalDataApiBaseUrl(value) : null;
 };
 
@@ -47,17 +49,7 @@ export class InternalDataApiError extends Error {
 export type InternalDataApiFetchOptions = {
   /** 呼び出し側が本文を検証して専用エラーへ変換するHTTPステータス。 */
   acceptedErrorStatuses?: readonly number[];
-  /**
-   * 送るトークンのスコープ。診断系エンドポイントは `diagnostics-read` を要求するため、
-   * admin用トークンでは通らない。既定は従来どおり `admin-data`。
-   */
-  scope?: Extract<InternalDataApiScope, "admin-data" | "diagnostics-read">;
 };
-
-const TOKEN_ENV_BY_CLIENT_SCOPE = {
-  "admin-data": "INTERNAL_DATA_API_ADMIN_TOKEN",
-  "diagnostics-read": "INTERNAL_DATA_API_DIAGNOSTICS_TOKEN",
-} as const;
 
 /**
  * ローカルNext.jsサーバーから正本データAPIを呼ぶための共通関数。
@@ -80,20 +72,19 @@ export async function fetchInternalDataApi(
 
   const baseUrl = configuredBaseUrl();
   if (!baseUrl) {
-    throw new Error("DATA_API_BASE_URL is not configured");
+    throw new Error("API_BASE_URL is not configured");
   }
 
-  const tokenName = TOKEN_ENV_BY_CLIENT_SCOPE[options.scope ?? "admin-data"];
-  const token = process.env[tokenName]?.trim();
+  const token = process.env.API_BEARER_TOKEN?.trim();
   if (!token) {
-    throw new Error(`${tokenName} is not configured`);
+    throw new Error("API_BEARER_TOKEN is not configured");
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+  // fetch の本文読み込みも期限内に完了させるため，ヘッダー受信で解除しない．
+  const timeout = AbortSignal.timeout(DEFAULT_TIMEOUT_MS);
   const signal = init.signal
-    ? AbortSignal.any([init.signal, controller.signal])
-    : controller.signal;
+    ? AbortSignal.any([init.signal, timeout])
+    : timeout;
   try {
     const headers = new Headers(init.headers);
     headers.set("Authorization", `Bearer ${token}`);
@@ -123,16 +114,35 @@ export async function fetchInternalDataApi(
         !response.ok &&
         !options.acceptedErrorStatuses?.includes(response.status)
       ) {
+        await response.body?.cancel();
         throw new InternalDataApiError(
           `正本データAPIがHTTP ${response.status}を返しました。`,
           response.status,
         );
       }
-      return response;
+      if (!response.body) return response;
+      if (Number(response.headers.get("content-length")) > MAX_RESPONSE_BYTES) {
+        await response.body.cancel();
+        throw new InternalDataApiError(
+          "正本データAPIの応答が上限を超えました．",
+          response.status,
+        );
+      }
+      return new Response(
+        boundResponseBody(response.body, MAX_RESPONSE_BYTES),
+        {
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers,
+        },
+      );
     }
   } catch (error) {
     if (error instanceof InternalDataApiError) throw error;
-    if (error instanceof Error && error.name === "AbortError") {
+    if (
+      error instanceof Error &&
+      ["AbortError", "TimeoutError"].includes(error.name)
+    ) {
       throw new InternalDataApiError(
         "正本データAPIへの接続がタイムアウトしました。",
         null,
@@ -144,7 +154,5 @@ export async function fetchInternalDataApi(
       null,
       { cause: error },
     );
-  } finally {
-    clearTimeout(timeout);
   }
 }

@@ -10,7 +10,7 @@ import {
   reviewCommentSchema,
 } from "./contract";
 
-export const EDIT_REQUESTS_API_PATH = "/api/internal/v1/edit-requests";
+export const EDIT_REQUESTS_API_PATH = "/api/admin/edit-requests";
 export const EDIT_REQUEST_API_MAX_BYTES = MAX_EDIT_BYTES + 64 * 1024;
 const kind = z.enum(
   Object.keys(EDIT_KIND_LABELS) as [

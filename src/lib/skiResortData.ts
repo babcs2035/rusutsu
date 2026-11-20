@@ -52,14 +52,11 @@ export async function mergeAdminSkiResorts(
 ): Promise<ResortMergeResult> {
   const request = resortMergeRequestSchema.parse(rawRequest);
   if (!usesRemoteDataApi()) return mergeAdminSkiResortsDirect(request);
-  const response = await fetchInternalDataApi(
-    "/api/internal/v1/ski-resorts/merge",
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(request),
-    },
-  );
+  const response = await fetchInternalDataApi("/api/admin/resorts/merges", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+  });
   return resortMergeResultSchema.parse(await response.json());
 }
 
@@ -68,14 +65,11 @@ export async function unlinkAdminSkiResorts(
 ): Promise<ResortUnlinkResult> {
   const request = resortUnlinkRequestSchema.parse(rawRequest);
   if (!usesRemoteDataApi()) return unlinkAdminSkiResortsDirect(request);
-  const response = await fetchInternalDataApi(
-    "/api/internal/v1/ski-resorts/unlink",
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(request),
-    },
-  );
+  const response = await fetchInternalDataApi("/api/admin/resorts/unlinks", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+  });
   return resortUnlinkResultSchema.parse(await response.json());
 }
 
@@ -114,9 +108,7 @@ const reviveWeather = (weather: Weather): Weather => ({
 
 export async function readSkiResorts(): Promise<FullSkiResortRecord[]> {
   if (!usesRemoteDataApi()) return findSkiResortsDirect();
-  const response = await fetchInternalDataApi(
-    "/api/internal/v1/ski-resorts?view=full",
-  );
+  const response = await fetchInternalDataApi("/api/admin/resorts?view=full");
   const resorts = await parseEnvelope<FullSkiResortRecord[]>(
     response,
     "resorts",
@@ -126,9 +118,7 @@ export async function readSkiResorts(): Promise<FullSkiResortRecord[]> {
 
 export async function readSkiResortsForMap(): Promise<SkiResortMapRecord[]> {
   if (!usesRemoteDataApi()) return findSkiResortsForMapDirect();
-  const response = await fetchInternalDataApi(
-    "/api/internal/v1/ski-resorts?view=map",
-  );
+  const response = await fetchInternalDataApi("/api/admin/resorts?view=map");
   return parseEnvelope<SkiResortMapRecord[]>(response, "resorts");
 }
 
@@ -137,7 +127,7 @@ export async function readSkiResortsForEditor(): Promise<SkiResortMapRecord[]> {
   if (!usesRemoteDataApi()) return findSkiResortsForEditorDirect();
   try {
     const response = await fetchInternalDataApi(
-      "/api/internal/v1/ski-resorts?view=editor",
+      "/api/admin/resorts?view=editor",
     );
     return parseEnvelope<SkiResortMapRecord[]>(response, "resorts");
   } catch (error) {
@@ -156,7 +146,7 @@ export async function readSkiResortById(
 ): Promise<SkiResortDetailRecord | null> {
   if (!usesRemoteDataApi()) return findSkiResortByIdDirect(id);
   const response = await fetchInternalDataApi(
-    `/api/internal/v1/ski-resorts/${encodeURIComponent(id)}?view=detail`,
+    `/api/admin/resorts/${encodeURIComponent(id)}?view=detail`,
   );
   const resort = await parseEnvelope<SkiResortDetailRecord | null>(
     response,
@@ -168,7 +158,7 @@ export async function readSkiResortById(
 export async function readSkiResortWeather(id: string): Promise<Weather[]> {
   if (!usesRemoteDataApi()) return findSkiResortWeatherDirect(id);
   const response = await fetchInternalDataApi(
-    `/api/internal/v1/ski-resorts/${encodeURIComponent(id)}?view=weather`,
+    `/api/admin/resorts/${encodeURIComponent(id)}?view=weather`,
   );
   const weather = await parseEnvelope<Weather[]>(response, "weather");
   return weather.map(reviveWeather);
@@ -176,7 +166,7 @@ export async function readSkiResortWeather(id: string): Promise<Weather[]> {
 
 export async function readYukiMagiList(): Promise<YukiMagi[]> {
   if (!usesRemoteDataApi()) return findYukiMagiListDirect();
-  const response = await fetchInternalDataApi("/api/internal/v1/yuki-magi");
+  const response = await fetchInternalDataApi("/api/admin/yukimaji");
   const entries = await parseEnvelope<YukiMagi[]>(response, "entries");
   return entries.map(entry => ({
     ...entry,
@@ -191,7 +181,7 @@ export async function readSkiResortNames(
   const search = new URLSearchParams({ view: "names" });
   if (ids) search.set("ids", ids.join(","));
   const response = await fetchInternalDataApi(
-    `/api/internal/v1/ski-resorts?${search.toString()}`,
+    `/api/admin/resorts?${search.toString()}`,
   );
   return parseEnvelope<ResortName[]>(response, "resorts");
 }
@@ -203,7 +193,7 @@ export async function readExistingSkiResortIds(
   if (!usesRemoteDataApi()) return findExistingSkiResortIdsDirect(ids);
   const search = new URLSearchParams({ view: "ids", ids: ids.join(",") });
   const response = await fetchInternalDataApi(
-    `/api/internal/v1/ski-resorts?${search.toString()}`,
+    `/api/admin/resorts?${search.toString()}`,
   );
   return parseEnvelope<string[]>(response, "ids");
 }
@@ -211,9 +201,7 @@ export async function readExistingSkiResortIds(
 /** 管理画面用。公開停止中のスキー場も含めて返す。 */
 export async function readAdminSkiResorts(): Promise<AdminSkiResortRecord[]> {
   if (!usesRemoteDataApi()) return findAdminSkiResortsDirect();
-  const response = await fetchInternalDataApi(
-    "/api/internal/v1/ski-resorts?view=admin",
-  );
+  const response = await fetchInternalDataApi("/api/admin/resorts?view=admin");
   const resorts = await parseEnvelope<unknown>(response, "resorts");
   return z.array(adminSkiResortRecordSchema).parse(resorts);
 }
@@ -244,7 +232,7 @@ export async function updateAdminSkiResort(
   }
 
   const response = await fetchInternalDataApi(
-    `/api/internal/v1/ski-resorts/${encodeURIComponent(id)}`,
+    `/api/admin/resorts/${encodeURIComponent(id)}`,
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },

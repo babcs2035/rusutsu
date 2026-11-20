@@ -46,7 +46,7 @@ import {
 /**
  * 監視画面のDB直読み実装。
  *
- * 本番appはこのモジュールを直接使い、`DATA_API_BASE_URL` を設定したローカルappは
+ * 本番appはこのモジュールを直接使い、`API_BASE_URL` を設定したローカルappは
  * 内部API越しに本番のこの実装を呼ぶ（adminClient.ts）。
  */
 

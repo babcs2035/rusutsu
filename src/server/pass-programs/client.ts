@@ -14,9 +14,7 @@ import {
 export async function readPassProgramStatus(): Promise<PassProgramStatus | null> {
   try {
     if (!usesRemoteDataApi()) return await findPassProgramStatusDirect();
-    const response = await fetchInternalDataApi(
-      "/api/internal/v1/pass-programs",
-    );
+    const response = await fetchInternalDataApi("/api/admin/pass-programs");
     const body = (await response.json()) as { status?: unknown };
     return passProgramStatusSchema.parse(body.status);
   } catch (error) {

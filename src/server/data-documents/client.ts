@@ -28,7 +28,7 @@ import {
   writeDataDocumentsDirect,
 } from "./repository";
 
-const RESOURCE_PATH = "/api/internal/v1/data-documents";
+const RESOURCE_PATH = "/api/admin/documents";
 
 const parseRemoteResponse = async <T>(
   response: Response,
@@ -95,7 +95,7 @@ const writeRemote = async (documents: readonly DataDocumentWrite[]) => {
 
 /**
  * 管理画面のServer Action等が使う窓口。
- * DATA_API_BASE_URL が設定されたローカルサーバーだけremote APIを使い、
+ * API_BASE_URL が設定されたローカルサーバーだけremote APIを使い、
  * 未設定の本番サーバーは同じDBへ直接アクセスする。
  */
 export const getDataDocument = async (key: string) => {

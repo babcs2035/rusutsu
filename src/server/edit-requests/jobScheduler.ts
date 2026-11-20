@@ -7,7 +7,7 @@ const globalState = globalThis as unknown as {
 export function startEditRequestJobScheduler() {
   if (
     globalState.editRequestSchedulerStarted ||
-    process.env.DATA_API_BASE_URL?.trim() ||
+    process.env.API_BASE_URL?.trim() ||
     process.env.DISABLE_EDIT_REQUEST_JOBS === "true"
   )
     return;

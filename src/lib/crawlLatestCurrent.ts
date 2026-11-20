@@ -38,7 +38,7 @@ export async function readCurrentCrawlLatestStatus(
   }
   const search = new URLSearchParams({ resortId, kind, view: "status" });
   const response = await fetchInternalDataApi(
-    `/api/internal/v1/crawl-latest-current?${search.toString()}`,
+    `/api/admin/crawl/current?${search.toString()}`,
   );
   return parseObjectEnvelope<LatestSuccessfulStatus | null>(response, "status");
 }
@@ -51,7 +51,7 @@ export async function listCurrentCrawlLatestResortIds(
   }
   const search = new URLSearchParams({ kind, view: "resortIds" });
   const response = await fetchInternalDataApi(
-    `/api/internal/v1/crawl-latest-current?${search.toString()}`,
+    `/api/admin/crawl/current?${search.toString()}`,
   );
   return parseObjectEnvelope<string[]>(response, "resortIds");
 }
@@ -71,7 +71,7 @@ export async function readMappingCrawlLatestStatus(
     );
   const search = new URLSearchParams({ resortId, kind, view: "mappingStatus" });
   const response = await fetchInternalDataApi(
-    `/api/internal/v1/crawl-latest-current?${search}`,
+    `/api/admin/crawl/current?${search}`,
   );
   return parseObjectEnvelope(response, "status");
 }
@@ -88,7 +88,7 @@ export async function listMappingCrawlLatestResortIds(
     );
   const search = new URLSearchParams({ kind, view: "mappingResortIds" });
   const response = await fetchInternalDataApi(
-    `/api/internal/v1/crawl-latest-current?${search}`,
+    `/api/admin/crawl/current?${search}`,
   );
   return parseObjectEnvelope(response, "resortIds");
 }
@@ -111,7 +111,7 @@ export async function readCurrentResortConditions(
   });
   try {
     const response = await fetchInternalDataApi(
-      `/api/internal/v1/crawl-latest-current?${search}`,
+      `/api/admin/crawl/current?${search}`,
     );
     return parseObjectEnvelope(response, "conditions");
   } catch (error) {
@@ -149,7 +149,7 @@ export async function readMappingStatusHistory(
   }
   try {
     const response = await fetchInternalDataApi(
-      `/api/internal/v1/crawl-latest-current?${new URLSearchParams({ resortId, kind, view: "mappingHistory" })}`,
+      `/api/admin/crawl/current?${new URLSearchParams({ resortId, kind, view: "mappingHistory" })}`,
     );
     return [
       ...(await parseObjectEnvelope<LatestSuccessfulStatus[]>(
@@ -166,9 +166,9 @@ export async function readMappingStatusHistory(
       throw error;
     // APIの先行デプロイがなくても既存の診断APIで履歴を読める。
     const response = await fetchInternalDataApi(
-      `/api/internal/v1/crawl-latest-runs?${new URLSearchParams({ resortId, limit: "100" })}`,
+      `/api/admin/crawl/runs?${new URLSearchParams({ resortId, limit: "100" })}`,
       {},
-      { scope: "diagnostics-read" },
+      {},
     );
     const runs = await parseObjectEnvelope<Array<{ id: string }>>(
       response,
@@ -180,9 +180,9 @@ export async function readMappingStatusHistory(
       const batch = await Promise.all(
         runs.slice(offset, offset + 5).map(async ({ id }) => {
           const detail = await fetchInternalDataApi(
-            `/api/internal/v1/crawl-latest-runs?${new URLSearchParams({ runId: id, include: "categoryData" })}`,
+            `/api/admin/crawl/runs?${new URLSearchParams({ runId: id, include: "categoryData" })}`,
             {},
-            { scope: "diagnostics-read" },
+            {},
           );
           const run = await parseObjectEnvelope<{
             observedAt: string;

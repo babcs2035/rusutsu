@@ -17,7 +17,7 @@ import {
   summarizeResortLinksDirect,
 } from "./repository";
 
-export const RESORT_LINKS_API_PATH = "/api/internal/v1/resort-links";
+export const RESORT_LINKS_API_PATH = "/api/admin/resort-links";
 
 const parseRemote = async <T>(
   response: Response,
@@ -35,7 +35,7 @@ const parseRemote = async <T>(
 };
 
 /**
- * 画面が使う窓口。DATA_API_BASE_URL を設定したローカルサーバーは本番APIを、
+ * 画面が使う窓口。API_BASE_URL を設定したローカルサーバーは本番APIを、
  * 本番サーバーは同じDBを直接読む。
  */
 export const findResortLinks = async (

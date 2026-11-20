@@ -16,6 +16,7 @@ import { readTestDatabaseUrl } from "../../../scripts/testDatabase";
 import { verifyRemoteCommunity } from "./remoteIntegration";
 
 type TestApi = typeof import("@/features/community/actions") &
+  typeof import("@/server/community/queries") &
   typeof import("@/server/community/moderation") &
   typeof import("@/server/community/admin") &
   typeof import("@/server/community/photos") &
@@ -26,7 +27,7 @@ type TestApi = typeof import("@/features/community/actions") &
       cookies: Map<string, string>;
     }>;
     photoGET: typeof import("@/app/api/community/photos/[photoId]/route").GET;
-    internalCommunityPOST: typeof import("@/app/api/internal/v1/community/route").POST;
+    internalCommunityPOST: typeof import("@/app/api/admin/community/route").POST;
   };
 
 const testDatabase = readTestDatabaseUrl();
@@ -34,14 +35,14 @@ test("community reports: atomic daily report lifecycle and privacy", {
   skip: !testDatabase,
 }, async () => {
   process.env.DATABASE_URL = testDatabase;
-  process.env.DATA_API_BASE_URL = "";
+  process.env.API_BASE_URL = "";
   delete process.env.OPENAI_API_KEY;
   const root = path.resolve("src/private/data/resorts-temporary/tmp/community");
   await fs.mkdir(root, { recursive: true });
   const outfile = path.join(root, "integration.mjs");
   await build({
     stdin: {
-      contents: `export {revalidations} from 'next/cache'; export {runtime} from 'community-test-runtime'; export {prisma,disconnectPrisma} from '@/lib/prisma'; export * from '@/features/community/actions'; export * from '@/server/community/moderation'; export {normalizePhoto} from '@/server/community/photos'; export {GET as photoGET} from '@/app/api/community/photos/[photoId]/route'; export {POST as internalCommunityPOST} from '@/app/api/internal/v1/community/route'; export * from '@/server/community/admin';`,
+      contents: `export {revalidations} from 'next/cache'; export {runtime} from 'community-test-runtime'; export {prisma,disconnectPrisma} from '@/lib/prisma'; export * from '@/features/community/actions'; export * from '@/server/community/queries'; export * from '@/server/community/moderation'; export {normalizePhoto} from '@/server/community/photos'; export {GET as photoGET} from '@/app/api/community/photos/[photoId]/route'; export {POST as internalCommunityPOST} from '@/app/api/admin/community/route'; export * from '@/server/community/admin';`,
       resolveDir: process.cwd(),
       loader: "ts",
     },

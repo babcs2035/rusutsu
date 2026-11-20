@@ -1,7 +1,7 @@
 const LOOPBACK_HTTP_HOSTNAMES = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 const INVALID_BASE_URL_MESSAGE =
-  "DATA_API_BASE_URL must use HTTPS (HTTP is allowed only for localhost, 127.0.0.1, or [::1]) and must not include credentials, query, or fragment";
+  "API_BASE_URL must use HTTPS (HTTP is allowed only for localhost, 127.0.0.1, or [::1]) and must not include credentials, query, or fragment";
 
 /**
  * Bearer tokens may travel over plain HTTP only when the connection stays on

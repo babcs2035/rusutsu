@@ -46,12 +46,8 @@ export async function verifyRemoteCommunity(
     options: `-c search_path=${databaseName}`,
   });
   const savedEnv = {
-    DATA_API_BASE_URL: process.env.DATA_API_BASE_URL,
-    INTERNAL_DATA_API_ADMIN_TOKEN: process.env.INTERNAL_DATA_API_ADMIN_TOKEN,
-    INTERNAL_DATA_API_CRAWLER_TOKEN:
-      process.env.INTERNAL_DATA_API_CRAWLER_TOKEN,
-    INTERNAL_DATA_API_DIAGNOSTICS_TOKEN:
-      process.env.INTERNAL_DATA_API_DIAGNOSTICS_TOKEN,
+    API_BASE_URL: process.env.API_BASE_URL,
+    API_BEARER_TOKEN: process.env.API_BEARER_TOKEN,
   };
   let child: ReturnType<typeof spawn> | undefined;
   try {
@@ -65,7 +61,7 @@ export async function verifyRemoteCommunity(
         env: {
           ...process.env,
           DATABASE_URL: canonicalUrl.href,
-          DATA_API_BASE_URL: "",
+          API_BASE_URL: "",
         },
         encoding: "utf8",
       },
@@ -137,10 +133,8 @@ export async function verifyRemoteCommunity(
       env: {
         ...process.env,
         DATABASE_URL: canonicalUrl.href,
-        DATA_API_BASE_URL: "",
-        INTERNAL_DATA_API_ADMIN_TOKEN: "community-test-admin-token",
-        INTERNAL_DATA_API_CRAWLER_TOKEN: "community-test-crawler-token",
-        INTERNAL_DATA_API_DIAGNOSTICS_TOKEN: "community-test-diagnostics-token",
+        API_BASE_URL: "",
+        API_BEARER_TOKEN: "community-test-api-token",
         COMMUNITY_MODERATION_TOKEN: "community-test-moderation-token",
         DISABLE_EDIT_REQUEST_JOBS: "true",
       },
@@ -163,7 +157,7 @@ export async function verifyRemoteCommunity(
       });
     });
     const endpoint = `http://127.0.0.1:${port}/rusutsu${COMMUNITY_API_PATH}`;
-    const token = "community-test-admin-token";
+    const token = "community-test-api-token";
     const request = (
       command: unknown,
       googleAccountId: string | null,
@@ -194,7 +188,7 @@ export async function verifyRemoteCommunity(
         await request(
           validPrivateCommand,
           accountId(ids.owner),
-          "community-test-crawler-token",
+          "community-test-api-token",
         )
       ).status,
       403,
@@ -204,7 +198,7 @@ export async function verifyRemoteCommunity(
         await request(
           validPrivateCommand,
           accountId(ids.owner),
-          "community-test-diagnostics-token",
+          "community-test-api-token",
         )
       ).status,
       403,
@@ -535,8 +529,8 @@ export async function verifyRemoteCommunity(
     assert.ok(notificationData.unreadCount >= 2);
 
     const remoteBase = `http://127.0.0.1:${port}/rusutsu`;
-    process.env.DATA_API_BASE_URL = remoteBase;
-    process.env.INTERNAL_DATA_API_ADMIN_TOKEN = token;
+    process.env.API_BASE_URL = remoteBase;
+    process.env.API_BEARER_TOKEN = token;
     const actionAccount = (await api.runtime.run(
       { session: { user: { id: ids.owner } }, cookies: new Map() },
       () => api.getCommunityAccount(),
@@ -588,8 +582,8 @@ export async function verifyRemoteCommunity(
       await api.prisma.communityReaction.count({ where: { postId } }),
       0,
     );
-    process.env.DATA_API_BASE_URL = "http://127.0.0.1:1/rusutsu";
-    process.env.INTERNAL_DATA_API_ADMIN_TOKEN = token;
+    process.env.API_BASE_URL = "http://127.0.0.1:1/rusutsu";
+    process.env.API_BEARER_TOKEN = token;
     const localPublishInput = {
       resortId: ids.resortId,
       idempotencyKey: crypto.randomUUID(),
@@ -628,19 +622,12 @@ export async function verifyRemoteCommunity(
         },
       },
     });
-    if (savedEnv.DATA_API_BASE_URL === undefined)
-      delete process.env.DATA_API_BASE_URL;
-    else process.env.DATA_API_BASE_URL = savedEnv.DATA_API_BASE_URL;
+    if (savedEnv.API_BASE_URL === undefined) delete process.env.API_BASE_URL;
+    else process.env.API_BASE_URL = savedEnv.API_BASE_URL;
     for (const [key, value] of [
-      ["INTERNAL_DATA_API_ADMIN_TOKEN", savedEnv.INTERNAL_DATA_API_ADMIN_TOKEN],
-      [
-        "INTERNAL_DATA_API_CRAWLER_TOKEN",
-        savedEnv.INTERNAL_DATA_API_CRAWLER_TOKEN,
-      ],
-      [
-        "INTERNAL_DATA_API_DIAGNOSTICS_TOKEN",
-        savedEnv.INTERNAL_DATA_API_DIAGNOSTICS_TOKEN,
-      ],
+      ["API_BEARER_TOKEN", savedEnv.API_BEARER_TOKEN],
+      ["API_BEARER_TOKEN", savedEnv.API_BEARER_TOKEN],
+      ["API_BEARER_TOKEN", savedEnv.API_BEARER_TOKEN],
     ] as const) {
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;

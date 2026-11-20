@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { getCourseRecommendationIndex } from "@/features/course-recommendations/actions";
 import { favoriteIdsSchema } from "@/features/favorites/storage";
+import { getCourseRecommendationIndex } from "@/server/course-recommendations/queries";
 import { RequestBodyError, readRequestJson } from "@/server/readRequestBody";
 
 const schema = z.object({
@@ -11,7 +11,7 @@ const schema = z.object({
 const headers = { "Cache-Control": "private, no-store", Vary: "Cookie" };
 
 // A separate read request avoids the client's serialized Server Action queue.
-// The action resolves authenticated favorites from the session, never the body.
+// The service resolves authenticated favorites from the session, never the body.
 export async function POST(request: Request) {
   try {
     const parsed = schema.safeParse(await readRequestJson(request, 2_000_000));

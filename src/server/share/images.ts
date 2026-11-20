@@ -20,6 +20,7 @@ import {
   SHARE_MAP_SIZES,
   type ShareMapSize,
 } from "@/features/share/mapCard";
+import { boundResponseBody } from "@/server/boundedResponse";
 import type { ShareResort } from "./data";
 import { shareImageOverlay, shareImageSlots } from "./imageLayout";
 
@@ -35,6 +36,7 @@ let queue: Promise<unknown> = Promise.resolve();
 let queued = 0;
 const MAX_QUEUED = 12;
 const PHOTO_PREFIX = "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/";
+const MAX_PHOTO_TILE_BYTES = 2 * 1024 * 1024;
 // 一覧の営業集計・料金の有無などは地図画像の版に含めない。
 const mapVersion = ({ resort, mapData }: ShareResort) => ({
   id: resort.id,
@@ -45,12 +47,28 @@ const mapVersion = ({ resort, mapData }: ShareResort) => ({
 });
 let photoRequests = 0;
 const photoWaiters: Array<() => void> = [];
-async function fetchPhoto(url: string) {
+async function fetchPhoto(url: string): Promise<Buffer> {
   if (photoRequests >= 4)
     await new Promise<void>(resolve => photoWaiters.push(resolve));
   else photoRequests++;
   try {
-    return await fetch(url, { signal: AbortSignal.timeout(12000) });
+    const response = await fetch(url, {
+      signal: AbortSignal.timeout(12000),
+      redirect: "error",
+    });
+    if (
+      !response.ok ||
+      !response.body ||
+      !response.headers.get("content-type")?.startsWith("image/")
+    ) {
+      await response.body?.cancel();
+      throw new Error(`photo HTTP ${response.status}`);
+    }
+    return Buffer.from(
+      await new Response(
+        boundResponseBody(response.body, MAX_PHOTO_TILE_BYTES),
+      ).arrayBuffer(),
+    );
   } finally {
     const next = photoWaiters.shift();
     if (next) next();
@@ -145,14 +163,7 @@ async function photoTile(url: string, tiles: Map<string, Promise<Buffer>>) {
       const info = await stat(location).catch(() => null);
       if (info && info.mtimeMs > Date.now() - 7 * 86400_000)
         return readFile(location);
-      const response = await fetchPhoto(tileUrl);
-      if (
-        !response.ok ||
-        !response.headers.get("content-type")?.startsWith("image/")
-      )
-        throw new Error(`photo HTTP ${response.status}`);
-      const bytes = Buffer.from(await response.arrayBuffer());
-      if (bytes.length > 2 * 1024 * 1024) throw new Error("photo too large");
+      const bytes = await fetchPhoto(tileUrl);
       await save(key, bytes);
       return bytes;
     })();
@@ -225,6 +236,8 @@ async function captureMap(
       }
     } else if (
       url.startsWith(`${origin}/`) ||
+      url.startsWith("https://fonts.googleapis.com/css2?") ||
+      url.startsWith("https://fonts.gstatic.com/s/") ||
       url.startsWith("data:") ||
       url.startsWith("blob:")
     )

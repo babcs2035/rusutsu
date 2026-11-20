@@ -1,23 +1,12 @@
 import "server-only";
 
 import {
-  authorizeInternalDataApiScope,
-  type InternalDataApiScope,
-} from "@/lib/internalDataApiScopes";
-
-export type InternalDataApiAuthorization =
-  | { authorized: true }
-  | {
-      authorized: false;
-      reason: "UNAUTHORIZED" | "FORBIDDEN" | "UNCONFIGURED" | "MISCONFIGURED";
-    };
+  type ApiBearerAuthorization,
+  authorizeApiBearerToken,
+} from "@/lib/internalDataApiToken";
 
 export const authorizeInternalDataApiRequest = (
   request: Request,
-  requiredScope: InternalDataApiScope,
-): InternalDataApiAuthorization => {
-  return authorizeInternalDataApiScope(
-    request.headers.get("authorization"),
-    requiredScope,
-  );
+): ApiBearerAuthorization => {
+  return authorizeApiBearerToken(request.headers.get("authorization"));
 };

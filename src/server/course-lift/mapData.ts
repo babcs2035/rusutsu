@@ -150,7 +150,7 @@ export async function readCanonicalResortMap(resortId: string) {
   if (!usesRemoteDataApi()) return readCanonicalResortMapDirect(resortId);
   try {
     const response = await fetchInternalDataApi(
-      `/api/internal/v1/resort-map?resortId=${encodeURIComponent(resortId)}`,
+      `/api/admin/maps/resorts?resortId=${encodeURIComponent(resortId)}`,
     );
     const result = (await response.json()) as {
       enabled: boolean;

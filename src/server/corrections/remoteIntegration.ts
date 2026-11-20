@@ -65,8 +65,8 @@ export async function verifyRemoteCorrections(
     options: `-c search_path=${databaseName}`,
   });
   const savedEnv = {
-    DATA_API_BASE_URL: process.env.DATA_API_BASE_URL,
-    INTERNAL_DATA_API_ADMIN_TOKEN: process.env.INTERNAL_DATA_API_ADMIN_TOKEN,
+    API_BASE_URL: process.env.API_BASE_URL,
+    API_BEARER_TOKEN: process.env.API_BEARER_TOKEN,
     AUTH_SECRET: process.env.AUTH_SECRET,
   };
   let child: ReturnType<typeof spawn> | undefined;
@@ -81,7 +81,7 @@ export async function verifyRemoteCorrections(
         env: {
           ...process.env,
           DATABASE_URL: canonicalUrl.href,
-          DATA_API_BASE_URL: "",
+          API_BASE_URL: "",
         },
         encoding: "utf8",
       },
@@ -138,7 +138,7 @@ export async function verifyRemoteCorrections(
       import {prisma, internalCommunityPOST, internalEditRequestPOST, runtime, disconnectPrisma} from './integration.mjs';
       const resort=JSON.parse(await fs.readFile(new URL('./corrections-resort-seed.json',import.meta.url),'utf8'));
       await prisma.skiResort.create({data:resort});
-      const server=http.createServer(async(req,res)=>{try{const chunks=[];for await(const c of req)chunks.push(c);const body=Buffer.concat(chunks);const request=new Request('http://127.0.0.1'+req.url,{method:req.method,headers:req.headers,...(req.method==='POST'?{body,duplex:'half'}:{})});const handler=req.url.startsWith('/rusutsu/api/internal/v1/community')?internalCommunityPOST:internalEditRequestPOST;const response=await runtime.run({userId:null,actor:null,cookies:new Map()},()=>handler(request));res.writeHead(response.status,Object.fromEntries(response.headers));res.end(Buffer.from(await response.arrayBuffer()));}catch(error){res.writeHead(500);res.end(String(error));}});
+      const server=http.createServer(async(req,res)=>{try{const chunks=[];for await(const c of req)chunks.push(c);const body=Buffer.concat(chunks);const request=new Request('http://127.0.0.1'+req.url,{method:req.method,headers:req.headers,...(req.method==='POST'?{body,duplex:'half'}:{})});const handler=req.url.startsWith('/rusutsu/api/admin/community')?internalCommunityPOST:internalEditRequestPOST;const response=await runtime.run({userId:null,actor:null,cookies:new Map()},()=>handler(request));res.writeHead(response.status,Object.fromEntries(response.headers));res.end(Buffer.from(await response.arrayBuffer()));}catch(error){res.writeHead(500);res.end(String(error));}});
       server.listen(0,'127.0.0.1',()=>process.send({port:server.address().port}));
       process.on('message',async value=>{if(value==='stop'){server.close();await disconnectPrisma();process.exit(0);}});
       `,
@@ -147,12 +147,9 @@ export async function verifyRemoteCorrections(
       env: {
         ...process.env,
         DATABASE_URL: canonicalUrl.href,
-        DATA_API_BASE_URL: "",
+        API_BASE_URL: "",
         AUTH_SECRET: "canonical-correction-test-secret",
-        INTERNAL_DATA_API_ADMIN_TOKEN: "correction-test-admin-token",
-        INTERNAL_DATA_API_CRAWLER_TOKEN: "correction-test-crawler-token",
-        INTERNAL_DATA_API_DIAGNOSTICS_TOKEN:
-          "correction-test-diagnostics-token",
+        API_BEARER_TOKEN: "correction-test-api-token",
         DISABLE_EDIT_REQUEST_JOBS: "true",
       },
       stdio: ["ignore", "pipe", "pipe", "ipc"],
@@ -174,9 +171,9 @@ export async function verifyRemoteCorrections(
       });
     });
     const base = `http://127.0.0.1:${port}/rusutsu`;
-    const token = "correction-test-admin-token";
-    process.env.DATA_API_BASE_URL = base;
-    process.env.INTERNAL_DATA_API_ADMIN_TOKEN = token;
+    const token = "correction-test-api-token";
+    process.env.API_BASE_URL = base;
+    process.env.API_BEARER_TOKEN = token;
 
     const actor = (userId: string | null) => ({
       userId,
@@ -293,7 +290,7 @@ export async function verifyRemoteCorrections(
     assert.equal(photoRows.rowCount, 3);
     assert.ok(photoRows.rows.every(row => row.mimeType === "image/webp"));
 
-    const communityEndpoint = `${base}/api/internal/v1/community`;
+    const communityEndpoint = `${base}/api/admin/community`;
     const noIdentity = await fetch(communityEndpoint, {
       method: "POST",
       headers: {
@@ -410,23 +407,20 @@ export async function verifyRemoteCorrections(
       originalLocalDescription,
     );
 
-    const editorResponse = await fetch(
-      `${base}/api/internal/v1/edit-requests`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          operation: "correction-list",
-          googleAccountId: `correction-google-${ids.editorId}`,
-        }),
+    const editorResponse = await fetch(`${base}/api/admin/edit-requests`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
       },
-    );
+      body: JSON.stringify({
+        operation: "correction-list",
+        googleAccountId: `correction-google-${ids.editorId}`,
+      }),
+    });
     assert.equal(editorResponse.status, 403);
     const unauthorizedResponse = await fetch(
-      `${base}/api/internal/v1/edit-requests`,
+      `${base}/api/admin/edit-requests`,
       {
         method: "POST",
         headers: {
@@ -447,7 +441,7 @@ export async function verifyRemoteCorrections(
         ["public-correction", ids.resortId],
       )
     ).rows[0].count;
-    process.env.DATA_API_BASE_URL = "http://127.0.0.1:1/rusutsu";
+    process.env.API_BASE_URL = "http://127.0.0.1:1/rusutsu";
     const outageResult = await submitAsAnonymous(actor(null));
     assert.equal(outageResult.ok, false);
     assert.equal(
@@ -489,11 +483,10 @@ export async function verifyRemoteCorrections(
         },
       },
     });
-    if (savedEnv.DATA_API_BASE_URL === undefined)
-      delete process.env.DATA_API_BASE_URL;
-    else process.env.DATA_API_BASE_URL = savedEnv.DATA_API_BASE_URL;
+    if (savedEnv.API_BASE_URL === undefined) delete process.env.API_BASE_URL;
+    else process.env.API_BASE_URL = savedEnv.API_BASE_URL;
     for (const [key, value] of [
-      ["INTERNAL_DATA_API_ADMIN_TOKEN", savedEnv.INTERNAL_DATA_API_ADMIN_TOKEN],
+      ["API_BEARER_TOKEN", savedEnv.API_BEARER_TOKEN],
       ["AUTH_SECRET", savedEnv.AUTH_SECRET],
     ] as const) {
       if (value === undefined) delete process.env[key];

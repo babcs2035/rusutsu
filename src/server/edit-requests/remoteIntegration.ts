@@ -37,8 +37,8 @@ export async function verifyRemoteWorkflow(
     options: `-c search_path=${databaseName}`,
   });
   const savedEnv = {
-    DATA_API_BASE_URL: process.env.DATA_API_BASE_URL,
-    INTERNAL_DATA_API_ADMIN_TOKEN: process.env.INTERNAL_DATA_API_ADMIN_TOKEN,
+    API_BASE_URL: process.env.API_BASE_URL,
+    API_BEARER_TOKEN: process.env.API_BEARER_TOKEN,
   };
   let child: ReturnType<typeof spawn> | undefined;
   try {
@@ -49,7 +49,7 @@ export async function verifyRemoteWorkflow(
         env: {
           ...process.env,
           DATABASE_URL: canonicalUrl.href,
-          DATA_API_BASE_URL: "",
+          API_BASE_URL: "",
         },
         encoding: "utf8",
       },
@@ -114,11 +114,8 @@ export async function verifyRemoteWorkflow(
       env: {
         ...process.env,
         DATABASE_URL: canonicalUrl.href,
-        DATA_API_BASE_URL: "",
-        INTERNAL_DATA_API_ADMIN_TOKEN: "test-editor-remote-admin-token",
-        INTERNAL_DATA_API_CRAWLER_TOKEN: "test-editor-remote-crawler-token",
-        INTERNAL_DATA_API_DIAGNOSTICS_TOKEN:
-          "test-editor-remote-diagnostics-token",
+        API_BASE_URL: "",
+        API_BEARER_TOKEN: "test-editor-remote-api-token",
         DISABLE_EDIT_REQUEST_JOBS: "true",
       },
       stdio: ["ignore", "pipe", "pipe", "ipc"],
@@ -142,11 +139,10 @@ export async function verifyRemoteWorkflow(
       });
     });
     const base = `http://127.0.0.1:${port}/rusutsu`;
-    process.env.DATA_API_BASE_URL = base;
-    process.env.INTERNAL_DATA_API_ADMIN_TOKEN =
-      "test-editor-remote-admin-token";
-    const endpoint = `${base}/api/internal/v1/edit-requests`;
-    const raw = (body: unknown, token = "test-editor-remote-admin-token") =>
+    process.env.API_BASE_URL = base;
+    process.env.API_BEARER_TOKEN = "test-editor-remote-api-token";
+    const endpoint = `${base}/api/admin/edit-requests`;
+    const raw = (body: unknown, token = "test-editor-remote-api-token") =>
       fetch(endpoint, {
         method: "POST",
         headers: {
@@ -200,7 +196,7 @@ export async function verifyRemoteWorkflow(
             operation: "list",
             googleAccountId: "test-google-integration-admin",
           },
-          "test-editor-remote-crawler-token",
+          "test-editor-remote-api-token",
         )
       ).status,
       403,

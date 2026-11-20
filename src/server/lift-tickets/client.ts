@@ -27,7 +27,7 @@ import {
   writeLiftTicketSeasonDirect,
 } from "./repository";
 
-export const LIFT_TICKETS_API_PATH = "/api/internal/v1/lift-tickets";
+export const LIFT_TICKETS_API_PATH = "/api/admin/lift-tickets";
 // URLの長さを抑えるため、公開画面の一括取得はこの件数ずつ分けて問い合わせる。
 const REMOTE_RESORT_ID_CHUNK = 50;
 

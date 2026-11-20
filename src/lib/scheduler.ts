@@ -9,7 +9,7 @@ const globalForScheduler = globalThis as unknown as {
 export function startScheduler() {
   // 本番APIを使うローカルNext.jsから運用DB向けジョブを実行しない。
   if (
-    process.env.DATA_API_BASE_URL?.trim() ||
+    process.env.API_BASE_URL?.trim() ||
     process.env.DISABLE_CRAWLER_SCHEDULER === "true"
   ) {
     return;

@@ -1,7 +1,7 @@
 import type {
   getSkiResortById,
   getSkiResortsForMap,
-} from "@/actions/skiResorts";
+} from "@/server/ski-resorts/queries";
 
 export type MapSkiResort = Awaited<
   ReturnType<typeof getSkiResortsForMap>

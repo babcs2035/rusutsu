@@ -34,11 +34,11 @@ import {
 /**
  * 監視画面のデータ入口。
  *
- * `DATA_API_BASE_URL` があるローカルappは本番の内部APIから読み、本番appはDBを直接読む。
+ * `API_BASE_URL` があるローカルappは本番の内部APIから読み、本番appはDBを直接読む。
  * 集計は常にDBのある側で行うので、ローカルへ生データを大量に転送しない。
  */
 
-const RESOURCE_PATH = "/api/internal/v1/crawl-latest-monitor";
+const RESOURCE_PATH = "/api/admin/crawl/monitor";
 
 /**
  * 接続先のAPIがこの画面より古く、`origin` を知らないときの応答。
@@ -63,7 +63,7 @@ const readRemote = async <T>(
   const response = await fetchInternalDataApi(
     `${RESOURCE_PATH}?${query.toString()}`,
     {},
-    { scope: "diagnostics-read" },
+    {},
   );
   return schema.parse(await response.json());
 };
@@ -108,7 +108,7 @@ export async function fetchCrawlMonitorRuns(
   const response = await fetchInternalDataApi(
     `${RESOURCE_PATH}?${params.toString()}`,
     {},
-    { scope: "diagnostics-read", acceptedErrorStatuses: [400] },
+    { acceptedErrorStatuses: [400] },
   );
   const body = (await response.json()) as unknown;
   if (response.status !== 400) {
@@ -146,7 +146,7 @@ export async function fetchCrawlMonitorRunDetail(
   const response = await fetchInternalDataApi(
     `${RESOURCE_PATH}?${new URLSearchParams({ view: "run", resortId, runId })}`,
     {},
-    { scope: "diagnostics-read", acceptedErrorStatuses: [404] },
+    { acceptedErrorStatuses: [404] },
   );
   if (response.status === 404) return null;
   const detail = crawlMonitorRunDetailSchema.parse(await response.json());
@@ -170,7 +170,7 @@ export async function fetchCrawlMonitorMapping(
   const response = await fetchInternalDataApi(
     `${RESOURCE_PATH}?${new URLSearchParams({ view: "mapping", resortId })}`,
     {},
-    { scope: "diagnostics-read", acceptedErrorStatuses: [400] },
+    { acceptedErrorStatuses: [400] },
   );
   const body = (await response.json()) as unknown;
   if (response.status !== 400) {

@@ -1,7 +1,7 @@
 import { cache } from "react";
-import { getSkiResortsForMap } from "@/actions/skiResorts";
 import { shareMapData } from "@/features/share/mapCard";
 import { getFinalizedResortMapData } from "@/lib/finalizedResortGeojson";
+import { getSkiResortsForMap } from "@/server/ski-resorts/queries";
 
 export const getShareResorts = cache(getSkiResortsForMap);
 

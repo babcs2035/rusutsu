@@ -188,7 +188,7 @@ test("remote canonical map reads use version marker to avoid duplicate current f
       const result = await api.readCanonicalResortMap("sample");
 
       assert.deepEqual(api.fetchCalls, [
-        "/api/internal/v1/resort-map?resortId=sample",
+        "/api/admin/maps/resorts?resortId=sample",
       ]);
       assert.deepEqual(api.currentReads, []);
       assert.equal(result.data.courses.features[0].properties.status, "△");
@@ -205,7 +205,7 @@ test("remote canonical map reads use version marker to avoid duplicate current f
       const result = await api.readCanonicalResortMap("sample");
 
       assert.deepEqual(api.fetchCalls, [
-        "/api/internal/v1/resort-map?resortId=sample",
+        "/api/admin/maps/resorts?resortId=sample",
       ]);
       assert.deepEqual(api.currentReads, [
         ["sample", "courses"],

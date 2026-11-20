@@ -15,7 +15,7 @@ import {
 } from "@/features/community/contract";
 import { submitCorrectionSchema } from "@/server/corrections/contract";
 
-export const COMMUNITY_API_PATH = "/api/internal/v1/community";
+export const COMMUNITY_API_PATH = "/api/admin/community";
 export const MAX_COMMAND_JSON_BYTES = 1024 * 1024;
 export const MAX_MULTIPART_BYTES = 8 * 1024 * 1024 + 1024 * 1024;
 export const MAX_CORRECTION_MULTIPART_BYTES = 27 * 1024 * 1024;
@@ -36,7 +36,7 @@ const anonymousProofSchema = z
   })
   .optional();
 
-const feedInputSchema = z.strictObject({
+export const feedInputSchema = z.strictObject({
   resortId: idSchema,
   resortIds: z.array(idSchema).max(20).optional(),
   courseId: idSchema.optional(),

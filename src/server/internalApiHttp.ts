@@ -1,6 +1,5 @@
 import "server-only";
 
-import type { InternalDataApiScope } from "@/lib/internalDataApiScopes";
 import { authorizeInternalDataApiRequest } from "@/server/internalDataApiAuth";
 
 const NO_STORE_HEADERS = {
@@ -19,17 +18,9 @@ export const internalApiError = (
 
 export const requireInternalApiRequest = (
   request: Request,
-  requiredScope: InternalDataApiScope,
 ): Response | null => {
-  const authorization = authorizeInternalDataApiRequest(request, requiredScope);
+  const authorization = authorizeInternalDataApiRequest(request);
   if (authorization.authorized) return null;
-  if (authorization.reason === "FORBIDDEN") {
-    return internalApiError(
-      403,
-      "FORBIDDEN",
-      "Token does not grant this scope",
-    );
-  }
   if (authorization.reason !== "UNAUTHORIZED") {
     return internalApiError(
       503,

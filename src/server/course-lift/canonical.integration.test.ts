@@ -13,7 +13,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
   skip: !databaseUrl,
 }, async t => {
   process.env.DATABASE_URL = databaseUrl;
-  process.env.DATA_API_BASE_URL = "";
+  process.env.API_BASE_URL = "";
   process.env.DATA_DOCUMENT_ALLOW_BUNDLED_FIXTURES = "false";
   const root = path.resolve(
     "src/private/data/resorts-temporary/tmp/canonical-maps",
@@ -565,7 +565,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
               env: {
                 ...process.env,
                 DATABASE_URL: databaseUrl,
-                DATA_API_BASE_URL: "",
+                API_BASE_URL: "",
               },
             },
           );

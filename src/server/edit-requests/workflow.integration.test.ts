@@ -18,7 +18,7 @@ test("editor requests: real PostgreSQL authorization, corrections, atomicity and
   skip: !testDatabase,
 }, async t => {
   process.env.DATABASE_URL = testDatabase;
-  process.env.DATA_API_BASE_URL = "";
+  process.env.API_BASE_URL = "";
   process.env.ALLOW_BUNDLED_DATA_FIXTURES = "false";
   const root = path.join(
     process.cwd(),
@@ -50,7 +50,7 @@ test("editor requests: real PostgreSQL authorization, corrections, atomicity and
       export { hashDataDocumentContent } from '@/server/data-documents/repositoryCore';
       export { adminSkiResortUpdateSchema } from '@/server/ski-resorts/adminContract';
       export { REVIEW_CATEGORY_IDS } from '@/features/reviews/types';
-      export { POST as internalEditRequestPOST } from '@/app/api/internal/v1/edit-requests/route';
+      export { POST as internalEditRequestPOST } from '@/app/api/admin/edit-requests/route';
     `,
       resolveDir: process.cwd(),
       sourcefile: "editor-integration.ts",

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import test from "node:test";
+import { setTimeout as delay } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 
@@ -44,18 +45,48 @@ test("internal data API retries transient safe-method failures only", async t =>
     pathToFileURL(bundlePath).href
   )) as typeof import("./internalDataApiClient");
   const originalFetch = globalThis.fetch;
-  const originalBase = process.env.DATA_API_BASE_URL;
-  const originalToken = process.env.INTERNAL_DATA_API_ADMIN_TOKEN;
-  process.env.DATA_API_BASE_URL = "https://data.example.test";
-  process.env.INTERNAL_DATA_API_ADMIN_TOKEN = "test-token";
+  const originalBase = process.env.API_BASE_URL;
+  const originalToken = process.env.API_BEARER_TOKEN;
+  process.env.API_BASE_URL = "https://data.example.test";
+  process.env.API_BEARER_TOKEN = "test-token";
   t.after(() => {
     globalThis.fetch = originalFetch;
-    if (originalBase === undefined) delete process.env.DATA_API_BASE_URL;
-    else process.env.DATA_API_BASE_URL = originalBase;
-    if (originalToken === undefined)
-      delete process.env.INTERNAL_DATA_API_ADMIN_TOKEN;
-    else process.env.INTERNAL_DATA_API_ADMIN_TOKEN = originalToken;
+    if (originalBase === undefined) delete process.env.API_BASE_URL;
+    else process.env.API_BASE_URL = originalBase;
+    if (originalToken === undefined) delete process.env.API_BEARER_TOKEN;
+    else process.env.API_BEARER_TOKEN = originalToken;
   });
+
+  await t.test(
+    "the default deadline remains active while reading the body",
+    async () => {
+      const originalTimeout = AbortSignal.timeout;
+      AbortSignal.timeout = milliseconds =>
+        originalTimeout(Math.min(milliseconds, 20));
+      try {
+        globalThis.fetch = async (_input, init) =>
+          new Response(
+            new ReadableStream({
+              start(controller) {
+                controller.enqueue(new TextEncoder().encode('{"unfinished":'));
+                init?.signal?.addEventListener(
+                  "abort",
+                  () => controller.error(init.signal?.reason),
+                  { once: true },
+                );
+              },
+            }),
+          );
+        const response = await fetchInternalDataApi("/api/admin/test");
+        await Promise.all([
+          assert.rejects(response.json(), { name: "TimeoutError" }),
+          delay(40),
+        ]);
+      } finally {
+        AbortSignal.timeout = originalTimeout;
+      }
+    },
+  );
 
   await t.test("502 then 200 retries once", async () => {
     let calls = 0;
@@ -63,7 +94,7 @@ test("internal data API retries transient safe-method failures only", async t =>
       ++calls === 1
         ? new Response(null, { status: 502 })
         : Response.json({ ok: true });
-    const response = await fetchInternalDataApi("/api/internal/v1/test");
+    const response = await fetchInternalDataApi("/api/admin/test");
     assert.equal(response.status, 200);
     assert.equal(calls, 2);
   });
@@ -77,7 +108,7 @@ test("internal data API retries transient safe-method failures only", async t =>
         return new Response(null, { status: 502 });
       };
       await assert.rejects(
-        fetchInternalDataApi("/api/internal/v1/test"),
+        fetchInternalDataApi("/api/admin/test"),
         (error: unknown) =>
           error instanceof InternalDataApiError &&
           error.status === 502 &&
@@ -94,11 +125,11 @@ test("internal data API retries transient safe-method failures only", async t =>
       return new Response(null, { status: 401 });
     };
     await assert.rejects(
-      fetchInternalDataApi("/api/internal/v1/test", { method: "POST" }),
+      fetchInternalDataApi("/api/admin/test", { method: "POST" }),
     );
     assert.equal(calls, 1);
     calls = 0;
-    await assert.rejects(fetchInternalDataApi("/api/internal/v1/test"));
+    await assert.rejects(fetchInternalDataApi("/api/admin/test"));
     assert.equal(calls, 1);
   });
 
@@ -111,7 +142,7 @@ test("internal data API retries transient safe-method failures only", async t =>
         return new Response(null, { status: 503 });
       };
       const response = await fetchInternalDataApi(
-        "/api/internal/v1/test",
+        "/api/admin/test",
         {},
         { acceptedErrorStatuses: [503] },
       );
@@ -129,7 +160,7 @@ test("internal data API retries transient safe-method failures only", async t =>
       return new Response(null, { status: 502 });
     };
     await assert.rejects(
-      fetchInternalDataApi("/api/internal/v1/test", {
+      fetchInternalDataApi("/api/admin/test", {
         signal: controller.signal,
       }),
       (error: unknown) =>

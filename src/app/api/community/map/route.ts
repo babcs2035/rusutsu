@@ -2,7 +2,7 @@ import {
   getCommunityMapEntries,
   getCommunityMapSummary,
   getPostDetail,
-} from "@/features/community/actions";
+} from "@/server/community/queries";
 
 /** 地図の読み取りはGETで行い、写真・ほかの操作と並行して取得できるようにする。 */
 export async function GET(request: Request) {

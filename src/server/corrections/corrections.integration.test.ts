@@ -27,8 +27,8 @@ type TestApi = typeof import("@/features/corrections/actions") &
   typeof import("@/lib/prisma") & {
     runtime: AsyncLocalStorage<TestActor>;
     photoGET: typeof import("@/app/api/community/photos/[photoId]/route").GET;
-    internalCommunityPOST: typeof import("@/app/api/internal/v1/community/route").POST;
-    internalEditRequestPOST: typeof import("@/app/api/internal/v1/edit-requests/route").POST;
+    internalCommunityPOST: typeof import("@/app/api/admin/community/route").POST;
+    internalEditRequestPOST: typeof import("@/app/api/admin/edit-requests/route").POST;
     listCorrections: typeof import("@/server/corrections/repository").listCorrections;
     getCorrection: typeof import("@/server/corrections/repository").getCorrection;
     disconnectPrisma: typeof import("@/lib/prisma").disconnectPrisma;
@@ -50,7 +50,7 @@ test("anonymous corrections: PostgreSQL idempotency, review CAS, geometry, bulk 
   skip: !databaseUrl,
 }, async () => {
   process.env.DATABASE_URL = databaseUrl;
-  process.env.DATA_API_BASE_URL = "";
+  process.env.API_BASE_URL = "";
   process.env.ALLOW_BUNDLED_DATA_FIXTURES = "false";
   const root = path.resolve(
     "src/private/data/resorts-temporary/tmp/corrections",
@@ -59,7 +59,7 @@ test("anonymous corrections: PostgreSQL idempotency, review CAS, geometry, bulk 
   const outfile = path.join(root, "integration.mjs");
   await build({
     stdin: {
-      contents: `export {runtime} from 'corrections-test-runtime'; export {prisma,disconnectPrisma} from '@/lib/prisma'; export {submitCorrection,decideCorrectionItem,adjustCorrectionItem} from '@/features/corrections/actions'; export {listCorrections,getCorrection} from '@/server/corrections/repository'; export {hashDataDocumentContent} from '@/server/data-documents/repositoryCore'; export {GET as photoGET} from '@/app/api/community/photos/[photoId]/route'; export {POST as internalCommunityPOST} from '@/app/api/internal/v1/community/route'; export {POST as internalEditRequestPOST} from '@/app/api/internal/v1/edit-requests/route';`,
+      contents: `export {runtime} from 'corrections-test-runtime'; export {prisma,disconnectPrisma} from '@/lib/prisma'; export {submitCorrection,decideCorrectionItem,adjustCorrectionItem} from '@/features/corrections/actions'; export {listCorrections,getCorrection} from '@/server/corrections/repository'; export {hashDataDocumentContent} from '@/server/data-documents/repositoryCore'; export {GET as photoGET} from '@/app/api/community/photos/[photoId]/route'; export {POST as internalCommunityPOST} from '@/app/api/admin/community/route'; export {POST as internalEditRequestPOST} from '@/app/api/admin/edit-requests/route';`,
       resolveDir: process.cwd(),
       loader: "ts",
     },

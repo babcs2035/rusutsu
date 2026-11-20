@@ -63,9 +63,7 @@ export async function readOperatingSummaries(): Promise<
   if (usesRemoteDataApi()) {
     let response: Response;
     try {
-      response = await fetchInternalDataApi(
-        "/api/internal/v1/map-operation-summaries",
-      );
+      response = await fetchInternalDataApi("/api/admin/operations/summaries");
     } catch (error) {
       if (error instanceof InternalDataApiError && error.status === 404)
         return {};

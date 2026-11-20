@@ -25,7 +25,7 @@ import {
   saveDisplayGroupDirect,
 } from "@/server/ski-resorts/displayGroupRepository";
 
-const RESOURCE_PATH = "/api/internal/v1/ski-resorts/display-groups";
+const RESOURCE_PATH = "/api/admin/resort-groups";
 const groupsSchema = z.object({ groups: z.array(displayGroupSchema) });
 
 const readRemoteGroups = async (query: string) => {
