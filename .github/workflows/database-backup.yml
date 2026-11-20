@@ -25,7 +25,7 @@ jobs:
       TEST_RESTORE: ${{ inputs.test_restore == true }}
     steps:
       - name: Setup Tailscale
-        uses: tailscale/github-action@main
+        uses: tailscale/github-action@15aab698c4bc2ba4baecf36031adbc296b594f36 # main
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
@@ -33,7 +33,7 @@ jobs:
 
       # Use the CI-validated operations package installed by the deployment workflow.
       - name: Back up and verify VPS-local copy
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@c4f70287fc37c43b14b30b407224bbbc8e8c6327 # master
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}

@@ -11,7 +11,7 @@
     "format": "biome format --write src scripts",
     "lint": "biome check src scripts",
     "typecheck": "pnpm exec next typegen && pnpm exec tsc --noEmit --incremental false",
-    "test": "tsx scripts/runTests.ts",
+    "test": "node --import tsx scripts/runTests.ts",
     "prepare": "husky",
     "maplibre:worker": "node scripts/copyMaplibreWorker.ts"
   },

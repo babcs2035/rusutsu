@@ -28,7 +28,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:16-alpine@sha256:1d5b02d3a9941fbd52437db4107f8c52d6297dac553ca1e5c299ebb3756b4857
         env:
           POSTGRES_USER: rusutsu_ci
           POSTGRES_PASSWORD: ephemeral_ci_only
@@ -44,13 +44,13 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@main
+        uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # main
         with:
           submodules: recursive
           token: ${{ secrets.SUBMODULES_TOKEN }}
 
       - name: Setup mise
-        uses: jdx/mise-action@main
+        uses: jdx/mise-action@bfe96ab3315135bc9f7bf94c40e84f9f5efed861 # main
         with:
           install: true
 
@@ -99,26 +99,26 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@main
+        uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # main
         with:
           submodules: recursive
           token: ${{ secrets.SUBMODULES_TOKEN }}
 
       - name: Setup mise
-        uses: jdx/mise-action@main
+        uses: jdx/mise-action@bfe96ab3315135bc9f7bf94c40e84f9f5efed861 # main
         with:
           install: true
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@master
+        uses: docker/setup-qemu-action@5138f26214adf9d69718655df70f66d2b3c81db3 # master
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@master
+        uses: docker/setup-buildx-action@bf8388060db527dff14f48b6a5fdbe70763c1213 # master
         with:
-          driver-opts: image=moby/buildkit:latest
+          driver-opts: image=moby/buildkit:latest@sha256:baf6138eb8c37644800c7c913fba051e840ebb9ba13eaf92d92ef9a1712d0b4c
 
       - name: Log in to the Container registry
-        uses: docker/login-action@master
+        uses: docker/login-action@d0b8297dd55199249f38268efae35fcb03f75aab # master
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -152,17 +152,22 @@ jobs:
       DEPLOY_TARGET: ${{ secrets.DEPLOY_TARGET }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@main
+        uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # main
         with:
           submodules: recursive
           token: ${{ secrets.SUBMODULES_TOKEN }}
 
       - name: Setup Tailscale
-        uses: tailscale/github-action@main
+        uses: tailscale/github-action@15aab698c4bc2ba4baecf36031adbc296b594f36 # main
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
           tags: tag:ci
+
+      - name: Setup mise for deployment settings
+        uses: jdx/mise-action@bfe96ab3315135bc9f7bf94c40e84f9f5efed861 # main
+        with:
+          install: true
 
       - name: Prepare production settings from GitHub
         env:
@@ -178,13 +183,13 @@ jobs:
           COMMUNITY_MODERATION_TOKEN: ${{ secrets.COMMUNITY_MODERATION_TOKEN }}
           COMMUNITY_MODERATION_MODEL: ${{ vars.COMMUNITY_MODERATION_MODEL }}
           CONTRIBUTION_TRUST_PROXY: ${{ vars.CONTRIBUTION_TRUST_PROXY }}
-        run: node scripts/ops/production-settings.ts
+        run: mise exec -- node scripts/ops/production-settings.ts
 
       - name: Fingerprint explicit database-changing paths
         run: python3 scripts/ops/build-db-manifest.py > db-change-manifest.sha256
 
       - name: Deploy package via SCP
-        uses: appleboy/scp-action@master
+        uses: appleboy/scp-action@7e85c2e09aa21988492acd66466b5d68bda49e2b # master
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
@@ -194,7 +199,7 @@ jobs:
           source: "docker-compose.production.yml,db-change-manifest.sha256,scripts/ops"
 
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@c4f70287fc37c43b14b30b407224bbbc8e8c6327 # master
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
@@ -227,7 +232,7 @@ jobs:
       - name: Clean up verified obsolete app images
         id: image-cleanup
         continue-on-error: true
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@c4f70287fc37c43b14b30b407224bbbc8e8c6327 # master
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
