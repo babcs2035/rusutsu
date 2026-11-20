@@ -1,3 +1,4 @@
+// 現行 PostgreSQL スキーマを責務ごとに定義する．物理名の変更は migration で扱う．
 generator client {
   provider      = "prisma-client-js"
   binaryTargets = ["native", "linux-arm64-openssl-3.0.x", "debian-openssl-3.0.x"]
@@ -7,9 +8,119 @@ datasource db {
   provider = "postgresql"
 }
 
-// =====================================
-// スキーリゾート関連
-// =====================================
+// 認証と本人の保存状態．
+
+model User {
+  id                     String                  @id @default(cuid())
+  name                   String?
+  email                  String?                 @unique
+  emailVerified          DateTime?
+  image                  String?
+  role                   String                  @default("viewer") // "viewer" | "editor" | "admin"; DB CHECKで制限
+  favorites              Favorite[]
+  compareLists           CompareList[]
+  accounts               Account[]
+  sessions               Session[]
+  publicName             String?                 @db.VarChar(40)
+  nameMode               String?                 @db.VarChar(16)
+  suspendedAt            DateTime?
+  communityPosts         CommunityPost[]
+  communityReactions     CommunityReaction[]
+  communityNotifications CommunityNotification[]
+  contributionPhotos     ContributionPhoto[]
+  skiTrackImports        SkiTrackImport[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// Browser favorites are merged once into these account-owned rows.
+model Favorite {
+  userId      String
+  skiResortId String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skiResort   SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@id([userId, skiResortId])
+  @@index([skiResortId])
+  @@map("favorites")
+}
+
+// Named comparison lists saved by a signed-in user (e.g. 「北海道でよく行く」).
+model CompareList {
+  id        String            @id @default(cuid())
+  userId    String
+  name      String            @db.VarChar(40)
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CompareListItem[]
+  createdAt DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime          @updatedAt @db.Timestamptz(3)
+
+  @@index([userId, updatedAt])
+  @@map("compare_lists")
+}
+
+// Ordered resorts in a comparison list. Removed resorts drop out with the FK.
+model CompareListItem {
+  listId      String
+  skiResortId String
+  position    Int
+  list        CompareList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  skiResort   SkiResort   @relation(fields: [skiResortId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([listId, skiResortId])
+  @@index([skiResortId])
+  @@map("compare_list_items")
+}
+
+// Private statistics only: uploaded archives and raw GPS locations are not retained.
+model SkiTrackImport {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileHash   String   @db.VarChar(64)
+  fileName   String   @db.VarChar(255)
+  analysis   Json
+  recordedAt DateTime @db.Timestamptz(3)
+  importedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([userId, fileHash])
+  @@index([userId, recordedAt])
+  @@map("ski_track_imports")
+}
+
+// 施設の正本・表示グループ・公開リンク・料金．Course/Lift/Ticket は外部集約元の記録．
 
 model SkiResort {
   id                 String                     @id // e.g., "able-hakuba-goryu"
@@ -119,6 +230,165 @@ model SkiResort {
   @@map("ski_resorts")
 }
 
+// Ordered name segments retain per-word ruby without storing a JSON document.
+model SkiResortRubySegment {
+  skiResortId String
+  position    Int
+  text        String    @db.VarChar(300)
+  ruby        String?   @db.VarChar(300)
+  skiResort   SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([skiResortId, position])
+  @@map("ski_resort_ruby_segments")
+}
+
+model SkiResortFormerName {
+  skiResortId String
+  position    Int
+  name        String                           @db.VarChar(300)
+  reading     String?                          @db.VarChar(300)
+  nameRuby    SkiResortFormerNameRubySegment[]
+  skiResort   SkiResort                        @relation(fields: [skiResortId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([skiResortId, position])
+  @@index([name])
+  @@index([reading])
+  @@map("ski_resort_former_names")
+}
+
+model SkiResortFormerNameRubySegment {
+  skiResortId        String
+  formerNamePosition Int
+  position           Int
+  text               String              @db.VarChar(300)
+  ruby               String?             @db.VarChar(300)
+  formerName         SkiResortFormerName @relation(fields: [skiResortId, formerNamePosition], references: [skiResortId, position], onDelete: Cascade, onUpdate: Cascade, map: "ski_resort_former_name_ruby_segments_former_name_fkey")
+
+  @@id([skiResortId, formerNamePosition, position])
+  @@map("ski_resort_former_name_ruby_segments")
+}
+
+// 詳細画面の「〇〇も同時に表示」で、地図・営業状況などを合わせて見るスキー場の組。
+// 1つのスキー場が複数の組に入れる（例: 五竜・47 と Hakuba Valley 全山）。
+model ResortDisplayGroup {
+  id        String                     @id @default(cuid())
+  // 「ニセコ全山」など。未設定なら相手のスキー場名で「〇〇も同時に表示」と出す
+  label     String?                    @db.VarChar(100)
+  members   ResortDisplayGroupMember[]
+  createdAt DateTime                   @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime                   @updatedAt @db.Timestamptz(3)
+
+  @@map("resort_display_groups")
+}
+
+model ResortDisplayGroupMember {
+  groupId     String
+  skiResortId String
+  position    Int
+  /// 「〇〇も同時に表示」などで出す名前。null なら短縮名
+  label       String?            @db.VarChar(100)
+  group       ResortDisplayGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  skiResort   SkiResort          @relation(fields: [skiResortId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([groupId, skiResortId])
+  @@index([skiResortId])
+  @@map("resort_display_group_members")
+}
+
+/// 公式ページ・外部サイトのツアー/割引・動画などを、1リンク=1行で持つ。
+/// 営業状況のURL（クローラー）とリフト券の出典（lift_ticket_seasons）は持ち主が別なので入れない。
+model ResortLink {
+  id          String    @id @default(cuid())
+  skiResortId String
+  skiResort   SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade)
+  /// 種類（courseInfo, parking, busTour, externalDiscount など）。増えてもマイグレーションは要らない
+  type        String    @db.VarChar(50)
+  /// 出どころ。"official" か外部サイトのID（orion, jaf など）
+  source      String    @db.VarChar(50)
+  /// 種類の中の小分類（外部割引の presale / membership など）
+  category    String?   @db.VarChar(50)
+  /// 出発地・店名・リフト名など、同じ種類のリンクを区別する名前
+  label       String?   @db.VarChar(200)
+  /// 飛び先（#id や #:~:text=）を含めたURL
+  url         String    @db.Text
+  note        String?   @db.VarChar(500)
+  sortOrder   Int       @default(0)
+  /// 最後に書いた主体。skill / crawler は自動更新、admin / editRequest は人の手直し
+  editorKind  String    @db.VarChar(20)
+  /// スキル名・クローラー名・ユーザーID
+  editorId    String?   @db.VarChar(100)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime  @default(now()) @updatedAt @db.Timestamptz(3)
+
+  @@index([skiResortId, sortOrder])
+  @@index([source, type])
+  @@map("resort_links")
+}
+
+// 1スキー場 × 1シーズンのリフト券料金。料金計算は文書全体を一度に使い、
+// 構造の正本は Skill の lift-ticket.schema.json なので、中身は JSON のまま持つ。
+// json（jsonbではない）はキー順を保つため、ローカルのバックアップJSONと差分が揃う。
+model LiftTicketSeason {
+  skiResortId       String
+  skiResort         SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade)
+  seasonId          String    @db.VarChar(9) // "2025-2026"
+  status            String    @db.VarChar(20) // data.data_quality.status
+  data              Json      @db.Json
+  // data.main_links の写し（保存時に文書から取り出す）。リンク一覧のように、
+  // 料金の文書全体を読まずにメインのリンクだけを引く画面で使う。
+  liftPriceUrl      String? // 公式のリフト料金表のページ（出典用）
+  liftPurchaseUrl   String? // リフト券をWebで買うページの入口（購入用）
+  rentalPriceUrl    String? // 公式のレンタル料金表のページ（出典用）
+  rentalPurchaseUrl String? // レンタルをWebで予約・購入するページの入口（購入用）
+  version           Int       @default(1)
+  createdAt         DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime  @default(now()) @updatedAt @db.Timestamptz(3)
+
+  @@id([skiResortId, seasonId])
+  @@index([seasonId])
+  @@map("lift_ticket_seasons")
+}
+
+/// シーズン券・キッズパスなどのサービスが公開している対象スキー場一覧の1件。
+/// programId は src/shared/passPrograms.ts の id。クローラーが毎日取り直し、
+/// 一覧から消えた行は removedAt を付けて残す（追加・削除を管理画面で知らせるため）
+model PassProgramResort {
+  id          String     @id @default(cuid())
+  programId   String     @db.VarChar(30)
+  /// サービス側の一覧に書かれている名前
+  name        String     @db.VarChar(200)
+  /// サービス側のスキー場ページ（NSDキッズのみ）
+  url         String?    @db.Text
+  prefecture  String?    @db.VarChar(20)
+  /// 名寄せできなかった名前は null（管理画面に要対応として出す）
+  skiResortId String?
+  skiResort   SkiResort? @relation(fields: [skiResortId], references: [id], onDelete: SetNull)
+  firstSeenAt DateTime   @default(now()) @db.Timestamptz(3)
+  lastSeenAt  DateTime   @default(now()) @db.Timestamptz(3)
+  removedAt   DateTime?  @db.Timestamptz(3)
+
+  @@unique([programId, name])
+  @@index([skiResortId])
+  @@map("pass_program_resorts")
+}
+
+model YukiMagi {
+  id   String  @id @default(cuid())
+  name String  @unique
+  url  String?
+  tag  String?
+
+  benefit       String?
+  period        String?
+  exclusionDate String?
+
+  updatedAt DateTime @updatedAt
+
+  skiResorts SkiResort[]
+
+  @@map("yuki_magi")
+}
+
 model Course {
   id          String    @id @default(cuid())
   skiResortId String
@@ -156,464 +426,7 @@ model Ticket {
   @@map("tickets")
 }
 
-// 1スキー場 × 1シーズンのリフト券料金。料金計算は文書全体を一度に使い、
-// 構造の正本は Skill の lift-ticket.schema.json なので、中身は JSON のまま持つ。
-// json（jsonbではない）はキー順を保つため、ローカルのバックアップJSONと差分が揃う。
-model LiftTicketSeason {
-  skiResortId       String
-  skiResort         SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade)
-  seasonId          String    @db.VarChar(9) // "2025-2026"
-  status            String    @db.VarChar(20) // data.data_quality.status
-  data              Json      @db.Json
-  // data.main_links の写し（保存時に文書から取り出す）。リンク一覧のように、
-  // 料金の文書全体を読まずにメインのリンクだけを引く画面で使う。
-  liftPriceUrl      String? // 公式のリフト料金表のページ（出典用）
-  liftPurchaseUrl   String? // リフト券をWebで買うページの入口（購入用）
-  rentalPriceUrl    String? // 公式のレンタル料金表のページ（出典用）
-  rentalPurchaseUrl String? // レンタルをWebで予約・購入するページの入口（購入用）
-  version           Int       @default(1)
-  createdAt         DateTime  @default(now()) @db.Timestamptz(3)
-  updatedAt         DateTime  @default(now()) @updatedAt @db.Timestamptz(3)
-
-  @@id([skiResortId, seasonId])
-  @@index([seasonId])
-  @@map("lift_ticket_seasons")
-}
-
-// =====================================
-// スキー場ごとのリンク
-// =====================================
-
-/// 公式ページ・外部サイトのツアー/割引・動画などを、1リンク=1行で持つ。
-/// 営業状況のURL（クローラー）とリフト券の出典（lift_ticket_seasons）は持ち主が別なので入れない。
-model ResortLink {
-  id          String    @id @default(cuid())
-  skiResortId String
-  skiResort   SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade)
-  /// 種類（courseInfo, parking, busTour, externalDiscount など）。増えてもマイグレーションは要らない
-  type        String    @db.VarChar(50)
-  /// 出どころ。"official" か外部サイトのID（orion, jaf など）
-  source      String    @db.VarChar(50)
-  /// 種類の中の小分類（外部割引の presale / membership など）
-  category    String?   @db.VarChar(50)
-  /// 出発地・店名・リフト名など、同じ種類のリンクを区別する名前
-  label       String?   @db.VarChar(200)
-  /// 飛び先（#id や #:~:text=）を含めたURL
-  url         String    @db.Text
-  note        String?   @db.VarChar(500)
-  sortOrder   Int       @default(0)
-  /// 最後に書いた主体。skill / crawler は自動更新、admin / editRequest は人の手直し
-  editorKind  String    @db.VarChar(20)
-  /// スキル名・クローラー名・ユーザーID
-  editorId    String?   @db.VarChar(100)
-  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
-  updatedAt   DateTime  @default(now()) @updatedAt @db.Timestamptz(3)
-
-  @@index([skiResortId, sortOrder])
-  @@index([source, type])
-  @@map("resort_links")
-}
-
-// =====================================
-// 気象データ関連
-// =====================================
-
-model Weather {
-  id          String    @id @default(cuid())
-  skiResortId String
-  skiResort   SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade)
-  date        DateTime
-  source      String?
-
-  // Top/Mid/Bot データは JSON として保存（複雑なネスト構造のため）
-  topData Json?
-  midData Json?
-  botData Json?
-
-  createdAt DateTime @default(now())
-
-  @@unique([skiResortId, date])
-  @@map("weathers")
-}
-
-model Forecast {
-  id          String    @id @default(cuid())
-  skiResortId String
-  skiResort   SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade)
-  dateStart   String?
-  dateEnd     String?
-
-  // Top/Middle/Bottom データは JSON として保存
-  topData    Json?
-  middleData Json?
-  bottomData Json?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([skiResortId])
-  @@map("forecasts")
-}
-
-model SnowDepthRecord {
-  id          String    @id @default(cuid())
-  skiResortId String
-  skiResort   SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade)
-  date        DateTime
-  depth       Int // cm
-
-  @@unique([skiResortId, date])
-  @@map("snow_depth_records")
-}
-
-model SnowFallRecord {
-  id          String    @id @default(cuid())
-  skiResortId String
-  skiResort   SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade)
-  date        DateTime
-  snowfall    Int // cm
-
-  @@unique([skiResortId, date])
-  @@map("snow_fall_records")
-}
-
-model LatestReport {
-  id            String    @id @default(cuid())
-  skiResortId   String    @unique
-  skiResort     SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade)
-  datetime      DateTime
-  snowfall      Int?
-  tempBase      Float?
-  tempTop       Float?
-  overview      String?
-  precipitation String?
-  wind          String?
-  visibility    String?
-
-  createdAt DateTime @default(now())
-
-  @@map("latest_reports")
-}
-
-// =====================================
-// アメダス・雪マジ（スキー場に紐付かないデータ）
-// =====================================
-
-model AmedasData {
-  id        String   @id @default(cuid())
-  code      Int
-  latitude  Float
-  longitude Float
-  type      String // "snowd", "snowf03h", etc.
-  value     Float
-  fetchedAt DateTime @default(now())
-
-  @@map("amedas_data")
-}
-
-model YukiMagi {
-  id   String  @id @default(cuid())
-  name String  @unique
-  url  String?
-  tag  String?
-
-  benefit       String?
-  period        String?
-  exclusionDate String?
-
-  updatedAt DateTime @updatedAt
-
-  skiResorts SkiResort[]
-
-  @@map("yuki_magi")
-}
-
-/// シーズン券・キッズパスなどのサービスが公開している対象スキー場一覧の1件。
-/// programId は src/shared/passPrograms.ts の id。クローラーが毎日取り直し、
-/// 一覧から消えた行は removedAt を付けて残す（追加・削除を管理画面で知らせるため）
-model PassProgramResort {
-  id          String     @id @default(cuid())
-  programId   String     @db.VarChar(30)
-  /// サービス側の一覧に書かれている名前
-  name        String     @db.VarChar(200)
-  /// サービス側のスキー場ページ（NSDキッズのみ）
-  url         String?    @db.Text
-  prefecture  String?    @db.VarChar(20)
-  /// 名寄せできなかった名前は null（管理画面に要対応として出す）
-  skiResortId String?
-  skiResort   SkiResort? @relation(fields: [skiResortId], references: [id], onDelete: SetNull)
-  firstSeenAt DateTime   @default(now()) @db.Timestamptz(3)
-  lastSeenAt  DateTime   @default(now()) @db.Timestamptz(3)
-  removedAt   DateTime?  @db.Timestamptz(3)
-
-  @@unique([programId, name])
-  @@index([skiResortId])
-  @@map("pass_program_resorts")
-}
-
-// =====================================
-// 認証（Auth.js v5）
-// =====================================
-
-model User {
-  id                     String                  @id @default(cuid())
-  name                   String?
-  email                  String?                 @unique
-  emailVerified          DateTime?
-  image                  String?
-  role                   String                  @default("viewer") // "viewer" | "editor" | "admin"; DB CHECKで制限
-  favorites              Favorite[]
-  compareLists           CompareList[]
-  accounts               Account[]
-  sessions               Session[]
-  publicName             String?                 @db.VarChar(40)
-  nameMode               String?                 @db.VarChar(16)
-  suspendedAt            DateTime?
-  communityPosts         CommunityPost[]
-  communityReactions     CommunityReaction[]
-  communityNotifications CommunityNotification[]
-  contributionPhotos     ContributionPhoto[]
-  skiTrackImports        SkiTrackImport[]
-
-  @@map("users")
-}
-
-// Private statistics only: uploaded archives and raw GPS locations are not retained.
-model SkiTrackImport {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  fileHash   String   @db.VarChar(64)
-  fileName   String   @db.VarChar(255)
-  analysis   Json
-  recordedAt DateTime @db.Timestamptz(3)
-  importedAt DateTime @default(now()) @db.Timestamptz(3)
-
-  @@unique([userId, fileHash])
-  @@index([userId, recordedAt])
-  @@map("ski_track_imports")
-}
-
-model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerAccountId])
-  @@map("accounts")
-}
-
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("sessions")
-}
-
-// =====================================
-// クローリングログ
-// =====================================
-
-model CrawlLog {
-  id          String   @id @default(cuid())
-  crawlerName String   @unique // "skiAreas", "snowDepths", etc.
-  lastRunAt   DateTime
-  status      String   @default("success") // "success", "failed"
-  message     String?
-
-  @@map("crawl_logs")
-}
-
-// =====================================
-// 公式サイトの最新営業状況
-// =====================================
-
-enum CrawlLatestSourceMode {
-  LIVE
-  WAYBACK_VALIDATION
-  LEGACY_IMPORT
-}
-
-enum CrawlLatestRunOutcome {
-  SUCCESS
-  PARTIAL
-  FAILED
-}
-
-enum CrawlLatestCategoryKind {
-  COMMENT
-  NEWS
-  WEATHER
-  COURSES
-  LIFTS
-}
-
-enum CrawlLatestCategoryState {
-  SUCCESS
-  EMPTY
-  NOT_SUPPORTED
-  FAILED
-}
-
-enum CrawlLatestValidationState {
-  VALID
-  WARNING
-  INVALID
-}
-
-enum CrawlLatestIssueSeverity {
-  WARNING
-  ERROR
-}
-
-enum CrawlLatestArtifactKind {
-  RENDERED_DOM
-}
-
-enum CrawlLatestArtifactState {
-  AVAILABLE
-  FAILED
-}
-
-model CrawlLatestRun {
-  id                String                @id @default(cuid())
-  producerId        String                @db.VarChar(100)
-  idempotencyKey    String                @db.VarChar(128)
-  skiResortId       String?
-  skiResort         SkiResort?            @relation(fields: [skiResortId], references: [id], onDelete: Restrict)
-  observedAt        DateTime              @db.Timestamptz(3)
-  completedAt       DateTime              @db.Timestamptz(3)
-  sourceMode        CrawlLatestSourceMode @default(LIVE)
-  archiveTimestamp  String?               @db.VarChar(14)
-  schemaVersion     Int
-  crawlerFile       String?               @db.VarChar(500)
-  crawlerRevision   String?               @db.VarChar(128)
-  crawlerSourceHash String?               @db.Char(64)
-  requestHash       String                @db.Char(64)
-  outcome           CrawlLatestRunOutcome
-  createdAt         DateTime              @default(now()) @db.Timestamptz(3)
-
-  categories CrawlLatestCategorySnapshot[]
-  issues     CrawlLatestIssue[]
-  artifacts  CrawlLatestArtifact[]
-
-  @@unique([producerId, idempotencyKey])
-  @@unique([id, skiResortId])
-  @@index([skiResortId, observedAt])
-  @@index([sourceMode, observedAt])
-  @@index([outcome, observedAt])
-  @@map("crawl_latest_runs")
-}
-
-model CrawlLatestCategorySnapshot {
-  id                 String                     @id @default(cuid())
-  runId              String
-  skiResortId        String
-  run                CrawlLatestRun             @relation(fields: [runId, skiResortId], references: [id, skiResortId], onDelete: Cascade)
-  kind               CrawlLatestCategoryKind
-  state              CrawlLatestCategoryState
-  validationState    CrawlLatestValidationState
-  eligibleForCurrent Boolean
-  data               Json?
-  sourceUrls         String[]
-  sourceLabels       String[]                   @default([])
-  itemCount          Int
-  usableItemCount    Int
-  contentHash        String?                    @db.Char(64)
-  nameSetHash        String?                    @db.Char(64)
-  createdAt          DateTime                   @default(now()) @db.Timestamptz(3)
-
-  current CrawlLatestCurrent?
-
-  @@unique([runId, kind])
-  @@unique([id, skiResortId, kind])
-  @@index([skiResortId, kind, eligibleForCurrent, createdAt])
-  @@map("crawl_latest_category_snapshots")
-}
-
-model CrawlLatestCurrent {
-  skiResortId String
-  skiResort   SkiResort                   @relation(fields: [skiResortId], references: [id], onDelete: Cascade)
-  kind        CrawlLatestCategoryKind
-  snapshotId  String                      @unique
-  snapshot    CrawlLatestCategorySnapshot @relation(fields: [snapshotId, skiResortId, kind], references: [id, skiResortId, kind], onDelete: NoAction)
-  updatedAt   DateTime                    @updatedAt @db.Timestamptz(3)
-
-  @@id([skiResortId, kind])
-  @@unique([snapshotId, skiResortId, kind])
-  @@map("crawl_latest_currents")
-}
-
-model CrawlLatestIssue {
-  id              String                   @id @default(cuid())
-  runId           String
-  run             CrawlLatestRun           @relation(fields: [runId], references: [id], onDelete: Cascade)
-  externalId      String?                  @db.VarChar(128)
-  categoryKind    CrawlLatestCategoryKind?
-  severity        CrawlLatestIssueSeverity
-  code            String                   @db.VarChar(100)
-  message         String                   @db.Text
-  occurrences     Int                      @default(1)
-  firstOccurredAt DateTime?                @db.Timestamptz(3)
-  lastOccurredAt  DateTime?                @db.Timestamptz(3)
-  blocksPromotion Boolean                  @default(false)
-  details         Json?
-  createdAt       DateTime                 @default(now()) @db.Timestamptz(3)
-
-  @@unique([runId, externalId])
-  @@index([runId, severity])
-  @@index([severity, createdAt])
-  @@index([createdAt])
-  @@map("crawl_latest_issues")
-}
-
-model CrawlLatestArtifact {
-  id               String                   @id @default(cuid())
-  runId            String
-  run              CrawlLatestRun           @relation(fields: [runId], references: [id], onDelete: Cascade)
-  categoryKind     CrawlLatestCategoryKind?
-  kind             CrawlLatestArtifactKind
-  state            CrawlLatestArtifactState
-  pageKey          String                   @db.VarChar(255)
-  title            String?                  @db.Text
-  requestedUrl     String?                  @db.Text
-  finalUrl         String?                  @db.Text
-  httpStatus       Int?
-  storageKey       String?                  @db.Text
-  sha256           String?                  @db.Char(64)
-  sizeBytes        BigInt?
-  contentType      String?                  @db.VarChar(255)
-  contentEncoding  String?                  @db.VarChar(100)
-  captureError     String?                  @db.Text
-  redactionVersion Int
-  issueExternalIds String[]
-  capturedAt       DateTime                 @db.Timestamptz(3)
-  createdAt        DateTime                 @default(now()) @db.Timestamptz(3)
-
-  @@unique([runId, pageKey])
-  @@unique([runId, storageKey])
-  @@index([runId, kind])
-  @@map("crawl_latest_artifacts")
-}
-
-// =====================================
-// 管理画面で編集するJSON / GeoJSON
-// =====================================
+// 地図編集の正本と文書．文書の hash・version と地物の固定 ID を維持する．
 
 model DataDocument {
   key       String   @id @db.VarChar(1024)
@@ -636,71 +449,6 @@ model CanonicalDataMigration {
   completedAt DateTime @default(now()) @db.Timestamptz(3)
 
   @@map("canonical_data_migrations")
-}
-
-// Ordered name segments retain per-word ruby without storing a JSON document.
-model SkiResortRubySegment {
-  skiResortId String
-  position    Int
-  text        String    @db.VarChar(300)
-  ruby        String?   @db.VarChar(300)
-  skiResort   SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-
-  @@id([skiResortId, position])
-  @@map("ski_resort_ruby_segments")
-}
-
-// 詳細画面の「〇〇も同時に表示」で、地図・営業状況などを合わせて見るスキー場の組。
-// 1つのスキー場が複数の組に入れる（例: 五竜・47 と Hakuba Valley 全山）。
-model ResortDisplayGroup {
-  id        String                     @id @default(cuid())
-  // 「ニセコ全山」など。未設定なら相手のスキー場名で「〇〇も同時に表示」と出す
-  label     String?                    @db.VarChar(100)
-  members   ResortDisplayGroupMember[]
-  createdAt DateTime                   @default(now()) @db.Timestamptz(3)
-  updatedAt DateTime                   @updatedAt @db.Timestamptz(3)
-
-  @@map("resort_display_groups")
-}
-
-model ResortDisplayGroupMember {
-  groupId     String
-  skiResortId String
-  position    Int
-  /// 「〇〇も同時に表示」などで出す名前。null なら短縮名
-  label       String?            @db.VarChar(100)
-  group       ResortDisplayGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  skiResort   SkiResort          @relation(fields: [skiResortId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-
-  @@id([groupId, skiResortId])
-  @@index([skiResortId])
-  @@map("resort_display_group_members")
-}
-
-model SkiResortFormerName {
-  skiResortId String
-  position    Int
-  name        String                           @db.VarChar(300)
-  reading     String?                          @db.VarChar(300)
-  nameRuby    SkiResortFormerNameRubySegment[]
-  skiResort   SkiResort                        @relation(fields: [skiResortId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-
-  @@id([skiResortId, position])
-  @@index([name])
-  @@index([reading])
-  @@map("ski_resort_former_names")
-}
-
-model SkiResortFormerNameRubySegment {
-  skiResortId        String
-  formerNamePosition Int
-  position           Int
-  text               String              @db.VarChar(300)
-  ruby               String?             @db.VarChar(300)
-  formerName         SkiResortFormerName @relation(fields: [skiResortId, formerNamePosition], references: [skiResortId, position], onDelete: Cascade, onUpdate: Cascade, map: "ski_resort_former_name_ruby_segments_former_name_fkey")
-
-  @@id([skiResortId, formerNamePosition, position])
-  @@map("ski_resort_former_name_ruby_segments")
 }
 
 // Individually addressable map entities. Legacy SurfSnow Course/Lift are untouched.
@@ -870,34 +618,276 @@ model MapDocumentBackup {
   @@map("map_document_backups")
 }
 
-// 提出した内容は不変。管理者の修正案と実際の反映内容を別々に保持する。
-// 利用者IDは外部キーにせず、利用者削除後も履歴を保持する。
-model EditRequest {
-  id               String              @id @default(cuid())
-  submissionKey    String?             @unique @db.VarChar(64)
-  authorId         String
-  authorName       String
-  kind             String
-  resortId         String
-  status           String              @default("PENDING")
-  version          Int                 @default(1)
-  submittedPayload Json                @db.Json
-  submittedPlan    Json                @db.Json
-  candidatePayload Json                @db.Json
-  candidatePlan    Json                @db.Json
-  reviewedById     String?
-  reviewComment    String?
-  createdAt        DateTime            @default(now()) @db.Timestamptz(3)
-  updatedAt        DateTime            @updatedAt @db.Timestamptz(3)
-  resolvedAt       DateTime?           @db.Timestamptz(3)
-  events           EditRequestEvent[]
-  jobs             EditRequestJob[]
-  photos           ContributionPhoto[]
+// クロールの時系列と実行記録．公開の現在値と診断用の記録を区別する．
 
-  @@index([authorId, createdAt])
-  @@index([status, createdAt])
-  @@map("edit_requests")
+model Weather {
+  id          String    @id @default(cuid())
+  skiResortId String
+  skiResort   SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade)
+  date        DateTime
+  source      String?
+
+  // Top/Mid/Bot データは JSON として保存（複雑なネスト構造のため）
+  topData Json?
+  midData Json?
+  botData Json?
+
+  createdAt DateTime @default(now())
+
+  @@unique([skiResortId, date])
+  @@map("weathers")
 }
+
+model Forecast {
+  id          String    @id @default(cuid())
+  skiResortId String
+  skiResort   SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade)
+  dateStart   String?
+  dateEnd     String?
+
+  // Top/Middle/Bottom データは JSON として保存
+  topData    Json?
+  middleData Json?
+  bottomData Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([skiResortId])
+  @@map("forecasts")
+}
+
+model SnowDepthRecord {
+  id          String    @id @default(cuid())
+  skiResortId String
+  skiResort   SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade)
+  date        DateTime
+  depth       Int // cm
+
+  @@unique([skiResortId, date])
+  @@map("snow_depth_records")
+}
+
+model SnowFallRecord {
+  id          String    @id @default(cuid())
+  skiResortId String
+  skiResort   SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade)
+  date        DateTime
+  snowfall    Int // cm
+
+  @@unique([skiResortId, date])
+  @@map("snow_fall_records")
+}
+
+model LatestReport {
+  id            String    @id @default(cuid())
+  skiResortId   String    @unique
+  skiResort     SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade)
+  datetime      DateTime
+  snowfall      Int?
+  tempBase      Float?
+  tempTop       Float?
+  overview      String?
+  precipitation String?
+  wind          String?
+  visibility    String?
+
+  createdAt DateTime @default(now())
+
+  @@map("latest_reports")
+}
+
+model AmedasData {
+  id        String   @id @default(cuid())
+  code      Int
+  latitude  Float
+  longitude Float
+  type      String // "snowd", "snowf03h", etc.
+  value     Float
+  fetchedAt DateTime @default(now())
+
+  @@map("amedas_data")
+}
+
+model CrawlLog {
+  id          String   @id @default(cuid())
+  crawlerName String   @unique // "skiAreas", "snowDepths", etc.
+  lastRunAt   DateTime
+  status      String   @default("success") // "success", "failed"
+  message     String?
+
+  @@map("crawl_logs")
+}
+
+enum CrawlLatestSourceMode {
+  LIVE
+  WAYBACK_VALIDATION
+  LEGACY_IMPORT
+}
+
+enum CrawlLatestRunOutcome {
+  SUCCESS
+  PARTIAL
+  FAILED
+}
+
+enum CrawlLatestCategoryKind {
+  COMMENT
+  NEWS
+  WEATHER
+  COURSES
+  LIFTS
+}
+
+enum CrawlLatestCategoryState {
+  SUCCESS
+  EMPTY
+  NOT_SUPPORTED
+  FAILED
+}
+
+enum CrawlLatestValidationState {
+  VALID
+  WARNING
+  INVALID
+}
+
+enum CrawlLatestIssueSeverity {
+  WARNING
+  ERROR
+}
+
+enum CrawlLatestArtifactKind {
+  RENDERED_DOM
+}
+
+enum CrawlLatestArtifactState {
+  AVAILABLE
+  FAILED
+}
+
+model CrawlLatestRun {
+  id                String                @id @default(cuid())
+  producerId        String                @db.VarChar(100)
+  idempotencyKey    String                @db.VarChar(128)
+  skiResortId       String?
+  skiResort         SkiResort?            @relation(fields: [skiResortId], references: [id], onDelete: Restrict)
+  observedAt        DateTime              @db.Timestamptz(3)
+  completedAt       DateTime              @db.Timestamptz(3)
+  sourceMode        CrawlLatestSourceMode @default(LIVE)
+  archiveTimestamp  String?               @db.VarChar(14)
+  schemaVersion     Int
+  crawlerFile       String?               @db.VarChar(500)
+  crawlerRevision   String?               @db.VarChar(128)
+  crawlerSourceHash String?               @db.Char(64)
+  requestHash       String                @db.Char(64)
+  outcome           CrawlLatestRunOutcome
+  createdAt         DateTime              @default(now()) @db.Timestamptz(3)
+
+  categories CrawlLatestCategorySnapshot[]
+  issues     CrawlLatestIssue[]
+  artifacts  CrawlLatestArtifact[]
+
+  @@unique([producerId, idempotencyKey])
+  @@unique([id, skiResortId])
+  @@index([skiResortId, observedAt])
+  @@index([sourceMode, observedAt])
+  @@index([outcome, observedAt])
+  @@map("crawl_latest_runs")
+}
+
+model CrawlLatestCategorySnapshot {
+  id                 String                     @id @default(cuid())
+  runId              String
+  skiResortId        String
+  run                CrawlLatestRun             @relation(fields: [runId, skiResortId], references: [id, skiResortId], onDelete: Cascade)
+  kind               CrawlLatestCategoryKind
+  state              CrawlLatestCategoryState
+  validationState    CrawlLatestValidationState
+  eligibleForCurrent Boolean
+  data               Json?
+  sourceUrls         String[]
+  sourceLabels       String[]                   @default([])
+  itemCount          Int
+  usableItemCount    Int
+  contentHash        String?                    @db.Char(64)
+  nameSetHash        String?                    @db.Char(64)
+  createdAt          DateTime                   @default(now()) @db.Timestamptz(3)
+
+  current CrawlLatestCurrent?
+
+  @@unique([runId, kind])
+  @@unique([id, skiResortId, kind])
+  @@index([skiResortId, kind, eligibleForCurrent, createdAt])
+  @@map("crawl_latest_category_snapshots")
+}
+
+model CrawlLatestCurrent {
+  skiResortId String
+  skiResort   SkiResort                   @relation(fields: [skiResortId], references: [id], onDelete: Cascade)
+  kind        CrawlLatestCategoryKind
+  snapshotId  String                      @unique
+  snapshot    CrawlLatestCategorySnapshot @relation(fields: [snapshotId, skiResortId, kind], references: [id, skiResortId, kind], onDelete: NoAction)
+  updatedAt   DateTime                    @updatedAt @db.Timestamptz(3)
+
+  @@id([skiResortId, kind])
+  @@unique([snapshotId, skiResortId, kind])
+  @@map("crawl_latest_currents")
+}
+
+model CrawlLatestIssue {
+  id              String                   @id @default(cuid())
+  runId           String
+  run             CrawlLatestRun           @relation(fields: [runId], references: [id], onDelete: Cascade)
+  externalId      String?                  @db.VarChar(128)
+  categoryKind    CrawlLatestCategoryKind?
+  severity        CrawlLatestIssueSeverity
+  code            String                   @db.VarChar(100)
+  message         String                   @db.Text
+  occurrences     Int                      @default(1)
+  firstOccurredAt DateTime?                @db.Timestamptz(3)
+  lastOccurredAt  DateTime?                @db.Timestamptz(3)
+  blocksPromotion Boolean                  @default(false)
+  details         Json?
+  createdAt       DateTime                 @default(now()) @db.Timestamptz(3)
+
+  @@unique([runId, externalId])
+  @@index([runId, severity])
+  @@index([severity, createdAt])
+  @@index([createdAt])
+  @@map("crawl_latest_issues")
+}
+
+model CrawlLatestArtifact {
+  id               String                   @id @default(cuid())
+  runId            String
+  run              CrawlLatestRun           @relation(fields: [runId], references: [id], onDelete: Cascade)
+  categoryKind     CrawlLatestCategoryKind?
+  kind             CrawlLatestArtifactKind
+  state            CrawlLatestArtifactState
+  pageKey          String                   @db.VarChar(255)
+  title            String?                  @db.Text
+  requestedUrl     String?                  @db.Text
+  finalUrl         String?                  @db.Text
+  httpStatus       Int?
+  storageKey       String?                  @db.Text
+  sha256           String?                  @db.Char(64)
+  sizeBytes        BigInt?
+  contentType      String?                  @db.VarChar(255)
+  contentEncoding  String?                  @db.VarChar(100)
+  captureError     String?                  @db.Text
+  redactionVersion Int
+  issueExternalIds String[]
+  capturedAt       DateTime                 @db.Timestamptz(3)
+  createdAt        DateTime                 @default(now()) @db.Timestamptz(3)
+
+  @@unique([runId, pageKey])
+  @@unique([runId, storageKey])
+  @@index([runId, kind])
+  @@map("crawl_latest_artifacts")
+}
+
+// 投稿・写真・通報と編集申請．本人の投稿と管理の記録を保つ．
 
 // One visit report owns all course, lift, mogul and park observations.
 model CommunityPost {
@@ -1058,6 +1048,35 @@ model ContributionRateBucket {
   @@map("contribution_rate_buckets")
 }
 
+// 提出した内容は不変。管理者の修正案と実際の反映内容を別々に保持する。
+// 利用者IDは外部キーにせず、利用者削除後も履歴を保持する。
+model EditRequest {
+  id               String              @id @default(cuid())
+  submissionKey    String?             @unique @db.VarChar(64)
+  authorId         String
+  authorName       String
+  kind             String
+  resortId         String
+  status           String              @default("PENDING")
+  version          Int                 @default(1)
+  submittedPayload Json                @db.Json
+  submittedPlan    Json                @db.Json
+  candidatePayload Json                @db.Json
+  candidatePlan    Json                @db.Json
+  reviewedById     String?
+  reviewComment    String?
+  createdAt        DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime            @updatedAt @db.Timestamptz(3)
+  resolvedAt       DateTime?           @db.Timestamptz(3)
+  events           EditRequestEvent[]
+  jobs             EditRequestJob[]
+  photos           ContributionPhoto[]
+
+  @@index([authorId, createdAt])
+  @@index([status, createdAt])
+  @@map("edit_requests")
+}
+
 model EditRequestEvent {
   id        String      @id @default(cuid())
   requestId String
@@ -1087,45 +1106,7 @@ model EditRequestJob {
   @@map("edit_request_jobs")
 }
 
-// Browser favorites are merged once into these account-owned rows.
-model Favorite {
-  userId      String
-  skiResortId String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  skiResort   SkiResort @relation(fields: [skiResortId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  createdAt   DateTime  @default(now())
-
-  @@id([userId, skiResortId])
-  @@index([skiResortId])
-  @@map("favorites")
-}
-
-// Named comparison lists saved by a signed-in user (e.g. 「北海道でよく行く」).
-model CompareList {
-  id        String            @id @default(cuid())
-  userId    String
-  name      String            @db.VarChar(40)
-  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items     CompareListItem[]
-  createdAt DateTime          @default(now()) @db.Timestamptz(3)
-  updatedAt DateTime          @updatedAt @db.Timestamptz(3)
-
-  @@index([userId, updatedAt])
-  @@map("compare_lists")
-}
-
-// Ordered resorts in a comparison list. Removed resorts drop out with the FK.
-model CompareListItem {
-  listId      String
-  skiResortId String
-  position    Int
-  list        CompareList @relation(fields: [listId], references: [id], onDelete: Cascade)
-  skiResort   SkiResort   @relation(fields: [skiResortId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-
-  @@id([listId, skiResortId])
-  @@index([skiResortId])
-  @@map("compare_list_items")
-}
+// 検索時に使う派生データ．地図の正本やクロール記録から更新する．
 
 // Rebuilt transactionally from canonical map documents; no GeoJSON at query time.
 model CourseRecommendationFeature {
