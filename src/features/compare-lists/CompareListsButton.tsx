@@ -1,7 +1,7 @@
 "use client";
 
-import { ChevronRight, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { ChevronRight, Heart, Trash2 } from "lucide-react";
+import { type ReactNode, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,13 +16,19 @@ import type { CompareListSummary } from "./types";
 /**
  * ホームの比較チップの横に出す「比較リスト ›」。保存したリストが1件以上あるときだけ出し、
  * 押すと一覧を開く。リストを選ぶとその比較を開く。
+ * `favorites` を渡すと、一覧の先頭に「お気に入りを比較」の行を足す。
  */
 export function CompareListsButton({
   onOpenList,
   className,
+  label,
+  favorites = null,
 }: {
   onOpenList: (list: CompareListSummary) => void;
   className?: string;
+  /** ボタンの中身。渡さなければ「比較リスト ›」 */
+  label?: ReactNode;
+  favorites?: { count: number; onCompare: () => void } | null;
 }) {
   const compareLists = useCompareLists();
   const [open, setOpen] = useState(false);
@@ -36,19 +42,51 @@ export function CompareListsButton({
         className={className}
         onClick={() => setOpen(true)}
       >
-        比較リスト
-        <ChevronRight className="size-3.5" strokeWidth={2.5} />
+        {label ?? (
+          <>
+            比較リスト
+            <ChevronRight className="size-3.5" strokeWidth={2.5} />
+          </>
+        )}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
           className="z-[1000] flex max-h-[calc(100dvh-2rem)] flex-col gap-3 overflow-hidden sm:max-w-sm"
           overlayClassName="z-[999]"
         >
-          <DialogTitle>比較リスト</DialogTitle>
+          <DialogTitle>
+            {favorites ? "お気に入り・比較リスト" : "比較リスト"}
+          </DialogTitle>
           <DialogDescription className="sr-only">
             保存した比較リストを選ぶと比較を開きます
           </DialogDescription>
           <ul className="-mx-1 min-h-0 divide-y divide-gray-100 overflow-y-auto overscroll-contain">
+            {favorites && (
+              <li className="flex items-center gap-1 py-1">
+                <button
+                  type="button"
+                  className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1 py-2 text-left hover:bg-pink-50"
+                  onClick={() => {
+                    setOpen(false);
+                    favorites.onCompare();
+                  }}
+                >
+                  <Heart className="size-4 shrink-0 text-pink-500" />
+                  <span className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-900">
+                    お気に入りを比較
+                  </span>
+                  <span className="shrink-0 text-xs tabular-nums text-gray-500">
+                    {favorites.count}件
+                  </span>
+                  <ChevronRight
+                    className="size-4 shrink-0 text-pink-500"
+                    strokeWidth={2.5}
+                  />
+                </button>
+                {/* 下の行の削除ボタンと右端を揃える */}
+                <span className="size-8 shrink-0" aria-hidden />
+              </li>
+            )}
             {compareLists.lists.map(list => (
               <li key={list.id} className="flex items-center gap-1 py-1">
                 <button

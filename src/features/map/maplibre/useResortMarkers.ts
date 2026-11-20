@@ -19,6 +19,8 @@ type ResortMarkerState = {
   resorts: LabelableResort[];
   labelLayouts: Record<string, LabelLayout>;
   displayNameById: Map<string, string>;
+  /** 名前の後ろに添えた文字（料金）。その部分だけ色を変える */
+  labelSuffixById?: Map<string, string>;
   selectedResortIdSet: Set<string>;
   filteredResortIdSet?: Set<string>;
   isFilterActive: boolean;
@@ -55,6 +57,7 @@ const getLeaderColor = (tileVariant: MapTileVariant, isSelected: boolean) => {
  */
 const createLabelElement = ({
   name,
+  suffix,
   layout,
   isSelected,
   isDimmed,
@@ -62,6 +65,7 @@ const createLabelElement = ({
   onSelect,
 }: {
   name: string;
+  suffix?: string;
   layout: LabelLayout;
   isSelected: boolean;
   isDimmed: boolean;
@@ -111,7 +115,15 @@ const createLabelElement = ({
   label.style.width = `${layout.labelWidth}px`;
   label.style.left = `${layout.labelOffsetPx.x}px`;
   label.style.top = `${layout.labelOffsetPx.y}px`;
-  label.textContent = name;
+  if (suffix && name.endsWith(suffix)) {
+    // 幅は「名前 料金」をひと続きの文字として測っているので、空白ごと分けて同じ幅にする
+    const price = document.createElement("span");
+    price.className = "resort-name-label-price";
+    price.textContent = suffix;
+    label.append(name.slice(0, -suffix.length), price);
+  } else {
+    label.textContent = name;
+  }
   label.addEventListener("click", event => {
     event.stopPropagation();
     onSelect();
@@ -200,6 +212,7 @@ export const useResortMarkers = ({
       markers.get(resort.id)?.remove();
       const element = createLabelElement({
         name: state.displayNameById.get(resort.id) ?? resort.nameJa,
+        suffix: state.labelSuffixById?.get(resort.id),
         layout,
         isSelected,
         isDimmed: isDimmedByFilter,

@@ -1,22 +1,18 @@
 "use client";
 
 import { Search, X } from "lucide-react";
-import { useId, useRef } from "react";
-import { flushSync } from "react-dom";
+import { type ReactNode, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AccountButton } from "@/features/favorites/AccountButton";
-import { FilterPanel } from "@/features/filters/FilterPanel";
 import type { Filters } from "@/features/filters/types";
 import { DEFAULT_LIFT_TICKET_SEARCH_INPUT } from "@/features/lift-ticket/utils/calculateLiftTicket";
 import { cn } from "@/lib/utils";
 import type { MapSkiResort } from "@/types/skiResorts";
+import type { ListLiftTicketResults } from "../hooks/useListLiftTicketResults";
 import type { ResortSortControls } from "../hooks/useResortSort";
-import {
-  ComparisonActions,
-  useHasComparisonActions,
-} from "./ComparisonActions";
-import { SearchButton } from "./SearchButton";
+import { SavedCompareButton } from "./SavedCompareButton";
+import { SearchConditionBar } from "./SearchConditionBar";
 import { SkiResortList } from "./SkiResortList";
 
 type Props = {
@@ -25,24 +21,19 @@ type Props = {
   resorts: MapSkiResort[];
   filteredResorts: MapSkiResort[];
   sortControls: ResortSortControls;
-  compareCount: number;
-  isCompareOpen: boolean;
-  isFilterEditorOpen: boolean;
   selectedCompareIdSet: Set<string>;
-  onExpandedChange: (isExpanded: boolean) => void;
+  liftTicketResults: ListLiftTicketResults;
+  priceLabel: string;
+  /** パネルの下端に浮かせる操作（「N件を比較」） */
+  floatingActions?: ReactNode;
   onFilterChange: (filters: Filters) => void;
-  onKeywordClear: () => void;
   onKeyboardInputBlur: () => void;
   onKeyboardInputFocus: () => void;
-  onClearCompare: () => void;
-  onOpenCompare: () => void;
   onCompareFavorites: () => void;
   onSearch: () => void;
   onSelectResort: (id: string) => void;
   onToggleCompare: (id: string, selected: boolean) => void;
   onHoverResortChange: (id: string | null) => void;
-  /** 一覧が見えていない間は、一覧の料金を計算しない */
-  liftTicketPaused?: boolean;
 };
 
 export const DesktopSearchPanel = ({
@@ -51,40 +42,20 @@ export const DesktopSearchPanel = ({
   resorts,
   filteredResorts,
   sortControls,
-  compareCount,
-  isCompareOpen,
-  isFilterEditorOpen,
   selectedCompareIdSet,
-  onExpandedChange,
+  liftTicketResults,
+  priceLabel,
+  floatingActions,
   onFilterChange,
-  onKeywordClear,
   onKeyboardInputBlur,
   onKeyboardInputFocus,
-  onClearCompare,
-  onOpenCompare,
   onCompareFavorites,
   onSearch,
   onSelectResort,
   onToggleCompare,
   onHoverResortChange,
-  liftTicketPaused = false,
 }: Props) => {
   const inputRef = useRef<HTMLInputElement>(null);
-  const filterPanelId = useId();
-  // 比較チップの行があれば件数はその右端へ。無ければ並び替えの右に残す
-  const hasComparisonActions = useHasComparisonActions(compareCount);
-  const search = () => {
-    inputRef.current?.blur();
-    onSearch();
-  };
-  const open = () => {
-    flushSync(() => onExpandedChange(true));
-    inputRef.current?.focus({ preventScroll: true });
-  };
-  const close = () => {
-    inputRef.current?.blur();
-    onExpandedChange(false);
-  };
 
   return (
     <div
@@ -95,157 +66,92 @@ export const DesktopSearchPanel = ({
       )}
     >
       <div className="flex h-full flex-col overflow-hidden">
+        {/* 名前の入力はその場で一覧と地図に反映する。Enter で地図を結果に寄せる */}
         <form
-          className="flex shrink-0 items-center gap-2.5 px-4 pt-2.5 pb-2"
+          className="flex shrink-0 items-center gap-2 px-4 pt-2.5 pb-2"
           onSubmit={event => {
             event.preventDefault();
-            search();
+            inputRef.current?.blur();
+            onSearch();
           }}
         >
-          {isFilterEditorOpen ? (
-            <div className="relative h-12 min-w-0 flex-1 overflow-hidden rounded-full border border-gray-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.12)]">
-              <Search
-                size={18}
-                className="pointer-events-none absolute left-[14px] top-1/2 -translate-y-1/2 text-gray-500"
-              />
-              <Input
-                ref={inputRef}
-                aria-label="スキー場を検索"
-                aria-expanded={isFilterEditorOpen}
-                aria-controls={isFilterEditorOpen ? filterPanelId : undefined}
-                type="text"
-                name="keyword"
-                autoComplete="off"
-                placeholder="スキー場名を入力"
-                value={filters.keyword}
-                className={cn(
-                  "h-12 w-full rounded-full border-0 bg-transparent pl-10 text-base font-medium text-gray-800 shadow-none md:text-base",
-                  filters.keyword ? "pr-11" : "pr-3",
-                )}
-                onChange={event =>
-                  onFilterChange({
-                    ...filters,
-                    keyword: event.target.value,
-                  })
-                }
-                onFocus={() => {
-                  onExpandedChange(true);
-                  onKeyboardInputFocus();
-                }}
-                onBlur={onKeyboardInputBlur}
-                onKeyDown={event => {
-                  if (event.key !== "Enter") return;
-                  if (
-                    event.nativeEvent.isComposing ||
-                    event.nativeEvent.keyCode === 229
-                  ) {
-                    return;
-                  }
-                  event.preventDefault();
-                  search();
-                }}
-              />
-              {filters.keyword && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  aria-label="検索キーワードをクリア"
-                  className="absolute inset-y-0 right-2.5 my-auto h-7 w-7 min-w-7 rounded-full p-0 text-gray-600 shadow-none hover:bg-gray-50"
-                  onClick={() => {
-                    onFilterChange({ ...filters, keyword: "" });
-                    inputRef.current?.focus();
-                  }}
-                >
-                  <X size={15} strokeWidth={2.5} />
-                </Button>
+          <div className="relative h-10 min-w-0 flex-1 overflow-hidden rounded-full border border-gray-200 bg-white shadow-sm focus-within:border-blue-600">
+            <Search
+              size={17}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
+            />
+            <Input
+              ref={inputRef}
+              aria-label="スキー場を検索"
+              type="text"
+              name="keyword"
+              autoComplete="off"
+              placeholder="スキー場を検索"
+              value={filters.keyword}
+              className={cn(
+                "h-10 w-full rounded-full border-0 bg-transparent pl-9 text-sm font-medium text-gray-800 shadow-none focus-visible:ring-0 md:text-sm",
+                filters.keyword ? "pr-9" : "pr-3",
               )}
-            </div>
-          ) : (
-            <div className="min-w-0 flex-1">
-              <SearchButton
-                keyword={filters.keyword}
-                onOpen={open}
-                onKeywordClear={onKeywordClear}
-              />
-            </div>
-          )}
-          <div className="flex h-10 w-[6.75rem] shrink-0 items-center justify-end gap-2">
-            {isFilterEditorOpen ? (
-              <>
-                <Button type="submit" className="h-10 rounded-lg px-4">
-                  検索
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  aria-label="検索を閉じる"
-                  className="h-10 w-10 min-w-10 rounded-full border border-gray-200 bg-white p-0 text-gray-700 shadow-sm hover:bg-gray-50 hover:text-gray-900"
-                  onClick={close}
-                >
-                  <X size={18} strokeWidth={2.5} />
-                </Button>
-              </>
-            ) : (
-              showAccount && <AccountButton />
+              onChange={event =>
+                onFilterChange({ ...filters, keyword: event.target.value })
+              }
+              onFocus={onKeyboardInputFocus}
+              onBlur={onKeyboardInputBlur}
+            />
+            {filters.keyword && (
+              <Button
+                type="button"
+                variant="ghost"
+                aria-label="検索キーワードをクリア"
+                className="absolute inset-y-0 right-1.5 my-auto h-7 w-7 min-w-7 rounded-full p-0 text-gray-600 shadow-none hover:bg-gray-50"
+                onClick={() => {
+                  onFilterChange({ ...filters, keyword: "" });
+                  inputRef.current?.focus();
+                }}
+              >
+                <X size={15} strokeWidth={2.5} />
+              </Button>
             )}
           </div>
+          <SavedCompareButton onCompareFavorites={onCompareFavorites} />
+          {showAccount && <AccountButton />}
         </form>
-        {isFilterEditorOpen && (
-          <div id={filterPanelId} className="flex min-h-0 flex-1 flex-col">
-            <FilterPanel
-              filters={filters}
-              resorts={resorts}
-              resultCount={filteredResorts.length}
-              isExpanded
-              canCollapse={false}
-              onExpandedChange={onExpandedChange}
-              onFilterChange={onFilterChange}
-              onKeyboardInputBlur={onKeyboardInputBlur}
-              onKeyboardInputFocus={onKeyboardInputFocus}
-              onSearch={search}
-              showKeywordSearch={false}
-              title="絞り込み"
-            />
-          </div>
-        )}
-        {!isFilterEditorOpen && (
-          <ComparisonActions
-            compareCount={compareCount}
-            resultCount={filteredResorts.length}
-            isCompareOpen={isCompareOpen}
-            onOpenCompare={onOpenCompare}
-            onClearCompare={onClearCompare}
-            onCompareFavorites={onCompareFavorites}
+        <SearchConditionBar
+          // 一覧の固定見出し（地方・都道府県）より前に出す
+          className="z-40 shrink-0 px-4 pb-2"
+          filters={filters}
+          resorts={resorts}
+          resultCount={filteredResorts.length}
+          onFilterChange={onFilterChange}
+          onCommit={onSearch}
+        />
+        <div
+          data-ski-resort-list-scroll-container="true"
+          className="flex-grow min-h-0"
+        >
+          <SkiResortList
+            resorts={filteredResorts}
+            sortControls={sortControls}
+            liftTicketInput={
+              filters.liftTicket ?? DEFAULT_LIFT_TICKET_SEARCH_INPUT
+            }
+            onSelectResort={onSelectResort}
+            selectedCompareIdSet={selectedCompareIdSet}
+            onToggleCompare={onToggleCompare}
+            onHoverResortChange={onHoverResortChange}
+            showHeader={false}
+            onLiftTicketInputChange={liftTicket =>
+              onFilterChange({ ...filters, liftTicket })
+            }
+            liftTicketResults={liftTicketResults}
+            priceLabel={priceLabel}
+            featureLines={{
+              yukiMagi: filters.yukiMagi,
+              evCharger: filters.evCharger,
+            }}
           />
-        )}
-        {!isFilterEditorOpen && (
-          <div
-            data-ski-resort-list-scroll-container="true"
-            className="flex-grow min-h-0"
-          >
-            <SkiResortList
-              resorts={filteredResorts}
-              sortControls={sortControls}
-              liftTicketInput={
-                filters.liftTicket ?? DEFAULT_LIFT_TICKET_SEARCH_INPUT
-              }
-              onSelectResort={onSelectResort}
-              selectedCompareIdSet={selectedCompareIdSet}
-              onToggleCompare={onToggleCompare}
-              onHoverResortChange={onHoverResortChange}
-              showHeader={false}
-              showResultCount={!hasComparisonActions}
-              onLiftTicketInputChange={liftTicket =>
-                onFilterChange({ ...filters, liftTicket })
-              }
-              liftTicketPaused={liftTicketPaused}
-              featureLines={{
-                yukiMagi: filters.yukiMagi,
-                evCharger: filters.evCharger,
-              }}
-            />
-          </div>
-        )}
+        </div>
+        {floatingActions}
       </div>
     </div>
   );

@@ -4,13 +4,12 @@ import { SegmentedControl } from "@/shared/components/SegmentedControl";
 import { PASS_PROGRAMS, YUKIMAJI_URL } from "@/shared/passPrograms";
 import type { MapSkiResort } from "@/types/skiResorts";
 import { useFilterPanelState } from "../hooks/useFilterPanelState";
-import type { Filters, ScaleBasis } from "../types";
+import type { Filters, NumericFilterName, ScaleBasis } from "../types";
 import {
   CompactMetricFilter,
   ElevationFilterRow,
   FilterToggle,
   PrefectureFilter,
-  ToggleSection,
 } from "./FilterControls";
 
 // 縦線で字下げしたぶん、4桁（標高 3000）が収まる最小幅まで詰める
@@ -21,33 +20,64 @@ const SCALE_BASIS_OPTIONS = [
   { value: "open", label: "営業中のみ" },
 ] as const satisfies readonly { value: ScaleBasis; label: string }[];
 
-/**
- * 通常の検索と同じ絞り込み条件（雪マジ・シーズン券・標高差・都道府県など）。
- * 料金計算は含めないので、比較リストへの追加など料金の要らない画面でも使う。
- */
-export const FilterConditionFields = ({
-  filters,
-  resorts,
-  onFilterChange,
-  onKeyboardInputBlur,
-  onKeyboardInputFocus,
-}: {
+/** 規模の入力欄。数字を入れると、その値以上のスキー場に絞る */
+const SCALE_FIELDS = [
+  { name: "minCourseDistance", label: "滑走距離", unit: "km" },
+  { name: "minVertical", label: "標高差", unit: "m" },
+  { name: "minCourses", label: "コース数", unit: "本" },
+  { name: "minLifts", label: "リフト数", unit: "本" },
+] as const satisfies readonly {
+  name: NumericFilterName;
+  label: string;
+  unit: string;
+}[];
+
+type FieldsProps = {
   filters: Filters;
   resorts: MapSkiResort[];
   onFilterChange: (newFilters: Filters) => void;
   onKeyboardInputBlur?: () => void;
   onKeyboardInputFocus?: () => void;
+};
+
+/** 都道府県の選択。エリアのモーダルと、比較リストへの追加で使う */
+export const FilterAreaFields = ({
+  filters,
+  resorts,
+  onFilterChange,
+  showHeading = true,
+}: Pick<FieldsProps, "filters" | "resorts" | "onFilterChange"> & {
+  showHeading?: boolean;
 }) => {
+  const {
+    handlePrefectureChange,
+    handleRegionPrefecturesChange,
+    regionOptions,
+  } = useFilterPanelState({ filters, resorts, onFilterChange });
+  return (
+    <PrefectureFilter
+      regionOptions={regionOptions}
+      selectedPrefectures={filters.prefectures}
+      onPrefectureChange={handlePrefectureChange}
+      onRegionPrefecturesChange={handleRegionPrefecturesChange}
+      showHeading={showHeading}
+    />
+  );
+};
+
+/** 雪マジ・シーズン券・EV充電と、規模（滑走距離・標高差・コース数・リフト数・標高） */
+export const FilterDetailFields = ({
+  filters,
+  resorts,
+  onFilterChange,
+  onKeyboardInputBlur,
+  onKeyboardInputFocus,
+}: FieldsProps) => {
   const {
     handleCheckboxChange,
     handleNumericInputChange,
     handlePassProgramChange,
-    handlePrefectureChange,
-    handleRegionPrefecturesChange,
     ids,
-    isElevationDetailOpen,
-    regionOptions,
-    setIsElevationDetailOpen,
   } = useFilterPanelState({ filters, resorts, onFilterChange });
   const {
     evChargerId,
@@ -63,9 +93,16 @@ export const FilterConditionFields = ({
     yukiMagiId,
   } = ids;
   const scaleBasis = filters.scaleBasis ?? "total";
+  const numberIds: Record<(typeof SCALE_FIELDS)[number]["name"], string> = {
+    minCourseDistance: minCourseDistanceId,
+    minVertical: minVerticalId,
+    minCourses: minCoursesId,
+    minLifts: minLiftsId,
+  };
+
   return (
     <>
-      {/* Quick filters: 雪マジ → シーズン券・キッズパス → EV充電 */}
+      {/* 雪マジ → シーズン券・キッズパス → EV充電 */}
       {/* 枠が20rem未満（幅320pxのスマホ）では6文字の名前が切れるので2列にする */}
       <div className="@container">
         <div className="grid grid-cols-2 gap-1.5 @[20rem]:grid-cols-3 md:gap-2">
@@ -95,8 +132,6 @@ export const FilterConditionFields = ({
         </div>
       </div>
 
-      {/* Metric filters */}
-      {/* 切替が効く範囲を、都道府県と同じ左の縦線で囲って示す */}
       <div>
         <div className="flex h-7 items-center gap-2">
           <span className="text-gray-900 font-bold text-sm">規模で絞る</span>
@@ -112,97 +147,66 @@ export const FilterConditionFields = ({
             itemClassName="h-7 px-2.5 text-xs"
           />
         </div>
-        <div className="ml-2 mt-1 flex flex-col gap-2 border-l-2 border-gray-200 pl-2">
-          <div className="grid grid-cols-2 items-center gap-x-1.5 gap-y-2 md:gap-x-2">
-            <CompactMetricFilter
-              label="標高差"
-              id={minVerticalId}
-              name="minVertical"
-              value={filters.minVertical}
-              inputWidth={MOBILE_NUMBER_INPUT_WIDTH}
-              unit="m"
-              onBlur={onKeyboardInputBlur}
-              onChange={handleNumericInputChange}
-              onFocus={onKeyboardInputFocus}
-            />
-            <CompactMetricFilter
-              label="滑走距離"
-              id={minCourseDistanceId}
-              name="minCourseDistance"
-              value={filters.minCourseDistance}
-              inputWidth={MOBILE_NUMBER_INPUT_WIDTH}
-              unit="km"
-              onBlur={onKeyboardInputBlur}
-              onChange={handleNumericInputChange}
-              onFocus={onKeyboardInputFocus}
-            />
-            <CompactMetricFilter
-              label="コース数"
-              id={minCoursesId}
-              name="minCourses"
-              value={filters.minCourses}
-              inputWidth={MOBILE_NUMBER_INPUT_WIDTH}
-              unit="本"
-              onBlur={onKeyboardInputBlur}
-              onChange={handleNumericInputChange}
-              onFocus={onKeyboardInputFocus}
-            />
-            <CompactMetricFilter
-              label="リフト数"
-              id={minLiftsId}
-              name="minLifts"
-              value={filters.minLifts}
-              inputWidth={MOBILE_NUMBER_INPUT_WIDTH}
-              unit="本"
-              onBlur={onKeyboardInputBlur}
-              onChange={handleNumericInputChange}
-              onFocus={onKeyboardInputFocus}
-            />
+        <div className="mt-1.5 flex flex-col gap-1.5">
+          <div className="grid grid-cols-2 items-center gap-x-1.5 gap-y-1.5 md:gap-x-2">
+            {SCALE_FIELDS.map(field => (
+              <CompactMetricFilter
+                key={field.name}
+                label={field.label}
+                id={numberIds[field.name]}
+                name={field.name}
+                value={filters[field.name]}
+                inputWidth={MOBILE_NUMBER_INPUT_WIDTH}
+                unit={field.unit}
+                onBlur={onKeyboardInputBlur}
+                onChange={handleNumericInputChange}
+                onFocus={onKeyboardInputFocus}
+              />
+            ))}
           </div>
-          <ToggleSection
-            isOpen={isElevationDetailOpen}
-            label="詳細フィルタ"
-            onToggle={() => setIsElevationDetailOpen(prev => !prev)}
-          >
-            <div className="flex flex-col gap-1.5">
-              <ElevationFilterRow
-                label="山麓標高"
-                minId={minBaseElevationId}
-                minName="minBaseElevation"
-                minValue={filters.minBaseElevation}
-                maxId={maxBaseElevationId}
-                maxName="maxBaseElevation"
-                maxValue={filters.maxBaseElevation}
-                unit="m"
-                onBlur={onKeyboardInputBlur}
-                onChange={handleNumericInputChange}
-                onFocus={onKeyboardInputFocus}
-              />
-              <ElevationFilterRow
-                label="山頂標高"
-                minId={minTopElevationId}
-                minName="minTopElevation"
-                minValue={filters.minTopElevation}
-                maxId={maxTopElevationId}
-                maxName="maxTopElevation"
-                maxValue={filters.maxTopElevation}
-                unit="m"
-                onBlur={onKeyboardInputBlur}
-                onChange={handleNumericInputChange}
-                onFocus={onKeyboardInputFocus}
-              />
-            </div>
-          </ToggleSection>
+          <ElevationFilterRow
+            label="山麓標高"
+            minId={minBaseElevationId}
+            minName="minBaseElevation"
+            minValue={filters.minBaseElevation}
+            maxId={maxBaseElevationId}
+            maxName="maxBaseElevation"
+            maxValue={filters.maxBaseElevation}
+            unit="m"
+            onBlur={onKeyboardInputBlur}
+            onChange={handleNumericInputChange}
+            onFocus={onKeyboardInputFocus}
+          />
+          <ElevationFilterRow
+            label="山頂標高"
+            minId={minTopElevationId}
+            minName="minTopElevation"
+            minValue={filters.minTopElevation}
+            maxId={maxTopElevationId}
+            maxName="maxTopElevation"
+            maxValue={filters.maxTopElevation}
+            unit="m"
+            onBlur={onKeyboardInputBlur}
+            onChange={handleNumericInputChange}
+            onFocus={onKeyboardInputFocus}
+          />
         </div>
       </div>
-
-      {/* Prefecture filter */}
-      <PrefectureFilter
-        regionOptions={regionOptions}
-        selectedPrefectures={filters.prefectures}
-        onPrefectureChange={handlePrefectureChange}
-        onRegionPrefecturesChange={handleRegionPrefecturesChange}
-      />
     </>
   );
 };
+
+/**
+ * 通常の検索と同じ絞り込み条件（雪マジ・シーズン券・規模・都道府県）。
+ * 料金計算は含めないので、比較リストへの追加など料金の要らない画面で使う。
+ */
+export const FilterConditionFields = (props: FieldsProps) => (
+  <>
+    <FilterDetailFields {...props} />
+    <FilterAreaFields
+      filters={props.filters}
+      resorts={props.resorts}
+      onFilterChange={props.onFilterChange}
+    />
+  </>
+);

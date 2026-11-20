@@ -88,7 +88,7 @@ export const InfoSection = ({
             data={resort.features ?? null}
           />
         </p>
-        {actions.compare && (
+        {actions.compare && !actions.floatingCompare && (
           <CompareResortButton
             isSelected={isCompareSelected}
             resortName={resort.nameJa}

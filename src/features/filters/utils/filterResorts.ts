@@ -52,6 +52,7 @@ export const isFilterActive = (filters: Filters) => {
     hasNumericFilterValue(filters.minCourses) ||
     hasNumericFilterValue(filters.minLifts) ||
     hasNumericFilterValue(filters.minCourseDistance) ||
+    hasNumericFilterValue(filters.maxPrice) ||
     isLiftTicketFilterActive(liftTicket)
   );
 };
@@ -74,6 +75,7 @@ export const areFiltersEqual = (left: Filters, right: Filters) => {
     left.minLifts === right.minLifts &&
     left.minCourseDistance === right.minCourseDistance &&
     left.scaleBasis === right.scaleBasis &&
+    left.maxPrice === right.maxPrice &&
     leftLiftTicket.visitDate === rightLiftTicket.visitDate &&
     leftLiftTicket.usePreference === rightLiftTicket.usePreference &&
     leftLiftTicket.party.length === rightLiftTicket.party.length &&

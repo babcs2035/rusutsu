@@ -81,6 +81,8 @@ export const filtersSchema = z.object({
       )
       .max(100),
   }),
+  // 以前の保存には無いので null にする
+  maxPrice: numeric.default(null),
 });
 export const homeSessionSchema = z.object({
   version: z.literal(1),

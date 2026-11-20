@@ -9,6 +9,8 @@ import { createContext, useContext } from "react";
 export type DetailHeaderActions = {
   compare: boolean;
   favorite: boolean;
+  /** 「＋比較」を画面の右下に浮かせて出すか。出すときはヘッダーに置かない */
+  floatingCompare?: boolean;
 };
 
 export const DEFAULT_DETAIL_HEADER_ACTIONS: DetailHeaderActions = {

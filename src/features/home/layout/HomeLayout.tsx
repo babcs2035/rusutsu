@@ -1,6 +1,6 @@
 "use client";
 
-import { Maximize2, Minimize2, X } from "lucide-react";
+import { Maximize2, Minimize2, Search, X } from "lucide-react";
 import type {
   ComponentType,
   CSSProperties,
@@ -10,20 +10,31 @@ import type {
   TouchEvent as ReactTouchEvent,
   RefObject,
 } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { COMPOSE_STATE_EVENT } from "@/features/community/composerEvents";
 import { CORRECTION_STATE_EVENT } from "@/features/corrections/correctionEvents";
 import { FavoriteButton } from "@/features/favorites/FavoriteButton";
 import type { Filters } from "@/features/filters/types";
+import {
+  hasNumericFilterValue,
+  isLiftTicketFilterActive,
+} from "@/features/filters/utils/filterLabels";
 import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
 import { DEFAULT_LIFT_TICKET_SEARCH_INPUT } from "@/features/lift-ticket/utils/calculateLiftTicket";
+import {
+  priceColumnLabel,
+  priceText,
+} from "@/features/lift-ticket/utils/priceText";
 import { waitForDetailSaved } from "@/features/map/session/prepareDetail";
 import { useScreenState } from "@/features/map/session/useScreenState";
 import type {
   ElevationProfileMapPoint,
   JapanResortMapProps,
+  MapTileVariant,
   SelectedMapFeature,
 } from "@/features/map/types";
 import {
@@ -43,11 +54,9 @@ import {
 import { SkiResortDetailView } from "@/features/resort-detail/SkiResortDetailView";
 import { cn } from "@/lib/utils";
 import { AnimatedPanel } from "@/shared/components/AnimatedPanel";
-import { CompareResortButton } from "@/shared/components/CompareResortButton";
 import { CopyResortNameButton } from "@/shared/components/CopyResortNameButton";
 import { FormerResortNames } from "@/shared/components/FormerResortNames";
 import { RubyText } from "@/shared/components/RubyText";
-import { SegmentedControl } from "@/shared/components/SegmentedControl";
 import type {
   ResortFormerName,
   ResortRubySegment,
@@ -58,26 +67,29 @@ import type {
   SkiResortDetail,
 } from "@/types/skiResorts";
 import { useHomeCompare } from "../compareContext";
-import {
-  ComparisonActions,
-  useHasComparisonActions,
-} from "../components/ComparisonActions";
 import { DesktopSearchPanel } from "../components/DesktopSearchPanel";
+import {
+  CompareAddButton,
+  CompareTray,
+  FloatingActions,
+  ViewToggleButton,
+} from "../components/FloatingActions";
 import { MobileResultsSheet } from "../components/MobileResultsSheet";
-import { MobileSearchOverlay } from "../components/MobileSearchOverlay";
 import {
   MOBILE_SEARCH_TOP_BAR_HEIGHT,
   MobileSearchTopBarShell,
 } from "../components/MobileSearchTopBarShell";
-import { SearchButton } from "../components/SearchButton";
+import { SavedCompareButton } from "../components/SavedCompareButton";
+import { SearchConditionBar } from "../components/SearchConditionBar";
 import { SkiResortCompareView } from "../components/SkiResortCompareView";
+import { useListLiftTicketResults } from "../hooks/useListLiftTicketResults";
 import { useResortSort } from "../hooks/useResortSort";
 import type { MapViewRestoreRequest } from "../types";
 
-const MOBILE_CONTENT_TAB_OPTIONS = [
-  { value: "map", label: "地図" },
-  { value: "info", label: "リスト" },
-] as const satisfies readonly { value: "info" | "map"; label: string }[];
+// スマホの検索欄の下に置く条件チップの行（h-8 + pb-2）
+const MOBILE_CONDITION_BAR_HEIGHT = "2.5rem";
+// 下に浮くボタンの高さ（h-11）と上下の余白。一覧・詳細の下の余白に使う
+const FLOATING_ACTIONS_SPACE = "4.5rem";
 
 const expandedSchema = z.boolean();
 
@@ -189,7 +201,6 @@ export const HomeLayout = ({
   isCompareBehindDetail,
   isListBehindDetail,
   onCompareMapResortsNeeded,
-  isFilterEditorOpen,
   isMobileFilterOverlayOpen,
   isPending,
   isSidePanelLayout,
@@ -197,14 +208,7 @@ export const HomeLayout = ({
   listSheetSnapPoint,
   mapInteractionMode,
   mobileContentTab,
-  mobileFilterOverlayRef,
   mobileListSheetSnapPoints,
-  mobileDraftFilteredResortCount,
-  mobileDraftHasChanges,
-  mobileDraftFilters,
-  mobileSearchFilterBottomPadding,
-  mobileSearchFilterScrollRef,
-  mobileSearchPanelInputRef,
   restoreViewRequest,
   searchViewportBottomPaddingRatio,
   searchViewportRequestKey,
@@ -219,31 +223,19 @@ export const HomeLayout = ({
   onCloseCompare,
   onClearCompare,
   onCloseDetail,
-  onCloseMobileFilterOverlay,
   onFilterChange,
   onFilterKeyboardInputBlur,
   onFilterKeyboardInputFocus,
   onMainPointerDownCapture,
   onMapViewChange,
-  onMobileFilterAreaPointerDown,
-  onMobileFilterChange,
-  onMobileKeywordChange,
-  onMobileKeywordClear,
   onMobileSearchButtonKeywordClear,
-  onMobileSearchButtonPointerDown,
   onMobileContentTabChange,
-  onMobileSearchFilterInputBlur,
-  onMobileSearchFilterInputFocus,
-  onMobileSearchSubmit,
-  onMobileSearch,
   onOpenCompare,
   onCompareFavorites,
-  onOpenMobileFilterOverlay,
   onSearch,
   onSelectResort,
   onSelectedFinalizedFeatureChange,
   onSelectedElevationProfilePointChange,
-  onSetFilterEditorOpen,
   onSetHoveredResortId,
   onSetListSheetOpen,
   onSetListSheetSnapPoint,
@@ -317,8 +309,61 @@ export const HomeLayout = ({
   // 一覧・比較のモーダルで変えた料金の条件は、検索欄と同じ条件へ書き込む
   const changeLiftTicketInput = (liftTicket: LiftTicketSearchInput) =>
     onFilterChange({ ...filters, liftTicket });
+  // 料金の条件（日付・人・レンタル・予算）を自分で変えたか。変えたときだけ地図にも料金を出す
+  const isPriceActive =
+    isLiftTicketFilterActive(liftTicketInput) ||
+    hasNumericFilterValue(filters.maxPrice);
+  const isHomeVisible = !selectedResortId && !isCompareOpen;
+  const isHomeListVisible =
+    isHomeVisible && (isSidePanelLayout || mobileContentTab === "info");
+  // 一覧・地図のラベル・予算の絞り込みが同じ計算結果を使う。
+  // 見えていない間や、地図だけで料金を出さない間は計算しない
+  const liftTicketResults = useListLiftTicketResults(
+    filteredResorts,
+    liftTicketInput,
+    !(isHomeListVisible || (isHomeVisible && isPriceActive)),
+  );
+  const maxPrice = filters.maxPrice;
+  // 予算は料金の計算結果で絞る。料金が出ないスキー場は外す
+  const visibleResorts = useMemo(() => {
+    if (maxPrice == null || liftTicketResults.status !== "done") {
+      return filteredResorts;
+    }
+    return filteredResorts.filter(resort => {
+      const summary = resort.liftTicketResortId
+        ? liftTicketResults.results[resort.liftTicketResortId]
+        : null;
+      return summary?.kind === "price" && summary.total <= maxPrice;
+    });
+  }, [filteredResorts, liftTicketResults, maxPrice]);
+  const isBudgetApplied = visibleResorts !== filteredResorts;
+  const visibleResortIds = useMemo(
+    () =>
+      isBudgetApplied
+        ? visibleResorts.map(resort => resort.id)
+        : filteredResortIds,
+    [filteredResortIds, isBudgetApplied, visibleResorts],
+  );
+  const visibleResortIdSet = useMemo(
+    () => (isBudgetApplied ? new Set(visibleResortIds) : filteredResortIdSet),
+    [filteredResortIdSet, isBudgetApplied, visibleResortIds],
+  );
+  const resortPriceLabels = useMemo(() => {
+    if (!isPriceActive || liftTicketResults.status !== "done") return undefined;
+    const labels = new Map<string, string>();
+    for (const resort of visibleResorts) {
+      const summary = resort.liftTicketResortId
+        ? liftTicketResults.results[resort.liftTicketResortId]
+        : null;
+      if (summary?.kind === "price") labels.set(resort.id, priceText(summary));
+    }
+    return labels;
+  }, [isPriceActive, liftTicketResults, visibleResorts]);
+  const priceLabel = priceColumnLabel(liftTicketInput);
+  // 地図が標準か航空写真か。航空写真の上では、重ねるチップとボタンを白にする
+  const [mapTileVariant, setMapTileVariant] = useState<MapTileVariant>("pale");
   // 比較中の地図はデスクトップの背景地図だけ。モバイルは比較タブの中で完結する
-  const mapSearchResultResortIds = hasActiveFilters ? filteredResortIds : [];
+  const mapSearchResultResortIds = hasActiveFilters ? visibleResortIds : [];
   const shouldShowMobileSearchScreen =
     !isSidePanelLayout && isMobileFilterOverlayOpen;
   // モバイルの比較は専用画面（比較タブ）で完結させるので、
@@ -345,8 +390,10 @@ export const HomeLayout = ({
           !shouldShowMobileSearchScreen)));
   const mapProps: JapanResortMapProps = {
     resorts: initialResorts,
-    filteredResortIdSet,
+    filteredResortIdSet: visibleResortIdSet,
     isFilterActive: hasActiveFilters,
+    resortLabelSuffixById: resortPriceLabels,
+    onMapTileVariantChange: setMapTileVariant,
     // 条件なしで検索結果を閉じる時に、全スキー場へ fit して地図位置が動くのを防ぐ。
     searchResultResortIds: mapSearchResultResortIds,
     searchViewportRequestKey,
@@ -425,20 +472,49 @@ export const HomeLayout = ({
     };
   }, [hasMainMap, isDetailReady, selectedResortId]);
   const { sortedResorts, controls: sortControls } =
-    useResortSort(filteredResorts);
-  const shouldShowMobileComparisonActions = useHasComparisonActions(
-    selectedCompareIds.length,
-  );
-  const mobileSearchChromeHeight = shouldShowMobileComparisonActions
-    ? `calc(${MOBILE_SEARCH_TOP_BAR_HEIGHT} + 2.25rem)`
-    : MOBILE_SEARCH_TOP_BAR_HEIGHT;
+    useResortSort(visibleResorts);
+  const mobileSearchChromeHeight = `calc(${MOBILE_SEARCH_TOP_BAR_HEIGHT} + ${MOBILE_CONDITION_BAR_HEIGHT})`;
   // 比較リスト・お気に入りの比較から開いた詳細では「比較」を出さない。
   // お気に入りの比較から開いたときは、ハートも出さない（編集は比較画面で行う）
   const compareSourceKind = useHomeCompare()?.source.kind ?? "selection";
   const detailHeaderActions: DetailHeaderActions = {
     compare: !isCompareBehindDetail || compareSourceKind === "selection",
     favorite: !isCompareBehindDetail || compareSourceKind !== "favorites",
+    floatingCompare: true,
   };
+  const compareTray = (
+    <CompareTray
+      count={selectedCompareIds.length}
+      onOpen={onOpenCompare}
+      onClear={onClearCompare}
+    />
+  );
+  // 詳細では右下に「＋比較」、左下に「N件を比較」を浮かせる。
+  // 投稿・修正の入力中、コースやリフトを選んでいる間、地図を広げている間は出さない
+  const isDetailFloatingVisible =
+    Boolean(selectedResortId) &&
+    !isCompareOpen &&
+    !isMobileFilterOverlayOpen &&
+    selectedResortId !== composingResortId &&
+    !selectedFinalizedFeature &&
+    !isDesktopDetailMapExpanded &&
+    (detailHeaderActions.compare || selectedCompareIds.length > 0);
+  const detailResortName =
+    selectedResortData?.nameJa ?? selectedResortSummary?.nameJa ?? "";
+  // PCの詳細パネルは <main> の外（body 直下）に出るので、浮かせるボタンも body 直下に出し、
+  // 下の余白の高さも <html> に持たせて、どちらの詳細からも読めるようにする
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => setIsMounted(true), []);
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty(
+      "--floating-actions-space",
+      isDetailFloatingVisible ? FLOATING_ACTIONS_SPACE : "0px",
+    );
+    return () => {
+      root.style.removeProperty("--floating-actions-space");
+    };
+  }, [isDetailFloatingVisible]);
 
   return (
     <DetailHeaderActionsContext.Provider value={detailHeaderActions}>
@@ -454,7 +530,7 @@ export const HomeLayout = ({
           )}
         >
           {/*
-          検索画面では検索欄と比較チップを地図に重ねる。
+          検索画面では検索欄と条件のチップを地図に重ねる。
           詳細・比較画面ではこの検索用の操作を出さない。
         */}
           {shouldShowMobileTopChrome && shouldShowMobileSearchButton && (
@@ -463,19 +539,23 @@ export const HomeLayout = ({
               className="pointer-events-none fixed top-0 right-0 left-0 z-[150] hide-desktop flex-col"
             >
               <MobileSearchHeader
-                activeTab={mobileContentTab}
                 keyword={filters.keyword}
+                onKeywordChange={keyword =>
+                  onFilterChange({ ...filters, keyword })
+                }
                 onKeywordClear={onMobileSearchButtonKeywordClear}
-                onOpenSearch={onOpenMobileFilterOverlay}
-                onPointerDown={onMobileSearchButtonPointerDown}
-                onTabChange={onMobileContentTabChange}
-              />
-              <ComparisonActions
-                compareCount={selectedCompareIds.length}
-                resultCount={sortedResorts.length}
-                onOpenCompare={onOpenCompare}
-                onClearCompare={onClearCompare}
+                onSubmit={onSearch}
                 onCompareFavorites={onCompareFavorites}
+              />
+              <SearchConditionBar
+                className="mx-4 pb-2"
+                floating={shouldRenderMap}
+                light={shouldRenderMap && mapTileVariant === "photo"}
+                filters={filters}
+                resorts={initialResorts}
+                resultCount={sortedResorts.length}
+                onFilterChange={onFilterChange}
+                onCommit={onSearch}
               />
             </div>
           )}
@@ -532,13 +612,7 @@ export const HomeLayout = ({
                     : null
                 }
                 detailResortId={selectedResortId}
-                isDetailCompareSelected={
-                  selectedResortId
-                    ? selectedCompareIdSet.has(selectedResortId)
-                    : false
-                }
                 onCloseDetail={onCloseDetail}
-                onToggleCompare={onToggleCompare}
               />
             )}
             <div
@@ -619,7 +693,8 @@ export const HomeLayout = ({
                         yukiMagi: filters.yukiMagi,
                         evCharger: filters.evCharger,
                       }}
-                      showResultCount={!shouldShowMobileComparisonActions}
+                      liftTicketResults={liftTicketResults}
+                      priceLabel={priceLabel}
                       onCloseCompare={onCloseCompare}
                       onLiftTicketInputChange={changeLiftTicketInput}
                       onHoverResortChange={onSetHoveredResortId}
@@ -660,33 +735,28 @@ export const HomeLayout = ({
                   liftTicketInput={filters.liftTicket ?? undefined}
                 />
               )}
-              {shouldShowMobileSearchScreen && (
-                <div className="absolute inset-0 z-[200] md:hidden">
-                  <MobileSearchOverlay
-                    filters={mobileDraftFilters}
-                    resorts={initialResorts}
-                    filteredResortCount={mobileDraftFilteredResortCount}
-                    isOpen={isMobileFilterOverlayOpen}
-                    isSidePanelLayout={isSidePanelLayout}
-                    overlayRef={mobileFilterOverlayRef}
-                    inputRef={mobileSearchPanelInputRef}
-                    scrollRef={mobileSearchFilterScrollRef}
-                    filterBottomPadding={mobileSearchFilterBottomPadding}
-                    hasChanges={mobileDraftHasChanges}
-                    onClose={onCloseMobileFilterOverlay}
-                    onFilterAreaPointerDown={onMobileFilterAreaPointerDown}
-                    onFilterChange={onMobileFilterChange}
-                    onInputBlur={onMobileSearchFilterInputBlur}
-                    onInputFocus={onMobileSearchFilterInputFocus}
-                    onKeywordChange={onMobileKeywordChange}
-                    onKeywordClear={onMobileKeywordClear}
-                    onSearch={onMobileSearch}
-                    onSubmit={onMobileSearchSubmit}
-                  />
-                </div>
-              )}
             </div>
           </div>
+          {/*
+          スマホのホームは、右下で「リスト／地図」を切り替え、
+          1件以上選んだときだけ左下に「N件を比較」を出す。
+        */}
+          {!isSidePanelLayout &&
+            shouldShowMobileTopChrome &&
+            shouldShowMobileSearchButton && (
+              <FloatingActions
+                className="fixed inset-x-0 bottom-0 z-[140] md:hidden"
+                left={compareTray}
+                right={
+                  <ViewToggleButton
+                    view={mobileContentTab}
+                    resultCount={sortedResorts.length}
+                    light={shouldRenderMap && mapTileVariant === "photo"}
+                    onChange={onMobileContentTabChange}
+                  />
+                }
+              />
+            )}
         </div>
 
         <DesktopSearchPanel
@@ -695,24 +765,23 @@ export const HomeLayout = ({
           resorts={initialResorts}
           filteredResorts={sortedResorts}
           sortControls={sortControls}
-          compareCount={selectedCompareIds.length}
-          isCompareOpen={isCompareOpen}
-          isFilterEditorOpen={isFilterEditorOpen}
           selectedCompareIdSet={selectedCompareIdSet}
-          onExpandedChange={onSetFilterEditorOpen}
+          liftTicketResults={liftTicketResults}
+          priceLabel={priceLabel}
+          floatingActions={
+            <FloatingActions
+              className="absolute inset-x-0 bottom-0 z-10"
+              left={compareTray}
+            />
+          }
           onFilterChange={onFilterChange}
-          onKeywordClear={onMobileSearchButtonKeywordClear}
           onKeyboardInputBlur={onFilterKeyboardInputBlur}
           onKeyboardInputFocus={onFilterKeyboardInputFocus}
-          onClearCompare={onClearCompare}
-          onOpenCompare={onOpenCompare}
           onCompareFavorites={onCompareFavorites}
           onSearch={onSearch}
           onSelectResort={onSelectResort}
           onToggleCompare={onToggleCompare}
           onHoverResortChange={onSetHoveredResortId}
-          // スマホではこの一覧は隠れている。詳細を開いている間も裏に隠れる
-          liftTicketPaused={Boolean(selectedResortId) || !isSidePanelLayout}
         />
 
         <AnimatedPanel
@@ -752,6 +821,31 @@ export const HomeLayout = ({
           )}
         </AnimatedPanel>
 
+        {isDetailFloatingVisible &&
+          selectedResortId &&
+          isMounted &&
+          createPortal(
+            <FloatingActions
+              className="fixed inset-x-0 bottom-0 z-[430] md:left-auto md:w-[var(--desktop-detail-panel-width)]"
+              left={compareTray}
+              right={
+                detailHeaderActions.compare && (
+                  <CompareAddButton
+                    isSelected={selectedCompareIdSet.has(selectedResortId)}
+                    resortName={detailResortName}
+                    onToggle={() =>
+                      onToggleCompare(
+                        selectedResortId,
+                        !selectedCompareIdSet.has(selectedResortId),
+                      )
+                    }
+                  />
+                )
+              }
+            />,
+            document.body,
+          )}
+
         {(isCompareOpen || isCompareBehindDetail) && isSidePanelLayout && (
           <SkiResortCompareView
             hidden={isCompareBehindDetail}
@@ -772,44 +866,66 @@ export const HomeLayout = ({
 };
 
 type MobileSearchHeaderProps = {
-  activeTab: "info" | "map";
   keyword: string;
+  onKeywordChange: (keyword: string) => void;
   onKeywordClear: () => void;
-  onOpenSearch: () => void;
-  onPointerDown: (event: ReactPointerEvent<HTMLButtonElement>) => void;
-  onTabChange: (tab: "info" | "map") => void;
+  onSubmit: () => void;
+  onCompareFavorites: () => void;
 };
 
+/**
+ * スマホの検索欄。別の画面を重ねず、地図・リストの上でそのまま名前を入力する。
+ * 入力はその場で一覧と地図に反映し、Enter で地図を結果に寄せる。
+ */
 const MobileSearchHeader = ({
-  activeTab,
   keyword,
+  onKeywordChange,
   onKeywordClear,
-  onOpenSearch,
-  onPointerDown,
-  onTabChange,
+  onSubmit,
+  onCompareFavorites,
 }: MobileSearchHeaderProps) => (
   <MobileSearchTopBarShell
     floating
     showAccount
-    action={
-      // §13: 塗りつぶしセグメントタブはウェイト font-semibold（比較タブと同一）
-      <SegmentedControl
-        options={MOBILE_CONTENT_TAB_OPTIONS}
-        value={activeTab}
-        onChange={onTabChange}
-        radius="full"
-        className="h-10 shadow-sm"
-        itemClassName="h-full flex-1 px-2"
-        ariaLabel={option => `${option.label}を表示`}
-      />
-    }
+    // 「リスト／地図」は右下のボタンへ移した。ここは保存したもの（お気に入り・比較リスト）の入口
+    action={<SavedCompareButton onCompareFavorites={onCompareFavorites} />}
+    onSubmit={event => {
+      event.currentTarget.querySelector("input")?.blur();
+      onSubmit();
+    }}
   >
-    <SearchButton
-      keyword={keyword}
-      onKeywordClear={onKeywordClear}
-      onOpen={onOpenSearch}
-      onPointerDown={onPointerDown}
-    />
+    <div className="relative h-12 min-w-0 overflow-hidden rounded-full border border-gray-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.12)]">
+      <Search
+        size={18}
+        className="pointer-events-none absolute top-1/2 left-[14px] -translate-y-1/2 text-gray-500"
+      />
+      <Input
+        aria-label="スキー場を検索"
+        type="text"
+        name="keyword"
+        enterKeyHint="search"
+        autoComplete="off"
+        placeholder="スキー場を検索"
+        value={keyword}
+        // 16px 未満だと iOS が入力時に画面を拡大する
+        className={cn(
+          "h-12 w-full rounded-full border-0 bg-transparent pl-10 text-base font-medium text-gray-800 shadow-none focus-visible:ring-0",
+          keyword ? "pr-11" : "pr-3",
+        )}
+        onChange={event => onKeywordChange(event.target.value)}
+      />
+      {keyword && (
+        <Button
+          type="button"
+          variant="ghost"
+          aria-label="検索キーワードをクリア"
+          className="absolute inset-y-0 right-2 my-auto h-8 w-8 min-w-8 rounded-full p-0 text-gray-600 shadow-none hover:bg-gray-50"
+          onClick={onKeywordClear}
+        >
+          <X size={16} strokeWidth={2.5} />
+        </Button>
+      )}
+    </div>
   </MobileSearchTopBarShell>
 );
 
@@ -824,9 +940,7 @@ type MobileContextHeaderProps = {
   /** 詳細の読み込み前は null（雪マジ・EV充電のチップは押せない） */
   detailFeatures: ResortFeatureData | null;
   detailResortId: string | null;
-  isDetailCompareSelected: boolean;
   onCloseDetail: () => void;
-  onToggleCompare: (id: string, selected: boolean) => void;
 };
 
 const MobileContextHeader = ({
@@ -839,9 +953,7 @@ const MobileContextHeader = ({
   detailHasEvCharger,
   detailFeatures,
   detailResortId,
-  isDetailCompareSelected,
   onCloseDetail,
-  onToggleCompare,
 }: MobileContextHeaderProps) => {
   const actions = useDetailHeaderActions();
   const detailLocation = [detailPrefecture, detailTown]
@@ -851,9 +963,9 @@ const MobileContextHeader = ({
   return (
     <div className="relative z-10 pointer-events-auto md:hidden">
       {/*
-        名前・所在地の右に、お気に入り・比較・閉じるを1行で並べる。
+        名前・所在地の右に、お気に入り・閉じるを1行で並べる。
         ボタンを縦に積むとヘッダーが2段分の高さになり、地図が下に押し出される。
-        比較ボタンは文言を短くし、正式な操作名は aria-label に持たせる。
+        「＋比較」は画面の右下に浮かせて出す。
       */}
       <div className="flex items-center gap-1.5 px-3 pt-1 pb-1.5">
         <div className="min-w-0 flex-1">
@@ -886,16 +998,6 @@ const MobileContextHeader = ({
         <div className="flex shrink-0 items-center gap-1">
           {detailResortId && actions.favorite && (
             <FavoriteButton resortId={detailResortId} name={detailTitle} />
-          )}
-          {detailResortId && actions.compare && (
-            <CompareResortButton
-              isSelected={isDetailCompareSelected}
-              resortName={detailTitle}
-              onClick={() =>
-                onToggleCompare(detailResortId, !isDetailCompareSelected)
-              }
-              className="flex h-8 shrink-0 items-center justify-center gap-0.5 rounded-full px-2 text-xs font-semibold"
-            />
           )}
           <Button
             type="button"

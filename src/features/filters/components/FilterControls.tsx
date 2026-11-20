@@ -1,10 +1,10 @@
 "use client";
 
-import { ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import type { NumericFilterName, NumericFilterValue } from "../types";
 
@@ -13,108 +13,78 @@ export const PrefectureFilter = ({
   selectedPrefectures,
   onPrefectureChange,
   onRegionPrefecturesChange,
+  showHeading = true,
 }: {
   regionOptions: Array<{ region: string; prefectures: string[] }>;
   selectedPrefectures: string[];
   onPrefectureChange: (prefecture: string, checked: boolean) => void;
   onRegionPrefecturesChange: (prefectures: string[], checked: boolean) => void;
+  /** 見出し「都道府県で選ぶ」を出すか。エリアのモーダルは枠の見出しがあるので出さない */
+  showHeading?: boolean;
 }) => (
   <div>
-    <div className="flex items-center gap-2 text-gray-900 font-bold h-7 text-sm">
-      <span>都道府県で選ぶ</span>
-      {selectedPrefectures.length > 0 && (
-        <span className="text-blue-600 font-semibold text-xs">
-          {selectedPrefectures.length}件選択中
-        </span>
-      )}
-    </div>
-    <div className="border-l-2 border-gray-200 ml-2 pl-2 mt-0.5">
-      <div className="flex flex-col gap-0.75 md:gap-1">
-        {regionOptions.map(({ region, prefectures }) => {
-          const isRegionSelected = prefectures.every(prefecture =>
-            selectedPrefectures.includes(prefecture),
-          );
-
-          return (
-            <Card
-              key={region}
-              className="overflow-hidden border-gray-200 bg-gray-50"
-            >
-              <CardContent className="p-0">
-                <div className="flex items-center justify-between px-2 py-1.5">
-                  <span className="text-gray-800 font-bold truncate text-xs">
-                    {region}
-                  </span>
-                  <Button
-                    type="button"
-                    variant={isRegionSelected ? "default" : "outline"}
-                    className="inline-flex items-center justify-center rounded-md text-xs font-medium whitespace-nowrap focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 outline-none select-none disabled:pointer-events-none disabled:opacity-50 h-4 min-w-[72px] px-2 leading-none text-xs"
-                    onClick={() =>
-                      onRegionPrefecturesChange(prefectures, !isRegionSelected)
-                    }
-                  >
-                    {isRegionSelected ? "解除" : "全選択"}
-                  </Button>
-                </div>
-
-                <div className="grid grid-cols-[repeat(5,minmax(0,1fr))] gap-0.5 mt-0.5 p-1">
-                  {prefectures.map(prefecture => (
-                    <FilterToggle
-                      key={prefecture}
-                      id={`prefecture-${prefecture}`}
-                      label={prefecture.replace(/[府県]$/, "")}
-                      checked={selectedPrefectures.includes(prefecture)}
-                      onChange={checked =>
-                        onPrefectureChange(prefecture, checked)
-                      }
-                    />
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-    </div>
-  </div>
-);
-
-export const ToggleSection = ({
-  isOpen,
-  label,
-  meta,
-  onToggle,
-  children,
-}: {
-  isOpen: boolean;
-  label: string;
-  meta?: string;
-  onToggle: () => void;
-  children: React.ReactNode;
-}) => (
-  <div>
-    <Button
-      type="button"
-      variant="ghost"
-      className="justify-start text-left text-sm font-semibold text-gray-800 hover:bg-gray-50 hover:text-gray-900 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10 w-full h-7 text-sm transition-colors"
-      onClick={onToggle}
-      aria-expanded={isOpen}
-    >
-      <span className="inline-block h-[13px] w-[13px]">
-        {isOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-      </span>
-      <span>{label}</span>
-      {meta && (
-        <span className="text-blue-600 font-medium md:text-xs text-xs">
-          {meta}
-        </span>
-      )}
-    </Button>
-    {isOpen && (
-      <div className="border-l-2 border-gray-200 ml-2 pl-2 mt-0.5">
-        {children}
+    {showHeading && (
+      <div className="flex items-center gap-2 text-gray-900 font-bold h-7 text-sm">
+        <span>都道府県で選ぶ</span>
+        {selectedPrefectures.length > 0 && (
+          <span className="text-blue-600 font-semibold text-xs">
+            {selectedPrefectures.length}件選択中
+          </span>
+        )}
       </div>
     )}
+    {/* 全部の県を1画面に並べる。左の地方名のボタンで、その地方をまとめて選ぶ */}
+    <div className="flex flex-col divide-y divide-gray-100">
+      {regionOptions.map(({ region, prefectures }) => {
+        const isRegionSelected = prefectures.every(prefecture =>
+          selectedPrefectures.includes(prefecture),
+        );
+
+        return (
+          <div
+            key={region}
+            className="grid grid-cols-[5.25rem_minmax(0,1fr)] items-start gap-1.5 py-1.5"
+          >
+            <Button
+              type="button"
+              variant="outline"
+              aria-pressed={isRegionSelected}
+              aria-label={`${region}を${isRegionSelected ? "すべて解除" : "すべて選択"}`}
+              className={cn(
+                "flex h-auto min-h-7 flex-col gap-1 rounded-md px-1 py-1.5 leading-none whitespace-nowrap",
+                isRegionSelected
+                  ? "border-blue-600 bg-blue-600 text-white hover:bg-blue-700 hover:text-white"
+                  : "border-gray-200 bg-gray-50 text-gray-800 hover:bg-gray-100",
+              )}
+              onClick={() =>
+                onRegionPrefecturesChange(prefectures, !isRegionSelected)
+              }
+            >
+              <span className="text-xs font-bold leading-none">{region}</span>
+              <span
+                className={cn(
+                  "text-[11px] font-semibold leading-none",
+                  isRegionSelected ? "text-white" : "text-blue-700",
+                )}
+              >
+                {isRegionSelected ? "解除" : "全選択"}
+              </span>
+            </Button>
+            <div className="grid grid-cols-4 gap-1">
+              {prefectures.map(prefecture => (
+                <FilterToggle
+                  key={prefecture}
+                  id={`prefecture-${prefecture}`}
+                  label={prefecture.replace(/[府県]$/, "")}
+                  checked={selectedPrefectures.includes(prefecture)}
+                  onChange={checked => onPrefectureChange(prefecture, checked)}
+                />
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
   </div>
 );
 

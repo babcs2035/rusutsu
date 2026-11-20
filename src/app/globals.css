@@ -362,6 +362,9 @@ html body .resort-name-label {
     0 4px 14px rgba(15, 23, 42, 0.18);
   color: #0f172a;
   cursor: pointer;
+  /* 地図ライブラリの既定フォントを継がせない。幅を測る要素（body 直下）と
+     同じフォントにしないと、英数字の幅がずれてラベルの右に隙間が出る */
+  font-family: Manrope, "Manrope Fallback", sans-serif;
   font-size: 12px;
   font-weight: 700;
   line-height: 1.2;
@@ -373,6 +376,11 @@ html body .resort-name-label {
     border-color 0.15s ease,
     box-shadow 0.15s ease,
     opacity 0.15s ease;
+}
+
+/* 名前の後ろに添える料金 */
+html body .resort-name-label .resort-name-label-price {
+  color: #1d4ed8;
 }
 
 html body .resort-name-label:hover {
@@ -494,6 +502,21 @@ html body .finalized-lift-flow-slow {
    動き = 運行中 という符号を守りつつ、注意を引く。 */
 html body .finalized-lift-blink {
   animation: finalized-lift-blink 1.2s ease-in-out infinite;
+}
+
+/* 「N件を比較」が現れた・件数が増えたときに一度だけ弾ませる */
+@keyframes compare-tray-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(24px) scale(0.85);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-3px) scale(1.05);
+  }
+  100% {
+    transform: none;
+  }
 }
 
 @keyframes finalized-lift-blink {

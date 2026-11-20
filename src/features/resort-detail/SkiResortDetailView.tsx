@@ -898,7 +898,8 @@ export const SkiResortDetailView = ({
             activeTab={activeTab}
             onTabChange={setActiveTab}
           />
-          <div className="p-3 @min-[30rem]/resort-detail:p-4 text-gray-700">
+          {/* 右下に浮く「＋比較」に最後の行が隠れないよう、その高さ分だけ下を空ける */}
+          <div className="p-3 pb-[calc(0.75rem+var(--floating-actions-space,0px))] @min-[30rem]/resort-detail:p-4 @min-[30rem]/resort-detail:pb-[calc(1rem+var(--floating-actions-space,0px))] text-gray-700">
             {renderTabPanels()}
           </div>
         </div>
@@ -913,7 +914,7 @@ export const SkiResortDetailView = ({
       className={
         mobileFeatureDetail
           ? "flex h-full min-h-0 flex-col"
-          : "h-full min-h-0 overflow-y-auto overscroll-contain"
+          : "h-full min-h-0 overflow-y-auto overscroll-contain pb-[var(--floating-actions-space,0px)]"
       }
     >
       {composer || correction ? null : hideMobileInfoSection ? (

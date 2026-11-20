@@ -49,3 +49,26 @@ export const priceText = (
       return "不明";
   }
 };
+
+/**
+ * 一覧の料金欄の名前。条件が「大人1人・1日券・レンタルなし」のあいだは「大人1日料金」、
+ * 人数・滑る長さ・日数・レンタルを変えたら「合計料金」と出す。
+ * 何の金額かを、注記ではなく欄の名前で伝える。
+ */
+export const priceColumnLabel = (input: LiftTicketSearchInput) => {
+  const groups = input.party.filter(group => group.count > 0);
+  const [group] = groups;
+  const days = input.days ?? [];
+  const [day] = days;
+  const isFullDay = day
+    ? day.duration.kind === "day" && !day.duration.withNight
+    : input.usePreference === "full_day";
+  return groups.length === 1 &&
+    group?.category === "adult" &&
+    group.count === 1 &&
+    (group.rental?.items.length ?? 0) === 0 &&
+    days.length <= 1 &&
+    isFullDay
+    ? "大人1日料金"
+    : "合計料金";
+};
