@@ -3,7 +3,7 @@
  * check-fictional-coverage.mjs
  *
  * 実在施設にあって架空スキー場フィクスチャに無い「構造の特徴」を警告する
- * （docs/plans/lift-ticket-duration-test-cases.md の Y。仕様は references/fictional-fixtures.md）。
+ * （docs/d0015_lift-ticket-duration-test-cases.md の Y。仕様は references/fictional-fixtures.md）。
  *
  * 使い方:
  *   node check-fictional-coverage.mjs --real <file|dir> --fictional <dir> [--json]

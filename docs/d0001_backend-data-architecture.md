@@ -6,10 +6,10 @@
 `20260906120000_add_resort_readings`で506件の辞書スナップショットを既存IDへ一度だけ移行する。
 公開・検索・管理画面はDB/APIの値を使用し、空欄にしても元のJSONへ戻らない。
 
-レビュー公開は`PUT /api/internal/v1/review-publications`（admin-data権限）で受け付ける。
+レビュー公開は`PUT /api/admin/review-publications`で受け付ける。
 管理画面の取り込みとCLIは共通の構造検証を通し、detail/articleの両方をexpectedHash付きで一括保存する。
 CLIは接続先・入力内容・確認時の本番hashをプランに保持し、変更を検出したら再確認を求める。
-操作方法は[日常のデータ編集・レビュー公開手順](content-publishing-guide.md)を参照。
+操作方法は[日常のデータ編集・レビュー公開手順](d0008_content-publishing-guide.md)を参照。
 
 
 ## まず結論
@@ -20,7 +20,7 @@ CLIは接続先・入力内容・確認時の本番hashをプランに保持し�
 現在の本番PostgreSQLをそのまま1つの「正本」にする。Dockerコンテナは今後も使い続けるが、永久に残すデータをアプリコンテナの中に直接置かない。
 
 実際のローカル復旧、本番移行、API接続、クローラー運用の順序は
-[`backend-migration-runbook.md`](backend-migration-runbook.md) を参照する。
+[`d0005_backend-migration-runbook.md`](d0005_backend-migration-runbook.md) を参照する。
 
 - アプリのプログラム: 交換可能な `app` コンテナ
 - スキー場情報、編集したJSON/GeoJSON、クロール結果: PostgreSQLの永続volume
@@ -37,18 +37,17 @@ Dockerを使うことと、DBを永久に残すことは両立する。コンテ
 
 ローカルの管理画面
   ブラウザー -> ローカルNext.js
-                    -> HTTPS + admin-dataトークン -> 本番Next.js
+                    -> HTTPS + API_BEARER_TOKEN -> 本番Next.js
                                                -> 本番PostgreSQL
 
 本番のcrawl_latest専用scheduler（毎日14:00 JST）
-  crawler -> HTTPS + crawler-ingestトークン -> 本番Next.js -> 本番PostgreSQL
+  crawler -> HTTPS + API_BEARER_TOKEN -> 本番Next.js -> 本番PostgreSQL
 
 診断DOMの取得
-  CLI -> HTTPS + diagnostics-readトークン -> 本番Next.js
+  CLI -> HTTPS + API_BEARER_TOKEN -> 本番Next.js
 ```
 
-3種類のAPIトークンはサーバー専用の `.env.local` や `.env` に置き、Next.jsのサーバー側や対象CLIだけが読む。`NEXT_PUBLIC_` を付けない。ブラウザーから本番APIを直接呼ばないため、ChromeのNetworkに本番APIのAuthorization headerは出ない。3つには必ず別々の値を設定し、クローラーへ管理用トークンを渡さない。旧共通トークン
-`INTERNAL_DATA_API_TOKEN` は廃止しており、新規環境でも受け付けない。
+APIトークン `API_BEARER_TOKEN` はサーバー専用の `.env.local` や `.env` に置き、Next.jsのサーバー側や対象CLIだけが読む。`NEXT_PUBLIC_` を付けない。ブラウザーから本番APIを直接呼ばないため、ChromeのNetworkに本番APIのAuthorization headerは出ない。トークンは信頼できるサーバー側処理専用で、人向けの操作はセッションと権限で承認する。旧共通トークンと旧のscope別トークンは廃止しており、新規環境でも受け付けない。
 
 ここでServer Actionsを全部なくす必要はない。管理画面のボタンから同じNext.jsへ送る
 入口にはServer Actionsを使い続け、その中から正本がある本番サーバーへ内部APIを呼ぶ。
@@ -114,7 +113,7 @@ TODO（クロールを1日30回程度に増やすとき）:
 # API設定を意図的に無効化し、ローカルファイルへ保存する
 mise run crawl:latest -- --local-files --resort rusutsu-resort
 
-# DATA_API_BASE_URLの本番APIへ送る（専用環境だけで使う）
+# API_BASE_URLの本番APIへ送る（専用環境だけで使う）
 mise run crawl:latest -- --remote-api --resort rusutsu-resort
 ```
 
@@ -133,7 +132,7 @@ mise run crawl:latest -- --remote-api --resort rusutsu-resort
 PostgreSQLの `DataDocument` に保存する。従来ファイルの相対パスをキーにし、JSON本体、
 hash、versionを持つ。Git側のファイルは初回投入元または開発用fixtureとして残す。
 
-- 本番Next.jsは本番DBを直接使う。`DATA_API_BASE_URL` を設定したローカルNext.jsは、
+- 本番Next.jsは本番DBを直接使う。`API_BASE_URL` を設定したローカルNext.jsは、
   同じ本番データを内部APIから読み書きし、本番DBへ直接接続しない。
 - DBに文書がなければ欠損として扱う。通常運用ではGitファイルへの実行時fallbackはない。
   公開用の最新状況も `CrawlLatestCurrent` を使い、ローカルの検証JSONへ戻らない。
@@ -192,7 +191,7 @@ DBバックアップを復元して基本情報を確保する。文書投入は
 固定件数の一致ではなく、使用中の対応表から営業状況を一意に埋められるかを検証する。
 欠損・曖昧さは項目ごとに不明とし、取得できた正常項目の採用は止めない。
 保存時に反映・集計し、表示時はsnapshot IDの一致だけを確認する。
-処理と掲載形式の例外一覧は [営業状況の対応表検証](crawler-operation-coverage.md) を参照。
+処理と掲載形式の例外一覧は [営業状況の対応表検証](d0012_crawler-operation-coverage.md) を参照。
 
 ## DOMの保存
 
@@ -252,10 +251,9 @@ Cookie、Authorization、API key、フォーム値等はDOM保存前に除去し
 - 実行対象は `resorts/*.ts` から自動列挙し、`template.ts`、`*_before.ts`、テストファイルは
   除外する。現在93本だが、条件を満たすクローラーを追加すれば対象数も増える。
 
-専用schedulerにも `DATA_API_BASE_URL` と
-`INTERNAL_DATA_API_CRAWLER_TOKEN` を設定する。これにより正常結果はDBへ、警告・失敗DOMは本番の
-非公開volumeへ送られる。schedulerへ本番DBの接続文字列、admin用トークン、diagnostics用
-トークンは渡さない。日次lockとバッチレポートは `crawler_worker_artifacts` volumeへ保存する。
+専用schedulerにも `API_BASE_URL` と
+`API_BEARER_TOKEN` を設定する。これにより正常結果はDBへ、警告・失敗DOMは本番の
+非公開volumeへ送られる。schedulerへ本番DBの接続文字列は渡さない。日次lockとバッチレポートは `crawler_worker_artifacts` volumeへ保存する。
 
 ## GitHubに残すもの
 
@@ -289,8 +287,8 @@ Cookie、Authorization、API key、フォーム値等はDOM保存前に除去し
 
 ## GitHubからの本番設定
 
-APIキー3つはGitHub Actionsの同名Secretsへ登録する。各64桁の異なる16進文字列を要求する。
-本番URLはVariable `DATA_API_BASE_URL`へ指定でき、省略時は既存appのAUTH_URLから組み立てる。
+APIキー `API_BEARER_TOKEN` はGitHub Actionsの同名Secretへ登録する。64桁の16進文字列を要求する。
+本番URLはVariable `API_BASE_URL`へ指定でき、省略時は既存appのAUTH_URLから組み立てる。
 初回の `INITIALIZE_CANONICAL_DATA=true` はVariablesで制御する。最新情報schedulerは標準で有効。
 停止する場合だけ `ENABLE_CRAWL_LATEST_SCHEDULER=false` を指定して再デプロイする。
 任意のログイン設定Secrets（AUTH_SECRET、GOOGLE_CLIENT_ID、GOOGLE_CLIENT_SECRET、ADMIN_EMAILS）は、非空で指定したものだけ更新する。
@@ -306,11 +304,11 @@ Composeは `--env-file /dev/null` と生成済み環境変数を使い、値のd
 成功後だけ `runtime.env.sh` へ確定する。設定とコピーのフォルダーは0700で、Git作業ツリー外に置く。
 ホストへのPython・flock・age・rcloneの導入や `/etc` の手作業は不要。Nodeの補助処理はアプリイメージ内で実行する。
 
-本番appはDBへ直接接続し、DATA_API_BASE_URLは接続用に渡さない。schedulerにはAPI URLとcrawlerキーだけを渡す。
-MacのNext.jsには管理用、診断取得ツールにはdiagnostics用を設定する。非loopback接続はHTTPS必須。
+本番appはDBへ直接接続し、API_BASE_URLは接続用に渡さない。schedulerにはAPI URLと `API_BEARER_TOKEN` だけを渡す。
+MacのNext.jsと診断取得ツールには `API_BEARER_TOKEN` を設定する。非loopback接続はHTTPS必須。
 既存のHTTPS経路・SSH/Docker権限・本番コンテナが利用できることを前提とし、VPSやOAuthサービスを新規構築する処理は含まない。
 
-詳しい操作は[やること手順書](backend-migration-beginner-guide.md)、基本用語と図は[解説書](backend-migration-explained.md)を参照する。
+詳しい操作は[やること手順書](d0004_backend-migration-beginner-guide.md)、基本用語と図は[解説書](d0003_backend-migration-explained.md)を参照する。
 
 ## VPS内のコピーとデプロイの自動化
 
@@ -348,4 +346,4 @@ DOM volume権限準備 → app/scheduler停止 → migration → 明示時のみ
 本番appの通常起動はサーバー起動だけで、毎起動のimportは行わない。
 
 メール通知は未実装。日次実行と診断記録を確認する。
-具体的な操作と復旧判断は[運用手順書](backend-migration-runbook.md)を参照する。
+具体的な操作と復旧判断は[運用手順書](d0005_backend-migration-runbook.md)を参照する。

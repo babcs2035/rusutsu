@@ -17,12 +17,12 @@ description: 雪マジ（マジ☆部の19〜22歳向けリフト券無料・割
 | --- | --- |
 | `yukimaji` 欄の書き方（無料・割引・price_rules・fees・requirements） | `.shared/skills/collect-ski-lift-ticket-pricing/references/data-model.md` の「## yukimaji（雪マジ）」 |
 | 詳細ページの読み方 | 同 `SKILL.md` の「Stage 1b: 雪マジの取得」 |
-| 画面・計算の仕様（Y1〜Y15） | `docs/plans/lift-ticket-duration-test-cases.md` の「YM」 |
+| 画面・計算の仕様（Y1〜Y15） | `docs/d0015_lift-ticket-duration-test-cases.md` の「YM」 |
 | 担当への依頼文 | `references/agent-brief.md` |
 | 点検 | `scripts/yukimaji.mjs check` |
 
 データ:
-- 掲載（読むだけ）: 本番 `/api/internal/v1/yuki-magi`（`.env.local` の `DATA_API_BASE_URL` と管理トークン）。
+- 掲載（読むだけ）: 本番 `/api/admin/yukimaji`（`.env.local` の `API_BASE_URL` と `API_BEARER_TOKEN`）。
 - 施設番号とスキー場IDの対応: `src/private/data/yukimaji/facility-map.json`（Git管理）。
   jalan.net 詳細URLの `CLYUKI…` が鍵。志賀高原のように1施設が複数スキー場にまたがる場合は全IDを並べる。
 - 更新先: `src/private/data/lift-ticket/<resort-id>/<season>.json` の `yukimaji`。本番へは `mise run lift-ticket:publish` で反映する。

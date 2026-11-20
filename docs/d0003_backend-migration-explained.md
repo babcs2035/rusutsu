@@ -2,11 +2,11 @@
 
 この資料は、「指示どおりに操作するだけでなく、何が起きているのかも分かりたい」人向けです。
 順番に読むと、サーバー・DB・Docker・API・GitHub Actionsが、このアプリでどうつながるか分かる構成です。
-実際の操作は別冊の[やること手順書](backend-migration-beginner-guide.md)にまとめています。
+実際の操作は別冊の[やること手順書](d0004_backend-migration-beginner-guide.md)にまとめています。
 
 旧称・ふりがなもDBに保存し、管理画面から変更できるようになりました。
 AIで作成するレビューは、JSONを制作物として残し、公開時にAPI経由でDBへ保存します。
-具体的な操作は[日常のデータ編集・レビュー公開手順](content-publishing-guide.md)を参照してください。
+具体的な操作は[日常のデータ編集・レビュー公開手順](d0008_content-publishing-guide.md)を参照してください。
 
 ## 1. 最初に、3つのものを区別する
 
@@ -297,5 +297,5 @@ DBコピーだけでDOMファイルまで復元できるわけではありませ
 | 全件収集のVariableを未設定またはtrueにして再公開する | 最新情報クローラーが次の14:00から定期実行される |
 | test_restore付きでバックアップを実行する | VPS内にコピーし、一時DBへ戻せるかも確認する |
 
-実際の入力欄と順番は[やること手順書](backend-migration-beginner-guide.md)へ戻って確認してください。
-実装上の詳しい仕様は[設計資料](backend-data-architecture.md)、具体的なコマンドは[運用手順書](backend-migration-runbook.md)にあります。
+実際の入力欄と順番は[やること手順書](d0004_backend-migration-beginner-guide.md)へ戻って確認してください。
+実装上の詳しい仕様は[設計資料](d0001_backend-data-architecture.md)、具体的なコマンドは[運用手順書](d0005_backend-migration-runbook.md)にあります。

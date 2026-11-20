@@ -2,7 +2,7 @@
 
 **Rusutsu** は，日本全国のスキー場情報を複数の外部サイトから収集・名寄せし，一元的に可視化する Next.js アプリケーションである．基本情報，コース／リフトの稼働状況，気象予報，積雪履歴，リフト券料金，レビューを組み合わせ，スキー場の「今」と「これから」を把握する．一般利用向けの公開サイト（地図・検索・詳細・比較）と，データの入力・修正を行う管理画面（`/admin`）から構成される．
 
-バックエンド移行の資料は、[初心者向けの操作手順書](docs/backend-migration-beginner-guide.md)と[サーバー・DB・Docker・APIの解説書](docs/backend-migration-explained.md)に分けています。外部バックアップを使わず、GitHubの設定から配備する構成です。
+バックエンド移行の資料は、[初心者向けの操作手順書](docs/d0004_backend-migration-beginner-guide.md)と[サーバー・DB・Docker・APIの解説書](docs/d0003_backend-migration-explained.md)に分けています。外部バックアップを使わず、GitHubの設定から配備する構成です。
 
 ## 機能
 
@@ -113,7 +113,7 @@ mise run setup
 setupは運用データを自動投入しない．完全に空のDBではスキー場マスターも作らず，
 古いクローラーで再構築しない．本番APIの利用またはDBバックアップの復元を選ぶ．
 既存環境の安全な再起動，本番APIへの切り替え，fresh DBの扱いは
-[`docs/backend-migration-runbook.md`](docs/backend-migration-runbook.md) を参照する．
+[`docs/d0005_backend-migration-runbook.md`](docs/d0005_backend-migration-runbook.md) を参照する．
 
 ### 4. 開発サーバー起動
 
@@ -133,10 +133,8 @@ mise run dev
 | `AUTH_TRUST_HOST`                           | Auth.js の host 信頼設定                                     |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth の認証情報                                      |
 | `ADMIN_EMAILS`                              | 管理者のメールアドレス（カンマ区切り）．`admin` ロールを付与 |
-| `INTERNAL_DATA_API_ADMIN_TOKEN`             | ローカルNext.jsから正本データを読み書きする管理用トークン（クローラーには渡さない） |
-| `INTERNAL_DATA_API_CRAWLER_TOKEN`           | `crawl_latest` の結果と警告・失敗DOMを投入する専用トークン |
-| `INTERNAL_DATA_API_DIAGNOSTICS_TOKEN`       | 警告・失敗runとDOMを取得する専用トークン                 |
-| `DATA_API_BASE_URL`                         | ローカルNext.jsと本番のcrawl_latest専用schedulerが接続する正本API URL（本番appコンテナには渡さない） |
+| `API_BEARER_TOKEN`                          | 信頼できるサーバー側処理（ローカルNext.js、scheduler、CLI）全体で使うbearerトークン（ブラウザーには渡さない） |
+| `API_BASE_URL`                              | ローカルNext.jsと本番のcrawl_latest専用schedulerが接続する正本API URL（本番appコンテナには渡さない） |
 | `CRAWLER_ARTIFACT_ROOT`                     | 警告・失敗時だけ保存する診断DOMの永続化ディレクトリ       |
 | `CRAWLER_ARTIFACT_RETENTION_DAYS`           | 診断DOMの保持期間（既定30日） |
 | `DATA_DOCUMENT_ALLOW_BUNDLED_FIXTURES`      | 開発DBへの初回移行前だけ，同梱fixtureを読む明示設定．通常は未設定 |
@@ -147,10 +145,10 @@ mise run dev
 | `APP_PORT` / `DB_PORT`                      | Dockerで公開するアプリ / DBのポート番号                      |
 
 Next.jsをホストで直接起動する際の `PORT` は `.env` から読み込まれない。通常は3000番を使い、
-変更時は `PORT=4000 mise run dev` のようにコマンドへ渡す。`DATA_API_BASE_URL` は本番では
+変更時は `PORT=4000 mise run dev` のようにコマンドへ渡す。`API_BASE_URL` は本番では
 `https://host/rusutsu` のようにbase pathまで含める．本番appには接続先として渡さず，
-schedulerとローカルNext.jsで使う．3種類の内部APIトークンには異なる値を設定し，
-`NEXT_PUBLIC_*` に置かない．旧共通トークン `INTERNAL_DATA_API_TOKEN` は廃止しており使えない．
+schedulerとローカルNext.jsで使う．内部APIトークンは `API_BEARER_TOKEN` の1つのみで，
+`NEXT_PUBLIC_*` に置かない．旧共通トークンと旧のscope別トークンは廃止しており使えない．
 
 ---
 
@@ -193,11 +191,11 @@ DB変更の対象はmigration・schema・初回import・明示backfill等のpath
 `.github/workflows/database-backup.yml` はpushと無関係に毎日01:15 JSTのバックアップを要求する．
 既定で30世代と7日以内のデータを残す．保存先はSSHユーザーの `~/.local/state/rusutsu/<project>/backups/` に自動作成し，Gitの外へ置く．
 外部転送と暗号鍵の準備は不要で，VPS自体のディスク故障は対象外である．手動実行の `test_restore` で別の一時DBへの復元を確認できる．
-APIキー3つはGitHub Secretsへ登録し，既存のDB・OAuth・ポート設定はコンテナから引き継ぐ．元の `.env` は上書きしない．
+APIキーはGitHub Secretsへ登録し，既存のDB・OAuth・ポート設定はコンテナから引き継ぐ．元の `.env` は上書きしない．
 DOMはDBコピーに含まれず，古い日次lockは復元しない．
 
 初回deployと復元試験の手順は
-[`docs/backend-migration-runbook.md`](docs/backend-migration-runbook.md) を参照する．
+[`docs/d0005_backend-migration-runbook.md`](docs/d0005_backend-migration-runbook.md) を参照する．
 
 ---
 
@@ -215,7 +213,7 @@ DOMはDBコピーに含まれず，古い日次lockは復元しない．
 ### Backend & Database (PostgreSQL + Prisma 7)
 
 *   **Prisma 7 のアーキテクチャ**: driver adapter（`@prisma/adapter-pg`）方式を採用し，接続設定を `prisma.config.ts` で一元管理する．`schema.prisma` 上の静的な `url` 定義は持たない．
-*   **正本データ**: 本番PostgreSQLに運用データを集約する．本番Next.jsはDBを直接使い，`DATA_API_BASE_URL` があるローカルNext.jsはサーバーから内部APIを使う．admin編集をGit版JSONで上書きしない．
+*   **正本データ**: 本番PostgreSQLに運用データを集約する．本番Next.jsはDBを直接使い，`API_BASE_URL` があるローカルNext.jsはサーバーから内部APIを使う．admin編集をGit版JSONで上書きしない．
 *   **初回投入**: `CanonicalDataMigration` に完了を記録し，文書追加と完了記録を同じtransactionで確定する．完了後は再実行しても書き込まず，DBから削除した文書もGit版で復活させない．通常運用は実行時のGit fallbackなし．開発用fixtureの例外は明示設定がある初回移行前だけである．
 *   **公開データ**: スキー場と料金は公開項目を明示し，元JSONの未知の管理フィールドや不要な旧weather JSONを送らない．地図の座標・短縮名など，表示に必要な公開データはDevToolsから確認できる．旧weather取得のServer Actionは管理者専用である．
 *   **スケジューラ**: `src/lib/scheduler.ts` が毎日 03:00 (JST) に雪マジのみを実行する．別の `scripts/scheduleCrawlLatest.ts` は毎日14:00 (JST) に現在の `crawl_latest` 93本を実行する．どちらも起動直後には実行しない．他の従来クローラー本体と手動実行コマンドは保守用に残す．
@@ -347,9 +345,36 @@ Gitに残す．`src/private` はprivate crawler code，対応辞書，初回fixt
 ~~~
 
 正本DB、内部API、Docker volume、GitHubの役割と本番設定は
-[`docs/backend-data-architecture.md`](docs/backend-data-architecture.md) を参照する．
+[`docs/d0001_backend-data-architecture.md`](docs/d0001_backend-data-architecture.md) を参照する．
 ローカル復旧から本番移行までの具体的な順序は
-[`docs/backend-migration-runbook.md`](docs/backend-migration-runbook.md) を参照する．
+[`docs/d0005_backend-migration-runbook.md`](docs/d0005_backend-migration-runbook.md) を参照する．
+
+## ドキュメント
+
+`docs/` には `d000x_` の連番プレフィックス付きで，設計・運用・検証の文書を整理している．
+
+| ファイル | 内容 |
+| --- | --- |
+| [`d0001_backend-data-architecture.md`](docs/d0001_backend-data-architecture.md) | バックエンドとクローラーのデータ管理（正本DB・内部API・通信の流れ） |
+| [`d0002_canonical-map-storage.md`](docs/d0002_canonical-map-storage.md) | コース・リフトの正本と一覧集計 |
+| [`d0003_backend-migration-explained.md`](docs/d0003_backend-migration-explained.md) | サーバー・DB・API の基本と今回の変更の解説 |
+| [`d0004_backend-migration-beginner-guide.md`](docs/d0004_backend-migration-beginner-guide.md) | GitHub 設定から本番移行までの手順書 |
+| [`d0005_backend-migration-runbook.md`](docs/d0005_backend-migration-runbook.md) | 運用手順（配備・DBコピー・復元） |
+| [`d0006_backend-deployment-verification.md`](docs/d0006_backend-deployment-verification.md) | GitHub 設定・VPS 内コピーへの変更の検証記録 |
+| [`d0007_editor-approval-workflow.md`](docs/d0007_editor-approval-workflow.md) | 編集者と承認フロー |
+| [`d0008_content-publishing-guide.md`](docs/d0008_content-publishing-guide.md) | 旧称・ふりがな編集とレビュー公開 |
+| [`d0009_user-contributions.md`](docs/d0009_user-contributions.md) | ユーザー投稿機能 |
+| [`d0010_ui-guidelines.md`](docs/d0010_ui-guidelines.md) | UI 指針（スキー場詳細・スマホ中心） |
+| [`d0011_mobile-map-recovery.md`](docs/d0011_mobile-map-recovery.md) | タブ単位の画面復元とオフライン地図 |
+| [`d0012_crawler-operation-coverage.md`](docs/d0012_crawler-operation-coverage.md) | 営業状況の対応表検証 |
+| [`d0013_crawler-published-times.md`](docs/d0013_crawler-published-times.md) | クローラーの更新日時 |
+| [`d0014_weather-links.md`](docs/d0014_weather-links.md) | 天気サイトのリンク |
+| [`d0015_lift-ticket-duration-test-cases.md`](docs/d0015_lift-ticket-duration-test-cases.md) | リフト券・レンタル料金のテストケース |
+| [`d0016_canonical-map-verification.md`](docs/d0016_canonical-map-verification.md) | 本番 API データによる地図移行検証 |
+| [`d0017_community-composer-verification-2026-10-31.md`](docs/d0017_community-composer-verification-2026-10-31.md) | 現地レポート投稿の改善と確認記録 |
+| [`d0018_crawl-latest-audit-2026-09-05.md`](docs/d0018_crawl-latest-audit-2026-09-05.md) | crawl_latest 全国実行監査 |
+| [`d0019_backend-migration-verification-2026-09-05.md`](docs/d0019_backend-migration-verification-2026-09-05.md) | バックエンド移行のローカル検証記録 |
+| [`d0020_testing.md`](docs/d0020_testing.md) | テストの実行方法と試験用 DB の安全条件 |
 
 ## features のディレクトリ構造
 

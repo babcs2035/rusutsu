@@ -1,8 +1,8 @@
 # バックエンド移行のローカル検証記録（2026-09-05）
 
 **この記録は外部バックアップ案を含む旧版の検証履歴です。** その後のユーザー指示で外部保存を廃止し、
-GitHub設定の自動反映とVPS内コピーへ変更しました。現在の手順は[操作手順書](backend-migration-beginner-guide.md)、
-変更後の検証は[配備処理の検証記録](backend-deployment-verification.md)を参照してください。
+GitHub設定の自動反映とVPS内コピーへ変更しました。現在の手順は[操作手順書](d0004_backend-migration-beginner-guide.md)、
+変更後の検証は[配備処理の検証記録](d0006_backend-deployment-verification.md)を参照してください。
 
 本番未導入。commit、push、deploy、本番DB/APIアクセス、公式サイト・Waybackへのlive crawlは行っていない。
 既存の未コミット差分を親・submodule双方で監査し、GeoJSONの既存変更・削除を保全した。
@@ -112,7 +112,7 @@ commit・pushするまではGitHub Actionsへ渡らない。
 - メール通知、文書本文・編集者の完全な変更履歴、DOM volume全体の自動外部backup。
 
 具体的な本人・VPS管理者の作業、初回deploy順、初回flag解除とcommit順は
-[運用手順書](backend-migration-runbook.md) にまとめた。
+[運用手順書](d0005_backend-migration-runbook.md) にまとめた。
 
 一時ログは `/private/tmp/rusutsu-final-tests-20260905.log`、
 `/private/tmp/rusutsu-final-build-20260905.log`、

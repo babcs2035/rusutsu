@@ -187,7 +187,7 @@ mise run reviews:publish -- --resort <resortId> --plan <作業ディレクトリ
 
 1行目は保存せず、本番の現在値との差分を出す。対象IDと、2ファイルとも意図した内容に
 なっていることを確かめてから2行目を実行する。本番が先に更新されていて止まった場合は、
-本番側の変更を確かめてから1行目からやり直す。設定は `docs/content-publishing-guide.md` にある。
+本番側の変更を確かめてから1行目からやり直す。設定は `docs/d0008_content-publishing-guide.md` にある。
 
 ## 複数のスキー場を頼まれたとき
 

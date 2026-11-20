@@ -51,11 +51,11 @@ Google認証後の権限に `editor`（編集者）を追加した。画面と S
 
 新しいテーブルとユーザー権限のCHECK制約は `prisma/migrations/20261002000000_editor_requests/migration.sql` にある。本番へのマイグレーション適用・デプロイは今回のローカル実装には含めていない。
 
-申請と公開データを1つのDBで確定するため、DB処理は公開データを保持するサーバーで行う。`DATA_API_BASE_URL` が設定されたlocalhost環境でも、申請用の内部APIを通して一覧・内容の取得、編集の申請、修正案の保存、承認・却下・取り下げができる。ローカルDBへ申請を保存することはない。
+申請と公開データを1つのDBで確定するため、DB処理は公開データを保持するサーバーで行う。`API_BASE_URL` が設定されたlocalhost環境でも、申請用の内部APIを通して一覧・内容の取得、編集の申請、修正案の保存、承認・却下・取り下げができる。ローカルDBへ申請を保存することはない。
 
 ### localhostからサーバーのDBを使う仕組み
 
-`src/server/edit-requests/remoteClient.ts` が `POST /api/internal/v1/edit-requests` を呼ぶ。既存の内部APIと同じ `admin-data` 用トークンを使い、トークンはブラウザーへ渡さない。現在の `.env.local` の `DATA_API_BASE_URL` を維持して利用する。
+`src/server/edit-requests/remoteClient.ts` が `POST /api/admin/edit-requests` を呼ぶ。`API_BEARER_TOKEN` を使い、トークンはブラウザーへ渡さない。現在の `.env.local` の `API_BASE_URL` を維持して利用する。
 
 ローカルのログイン済みユーザーに紐づくGoogleアカウントの識別子を、ローカルサーバーで取得して送る。画面が指定したユーザーIDや権限は採用しない。接続先サーバーでは、Googleアカウントからサーバー側のユーザーを検索し、現在のDB権限を再確認する。ローカルとサーバーでユーザーIDが違っても対応できる。
 

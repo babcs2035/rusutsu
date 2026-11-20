@@ -66,7 +66,7 @@ mise run recommendations:rebuild -- --apply
 mise run recommendations:rebuild -- --apply --resort=shiga-kogen-central
 ```
 
-再計算は `DATA_API_BASE_URL` に関係なく `DATABASE_URL` のDBへ行う。本番は正本DB側で実行する必要がある。デプロイ処理はDBバックアップ／マイグレーション後、アプリ起動前に再計算する。失敗時は起動・成功記録へ進まない。DockerはCLIの依存ファイルをコピーし、イメージ作成時に読み込みを確認する。
+再計算は `API_BASE_URL` に関係なく `DATABASE_URL` のDBへ行う。本番は正本DB側で実行する必要がある。デプロイ処理はDBバックアップ／マイグレーション後、アプリ起動前に再計算する。失敗時は起動・成功記録へ進まない。DockerはCLIの依存ファイルをコピーし、イメージ作成時に読み込みを確認する。
 
 以後、正本文書の更新・統合・コースID移行と同じトランザクションで再計算する。検索時はお気に入りだけを対象に事前計算済みの行を読み、全GeoJSONを読み直さない。クライアントと本番APIでversionが異なる場合は更新が必要と表示し、待っても表示されないことを明示する。旧スコアを新しい評価として表示しない。
 

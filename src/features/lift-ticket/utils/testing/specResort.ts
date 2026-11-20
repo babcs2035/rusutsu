@@ -1,5 +1,5 @@
 /**
- * 仕様テスト（docs/lift-ticket-duration-test-cases.md）用の架空スキー場。
+ * 仕様テスト（docs/d0015_lift-ticket-duration-test-cases.md）用の架空スキー場。
  *
  * 実データと同じ LiftTicketData を、短い記述から組み立てる。
  * データは「調べたまま」の形にする（1日券が無い施設に1日券を作らない、

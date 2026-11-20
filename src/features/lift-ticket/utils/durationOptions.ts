@@ -1,7 +1,7 @@
 /**
  * 「1日」「1日＋ナイター」「ナイター」「N時間」の指定から、券の選択肢を出す。
  *
- * 仕様: docs/lift-ticket-duration-test-cases.md の S1〜S13。
+ * 仕様: docs/d0015_lift-ticket-duration-test-cases.md の S1〜S13。
  *
  * - 一番上（primary）: 時間帯の決まっていない券（1日券・時間券、またはその日の
  *   範囲をすべて含む組み合わせ）で要件を満たす最安。無ければ時間帯固定券の最安

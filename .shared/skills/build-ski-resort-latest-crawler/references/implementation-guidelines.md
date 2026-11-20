@@ -200,7 +200,7 @@ TODOはimportより前に置き、再調査URL、対象カテゴリ、今回確�
 - URL配列の欠損は `""` ではなく `[]`。
 
 - `Utils.saveLatestResult(import.meta.url, ...)` で保存先を絶対化し、親ディレクトリを作る。必須ページ取得失敗時は不完全JSONを最新値として保存しない。
-- `Utils.saveLatestResult` は必ず `await` する。`DATA_API_BASE_URL` が設定されている実行では `.env` の `INTERNAL_DATA_API_CRAWLER_TOKEN` を使ってサーバーへ送信し、個別クローラーからローカルの最新JSONを直接書かない。クローラーへ `INTERNAL_DATA_API_ADMIN_TOKEN` を渡してはならない。非loopbackの `DATA_API_BASE_URL` はHTTPS必須で、平文HTTPを許可するのは `localhost`、`127.0.0.1`、`[::1]` だけとする。トークン不足、認証失敗、通信失敗は成功扱いにせず非0で終了する。
+- `Utils.saveLatestResult` は必ず `await` する。`API_BASE_URL` が設定されている実行では `.env` の `API_BEARER_TOKEN` を使ってサーバーへ送信し、個別クローラーからローカルの最新JSONを直接書かない。非loopbackの `API_BASE_URL` はHTTPS必須で、平文HTTPを許可するのは `localhost`、`127.0.0.1`、`[::1]` だけとする。トークン不足、認証失敗、通信失敗は成功扱いにせず非0で終了する。
 - 最終結果は共有検証でも全コース・リフトの名前と状態、重複、source URL、source URLがあるカテゴリの空データを検査する。ただし、共有検証を理由にサイト固有の生値チェックを省略しない。未知の生値は変換時点で警告し、DOMに残るようにする。
 - 抽出例外はbrowserが開いている間に `console.error` へ渡して `process.exitCode = 1` を設定し、その後 `finally` でbrowserを閉じる。browser close時に診断保存とremote API送信が完了するため、例外をbrowser close後に初めて記録する構造にしない。
 - 取得値の変換表にデフォルトの成功値を置かない。未知値は生値付きで警告し、対応する診断DOMを保存する。

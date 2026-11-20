@@ -20,7 +20,7 @@ description: 全スキー場のゲレンデマップ（SkiResortLinks の mapUrl
 | 点検・候補抽出・実画面測定・一覧画像・反映 | `scripts/trail-map.mjs`（`check` / `scan` / `render` / `sheet` / `apply`） |
 
 データ:
-- 正本: 本番の DataDocument `SkiResortLinks.json`（`.env.local` の `DATA_API_BASE_URL` と管理トークンで読み書き）。
+- 正本: 本番の DataDocument `SkiResortLinks.json`（`.env.local` の `API_BASE_URL` と `API_BEARER_TOKEN` で読み書き）。
   リポジトリの `src/private/data/SkiResortLinks.json` は古い同梱版なので読まない・書かない。
 - 前回の指紋: `src/private/data/trail-map-watch/state.json`（Git管理。点検のたびに更新）。
 - 作業領域: `src/private/data/resorts-temporary/tmp/trail-map-audit/<run-id>/`（Git管理外）。
@@ -62,7 +62,7 @@ description: 全スキー場のゲレンデマップ（SkiResortLinks の mapUrl
    ```
 
    NGの施設は `screens/` にPC・スマホのスクリーンショットが残る。全施設で同じように崩れる（枠の作り・中継の
-   エラー表示など画面側の原因）なら、データでは直さず、親が画面の実装を直す（`docs/ui-guidelines.md` を読んでから）。
+   エラー表示など画面側の原因）なら、データでは直さず、親が画面の実装を直す（`docs/d0010_ui-guidelines.md` を読んでから）。
 
 3. **担当に振る。** `tasks.json` のバッチを `references/agent-brief.md` の依頼文で1つずつ渡す。
    優先順は `broken` → `stale-suspect` → `display-warn`（`map-multiple` を含む）→ `find`（アクティブ優先）。

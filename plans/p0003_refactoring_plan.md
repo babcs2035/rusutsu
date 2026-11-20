@@ -167,7 +167,7 @@ font は `next/font/google` の自己配信から Google Fonts の CDN へ切り
 - ToggleSection は Collapsible，UnderlineTabs は既存 Tabs へ内部を移す．開閉・選択・mount・keyboard/focus・保持状態を一致させる．ライブラリを使う LoadingSpinner/ConfirmDialog，FilterConditionFields，WeatherLinkChips，LinkGroups 等の既存共有部品を直接再利用する．
 - 通常・読み込み・空・エラー・完了でヘッダー・×・幅・高さを揃える．比較リスト編集の重なる画面，天気 iframe 内の横 scroll と比較列の scroll，地図・断面図の連動を維持する．詳細・比較へログインボタンを置かない．
 
-**完了条件:** [UI 指針](../docs/ui-guidelines.md)に従い，PC と 375 px，詳細 346/500 px，該当 popup 320 px で画像・操作・computed style を比較する．4 サイトの天気リンクが各 1 件のときの横一列，閉じる／戻る，入力保持，レスポンシブな余白と折り返しを確認する．
+**完了条件:** [UI 指針](../docs/d0010_ui-guidelines.md)に従い，PC と 375 px，詳細 346/500 px，該当 popup 320 px で画像・操作・computed style を比較する．4 サイトの天気リンクが各 1 件のときの横一列，閉じる／戻る，入力保持，レスポンシブな余白と折り返しを確認する．
 
 ## 8. script・コマンド・配備先を整理する（R10/R15/R16）
 

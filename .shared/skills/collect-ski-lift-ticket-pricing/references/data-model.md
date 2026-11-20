@@ -833,7 +833,7 @@ party_rules を適用し、**個別購入の合計と比べて安い方**を返�
 
 ★**マジ☆部「雪マジ」（19〜22歳向けのリフト券無料・割引クーポン）の掲載内容。**
 画面は年齢 18〜22歳の入力で、利用日がクーポンの条件に合えば「雪マジ無料」「雪マジ割引」を
-出す（判定の仕様は `docs/plans/lift-ticket-duration-test-cases.md` の YM）。
+出す（判定の仕様は `docs/d0015_lift-ticket-duration-test-cases.md` の YM）。
 出典は https://majibu.jp/pickup/yukimaji/place.html の施設一覧と、各施設の
 jalan.net/majibu 詳細ページ。詳細ページを `sources` に保存し、**掲載文のまま記録する**
 （「平日」に祝日を含むか等、書かれていないことを補わない）。

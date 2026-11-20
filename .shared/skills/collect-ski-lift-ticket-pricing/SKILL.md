@@ -513,8 +513,8 @@ URL調査のみの依頼はここで報告して終了する。
 ## 本番DBへの反映
 
 本番反映まで依頼され、照会テストまで終えた候補だけを本番DBへ保存する。
-接続先とトークンは `.env.local` の `DATA_API_BASE_URL` と
-`INTERNAL_DATA_API_ADMIN_TOKEN` を使う。
+接続先とトークンは `.env.local` の `API_BASE_URL` と
+`API_BEARER_TOKEN` を使う。
 
 プレビュー前に開始時のローカルSHA-256と現在のファイルを照合する。途中で
 他者編集があれば上書きせず保留する。現行publishは確定版パスを読むため、
@@ -602,7 +602,7 @@ rm -rf src/private/data/resorts-temporary/tmp/lift-ticket/<resort-id>
   「架空ケースなし」の警告が出た特徴を報告する。警告は `tests/fixtures/fictional/` に架空ケースを足すか、
   `references/coverage-acknowledged.json` に理由付きで載せるまで残る（`references/fictional-fixtures.md`）
 - 抽出関数（`scripts/lift-ticket-features.mjs`）が軸として持たない新しい構造（`notes_ja` にだけ書いた条件など）は
-  機械では拾えないので、`docs/plans/lift-ticket-duration-test-cases.md` の架空ケースと Y の特徴表に当てはまらない
+  機械では拾えないので、`docs/d0015_lift-ticket-duration-test-cases.md` の架空ケースと Y の特徴表に当てはまらない
   料金・レンタル・雪マジの型を見つけたら、施設名と特徴を1行で報告し、文書・架空フィクスチャ・抽出関数に足す
 - 機械検証、独立監査、シナリオテストの結果
 - 判読不能、unknown、未解決事項、human_review_required

@@ -2,7 +2,7 @@
 
 `scripts/lift-ticket-features.mjs` の `extractFeatures(data)` が返す特徴キーの一覧。実在施設も架空スキー場も同じ関数で抽出する。
 キーは `分野:名前` または `分野:名前=値`。`=値` を持つキーは値ごとに別の特徴として数える（`product:validity.mode=hours_from_first_use` と `=fixed_time_window` は別）。
-架空ケースの足し方・照合は `references/fictional-fixtures.md`、警告の考え方は `docs/plans/lift-ticket-duration-test-cases.md` の Y。
+架空ケースの足し方・照合は `references/fictional-fixtures.md`、警告の考え方は `docs/d0015_lift-ticket-duration-test-cases.md` の Y。
 
 ## 読み方の約束
 

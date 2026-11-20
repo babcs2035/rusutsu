@@ -12,7 +12,7 @@
 - `src/features/community/location.ts` と `src/server/community/operations.ts`：投稿地点からコース・リフト線までの最短距離が500m以内かを画面・保存時に検証する。
 - `src/features/map/MapLibreResortMap.tsx`：長押しでピンを追加・移動し、離したときの通常クリックを抑止する。移動や複数指の操作を長押しとして扱わない。
 - `src/features/resort-detail/SkiResortDetailView.tsx` と `components/ResortMapSection.tsx`：既存の地図の上に高さ調整できる投稿パネルを重ねる。ドラッグ中はパネルのCSSだけを更新し、地図をリサイズ・再作成しない。投稿中のURLを保持して再読み込みにも対応する。
-- `docs/user-contributions.md`：操作・保存方針・制約を更新。
+- `docs/d0009_user-contributions.md`：操作・保存方針・制約を更新。
 
 テストの追加・更新：`composerDraft.test.ts`、`draftStorage.test.ts`、`composerEvents.test.ts`、`location-exif.test.ts`、`server/community/community.integration.test.ts`、`server/community/remoteIntegration.ts`。
 

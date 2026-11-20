@@ -44,11 +44,11 @@ ChatGPTでdetail.jsonを作り、CodexやClaude Codeでarticle.jsonを作る流�
 
 ### Macの設定（初回のみ）
 
-プロジェクト直下の`.env.local`に、既存の管理用キーを設定します。
+プロジェクト直下の`.env.local`に、既存のAPIキーを設定します。
 
 ```dotenv
-DATA_API_BASE_URL="https://実際の本番ドメイン/rusutsu"
-INTERNAL_DATA_API_ADMIN_TOKEN="GitHub Secretsに登録した管理用キー"
+API_BASE_URL="https://実際の本番ドメイン/rusutsu"
+API_BEARER_TOKEN="GitHub Secretsに登録したキー"
 ```
 
 専用コマンドはAPIへ直接通信するため、ローカルの開発サーバーやDBを起動する必要はありません。

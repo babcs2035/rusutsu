@@ -2,7 +2,7 @@
 
 ゲレンデマップURL・SNSと同じく、本番DBの `data_documents` にある
 `SkiResortLinks.json` 文書を正本にする。ローカル実行も
-`DATA_API_BASE_URL` の設定時は本番の正本APIを使う。
+`API_BASE_URL` の設定時は本番の正本APIを使う。
 
 スキー場ごとの `tenkijpUrls` / `snowForecastUrls` / `weathernewsUrls` は
 他のリンクと同じ `{ url, description? }` の配列。`description` は地点名。

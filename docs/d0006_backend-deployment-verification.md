@@ -25,7 +25,7 @@
 - DB変更前・日次のコピーを同じVPSのSSHユーザーのホーム内へ保存。
 - バックアップと配備をGitHub concurrencyとDockerの期限付きロックで排他。
 - 手動`test_restore`で、同じVPS内の使い捨てDBへ復元する処理を追加。
-- 初心者向けの[操作手順書](backend-migration-beginner-guide.md)と[仕組みの解説書](backend-migration-explained.md)を作成。
+- 初心者向けの[操作手順書](d0004_backend-migration-beginner-guide.md)と[仕組みの解説書](d0003_backend-migration-explained.md)を作成。
 - README、運用手順、設計資料を新しい方針へ更新。旧検証記録は過去版であることを明記。
 
 ## ローカル検証

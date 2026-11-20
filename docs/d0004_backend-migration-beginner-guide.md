@@ -1,8 +1,8 @@
 # やること手順書：GitHubの設定からRusutsuを移行する
 
-**あなたがまずすることは、GitHubにAPIキーを3つ登録し、初回のスイッチを設定することです。**
+**あなたがまずすることは、GitHubにAPIキーを1つ登録し、初回のスイッチを設定することです。**
 外部バックアップ先の契約、暗号鍵の準備、友人への事前の設定依頼は、この手順にはありません。
-仕組みから知りたい場合は、別冊の[基本から理解する解説書](backend-migration-explained.md)を読んでください。
+仕組みから知りたい場合は、別冊の[基本から理解する解説書](d0003_backend-migration-explained.md)を読んでください。
 
 この手順は、既存のGitHub ActionsからVPSへ公開できており、本番のアプリとDBが残っている環境を対象にしています。
 新しいコードを最初に1回公開する必要があります。**GitHubの設定を変えるだけで、Macにある未公開のコードが本番へ届くわけではありません。**
@@ -26,11 +26,11 @@ VPS内のコピーは、移行失敗や誤編集から戻すためのもので�
 この改修はまだ本番へ反映していません。本番の設定や接続を実際に確認するのは公開時です。
 既存のSSH接続・Dockerの権限などに問題がある場合は、その具体的なエラーが出てから対応します。
 
-## 1. APIキーを3つ用意する
+## 1. APIキーを1つ用意する
 
 **作業する場所：あなたのMacの「ターミナル」。**
 APIキーは、プログラムが「許可された相手です」と伝えるための長い合言葉です。
-今回の3つは用途が違うので、別々の値にします。
+今回は1つだけです。
 
 1. Macで「ターミナル」を開く。
 2. 次の1行を入力し、Enterを押す。
@@ -39,10 +39,9 @@ APIキーは、プログラムが「許可された相手です」と伝える�
 openssl rand -hex 32
 ```
 
-3. 表示された64文字の英数字をコピーし、次の「2」で1つ目のSecretに登録する。
-4. 同じコマンドをもう一度実行して2つ目を登録し、さらにもう一度実行して3つ目を登録する。
+3. 表示された64文字の英数字をコピーし、次の「2」でSecretに登録する。
 
-**同じ出力を3か所に貼るのではなく、毎回生成します。**
+**毎回、新しい値を生成します。**
 これらはMacのパスワードやGoogleのパスワードとは別物です。
 公開する資料やチャットに貼らず、安全なパスワード保管先に保存してください。
 
@@ -59,9 +58,7 @@ openssl rand -hex 32
 
 | Name：そのままコピーする名前 | Secret：入力する値 |
 | --- | --- |
-| `INTERNAL_DATA_API_ADMIN_TOKEN` | 1回目に生成した64文字 |
-| `INTERNAL_DATA_API_CRAWLER_TOKEN` | 2回目に生成した64文字 |
-| `INTERNAL_DATA_API_DIAGNOSTICS_TOKEN` | 3回目に生成した64文字 |
+| `API_BEARER_TOKEN` | 生成した64文字 |
 
 同名のSecretがある場合は編集します。Secretの値は、保存後にGitHubから読み直せません。
 入力画面の説明は[GitHub公式のSecrets手順](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets)にもあります。
@@ -85,7 +82,7 @@ openssl rand -hex 32
 `/home/ユーザー名/rusutsu`のように`/`から始まる絶対パスでも指定できます。
 Mac上のパスや、この例をそのまま貼るのではなく、従来の配置先を使ってください。
 
-**完了の目印：新しい3つの名前がSecrets一覧にあり、既存の接続設定も残っている。**
+**完了の目印：`API_BEARER_TOKEN` がSecrets一覧にあり、既存の接続設定も残っている。**
 
 ## 3. 初回のスイッチと、本番URLを登録する
 
@@ -100,7 +97,7 @@ Secretsは秘密の値、Variablesは公開されても困らない設定を入�
 | --- | --- | --- |
 | `INITIALIZE_CANONICAL_DATA` | `true` | 初回だけ、料金・レビュー等のファイルと短縮名をDBへ取り込む |
 | `ENABLE_CRAWL_LATEST_SCHEDULER` | 未設定または`true` | 最新営業情報を毎日14時に自動収集する。停止時だけ`false`にして再公開 |
-| `DATA_API_BASE_URL` | あなたの本番サイトのURL。例：`https://example.com/rusutsu` | APIと公開後の動作確認の接続先 |
+| `API_BASE_URL` | あなたの本番サイトのURL。例：`https://example.com/rusutsu` | APIと公開後の動作確認の接続先 |
 
 `true`はON、`false`はOFFです。半角小文字で、引用符を付けずに入力します。
 URLは、普段ブラウザーで開く本番サイトのアドレスを確認して入力します。`example.com`は説明用なので、そのまま使いません。
@@ -120,7 +117,7 @@ Variablesの画面は[GitHub公式の変数設定手順](https://docs.github.com
 この段階で依頼する内容は次のとおりです。
 
 ```text
-新しいAPIキー3つと、初回用のGitHub Variablesを登録しました。
+新しいAPIキーと、初回用のGitHub Variablesを登録しました。
 外部バックアップを使わない版の公開前確認を進めてください。
 親リポジトリと src/private の必要な変更がそろっていることを確認してください。
 実行用Dockerイメージのビルド・起動など、未完了の確認があれば先に終えてください。
@@ -185,7 +182,7 @@ Deployment completed; database and /rusutsu readiness checks passed.
 
 開発担当に「まず1スキー場をMacのファイルに保存して確認し、その後1件、次に数件を本番へ保存して確認する」と依頼します。
 公式サイトへの取得と本番データの更新を行うため、対象を決めて実施します。
-詳細なコマンドは[運用手順書](backend-migration-runbook.md)にあります。
+詳細なコマンドは[運用手順書](d0005_backend-migration-runbook.md)にあります。
 
 確認が済んだら、次の操作で全件の定期実行を始めます。
 
@@ -234,7 +231,7 @@ Deployment completed; database and /rusutsu readiness checks passed.
 
 ## 困ったとき
 
-旧称・ふりがなの編集と、AIで作ったレビューの公開は、[日常のデータ編集・レビュー公開手順](content-publishing-guide.md)を参照してください。
+旧称・ふりがなの編集と、AIで作ったレビューの公開は、[日常のデータ編集・レビュー公開手順](d0008_content-publishing-guide.md)を参照してください。
 
 ### 管理画面の「取得結果あり／なし」について
 
@@ -248,15 +245,15 @@ DBに採用済みの取得結果があればそれを優先し、なければ本
 
 修正版をデプロイした後、両方の管理画面を再読み込みし、同じスキー場の表示と
 対応付け画面のコース・リフト名が一致することを確認してください。
-ローカルも同じ修正版を使い、`DATA_API_BASE_URL`を本番URLに設定します。
+ローカルも同じ修正版を使い、`API_BASE_URL`を本番URLに設定します。
 この修正のためのDB再移行、APIキーの変更、クローラーの再実行は不要です。
 
 ### エラーが出た場合
 
 | 止まった場所・内容 | 最初に見るもの |
 | --- | --- |
-| Prepare production settingsで失敗 | APIキー3つが64文字で、すべて違う値か |
-| 本番URLのエラー | DATA_API_BASE_URLがHTTPSで、末尾が/rusutsuか |
+| Prepare production settingsで失敗 | APIキーが64文字か |
+| 本番URLのエラー | API_BASE_URLがHTTPSで、末尾が/rusutsuか |
 | 既存のログイン設定がない | エラーに示された同名Secretを登録する。分からない場合は開発担当と確認 |
 | `Login Succeeded`の後に`cd: ... no such file or directory` | `DEPLOY_TARGET`への移動失敗。下の説明を参照 |
 | SSH接続やDockerの権限で失敗 | 従来の公開用Secretsと接続状況。VPS側の対応が必要と判明した場合だけ、その内容を友人に依頼 |
@@ -288,5 +285,5 @@ SSH接続とイメージ保管場所へのログインは成功しています�
 APIキーの作り直しは不要です。`INITIALIZE_CANONICAL_DATA`などの初回設定は、
 初回デプロイが成功するまで元の手順どおりに保ちます。
 
-仕組みを理解したい場合は[解説書](backend-migration-explained.md)、
-開発担当向けの具体的な操作は[運用手順書](backend-migration-runbook.md)を参照してください。
+仕組みを理解したい場合は[解説書](d0003_backend-migration-explained.md)、
+開発担当向けの具体的な操作は[運用手順書](d0005_backend-migration-runbook.md)を参照してください。

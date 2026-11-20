@@ -1,6 +1,6 @@
 # 運用手順：GitHub設定から配備し、VPS内にDBコピーを残す
 
-初心者向け資料は、[やること手順書](backend-migration-beginner-guide.md)と[仕組みの解説書](backend-migration-explained.md)に分けている。
+初心者向け資料は、[やること手順書](d0004_backend-migration-beginner-guide.md)と[仕組みの解説書](d0003_backend-migration-explained.md)に分けている。
 本書は開発・運用担当者向け。外部バックアップを使わない現在の方針を記す。本番反映はまだ実施していない。
 
 ## 1. 前提と保存先
@@ -28,13 +28,11 @@ Settings → Secrets and variables → Actionsで設定する。
 
 ### 必須の新規Secrets
 
-- `INTERNAL_DATA_API_ADMIN_TOKEN`
-- `INTERNAL_DATA_API_CRAWLER_TOKEN`
-- `INTERNAL_DATA_API_DIAGNOSTICS_TOKEN`
+- `API_BEARER_TOKEN`
 
-各値は`openssl rand -hex 32`で別々に生成した64桁の16進文字列。
-同じ値の使い回し・短い値は、VPSへ接続する前の設定検証で拒否する。
-旧共通`INTERNAL_DATA_API_TOKEN`は利用しない。
+値は`openssl rand -hex 32`で生成した64桁の16進文字列。
+短い値は、VPSへ接続する前の設定検証で拒否する。
+旧共通トークンと旧のscope別トークンは利用しない。
 
 ### Variables
 
@@ -42,9 +40,9 @@ Settings → Secrets and variables → Actionsで設定する。
 | --- | --- | --- |
 | `INITIALIZE_CANONICAL_DATA` | `true` | 初回成功後`false` |
 | `ENABLE_CRAWL_LATEST_SCHEDULER` | 未設定または`true`で有効 | 停止時だけ`false`として再デプロイ |
-| `DATA_API_BASE_URL` | 本番HTTPS URL、末尾`/rusutsu` | URL変更時だけ更新 |
+| `API_BASE_URL` | 本番HTTPS URL、末尾`/rusutsu` | URL変更時だけ更新 |
 
-`DATA_API_BASE_URL`は同名Secretでも渡せるがVariableを優先する。
+`API_BASE_URL`は同名Secretでも渡せるがVariableを優先する。
 省略した場合は既存appのAUTH_URLから組み立てる。AUTH_URLに/rusutsuが含まれていてもoriginへ正規化する。
 無効なURL・未知のpath・HTTPは拒否する。
 
@@ -142,7 +140,7 @@ ktakサーバーの専用コンテナで、最新情報は毎日14:00 JSTに1回
 旧来の基本情報・天気等のコードと手動コマンドは残すが定期実行しない。
 未知状態などは推測変換せず、問題のあるカテゴリを保留する。雪マジは全取得・検証成功時だけ更新する。
 
-診断取得にはdiagnostics用キーを使う。
+診断取得には`API_BEARER_TOKEN`を使う。
 
 ```bash
 mise run crawl:diagnostics:pull -- --resort rusutsu-resort
@@ -185,11 +183,11 @@ VPS内コピーを別DBへ復元して必要なデータを取り出し、最新
 新規セットアップのseedは接続確認だけで、空DBのスキー場マスターは生成しない。
 本番と同じ運用データが必要なら本番導入後にAPIモードを使う。
 
-`.env.local`には本番API URLと管理用キーを設定し、既存のローカルDATABASE_URLは保持する。
+`.env.local`には本番API URLと`API_BEARER_TOKEN`を設定し、既存のローカルDATABASE_URLは保持する。
 
 ```dotenv
-DATA_API_BASE_URL="https://実際の本番ホスト/rusutsu"
-INTERNAL_DATA_API_ADMIN_TOKEN="GitHubと同じ管理用キー"
+API_BASE_URL="https://実際の本番ホスト/rusutsu"
+API_BEARER_TOKEN="GitHubと同じキー"
 ```
 
 これは説明用の値なので実値に置き換え、Gitへ保存しない。

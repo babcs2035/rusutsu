@@ -53,5 +53,5 @@ node --import tsx src/private/scripts/migrateCanonicalMaps.ts --apply --expected
 旧 `feature` / `derivedFeature` 列は旧アプリとの段階移行のためnullableで残すが、
 移行済みの現在レコードではNULLとし、新しい保存では使用しない。
 
-ローカルの `DATA_API_BASE_URL` が旧サーバーを指す間、一覧は基本情報による不明表示とし、
+ローカルの `API_BASE_URL` が旧サーバーを指す間、一覧は基本情報による不明表示とし、
 旧来の全件マップ集計には戻らない。実際の切替はデータAPI側で行う。

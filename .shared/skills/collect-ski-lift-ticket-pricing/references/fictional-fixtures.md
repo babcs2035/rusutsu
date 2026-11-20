@@ -1,6 +1,6 @@
 # 架空スキー場フィクスチャと特徴照合
 
-`docs/plans/lift-ticket-duration-test-cases.md` の架空ケースを、実在施設と同じ形式の料金JSONにしたもの。
+`docs/d0015_lift-ticket-duration-test-cases.md` の架空ケースを、実在施設と同じ形式の料金JSONにしたもの。
 目的は「実在施設にあって架空ケースに無い構造」を機械的に警告すること（文書の Y01〜Y05）。
 
 ## 置き場所
