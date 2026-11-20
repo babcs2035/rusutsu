@@ -113,6 +113,7 @@ schema と repository の所有者を，認証・本人の状態，施設・共�
 | 収集実行・監視・現在値・対応履歴 | `crawl/runs`，`crawl/monitor`，`crawl/current` |
 | artifact の登録・検索・取得 | `crawl/artifacts`，`crawl/artifacts/:id/content` |
 | 申請・投稿の管理と remote 操作 | `edit-requests`，`community` |
+| 編集画面での施設切替後の取得 | `editor/queries`（管理セッションと DB の編集権限を使用） |
 
 - 識別子（`resortId`，`runId`，`kind`/`id`，`seasonId` 等）は REST のサブパスではなくクエリパラメータで受け，実行の issue・対応履歴（mapping）も `crawl/runs` の `include`／`crawl/monitor`・`crawl/current` の `view` に集約する．申請の操作（承認・却下・取り下げ・修正）は `edit-requests` のコマンド型 POST（`operation` フィールド）で扱う．これにより route 数を抑え，DTO・エラー・token 検証を `internalApiHttp` に一元化した．
 
