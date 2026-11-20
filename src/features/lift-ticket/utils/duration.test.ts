@@ -5,10 +5,10 @@ import { test } from "node:test";
 import type { LiftTicketData, LiftTicketSearchInput } from "../types";
 import {
   calculateLiftTicket,
-  findClosedCalendar,
   selectCheapestProductForDuration,
   skiableHoursOf,
 } from "./calculateLiftTicket";
+import { findClosedCalendar } from "./ticketCalendar";
 
 const REAL = path.join(
   process.cwd(),

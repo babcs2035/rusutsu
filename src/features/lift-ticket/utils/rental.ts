@@ -17,6 +17,7 @@ import {
   addDays,
   audienceMatchesGroup,
   buildReferences,
+  calculateDurationOptions,
   calendarMatchesDate,
   formatPartyGroupLabel,
   getTodayInJapan,
@@ -26,11 +27,7 @@ import {
   seasonContains,
   sourceQuotesOf,
 } from "./calculateLiftTicket";
-import {
-  calculateDurationOptions,
-  formatHours,
-  operatingSegmentsOn,
-} from "./durationOptions";
+import { formatHours, operatingSegmentsOn } from "./durationOptions";
 
 export const TICKET_RENTAL_ITEM_LABELS: Record<TicketRentalItem, string> = {
   skis: "板",

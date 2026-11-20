@@ -11,6 +11,7 @@ import type {
   TicketCalculationLine,
   TicketCalculationResult,
   TicketConditionalOffer,
+  TicketDayDuration,
   TicketDayPlan,
   TicketDurationRequest,
   TicketPartyCategory,
@@ -22,7 +23,7 @@ import {
   priceModeOf,
 } from "../types";
 import {
-  calculateDurationOptions,
+  selectDurationOptions,
   type TicketDurationOptions,
 } from "./durationOptions";
 import {
@@ -32,6 +33,7 @@ import {
 import {
   addDays,
   calendarMatchesDate,
+  findClosedCalendar,
   getTodayInJapan,
   periodContains,
   seasonContains,
@@ -248,32 +250,6 @@ const hasUnconditionalStandardOffer = (
     offer =>
       offer.product_id === product.id && isUnconditionalStandardOffer(offer),
   );
-
-/**
- * その日が定休日・休業日なら、その根拠のカレンダーを返す。
- *
- * ★**営業していない日に料金を出してはいけない。** `hours_type: "closed"` は
- * 他の営業時間より優先する。「毎週火曜定休（12/30は営業）」は
- * `included_day_types: ["tuesday"]` ＋ `excluded_dates: ["2025-12-30"]`
- * で表されるので、
- * excluded_dates を持つ日は定休日に**一致しない**（例外的に営業する）。
- */
-export const findClosedCalendar = (
-  data: LiftTicketData,
-  dateString: string,
-) => {
-  const calendarById = new Map(
-    data.calendars.map(calendar => [calendar.id, calendar]),
-  );
-  for (const entry of data.operating_hours ?? []) {
-    if (entry.hours_type !== "closed") continue;
-    for (const calendarId of entry.calendar_ids ?? []) {
-      const calendar = calendarById.get(calendarId);
-      if (calendarMatchesDate(calendar, dateString)) return calendar;
-    }
-  }
-  return null;
-};
 
 const toMinutes = (time?: string | null) => {
   if (!time) return null;
@@ -3147,6 +3123,19 @@ const resultSourceNumbersOf = (result: TicketCalculationResult) =>
       ...result.fees.flatMap(fee => fee.sourceNumbers),
     ]),
   ].sort((left, right) => left - right);
+
+/** 券の販売条件と費用計算を，1 日の時間帯ごとの候補に適用する． */
+export function calculateDurationOptions(
+  data: LiftTicketData,
+  input: LiftTicketSearchInput,
+  date: string,
+  duration: TicketDayDuration,
+): TicketDurationOptions {
+  return selectDurationOptions(data, input, date, duration, {
+    calculateLiftTicket,
+    durationCandidateProducts,
+  });
+}
 
 /**
  * 日ごとの計画からリフト券の合計を出す。

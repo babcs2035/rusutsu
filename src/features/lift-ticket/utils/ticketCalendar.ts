@@ -183,6 +183,25 @@ export const seasonContains = (data: LiftTicketData, dateString: string) =>
     dateString,
   );
 
+/** 他の営業時間に優先する休業を，例外日を含めて判定する． */
+export function findClosedCalendar(
+  data: LiftTicketData,
+  dateString: string,
+): LiftTicketCalendar | null {
+  const calendarById = new Map(
+    data.calendars.map(calendar => [calendar.id, calendar]),
+  );
+  for (const entry of data.operating_hours ?? []) {
+    if (entry.hours_type !== "closed") continue;
+    for (const calendarId of entry.calendar_ids ?? []) {
+      const calendar = calendarById.get(calendarId);
+      if (calendar && calendarMatchesDate(calendar, dateString))
+        return calendar;
+    }
+  }
+  return null;
+}
+
 export const selectLiftTicketSeason = (
   seasons: LiftTicketData[],
   dateString: string,

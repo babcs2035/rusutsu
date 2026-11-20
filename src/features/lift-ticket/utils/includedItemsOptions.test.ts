@@ -4,7 +4,7 @@ import path from "node:path";
 import { test } from "node:test";
 import { pageUrlsOfSources } from "@/lib/publicLiftTicketData";
 import type { LiftTicketData, LiftTicketSearchInput } from "../types";
-import { calculateDurationOptions } from "./durationOptions";
+import { calculateDurationOptions } from "./calculateLiftTicket";
 
 const NAEBA = path.join(
   process.cwd(),

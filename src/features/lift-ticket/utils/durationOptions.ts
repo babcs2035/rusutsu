@@ -21,13 +21,20 @@ import type {
   TicketCalculationResult,
   TicketDayDuration,
 } from "../types";
-import {
+import type {
   calculateLiftTicket,
-  calendarMatchesDate,
   durationCandidateProducts,
+} from "./calculateLiftTicket";
+import {
+  calendarMatchesDate,
   findClosedCalendar,
   seasonContains,
-} from "./calculateLiftTicket";
+} from "./ticketCalendar";
+
+type TicketDurationPricing = {
+  calculateLiftTicket: typeof calculateLiftTicket;
+  durationCandidateProducts: typeof durationCandidateProducts;
+};
 
 type Interval = [number, number];
 
@@ -390,11 +397,12 @@ const unavailableOptions = (
  * その日の指定に対する券の選択肢。
  * 料金は calculateLiftTicket（人物区分・同行者ルール・手数料込み）で出す。
  */
-export const calculateDurationOptions = (
+export const selectDurationOptions = (
   data: LiftTicketData,
   input: LiftTicketSearchInput,
   date: string,
   duration: TicketDayDuration,
+  { calculateLiftTicket, durationCandidateProducts }: TicketDurationPricing,
 ): TicketDurationOptions => {
   const dayInput: LiftTicketSearchInput = {
     ...input,
