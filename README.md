@@ -373,7 +373,6 @@ Gitに残す．`src/private` はprivate crawler code，対応辞書，初回fixt
 | [`d0016_canonical-map-verification.md`](docs/d0016_canonical-map-verification.md) | 本番 API データによる地図移行検証 |
 | [`d0017_community-composer-verification-2026-10-31.md`](docs/d0017_community-composer-verification-2026-10-31.md) | 現地レポート投稿の改善と確認記録 |
 | [`d0018_crawl-latest-audit-2026-09-05.md`](docs/d0018_crawl-latest-audit-2026-09-05.md) | crawl_latest 全国実行監査 |
-| [`d0019_backend-migration-verification-2026-09-05.md`](docs/d0019_backend-migration-verification-2026-09-05.md) | バックエンド移行のローカル検証記録 |
 | [`d0020_testing.md`](docs/d0020_testing.md) | テストの実行方法と試験用 DB の安全条件 |
 
 ## features のディレクトリ構造
