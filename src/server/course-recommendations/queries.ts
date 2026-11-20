@@ -56,10 +56,8 @@ export async function getCourseRecommendationIndex(
       body: JSON.stringify({ resortId, favoriteIds: ids, scope }),
       signal: AbortSignal.timeout(2500),
     },
-    { acceptedErrorStatuses: [400] },
+    {},
   );
-  if (response.status === 400)
-    return { status: "api_outdated" as const, courses: [], scope };
   const result: CourseRecommendationIndex & { calculationVersion?: number } =
     await response.json();
   if (result.calculationVersion !== RECOMMENDATION.version)

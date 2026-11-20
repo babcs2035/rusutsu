@@ -25,19 +25,10 @@ const NameList = ({
 export function MappingCoverage({
   gaps,
   observedAt,
-  legacyApi,
 }: {
   gaps: readonly CrawlMonitorMappingGap[];
   observedAt: string | null;
-  legacyApi: boolean;
 }) {
-  if (legacyApi) {
-    return (
-      <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-        接続先のサーバーがこの画面より古いため、対応表との照合ができません。
-      </p>
-    );
-  }
   if (gaps.length === 0) {
     return (
       <p className="rounded-lg border border-gray-200 bg-white p-3 text-sm text-gray-600">

@@ -253,7 +253,7 @@ export const storedDataDocumentSchema = z.strictObject({
 });
 
 const geoJsonSummaryShape = {
-  // Optional for compatibility with older internal API servers.
+  // 件数は正本の地図とコース選択用の一覧で返す．
   geoJsonFeatureCount: z.number().int().nonnegative().optional(),
 };
 

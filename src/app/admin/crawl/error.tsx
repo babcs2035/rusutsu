@@ -3,10 +3,7 @@
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 
-/**
- * 監視画面は正本データAPI越しに本番を読むため、接続先が古いとHTTP 400/404で失敗する。
- * 何が起きたのか分かる形で出して、再試行できるようにする。
- */
+/** 監視画面の読込エラーを表示し，再試行の入口を提供する． */
 export default function CrawlMonitorError({
   error,
   retry,
@@ -32,11 +29,6 @@ export default function CrawlMonitorError({
         <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
           <p className="mb-1 font-medium">よくある原因</p>
           <ul className="list-disc pl-5">
-            <li>
-              接続先（API_BASE_URL）のサーバーが、この画面より古い版で動いている。
-              画面が送る新しいパラメータが弾かれてHTTP
-              400になる。サーバーへ最新を デプロイすると解消する。
-            </li>
             <li>API_BEARER_TOKEN が未設定、または一致していない。</li>
             <li>接続先のサーバーが起動していない、URLが違う。</li>
           </ul>

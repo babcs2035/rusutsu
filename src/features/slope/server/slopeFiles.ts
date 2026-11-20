@@ -8,7 +8,6 @@ import type { DataDocument } from "@/server/data-documents/contract";
 
 const TEMPORARY_DATA_PREFIX = "resorts-temporary";
 const RESORT_ID_PATTERN = /^[a-z0-9-]+$/;
-const LIST_READ_CONCURRENCY = 8;
 
 const loadDataDocumentClient = () => import("@/server/data-documents/client");
 
@@ -49,63 +48,24 @@ const resortIdFromSlopeBeforeKey = (
   return isValidResortId(resortId) ? resortId : null;
 };
 
-const mapWithConcurrency = async <T, U>(
-  values: readonly T[],
-  mapper: (value: T) => Promise<U>,
-): Promise<U[]> => {
-  const output = new Array<U>(values.length);
-  let nextIndex = 0;
-  const runNext = async () => {
-    while (nextIndex < values.length) {
-      const index = nextIndex;
-      nextIndex += 1;
-      const value = values[index];
-      if (value !== undefined) output[index] = await mapper(value);
-    }
-  };
-  await Promise.all(
-    Array.from(
-      { length: Math.min(LIST_READ_CONCURRENCY, values.length) },
-      runNext,
-    ),
-  );
-  return output;
-};
-
+/** 地図本文を取得せず，コースがある施設を一覧にする． */
 export async function listSlopeBeforeResortIds(
   sourceKind: SlopeSourceKind = "curated",
   client?: Pick<
     Awaited<ReturnType<typeof loadDataDocumentClient>>,
-    "getDataDocument" | "listDataDocuments"
+    "listDataDocuments"
   >,
 ): Promise<string[]> {
   const prefix = `${TEMPORARY_DATA_PREFIX}/${sourceDirectory(sourceKind)}/`;
-  const { getDataDocument, listDataDocuments } =
-    client ?? (await loadDataDocumentClient());
+  const { listDataDocuments } = client ?? (await loadDataDocumentClient());
   const summaries = await listDataDocuments(prefix);
-  const candidates = summaries.flatMap(summary => {
+  return summaries.flatMap(summary => {
     const resortId = resortIdFromSlopeBeforeKey(summary.key, sourceKind);
-    return resortId === null
-      ? []
-      : [
-          {
-            resortId,
-            key: summary.key,
-            featureCount: summary.geoJsonFeatureCount,
-          },
-        ];
+    if (resortId === null) return [];
+    if (summary.geoJsonFeatureCount === undefined)
+      throw new Error("コース一覧の地図にコース件数がありません．");
+    return summary.geoJsonFeatureCount > 0 ? [resortId] : [];
   });
-  const entries = await mapWithConcurrency(candidates, async candidate => {
-    if (candidate.featureCount !== undefined) {
-      return candidate.featureCount > 0 ? candidate.resortId : null;
-    }
-    // Older internal API servers do not yet supply the lightweight count.
-    const document = await getDataDocument(candidate.key);
-    if (!document) return null;
-    const parsed = parseSlopeBeforeGeojson(document.content);
-    return (parsed?.features.length ?? 0) > 0 ? candidate.resortId : null;
-  });
-  return entries.filter((id): id is string => id !== null);
 }
 
 export async function readSlopeBeforeDocument(

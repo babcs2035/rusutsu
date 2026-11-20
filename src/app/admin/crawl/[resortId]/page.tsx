@@ -71,10 +71,8 @@ export default async function CrawlMonitorResortPage({
   const resort = names.find(name => name.id === resortId);
   if (!resort) notFound();
 
-  // 接続先が古くファイルの記録を返せないときは、DBの記録だけを見せる。
-  const origin = fileRuns.legacyApi
-    ? "DATABASE"
-    : (requestedOrigin ?? (databaseRuns.total > 0 ? "DATABASE" : "FILE"));
+  const origin =
+    requestedOrigin ?? (databaseRuns.total > 0 ? "DATABASE" : "FILE");
   const shown = origin === "FILE" ? fileRuns : databaseRuns;
   const pageCount = Math.max(1, Math.ceil(shown.total / pageSize));
 
@@ -103,18 +101,13 @@ export default async function CrawlMonitorResortPage({
       <h2 className="mt-8 mb-3 text-lg font-bold text-gray-900">
         対応表との照合
       </h2>
-      <MappingCoverage
-        gaps={mapping.gaps}
-        observedAt={mapping.observedAt}
-        legacyApi={mapping.legacyApi}
-      />
+      <MappingCoverage gaps={mapping.gaps} observedAt={mapping.observedAt} />
 
       <div className="mt-8 mb-3 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-gray-900">実行履歴</h2>
           <div className="mt-2 flex flex-wrap gap-2">
             {(["DATABASE", "FILE"] as const).map(value => {
-              if (value === "FILE" && fileRuns.legacyApi) return null;
               const total =
                 value === "FILE" ? fileRuns.total : databaseRuns.total;
               return (
@@ -154,12 +147,7 @@ export default async function CrawlMonitorResortPage({
         ) : null}
       </div>
 
-      {fileRuns.legacyApi ? (
-        <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-          接続先のサーバーがこの画面より古いため、ファイルに残る記録は読めません。
-          サーバーへ最新をデプロイすると表示されます（DBの実行記録は表示できています）。
-        </p>
-      ) : origin === "FILE" ? (
+      {origin === "FILE" ? (
         <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
           このスキー場の結果はまだサーバーのDBに送られていません。クローラーが
           保存したファイル（latest_data）の記録を表示しています。

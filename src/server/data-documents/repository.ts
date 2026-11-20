@@ -26,6 +26,7 @@ import {
 } from "./bundledFileSource";
 import {
   type DataDocumentWrite,
+  type StoredDataDocumentSummary,
   storedDataDocumentSchema,
   storedDataDocumentSummarySchema,
 } from "./contract";
@@ -187,40 +188,15 @@ class PrismaDataDocumentDatabase implements DataDocumentDatabase {
   }
 
   async list(prefix: string) {
-    if (await canonicalMapsEnabled(prisma)) {
-      const [documents, maps] = await Promise.all([
-        prisma.dataDocument.findMany({
-          where: { key: { startsWith: prefix } },
-          select: { key: true, mediaType: true, hash: true, version: true },
-        }),
-        prisma.mapDocumentState.findMany({
-          where: { key: { startsWith: prefix }, relational: true },
-          select: {
-            key: true,
-            mediaType: true,
-            hash: true,
-            version: true,
-            featureCount: true,
-          },
-        }),
-      ]);
-      return [
-        ...documents,
-        ...maps.map(({ featureCount, ...row }) => ({
-          ...row,
-          geoJsonFeatureCount: featureCount,
-        })),
-      ]
-        .sort((a, b) => a.key.localeCompare(b.key))
-        .map(row => storedDataDocumentSummarySchema.parse(row));
-    }
-    if (
+    const relational = await canonicalMapsEnabled(prisma);
+    const includeCounts =
       prefix === "resorts-temporary/slope_before/" ||
-      prefix === "resorts-temporary/slope_before_osm/"
-    ) {
+      prefix === "resorts-temporary/slope_before_osm/";
+    const [documents, maps] = await Promise.all([
       // Return only the count needed by the resort picker, never the geometry.
       // PostgreSQL 16 IS JSON guards legacy malformed documents before casting.
-      const rows = await prisma.$queryRaw<Array<unknown>>(Prisma.sql`
+      includeCounts
+        ? prisma.$queryRaw<StoredDataDocumentSummary[]>(Prisma.sql`
         SELECT key, "mediaType", hash, version,
           CASE WHEN content IS JSON OBJECT THEN
             CASE WHEN content::json ->> 'type' = 'FeatureCollection'
@@ -230,20 +206,36 @@ class PrismaDataDocumentDatabase implements DataDocumentDatabase {
         FROM data_documents
         WHERE starts_with(key, ${prefix})
         ORDER BY key ASC
-      `);
-      return rows.map(row => storedDataDocumentSummarySchema.parse(row));
-    }
-    const rows = await prisma.dataDocument.findMany({
-      where: prefix === "" ? undefined : { key: { startsWith: prefix } },
-      orderBy: { key: "asc" },
-      select: {
-        key: true,
-        mediaType: true,
-        hash: true,
-        version: true,
-      },
-    });
-    return rows.map(row => storedDataDocumentSummarySchema.parse(row));
+      `)
+        : prisma.dataDocument.findMany({
+            where: prefix === "" ? undefined : { key: { startsWith: prefix } },
+            orderBy: { key: "asc" },
+            select: { key: true, mediaType: true, hash: true, version: true },
+          }),
+      relational
+        ? prisma.mapDocumentState.findMany({
+            where: { key: { startsWith: prefix }, relational: true },
+            select: {
+              key: true,
+              mediaType: true,
+              hash: true,
+              version: true,
+              featureCount: true,
+            },
+          })
+        : [],
+    ]);
+    if (!relational)
+      return documents.map(row => storedDataDocumentSummarySchema.parse(row));
+    return [
+      ...documents,
+      ...maps.map(({ featureCount, ...row }) => ({
+        ...row,
+        geoJsonFeatureCount: featureCount,
+      })),
+    ]
+      .sort((a, b) => a.key.localeCompare(b.key))
+      .map(row => storedDataDocumentSummarySchema.parse(row));
   }
 
   async writeBatch(documents: readonly AtomicDataDocumentWrite[]) {

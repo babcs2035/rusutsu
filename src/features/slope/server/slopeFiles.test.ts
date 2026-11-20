@@ -22,15 +22,12 @@ test("resort picker uses counts without downloading any GeoJSON", async () => {
           source: "database" as const,
           geoJsonFeatureCount: count,
         })),
-      getDataDocument: async () => {
-        assert.fail("The picker must not fetch GeoJSON bodies");
-      },
     });
     assert.deepEqual(ids, ["resort-3"]);
   }
 });
 
-test("resort picker remains compatible with API summaries lacking counts", async () => {
+test("resort picker rejects summaries missing the course count", async () => {
   const summary = {
     key: slopeBeforeDocumentKey("sample-resort", "curated"),
     hash: "a".repeat(64),
@@ -38,19 +35,12 @@ test("resort picker remains compatible with API summaries lacking counts", async
     mediaType: "application/geo+json",
     source: "database" as const,
   };
-  let reads = 0;
-  const ids = await listSlopeBeforeResortIds("curated", {
-    listDataDocuments: async () => [summary],
-    getDataDocument: async () => {
-      reads += 1;
-      return {
-        ...summary,
-        content: JSON.stringify({ type: "FeatureCollection", features: [{}] }),
-      };
-    },
-  });
-  assert.equal(reads, 1);
-  assert.deepEqual(ids, ["sample-resort"]);
+  await assert.rejects(
+    listSlopeBeforeResortIds("curated", {
+      listDataDocuments: async () => [summary],
+    }),
+    /コース件数/u,
+  );
 });
 
 test("maps slope files to src/private/data-relative DataDocument keys", () => {

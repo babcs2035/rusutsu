@@ -114,14 +114,6 @@ export const crawlMonitorRunPageSchema = z.object({
 });
 export type CrawlMonitorRunPage = z.infer<typeof crawlMonitorRunPageSchema>;
 
-/**
- * 画面が受け取る実行履歴。`legacyApi` は、接続先のAPIがこの画面より古く、
- * ファイルの記録を返せなかったことを示す（画面はその旨を出す）。
- */
-export type CrawlMonitorRunResult = CrawlMonitorRunPage & {
-  legacyApi: boolean;
-};
-
 export const crawlMonitorCurrentSchema = z.object({
   kind: categoryKindSchema,
   origin: crawlMonitorOriginSchema,

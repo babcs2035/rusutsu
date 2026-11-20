@@ -49,35 +49,6 @@ export async function runCrawlerIfNeeded(
   }
 }
 
-/**
- * すべての旧クローラーをサーバー内部から順番に実行する。
- * 定期実行には使用せず、明示的な内部実行のために残す。
- */
-export async function runAllCrawlersIfNeeded(): Promise<{
-  results: Array<{ crawler: CrawlerName; ran: boolean; message: string }>;
-}> {
-  const crawlers: CrawlerName[] = [
-    "skiAreas",
-    "gelendes",
-    "weathers",
-    "forecasts",
-    "snowDepths",
-    "snowFalls",
-    "latestReports",
-    "yukiMagi",
-    "amedas",
-  ];
-
-  const results = [];
-  for (const crawler of crawlers) {
-    const result = await runCrawlerIfNeeded(crawler);
-    results.push({ crawler, ...result });
-    console.log(result.message);
-  }
-
-  return { results };
-}
-
 async function executeCrawler(crawlerName: CrawlerName): Promise<void> {
   switch (crawlerName) {
     case "skiAreas": {
