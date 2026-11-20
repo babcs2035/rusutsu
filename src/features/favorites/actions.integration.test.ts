@@ -447,14 +447,12 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
       process.env.API_BASE_URL = "https://canonical.test/rusutsu";
       process.env.API_BEARER_TOKEN = "isolated-test-token";
       globalThis.fetch = async () =>
-        Response.json({ error: "old-contract" }, { status: 400 });
-      assert.equal(
-        (
-          await run(guest, () =>
-            api.getCourseRecommendationIndex("source", ["candidate"]),
-          )
-        ).status,
-        "api_outdated",
+        Response.json({ code: "INVALID_REQUEST" }, { status: 400 });
+      await assert.rejects(
+        run(guest, () =>
+          api.getCourseRecommendationIndex("source", ["candidate"]),
+        ),
+        { status: 400 },
       );
       globalThis.fetch = async () =>
         Response.json({

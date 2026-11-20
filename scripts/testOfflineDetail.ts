@@ -4,6 +4,7 @@ import { chromium, type Page, webkit } from "playwright";
 
 interface CachedDetailState {
   state: string;
+  tiles: string[];
 }
 
 interface SessionHomeState {
@@ -74,7 +75,12 @@ try {
     const tile = Buffer.from(encoded, "base64");
     await fixturePage.close();
     await context.route("https://cyberjapandata.gsi.go.jp/xyz/**", route =>
-      route.fulfill({ status: 200, contentType: "image/png", body: tile }),
+      route.fulfill({
+        status: 200,
+        headers: { "Access-Control-Allow-Origin": "*" },
+        contentType: "image/png",
+        body: tile,
+      }),
     );
     console.log("Tile fixture mode: geographic imagery quality is not tested.");
   }
@@ -141,16 +147,47 @@ try {
     "rusutsu-resort",
   );
   console.log("independent tabs OK");
-  const failedTiles: string[] = [];
+  const savedDetail = await page.evaluate(async () => {
+    const cache = await caches.open("rusutsu-map-v1-meta");
+    const response = await cache.match(
+      `${location.origin}/rusutsu/offline-detail/rusutsu-resort`,
+    );
+    if (!response) throw new Error("Saved detail manifest is missing");
+    return (await response.json()) as CachedDetailState;
+  });
+  assert.equal(savedDetail.state, "complete");
+  assert.ok(savedDetail.tiles.length > 0);
+  const promisedTiles = new Set(savedDetail.tiles);
+  const failedPromisedTiles: string[] = [];
+  const servedPromisedTiles = new Set<string>();
   page.on("requestfailed", request => {
     if (
-      /cyberjapandata\.gsi\.go\.jp\/xyz\/[^/]+\/(1[1-7])\//.test(request.url())
+      promisedTiles.has(request.url()) &&
+      request.failure()?.errorText !== "net::ERR_ABORTED"
     )
-      failedTiles.push(request.url());
+      failedPromisedTiles.push(request.url());
+  });
+  page.on("response", response => {
+    const url = response.request().url();
+    if (promisedTiles.has(url) && response.fromServiceWorker() && response.ok())
+      servedPromisedTiles.add(url);
   });
   await context.unrouteAll();
   await context.setOffline(true);
-  await page.reload({ waitUntil: "domcontentloaded" });
+  await Promise.all([
+    page.waitForResponse(
+      response =>
+        promisedTiles.has(response.request().url()) &&
+        response.fromServiceWorker() &&
+        response.ok(),
+    ),
+    page.reload({ waitUntil: "domcontentloaded" }),
+  ]);
+  await page.locator('[data-map-presentation="preview"] canvas').waitFor();
+  assert.ok(
+    servedPromisedTiles.size > 0,
+    "offline map reload must use at least one cached planned tile",
+  );
   await page.getByRole("tab", { name: "料金", exact: true }).click();
   await page
     .getByRole("heading", { name: /^(公式リフト料金表|リフト券)$/ })
@@ -209,7 +246,7 @@ try {
   );
   assert.ok(Math.abs(after.viewport.zoom - before.viewport.zoom) < 1e-8);
   assert.ok(Math.abs(after.viewport.bearing - before.viewport.bearing) < 1e-8);
-  assert.deepEqual(failedTiles, []);
+  assert.deepEqual(failedPromisedTiles, []);
   await page.getByRole("button", { name: "地図を閉じる", exact: true }).click();
   await page.getByRole("tab", { name: "料金", exact: true }).click();
   await page
