@@ -50,7 +50,7 @@ start = { description = "プロダクションサーバー起動", run = "pnpm s
 "crawl:weathers" = { description = "天気 (Weathers) の更新", run = "pnpm tsx src/private/scripts/crawlWeathers.ts" }
 "crawl:forecasts" = { description = "予報 (Forecasts) の更新", run = "pnpm tsx src/private/scripts/crawlForecasts.ts" }
 "crawl:tour-links" = { description = "ツアー会社サイトのスキー場別リンクを収集（反映は resort-links:publish -- --source）", run = "pnpm tsx src/private/scripts/tour-links/run.ts" }
-"crawl:pass-programs" = { description = "シーズン券・キッズパス（NSDキッズ・マックアース・スノーバーズ）の対象スキー場一覧をローカルDBへ取り込む（本番は毎日3:30に自動実行）", run = "DATA_API_BASE_URL= pnpm tsx src/private/scripts/crawlPassPrograms.ts" }
+"crawl:pass-programs" = { description = "シーズン券・キッズパス（NSDキッズ・マックアース・スノーバーズ）の対象スキー場一覧をクロールし、本番との差分を表示（--applyで反映）", run = "pnpm tsx src/private/scripts/crawlPassPrograms.ts" }
 "crawl:latest" = { description = "スキー場別crawl_latestを一括または個別実行", run = "node --import tsx scripts/runCrawlLatestBatch.ts" }
 
 "crawl:all" = { description = "全データのクローリング実行", run = [
@@ -62,7 +62,6 @@ start = { description = "プロダクションサーバー起動", run = "pnpm s
   "pnpm tsx src/private/scripts/crawlSnowFalls.ts",
   "pnpm tsx src/private/scripts/crawlLatestReports.ts",
   "pnpm tsx src/private/scripts/crawlYukiMagi.ts",
-  "mise run crawl:pass-programs",
   "pnpm tsx src/private/scripts/crawlAmedas.ts"
 ]}
 "crawl:diagnostics:pull" = { description = "本番APIから警告・失敗DOMをVS Code用に取得", run = "pnpm tsx scripts/pullCrawlerDiagnostics.ts" }
