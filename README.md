@@ -175,7 +175,6 @@ schedulerとローカルNext.jsで使う．内部APIトークンは `API_BEARER_
 
 ### CI/CD (GitHub Actions)
 
-以下は実装済みの移行後フローであり，今回の変更はまだ本番へ導入していない．
 `.github/workflows/ci-cd.yml` はmainへのpushまたは手動実行で次を行う．
 
 1. Biome，TypeScript，単体・契約テストと，使い捨てDBでmigrationを検証する．schemaだけ変更してmigrationを忘れた場合も検出する．
@@ -184,12 +183,13 @@ schedulerとローカルNext.jsで使う．内部APIトークンは `API_BEARER_
 4. DB変更用pathの変更や明示フラグがある場合は，同じVPS内にDB全体をコピーする．dump形式とchecksumの確認を終えてからmigrationへ進み，コピー失敗時は停止する．
 5. `initialize_data=true` の初回移行時だけ文書と短縮名を投入し，appを起動する．初回pushではRepository variable `INITIALIZE_CANONICAL_DATA=true` でも指定でき，成功確認後に外す．
 6. DB接続と公開HTTPSの `/rusutsu` のreadinessが成功した場合だけdeploy完了とする．
+7. 最後に，稼働中・停止中のコンテナが参照するイメージと直前の正常版を保護し，確認済みの古いアプリイメージを整理する．
 
 DB変更の対象はmigration・schema・初回import・明示backfill等のpathで判定する．UI変更や
 クローラーファイル追加だけではdeploy前バックアップを要求しない．一括更新等では
 `force_database_backup=true` を指定できる．
-`.github/workflows/database-backup.yml` はpushと無関係に毎日01:15 JSTのバックアップを要求する．
-既定で30世代と7日以内のデータを残す．保存先はSSHユーザーの `~/.local/state/rusutsu/<project>/backups/` に自動作成し，Gitの外へ置く．
+`.github/workflows/database-backup.yml` は push と無関係に毎日 03:00 JST にバックアップを要求する．
+配備先 `${DEPLOY_TARGET}/backups/` に保存し，日次・手動・配備前を合わせて検証済みの最新 7 世代を残す．
 外部転送と暗号鍵の準備は不要で，VPS自体のディスク故障は対象外である．手動実行の `test_restore` で別の一時DBへの復元を確認できる．
 APIキーはGitHub Secretsへ登録し，既存のDB・OAuth・ポート設定はコンテナから引き継ぐ．元の `.env` は上書きしない．
 DOMはDBコピーに含まれず，古い日次lockは復元しない．
@@ -844,5 +844,5 @@ features/weather/
     *   `mise run crawl:all` - パイプライン全体実行（ski-areas → gelendes → weathers → forecasts → snowDepths → snowFalls → latestReports → yukiMagi → amedas の順）
     *   `mise run crawl:ski-areas` / `crawl:gelendes` / `crawl:weathers` / `crawl:forecasts` - 個別タスク実行
 *   **テスト**:
-    *   `pnpm test` - 全単体・契約テストを実行する．
-    *   単体テストは `node:test` を使用し，`pnpm tsx --test <テストファイル>` で実行する（例: `pnpm tsx --test src/features/lift-ticket/utils/priceTable.test.ts`）
+    *   `mise run test` で単体・契約試験と使い捨て DB の統合試験を実行する．
+    *   試験を絞るときは `mise run test -- --unit src/features/lift-ticket/utils/priceTable.test.ts` のように指定する．

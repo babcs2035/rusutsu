@@ -196,7 +196,7 @@ Deployment completed; database and /rusutsu readiness checks passed.
 
 | 自動処理 | 日本時間 | 開始するタイミング |
 | --- | --- | --- |
-| VPS内のDBコピー | 毎日01:15 | 初回の公開後。GitHub側の都合で遅れる場合がある |
+| VPS 内の DB コピー | 毎日 03:00 JST | 初回の公開後．GitHub Actions の開始が遅れる場合がある |
 | 雪マジの取得 | 毎日03:00 | 初回の公開後。最新情報スイッチとは別に動く |
 | 最新営業情報の全件取得 | 毎日14:00 | 再公開後（標準で有効。false指定時は停止） |
 

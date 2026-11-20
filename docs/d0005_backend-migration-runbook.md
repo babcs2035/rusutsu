@@ -161,12 +161,14 @@ DB変更対象は`build-db-manifest.py`に列挙したschema/migrations/import/b
 通常UI変更やcrawler追加だけなら配備前コピーは不要。
 
 `backup-database.sh`は既存db内の`pg_dump --format=custom`で取得し、空でないことと`pg_restore --list`を確認する。
-同VPSの非公開フォルダーへ`database.dump`、`archive.list`、`metadata.json`、`SHA256SUMS`を保存する。
+配備先の `${DEPLOY_TARGET}/backups/` へ `database.dump`，`archive.list`，`metadata.json`，`SHA256SUMS` を保存する．
 `local-backup.ts`がチェックサム・メタデータ・ファイル構成を照合する。
-完了した世代のみ保持整理の対象とし、既定で30世代と最低7日を残す。壊れた世代・symlink・無関係ファイルは削除しない。
+日次・手動・配備前を合わせ，検証済みの最新 7 世代を完了日時に従って保持する．取得前に空き容量を検査し，新しい世代の検証と確定後に保持整理する．破損・symlink・無関係なファイルは手動で状況を確認する．
 外部アップロード・GitHub artifactへの保存・暗号鍵の利用はしない。
 
-`Daily database backup`は毎日01:15 JSTに実行する。初回CI/CDでスクリプトと設定が配置されていることが前提。
+`Daily database backup` は毎日 03:00 JST に実行を予定する．初回の CI/CD で配備したスクリプトと設定を使う．
+
+旧保存先 `~/.local/state/rusutsu/<project>/backups/` の検証済み世代は，配備先にコピーして構成・チェックサム・dump の一覧を再検査する．コピーが確認できた世代から旧ファイルを除く．中断後に残った一時ディレクトリは，配備・バックアップが動作していないことと対象パスを確認してから整理する．
 手動で`test_restore=true`を付けると、コピー後に同VPSで復元試験する。
 
 復元試験はチェックサムを確認し、ネットワークなし・PGDATAがtmpfsの一時PostgreSQLへ復元する。

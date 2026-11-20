@@ -49,9 +49,9 @@ Dockerを使うことと、DBを永久に残すことは両立する。コンテ
 
 APIトークン `API_BEARER_TOKEN` はサーバー専用の `.env.local` や `.env` に置き、Next.jsのサーバー側や対象CLIだけが読む。`NEXT_PUBLIC_` を付けない。ブラウザーから本番APIを直接呼ばないため、ChromeのNetworkに本番APIのAuthorization headerは出ない。トークンは信頼できるサーバー側処理専用で、人向けの操作はセッションと権限で承認する。旧共通トークンと旧のscope別トークンは廃止しており、新規環境でも受け付けない。
 
-ここでServer Actionsを全部なくす必要はない。管理画面のボタンから同じNext.jsへ送る
-入口にはServer Actionsを使い続け、その中から正本がある本番サーバーへ内部APIを呼ぶ。
-つまり、秘密のAPIトークンを持つのはブラウザーではなくNext.jsサーバーである。
+初期表示は Server Components から正本を読む．操作後の読込は Route Handlers へ送り，更新は Server Actions を使う．写真付き投稿は受信量を検査する multipart の Route Handler で処理する．
+
+管理画面の動的読込は `/api/admin/editor/queries` で現在の DB の権限を確認する．機械用の管理 API は Bearer token を検証し，必要な操作では actor の権限も確認する．JSON API のエラーは `application/problem+json` で返し，呼び出し元は HTTP status と `code` で失敗を識別する．
 
 ## Chromeからデータが見える範囲
 
@@ -326,12 +326,10 @@ DB変更の判定は最後に正常配備した内容と、次の明示pathのha
 UI変更やcrawlerファイル追加だけなら、配備前コピーは省く。
 
 `backup-database.sh`は既存db内でPostgreSQL custom-format dumpを取り、空でないことと `pg_restore --list` を検証する。
-保存先は運用領域の `backups/`。database.dump、archive.list、metadata.json、SHA256SUMSを0600で置く。
-`local-backup.ts`で構成・チェックサムを確認し、完了した世代だけを確定する。
-30世代と最低7日を保持し、破損・symlink・無関係なファイルは保持整理で消さない。
+保存先は `${DEPLOY_TARGET}/backups/` である．`local-backup.ts` が構成とチェックサムを確認し，取得の完了日時が新しい 7 世代を保持する．
 コピーが失敗すればapp停止・migrationへ進まない。外部転送やGitHub artifact保存は行わない。
 
-`Daily database backup`はpushのない日も毎日01:15 JSTに実行する。GitHub側で遅れる場合がある。
+`Daily database backup` は push のない日も毎日 03:00 JST に実行を予定する．GitHub Actions の開始が遅れる場合がある．
 手動の `test_restore=true` で、同VPS内の別の使い捨てPostgreSQLへ実復元する。
 この試験DBはネットワークなし・PGDATAがtmpfsで、本番volumeを使わない。自身の試験コンテナだけ片付ける。
 DOM本体はこのDBコピーに含まれず、通常30日保持と必要な診断取得で扱う。
