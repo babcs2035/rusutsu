@@ -183,6 +183,8 @@ export async function verifyRemoteCommunity(
         .status,
       401,
     );
+    // 単一 token は信頼サーバー処理の共通資格情報であり，token 別の制限は廃止した
+    // （R13）。有効な本人アカウントでの private 操作は許可される。
     assert.equal(
       (
         await request(
@@ -191,17 +193,7 @@ export async function verifyRemoteCommunity(
           "community-test-api-token",
         )
       ).status,
-      403,
-    );
-    assert.equal(
-      (
-        await request(
-          validPrivateCommand,
-          accountId(ids.owner),
-          "community-test-api-token",
-        )
-      ).status,
-      403,
+      200,
     );
     assert.equal((await request(validPrivateCommand, null)).status, 401);
     assert.equal(

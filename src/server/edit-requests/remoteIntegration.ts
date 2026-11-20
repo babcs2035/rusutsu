@@ -189,6 +189,8 @@ export async function verifyRemoteWorkflow(
       ).status,
       401,
     );
+    // 単一 token は信頼サーバー処理の共通資格情報（R13）。admin は requireEditor を
+    // 通るため list は許可され，viewer は requireEditor で拒否される（役割ベース）。
     assert.equal(
       (
         await raw(
@@ -199,7 +201,7 @@ export async function verifyRemoteWorkflow(
           "test-editor-remote-api-token",
         )
       ).status,
-      403,
+      200,
     );
     assert.equal(
       (
