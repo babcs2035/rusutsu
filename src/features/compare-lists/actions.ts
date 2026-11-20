@@ -3,7 +3,8 @@
 import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { COMPARE_LIST_NAME_MAX, type CompareListSummary } from "./types";
+import { readCompareListsForUser as readLists } from "@/server/compare-lists/repository";
+import { COMPARE_LIST_NAME_MAX } from "./types";
 import {
   CompareListError,
   MAX_COMPARE_LIST_RESORTS,
@@ -24,31 +25,6 @@ async function requireUser(expectedUserId: string) {
   if (!session?.user?.id || session.user.id !== expectedUserId)
     throw new Error("ログイン状態が変わりました。");
   return session.user.id;
-}
-
-async function readLists(userId: string): Promise<CompareListSummary[]> {
-  const lists = await prisma.compareList.findMany({
-    where: { userId },
-    orderBy: { updatedAt: "desc" },
-    select: {
-      id: true,
-      name: true,
-      items: {
-        where: { skiResort: { isActive: true } },
-        orderBy: { position: "asc" },
-        select: { skiResortId: true },
-      },
-    },
-  });
-  return lists.map(list => ({
-    id: list.id,
-    name: list.name,
-    resortIds: list.items.map(item => item.skiResortId),
-  }));
-}
-
-export async function listCompareLists(expectedUserId: string) {
-  return readLists(await requireUser(expectedUserId));
 }
 
 /** id を渡すとそのリストを上書きし、無ければ新しいリストを作る。 */

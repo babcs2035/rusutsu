@@ -11,10 +11,10 @@ import {
   useState,
 } from "react";
 import { toast } from "sonner";
+import { withBasePath } from "@/shared/utils/basePath";
 import { reloadIfStaleBuild } from "@/shared/utils/staleBuild";
 import {
   deleteCompareList,
-  listCompareLists,
   renameCompareList,
   saveCompareList,
   updateCompareListResorts,
@@ -71,9 +71,11 @@ export function CompareListsProvider({
   available.current = new Set(resortIds);
   const currentUser = useRef(userId);
   currentUser.current = userId;
+  const generation = useRef(0);
 
   const accept = useCallback((account: string, lists: CompareListSummary[]) => {
     if (currentUser.current !== account) return;
+    generation.current++;
     setState({
       userId: account,
       ready: true,
@@ -90,22 +92,36 @@ export function CompareListsProvider({
       setState({ userId: null, lists: [], ready: true });
       return;
     }
-    let disposed = false;
+    const request = ++generation.current;
+    const controller = new AbortController();
     setState(previous =>
       previous.userId === userId
         ? previous
         : { userId, lists: [], ready: false },
     );
-    listCompareLists(userId)
-      .then(lists => {
-        if (!disposed) accept(userId, lists);
+    fetch(withBasePath("/api/compare-lists"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ expectedUserId: userId }),
+      signal: controller.signal,
+      cache: "no-store",
+    })
+      .then(async response => {
+        if (!response.ok) throw new Error("Comparison lists unavailable");
+        const lists: CompareListSummary[] = await response.json();
+        if (generation.current === request) accept(userId, lists);
       })
-      .catch(error => {
-        if (reloadIfStaleBuild(error) || disposed) return;
+      .catch(() => {
+        if (
+          controller.signal.aborted ||
+          generation.current !== request ||
+          currentUser.current !== userId
+        )
+          return;
         setState({ userId, lists: [], ready: true });
       });
     return () => {
-      disposed = true;
+      controller.abort();
     };
   }, [accept, status, userId]);
 

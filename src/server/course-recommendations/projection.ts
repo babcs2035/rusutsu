@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import path from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import type { Prisma } from "@prisma/client";
 import {
   extractCourseFeatures,
@@ -81,16 +82,26 @@ export async function rebuildRecommendationFeatures(
   const courses = data?.courses?.features ?? [];
   const features = extractCourseFeatures(resortId, courses);
   const sourceHash = hash([...hashes].sort(([a], [b]) => a.localeCompare(b)));
-  await tx.courseRecommendationFeature.deleteMany({ where: { resortId } });
-  if (features.length)
-    await tx.courseRecommendationFeature.createMany({
-      data: features.map(feature => ({
-        ...feature,
-        geometryHash: geometryFingerprint(courses, feature.courseIds),
-        sourceHash,
-        calculationVersion: RECOMMENDATION.version,
-      })),
-    });
+  const planned = features.map(feature => ({
+    ...feature,
+    geometryHash: geometryFingerprint(courses, feature.courseIds),
+    sourceHash,
+    calculationVersion: RECOMMENDATION.version,
+  }));
+  const current = await tx.courseRecommendationFeature.findMany({
+    where: { resortId },
+    omit: { updatedAt: true },
+  });
+  const byKey = new Map(current.map(row => [row.key, row]));
+  // デプロイ時にも整合性を確認する．同じ結果の行を再作成すると updatedAt が変わる．
+  if (
+    planned.length !== current.length ||
+    planned.some(row => !isDeepStrictEqual(row, byKey.get(row.key)))
+  ) {
+    await tx.courseRecommendationFeature.deleteMany({ where: { resortId } });
+    if (planned.length)
+      await tx.courseRecommendationFeature.createMany({ data: planned });
+  }
   return {
     resortId,
     inputLines: courses.length,

@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { test } from "node:test";
 import { pathToFileURL } from "node:url";
+import type { Prisma } from "@prisma/client";
 import { build } from "esbuild";
 import { readTestDatabaseUrl } from "../../../scripts/testDatabase";
 
@@ -24,6 +25,8 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
       export { runtime } from 'favorite-test-runtime';
       export { prisma, disconnectPrisma } from '@/lib/prisma';
       export * from '@/features/favorites/actions';
+      export * from '@/features/compare-lists/actions';
+      export { POST as compareListsRoute } from '@/app/api/compare-lists/route';
       export * from '@/server/course-recommendations/projection';
       export * from '@/server/course-recommendations/repository';
       export * from '@/server/course-recommendations/queries';
@@ -196,6 +199,30 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
     assert.equal(await run(guest, () => api.readLoginHistory()), true);
     await run(guest, () => api.publicLogout());
     assert.equal(await run(guest, () => api.readLoginHistory()), false);
+    const list = await run(a, () =>
+      api.saveCompareList({
+        expectedUserId: "user-a",
+        name: "Integration comparison",
+        resortIds: ["candidate", "source"],
+      }),
+    );
+    assert.equal(list.ok, true);
+    const readCompare = (expectedUserId: string): Promise<Response> =>
+      api.compareListsRoute(
+        new Request("http://localhost/rusutsu/api/compare-lists", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ expectedUserId }),
+        }),
+      );
+    assert.equal((await run(guest, () => readCompare("user-a"))).status, 401);
+    assert.equal((await run(b, () => readCompare("user-a"))).status, 403);
+    const compareResponse = await run(a, () => readCompare("user-a"));
+    assert.equal(
+      compareResponse.headers.get("Cache-Control"),
+      "private, no-store",
+    );
+    assert.deepEqual(await compareResponse.json(), list.lists);
     assert.equal(api.authConfig.session.maxAge, 30 * 24 * 60 * 60);
     assert.equal(
       api.authConfig.callbacks.redirect({
@@ -259,6 +286,21 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
     await write("candidate", content("candidate"), null);
     // 各施設のメイン・別ルートを保存し，候補だけをメインに絞る．
     assert.equal(await db.courseRecommendationFeature.count(), 4);
+    // 再配備で同一の特徴量を照合しても，保存済みの値と更新日時を保持する．
+    const projectionBefore = await db.courseRecommendationFeature.findMany({
+      where: { resortId: "source" },
+      orderBy: { key: "asc" },
+    });
+    await db.$transaction((tx: Prisma.TransactionClient) =>
+      api.rebuildRecommendationFeatures(tx, "source"),
+    );
+    assert.deepEqual(
+      await db.courseRecommendationFeature.findMany({
+        where: { resortId: "source" },
+        orderBy: { key: "asc" },
+      }),
+      projectionBefore,
+    );
     const main = {
       kind: "course",
       id: "source-group",
