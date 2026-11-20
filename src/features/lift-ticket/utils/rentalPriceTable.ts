@@ -1,5 +1,4 @@
 import type { LiftTicketData, LiftTicketRental } from "../types";
-import { buildReferences } from "./calculateLiftTicket";
 import {
   ageLabelOf,
   type PriceCell,
@@ -7,6 +6,7 @@ import {
   type PriceRow,
   type PriceTable,
 } from "./priceTable";
+import { buildReferences } from "./ticketReferences";
 
 /**
  * 用具の行の名前。公式名称は「スキーセット 大人 1日」のように対象者・期間まで

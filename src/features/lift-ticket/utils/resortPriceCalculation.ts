@@ -1,8 +1,5 @@
 import type { LiftTicketData, LiftTicketSearchInput } from "../types";
-import {
-  calculateLiftTicketPlan,
-  selectLiftTicketSeason,
-} from "./calculateLiftTicket";
+import { calculateLiftTicketPlan } from "./calculateLiftTicket";
 import {
   buildPlanTiers,
   type TicketPlanTier,
@@ -15,6 +12,7 @@ import {
 } from "./purchaseTiers";
 import { calculateRentalPlan } from "./rental";
 import { calculateRentalBundle } from "./rentalBundle";
+import { selectLiftTicketSeason } from "./ticketCalendar";
 
 export type ResortPriceTiers = {
   data: LiftTicketData;
@@ -91,7 +89,7 @@ export const summarizeResortPrice = (
     // 表示は欠測のまま維持し、一覧・詳細の挙動を変えない。
     console.error(
       "summarizeResortPrice: unexpected calculation error, treating as unknown",
-      error,
+      { name: error instanceof Error ? error.name : "UnknownError" },
     );
     return { kind: "unknown" };
   }

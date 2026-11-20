@@ -15,7 +15,6 @@ import {
 import {
   calculateLiftTicket,
   calculateLiftTicketPlan,
-  skiableHoursOf,
 } from "./calculateLiftTicket";
 import { calculateRentalPlan } from "./rental";
 import {
@@ -385,31 +384,8 @@ for (const spec of OFFICIAL_CASES.filter(c =>
       assertPrice(result.days[0].result, amount, true);
     });
   }
-  for (const hours of TICKET_HOUR_OPTIONS) {
-    test(`${spec.resort}: UIの${hours}時間で不足する券・時間帯固定券を選ばない`, () => {
-      const result = plan("adult", 30, spec.date, { kind: "hours", hours });
-      const selected = data.products.find(
-        p => p.id === result.days[0].result.productId,
-      );
-      if (result.total == null || !selected) return;
-      const options = result.days[0].options;
-      // 仕様S4: 一番上の時間帯固定券は、その日の範囲をすべて含むときだけ
-      if (selected.validity?.mode === "fixed_time_window")
-        assert.equal(options?.primary?.timeRestricted, false);
-      const available = skiableHoursOf(selected, data, spec.date);
-      // 仕様S7: 営業より長い指定なら、その旨の注記がある
-      if (
-        available != null &&
-        available < hours &&
-        options?.primary?.productIds.length === 1
-      )
-        assert.ok(
-          options.notes.some(note => note.startsWith("この日の営業は")) ||
-            (options.primary?.hours ?? 0) >= hours,
-          JSON.stringify(options.notes),
-        );
-    });
-  }
+  // 券の時間帯・営業時間による選択可否は spec/duration*.test.ts の
+  // 固定 fixture で検証する．ここでは上の公式掲載額だけを全施設で照合する．
   for (const date of spec.openExceptions ?? []) {
     test(`${spec.resort}: 定休日の例外 ${date}は営業扱い`, () => {
       assert.equal(plan("adult", 30, date).days[0].result.status, "complete");

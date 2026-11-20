@@ -1,4 +1,6 @@
-const sameMonth = (a: string, b: string) => a.slice(0, 7) === b.slice(0, 7);
+/** 検索条件と料金表示で，指定した日付を同じ形式にまとめる． */
+const sameMonth = (a: string, b: string): boolean =>
+  a.slice(0, 7) === b.slice(0, 7);
 
 const dayLabel = (date: string) => String(Number(date.split("-")[2]));
 const monthDayLabel = (date: string) =>

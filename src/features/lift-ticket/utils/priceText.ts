@@ -1,7 +1,33 @@
-import { formatVisitDates } from "@/features/home/utils/formatVisitDates";
-import type { LiftTicketSearchInput } from "../types";
-import { TICKET_PARTY_CATEGORY_LABELS } from "./calculateLiftTicket";
+import { formatVisitDates } from "@/shared/utils/formatVisitDates";
+import {
+  type LiftTicketPrice,
+  type LiftTicketSearchInput,
+  priceModeOf,
+} from "../types";
 import type { ResortPriceSummary } from "./resortPriceCalculation";
+import { TICKET_PARTY_CATEGORY_LABELS } from "./ticketAudience";
+
+/** 単体の券の価格を表示する．未確定の料金を無料として扱わない． */
+export const formatLiftTicketPrice = (price: LiftTicketPrice | undefined) => {
+  const mode = priceModeOf(price);
+  if (mode === "free") return "無料";
+  if (["fixed", "derived_discount"].includes(mode) && price?.amount != null) {
+    return `¥${price.amount.toLocaleString("ja-JP")}`;
+  }
+  if (mode === "range" && price?.range) {
+    const minimum =
+      price.range.min == null
+        ? ""
+        : `¥${price.range.min.toLocaleString("ja-JP")}`;
+    const maximum =
+      price.range.max == null
+        ? ""
+        : `¥${price.range.max.toLocaleString("ja-JP")}`;
+    return `${minimum}〜${maximum}`;
+  }
+  if (mode === "live_dynamic") return "変動料金";
+  return "要確認";
+};
 
 export const dateLabel = (input: LiftTicketSearchInput) => {
   const dates = (
