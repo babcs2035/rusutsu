@@ -8,6 +8,7 @@ import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import sharp from "sharp";
 import type { SubmitCorrectionInput } from "@/server/corrections/contract";
+import { readTestDatabaseUrl } from "../../../scripts/testDatabase";
 import { verifyRemoteCorrections } from "./remoteIntegration";
 
 type TestActor = {
@@ -44,14 +45,10 @@ type CandidateCorrectionPayload = {
   items: Array<{ decision?: string }>;
 };
 
-const databaseUrl = process.env.CORRECTIONS_TEST_DATABASE_URL;
+const databaseUrl = readTestDatabaseUrl();
 test("anonymous corrections: PostgreSQL idempotency, review CAS, geometry, bulk and private photos", {
   skip: !databaseUrl,
 }, async () => {
-  const url = new URL(databaseUrl ?? "");
-  assert.equal(url.hostname, "127.0.0.1");
-  assert.equal(url.port, "55501");
-  assert.equal(url.pathname, "/postgres");
   process.env.DATABASE_URL = databaseUrl;
   process.env.DATA_API_BASE_URL = "";
   process.env.ALLOW_BUNDLED_DATA_FIXTURES = "false";

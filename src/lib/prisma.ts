@@ -21,8 +21,17 @@ if (connectionString.includes("$" + "{DB_PORT}")) {
 // PostgreSQL への接続プールを作成する．
 // Vercel Postgres を使用する場合，@prisma/adapter-pg を介して接続することで
 // エッジ環境やサーバーレス環境での接続効率を向上させる．
-const pool = new Pool({ connectionString });
-const adapter = new PrismaPg(pool);
+const schema =
+  new URL(connectionString).searchParams.get("schema") ?? undefined;
+if (schema && !/^[a-z_][a-z0-9_]*$/iu.test(schema)) {
+  throw new Error("DATABASE_URL contains an unsupported schema identifier");
+}
+// Prisma CLI と実行時の adapter が同じ schema を使うようにする．
+const pool = new Pool({
+  connectionString,
+  ...(schema ? { options: `-c search_path=${schema}` } : {}),
+});
+const adapter = new PrismaPg(pool, { schema });
 
 export type AdvisoryLockResult<T> =
   | { acquired: true; value: T }

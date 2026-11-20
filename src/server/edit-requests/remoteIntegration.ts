@@ -7,6 +7,7 @@ import path from "node:path";
 import { Client } from "pg";
 import type { z } from "zod";
 import type { adminSkiResortUpdateSchema } from "@/server/ski-resorts/adminContract";
+import { readTestDatabaseUrl } from "../../../scripts/testDatabase";
 
 type Api = typeof import("@/features/links/actions") &
   typeof import("@/features/edit-requests/actions") &
@@ -24,17 +25,17 @@ export async function verifyRemoteWorkflow(
   data: z.infer<typeof adminSkiResortUpdateSchema>,
   root: string,
 ) {
-  const localUrl = new URL(process.env.EDITOR_WORKFLOW_TEST_DATABASE_URL ?? "");
-  assert.equal(localUrl.hostname, "127.0.0.1");
-  assert.equal(localUrl.port, "55489");
-  assert.equal(localUrl.pathname, "/postgres");
+  const localUrl = new URL(readTestDatabaseUrl() ?? "");
   const databaseName = `editor_workflow_remote_${process.pid}`;
   const admin = new Client({ connectionString: localUrl.href });
   await admin.connect();
-  await admin.query(`CREATE DATABASE "${databaseName}"`);
+  await admin.query(`CREATE SCHEMA "${databaseName}"`);
   const canonicalUrl = new URL(localUrl);
-  canonicalUrl.pathname = `/${databaseName}`;
-  const remote = new Client({ connectionString: canonicalUrl.href });
+  canonicalUrl.searchParams.set("schema", databaseName);
+  const remote = new Client({
+    connectionString: canonicalUrl.href,
+    options: `-c search_path=${databaseName}`,
+  });
   const savedEnv = {
     DATA_API_BASE_URL: process.env.DATA_API_BASE_URL,
     INTERNAL_DATA_API_ADMIN_TOKEN: process.env.INTERNAL_DATA_API_ADMIN_TOKEN,
@@ -529,7 +530,7 @@ export async function verifyRemoteWorkflow(
       clearTimeout(timer);
     }
     await remote.end();
-    await admin.query(`DROP DATABASE "${databaseName}" WITH (FORCE)`);
+    await admin.query(`DROP SCHEMA IF EXISTS "${databaseName}" CASCADE`);
     await admin.end();
   }
 }

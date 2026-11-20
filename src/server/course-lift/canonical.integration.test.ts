@@ -6,15 +6,12 @@ import { test } from "node:test";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { build } from "esbuild";
+import { readTestDatabaseUrl } from "../../../scripts/testDatabase";
 
-const databaseUrl = process.env.MAP_CANONICAL_TEST_DATABASE_URL;
+const databaseUrl = readTestDatabaseUrl();
 test("canonical maps: document-free edits, crawler adoption, summaries and concurrency", {
   skip: !databaseUrl,
 }, async t => {
-  const url = new URL(databaseUrl ?? "");
-  assert.equal(url.hostname, "127.0.0.1");
-  assert.equal(url.port, "55491");
-  assert.equal(url.pathname, "/postgres");
   process.env.DATABASE_URL = databaseUrl;
   process.env.DATA_API_BASE_URL = "";
   process.env.DATA_DOCUMENT_ALLOW_BUNDLED_FIXTURES = "false";
@@ -295,7 +292,8 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
         assert.equal(summary.courseTotal, 2);
         assert.equal(summary.courseActive, 1);
         assert.equal(summary.liftTotal, 2);
-        assert.equal(summary.liftActive, 1);
+        // リフトの △ は営業中の件数に含めない．
+        assert.equal(summary.liftActive, 0);
         assert.equal(summary.calculationVersion, api.OPERATION_SUMMARY_VERSION);
         // 旧版の保存値も読み取り時に再集計し、次のクロールまで誤った総数を残さない。
         await db.skiResortOperationSummary.update({
@@ -604,6 +602,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
       async () => {
         const {
           id: _id,
+          urlCode: _urlCode,
           createdAt: _createdAt,
           updatedAt: _updatedAt,
           ...fields
@@ -728,6 +727,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
         });
         const {
           id: _id,
+          urlCode: _urlCode,
           createdAt: _createdAt,
           updatedAt: _updatedAt,
           ...fields
@@ -998,6 +998,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
           data: {
             ...base,
             id: "copy-test",
+            urlCode: undefined,
             createdAt: undefined,
             updatedAt: undefined,
           },

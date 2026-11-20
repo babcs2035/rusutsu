@@ -23,10 +23,10 @@ setup = { description = "プロジェクトの初期セットアップ（依存�
 dev = { description = "開発サーバー起動（このMacからだけ接続可能）", run = "pnpm dev" }
 "dev:lan" = { description = "開発サーバー起動（LANへ明示的に公開）", run = "pnpm dev:lan" }
 format = { description = "Format (Biome)", run = "pnpm format" }
-lint = { description = "Lint (Biome)", run = "pnpm lint" }
-test = { description = "全テスト（本番接続なし）", run = "pnpm test" }
+lint = { description = "整形・静的検査（読み取り専用，--writeで修正）", run = "pnpm lint" }
+test = { description = "単体と単一の使い捨てDBで全検証（--unit / --db / --browserで選択）", run = "pnpm test" }
 typecheck = { description = "型チェック", run = "pnpm typecheck" }
-check = { description = "コード品質チェック (Format, Lint, TypeCheck)", run = ["mise run format", "mise run lint", "mise run typecheck"] }
+check = { description = "整形・静的検査・型検査（読み取り専用）", run = ["mise run lint", "mise run typecheck"] }
 
 # --- Build ---
 build = { description = "プロダクションビルド", run = "pnpm build" }

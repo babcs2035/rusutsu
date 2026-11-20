@@ -31,21 +31,17 @@
   },
   "include": [
     "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
+    "*.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "scripts/**/*.ts",
+    "prisma/**/*.ts",
     ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts",
-    "src/private/data/resorts-temporary/tmp/community-build/types/**/*.ts",
-    "src/private/data/resorts-temporary/tmp/community-build/dev/types/**/*.ts",
-    ".next-qa/types/**/*.ts",
-    ".next-qa/dev/types/**/*.ts",
-    ".next/qa-resort-links/types/**/*.ts",
-    ".next/qa-resort-links/dev/types/**/*.ts",
-    ".next-compare-lists/types/**/*.ts",
-    ".next-compare-lists/dev/types/**/*.ts"
+    ".next/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
+    ".next/dev",
     "src/private/data/resorts-temporary/tmp"
   ]
 }

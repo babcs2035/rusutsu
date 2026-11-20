@@ -32,14 +32,15 @@ jobs:
         env:
           POSTGRES_USER: rusutsu_ci
           POSTGRES_PASSWORD: ephemeral_ci_only
-          POSTGRES_DB: rusutsu_ci
+          POSTGRES_DB: rusutsu_test_1
         ports:
           - 5432:5432
         options: >-
           --health-cmd "pg_isready -U rusutsu_ci -d rusutsu_ci"
           --health-interval 5s --health-timeout 5s --health-retries 10
     env:
-      DATABASE_URL: postgresql://rusutsu_ci:ephemeral_ci_only@localhost:5432/rusutsu_ci
+      DATABASE_URL: postgresql://rusutsu_ci:ephemeral_ci_only@localhost:5432/rusutsu_test_1
+      TEST_DATABASE_URL: postgresql://rusutsu_ci:ephemeral_ci_only@localhost:5432/rusutsu_test_1
 
     steps:
       - name: Checkout repository
@@ -63,16 +64,19 @@ jobs:
         run: pnpm prisma generate
 
       - name: Run Format & Lint Check with Biome
-        run: pnpm biome ci ./src ./scripts
+        run: mise run lint
 
       - name: Run Type Check
-        run: pnpm tsc --noEmit
+        run: mise run typecheck
 
       - name: Install Playwright browser for DOM tests
         run: pnpm exec playwright install --with-deps --only-shell chromium
 
       - name: Unit and contract tests
-        run: node scripts/runTests.mjs
+        run: mise run test -- --unit
+
+      - name: Database integration tests on the shared disposable database
+        run: mise run test -- --db
 
       - name: Verify collected lift ticket data against official expectations
         run: LIFT_TICKET_DATA_ROOT=src/private/data/lift-ticket node --import tsx --test src/features/lift-ticket/utils/uiContract.test.ts

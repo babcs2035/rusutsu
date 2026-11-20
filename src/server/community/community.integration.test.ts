@@ -12,6 +12,7 @@ import type {
   ReportDraft,
   ReportEntryDraft,
 } from "@/features/community/contract";
+import { readTestDatabaseUrl } from "../../../scripts/testDatabase";
 import { verifyRemoteCommunity } from "./remoteIntegration";
 
 type TestApi = typeof import("@/features/community/actions") &
@@ -28,14 +29,10 @@ type TestApi = typeof import("@/features/community/actions") &
     internalCommunityPOST: typeof import("@/app/api/internal/v1/community/route").POST;
   };
 
-const testDatabase = process.env.COMMUNITY_TEST_DATABASE_URL;
+const testDatabase = readTestDatabaseUrl();
 test("community reports: atomic daily report lifecycle and privacy", {
   skip: !testDatabase,
 }, async () => {
-  const url = new URL(testDatabase ?? "");
-  assert.equal(url.hostname, "127.0.0.1");
-  assert.equal(url.port, "55501");
-  assert.equal(url.pathname, "/postgres");
   process.env.DATABASE_URL = testDatabase;
   process.env.DATA_API_BASE_URL = "";
   delete process.env.OPENAI_API_KEY;

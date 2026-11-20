@@ -4,14 +4,12 @@ import path from "node:path";
 import { test } from "node:test";
 import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
+import { readTestDatabaseUrl } from "../../../scripts/testDatabase";
 
-const testDatabase = process.env.FAVORITES_TEST_DATABASE_URL;
+const testDatabase = readTestDatabaseUrl();
 test("favorites and recommendation projection use real PostgreSQL with isolated identities", {
   skip: !testDatabase,
 }, async () => {
-  const url = new URL(testDatabase ?? "");
-  assert.ok(["localhost", "127.0.0.1"].includes(url.hostname));
-  assert.match(url.pathname, /^\/rusutsu_favorites_test_\d+$/u);
   process.env.DATABASE_URL = testDatabase;
   process.env.DATA_API_BASE_URL = "";
   const root = path.join(
@@ -259,7 +257,8 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
     };
     let sourceHash = await write("source", content("source"), null);
     await write("candidate", content("candidate"), null);
-    assert.equal(await db.courseRecommendationFeature.count(), 2);
+    // 各施設のメイン・別ルートを保存し，候補だけをメインに絞る．
+    assert.equal(await db.courseRecommendationFeature.count(), 4);
     const main = {
       kind: "course",
       id: "source-group",
@@ -291,14 +290,14 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
       ).status,
       "ready",
     );
-    assert.deepEqual(
-      await api.recommendCoursesDirect(
-        "source",
-        { ...main, routeId: "source-group:route:10" },
-        ["candidate"],
-      ),
-      [],
+    const secondary = await api.recommendCoursesDirect(
+      "source",
+      { ...main, routeId: "source-group:route:10" },
+      ["candidate"],
     );
+    assert.equal(secondary.length, 1);
+    assert.equal(secondary[0].selected.routeId, "candidate-group:route:2");
+    assert.equal(secondary[0].score, 100);
     // A canonical identity migration must remove old selection IDs and publish
     // current IDs in the same transaction, without changing the course shape.
     const migrated = JSON.parse(content("source"));
@@ -342,18 +341,26 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
       );
     const guestResponse = await run(guest, () => requestIndex(["candidate"]));
     assert.equal(guestResponse.status, 200);
-    assert.deepEqual(await guestResponse.json(), index);
+    assert.deepEqual(await guestResponse.json(), {
+      ...index,
+      scope: "favorites",
+    });
     assert.equal(
       guestResponse.headers.get("Cache-Control"),
       "private, no-store",
     );
     // Logged-in requests use DB favorites even if the supplied guest list differs.
     const accountResponse = await run(a, () => requestIndex(["third"]));
-    assert.deepEqual(await accountResponse.json(), index);
+    assert.deepEqual(await accountResponse.json(), {
+      ...index,
+      scope: "favorites",
+    });
     const otherAccountResponse = await run(b, () =>
       requestIndex(["candidate"]),
     );
-    assert.equal((await otherAccountResponse.json()).status, "no_favorites");
+    const withoutFavorites = await otherAccountResponse.json();
+    assert.equal(withoutFavorites.status, "ready");
+    assert.equal(withoutFavorites.scope, "all");
     const invalidResponse = await run(guest, () =>
       api.recommendationIndexRoute(
         new Request("http://localhost/rusutsu/api/course-recommendations", {
@@ -410,7 +417,7 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
       globalThis.fetch = async () =>
         Response.json({
           status: "ready",
-          calculationVersion: 3,
+          calculationVersion: 4,
           recommendations: current.recommendations,
         });
       const remote = await run(guest, () =>
@@ -434,7 +441,7 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
       globalThis.fetch = async () =>
         Response.json({
           status: "ready",
-          calculationVersion: 3,
+          calculationVersion: 4,
           courses: index.courses,
         });
       const remoteIndex = await run(guest, () =>

@@ -4,6 +4,7 @@ import path from "node:path";
 import { test } from "node:test";
 import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
+import { readTestDatabaseUrl } from "../../../scripts/testDatabase";
 import { verifyRemoteWorkflow } from "./remoteIntegration";
 
 // This suite never reads DATABASE_URL. It is opt-in and restricted to the
@@ -12,14 +13,10 @@ type MutationResult = { ok: boolean; error?: string };
 type RequestView = Awaited<
   ReturnType<typeof import("./repository").getEditRequest>
 >;
-const testDatabase = process.env.EDITOR_WORKFLOW_TEST_DATABASE_URL;
+const testDatabase = readTestDatabaseUrl();
 test("editor requests: real PostgreSQL authorization, corrections, atomicity and concurrency", {
   skip: !testDatabase,
 }, async t => {
-  const url = new URL(testDatabase ?? "");
-  assert.equal(url.hostname, "127.0.0.1");
-  assert.equal(url.port, "55489");
-  assert.equal(url.pathname, "/postgres");
   process.env.DATABASE_URL = testDatabase;
   process.env.DATA_API_BASE_URL = "";
   process.env.ALLOW_BUNDLED_DATA_FIXTURES = "false";
@@ -71,7 +68,7 @@ test("editor requests: real PostgreSQL authorization, corrections, atomicity and
           builder.onResolve(
             {
               filter:
-                /^(server-only|editor-test-auth|next\/cache|next\/server|next\/navigation|@\/auth)$/,
+                /^(server-only|editor-test-auth|next\/headers|next\/cache|next\/server|next\/navigation|@\/auth)$/,
             },
             args => ({ path: args.path, namespace: "editor-test" }),
           );
@@ -83,11 +80,13 @@ test("editor requests: real PostgreSQL authorization, corrections, atomicity and
                   ? "import { AsyncLocalStorage } from 'node:async_hooks'; export const actors = new AsyncLocalStorage();"
                   : args.path === "@/auth"
                     ? "import { actors } from 'editor-test-auth'; export async function auth() { const id = actors.getStore(); return id ? { user: { id, role: 'admin' } } : null; }"
-                    : args.path === "next/cache"
-                      ? "export function revalidatePath() {}"
-                      : args.path === "next/navigation"
-                        ? "export function redirect(path) { throw new Error('REDIRECT:' + path); }"
-                        : "export function after() {}",
+                    : args.path === "next/headers"
+                      ? "export async function headers() { return new Headers(); } export async function cookies() { const values = new Map(); return { get: key => values.get(key), set: (key, value) => values.set(key, value) }; }"
+                      : args.path === "next/cache"
+                        ? "export function revalidatePath() {}"
+                        : args.path === "next/navigation"
+                          ? "export function redirect(path) { throw new Error('REDIRECT:' + path); }"
+                          : "export function after() {}",
             loader: "js",
           }));
         },

@@ -3,15 +3,13 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { Client } from "pg";
+import { readTestDatabaseUrl } from "../../../scripts/testDatabase";
 
-const databaseUrl = process.env.CRAWL_LATEST_TEST_DATABASE_URL;
+const databaseUrl = readTestDatabaseUrl();
 
 test("crawl latest eligibility constraint matches current promotion rule", {
   skip: !databaseUrl,
 }, async () => {
-  const url = new URL(databaseUrl ?? "");
-  assert.ok(url.hostname === "127.0.0.1" || url.hostname === "localhost");
-
   const client = new Client({ connectionString: databaseUrl });
   await client.connect();
   let transactionStarted = false;

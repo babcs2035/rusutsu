@@ -6,6 +6,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { Client } from "pg";
 import sharp from "sharp";
+import { readTestDatabaseUrl } from "../../../scripts/testDatabase";
 
 type Runtime = {
   run<T>(
@@ -51,17 +52,18 @@ export async function verifyRemoteCorrections(
   testDatabase: string,
   ids: { resortId: string; adminId: string; editorId: string },
 ) {
+  assert.equal(testDatabase, readTestDatabaseUrl());
   const localUrl = new URL(testDatabase);
-  assert.equal(localUrl.hostname, "127.0.0.1");
-  assert.equal(localUrl.port, "55501");
-  assert.equal(localUrl.pathname, "/postgres");
   const databaseName = `corrections_remote_${process.pid}`;
   const admin = new Client({ connectionString: localUrl.href });
   await admin.connect();
-  await admin.query(`CREATE DATABASE "${databaseName}"`);
+  await admin.query(`CREATE SCHEMA "${databaseName}"`);
   const canonicalUrl = new URL(localUrl);
-  canonicalUrl.pathname = `/${databaseName}`;
-  const remote = new Client({ connectionString: canonicalUrl.href });
+  canonicalUrl.searchParams.set("schema", databaseName);
+  const remote = new Client({
+    connectionString: canonicalUrl.href,
+    options: `-c search_path=${databaseName}`,
+  });
   const savedEnv = {
     DATA_API_BASE_URL: process.env.DATA_API_BASE_URL,
     INTERNAL_DATA_API_ADMIN_TOKEN: process.env.INTERNAL_DATA_API_ADMIN_TOKEN,
@@ -476,7 +478,7 @@ export async function verifyRemoteCorrections(
     }
     await remote.end().catch(() => {});
     await admin
-      .query(`DROP DATABASE IF EXISTS "${databaseName}" WITH (FORCE)`)
+      .query(`DROP SCHEMA IF EXISTS "${databaseName}" CASCADE`)
       .catch(() => {});
     await admin.end();
     await api.prisma.account.deleteMany({
