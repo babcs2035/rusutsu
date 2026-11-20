@@ -35,23 +35,20 @@ async function main() {
   const apply = args.includes("--apply");
   const targets = new Set(args.filter(arg => !arg.startsWith("--")));
   const baseUrl = normalizeInternalDataApiBaseUrl(
-    process.env.DATA_API_BASE_URL?.trim() ?? "",
+    process.env.API_BASE_URL?.trim() ?? "",
   );
-  const token = process.env.INTERNAL_DATA_API_ADMIN_TOKEN?.trim();
-  if (!token) throw new Error("INTERNAL_DATA_API_ADMIN_TOKEN is required");
+  const token = process.env.API_BEARER_TOKEN?.trim();
+  if (!token) throw new Error("API_BEARER_TOKEN is required");
   const request = async (query: string, init: RequestInit = {}) => {
-    const response = await fetch(
-      `${baseUrl}/api/internal/v1/data-documents${query}`,
-      {
-        ...init,
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        redirect: "error",
-        signal: AbortSignal.timeout(30_000),
+    const response = await fetch(`${baseUrl}/api/admin/documents${query}`, {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
       },
-    );
+      redirect: "error",
+      signal: AbortSignal.timeout(30_000),
+    });
     if (!response.ok)
       throw new Error(`DataDocument API: HTTP ${response.status}`);
     return response.json();

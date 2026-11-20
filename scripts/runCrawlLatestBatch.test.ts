@@ -121,32 +121,18 @@ test("local-files child environment strips API and DB credentials and blocks dot
   const { childEnvironment } = await import("./runCrawlLatestBatch");
   const local = childEnvironment("local-files", {
     NODE_ENV: "test",
-    DATA_API_BASE_URL: "https://production.example/rusutsu",
+    API_BASE_URL: "https://production.example/rusutsu",
     DATABASE_URL: "production-db",
-    INTERNAL_DATA_API_ADMIN_TOKEN: "admin",
-    INTERNAL_DATA_API_CRAWLER_TOKEN: "crawler",
-    INTERNAL_DATA_API_DIAGNOSTICS_TOKEN: "diagnostics",
-    INTERNAL_DATA_API_TOKEN: "legacy",
+    API_BEARER_TOKEN: "shared-test-token",
   });
-  for (const key of [
-    "DATA_API_BASE_URL",
-    "DATABASE_URL",
-    "INTERNAL_DATA_API_ADMIN_TOKEN",
-    "INTERNAL_DATA_API_CRAWLER_TOKEN",
-    "INTERNAL_DATA_API_DIAGNOSTICS_TOKEN",
-    "INTERNAL_DATA_API_TOKEN",
-  ])
+  for (const key of ["API_BASE_URL", "DATABASE_URL", "API_BEARER_TOKEN"])
     assert.equal(local[key], "");
   const remote = childEnvironment("remote-api", {
     NODE_ENV: "test",
-    DATA_API_BASE_URL: "https://production.example/rusutsu",
+    API_BASE_URL: "https://production.example/rusutsu",
     DATABASE_URL: "production-db",
-    INTERNAL_DATA_API_ADMIN_TOKEN: "admin",
-    INTERNAL_DATA_API_CRAWLER_TOKEN: "crawler",
-    INTERNAL_DATA_API_DIAGNOSTICS_TOKEN: "diagnostics",
+    API_BEARER_TOKEN: "shared-test-token",
   });
-  assert.equal(remote.INTERNAL_DATA_API_CRAWLER_TOKEN, "crawler");
+  assert.equal(remote.API_BEARER_TOKEN, "shared-test-token");
   assert.equal(remote.DATABASE_URL, "");
-  assert.equal(remote.INTERNAL_DATA_API_ADMIN_TOKEN, "");
-  assert.equal(remote.INTERNAL_DATA_API_DIAGNOSTICS_TOKEN, "");
 });

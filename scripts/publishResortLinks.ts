@@ -32,7 +32,7 @@ dotenv.config({ path: ".env", quiet: true });
 
 const USAGE =
   "Usage: mise run resort-links:publish -- (--official <resortId...> | --source <siteId...>) [--check | --apply] [--allow-shrink] [--api <baseUrl>]";
-const API_PATH = "/api/internal/v1/resort-links";
+const API_PATH = "/api/admin/resort-links";
 export const OFFICIAL_LINKS_DIR = "src/private/data/resort-links";
 export const EXTERNAL_LINKS_DIR = "src/private/data/tour-links";
 const LIFT_TICKET_DIR = "src/private/data/lift-ticket";
@@ -173,7 +173,7 @@ async function main() {
   let allowShrink = false;
   // --check はファイルの形式だけを見る（APIに繋がない）
   let checkOnly = false;
-  let api = process.env.DATA_API_BASE_URL?.trim() ?? "";
+  let api = process.env.API_BASE_URL?.trim() ?? "";
   const args = process.argv.slice(2);
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -209,11 +209,9 @@ async function main() {
   }
 
   const baseUrl = normalizeInternalDataApiBaseUrl(api);
-  const token = process.env.INTERNAL_DATA_API_ADMIN_TOKEN?.trim();
+  const token = process.env.API_BEARER_TOKEN?.trim();
   if (!token)
-    throw new Error(
-      "INTERNAL_DATA_API_ADMIN_TOKENを.env.localに設定してください。",
-    );
+    throw new Error("API_BEARER_TOKENを.env.localに設定してください。");
   const request = async (suffix: string, init: RequestInit = {}) => {
     const response = await fetch(`${baseUrl}${API_PATH}${suffix}`, {
       ...init,

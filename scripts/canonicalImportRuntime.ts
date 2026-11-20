@@ -34,9 +34,9 @@ export async function withImportDatabase<T>(
     database: OneTimeImportDatabase<CanonicalImportTransaction>,
   ) => Promise<T>,
 ): Promise<T> {
-  if (process.env.DATA_API_BASE_URL?.trim()) {
+  if (process.env.API_BASE_URL?.trim()) {
     throw new Error(
-      "Direct DB imports require DATA_API_BASE_URL to be empty. Run imports in the canonical server environment.",
+      "Direct DB imports require API_BASE_URL to be empty. Run imports in the canonical server environment.",
     );
   }
   const configured = process.env.DATABASE_URL;

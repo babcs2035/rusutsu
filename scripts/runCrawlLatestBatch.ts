@@ -193,7 +193,7 @@ const usage = `
 
 オプション:
   --local-files       ローカルJSONへ保存（既定・API設定を明示的に無効化）
-  --remote-api        DATA_API_BASE_URLのAPIへ送信
+  --remote-api        API_BASE_URLのAPIへ送信
   --resort <id>       対象を限定（複数指定可）
   --concurrency <n>   同時実行数（1〜${MAX_CONCURRENCY}、既定1）
   --timeout-ms <ms>   1スキー場の制限時間（既定20分）
@@ -203,12 +203,11 @@ const usage = `
 `;
 
 const requireRemoteConfiguration = (): void => {
-  const baseUrl = process.env.DATA_API_BASE_URL?.trim();
-  const token = process.env.INTERNAL_DATA_API_CRAWLER_TOKEN?.trim();
+  const baseUrl = process.env.API_BASE_URL?.trim();
+  const token = process.env.API_BEARER_TOKEN?.trim();
   if (!baseUrl || !token) {
     throw new Error(
-      "--remote-apiにはDATA_API_BASE_URLと" +
-        "INTERNAL_DATA_API_CRAWLER_TOKENが必要です。",
+      "--remote-apiにはAPI_BASE_URLと" + "API_BEARER_TOKENが必要です。",
     );
   }
   normalizeInternalDataApiBaseUrl(baseUrl);
@@ -236,14 +235,10 @@ export const childEnvironment = (
   const environment: NodeJS.ProcessEnv = {
     ...source,
     DATABASE_URL: "",
-    INTERNAL_DATA_API_TOKEN: "",
-    INTERNAL_DATA_API_ADMIN_TOKEN: "",
-    INTERNAL_DATA_API_DIAGNOSTICS_TOKEN: "",
   };
   if (mode === "local-files") {
-    environment.DATA_API_BASE_URL = "";
-    environment.INTERNAL_DATA_API_CRAWLER_TOKEN = "";
-    environment.INTERNAL_DATA_API_TOKEN = "";
+    environment.API_BASE_URL = "";
+    environment.API_BEARER_TOKEN = "";
   }
   return environment;
 };

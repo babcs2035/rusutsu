@@ -14,9 +14,9 @@ import { build } from "esbuild";
  * WebKit の通信断時に worker 内の shared import が失敗するため、
  * 依存を一つの module worker にまとめ、追加通信なしで起動できるようにする。
  */
-const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const from = join(root, "node_modules", "maplibre-gl", "dist");
-const to = join(root, "public", "maplibre");
+const root: string = join(dirname(fileURLToPath(import.meta.url)), "..");
+const from: string = join(root, "node_modules", "maplibre-gl", "dist");
+const to: string = join(root, "public", "maplibre");
 
 await mkdir(to, { recursive: true });
 const result = await build({

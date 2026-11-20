@@ -46,12 +46,10 @@ const validateConfiguration = (): string => {
   if (!cron.validate(schedule)) {
     throw new Error(`CRAWL_LATEST_CRONが不正です: ${schedule}`);
   }
-  const baseUrl = process.env.DATA_API_BASE_URL?.trim();
-  const token = process.env.INTERNAL_DATA_API_CRAWLER_TOKEN?.trim();
+  const baseUrl = process.env.API_BASE_URL?.trim();
+  const token = process.env.API_BEARER_TOKEN?.trim();
   if (!baseUrl || !token) {
-    throw new Error(
-      "DATA_API_BASE_URLとINTERNAL_DATA_API_CRAWLER_TOKENが必要です。",
-    );
+    throw new Error("API_BASE_URLとAPI_BEARER_TOKENが必要です。");
   }
   normalizeInternalDataApiBaseUrl(baseUrl);
   return schedule;

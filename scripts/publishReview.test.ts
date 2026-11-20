@@ -45,7 +45,7 @@ test("CLI previews without writes, rejects changed inputs and applies the review
 globalThis.fetch = async (url, init) => {
   if (init.headers.Authorization !== 'Bearer cli-test-admin-key') throw Error('wrong key');
   if (init.method === 'PUT') {
-    if (!url.endsWith('/review-publications')) throw Error('wrong endpoint');
+    if (!url.endsWith('/api/admin/reviews')) throw Error('wrong endpoint');
     writeFileSync('submitted.json', init.body);
     return Response.json({ documents: [] });
   }
@@ -71,8 +71,8 @@ globalThis.fetch = async (url, init) => {
           env: {
             ...process.env,
             TSX_TSCONFIG_PATH: path.join(repo, "tsconfig.json"),
-            DATA_API_BASE_URL: baseUrl,
-            INTERNAL_DATA_API_ADMIN_TOKEN: "cli-test-admin-key",
+            API_BASE_URL: baseUrl,
+            API_BEARER_TOKEN: "cli-test-admin-key",
           },
         },
       );

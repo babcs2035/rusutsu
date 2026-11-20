@@ -75,8 +75,8 @@ globalThis.fetch = async (url, init) => {
           env: {
             ...process.env,
             TSX_TSCONFIG_PATH: path.join(repo, "tsconfig.json"),
-            DATA_API_BASE_URL: baseUrl,
-            INTERNAL_DATA_API_ADMIN_TOKEN: "cli-test-admin-key",
+            API_BASE_URL: baseUrl,
+            API_BEARER_TOKEN: "cli-test-admin-key",
           },
         },
       );

@@ -13,13 +13,25 @@ if (process.env.AUDIT_DISPOSABLE_DB !== "true") {
     "AUDIT_DISPOSABLE_DB=true is required (never use operational data)",
   );
 }
-const admin = process.env.INTERNAL_DATA_API_ADMIN_TOKEN;
-const crawler = process.env.INTERNAL_DATA_API_CRAWLER_TOKEN;
-const diagnostics = process.env.INTERNAL_DATA_API_DIAGNOSTICS_TOKEN;
-assert.ok(admin && crawler && diagnostics);
-const prefix = "/api/internal/v1";
+const admin = process.env.API_BEARER_TOKEN;
+assert.ok(admin);
+const secrets = [admin];
+const prefix = "/api/admin";
 let assertions = 0;
-async function call(path, status, token, method = "GET", body, headers = {}) {
+type AuditResort = Record<string, unknown> & {
+  id: string;
+  updatedAt: string;
+};
+
+/** Send one API request and verify that no configured token leaks in its body. */
+async function call<T = unknown>(
+  path: string,
+  status: number,
+  token?: string,
+  method = "GET",
+  body?: unknown,
+  headers: Record<string, string> = {},
+): Promise<T> {
   const response = await fetch(`${base}${path}`, {
     method,
     headers: {
@@ -35,31 +47,34 @@ async function call(path, status, token, method = "GET", body, headers = {}) {
   assert.equal(response.status, status, `${method} ${path}`);
   assertions++;
   const text = await response.text();
-  for (const secret of [admin, crawler, diagnostics])
-    assert.ok(!text.includes(secret));
-  return text ? JSON.parse(text) : null;
+  for (const secret of secrets) assert.ok(!text.includes(secret));
+  return (text ? JSON.parse(text) : null) as T;
 }
 await call("/api/ready", 200);
-await call(`${prefix}/ski-resorts?view=map`, 401);
-await call(`${prefix}/ski-resorts?view=map`, 403, crawler);
-await call(`${prefix}/data-documents?prefix=`, 403, diagnostics);
-await call(`${prefix}/crawl-latest-runs`, 403, admin);
-await call(`${prefix}/data-documents?key=..%2Fsecret.json`, 400, admin);
-await call(`${prefix}/data-documents`, 400, admin, "PUT", "{");
-await call(`${prefix}/data-documents`, 422, admin, "PUT", { documents: [] });
+await call(`${prefix}/resorts?view=map`, 401);
+await call(`${prefix}/resorts?view=map`, 401, "incorrect-token");
+await call(`${prefix}/documents?prefix=`, 401, "incorrect-token");
+await call(`${prefix}/crawl/runs`, 400, admin);
+await call(`${prefix}/documents?key=..%2Fsecret.json`, 400, admin);
+await call(`${prefix}/documents`, 400, admin, "PUT", "{");
+await call(`${prefix}/documents`, 422, admin, "PUT", { documents: [] });
 await call(
-  `${prefix}/ski-resorts/audit-resort`,
+  `${prefix}/resorts/audit-resort`,
   413,
   admin,
   "PATCH",
   "x".repeat(65537),
 );
-const { resorts } = await call(`${prefix}/ski-resorts?view=admin`, 200, admin);
+const { resorts } = await call<{ resorts: AuditResort[] }>(
+  `${prefix}/resorts?view=admin`,
+  200,
+  admin,
+);
 const resort = resorts.find(row => row.id === "audit-resort");
 assert.ok(resort, "Disposable DB must contain audit-resort");
 const { id: _id, updatedAt, ...data } = resort;
 const updates = await Promise.all([
-  fetch(`${base}${prefix}/ski-resorts/audit-resort`, {
+  fetch(`${base}${prefix}/resorts/audit-resort`, {
     method: "PATCH",
     headers: {
       Authorization: `Bearer ${admin}`,
@@ -70,7 +85,7 @@ const updates = await Promise.all([
       data: { ...data, shortName: "監査A", isActive: false },
     }),
   }),
-  fetch(`${base}${prefix}/ski-resorts/audit-resort`, {
+  fetch(`${base}${prefix}/resorts/audit-resort`, {
     method: "PATCH",
     headers: {
       Authorization: `Bearer ${admin}`,
@@ -84,13 +99,22 @@ const updates = await Promise.all([
 ]);
 assert.deepEqual(updates.map(response => response.status).sort(), [200, 409]);
 assertions++;
-const hidden = await call(`${prefix}/ski-resorts?view=map`, 200, admin);
+const hidden = await call<{ resorts: Array<{ id: string }> }>(
+  `${prefix}/resorts?view=map`,
+  200,
+  admin,
+);
 assert.ok(!hidden.resorts.some(row => row.id === "audit-resort"));
 const current = (
-  await call(`${prefix}/ski-resorts?view=admin`, 200, admin)
+  await call<{ resorts: AuditResort[] }>(
+    `${prefix}/resorts?view=admin`,
+    200,
+    admin,
+  )
 ).resorts.find(row => row.id === "audit-resort");
+assert.ok(current);
 const { id: _currentId, updatedAt: currentDate, ...currentData } = current;
-await call(`${prefix}/ski-resorts/audit-resort`, 200, admin, "PATCH", {
+await call(`${prefix}/resorts/audit-resort`, 200, admin, "PATCH", {
   expectedUpdatedAt: currentDate,
   data: { ...currentData, isActive: true },
 });
@@ -101,12 +125,16 @@ const original = {
   mediaType: "application/json",
   expectedHash: null,
 };
-const created = await call(`${prefix}/data-documents`, 200, admin, "PUT", {
-  documents: [original],
-});
+const created = await call<{ documents: Array<{ hash: string }> }>(
+  `${prefix}/documents`,
+  200,
+  admin,
+  "PUT",
+  { documents: [original] },
+);
 const concurrent = await Promise.all(
   [1, 2].map(value =>
-    fetch(`${base}${prefix}/data-documents`, {
+    fetch(`${base}${prefix}/documents`, {
       method: "PUT",
       headers: {
         Authorization: `Bearer ${admin}`,
@@ -129,8 +157,8 @@ assert.deepEqual(
   [200, 409],
 );
 assertions++;
-const winner = await call(
-  `${prefix}/data-documents?key=${encodeURIComponent(key)}`,
+const winner = await call<{ document: { version: number } }>(
+  `${prefix}/documents?key=${encodeURIComponent(key)}`,
   200,
   admin,
 );
@@ -141,7 +169,6 @@ console.log(
     httpChecks: assertions,
     checks: [
       "401",
-      "403",
       "400",
       "413",
       "422",

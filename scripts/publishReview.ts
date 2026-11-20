@@ -39,13 +39,11 @@ async function main() {
   }
   skiResortIdSchema.parse(resortId);
   const baseUrl = normalizeInternalDataApiBaseUrl(
-    process.env.DATA_API_BASE_URL?.trim() ?? "",
+    process.env.API_BASE_URL?.trim() ?? "",
   );
-  const token = process.env.INTERNAL_DATA_API_ADMIN_TOKEN?.trim();
+  const token = process.env.API_BEARER_TOKEN?.trim();
   if (!token)
-    throw new Error(
-      "INTERNAL_DATA_API_ADMIN_TOKENを.env.localに設定してください。",
-    );
+    throw new Error("API_BEARER_TOKENを.env.localに設定してください。");
   const request = async (suffix: string, init: RequestInit = {}) => {
     const response = await fetch(`${baseUrl}${suffix}`, {
       ...init,
@@ -95,7 +93,7 @@ async function main() {
       throw new Error(
         "接続先またはJSONがプレビュー時から変わっています。プレビューをやり直してください。",
       );
-    await request("/api/internal/v1/review-publications", {
+    await request("/api/admin/reviews", {
       method: "PUT",
       body: JSON.stringify(plan.publication),
     });
@@ -109,7 +107,7 @@ async function main() {
         return dataDocumentGetResponseSchema.parse(
           await (
             await request(
-              `/api/internal/v1/data-documents?${new URLSearchParams({ key })}`,
+              `/api/admin/documents?${new URLSearchParams({ key })}`,
             )
           ).json(),
         ).document;

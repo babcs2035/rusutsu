@@ -11,9 +11,9 @@ const containerName = `rusutsu-tests-${process.pid}`;
 const databaseImage = "postgres:16-alpine";
 const unitTestTimeoutMs = 60_000;
 const browserTests = [
-  "scripts/testOfflineOverview.mjs",
-  "scripts/testOfflineDetail.mjs",
-  "scripts/testOfflineRetention.mjs",
+  "scripts/testOfflineOverview.ts",
+  "scripts/testOfflineDetail.ts",
+  "scripts/testOfflineRetention.ts",
 ];
 
 /** 生成物・データ・依存を探索せず，管理する試験ファイルだけを列挙する． */
@@ -28,7 +28,7 @@ async function collect(directory: string): Promise<string[]> {
       )
         continue;
       files.push(...(await collect(file)));
-    } else if (entry.isFile() && entry.name.endsWith(".test.ts"))
+    } else if (entry.isFile() && /\.test\.tsx?$/u.test(entry.name))
       files.push(file);
   }
   return files;
@@ -128,8 +128,10 @@ function createDatabase(): string {
 async function main(): Promise<void> {
   const args = process.argv.slice(2).filter(arg => arg !== "--");
   const mode = args.shift() ?? "--all";
-  if (!["--all", "--unit", "--db", "--browser"].includes(mode) || args.length) {
-    throw new Error("Usage: mise run test -- [--all|--unit|--db|--browser]");
+  if (!["--all", "--unit", "--db", "--browser"].includes(mode)) {
+    throw new Error(
+      "Usage: mise run test -- [--all|--unit|--db|--browser] [test-file...]",
+    );
   }
   await mkdir(root, { recursive: true });
   const config = path.resolve(root, "tsconfig.json");
@@ -142,21 +144,32 @@ async function main(): Promise<void> {
   );
   const env = { ...process.env, TSX_TSCONFIG_PATH: config };
   if (mode === "--browser") {
-    for (const file of browserTests)
-      await run(process.execPath, ["--import", "tsx", file], env);
+    if (args.some(file => !browserTests.includes(file)))
+      throw new Error("Select an existing browser test file.");
+    for (const file of args.length ? args : browserTests)
+      await run(process.execPath, [file], env);
     return;
   }
   const files = [
     ...(await collect("src")),
     ...(await collect("scripts")),
   ].sort();
-  const unit = files.filter(file => !file.endsWith(".integration.test.ts"));
-  const integration = files.filter(file =>
+  if (args.some(file => !files.includes(file)))
+    throw new Error("Select existing test files below src/ or scripts/.");
+  const selected = args.length
+    ? files.filter(file => args.includes(file))
+    : files;
+  const unit = selected.filter(file => !file.endsWith(".integration.test.ts"));
+  const integration = selected.filter(file =>
     file.endsWith(".integration.test.ts"),
   );
-  if (!unit.length || !integration.length)
+  if (
+    (!unit.length && mode === "--unit") ||
+    (!integration.length && mode === "--db") ||
+    !selected.length
+  )
     throw new Error("Required test suites are missing.");
-  if (mode !== "--db")
+  if (mode !== "--db" && unit.length)
     await run(
       process.execPath,
       [
@@ -168,7 +181,7 @@ async function main(): Promise<void> {
       ],
       env,
     );
-  if (mode === "--unit") return;
+  if (mode === "--unit" || !integration.length) return;
   let databaseUrl = readTestDatabaseUrl();
   let owned = false;
   try {

@@ -20,7 +20,7 @@ dotenv.config({ path: ".env", quiet: true });
 
 const USAGE =
   "Usage: mise run lift-ticket:publish -- --resort <id> --season <YYYY-YYYY> [--apply | --pull] [--plan <file>]";
-const API_PATH = "/api/internal/v1/lift-tickets";
+const API_PATH = "/api/admin/lift-tickets";
 const planSchema = z.strictObject({
   baseUrl: z.string(),
   resortId: z.string(),
@@ -56,13 +56,11 @@ async function main() {
   );
 
   const baseUrl = normalizeInternalDataApiBaseUrl(
-    process.env.DATA_API_BASE_URL?.trim() ?? "",
+    process.env.API_BASE_URL?.trim() ?? "",
   );
-  const token = process.env.INTERNAL_DATA_API_ADMIN_TOKEN?.trim();
+  const token = process.env.API_BEARER_TOKEN?.trim();
   if (!token)
-    throw new Error(
-      "INTERNAL_DATA_API_ADMIN_TOKENを.env.localに設定してください。",
-    );
+    throw new Error("API_BEARER_TOKENを.env.localに設定してください。");
   const request = (suffix: string, init: RequestInit = {}) =>
     fetch(`${baseUrl}${suffix}`, {
       ...init,

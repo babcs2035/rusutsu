@@ -76,15 +76,13 @@ const parseArguments = (args: string[]): CliOptions => {
 };
 
 const readConfiguration = () => {
-  const rawBaseUrl = process.env.DATA_API_BASE_URL?.trim();
-  const token = process.env.INTERNAL_DATA_API_DIAGNOSTICS_TOKEN?.trim();
+  const rawBaseUrl = process.env.API_BASE_URL?.trim();
+  const token = process.env.API_BEARER_TOKEN?.trim();
   if (!rawBaseUrl) {
-    throw new Error("DATA_API_BASE_URL が設定されていません。");
+    throw new Error("API_BASE_URL が設定されていません。");
   }
   if (!token) {
-    throw new Error(
-      "INTERNAL_DATA_API_DIAGNOSTICS_TOKEN が設定されていません。",
-    );
+    throw new Error("API_BEARER_TOKEN が設定されていません。");
   }
   return {
     baseUrl: normalizeInternalDataApiBaseUrl(rawBaseUrl),
@@ -118,7 +116,7 @@ const readRun = async (
     include: "issues,artifacts",
   });
   const response = await request(
-    `/api/internal/v1/crawl-latest-runs?${search.toString()}`,
+    `/api/admin/crawl/runs?${search.toString()}`,
     configuration,
   );
   const body = (await response.json()) as { run?: RunDetail };
@@ -132,7 +130,7 @@ const findLatestDiagnosticRun = async (
 ): Promise<RunDetail> => {
   const search = new URLSearchParams({ resortId, limit: "100" });
   const response = await request(
-    `/api/internal/v1/crawl-latest-runs?${search.toString()}`,
+    `/api/admin/crawl/runs?${search.toString()}`,
     configuration,
   );
   const body = (await response.json()) as { runs?: RunSummary[] };
@@ -173,9 +171,7 @@ const downloadArtifacts = async (
   for (const artifact of run.artifacts ?? []) {
     if (artifact.state !== "AVAILABLE") continue;
     const response = await request(
-      `/api/internal/v1/crawl-latest-artifacts/${encodeURIComponent(
-        artifact.id,
-      )}/content`,
+      `/api/admin/crawl/artifacts/${encodeURIComponent(artifact.id)}/content`,
       configuration,
     );
     const fileName = `${safeSegment(artifact.id, "artifact ID")}-${path
