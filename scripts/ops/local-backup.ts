@@ -151,13 +151,17 @@ export async function migrateLegacyBackups(
   legacyRoot: string,
   targetRoot: string,
   preview = false,
+  requestedName?: string,
 ): Promise<string[]> {
   if (path.resolve(legacyRoot) === path.resolve(targetRoot)) return [];
   if (!existsSync(legacyRoot)) return [];
   assertDirectory(legacyRoot);
   assertDirectory(targetRoot);
   const migrated = [];
-  for (const name of readdirSync(legacyRoot)) {
+  const names = requestedName ? [requestedName] : readdirSync(legacyRoot);
+  if (requestedName && !generationPattern.test(requestedName))
+    throw new Error("Invalid backup generation name.");
+  for (const name of names) {
     if (!generationPattern.test(name)) continue;
     const source = path.join(legacyRoot, name);
     let sourceMetadata: BackupMetadata;
@@ -299,6 +303,7 @@ async function main() {
         process.env.OPS_BACKUP_LEGACY_TEST_ROOT || "/operations/backups",
         root,
         process.argv[2] === "plan-legacy",
+        process.argv[3],
       );
       for (const name of migrated) console.log(name);
     } else if (process.argv[2] === "confirm-legacy") {

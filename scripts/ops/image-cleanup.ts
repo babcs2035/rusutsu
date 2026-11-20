@@ -43,12 +43,7 @@ export type ImageCleanupPlanInput = {
 
 export type ImageCleanupPlan = {
   tagRemovals: Array<{ tag: string; imageId: string }>;
-  pruneEligibleImageIds: string[];
-  warnings: string[];
-};
-
-export type PruneCheck = {
-  allowed: boolean;
+  removableImageIds: string[];
   warnings: string[];
 };
 
@@ -144,7 +139,7 @@ export function selectImageCleanupPlan(
   tagRemovals.sort((left, right) => left.tag.localeCompare(right.tag));
   return {
     tagRemovals,
-    pruneEligibleImageIds: tagRemovals
+    removableImageIds: tagRemovals
       .filter(({ imageId }) =>
         images.some(
           image =>
@@ -158,34 +153,21 @@ export function selectImageCleanupPlan(
   };
 }
 
-/** Allow prune only when every matching dangling image was identified before tag deletion. */
-export function checkPruneCandidates(
-  eligibleImageIds: string[],
-  danglingImages: InspectedImage[],
-): PruneCheck {
-  const eligible = new Set(eligibleImageIds);
-  const seen = new Set<string>();
-  const warnings: string[] = [];
-  for (const image of danglingImages) {
-    const id = image.Id;
-    if (
-      !id ||
-      !IMAGE_ID_PATTERN.test(id) ||
-      seen.has(id) ||
-      (image.RepoTags ?? []).some(
-        tag => typeof tag === "string" && tag !== "<none>:<none>",
-      ) ||
-      image.Config?.Labels?.[CLEANUP_LABEL] !== "app" ||
-      !eligible.has(id)
-    ) {
-      warnings.push(
-        "Prune skipped because a dangling image was not proven removable for this deployment.",
-      );
-      return { allowed: false, warnings };
-    }
-    seen.add(id);
+/** Recheck one exact image ID immediately before a non-forced Docker removal. */
+export function checkImageRemoval(
+  expectedImageId: string,
+  image: InspectedImage,
+): void {
+  if (
+    !IMAGE_ID_PATTERN.test(expectedImageId) ||
+    image.Id !== expectedImageId ||
+    (image.RepoTags ?? []).some(
+      tag => typeof tag === "string" && tag !== "<none>:<none>",
+    ) ||
+    image.Config?.Labels?.[CLEANUP_LABEL] !== "app"
+  ) {
+    throw new Error("Image is no longer an approved dangling app image.");
   }
-  return { allowed: true, warnings };
 }
 
 function validateDeploymentImage(image: DeploymentImage, name: string): void {
@@ -276,31 +258,11 @@ async function planFromSnapshot(
     plan.tagRemovals.map(({ tag, imageId }) => `${tag}\t${imageId}\n`).join(""),
   );
   await writeFile(
-    path.join(directory, "prune-eligible-image-ids.txt"),
-    plan.pruneEligibleImageIds.join("\n"),
+    path.join(directory, "removable-image-ids.txt"),
+    plan.removableImageIds.join("\n"),
   );
   console.log(`Eligible SHA tags: ${plan.tagRemovals.length}`);
   for (const warning of plan.warnings) console.error(`Warning: ${warning}`);
-}
-
-/** Check the post-removal dangling-image set against the preverified IDs. */
-async function checkPruneFromSnapshot(directory: string): Promise<void> {
-  const eligibleImageIds = (
-    await readFile(path.join(directory, "prune-eligible-image-ids.txt"), "utf8")
-  )
-    .split("\n")
-    .filter(Boolean);
-  const danglingImages = await readJsonLines<InspectedImage>(
-    path.join(directory, "dangling-images.jsonl"),
-  );
-  const check = checkPruneCandidates(eligibleImageIds, danglingImages);
-  await writeFile(
-    path.join(directory, "prune-approved"),
-    check.allowed ? "yes\n" : "no\n",
-  );
-  for (const warning of check.warnings) console.error(`Warning: ${warning}`);
-  if (check.allowed)
-    console.log(`Verified dangling image candidates: ${danglingImages.length}`);
 }
 
 /** Atomically persist the current immutable image while retaining rollback. */
@@ -348,14 +310,12 @@ async function main(): Promise<void> {
     )
       throw new Error("Cleanup snapshot path is invalid.");
     await planFromSnapshot(requestedSha, directory);
-  } else if (operation === "check-prune") {
-    const directory = args[1];
-    if (
-      !directory ||
-      !path.resolve(directory).startsWith("/operations/.cleanup-images-")
-    )
-      throw new Error("Cleanup snapshot path is invalid.");
-    await checkPruneFromSnapshot(directory);
+  } else if (operation === "check-id") {
+    const expectedImageId = args[1];
+    const inspectedImage = args[2];
+    if (!expectedImageId || !inspectedImage)
+      throw new Error("Image removal identity is incomplete.");
+    checkImageRemoval(expectedImageId, JSON.parse(inspectedImage));
   } else throw new Error("Cleanup helper operation is invalid.");
 }
 

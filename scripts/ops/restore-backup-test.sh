@@ -39,14 +39,33 @@ done
 [[ "$ready" == true ]] || ops_die 'Disposable restore database did not become ready.'
 docker exec -i "$container_id" pg_restore --exit-on-error --no-owner --no-privileges \
   -U restore_check -d restore_check < "$BACKUP_DIR/$generation/database.dump"
-if [[ "$owns_lock" == true ]]; then
-  docker exec "$container_id" psql -U restore_check -d restore_check -v ON_ERROR_STOP=1 \
-  -c 'SELECT
+docker exec "$container_id" psql -U restore_check -d restore_check -v ON_ERROR_STOP=1 \
+  -c 'DO $$
+DECLARE resort_count bigint;
+BEGIN
+  IF NOT (
+    to_regclass('\''public.ski_resorts'\'') IS NOT NULL AND
+    to_regclass('\''public.users'\'') IS NOT NULL AND
+    to_regclass('\''public.accounts'\'') IS NOT NULL AND
+    to_regclass('\''public.contribution_photos'\'') IS NOT NULL AND
+    to_regclass('\''public.edit_requests'\'') IS NOT NULL AND
+    to_regclass('\''public.crawl_latest_currents'\'') IS NOT NULL
+  ) THEN
+    RAISE EXCEPTION '\''Required application tables are missing'\'';
+  END IF;
+  SELECT count(*) INTO resort_count FROM ski_resorts;
+  IF resort_count = 0 THEN
+    RAISE EXCEPTION '\''Restored ski resort data is empty'\'';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_constraint WHERE contype = '\''f'\'' AND NOT convalidated) THEN
+    RAISE EXCEPTION '\''Restored database has unvalidated foreign keys'\'';
+  END IF;
+END $$;
+SELECT
     (SELECT count(*) FROM ski_resorts) AS restored_resorts,
     (SELECT count(*) FROM users) AS restored_users,
     (SELECT count(*) FROM accounts) AS restored_accounts,
     (SELECT count(*) FROM contribution_photos) AS restored_photos,
     (SELECT count(*) FROM edit_requests) AS restored_requests,
     (SELECT count(*) FROM crawl_latest_currents) AS restored_current_snapshots;'
-fi
 echo 'Restore succeeded in an isolated disposable PostgreSQL container on this VPS.'

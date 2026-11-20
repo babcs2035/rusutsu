@@ -36,16 +36,14 @@ while IFS=$'\t' read -r tag image_id; do
   remove_count=$((remove_count + 1))
 done < "$snapshot/tag-removals.txt"
 
-# Only prune after proving the complete dangling set contains exclusively
-# images selected above. A foreign label match suppresses pruning entirely.
-docker image ls -aq --filter dangling=true --filter label=com.rusutsu.image-cleanup=app --no-trunc \
-  | sort -u | xargs -r docker image inspect --format "$image_format" > "$snapshot/dangling-images.jsonl"
-ops_node image-cleanup.ts check-prune "/operations/$(basename "$snapshot")"
-if [[ "$(cat "$snapshot/prune-approved")" == yes ]]; then
-  docker image prune --force --filter "label=com.rusutsu.image-cleanup=app" >/dev/null
-else
-  printf '%s\n' 'Dangling image prune skipped because its full candidate set was not verified.' >&2
-fi
+# Delete only the exact image IDs selected before tag removal. A non-forced
+# removal also lets Docker reject an image that became referenced meanwhile.
+while IFS= read -r image_id; do
+  [[ "$image_id" =~ ^sha256:[a-f0-9]{64}$ ]] || ops_die 'Invalid image cleanup ID.'
+  image_json="$(docker image inspect --format "$image_format" "$image_id")"
+  ops_node image-cleanup.ts check-id "$image_id" "$image_json"
+  docker image rm --no-prune "$image_id" >/dev/null
+done < "$snapshot/removable-image-ids.txt"
 printf 'Removed verified obsolete SHA tags: %s\n' "$remove_count"
 printf '%s\n' 'Docker storage after cleanup:'
 df -Pk -- "$docker_root"

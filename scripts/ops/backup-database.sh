@@ -51,12 +51,15 @@ if [[ "${1:-}" == --dry-run ]]; then
   ops_node local-backup.ts plan-legacy
   exit 0
 fi
-migrated_generations="$(ops_node local-backup.ts migrate-legacy)"
-if [[ -n "$migrated_generations" ]]; then
+legacy_generations="$(ops_node local-backup.ts plan-legacy)"
+if [[ -n "$legacy_generations" ]]; then
   while IFS= read -r generation; do
+    migrated_generation="$(ops_node local-backup.ts migrate-legacy "$generation")"
+    [[ "$migrated_generation" == "$generation" ]] \
+      || ops_die 'Legacy backup generation was not copied as expected.'
     bash "$OPS_SCRIPTS_DIR/restore-backup-test.sh" --operation-lock-held "$generation"
     ops_node local-backup.ts confirm-legacy "$generation"
-  done <<< "$migrated_generations"
+  done <<< "$legacy_generations"
 fi
 check_backup_capacity
 work="$(mktemp -d "$BACKUP_DIR/.incomplete-XXXXXXXX")"

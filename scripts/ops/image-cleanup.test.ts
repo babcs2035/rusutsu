@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-  checkPruneCandidates,
+  checkImageRemoval,
   nextDeploymentRecord,
   selectImageCleanupPlan,
 } from "./image-cleanup.ts";
@@ -83,27 +83,20 @@ test("deploying the same image twice preserves the previous distinct rollback", 
   );
 });
 
-test("dangling prune requires every dangling image to be preverified", () => {
-  const allowed = checkPruneCandidates(
-    [imageId("c")],
-    [
-      {
-        Id: imageId("c"),
-        RepoTags: ["<none>:<none>"],
-        Config: { Labels: label },
-      },
-    ],
+test("exact image removal requires the approved ID to remain dangling and labeled", () => {
+  const image = {
+    Id: imageId("c"),
+    RepoTags: ["<none>:<none>"],
+    Config: { Labels: label },
+  };
+  assert.doesNotThrow(() => checkImageRemoval(imageId("c"), image));
+  assert.throws(() => checkImageRemoval(imageId("f"), image), /approved/);
+  assert.throws(
+    () =>
+      checkImageRemoval(imageId("c"), {
+        ...image,
+        RepoTags: [`${repository}:${"c".repeat(40)}`],
+      }),
+    /approved/,
   );
-  assert.equal(allowed.allowed, true);
-  const rejected = checkPruneCandidates(
-    [imageId("c")],
-    [
-      {
-        Id: imageId("f"),
-        RepoTags: ["<none>:<none>"],
-        Config: { Labels: label },
-      },
-    ],
-  );
-  assert.equal(rejected.allowed, false);
 });

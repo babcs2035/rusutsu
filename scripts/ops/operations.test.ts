@@ -160,6 +160,9 @@ test("backup stays on the VPS, validates the archive and commits a private gener
     );
     assert.doesNotMatch(f.calls(), /rclone|age --|scp|upload-artifact/);
     assert.match(result.stdout, /Verified VPS-local database backup/);
+    const restore = f.run("restore-backup-test.sh");
+    assert.equal(restore.status, 0, restore.stderr);
+    assert.match(f.calls(), /to_regclass/);
   } finally {
     f.clean();
   }
@@ -213,10 +216,30 @@ test("legacy backup preview copies nothing and failed restore preserves the sour
       "rusutsu-db-20260906T000000Z-bbbbbbbb",
       "2026-09-06T00:00:00.000Z",
     );
+    mkdirSync(path.join(legacyRoot, ".incomplete-cccccccc"), {
+      mode: 0o700,
+    });
+    writeFileSync(
+      path.join(legacyRoot, ".incomplete-cccccccc", "database.dump"),
+      "PGDMP-next-legacy",
+    );
+    writeFileSync(
+      path.join(legacyRoot, ".incomplete-cccccccc", "archive.list"),
+      "archive next legacy",
+    );
+    const laterGeneration = await finalize(
+      legacyRoot,
+      ".incomplete-cccccccc",
+      "rusutsu-db-20260907T000000Z-cccccccc",
+      "2026-09-07T00:00:00.000Z",
+    );
 
     const preview = f.run("backup-database.sh", {}, ["--dry-run"]);
     assert.equal(preview.status, 0, preview.stderr);
-    assert.equal(preview.stdout.trim(), generation);
+    assert.deepEqual(
+      preview.stdout.trim().split("\n").sort(),
+      [generation, laterGeneration].sort(),
+    );
     assert.deepEqual(readdirSync(path.join(f.root, "project", "backups")), []);
 
     const result = f.run("backup-database.sh", {
@@ -227,8 +250,13 @@ test("legacy backup preview copies nothing and failed restore preserves the sour
     assert.match(f.calls(), /pg_restore --exit-on-error/);
     assert.doesNotMatch(f.calls(), /confirm-legacy/);
     assert.ok(readdirSync(legacyRoot).includes(generation));
+    assert.ok(readdirSync(legacyRoot).includes(laterGeneration));
     assert.ok(
       readdirSync(path.join(f.root, "project", "backups")).includes(generation),
+    );
+    assert.equal(
+      readdirSync(path.join(f.root, "project", "backups")).length,
+      1,
     );
   } finally {
     f.clean();
