@@ -1,14 +1,5 @@
+import type { MapViewSnapshot } from "@/features/map/types";
 import type { NullableSkiResortDetail } from "@/types/skiResorts";
-
-export type MapViewSnapshot = {
-  center: { lat: number; lng: number };
-  zoom: number;
-  bearing?: number;
-};
-
-export type MapViewRestoreRequest = MapViewSnapshot & {
-  key: number;
-};
 
 export type ReturnViewState = {
   mobileContentTab: "info" | "map";

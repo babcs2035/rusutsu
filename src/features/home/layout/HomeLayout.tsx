@@ -24,6 +24,7 @@ import { useScreenState } from "@/features/map/session/useScreenState";
 import type {
   ElevationProfileMapPoint,
   JapanResortMapProps,
+  MapViewRestoreRequest,
   SelectedMapFeature,
 } from "@/features/map/types";
 import {
@@ -66,7 +67,6 @@ import {
 import { SearchButton } from "../components/SearchButton";
 import { SkiResortCompareView } from "../components/SkiResortCompareView";
 import { useResortSort } from "../hooks/useResortSort";
-import type { MapViewRestoreRequest } from "../types";
 
 const MOBILE_CONTENT_TAB_OPTIONS = [
   { value: "map", label: "地図" },

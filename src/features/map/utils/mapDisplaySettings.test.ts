@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { normalizeCourseFeature } from "@/lib/finalizedResortGeojson";
+import { normalizeCourseFeature } from "@/lib/finalizedMapFeatures";
 import type { FinalizedResortMapData } from "@/lib/finalizedResortGeojsonShared";
 import { getRasterTone } from "../maplibre/baseStyle";
 import {

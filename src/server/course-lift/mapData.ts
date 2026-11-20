@@ -7,7 +7,7 @@ import {
 import {
   normalizeCourseFeature,
   normalizeLiftFeature,
-} from "@/lib/finalizedResortGeojson";
+} from "@/lib/finalizedMapFeatures";
 import type {
   FinalizedCourseFeature,
   FinalizedLiftFeature,

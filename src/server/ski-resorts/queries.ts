@@ -205,13 +205,22 @@ export async function getSimultaneousView(resortId: string, groupId: string) {
     item => item.id === groupId,
   );
   if (!group) return null;
-  const members = await Promise.all(
-    group.members.map(async member =>
-      member.id === resortId
-        ? { id: member.id, mapData: await getFinalizedResortMapData(member.id) }
-        : { id: member.id, detail: await getSkiResortById(member.id) },
-    ),
-  );
+  // 相手ごとにリンク文書と営業集計を読み直さず，共通の読込を一度だけ行う．
+  const partnerIds = group.members
+    .filter(member => member.id !== resortId)
+    .map(member => member.id);
+  const [ownMap, partnerDetails] = await Promise.all([
+    group.members.some(member => member.id === resortId)
+      ? getFinalizedResortMapData(resortId)
+      : null,
+    readSkiResortDetails(partnerIds, { withMap: true }),
+  ]);
+  const byId = new Map(partnerDetails.map(detail => [detail.id, detail]));
+  const members = group.members.map(member => ({
+    id: member.id,
+    detail: byId.get(member.id),
+    mapData: member.id === resortId ? ownMap : null,
+  }));
   const partners = members.flatMap(member => {
     if (!member.detail) return [];
     const { finalizedMapData: _map, ...detail } = member.detail;

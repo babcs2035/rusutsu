@@ -68,6 +68,8 @@ import {
 } from "@/features/map/session/storage";
 import type {
   ElevationProfileMapPoint,
+  MapViewRestoreRequest,
+  MapViewSnapshot,
   SelectedMapFeature,
 } from "@/features/map/types";
 import { useSimultaneousView } from "@/features/resort-detail/components/SimultaneousToggle";
@@ -103,8 +105,6 @@ import { useMobileSearchOverlayEffects } from "./hooks/useMobileSearchOverlayEff
 import { useSidePanelLayout } from "./hooks/useSidePanelLayout";
 import { HomeLayout } from "./layout/HomeLayout";
 import type {
-  MapViewRestoreRequest,
-  MapViewSnapshot,
   MobileSearchReturnState,
   ReturnViewState,
   VisualViewportState,
