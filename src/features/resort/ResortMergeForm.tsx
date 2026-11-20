@@ -4,6 +4,10 @@ import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
 import { getResortLabelName } from "@/lib/resortAliases";
 import {
   type AdminSkiResortRecord,
@@ -414,22 +418,22 @@ export function ResortMergeForm({
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="merge-primary">基本情報の引き継ぎ元</Label>
-                <select
+                <NativeSelect
                   id="merge-primary"
+                  className="w-full"
                   required
                   value={primaryId}
                   onChange={event => setPrimaryId(event.target.value)}
-                  className="h-10 w-full rounded-md border bg-white px-3 text-sm"
                 >
-                  <option value="" disabled>
+                  <NativeSelectOption value="" disabled>
                     結合対象から選択
-                  </option>
+                  </NativeSelectOption>
                   {selected.map(resort => (
-                    <option key={resort.id} value={resort.id}>
+                    <NativeSelectOption key={resort.id} value={resort.id}>
                       {resort.nameJa}
-                    </option>
+                    </NativeSelectOption>
                   ))}
-                </select>
+                </NativeSelect>
                 <p className="text-xs leading-5 text-gray-500">
                   所在地・地図の位置・営業時間・コースの割合などを引き継ぎます。コース数・リフト数は合算します。結合後の専用データがない場合、料金・レビューは引き継ぎ元の情報を表示します。
                 </p>

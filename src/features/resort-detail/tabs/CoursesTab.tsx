@@ -2,6 +2,10 @@
 
 import { Circle, Triangle, X } from "lucide-react";
 import { z } from "zod";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
 import { recommendationSelection } from "@/features/course-recommendations/algorithm";
 import { useScreenState } from "@/features/map/session/useScreenState";
 import type { SelectedMapFeature } from "@/features/map/types";
@@ -405,26 +409,26 @@ export const CoursesTab = ({
       <section className="@container/course-list">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-bold">コース一覧</h2>
-          <select
+          <NativeSelect
             aria-label="コースを絞り込み"
             value={filter}
             onChange={e => setFilter(e.target.value)}
-            className="h-8 max-w-36 rounded border px-2 text-sm"
+            className="max-w-36"
           >
-            <option value="all">すべて</option>
+            <NativeSelectOption value="all">すべて</NativeSelectOption>
             {levels
               .filter(l => l.count)
               .map(l => (
-                <option key={l.key} value={l.key}>
+                <NativeSelectOption key={l.key} value={l.key}>
                   {l.label}
-                </option>
+                </NativeSelectOption>
               ))}
             {featureFilters.map(option => (
-              <option key={option.value} value={option.value}>
+              <NativeSelectOption key={option.value} value={option.value}>
                 {option.label}
-              </option>
+              </NativeSelectOption>
             ))}
-          </select>
+          </NativeSelect>
         </div>
         <div className="my-2 flex flex-wrap items-center gap-2 text-sm text-slate-600">
           <span className="inline-flex items-center gap-1 leading-none">

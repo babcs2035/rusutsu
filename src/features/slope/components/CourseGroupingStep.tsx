@@ -2,6 +2,11 @@
 
 import { type DragEvent, type ReactNode, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
 import { EditorStepContent } from "@/shared/components/resort-editor/EditorStepContent";
 import { courseGroupingRoute } from "@/shared/course-lift/identity";
 import { updateDefaultSearchWord } from "@/shared/utils/searchWord";
@@ -151,9 +156,9 @@ function GroupEditor({
         : `ルート${index + 1}`;
 
   const membership = (c: EditorCourse, current: string) => (
-    <select
+    <NativeSelect
+      className="min-w-0 flex-1"
       aria-label={`${c.name || "名前不明"}の扱い`}
-      className="min-w-0 flex-1 rounded border bg-background p-2 text-sm"
       value={current}
       onChange={e => {
         const value = e.target.value;
@@ -164,15 +169,17 @@ function GroupEditor({
       }}
     >
       {routes.map((route, index) => (
-        <option key={route.join(":")} value={String(index)}>
+        <NativeSelectOption key={route.join(":")} value={String(index)}>
           {single ? "このコースの区間にする" : `${routeTitle(index)}に入れる`}
-        </option>
+        </NativeSelectOption>
       ))}
-      <option value={NEW_ROUTE}>
+      <NativeSelectOption value={NEW_ROUTE}>
         {routes.length === 0 ? "まとめる" : "別ルートにする"}
-      </option>
-      <option value={SEPARATE}>別コース（まとめない）</option>
-    </select>
+      </NativeSelectOption>
+      <NativeSelectOption value={SEPARATE}>
+        別コース（まとめない）
+      </NativeSelectOption>
+    </NativeSelect>
   );
   const dropLine = (route: number | typeof SEPARATE, c: EditorCourse) => ({
     onDragOver: (event: DragEvent<HTMLElement>) => {
@@ -318,7 +325,7 @@ function GroupEditor({
         つながって1本のコースになる線は同じルートに入れ、上から区間順に並べます。並行する別の道は別ルートにし、メインのコースを1番上にします。⠿をドラッグして並べ替えられます。
       </p>
       {grouped > 0 && (
-        <label className="block text-sm">
+        <Label className="block text-sm">
           まとめて表示する名前
           <input
             className="mt-1 block w-full rounded border p-2"
@@ -331,7 +338,7 @@ function GroupEditor({
           <span className="mt-1 block text-xs text-muted-foreground">
             確定すると、まとめた線の名前もこの名前にそろえます。
           </span>
-        </label>
+        </Label>
       )}
       {routes.map((route, routeIndex) => {
         const routeTarget =

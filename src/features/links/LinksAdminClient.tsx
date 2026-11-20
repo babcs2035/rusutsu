@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useEditingRole } from "@/app/admin/EditorAccess";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useSubmissionNavigation } from "@/features/edit-requests/navigation";
 import type { ResortLink } from "@/features/lift/types";
 import { cn } from "@/lib/utils";
@@ -211,7 +212,7 @@ export function LinksAdminClient({
         aria-label="スキー場の絞り込み"
         className="mb-5 space-y-3 rounded-xl border bg-white p-4"
       >
-        <label className="block space-y-1 text-sm font-medium">
+        <Label className="block space-y-1 text-sm font-medium">
           編集する項目
           <select
             className="mt-1 block h-11 w-full rounded-md border bg-white px-3 text-base"
@@ -227,9 +228,9 @@ export function LinksAdminClient({
               </option>
             ))}
           </select>
-        </label>
+        </Label>
         <div className="grid gap-3 sm:grid-cols-[1fr_180px]">
-          <label className="space-y-1 text-sm font-medium">
+          <Label className="block space-y-1 text-sm font-medium">
             スキー場を検索
             <Input
               type="search"
@@ -241,8 +242,8 @@ export function LinksAdminClient({
                 setLimit(20);
               }}
             />
-          </label>
-          <label className="space-y-1 text-sm font-medium">
+          </Label>
+          <Label className="block space-y-1 text-sm font-medium">
             都道府県
             <select
               className="mt-1 block h-11 w-full rounded-md border bg-white px-3 text-base"
@@ -259,9 +260,9 @@ export function LinksAdminClient({
                   <option key={value}>{value}</option>
                 ))}
             </select>
-          </label>
+          </Label>
         </div>
-        <label className="flex min-h-11 items-center gap-2 text-sm">
+        <Label className="flex min-h-11 items-center gap-2 text-sm">
           <input
             type="checkbox"
             checked={missingOnly}
@@ -272,9 +273,9 @@ export function LinksAdminClient({
             }}
           />
           {label}が未登録のスキー場のみ
-        </label>
+        </Label>
         {category === "mapPageUrls" && (
-          <label className="flex min-h-11 items-center gap-2 text-sm">
+          <Label className="flex min-h-11 items-center gap-2 text-sm">
             <input
               type="checkbox"
               checked={multipleMapUrlsOnly}
@@ -285,7 +286,7 @@ export function LinksAdminClient({
               }}
             />
             ゲレンデマップURLが複数あるスキー場のみ
-          </label>
+          </Label>
         )}
         <p className="text-sm text-gray-600">
           {label}登録済み {registered} / {resorts.length}施設 · 表示対象{" "}
@@ -469,7 +470,7 @@ function LinkResortCard({
                 </div>
                 <div className="grid min-w-0 grid-cols-2 gap-2">
                   <div className="min-w-0">
-                    <label className="block text-sm font-medium">
+                    <Label className="block text-sm font-medium">
                       URL
                       <ClearableInput
                         type="url"
@@ -486,7 +487,7 @@ function LinkResortCard({
                         }
                         onClear={() => changeAt(index, { url: "" })}
                       />
-                    </label>
+                    </Label>
                     {/* URLを入力・確認したその場ですぐ開けるよう、補足欄より前に置く */}
                     {isValidLinkUrl(category, value.url) && (
                       <a
@@ -499,7 +500,7 @@ function LinkResortCard({
                       </a>
                     )}
                   </div>
-                  <label className="block min-w-0 text-sm font-medium">
+                  <Label className="block min-w-0 text-sm font-medium">
                     補足（任意）
                     <ClearableInput
                       value={value.description ?? ""}
@@ -515,7 +516,7 @@ function LinkResortCard({
                         changeAt(index, { description: undefined })
                       }
                     />
-                  </label>
+                  </Label>
                 </div>
               </div>
             )}

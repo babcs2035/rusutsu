@@ -5,6 +5,10 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
 import type { EvChargerCandidate } from "@/server/ev-chargers/candidates";
 import {
@@ -206,33 +210,37 @@ export function EvChargersAdminClient({
               onChange={event => setQuery(event.target.value)}
             />
             <div className="grid grid-cols-2 gap-2">
-              <select
+              <NativeSelect
+                className="w-full"
                 aria-label="状態"
-                className="h-8 rounded-md border bg-white px-2 text-sm"
                 value={filter}
                 onChange={event =>
                   setFilter(event.target.value as StatusFilter)
                 }
               >
-                <option value="unknownWithCandidates">未確認・候補あり</option>
-                <option value="unknown">未確認</option>
-                <option value="rows">あり</option>
-                <option value="none">なし</option>
-                <option value="all">すべて</option>
-              </select>
-              <select
+                <NativeSelectOption value="unknownWithCandidates">
+                  未確認・候補あり
+                </NativeSelectOption>
+                <NativeSelectOption value="unknown">未確認</NativeSelectOption>
+                <NativeSelectOption value="rows">あり</NativeSelectOption>
+                <NativeSelectOption value="none">なし</NativeSelectOption>
+                <NativeSelectOption value="all">すべて</NativeSelectOption>
+              </NativeSelect>
+              <NativeSelect
+                className="w-full"
                 aria-label="都道府県"
-                className="h-8 rounded-md border bg-white px-2 text-sm"
                 value={prefecture}
                 onChange={event => setPrefecture(event.target.value)}
               >
-                <option value="">全都道府県</option>
+                <NativeSelectOption value="">全都道府県</NativeSelectOption>
                 {[...new Set(initialResorts.map(resort => resort.prefecture))]
                   .filter(Boolean)
                   .map(value => (
-                    <option key={value}>{value}</option>
+                    <NativeSelectOption key={value} value={value}>
+                      {value}
+                    </NativeSelectOption>
                   ))}
-              </select>
+              </NativeSelect>
             </div>
             <p className="text-xs text-gray-500">{filtered.length}件</p>
           </div>
@@ -396,13 +404,15 @@ function ResortEditor({
   return (
     <div className="mx-auto max-w-4xl space-y-4 p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <button
+        <Button
           type="button"
-          className="text-sm text-blue-700 underline md:hidden"
+          variant="link"
+          size="sm"
+          className="md:hidden"
           onClick={onBack}
         >
           一覧へ
-        </button>
+        </Button>
         <h2 className="text-lg font-bold">{resort.name}</h2>
         <span className="text-sm text-gray-500">
           {resort.prefecture}・{resort.id}
@@ -474,17 +484,17 @@ function ResortEditor({
                   key={row.key}
                   className="grid grid-cols-[88px_76px_64px_minmax(0,1fr)_32px] gap-2 rounded-lg border p-2 md:grid-cols-[88px_76px_64px_1fr_1fr_1fr_32px] md:border-0 md:p-0"
                 >
-                  <select
+                  <NativeSelect
+                    className="w-full"
                     aria-label={`${index + 1}行目の種類`}
-                    className="h-8 rounded-md border bg-white px-1 text-sm"
                     value={row.kind}
                     onChange={event =>
                       change({ kind: event.target.value as Row["kind"] })
                     }
                   >
-                    <option value="quick">急速</option>
-                    <option value="normal">普通</option>
-                  </select>
+                    <NativeSelectOption value="quick">急速</NativeSelectOption>
+                    <NativeSelectOption value="normal">普通</NativeSelectOption>
+                  </NativeSelect>
                   <Input
                     aria-label={`${index + 1}行目の出力kW`}
                     inputMode="decimal"

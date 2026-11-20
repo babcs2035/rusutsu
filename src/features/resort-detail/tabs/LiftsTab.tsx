@@ -2,6 +2,10 @@
 
 import { Circle, Triangle, X } from "lucide-react";
 import { z } from "zod";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
 import { useScreenState } from "@/features/map/session/useScreenState";
 import type { SelectedMapFeature } from "@/features/map/types";
 import type { FinalizedResortMapData } from "@/lib/finalizedResortGeojsonShared";
@@ -327,20 +331,24 @@ export const LiftsTab = ({
       <section className="@container/lift-list">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-bold">リフト一覧</h2>
-          <select
+          <NativeSelect
             aria-label="リフトを絞り込み"
             value={filter}
             onChange={event => setFilter(event.target.value)}
-            className="h-8 max-w-40 rounded border px-2 text-sm"
+            className="max-w-40"
           >
-            <option value="all">すべて</option>
+            <NativeSelectOption value="all">すべて</NativeSelectOption>
             {types.map(type => (
-              <option key={type}>{type}</option>
+              <NativeSelectOption key={type} value={type}>
+                {type}
+              </NativeSelectOption>
             ))}
             {speedFilters.map(label => (
-              <option key={label}>{label}</option>
+              <NativeSelectOption key={label} value={label}>
+                {label}
+              </NativeSelectOption>
             ))}
-          </select>
+          </NativeSelect>
         </div>
         <div className="my-2 flex flex-wrap items-center gap-2 text-sm text-slate-600">
           <span className="inline-flex items-center gap-1 leading-none">

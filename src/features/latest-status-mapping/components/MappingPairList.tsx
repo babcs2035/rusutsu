@@ -4,6 +4,11 @@ import { Equal, RefreshCw, Wand2 } from "lucide-react";
 import { type ReactNode, useEffect, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
 import {
   Select,
   SelectContent,
@@ -102,12 +107,12 @@ export function MappingPairList<T extends MappingPairItem>({
 
       {!!mapping.workspace?.patterns?.length && (
         <div className="space-y-1 rounded border bg-slate-50 p-2">
-          <label htmlFor="mapping-pattern" className="text-xs font-semibold">
+          <Label htmlFor="mapping-pattern" className="text-xs font-semibold">
             取得パターン
-          </label>
-          <select
+          </Label>
+          <NativeSelect
             id="mapping-pattern"
-            className="h-9 w-full rounded border bg-white px-2 text-xs"
+            className="w-full"
             value={
               mapping.workspace.patterns.find(
                 pattern => pattern.fileName === mapping.workspace?.latestFile,
@@ -116,14 +121,14 @@ export function MappingPairList<T extends MappingPairItem>({
             onChange={event => mapping.selectPattern(event.target.value)}
           >
             {mapping.workspace.patterns.map((pattern, index) => (
-              <option key={pattern.id} value={pattern.id}>
+              <NativeSelectOption key={pattern.id} value={pattern.id}>
                 パターン{index + 1} · {pattern.items.length}件 ·{" "}
                 {pattern.archiveTimestamp
                   ? `Wayback ${pattern.archiveTimestamp.slice(0, 8)}`
                   : (pattern.time ?? "日時不明")}
-              </option>
+              </NativeSelectOption>
             ))}
-          </select>
+          </NativeSelect>
           <p className="text-[11px] text-slate-600">
             名前の一覧が同じ取得結果は1つにまとめています。パターンを切り替えて名前を追加できます。登録済みの名前は残ります。
           </p>
