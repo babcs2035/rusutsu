@@ -87,7 +87,7 @@ const writeRemote = async (documents: readonly DataDocumentWrite[]) => {
       response,
       dataDocumentConflictResponseSchema,
     );
-    throw new DataDocumentConflictError(conflict.error.details.conflicts);
+    throw new DataDocumentConflictError(conflict.details.conflicts);
   }
   return (await parseRemoteResponse(response, dataDocumentWriteResponseSchema))
     .documents;

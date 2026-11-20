@@ -40,17 +40,17 @@ export async function callRemoteEditRequests(command: EditRequestApiOperation) {
   if (!response.ok) {
     const message =
       (response.status === 404 || response.status === 405) &&
-      body?.error?.code !== "NOT_FOUND"
+      body?.code !== "NOT_FOUND"
         ? "接続先サーバーが申請APIに未対応です。今回の変更をサーバーにも反映してください。"
         : command.operation.startsWith("correction-") &&
-            body?.error?.code === "INVALID_COMMAND"
+            body?.code === "INVALID_COMMAND"
           ? "接続先が情報修正APIに未対応です。今回の変更を本番サーバーにも反映してください。"
           : command.operation === "approve" &&
               command.overwrite === true &&
-              body?.error?.code === "INVALID_COMMAND"
+              body?.code === "INVALID_COMMAND"
             ? "接続先サーバーが競合内容の採用に未対応です。サーバーにもこの修正を反映する必要があります。申請内容は残っています。"
-            : typeof body?.error?.message === "string"
-              ? body.error.message
+            : typeof body?.detail === "string"
+              ? body.detail
               : "サーバーの申請データを取得できませんでした。";
     throw new InternalDataApiError(message, response.status);
   }

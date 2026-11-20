@@ -49,6 +49,17 @@ test("query body limits stop oversized requests before executing the service", a
     async () => assert.fail("Oversized input reached the service"),
   );
   assert.equal(response.status, 413);
+  assert.equal(
+    response.headers.get("Content-Type"),
+    "application/problem+json",
+  );
+  assert.deepEqual(await response.json(), {
+    type: "about:blank",
+    title: "Payload Too Large",
+    status: 413,
+    code: "PAYLOAD_TOO_LARGE",
+    detail: "Request body is too large",
+  });
 });
 
 test("query failures do not expose private error details", async () => {

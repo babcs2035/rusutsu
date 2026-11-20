@@ -94,15 +94,11 @@ export async function PATCH(
       return internalApiError(404, "RESORT_NOT_FOUND", "Resort not found");
     }
     if (result.status === "conflict") {
-      return internalApiJson(
-        {
-          error: {
-            code: "VERSION_CONFLICT",
-            message: "The resort was changed after it was loaded",
-            currentUpdatedAt: result.currentUpdatedAt,
-          },
-        },
+      return internalApiError(
         409,
+        "VERSION_CONFLICT",
+        "The resort was changed after it was loaded",
+        { currentUpdatedAt: result.currentUpdatedAt },
       );
     }
     return internalApiJson({ resort: result.resort });

@@ -73,8 +73,7 @@ async function main() {
     });
   const failed = async (response: Response) => {
     const body = await response.json().catch(() => null);
-    const message =
-      typeof body?.error?.message === "string" ? `\n${body.error.message}` : "";
+    const message = typeof body?.detail === "string" ? `\n${body.detail}` : "";
     return new Error(
       `本番APIがHTTP ${response.status}を返しました。${message}`,
     );

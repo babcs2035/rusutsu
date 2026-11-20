@@ -4,19 +4,15 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { RECOMMENDATION } from "@/features/course-recommendations/algorithm";
 import { favoriteIdsSchema } from "@/features/favorites/storage";
-import { featureSchema } from "@/features/map/session/storage";
 import {
   fetchInternalDataApi,
   usesRemoteDataApi,
 } from "@/lib/internalDataApiClient";
 import { prisma } from "@/lib/prisma";
 import {
-  type CourseRecommendation,
   type CourseRecommendationIndex,
-  type CourseRecommendationSearch,
   getCourseRecommendationIndexDirect,
   type RecommendationScope,
-  searchCourseRecommendationsDirect,
 } from "@/server/course-recommendations/repository";
 
 const scopeSchema = z.enum(["favorites", "all"]);
@@ -38,48 +34,7 @@ const effectiveScope = (
   ids: string[],
 ): RecommendationScope => (ids.length ? scope : "all");
 
-export async function getCourseRecommendations(
-  resortId: string,
-  selected: z.infer<typeof featureSchema>,
-  guestFavorites: string[],
-  requestedScope: RecommendationScope = "favorites",
-) {
-  z.string().min(1).max(200).parse(resortId);
-  const feature = featureSchema.parse(selected);
-  const ids = await favoriteIdsFor(guestFavorites);
-  const scope = effectiveScope(scopeSchema.parse(requestedScope), ids);
-  if (usesRemoteDataApi()) {
-    const response = await fetchInternalDataApi(
-      "/api/admin/course-recommendations",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          resortId,
-          selected: feature,
-          favoriteIds: ids,
-          scope,
-        }),
-        signal: AbortSignal.timeout(2500),
-      },
-    );
-    const result: {
-      recommendations: CourseRecommendation[];
-      status?: CourseRecommendationSearch["status"];
-      calculationVersion?: number;
-    } = await response.json();
-    if (result.calculationVersion !== RECOMMENDATION.version)
-      return { status: "api_outdated" as const, recommendations: [] };
-    // Allow the client and canonical API to be deployed in either order.
-    return {
-      ...result,
-      status:
-        result.status ?? (result.recommendations.length ? "ready" : "no_match"),
-    };
-  }
-  return searchCourseRecommendationsDirect(resortId, feature, ids, scope);
-}
-
+/** 推薦インデックスを，ログイン中は本人のお気に入りから構築する． */
 export async function getCourseRecommendationIndex(
   resortId: string,
   guestFavorites: string[],

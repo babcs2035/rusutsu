@@ -1,5 +1,6 @@
 import "server-only";
 
+import { httpProblem } from "@/server/httpProblem";
 import { authorizeInternalDataApiRequest } from "@/server/internalDataApiAuth";
 
 const NO_STORE_HEADERS = {
@@ -14,7 +15,8 @@ export const internalApiError = (
   status: number,
   code: string,
   message: string,
-) => internalApiJson({ error: { code, message } }, status);
+  details?: unknown,
+): Response => httpProblem(status, code, message, NO_STORE_HEADERS, details);
 
 export const requireInternalApiRequest = (
   request: Request,
@@ -28,21 +30,10 @@ export const requireInternalApiRequest = (
       "Internal data API is not configured",
     );
   }
-  return Response.json(
-    {
-      error: {
-        code: "UNAUTHORIZED",
-        message: "A valid Bearer token is required",
-      },
-    },
-    {
-      status: 401,
-      headers: {
-        ...NO_STORE_HEADERS,
-        "WWW-Authenticate": "Bearer",
-      },
-    },
-  );
+  return httpProblem(401, "UNAUTHORIZED", "A valid Bearer token is required", {
+    ...NO_STORE_HEADERS,
+    "WWW-Authenticate": "Bearer",
+  });
 };
 
 export const logInternalApiFailure = (message: string, error: unknown) => {

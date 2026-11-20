@@ -95,16 +95,11 @@ export async function PUT(request: Request) {
     if (error instanceof RequestBodyError)
       return internalApiError(error.status, error.code, error.message);
     if (error instanceof LiftTicketConflictError)
-      return internalApiJson(
-        {
-          error: {
-            code: "VERSION_CONFLICT",
-            message:
-              "本番データが変更されています。差分を確認し直してください。",
-            details: { actualVersion: error.actualVersion },
-          },
-        },
+      return internalApiError(
         409,
+        "VERSION_CONFLICT",
+        "本番データが変更されています。差分を確認し直してください。",
+        { actualVersion: error.actualVersion },
       );
     logInternalApiFailure("Lift ticket write failed", error);
     return internalApiError(

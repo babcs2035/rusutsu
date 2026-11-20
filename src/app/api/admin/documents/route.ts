@@ -11,50 +11,18 @@ import {
   listDataDocumentsDirect,
   writeDataDocumentsDirect,
 } from "@/server/data-documents/repository";
-import { requireInternalApiRequest } from "@/server/internalApiHttp";
+import {
+  internalApiError as errorResponse,
+  internalApiJson as jsonResponse,
+  logInternalApiFailure,
+  requireInternalApiRequest,
+} from "@/server/internalApiHttp";
 import { RequestBodyError, readRequestJson } from "@/server/readRequestBody";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const NO_STORE_HEADERS = { "Cache-Control": "no-store" } as const;
 const GET_QUERY_KEYS = new Set(["key", "prefix"]);
-
-const jsonResponse = (
-  body: unknown,
-  status: number,
-  headers?: Record<string, string>,
-) =>
-  Response.json(body, {
-    status,
-    headers: { ...NO_STORE_HEADERS, ...headers },
-  });
-
-const errorResponse = (
-  status: number,
-  code: string,
-  message: string,
-  details?: unknown,
-  headers?: Record<string, string>,
-) =>
-  jsonResponse(
-    {
-      error: {
-        code,
-        message,
-        ...(details === undefined ? {} : { details }),
-      },
-    },
-    status,
-    headers,
-  );
-
-const safeErrorMetadata = (error: unknown) => {
-  if (!(error instanceof Error)) return { name: "UnknownError" };
-  const code =
-    "code" in error && typeof error.code === "string" ? error.code : undefined;
-  return { name: error.name, ...(code ? { code } : {}) };
-};
 
 const validationDetails = (error: z.ZodError) =>
   error.issues.slice(0, 25).map(issue => ({
@@ -116,7 +84,7 @@ export async function GET(request: Request) {
       200,
     );
   } catch (error) {
-    console.error("Failed to read DataDocument", safeErrorMetadata(error));
+    logInternalApiFailure("Failed to read DataDocument", error);
     return errorResponse(500, "INTERNAL_ERROR", "Unable to read DataDocument");
   }
 }
@@ -155,7 +123,7 @@ export async function PUT(request: Request) {
         { conflicts: error.conflicts },
       );
     }
-    console.error("Failed to write DataDocument", safeErrorMetadata(error));
+    logInternalApiFailure("Failed to write DataDocument", error);
     return errorResponse(500, "INTERNAL_ERROR", "Unable to write DataDocument");
   }
 }

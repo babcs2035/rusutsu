@@ -129,7 +129,7 @@ export const writeLiftTicketSeason = async (
       response,
       liftTicketConflictResponseSchema,
     );
-    throw new LiftTicketConflictError(conflict.error.details.actualVersion);
+    throw new LiftTicketConflictError(conflict.details.actualVersion);
   }
   return (await parseRemote(response, liftTicketSeasonWriteResponseSchema))
     .season;

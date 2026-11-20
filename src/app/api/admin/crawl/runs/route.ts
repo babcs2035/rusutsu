@@ -17,17 +17,17 @@ import {
   listCrawlLatestRuns,
   persistCrawlLatestRun,
 } from "@/server/crawl-latest/persistence";
-import { requireInternalApiRequest } from "@/server/internalApiHttp";
+import {
+  internalApiError as errorResponse,
+  internalApiJson as jsonResponse,
+  requireInternalApiRequest,
+} from "@/server/internalApiHttp";
 import { RequestBodyError, readRequestText } from "@/server/readRequestBody";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const JSON_CONTENT_TYPE = "application/json";
-const NO_STORE_HEADERS = {
-  "Cache-Control": "no-store",
-  Vary: "Authorization",
-} as const;
 const RUN_INCLUDES = new Set(["categoryData", "issues", "artifacts"]);
 const GET_QUERY_KEYS = new Set([
   "runId",
@@ -37,35 +37,6 @@ const GET_QUERY_KEYS = new Set([
   "limit",
   "include",
 ]);
-
-const jsonResponse = (
-  body: unknown,
-  status: number,
-  headers?: Record<string, string>,
-) =>
-  Response.json(body, {
-    status,
-    headers: { ...NO_STORE_HEADERS, ...headers },
-  });
-
-const errorResponse = (
-  status: number,
-  code: string,
-  message: string,
-  details?: unknown,
-  headers?: Record<string, string>,
-) =>
-  jsonResponse(
-    {
-      error: {
-        code,
-        message,
-        ...(details === undefined ? {} : { details }),
-      },
-    },
-    status,
-    headers,
-  );
 
 const authorize = requireInternalApiRequest;
 

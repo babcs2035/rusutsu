@@ -245,14 +245,14 @@ export async function updateAdminSkiResort(
   if (response.status === 409) {
     const body = z
       .object({
-        error: z.object({
+        details: z.object({
           currentUpdatedAt: z.iso.datetime({ offset: true }),
         }),
       })
       .parse(await response.json());
     return {
       status: "conflict",
-      currentUpdatedAt: body.error.currentUpdatedAt,
+      currentUpdatedAt: body.details.currentUpdatedAt,
     };
   }
 

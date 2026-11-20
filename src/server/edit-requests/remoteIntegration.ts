@@ -367,10 +367,8 @@ export async function verifyRemoteWorkflow(
         assert.equal(body.overwrite, true);
         return Response.json(
           {
-            error: {
-              code: "INVALID_COMMAND",
-              message: "Unknown field: overwrite",
-            },
+            code: "INVALID_COMMAND",
+            detail: "Unknown field: overwrite",
           },
           { status: 422 },
         );

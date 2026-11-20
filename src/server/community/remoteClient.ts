@@ -101,7 +101,11 @@ async function remoteRequest(command: CommunityCommand, photos?: FormData) {
     // A missing/hidden photo is deliberately indistinguishable from no photo.
     if (command.operation === "photo" && response.status === 404)
       return response;
-    if (!response.headers.get("content-type")?.includes("application/json")) {
+    if (
+      !response.headers
+        .get("content-type")
+        ?.includes("application/problem+json")
+    ) {
       void response.body?.cancel().catch(() => {});
       throw new InternalDataApiError(
         reportHttpError(response.status),
@@ -111,13 +115,13 @@ async function remoteRequest(command: CommunityCommand, photos?: FormData) {
     const error = await response.json().catch(() => null);
     const message =
       (response.status === 404 || response.status === 405) &&
-      error?.error?.code !== "NOT_FOUND"
+      error?.code !== "NOT_FOUND"
         ? "接続先が投稿APIに未対応です。今回の変更を本番サーバーにも反映してください。"
         : command.operation === "correction" &&
-            error?.error?.code === "INVALID_COMMAND"
+            error?.code === "INVALID_COMMAND"
           ? "接続先が情報修正APIに未対応です。今回の変更を本番サーバーにも反映してください。"
-          : typeof error?.error?.message === "string"
-            ? error.error.message
+          : typeof error?.detail === "string"
+            ? error.detail
             : "投稿APIからデータを取得できませんでした。";
     throw new InternalDataApiError(message, response.status);
   }

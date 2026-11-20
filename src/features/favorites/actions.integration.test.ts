@@ -405,30 +405,6 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
       process.env.API_BASE_URL = "https://canonical.test/rusutsu";
       process.env.API_BEARER_TOKEN = "isolated-test-token";
       globalThis.fetch = async () =>
-        Response.json({ recommendations: current.recommendations });
-      assert.equal(
-        (
-          await run(guest, () =>
-            api.getCourseRecommendations("source", currentMain, ["candidate"]),
-          )
-        ).status,
-        "api_outdated",
-      );
-      globalThis.fetch = async () =>
-        Response.json({
-          status: "ready",
-          calculationVersion: 4,
-          recommendations: current.recommendations,
-        });
-      const remote = await run(guest, () =>
-        api.getCourseRecommendations("source", currentMain, ["candidate"]),
-      );
-      assert.equal(remote.status, "ready");
-      assert.equal(
-        remote.recommendations[0].maxSlope,
-        current.recommendations[0].maxSlope,
-      );
-      globalThis.fetch = async () =>
         Response.json({ error: "old-contract" }, { status: 400 });
       assert.equal(
         (

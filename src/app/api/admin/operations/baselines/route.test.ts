@@ -94,7 +94,7 @@ test("operation baseline GET is token-protected and returns the narrow baseline"
       }),
     );
     assert.equal(noAuth.status, 401);
-    assert.equal((await noAuth.json()).error.code, "UNAUTHORIZED");
+    assert.equal((await noAuth.json()).code, "UNAUTHORIZED");
 
     const adminScope = await api.GET(
       new Request("https://internal.example/api?resortId=sample", {
@@ -102,7 +102,7 @@ test("operation baseline GET is token-protected and returns the narrow baseline"
       }),
     );
     assert.equal(adminScope.status, 401);
-    assert.equal((await adminScope.json()).error.code, "UNAUTHORIZED");
+    assert.equal((await adminScope.json()).code, "UNAUTHORIZED");
     assert.deepEqual(api.baselineState.calls, []);
   });
 
@@ -127,7 +127,7 @@ test("operation baseline GET is token-protected and returns the narrow baseline"
           ),
         );
         assert.equal(response.status, 400, query || "missing resortId");
-        assert.equal((await response.json()).error.code, "INVALID_QUERY");
+        assert.equal((await response.json()).code, "INVALID_QUERY");
       }
       assert.deepEqual(api.baselineState.calls, []);
     },

@@ -332,19 +332,16 @@ export const dataDocumentWriteResponseSchema = z.strictObject({
   documents: z.array(dataDocumentSchema),
 });
 
-export const dataDocumentConflictResponseSchema = z.strictObject({
-  error: z.strictObject({
-    code: z.literal("HASH_CONFLICT"),
-    message: z.string(),
-    details: z.strictObject({
-      conflicts: z.array(
-        z.strictObject({
-          key: dataDocumentKeySchema,
-          expectedHash: dataDocumentHashSchema.nullable(),
-          actualHash: dataDocumentHashSchema.nullable(),
-        }),
-      ),
-    }),
+export const dataDocumentConflictResponseSchema = z.object({
+  code: z.literal("HASH_CONFLICT"),
+  details: z.strictObject({
+    conflicts: z.array(
+      z.strictObject({
+        key: dataDocumentKeySchema,
+        expectedHash: dataDocumentHashSchema.nullable(),
+        actualHash: dataDocumentHashSchema.nullable(),
+      }),
+    ),
   }),
 });
 

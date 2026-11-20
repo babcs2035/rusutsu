@@ -135,10 +135,8 @@ export const liftTicketSeasonWriteResponseSchema = z.strictObject({
   season: liftTicketSeasonSchema,
 });
 export const liftTicketConflictResponseSchema = z.object({
-  error: z.object({
-    code: z.literal("VERSION_CONFLICT"),
-    details: z.object({ actualVersion: z.number().int().nullable() }),
-  }),
+  code: z.literal("VERSION_CONFLICT"),
+  details: z.object({ actualVersion: z.number().int().nullable() }),
 });
 
 export class LiftTicketConflictError extends Error {

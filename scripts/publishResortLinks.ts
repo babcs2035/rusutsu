@@ -224,8 +224,7 @@ async function main() {
     });
     if (response.ok) return response.json();
     const body = await response.json().catch(() => null);
-    const message =
-      typeof body?.error?.message === "string" ? `\n${body.error.message}` : "";
+    const message = typeof body?.detail === "string" ? `\n${body.detail}` : "";
     throw new Error(
       response.status === 404
         ? `${baseUrl} にリンクのAPIがまだありません（デプロイ前）。`

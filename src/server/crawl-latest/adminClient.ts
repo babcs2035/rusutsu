@@ -49,12 +49,10 @@ const RESOURCE_PATH = "/api/admin/crawl/monitor";
 const rejectsUnknownQuery = (body: unknown): boolean =>
   typeof body === "object" &&
   body !== null &&
-  "error" in body &&
-  typeof (body as { error: unknown }).error === "object" &&
-  (body as { error: { code?: unknown; message?: unknown } }).error?.code ===
-    "INVALID_QUERY" &&
-  (body as { error: { message?: unknown } }).error?.message ===
-    "Unknown query parameter";
+  "code" in body &&
+  body.code === "INVALID_QUERY" &&
+  "detail" in body &&
+  body.detail === "Unknown query parameter";
 
 const readRemote = async <T>(
   query: URLSearchParams,

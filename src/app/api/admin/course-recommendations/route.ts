@@ -1,42 +1,52 @@
 import { z } from "zod";
 import { RECOMMENDATION } from "@/features/course-recommendations/algorithm";
 import { favoriteIdsSchema } from "@/features/favorites/storage";
-import { featureSchema } from "@/features/map/session/storage";
+import { getCourseRecommendationIndexDirect } from "@/server/course-recommendations/repository";
 import {
-  getCourseRecommendationIndexDirect,
-  searchCourseRecommendationsDirect,
-} from "@/server/course-recommendations/repository";
-import { requireInternalApiRequest } from "@/server/internalApiHttp";
+  internalApiError,
+  internalApiJson,
+  logInternalApiFailure,
+  requireInternalApiRequest,
+} from "@/server/internalApiHttp";
+import { RequestBodyError, readRequestJson } from "@/server/readRequestBody";
 
-const schema = z.object({
+const maxQueryBytes = 2 * 1024 * 1024;
+const schema = z.strictObject({
   resortId: z.string().min(1).max(200),
-  selected: featureSchema.optional(),
   favoriteIds: favoriteIdsSchema,
   scope: z.enum(["favorites", "all"]).default("favorites"),
 });
-export async function POST(request: Request) {
+/** 正本の推薦インデックスを，認証済みのサーバーへ返す． */
+export async function POST(request: Request): Promise<Response> {
   const denied = requireInternalApiRequest(request);
   if (denied) return denied;
-  const parsed = schema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success)
-    return Response.json({ error: "Invalid request" }, { status: 400 });
-  const { resortId, selected, favoriteIds, scope } = parsed.data;
-  return Response.json(
-    {
-      ...(selected
-        ? await searchCourseRecommendationsDirect(
-            resortId,
-            selected,
-            favoriteIds,
-            scope,
-          )
-        : await getCourseRecommendationIndexDirect(
-            resortId,
-            favoriteIds,
-            scope,
-          )),
+  try {
+    const parsed = schema.safeParse(
+      await readRequestJson(request, maxQueryBytes),
+    );
+    if (!parsed.success)
+      return internalApiError(
+        400,
+        "INVALID_QUERY",
+        "Invalid recommendation query",
+      );
+    const { resortId, favoriteIds, scope } = parsed.data;
+    return internalApiJson({
+      ...(await getCourseRecommendationIndexDirect(
+        resortId,
+        favoriteIds,
+        scope,
+      )),
       calculationVersion: RECOMMENDATION.version,
-    },
-    { headers: { "Cache-Control": "no-store" } },
-  );
+    });
+  } catch (error) {
+    if (error instanceof RequestBodyError)
+      return internalApiError(error.status, error.code, error.message);
+    logInternalApiFailure("Failed to read recommendation index", error);
+    return internalApiError(
+      503,
+      "INTERNAL_ERROR",
+      "Recommendations unavailable",
+    );
+  }
 }
