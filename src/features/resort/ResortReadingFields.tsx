@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import type { AdminSkiResortRecord } from "@/server/ski-resorts/adminContract";
 import { RubyText } from "@/shared/components/RubyText";
 import type { ResortRubySegment } from "@/shared/types/resortReading";
@@ -56,14 +57,14 @@ export function ResortReadingFields({
         readingName="rubyReading"
         label="ふりがな"
       />
-      <label className="flex items-center gap-2 text-sm">
+      <Label className="text-sm">
         <input
           type="checkbox"
           name="readingNeedsReview"
           defaultChecked={resort.readingNeedsReview}
         />
         読み方を確認中
-      </label>
+      </Label>
       <h3 className="font-semibold">旧称</h3>
       <p className="text-sm text-gray-600">
         旧称ごとに、通常の名称と同じように部分ごとのふりがなを追加できます。「名前の部分」をつなげると旧称と一致するようにしてください。検索にも使われます。
@@ -75,7 +76,7 @@ export function ResortReadingFields({
       )}
       {former.map((row, index) => (
         <div key={row.id} className="space-y-3 rounded-lg border p-3">
-          <label className="block space-y-1 text-sm">
+          <Label className="block space-y-1 text-sm">
             <span>旧称</span>
             <Input
               name="formerName"
@@ -84,7 +85,7 @@ export function ResortReadingFields({
               required
               maxLength={300}
             />
-          </label>
+          </Label>
           <RubyFields
             rows={row.nameRuby}
             onChange={segments =>
@@ -152,7 +153,7 @@ function RubyFields({
           key={row.id}
           className="grid items-end gap-3 rounded-lg border p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
         >
-          <label className="min-w-0 space-y-1 text-sm">
+          <Label className="block min-w-0 space-y-1 text-sm">
             <span>名前の部分</span>
             <Input
               name={textName}
@@ -170,8 +171,8 @@ function RubyFields({
                 )
               }
             />
-          </label>
-          <label className="min-w-0 space-y-1 text-sm">
+          </Label>
+          <Label className="block min-w-0 space-y-1 text-sm">
             <span>ふりがな（任意）</span>
             <Input
               name={readingName}
@@ -189,7 +190,7 @@ function RubyFields({
                 )
               }
             />
-          </label>
+          </Label>
           <Button
             type="button"
             variant="outline"

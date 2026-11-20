@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   EDIT_KIND_LABELS,
   type EditKind,
@@ -669,7 +670,7 @@ export function RequestDetail({
         </>
       ) : (
         <>
-          <label className="block text-xs font-medium text-slate-600">
+          <Label className="block text-xs font-medium text-slate-600">
             申請者へのコメント{" "}
             <span className="font-normal">（却下時は必須）</span>
             <textarea
@@ -681,7 +682,7 @@ export function RequestDetail({
               onChange={event => setComment(event.target.value)}
               placeholder="確認結果や修正理由"
             />
-          </label>
+          </Label>
           <div className="flex gap-2">
             <Button
               className="h-9 flex-1"
@@ -830,7 +831,7 @@ export function RequestDetail({
               内容を確認したら承認してください。修正する場合は、先に下の修正欄で保存します。
             </p>
           </div>
-          <label className="block space-y-2 text-sm font-medium">
+          <Label className="block space-y-2 text-sm font-medium">
             <span>
               申請者へのコメント{" "}
               <span className="font-normal text-slate-500">
@@ -845,7 +846,7 @@ export function RequestDetail({
               onChange={event => setComment(event.target.value)}
               placeholder="確認結果や修正理由を伝える場合に入力"
             />
-          </label>
+          </Label>
           {dirty && (
             <p className="text-sm text-amber-800">
               未保存の修正があります。承認する前に「修正内容を保存」を押してください。

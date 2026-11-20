@@ -420,7 +420,7 @@ export function ResortEditForm({
                   最終更新: {new Date(resort.updatedAt).toLocaleString("ja-JP")}
                 </p>
               </div>
-              <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+              <Label className="cursor-pointer gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
                 <input
                   name="isActive"
                   type="checkbox"
@@ -435,7 +435,7 @@ export function ResortEditForm({
                     OFFでもデータは削除されません
                   </span>
                 </span>
-              </label>
+              </Label>
             </div>
           </section>
 

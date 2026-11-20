@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { FilterConditionFields } from "@/features/filters/components/FilterConditionFields";
 import { DEFAULT_FILTERS } from "@/features/filters/constants";
 import type { Filters } from "@/features/filters/types";
@@ -209,12 +210,12 @@ export function EditCompareListButton({
                       void commitName();
                     }}
                   >
-                    <label
+                    <Label
                       htmlFor={`compare-list-name-${listId}`}
                       className="text-base font-bold text-gray-900"
                     >
                       リスト名
-                    </label>
+                    </Label>
                     <div className="relative">
                       <Input
                         id={`compare-list-name-${listId}`}

@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
@@ -205,9 +206,9 @@ const RentalDetailPicker = ({
         )}
         <div className="flex flex-wrap gap-x-4 gap-y-2 px-0.5">
           {available.map(item => (
-            <label
+            <Label
               key={item}
-              className="flex items-center gap-1.5 text-sm text-gray-900 whitespace-nowrap"
+              className="gap-1.5 text-sm text-gray-900 whitespace-nowrap"
             >
               <Checkbox
                 checked={items.includes(item)}
@@ -221,7 +222,7 @@ const RentalDetailPicker = ({
                 }
               />
               {TICKET_RENTAL_ITEM_LABELS[item]}
-            </label>
+            </Label>
           ))}
         </div>
       </PopoverContent>

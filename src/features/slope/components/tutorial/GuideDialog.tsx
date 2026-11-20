@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 /** 説明の 1 行。label は行頭に太字で出す小見出し */
@@ -175,13 +176,13 @@ export function GuideDialog({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 border-t pt-3">
-          <label className="flex cursor-pointer items-center gap-1.5 text-xs text-gray-600">
+          <Label className="cursor-pointer gap-1.5 text-xs text-gray-600">
             <Checkbox
               checked={dontShowAgain}
               onCheckedChange={checked => setDontShowAgain(checked === true)}
             />
             次回から自動で開かない
-          </label>
+          </Label>
           <div className="flex-1" />
           <Button
             size="sm"

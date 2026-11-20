@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -1202,9 +1203,9 @@ export function CommunityComposer({
             ["ANONYMOUS", "匿名"],
           ] as const
         ).map(([value, label]) => (
-          <label
+          <Label
             key={value}
-            className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm md:text-base"
+            className="rounded-lg border border-gray-200 px-3 py-2 text-sm md:text-base"
           >
             <input
               type="radio"
@@ -1212,7 +1213,7 @@ export function CommunityComposer({
               onChange={() => setNameMode(value)}
             />
             {label}
-          </label>
+          </Label>
         ))}
         {nameMode === "NICKNAME" && (
           <Input

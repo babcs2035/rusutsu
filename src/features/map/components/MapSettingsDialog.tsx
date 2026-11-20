@@ -11,6 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { StatusMark } from "@/features/resort-detail/components/CompactInfo";
 import { cn } from "@/lib/utils";
@@ -98,7 +99,7 @@ export function MapSettingsDialog({
             <legend className="mb-1 text-sm font-semibold md:text-base">
               コース
             </legend>
-            <label className="flex min-h-9 cursor-pointer items-center justify-between gap-3 text-sm font-medium md:text-base">
+            <Label className="min-h-9 cursor-pointer justify-between gap-3 text-sm font-medium md:text-base">
               コースを表示
               <Switch
                 checked={settings.showCourses}
@@ -106,16 +107,16 @@ export function MapSettingsDialog({
                   onChange({ ...settings, showCourses: checked })
                 }
               />
-            </label>
+            </Label>
             {settings.showCourses && (
               <div className="mt-1 divide-y divide-slate-100">
                 {settings.showCourseNames && (
                   <div className="pb-2">
                     <div className="grid grid-cols-2 gap-1.5">
                       {COURSE_STATUS_OPTIONS.map(option => (
-                        <label
+                        <Label
                           key={option.value}
-                          className="flex min-h-8 cursor-pointer items-center gap-1.5 rounded-md border border-slate-200 px-2 text-xs whitespace-nowrap hover:bg-slate-50 md:text-sm"
+                          className="min-h-8 cursor-pointer gap-1.5 rounded-md border border-slate-200 px-2 text-xs whitespace-nowrap hover:bg-slate-50 md:text-sm"
                         >
                           <Checkbox
                             aria-label={
@@ -143,12 +144,12 @@ export function MapSettingsDialog({
                             )}
                           </span>
                           {option.value !== "unknown" && option.label}
-                        </label>
+                        </Label>
                       ))}
                     </div>
                   </div>
                 )}
-                <label className="flex min-h-9 cursor-pointer items-center justify-between gap-3 text-sm md:text-base">
+                <Label className="min-h-9 cursor-pointer justify-between gap-3 text-sm md:text-base">
                   コース名を表示
                   <Switch
                     checked={settings.showCourseNames}
@@ -156,8 +157,8 @@ export function MapSettingsDialog({
                       onChange({ ...settings, showCourseNames: checked })
                     }
                   />
-                </label>
-                <label className="flex min-h-9 cursor-pointer items-center justify-between gap-3 text-sm md:text-base">
+                </Label>
+                <Label className="min-h-9 cursor-pointer justify-between gap-3 text-sm md:text-base">
                   非圧雪コースを点線表示
                   <Switch
                     checked={settings.showUngroomed}
@@ -165,7 +166,7 @@ export function MapSettingsDialog({
                       onChange({ ...settings, showUngroomed: checked })
                     }
                   />
-                </label>
+                </Label>
                 <div className="grid grid-cols-2 items-center gap-1.5 py-2">
                   <p className="whitespace-nowrap text-sm md:text-base">
                     コース色分け
@@ -191,7 +192,7 @@ export function MapSettingsDialog({
             <legend className="mb-1 text-sm font-semibold md:text-base">
               リフト
             </legend>
-            <label className="flex min-h-9 cursor-pointer items-center justify-between gap-3 text-sm font-medium md:text-base">
+            <Label className="min-h-9 cursor-pointer justify-between gap-3 text-sm font-medium md:text-base">
               リフトを表示
               <Switch
                 checked={settings.showLifts}
@@ -199,9 +200,9 @@ export function MapSettingsDialog({
                   onChange({ ...settings, showLifts: checked })
                 }
               />
-            </label>
+            </Label>
             {settings.showLifts && (
-              <label className="flex min-h-9 cursor-pointer items-center justify-between gap-3 border-t border-slate-100 text-sm md:text-base">
+              <Label className="min-h-9 cursor-pointer justify-between gap-3 border-t border-slate-100 text-sm md:text-base">
                 リフト名を表示
                 <Switch
                   checked={settings.showLiftNames}
@@ -209,7 +210,7 @@ export function MapSettingsDialog({
                     onChange({ ...settings, showLiftNames: checked })
                   }
                 />
-              </label>
+              </Label>
             )}
           </fieldset>
           <DialogClose

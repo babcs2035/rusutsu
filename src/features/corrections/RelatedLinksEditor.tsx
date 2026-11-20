@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -102,7 +103,7 @@ export function RelatedLinksEditor({
         </>
       ) : (
         <>
-          <label className="block text-sm">
+          <Label className="block text-sm">
             リンクの種類
             <Select
               disabled={busy || step === "review"}
@@ -124,7 +125,7 @@ export function RelatedLinksEditor({
                 ))}
               </SelectContent>
             </Select>
-          </label>
+          </Label>
           {step === "review" ? (
             <div className="grid gap-3 rounded border p-3 sm:grid-cols-2">
               <section>
@@ -245,7 +246,7 @@ export function RelatedLinksEditor({
             }
             className="space-y-2"
           >
-            <label className="block text-sm">
+            <Label className="block text-sm">
               補足（任意）
               <textarea
                 name="comment"
@@ -254,8 +255,8 @@ export function RelatedLinksEditor({
                 maxLength={2000}
                 className="block w-full rounded border p-2"
               />
-            </label>
-            <label className="block text-sm">
+            </Label>
+            <Label className="block text-sm">
               写真（任意・最大3枚）
               <input
                 name="photos"
@@ -274,7 +275,7 @@ export function RelatedLinksEditor({
                 accept="image/jpeg,image/png,image/webp,image/heic"
                 className="block w-full"
               />
-            </label>
+            </Label>
             <p className="text-xs text-slate-500">
               写真は管理者のみ閲覧します。サイト外では二次利用しません。
             </p>

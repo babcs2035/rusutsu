@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { adjustCorrectionItem, decideCorrectionItem } from "./actions";
 
 const labels: Record<string, string> = {
@@ -190,7 +191,7 @@ export function CorrectionReview({
           </div>
           {currentStatus === "PENDING" && !item.decision && (
             <div className="mt-3 space-y-2 border-t pt-2">
-              <label className="block text-xs font-medium">
+              <Label className="block text-xs font-medium">
                 管理者の修正案
                 <textarea
                   value={adjustments[index] ?? ""}
@@ -203,7 +204,7 @@ export function CorrectionReview({
                   rows={2}
                   className="mt-1 w-full rounded border p-2 font-mono"
                 />
-              </label>
+              </Label>
               <Button
                 variant="outline"
                 size="sm"
@@ -266,7 +267,7 @@ export function CorrectionReview({
         </article>
       ))}
       {currentStatus === "PENDING" && (
-        <label className="block text-sm">
+        <Label className="block text-sm">
           審査コメント（任意）
           <textarea
             value={comment}
@@ -274,7 +275,7 @@ export function CorrectionReview({
             className="mt-1 w-full rounded border p-2"
             maxLength={2000}
           />
-        </label>
+        </Label>
       )}
       {message && (
         <p role="status" className="text-sm">

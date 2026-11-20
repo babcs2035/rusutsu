@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useEditingRole } from "@/app/admin/EditorAccess";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { useSubmissionNavigation } from "@/features/edit-requests/navigation";
 import { previewReviewUpload, publishReviewUpload } from "./publicationActions";
 
@@ -91,7 +92,7 @@ export function ReviewJsonUpload({
           ? "detail.jsonとarticle.jsonをまとめて選択し、内容を確認して申請してください。管理者の確認後に反映されます。"
           : "detail.jsonとarticle.jsonをまとめて選択し、内容を確認して保存してください。"}
       </p>
-      <label className="block space-y-2">
+      <Label className="block space-y-2">
         <span className="font-semibold">レビューJSON（2ファイル）</span>
         <input
           type="file"
@@ -104,7 +105,7 @@ export function ReviewJsonUpload({
           }}
           className="block min-h-11 w-full min-w-0"
         />
-      </label>
+      </Label>
       {busy && <p role="status">処理中…</p>}
       {message && (
         <p role="status" className="whitespace-pre-wrap">

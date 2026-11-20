@@ -2,6 +2,7 @@
 
 import { type ReactNode, useId } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { StatusMark } from "@/features/resort-detail/components/CompactInfo";
 import { cn } from "@/lib/utils";
 import {
@@ -149,9 +150,9 @@ export function MapCourseStatusControl({
             {COURSE_STATUS_OPTIONS.filter(
               option => option.value !== "closed",
             ).map(option => (
-              <label
+              <Label
                 key={option.value}
-                className="flex h-6 cursor-pointer items-center gap-1 rounded px-1 text-[11px] font-semibold text-slate-800 hover:bg-slate-100 md:text-xs"
+                className="h-6 cursor-pointer gap-1 rounded px-1 text-[11px] font-semibold text-slate-800 hover:bg-slate-100 md:text-xs"
               >
                 <Checkbox
                   aria-labelledby={`${descriptionId}-${option.value}`}
@@ -183,7 +184,7 @@ export function MapCourseStatusControl({
                     <StatusMark size="sm" symbol={option.symbol as "○" | "△"} />
                   )}
                 </span>
-              </label>
+              </Label>
             ))}
           </div>
         )}
@@ -229,9 +230,9 @@ export function MapCourseStatusOptions({
     >
       {COURSE_STATUS_OPTIONS.filter(option => option.value !== "closed").map(
         option => (
-          <label
+          <Label
             key={option.value}
-            className="flex h-7 cursor-pointer items-center gap-1 rounded px-0.5 text-xs font-semibold whitespace-nowrap hover:bg-slate-100"
+            className="h-7 cursor-pointer gap-1 rounded px-0.5 text-xs font-semibold whitespace-nowrap hover:bg-slate-100"
           >
             <Checkbox
               checked={settings.courseStatuses[option.value]}
@@ -254,7 +255,7 @@ export function MapCourseStatusOptions({
                 <StatusMark size="sm" symbol={option.symbol as "○" | "△"} />
               )}
             </span>
-          </label>
+          </Label>
         ),
       )}
     </div>

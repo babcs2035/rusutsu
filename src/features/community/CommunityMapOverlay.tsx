@@ -12,6 +12,7 @@ import {
   useState,
 } from "react";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -69,8 +70,8 @@ export function CommunityMapControls({
   const router = useRouter();
   return (
     <div className="flex shrink-0 items-center gap-1">
-      <label
-        className={`flex h-9 items-center gap-1 rounded-md border border-slate-300 bg-white px-1 text-sm font-semibold whitespace-nowrap text-slate-700 shadow-sm min-[375px]:px-1.5 md:h-8 md:px-1.5 md:text-[13px] ${available ? "cursor-pointer" : "cursor-default opacity-50"}`}
+      <Label
+        className={`h-9 gap-1 rounded-md border border-slate-300 bg-white px-1 text-sm font-semibold whitespace-nowrap text-slate-700 shadow-sm min-[375px]:px-1.5 md:h-8 md:px-1.5 md:text-[13px] ${available ? "cursor-pointer" : "cursor-default opacity-50"}`}
       >
         <input
           type="checkbox"
@@ -80,7 +81,7 @@ export function CommunityMapControls({
           className="size-3.5 accent-blue-500"
         />
         投稿
-      </label>
+      </Label>
       {error && onRetry && (
         <Button
           type="button"

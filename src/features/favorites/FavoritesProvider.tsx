@@ -21,6 +21,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { AccountCommunityDialog } from "@/features/community/AccountCommunityDialog";
 import { saveCommunityProfile } from "@/features/community/actions";
 import { CommunityNotificationsLink } from "@/features/community/CommunityNotificationsLink";
@@ -414,14 +415,14 @@ function FavoritesState({
                     ["ANONYMOUS", "匿名"],
                   ] as const
                 ).map(([mode, label]) => (
-                  <label key={mode} className="flex items-center gap-2 text-sm">
+                  <Label key={mode} className="text-sm">
                     <input
                       type="radio"
                       checked={communityNameMode === mode}
                       onChange={() => setCommunityNameMode(mode)}
                     />
                     {label}
-                  </label>
+                  </Label>
                 ))}
                 {communityNameMode === "NICKNAME" && (
                   <input

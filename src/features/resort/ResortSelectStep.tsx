@@ -6,6 +6,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useScreenState } from "@/features/map/session/useScreenState";
 import { getResortLabelName } from "@/lib/resortAliases";
 import { cn } from "@/lib/utils";
@@ -133,9 +134,9 @@ export function ResortSelectStep({
               ["公開停止中", showInactive, setShowInactive],
             ] as const
           ).map(([label, checked, onChange]) => (
-            <label
+            <Label
               key={label}
-              className="flex cursor-pointer items-center gap-1.5 font-medium text-gray-700"
+              className="cursor-pointer gap-1.5 font-medium text-gray-700"
             >
               <input
                 type="checkbox"
@@ -144,7 +145,7 @@ export function ResortSelectStep({
                 onChange={event => onChange(event.target.checked)}
               />
               {label}
-            </label>
+            </Label>
           ))}
           <p className="ml-auto text-gray-500" role="status">
             {filteredResorts.length} 件 / 全 {resorts.length} 件

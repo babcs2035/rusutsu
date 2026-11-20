@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { getResortLabelName } from "@/lib/resortAliases";
 import type { AdminSkiResortRecord } from "@/server/ski-resorts/adminContract";
 import { isMergedSource } from "@/server/ski-resorts/adminContract";
@@ -312,7 +313,7 @@ export function DisplayGroupEditor({
             {draft.id ? "同時表示の組を編集" : "同時表示の組を追加"}
           </DialogTitle>
         </DialogHeader>
-        <label className="space-y-1">
+        <Label className="block space-y-1">
           <span className="block font-semibold">
             表示名
             <span className="ml-1 font-normal text-gray-600 text-xs">
@@ -330,7 +331,7 @@ export function DisplayGroupEditor({
               詳細画面では「{label.trim()}で表示」と出します。
             </span>
           )}
-        </label>
+        </Label>
         <div className="space-y-1">
           <p className="font-semibold">
             スキー場と表示名（{ids.length}件、2件以上）
@@ -358,9 +359,9 @@ export function DisplayGroupEditor({
         />
         <div className="min-h-0 flex-1 overflow-y-auto rounded-md border">
           {filtered.map(item => (
-            <label
+            <Label
               key={item.id}
-              className="flex cursor-pointer items-center gap-3 border-b p-2.5 hover:bg-blue-50"
+              className="cursor-pointer gap-3 border-b p-2.5 hover:bg-blue-50"
             >
               <input
                 type="checkbox"
@@ -374,7 +375,7 @@ export function DisplayGroupEditor({
                   {item.prefecture} / {item.id}
                 </span>
               </span>
-            </label>
+            </Label>
           ))}
           {!filtered.length && (
             <p className="p-3 text-gray-500">

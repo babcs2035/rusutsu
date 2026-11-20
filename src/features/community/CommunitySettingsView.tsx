@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   deleteCommunityAccount,
   markNotificationsRead,
@@ -131,7 +132,7 @@ export function CommunitySettingsView({
                   ["ANONYMOUS", "匿名"],
                 ] as const
               ).map(([m, label]) => (
-                <label key={m} className="flex gap-2">
+                <Label key={m} className="gap-2">
                   <input
                     type="radio"
                     disabled={busy}
@@ -139,7 +140,7 @@ export function CommunitySettingsView({
                     onChange={() => setMode(m)}
                   />
                   {label}
-                </label>
+                </Label>
               ))}
               {mode === "NICKNAME" && (
                 <Input

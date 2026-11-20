@@ -1,6 +1,7 @@
 "use client";
 
 import { type ReactNode, useEffect, useId, useState } from "react";
+import { Label } from "@/components/ui/label";
 import type { FeatureReview } from "./featureReview";
 
 const statusLabel = {
@@ -50,7 +51,7 @@ export function RequestFeatureReview({
             <span className="ml-2 text-amber-700">表示順も変更</span>
           )}
         </p>
-        <label className="flex items-center gap-1.5 text-xs text-slate-600">
+        <Label className="gap-1.5 text-xs text-slate-600">
           <input
             type="checkbox"
             checked={onlyChanged}
@@ -65,7 +66,7 @@ export function RequestFeatureReview({
             }}
           />
           変更のみ
-        </label>
+        </Label>
       </div>
       <div
         role="tablist"

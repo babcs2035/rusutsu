@@ -349,13 +349,13 @@ export function DetailEditStep({
             </div>
           ))}
         </div>
-        <label className="mt-2 flex cursor-pointer items-center gap-1.5 text-[11px] text-gray-600">
+        <Label className="mt-2 cursor-pointer gap-1.5 text-[11px] text-gray-600">
           <Checkbox
             checked={bulkOnlyEmpty}
             onCheckedChange={checked => setBulkOnlyEmpty(checked === true)}
           />
           未入力のコースだけに入れる（入力済みは変えない）
-        </label>
+        </Label>
         {bulkMessage && (
           <p className="mt-1 text-[11px] text-green-800">{bulkMessage}</p>
         )}

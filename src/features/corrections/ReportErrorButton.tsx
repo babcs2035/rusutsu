@@ -8,6 +8,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { withAnonymousCheck } from "./anonymousCheck";
 
 /** Calculation inputs belong in POST bodies, never URLs or access logs. */
@@ -91,7 +92,7 @@ export function ReportErrorButton({
               )}
               {step === "edit" ? (
                 <>
-                  <label className="text-sm">
+                  <Label className="block text-sm">
                     {kind === "other" ? "修正内容" : "補足（任意）"}
                     <textarea
                       value={comment}
@@ -100,8 +101,8 @@ export function ReportErrorButton({
                       rows={3}
                       className="mt-1 w-full rounded border p-2"
                     />
-                  </label>
-                  <label className="text-sm">
+                  </Label>
+                  <Label className="block text-sm">
                     写真（任意・最大3枚）
                     <input
                       type="file"
@@ -120,7 +121,7 @@ export function ReportErrorButton({
                       }}
                       className="mt-1 block w-full"
                     />
-                  </label>
+                  </Label>
                   <p className="text-xs text-slate-500">
                     写真は当サイト内だけで利用し、サイト外で二次利用しません。
                   </p>

@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { Label } from "@/components/ui/label";
 
 const LABELS: Record<string, string> = {
   resortId: "スキー場ID",
@@ -193,7 +194,7 @@ export function ValueFields({
     );
   if (typeof value === "boolean")
     return (
-      <label className="flex items-center gap-2">
+      <Label>
         <input
           type="checkbox"
           checked={value}
@@ -201,7 +202,7 @@ export function ValueFields({
           onChange={event => onChange?.(event.target.checked)}
         />
         {label}
-      </label>
+      </Label>
     );
   if (readonly)
     return (
@@ -212,7 +213,7 @@ export function ValueFields({
     );
   const numeric = typeof value === "number" || NUMERIC_NULLS.has(field);
   return (
-    <label className="block space-y-1 text-sm">
+    <Label className="block space-y-1 text-sm">
       <span>{label}</span>
       {numeric ? (
         <input
@@ -243,6 +244,6 @@ export function ValueFields({
           }
         />
       )}
-    </label>
+    </Label>
   );
 }
