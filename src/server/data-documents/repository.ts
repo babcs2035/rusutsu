@@ -19,15 +19,12 @@ import {
   syncMapEntities,
   verifyRelationalDocument,
 } from "@/server/course-lift/repository";
-import { cleanCourseDocumentContent } from "@/server/course-lift/retiredMetrics";
 import { syncRecommendationDocuments } from "@/server/course-recommendations/projection";
 import {
   BundledFileDataDocumentSource,
   defaultBundledDataDocumentRoot,
 } from "./bundledFileSource";
 import {
-  DataDocumentConflictError,
-  type DataDocumentHashConflict,
   type DataDocumentWrite,
   storedDataDocumentSchema,
   storedDataDocumentSummarySchema,
@@ -40,8 +37,8 @@ import {
   type AtomicDataDocumentWrite,
   type DataDocumentDatabase,
   DataDocumentRepository,
-  hashDataDocumentContent,
 } from "./repositoryCore";
+import { orderDocumentWrites, prepareDocumentWrites } from "./writePlan";
 
 const SERIALIZABLE_TRANSACTION_ATTEMPTS = 3;
 
@@ -54,11 +51,11 @@ const isRetryableTransactionConflict = (error: unknown): boolean =>
 /** 同じトランザクション内で申請状態と正本を確定するための書込窓口。 */
 export async function writeDataDocumentsInTransaction(
   transaction: Prisma.TransactionClient,
-  documents: readonly AtomicDataDocumentWrite[],
+  requested: readonly AtomicDataDocumentWrite[],
 ) {
   const canonical = await canonicalMapsEnabled(transaction);
   const currentRows = [];
-  for (const document of documents) {
+  for (const document of requested) {
     currentRows.push(
       await (canonical && mapDocumentKind(document.key)
         ? readMapOrDataDocument(transaction, document.key)
@@ -70,50 +67,14 @@ export async function writeDataDocumentsInTransaction(
   const currentByKey = new Map(
     currentRows.flatMap(row => (row ? [[row.key, row] as const] : [])),
   );
-  const conflicts: DataDocumentHashConflict[] = [];
-  for (const document of documents) {
-    const actualHash =
-      currentByKey.get(document.key)?.hash ?? document.fallbackHash;
-    if (actualHash !== document.expectedHash) {
-      conflicts.push({
-        key: document.key,
-        expectedHash: document.expectedHash,
-        actualHash,
-      });
-    }
-  }
-  if (conflicts.length > 0) {
-    throw new DataDocumentConflictError(conflicts);
-  }
-
-  documents = documents.map(document => {
-    const content = cleanCourseDocumentContent(document.key, document.content);
-    return content === document.content
-      ? document
-      : { ...document, content, hash: hashDataDocumentContent(content) };
-  });
+  const documents = prepareDocumentWrites(requested, currentByKey);
 
   const stored: Array<
     import("@/server/course-lift/migrationPlan").MapSourceDocument
   > = [];
   const movingKeys = new Set(documents.map(document => document.key));
   const movedFrom = new Set<string>();
-  const ordered = [...documents].sort((a, b) => {
-    const rank = (key: string) => {
-      const parsed = mapDocumentKind(key);
-      return !parsed
-        ? 0
-        : parsed.detail
-          ? 4
-          : parsed.mapping
-            ? 3
-            : parsed.derived
-              ? 2
-              : 1;
-    };
-    return rank(a.key) - rank(b.key);
-  });
-  for (const document of ordered) {
+  for (const document of orderDocumentWrites(documents)) {
     if (canonical && mapDocumentKind(document.key)) {
       stored.push(
         await writeCanonicalMapDocument(
@@ -162,23 +123,19 @@ export async function writeDataDocumentsInTransaction(
       transaction,
       documents.map(d => d.key),
     );
+  const affectedKeys = [...movingKeys, ...movedFrom];
   const affectedIds = [
     ...new Set(
-      [...documents.map(document => document.key), ...movedFrom].flatMap(
-        key => {
-          const kind = mapDocumentKind(key);
-          return kind ? [kind.resortId] : [];
-        },
-      ),
+      affectedKeys.flatMap(key => {
+        const kind = mapDocumentKind(key);
+        return kind ? [kind.resortId] : [];
+      }),
     ),
   ];
   const finalized = canonical
     ? await refreshCanonicalDocumentStates(transaction, affectedIds, movingKeys)
     : null;
-  await syncRecommendationDocuments(
-    transaction,
-    documents.map(d => d.key),
-  );
+  await syncRecommendationDocuments(transaction, affectedKeys);
   if (canonical) await refreshMapOperations(transaction, affectedIds);
   return documents.map(document => {
     const saved =
