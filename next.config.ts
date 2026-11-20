@@ -5,11 +5,11 @@ import type { NextConfig } from "next";
 // 'unsafe-inline' は Next.js の RSC インラインスクリプト／スタイルのため必須。
 const CSP_REPORT_ONLY = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob: https://*.googleusercontent.com https://tile.openstreetmap.org https://tile.googleapis.com https://cyberjapandata.gsi.go.jp https://cyberjapandata2.gsi.go.jp",
   "font-src 'self' https://fonts.gstatic.com",
-  "connect-src 'self' https://tile.googleapis.com",
+  "connect-src 'self' https://tile.googleapis.com https://www.google-analytics.com https://*.google-analytics.com",
   "frame-src 'self' https://ja.snow-forecast.com",
   "worker-src 'self' blob:",
   "child-src 'self' blob:",
@@ -45,6 +45,10 @@ const nextConfig: NextConfig = {
             value: "geolocation=(self)",
           },
         ],
+      },
+      {
+        source: "/admin/:path*",
+        headers: [{ key: "X-Frame-Options", value: "DENY" }],
       },
       {
         source: "/map-sw.js",
