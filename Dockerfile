@@ -75,11 +75,16 @@ COPY --from=build-cache --chown=nextjs:nodejs /app/src/features/latest-status-ma
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/features/resort-detail/utils/detailMetrics.ts /app/src/features/resort-detail/utils/courseStatusSummary.ts ./src/features/resort-detail/utils/
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/features/home/utils/operatingCounts.ts ./src/features/home/utils/operatingCounts.ts
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/features/resort-links/convert.ts /app/src/features/resort-links/model.ts /app/src/features/resort-links/linkTypes.json /app/src/features/resort-links/linkSources.json ./src/features/resort-links/
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/features/weather/weatherLinks.ts /app/src/features/weather/weatherLinksMigration.ts ./src/features/weather/
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/features/links/model.ts ./src/features/links/model.ts
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/features/lift/constants.ts ./src/features/lift/constants.ts
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/features/slope/constants.ts ./src/features/slope/constants.ts
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/scripts ./src/private/scripts
 # Frozen sources for EXPLICIT one-time import/recovery. App startup never imports.
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/SkiAreaNameDict.json ./src/private/data/SkiAreaNameDict.json
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/SkiResortNameAliases.json ./src/private/data/SkiResortNameAliases.json
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/SkiResortLinks.json ./src/private/data/SkiResortLinks.json
+COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/SkiResortWeatherIds.json ./src/private/data/SkiResortWeatherIds.json
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/pass-programs/aliases.json ./src/private/data/pass-programs/aliases.json
 # EV充電の管理画面で出す、近くの充電器の候補（buildEvChargerCandidates.py が作る）
 COPY --from=build-cache --chown=nextjs:nodejs /app/src/private/data/ev-charging/admin-candidates.json ./src/private/data/ev-charging/admin-candidates.json
@@ -102,15 +107,14 @@ COPY --from=build-cache --chown=nextjs:nodejs /app/.shared/skills/collect-ski-li
 COPY --from=build-cache --chown=nextjs:nodejs /root/.cache/ms-playwright /home/nextjs/.cache/ms-playwright
 # Copy full node_modules for Prisma CLI module resolution
 # Prisma CLI needs @prisma/config and its transitive dependencies (c12, effect, etc.)
-# Copy to temp location first, then merge to avoid Docker overlay file-to-dir conflict
-COPY --from=build-cache /app/node_modules /tmp/node_modules
-RUN cp -an /tmp/node_modules/. ./node_modules/ && rm -rf /tmp/node_modules
+# Merge from a build mount to avoid overlay conflicts and duplicate image layers.
+RUN --mount=type=bind,from=build-cache,source=/app/node_modules,target=/tmp/deps \
+    cp -an /tmp/deps/. ./node_modules/
 
 # Setup permissions. The crawler artifact directory is mounted as a persistent
 # volume in production, so warning/failure DOMs survive container replacement.
-RUN mkdir -p .cache /pnpm /app/var/crawler-artifacts \
-    /app/var/crawler-worker-artifacts /app/var/share-images && \
-    chown -R nextjs:nodejs /app /home/nextjs/.cache /pnpm
+RUN install -d -o nextjs -g nodejs .cache /pnpm /home/nextjs /home/nextjs/.cache \
+    /app/var/crawler-artifacts /app/var/crawler-worker-artifacts /app/var/share-images
 
 # Switch to non-root user
 USER nextjs
