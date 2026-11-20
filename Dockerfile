@@ -44,6 +44,8 @@ RUN --mount=type=cache,id=nextjs,target=/app/.next/cache pnpm build
 # ==============================================================================
 FROM base AS runner
 
+LABEL com.rusutsu.image-cleanup="app"
+
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
@@ -119,11 +121,11 @@ USER nextjs
 
 # Verify the final image, including files not discoverable by Next's tracer.
 # These commands do not connect to a DB or crawl any external website.
-RUN node scripts/ops/check-runtime-files.mjs && \
+RUN node scripts/ops/check-runtime-files.ts && \
     node --import tsx --eval 'import("./src/server/course-recommendations/projection.ts")' && \
     node --import tsx scripts/importCanonicalDataDocuments.ts --dry-run && \
     node --import tsx scripts/importSkiResortShortNames.ts --dry-run
 
 EXPOSE 3000
 
-CMD ["node", "scripts/ops/start-app.mjs"]
+CMD ["node", "scripts/ops/start-app.ts"]

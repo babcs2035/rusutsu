@@ -34,7 +34,10 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
       bodySizeLimit: "64mb",
-      allowedOrigins: ["ktak.dev", "*.trycloudflare.com"],
+      allowedOrigins:
+        process.env.NODE_ENV === "development"
+          ? ["ktak.dev", "*.trycloudflare.com"]
+          : ["ktak.dev"],
     },
   },
   serverExternalPackages: [
@@ -47,9 +50,6 @@ const nextConfig: NextConfig = {
     "@prisma/adapter-pg",
     "dotenv",
   ],
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   images: {
     remotePatterns: [
       {

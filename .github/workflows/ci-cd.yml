@@ -36,7 +36,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U rusutsu_ci -d rusutsu_ci"
+          --health-cmd "pg_isready -U rusutsu_ci -d rusutsu_test_1"
           --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       DATABASE_URL: postgresql://rusutsu_ci:ephemeral_ci_only@localhost:5432/rusutsu_test_1
@@ -61,13 +61,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Generate Prisma Client
-        run: pnpm prisma generate
+        run: mise run db:generate
 
-      - name: Run Format & Lint Check with Biome
-        run: mise run lint
-
-      - name: Run Type Check
-        run: mise run typecheck
+      - name: Check formatting, lint, and types
+        run: mise run check
 
       - name: Install Playwright browser for DOM tests
         run: pnpm exec playwright install --with-deps --only-shell chromium
@@ -79,17 +76,14 @@ jobs:
         run: mise run test -- --db
 
       - name: Verify collected lift ticket data against official expectations
-        run: LIFT_TICKET_DATA_ROOT=src/private/data/lift-ticket node --import tsx --test src/features/lift-ticket/utils/uiContract.test.ts
-
-      - name: Apply migrations to disposable CI database
-        run: pnpm prisma migrate deploy
+        run: LIFT_TICKET_DATA_ROOT=src/private/data/lift-ticket mise run test -- --unit src/features/lift-ticket/utils/uiContract.test.ts
 
       - name: Reject schema changes missing a migration
         run: pnpm prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
 
       - name: Validate deployment scripts
         run: |
-          bash -n scripts/ops/common.sh scripts/ops/backup-database.sh scripts/ops/deploy.sh scripts/ops/restore-backup-test.sh
+          bash -n scripts/ops/common.sh scripts/ops/backup-database.sh scripts/ops/deploy.sh scripts/ops/cleanup-images.sh scripts/ops/restore-backup-test.sh
           python3 -m py_compile scripts/ops/build-db-manifest.py
           docker compose config --quiet
           git diff --check
@@ -172,10 +166,8 @@ jobs:
 
       - name: Prepare production settings from GitHub
         env:
-          INTERNAL_DATA_API_ADMIN_TOKEN: ${{ secrets.INTERNAL_DATA_API_ADMIN_TOKEN }}
-          INTERNAL_DATA_API_CRAWLER_TOKEN: ${{ secrets.INTERNAL_DATA_API_CRAWLER_TOKEN }}
-          INTERNAL_DATA_API_DIAGNOSTICS_TOKEN: ${{ secrets.INTERNAL_DATA_API_DIAGNOSTICS_TOKEN }}
-          DATA_API_BASE_URL: ${{ vars.DATA_API_BASE_URL || secrets.DATA_API_BASE_URL }}
+          API_BEARER_TOKEN: ${{ secrets.API_BEARER_TOKEN }}
+          API_BASE_URL: ${{ vars.API_BASE_URL || secrets.API_BASE_URL }}
           # Optional: otherwise preserve settings from the existing app.
           AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
@@ -186,7 +178,7 @@ jobs:
           COMMUNITY_MODERATION_TOKEN: ${{ secrets.COMMUNITY_MODERATION_TOKEN }}
           COMMUNITY_MODERATION_MODEL: ${{ vars.COMMUNITY_MODERATION_MODEL }}
           CONTRIBUTION_TRUST_PROXY: ${{ vars.CONTRIBUTION_TRUST_PROXY }}
-        run: node scripts/ops/production-settings.mjs
+        run: node scripts/ops/production-settings.ts
 
       - name: Fingerprint explicit database-changing paths
         run: python3 scripts/ops/build-db-manifest.py > db-change-manifest.sha256
@@ -231,3 +223,36 @@ jobs:
             printf '%s' "$GHCR_DEPLOY_TOKEN" | docker login ghcr.io -u "$GHCR_DEPLOY_USER" --password-stdin
             unset GHCR_DEPLOY_TOKEN
             bash scripts/ops/deploy.sh
+
+      - name: Clean up verified obsolete app images
+        id: image-cleanup
+        continue-on-error: true
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          port: ${{ secrets.DEPLOY_PORT }}
+          envs: DEPLOY_IMAGE_TAG,DEPLOY_TARGET
+          script: |
+            set -eu
+            case "${DEPLOY_TARGET:-}" in
+              '') echo 'DEPLOY_TARGET is empty.' >&2; exit 1 ;;
+              '~') DEPLOY_TARGET="$HOME" ;;
+              '~/'*) DEPLOY_TARGET="$HOME/${DEPLOY_TARGET#\~/}" ;;
+              '$HOME/'*) DEPLOY_TARGET="$HOME/${DEPLOY_TARGET#\$HOME/}" ;;
+              '${HOME}/'*) DEPLOY_TARGET="$HOME/${DEPLOY_TARGET#\$\{HOME\}/}" ;;
+            esac
+            cd -- "$DEPLOY_TARGET"
+            before="$(docker system df --format '{{.Type}} {{.Reclaimable}}')"
+            if ! bash scripts/ops/cleanup-images.sh; then
+              echo 'Verified image cleanup failed; deployment remains active.' >&2
+              exit 1
+            fi
+            after="$(docker system df --format '{{.Type}} {{.Reclaimable}}')"
+            printf 'Docker reclaimable space before cleanup:\n%s\n' "$before"
+            printf 'Docker reclaimable space after cleanup:\n%s\n' "$after"
+
+      - name: Report image cleanup failure
+        if: steps.image-cleanup.outcome == 'failure'
+        run: echo '::warning title=Image cleanup failed::Deployment succeeded; obsolete image cleanup needs attention.'

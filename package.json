@@ -13,7 +13,7 @@
     "typecheck": "pnpm exec next typegen && pnpm exec tsc --noEmit --incremental false",
     "test": "tsx scripts/runTests.ts",
     "prepare": "husky",
-    "maplibre:worker": "node scripts/copyMaplibreWorker.mjs"
+    "maplibre:worker": "node scripts/copyMaplibreWorker.ts"
   },
   "packageManager": "pnpm@12.18.0",
   "dependencies": {

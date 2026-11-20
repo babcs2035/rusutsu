@@ -13,18 +13,18 @@ setup = { description = "プロジェクトの初期セットアップ（依存�
   "cp -n .env.example .env || true",
   "pnpm install",
   "pnpm exec playwright install chromium",
-  "docker compose up -d --wait db",
+  "mise run db:up",
   "mise run db:migrate",
   "mise run db:generate",
   "mise run db:seed"
 ]}
 
 # --- Development ---
-dev = { description = "開発サーバー起動（このMacからだけ接続可能）", run = "pnpm dev" }
+dev = { description = "開発サーバー起動（ループバックのみ，--port で変更）", run = "pnpm dev" }
 "dev:lan" = { description = "開発サーバー起動（LANへ明示的に公開）", run = "pnpm dev:lan" }
 format = { description = "Format (Biome)", run = "pnpm format" }
 lint = { description = "整形・静的検査（読み取り専用，--writeで修正）", run = "pnpm lint" }
-test = { description = "単体と単一の使い捨てDBで全検証（--unit / --db / --browserで選択）", run = "pnpm test" }
+test = { description = "単体と単一の使い捨て DB で検証（--unit / --db / --browser と試験ファイルを指定可能）", run = "pnpm test" }
 typecheck = { description = "型チェック", run = "pnpm typecheck" }
 check = { description = "整形・静的検査・型検査（読み取り専用）", run = ["mise run lint", "mise run typecheck"] }
 
@@ -50,7 +50,7 @@ start = { description = "プロダクションサーバー起動", run = "pnpm s
 "crawl:weathers" = { description = "天気 (Weathers) の更新", run = "pnpm tsx src/private/scripts/crawlWeathers.ts" }
 "crawl:forecasts" = { description = "予報 (Forecasts) の更新", run = "pnpm tsx src/private/scripts/crawlForecasts.ts" }
 "crawl:tour-links" = { description = "ツアー会社サイトのスキー場別リンクを収集（反映は resort-links:publish -- --source）", run = "pnpm tsx src/private/scripts/tour-links/run.ts" }
-"crawl:pass-programs" = { description = "シーズン券・キッズパス（NSDキッズ・マックアース・スノーバーズ）の対象スキー場一覧をローカルDBへ取り込む（本番は毎日3:30に自動実行）", run = "DATA_API_BASE_URL= pnpm tsx src/private/scripts/crawlPassPrograms.ts" }
+"crawl:pass-programs" = { description = "シーズン券・キッズパス（NSDキッズ・マックアース・スノーバーズ）の対象スキー場一覧をローカルDBへ取り込む（本番は毎日3:30に自動実行）", run = "API_BASE_URL= pnpm tsx src/private/scripts/crawlPassPrograms.ts" }
 "crawl:latest" = { description = "スキー場別crawl_latestを一括または個別実行", run = "node --import tsx scripts/runCrawlLatestBatch.ts" }
 
 "crawl:all" = { description = "全データのクローリング実行", run = [
@@ -72,7 +72,6 @@ start = { description = "プロダクションサーバー起動", run = "pnpm s
 "sync:resort-sheets" = { description = "Excel の詳細を正本APIの空欄へ補完（既定は確認のみ、--apply で反映）", run = "node --import tsx scripts/syncResortSheetsToApi.ts" }
 "validate:map-data" = { description = "自己完結したコース・リフト GeoJSON と営業状況の結合データを検証", run = "pnpm tsx scripts/validateResortMapData.ts" }
 "report:sheet-links" = { description = "resorts の Excel と地図の線の突き合わせ結果を CSV に書き出す", run = "pnpm tsx scripts/reportResortSheetLinks.ts" }
-"validate:map-data:strict" = { description = "同上。❌ が 1 件でもあれば異常終了する", run = "pnpm tsx scripts/validateResortMapData.ts --strict" }
 
 # --- Docker ---
 "docker:logs" = { description = "コンテナログ表示", run = "docker compose logs -f" }

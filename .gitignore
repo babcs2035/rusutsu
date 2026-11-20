@@ -47,6 +47,7 @@ yarn-error.log*
 
 # Private deployment settings and local DB copies must never be committed.
 /production-settings.json
+/backups/
 .review-publication-plan.json
 **/pending.env.sh
 **/runtime.env.sh
@@ -60,5 +61,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# MapLibre のワーカーは scripts/copyMaplibreWorker.mjs が node_modules から複製する
+# MapLibre のワーカーは scripts/copyMaplibreWorker.ts が node_modules から複製する
 /public/maplibre/

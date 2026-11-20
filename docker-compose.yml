@@ -34,7 +34,7 @@ services:
     restart: unless-stopped
     init: true
     healthcheck:
-      test: ["CMD", "node", "scripts/ops/check-readiness.mjs"]
+      test: ["CMD", "node", "scripts/ops/check-readiness.ts"]
       interval: 15s
       timeout: 20s
       start_period: 30s
