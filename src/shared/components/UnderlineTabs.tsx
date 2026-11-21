@@ -39,7 +39,8 @@ export const UnderlineTabs = <TTab extends string>({
     <TabsList
       variant="line"
       className={cn(
-        "scroll-touch flex w-full min-w-0 flex-1 gap-0 overflow-x-auto rounded-none border-b border-gray-200 bg-white p-0",
+        // 中央揃えのまま溢れると列の先頭がスクロール可能範囲の外に出る．
+        "scroll-touch flex w-full min-w-0 flex-1 justify-start gap-0 overflow-x-auto rounded-none border-b border-gray-200 bg-white p-0",
         fit && "@container/tabs",
         className,
       )}

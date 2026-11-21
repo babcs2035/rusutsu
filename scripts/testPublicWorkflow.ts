@@ -80,6 +80,39 @@ try {
     })
     .waitFor();
 
+  // 320px では比較タブが横に溢れるため，両端まで戻れることを確認する．
+  await anonymousPage.setViewportSize({ width: 320, height: 780 });
+  await anonymousPage.goto(`${baseUrl}/?c=0102`);
+  await anonymousPage
+    .getByRole("tab", { name: "アクセス", exact: true })
+    .click();
+  const firstTab = anonymousPage.getByRole("tab", {
+    name: "概要",
+    exact: true,
+  });
+  await firstTab.click();
+  assert.equal(await firstTab.getAttribute("aria-selected"), "true");
+  await anonymousPage
+    .getByRole("button", { name: "この比較をリストに保存" })
+    .click();
+  const saveDialog = anonymousPage.getByRole("dialog", {
+    name: "比較リストに保存",
+  });
+  await saveDialog.getByRole("button", { name: "ログインして保存" }).waitFor();
+  const bounds = await saveDialog.boundingBox();
+  assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 320);
+  await anonymousPage.screenshot({
+    path: path.join(artifactDirectory, "comparison-save-320.png"),
+  });
+  await anonymousPage.keyboard.press("Escape");
+  await saveDialog.waitFor({ state: "hidden" });
+  assert.equal(
+    await anonymousPage
+      .getByRole("button", { name: "ログインして保存" })
+      .count(),
+    0,
+  );
+
   const authSecret = process.env.RUSUTSU_BROWSER_AUTH_SECRET;
   const adminId = process.env.RUSUTSU_BROWSER_ADMIN_ID;
   if (Boolean(authSecret) !== Boolean(adminId))
