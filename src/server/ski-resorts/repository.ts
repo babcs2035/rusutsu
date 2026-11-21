@@ -42,19 +42,11 @@ export const publicResortWhere = {
   mergedIntoId: null,
 } satisfies Prisma.SkiResortWhereInput;
 
-export const fullResortQuery = {
-  where: publicResortWhere,
-  select: publicSkiResortSelect,
-  orderBy: { nameJa: "asc" },
-} satisfies Prisma.SkiResortFindManyArgs;
-
 export const resortDetailQuery = {
   // Legacy Weather JSON and LatestReport rows are not used by the detail UI.
   // Current operations and weather links are projected by their own services.
   select: publicSkiResortSelect,
 } satisfies Prisma.SkiResortDefaultArgs;
-
-export type FullSkiResortRecord = PublicSkiResortRecord;
 
 export type SkiResortDetailRecord = PublicSkiResortRecord;
 
@@ -131,8 +123,27 @@ const serializeAdminSkiResort = (
     updatedAt: resort.updatedAt.toISOString(),
   });
 
-export async function findSkiResortsDirect(): Promise<FullSkiResortRecord[]> {
-  return (await prisma.skiResort.findMany(fullResortQuery)).map(projectResort);
+/** ツアーの名寄せに必要な施設名，旧称，短縮名，都道府県だけを読む． */
+export async function findTourMatchingResortsDirect(): Promise<
+  {
+    id: string;
+    nameJa: string;
+    shortName: string | null;
+    prefecture: string;
+    formerNames: { name: string }[];
+  }[]
+> {
+  return prisma.skiResort.findMany({
+    where: publicResortWhere,
+    orderBy: { nameJa: "asc" },
+    select: {
+      id: true,
+      nameJa: true,
+      shortName: true,
+      prefecture: true,
+      formerNames: { select: { name: true }, orderBy: { position: "asc" } },
+    },
+  });
 }
 
 const mapResortSelect = {
@@ -201,10 +212,6 @@ async function findYukimajiSummariesDirect() {
   );
 }
 
-export async function findSkiResortsForEditorDirect() {
-  return findSkiResortsForMapDirect();
-}
-
 export async function findSkiResortsForMapDirect() {
   const [rows, yukimajiByResortId] = await Promise.all([
     prisma.skiResort.findMany({
@@ -233,14 +240,6 @@ export async function findSkiResortByIdDirect(
     ...resortDetailQuery,
   });
   return row ? projectResort(row) : null;
-}
-
-export async function findSkiResortWeatherDirect(id: string) {
-  return prisma.weather.findMany({
-    where: { skiResortId: id, skiResort: { isActive: true } },
-    orderBy: { date: "desc" },
-    take: 7,
-  });
 }
 
 export async function findYukiMagiListDirect() {

@@ -1,4 +1,3 @@
-import { z } from "zod";
 import {
   internalApiError,
   internalApiJson,
@@ -12,14 +11,11 @@ import {
 } from "@/server/ski-resorts/adminContract";
 import {
   findSkiResortByIdDirect,
-  findSkiResortWeatherDirect,
   updateAdminSkiResortDirect,
 } from "@/server/ski-resorts/repository";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const viewSchema = z.enum(["detail", "weather"]);
 
 export async function GET(
   request: Request,
@@ -31,21 +27,15 @@ export async function GET(
   const { resortId: rawResortId } = await context.params;
   const resortId = skiResortIdSchema.safeParse(rawResortId);
   const searchParams = new URL(request.url).searchParams;
-  const view = viewSchema.safeParse(searchParams.get("view"));
   if (
     !resortId.success ||
-    !view.success ||
+    searchParams.get("view") !== "detail" ||
     [...searchParams.keys()].some(key => key !== "view")
   ) {
     return internalApiError(400, "INVALID_QUERY", "Invalid query parameter");
   }
 
   try {
-    if (view.data === "weather") {
-      return internalApiJson({
-        weather: await findSkiResortWeatherDirect(resortId.data),
-      });
-    }
     return internalApiJson({
       resort: await findSkiResortByIdDirect(resortId.data),
     });

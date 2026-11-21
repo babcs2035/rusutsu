@@ -10,15 +10,14 @@ import {
   findAdminSkiResortsDirect,
   findExistingSkiResortIdsDirect,
   findSkiResortNamesDirect,
-  findSkiResortsDirect,
-  findSkiResortsForEditorDirect,
   findSkiResortsForMapDirect,
+  findTourMatchingResortsDirect,
 } from "@/server/ski-resorts/repository";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const viewSchema = z.enum(["full", "map", "editor", "names", "ids", "admin"]);
+const viewSchema = z.enum(["tour-matching", "map", "names", "ids", "admin"]);
 
 const parseIds = (raw: string | null) => {
   if (raw === null) return undefined;
@@ -43,23 +42,19 @@ export async function GET(request: Request) {
   }
   if (
     (view.data === "ids" && ids === undefined) ||
-    (["full", "map", "editor", "admin"].includes(view.data) &&
-      ids !== undefined)
+    (["tour-matching", "map", "admin"].includes(view.data) && ids !== undefined)
   ) {
     return internalApiError(400, "INVALID_QUERY", "Invalid ids parameter");
   }
 
   try {
-    if (view.data === "full") {
-      return internalApiJson({ resorts: await findSkiResortsDirect() });
+    if (view.data === "tour-matching") {
+      return internalApiJson({
+        resorts: await findTourMatchingResortsDirect(),
+      });
     }
     if (view.data === "map") {
       return internalApiJson({ resorts: await findSkiResortsForMapDirect() });
-    }
-    if (view.data === "editor") {
-      return internalApiJson({
-        resorts: await findSkiResortsForEditorDirect(),
-      });
     }
     if (view.data === "admin") {
       return internalApiJson({ resorts: await findAdminSkiResortsDirect() });

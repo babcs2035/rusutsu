@@ -15,7 +15,7 @@ import {
   getResortLabelName,
   getResortSearchWordName,
 } from "@/lib/resortAliases";
-import { readSkiResortsForEditor } from "@/lib/skiResortData";
+import { readSkiResortsForMap } from "@/lib/skiResortData";
 import { requireEditingPage } from "@/server/edit-requests/authPages";
 import { getRequestEditContext } from "@/server/edit-requests/repository";
 
@@ -40,7 +40,7 @@ export default async function LiftEditPage({
     redirect(`/admin/requests/${encodeURIComponent(requestId)}`);
   const [resorts, liftBeforeIds, confirmedMap, crawlerLiftIds, mappedLiftIds] =
     await Promise.all([
-      readSkiResortsForEditor(),
+      readSkiResortsForMap(),
       listLiftBeforeResortIds(),
       readLiftConfirmedMap(),
       listCrawlerCoveredResortIds("lifts"),

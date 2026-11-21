@@ -12,7 +12,7 @@ import {
   getResortLabelName,
   getResortSearchWordName,
 } from "@/lib/resortAliases";
-import { readSkiResortsForEditor } from "@/lib/skiResortData";
+import { readSkiResortsForMap } from "@/lib/skiResortData";
 import { requireEditingPage } from "@/server/edit-requests/authPages";
 import { getRequestEditContext } from "@/server/edit-requests/repository";
 
@@ -43,7 +43,7 @@ export default async function SlopeEditPage({
     mappedCourseIds,
     osmConfirmedMap,
   ] = await Promise.all([
-    readSkiResortsForEditor(),
+    readSkiResortsForMap(),
     listSlopeBeforeResortIds(),
     listSlopeBeforeResortIds("osm"),
     listCrawlerCoveredResortIds("courses"),

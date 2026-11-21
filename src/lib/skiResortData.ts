@@ -1,10 +1,9 @@
 import "server-only";
 
-import type { Weather, YukiMagi } from "@prisma/client";
+import type { YukiMagi } from "@prisma/client";
 import { z } from "zod";
 import {
   fetchInternalDataApi,
-  InternalDataApiError,
   usesRemoteDataApi,
 } from "@/lib/internalDataApiClient";
 import { currentEditCapture } from "@/server/edit-requests/capture";
@@ -28,15 +27,11 @@ import {
 } from "@/server/ski-resorts/mergeContract";
 import { publicSkiResortSchema } from "@/server/ski-resorts/publicProjection";
 import {
-  type FullSkiResortRecord,
   findAdminSkiResortsDirect,
   findExistingSkiResortIdsDirect,
   findSkiResortByIdDirect,
   findSkiResortNamesDirect,
-  findSkiResortsDirect,
-  findSkiResortsForEditorDirect,
   findSkiResortsForMapDirect,
-  findSkiResortWeatherDirect,
   findYukiMagiListDirect,
   mergeAdminSkiResortsDirect,
   type SkiResortDetailRecord,
@@ -100,46 +95,11 @@ const asDate = (value: unknown): Date => {
   return date;
 };
 
-const reviveWeather = (weather: Weather): Weather => ({
-  ...weather,
-  date: asDate(weather.date),
-  createdAt: asDate(weather.createdAt),
-});
-
-export async function readSkiResorts(): Promise<FullSkiResortRecord[]> {
-  if (!usesRemoteDataApi()) return findSkiResortsDirect();
-  const response = await fetchInternalDataApi("/api/admin/resorts?view=full");
-  const resorts = await parseEnvelope<FullSkiResortRecord[]>(
-    response,
-    "resorts",
-  );
-  return z.array(publicSkiResortSchema).parse(resorts);
-}
-
 export async function readSkiResortsForMap(): Promise<SkiResortMapRecord[]> {
   if (!usesRemoteDataApi()) return findSkiResortsForMapDirect();
   const response = await fetchInternalDataApi("/api/admin/resorts?view=map");
   return parseEnvelope<SkiResortMapRecord[]>(response, "resorts");
 }
-
-/** コース・リフト編集用。公開中のスキー場（完全統合は結合先）を返す。 */
-export async function readSkiResortsForEditor(): Promise<SkiResortMapRecord[]> {
-  if (!usesRemoteDataApi()) return findSkiResortsForEditorDirect();
-  try {
-    const response = await fetchInternalDataApi(
-      "/api/admin/resorts?view=editor",
-    );
-    return parseEnvelope<SkiResortMapRecord[]>(response, "resorts");
-  } catch (error) {
-    // editor に未対応のデータAPIでは、地図用の一覧と同じ。
-    if (!isUnsupportedViewError(error)) throw error;
-    return readSkiResortsForMap();
-  }
-}
-
-/** Webとデータ APIを別々にデプロイしたとき、旧APIは新しい view を 400 で返す。 */
-const isUnsupportedViewError = (error: unknown) =>
-  error instanceof InternalDataApiError && error.status === 400;
 
 export async function readSkiResortById(
   id: string,
@@ -153,15 +113,6 @@ export async function readSkiResortById(
     "resort",
   );
   return publicSkiResortSchema.nullable().parse(resort);
-}
-
-export async function readSkiResortWeather(id: string): Promise<Weather[]> {
-  if (!usesRemoteDataApi()) return findSkiResortWeatherDirect(id);
-  const response = await fetchInternalDataApi(
-    `/api/admin/resorts/${encodeURIComponent(id)}?view=weather`,
-  );
-  const weather = await parseEnvelope<Weather[]>(response, "weather");
-  return weather.map(reviveWeather);
 }
 
 export async function readYukiMagiList(): Promise<YukiMagi[]> {
