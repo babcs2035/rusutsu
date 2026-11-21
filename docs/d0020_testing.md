@@ -13,15 +13,43 @@
 
 個別の試験を実行するときはモードの後ろにファイル名を指定する．例えば `mise run test -- --unit src/server/publicQueryHttp.test.ts` で HTTP の読込契約だけを検証できる．
 
-手元で `TEST_DATABASE_URL` を指定しない場合，runner が Docker の試験専用コンテナを作成する．DB は tmpfs に保存し，試験の終了時に自分が作成したコンテナだけを削除する．開発中の DB コンテナと volume は使わない．既存の試験 DB を指定する場合は localhost の `rusutsu_test_<数字>` に限定し，`DATABASE_URL` の設定を自動流用しない．CI では `TEST_DATABASE_URL` が必須であり，未設定を skip として扱わない．
+手元で `TEST_DATABASE_URL` を指定しない場合，runner が Docker の試験専用コンテナを作成する．DB は tmpfs に保存し，試験の終了時に自分が作成したコンテナだけを削除する．既存の試験 DB を指定する場合は，loopback の `rusutsu_test_<数字>` を指すクエリパラメーターなしの URL を渡す．CI では `TEST_DATABASE_URL` が必須である．
 
-DB suite は同じ DB を使い，suite ごとに migration 履歴以外の fixture を初期化する．remote の認証・権限を検査するケースだけは，同じ DB の専用 schema で別サーバーの状態を表現する．これらの schema は試験が削除する．試験以外のデータを置かない．
+DB suite は同じ DB を使い，suite の前と全件成功後に public schema の fixture を初期化する．同じ DB を使う runner は PostgreSQL のロックで排他する．remote の認証・権限を検査するケースでは，同じ DB の専用 schema で別サーバーの状態を表現し，試験後にその schema を削除する．
 
 ブラウザ試験の接続先は `OFFLINE_TEST_URL` で指定する．通常の basePath は `/rusutsu` である．ブラウザが必要な fixture 試験には `mise run setup` で準備した Playwright を使い，必要なら `PLAYWRIGHT_BROWSERS_PATH` で保存先を指定する．結果・画像・一時 bundle は `RUSUTSU_TEST_ARTIFACT_DIR` が指す runner 専用ディレクトリへ保存し，runner が終了時に削除する．
 
 オフライン試験だけを行うときは，`--browser` に続けて `scripts/testOfflineOverview.ts`，`scripts/testOfflineDetail.ts`，`scripts/testOfflineRetention.ts` を指定する．公開投稿試験も含める場合は，下記の使い捨て DB の設定が必要である．
 
 `testPublicWorkflow.ts` は loopback 上の隔離アプリだけを受け付ける．匿名状態で `/admin/corrections` がログインへ転送されること，情報修正フォームで空欄を送信できないこと，入力した匿名修正が送信できること，現地レポートがログインを求めることを確認する．書き込み操作の前に `RUSUTSU_BROWSER_DISPOSABLE_DB=true` を確認するため，通常のローカル DB では送信も審査も行わない．管理者審査まで確認するときは，隔離アプリの `AUTH_SECRET` と同じ値を `RUSUTSU_BROWSER_AUTH_SECRET` に設定し，試験 DB に存在する管理者 ID を `RUSUTSU_BROWSER_ADMIN_ID` に設定する．試験スクリプトは Google の認証情報を使わず，合成 JWT の Cookie だけで審査画面へ入る．この検証で作成した修正申請は試験 DB だけに保存される．
+
+## ブラウザー用の使い捨て環境
+
+新規の試験 DB に migration を適用し，[ブラウザー用 fixture](../scripts/testBrowserFixtures.sql) を `psql` で投入する．次の例は，試験専用 PostgreSQL が loopback の 55491 番で待ち受ける場合である．
+
+```sh
+export DATABASE_URL='postgresql://rusutsu_test:ephemeral_test_only@127.0.0.1:55491/rusutsu_test_3001'
+export API_BASE_URL='' AUTH_URL='http://127.0.0.1:3001' AUTH_SECRET='ephemeral-browser-test-only'
+export DISABLE_CRAWLER_SCHEDULER=true RUSUTSU_DIST_DIR=.next-qa
+pnpm exec prisma migrate deploy
+psql "$DATABASE_URL" -f scripts/testBrowserFixtures.sql
+mise run build
+HOSTNAME=127.0.0.1 PORT=3001 mise exec -- node .next-qa/standalone/server.js
+```
+
+別の端末から，起動したアプリを指定して試験する．保存の再現にはテスト用タイルを使う．
+
+```sh
+OFFLINE_TEST_URL=http://127.0.0.1:3001/rusutsu OFFLINE_TEST_FIXTURE_TILES=1 \
+  RUSUTSU_BROWSER_DISPOSABLE_DB=true \
+  RUSUTSU_BROWSER_AUTH_SECRET=ephemeral-browser-test-only \
+  RUSUTSU_BROWSER_ADMIN_ID=browser-test-admin mise run test -- --browser
+```
+
+試験後は隔離アプリを停止し，試験 DB を破棄する．通常の型検査は `.next/types`，隔離ビルドは `.next-qa/types` を使う．CI でも DB 結合試験の完了後に同じ fixture を投入し，隔離した本番ビルドでブラウザー試験を実行する．
+Linux のヘッドレス Chromium で地図を初期化できない場合は，`OFFLINE_TEST_HEADLESS=false xvfb-run -a mise run test -- --browser` で実行する．
+
+同じ checkout で本番ビルドとローカル試験を続けて行う場合は，片方が終わってからもう片方を実行する．Next.js の依存ファイル追跡が試験中の一時ファイルを拾うと，試験終了時の削除とビルド中のコピーが競合する．Docker のビルドコンテキストは試験用ファイルを除外する．
 
 ## 検証の担当
 
@@ -45,3 +73,5 @@ DB suite は同じ DB を使い，suite ごとに migration 履歴以外の fixt
 | HTTP・管理 API・データ公開・配備・復元 | `publicQueryHttp.test.ts`，`internalDataApiClient.test.ts`，`publishLiftTicket.test.ts`，`publishReview.test.ts`，`scripts/ops/` の試験 |
 
 同じ仕様をすべての層で反復しない．試験を削除するときは，残る試験がその仕様を検出する根拠を確認する．料金の公式期待値は `LIFT_TICKET_DATA_ROOT=src/private/data/lift-ticket mise run test -- --unit src/features/lift-ticket/utils/uiContract.test.ts` でも確認できる．期待値を実装の出力から作り直さない．
+
+料金を同じ券種・日付・区分・年齢で照会する公式資料が複数ある場合は，期待値の一致を確認して一度だけ計算する．営業期間と休業日の判定は料金区分より先に行うため，施設ごとの境界試験は代表の区分で行う．年齢や資格による料金分岐は，公式額の照合と `spec/audience.test.ts` の境界例が担う．

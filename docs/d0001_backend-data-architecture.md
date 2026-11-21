@@ -49,9 +49,16 @@ Dockerを使うことと、DBを永久に残すことは両立する。コンテ
 
 APIトークン `API_BEARER_TOKEN` はサーバー専用の `.env.local` や `.env` に置き、Next.jsのサーバー側や対象CLIだけが読む。`NEXT_PUBLIC_` を付けない。ブラウザーから本番APIを直接呼ばないため、ChromeのNetworkに本番APIのAuthorization headerは出ない。トークンは信頼できるサーバー側処理専用で、人向けの操作はセッションと権限で承認する。旧共通トークンと旧のscope別トークンは廃止しており、新規環境でも受け付けない。
 
-初期表示は Server Components から正本を読む．操作後の読込は Route Handlers へ送り，更新は Server Actions を使う．写真付き投稿は受信量を検査する multipart の Route Handler で処理する．
+| 利用経路 | データを読む場所とアクセス条件 |
+| --- | --- |
+| 一覧，施設の共有 URL，投稿詳細・一覧・写真一覧，プロフィール | Server Components が共有サービスを呼ぶ．公開ページに本人情報を含む場合はリクエストごとに現在の閲覧者を解決する |
+| 地図で選んだ施設，料金，リンク，推薦，条件変更後の投稿一覧 | Route Handlers が同じサービスを呼ぶ．ブラウザーは操作に必要な結果を受け取る |
+| お気に入り，比較リスト，通知，滑走記録 | セッションから本人を解決し，取得と更新を本人で絞る．お気に入りと比較リストでは，画面のアカウントと現在のセッションが異なる要求も拒否する．共通の地図を保存する HTML には本人のデータを含めない |
+| 投稿・情報修正，編集と承認 | Server Actions と専用の HTTP 入口が，共有サービスに本人または匿名の証明を渡す．写真付き投稿は multipart の受信量を検査する．管理操作では現在の DB 権限を確認する |
+| 管理画面の施設切替後の読込 | `/api/admin/editor/queries` が現在の DB 編集権限を確認する |
+| worker・CLI，別環境の正本への接続 | `/api/admin` の機械用入口が Bearer token を検証する．人による操作を中継する場合は接続先でも actor を照合する |
 
-管理画面の動的読込は `/api/admin/editor/queries` で現在の DB の権限を確認する．機械用の管理 API は Bearer token を検証し，必要な操作では actor の権限も確認する．JSON API のエラーは `application/problem+json` で返し，呼び出し元は HTTP status と `code` で失敗を識別する．
+JSON API のエラーは `application/problem+json` で返し，呼び出し元は HTTP status と `code` で失敗を識別する．写真の秘匿 404 と成功応答には `private, no-store` を付ける．
 
 ## Chromeからデータが見える範囲
 
@@ -65,8 +72,7 @@ APIトークン `API_BEARER_TOKEN` はサーバー専用の `.env.local` や `.e
   remote API応答は同じ公開項目一覧を使い、DBや管理画面に新しい列を追加しても自動公開しない。
 - 料金は内側の項目も含めて公開対象を列挙する。料金計算に必要な営業時間と出典URL・タイトルは
   維持し、資料のローカルパス、調査担当への申し送り、未知の管理フィールドは送らない。
-- 詳細画面には旧Weatherの元JSON、旧LatestReport、内部の作成・更新時刻を含めない。
-  旧weather取得のServer Actionは管理者専用である。
+- 詳細画面には公開用に選んだ天気・積雪と営業情報を含める．管理用の元データと内部の作成・更新時刻は返却対象から除外する．
 - 管理用APIはトークン、管理画面の変更はAuth.jsの管理者権限で毎回確認する。
 - コース線の座標のように、ブラウザー上で地図を描画するため必要な値は完全に秘匿できない。生ファイルと不要な属性を送らないことで露出範囲を減らす。
 
@@ -285,63 +291,8 @@ Cookie、Authorization、API key、フォーム値等はDOM保存前に除去し
 履歴の保管場所であり、PostgreSQLは運用中の最新データの保管場所になる。通常deployは初回投入を実行しない。初回の成功確認後は
 `INITIALIZE_CANONICAL_DATA` を削除またはfalseに戻す。
 
-## GitHubからの本番設定
+## 配備とバックアップ
 
-APIキー `API_BEARER_TOKEN` はGitHub Actionsの同名Secretへ登録する。64桁の16進文字列を要求する。
-本番URLはVariable `API_BASE_URL`へ指定でき、省略時は既存appのAUTH_URLから組み立てる。
-初回の `INITIALIZE_CANONICAL_DATA=true` はVariablesで制御する。最新情報schedulerは標準で有効。
-停止する場合だけ `ENABLE_CRAWL_LATEST_SCHEDULER=false` を指定して再デプロイする。
-任意のログイン設定Secrets（AUTH_SECRET、GOOGLE_CLIENT_ID、GOOGLE_CLIENT_SECRET、ADMIN_EMAILS）は、非空で指定したものだけ更新する。
-
-GitHub設定を検証し、許可した値だけをマスク対象のBase64 JSONとしてSSH環境変数で渡す。
-VPSでは既存app/dbをinspectし、DB接続情報・実volume名・Compose project・ポート・ログイン設定を取得する。
-app/dbのprojectと接続情報が一致し、PostgreSQL 16のnamed volumeであることを確認する。
-未知の環境を空DBで代用せず、明示的に停止する。Composeのpostgres_dataは検出した実名のexternal volumeとする。
-
-生成設定はSSHユーザーの `~/.local/state/rusutsu/<project>/pending.env.sh` に0600で置く。
-シェルの値として引用し、改行や不正なキーを拒否する。旧 `.env` は上書きしない。
-Composeは `--env-file /dev/null` と生成済み環境変数を使い、値のdotenvでの再解釈を避ける。
-成功後だけ `runtime.env.sh` へ確定する。設定とコピーのフォルダーは0700で、Git作業ツリー外に置く。
-ホストへのPython・flock・age・rcloneの導入や `/etc` の手作業は不要。Nodeの補助処理はアプリイメージ内で実行する。
-
-本番appはDBへ直接接続し、API_BASE_URLは接続用に渡さない。schedulerにはAPI URLと `API_BEARER_TOKEN` だけを渡す。
-MacのNext.jsと診断取得ツールには `API_BEARER_TOKEN` を設定する。非loopback接続はHTTPS必須。
-既存のHTTPS経路・SSH/Docker権限・本番コンテナが利用できることを前提とし、VPSやOAuthサービスを新規構築する処理は含まない。
-
-詳しい操作は[やること手順書](d0004_backend-migration-beginner-guide.md)、基本用語と図は[解説書](d0003_backend-migration-explained.md)を参照する。
-
-## VPS内のコピーとデプロイの自動化
-
-外部バックアップは行わない。DB変更前および日次のコピーは同じVPS内に残す。
-VPSのディスク全体の故障への復旧は対象外で、外部保存先や暗号鍵の設定は不要である。
-
-DB変更の判定は最後に正常配備した内容と、次の明示pathのhash一覧を比較する。
-
-- `prisma/schema.prisma`、`prisma/migrations/**`
-- `scripts/backfills/**`、`scripts/import*.ts`、`scripts/canonicalImport*.ts`（テストを除く）
-- `src/server/data-documents/initialization.ts`
-
-初回投入指定 `initialize_data=true` / `INITIALIZE_CANONICAL_DATA=true`、
-一括変更用の `force_database_backup=true`、成功履歴がない初回配備でもコピーする。
-UI変更やcrawlerファイル追加だけなら、配備前コピーは省く。
-
-`backup-database.sh`は既存db内でPostgreSQL custom-format dumpを取り、空でないことと `pg_restore --list` を検証する。
-保存先は `${DEPLOY_TARGET}/backups/` である．`local-backup.ts` が構成とチェックサムを確認し，取得の完了日時が新しい 7 世代を保持する．
-コピーが失敗すればapp停止・migrationへ進まない。外部転送やGitHub artifact保存は行わない。
-
-`Daily database backup` は push のない日も毎日 03:00 JST に実行を予定する．GitHub Actions の開始が遅れる場合がある．
-手動の `test_restore=true` で、同VPS内の別の使い捨てPostgreSQLへ実復元する。
-この試験DBはネットワークなし・PGDATAがtmpfsで、本番volumeを使わない。自身の試験コンテナだけ片付ける。
-DOM本体はこのDBコピーに含まれず、通常30日保持と必要な診断取得で扱う。
-
-配備とコピーはGitHubのconcurrency groupを共有する。
-VPSでもprojectごとに固有名のDockerロックコンテナを確保し、終了時に自身のIDで削除する。
-SSH切断時にも45分で終了する期限を設ける。自動処理は30分でタイムアウトする。
-
-配備順は、CI → image取得 → 既存設定の確認・合成 → 既存DBへの接続検証 → 必要時VPS内コピー →
-DOM volume権限準備 → app/scheduler停止 → migration → 明示時のみ初回取り込み → 起動 → 公開HTTPSでの応答確認。
-正常終了時のみ正式設定・成功SHA・DB変更manifestを更新する。失敗時に自動でDB全体を巻き戻さない。
-本番appの通常起動はサーバー起動だけで、毎起動のimportは行わない。
-
-メール通知は未実装。日次実行と診断記録を確認する。
-具体的な操作と復旧判断は[運用手順書](d0005_backend-migration-runbook.md)を参照する。
+GitHub の設定・配備・保持と復元の操作は [運用手順](d0005_backend-migration-runbook.md) を参照する．
+本番アプリは DB に直接接続する．独立 scheduler は内部 API の URL とトークンで通信する．
+ローカルのアプリを正本 API へ接続する場合も同じ設定名を使い，非 loopback の接続には HTTPS を使う．

@@ -17,19 +17,3 @@ Windyは既存どおりスキー場の緯度・経度から生成する。
 既存の `src/private/data/SkiResortWeatherIds.json` は初回移行の入力のみ。
 通常の画面表示やクローラーの同期では読まない。
 初回DB作成の `importCanonicalDataDocuments.ts` でもリンク文書へ変換する。
-
-稼働中のDBへの移行は次の順で行う。
-
-```sh
-node --import tsx scripts/migrateWeatherLinks.ts
-node --import tsx scripts/migrateWeatherLinks.ts --apply
-```
-
-プレビュー・変更前の文書・変更後の文書は
-`src/private/data/resorts-temporary/tmp/weather-links-db/` に保存される。
-適用時は入力JSONと本番のハッシュがプレビューと一致することを確認し、
-既存の天気項目（空配列も含む）と他の関連URLを保持する。再実行しても
-既に設定された項目を上書きしない。
-
-DBへの移行後、アプリとクローラーにもこの実装をデプロイする。
-旧バージョンは天気JSONを読むため、DBの天気リンク編集はまだ表示へ反映されない。

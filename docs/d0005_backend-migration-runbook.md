@@ -1,7 +1,6 @@
-# 運用手順：GitHub設定から配備し、VPS内にDBコピーを残す
+# 配備・バックアップ・復元の運用手順
 
-初心者向け資料は、[やること手順書](d0004_backend-migration-beginner-guide.md)と[仕組みの解説書](d0003_backend-migration-explained.md)に分けている。
-本書は開発・運用担当者向け。外部バックアップを使わない現在の方針を記す。本番反映はまだ実施していない。
+GitHub Actions の設定を管理する開発・運用担当者向けの手順である．配備先の構成とデータの流れは [データ管理と内部 API](d0001_backend-data-architecture.md) を参照する．
 
 ## 1. 前提と保存先
 
@@ -16,11 +15,9 @@ SSHユーザーのホームに書込みでき、Dockerを操作できること�
 | `crawler_artifacts` | 警告・失敗DOM | Docker volume、UID 1001の権限を配備時に準備 |
 | `crawler_worker_artifacts` | 日次report、lock | 別Docker volume。古いlockを復元しない |
 | `~/.local/state/rusutsu/<Compose project>/` | 自動生成した運用設定と配備成功記録 | SSHユーザー所有、0700。設定は0600 |
-| 同ディレクトリ内`backups/` | VPS内のDBコピー | 0700、各ファイル0600。Git・HTTP・外部ストレージへ送らない |
+| `${DEPLOY_TARGET}/backups/` | VPS 内の DB コピー | ディレクトリは 0700，ファイルは 0600．Git・HTTP 配信・配備ファイルの転送から除外する |
 
-VPSのディスク全体の故障は、このコピーでは復旧できない。外部保存・暗号鍵の準備は今回の対象外。
-過去の未導入案にあった`/etc/rusutsu/backup.env`やrclone設定は、新しい処理では読まない。
-既存ファイルや外部保存物を勝手に削除する処理も入れない。
+バックアップは VPS 内に保存するため，そのディスクが失われると同じ VPS 内のコピーも失われる．
 
 ## 2. GitHubの設定
 
@@ -32,7 +29,6 @@ Settings → Secrets and variables → Actionsで設定する。
 
 値は`openssl rand -hex 32`で生成した64桁の16進文字列。
 短い値は、VPSへ接続する前の設定検証で拒否する。
-旧共通トークンと旧のscope別トークンは利用しない。
 
 ### Variables
 
@@ -113,9 +109,9 @@ DB内の`canonical_data_migrations`に、`canonical-documents-v1`と`ski-resort-
 初回成功後に、公開画面、Googleログイン、admin保存、複数管理者の競合表示を受入確認する。
 文書のversion/hashは競合確認用で、過去本文と編集者の完全な履歴は未実装。
 
-## 5. クローラーの段階導入
+## 5. クローラーの実行と診断
 
-本番導入後、対象を決めて実サイト取得・本番保存を行う。今回の改修作業中はlive crawlや本番API書込みをしない。
+対象を指定して取得・保存する．ローカルのファイル出力と正本 API への保存はコマンドで指定する．
 
 ```bash
 # 実サイト取得なしの列挙
@@ -124,14 +120,11 @@ mise run crawl:latest -- --list
 # まず1件のファイル出力。子プロセスからAPI設定を取り除く
 mise run crawl:latest -- --local-files --resort rusutsu-resort
 
-# crawler専用キーを設定した環境で本番保存を確認
+# 接続先と内部 API トークンを設定した環境で正本へ保存する
 mise run crawl:latest -- --remote-api --resort rusutsu-resort
 ```
 
-次に`--resort`を数件指定して検証する。成功・警告・失敗の記録を見てから、
-CI/CDをmainに対して新しく手動実行する。schedulerは標準で有効。
-以前`ENABLE_CRAWL_LATEST_SCHEDULER=false`にしていた場合は、`true`へ変更するか削除してから実行する。
-初回取り込みのチェックは外す。
+scheduler は標準で有効である．運転を再開する場合は `ENABLE_CRAWL_LATEST_SCHEDULER` を `true` にするか削除し，通常の配備を行う．
 
 ktakサーバーの専用コンテナで、最新情報は毎日14:00 JSTに1回実行する。
 デプロイ時には古いcron設定を14時へ更新する。雪マジは本番app内で毎日03:00 JST。
@@ -198,9 +191,9 @@ API_BEARER_TOKEN="GitHubと同じキー"
 
 ## 8. 公開する変更と、失敗時の対応
 
-親・submoduleの既存未commit変更は保全する。必要なsubmodule変更を先にcommit・pushし、親のgitlinkを更新する。
-`canmore-ski-village`、`charmant-hiuchi`、`grandeco-snow-resort`、`gransnow-okuibuki`、`sanlaiva`の5本も含める。
-GeoJSONの既存変更・削除を、別の削除作業と混同しない。依存関係のある途中commitだけをmainへ公開しない。
+アプリ，内部 API，worker の通信契約を変える配備では，対応するアプリと private submodule のリビジョンを組にする．切り戻しでも同じ組を使う．
+
+配備先への移動で止まった場合は `DEPLOY_TARGET` と SCP 工程を確認する．workflow を修正した後は，修正済みのリビジョンを指定して新しく実行する．
 
 失敗した場合は、Actionsの工程名と秘密を含まないエラーを確認する。
 コピー前・コピー中の失敗は既存アプリを停止しない。migration以後の失敗は自動DBロールバックしない。

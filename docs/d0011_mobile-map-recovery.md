@@ -63,62 +63,18 @@ API全般、認証、管理画面、Server ActionのPOST、RSC応答はService W
 
 現在地の取得開始・バックグラウンド停止・再開の仕様は変更しない。再読み込みによって位置情報を勝手に取得しない。
 
-## 検証
+## オフライン復帰を確認する
 
-保存・タイル計画・Service Workerの単体テスト:
-
-```sh
-mise exec -- node --import tsx --test src/features/map/session/*.test.ts src/features/map/utils/*.test.ts
-mise run typecheck
-```
-
-本番ビルドとブラウザ検証では `DISABLE_CRAWLER_SCHEDULER=true` を指定してローカルサーバーを使う。開発モードではService Workerを登録しない。
-
-検証用スクリプトと画面画像は `src/private/data/resorts-temporary/tmp/tab-offline/`、ログは `src/private/data/resorts-temporary/logs/offline-*.log` に保存する。
-
-2026-09-18の実行結果:
-
-- 地図関連の単体テスト53件は成功。途中失敗と不足分の再取得、不完全な新版HTMLで旧版を置換しないことも含む。
-- 本番Webpackビルド成功。変更ファイルのBiomeと差分の空白チェック成功。
-- Chromiumで新規トップの中心・倍率、検索条件、リスト表示を実タイルで操作し、完全オフラインで再読み込みして復元した。
-- `window.open`によるsessionStorageの複製でも新規タブを初期化し、元タブと編集用下書きを保持、旧画面用localStorageだけ削除できた。
-- 詳細の受け入れ試験は有効なPNGのテストタイルを使った。新しいブラウザコンテキストで詳細だけを開き、約2,650枚の自動保存完了後にテスト用のネットワーク応答を解除し、`context.setOffline(true)`でサーバーと外部通信を遮断した。未表示の料金・天気、初回拡大、拡大状態と中心・倍率・回転、圏外での再操作、コース選択の再読み込み、詳細への復帰、再接続後の選択維持を確認。保存計画のXYZ 11〜17で失敗したタイル要求がないことも検査する。MapLibreが補助的に要求する計画外の低倍率の親タイルは対象外。
-- 実際の地理院タイルだけによる詳細の全量保存は、約1,100枚の段階で配信タイムアウトになった。失敗状態と取得済みキャッシュの保持は確認したが、**実配信による全量保存後の拡大背景の画質・連続性は未検証**。テスト画像による復元試験と混同しない。
-- 全体テストの実行時は497件中493件成功、4件失敗。失敗は同時に変更されているConditionTable・CourseStatusTableの表示仕様の期待値に関するもの。
-- 通常の型チェックは途中で成功したが、最終確認時には別作業の `src/private/data/resorts-temporary/tmp/comment-tabs/ui-fixture.tsx` に古いpropsのエラーがあった。一時作業ディレクトリを除外した型チェックは成功した。
-
-再実行用のブラウザテスト:
+Service Worker が動く本番ビルドを，隔離したローカル環境で起動する．
+準備は [テストの実行](d0020_testing.md) を参照する．
 
 ```sh
-mise exec -- node scripts/testOfflineOverview.ts
-# 実配信。外部サイトの速度・稼働状況に依存する。
-mise exec -- node scripts/testOfflineDetail.ts
-# 配信の不安定さを分離する再現テスト。地理的な画像内容は検証しない。
-OFFLINE_TEST_FIXTURE_TILES=1 mise exec -- node scripts/testOfflineDetail.ts
+mise run test -- --unit src/features/map/session/*.test.ts src/features/map/utils/*.test.ts
+mise run test -- --browser scripts/testOfflineOverview.ts
+OFFLINE_TEST_FIXTURE_TILES=1 mise run test -- --browser scripts/testOfflineDetail.ts
+mise run test -- --browser scripts/testOfflineRetention.ts
 ```
 
-既定URLは `http://localhost:3001/rusutsu`。`OFFLINE_TEST_URL` で変更できる。各実行は空のキャッシュで始める。実機iPhoneの画面ロック、OSによるページ破棄・タブの再生成、ブラウザの容量回収は、自動ブラウザのオフライン再読み込みとは別の実機確認が必要。
+詳細試験は，料金と天気の初回表示，地図の拡大と操作，コース選択，圏外での再読み込み，再接続後の状態を確認する．保存対象の XYZ タイルは倍率 11〜17 で確認する．地図エンジンが補助的に要求する計画外の親タイルは検査対象外である．
 
-
-## 今回の変更ファイル
-
-- `src/features/home/HomeClient.tsx`: タブの初期化、一覧スナップショット、圏外取得、詳細の自動保存、検索・比較状態。
-- `src/features/home/layout/HomeLayout.tsx`: デスクトップ地図の拡大状態。
-- `src/features/home/components/MobileResultsSheet.tsx`、`SkiResortList.tsx`: 主要なスクロール領域の識別。
-- `src/features/map/MapLibreResortMap.tsx`: 拡大地図の保存先を分離し、別スキー場への選択変更時に古い復元位置を適用しない。
-- `src/features/map/session/storage.ts`、`useScreenState.ts`、`useScrollSession.ts`: タブ別の保存スキーマ、操作時の保存、スクロール復元。
-- `src/features/map/session/detailCache.ts`: IndexedDBの一覧スナップショットと既存データを守る容量制限。
-- `src/features/map/session/tilePlan.ts`、`prepareDetail.ts`: スキー場形状・画面サイズからの先読み計画と自動保存開始。
-- `src/features/map/session/MapSessionProvider.tsx`、`useOfflineMap.ts`: 復元フックと再接続時の起動資産補完。
-- `src/features/resort-detail/SkiResortDetailView.tsx`: 詳細タブ・選択元・表示状態の復元。
-- `src/features/resort-detail/tabs/CoursesTab.tsx`、`LiftsTab.tsx`、`OverviewTab.tsx`、`TicketsTab.tsx` と `src/features/lift-ticket/components/LiftTicketCalculator.tsx`: 一覧の絞り込み、SNS内の選択、料金入力の保存。
-- `public/map-sw.js`: 起動HTML、資産、背景、公式マップ画像の保存、容量・同時通信制限、保存状態、失敗時の既存キャッシュ保持。
-- `src/features/map/session/*.test.ts` と `scripts/testOfflineDetail.ts`、`scripts/testOfflineOverview.ts`: 単体テストと空のキャッシュから行う本番ブラウザ検証。
-
-既存の編集途中のUI変更は残している。上記一覧はこの復元対応で触ったファイルであり、作業ツリー全体の差分をすべて今回追加したという意味ではない。
-
-
-### 直近2件の保持ルールの追加検証
-
-- `mise exec -- node --import tsx --test src/features/map/session/*.test.ts`: ホーム経由の履歴、他タブの保護、共有タイルの保護、古い保存処理による復活防止、25件巡回を検証。
-- `mise exec -- node scripts/testOfflineRetention.ts`: 実ChromiumのsessionStorage / IndexedDBでAの画面状態削除、B・Cの再読み込み、別タブがAを手放した後の削除、25件巡回、再訪、編集下書きの保護を確認。ネットワーク配信はローカルのテストHTMLで代替し，保存処理は本番モジュールを実行する。
+`OFFLINE_TEST_FIXTURE_TILES=1` では配信元を試験用 PNG に置き換える．実タイルの取得や拡大時の画質を確認する場合は，この設定を外す．画面ロック，OS によるタブの破棄・再生成，ブラウザの容量回収は実機で確認する．
