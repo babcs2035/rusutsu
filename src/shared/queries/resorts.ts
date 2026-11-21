@@ -3,12 +3,17 @@ import type * as Queries from "@/server/ski-resorts/queries";
 import { withBasePath } from "@/shared/utils/basePath";
 
 /** 同一アプリの公開 HTTP query を呼び，失敗を呼び出し元へ返す． */
-async function query<Result>(path: string, body: unknown): Promise<Result> {
+async function query<Result>(
+  path: string,
+  body: unknown,
+  signal?: AbortSignal,
+): Promise<Result> {
   const response = await fetch(withBasePath(path), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
     cache: "no-store",
+    signal,
   });
   if (!response.ok)
     throw new Error(
@@ -26,16 +31,18 @@ export function getSkiResortById(
 
 /** 比較の施設詳細をまとめて取得する． */
 export function getSkiResortsForCompare(
-  ...[ids]: Parameters<typeof Queries.getSkiResortsForCompare>
+  ids: Parameters<typeof Queries.getSkiResortsForCompare>[0],
+  signal?: AbortSignal,
 ): ReturnType<typeof Queries.getSkiResortsForCompare> {
-  return query("/api/resorts/details", { ids });
+  return query("/api/resorts/details", { ids }, signal);
 }
 
 /** 比較の地図を表示優先度に合わせて取得する． */
 export function getResortMapDataForCompare(
-  ...[ids]: Parameters<typeof Queries.getResortMapDataForCompare>
+  ids: Parameters<typeof Queries.getResortMapDataForCompare>[0],
+  signal?: AbortSignal,
 ): ReturnType<typeof Queries.getResortMapDataForCompare> {
-  return query("/api/resorts/maps", { ids });
+  return query("/api/resorts/maps", { ids }, signal);
 }
 
 /** 一覧・比較と同じ入口でサーバー計算した料金を取得する． */

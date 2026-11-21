@@ -261,6 +261,24 @@ export type SkiResortDetailData = Awaited<
   ReturnType<typeof buildSkiResortDetail>
 >;
 
+const pendingCompareMaps = new Map<
+  string,
+  ReturnType<typeof getFinalizedResortMapData>
+>();
+
+/** 比較詳細の営業集計と地図配信で，同時に進行している取得を共有する． */
+function readCompareMap(
+  resortId: string,
+): ReturnType<typeof getFinalizedResortMapData> {
+  const existing = pendingCompareMaps.get(resortId);
+  if (existing) return existing;
+  const pending = getFinalizedResortMapData(resortId).finally(() => {
+    pendingCompareMaps.delete(resortId);
+  });
+  pendingCompareMaps.set(resortId, pending);
+  return pending;
+}
+
 /**
  * 複数スキー場の詳細をまとめて読む。順序は ids のまま、無いものは除く。
  * 比較は地図（コース・リフトの形）を別に読むので、withMap=false で軽く返す。
@@ -270,9 +288,21 @@ export async function readSkiResortDetails(
   { withMap }: { withMap: boolean },
 ): Promise<SkiResortDetailData[]> {
   if (ids.length === 0) return [];
-  const [links, resorts, summaries] = await Promise.all([
+  const [links, maps, summaries] = await Promise.all([
     readResortLinks(),
-    Promise.all(ids.map(id => readSkiResortById(id))),
+    Promise.all(
+      ids.map(async id => {
+        const source = await readSkiResortById(id);
+        return source
+          ? {
+              source,
+              mapData: await (withMap
+                ? getFinalizedResortMapData(source.id)
+                : readCompareMap(source.id)),
+            }
+          : null;
+      }),
+    ),
     // 標高は付加情報なので、集計を読めなくても掲載元の値で詳細を出す
     readOperatingSummaries().catch(
       (error): Record<string, ResortOperatingCounts> => {
@@ -282,11 +312,10 @@ export async function readSkiResortDetails(
     ),
   ]);
   const details = await Promise.all(
-    resorts.map(async source => {
-      if (!source) return null;
+    maps.map(async entry => {
+      if (!entry) return null;
+      const { source, mapData } = entry;
       const resort = withMapElevation(source, summaries[source.id]?.elevation);
-      // 地図を返さない比較でも、営業件数はサーバーで集計して返す
-      const mapData = await getFinalizedResortMapData(resort.id);
       return buildSkiResortDetail(
         resort,
         links,
@@ -310,7 +339,7 @@ export async function readResortMapDataByIds(
   return Promise.all(
     ids.map(async id => ({
       id,
-      finalizedMapData: await getFinalizedResortMapData(id),
+      finalizedMapData: await readCompareMap(id),
     })),
   );
 }

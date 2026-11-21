@@ -104,7 +104,9 @@ export const useCompareResorts = (
     // 同じ比較を取り終えて間もないなら、手元の表示をそのまま使う
     if (isFresh(fetchedRef.current, idsKey)) return;
     const targetIds = idsKey.split(",");
+    const requests = new AbortController();
     let disposed = false;
+    let failed = false;
     let staleReload = false;
     // 詳細が出そろうまで publish しない
     let detailsReady = false;
@@ -130,7 +132,10 @@ export const useCompareResorts = (
       await Promise.all(
         chunk(targetIds, DETAIL_CHUNK_SIZE).map(async targetChunk => {
           try {
-            const details = await getSkiResortsForCompare(targetChunk);
+            const details = await getSkiResortsForCompare(
+              targetChunk,
+              requests.signal,
+            );
             if (disposed) return;
             for (const detail of details) {
               entries.set(detail.id, {
@@ -143,6 +148,8 @@ export const useCompareResorts = (
               save(detail.id);
             }
           } catch (error) {
+            if (disposed) return;
+            failed = true;
             if (reloadIfStaleBuild(error)) {
               staleReload = true;
               return;
@@ -159,7 +166,10 @@ export const useCompareResorts = (
         pendingMapIdsRef.current =
           pendingMapIdsRef.current.slice(MAP_CHUNK_SIZE);
         try {
-          const result = await getResortMapDataForCompare(batch);
+          const result = await getResortMapDataForCompare(
+            batch,
+            requests.signal,
+          );
           if (disposed) return;
           for (const { id, finalizedMapData } of result) {
             mapStash.set(id, finalizedMapData);
@@ -169,6 +179,8 @@ export const useCompareResorts = (
           }
           publish();
         } catch (error) {
+          if (disposed) return;
+          failed = true;
           if (reloadIfStaleBuild(error)) return;
           /* 取れなかった分は次に開いたときに取り直す */
         }
@@ -194,13 +206,14 @@ export const useCompareResorts = (
       publish();
       await maps;
       if (disposed) return;
-      fetchedRef.current = { key: idsKey, at: Date.now() };
+      fetchedRef.current = { key: idsKey, at: failed ? -Infinity : Date.now() };
       publish(true);
     };
     void run();
 
     return () => {
       disposed = true;
+      requests.abort();
       pendingMapIdsRef.current = [];
     };
   }, [enabled, idsKey, refreshToken]);

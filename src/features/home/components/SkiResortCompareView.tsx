@@ -195,7 +195,7 @@ export const SkiResortCompareView = ({
           <LiftTicketConditionsButton
             input={liftTicketInput}
             onClick={() => setConditionsOpen(true)}
-            className="w-full @[80rem]/compare-header:w-auto @[80rem]/compare-header:max-w-md"
+            className="w-full @[80rem]/compare-header:w-max @[80rem]/compare-header:min-w-32 @[80rem]/compare-header:max-w-md"
           />
         );
       default:

@@ -1,4 +1,5 @@
 import { ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { LiftTicketSearchInput } from "../types";
 import { conditionsLabel } from "../utils/priceText";
@@ -15,10 +16,11 @@ export const LiftTicketConditionsButton = ({
 }) => {
   const label = conditionsLabel(input);
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
       className={cn(
-        "flex h-8 min-w-0 items-center gap-1 rounded-full bg-gray-950 pr-2 pl-3 text-left text-[13px] font-medium text-white shadow-md hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500",
+        "flex h-8 min-w-0 shrink items-center justify-start gap-1 rounded-full border-0 bg-gray-950 pr-2 pl-3 text-left text-[13px] font-medium text-white shadow-md hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500",
         className,
       )}
       onClick={onClick}
@@ -29,6 +31,6 @@ export const LiftTicketConditionsButton = ({
         {label || "日程・人数を設定"}
       </span>
       <ChevronRight className="size-4 shrink-0 text-white/70" aria-hidden />
-    </button>
+    </Button>
   );
 };
