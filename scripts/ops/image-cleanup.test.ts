@@ -12,7 +12,43 @@ const digest = (letter: string) => `sha256:${letter.repeat(64)}`;
 const repository = "ghcr.io/babcs2035/rusutsu";
 const label = { "com.rusutsu.image-cleanup": "app" };
 
+type FixtureImage = {
+  Id: string;
+  RepoTags: string[];
+  RepoDigests?: string[];
+  Config?: { Labels?: Record<string, string> };
+};
+
 function input() {
+  const images: FixtureImage[] = [
+    {
+      Id: imageId("a"),
+      RepoTags: [`${repository}:${sha}`],
+      RepoDigests: [`${repository}@${digest("a")}`],
+      Config: { Labels: label },
+    },
+    {
+      Id: imageId("b"),
+      RepoTags: [`${repository}:${"b".repeat(40)}`],
+      RepoDigests: [`${repository}@${digest("b")}`],
+      Config: { Labels: label },
+    },
+    {
+      Id: imageId("c"),
+      RepoTags: [`${repository}:${"c".repeat(40)}`],
+      RepoDigests: [`${repository}@${digest("c")}`],
+      Config: { Labels: label },
+    },
+    {
+      Id: imageId("d"),
+      RepoTags: ["postgres:16-alpine"],
+    },
+    {
+      Id: imageId("e"),
+      RepoTags: [`ghcr.io/another-project/rusutsu:${"e".repeat(40)}`],
+      Config: { Labels: label },
+    },
+  ];
   return {
     requestedSha: sha,
     runningAppImageId: imageId("a"),
@@ -32,30 +68,7 @@ function input() {
         digest: digest("b"),
       },
     },
-    images: [
-      {
-        Id: imageId("a"),
-        RepoTags: [`${repository}:${sha}`],
-        RepoDigests: [`${repository}@${digest("a")}`],
-        Config: { Labels: label },
-      },
-      {
-        Id: imageId("b"),
-        RepoTags: [`${repository}:${"b".repeat(40)}`],
-        RepoDigests: [`${repository}@${digest("b")}`],
-        Config: { Labels: label },
-      },
-      {
-        Id: imageId("c"),
-        RepoTags: [`${repository}:${"c".repeat(40)}`],
-        RepoDigests: [`${repository}@${digest("c")}`],
-        Config: { Labels: label },
-      },
-      {
-        Id: imageId("d"),
-        RepoTags: ["postgres:16-alpine"],
-      },
-    ],
+    images,
     containers: [{ Image: imageId("d") }],
   };
 }
@@ -63,6 +76,27 @@ function input() {
 test("cleanup retains current, rollback, DB, and referenced images", () => {
   const plan = selectImageCleanupPlan(input());
   assert.deepEqual(plan.tagRemovals, [
+    { tag: `${repository}:${"c".repeat(40)}`, imageId: imageId("c") },
+  ]);
+});
+
+test("cleanup retains multiply tagged images and same-label images from other repositories", () => {
+  const value = input();
+  const multiplyTagged = value.images[2];
+  assert.ok(multiplyTagged);
+  multiplyTagged.RepoTags = [
+    `${repository}:${"c".repeat(40)}`,
+    `${repository}:stable`,
+  ];
+
+  assert.deepEqual(selectImageCleanupPlan(value).tagRemovals, []);
+});
+
+test("cleanup protects an unreferenced database image by repository identity", () => {
+  const value = input();
+  value.containers = [];
+
+  assert.deepEqual(selectImageCleanupPlan(value).tagRemovals, [
     { tag: `${repository}:${"c".repeat(40)}`, imageId: imageId("c") },
   ]);
 });

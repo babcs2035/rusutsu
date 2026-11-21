@@ -57,7 +57,20 @@ for (const shell of ["bash", "zsh"]) {
         ]) {
           const result = run(value);
           assert.equal(result.status, 0, result.stderr);
-          assert.equal(result.stdout.trim(), realpathSync(target));
+          if (workflow === "database-backup") {
+            const output = result.stdout.trim().split("\n");
+            assert.match(
+              output[0] ?? "",
+              /^Backup execution started at .* UTC \(.* JST\)$/u,
+            );
+            assert.equal(output[1], realpathSync(target));
+            assert.match(
+              output[2] ?? "",
+              /^Backup execution finished at .* UTC \(.* JST\); result=success$/u,
+            );
+          } else {
+            assert.equal(result.stdout.trim(), realpathSync(target));
+          }
         }
 
         // Reproduce the failure in the previous workflow using the same directory.
@@ -69,12 +82,24 @@ for (const shell of ["bash", "zsh"]) {
           const result = run(value);
           assert.notEqual(result.status, 0);
           assert.match(result.stderr, /DEPLOY_TARGET/);
-          assert.equal(result.stdout, "");
+          if (workflow === "database-backup") {
+            assert.match(
+              result.stdout,
+              /^Backup execution started at .* UTC \(.* JST\)\nBackup execution finished at .* UTC \(.* JST\); result=failed\n?$/u,
+            );
+          } else {
+            assert.equal(result.stdout, "");
+          }
         }
         assert.equal(existsSync(path.join(root, "injected")), false);
         const incomplete = run(root);
         assert.notEqual(incomplete.status, 0);
         assert.match(incomplete.stderr, /missing/);
+        if (workflow === "database-backup")
+          assert.match(
+            incomplete.stdout,
+            /Backup execution finished at .* UTC \(.* JST\); result=failed/u,
+          );
       } finally {
         rmSync(root, { recursive: true, force: true });
       }

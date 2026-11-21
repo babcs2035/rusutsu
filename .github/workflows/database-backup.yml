@@ -43,6 +43,20 @@ jobs:
           command_timeout: 30m
           script: |
             set -eu
+            log_backup_result() {
+              backup_exit_status=$?
+              backup_result=failed
+              if [ "$backup_exit_status" -eq 0 ]; then backup_result=success; fi
+              printf 'Backup execution finished at %s UTC (%s JST); result=%s\n' \
+                "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
+                "$(TZ=Asia/Tokyo date '+%Y-%m-%dT%H:%M:%S%z')" \
+                "$backup_result"
+              return "$backup_exit_status"
+            }
+            trap log_backup_result EXIT
+            printf 'Backup execution started at %s UTC (%s JST)\n' \
+              "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
+              "$(TZ=Asia/Tokyo date '+%Y-%m-%dT%H:%M:%S%z')"
             # Keep path handling consistent with the deployment workflow.
             case "${DEPLOY_TARGET:-}" in
               '') echo 'DEPLOY_TARGET is empty. Set the deployment directory in GitHub Secrets.' >&2; exit 1 ;;
