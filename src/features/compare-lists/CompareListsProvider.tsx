@@ -30,7 +30,6 @@ type CompareListsContextValue = {
   retryLoad: () => void;
   lists: CompareListSummary[];
   save: (input: {
-    id?: string | null;
     name: string;
     resortIds: string[];
   }) => Promise<CompareListSummary | null>;
@@ -157,12 +156,7 @@ export function CompareListsProvider({
         return null;
       }
       accept(userId, result.lists);
-      toast.success(
-        input.id ? "比較リストを更新しました" : "比較リストに保存しました",
-        {
-          duration: 1200,
-        },
-      );
+      toast.success("比較リストに保存しました", { duration: 1200 });
       return result.lists.find(list => list.id === result.id) ?? null;
     } catch (error) {
       if (currentUser.current !== userId) return null;

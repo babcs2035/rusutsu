@@ -221,6 +221,85 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
       "private, no-store",
     );
     assert.deepEqual(await compareResponse.json(), list.lists);
+    const [savedList] = list.lists;
+    assert.deepEqual(savedList.resortIds, ["candidate", "source"]);
+    const changeItems = (
+      userId: string,
+      operation: "add" | "remove",
+      resortIds: string[],
+    ) =>
+      api.updateCompareListResorts({
+        expectedUserId: userId,
+        id: savedList.id,
+        operation,
+        resortIds,
+      });
+    assert.equal(
+      (await run(b, () => changeItems("user-b", "remove", ["candidate"]))).ok,
+      false,
+    );
+    await run(b, () => api.deleteCompareList(savedList.id, "user-b"));
+    assert.equal(
+      (
+        await run(b, () =>
+          api.renameCompareList({
+            expectedUserId: "user-b",
+            id: savedList.id,
+            name: "Other account",
+          }),
+        )
+      ).ok,
+      false,
+    );
+    const [added, renamed] = await Promise.all([
+      run(a, () => changeItems("user-a", "add", ["third"])),
+      run(a, () =>
+        api.renameCompareList({
+          expectedUserId: "user-a",
+          id: savedList.id,
+          name: "Renamed",
+        }),
+      ),
+    ]);
+    assert.equal(added.ok, true);
+    assert.equal(renamed.ok, true);
+    assert.deepEqual(await (await run(a, () => readCompare("user-a"))).json(), [
+      {
+        id: savedList.id,
+        name: "Renamed",
+        resortIds: ["candidate", "source", "third"],
+      },
+    ]);
+    assert.deepEqual(
+      (
+        await run(a, () =>
+          changeItems("user-a", "remove", ["candidate", "source", "third"]),
+        )
+      ).lists,
+      [{ id: savedList.id, name: "Renamed", resortIds: [] }],
+    );
+    await db.compareList.createMany({
+      data: Array.from({ length: 48 }, (_, index) => ({
+        name: `Limit fixture ${index}`,
+        userId: "user-a",
+      })),
+    });
+    const attempts = await Promise.all(
+      ["Concurrent one", "Concurrent two"].map(name =>
+        run(a, () =>
+          api.saveCompareList({
+            expectedUserId: "user-a",
+            name,
+            resortIds: ["source"],
+          }),
+        ),
+      ),
+    );
+    assert.equal(attempts.filter(result => result.ok).length, 1);
+    assert.equal(
+      await db.compareList.count({ where: { userId: "user-a" } }),
+      50,
+    );
     assert.equal(api.authConfig.session.maxAge, 30 * 24 * 60 * 60);
     assert.equal(
       api.authConfig.callbacks.redirect({
