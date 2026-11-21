@@ -5,10 +5,9 @@ import test from "node:test";
 import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import type { FinalizedResortMapData } from "@/lib/finalizedResortGeojsonShared";
+import { testArtifactPath } from "../../../scripts/testArtifacts";
 
-const testRoot = path.resolve(
-  "src/private/data/resorts-temporary/tmp/map-data-read-tests",
-);
+const testRoot = testArtifactPath("map-data-read-tests");
 
 test("remote canonical map reads use version marker to avoid duplicate current fetches", async t => {
   await fs.mkdir(testRoot, { recursive: true });

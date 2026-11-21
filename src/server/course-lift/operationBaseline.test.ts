@@ -4,10 +4,9 @@ import path from "node:path";
 import test from "node:test";
 import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
+import { testArtifactPath } from "../../../scripts/testArtifacts";
 
-const testRoot = path.resolve(
-  "src/private/data/resorts-temporary/tmp/operation-baseline-helper-tests",
-);
+const testRoot = testArtifactPath("operation-baseline-helper-tests");
 
 test("operation baseline uses only name-reference fields and capability listing modes", async t => {
   await fs.mkdir(testRoot, { recursive: true });

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
+import path from "node:path";
 import { chromium, type Page, webkit } from "playwright";
+import { testArtifactPath } from "./testArtifacts.ts";
 
 interface CachedDetailState {
   state: string;
@@ -22,7 +24,7 @@ interface ExpandedMapState {
   };
 }
 
-const outputDirectory = "src/private/data/resorts-temporary/tmp/tab-offline";
+const outputDirectory = testArtifactPath("tab-offline");
 await mkdir(outputDirectory, { recursive: true });
 const browserType =
   process.env.OFFLINE_TEST_BROWSER === "webkit" ? webkit : chromium;
@@ -261,7 +263,7 @@ try {
     "true",
   );
   await page.screenshot({
-    path: "src/private/data/resorts-temporary/tmp/tab-offline/restored.png",
+    path: path.join(outputDirectory, "restored.png"),
   });
   assert.deepEqual(errors, []);
   console.log(

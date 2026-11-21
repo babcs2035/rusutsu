@@ -6,6 +6,7 @@ import { test } from "node:test";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { build } from "esbuild";
+import { testArtifactPath } from "../../../scripts/testArtifacts";
 import { readTestDatabaseUrl } from "../../../scripts/testDatabase";
 
 const databaseUrl = readTestDatabaseUrl();
@@ -15,9 +16,7 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
   process.env.DATABASE_URL = databaseUrl;
   process.env.API_BASE_URL = "";
   process.env.DATA_DOCUMENT_ALLOW_BUNDLED_FIXTURES = "false";
-  const root = path.resolve(
-    "src/private/data/resorts-temporary/tmp/canonical-maps",
-  );
+  const root = testArtifactPath("canonical-maps");
   await fs.mkdir(root, { recursive: true });
   const file = path.join(root, "integration.mjs");
   await build({

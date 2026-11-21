@@ -5,6 +5,7 @@ import { test } from "node:test";
 import { pathToFileURL } from "node:url";
 import type { Prisma } from "@prisma/client";
 import { build } from "esbuild";
+import { testArtifactPath } from "../../../scripts/testArtifacts";
 import { readTestDatabaseUrl } from "../../../scripts/testDatabase";
 
 const testDatabase = readTestDatabaseUrl();
@@ -13,10 +14,7 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
 }, async () => {
   process.env.DATABASE_URL = testDatabase;
   process.env.API_BASE_URL = "";
-  const root = path.join(
-    process.cwd(),
-    "src/private/data/resorts-temporary/tmp/favorites",
-  );
+  const root = testArtifactPath("favorites");
   await fs.mkdir(root, { recursive: true });
   const file = path.join(root, "integration.mjs");
   await build({

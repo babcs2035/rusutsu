@@ -372,7 +372,12 @@ export function CommunityComposer({
             ? null
             : await getComposerSetup(postId).catch(() => undefined);
         if (!alive) return;
-        const accountResult = setup === undefined ? undefined : setup?.account;
+        if (setup === null) {
+          setActiveIdentity(sessionIdentity);
+          setStep("login");
+          return;
+        }
+        const accountResult = setup?.account;
         if (accountResult === undefined) {
           setLoadingError("投稿の準備に失敗しました。");
           return;

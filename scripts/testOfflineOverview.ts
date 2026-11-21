@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { mkdir } from "node:fs/promises";
 import { chromium, webkit } from "playwright";
 
 interface OverviewMapState {
@@ -11,8 +10,6 @@ interface OverviewHomeState {
   mobileContentTab: string;
 }
 
-const outputDirectory = "src/private/data/resorts-temporary/tmp/tab-offline";
-await mkdir(outputDirectory, { recursive: true });
 const browserType =
   process.env.OFFLINE_TEST_BROWSER === "webkit" ? webkit : chromium;
 

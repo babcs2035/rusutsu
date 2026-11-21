@@ -4,13 +4,11 @@ import path from "node:path";
 import { test } from "node:test";
 import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
+import { testArtifactPath } from "../../../scripts/testArtifacts";
 
 const runtimeModule = "favorite-cookie-runtime";
 const apiPromise = (async () => {
-  const directory = path.join(
-    process.cwd(),
-    "src/private/data/resorts-temporary/tmp/favorites-cookie-check",
-  );
+  const directory = testArtifactPath("favorites-cookie-check");
   await fs.mkdir(directory, { recursive: true });
   const file = path.join(directory, "actions.mjs");
   await build({

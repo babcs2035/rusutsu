@@ -4,6 +4,7 @@ import path from "node:path";
 import { test } from "node:test";
 import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
+import { testArtifactPath } from "../../../scripts/testArtifacts";
 import { readTestDatabaseUrl } from "../../../scripts/testDatabase";
 import { verifyRemoteWorkflow } from "./remoteIntegration";
 
@@ -20,10 +21,7 @@ test("editor requests: real PostgreSQL authorization, corrections, atomicity and
   process.env.DATABASE_URL = testDatabase;
   process.env.API_BASE_URL = "";
   process.env.ALLOW_BUNDLED_DATA_FIXTURES = "false";
-  const root = path.join(
-    process.cwd(),
-    "src/private/data/resorts-temporary/tmp/editor-workflow",
-  );
+  const root = testArtifactPath("editor-workflow");
   await fs.mkdir(root, { recursive: true });
   const file = path.join(root, "integration-bundle.mjs");
   await build({

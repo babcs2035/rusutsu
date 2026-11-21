@@ -4,10 +4,9 @@ import path from "node:path";
 import test from "node:test";
 import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
+import { testArtifactPath } from "../../../../../../scripts/testArtifacts";
 
-const testRoot = path.resolve(
-  "src/private/data/resorts-temporary/tmp/operation-baseline-route-tests",
-);
+const testRoot = testArtifactPath("operation-baseline-route-tests");
 const originalToken = process.env.API_BEARER_TOKEN;
 
 test("operation baseline GET is token-protected and returns the narrow baseline", async t => {

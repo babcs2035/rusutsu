@@ -12,6 +12,7 @@ import type {
   ReportDraft,
   ReportEntryDraft,
 } from "@/features/community/contract";
+import { testArtifactPath } from "../../../scripts/testArtifacts";
 import { readTestDatabaseUrl } from "../../../scripts/testDatabase";
 import { verifyRemoteCommunity } from "./remoteIntegration";
 
@@ -38,7 +39,7 @@ test("community reports: atomic daily report lifecycle and privacy", {
   process.env.DATABASE_URL = testDatabase;
   process.env.API_BASE_URL = "";
   delete process.env.OPENAI_API_KEY;
-  const root = path.resolve("src/private/data/resorts-temporary/tmp/community");
+  const root = testArtifactPath("community");
   await fs.mkdir(root, { recursive: true });
   const outfile = path.join(root, "integration.mjs");
   await build({

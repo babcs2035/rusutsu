@@ -8,6 +8,7 @@ import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import sharp from "sharp";
 import type { SubmitCorrectionInput } from "@/server/corrections/contract";
+import { testArtifactPath } from "../../../scripts/testArtifacts";
 import { readTestDatabaseUrl } from "../../../scripts/testDatabase";
 import { verifyRemoteCorrections } from "./remoteIntegration";
 
@@ -52,9 +53,7 @@ test("anonymous corrections: PostgreSQL idempotency, review CAS, geometry, bulk 
   process.env.DATABASE_URL = databaseUrl;
   process.env.API_BASE_URL = "";
   process.env.ALLOW_BUNDLED_DATA_FIXTURES = "false";
-  const root = path.resolve(
-    "src/private/data/resorts-temporary/tmp/corrections",
-  );
+  const root = testArtifactPath("corrections");
   await fs.mkdir(root, { recursive: true });
   const outfile = path.join(root, "integration.mjs");
   await build({

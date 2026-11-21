@@ -1,6 +1,6 @@
 // 単体・DB・ブラウザ試験を既存 test コマンドから選択し，一つの使い捨て DB で直列検証する．
 import { spawn, spawnSync } from "node:child_process";
-import { mkdir, readdir, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Client } from "pg";
 import { readTestDatabaseUrl } from "./testDatabase";
@@ -14,6 +14,7 @@ const browserTests = [
   "scripts/testOfflineOverview.ts",
   "scripts/testOfflineDetail.ts",
   "scripts/testOfflineRetention.ts",
+  "scripts/testPublicWorkflow.ts",
 ];
 
 /** 生成物・データ・依存を探索せず，管理する試験ファイルだけを列挙する． */
@@ -134,15 +135,32 @@ async function main(): Promise<void> {
     );
   }
   await mkdir(root, { recursive: true });
-  const config = path.resolve(root, "tsconfig.json");
-  await writeFile(
-    config,
-    JSON.stringify({
-      extends: path.resolve("tsconfig.json"),
-      compilerOptions: { jsx: "react-jsx" },
-    }),
-  );
-  const env = { ...process.env, TSX_TSCONFIG_PATH: config };
+  const scratch = await mkdtemp(path.resolve(root, "run-"));
+  try {
+    const config = path.join(scratch, "tsconfig.json");
+    await writeFile(
+      config,
+      JSON.stringify({
+        extends: path.resolve("tsconfig.json"),
+        compilerOptions: { jsx: "react-jsx" },
+      }),
+    );
+    await runSelectedTests(mode, args, {
+      ...process.env,
+      TSX_TSCONFIG_PATH: config,
+      RUSUTSU_TEST_ARTIFACT_DIR: scratch,
+    });
+  } finally {
+    await rm(scratch, { recursive: true, force: true });
+  }
+}
+
+/** 一時ファイルを実行単位のディレクトリに集めて試験する． */
+async function runSelectedTests(
+  mode: string,
+  args: string[],
+  env: NodeJS.ProcessEnv,
+): Promise<void> {
   if (mode === "--browser") {
     if (args.some(file => !browserTests.includes(file)))
       throw new Error("Select an existing browser test file.");

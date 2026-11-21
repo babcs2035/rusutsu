@@ -5,6 +5,7 @@ import path from "node:path";
 import { after, mock, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
+import { testArtifactPath } from "../../../scripts/testArtifacts";
 
 type FetchHandler = (url: URL) => Promise<unknown>;
 mock.timers.enable({ apis: ["Date"], now: new Date("2026-10-31T03:00:00Z") });
@@ -12,10 +13,7 @@ after(() => mock.timers.reset());
 
 const testFile = fileURLToPath(import.meta.url);
 const featureDir = path.dirname(testFile);
-const taskTemp = path.resolve(
-  featureDir,
-  "../../private/data/resorts-temporary/tmp/community-map-tests",
-);
+const taskTemp = testArtifactPath("community-map-tests");
 const bundlePath = path.join(taskTemp, "mapPostStore.bundle.cjs");
 const require = createRequire(import.meta.url);
 const effects: Array<() => void> = [];

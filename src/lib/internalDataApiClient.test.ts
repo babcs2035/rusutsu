@@ -5,10 +5,9 @@ import test from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
+import { testArtifactPath } from "../../scripts/testArtifacts";
 
-const testRoot = path.resolve(
-  "src/private/data/resorts-temporary/tmp/internal-api-retry",
-);
+const testRoot = testArtifactPath("internal-api-retry");
 const bundlePath = path.join(testRoot, "internal-data-api-client.mjs");
 
 test("internal data API retries transient safe-method failures only", async t => {
