@@ -15,7 +15,12 @@ test("integration tests accept only explicitly configured local disposable datab
     "postgresql://test:test@localhost/rusutsu",
     "postgresql://test:test@localhost/postgres",
     "https://localhost/rusutsu_test_1",
+    `${accepted}?host=db.example.test`,
+    `${accepted}?database=rusutsu`,
+    `${accepted}?schema=custom`,
   ]) {
-    assert.throws(() => readTestDatabaseUrl({ TEST_DATABASE_URL: url }));
+    assert.throws(() => readTestDatabaseUrl({ TEST_DATABASE_URL: url }), {
+      message: /^TEST_DATABASE_URL must target /u,
+    });
   }
 });

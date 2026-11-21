@@ -180,4 +180,3 @@ test("Z02 営業時間不明のデータに 8:00〜17:00 が書き込まれて�
     assert.equal(entry.end_time, null);
   }
 });
-test.skip("Z03 推定の営業時間に確度と出典が残る（対象外: operating_hours の型に確度・出典の項目が無く、架空データで確かめられない）", () => {});

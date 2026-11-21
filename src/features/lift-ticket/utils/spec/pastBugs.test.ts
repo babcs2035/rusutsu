@@ -586,7 +586,6 @@ test("PB55 単独券・2か所共通・多数共通がある施設は、3つを�
     "2か所共通と多数共通が区別されていない",
   );
 });
-test.skip("PB56 共通券の相手のスキー場ID（対象外: 実データ全体の検証で、架空スキー場の計算では確かめられない）", () => {});
 
 // ---------- PB-G レンタル・セット券 ----------
 test("PB57 木曜・レンタル付きセット券は、レディースDAYの1日券（2,000円）をセット券の料金に混ぜない", () => {
@@ -645,7 +644,6 @@ test("PB61 レンタル情報が無い施設は「レンタル料金の情報が
   assert.equal(rental.status, "not_collected");
   assert.equal(rental.total, null);
 });
-test.skip("PB62 年度表記の無いレンタル料金ページでも収集を止めない（対象外: 収集スキルのテストで確認する項目で、計算では確かめられない）", () => {});
 
 void rentalKindsNoShopBResort;
 void hoursPoolNoDaysResort;

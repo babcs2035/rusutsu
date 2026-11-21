@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "*.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "scripts/**/*.ts",
+    "prisma/**/*.ts",
+    ".next-qa/types/**/*.ts",
+    ".next-qa/dev/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "next-env.d.ts",
+    ".next-qa/dev",
+    "src/private/data/resorts-temporary/tmp"
+  ]
+}

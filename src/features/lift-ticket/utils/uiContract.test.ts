@@ -134,22 +134,7 @@ for (const spec of OFFICIAL_CASES.filter(c =>
       }
     });
   }
-  for (const [category, [min, max]] of [
-    ["elementary", [7, 12]],
-    ["junior_high", [13, 15]],
-    ["high_school", [16, 18]],
-  ] as const) {
-    test(`${spec.resort}: ${category}は在学年齢${min}〜${max}歳で料金が1つなら年齢未入力でも出す`, () => {
-      const totals = new Set(
-        Array.from(
-          { length: max - min + 1 },
-          (_, i) => plan(category, min + i).total,
-        ),
-      );
-      if (totals.size !== 1) return;
-      assert.equal(plan(category, null).total, [...totals][0]);
-    });
-  }
+  // 学齢による分岐は spec/audience.test.ts，施設ごとの額は直前の公式期待値で検査する．
   const representativeAges = {
     preschool: 4,
     elementary: 10,
@@ -159,28 +144,18 @@ for (const spec of OFFICIAL_CASES.filter(c =>
     adult: 30,
   };
   for (const baseCategory of TICKET_DISABILITY_BASE_CATEGORIES) {
-    test(`${spec.resort}: 障がい者＋${baseCategory}の料金と通常料金への戻し`, {
-      skip:
-        spec.disabilityAmounts[baseCategory] === undefined
-          ? "公式料金が未確定のため照合しない"
-          : false,
-    }, () => {
+    const expected = spec.disabilityAmounts[baseCategory];
+    if (expected === undefined) continue;
+    test(`${spec.resort}: 障がい者＋${baseCategory}の公式料金`, () => {
       const base = input("disabled", representativeAges[baseCategory]);
       const result = calculateLiftTicketPlan(data, {
         ...base,
         party: [{ ...base.party[0], baseCategory }],
         days: [{ id: "day", date: spec.date, duration: DAY }],
       });
-      assert.equal(
-        result.total,
-        spec.disabilityAmounts[baseCategory] as number,
-      );
+      assert.equal(result.total, expected);
       // 期待値は入園料などの必須の手数料を含む支払額（上の合計と同じ基準）
-      assertPrice(
-        result.days[0].result,
-        spec.disabilityAmounts[baseCategory] as number,
-        true,
-      );
+      assertPrice(result.days[0].result, expected, true);
     });
   }
   test(`${spec.resort}: 掲載された券の利用単位を共通検証から漏らさない`, () => {
@@ -197,21 +172,21 @@ for (const spec of OFFICIAL_CASES.filter(c =>
       );
     }
   });
-  test(`${spec.resort}: UIの1日＋ナイターの料金`, {
-    skip: spec.nightUnknown ? "公式資料にナイター営業の掲載なし" : false,
-  }, () => {
-    // 夜間込みの日券と、代表日に夜間営業がない施設を同じ入力で照合する。
-    const result = plan("adult", 30, spec.date, {
-      kind: "day",
-      withNight: true,
+  if (!spec.nightUnknown) {
+    test(`${spec.resort}: UIの1日＋ナイターの料金`, () => {
+      // 夜間込みの日券と、代表日に夜間営業がない施設を同じ入力で照合する。
+      const result = plan("adult", 30, spec.date, {
+        kind: "day",
+        withNight: true,
+      });
+      const expected =
+        spec.dayWithNight === undefined
+          ? spec.categories.adult
+          : spec.dayWithNight;
+      assert.equal(result.total, expected);
+      assertPrice(result.days[0].result, expected, true);
     });
-    const expected =
-      spec.dayWithNight === undefined
-        ? spec.categories.adult
-        : spec.dayWithNight;
-    assert.equal(result.total, expected);
-    assertPrice(result.days[0].result, expected, true);
-  });
+  }
   for (const [dates, hours, amount] of spec.multiDays ?? []) {
     test(`${spec.resort}: 日をまたぐ時間券と追加券の合計`, () => {
       const result = calculateLiftTicketPlan(data, {
@@ -292,8 +267,23 @@ for (const spec of OFFICIAL_CASES.filter(c =>
       assertPrice(result.days[0].result, amount, true);
     });
   }
+  const defaultProductIds = new Set(spec.products.map(([product]) => product));
+  const audienceTickets =
+    OFFICIAL_AUDIENCE_TICKETS[`${spec.resort}@${spec.season}`] ??
+    OFFICIAL_AUDIENCE_TICKETS[spec.resort] ??
+    [];
+  const defaultAudienceTickets = Map.groupBy(
+    audienceTickets.filter(
+      ([, category, age]) => category === "adult" && age === 30,
+    ),
+    ([product]) => product,
+  );
   for (const [product, amount] of spec.products) {
     test(`${spec.resort}: 券種 ${product}の公式料金`, () => {
+      // 同じ入力が公式資料の両方にあるときは，期待値を照合して計算は一度だけ行う．
+      const audienceRows = defaultAudienceTickets.get(product) ?? [];
+      for (const [, , , audienceAmount] of audienceRows)
+        assert.equal(audienceAmount, amount);
       assertPrice(
         calculateLiftTicket(data, input("adult", 30), product),
         amount,
@@ -319,11 +309,9 @@ for (const spec of OFFICIAL_CASES.filter(c =>
         assert.equal(result.payableTotal, query.payable);
     });
   }
-  for (const [product, category, age, amount] of OFFICIAL_AUDIENCE_TICKETS[
-    `${spec.resort}@${spec.season}`
-  ] ??
-    OFFICIAL_AUDIENCE_TICKETS[spec.resort] ??
-    []) {
+  for (const [product, category, age, amount] of audienceTickets) {
+    if (category === "adult" && age === 30 && defaultProductIds.has(product))
+      continue;
     test(`${spec.resort}: ${product} / ${category} / ${age ?? "年齢なし"}`, () => {
       assertPrice(
         calculateLiftTicket(data, input(category, age), product),
@@ -392,12 +380,11 @@ for (const spec of OFFICIAL_CASES.filter(c =>
     });
   }
   for (const date of spec.closed ?? []) {
-    test(`${spec.resort}: ${date}の定休日は全区分で料金を出さない`, () => {
-      for (const category of SELECTABLE_TICKET_PARTY_CATEGORIES) {
-        const result = plan(category, null, date);
-        assert.equal(result.total, null);
-        assert.equal(result.days[0].result.status, "closed");
-      }
+    test(`${spec.resort}: ${date}の定休日は料金を出さない`, () => {
+      // 営業判定は利用者区分より先に行う．施設ごとに確認するのは日付だけでよい．
+      const result = plan("adult", 30, date);
+      assert.equal(result.total, null);
+      assert.equal(result.days[0].result.status, "closed");
     });
   }
   for (const [boundary, shift] of [
@@ -406,22 +393,18 @@ for (const spec of OFFICIAL_CASES.filter(c =>
   ] as const) {
     if (!boundary) continue; // 公式未掲載の開始・終了日を作らない。
     test(`${spec.resort}: 営業期間の境界日 ${boundary}を期間外にしない`, () => {
-      for (const category of SELECTABLE_TICKET_PARTY_CATEGORIES) {
-        assert.notEqual(
-          plan(category, null, boundary).days[0].result.status,
-          "outside_season",
-        );
-      }
+      assert.notEqual(
+        plan("adult", 30, boundary).days[0].result.status,
+        "outside_season",
+      );
     });
     const date = new Date(`${boundary}T00:00:00Z`);
     date.setUTCDate(date.getUTCDate() + shift);
     const outside = date.toISOString().slice(0, 10);
-    test(`${spec.resort}: 営業期間外 ${outside}は全区分で料金を出さない`, () => {
-      for (const category of SELECTABLE_TICKET_PARTY_CATEGORIES) {
-        const result = plan(category, null, outside);
-        assert.equal(result.total, null);
-        assert.equal(result.days[0].result.status, "outside_season");
-      }
+    test(`${spec.resort}: 営業期間外 ${outside}は料金を出さない`, () => {
+      const result = plan("adult", 30, outside);
+      assert.equal(result.total, null);
+      assert.equal(result.days[0].result.status, "outside_season");
     });
   }
 }

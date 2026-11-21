@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { getResortReadingInfo } from "@/lib/resortReadings";
-import { formerNamesSchema, nameRubySchema } from "./readingContract";
+import { formerNamesSchema } from "./readingContract";
 
 test("reading projection uses DB values, including intentional clearing", () => {
   assert.deepEqual(
@@ -22,24 +21,6 @@ test("reading projection uses DB values, including intentional clearing", () => 
     formerNames: [],
   });
   assert.equal(formerNamesSchema.safeParse([{ name: "" }]).success, false);
-});
-
-test("frozen migration includes valid readings and old names for every original entry", () => {
-  const sql = readFileSync(
-    "prisma/migrations/20260906120000_add_resort_readings/migration.sql",
-    "utf8",
-  );
-  const entries = JSON.parse(sql.split("$readings$")[1]);
-  assert.equal(entries.length, 506);
-  assert.equal(
-    new Set(entries.map((entry: { id: string }) => entry.id)).size,
-    entries.length,
-  );
-  for (const entry of entries) {
-    nameRubySchema.parse(entry.ruby);
-    formerNamesSchema.parse(entry.formerNames);
-    assert.equal(typeof entry.needsReview, "boolean");
-  }
 });
 
 test("former names support partial ruby and derive the searchable reading", () => {

@@ -10,6 +10,7 @@ const databaseName = `rusutsu_test_${process.pid}`;
 const containerName = `rusutsu-tests-${process.pid}`;
 const databaseImage = "postgres:16-alpine";
 const unitTestTimeoutMs = 60_000;
+const testDatabaseLockKey = "rusutsu:test-runner";
 const browserTests = [
   "scripts/testOfflineOverview.ts",
   "scripts/testOfflineDetail.ts",
@@ -61,24 +62,15 @@ async function run(
 }
 
 /** 検査済みの使い捨て DB で，migration 履歴を保持して suite の状態を初期化する． */
-async function clearTestFixtures(databaseUrl: string): Promise<void> {
-  readTestDatabaseUrl({ TEST_DATABASE_URL: databaseUrl });
-  const client = new Client({ connectionString: databaseUrl });
-  await client.connect();
-  try {
-    const tables = await client.query<{ tablename: string }>(
-      "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> '_prisma_migrations'",
+async function clearTestFixtures(client: Client): Promise<void> {
+  const tables = await client.query<{ tablename: string }>(
+    "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> '_prisma_migrations'",
+  );
+  if (tables.rows.length) {
+    const names = tables.rows.map(
+      row => `public."${row.tablename.replaceAll('"', '""')}"`,
     );
-    if (tables.rows.length) {
-      const names = tables.rows.map(
-        row => `public."${row.tablename.replaceAll('"', '""')}"`,
-      );
-      await client.query(
-        `TRUNCATE ${names.join(", ")} RESTART IDENTITY CASCADE`,
-      );
-    }
-  } finally {
-    await client.end();
+    await client.query(`TRUNCATE ${names.join(", ")} RESTART IDENTITY`);
   }
 }
 
@@ -104,7 +96,7 @@ function createDatabase(): string {
       "--env",
       `POSTGRES_DB=${databaseName}`,
       "--health-cmd",
-      "pg_isready -U rusutsu_test",
+      `pg_isready -h 127.0.0.1 -U rusutsu_test -d ${databaseName}`,
       "--health-interval",
       "1s",
       "--health-retries",
@@ -177,10 +169,9 @@ async function runSelectedTests(
   const selected = args.length
     ? files.filter(file => args.includes(file))
     : files;
-  const unit = selected.filter(file => !file.endsWith(".integration.test.ts"));
-  const integration = selected.filter(file =>
-    file.endsWith(".integration.test.ts"),
-  );
+  const integrationSuffix = /\.integration\.test\.tsx?$/u;
+  const unit = selected.filter(file => !integrationSuffix.test(file));
+  const integration = selected.filter(file => integrationSuffix.test(file));
   if (
     (!unit.length && mode === "--unit") ||
     (!integration.length && mode === "--db") ||
@@ -202,6 +193,7 @@ async function runSelectedTests(
   if (mode === "--unit" || !integration.length) return;
   let databaseUrl = readTestDatabaseUrl();
   let owned = false;
+  let lockClient: Client | undefined;
   try {
     if (!databaseUrl) {
       if (process.env.CI)
@@ -217,7 +209,7 @@ async function runSelectedTests(
           containerName,
           "sh",
           "-c",
-          "until pg_isready -U rusutsu_test; do sleep 1; done",
+          `timeout 45 sh -c 'until pg_isready -h 127.0.0.1 -U rusutsu_test -d ${databaseName}; do sleep 1; done'`,
         ],
         env,
       );
@@ -228,23 +220,38 @@ async function runSelectedTests(
       DATABASE_URL: databaseUrl,
     };
     readTestDatabaseUrl(databaseEnv);
+    lockClient = new Client({ connectionString: databaseUrl });
+    await lockClient.connect();
+    const lock = await lockClient.query<{ acquired: boolean }>(
+      "SELECT pg_try_advisory_lock(hashtextextended($1, 0)) AS acquired",
+      [testDatabaseLockKey],
+    );
+    if (!lock.rows[0]?.acquired)
+      throw new Error("Another test runner is using this test database.");
     await run("pnpm", ["exec", "prisma", "migrate", "deploy"], databaseEnv);
     for (const file of integration) {
-      await clearTestFixtures(databaseUrl);
+      await clearTestFixtures(lockClient);
       await run(
         process.execPath,
         ["--import", "tsx", "--test", file],
         databaseEnv,
       );
     }
+    await clearTestFixtures(lockClient);
   } finally {
-    if (owned) {
-      const removed = spawnSync("docker", ["rm", "--force", containerName], {
-        stdio: "inherit",
-      });
-      if (removed.status !== 0) {
-        console.error(`Could not remove owned test container ${containerName}`);
-        process.exitCode = 1;
+    try {
+      await lockClient?.end();
+    } finally {
+      if (owned) {
+        const removed = spawnSync("docker", ["rm", "--force", containerName], {
+          stdio: "inherit",
+        });
+        if (removed.status !== 0) {
+          console.error(
+            `Could not remove owned test container ${containerName}`,
+          );
+          process.exitCode = 1;
+        }
       }
     }
   }

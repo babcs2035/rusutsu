@@ -103,7 +103,6 @@ test("R06 スキー＋ウェア上下＋ヘルメットは 8,000円＋1,000円�
 test("R07 ボード（板・ブーツ）＋ウェア上下はボードフルセット 8,500円", () => {
   assert.equal(amount(rentalKindsResort, board("wear")).total, 8500);
 });
-test.skip("R08 ウェア上だけ 2,500円（対象外: 画面で選べる用具は「ウェア」1種類で、上だけは選べない）", () => {});
 test("R09 ウェア上下（上下セットが無いデータ）は上 2,500円＋下 2,000円で 4,500円", () => {
   // データは wear_top / wear_bottom の2件。画面の「ウェア」は上下の両方を借りる意味
   const result = amount(rentalKindsNoWearSetResort, only("ski", "wear"));

@@ -20,9 +20,14 @@ const CSP = [
   "report-uri /rusutsu/api/csp-report",
 ].join("; ");
 
+const distDir = process.env.RUSUTSU_DIST_DIR || ".next";
 const nextConfig: NextConfig = {
   // Allows an isolated QA server alongside the developer's existing server.
-  distDir: process.env.RUSUTSU_DIST_DIR || ".next",
+  distDir,
+  typescript: {
+    // next-env.d.ts is shared, so each check reads only its own route types.
+    tsconfigPath: distDir === ".next-qa" ? "tsconfig.qa.json" : "tsconfig.json",
+  },
   basePath: "/rusutsu",
   async headers() {
     return [

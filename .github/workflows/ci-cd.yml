@@ -66,8 +66,8 @@ jobs:
       - name: Check formatting, lint, and types
         run: mise run check
 
-      - name: Install Playwright browser for DOM tests
-        run: pnpm exec playwright install --with-deps --only-shell chromium
+      - name: Install Playwright browser for DOM and browser tests
+        run: pnpm exec playwright install --with-deps chromium
 
       - name: Unit and contract tests
         run: mise run test -- --unit
@@ -87,6 +87,35 @@ jobs:
           python3 -m py_compile scripts/ops/build-db-manifest.py
           docker compose config --quiet
           git diff --check
+
+      - name: Browser workflows against the isolated production build
+        env:
+          POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+          API_BASE_URL: ''
+          AUTH_URL: http://127.0.0.1:3001
+          AUTH_SECRET: ephemeral-browser-test-only
+          DISABLE_CRAWLER_SCHEDULER: 'true'
+          DISABLE_EDIT_REQUEST_JOBS: 'true'
+          DISABLE_COMMUNITY_MODERATION: 'true'
+          RUSUTSU_DIST_DIR: .next-qa
+          OFFLINE_TEST_URL: http://127.0.0.1:3001/rusutsu
+          OFFLINE_TEST_FIXTURE_TILES: '1'
+          OFFLINE_TEST_HEADLESS: 'false'
+          RUSUTSU_BROWSER_DISPOSABLE_DB: 'true'
+          RUSUTSU_BROWSER_AUTH_SECRET: ephemeral-browser-test-only
+          RUSUTSU_BROWSER_ADMIN_ID: browser-test-admin
+        run: |
+          docker exec -i "$POSTGRES_CONTAINER" psql -U rusutsu_ci -d rusutsu_test_1 < scripts/testBrowserFixtures.sql
+          mise run build
+          HOSTNAME=127.0.0.1 PORT=3001 mise exec -- node .next-qa/standalone/server.js &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          for attempt in {1..30}; do
+            if curl --silent --fail --max-time 3 --output /dev/null "$OFFLINE_TEST_URL"; then break; fi
+            if ! kill -0 "$server" || [ "$attempt" -eq 30 ]; then exit 1; fi
+            sleep 1
+          done
+          xvfb-run -a mise run test -- --browser
 
   build-and-push:
     name: Build and Push Image

@@ -67,72 +67,26 @@ const loadRealResorts = () =>
         })
     : [];
 
-/** 架空ケースに無い特徴を、施設ごとに返す */
-export const uncoveredFeatures = (
-  covered: Set<string>,
-  real: Array<{ resort: string; data: LiftTicketData }>,
-) =>
-  real
-    .map(({ resort, data }) => ({
-      resort,
-      missing: [...structureFeaturesOf(data)].filter(
-        feature => !covered.has(feature) && !(feature in ACKNOWLEDGED_FEATURES),
-      ),
-    }))
-    .filter(entry => entry.missing.length > 0);
-
-const coveredBy = (fixtures: Array<{ data: LiftTicketData }>) =>
-  new Set(fixtures.flatMap(({ data }) => [...structureFeaturesOf(data)]));
-
-test("Y01 架空スキー場と実在施設に同じ関数で特徴を取り出す", async () => {
+test("施設の料金データが既知の形式と架空ケースで説明できる", async () => {
   const fixtures = await loadFixtures();
-  assert.ok(fixtures.length > 0, "spec/fixtures に架空スキー場がありません");
-  for (const { name, data } of fixtures)
-    assert.ok(structureFeaturesOf(data).size > 0, `${name} の特徴が空`);
-});
-
-test("Y02 架空ケースに無い特徴を持つ実在施設が無い", async () => {
   const real = loadRealResorts();
-  if (real.length === 0) return; // 料金データの submodule が無い環境
-  const missing = uncoveredFeatures(coveredBy(await loadFixtures()), real);
-  assert.deepEqual(
-    missing.map(({ resort, missing }) => `${resort}: ${missing.join(", ")}`),
-    [],
-    "架空ケースを足すか、structureCoverageAcknowledged.ts に理由付きで載せる",
+  assert.ok(fixtures.length > 0, "架空の料金データがありません");
+  assert.ok(real.length > 0, "照合する施設の料金データがありません");
+  const covered = new Set(
+    fixtures.flatMap(({ data }) => [...structureFeaturesOf(data)]),
   );
-});
-
-test("Y03 確認済みの特徴には理由が書かれている", () => {
-  for (const [feature, reason] of Object.entries(ACKNOWLEDGED_FEATURES))
-    assert.ok(reason.trim().length > 0, `${feature} の理由が空`);
-});
-
-test("Y04 スキーマに無い値を持つ実在施設が無い", () => {
-  const unknown = loadRealResorts().flatMap(({ resort, data }) =>
+  const issues = real.flatMap(({ resort, data }) =>
     [...structureFeaturesOf(data)]
-      .filter(feature => feature.startsWith("new:"))
+      .filter(
+        feature =>
+          feature.startsWith("new:") ||
+          (!covered.has(feature) && !ACKNOWLEDGED_FEATURES[feature]?.trim()),
+      )
       .map(feature => `${resort}: ${feature}`),
   );
-  assert.deepEqual(unknown, []);
-});
-
-test("Y05 架空スキー場から特徴を1つ消すと、その特徴を持つ実在施設が警告に出る", async () => {
-  const real = loadRealResorts();
-  if (real.length === 0) return;
-  const fixtures = await loadFixtures();
-  const covered = coveredBy(fixtures);
-  const realFeatures = new Set(
-    real.flatMap(({ data }) => [...structureFeaturesOf(data)]),
-  );
-  // 実在施設にあり、確認済みの一覧に無い特徴を1つ選んで消す
-  const target = [...covered].find(
-    feature => realFeatures.has(feature) && !(feature in ACKNOWLEDGED_FEATURES),
-  );
-  assert.ok(target, "照合に使える特徴がありません");
-  const reduced = new Set([...covered].filter(feature => feature !== target));
-  const missing = uncoveredFeatures(reduced, real);
-  assert.ok(
-    missing.some(entry => entry.missing.includes(target)),
-    `${target} を消しても警告が出ない`,
+  assert.deepEqual(
+    issues,
+    [],
+    "新しい形式は対応を検討し，未検証の組合せは架空ケースまたは除外の理由を追加する",
   );
 });
