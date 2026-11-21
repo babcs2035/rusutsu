@@ -23,6 +23,8 @@ DB suite は同じ DB を使い，suite の前と全件成功後に public schem
 
 `testPublicWorkflow.ts` は loopback 上の隔離アプリだけを受け付ける．匿名状態で `/admin/corrections` がログインへ転送されること，情報修正フォームで空欄を送信できないこと，入力した匿名修正が送信できること，現地レポートがログインを求めることを確認する．書き込み操作の前に `RUSUTSU_BROWSER_DISPOSABLE_DB=true` を確認するため，通常のローカル DB では送信も審査も行わない．管理者審査まで確認するときは，隔離アプリの `AUTH_SECRET` と同じ値を `RUSUTSU_BROWSER_AUTH_SECRET` に設定し，試験 DB に存在する管理者 ID を `RUSUTSU_BROWSER_ADMIN_ID` に設定する．試験スクリプトは Google の認証情報を使わず，合成 JWT の Cookie だけで審査画面へ入る．この検証で作成した修正申請は試験 DB だけに保存される．
 
+同じ試験では，比較料金のオンライン計算とオフライン表示，本人の設定・投稿一覧を開いたときの取得 API の呼び出し回数，配備切替後に比較リストを保存しようとしたときの入力保持も確認する．
+
 ## ブラウザー用の使い捨て環境
 
 新規の試験 DB に migration を適用し，[ブラウザー用 fixture](../scripts/testBrowserFixtures.sql) を `psql` で投入する．次の例は，試験専用 PostgreSQL が loopback の 55491 番で待ち受ける場合である．

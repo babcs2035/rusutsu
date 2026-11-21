@@ -24,9 +24,10 @@ async function query<Result>(
 
 /** 施設一件の詳細を取得する． */
 export function getSkiResortById(
-  ...[id]: Parameters<typeof Queries.getSkiResortById>
+  id: Parameters<typeof Queries.getSkiResortById>[0],
+  signal?: AbortSignal,
 ): ReturnType<typeof Queries.getSkiResortById> {
-  return query("/api/resorts/details", { ids: [id], single: true });
+  return query("/api/resorts/details", { ids: [id], single: true }, signal);
 }
 
 /** 比較の施設詳細をまとめて取得する． */

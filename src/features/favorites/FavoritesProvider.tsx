@@ -32,7 +32,7 @@ import {
 import { SkiTracksHistory } from "@/features/ski-tracks/SkiTracksHistory";
 import { PanelHeader } from "@/shared/components/PanelHeader";
 import { getCommunityAccount } from "@/shared/queries/community";
-import { reloadIfStaleBuild } from "@/shared/utils/staleBuild";
+import { notifyIfStaleBuild } from "@/shared/utils/staleBuild";
 import {
   publicLogout,
   readLoginHistory,
@@ -228,10 +228,12 @@ function FavoritesState({
             setExpired(true);
         }
       } catch (error) {
-        if (reloadIfStaleBuild(error)) return;
         if (request === generation.current) {
           setSnapshot({ userId, ids: [], ready: false });
-          toast.error("お気に入りを読み込めませんでした。再度お試しください。");
+          if (!notifyIfStaleBuild(error))
+            toast.error(
+              "お気に入りを読み込めませんでした。再度お試しください。",
+            );
         }
       }
     });
@@ -312,15 +314,16 @@ function FavoritesState({
             { duration: 1000 },
           );
       } catch (error) {
-        if (reloadIfStaleBuild(error)) return;
         if (currentUser.current === account) {
           // Roll back this operation only; preserve concurrent changes to other IDs.
           setSnapshot(value => ({
             ...value,
             ids: setFavorite(value.ids, id, !added),
           }));
-          toast.error("保存できませんでした。ログイン状態をご確認ください。");
-          void update();
+          if (!notifyIfStaleBuild(error)) {
+            toast.error("保存できませんでした。ログイン状態をご確認ください。");
+            void update();
+          }
         }
       } finally {
         busy.current.delete(id);

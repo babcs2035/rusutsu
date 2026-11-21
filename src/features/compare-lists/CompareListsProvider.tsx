@@ -7,18 +7,21 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
 import { toast } from "sonner";
 import { withBasePath } from "@/shared/utils/basePath";
-import { reloadIfStaleBuild } from "@/shared/utils/staleBuild";
+import { notifyIfStaleBuild } from "@/shared/utils/staleBuild";
 import {
   deleteCompareList,
   renameCompareList,
   saveCompareList,
   updateCompareListResorts,
 } from "./actions";
+import { createCompareListMutationQueue } from "./mutationQueue";
 import type { CompareListSummary } from "./types";
 
 type CompareListsContextValue = {
@@ -50,6 +53,11 @@ const CompareListsContext = createContext<CompareListsContextValue | null>(
 );
 export const useCompareLists = () => useContext(CompareListsContext);
 
+type AccountScope = {
+  userId: string | null;
+  enqueue: ReturnType<typeof createCompareListMutationQueue>;
+};
+
 /**
  * 保存した比較リスト（「北海道でよく行く」など）。ログイン中のアカウントに保存する。
  * FavoritesProvider（SessionProvider）の内側に置く。
@@ -63,48 +71,57 @@ export function CompareListsProvider({
 }) {
   const { data: session, status } = useSession();
   const userId = session?.user?.id ?? null;
+  const scope = useMemo<AccountScope>(
+    () => ({ userId, enqueue: createCompareListMutationQueue() }),
+    [userId],
+  );
   const [state, setState] = useState<{
-    userId: string | null;
+    scope: AccountScope | null;
     lists: CompareListSummary[];
     ready: boolean;
     loadFailed?: boolean;
-  }>({ userId: null, lists: [], ready: false });
+  }>({ scope: null, lists: [], ready: false });
   const [retryCount, setRetryCount] = useState(0);
   const retryLoad = useCallback((): void => {
     setRetryCount(count => count + 1);
   }, []);
   const available = useRef(new Set(resortIds));
-  available.current = new Set(resortIds);
-  const currentUser = useRef(userId);
-  currentUser.current = userId;
+  const currentScope = useRef(scope);
+  useLayoutEffect(() => {
+    available.current = new Set(resortIds);
+    currentScope.current = scope;
+  }, [resortIds, scope]);
   const generation = useRef(0);
 
-  const accept = useCallback((account: string, lists: CompareListSummary[]) => {
-    if (currentUser.current !== account) return;
-    generation.current++;
-    setState({
-      userId: account,
-      ready: true,
-      lists: lists.map(list => ({
-        ...list,
-        resortIds: list.resortIds.filter(id => available.current.has(id)),
-      })),
-    });
-  }, []);
+  const accept = useCallback(
+    (account: AccountScope, lists: CompareListSummary[]) => {
+      if (currentScope.current !== account) return;
+      generation.current++;
+      setState({
+        scope: account,
+        ready: true,
+        lists: lists.map(list => ({
+          ...list,
+          resortIds: list.resortIds.filter(id => available.current.has(id)),
+        })),
+      });
+    },
+    [],
+  );
 
   useEffect(() => {
     void retryCount;
     if (status === "loading") return;
     if (!userId) {
-      setState({ userId: null, lists: [], ready: true });
+      setState({ scope, lists: [], ready: true });
       return;
     }
     const request = ++generation.current;
     const controller = new AbortController();
     setState(previous =>
-      previous.userId === userId && !previous.loadFailed
+      previous.scope === scope && !previous.loadFailed
         ? previous
-        : { userId, lists: [], ready: false },
+        : { scope, lists: [], ready: false },
     );
     fetch(withBasePath("/api/compare-lists"), {
       method: "POST",
@@ -116,23 +133,23 @@ export function CompareListsProvider({
       .then(async response => {
         if (!response.ok) throw new Error("Comparison lists unavailable");
         const lists: CompareListSummary[] = await response.json();
-        if (generation.current === request) accept(userId, lists);
+        if (generation.current === request) accept(scope, lists);
       })
       .catch(() => {
         if (
           controller.signal.aborted ||
           generation.current !== request ||
-          currentUser.current !== userId
+          currentScope.current !== scope
         )
           return;
-        setState({ userId, lists: [], ready: true, loadFailed: true });
+        setState({ scope, lists: [], ready: true, loadFailed: true });
       });
     return () => {
       controller.abort();
     };
-  }, [accept, retryCount, status, userId]);
+  }, [accept, retryCount, status, scope, userId]);
 
-  const loadFailed = state.userId === userId && state.loadFailed === true;
+  const loadFailed = state.scope === scope && state.loadFailed === true;
   useEffect(() => {
     if (!loadFailed) return;
     window.addEventListener("online", retryLoad);
@@ -143,103 +160,107 @@ export function CompareListsProvider({
     };
   }, [loadFailed, retryLoad]);
 
-  const save: CompareListsContextValue["save"] = async input => {
-    if (!userId) return null;
-    try {
-      const result = await saveCompareList({
-        ...input,
-        expectedUserId: userId,
-      });
-      if (currentUser.current !== userId) return null;
-      if (!result.ok) {
-        toast.error(result.error);
+  const save: CompareListsContextValue["save"] = input =>
+    scope.enqueue(async () => {
+      if (!userId || currentScope.current !== scope) return null;
+      try {
+        const result = await saveCompareList({
+          ...input,
+          expectedUserId: userId,
+        });
+        if (currentScope.current !== scope) return null;
+        if (!result.ok) {
+          toast.error(result.error);
+          return null;
+        }
+        accept(scope, result.lists);
+        toast.success("比較リストに保存しました", { duration: 1200 });
+        return result.lists.find(list => list.id === result.id) ?? null;
+      } catch (error) {
+        if (currentScope.current !== scope || notifyIfStaleBuild(error))
+          return null;
+        toast.error("保存できませんでした。ログイン状態をご確認ください。");
         return null;
       }
-      accept(userId, result.lists);
-      toast.success("比較リストに保存しました", { duration: 1200 });
-      return result.lists.find(list => list.id === result.id) ?? null;
-    } catch (error) {
-      if (currentUser.current !== userId) return null;
-      if (reloadIfStaleBuild(error)) return null;
-      toast.error("保存できませんでした。ログイン状態をご確認ください。");
-      return null;
-    }
-  };
-  const remove: CompareListsContextValue["remove"] = async id => {
-    if (!userId) return false;
-    try {
-      const updated = await deleteCompareList(id, userId);
-      if (currentUser.current !== userId) return false;
-      accept(userId, updated);
-      toast.success("比較リストを削除しました", { duration: 1000 });
-      return true;
-    } catch (error) {
-      if (currentUser.current !== userId) return false;
-      if (reloadIfStaleBuild(error)) return false;
-      toast.error("削除できませんでした。");
-      return false;
-    }
-  };
+    });
+  const remove: CompareListsContextValue["remove"] = id =>
+    scope.enqueue(async () => {
+      if (!userId || currentScope.current !== scope) return false;
+      try {
+        const updated = await deleteCompareList(id, userId);
+        if (currentScope.current !== scope) return false;
+        accept(scope, updated);
+        toast.success("比較リストを削除しました", { duration: 1000 });
+        return true;
+      } catch (error) {
+        if (currentScope.current !== scope || notifyIfStaleBuild(error))
+          return false;
+        toast.error("削除できませんでした。");
+        return false;
+      }
+    });
 
-  const rename: CompareListsContextValue["rename"] = async (id, name) => {
-    if (!userId) return null;
-    try {
-      const result = await renameCompareList({
-        expectedUserId: userId,
-        id,
-        name,
-      });
-      if (currentUser.current !== userId) return null;
-      if (!result.ok) {
-        toast.error(result.error);
+  const rename: CompareListsContextValue["rename"] = (id, name) =>
+    scope.enqueue(async () => {
+      if (!userId || currentScope.current !== scope) return null;
+      try {
+        const result = await renameCompareList({
+          expectedUserId: userId,
+          id,
+          name,
+        });
+        if (currentScope.current !== scope) return null;
+        if (!result.ok) {
+          toast.error(result.error);
+          return null;
+        }
+        accept(scope, result.lists);
+        toast.success("リスト名を変更しました", { duration: 1200 });
+        return result.lists.find(list => list.id === id) ?? null;
+      } catch (error) {
+        if (currentScope.current !== scope || notifyIfStaleBuild(error))
+          return null;
+        toast.error("リスト名を変更できませんでした。");
         return null;
       }
-      accept(userId, result.lists);
-      toast.success("リスト名を変更しました", { duration: 1200 });
-      return result.lists.find(list => list.id === id) ?? null;
-    } catch (error) {
-      if (currentUser.current !== userId) return null;
-      if (reloadIfStaleBuild(error)) return null;
-      toast.error("リスト名を変更できませんでした。");
-      return null;
-    }
-  };
+    });
 
-  const updateResorts = async (
+  const updateResorts = (
     id: string,
     resortIds: string[],
     operation: "add" | "remove",
-  ) => {
-    if (!userId) return null;
-    try {
-      const result = await updateCompareListResorts({
-        expectedUserId: userId,
-        id,
-        resortIds,
-        operation,
-      });
-      if (currentUser.current !== userId) return null;
-      if (!result.ok) {
-        toast.error(result.error);
+  ): Promise<CompareListSummary | null> =>
+    scope.enqueue(async () => {
+      if (!userId || currentScope.current !== scope) return null;
+      try {
+        const result = await updateCompareListResorts({
+          expectedUserId: userId,
+          id,
+          resortIds,
+          operation,
+        });
+        if (currentScope.current !== scope) return null;
+        if (!result.ok) {
+          toast.error(result.error);
+          return null;
+        }
+        accept(scope, result.lists);
+        toast.success(
+          operation === "add"
+            ? "比較リストに追加しました"
+            : "比較リストから外しました",
+          { duration: 1200 },
+        );
+        return result.lists.find(list => list.id === id) ?? null;
+      } catch (error) {
+        if (currentScope.current !== scope || notifyIfStaleBuild(error))
+          return null;
+        toast.error("比較リストを更新できませんでした。");
         return null;
       }
-      accept(userId, result.lists);
-      toast.success(
-        operation === "add"
-          ? "比較リストに追加しました"
-          : "比較リストから外しました",
-        { duration: 1200 },
-      );
-      return result.lists.find(list => list.id === id) ?? null;
-    } catch (error) {
-      if (currentUser.current !== userId) return null;
-      if (reloadIfStaleBuild(error)) return null;
-      toast.error("比較リストを更新できませんでした。");
-      return null;
-    }
-  };
+    });
 
-  const ready = status !== "loading" && state.userId === userId && state.ready;
+  const ready = status !== "loading" && state.scope === scope && state.ready;
   return (
     <CompareListsContext.Provider
       value={{

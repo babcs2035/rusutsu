@@ -1,30 +1,18 @@
+// 配備切替で旧画面の操作が失敗したとき，入力を保持したまま知らせる．
 import { unstable_isUnrecognizedActionError } from "next/navigation";
-
-// public/map-sw.js の HOME と揃える。
-const HOME_CACHE = "rusutsu-map-v1-home";
-const RELOADED_AT_KEY = "rusutsu:stale-build-reload";
+import { toast } from "sonner";
 
 /**
  * デプロイ前の画面から Server Action を呼ぶと、新しいサーバーに ID が無く失敗する。
- * 保存済みの古い HTML を捨てて 1 回だけ読み直す。1 分以内の再発では繰り返さない。
+ * 下書きの保存に失敗している場合もあるため，利用者が画面を離れる時期を選べるようにする．
  */
-export function reloadIfStaleBuild(error: unknown) {
+export function notifyIfStaleBuild(error: unknown): boolean {
   if (!unstable_isUnrecognizedActionError(error)) return false;
-  try {
-    const last = Number(sessionStorage.getItem(RELOADED_AT_KEY));
-    if (Date.now() - last < 60_000) return false;
-    sessionStorage.setItem(RELOADED_AT_KEY, String(Date.now()));
-  } catch {
-    // 記録できないと読み直しが止まらない可能性があるので、何もしない。
-    return false;
-  }
-  void (async () => {
-    try {
-      if (typeof caches !== "undefined") await caches.delete(HOME_CACHE);
-    } catch {
-      /* 保存禁止でも読み直す。 */
-    }
-    window.location.reload();
-  })();
+  toast.error(
+    "アプリが更新されました。入力や写真を確認してから、ページを開き直してください。",
+    {
+      id: "stale-build",
+    },
+  );
   return true;
 }

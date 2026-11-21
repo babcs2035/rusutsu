@@ -10,7 +10,6 @@ import {
   getResortMapDataForCompare,
   getSkiResortsForCompare,
 } from "@/shared/queries/resorts";
-import { reloadIfStaleBuild } from "@/shared/utils/staleBuild";
 import type { SkiResortDetail } from "@/types/skiResorts";
 
 const EMPTY_RESORTS: SkiResortDetail[] = [];
@@ -150,7 +149,6 @@ export const useCompareResorts = (
     const requests = new AbortController();
     let disposed = false;
     let failed = false;
-    let staleReload = false;
     // 詳細が出そろうまで publish しない
     let detailsReady = false;
     const entries = new Map<string, SkiResortDetail>();
@@ -190,13 +188,9 @@ export const useCompareResorts = (
               });
               save(detail.id);
             }
-          } catch (error) {
+          } catch {
             if (disposed) return;
             failed = true;
-            if (reloadIfStaleBuild(error)) {
-              staleReload = true;
-              return;
-            }
             /* 保存してある分があればそれを使い続ける */
           }
         }),
@@ -221,10 +215,9 @@ export const useCompareResorts = (
             save(id);
           }
           publish();
-        } catch (error) {
+        } catch {
           if (disposed) return;
           failed = true;
-          if (reloadIfStaleBuild(error)) return;
           /* 取れなかった分は次に開いたときに取り直す */
         }
       }
@@ -245,7 +238,7 @@ export const useCompareResorts = (
       pendingMapIdsRef.current = [...targetIds];
       const maps = loadMaps();
       await loadDetails();
-      if (disposed || staleReload) return;
+      if (disposed) return;
       detailsReady = true;
       publish();
       await maps;

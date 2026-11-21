@@ -59,6 +59,12 @@ JSON API のエラーは `application/problem+json` で返し，呼び出し元�
 
 ツアー収集の名寄せは `GET /api/admin/resorts?view=tour-matching` を使う．公開中の施設の ID，施設名，短縮名，旧称，都道府県を返す．
 
+地図と外部リンクへの中継は現在の公開施設 ID を照合する．料金と施設リンクの資料 ID は，公開中の統合先への紐付きも照合する．詳細と比較の料金は `POST /api/resorts/ticket-plans` で施設と条件を渡して計算する．通信が切れた端末では，保存済みの公開料金表に同じ計算を適用する．
+
+単独の投稿一覧とコミュニティ設定ページの初期データは Server Components が取得する．画面内で開くダイアログと投稿後の再取得には既存のコミュニティ API を使う．
+
+比較詳細と地図配信は，同じサーバープロセス内で同じスキー場の地図を続けて読む場合がある．canonical map の本文応答には，同じ `RepeatableRead` 内で取得した地図文書の hash/version と採用中の営業 snapshot ID から作った revision を含める．次の読み込みでは `GET /api/admin/maps/resorts?resortId=<id>&view=revision` で revision のみを照合し，一致する場合だけ地図を再利用する．canonical map が無効な環境では既存の legacy loader を毎回使い，地図 cache は作らない．管理編集の capture 中も cache を迂回する．保持数は最大32件で，revision が変われば読み直す．
+
 ## Chromeからデータが見える範囲
 
 画面に描画するためブラウザーへ送ったデータは、APIでもServer Actionsでも利用者が確認できる。Server Actionsは「JSONを絶対に見えなくする仕組み」ではない。

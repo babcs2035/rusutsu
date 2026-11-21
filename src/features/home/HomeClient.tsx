@@ -86,7 +86,6 @@ import {
   resortIdFromPathname,
   resortPathname,
 } from "@/shared/utils/resortPath";
-import { reloadIfStaleBuild } from "@/shared/utils/staleBuild";
 import type { MapSkiResort, NullableSkiResortDetail } from "@/types/skiResorts";
 import { HomeCompareContext } from "./compareContext";
 import {
@@ -340,9 +339,12 @@ function HomeClientContent({
     }
     let disposed = false;
     let generation = 0;
-    const timers = new Set<ReturnType<typeof setTimeout>>();
+    const detailTimeoutMs = 12_000;
+    let request: AbortController | undefined;
     const refresh = async () => {
       const current = ++generation;
+      request?.abort();
+      request = new AbortController();
       setDetailLoading(true);
       setDetailError(false);
       // キャッシュは先に表示。ネットワークの応答待ちで地図を塞がない。
@@ -358,15 +360,14 @@ function HomeClientContent({
         setDetailLoading(false);
         return;
       }
-      let timer: ReturnType<typeof setTimeout> | undefined;
       try {
-        const data = await Promise.race([
-          getSkiResortById(selectedResortId),
-          new Promise<never>((_, reject) => {
-            timer = setTimeout(() => reject(new Error("timeout")), 12000);
-            timers.add(timer);
-          }),
-        ]);
+        const data = await getSkiResortById(
+          selectedResortId,
+          AbortSignal.any([
+            request.signal,
+            AbortSignal.timeout(detailTimeoutMs),
+          ]),
+        );
         if (disposed || current !== generation) return;
         if (!data) {
           setDetailError(true);
@@ -374,14 +375,9 @@ function HomeClientContent({
         }
         setSelectedResortData(data);
         void writeDetailCache(data).then(saved => prepareDetail(data, saved));
-      } catch (error) {
-        if (reloadIfStaleBuild(error)) return;
+      } catch {
         if (!disposed && current === generation) setDetailError(true);
       } finally {
-        if (timer) {
-          clearTimeout(timer);
-          timers.delete(timer);
-        }
         if (!disposed && current === generation) setDetailLoading(false);
       }
     };
@@ -405,7 +401,7 @@ function HomeClientContent({
     // タブへ戻っただけなら、表示中の詳細と地図をそのまま使う。
     return () => {
       disposed = true;
-      for (const timer of timers) clearTimeout(timer);
+      request?.abort();
       window.removeEventListener("online", resume);
     };
   }, [selectedResortId, detailRetry]);

@@ -16,12 +16,16 @@ type DayResult = Awaited<ReturnType<typeof getAccountDayReports>>;
 
 export function AccountCommunityDialog({
   initialView,
+  initialPosts,
+  initialSettings,
   onClose,
   suspended = false,
   onEdit,
   editedPost,
 }: {
   initialView: "posts" | "settings";
+  initialPosts?: Parameters<typeof MyPostsView>[0]["initial"];
+  initialSettings?: Parameters<typeof CommunitySettingsView>[0]["initial"];
   onClose: () => void;
   /** 編集中は隠す。中身は残し、戻ったとき一覧とスクロール位置をそのまま出す */
   suspended?: boolean;
@@ -102,6 +106,7 @@ export function AccountCommunityDialog({
             )}
           >
             <MyPostsView
+              initial={initialPosts}
               onClose={onClose}
               onEdit={
                 onEdit &&
@@ -120,6 +125,7 @@ export function AccountCommunityDialog({
         )}
         {!day && view === "settings" && (
           <CommunitySettingsView
+            initial={initialSettings}
             onClose={onClose}
             onPosts={() => {
               setPostsOpened(true);

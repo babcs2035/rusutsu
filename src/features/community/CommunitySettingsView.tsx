@@ -32,35 +32,49 @@ const notificationText = (kind: string) => {
     : `${label}が付きました`;
 };
 
+type InitialSettings = [
+  Awaited<ReturnType<typeof getCommunityAccount>>,
+  Awaited<ReturnType<typeof getNotifications>>,
+];
+
 export function CommunitySettingsView({
   onClose,
   onPosts,
+  initial,
 }: {
   onClose: () => void;
   onPosts: () => void;
+  initial?: InitialSettings;
 }) {
-  const [account, setAccount] = useState<CommunityAccount | null>(null);
-  const [mode, setMode] = useState<"GOOGLE" | "NICKNAME" | "ANONYMOUS">(
-    "ANONYMOUS",
+  const initialAccount = initial?.[0].ok ? initial[0].data : null;
+  const initialNotifications = initial?.[1].ok ? initial[1].data : null;
+  const [account, setAccount] = useState<CommunityAccount | null>(
+    initialAccount,
   );
-  const [nickname, setNickname] = useState("");
-  const [notes, setNotes] = useState<CommunityNotificationDto[]>([]);
-  const [count, setCount] = useState(0);
+  const [mode, setMode] = useState<"GOOGLE" | "NICKNAME" | "ANONYMOUS">(
+    initialAccount?.nameMode ?? "ANONYMOUS",
+  );
+  const [nickname, setNickname] = useState(initialAccount?.publicName ?? "");
+  const [notes, setNotes] = useState<CommunityNotificationDto[]>(
+    initialNotifications?.notifications ?? [],
+  );
+  const [count, setCount] = useState(initialNotifications?.unreadCount ?? 0);
   const [loadError, setLoadError] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(
+    !initialAccount || !initialNotifications,
+  );
   const [redirecting, setRedirecting] = useState(false);
   const [busy, start] = useTransition();
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (prefetched?: InitialSettings) => {
     setLoading(true);
     setLoadError("");
     setError("");
     try {
-      const [accountResult, notificationResult] = await Promise.all([
-        getCommunityAccount(),
-        getNotifications(),
-      ]);
+      const [accountResult, notificationResult] =
+        prefetched ??
+        (await Promise.all([getCommunityAccount(), getNotifications()]));
       if (!accountResult.ok) throw new Error(accountResult.error);
       if (!notificationResult.ok) throw new Error(notificationResult.error);
       if (!accountResult.data) {
@@ -82,8 +96,8 @@ export function CommunitySettingsView({
     }
   }, []);
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    if (!initialAccount || !initialNotifications) void refresh(initial);
+  }, [initial, initialAccount, initialNotifications, refresh]);
 
   return (
     <div className="flex h-full min-h-0 flex-col text-sm font-sans">

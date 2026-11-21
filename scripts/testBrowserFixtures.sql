@@ -26,6 +26,21 @@ INSERT INTO ski_resorts (
 INSERT INTO canonical_data_migrations (key, "sourceHash", details)
 VALUES ('map-canonical-v2', repeat('0', 64), '{"test":true}');
 
+INSERT INTO lift_ticket_seasons ("skiResortId", "seasonId", status, data)
+VALUES ('rusutsu-resort', '2026-2027', 'complete', '{
+  "schema_version": "1.0.0",
+  "resort": {"id": "rusutsu-resort"},
+  "season": {"id": "2026-2027", "label_ja": "ブラウザー試験シーズン"},
+  "audiences": [{"id": "adult", "name_ja": "大人", "is_default": true}],
+  "calendars": [],
+  "products": [{"id": "day", "name_ja": "試験用1日券", "validity": {"mode": "calendar_day", "days": 1}}],
+  "channels": [],
+  "offers": [{"id": "day", "name_ja": "試験用窓口料金", "product_id": "day", "audience_ids": ["adult"], "price": {"amount": 4310, "currency": "JPY"}}],
+  "party_rules": [],
+  "fees": [],
+  "data_quality": {"status": "complete"}
+}');
+
 INSERT INTO map_courses (
   id, "resortId", "sourceKind", "documentKey", "sourceIndex", name, difficulty,
   properties, geometry, "geometryType", "updatedAt"

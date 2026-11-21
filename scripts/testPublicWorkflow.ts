@@ -133,6 +133,20 @@ try {
     0,
   );
 
+  const result = anonymousPage.waitForResponse(
+    response =>
+      response.url().endsWith("/api/resorts/ticket-plans") && response.ok(),
+  );
+  await anonymousPage.getByRole("tab", { name: "料金", exact: true }).click();
+  const plans = await (await result).json();
+  assert.equal(plans[0]?.tiers[0]?.view.total, 4310);
+  await anonymousPage.getByText(/4,310/u).first().waitFor();
+  await firstTab.click();
+  await anonymousContext.setOffline(true);
+  await anonymousPage.getByRole("tab", { name: "料金", exact: true }).click();
+  await anonymousPage.getByText(/4,310/u).first().waitFor();
+  await anonymousContext.setOffline(false);
+
   const authSecret = process.env.RUSUTSU_BROWSER_AUTH_SECRET;
   const adminId = process.env.RUSUTSU_BROWSER_ADMIN_ID;
   if (Boolean(authSecret) !== Boolean(adminId))
@@ -181,6 +195,47 @@ try {
       .waitFor();
     await adminPage.screenshot({
       path: path.join(artifactDirectory, "correction-reviewed.png"),
+    });
+
+    let accountQueries = 0;
+    adminPage.on("request", request => {
+      if (request.url().endsWith("/api/community/queries")) accountQueries++;
+    });
+    await adminPage.goto(`${baseUrl}/account/community`);
+    await adminPage.getByRole("heading", { name: "公開名" }).waitFor();
+    await adminPage.goto(`${baseUrl}/account/posts`);
+    await adminPage
+      .getByText("試験用の現地レポート本文", { exact: true })
+      .waitFor();
+    assert.equal(
+      accountQueries,
+      0,
+      "standalone account pages should use server data",
+    );
+
+    await adminPage.goto(`${baseUrl}/?c=0102`);
+    await adminPage
+      .getByRole("button", { name: "この比較をリストに保存" })
+      .click();
+    const compareName = adminPage.getByRole("textbox", {
+      name: "新しいリストの名前",
+    });
+    await compareName.fill("保存前のリスト名");
+    await adminPage.route(
+      url => url.pathname === "/rusutsu/" || url.pathname === "/rusutsu",
+      async route => {
+        if (!route.request().headers()["next-action"]) return route.continue();
+        await route.fulfill({
+          status: 404,
+          headers: { "x-nextjs-action-not-found": "1" },
+        });
+      },
+    );
+    await adminPage.getByRole("button", { name: "作成して保存" }).click();
+    await adminPage.getByText(/アプリが更新されました/u).waitFor();
+    assert.equal(await compareName.inputValue(), "保存前のリスト名");
+    await adminPage.screenshot({
+      path: path.join(artifactDirectory, "comparison-stale-action.png"),
     });
     await adminContext.close();
   } else {

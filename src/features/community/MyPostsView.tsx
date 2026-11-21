@@ -44,6 +44,7 @@ export function MyPostsView({
   onViewDay,
   onEdit,
   editedPost,
+  initial,
 }: {
   onClose: () => void;
   onSettings: () => void;
@@ -52,11 +53,16 @@ export function MyPostsView({
   onEdit?: (post: OwnPost) => void;
   /** 編集から戻ったとき、その投稿だけ読み直す（一覧とスクロール位置は保つ） */
   editedPost?: { id: string; token: number } | null;
+  initial?: Awaited<ReturnType<typeof getMyPosts>>;
 }) {
   const router = useRouter();
-  const [posts, setPosts] = useState<OwnPost[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [posts, setPosts] = useState<OwnPost[]>(
+    initial?.ok ? initial.data.posts : [],
+  );
+  const [nextCursor, setNextCursor] = useState<string | null>(
+    initial?.ok ? initial.data.nextCursor : null,
+  );
+  const [loading, setLoading] = useState(!initial?.ok);
   const [loadingMore, setLoadingMore] = useState(false);
   // ログイン画面へ移るまでのあいだ、「投稿はありません」を出さない
   const [redirecting, setRedirecting] = useState(false);
@@ -64,30 +70,35 @@ export function MyPostsView({
   const [deleting, setDeleting] = useState<OwnPost | null>(null);
   const [deleteErrors, setDeleteErrors] = useState<Record<string, string>>({});
 
-  const load = useCallback(async (cursor?: string) => {
-    try {
-      const result = await getMyPosts(cursor);
-      if (result.ok) {
-        setPosts(current =>
-          cursor ? [...current, ...result.data.posts] : result.data.posts,
+  const load = useCallback(
+    async (cursor?: string, prefetched?: typeof initial) => {
+      try {
+        const result = prefetched ?? (await getMyPosts(cursor));
+        if (result.ok) {
+          setPosts(current =>
+            cursor ? [...current, ...result.data.posts] : result.data.posts,
+          );
+          setNextCursor(result.data.nextCursor);
+          return;
+        }
+        // 未ログインならログインへ進める
+        const account = await getCommunityAccount();
+        if (account.ok && !account.data) {
+          setRedirecting(true);
+          void startCommunityLogin("/rusutsu/account/posts");
+          return;
+        }
+        setError(result.error);
+      } catch (cause) {
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : "投稿を読み込めませんでした。",
         );
-        setNextCursor(result.data.nextCursor);
-        return;
       }
-      // 未ログインならログインへ進める
-      const account = await getCommunityAccount();
-      if (account.ok && !account.data) {
-        setRedirecting(true);
-        void startCommunityLogin("/rusutsu/account/posts");
-        return;
-      }
-      setError(result.error);
-    } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : "投稿を読み込めませんでした。",
-      );
-    }
-  }, []);
+    },
+    [],
+  );
 
   const editedId = editedPost?.id;
   const editedToken = editedPost?.token;
@@ -117,7 +128,11 @@ export function MyPostsView({
     setLoading(true);
     void load().finally(() => setLoading(false));
   }, [load]);
-  useEffect(reload, [reload]);
+  useEffect(() => {
+    if (!initial) reload();
+    else if (!initial.ok)
+      void load(undefined, initial).finally(() => setLoading(false));
+  }, [initial, load, reload]);
 
   const more = () => {
     if (!nextCursor || loadingMore) return;
