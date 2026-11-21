@@ -12,6 +12,7 @@ import {
   OPERATION_SUMMARY_VERSION,
 } from "./operations";
 import { writeOperationSummaries } from "./operationWrites";
+import { isRetryableSummaryTransactionError } from "./transactionConflict";
 
 const countSchema = z
   .object({
@@ -140,15 +141,8 @@ export async function findOperatingSummariesDirect(): Promise<
         { isolationLevel: "RepeatableRead" },
       );
     } catch (error) {
-      const details =
-        error && typeof error === "object"
-          ? (error as { code?: string; meta?: { code?: string } })
-          : {};
-      const retryable =
-        details.code === "P2034" ||
-        (details.code === "P2010" &&
-          ["40001", "40P01"].includes(details.meta?.code ?? ""));
-      if (!retryable || attempt >= 2) throw error;
+      if (!isRetryableSummaryTransactionError(error) || attempt >= 2)
+        throw error;
     }
   }
 }
