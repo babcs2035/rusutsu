@@ -6,6 +6,7 @@ import {
   createReadStream,
   existsSync,
   lstatSync,
+  mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
@@ -164,6 +165,73 @@ export function removeIncompleteBackups(root: string): string[] {
     }
   }
   return removed;
+}
+
+/** Moves a confirmed corrupt generation into a private quarantine without deletion. */
+export async function quarantineInvalidGeneration(
+  root: string,
+  name: string,
+): Promise<string> {
+  if (!generationPattern.test(name))
+    throw new Error("Invalid backup generation name.");
+  assertDirectory(root);
+  const source = path.join(root, name);
+  const sourceStat = lstatSync(source);
+  if (!sourceStat.isDirectory() || sourceStat.isSymbolicLink())
+    throw new Error(
+      "Invalid backup generation directory; leaving it untouched.",
+    );
+
+  const members = readdirSync(source);
+  if (
+    members.length === 0 ||
+    !members.includes("database.dump") ||
+    members.some(file => !expectedFiles.includes(file)) ||
+    members.some(file => !regular(path.join(source, file)))
+  ) {
+    throw new Error(
+      "Backup ownership could not be confirmed; leaving the generation untouched.",
+    );
+  }
+
+  let valid = false;
+  try {
+    await verifyGeneration(root, name);
+    valid = true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code) throw error;
+    // A failed integrity check is the only reason to quarantine a generation.
+  }
+  if (valid)
+    throw new Error("A valid backup generation cannot be quarantined.");
+
+  const quarantineRoot = path.join(root, ".quarantine");
+  if (!existsSync(quarantineRoot)) mkdirSync(quarantineRoot, { mode: 0o700 });
+  else assertDirectory(quarantineRoot);
+  const destination = path.join(quarantineRoot, name);
+  if (existsSync(destination) || lstatExists(destination))
+    throw new Error("Quarantine destination already exists.");
+  const currentStat = lstatSync(source);
+  if (
+    !currentStat.isDirectory() ||
+    currentStat.isSymbolicLink() ||
+    currentStat.dev !== sourceStat.dev ||
+    currentStat.ino !== sourceStat.ino
+  )
+    throw new Error("Backup generation changed during quarantine review.");
+  renameSync(source, destination);
+  return path.relative(root, destination);
+}
+
+/** Checks path existence without following a symbolic link. */
+function lstatExists(file: string): boolean {
+  try {
+    lstatSync(file);
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw error;
+  }
 }
 
 /** Copies verified generations without pruning or deleting their legacy sources. */
@@ -354,6 +422,10 @@ async function main() {
       console.log(newest);
     } else if (process.argv[2] === "clean-incomplete") {
       for (const name of removeIncompleteBackups(root)) console.log(name);
+    } else if (process.argv[2] === "quarantine-invalid") {
+      const name = process.argv[3];
+      if (!name) throw new Error("Missing backup generation name.");
+      console.log(await quarantineInvalidGeneration(root, name));
     } else throw new Error("Unknown local backup operation.");
   } catch {
     console.error(

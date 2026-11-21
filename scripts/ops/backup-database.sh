@@ -40,18 +40,26 @@ check_backup_capacity() {
 
 case "${1:-}" in
   ''|--operation-lock-held|--dry-run) ;;
-  *) ops_die 'Usage: backup-database.sh [--dry-run]' ;;
+  --quarantine-invalid)
+    [[ $# -eq 2 ]] || ops_die 'Usage: backup-database.sh --quarantine-invalid <generation>'
+    ;;
+  *) ops_die 'Usage: backup-database.sh [--dry-run | --quarantine-invalid <generation>]' ;;
 esac
 if [[ "${1:-}" != --operation-lock-held ]]; then
   lock_operations
   owns_lock=true
   load_runtime_environment
 fi
+if [[ "${1:-}" == --quarantine-invalid ]]; then
+  ops_node local-backup.ts quarantine-invalid "$2"
+  exit 0
+fi
 if [[ "${1:-}" == --dry-run ]]; then
   ops_node local-backup.ts plan-legacy
   exit 0
 fi
 ops_node local-backup.ts clean-incomplete >/dev/null
+check_backup_capacity
 legacy_generations="$(ops_node local-backup.ts plan-legacy)"
 if [[ -n "$legacy_generations" ]]; then
   while IFS= read -r generation; do
@@ -61,8 +69,8 @@ if [[ -n "$legacy_generations" ]]; then
     bash "$OPS_SCRIPTS_DIR/restore-backup-test.sh" --operation-lock-held "$generation"
     ops_node local-backup.ts confirm-legacy "$generation"
   done <<< "$legacy_generations"
+  check_backup_capacity
 fi
-check_backup_capacity
 work="$(mktemp -d "$BACKUP_DIR/.incomplete-XXXXXXXX")"
 docker exec "$OPS_DB_CONTAINER" sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom' \
   > "$work/database.dump"

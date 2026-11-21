@@ -106,3 +106,23 @@ for (const shell of ["bash", "zsh"]) {
     });
   }
 }
+
+test("CI/CD reports image cleanup failure in a separate GitHub notification job", () => {
+  const workflow = readFileSync(".github/workflows/ci-cd.yml", "utf8");
+  assert.match(
+    workflow,
+    /outputs:\n {6}image-cleanup-outcome: \$\{\{ steps\.image-cleanup\.outcome \}\}/u,
+  );
+  assert.match(
+    workflow,
+    /image-cleanup-notification:[\s\S]*?needs: deploy[\s\S]*?if: needs\.deploy\.outputs\.image-cleanup-outcome == 'failure'[\s\S]*?exit 1/u,
+  );
+  assert.match(workflow, /continue-on-error: true/u);
+  assert.match(
+    workflow,
+    /Report image cleanup failure[\s\S]*?::warning title=Image cleanup failed/u,
+  );
+  const notification = workflow.split("  image-cleanup-notification:")[1];
+  assert.ok(notification);
+  assert.doesNotMatch(notification, /secrets\.|envs:/u);
+});

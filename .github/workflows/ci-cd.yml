@@ -169,6 +169,8 @@ jobs:
     name: Deploy Image to VPS
     runs-on: ubuntu-latest
     needs: build-and-push
+    outputs:
+      image-cleanup-outcome: ${{ steps.image-cleanup.outcome }}
     concurrency:
       group: rusutsu-production-operations
       cancel-in-progress: false
@@ -279,15 +281,23 @@ jobs:
               '${HOME}/'*) DEPLOY_TARGET="$HOME/${DEPLOY_TARGET#\$\{HOME\}/}" ;;
             esac
             cd -- "$DEPLOY_TARGET"
-            before="$(docker system df --format '{{.Type}} {{.Reclaimable}}')"
             if ! bash scripts/ops/cleanup-images.sh; then
               echo 'Verified image cleanup failed; deployment remains active.' >&2
               exit 1
             fi
-            after="$(docker system df --format '{{.Type}} {{.Reclaimable}}')"
-            printf 'Docker reclaimable space before cleanup:\n%s\n' "$before"
-            printf 'Docker reclaimable space after cleanup:\n%s\n' "$after"
 
       - name: Report image cleanup failure
         if: steps.image-cleanup.outcome == 'failure'
         run: echo '::warning title=Image cleanup failed::Deployment succeeded; obsolete image cleanup needs attention.'
+
+  image-cleanup-notification:
+    name: Report Image Cleanup Failure
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: needs.deploy.outputs.image-cleanup-outcome == 'failure'
+    steps:
+      - name: Fail this notification job so GitHub sends the standard failure notification
+        run: |
+          echo 'Deployment succeeded, but verified obsolete image cleanup failed.'
+          echo 'Review the Deploy Image to VPS logs before retrying cleanup.'
+          exit 1

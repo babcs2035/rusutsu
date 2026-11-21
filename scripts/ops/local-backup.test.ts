@@ -19,6 +19,7 @@ import {
   finalize,
   migrateLegacyBackups,
   prune,
+  quarantineInvalidGeneration,
   removeIncompleteBackups,
   verifyGeneration,
 } from "./local-backup.ts";
@@ -83,16 +84,27 @@ test("retention keeps the seven newest verified generations by completion time",
     const corrupt = "rusutsu-db-20261201T000000Z-cccccccc";
     mkdirSync(path.join(f.root, corrupt), { mode: 0o700 });
     writeFileSync(path.join(f.root, corrupt, "database.dump"), "corrupt");
+    const unrelatedTarget = path.join(f.root, "unrelated-target");
+    mkdirSync(unrelatedTarget);
+    writeFileSync(path.join(unrelatedTarget, "keep.txt"), "keep");
+    const linked = "rusutsu-db-20261202T000000Z-dddddddd";
+    symlinkSync(unrelatedTarget, path.join(f.root, linked));
     mkdirSync(path.join(f.root, "unrelated"));
-    mkdirSync(path.join(f.root, ".incomplete-dddddddd"));
+    mkdirSync(path.join(f.root, ".incomplete-eeeeeeee"));
     const retained = await prune(f.root);
     assert.deepEqual(retained, generations.slice(-7).reverse());
     const entries = readdirSync(f.root);
     assert.ok(!entries.includes(generations[0]));
     assert.ok(!entries.includes(generations[1]));
     assert.ok(entries.includes(corrupt));
+    assert.ok(entries.includes(linked));
+    assert.ok(entries.includes("unrelated-target"));
+    assert.equal(
+      readFileSync(path.join(unrelatedTarget, "keep.txt"), "utf8"),
+      "keep",
+    );
     assert.ok(entries.includes("unrelated"));
-    assert.ok(entries.includes(".incomplete-dddddddd"));
+    assert.ok(entries.includes(".incomplete-eeeeeeee"));
   } finally {
     f.clean();
   }
@@ -153,6 +165,64 @@ test("failed finalization does not prune completed generations", async () => {
     );
     assert.ok(readdirSync(f.root).includes(prior));
     assert.ok(readdirSync(f.root).includes(temporary));
+  } finally {
+    f.clean();
+  }
+});
+
+test("quarantine moves only an owned corrupt generation without deleting its data", async () => {
+  const f = fixture();
+  try {
+    const corrupt = "rusutsu-db-20260905T000000Z-aaaaaaaa";
+    mkdirSync(path.join(f.root, corrupt), { mode: 0o700 });
+    writeFileSync(path.join(f.root, corrupt, "database.dump"), "preserve me");
+
+    assert.equal(
+      await quarantineInvalidGeneration(f.root, corrupt),
+      path.join(".quarantine", corrupt),
+    );
+    assert.ok(!readdirSync(f.root).includes(corrupt));
+    assert.equal(
+      readFileSync(
+        path.join(f.root, ".quarantine", corrupt, "database.dump"),
+        "utf8",
+      ),
+      "preserve me",
+    );
+  } finally {
+    f.clean();
+  }
+});
+
+test("quarantine leaves symlinks, valid backups, and unknown contents untouched", async () => {
+  const f = fixture();
+  try {
+    const valid = await f.create("20260905T000000Z", "aaaaaaaa");
+    const target = path.join(f.root, "unrelated-target");
+    mkdirSync(target);
+    writeFileSync(path.join(target, "keep.txt"), "keep");
+    const linked = "rusutsu-db-20260906T000000Z-bbbbbbbb";
+    symlinkSync(target, path.join(f.root, linked));
+    const unknown = "rusutsu-db-20260907T000000Z-cccccccc";
+    mkdirSync(path.join(f.root, unknown));
+    writeFileSync(path.join(f.root, unknown, "unrelated.txt"), "keep");
+
+    await assert.rejects(
+      quarantineInvalidGeneration(f.root, valid),
+      /valid backup/i,
+    );
+    await assert.rejects(
+      quarantineInvalidGeneration(f.root, linked),
+      /directory/i,
+    );
+    await assert.rejects(
+      quarantineInvalidGeneration(f.root, unknown),
+      /ownership/i,
+    );
+    assert.ok(readdirSync(f.root).includes(valid));
+    assert.ok(readdirSync(f.root).includes(linked));
+    assert.ok(readdirSync(f.root).includes(unknown));
+    assert.equal(readFileSync(path.join(target, "keep.txt"), "utf8"), "keep");
   } finally {
     f.clean();
   }

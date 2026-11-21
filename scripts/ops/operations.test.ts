@@ -6,6 +6,7 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import path from "node:path";
@@ -143,17 +144,37 @@ function fixture() {
 test("backup stays on the VPS, validates the archive and commits a private generation", () => {
   const f = fixture();
   try {
+    const backupRoot = path.join(f.root, "project", "backups");
+    const corrupt = "rusutsu-db-20260901T000000Z-cccccccc";
+    mkdirSync(path.join(backupRoot, corrupt), { recursive: true, mode: 0o700 });
+    writeFileSync(path.join(backupRoot, corrupt, "database.dump"), "corrupt");
+    const unrelated = path.join(f.root, "unrelated-backup-target");
+    mkdirSync(unrelated);
+    writeFileSync(path.join(unrelated, "keep.txt"), "keep");
+    const linked = "rusutsu-db-20260902T000000Z-dddddddd";
+    symlinkSync(unrelated, path.join(backupRoot, linked));
+    mkdirSync(path.join(backupRoot, "unrelated-entry"));
+
     const result = f.run("backup-database.sh");
     assert.equal(result.status, 0, result.stderr);
-    const root = path.join(f.root, "project", "backups");
-    const generations = readdirSync(root);
-    assert.equal(generations.length, 1);
-    assert.deepEqual(readdirSync(path.join(root, generations[0])).sort(), [
+    const generations = readdirSync(backupRoot);
+    const completed = generations.find(
+      name => ![corrupt, linked, "unrelated-entry"].includes(name),
+    );
+    assert.ok(completed);
+    assert.deepEqual(readdirSync(path.join(backupRoot, completed)).sort(), [
       "SHA256SUMS",
       "archive.list",
       "database.dump",
       "metadata.json",
     ]);
+    assert.ok(generations.includes(corrupt));
+    assert.ok(generations.includes(linked));
+    assert.ok(generations.includes("unrelated-entry"));
+    assert.equal(
+      readFileSync(path.join(unrelated, "keep.txt"), "utf8"),
+      "keep",
+    );
     assert.ok(f.calls().indexOf("pg_dump") < f.calls().indexOf("pg_restore"));
     assert.ok(
       f.calls().indexOf("pg_database_size") < f.calls().indexOf("pg_dump"),
@@ -190,6 +211,67 @@ test("insufficient free space stops before dumping and preserves backups", async
     assert.deepEqual(readdirSync(path.join(f.root, "project", "backups")), [
       prior,
     ]);
+  } finally {
+    f.clean();
+  }
+});
+
+test("insufficient space is checked before a legacy backup is copied or restored", async () => {
+  const f = fixture();
+  try {
+    const legacyRoot = path.join(f.stateRoot, "backups");
+    const legacyName = "rusutsu-db-20260905T000000Z-aaaaaaaa";
+    const incomplete = ".incomplete-aaaaaaaa";
+    mkdirSync(path.join(legacyRoot, incomplete), {
+      recursive: true,
+      mode: 0o700,
+    });
+    writeFileSync(path.join(legacyRoot, incomplete, "database.dump"), "PGDMP");
+    writeFileSync(path.join(legacyRoot, incomplete, "archive.list"), "archive");
+    await finalize(
+      legacyRoot,
+      incomplete,
+      legacyName,
+      "2026-09-05T00:00:00.000Z",
+    );
+
+    const result = f.run("backup-database.sh", { OPS_TEST_FAILURE: "space" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Insufficient free space/);
+    assert.doesNotMatch(
+      f.calls(),
+      /migrate-legacy|restore-backup-test|pg_dump/,
+    );
+    assert.ok(readdirSync(legacyRoot).includes(legacyName));
+    assert.deepEqual(readdirSync(path.join(f.root, "project", "backups")), []);
+  } finally {
+    f.clean();
+  }
+});
+
+test("corrupt backup quarantine is lock-protected and preserves the generation", () => {
+  const f = fixture();
+  try {
+    const backupRoot = path.join(f.root, "project", "backups");
+    const name = "rusutsu-db-20260905T000000Z-aaaaaaaa";
+    mkdirSync(path.join(backupRoot, name), { recursive: true, mode: 0o700 });
+    writeFileSync(path.join(backupRoot, name, "database.dump"), "preserve");
+
+    const result = f.run("backup-database.sh", {}, [
+      "--quarantine-invalid",
+      name,
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(f.calls(), /rusutsu-operation-test-project/);
+    assert.ok(!readdirSync(backupRoot).includes(name));
+    assert.equal(
+      readFileSync(
+        path.join(backupRoot, ".quarantine", name, "database.dump"),
+        "utf8",
+      ),
+      "preserve",
+    );
+    assert.doesNotMatch(f.calls(), /pg_dump|restore-backup-test/);
   } finally {
     f.clean();
   }
