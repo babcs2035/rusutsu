@@ -2,6 +2,7 @@
 import { z } from "zod";
 import {
   TICKET_PARTY_CATEGORIES,
+  TICKET_PLAN_BATCH_SIZE,
   TICKET_RENTAL_ITEMS,
   TICKET_RENTAL_SPORTS,
 } from "@/features/lift-ticket/types";
@@ -17,46 +18,59 @@ const duration = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("night") }),
   z.object({ kind: z.literal("hours"), hours: z.number().positive() }),
 ]);
+const priceInputSchema = z.object({
+  visitDate: date,
+  usePreference: z.enum(["full_day", "half_day"]),
+  today: date.optional(),
+  days: z
+    .array(z.object({ id: z.string().max(200), date, duration }))
+    .max(31)
+    .optional(),
+  party: z
+    .array(
+      z.object({
+        id: z.string().max(200),
+        category: z.enum(TICKET_PARTY_CATEGORIES),
+        baseCategory: z
+          .enum([
+            "preschool",
+            "elementary",
+            "junior_high",
+            "high_school",
+            "university",
+            "adult",
+          ])
+          .optional(),
+        age: z.number().int().nonnegative().nullable(),
+        count: z.number().int().nonnegative().max(maxPartyCount),
+        rental: z
+          .object({
+            sport: z.enum(TICKET_RENTAL_SPORTS),
+            items: z
+              .array(z.enum(TICKET_RENTAL_ITEMS))
+              .max(TICKET_RENTAL_ITEMS.length),
+          })
+          .nullable()
+          .optional(),
+      }),
+    )
+    .max(50),
+});
 export const resortPriceQuerySchema = z.object({
   resortIds: z.array(resortIdSchema).max(500),
-  input: z.object({
-    visitDate: date,
-    usePreference: z.enum(["full_day", "half_day"]),
-    today: date.optional(),
-    days: z
-      .array(z.object({ id: z.string().max(200), date, duration }))
-      .max(31)
-      .optional(),
-    party: z
-      .array(
-        z.object({
-          id: z.string().max(200),
-          category: z.enum(TICKET_PARTY_CATEGORIES),
-          baseCategory: z
-            .enum([
-              "preschool",
-              "elementary",
-              "junior_high",
-              "high_school",
-              "university",
-              "adult",
-            ])
-            .optional(),
-          age: z.number().int().nonnegative().nullable(),
-          count: z.number().int().nonnegative().max(maxPartyCount),
-          rental: z
-            .object({
-              sport: z.enum(TICKET_RENTAL_SPORTS),
-              items: z
-                .array(z.enum(TICKET_RENTAL_ITEMS))
-                .max(TICKET_RENTAL_ITEMS.length),
-            })
-            .nullable()
-            .optional(),
-        }),
-      )
-      .max(50),
-  }),
+  input: priceInputSchema,
+});
+export const resortTicketPlansQuerySchema = z.strictObject({
+  targets: z
+    .array(
+      z.strictObject({
+        resortId: resortIdSchema,
+        categoryKey: z.string().min(1).max(4000).optional(),
+      }),
+    )
+    .min(1)
+    .max(TICKET_PLAN_BATCH_SIZE),
+  input: priceInputSchema,
 });
 export const resortDetailsQuerySchema = z
   .object({

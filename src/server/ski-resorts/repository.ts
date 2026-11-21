@@ -42,6 +42,16 @@ export const publicResortWhere = {
   mergedIntoId: null,
 } satisfies Prisma.SkiResortWhereInput;
 
+/** 公開処理に必要な施設 ID と，統合後も掲載を継続する資料の出どころを読む． */
+export function findPublicResortSourcesDirect(): Promise<
+  { id: string; sourceResortIds: string[] }[]
+> {
+  return prisma.skiResort.findMany({
+    where: publicResortWhere,
+    select: { id: true, sourceResortIds: true },
+  });
+}
+
 export const resortDetailQuery = {
   // Legacy Weather JSON and LatestReport rows are not used by the detail UI.
   // Current operations and weather links are projected by their own services.

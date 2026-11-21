@@ -9,6 +9,7 @@ import { skiResortIdSchema } from "@/server/ski-resorts/adminContract";
 import {
   findAdminSkiResortsDirect,
   findExistingSkiResortIdsDirect,
+  findPublicResortSourcesDirect,
   findSkiResortNamesDirect,
   findSkiResortsForMapDirect,
   findTourMatchingResortsDirect,
@@ -17,7 +18,14 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const viewSchema = z.enum(["tour-matching", "map", "names", "ids", "admin"]);
+const viewSchema = z.enum([
+  "tour-matching",
+  "map",
+  "names",
+  "ids",
+  "admin",
+  "public-sources",
+]);
 
 const parseIds = (raw: string | null) => {
   if (raw === null) return undefined;
@@ -42,12 +50,18 @@ export async function GET(request: Request) {
   }
   if (
     (view.data === "ids" && ids === undefined) ||
-    (["tour-matching", "map", "admin"].includes(view.data) && ids !== undefined)
+    (["tour-matching", "map", "admin", "public-sources"].includes(view.data) &&
+      ids !== undefined)
   ) {
     return internalApiError(400, "INVALID_QUERY", "Invalid ids parameter");
   }
 
   try {
+    if (view.data === "public-sources") {
+      return internalApiJson({
+        resorts: await findPublicResortSourcesDirect(),
+      });
+    }
     if (view.data === "tour-matching") {
       return internalApiJson({
         resorts: await findTourMatchingResortsDirect(),

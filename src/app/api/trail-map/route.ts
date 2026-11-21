@@ -1,5 +1,6 @@
 import { readResortLinksMap } from "@/features/lift/server/liftFiles";
 import { boundResponseBody } from "@/server/boundedResponse";
+import { readPublicResortAccess } from "@/server/ski-resorts/publicAccess";
 import { fetchTrailMap } from "@/server/trailMapUpstream";
 
 const FETCH_TIMEOUT_MS = 20_000;
@@ -26,9 +27,13 @@ export async function GET(request: Request) {
   )
     return new Response("not allowed", { status: 403 });
 
-  const links = await readResortLinksMap();
-  const registered = Object.values(links).some(entry =>
-    entry.mapUrls?.some(link => link.url === target),
+  const [links, { linkSourceIds }] = await Promise.all([
+    readResortLinksMap(),
+    readPublicResortAccess(),
+  ]);
+  const registered = Object.entries(links).some(
+    ([id, entry]) =>
+      linkSourceIds.has(id) && entry.mapUrls?.some(link => link.url === target),
   );
   if (!registered) return new Response("not allowed", { status: 403 });
 
@@ -62,8 +67,7 @@ export async function GET(request: Request) {
         mediaType === "image/svg+xml"
           ? "sandbox; default-src 'none'"
           : "script-src 'none'; object-src 'none'; base-uri 'none'",
-      "Cache-Control":
-        "public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400",
+      "Cache-Control": "private, no-store",
     },
   });
 }

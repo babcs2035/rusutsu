@@ -25,6 +25,7 @@ import {
   type SkiResortDetailData,
 } from "@/server/ski-resorts/detail";
 import { combineResortMaps } from "@/server/ski-resorts/displayGroupMap";
+import { readPublicResortAccess } from "@/server/ski-resorts/publicAccess";
 import { withMapElevation } from "@/shared/utils/resortElevation";
 
 // スキーリゾート一覧を地図表示用に軽量取得
@@ -102,7 +103,11 @@ export async function calculateLiftTicketAndRentalForList(
     throw new Error("料金計算の条件が不正です。");
   }
   const uniqueIds = [...new Set(resortIds)];
-  const seasonsByResortId = await getLiftTicketDataMap(uniqueIds);
+  if (uniqueIds.length === 0) return {};
+  const { ticketSourceIds } = await readPublicResortAccess();
+  const seasonsByResortId = await getLiftTicketDataMap(
+    uniqueIds.filter(id => ticketSourceIds.has(id)),
+  );
   const results: Record<string, ResortPriceSummary> = {};
   for (const id of uniqueIds) {
     results[id] = summarizeResortPrice(seasonsByResortId.get(id) ?? [], input);
@@ -125,8 +130,9 @@ const MAX_LINK_LIST_RESORT_IDS = 20;
  * リンクのテーブル（公式ページ・ツアー・割引）と、旧来のリンク文書の分をまとめて返す。
  * 営業状況・リフト券のURLは詳細データがすでに持っているので、ここでは読まない。
  */
-export async function getResortLinkList(
+async function getResortLinkList(
   resortIds: string[],
+  linkSourceIds: ReadonlySet<string>,
 ): Promise<ResortLinkItem[]> {
   const ids = [...new Set(resortIds)];
   if (
@@ -135,13 +141,15 @@ export async function getResortLinkList(
     ids.some(id => !RESORT_ID_PATTERN.test(id))
   )
     throw new Error("Invalid ids");
+  const visibleIds = ids.filter(id => linkSourceIds.has(id));
+  if (visibleIds.length === 0) return [];
   const [records, legacy] = await Promise.all([
     // リンクのテーブルが使えなくても、ほかのリンクは表示する
-    findResortLinks(ids).catch(error => {
+    findResortLinks(visibleIds).catch(error => {
       console.warn("リンクのテーブルを読めませんでした:", error);
       return [];
     }),
-    readLegacyResortLinks(ids),
+    readLegacyResortLinks(visibleIds),
   ]);
   return [
     ...records.map(
@@ -175,7 +183,10 @@ export async function getResortLinkLists(
     !resortIdGroups.every(Array.isArray)
   )
     throw new Error("Invalid ids");
-  return Promise.all(resortIdGroups.map(ids => getResortLinkList(ids)));
+  const { linkSourceIds } = await readPublicResortAccess();
+  return Promise.all(
+    resortIdGroups.map(ids => getResortLinkList(ids, linkSourceIds)),
+  );
 }
 
 // 比較用の読み取りは数件ずつに限る。一度に大量のデータを取れる入口にしないため。
@@ -195,7 +206,12 @@ export async function getResortMapDataForCompare(ids: string[]) {
   const unique = [...new Set(ids)];
   if (unique.length === 0 || unique.length > MAX_COMPARE_MAP_IDS)
     throw new Error("Invalid ids");
-  return readResortMapDataByIds(unique);
+  const { sourceIdsByResort } = await readPublicResortAccess();
+  const maps = await readResortMapDataByIds(
+    unique.filter(id => sourceIdsByResort.has(id)),
+  );
+  const mapsById = new Map(maps.map(entry => [entry.id, entry]));
+  return unique.map(id => mapsById.get(id) ?? { id, finalizedMapData: null });
 }
 
 /**
@@ -204,22 +220,28 @@ export async function getResortMapDataForCompare(ids: string[]) {
  * 使うので、重い地図は外して返す。
  */
 export async function getSimultaneousView(resortId: string, groupId: string) {
+  const { sourceIdsByResort } = await readPublicResortAccess();
+  if (!sourceIdsByResort.has(resortId)) return null;
   const group = (await readDisplayGroupsForResort(resortId)).find(
     item => item.id === groupId,
   );
   if (!group) return null;
   // 相手ごとにリンク文書と営業集計を読み直さず，共通の読込を一度だけ行う．
-  const partnerIds = group.members
+  const publishedMembers = group.members.filter(member =>
+    sourceIdsByResort.has(member.id),
+  );
+  if (publishedMembers.length < 2) return null;
+  const partnerIds = publishedMembers
     .filter(member => member.id !== resortId)
     .map(member => member.id);
   const [ownMap, partnerDetails] = await Promise.all([
-    group.members.some(member => member.id === resortId)
+    publishedMembers.some(member => member.id === resortId)
       ? getFinalizedResortMapData(resortId)
       : null,
     readSkiResortDetails(partnerIds, { withMap: true }),
   ]);
   const byId = new Map(partnerDetails.map(detail => [detail.id, detail]));
-  const members = group.members.map(member => ({
+  const members = publishedMembers.map(member => ({
     id: member.id,
     detail: byId.get(member.id),
     mapData: member.id === resortId ? ownMap : null,
@@ -235,7 +257,7 @@ export async function getSimultaneousView(resortId: string, groupId: string) {
       return {
         id: member.id,
         name: (() => {
-          const item = group.members.find(item => item.id === member.id);
+          const item = publishedMembers.find(item => item.id === member.id);
           return (
             item?.label ??
             getResortLabelName(

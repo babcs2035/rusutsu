@@ -9,15 +9,15 @@ import { testArtifactPath } from "../../../scripts/testArtifacts";
 
 const testRoot = testArtifactPath("map-data-read-tests");
 
-test("remote canonical map reads use version marker to avoid duplicate current fetches", async t => {
+test("remote canonical map reads require the current operation version", async t => {
   await fs.mkdir(testRoot, { recursive: true });
   const bundlePath = path.join(testRoot, "map-data-read.mjs");
   await build({
     stdin: {
       contents: `
-        export { readCanonicalResortMap } from '@/server/course-lift/mapData';
+        export { readCanonicalResortMap, readCanonicalResortMapRevision } from '@/server/course-lift/mapData';
           export { CURRENT_MAP_OPERATION_VERSION } from '@/lib/currentMapOperations';
-        export { resetTestData, fetchCalls, currentReads, setResponse } from 'map-data-test-state';
+        export { resetTestData, fetchCalls, currentReads, setResponse, setError } from 'map-data-test-state';
       `,
       resolveDir: process.cwd(),
       sourcefile: "map-data-read-test.ts",
@@ -51,15 +51,19 @@ test("remote canonical map reads use version marker to avoid duplicate current f
                       export const fetchCalls = [];
                       export const currentReads = [];
                       let responseData = null;
+                      let responseError = null;
                       export function resetTestData() {
                         fetchCalls.length = 0;
                         currentReads.length = 0;
                         responseData = null;
+                        responseError = null;
                       }
                       export function setResponse(data) { responseData = data; }
+                      export function setError(error) { responseError = error; }
                       export function usesRemoteDataApi() { return true; }
                       export async function fetchInternalDataApi(path) {
                         fetchCalls.push(path);
+                        if (responseError) throw responseError;
                         return Response.json(responseData);
                       }
                       export class InternalDataApiError extends Error {
@@ -181,6 +185,7 @@ test("remote canonical map reads use version marker to avoid duplicate current f
       api.setResponse({
         enabled: true,
         operationDataVersion: api.CURRENT_MAP_OPERATION_VERSION,
+        revision: "map-state-v1",
         data,
       });
 
@@ -190,50 +195,83 @@ test("remote canonical map reads use version marker to avoid duplicate current f
         "/api/admin/maps/resorts?resortId=sample",
       ]);
       assert.deepEqual(api.currentReads, []);
+      assert.equal(result.revision, "map-state-v1");
       assert.equal(result.data.courses.features[0].properties.status, "△");
       assert.equal(result.data.courses.observedAt, "2026-11-03T00:00:00Z");
     },
   );
 
   await t.test(
-    "unversioned API falls back to current data and clears stale map operations",
+    "unversioned API responses are rejected instead of using compatibility reads",
     async () => {
       api.resetTestData();
       api.setResponse({ enabled: true, data: staleMap() });
 
-      const result = await api.readCanonicalResortMap("sample");
+      await assert.rejects(
+        api.readCanonicalResortMap("sample"),
+        /Remote canonical map API version is incompatible/u,
+      );
 
       assert.deepEqual(api.fetchCalls, [
         "/api/admin/maps/resorts?resortId=sample",
       ]);
-      assert.deepEqual(api.currentReads, [
-        ["sample", "courses"],
-        ["sample", "lifts"],
-      ]);
-      assert.equal(result.data.courses.observedAt, null);
-      assert.deepEqual(result.data.courses.sourceUrls, []);
-      assert.deepEqual(result.data.courseStatusSummary, {
-        total: 1,
-        open: 0,
-        partial: 0,
-        closed: 0,
-        unknown: 1,
-        observedAt: null,
-        sourceUrls: [],
-        updates: [],
-        sourceLabels: undefined,
+      assert.deepEqual(api.currentReads, []);
+    },
+  );
+
+  await t.test(
+    "canonical responses without a revision are rejected",
+    async () => {
+      api.resetTestData();
+      api.setResponse({
+        enabled: true,
+        operationDataVersion: api.CURRENT_MAP_OPERATION_VERSION,
+        data: staleMap(),
       });
-      const course = result.data.courses.features[0];
-      assert.equal(course.properties.status, null);
-      assert.equal(course.properties.update, null);
-      assert.equal(course.properties.latestNote, null);
-      assert.equal(course.latestStatusName, null);
-      assert.equal(course.statusSnapshotId, null);
-      assert.deepEqual(course.sourceUrls, []);
-      assert.deepEqual(course.coordinates, [
-        [140, 43, 800],
-        [140.001, 43.001, 700],
+
+      await assert.rejects(
+        api.readCanonicalResortMap("sample"),
+        /Remote canonical map API version is incompatible/u,
+      );
+    },
+  );
+
+  await t.test("missing remote route errors are propagated", async () => {
+    api.resetTestData();
+    api.setError(new Error("Not found"));
+
+    await assert.rejects(api.readCanonicalResortMap("sample"), /Not found/u);
+
+    assert.deepEqual(api.fetchCalls, [
+      "/api/admin/maps/resorts?resortId=sample",
+    ]);
+    assert.deepEqual(api.currentReads, []);
+  });
+
+  await t.test(
+    "revision view returns current source version tokens",
+    async () => {
+      api.resetTestData();
+      api.setResponse({ enabled: true, revision: "map-state-v1" });
+
+      const result = await api.readCanonicalResortMapRevision("sample");
+
+      assert.deepEqual(result, { enabled: true, revision: "map-state-v1" });
+      assert.deepEqual(api.fetchCalls, [
+        "/api/admin/maps/resorts?resortId=sample&view=revision",
       ]);
+    },
+  );
+
+  await t.test(
+    "disabled canonical maps keep the local data owner fallback",
+    async () => {
+      api.resetTestData();
+      api.setResponse({ enabled: false, data: null });
+
+      const result = await api.readCanonicalResortMap("sample");
+
+      assert.deepEqual(result, { enabled: false, data: null });
     },
   );
 });

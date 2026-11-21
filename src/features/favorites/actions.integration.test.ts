@@ -31,6 +31,10 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
       export { POST as recommendationIndexRoute } from '@/app/api/course-recommendations/route';
       export { writeDataDocumentsInTransaction } from '@/server/data-documents/repository';
       export { authConfig } from '@/lib/auth.config';
+      export { readPublicResortAccess } from '@/server/ski-resorts/publicAccess';
+      export { readResortTicketPlans } from '@/server/ski-resorts/ticketPlans';
+      export { calculateTicketPlanDisplay } from '@/features/lift-ticket/utils/resortPriceCalculation';
+      export { toClientLiftTicketData } from '@/lib/publicLiftTicketData';
     `,
       resolveDir: process.cwd(),
       loader: "ts",
@@ -114,6 +118,7 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
         "third",
         "linked-parent",
         "linked-child",
+        "hidden",
       ].map(id => ({ id, ...data })),
     });
     await db.skiResort.update({
@@ -122,8 +127,53 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
     });
     await db.skiResort.update({
       where: { id: "linked-child" },
-      data: { mergedIntoId: "linked-parent" },
+      data: { mergedIntoId: "linked-parent", isActive: false },
     });
+    await db.skiResort.update({
+      where: { id: "hidden" },
+      data: { isActive: false },
+    });
+    const scope = await api.readPublicResortAccess();
+    assert.equal(scope.sourceIdsByResort.has("linked-parent"), true);
+    assert.equal(scope.sourceIdsByResort.has("linked-child"), false);
+    assert.equal(scope.linkSourceIds.has("linked-child"), true);
+    assert.equal(scope.ticketSourceIds.has("linked-child"), false);
+    assert.equal(scope.linkSourceIds.has("hidden"), false);
+    assert.equal(scope.ticketSourceIds.has("hidden"), false);
+    const ticket = JSON.parse(
+      await fs.readFile(
+        "src/private/data/lift-ticket-test-fixtures/ui/rusutsu-resort/2026-2027.json",
+        "utf8",
+      ),
+    );
+    await db.liftTicketSeason.createMany({
+      data: ["source", "hidden"].map(skiResortId => ({
+        skiResortId,
+        seasonId: "2026-2027",
+        status: ticket.data_quality.status,
+        data: ticket,
+      })),
+    });
+    const input = {
+      visitDate: "2027-01-12",
+      today: "2027-01-12",
+      usePreference: "full_day",
+      party: [{ id: "adult", category: "adult", age: null, count: 1 }],
+    };
+    const [combined, hidden] = await api.readResortTicketPlans(
+      [{ resortId: "linked-parent" }, { resortId: "hidden" }],
+      input,
+    );
+    assert.ok(combined?.tiers.length);
+    assert.deepEqual(
+      combined,
+      api.calculateTicketPlanDisplay(
+        [api.toClientLiftTicketData(ticket)],
+        input,
+        false,
+      ),
+    );
+    assert.equal(hidden, null);
     await run(a, () => api.updateFavorite("source", true, "user-a"));
     const merged = await run(a, () =>
       api.syncFavorites(["candidate", "candidate", "missing"], "user-a"),

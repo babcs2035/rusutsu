@@ -1,18 +1,18 @@
 import { ExternalLink } from "lucide-react";
+import {
+  createResortOperationStatus,
+  type ResortOperationStatus,
+} from "@/features/resort-detail/utils/operationStatus";
 import type { CourseStatusSummary } from "@/lib/courseStatusSummary";
-import type { ResortOperationStatus } from "@/server/ski-resorts/detail";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import type { Resort } from "../types";
 import { removeGeneratedCommentLinks } from "../utils/commentContent";
-import { createCourseDistance } from "../utils/courseChartColumns";
-import { createMapCourseStatusSummary } from "../utils/courseStatusSummary";
 import {
   conditionText,
   hasSourceUrl,
   record,
   sourceUrls,
 } from "../utils/currentConditions";
-import { createLiftStatusSummary } from "../utils/liftStatusSummary";
 import { formatOperationDate } from "../utils/operationDates";
 import { NotFetchedBadge, SourceLine } from "./CompactInfo";
 import { ConditionTable } from "./ConditionTable";
@@ -39,21 +39,6 @@ export const createMapCourseSummary = (
         updates: [],
       };
 
-const createResortOperationStatusFromMap = (
-  mapData: NonNullable<Resort["finalizedMapData"]>,
-): ResortOperationStatus => ({
-  courses: createMapCourseStatusSummary(mapData.courses),
-  lifts: createLiftStatusSummary(mapData.lifts),
-  courseSourceUrls: mapData.courses?.sourceUrls ?? [],
-  liftSourceUrls: mapData.lifts?.sourceUrls ?? [],
-  courseObservedAt: mapData.courses?.observedAt ?? null,
-  liftObservedAt: mapData.lifts?.observedAt ?? null,
-  courseSourceLabels: mapData.courseStatusSummary?.sourceLabels,
-  courseUpdates:
-    mapData.courses?.features.map(c => c.properties.update ?? "") ?? [],
-  courseDistance: createCourseDistance(mapData.courses),
-});
-
 export function CurrentOverview({
   resort,
   summaryOnly = false,
@@ -72,7 +57,7 @@ export function CurrentOverview({
   const newsLinks = resort.newsLinks ?? [];
   // 地図があればそこから、無ければサーバーで集計済みの operationStatus を使う
   const status = resort.finalizedMapData
-    ? createResortOperationStatusFromMap(resort.finalizedMapData)
+    ? createResortOperationStatus(resort.finalizedMapData)
     : (operationStatus ?? resort.operationStatus);
   const courseStatus = status?.courses ?? null;
   // 「〇〇も同時に表示」中は、相手のスキー場のコンディションもまとめて出す。

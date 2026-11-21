@@ -259,6 +259,8 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
     await t.test(
       "adoption counts mapped groups and ignores unmapped courses",
       async () => {
+        const previousVersion =
+          await api.readCanonicalResortMapRevisionDirect("sample");
         const input = crawl("2026-10-18T01:00:00Z", [
           { name: "A", status: "○", update: "08:00", note: "上部のみ" },
           { name: "B", status: "×", update: null, note: null },
@@ -272,6 +274,14 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
           blocksPromotion: false,
         }));
         const saved = await api.persistCrawlLatestRun(input, "first");
+        const revised =
+          await api.readCanonicalResortMapRevisionDirect("sample");
+        assert.equal(revised.enabled, true);
+        assert.notEqual(revised.revision, previousVersion.revision);
+        assert.equal(
+          (await api.readCanonicalResortMapDirect("sample")).revision,
+          revised.revision,
+        );
         const categories = await db.crawlLatestCategorySnapshot.findMany({
           where: { runId: saved.runId, kind: { in: ["COURSES", "LIFTS"] } },
         });
@@ -329,6 +339,8 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
     await t.test(
       "map sections share one course and unknown remains unknown",
       async () => {
+        const previousVersion =
+          await api.readCanonicalResortMapRevisionDirect("sample");
         const saved = await api.getDataDocumentDirect(mappingKey);
         const sections = JSON.parse(JSON.stringify(mapping));
         sections.courses.rows[0].crawledName = "A上部";
@@ -337,6 +349,9 @@ test("canonical maps: document-free edits, crawler adoption, summaries and concu
         await api.writeDataDocumentsDirect([
           write(mappingKey, sections, saved.hash),
         ]);
+        const revised =
+          await api.readCanonicalResortMapRevisionDirect("sample");
+        assert.notEqual(revised.revision, previousVersion.revision);
         await api.persistCrawlLatestRun(
           crawl("2026-10-18T01:10:00Z", [
             { name: "A上部", status: "○", update: null, note: null },

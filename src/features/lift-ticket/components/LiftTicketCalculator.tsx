@@ -4,23 +4,25 @@ import { type ReactNode, useMemo } from "react";
 import { ReportErrorButton } from "@/features/corrections/ReportErrorButton";
 import { filtersSchema } from "@/features/map/session/storage";
 import { useScreenState } from "@/features/map/session/useScreenState";
+import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
 import type { LiftTicketData, LiftTicketSearchInput } from "../types";
-import {
-  ageRequiredGroupIdsOf,
-  DEFAULT_LIFT_TICKET_SEARCH_INPUT,
-} from "../utils/calculateLiftTicket";
+import { DEFAULT_LIFT_TICKET_SEARCH_INPUT } from "../utils/calculateLiftTicket";
 import { SEARCH_RENTAL_OPTIONS } from "../utils/rental";
-import { calculateResortPriceTiers } from "../utils/resortPriceCalculation";
 import { TicketPartyEditor } from "./TicketPartyEditor";
 import { TicketPlanCard } from "./TicketPlanCard";
+import { useTicketPlans } from "./useTicketPlans";
 
 export const LiftTicketCalculator = ({
   seasons,
+  resortId,
+  categoryKey,
   sessionKey,
   initialInput = DEFAULT_LIFT_TICKET_SEARCH_INPUT,
   categoryControl,
 }: {
   seasons: LiftTicketData[];
+  resortId: string;
+  categoryKey: string;
   sessionKey?: string;
   initialInput?: LiftTicketSearchInput;
   /** 「高鷲のみ」「ダイナランド共通券」など、計算する券の種類の切り替え */
@@ -31,20 +33,13 @@ export const LiftTicketCalculator = ({
     filtersSchema.shape.liftTicket,
     initialInput,
   );
-  // 一覧・比較と同じ関数で計算する（画面ごとに金額を変えない）
-  const calculated = useMemo(
-    () => calculateResortPriceTiers(seasons, input),
-    [seasons, input],
+  const entries = useMemo(
+    () => [{ resortId, categoryKey, seasons }],
+    [resortId, categoryKey, seasons],
   );
-  const data = calculated?.data ?? null;
-  const tierInputs = calculated?.tierInputs ?? null;
-  const tiers = calculated?.tiers ?? null;
-  // 一番安い買い方の結果（年齢の入力が要る人の判定と、誤りの報告に使う）
-  const cheapest =
-    tierInputs?.find(tier => tier.key === tiers?.[0]?.key) ?? null;
-  const plan = cheapest?.plan ?? null;
-  const rental = cheapest?.rental ?? null;
-  const bundle = cheapest?.bundle ?? null;
+  const plans = useTicketPlans(entries, input);
+  const calculated = plans?.[0];
+  const report = calculated?.report;
 
   return (
     <section className="rounded-2xl bg-gray-50 border border-gray-200 p-3 md:p-4">
@@ -60,25 +55,21 @@ export const LiftTicketCalculator = ({
           value={input}
           onChange={setInput}
           rentalOptions={SEARCH_RENTAL_OPTIONS}
-          ageRequiredGroupIds={plan ? ageRequiredGroupIdsOf(plan) : []}
+          ageRequiredGroupIds={calculated?.ageRequiredGroupIds ?? []}
         />
-        {tiers && <TicketPlanCard tiers={tiers} />}
-        {data && plan && (
+        {plans === null && (
+          <LoadingSpinner text="料金を計算中…" className="h-20" />
+        )}
+        {calculated && <TicketPlanCard tiers={calculated.tiers} />}
+        {report && (
           <ReportErrorButton
-            resortId={data.resort.id}
+            resortId={report.resortId}
             kind="ticket"
             label="この料金が間違っている"
             context={{
               type: "calculation",
               input,
-              plan,
-              rental,
-              bundle,
-              seasonId: data.season.id,
-              schemaVersion: data.schema_version,
-              offers: data.offers,
-              calendars: data.calendars,
-              fees: data.fees,
+              ...report.context,
             }}
           />
         )}

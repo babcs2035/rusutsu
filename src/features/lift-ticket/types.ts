@@ -1,4 +1,7 @@
 import type { YukimajiDocument } from "@/shared/utils/yukimajiSummary";
+/** 単体・比較で料金プランを一度に計算する施設数を制限する． */
+export const TICKET_PLAN_BATCH_SIZE = 16;
+
 export const TICKET_PARTY_CATEGORIES = [
   "preschool",
   "elementary",

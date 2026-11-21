@@ -1,9 +1,8 @@
+import { createHash } from "node:crypto";
 import type { Prisma } from "@prisma/client";
+import { z } from "zod";
 import { createMapCourseStatusSummary } from "@/features/resort-detail/utils/courseStatusSummary";
-import {
-  applyCurrentMapOperations,
-  CURRENT_MAP_OPERATION_VERSION,
-} from "@/lib/currentMapOperations";
+import { CURRENT_MAP_OPERATION_VERSION } from "@/lib/currentMapOperations";
 import {
   normalizeCourseFeature,
   normalizeLiftFeature,
@@ -15,7 +14,6 @@ import type {
 } from "@/lib/finalizedResortGeojsonShared";
 import {
   fetchInternalDataApi,
-  InternalDataApiError,
   usesRemoteDataApi,
 } from "@/lib/internalDataApiClient";
 import { toSourceLabels } from "@/lib/latestStatusFiles";
@@ -24,13 +22,15 @@ import { adjustCourseName } from "@/lib/resortMapMerge";
 import { entityFeature } from "./canonicalCodec";
 import { canonicalMapsEnabled } from "./canonicalDocuments";
 
-export async function findCanonicalResortMap(
+/** 地図と revision を同じ読み取りスナップショットから返す． */
+async function findCanonicalResortMap(
   tx: Prisma.TransactionClient,
   resortId: string,
 ): Promise<{
   enabled: boolean;
   data: FinalizedResortMapData | null;
   operationDataVersion?: number;
+  revision?: string;
 }> {
   if (!(await canonicalMapsEnabled(tx))) return { enabled: false, data: null };
   const courses = await tx.mapCourse.findMany({
@@ -126,9 +126,11 @@ export async function findCanonicalResortMap(
       : null,
   };
   const courseSummary = createMapCourseStatusSummary(data.courses);
+  const revision = await buildCanonicalResortMapRevision(tx, resortId, adopted);
   return {
     enabled: true,
     operationDataVersion: CURRENT_MAP_OPERATION_VERSION,
+    revision,
     data:
       data.courses || data.lifts
         ? {
@@ -146,39 +148,102 @@ export async function findCanonicalResortMap(
         : null,
   };
 }
+
+const CANONICAL_RESORT_MAP_DOCUMENT_FOLDERS = [
+  "slope_before",
+  "slope_10m",
+  "slope_before_osm",
+  "slope_10m_osm",
+  "lift_before",
+  "lift_20m",
+  "slope_detail",
+  "lift_detail",
+  "latest_status_mapping",
+] as const;
+const RESORT_MAP_REVISION_RESPONSE = z.strictObject({
+  enabled: z.boolean(),
+  revision: z.string(),
+});
+
+/** 地図と照合要求で同じ順序の識別子を使い，応答を固定長にする． */
+async function buildCanonicalResortMapRevision(
+  tx: Prisma.TransactionClient,
+  resortId: string,
+  adopted: readonly { kind: string; snapshotId: string }[],
+): Promise<string> {
+  const keys = CANONICAL_RESORT_MAP_DOCUMENT_FOLDERS.map(
+    folder =>
+      `resorts-temporary/${folder}/${resortId}.${folder.endsWith("_detail") || folder === "latest_status_mapping" ? "json" : "geojson"}`,
+  );
+  const documents = await tx.mapDocumentState.findMany({
+    where: { key: { in: keys } },
+    select: { key: true, hash: true, version: true },
+    orderBy: { key: "asc" },
+  });
+  const currents = adopted
+    .map(({ kind, snapshotId }) => ({ kind, snapshotId }))
+    .sort((left, right) => left.kind.localeCompare(right.kind));
+  return createHash("sha256")
+    .update(
+      JSON.stringify({
+        operationDataVersion: CURRENT_MAP_OPERATION_VERSION,
+        documents,
+        currents,
+      }),
+    )
+    .digest("hex");
+}
+
+/** 本文を取得せずに canonical map の版を照合する． */
+async function findCanonicalResortMapRevision(
+  tx: Prisma.TransactionClient,
+  resortId: string,
+): Promise<{ enabled: boolean; revision: string }> {
+  if (!(await canonicalMapsEnabled(tx)))
+    return { enabled: false, revision: "" };
+  const adopted = await tx.crawlLatestCurrent.findMany({
+    where: { skiResortId: resortId, kind: { in: ["COURSES", "LIFTS"] } },
+    select: { kind: true, snapshotId: true },
+  });
+  return {
+    enabled: true,
+    revision: await buildCanonicalResortMapRevision(tx, resortId, adopted),
+  };
+}
+
+export async function readCanonicalResortMapRevision(resortId: string) {
+  if (!usesRemoteDataApi())
+    return readCanonicalResortMapRevisionDirect(resortId);
+  const query = new URLSearchParams({ resortId, view: "revision" });
+  const response = await fetchInternalDataApi(
+    `/api/admin/maps/resorts?${query}`,
+  );
+  return RESORT_MAP_REVISION_RESPONSE.parse(await response.json());
+}
+
+export const readCanonicalResortMapRevisionDirect = (resortId: string) =>
+  prisma.$transaction(tx => findCanonicalResortMapRevision(tx, resortId), {
+    isolationLevel: "RepeatableRead",
+  });
+
 export async function readCanonicalResortMap(resortId: string) {
   if (!usesRemoteDataApi()) return readCanonicalResortMapDirect(resortId);
-  try {
-    const response = await fetchInternalDataApi(
-      `/api/admin/maps/resorts?resortId=${encodeURIComponent(resortId)}`,
-    );
-    const result = (await response.json()) as {
-      enabled: boolean;
-      data: FinalizedResortMapData | null;
-      operationDataVersion?: number;
-    };
-    if (!result.enabled || !result.data) return result;
-    // 同じ版のAPIはトランザクション内で現在値を照合済み。追加通信しない。
-    if (result.operationDataVersion === CURRENT_MAP_OPERATION_VERSION)
-      return result;
-    // APIが旧版でも、地図の保存値へフォールバックさせない。
-    const { readCurrentCrawlLatestStatus } = await import(
-      "@/lib/crawlLatestCurrent"
-    );
-    const [courses, lifts] = await Promise.all([
-      readCurrentCrawlLatestStatus(resortId, "courses"),
-      readCurrentCrawlLatestStatus(resortId, "lifts"),
-    ]);
-    return {
-      ...result,
-      data: applyCurrentMapOperations(result.data, { courses, lifts }),
-    };
-  } catch (error) {
-    // The local UI can still read an older data API while the server is upgraded.
-    if (error instanceof InternalDataApiError && error.status === 404)
-      return { enabled: false, data: null };
-    throw error;
-  }
+  const response = await fetchInternalDataApi(
+    `/api/admin/maps/resorts?resortId=${encodeURIComponent(resortId)}`,
+  );
+  const result = (await response.json()) as {
+    enabled: boolean;
+    data: FinalizedResortMapData | null;
+    operationDataVersion?: number;
+    revision?: string;
+  };
+  if (!result.enabled || !result.data) return result;
+  if (
+    result.operationDataVersion !== CURRENT_MAP_OPERATION_VERSION ||
+    typeof result.revision !== "string"
+  )
+    throw new Error("Remote canonical map API version is incompatible");
+  return result;
 }
 
 export const readCanonicalResortMapDirect = (resortId: string) =>

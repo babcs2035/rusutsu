@@ -116,6 +116,8 @@ export const TicketsTab = ({
       <div className="flex flex-col gap-6">
         <LiftTicketCalculator
           key={category.key}
+          resortId={category.resortId}
+          categoryKey={category.key}
           seasons={category.seasons}
           // 検索で条件を指定していれば、それを最初の入力にする。詳細で変えた分は
           // 同じ検索条件の間だけ残し、検索条件を変えたら新しい条件から始める

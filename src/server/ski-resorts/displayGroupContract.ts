@@ -69,13 +69,7 @@ export type DisplayGroupDeleteRequest = z.infer<
 export const displayGroupSaveResultSchema = z.discriminatedUnion("status", [
   z.object({ status: z.literal("saved"), group: displayGroupSchema }),
   z.object({
-    status: z.enum([
-      "conflict",
-      "not_found",
-      "invalid_resorts",
-      "duplicate",
-      "unsupported_labels",
-    ]),
+    status: z.enum(["conflict", "not_found", "invalid_resorts", "duplicate"]),
   }),
 ]);
 export type DisplayGroupSaveResult = z.infer<

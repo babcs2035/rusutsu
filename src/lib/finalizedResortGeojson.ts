@@ -635,39 +635,51 @@ export const getResortMapDataFromRoots = async (
 ): Promise<FinalizedResortMapData | null> =>
   (await buildResortMapData(resortId, roots)).data;
 
-export const getFinalizedResortMapData = async (resortId: string) => {
+export const getFinalizedResortMapDataSnapshot = async (resortId: string) => {
   const { readCanonicalResortMap } = await import(
     "@/server/course-lift/mapData"
   );
   const canonical = await readCanonicalResortMap(resortId);
-  if (canonical.enabled) return canonical.data;
-  return getResortMapDataFromRoots(resortId, {
-    temporaryRoot: TEMPORARY_RESORTS_ROOT,
-    documentLoader: async absoluteFilePath => {
-      const dataRoot = path.resolve(
-        /* turbopackIgnore: true */ process.cwd(),
-        "src/private/data",
-      );
-      const relativePath = path.relative(dataRoot, absoluteFilePath);
-      if (
-        relativePath === "" ||
-        relativePath === ".." ||
-        relativePath.startsWith(`..${path.sep}`) ||
-        path.isAbsolute(relativePath)
-      ) {
-        return null;
-      }
-      const key = relativePath.split(path.sep).join("/");
-      const { getDataDocument } = await import(
-        "@/server/data-documents/client"
-      );
-      return (await getDataDocument(key))?.content ?? null;
-    },
-    latestStatusLoader: async (id, kind) => {
-      const { readCurrentCrawlLatestStatus } = await import(
-        "./crawlLatestCurrent"
-      );
-      return readCurrentCrawlLatestStatus(id, kind);
-    },
-  });
+  if (canonical.enabled)
+    return {
+      data: canonical.data,
+      canonicalEnabled: true,
+      revision: canonical.revision ?? null,
+    };
+  return {
+    data: await getResortMapDataFromRoots(resortId, {
+      temporaryRoot: TEMPORARY_RESORTS_ROOT,
+      documentLoader: async absoluteFilePath => {
+        const dataRoot = path.resolve(
+          /* turbopackIgnore: true */ process.cwd(),
+          "src/private/data",
+        );
+        const relativePath = path.relative(dataRoot, absoluteFilePath);
+        if (
+          relativePath === "" ||
+          relativePath === ".." ||
+          relativePath.startsWith(`..${path.sep}`) ||
+          path.isAbsolute(relativePath)
+        ) {
+          return null;
+        }
+        const key = relativePath.split(path.sep).join("/");
+        const { getDataDocument } = await import(
+          "@/server/data-documents/client"
+        );
+        return (await getDataDocument(key))?.content ?? null;
+      },
+      latestStatusLoader: async (id, kind) => {
+        const { readCurrentCrawlLatestStatus } = await import(
+          "./crawlLatestCurrent"
+        );
+        return readCurrentCrawlLatestStatus(id, kind);
+      },
+    }),
+    canonicalEnabled: false,
+    revision: null,
+  };
 };
+
+export const getFinalizedResortMapData = async (resortId: string) =>
+  (await getFinalizedResortMapDataSnapshot(resortId)).data;

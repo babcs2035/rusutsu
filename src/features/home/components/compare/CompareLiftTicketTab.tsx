@@ -1,9 +1,11 @@
 "use client";
 
+import { useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { TicketPlanCard } from "@/features/lift-ticket/components/TicketPlanCard";
+import { useTicketPlans } from "@/features/lift-ticket/components/useTicketPlans";
 import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
-import { calculateResortPriceTiers } from "@/features/lift-ticket/utils/resortPriceCalculation";
+import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
 import { CompareResortDetailButton } from "./CompareResortNameCell";
 import { COMPARE_CARD_GRID_CLASS } from "./constants";
 import type { Resort } from "./types";
@@ -17,33 +19,45 @@ export const CompareLiftTicketTab = ({
   input: LiftTicketSearchInput;
   /** 「詳細」で開くスキー場。渡さなければボタンを出さない */
   onSelectResort?: (id: string) => void;
-}) => (
-  <div className="@container w-full">
-    <div className={COMPARE_CARD_GRID_CLASS}>
-      {resorts.map(resort => {
-        // 詳細の料金タブと同じ計算・同じカードで出す
-        const tiers =
-          calculateResortPriceTiers(resort.liftTickets, input)?.tiers ?? [];
-        return (
-          <Card key={resort.id}>
-            <CardContent className="p-4">
-              <div className="mb-3 flex min-w-0 items-center gap-2">
-                <p className="min-w-0 font-semibold break-words text-gray-900 font-[var(--font-heading)]">
-                  {resort.nameJa}
-                </p>
-                {onSelectResort && (
-                  <CompareResortDetailButton
-                    resortId={resort.id}
-                    onSelectResort={onSelectResort}
-                    className="ml-auto"
-                  />
+}) => {
+  const entries = useMemo(
+    () =>
+      resorts.map(resort => ({
+        resortId: resort.id,
+        seasons: resort.liftTickets,
+      })),
+    [resorts],
+  );
+  const plans = useTicketPlans(entries, input);
+  return (
+    <div className="@container w-full">
+      <div className={COMPARE_CARD_GRID_CLASS}>
+        {resorts.map((resort, index) => {
+          return (
+            <Card key={resort.id}>
+              <CardContent className="p-4">
+                <div className="mb-3 flex min-w-0 items-center gap-2">
+                  <p className="min-w-0 font-semibold break-words text-gray-900 font-[var(--font-heading)]">
+                    {resort.nameJa}
+                  </p>
+                  {onSelectResort && (
+                    <CompareResortDetailButton
+                      resortId={resort.id}
+                      onSelectResort={onSelectResort}
+                      className="ml-auto"
+                    />
+                  )}
+                </div>
+                {plans === null ? (
+                  <LoadingSpinner text="料金を計算中…" className="h-20" />
+                ) : (
+                  <TicketPlanCard tiers={plans[index]?.tiers ?? []} />
                 )}
-              </div>
-              <TicketPlanCard tiers={tiers} />
-            </CardContent>
-          </Card>
-        );
-      })}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
     </div>
-  </div>
-);
+  );
+};

@@ -1,5 +1,8 @@
 import type { LiftTicketData, LiftTicketSearchInput } from "../types";
-import { calculateLiftTicketPlan } from "./calculateLiftTicket";
+import {
+  ageRequiredGroupIdsOf,
+  calculateLiftTicketPlan,
+} from "./calculateLiftTicket";
 import {
   buildPlanTiers,
   type TicketPlanTier,
@@ -48,6 +51,40 @@ export const calculateResortPriceTiers = (
   });
   return { data, tierInputs, tiers: buildPlanTiers(data, tierInputs) };
 };
+
+/** 詳細・比較で描画する結果と，詳細からの訂正に必要な計算根拠を作る． */
+export function calculateTicketPlanDisplay(
+  seasons: LiftTicketData[],
+  input: LiftTicketSearchInput,
+  includeReport: boolean,
+) {
+  const calculated = calculateResortPriceTiers(seasons, input);
+  if (!calculated) return null;
+  const { data, tiers, tierInputs } = calculated;
+  const cheapest = tierInputs.find(tier => tier.key === tiers[0]?.key);
+  return {
+    tiers,
+    ageRequiredGroupIds: cheapest ? ageRequiredGroupIdsOf(cheapest.plan) : [],
+    report:
+      includeReport && cheapest
+        ? {
+            resortId: data.resort.id,
+            context: {
+              plan: cheapest.plan,
+              rental: cheapest.rental,
+              bundle: cheapest.bundle,
+              seasonId: data.season.id,
+              schemaVersion: data.schema_version,
+              offers: data.offers,
+              calendars: data.calendars,
+              fees: data.fees,
+            },
+          }
+        : null,
+  };
+}
+
+export type TicketPlanDisplay = ReturnType<typeof calculateTicketPlanDisplay>;
 
 /** 一覧・比較に出す1行の料金。詳細の一番安い段階の見出し金額と同じもの */
 export type ResortPriceSummary =

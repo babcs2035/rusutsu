@@ -4,11 +4,9 @@ import {
   SKI_RESORT_LINKS_DOCUMENT_KEY,
 } from "@/features/lift/server/liftFiles";
 import {
-  type CourseDistance,
-  createCourseDistance,
-} from "@/features/resort-detail/utils/courseChartColumns";
-import { createMapCourseStatusSummary } from "@/features/resort-detail/utils/courseStatusSummary";
-import { createLiftStatusSummary } from "@/features/resort-detail/utils/liftStatusSummary";
+  createFinalizedOperationSummary,
+  createResortOperationStatus,
+} from "@/features/resort-detail/utils/operationStatus";
 import {
   collectNewsLinks,
   collectTrailMapLinks,
@@ -17,92 +15,26 @@ import {
   resolveResortWeatherIds,
   weatherLinksMapFromDocument,
 } from "@/features/weather/weatherLinks";
-import type { CourseStatusSummary } from "@/lib/courseStatusSummary";
 import { readCurrentResortConditions } from "@/lib/crawlLatestCurrent";
-import { getFinalizedResortMapData } from "@/lib/finalizedResortGeojson";
-import type {
-  FinalizedCourseFeature,
-  FinalizedLiftFeature,
-  FinalizedResortMapData,
-} from "@/lib/finalizedResortGeojsonShared";
+import {
+  getFinalizedResortMapData,
+  getFinalizedResortMapDataSnapshot,
+} from "@/lib/finalizedResortGeojson";
+import type { FinalizedResortMapData } from "@/lib/finalizedResortGeojsonShared";
 import { getResortDecisionData } from "@/lib/resortDecisionData";
 import { readDisplayGroupsForResort } from "@/lib/resortDisplayGroups";
 import { getResortReadingInfo } from "@/lib/resortReadings";
 import { readSkiResortById } from "@/lib/skiResortData";
+import { readCanonicalResortMapRevision } from "@/server/course-lift/mapData";
 import { readOperatingSummaries } from "@/server/course-lift/summaryClient";
 import {
   getDataDocument,
   listDataDocuments,
 } from "@/server/data-documents/client";
 import { currentEditCapture } from "@/server/edit-requests/capture";
+import { readPublicResortAccess } from "@/server/ski-resorts/publicAccess";
 import type { SkiResortDetailRecord } from "@/server/ski-resorts/repository";
 import { withMapElevation } from "@/shared/utils/resortElevation";
-
-type OperationCountSummary = {
-  total: number;
-  open: number;
-  partial: number;
-  hasPartial: boolean;
-};
-
-type FinalizedOperationSummary = {
-  courses: OperationCountSummary | null;
-  lifts: OperationCountSummary | null;
-};
-
-const getOperationSymbol = (status: string | null | undefined) => {
-  if (!status) return null;
-  if (/[○〇◯]/u.test(status)) return "open";
-  if (/[△]/u.test(status)) return "partial";
-  return null;
-};
-
-const isCountableCourseName = (name: string) =>
-  !name.startsWith("無名") && !name.includes("_");
-
-const createOperationCountSummary = (
-  statuses: Array<string | null | undefined>,
-): OperationCountSummary | null => {
-  if (statuses.length === 0) return null;
-
-  const operationSymbols = statuses.map(getOperationSymbol);
-  if (operationSymbols.every(symbol => symbol === null)) return null;
-
-  const open = operationSymbols.filter(symbol => symbol === "open");
-  const partial = operationSymbols.filter(symbol => symbol === "partial");
-
-  return {
-    total: statuses.length,
-    open: open.length,
-    partial: partial.length,
-    hasPartial: partial.length > 0,
-  };
-};
-
-const createCourseOperationSummary = (
-  courses: FinalizedCourseFeature[],
-): OperationCountSummary | null =>
-  createOperationCountSummary(
-    courses
-      .filter(course => isCountableCourseName(course.name))
-      .map(course => course.properties.status),
-  );
-
-const createLiftOperationSummary = (
-  lifts: FinalizedLiftFeature[],
-): OperationCountSummary | null =>
-  createOperationCountSummary(lifts.map(lift => lift.properties.status));
-
-export const createFinalizedOperationSummary = (
-  finalizedMapData: FinalizedResortMapData | null,
-): FinalizedOperationSummary => ({
-  courses: finalizedMapData?.courses
-    ? createCourseOperationSummary(finalizedMapData.courses.features)
-    : null,
-  lifts: finalizedMapData?.lifts
-    ? createLiftOperationSummary(finalizedMapData.lifts.features)
-    : null,
-});
 
 export type SimultaneousOption = {
   /** 表示状態を覚えるキー。組のどのスキー場から開いても同じになる */
@@ -126,18 +58,28 @@ export type SimultaneousOption = {
 export async function resolveSimultaneousOptions(
   resortId: string,
 ): Promise<SimultaneousOption[]> {
+  const { sourceIdsByResort } = await readPublicResortAccess();
+  if (!sourceIdsByResort.has(resortId)) return [];
   const groups = await readDisplayGroupsForResort(resortId);
-  return groups.map(group => ({
-    key: `group:${group.id}`,
-    groupId: group.id,
-    label: group.label,
-    partners: group.members.filter(member => member.id !== resortId),
-    memberLabels: Object.fromEntries(
-      group.members.flatMap(member =>
-        member.label ? [[member.id, member.label]] : [],
-      ),
-    ),
-  }));
+  return groups.flatMap(group => {
+    const members = group.members.filter(member =>
+      sourceIdsByResort.has(member.id),
+    );
+    if (members.length < 2) return [];
+    return [
+      {
+        key: `group:${group.id}`,
+        groupId: group.id,
+        label: group.label,
+        partners: members.filter(member => member.id !== resortId),
+        memberLabels: Object.fromEntries(
+          members.flatMap(member =>
+            member.label ? [[member.id, member.label]] : [],
+          ),
+        ),
+      },
+    ];
+  });
 }
 
 /** SNS・コースマップ・ニュース・天気のリンク一覧。全スキー場で 1 つの文書 */
@@ -178,35 +120,6 @@ export async function readLegacyResortLinks(resortIds: readonly string[]) {
   const { linksMap } = await readResortLinks();
   return resortIds.map(id => linksMap[id]).filter(Boolean);
 }
-
-/** 地図の形を持たなくても営業件数を出せるよう、サーバー側で集計した結果 */
-export type ResortOperationStatus = {
-  courses: CourseStatusSummary | null;
-  lifts: CourseStatusSummary | null;
-  courseSourceUrls: string[];
-  liftSourceUrls: string[];
-  courseObservedAt: string | null;
-  liftObservedAt: string | null;
-  courseSourceLabels: Record<string, string> | undefined;
-  courseUpdates: string[];
-  /** 滑走距離（m）。open は営業状況の出典があるときだけ（○・△のコース） */
-  courseDistance: CourseDistance | null;
-};
-
-export const createResortOperationStatus = (
-  mapData: FinalizedResortMapData | null,
-): ResortOperationStatus => ({
-  courses: createMapCourseStatusSummary(mapData?.courses),
-  lifts: createLiftStatusSummary(mapData?.lifts),
-  courseSourceUrls: mapData?.courses?.sourceUrls ?? [],
-  liftSourceUrls: mapData?.lifts?.sourceUrls ?? [],
-  courseObservedAt: mapData?.courses?.observedAt ?? null,
-  liftObservedAt: mapData?.lifts?.observedAt ?? null,
-  courseSourceLabels: mapData?.courseStatusSummary?.sourceLabels,
-  courseUpdates:
-    mapData?.courses?.features.map(c => c.properties.update ?? "") ?? [],
-  courseDistance: createCourseDistance(mapData?.courses),
-});
 
 const buildSkiResortDetail = async (
   resort: SkiResortDetailRecord,
@@ -261,22 +174,59 @@ export type SkiResortDetailData = Awaited<
   ReturnType<typeof buildSkiResortDetail>
 >;
 
-const pendingCompareMaps = new Map<
+const MAX_CACHED_RESORT_MAPS = 32;
+const cachedResortMaps = new Map<
   string,
-  ReturnType<typeof getFinalizedResortMapData>
+  { revision: string; data: FinalizedResortMapData | null }
+>();
+const pendingResortMaps = new Map<
+  string,
+  Promise<FinalizedResortMapData | null>
 >();
 
-/** 比較詳細の営業集計と地図配信で，同時に進行している取得を共有する． */
-function readCompareMap(
+/** geometry と現在値の版が一致するときだけ，同一プロセス内の地図を再利用する． */
+async function readResortMap(
   resortId: string,
-): ReturnType<typeof getFinalizedResortMapData> {
-  const existing = pendingCompareMaps.get(resortId);
+): Promise<FinalizedResortMapData | null> {
+  if (currentEditCapture()) return getFinalizedResortMapData(resortId);
+  const existing = pendingResortMaps.get(resortId);
   if (existing) return existing;
-  const pending = getFinalizedResortMapData(resortId).finally(() => {
-    pendingCompareMaps.delete(resortId);
-  });
-  pendingCompareMaps.set(resortId, pending);
-  return pending;
+  const pending = readCurrentResortMap(resortId);
+  pendingResortMaps.set(resortId, pending);
+  try {
+    return await pending;
+  } finally {
+    pendingResortMaps.delete(resortId);
+  }
+}
+
+/** 版の照合から再取得までを一つの進行中の読み込みとして扱う． */
+async function readCurrentResortMap(
+  resortId: string,
+): Promise<FinalizedResortMapData | null> {
+  const cached = cachedResortMaps.get(resortId);
+  if (cached) {
+    const current = await readCanonicalResortMapRevision(resortId);
+    if (current.enabled && current.revision === cached.revision) {
+      cachedResortMaps.delete(resortId);
+      cachedResortMaps.set(resortId, cached);
+      return cached.data;
+    }
+    cachedResortMaps.delete(resortId);
+  }
+
+  const snapshot = await getFinalizedResortMapDataSnapshot(resortId);
+  if (snapshot.canonicalEnabled && snapshot.revision) {
+    cachedResortMaps.set(resortId, {
+      revision: snapshot.revision,
+      data: snapshot.data,
+    });
+    if (cachedResortMaps.size > MAX_CACHED_RESORT_MAPS) {
+      const oldest = cachedResortMaps.keys().next();
+      if (!oldest.done) cachedResortMaps.delete(oldest.value);
+    }
+  }
+  return snapshot.data;
 }
 
 /**
@@ -296,9 +246,7 @@ export async function readSkiResortDetails(
         return source
           ? {
               source,
-              mapData: await (withMap
-                ? getFinalizedResortMapData(source.id)
-                : readCompareMap(source.id)),
+              mapData: await readResortMap(source.id),
             }
           : null;
       }),
@@ -339,7 +287,7 @@ export async function readResortMapDataByIds(
   return Promise.all(
     ids.map(async id => ({
       id,
-      finalizedMapData: await readCompareMap(id),
+      finalizedMapData: await readResortMap(id),
     })),
   );
 }
