@@ -17,7 +17,7 @@ for (const shell of ["bash", "zsh"]) {
   const available = spawnSync(shell, ["-c", "exit 0"]).status === 0;
   for (const workflow of ["ci-cd", "database-backup"]) {
     test(`${workflow}: deployment paths work in ${shell}`, {
-      skip: !available,
+      skip: !available && (shell !== "bash" || process.env.CI !== "true"),
     }, () => {
       const root = mkdtempSync(path.join(os.tmpdir(), "rusutsu-target-"));
       try {

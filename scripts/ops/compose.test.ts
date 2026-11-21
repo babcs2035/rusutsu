@@ -35,7 +35,7 @@ function config(env: Partial<NodeJS.ProcessEnv>, json = false) {
 }
 
 test("production Compose isolates tokens and waits for DB/API health", {
-  skip: !available,
+  skip: !available && process.env.CI !== "true",
 }, () => {
   const result = config({ CRAWL_LATEST_CRON: "" }, true);
   assert.equal(result.status, 0, result.stderr);
@@ -70,14 +70,14 @@ test("production Compose isolates tokens and waits for DB/API health", {
 
 for (const key of Object.keys(required)) {
   test(`production Compose rejects missing ${key}`, {
-    skip: !available,
+    skip: !available && process.env.CI !== "true",
   }, () => {
     assert.notEqual(config({ [key]: "" }).status, 0);
   });
 }
 
 test("Compose serializes literal dollars without substituting their contents", {
-  skip: !available,
+  skip: !available && process.env.CI !== "true",
 }, () => {
   // biome-ignore lint/suspicious/noTemplateCurlyInString: Verify literal Compose interpolation characters in credentials.
   const secret = "literal-$UNSET-${UNSET}-$$-quotes'\"-backslash\\";
