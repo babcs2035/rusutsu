@@ -25,11 +25,20 @@ const MAP_CHUNK_SIZE = 4;
  */
 export const COMPARE_DATA_FRESH_MS = 10 * 60 * 1000;
 
-const isFresh = (
+/** 指定した比較対象の取得結果が10分未満かを判定する． */
+export const isCompareDataFresh = (
   fetched: { key: string; at: number } | null,
   key: string,
 ): boolean =>
   fetched?.key === key && Date.now() - fetched.at < COMPARE_DATA_FRESH_MS;
+
+/** オンライン復帰後に同じ比較の再取得を始められるかを判定する． */
+export const shouldRetryCompareData = (
+  fetched: { key: string; at: number } | null,
+  key: string,
+  online: boolean,
+  activeKey: string | null,
+): boolean => online && activeKey !== key && !isCompareDataFresh(fetched, key);
 
 const chunk = <T>(items: T[], size: number): T[][] => {
   const chunks: T[][] = [];
@@ -70,6 +79,7 @@ export const useCompareResorts = (
   const pendingMapIdsRef = useRef<string[]>([]);
   // 最後に詳細と地図を取り終えた比較と時刻
   const fetchedRef = useRef<{ key: string; at: number } | null>(null);
+  const activeKeyRef = useRef<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
   const idsKey = ids.join(",");
 
@@ -81,9 +91,41 @@ export const useCompareResorts = (
     wasEnabledRef.current = enabled;
     if (!enabled || !wasEnabled || !visible || !idsKey) return;
     if (fetchedRef.current?.key !== idsKey) return;
-    if (!isFresh(fetchedRef.current, idsKey))
+    if (
+      shouldRetryCompareData(
+        fetchedRef.current,
+        idsKey,
+        navigator.onLine,
+        activeKeyRef.current,
+      )
+    )
       setRefreshToken(token => token + 1);
   }, [enabled, visible, idsKey]);
+
+  useEffect(() => {
+    if (!enabled || !visible || !idsKey) return;
+    const retryIfStale = () => {
+      if (document.visibilityState !== "visible") return;
+      if (
+        !shouldRetryCompareData(
+          fetchedRef.current,
+          idsKey,
+          navigator.onLine,
+          activeKeyRef.current,
+        )
+      )
+        return;
+      setRefreshToken(token => token + 1);
+    };
+    window.addEventListener("online", retryIfStale);
+    window.addEventListener("focus", retryIfStale);
+    document.addEventListener("visibilitychange", retryIfStale);
+    return () => {
+      window.removeEventListener("online", retryIfStale);
+      window.removeEventListener("focus", retryIfStale);
+      document.removeEventListener("visibilitychange", retryIfStale);
+    };
+  }, [enabled, idsKey, visible]);
 
   const prioritize = useCallback((priorityIds: string[]) => {
     const pending = pendingMapIdsRef.current;
@@ -102,8 +144,9 @@ export const useCompareResorts = (
       return;
     }
     // 同じ比較を取り終えて間もないなら、手元の表示をそのまま使う
-    if (isFresh(fetchedRef.current, idsKey)) return;
+    if (isCompareDataFresh(fetchedRef.current, idsKey)) return;
     const targetIds = idsKey.split(",");
+    activeKeyRef.current = idsKey;
     const requests = new AbortController();
     let disposed = false;
     let failed = false;
@@ -195,6 +238,7 @@ export const useCompareResorts = (
       });
       if (!navigator.onLine) {
         detailsReady = true;
+        fetchedRef.current = { key: idsKey, at: -Infinity };
         publish(true);
         return;
       }
@@ -206,13 +250,19 @@ export const useCompareResorts = (
       publish();
       await maps;
       if (disposed) return;
-      fetchedRef.current = { key: idsKey, at: failed ? -Infinity : Date.now() };
+      fetchedRef.current = {
+        key: idsKey,
+        at: failed ? -Infinity : Date.now(),
+      };
       publish(true);
     };
-    void run();
+    void run().finally(() => {
+      if (!disposed) activeKeyRef.current = null;
+    });
 
     return () => {
       disposed = true;
+      if (activeKeyRef.current === idsKey) activeKeyRef.current = null;
       requests.abort();
       pendingMapIdsRef.current = [];
     };

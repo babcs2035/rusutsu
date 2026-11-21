@@ -26,6 +26,8 @@ type CompareListsContextValue = {
   userId: string | null;
   /** ログイン状態の確認と、リストの初回読み込みが済んだ */
   ready: boolean;
+  loadFailed: boolean;
+  retryLoad: () => void;
   lists: CompareListSummary[];
   save: (input: {
     id?: string | null;
@@ -66,7 +68,12 @@ export function CompareListsProvider({
     userId: string | null;
     lists: CompareListSummary[];
     ready: boolean;
+    loadFailed?: boolean;
   }>({ userId: null, lists: [], ready: false });
+  const [retryCount, setRetryCount] = useState(0);
+  const retryLoad = useCallback((): void => {
+    setRetryCount(count => count + 1);
+  }, []);
   const available = useRef(new Set(resortIds));
   available.current = new Set(resortIds);
   const currentUser = useRef(userId);
@@ -87,6 +94,7 @@ export function CompareListsProvider({
   }, []);
 
   useEffect(() => {
+    void retryCount;
     if (status === "loading") return;
     if (!userId) {
       setState({ userId: null, lists: [], ready: true });
@@ -95,7 +103,7 @@ export function CompareListsProvider({
     const request = ++generation.current;
     const controller = new AbortController();
     setState(previous =>
-      previous.userId === userId
+      previous.userId === userId && !previous.loadFailed
         ? previous
         : { userId, lists: [], ready: false },
     );
@@ -118,12 +126,23 @@ export function CompareListsProvider({
           currentUser.current !== userId
         )
           return;
-        setState({ userId, lists: [], ready: true });
+        setState({ userId, lists: [], ready: true, loadFailed: true });
       });
     return () => {
       controller.abort();
     };
-  }, [accept, status, userId]);
+  }, [accept, retryCount, status, userId]);
+
+  const loadFailed = state.userId === userId && state.loadFailed === true;
+  useEffect(() => {
+    if (!loadFailed) return;
+    window.addEventListener("online", retryLoad);
+    window.addEventListener("focus", retryLoad);
+    return () => {
+      window.removeEventListener("online", retryLoad);
+      window.removeEventListener("focus", retryLoad);
+    };
+  }, [loadFailed, retryLoad]);
 
   const save: CompareListsContextValue["save"] = async input => {
     if (!userId) return null;
@@ -132,11 +151,11 @@ export function CompareListsProvider({
         ...input,
         expectedUserId: userId,
       });
+      if (currentUser.current !== userId) return null;
       if (!result.ok) {
         toast.error(result.error);
         return null;
       }
-      if (currentUser.current !== userId) return null;
       accept(userId, result.lists);
       toast.success(
         input.id ? "比較リストを更新しました" : "比較リストに保存しました",
@@ -146,6 +165,7 @@ export function CompareListsProvider({
       );
       return result.lists.find(list => list.id === result.id) ?? null;
     } catch (error) {
+      if (currentUser.current !== userId) return null;
       if (reloadIfStaleBuild(error)) return null;
       toast.error("保存できませんでした。ログイン状態をご確認ください。");
       return null;
@@ -154,10 +174,13 @@ export function CompareListsProvider({
   const remove: CompareListsContextValue["remove"] = async id => {
     if (!userId) return false;
     try {
-      accept(userId, await deleteCompareList(id, userId));
+      const updated = await deleteCompareList(id, userId);
+      if (currentUser.current !== userId) return false;
+      accept(userId, updated);
       toast.success("比較リストを削除しました", { duration: 1000 });
       return true;
     } catch (error) {
+      if (currentUser.current !== userId) return false;
       if (reloadIfStaleBuild(error)) return false;
       toast.error("削除できませんでした。");
       return false;
@@ -172,15 +195,16 @@ export function CompareListsProvider({
         id,
         name,
       });
+      if (currentUser.current !== userId) return null;
       if (!result.ok) {
         toast.error(result.error);
         return null;
       }
-      if (currentUser.current !== userId) return null;
       accept(userId, result.lists);
       toast.success("リスト名を変更しました", { duration: 1200 });
       return result.lists.find(list => list.id === id) ?? null;
     } catch (error) {
+      if (currentUser.current !== userId) return null;
       if (reloadIfStaleBuild(error)) return null;
       toast.error("リスト名を変更できませんでした。");
       return null;
@@ -200,11 +224,11 @@ export function CompareListsProvider({
         resortIds,
         operation,
       });
+      if (currentUser.current !== userId) return null;
       if (!result.ok) {
         toast.error(result.error);
         return null;
       }
-      if (currentUser.current !== userId) return null;
       accept(userId, result.lists);
       toast.success(
         operation === "add"
@@ -214,6 +238,7 @@ export function CompareListsProvider({
       );
       return result.lists.find(list => list.id === id) ?? null;
     } catch (error) {
+      if (currentUser.current !== userId) return null;
       if (reloadIfStaleBuild(error)) return null;
       toast.error("比較リストを更新できませんでした。");
       return null;
@@ -226,6 +251,8 @@ export function CompareListsProvider({
       value={{
         userId,
         ready,
+        loadFailed,
+        retryLoad,
         lists: ready ? state.lists : [],
         save,
         remove,

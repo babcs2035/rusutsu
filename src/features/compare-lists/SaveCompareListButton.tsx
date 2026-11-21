@@ -125,7 +125,20 @@ export function SaveCompareListButton({
                 <p className="text-sm text-muted-foreground">
                   {resortIds.length}件のスキー場を追加します。
                 </p>
-                {compareLists.lists.length === 0 ? (
+                {compareLists.loadFailed ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p role="alert" className="text-sm text-muted-foreground">
+                      保存済みリストを読み込めませんでした。
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={compareLists.retryLoad}
+                    >
+                      再試行
+                    </Button>
+                  </div>
+                ) : compareLists.lists.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
                     保存済みリストはありません。
                   </p>
