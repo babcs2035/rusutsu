@@ -3,14 +3,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { fetchBoundedResponse } from "./boundedResponse";
 
-test("fetchBoundedResponse rejects oversized bodies and blocks redirects", async t => {
-  const originalFetch = globalThis.fetch;
-  t.after(() => {
-    globalThis.fetch = originalFetch;
-  });
-
+test("fetchBoundedResponse rejects oversized bodies and blocks redirects", async () => {
   let requestInit: RequestInit | undefined;
-  globalThis.fetch = async (_input, init) => {
+  const fetchImpl: typeof fetch = async (_input, init) => {
     requestInit = init;
     return new Response("abc");
   };
@@ -18,7 +13,7 @@ test("fetchBoundedResponse rejects oversized bodies and blocks redirects", async
   const response = await fetchBoundedResponse(
     "https://data.example.test/api/admin/documents",
     {},
-    { maxBytes: 2, timeoutMs: 1000 },
+    { fetchImpl, maxBytes: 2, timeoutMs: 1000 },
   );
   assert.equal(requestInit?.redirect, "error");
   assert.equal(requestInit?.cache, "no-store");

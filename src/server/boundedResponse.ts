@@ -5,6 +5,7 @@ const DEFAULT_INTERNAL_RESPONSE_LIMIT_BYTES = 128 * 1024 * 1024;
 const DEFAULT_INTERNAL_RESPONSE_TIMEOUT_MS = 30_000;
 
 type BoundedFetchOptions = {
+  fetchImpl?: typeof fetch;
   maxBytes?: number;
   timeoutMs?: number;
 };
@@ -28,7 +29,7 @@ export async function fetchBoundedResponse(
   const signal = init.signal
     ? AbortSignal.any([init.signal, timeout])
     : timeout;
-  const response = await fetch(input, {
+  const response = await (options.fetchImpl ?? fetch)(input, {
     ...init,
     cache: "no-store",
     redirect: "error",
