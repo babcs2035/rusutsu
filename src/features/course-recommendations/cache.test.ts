@@ -44,6 +44,26 @@ test("a failed request is evicted so retry can succeed", async () => {
   await assert.rejects(cache.get("source"));
   assert.equal(await cache.get("source"), 42);
 });
+test("an invalidated in-flight response cannot replace a newer cached result", async () => {
+  let resolveOld!: (value: string) => void;
+  let calls = 0;
+  const cache = createResultCache(async () => {
+    calls++;
+    if (calls === 1)
+      return new Promise<string>(resolve => {
+        resolveOld = resolve;
+      });
+    return "new";
+  });
+
+  const oldRequest = cache.get("source");
+  cache.invalidate("source");
+  assert.equal(await cache.get("source"), "new");
+  resolveOld("old");
+  assert.equal(await oldRequest, "old");
+  assert.equal(cache.peek("source"), "new");
+  assert.equal(cache.peekStale("source"), "new");
+});
 test("instant index lookup respects the requested main route and never substitutes a secondary route", () => {
   const index = {
     status: "ready" as const,

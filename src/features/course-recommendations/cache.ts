@@ -29,11 +29,16 @@ export function createResultCache<T>(
     entries.set(id, entry);
     entry.promise = entry.promise
       .then(value => {
-        entry.value = value;
-        entry.expires = now() + 60000;
-        if (latest.size >= 20 && !latest.has(id))
-          latest.delete(latest.keys().next().value as string);
-        latest.set(id, value);
+        // invalidate() or an entry-capacity eviction may have replaced this
+        // request while it was in flight. An older response must not become
+        // the current cache value after a newer request has started.
+        if (entries.get(id) === entry) {
+          entry.value = value;
+          entry.expires = now() + 60000;
+          if (latest.size >= 20 && !latest.has(id))
+            latest.delete(latest.keys().next().value as string);
+          latest.set(id, value);
+        }
         return value;
       })
       .catch(error => {
