@@ -51,6 +51,7 @@ if [[ "${1:-}" == --dry-run ]]; then
   ops_node local-backup.ts plan-legacy
   exit 0
 fi
+ops_node local-backup.ts clean-incomplete >/dev/null
 legacy_generations="$(ops_node local-backup.ts plan-legacy)"
 if [[ -n "$legacy_generations" ]]; then
   while IFS= read -r generation; do

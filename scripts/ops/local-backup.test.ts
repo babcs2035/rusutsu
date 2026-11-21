@@ -19,6 +19,7 @@ import {
   finalize,
   migrateLegacyBackups,
   prune,
+  removeIncompleteBackups,
   verifyGeneration,
 } from "./local-backup.ts";
 
@@ -246,6 +247,27 @@ test("backup validation rejects traversal, incomplete members and symlink target
     chmodSync(path.join(f.root, name, "database.dump"), 0o600);
     rmSync(path.join(f.root, name, "archive.list"));
     await assert.rejects(verifyGeneration(f.root, name), /Incomplete/);
+  } finally {
+    f.clean();
+  }
+});
+
+test("incomplete cleanup removes only generated temporary directories", () => {
+  const f = fixture();
+  try {
+    const abandoned = ".incomplete-aaaaaaaa";
+    const generation = "rusutsu-db-20260905T000000Z-bbbbbbbb";
+    const linked = ".incomplete-cccccccc";
+    mkdirSync(path.join(f.root, abandoned));
+    mkdirSync(path.join(f.root, generation));
+    mkdirSync(path.join(f.root, "unrelated"));
+    symlinkSync(path.join(f.root, "unrelated"), path.join(f.root, linked));
+
+    assert.deepEqual(removeIncompleteBackups(f.root), [abandoned]);
+    assert.ok(!readdirSync(f.root).includes(abandoned));
+    assert.ok(readdirSync(f.root).includes(generation));
+    assert.ok(readdirSync(f.root).includes("unrelated"));
+    assert.ok(readdirSync(f.root).includes(linked));
   } finally {
     f.clean();
   }

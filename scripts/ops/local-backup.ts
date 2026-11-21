@@ -146,6 +146,26 @@ export async function prune(root: string, keep = 7): Promise<string[]> {
   return valid.slice(0, keep).map(({ name }) => name);
 }
 
+/** Removes only abandoned temporary directories while the caller holds the operation lock. */
+export function removeIncompleteBackups(root: string): string[] {
+  assertDirectory(root);
+  const removed: string[] = [];
+  for (const name of readdirSync(root)) {
+    if (!/^\.incomplete-[A-Za-z0-9]{8}$/u.test(name)) continue;
+    const directory = path.join(root, name);
+    try {
+      const stat = lstatSync(directory);
+      if (!stat.isDirectory() || stat.isSymbolicLink()) continue;
+      rmSync(directory, { recursive: true });
+      removed.push(name);
+    } catch {
+      // Leave paths that cannot be inspected or removed for manual review.
+      console.warn("Could not remove an incomplete backup directory.");
+    }
+  }
+  return removed;
+}
+
 /** Copies verified generations without pruning or deleting their legacy sources. */
 export async function migrateLegacyBackups(
   legacyRoot: string,
@@ -332,6 +352,8 @@ async function main() {
       const newest = candidates[0]?.name;
       if (!newest) throw new Error("No completed local backup exists.");
       console.log(newest);
+    } else if (process.argv[2] === "clean-incomplete") {
+      for (const name of removeIncompleteBackups(root)) console.log(name);
     } else throw new Error("Unknown local backup operation.");
   } catch {
     console.error(
