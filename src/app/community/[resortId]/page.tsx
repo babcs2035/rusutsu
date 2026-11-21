@@ -1,12 +1,17 @@
 import Link from "next/link";
 import { CommunityFeed } from "@/features/community/CommunityFeed";
+import { getCommunityFeed } from "@/server/community/queries";
 
+export const dynamic = "force-dynamic";
+
+/** 最初の一覧を表示してから，条件変更や続きの取得をブラウザーで扱う． */
 export default async function CommunityPage({
   params,
 }: {
   params: Promise<{ resortId: string }>;
 }) {
   const { resortId } = await params;
+  const initialFeed = await getCommunityFeed({ resortId, sort: "observed" });
   return (
     <main className="mx-auto max-w-3xl space-y-4 p-4">
       <div className="flex items-center justify-between">
@@ -21,7 +26,12 @@ export default async function CommunityPage({
         </Link>
       </div>
       <h1 className="text-xl font-bold">みんなの投稿</h1>
-      <CommunityFeed resortId={resortId} hideHeading />
+      <CommunityFeed
+        key={resortId}
+        resortId={resortId}
+        hideHeading
+        initialFeed={initialFeed}
+      />
     </main>
   );
 }

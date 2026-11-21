@@ -3,7 +3,7 @@
 import { Pencil, Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -111,6 +111,7 @@ function mapHighlight(entry: PublicReportEntry | undefined) {
   return feature || point ? { feature, point, kind: entry.kind } : null;
 }
 
+/** 初期一覧があれば表示し，利用者の条件変更後に投稿を取得し直す． */
 export function CommunityFeed({
   resortId,
   resortIds,
@@ -120,6 +121,7 @@ export function CommunityFeed({
   hideHeading = false,
   highlightOnMap = false,
   correctable = false,
+  initialFeed,
 }: {
   resortId: string;
   /** 「〇〇も同時に表示」中に、一緒に並べる組のスキー場 */
@@ -133,16 +135,21 @@ export function CommunityFeed({
   highlightOnMap?: boolean;
   /** 「＋投稿」の右に、スキー場の情報を直す「情報を修正」を出す */
   correctable?: boolean;
+  initialFeed?: Awaited<ReturnType<typeof getCommunityFeed>>;
 }) {
   const router = useRouter();
-  const [posts, setPosts] = useState<PublicPost[]>([]);
+  const [posts, setPosts] = useState<PublicPost[]>(
+    initialFeed?.ok ? initialFeed.data.posts : [],
+  );
   const [sort, setSort] = useState<"observed" | "created">("observed");
   const [kind, setKind] = useState<keyof typeof KINDS>("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [busy, setBusy] = useState(true);
-  const [failed, setFailed] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(
+    initialFeed?.ok ? initialFeed.data.nextCursor : null,
+  );
+  const [busy, setBusy] = useState(!initialFeed);
+  const [failed, setFailed] = useState(initialFeed?.ok === false);
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const period = matchingPeriod(from, to);
   const query: FeedInput = {
@@ -156,7 +163,21 @@ export function CommunityFeed({
     sort,
   };
   const queryKey = JSON.stringify(query);
+  const serverQueryKey = JSON.stringify({ resortId, sort: "observed" });
+  const changedConditions = useRef(false);
+  const pageRequest = useRef({ pending: false });
   useEffect(() => {
+    // 条件が変わったら，元の一覧の追加ページは採用しない．
+    const activePageRequest = { pending: false };
+    pageRequest.current = activePageRequest;
+    if (queryKey !== serverQueryKey) changedConditions.current = true;
+    if (initialFeed && !changedConditions.current) {
+      setPosts(initialFeed.ok ? initialFeed.data.posts : []);
+      setNextCursor(initialFeed.ok ? initialFeed.data.nextCursor : null);
+      setFailed(!initialFeed.ok);
+      setBusy(false);
+      return;
+    }
     let active = true;
     setBusy(true);
     setFailed(false);
@@ -181,7 +202,7 @@ export function CommunityFeed({
     return () => {
       active = false;
     };
-  }, [queryKey]);
+  }, [initialFeed, queryKey, serverQueryKey]);
   useEffect(() => {
     if (!highlightOnMap) return;
     const post = posts.find(item => item.id === selectedPostId);
@@ -195,16 +216,21 @@ export function CommunityFeed({
     [highlightOnMap, resortId],
   );
   const loadMore = () => {
-    if (!nextCursor) return;
+    const request = pageRequest.current;
+    if (!nextCursor || busy || request.pending) return;
+    request.pending = true;
     void getCommunityFeed({ ...query, cursor: nextCursor })
       .then(result => {
-        if (result.ok) {
+        if (pageRequest.current === request && result.ok) {
           setPosts(all => [...all, ...result.data.posts]);
           setNextCursor(result.data.nextCursor);
         }
       })
       .catch(() => {
         /* 失敗しても「もっと見る」は残るので、再クリックで再試行できる。 */
+      })
+      .finally(() => {
+        request.pending = false;
       });
   };
   const target = courseId

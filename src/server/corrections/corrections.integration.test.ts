@@ -557,15 +557,15 @@ test("anonymous corrections: PostgreSQL idempotency, review CAS, geometry, bulk 
       where: { requestId: photoRequest.id },
     });
     assert.equal(photo.mimeType, "image/webp");
+    const hiddenPhoto = await run(anonymous(), () =>
+      api.photoGET(new Request("http://localhost"), {
+        params: Promise.resolve({ photoId: photo.id }),
+      }),
+    );
+    assert.equal(hiddenPhoto.status, 404);
     assert.equal(
-      (
-        await run(anonymous(), () =>
-          api.photoGET(new Request("http://localhost"), {
-            params: Promise.resolve({ photoId: photo.id }),
-          }),
-        )
-      ).status,
-      404,
+      hiddenPhoto.headers.get("cache-control"),
+      "private, no-store, max-age=0",
     );
     assert.equal(
       (

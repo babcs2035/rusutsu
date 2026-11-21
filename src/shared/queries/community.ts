@@ -45,12 +45,6 @@ export function getPostDetail(
 ): ReturnType<typeof Queries.getPostDetail> {
   return query({ operation: "detail", postId });
 }
-/** 公開名と公開投稿だけを取得する． */
-export function getPublicProfile(
-  ...[userId]: Parameters<typeof Queries.getPublicProfile>
-): ReturnType<typeof Queries.getPublicProfile> {
-  return query({ operation: "publicProfile", userId });
-}
 /** 本人の通知だけを取得する． */
 export function getNotifications(): ReturnType<
   typeof Queries.getNotifications

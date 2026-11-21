@@ -22,6 +22,7 @@ import {
   readLegacyResortLinks,
   readResortMapDataByIds,
   readSkiResortDetails,
+  type SkiResortDetailData,
 } from "@/server/ski-resorts/detail";
 import { combineResortMaps } from "@/server/ski-resorts/displayGroupMap";
 import { withMapElevation } from "@/shared/utils/resortElevation";
@@ -109,8 +110,10 @@ export async function calculateLiftTicketAndRentalForList(
   return results;
 }
 
-// スキーリゾート詳細を取得
-export async function getSkiResortById(id: string) {
+/** 公開中の施設を取得し，詳細がなければ null を返す． */
+export async function getSkiResortById(
+  id: string,
+): Promise<SkiResortDetailData | null> {
   const [detail] = await readSkiResortDetails([id], { withMap: true });
   return detail ?? null;
 }

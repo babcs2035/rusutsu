@@ -1,3 +1,4 @@
+import { privatePhotoNotFoundResponse } from "@/server/community/photoHttp";
 import { getCommunityPhoto } from "@/server/community/remoteClient";
 
 export async function GET(
@@ -5,8 +6,7 @@ export async function GET(
   { params }: { params: Promise<{ photoId: string }> },
 ) {
   const { photoId } = await params;
-  if (!/^[a-z0-9]{20,40}$/.test(photoId))
-    return new Response(null, { status: 404 });
+  if (!/^[a-z0-9]{20,40}$/.test(photoId)) return privatePhotoNotFoundResponse();
   const size = new URL(request.url).searchParams.get("size");
   return getCommunityPhoto(
     photoId,

@@ -87,6 +87,7 @@ import { nearestCourseId, reportLocationError } from "./location";
 import { reportResortId, resortReportMap } from "./mapData";
 import { type LightboxPhoto, PhotoLightbox } from "./PhotoLightbox";
 import { submitReport } from "./submitReport";
+import { useComposerPhotoPreviews } from "./useComposerPhotoPreviews";
 
 type Kind = ReportEntryDraft["kind"];
 // 入力途中の状態。種類を選ぶ前は項目がなく、時刻も空のことがある。
@@ -217,7 +218,8 @@ export function CommunityComposer({
   const [version, setVersion] = useState<number | null>(null);
   const [savedPhotos, setSavedPhotos] = useState<PublicPhoto[]>([]);
   const [removedPhotoIds, setRemovedPhotoIds] = useState<string[]>([]);
-  const [newPhotos, setNewPhotos] = useState<{ file: File; url: string }[]>([]);
+  const { newPhotos, readNewPhotoFiles, replaceNewPhotos, removeNewPhoto } =
+    useComposerPhotoPreviews();
   const [photoPreview, setPhotoPreview] = useState<{
     photo: LightboxPhoto;
     anchor: HTMLElement;
@@ -257,8 +259,6 @@ export function CommunityComposer({
   const initialTargetRef = useRef(initialTarget);
   const mapDataRef = useRef(mapData);
   mapDataRef.current = mapData;
-  const newPhotosRef = useRef(newPhotos);
-  newPhotosRef.current = newPhotos;
   const reportRef = useRef(report);
   reportRef.current = report;
   const callbacks = useRef({ onMapPickModeChange, onMapPointChange });
@@ -311,7 +311,6 @@ export function CommunityComposer({
     return () => {
       mounted.current = false;
       geoRequest.current++;
-      for (const photo of newPhotosRef.current) URL.revokeObjectURL(photo.url);
       callbacks.current.onMapPickModeChange?.(null);
       callbacks.current.onMapPointChange?.(null);
     };
@@ -342,8 +341,7 @@ export function CommunityComposer({
     setLoadingError("");
     setDraftNotice("");
     setRestoredNotice("");
-    for (const photo of newPhotosRef.current) URL.revokeObjectURL(photo.url);
-    setNewPhotos([]);
+    replaceNewPhotos([]);
     setPhotoPreview(null);
     setProcessingPhotos(false);
     setSavedPhotos([]);
@@ -478,12 +476,7 @@ export function CommunityComposer({
               const validFiles = stored.files.filter(
                 file => file.size > 0 && file.size <= MAX_PHOTO_BYTES,
               );
-              setNewPhotos(
-                validFiles.map(file => ({
-                  file,
-                  url: URL.createObjectURL(file),
-                })),
-              );
+              replaceNewPhotos(validFiles);
               photosMissing.current =
                 stored.photosMissing ||
                 saved.photosMissing ||
@@ -544,6 +537,7 @@ export function CommunityComposer({
     sessionStatus,
     signedOut,
     sessionIdentity,
+    replaceNewPhotos,
   ]);
 
   const patchEntry = useCallback(
@@ -710,11 +704,7 @@ export function CommunityComposer({
       photosMissing: photosMissing.current,
     };
     try {
-      const result = await saveDraft(
-        scope,
-        data,
-        newPhotosRef.current.map(photo => photo.file),
-      );
+      const result = await saveDraft(scope, data, readNewPhotoFiles());
       if (
         mounted.current &&
         draftScope.current === scope &&
@@ -739,7 +729,7 @@ export function CommunityComposer({
         );
       return false;
     }
-  }, []);
+  }, [readNewPhotoFiles]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: Persist each input change through refs, including raw numeric text and photo selection.
   useEffect(() => {
     if (
@@ -858,10 +848,6 @@ export function CommunityComposer({
     });
   }, [featureTarget, onTargetChange]);
 
-  const clearNewPhotos = () => {
-    for (const photo of newPhotosRef.current) URL.revokeObjectURL(photo.url);
-    setNewPhotos([]);
-  };
   const resetForNext = () => {
     if (editingPostId && onStartNew) {
       onStartNew();
@@ -869,7 +855,7 @@ export function CommunityComposer({
     }
     if (draftScope.current)
       draftScope.current = { ...draftScope.current, postId: undefined };
-    clearNewPhotos();
+    replaceNewPhotos([]);
     setSavedPhotos([]);
     setRemovedPhotoIds([]);
     setEditingPostId(null);
@@ -913,8 +899,7 @@ export function CommunityComposer({
       ) {
         return;
       }
-      for (const photo of newPhotosRef.current) URL.revokeObjectURL(photo.url);
-      setNewPhotos([{ file, url: URL.createObjectURL(file) }]);
+      replaceNewPhotos([file]);
       setRemovedPhotoIds(savedPhotos.map(photo => photo.id));
       photosMissing.current = false;
       if (takenAt && !timeEdited.current) {
@@ -1073,7 +1058,7 @@ export function CommunityComposer({
         title,
         step === "edit" && !editingPostId
           ? () => {
-              clearNewPhotos();
+              replaceNewPhotos([]);
               setError("");
               setReport(current => ({ ...current, entries: [] }));
               setStep("choose");
@@ -1133,7 +1118,7 @@ export function CommunityComposer({
                 }
                 if (!mounted.current || draftScope.current !== scope) return;
                 setConfirmClose(false);
-                clearNewPhotos();
+                replaceNewPhotos([]);
                 setReport(blankReport());
                 setDraftNotice("");
                 setRestoredNotice("");
@@ -1413,10 +1398,7 @@ export function CommunityComposer({
     ...newPhotos.map(photo => ({
       key: photo.url,
       src: photo.url,
-      remove: () => {
-        URL.revokeObjectURL(photo.url);
-        setNewPhotos(current => current.filter(item => item !== photo));
-      },
+      remove: () => removeNewPhoto(photo.url),
     })),
   ];
 

@@ -120,9 +120,11 @@ const SELECTION_SOURCE: CompareSource = { kind: "selection" };
 const FAVORITES_SOURCE: CompareSource = { kind: "favorites" };
 type Props = {
   initialResorts: MapSkiResort[];
+  initialDetail?: NullableSkiResortDetail;
 };
 
-export function HomeClient({ initialResorts }: Props) {
+/** URL と端末の画面状態が揃ってから，地図と詳細を開始する． */
+export function HomeClient({ initialResorts, initialDetail }: Props) {
   const [boot, setBoot] = useState<{
     session: HomeSession | null;
     resorts: MapSkiResort[];
@@ -167,6 +169,7 @@ export function HomeClient({ initialResorts }: Props) {
         <RecommendationProvider>
           <HomeClientContent
             initialResorts={boot.resorts}
+            initialDetail={initialDetail}
             session={boot.session}
           />
         </RecommendationProvider>
@@ -177,6 +180,7 @@ export function HomeClient({ initialResorts }: Props) {
 
 function HomeClientContent({
   initialResorts,
+  initialDetail,
   session,
 }: Props & { session: HomeSession | null }) {
   const favorites = useFavorites();
@@ -217,7 +221,9 @@ function HomeClientContent({
     session?.selectedResortId ?? null,
   );
   const [selectedResortData, setSelectedResortData] =
-    useState<NullableSkiResortDetail | null>(null);
+    useState<NullableSkiResortDetail>(
+      initialDetail?.id === selectedResortId ? initialDetail : null,
+    );
   const [selectedFinalizedFeature, setSelectedFinalizedFeature] =
     useState<SelectedMapFeature | null>(session?.selectedFeature ?? null);
   const [selectedElevationProfilePoint, setSelectedElevationProfilePoint] =
@@ -322,9 +328,11 @@ function HomeClientContent({
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState(false);
   const [detailRetry, setDetailRetry] = useState(0);
+  const detailFromServer = useRef(initialDetail);
   useEffect(() => {
-    void detailRetry;
+    const serverDetail = detailFromServer.current;
     if (!selectedResortId) {
+      detailFromServer.current = null;
       setSelectedResortData(null);
       setDetailLoading(false);
       setDetailError(false);
@@ -380,7 +388,19 @@ function HomeClientContent({
     const resume = () => {
       if (document.visibilityState === "visible") void refresh();
     };
-    void refresh();
+    if (
+      detailRetry === 0 &&
+      serverDetail?.id === selectedResortId &&
+      navigator.onLine
+    ) {
+      // 同じ詳細を mount 直後に HTTP で読み直さず，通常の保存を開始する．
+      void writeDetailCache(serverDetail).then(saved =>
+        prepareDetail(serverDetail, saved),
+      );
+    } else {
+      detailFromServer.current = null;
+      void refresh();
+    }
     window.addEventListener("online", resume);
     // タブへ戻っただけなら、表示中の詳細と地図をそのまま使う。
     return () => {

@@ -9,6 +9,10 @@ import {
   usesRemoteDataApi,
 } from "@/lib/internalDataApiClient";
 import { prisma } from "@/lib/prisma";
+import {
+  privatePhotoNotFoundResponse,
+  privatePhotoResponseHeaders,
+} from "./photoHttp";
 import { communityPhotoResponse } from "./photoResponse";
 import type { PhotoPreviewSize } from "./photos";
 import { anonymousSubmissionKey, reactionIdentity } from "./rateLimit";
@@ -179,19 +183,28 @@ export async function getCommunityPhoto(
       photoId,
       ...(size ? { size } : {}),
     });
-    if (response.status === 404) return new Response(null, { status: 404 });
-    if (response.headers.get("content-type") !== "image/webp")
-      return new Response(null, { status: 502 });
+    if (response.status === 404) {
+      await response.body?.cancel();
+      return privatePhotoNotFoundResponse();
+    }
+    if (response.headers.get("content-type") !== "image/webp") {
+      await response.body?.cancel();
+      return new Response(null, {
+        status: 502,
+        headers: privatePhotoResponseHeaders,
+      });
+    }
     return new Response(response.body, {
       headers: {
+        ...privatePhotoResponseHeaders,
         "Content-Type": "image/webp",
-        "Cache-Control": "private, no-store, max-age=0",
-        "X-Content-Type-Options": "nosniff",
         "Content-Disposition": 'inline; filename="photo.webp"',
-        "Cross-Origin-Resource-Policy": "same-origin",
       },
     });
   } catch {
-    return new Response(null, { status: 502 });
+    return new Response(null, {
+      status: 502,
+      headers: privatePhotoResponseHeaders,
+    });
   }
 }

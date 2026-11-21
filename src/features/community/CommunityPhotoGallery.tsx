@@ -1,41 +1,34 @@
-"use client";
-
+// 投稿写真一覧をサーバーで取得し，表示に必要な写真だけを描画する．
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { getCommunityFeed } from "@/shared/queries/community";
+import { getCommunityFeed } from "@/server/community/queries";
 import type { PublicPost } from "./contract";
 
-export function CommunityPhotoGallery({
+/** コース指定を保ったまま，採用済みの投稿ページを順に取得する． */
+export async function CommunityPhotoGallery({
   resortId,
   courseId,
 }: {
   resortId: string;
   courseId?: string;
 }) {
-  const [posts, setPosts] = useState<PublicPost[]>([]);
-  useEffect(() => {
-    let active = true;
-    void (async () => {
-      const all: PublicPost[] = [];
-      let cursor: string | undefined;
-      do {
-        const result = await getCommunityFeed({
-          resortId,
-          courseId,
-          cursor,
-          sort: "observed",
-        });
-        if (!result.ok) break;
-        all.push(...result.data.posts);
-        cursor = result.data.nextCursor ?? undefined;
-      } while (cursor);
-      if (active) setPosts(all);
-    })();
-    return () => {
-      active = false;
-    };
-  }, [resortId, courseId]);
+  const posts: PublicPost[] = [];
+  let cursor: string | undefined;
+  let failed = false;
+  do {
+    const result = await getCommunityFeed({
+      resortId,
+      courseId,
+      cursor,
+      sort: "observed",
+    });
+    if (!result.ok) {
+      failed = true;
+      break;
+    }
+    posts.push(...result.data.posts);
+    cursor = result.data.nextCursor ?? undefined;
+  } while (cursor);
   return (
     <main className="mx-auto max-w-4xl space-y-4 p-4">
       <div className="flex items-center justify-between">
@@ -52,6 +45,7 @@ export function CommunityPhotoGallery({
       <p className="text-xs text-gray-600">
         投稿写真は当サイト内で閲覧するためだけに使います。サイト外への転載・広告利用・第三者提供は行いません。
       </p>
+      {failed && <p role="alert">投稿写真を読み込めませんでした。</p>}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
         {posts.flatMap(post =>
           post.entries

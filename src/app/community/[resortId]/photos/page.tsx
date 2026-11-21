@@ -1,5 +1,7 @@
 import { CommunityPhotoGallery } from "@/features/community/CommunityPhotoGallery";
 
+export const dynamic = "force-dynamic";
+
 export default async function CommunityPhotosPage({
   params,
   searchParams,

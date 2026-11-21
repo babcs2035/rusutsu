@@ -420,6 +420,10 @@ test("community reports: atomic daily report lifecycle and privacy", {
         }),
       );
       assert.equal(response.status, 200);
+      assert.equal(
+        response.headers.get("cache-control"),
+        "private, no-store, max-age=0",
+      );
       const bytes = Buffer.from(await response.arrayBuffer());
       assert.deepEqual(
         bytes,
@@ -428,6 +432,18 @@ test("community reports: atomic daily report lifecycle and privacy", {
       const preview = await sharp(bytes).metadata();
       assert.ok((preview.width ?? Infinity) <= (size === "map" ? 160 : 320));
       assert.equal(preview.exif, undefined);
+    }
+    for (const hiddenId of ["invalid", randomUUID().replaceAll("-", "")]) {
+      const response = await run(g, () =>
+        api.photoGET(new Request("http://localhost"), {
+          params: Promise.resolve({ photoId: hiddenId }),
+        }),
+      );
+      assert.equal(response.status, 404);
+      assert.equal(
+        response.headers.get("cache-control"),
+        "private, no-store, max-age=0",
+      );
     }
     // 変更前の写真も最初の配信時に派生画像を保存する。
     await db.contributionPhoto.update({
@@ -710,16 +726,22 @@ test("community reports: atomic daily report lifecycle and privacy", {
     );
     assertFailure(await run(g, () => api.getPostDetail(flaggedResult.id)));
     assert.ok(moderationRequest.includes("キッカーあり"));
-    assert.equal(
-      (
-        await run(g, () =>
-          api.photoGET(new Request("http://localhost"), {
-            params: Promise.resolve({ photoId: flaggedPhotoId }),
-          }),
-        )
-      ).status,
-      404,
+    const hiddenPhoto = await run(g, () =>
+      api.photoGET(new Request("http://localhost"), {
+        params: Promise.resolve({ photoId: flaggedPhotoId }),
+      }),
     );
+    assert.equal(hiddenPhoto.status, 404);
+    assert.equal(
+      hiddenPhoto.headers.get("cache-control"),
+      "private, no-store, max-age=0",
+    );
+    assert.equal(hiddenPhoto.headers.get("x-content-type-options"), "nosniff");
+    assert.equal(
+      hiddenPhoto.headers.get("cross-origin-resource-policy"),
+      "same-origin",
+    );
+    assert.equal(await hiddenPhoto.text(), "");
 
     const hideForm = new FormData();
     for (const [k, v] of Object.entries({

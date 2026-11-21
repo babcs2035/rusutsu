@@ -1,23 +1,20 @@
-"use client";
-
+// 公開プロフィールと公開投稿だけを初期表示へ渡す．
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
 import { PostCard } from "@/features/community/CommunityFeed";
-import type { PublicAuthor, PublicPost } from "@/features/community/contract";
-import { getPublicProfile } from "@/shared/queries/community";
-export default function CommunityProfile() {
-  const { id } = useParams<{ id: string }>();
-  const [author, setAuthor] = useState<PublicAuthor | null>(null);
-  const [posts, setPosts] = useState<PublicPost[]>([]);
-  useEffect(() => {
-    void getPublicProfile(id).then(r => {
-      if (r.ok) {
-        setAuthor(r.data.author);
-        setPosts(r.data.posts);
-      }
-    });
-  }, [id]);
+import { getPublicProfile } from "@/server/community/queries";
+
+export const dynamic = "force-dynamic";
+
+/** 閲覧者のリアクションを含むプロフィールを要求ごとに取得する． */
+export default async function CommunityProfile({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const result = await getPublicProfile(id);
+  const author = result.ok ? result.data.author : null;
+  const posts = result.ok ? result.data.posts : [];
   return (
     <main className="mx-auto max-w-2xl space-y-4 p-4">
       <Link href="/" className="text-sm underline">
