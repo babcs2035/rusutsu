@@ -7,6 +7,7 @@ import dotenv from "dotenv";
 import { z } from "zod";
 import { validateTicketContent } from "../src/features/ticket/server/validateTicket";
 import { normalizeInternalDataApiBaseUrl } from "../src/lib/internalDataApiBaseUrl";
+import { fetchBoundedResponse } from "../src/server/boundedResponse";
 import {
   LIFT_TICKET_MAX_CONTENT_BYTES,
   liftTicketSeasonGetResponseSchema,
@@ -62,7 +63,7 @@ async function main() {
   if (!token)
     throw new Error("API_BEARER_TOKENを.env.localに設定してください。");
   const request = (suffix: string, init: RequestInit = {}) =>
-    fetch(`${baseUrl}${suffix}`, {
+    fetchBoundedResponse(`${baseUrl}${suffix}`, {
       ...init,
       headers: {
         Authorization: `Bearer ${token}`,

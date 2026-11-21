@@ -4,6 +4,7 @@ import path from "node:path";
 import dotenv from "dotenv";
 import { prepareWeatherLinksMigration } from "../src/features/weather/weatherLinksMigration";
 import { normalizeInternalDataApiBaseUrl } from "../src/lib/internalDataApiBaseUrl";
+import { fetchBoundedResponse } from "../src/server/boundedResponse";
 import {
   dataDocumentBatchWriteSchema,
   dataDocumentGetResponseSchema,
@@ -33,15 +34,18 @@ async function main() {
   const token = process.env.API_BEARER_TOKEN?.trim();
   if (!token) throw new Error("API_BEARER_TOKEN is required");
   const request = async (suffix: string, init: RequestInit = {}) => {
-    const response = await fetch(`${base}/api/admin/documents${suffix}`, {
-      ...init,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
+    const response = await fetchBoundedResponse(
+      `${base}/api/admin/documents${suffix}`,
+      {
+        ...init,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        redirect: "error",
+        signal: AbortSignal.timeout(30_000),
       },
-      redirect: "error",
-      signal: AbortSignal.timeout(30_000),
-    });
+    );
     if (!response.ok)
       throw new Error(`DataDocument API: HTTP ${response.status}`);
     return response.json();

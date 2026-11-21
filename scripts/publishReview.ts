@@ -10,6 +10,7 @@ import {
 } from "../src/features/review/server/publication";
 import { reviewPublicationSchema } from "../src/features/review/server/publicationContract";
 import { normalizeInternalDataApiBaseUrl } from "../src/lib/internalDataApiBaseUrl";
+import { fetchBoundedResponse } from "../src/server/boundedResponse";
 import { dataDocumentGetResponseSchema } from "../src/server/data-documents/contract";
 import { skiResortIdSchema } from "../src/server/ski-resorts/adminContract";
 
@@ -45,7 +46,7 @@ async function main() {
   if (!token)
     throw new Error("API_BEARER_TOKENを.env.localに設定してください。");
   const request = async (suffix: string, init: RequestInit = {}) => {
-    const response = await fetch(`${baseUrl}${suffix}`, {
+    const response = await fetchBoundedResponse(`${baseUrl}${suffix}`, {
       ...init,
       headers: {
         Authorization: `Bearer ${token}`,

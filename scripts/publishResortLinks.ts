@@ -18,6 +18,7 @@ import { legacyLinkItems } from "../src/features/resort-links/legacy";
 import { liftTicketLinkItems } from "../src/features/resort-links/liftTicketLinks";
 import type { ResortLinkItem } from "../src/features/resort-links/model";
 import { normalizeInternalDataApiBaseUrl } from "../src/lib/internalDataApiBaseUrl";
+import { fetchBoundedResponse } from "../src/server/boundedResponse";
 import {
   RESORT_LINK_OFFICIAL_SOURCE,
   type ResortLinkReplace,
@@ -213,15 +214,19 @@ async function main() {
   if (!token)
     throw new Error("API_BEARER_TOKENを.env.localに設定してください。");
   const request = async (suffix: string, init: RequestInit = {}) => {
-    const response = await fetch(`${baseUrl}${API_PATH}${suffix}`, {
-      ...init,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
+    const response = await fetchBoundedResponse(
+      `${baseUrl}${API_PATH}${suffix}`,
+      {
+        ...init,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        redirect: "error",
+        signal: AbortSignal.timeout(60_000),
       },
-      redirect: "error",
-      signal: AbortSignal.timeout(60_000),
-    });
+      { timeoutMs: 60_000 },
+    );
     if (response.ok) return response.json();
     const body = await response.json().catch(() => null);
     const message = typeof body?.detail === "string" ? `\n${body.detail}` : "";

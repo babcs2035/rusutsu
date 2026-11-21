@@ -5,6 +5,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import dotenv from "dotenv";
 import { normalizeInternalDataApiBaseUrl } from "../src/lib/internalDataApiBaseUrl";
+import { fetchBoundedResponse } from "../src/server/boundedResponse";
 import {
   dataDocumentBatchWriteSchema,
   dataDocumentGetResponseSchema,
@@ -40,17 +41,20 @@ async function main() {
   const token = process.env.API_BEARER_TOKEN?.trim();
   if (!token) throw new Error("API_BEARER_TOKEN is required");
   const request = async (query: string, init: RequestInit = {}) => {
-    const response = await fetch(`${baseUrl}/api/admin/documents${query}`, {
-      ...init,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
+    const response = await fetchBoundedResponse(
+      `${baseUrl}/api/admin/documents${query}`,
+      {
+        ...init,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
       },
-      redirect: "error",
-      signal: AbortSignal.timeout(30_000),
-    });
-    if (!response.ok)
+    );
+    if (!response.ok || !response.body) {
+      await response.body?.cancel();
       throw new Error(`DataDocument API: HTTP ${response.status}`);
+    }
     return response.json();
   };
   const root = "src/private/data";

@@ -1,12 +1,10 @@
 import "server-only";
 
 import { normalizeInternalDataApiBaseUrl } from "@/lib/internalDataApiBaseUrl";
-import { boundResponseBody } from "@/server/boundedResponse";
+import { fetchBoundedResponse } from "@/server/boundedResponse";
 
 const INTERNAL_PATH_PREFIX = "/api/admin/";
 const DEFAULT_TIMEOUT_MS = 30_000;
-// Maximum document request is 64 MiB; multi-document responses include encoding overhead.
-const MAX_RESPONSE_BYTES = 128 * 1024 * 1024;
 const RETRY_DELAYS_MS = [250, 500] as const;
 const RETRYABLE_STATUSES = new Set([502, 503, 504]);
 
@@ -93,11 +91,9 @@ export async function fetchInternalDataApi(
     const method = (init.method ?? "GET").toUpperCase();
     const retryableMethod = method === "GET" || method === "HEAD";
     for (let attempt = 0; ; attempt += 1) {
-      const response = await fetch(`${baseUrl}${path}`, {
+      const response = await fetchBoundedResponse(`${baseUrl}${path}`, {
         ...init,
         headers,
-        cache: "no-store",
-        redirect: "error",
         signal,
       });
       if (
@@ -120,22 +116,7 @@ export async function fetchInternalDataApi(
           response.status,
         );
       }
-      if (!response.body) return response;
-      if (Number(response.headers.get("content-length")) > MAX_RESPONSE_BYTES) {
-        await response.body.cancel();
-        throw new InternalDataApiError(
-          "正本データAPIの応答が上限を超えました．",
-          response.status,
-        );
-      }
-      return new Response(
-        boundResponseBody(response.body, MAX_RESPONSE_BYTES),
-        {
-          status: response.status,
-          statusText: response.statusText,
-          headers: response.headers,
-        },
-      );
+      return response;
     }
   } catch (error) {
     if (error instanceof InternalDataApiError) throw error;

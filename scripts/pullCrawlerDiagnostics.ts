@@ -1,8 +1,11 @@
+// 診断 API から実行情報と容量制限付きの DOM を取得してローカルに保存する．
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { gunzipSync } from "node:zlib";
 import dotenv from "dotenv";
 import { normalizeInternalDataApiBaseUrl } from "@/lib/internalDataApiBaseUrl";
+import { fetchBoundedResponse } from "@/server/boundedResponse";
+import { MAX_ARTIFACT_HTML_BYTES } from "@/server/crawl-latest/artifactStorage";
 
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local"), quiet: true });
 dotenv.config({ path: path.resolve(process.cwd(), ".env"), quiet: true });
@@ -93,15 +96,20 @@ const readConfiguration = () => {
 const request = async (
   pathName: string,
   configuration: ReturnType<typeof readConfiguration>,
+  maxBytes = 2 * 1024 * 1024,
 ) => {
-  const response = await fetch(`${configuration.baseUrl}${pathName}`, {
-    headers: {
-      Accept: "application/json",
-      Authorization: `Bearer ${configuration.token}`,
+  const response = await fetchBoundedResponse(
+    `${configuration.baseUrl}${pathName}`,
+    {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${configuration.token}`,
+      },
     },
-    signal: AbortSignal.timeout(30_000),
-  });
+    { maxBytes },
+  );
   if (!response.ok) {
+    await response.body?.cancel();
     throw new Error(`診断APIがHTTP ${response.status}を返しました。`);
   }
   return response;
@@ -152,7 +160,7 @@ const findLatestDiagnosticRun = async (
 // gzipの先頭バイト(1f 8b)なら展開してHTMLとして保存する。
 export const decodeArtifactBody = (body: Buffer): Buffer =>
   body.length >= 2 && body[0] === 0x1f && body[1] === 0x8b
-    ? gunzipSync(body)
+    ? gunzipSync(body, { maxOutputLength: MAX_ARTIFACT_HTML_BYTES })
     : body;
 
 const downloadArtifacts = async (
@@ -173,6 +181,7 @@ const downloadArtifacts = async (
     const response = await request(
       `/api/admin/crawl/artifacts/${encodeURIComponent(artifact.id)}/content`,
       configuration,
+      MAX_ARTIFACT_HTML_BYTES,
     );
     const fileName = `${safeSegment(artifact.id, "artifact ID")}-${path
       .basename(artifact.pageKey)
