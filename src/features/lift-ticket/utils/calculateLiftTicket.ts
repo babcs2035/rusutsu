@@ -2156,7 +2156,6 @@ export const calculateLiftTicket = (
     payableTotal: null,
     partyCount,
     conditionalOffers: [],
-    conditionalOfferNames: [],
     notes,
     references: [],
   });
@@ -2352,9 +2351,6 @@ export const calculateLiftTicket = (
     payableTotal: isComplete ? knownTicketTotal + feeTotal : null,
     partyCount,
     conditionalOffers,
-    conditionalOfferNames: Array.from(
-      new Set(conditionalOffers.map(offer => offer.offerName)),
-    ),
     notes,
     // 表示する行の根拠だけを載せる（引用していないページを並べても混乱する）
     references: references.filter(
@@ -2433,12 +2429,6 @@ const mergeDayAndNightResults = (
         groupLabel: `${offer.groupLabel}（ナイター）`,
       })),
     ],
-    conditionalOfferNames: Array.from(
-      new Set([
-        ...dayResult.conditionalOfferNames,
-        ...nightResult.conditionalOfferNames,
-      ]),
-    ),
     notes: Array.from(new Set([...dayResult.notes, ...nightResult.notes])),
     references,
   };

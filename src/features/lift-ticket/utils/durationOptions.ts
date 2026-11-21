@@ -331,9 +331,6 @@ const mergeResults = (
     ),
     payableTotal: sum(results.map(result => result.payableTotal)),
     conditionalOffers: results.flatMap(result => result.conditionalOffers),
-    conditionalOfferNames: results.flatMap(
-      result => result.conditionalOfferNames,
-    ),
     notes: [...new Set(results.flatMap(result => result.notes))],
     references,
   };

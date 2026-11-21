@@ -646,8 +646,6 @@ export type TicketCalculationResult = {
   payableTotal: number | null;
   partyCount: number;
   conditionalOffers: TicketConditionalOffer[];
-  /** @deprecated 表示互換用。詳細は conditionalOffers を使う */
-  conditionalOfferNames: string[];
   notes: string[];
   /** 料金の根拠。計算結果カードの [1] と一覧に使う */
   references: PriceReference[];
