@@ -5,7 +5,6 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { adminToaster } from "@/app/admin/AdminToaster";
-import type { AdminUser } from "@/app/admin/actions";
 import { deleteUser, updateUserRole } from "@/app/admin/actions";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -25,6 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import type { AdminUser } from "@/server/admin-users/service";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 
 // DB の role 値を画面表示用の日本語ラベルに映射する

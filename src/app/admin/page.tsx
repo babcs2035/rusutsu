@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { getAdminDashboardData } from "@/app/admin/actions";
 import { UserManagement } from "@/app/admin/UserManagement";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
+import { readAdminUsers } from "@/server/admin-users/service";
 import { requireEditingPage } from "@/server/edit-requests/authPages";
 
 // Admin dashboard requires live database access and authentication.
@@ -22,8 +22,7 @@ const TOOL_LINKS: Array<{ href: string; label: string }> = [
 
 export default async function AdminDashboardPage() {
   const actor = await requireEditingPage();
-  const dashboardData =
-    actor.role === "admin" ? await getAdminDashboardData() : null;
+  const users = actor.role === "admin" ? await readAdminUsers() : null;
 
   return (
     <div className="p-4 md:p-8 max-w-[1200px] mx-auto min-h-[calc(100vh-64px)]">
@@ -31,7 +30,7 @@ export default async function AdminDashboardPage() {
         管理ダッシュボード
       </h1>
 
-      {dashboardData && <UserManagement users={dashboardData.users} />}
+      {users && <UserManagement users={users} />}
       <Link href="/admin/requests" className="inline-block mt-4 underline">
         {actor.role === "admin" ? "編集申請の確認・承認" : "自分の申請"}
       </Link>

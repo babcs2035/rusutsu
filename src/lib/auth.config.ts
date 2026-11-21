@@ -2,6 +2,7 @@
 // ミドルウェアとサーバーコンポーネントで共有されます
 
 import type { AuthConfig } from "@auth/core";
+import { AuthError } from "@auth/core/errors";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { cookies } from "next/headers";
 import Google from "next-auth/providers/google";
@@ -183,5 +184,12 @@ export const authConfig: AuthConfig = {
     },
   },
   secret: process.env.AUTH_SECRET,
-  debug: process.env.NODE_ENV === "development",
+  logger: {
+    /** OAuth の URL・Cookie・profile を含み得る詳細と cause は出力しない． */
+    error(error: Error): void {
+      console.error("Auth.js error", {
+        type: error instanceof AuthError ? error.type : "UnexpectedError",
+      });
+    },
+  },
 };

@@ -35,6 +35,7 @@ test("editor requests: real PostgreSQL authorization, corrections, atomicity and
       export * from '@/lib/requireAdmin';
       export * from '@/lib/requireEditor';
       export * from '@/app/admin/actions';
+      export { readAdminUsers } from '@/server/admin-users/service';
       export * from '@/features/links/actions';
       export * from '@/features/lift/actions';
       export * from '@/features/slope/actions';
@@ -231,7 +232,7 @@ test("editor requests: real PostgreSQL authorization, corrections, atomicity and
           "PENDING",
         );
         await assert.rejects(
-          actor("integration-editor", () => api.getAdminDashboardData()),
+          actor("integration-editor", () => api.readAdminUsers()),
         );
         await assert.rejects(
           actor("integration-editor", () =>
