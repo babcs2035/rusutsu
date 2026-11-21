@@ -55,15 +55,31 @@ try {
   const submitCorrectionButton = anonymousPage.getByRole("button", {
     name: "送信する",
   });
+  const inputCursor = await correctionInput.evaluate(
+    element => getComputedStyle(element).cursor,
+  );
+  assert.ok(inputCursor === "text" || inputCursor === "auto");
   await correctionInput.fill("   ");
   assert.equal(
     await submitCorrectionButton.isDisabled(),
     true,
     "blank correction text must not be submittable",
   );
+  assert.notEqual(
+    await submitCorrectionButton.evaluate(
+      element => getComputedStyle(element).cursor,
+    ),
+    "pointer",
+  );
   const proposal = `ブラウザー試験 ${Date.now()} の確認用修正提案`;
   await correctionInput.fill(proposal);
   assert.equal(await submitCorrectionButton.isDisabled(), false);
+  assert.equal(
+    await submitCorrectionButton.evaluate(
+      element => getComputedStyle(element).cursor,
+    ),
+    "pointer",
+  );
   assertDisposableDatabase();
   await submitCorrectionButton.click();
   await anonymousPage
@@ -92,6 +108,10 @@ try {
   });
   await firstTab.click();
   assert.equal(await firstTab.getAttribute("aria-selected"), "true");
+  assert.equal(
+    await firstTab.evaluate(element => getComputedStyle(element).cursor),
+    "pointer",
+  );
   await anonymousPage
     .getByRole("button", { name: "この比較をリストに保存" })
     .click();

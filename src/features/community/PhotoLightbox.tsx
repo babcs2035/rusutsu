@@ -94,7 +94,7 @@ export function PhotoLightbox({
       aria-modal="true"
       aria-label="写真の拡大表示"
       className={cn(
-        "inset-0 flex items-center justify-center bg-black/40 p-6",
+        "inset-0 flex cursor-pointer items-center justify-center bg-black/40 p-6",
         dialogHost ? "absolute z-[60]" : "fixed z-[950]",
       )}
       style={dialogHost ? undefined : (rect ?? undefined)}
@@ -107,7 +107,7 @@ export function PhotoLightbox({
       {/* 読み込み前から縦横比で大きさを決め、一覧で読み込み済みの小さい写真を敷いておく。
           大きさが決まっていないと、読み込み後に写真が広がって流れて見える。 */}
       <div
-        className="relative rounded-lg bg-cover bg-center shadow-2xl"
+        className="relative cursor-auto rounded-lg bg-cover bg-center shadow-2xl"
         style={{
           aspectRatio: `${photo.width} / ${photo.height}`,
           // 縦長の写真でも、重ねる先（画面またはダイアログ）の高さに収める

@@ -9,6 +9,37 @@
 
 @custom-variant dark (&:is(.dark));
 
+@layer base {
+  /* 操作できる要素に適用し，ドラッグ用などの個別スタイルを優先する． */
+  :where(
+      a[href],
+      area[href],
+      button,
+      summary,
+      select,
+      input:is([type="button"], [type="submit"], [type="reset"], [type="image"], [type="checkbox"], [type="radio"], [type="file"], [type="range"]),
+      label:has(input:is([type="checkbox"], [type="radio"], [type="file"]):not(:disabled)),
+      [role="button"],
+      [role="link"],
+      [role="tab"],
+      [role="switch"],
+      [role="checkbox"],
+      [role="radio"],
+      [role="option"],
+      [role="menuitem"],
+      [role="menuitemcheckbox"],
+      [role="menuitemradio"],
+      [role="combobox"]:not(input),
+      [role="treeitem"]
+    ):not(:disabled, [aria-disabled="true"], [data-disabled]) {
+    cursor: pointer;
+  }
+
+  input[type="file"]:not(:disabled)::file-selector-button {
+    cursor: inherit;
+  }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
