@@ -3,9 +3,10 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { idSchema } from "@/features/community/contract";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/requireAdmin";
+import { requireAdmin, requireAdminInTransaction } from "@/lib/requireAdmin";
 
-export async function reviewCommunityContent(form: FormData) {
+/** 審査対象の版と現在の管理者権限を照合してから投稿を処理する． */
+export async function reviewCommunityContent(form: FormData): Promise<void> {
   const actor = await requireAdmin();
   const { targetId, version, decision } = z
     .object({
@@ -16,12 +17,7 @@ export async function reviewCommunityContent(form: FormData) {
     .parse(Object.fromEntries(form));
   const targetKind = "POST";
   await prisma.$transaction(async tx => {
-    const currentAdmin = await tx.user.findUnique({
-      where: { id: actor.id },
-      select: { role: true },
-    });
-    if (currentAdmin?.role !== "admin")
-      throw new Error("管理者権限が必要です。");
+    await requireAdminInTransaction(tx, actor.id);
     const current = await tx.communityPost.findUnique({
       where: { id: targetId },
     });
@@ -58,19 +54,12 @@ export async function reviewCommunityContent(form: FormData) {
   });
   revalidatePath("/", "layout");
 }
-export async function resolveCommunityReport(form: FormData) {
+/** 現在の管理者だけが未処理の通報を確認済みにできる． */
+export async function resolveCommunityReport(form: FormData): Promise<void> {
   const actor = await requireAdmin();
   const id = idSchema.parse(form.get("id"));
   await prisma.$transaction(async tx => {
-    if (
-      (
-        await tx.user.findUnique({
-          where: { id: actor.id },
-          select: { role: true },
-        })
-      )?.role !== "admin"
-    )
-      throw new Error("管理者権限が必要です。");
+    await requireAdminInTransaction(tx, actor.id);
     await tx.communityReport.updateMany({
       where: { id, status: "PENDING" },
       data: {
@@ -108,16 +97,20 @@ export async function setCommunitySuspension(form: FormData) {
   });
   revalidatePath("/admin/community");
 }
-export async function retryCommunityModeration() {
-  await requireAdmin();
-  await prisma.communityModerationJob.updateMany({
-    where: { status: "FAILED" },
-    data: {
-      status: "PENDING",
-      attempts: 0,
-      nextAttemptAt: new Date(),
-      lockedAt: null,
-    },
+/** 管理者の操作で失敗した審査だけを再試行待ちに戻す． */
+export async function retryCommunityModeration(): Promise<void> {
+  const actor = await requireAdmin();
+  await prisma.$transaction(async tx => {
+    await requireAdminInTransaction(tx, actor.id);
+    await tx.communityModerationJob.updateMany({
+      where: { status: "FAILED" },
+      data: {
+        status: "PENDING",
+        attempts: 0,
+        nextAttemptAt: new Date(),
+        lockedAt: null,
+      },
+    });
   });
   revalidatePath("/admin/community");
 }

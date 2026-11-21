@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
+import { setTimeout as delay } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import sharp from "sharp";
@@ -751,6 +752,43 @@ test("community reports: atomic daily report lifecycle and privacy", {
       decision: "HIDE",
     }))
       hideForm.set(k, v);
+    const demotionReady = Promise.withResolvers<number>();
+    const finishDemotion = Promise.withResolvers<void>();
+    const demotion = db.$transaction(async tx => {
+      await tx.user.update({ where: { id: admin }, data: { role: "viewer" } });
+      const [connection] = await tx.$queryRaw<
+        { pid: number }[]
+      >`SELECT pg_backend_pid() AS pid`;
+      demotionReady.resolve(connection.pid);
+      await finishDemotion.promise;
+    });
+    const pid = await demotionReady.promise;
+    const review = assert.rejects(
+      run(m, () => api.reviewCommunityContent(hideForm)),
+      /管理者権限が必要です/u,
+    );
+    try {
+      let blocked = false;
+      for (let attempt = 0; attempt < 100 && !blocked; attempt++) {
+        const [row] = await db.$queryRaw<{ blocked: boolean }[]>`
+          SELECT EXISTS (
+            SELECT 1 FROM pg_stat_activity WHERE ${pid}::int = ANY(pg_blocking_pids(pid))
+          ) AS blocked
+        `;
+        blocked = row.blocked;
+        if (!blocked) await delay(10);
+      }
+      assert.equal(
+        blocked,
+        true,
+        "review must wait for the concurrent role change",
+      );
+    } finally {
+      finishDemotion.resolve();
+      await demotion;
+      await review;
+    }
+    await db.user.update({ where: { id: admin }, data: { role: "admin" } });
     await run(m, () => api.reviewCommunityContent(hideForm));
     assertFailure(await run(g, () => api.getPostDetail(created.id)));
     await assert.rejects(run(b, () => api.reviewCommunityContent(hideForm)));

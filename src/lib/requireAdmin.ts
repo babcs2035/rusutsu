@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { Prisma } from "@prisma/client";
 import { getCurrentActor } from "@/lib/requireEditor";
 
 export type AdminActor = {
@@ -22,4 +23,15 @@ export async function requireAdmin(): Promise<AdminActor> {
     id: currentUser.id,
     email: currentUser.email,
   };
+}
+
+/** 管理操作の確定まで，ロール変更とアカウント削除を待たせる． */
+export async function requireAdminInTransaction(
+  tx: Prisma.TransactionClient,
+  actorId: string,
+): Promise<void> {
+  const [actor] = await tx.$queryRaw<{ role: string }[]>`
+    SELECT role FROM users WHERE id = ${actorId} FOR SHARE
+  `;
+  if (actor?.role !== "admin") throw new Error("管理者権限が必要です。");
 }
