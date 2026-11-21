@@ -4,11 +4,16 @@ import { idSchema, observedOnSchema } from "@/features/community/contract";
 import { getAccountDayReports } from "@/server/community/accountDayReports";
 import * as queries from "@/server/community/queries";
 import { feedInputSchema } from "@/server/community/remoteContract";
+import { readCorrectionFeatures } from "@/server/corrections/features";
 import { respondToPublicQuery } from "@/server/publicQueryHttp";
 
 const schema = z.discriminatedUnion("operation", [
   z.strictObject({ operation: z.literal("feed"), input: feedInputSchema }),
   z.strictObject({ operation: z.literal("account") }),
+  z.strictObject({
+    operation: z.literal("correctionFeatures"),
+    resortId: z.string().regex(/^[a-z0-9-]{1,100}$/u),
+  }),
   z.strictObject({
     operation: z.literal("myPosts"),
     cursor: idSchema.optional(),
@@ -42,6 +47,8 @@ export async function POST(request: Request): Promise<Response> {
           return queries.getCommunityFeed(command.input);
         case "account":
           return queries.getCommunityAccount();
+        case "correctionFeatures":
+          return readCorrectionFeatures(command.resortId);
         case "composer":
           return queries.getComposerSetup(command.postId);
         case "myPosts":

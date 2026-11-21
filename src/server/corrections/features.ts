@@ -1,3 +1,6 @@
+// 公開中の施設について，情報修正に必要な地物だけを正本から投影する．
+import "server-only";
+import { readSkiResortNames } from "@/lib/skiResortData";
 import { getDataDocument } from "@/server/data-documents/client";
 import { featureIdentity } from "@/shared/course-lift/identity";
 
@@ -38,7 +41,9 @@ const documentKey = (kind: "slope" | "lift", resortId: string) =>
  */
 export async function readCorrectionFeatures(
   resortId: string,
-): Promise<CorrectionFeature[]> {
+): Promise<CorrectionFeature[] | null> {
+  const [resort] = await readSkiResortNames([resortId]);
+  if (!resort) return null;
   const kinds = ["slope", "lift"] as const;
   const documents = await Promise.all(
     kinds.map(kind => getDataDocument(documentKey(kind, resortId))),
@@ -89,7 +94,11 @@ export async function readCorrectionFeatures(
           },
         ];
       });
-    } catch {
+    } catch (error) {
+      console.warn("Correction geometry unavailable", {
+        kind,
+        name: error instanceof Error ? error.name : "UnknownError",
+      });
       return [];
     }
   });

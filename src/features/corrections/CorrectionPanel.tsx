@@ -22,7 +22,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
 import { PanelHeader } from "@/shared/components/PanelHeader";
-import { getCorrectionFeatures, submitCorrection } from "./actions";
+import { getCorrectionFeatures } from "@/shared/queries/community";
+import { submitCorrection } from "./actions";
 import { withAnonymousCheck } from "./anonymousCheck";
 import { CorrectionMap } from "./CorrectionMap";
 import type { CorrectionTarget } from "./correctionEvents";
@@ -145,26 +146,26 @@ export function CorrectionPanel(props: Props) {
     | { state: "ready"; features: CorrectionFeature[] }
   >({ state: "loading" });
   useEffect(() => {
-    let alive = true;
+    const controller = new AbortController();
     setLoad({ state: "loading" });
-    getCorrectionFeatures(resortId)
-      .then(result => {
-        if (!alive) return;
+    getCorrectionFeatures(resortId, controller.signal)
+      .then(features => {
+        if (controller.signal.aborted) return;
         setLoad(
-          result.ok
-            ? { state: "ready", features: result.features }
-            : { state: "error", message: result.error },
+          features
+            ? { state: "ready", features }
+            : { state: "error", message: "スキー場が見つかりません。" },
         );
       })
       .catch(() => {
-        if (alive)
+        if (!controller.signal.aborted)
           setLoad({
             state: "error",
             message: "現在の登録内容を読み込めませんでした。",
           });
       });
     return () => {
-      alive = false;
+      controller.abort();
     };
   }, [resortId]);
   const ready = load.state === "ready";

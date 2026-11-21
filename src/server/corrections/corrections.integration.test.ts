@@ -28,6 +28,7 @@ type TestApi = typeof import("@/features/corrections/actions") &
   typeof import("@/lib/prisma") & {
     runtime: AsyncLocalStorage<TestActor>;
     photoGET: typeof import("@/app/api/community/photos/[photoId]/route").GET;
+    publicQueryPOST: typeof import("@/app/api/community/queries/route").POST;
     internalCommunityPOST: typeof import("@/app/api/admin/community/route").POST;
     internalEditRequestPOST: typeof import("@/app/api/admin/edit-requests/route").POST;
     listCorrections: typeof import("@/server/corrections/repository").listCorrections;
@@ -58,7 +59,7 @@ test("anonymous corrections: PostgreSQL idempotency, review CAS, geometry, bulk 
   const outfile = path.join(root, "integration.mjs");
   await build({
     stdin: {
-      contents: `export {runtime} from 'corrections-test-runtime'; export {prisma,disconnectPrisma} from '@/lib/prisma'; export {submitCorrection,decideCorrectionItem,adjustCorrectionItem} from '@/features/corrections/actions'; export {listCorrections,getCorrection} from '@/server/corrections/repository'; export {hashDataDocumentContent} from '@/server/data-documents/repositoryCore'; export {GET as photoGET} from '@/app/api/community/photos/[photoId]/route'; export {POST as internalCommunityPOST} from '@/app/api/admin/community/route'; export {POST as internalEditRequestPOST} from '@/app/api/admin/edit-requests/route';`,
+      contents: `export {runtime} from 'corrections-test-runtime'; export {prisma,disconnectPrisma} from '@/lib/prisma'; export {submitCorrection,decideCorrectionItem,adjustCorrectionItem} from '@/features/corrections/actions'; export {listCorrections,getCorrection} from '@/server/corrections/repository'; export {hashDataDocumentContent} from '@/server/data-documents/repositoryCore'; export {GET as photoGET} from '@/app/api/community/photos/[photoId]/route'; export {POST as publicQueryPOST} from '@/app/api/community/queries/route'; export {POST as internalCommunityPOST} from '@/app/api/admin/community/route'; export {POST as internalEditRequestPOST} from '@/app/api/admin/edit-requests/route';`,
       resolveDir: process.cwd(),
       loader: "ts",
     },
@@ -308,6 +309,44 @@ test("anonymous corrections: PostgreSQL idempotency, review CAS, geometry, bulk 
         },
       });
     }
+
+    const readFeatures = (id: string): Promise<Response> =>
+      api.publicQueryPOST(
+        new Request("http://localhost/rusutsu/api/community/queries", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            operation: "correctionFeatures",
+            resortId: id,
+          }),
+        }),
+      );
+    const publicFeatures = await readFeatures(resortId);
+    assert.equal(publicFeatures.status, 200);
+    assert.equal(
+      publicFeatures.headers.get("Cache-Control"),
+      "private, no-store",
+    );
+    const features = await publicFeatures.json();
+    assert.deepEqual(features[0], {
+      id: `${prefix}-course-a`,
+      name: "Course A",
+      kind: "slope",
+      coordinates: [
+        [140, 43],
+        [140.01, 43.01],
+      ],
+      properties: { name: "Course A", piste: "○" },
+    });
+    await db.skiResort.update({
+      where: { id: resortId },
+      data: { isActive: false },
+    });
+    assert.equal(await (await readFeatures(resortId)).json(), null);
+    await db.skiResort.update({
+      where: { id: resortId },
+      data: { isActive: true },
+    });
 
     await verifyRemoteCorrections(api, root, databaseUrl ?? "", {
       resortId,

@@ -2,13 +2,6 @@
 
 import * as corrections from "@/server/corrections/mutations";
 
-/** ブラウザーからコース・リフトの修正対象を読み込む． */
-export async function getCorrectionFeatures(
-  ...args: Parameters<typeof corrections.getCorrectionFeatures>
-): ReturnType<typeof corrections.getCorrectionFeatures> {
-  return corrections.getCorrectionFeatures(...args);
-}
-
 /** ブラウザーから匿名の情報修正を送信する． */
 export async function submitCorrection(
   ...args: Parameters<typeof corrections.submitCorrection>

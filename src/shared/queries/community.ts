@@ -1,18 +1,31 @@
 /** 投稿画面の動的な読込だけを HTTP で取得し，mutation は Server Actions に委ねる． */
 import type { getAccountDayReports as readDayMaps } from "@/server/community/accountDayReports";
 import type * as Queries from "@/server/community/queries";
+import type { readCorrectionFeatures } from "@/server/corrections/features";
 import { withBasePath } from "@/shared/utils/basePath";
 
 /** Cookie による本人判定をサーバーへ委ね，端末や共有 cache へ本人情報を残さない． */
-async function query<Result>(command: object): Promise<Result> {
+async function query<Result>(
+  command: object,
+  signal?: AbortSignal,
+): Promise<Result> {
   const response = await fetch(withBasePath("/api/community/queries"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(command),
     cache: "no-store",
+    signal,
   });
   if (!response.ok) throw new Error("投稿情報を取得できませんでした．");
   return response.json();
+}
+
+/** 詳細から開いた施設の修正対象を取得する． */
+export function getCorrectionFeatures(
+  resortId: string,
+  signal: AbortSignal,
+): ReturnType<typeof readCorrectionFeatures> {
+  return query({ operation: "correctionFeatures", resortId }, signal);
 }
 
 /** 条件と本人の閲覧範囲に合う投稿を取得する． */
