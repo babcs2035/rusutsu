@@ -71,7 +71,13 @@ export async function rebuildRecommendationFeatures(
     latestStatusLoader: async () => null,
     documentLoader: async absolutePath => {
       const key = path
-        .relative(path.resolve(process.cwd(), "src/private/data"), absolutePath)
+        .relative(
+          path.resolve(
+            /* turbopackIgnore: true */ process.cwd(),
+            "src/private/data",
+          ),
+          absolutePath,
+        )
         .split(path.sep)
         .join("/");
       const document = await loadDocument(key);

@@ -36,7 +36,8 @@ const hashContent = (content: string): string =>
 
 type DataDocumentLoader = (absoluteFilePath: string) => Promise<string | null>;
 
-const dataRoot = (): string => path.resolve(process.cwd(), "src/private/data");
+const dataRoot = (): string =>
+  path.resolve(/* turbopackIgnore: true */ process.cwd(), "src/private/data");
 
 const defaultTemporaryRoot = (): string =>
   path.join(dataRoot(), "resorts-temporary");
@@ -71,7 +72,7 @@ const readDataFile = async (
   }
 
   try {
-    return await fs.readFile(filePath, "utf8");
+    return await fs.readFile(/* turbopackIgnore: true */ filePath, "utf8");
   } catch {
     return null;
   }

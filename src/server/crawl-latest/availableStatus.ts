@@ -4,6 +4,7 @@ import {
   type LatestSuccessfulStatus,
   listResortIdsWithLatestStatus,
   loadLatestSuccessfulStatus,
+  loadStatusHistory,
 } from "@/lib/latestStatusFiles";
 
 type CurrentStatusReader = {
@@ -24,7 +25,7 @@ type CurrentStatusReader = {
 };
 
 const temporaryRoot = path.join(
-  process.cwd(),
+  /* turbopackIgnore: true */ process.cwd(),
   "src/private/data/resorts-temporary",
 );
 
@@ -75,4 +76,17 @@ export async function listAvailableCrawlLatestResortIdsDirect(
   return [
     ...new Set([...databaseIds, ...archiveIds, ...bundledIds[kind]]),
   ].sort();
+}
+
+/** 名称対応に使う採用履歴と同梱の取得結果を，同じ順序で返す． */
+export async function readAvailableMappingHistory(
+  resortId: string,
+  kind: LatestStatusKind,
+): Promise<LatestSuccessfulStatus[]> {
+  const { listMappingStatusHistoryDirect } = await import("./current");
+  const [database, bundled] = await Promise.all([
+    listMappingStatusHistoryDirect(resortId, kind),
+    loadStatusHistory(temporaryRoot, resortId, kind),
+  ]);
+  return [...database, ...bundled];
 }

@@ -18,7 +18,8 @@ const RESORT_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
-const dataRoot = (): string => path.resolve(process.cwd(), "src/private/data");
+const dataRoot = (): string =>
+  path.resolve(/* turbopackIgnore: true */ process.cwd(), "src/private/data");
 
 const defaultTemporaryRoot = (): string =>
   path.join(dataRoot(), "resorts-temporary");
@@ -168,7 +169,7 @@ export const readCapabilityFile = async (
       (await getDataDocument(capabilityDocumentKey(resortId)))?.content ?? null;
   } else {
     try {
-      raw = await fs.readFile(filePath, "utf8");
+      raw = await fs.readFile(/* turbopackIgnore: true */ filePath, "utf8");
     } catch {
       raw = null;
     }

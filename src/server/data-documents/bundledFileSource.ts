@@ -180,4 +180,4 @@ export class BundledFileDataDocumentSource
 }
 
 export const defaultBundledDataDocumentRoot = (): string =>
-  path.resolve(process.cwd(), "src/private/data");
+  path.resolve(/* turbopackIgnore: true */ process.cwd(), "src/private/data");
