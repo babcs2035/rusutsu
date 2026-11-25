@@ -188,12 +188,10 @@ font は `next/font/google` の自己配信から Google Fonts の CDN へ切り
 ### 配備成功後に Docker の不要イメージを整理する（R15）
 
 1. 切替前に current の image ID・digest・成功 SHA を照合し，直前の正常版を記録する．
-2. 配備と app/DB/公開画面の readiness 成功後，workflow の最後の SSH step で配備先を整理する．deploy/backup と排他し，対象 SHA を再確認する．
-3. 当該 Rusutsu の古い app の SHA tag を列挙し，current・直前正常版・全稼働／停止コンテナの参照・復元用 DB image・別プロジェクトを除外する．確認済み tag のみ強制せず削除する．
-4. 専用 label の dangling image を再列挙し，当該配備先の削除可能 ID と照合する．候補が一致した場合は ID・tag を直前に再確認し，確認済み ID を `docker image rm --no-prune` で個別に整理する．集合単位の prune は Docker daemon が実行時に候補を選び直すため，検査済み ID に削除範囲を限定する．
-5. cleanup は `continue-on-error: true` と warning annotation・通知を組み合わせ，終了コード・削除数・空き容量の前後を記録する．失敗は通知し，正常な配備を巻き戻さない．
+2. 配備の排他を取得してから SHA tag 付きイメージを取得する．配備と app/DB/公開画面の readiness 成功後，workflow の最後の SSH step で `docker image prune --force` を実行する．Docker daemon 上でタグがなく，コンテナからも参照されていないイメージを整理する．
+3. cleanup は `continue-on-error: true` と warning annotation・通知を組み合わせる．失敗は通知し，正常な配備を巻き戻さない．
 
-**完了条件:** 配備失敗時の未実行，共有 ID・複数 tag・同 label の他プロジェクト，current/rollback，再実行・途中失敗を検査する．無差別な `image prune -a`，volume/container/network/builder の一括 prune，`compose down -v` は使わず，DB・写真・artifact・バックアップを保つ．
+**完了条件:** 配備成功を条件に標準の dangling image 整理だけを実行する．現在版・切り戻し用・DB のタグ付きイメージと，稼働・停止コンテナが参照するイメージを保つ．
 
 ### 配備先に毎日 03:00 JST，最新 7 世代を保存する（R16）
 

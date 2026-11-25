@@ -118,6 +118,15 @@ test("CI/CD reports image cleanup failure in a separate GitHub notification job"
     /image-cleanup-notification:[\s\S]*?needs: deploy[\s\S]*?if: needs\.deploy\.outputs\.image-cleanup-outcome == 'failure'[\s\S]*?exit 1/u,
   );
   assert.match(workflow, /continue-on-error: true/u);
+  const cleanup = workflow
+    .split("      - name: Prune dangling Docker images")[1]
+    ?.split("      - name: Report image cleanup failure")[0];
+  assert.ok(cleanup);
+  assert.match(
+    cleanup,
+    /script: \|\n {12}set -eu\n {12}docker image prune --force\n/u,
+  );
+  assert.doesNotMatch(cleanup, /^\s+if:/mu);
   assert.match(
     workflow,
     /Report image cleanup failure[\s\S]*?::warning title=Image cleanup failed/u,

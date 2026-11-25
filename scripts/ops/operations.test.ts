@@ -45,12 +45,12 @@ elif args[0]=='run' and '--workdir' in args:
     script[0]=str(pathlib.Path(os.environ['OPS_TEST_SCRIPTS'])/script[0])
     state=pathlib.Path(os.environ['OPS_TEST_STATE'])
     if script[0].endswith('prepare-environment.ts'): script.append(str(state))
-    if script[0].endswith('image-cleanup.ts') and script[1] in ('recorded-image-id','verify-before-switch'):
+    if script[0].endswith('deployment-image.ts') and script[1] in ('recorded-image-id','verify-before-switch'):
         current=json.loads((state/'deployed-image.json').read_text())['current']
         if script[1]=='recorded-image-id': print(current['imageId'])
         elif mode=='invalid-rollback': sys.exit(1)
         sys.exit(0)
-    if script[0].endswith('image-cleanup.ts') and script[1]=='record':
+    if script[0].endswith('deployment-image.ts') and script[1]=='record':
         sha,image_id,digest=script[2],script[3],script[4]
         prev=None
         pf=state/'previous-image.json'
@@ -362,6 +362,7 @@ for (const failure of ["dump", "empty", "archive", "connection", "lock"]) {
       assert.notEqual(result.status, 0);
       assert.ok(!f.calls().includes("migrate deploy"));
       assert.ok(!f.calls().includes(" stop "));
+      if (failure === "lock") assert.doesNotMatch(f.calls(), /docker pull/u);
       assert.deepEqual(
         readdirSync(path.join(f.root, "project", "backups")),
         [],
@@ -427,7 +428,7 @@ test("an unverifiable rollback image stops deployment before app or DB changes",
       f.run("deploy.sh", { OPS_TEST_FAILURE: "invalid-rollback" }).status,
       0,
     );
-    assert.match(f.calls(), /image-cleanup.ts verify-before-switch/);
+    assert.match(f.calls(), /deployment-image.ts verify-before-switch/);
     assert.doesNotMatch(f.calls(), /pg_dump| stop |migrate deploy/);
     assert.deepEqual(JSON.parse(readFileSync(file, "utf8")), record);
   } finally {

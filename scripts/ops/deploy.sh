@@ -12,19 +12,18 @@ for value in "$initialize" "$force_backup" "$scheduler_enabled"; do
 done
 : "${RUSUTSU_SETTINGS_B64:?GitHub API token settings are required}"
 test -s db-change-manifest.sha256 || ops_die 'Missing database change manifest.'
-# A pull never replaces running containers or their volumes.
-docker pull "$APP_IMAGE" >/dev/null
 initialize_operations
 lock_operations
 trap 'rm -f -- "$OPS_STATE_DIR/pending.env.sh" "$OPS_STATE_DIR/pending.env.sh.tmp"; release_operations' EXIT
+docker pull "$APP_IMAGE" >/dev/null
 # Keep a verified rollback image record before any container is replaced.
 previous_record="$OPS_STATE_DIR/deployed-image.json"
 if [[ -e "$previous_record" || -L "$previous_record" ]]; then
   [[ -f "$previous_record" && ! -L "$previous_record" ]] || ops_die 'Successful deployment record is not a regular file.'
-  recorded_id="$(ops_node image-cleanup.ts recorded-image-id /operations)"
+  recorded_id="$(ops_node deployment-image.ts recorded-image-id /operations)"
   recorded_image="$(docker image inspect --format "$OPS_IMAGE_INSPECT_FORMAT" "$recorded_id")"
   running_id="$(docker inspect --format '{{.Image}}' "$OPS_APP_CONTAINER")"
-  ops_node image-cleanup.ts verify-before-switch "$DEPLOY_IMAGE_TAG" /operations "$running_id" "$recorded_image"
+  ops_node deployment-image.ts verify-before-switch "$DEPLOY_IMAGE_TAG" /operations "$running_id" "$recorded_image"
   cp -- "$previous_record" "$OPS_STATE_DIR/previous-image.json.tmp"
   mv -- "$OPS_STATE_DIR/previous-image.json.tmp" "$OPS_STATE_DIR/previous-image.json"
 else
@@ -75,7 +74,7 @@ image_digest="$(docker image inspect --format '{{range .RepoDigests}}{{println .
 running_image_id="$(docker inspect --format '{{.Image}}' "$OPS_APP_CONTAINER")"
 [[ "$image_id" =~ ^sha256:[a-f0-9]{64}$ && "$image_digest" =~ ^sha256:[a-f0-9]{64}$ && "$running_image_id" == "$image_id" ]] \
   || ops_die 'Successful deployment image identity could not be verified.'
-ops_node image-cleanup.ts record "$DEPLOY_IMAGE_TAG" "$image_id" "$image_digest" /operations
+ops_node deployment-image.ts record "$DEPLOY_IMAGE_TAG" "$image_id" "$image_digest" /operations
 mv "$OPS_STATE_DIR/pending.env.sh" "$OPS_STATE_DIR/runtime.env.sh"
 cp db-change-manifest.sha256 "$OPS_STATE_DIR/deployed-db-manifest.sha256"
 printf '%s\n' "$DEPLOY_IMAGE_TAG" > "$OPS_STATE_DIR/deployed-image-sha"
