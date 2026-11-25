@@ -198,6 +198,41 @@ test("backup stays on the VPS, validates the archive and commits a private gener
   }
 });
 
+test("backup with restore verifies the generation it created even when another generation sorts first", async () => {
+  const f = fixture();
+  try {
+    const backupRoot = path.join(f.root, "project", "backups");
+    const incomplete = ".incomplete-aaaaaaaa";
+    mkdirSync(path.join(backupRoot, incomplete), {
+      recursive: true,
+      mode: 0o700,
+    });
+    writeFileSync(path.join(backupRoot, incomplete, "database.dump"), "PGDMP");
+    writeFileSync(path.join(backupRoot, incomplete, "archive.list"), "archive");
+    const newer = await finalize(
+      backupRoot,
+      incomplete,
+      "rusutsu-db-20990101T000000Z-aaaaaaaa",
+      "2099-01-01T00:00:00.000Z",
+    );
+
+    const result = f.run("backup-database.sh", {}, ["--verify-restore"]);
+    assert.equal(result.status, 0, result.stderr);
+    const generated = /^Verified VPS-local database backup: (\S+)$/mu.exec(
+      result.stdout,
+    )?.[1];
+    assert.ok(generated);
+    assert.notEqual(generated, newer);
+    assert.ok(result.stdout.includes(`on this VPS: ${generated}`));
+    assert.ok(
+      f.calls().includes(`local-backup.ts verify-generation ${generated}`),
+    );
+    assert.doesNotMatch(f.calls(), /verify-latest/u);
+  } finally {
+    f.clean();
+  }
+});
+
 test("insufficient free space stops before dumping and preserves backups", async () => {
   const f = fixture();
   try {

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Create a VPS-local PostgreSQL backup and optionally restore that generation under the same lock.
 set -euo pipefail
 source "$(dirname "$0")/common.sh"
 initialize_operations
@@ -39,11 +40,13 @@ check_backup_capacity() {
 }
 
 case "${1:-}" in
-  ''|--operation-lock-held|--dry-run) ;;
+  ''|--operation-lock-held|--dry-run|--verify-restore)
+    [[ $# -le 1 ]] || ops_die 'Unexpected backup arguments.'
+    ;;
   --quarantine-invalid)
     [[ $# -eq 2 ]] || ops_die 'Usage: backup-database.sh --quarantine-invalid <generation>'
     ;;
-  *) ops_die 'Usage: backup-database.sh [--dry-run | --quarantine-invalid <generation>]' ;;
+  *) ops_die 'Usage: backup-database.sh [--dry-run | --verify-restore | --quarantine-invalid <generation>]' ;;
 esac
 if [[ "${1:-}" != --operation-lock-held ]]; then
   lock_operations
@@ -79,3 +82,6 @@ docker exec -i "$OPS_DB_CONTAINER" pg_restore --list < "$work/database.dump" > "
 test -s "$work/archive.list" || ops_die 'PostgreSQL archive validation failed.'
 backup_id="$(ops_node local-backup.ts finalize "${work##*/}")"
 printf 'Verified VPS-local database backup: %s\n' "$backup_id"
+if [[ "${1:-}" == --verify-restore ]]; then
+  bash "$OPS_SCRIPTS_DIR/restore-backup-test.sh" --operation-lock-held "$backup_id"
+fi

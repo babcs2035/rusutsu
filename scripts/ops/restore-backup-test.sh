@@ -10,7 +10,7 @@ case "${1:-}" in
     lock_operations
     owns_lock=true
     ;;
-  --operation-lock-held) generation="${2:?Missing migrated backup generation.}" ;;
+  --operation-lock-held) generation="${2:?Missing backup generation.}" ;;
   *) ops_die 'Usage: restore-backup-test.sh' ;;
 esac
 container_id=''
@@ -22,6 +22,8 @@ trap cleanup EXIT
 if [[ "$owns_lock" == true ]]; then
   load_runtime_environment
   generation="$(ops_node local-backup.ts verify-latest)"
+else
+  ops_node local-backup.ts verify-generation "$generation"
 fi
 [[ "$generation" =~ ^rusutsu-db-[0-9]{8}T[0-9]{6}Z-[A-Za-z0-9]{8}$ ]] || ops_die 'Invalid verified backup generation.'
 # 配備中の DB と同じ版を使い，外部から image を取得しない．
@@ -68,4 +70,4 @@ SELECT
     (SELECT count(*) FROM contribution_photos) AS restored_photos,
     (SELECT count(*) FROM edit_requests) AS restored_requests,
     (SELECT count(*) FROM crawl_latest_currents) AS restored_current_snapshots;'
-echo 'Restore succeeded in an isolated disposable PostgreSQL container on this VPS.'
+printf 'Restore succeeded in an isolated disposable PostgreSQL container on this VPS: %s\n' "$generation"

@@ -400,6 +400,10 @@ async function main() {
         root,
         process.argv[3],
       );
+    } else if (process.argv[2] === "verify-generation") {
+      const name = process.argv[3];
+      if (!name) throw new Error("Missing backup generation name.");
+      await verifyGeneration(root, name);
     } else if (process.argv[2] === "verify-latest") {
       const candidates = [];
       for (const name of readdirSync(root)) {

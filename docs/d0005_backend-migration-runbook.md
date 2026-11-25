@@ -171,7 +171,7 @@ DB dump は `share_images` volume を含まない．この volume は共有用�
 `Daily database backup` は毎日 03:00 JST に実行を予定する．初回の CI/CD で配備したスクリプトと設定を使う．
 
 旧保存先 `~/.local/state/rusutsu/<project>/backups/` から移行する世代は，配備先で `DEPLOY_TARGET="$PWD" bash scripts/ops/backup-database.sh --dry-run` を実行して確認する．次のバックアップでは一世代ずつ配備先へコピーし，チェックサムと一時 PostgreSQL への復元を確認してから，その世代の旧コピーを除く．復元時は必須テーブルの存在，スキー場データが空でないこと，外部キー制約の検証済み状態を確認する．失敗時は対象の旧コピーを残し，後続世代の移行と新しい DB コピーを行わない．中断後に残った一時ディレクトリは，配備・バックアップが動作していないことと対象パスを確認してから整理する．
-手動で`test_restore=true`を付けると、コピー後に同VPSで復元試験する。
+手動で `test_restore=true` を指定すると，同じ VPS 操作 lock の中で，新しく確定した世代を指定して復元試験を行う．CLI から実行する場合は `backup-database.sh --verify-restore` を使う．
 
 復元試験はチェックサムを確認し、ネットワークなし・PGDATAがtmpfsの一時PostgreSQLへ復元する。
 一時 DB でスキー場，認証，写真，申請，クロール現在値のテーブルが存在し，スキー場データが空でなく，外部キー制約が検証済みであることを確認し，試験コンテナを片付ける．

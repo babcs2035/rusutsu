@@ -31,8 +31,9 @@ def docker(*argv, input=None, check=True):
     return subprocess.run(['docker', *argv], input=input, text=True, capture_output=True, check=check)
 
 
-def script(name, check=True):
-    result = subprocess.run(['bash', str(repo / 'scripts/ops' / name)], cwd=root, env=env, text=True, capture_output=True)
+def script(name, *argv, check=True):
+    """Run a host operation against this exercise's disposable containers."""
+    result = subprocess.run(['bash', str(repo / 'scripts/ops' / name), *argv], cwd=root, env=env, text=True, capture_output=True)
     if check and result.returncode:
         raise RuntimeError(name + ' failed: ' + result.stdout + result.stderr)
     return result
@@ -124,11 +125,13 @@ INSERT INTO edit_requests (
                RUSUTSU_OPS_STATE_DIR=str(state), DEPLOY_TARGET=str(root))
     env.pop('APP_IMAGE', None)
     env.pop('RUSUTSU_SETTINGS_B64', None)
-    result = script('backup-database.sh')
+    result = script('backup-database.sh', '--verify-restore')
     assert 'Verified VPS-local database backup' in result.stdout
     print('PASS: actual pg_dump, pg_restore archive check and Node checksum generation on Docker')
     generations = list((root / 'backups').iterdir())
     assert len(generations) == 1
+    assert 'on this VPS: ' + generations[0].name in result.stdout
+    print('PASS: one locked operation restores the exact generation it created')
     files = sorted(p.name for p in generations[0].iterdir())
     assert files == ['SHA256SUMS', 'archive.list', 'database.dump', 'metadata.json']
     assert all(p.stat().st_mode & 0o077 == 0 for p in generations[0].iterdir())

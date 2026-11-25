@@ -73,7 +73,8 @@ jobs:
               echo 'Backup scripts are missing from DEPLOY_TARGET. Complete the CI/CD deployment first.' >&2
               exit 1
             fi
-            bash scripts/ops/backup-database.sh
             if [ "$TEST_RESTORE" = true ]; then
-              bash scripts/ops/restore-backup-test.sh
+              bash scripts/ops/backup-database.sh --verify-restore
+            else
+              bash scripts/ops/backup-database.sh
             fi

@@ -37,9 +37,7 @@ for (const shell of ["bash", "zsh"]) {
         assert.ok(script);
         // Execute the actual workflow preflight, stopping before Docker or DB work.
         const preflight = script
-          .split(
-            / {12}(?:printf '%s'|bash scripts\/ops\/backup-database.sh)/,
-          )[0]
+          .split(/ {12}(?:printf '%s'|if \[ "\$TEST_RESTORE" = true \])/)[0]
           .replace(/^ {12}/gm, "");
         const run = (value: string, code = preflight) =>
           spawnSync(shell, ["-c", `${code}\npwd -P`], {
