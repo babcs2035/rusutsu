@@ -28,6 +28,12 @@ services:
     volumes:
       - crawler_artifacts:/app/var/crawler-artifacts
       - share_images:/app/var/share-images
+      - type: bind
+        source: ${RUSUTSU_MAP_SW_OVERRIDE:?RUSUTSU_MAP_SW_OVERRIDE must identify the private map worker override}
+        target: /app/public/map-sw.js
+        read_only: true
+        bind:
+          create_host_path: false
     restart: unless-stopped
     init: true
     stop_grace_period: 30s

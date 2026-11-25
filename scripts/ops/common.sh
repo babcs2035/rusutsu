@@ -38,6 +38,8 @@ initialize_operations() {
       || ops_die 'Operations data inside a Git worktree must be explicitly ignored.'
   fi
   chmod 700 "$OPS_STATE_DIR"
+  RUSUTSU_MAP_SW_OVERRIDE="$OPS_STATE_DIR/map-sw.js"
+  export RUSUTSU_MAP_SW_OVERRIDE
   : "${DEPLOY_TARGET:?DEPLOY_TARGET must identify the deployed project directory.}"
   [[ "$DEPLOY_TARGET" == /* && "$DEPLOY_TARGET" != / ]] || ops_die 'DEPLOY_TARGET must be an absolute project directory.'
   [[ -d "$DEPLOY_TARGET" && ! -L "$DEPLOY_TARGET" ]] || ops_die 'DEPLOY_TARGET must be an existing non-symlink directory.'

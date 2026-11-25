@@ -105,3 +105,24 @@ test("CI/CD reports image cleanup failure in a separate GitHub notification job"
   assert.ok(notification);
   assert.doesNotMatch(notification, /secrets\.|envs:/u);
 });
+
+test("CI/CD rollback deploys a recorded SHA without a build and ships the current worker override", () => {
+  const workflow = readFileSync(".github/workflows/ci-cd.yml", "utf8");
+  assert.match(
+    workflow,
+    /rollback_image_sha:[\s\S]*?type: string[\s\S]*?required: false/u,
+  );
+  assert.match(
+    workflow,
+    /needs\.build-and-push\.result == 'skipped'[\s\S]*?github\.ref == 'refs\/heads\/main'/u,
+  );
+  assert.match(
+    workflow,
+    /DEPLOY_IMAGE_TAG: \$\{\{ inputs\.rollback_image_sha \|\| github\.sha \}\}/u,
+  );
+  assert.match(workflow, /ROLLBACK_IMAGE_SHA/);
+  assert.match(
+    workflow,
+    /source: "docker-compose\.production\.yml,scripts\/ops,public\/map-sw\.js"/u,
+  );
+});

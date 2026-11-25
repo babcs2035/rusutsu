@@ -28,10 +28,21 @@ declare global {
 
 /** 実際の Service Worker を使い，旧版のタブを開いた状態で配備と切り戻しを試す． */
 async function assertReleaseRetention(browser: Browser): Promise<void> {
-  const worker = await readFile("public/map-sw.js");
+  const worker = await readFile("public/map-sw.js", "utf8");
+  const legacyWorker = `
+    self.addEventListener("install", () => self.skipWaiting());
+    self.addEventListener("activate", event => event.waitUntil(self.clients.claim()));
+    self.addEventListener("message", event => {
+      if (event.data?.type === "SAVE_HOME") {
+        event.waitUntil(caches.delete("rusutsu-map-v1-assets"));
+      }
+    });
+  `;
   const chunk = (version: string, name: string): string =>
     `/rusutsu/_next/static/chunks/${version}-${name}.js`;
   let version = "a";
+  let workerOverride = `${worker}\n// initial compatible worker`;
+  const workerResponses: Array<{ version: string; body: string }> = [];
   const server = createServer((request, response) => {
     response.setHeader("Cache-Control", "no-store");
     if (request.url === "/rusutsu") {
@@ -44,7 +55,12 @@ async function assertReleaseRetention(browser: Browser): Promise<void> {
     } else if (request.url === "/rusutsu/map-sw.js") {
       response.setHeader("Content-Type", "text/javascript");
       response.setHeader("Service-Worker-Allowed", "/rusutsu");
-      response.end(worker);
+      // VPS の read-only mount と同様，イメージが持つ版を配信元で上書きする．
+      const body = workerOverride || (version === "a" ? legacyWorker : worker);
+      workerResponses.push({ version, body });
+      response.end(body);
+    } else if (request.url === "/fixture/bundled-map-sw.js") {
+      response.end(version === "a" ? legacyWorker : worker);
     } else if (
       [chunk(version, "start"), chunk(version, "lazy")].includes(
         request.url ?? "",
@@ -119,6 +135,7 @@ async function assertReleaseRetention(browser: Browser): Promise<void> {
       await oldPage.locator("#course").selectOption("second");
 
       version = "b";
+      workerOverride = worker;
       const newPage = await open("b");
       assert.equal(
         await oldPage.evaluate(
@@ -143,10 +160,28 @@ async function assertReleaseRetention(browser: Browser): Promise<void> {
       assert.equal(await oldPage.locator("#course").inputValue(), "second");
 
       version = "a";
+      assert.equal(
+        await (
+          await context.request.get(
+            new URL("/fixture/bundled-map-sw.js", url).href,
+          )
+        ).text(),
+        legacyWorker,
+      );
+      const requestCount = workerResponses.length;
+      // 同じ URL への実際の更新チェックで，旧イメージの Worker が再登録されないことを確認する．
+      await newPage.evaluate(async () => {
+        const registration = await navigator.serviceWorker.ready;
+        await registration.update();
+      });
+      const rollbackResponses = workerResponses.slice(requestCount);
+      assert.ok(rollbackResponses.length > 0);
+      for (const response of rollbackResponses)
+        assert.deepEqual(response, { version: "a", body: worker });
       await open("a");
       assert.equal(
         await newPage.evaluate(
-          async asset => (await fetch(asset)).text(),
+          async asset => (await fetch(asset, { cache: "reload" })).text(),
           chunk("b", "lazy"),
         ),
         "/* b */",

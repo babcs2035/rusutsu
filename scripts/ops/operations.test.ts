@@ -6,6 +6,7 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import path from "node:path";
@@ -26,7 +27,10 @@ if args[0]=='image' and args[1]=='inspect':
     if '--format' in args:
         template=args[args.index('--format')+1]
         if 'RepoTags' in template:
-            current=json.loads((pathlib.Path(os.environ['OPS_TEST_STATE'])/'deployed-image.json').read_text())['current']
+            record=json.loads((pathlib.Path(os.environ['OPS_TEST_STATE'])/'deployed-image.json').read_text())
+            requested=args[-1].rsplit(':',1)[-1]
+            current=record['current'] if args[-1].startswith('sha256:') or record['current']['sha']==requested else record['previous']
+            if current is None: sys.exit(1)
             print(json.dumps({'Id':current['imageId'],'RepoTags':['ghcr.io/babcs2035/rusutsu:'+current['sha']],'RepoDigests':['ghcr.io/babcs2035/rusutsu@'+current['digest']],'Config':{'Labels':{'com.rusutsu.image-cleanup':'app'}}}))
         elif '.Id' in template: print('sha256:'+'a'*64)
         else: print('ghcr.io/babcs2035/rusutsu@sha256:'+'a'*64)
@@ -41,10 +45,13 @@ elif args[0]=='run' and '--workdir' in args:
     script[0]=str(pathlib.Path(os.environ['OPS_TEST_SCRIPTS'])/script[0])
     state=pathlib.Path(os.environ['OPS_TEST_STATE'])
     if script[0].endswith('prepare-environment.ts'): script.append(str(state))
-    if script[0].endswith('deployment-image.ts') and script[1] in ('recorded-image-id','verify-before-switch'):
+    if script[0].endswith('deployment-image.ts') and script[1] in ('recorded-image-id','verify-before-switch','verify-rollback-target'):
         current=json.loads((state/'deployed-image.json').read_text())['current']
         if script[1]=='recorded-image-id': print(current['imageId'])
         elif mode=='invalid-rollback': sys.exit(1)
+        elif script[1]=='verify-rollback-target':
+            record=json.loads((state/'deployed-image.json').read_text())
+            if script[2] not in [record['current']['sha'], (record['previous'] or {}).get('sha')]: sys.exit(1)
         sys.exit(0)
     if script[0].endswith('deployment-image.ts') and script[1]=='record':
         sha,image_id,digest=script[2],script[3],script[4]
@@ -65,6 +72,14 @@ elif args[0]=='compose':
     elif any('migrateCanonicalMaps' in a for a in args) and mode=='canonical-maps': sys.exit(1)
     elif any('check-readiness' in a for a in args) and mode=='readiness': sys.exit(1)
 `;
+const curlStub = `#!/usr/bin/env bash
+set -eu
+if [[ "\${OPS_TEST_FAILURE:-}" == worker-mismatch && "\${*: -1}" == https://* ]]; then
+  printf '%s\\n' 'legacy worker served'
+  exit 0
+fi
+cat "$OPS_TEST_STATE/map-sw.js"
+`;
 
 function fixture() {
   const privateTmp = path.resolve("src/private/data/resorts-temporary/tmp");
@@ -78,7 +93,13 @@ function fixture() {
     JSON.stringify(existingContainers()),
   );
   writeFileSync(path.join(root, "bin", "docker"), toolStub, { mode: 0o700 });
+  writeFileSync(path.join(root, "bin", "curl"), curlStub, { mode: 0o700 });
   writeFileSync(path.join(root, "project", ".env"), "ORIGINAL=untouched\n");
+  mkdirSync(path.join(root, "project", "public"), { recursive: true });
+  writeFileSync(
+    path.join(root, "project", "public", "map-sw.js"),
+    '/* RUSUTSU_MAP_SW_ROLLBACK_COMPATIBLE */\nconst worker = "current";\n',
+  );
   writeFileSync(
     path.join(stateRoot, "runtime.env.sh"),
     shellEnvironment({ COMPOSE_PROJECT_NAME: "test-project" }),
@@ -136,6 +157,10 @@ test("deployment migrates the DB and requires public readiness without a fingerp
     assert.ok(
       f.calls().includes("check-readiness.ts https://example.test/rusutsu"),
     );
+    assert.equal(
+      statSync(path.join(f.stateRoot, "map-sw.js")).mode & 0o777,
+      0o644,
+    );
     assert.match(
       readFileSync(path.join(f.stateRoot, "runtime.env.sh"), "utf8"),
       /POSTGRES_VOLUME='existing-data'/,
@@ -176,6 +201,136 @@ test("an unverifiable rollback image stops deployment before app or DB changes",
   }
 });
 
+test("rollback keeps the pinned worker bytes and skips migrations and initialization", () => {
+  const f = fixture();
+  try {
+    const currentSha = "b".repeat(40);
+    const rollbackSha = "a".repeat(40);
+    const current = {
+      repository: "ghcr.io/babcs2035/rusutsu",
+      tag: currentSha,
+      sha: currentSha,
+      imageId: `sha256:${"b".repeat(64)}`,
+      digest: `sha256:${"c".repeat(64)}`,
+    };
+    const previous = {
+      repository: "ghcr.io/babcs2035/rusutsu",
+      tag: rollbackSha,
+      sha: rollbackSha,
+      imageId: `sha256:${"a".repeat(64)}`,
+      digest: `sha256:${"d".repeat(64)}`,
+    };
+    writeFileSync(
+      path.join(f.stateRoot, "deployed-image.json"),
+      JSON.stringify({ current, previous }),
+    );
+    const pinned =
+      '/* RUSUTSU_MAP_SW_ROLLBACK_COMPATIBLE */\nconst worker = "newer-compatible";\n';
+    writeFileSync(path.join(f.stateRoot, "map-sw.js"), pinned, { mode: 0o644 });
+    const result = f.run("deploy.sh", {
+      DEPLOY_IMAGE_TAG: rollbackSha,
+      ROLLBACK_IMAGE_SHA: rollbackSha,
+      INITIALIZE_CANONICAL_DATA: "false",
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(
+      readFileSync(path.join(f.stateRoot, "map-sw.js"), "utf8"),
+      pinned,
+    );
+    assert.doesNotMatch(
+      f.calls(),
+      /migrate deploy|--initialize|migrateCanonicalMaps/,
+    );
+    assert.match(f.calls(), /verify-rollback-target/);
+    assert.equal(
+      JSON.parse(
+        readFileSync(path.join(f.stateRoot, "deployed-image.json"), "utf8"),
+      ).current.sha,
+      rollbackSha,
+    );
+  } finally {
+    f.clean();
+  }
+});
+
+test("rollback refuses to replace the app when the pinned worker is missing", () => {
+  const f = fixture();
+  try {
+    const record = {
+      current: {
+        repository: "ghcr.io/babcs2035/rusutsu",
+        tag: "b".repeat(40),
+        sha: "b".repeat(40),
+        imageId: `sha256:${"b".repeat(64)}`,
+        digest: `sha256:${"c".repeat(64)}`,
+      },
+      previous: {
+        repository: "ghcr.io/babcs2035/rusutsu",
+        tag: "a".repeat(40),
+        sha: "a".repeat(40),
+        imageId: `sha256:${"a".repeat(64)}`,
+        digest: `sha256:${"d".repeat(64)}`,
+      },
+    };
+    writeFileSync(
+      path.join(f.stateRoot, "deployed-image.json"),
+      JSON.stringify(record),
+    );
+    assert.notEqual(
+      f.run("deploy.sh", {
+        DEPLOY_IMAGE_TAG: "a".repeat(40),
+        ROLLBACK_IMAGE_SHA: "a".repeat(40),
+      }).status,
+      0,
+    );
+    assert.doesNotMatch(f.calls(), / stop |migrate deploy/);
+    assert.deepEqual(
+      JSON.parse(
+        readFileSync(path.join(f.stateRoot, "deployed-image.json"), "utf8"),
+      ),
+      record,
+    );
+  } finally {
+    f.clean();
+  }
+});
+
+test("failed deployment preflight leaves the pinned worker unchanged", () => {
+  const f = fixture();
+  try {
+    const pinned =
+      '/* RUSUTSU_MAP_SW_ROLLBACK_COMPATIBLE */\nconst worker = "previous";\n';
+    writeFileSync(path.join(f.stateRoot, "map-sw.js"), pinned, { mode: 0o644 });
+    const result = f.run("deploy.sh", { OPS_TEST_FAILURE: "connection" });
+    assert.notEqual(result.status, 0);
+    assert.equal(
+      readFileSync(path.join(f.stateRoot, "map-sw.js"), "utf8"),
+      pinned,
+    );
+    assert.ok(
+      !readdirSync(f.stateRoot).some(name =>
+        name.startsWith("map-sw.js.stage."),
+      ),
+    );
+    assert.doesNotMatch(f.calls(), / stop |migrate deploy/);
+  } finally {
+    f.clean();
+  }
+});
+
+test("deployment refuses a directory at the pinned worker path", () => {
+  const f = fixture();
+  try {
+    mkdirSync(path.join(f.stateRoot, "map-sw.js"));
+    const result = f.run("deploy.sh");
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /regular file/);
+    assert.doesNotMatch(f.calls(), /docker pull| stop /);
+  } finally {
+    f.clean();
+  }
+});
+
 test("initialization migrates/imports and records only after readiness", () => {
   const f = fixture();
   try {
@@ -211,7 +366,12 @@ test("initialization migrates/imports and records only after readiness", () => {
   }
 });
 
-for (const failure of ["readiness", "migration", "canonical-maps"]) {
+for (const failure of [
+  "readiness",
+  "migration",
+  "canonical-maps",
+  "worker-mismatch",
+]) {
   test(`failed ${failure} preserves the previous configuration and success record`, () => {
     const f = fixture();
     try {

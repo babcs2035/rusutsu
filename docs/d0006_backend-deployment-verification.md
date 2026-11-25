@@ -14,6 +14,7 @@ git diff --check
 
 - 配備の契約試験は，既存の Compose project，DB volume，DB の接続設定と OAuth 設定を引き継ぐことを確認する．設定の値にドル記号や引用符を含む場合も，Compose に同じ値が渡ることを検査する．配備成功後のイメージ整理が `docker image prune --force` で行われることを確認する．
 - DB 接続確認，migration，readiness の失敗時は，後続処理または成功記録の更新を止める．
+- Service Worker の容量整理が起動 HTML の更新と重なっても，保存済みの HTML が参照する資産を保持する．切り戻し試験では，旧イメージへ切り替えても，ブラウザーの更新確認に運用領域の Worker が返り，開いている画面がその資産を使えることを確認する．[画面の復元とオフライン地図](d0011_mobile-map-recovery.md)
 - DB エクスポートの試験では，指定した出力先とファイル権限，既存ファイルの保護，失敗時に完成ファイルが残らないことを確認する．
 
 ## Docker と PostgreSQL で配備時のデータ保全を確認する

@@ -12,6 +12,7 @@ const required = {
   POSTGRES_PASSWORD: "test-db-password",
   PRODUCTION_DATABASE_URL: "postgresql://test:test-db-password@db:5432/test",
   POSTGRES_VOLUME: "already-existing-data",
+  RUSUTSU_MAP_SW_OVERRIDE: "/private/state/map-sw.js",
   API_BASE_URL: "https://example.test/rusutsu",
   API_BEARER_TOKEN: "a".repeat(64),
 };
@@ -59,6 +60,20 @@ test("production Compose isolates tokens and waits for DB/API health", {
     "share_images",
   ]);
   assert.equal(app.environment.SHARE_IMAGE_CACHE_ROOT, "/app/var/share-images");
+  assert.ok(
+    app.volumes.some(
+      (volume: {
+        source: string;
+        target: string;
+        read_only: boolean;
+        bind?: { create_host_path: boolean };
+      }) =>
+        volume.source === "/private/state/map-sw.js" &&
+        volume.target === "/app/public/map-sw.js" &&
+        volume.read_only &&
+        volume.bind?.create_host_path === false,
+    ),
+  );
   assert.ok(
     app.volumes.some(
       (volume: { source: string; target: string }) =>

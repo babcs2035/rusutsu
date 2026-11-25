@@ -8,7 +8,6 @@ const CLEANUP_LABEL = "com.rusutsu.image-cleanup";
 const IMAGE_ID_PATTERN = /^sha256:[a-f0-9]{64}$/u;
 const SHA_PATTERN = /^[a-f0-9]{40}$/u;
 const DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/u;
-const APP_DIGEST_PREFIX = `${APP_REPOSITORY}@`;
 
 type DeploymentImage = {
   repository: string;
@@ -56,6 +55,39 @@ export function verifyBeforeSwitch(
     throw new Error("Successful app image metadata could not be reverified.");
   }
   return runningImageId !== deployment.current.imageId;
+}
+
+/** Verify rollback targets against the recorded previous image or a retry target. */
+export function verifyRollbackTarget(
+  targetSha: string,
+  deployment: DeploymentRecord,
+  image: InspectedImage,
+): void {
+  if (!SHA_PATTERN.test(targetSha))
+    throw new Error("Requested rollback SHA is invalid.");
+  validateDeploymentImage(deployment.current, "current");
+  if (deployment.previous)
+    validateDeploymentImage(deployment.previous, "previous");
+  const target =
+    deployment.current.sha === targetSha
+      ? deployment.current
+      : deployment.previous?.sha === targetSha
+        ? deployment.previous
+        : null;
+  if (!target)
+    throw new Error(
+      "Rollback SHA is not the recorded previous successful image.",
+    );
+  if (
+    image.Id !== target.imageId ||
+    !(image.RepoTags ?? []).includes(`${APP_REPOSITORY}:${target.tag}`) ||
+    !(image.RepoDigests ?? []).includes(`${APP_REPOSITORY}@${target.digest}`) ||
+    image.Config?.Labels?.[CLEANUP_LABEL] !== "app"
+  ) {
+    throw new Error(
+      "Recorded rollback app image metadata could not be reverified.",
+    );
+  }
 }
 
 /** 記録が当該リポジトリの完全な SHA と digest を持つことを検証する． */
@@ -177,6 +209,18 @@ async function main(): Promise<void> {
       console.error(
         "Warning: running app differs from the last successful deployment; the recorded image was verified and rollback remains available.",
       );
+  } else if (operation === "verify-rollback-target") {
+    const targetSha = args[1];
+    const directory = args[2];
+    const inspectedImage = args[3];
+    if (!targetSha || directory !== "/operations" || !inspectedImage)
+      throw new Error("Rollback image identity is incomplete.");
+    const recordPath = path.join(directory, "deployed-image.json");
+    const recordStat = await lstat(recordPath);
+    if (!recordStat.isFile() || recordStat.isSymbolicLink())
+      throw new Error("Successful deployment record is not a regular file.");
+    const deployment = await readJson<DeploymentRecord>(recordPath);
+    verifyRollbackTarget(targetSha, deployment, JSON.parse(inspectedImage));
   } else throw new Error("Deployment image operation is invalid.");
 }
 

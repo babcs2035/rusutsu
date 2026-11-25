@@ -5,7 +5,7 @@ GitHub Actions の設定を管理する開発・運用担当者向けの手順�
 ## 1. 前提と保存先
 
 既存の GitHub Actions の SSH/Tailscale/GHCR アクセスを継続する．
-VPS では既存の Bash と Docker Compose を使う．
+VPS では Bash，Docker Compose，Worker の応答確認に使う `curl` を利用する．
 Node の補助処理はアプリイメージ内で実行する．
 SSH ユーザーのホームに書込みでき，Docker を操作できることが前提．
 
@@ -59,7 +59,7 @@ Secrets/Variables の保存だけでは VPS は変わらず，次の CI/CD 実�
 1. CI でテスト・型・Biome・使い捨て DB への migration と schema 差分を検証する．
 2. ARM64 の最終 Docker イメージを組み立て，commit SHA 付きの GHCR タグへ保存する．
 3. GitHub 設定を検証し，許可した項目だけ JSON→Base64 へ変換する．Base64 値もログのマスク対象へ登録する．
-4. 既存の SCP 経路で Compose と運用スクリプトを送る．設定値は SSH の環境変数経由で渡し，シェル本文へ直接埋め込まない．
+4. 既存の SCP 経路で現行の Compose，運用スクリプト，Service Worker の `public/map-sw.js` を送る．設定値は SSH の環境変数経由で渡し，シェル本文へ直接埋め込まない．
 5. VPS で既存 app/db を inspect し，Compose project 名と運用領域を確認してから，確定 SHA のイメージを取得する．
 6. 最後に成功した app の SHA・ID・digest を Docker のイメージ情報と照合し，切り戻し用に記録する．
 7. 既存 `rusutsu-db` と `rusutsu-app` から，DB volume・認証情報・ポート・ログイン設定を取得する．
@@ -67,14 +67,14 @@ Secrets/Variables の保存だけでは VPS は変わらず，次の CI/CD 実�
 9. GitHub 設定を合成した `pending.env.sh` を 0600 で生成する．値を安全にシェル引用し，改行・不正キーを拒否する．
 10. `.env` を上書きせず，生成した環境変数で Compose を展開する．DB volume は external とし，存在確認する．空 volume の自動作成を防ぐ．
 11. 新しいアプリ環境から既存 DB へ接続し，スキー場マスターがあることを確認する．
-12. app/scheduler 専用の DOM volume の権限を自動準備する．DB volume はこの補助処理にマウントしない．
+12. 通常配備では Service Worker を運用領域に確定し，アプリへ読み取り専用でマウントする．app/scheduler 専用の DOM volume の権限も準備する．
 13. app と scheduler を停止し，DB を健康確認して `prisma migrate deploy` を実行する．volume は削除しない．
 14. 初回指定時だけ，文書→短縮名の順で取り込む．
 15. 正本の地図が未移行の場合は，地図・営業集計・推薦特徴量を同じ transaction で移行する．app と，有効化指定された scheduler を起動する．
-16. 内部 healthcheck と，本番 HTTPS の `/rusutsu/api/ready`・`/rusutsu` の本文受信を確認する．
+16. 内部 healthcheck と，本番 HTTPS の `/rusutsu/api/ready`・`/rusutsu` の本文受信を確認する．ローカルと公開 HTTPS の両方で，配信中の Worker が運用領域のファイルと一致することも確認する．
 17. 成功時だけ設定を `runtime.env.sh` へ確定し，成功 SHA を保存する．
 
-配備と VPS のバックアップは重ならない前提で運用する．配備用の SSH タイムアウトは 30 分である．
+配備同士も含めて，配備と VPS のバックアップが重ならない前提で運用する．配備用の SSH タイムアウトは 30 分である．
 
 最終成功ログ：
 
@@ -180,7 +180,9 @@ API_BEARER_TOKEN="GitHubと同じキー"
 ## 8. 公開する変更と，失敗時の対応
 
 アプリ，内部 API，worker の通信契約を変える配備では，対応するアプリと private submodule のリビジョンを組にする．切り戻しでも同じ組を使う．
-切り戻し前に，成功記録のイメージ ID・digest と対象 SHA を照合し，その版の CI/CD を実行する．同じイメージから app と scheduler を起動する．DB の復元が必要な場合は，一時 DB での復元を先に確認し，別の承認済み操作として扱う．
+切り戻しは現行の `main` の CI/CD を手動実行し，`rollback_image_sha` に配備成功記録の直前版の SHA を指定する．現行の運用ファイルを使い，記録済みのイメージから app と scheduler を起動する．Service Worker は運用領域に確定済みの版を引き続き配信する．対象を照合できない場合や，運用領域に Service Worker がない場合は，アプリの停止前に終了する．
+
+DB の復元が必要な場合は，一時 DB での復元を先に確認し，別の承認済み操作として扱う．
 
 配備先への移動で止まった場合は `DEPLOY_TARGET` と SCP 工程を確認する．workflow を修正した後は，修正済みのリビジョンを指定して新しく実行する．
 

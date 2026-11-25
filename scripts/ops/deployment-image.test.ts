@@ -4,6 +4,7 @@ import { test } from "node:test";
 import {
   nextDeploymentRecord,
   verifyBeforeSwitch,
+  verifyRollbackTarget,
 } from "./deployment-image.ts";
 
 const sha = "a".repeat(40);
@@ -56,6 +57,35 @@ test("pre-switch verification accepts the recorded image and flags a different r
     () =>
       verifyBeforeSwitch("f".repeat(40), deployment, imageId("a"), {
         ...recordedImage,
+        RepoDigests: [],
+      }),
+    /metadata/,
+  );
+});
+
+test("rollback verification accepts only the recorded previous image or retry target", () => {
+  const previous = deployment.previous;
+  assert.ok(previous);
+  const inspected = (image: typeof previous) => ({
+    Id: image.imageId,
+    RepoTags: [`${repository}:${image.tag}`],
+    RepoDigests: [`${repository}@${image.digest}`],
+    Config: { Labels: label },
+  });
+  assert.doesNotThrow(() =>
+    verifyRollbackTarget(previous.sha, deployment, inspected(previous)),
+  );
+  assert.doesNotThrow(() =>
+    verifyRollbackTarget(sha, deployment, inspected(deployment.current)),
+  );
+  assert.throws(
+    () => verifyRollbackTarget("f".repeat(40), deployment, inspected(previous)),
+    /recorded previous/,
+  );
+  assert.throws(
+    () =>
+      verifyRollbackTarget(previous.sha, deployment, {
+        ...inspected(previous),
         RepoDigests: [],
       }),
     /metadata/,
