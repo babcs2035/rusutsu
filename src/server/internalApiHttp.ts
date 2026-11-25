@@ -16,7 +16,8 @@ export const internalApiError = (
   code: string,
   message: string,
   details?: unknown,
-): Response => httpProblem(status, code, message, NO_STORE_HEADERS, details);
+): Response =>
+  httpProblem(status, code, message, NO_STORE_HEADERS, { details });
 
 export const requireInternalApiRequest = (
   request: Request,

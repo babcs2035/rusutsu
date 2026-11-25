@@ -16,7 +16,7 @@ import type { FinalizedCourseGroup } from "@/features/resort-detail/types";
 import type { FinalizedResortMapData } from "@/lib/finalizedResortGeojsonShared";
 import type {
   CourseRecommendation,
-  CourseRecommendationSearch,
+  CourseRecommendationStatus,
 } from "@/server/course-recommendations/repository";
 import { DetailButton } from "@/shared/components/DetailButton";
 import { SegmentedControl } from "@/shared/components/SegmentedControl";
@@ -76,7 +76,7 @@ export function SimilarCourses({
   const [state, setState] = useState<{
     key: string;
     results: CourseRecommendation[];
-    status?: CourseRecommendationSearch["status"] | "api_outdated";
+    status?: CourseRecommendationStatus;
     error?: boolean;
   } | null>(null);
   const [retry, setRetry] = useState(0);

@@ -11,7 +11,7 @@ import {
   displayGroupDeleteRequestSchema,
   displayGroupSaveRequestSchema,
 } from "./displayGroupContract";
-import { publicResortWhere } from "./repository";
+import { publicResortWhere } from "./publicProjection";
 
 const groupInclude = {
   members: {

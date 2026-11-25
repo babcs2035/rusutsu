@@ -7,7 +7,7 @@ export function httpProblem(
   code: string,
   detail: string,
   headers: HeadersInit,
-  details?: unknown,
+  extensions?: { details?: unknown; error?: string },
 ): Response {
   const responseHeaders = new Headers(headers);
   responseHeaders.set("Content-Type", "application/problem+json");
@@ -18,7 +18,7 @@ export function httpProblem(
       status,
       code,
       detail,
-      ...(details === undefined ? {} : { details }),
+      ...extensions,
     },
     { status, headers: responseHeaders },
   );

@@ -4,7 +4,10 @@ import { randomUUID } from "node:crypto";
 import { cookies } from "next/headers";
 import { z } from "zod";
 import { auth, signIn, signOut } from "@/auth";
-import { prisma } from "@/lib/prisma";
+import {
+  syncFavoritesForUser,
+  updateFavoriteForUser,
+} from "@/server/favorites/repository";
 import { isPublicMapPathname } from "@/shared/utils/resortPath";
 import { favoriteIdsSchema } from "./storage";
 
@@ -69,26 +72,7 @@ export async function syncFavorites(
   } catch {
     /* Expired or malformed intent never adds a resort. */
   }
-  const requested = [...new Set([...ids, ...(pendingId ? [pendingId] : [])])];
-  const result = await prisma.$transaction(async tx => {
-    const valid = await tx.skiResort.findMany({
-      where: { id: { in: requested }, isActive: true },
-      select: { id: true },
-    });
-    await tx.favorite.createMany({
-      data: valid.map(resort => ({ userId, skiResortId: resort.id })),
-      skipDuplicates: true,
-    });
-    const rows = await tx.favorite.findMany({
-      where: { userId, skiResort: { isActive: true } },
-      select: { skiResortId: true },
-      orderBy: { skiResortId: "asc" },
-    });
-    return {
-      ids: rows.map(row => row.skiResortId),
-      addedPending: !!pendingId && valid.some(r => r.id === pendingId),
-    };
-  });
+  const result = await syncFavoritesForUser(userId, ids, pendingId);
   // 同期するたびにCookieを書くと、Next.jsがページ全体を更新してしまう。
   if (jar.get(INTENT_COOKIE))
     jar.set(INTENT_COOKIE, "", { ...cookieOptions, maxAge: 0 });
@@ -111,20 +95,7 @@ export async function updateFavorite(
   if (!session?.user?.id || session.user.id !== expectedUserId)
     throw new Error("ログイン状態が変わりました。");
   const userId = session.user.id;
-  if (added) {
-    const resort = await prisma.skiResort.findFirst({
-      where: { id, isActive: true },
-      select: { id: true },
-    });
-    if (!resort) throw new Error("スキー場が見つかりません。");
-    await prisma.favorite.upsert({
-      where: { userId_skiResortId: { userId, skiResortId: id } },
-      create: { userId, skiResortId: id },
-      update: {},
-    });
-  } else {
-    await prisma.favorite.deleteMany({ where: { userId, skiResortId: id } });
-  }
+  await updateFavoriteForUser(userId, id, added);
   return { userId };
 }
 

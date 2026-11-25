@@ -51,7 +51,6 @@ export async function POST(request: Request) {
       "WRONG_SERVER",
       "公開データを保持するサーバーへ接続してください。",
     );
-  let isAdmin = false;
   try {
     const command = editRequestApiCommandSchema.parse(
       await readRequestJson(request, EDIT_REQUEST_API_MAX_BYTES),
@@ -72,7 +71,7 @@ export async function POST(request: Request) {
         "このGoogleアカウントは接続先サーバーに登録されていません。サーバー側でログインして権限を設定してください。",
       );
     const result = await withInternalEditActor(account.userId, async () => {
-      isAdmin = (await requireEditor()).role === "admin";
+      await requireEditor();
       switch (command.operation) {
         case "correction-list":
           return listCorrections();
@@ -141,15 +140,10 @@ export async function POST(request: Request) {
     if (error instanceof EditConflictError)
       return internalApiError(409, "EDIT_CONFLICT", error.message);
     logInternalApiFailure("Edit request API failed", error);
-    // 管理者には理由を返す。汎用文だけでは保存できない原因を調べられない。
-    const reason =
-      isAdmin && error instanceof Error && error.message
-        ? `（理由: ${error.message.slice(0, 500)}）`
-        : "";
     return internalApiError(
       403,
       "REQUEST_DENIED",
-      `申請操作を実行できません。権限と対象の状態を確認してください。${reason}`,
+      "申請操作を実行できません。権限と対象の状態を確認してください。",
     );
   }
 }

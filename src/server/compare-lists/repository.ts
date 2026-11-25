@@ -1,10 +1,46 @@
 /** 比較リストの永続化を担当し，認証済み利用者の ID で操作を絞る． */
 import "server-only";
 import type { CompareListSummary } from "@/features/compare-lists/types";
-import { CompareListError } from "@/features/compare-lists/updateResorts";
+import {
+  CompareListError,
+  updateResorts,
+} from "@/features/compare-lists/updateResorts";
 import { prisma } from "@/lib/prisma";
 
 const MAX_LISTS = 50;
+
+/** 別の利用者のリストは削除対象に含めない． */
+export async function deleteCompareListForUser(
+  userId: string,
+  id: string,
+): Promise<void> {
+  await prisma.compareList.deleteMany({ where: { id, userId } });
+}
+
+/** 順序と所有者の検査を含め，施設の変更を一度に確定する． */
+export async function updateCompareListResortsForUser(
+  userId: string,
+  id: string,
+  requested: string[],
+  operation: "add" | "remove",
+): Promise<void> {
+  await prisma.$transaction(tx =>
+    updateResorts(tx, userId, id, requested, operation),
+  );
+}
+
+/** 所有者が一致するリストの名前だけを更新する． */
+export async function renameCompareListForUser(
+  userId: string,
+  id: string,
+  name: string,
+): Promise<boolean> {
+  const { count } = await prisma.compareList.updateMany({
+    where: { id, userId },
+    data: { name },
+  });
+  return count > 0;
+}
 
 /** 所有者ごとに新規作成を直列化し，上限と最初の表示順を保つ． */
 export async function createCompareListForUser(

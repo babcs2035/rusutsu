@@ -7,6 +7,12 @@ import {
   readingRelationsSelect,
 } from "./readingContract";
 
+/** 公開一覧と全国地図では，掲載中かつ統合先の施設を出す． */
+export const publicResortWhere = {
+  isActive: true,
+  mergedIntoId: null,
+} satisfies Prisma.SkiResortWhereInput;
+
 const text = z.string();
 const optionalText = text.nullable();
 const number = z.number();

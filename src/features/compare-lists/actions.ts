@@ -2,17 +2,15 @@
 
 import { z } from "zod";
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
 import {
   createCompareListForUser,
+  deleteCompareListForUser,
   readCompareListsForUser as readLists,
+  renameCompareListForUser,
+  updateCompareListResortsForUser,
 } from "@/server/compare-lists/repository";
 import { COMPARE_LIST_NAME_MAX } from "./types";
-import {
-  CompareListError,
-  MAX_COMPARE_LIST_RESORTS,
-  updateResorts,
-} from "./updateResorts";
+import { CompareListError, MAX_COMPARE_LIST_RESORTS } from "./updateResorts";
 
 const MAX_RESORTS = MAX_COMPARE_LIST_RESORTS;
 
@@ -52,7 +50,7 @@ export async function saveCompareList(input: {
 export async function deleteCompareList(id: string, expectedUserId: string) {
   const userId = await requireUser(expectedUserId);
   z.string().min(1).max(64).parse(id);
-  await prisma.compareList.deleteMany({ where: { id, userId } });
+  await deleteCompareListForUser(userId, id);
   return readLists(userId);
 }
 
@@ -68,9 +66,7 @@ export async function updateCompareListResorts(input: {
   const requested = [...new Set(resortIdsSchema.parse(input.resortIds))];
   const operation = z.enum(["add", "remove"]).parse(input.operation);
   try {
-    await prisma.$transaction(tx =>
-      updateResorts(tx, userId, id, requested, operation),
-    );
+    await updateCompareListResortsForUser(userId, id, requested, operation);
   } catch (error) {
     if (error instanceof CompareListError)
       return { ok: false as const, error: error.message };
@@ -90,11 +86,7 @@ export async function renameCompareList(input: {
   const parsed = nameSchema.safeParse(input.name);
   if (!parsed.success)
     return { ok: false as const, error: "リスト名を入力してください。" };
-  const updated = await prisma.compareList.updateMany({
-    where: { id, userId },
-    data: { name: parsed.data },
-  });
-  if (!updated.count)
+  if (!(await renameCompareListForUser(userId, id, parsed.data)))
     return { ok: false as const, error: "リストが見つかりません。" };
   return { ok: true as const, id, lists: await readLists(userId) };
 }

@@ -5,9 +5,9 @@ import {
   type RecommendationCandidate,
   rankCourses,
 } from "@/features/course-recommendations/algorithm";
-import type { SelectedMapFeature } from "@/features/map/types";
 import { prisma } from "@/lib/prisma";
 import { getResortLabelName } from "@/lib/resortAliases";
+import { publicResortWhere } from "@/server/ski-resorts/publicProjection";
 
 type Unavailable =
   | "no_favorites"
@@ -21,8 +21,6 @@ const resortSelect = {
   nameJa: true,
   shortName: true,
   sourceResortIds: true,
-  isActive: true,
-  mergedInto: { select: { sourceResortIds: true } },
 } as const;
 type PoolResort = Awaited<
   ReturnType<typeof prisma.skiResort.findMany<{ select: typeof resortSelect }>>
@@ -44,18 +42,18 @@ const validRow = (row: PoolRow) =>
 const ALL_POOL_TTL = 60_000;
 let allPool: {
   expires: number;
-  promise: Promise<{ resorts: PoolResort[]; rows: PoolRow[] }>;
+  promise: Promise<PoolRow[]>;
 } | null = null;
-function loadAllPool() {
+/** 特徴量だけを再利用し，公開状態は毎回正本で確認する． */
+function loadAllPool(): Promise<PoolRow[]> {
   if (allPool && allPool.expires > Date.now()) return allPool.promise;
   const entry = {
     expires: Number.POSITIVE_INFINITY,
-    promise: Promise.all([
-      prisma.skiResort.findMany({ select: resortSelect }),
-      prisma.courseRecommendationFeature.findMany({
+    promise: prisma.courseRecommendationFeature
+      .findMany({
         where: { calculationVersion: RECOMMENDATION.version },
-      }),
-    ]).then(([resorts, rows]) => ({ resorts, rows: rows.filter(validRow) })),
+      })
+      .then(rows => rows.filter(validRow)),
   };
   allPool = entry;
   entry.promise.then(
@@ -74,11 +72,21 @@ async function loadScopedRows(
   favoriteIds: string[],
   scope: RecommendationScope,
 ) {
-  if (scope === "all") return loadAllPool();
-  const resorts = await prisma.skiResort.findMany({
-    where: { id: { in: [...new Set([resortId, ...favoriteIds])] } },
+  const resortsQuery = prisma.skiResort.findMany({
+    where:
+      scope === "all"
+        ? publicResortWhere
+        : {
+            ...publicResortWhere,
+            id: { in: [...new Set([resortId, ...favoriteIds])] },
+          },
     select: resortSelect,
   });
+  if (scope === "all") {
+    const [resorts, rows] = await Promise.all([resortsQuery, loadAllPool()]);
+    return { resorts, rows };
+  }
+  const resorts = await resortsQuery;
   const ids = resorts.map(r => r.id);
   const rows = await prisma.courseRecommendationFeature.findMany({
     where: {
@@ -105,21 +113,12 @@ async function loadRecommendationPool(
   const sourceResort = resorts.find(r => r.id === resortId);
   if (!sourceResort) return { status: "source_unavailable" as const };
   const sourceId = sourceResort.id;
-  const sourceMembers = new Set([
-    resortId,
-    ...sourceResort.sourceResortIds,
-    ...(sourceResort.mergedInto?.sourceResortIds ?? []),
-  ]);
+  const sourceMembers = new Set([resortId, ...sourceResort.sourceResortIds]);
   const favorites = new Set(favoriteIds);
   const candidates = resorts.filter(
     r =>
       (scope === "all" || favorites.has(r.id)) &&
-      r.isActive &&
-      ![
-        r.id,
-        ...r.sourceResortIds,
-        ...(r.mergedInto?.sourceResortIds ?? []),
-      ].some(id => sourceMembers.has(id)),
+      ![r.id, ...r.sourceResortIds].some(id => sourceMembers.has(id)),
   );
   const byCanonical = new Map<string, PoolResort>();
   for (const r of candidates.sort((a, b) => a.id.localeCompare(b.id, "en")))
@@ -166,36 +165,6 @@ async function loadRecommendationPool(
   return { status: "ready" as const, sources, rank };
 }
 
-export async function searchCourseRecommendationsDirect(
-  resortId: string,
-  selected: SelectedMapFeature,
-  favoriteIds: string[],
-  scope: RecommendationScope = "favorites",
-) {
-  if (selected.kind !== "course")
-    return { status: "source_unavailable" as const, recommendations: [] };
-  const pool = await loadRecommendationPool(resortId, favoriteIds, scope);
-  if (pool.status !== "ready")
-    return { status: pool.status, recommendations: [] };
-  const source = pool.sources.find(row =>
-    selected.routeId
-      ? row.routeKey === selected.routeId
-      : row.isMainRoute &&
-        (row.groupId === selected.id || row.courseIds.includes(selected.id)),
-  );
-  // Never replace a secondary route selection with a main route.
-  if (
-    !source ||
-    (!selected.routeId && source.routeKey && source.groupId === selected.id)
-  )
-    return { status: "source_unavailable" as const, recommendations: [] };
-  const recommendations = pool.rank(source);
-  return {
-    status: recommendations.length ? ("ready" as const) : ("no_match" as const),
-    recommendations,
-  };
-}
-
 /** Warm all course results while opening the resort, before a course is selected. */
 export async function getCourseRecommendationIndexDirect(
   resortId: string,
@@ -215,29 +184,13 @@ export async function getCourseRecommendationIndexDirect(
     })),
   };
 }
-export async function recommendCoursesDirect(
-  resortId: string,
-  selected: SelectedMapFeature,
-  favoriteIds: string[],
-  scope: RecommendationScope = "favorites",
-) {
-  return (
-    await searchCourseRecommendationsDirect(
-      resortId,
-      selected,
-      favoriteIds,
-      scope,
-    )
-  ).recommendations;
-}
-export type CourseRecommendationSearch = Awaited<
-  ReturnType<typeof searchCourseRecommendationsDirect>
->;
-export type CourseRecommendation =
-  CourseRecommendationSearch["recommendations"][number];
 export type CourseRecommendationIndex = Awaited<
   ReturnType<typeof getCourseRecommendationIndexDirect>
 >;
+export type CourseRecommendation = Extract<
+  CourseRecommendationIndex,
+  { status: "ready" }
+>["courses"][number]["recommendations"][number];
 export type CourseRecommendationStatus =
   | Unavailable
   | "ready"

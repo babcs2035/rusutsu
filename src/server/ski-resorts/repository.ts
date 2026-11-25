@@ -32,15 +32,10 @@ import {
 import { ensureMergedGeometryDocuments } from "./mergeGeometry";
 import {
   type PublicSkiResortRecord,
+  publicResortWhere,
   publicSkiResortSelect,
 } from "./publicProjection";
 import { readingRelationsSelect } from "./readingContract";
-
-/** 公開一覧と全国地図に出すスキー場。完全統合（MERGED）は親だけを出す。 */
-export const publicResortWhere = {
-  isActive: true,
-  mergedIntoId: null,
-} satisfies Prisma.SkiResortWhereInput;
 
 /** 公開処理に必要な施設 ID と，統合後も掲載を継続する資料の出どころを読む． */
 export function findPublicResortSourcesDirect(): Promise<

@@ -5,6 +5,7 @@ import { test } from "node:test";
 import { pathToFileURL } from "node:url";
 import type { Prisma } from "@prisma/client";
 import { build } from "esbuild";
+import type { SelectedMapFeature } from "@/features/map/types";
 import { testArtifactPath } from "../../../scripts/testArtifacts";
 import { readTestDatabaseUrl } from "../../../scripts/testDatabase";
 
@@ -28,6 +29,7 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
       export * from '@/server/course-recommendations/projection';
       export * from '@/server/course-recommendations/repository';
       export * from '@/server/course-recommendations/queries';
+      export { selectCachedRecommendations } from '@/features/course-recommendations/cache';
       export { POST as recommendationIndexRoute } from '@/app/api/course-recommendations/route';
       export { writeDataDocumentsInTransaction } from '@/server/data-documents/repository';
       export { authConfig } from '@/lib/auth.config';
@@ -428,22 +430,28 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
       }),
       projectionBefore,
     );
-    const main = {
+    const main: SelectedMapFeature = {
       kind: "course",
       id: "source-group",
       routeId: "source-group:route:2",
     };
+    const search = async (selected: SelectedMapFeature, favorites: string[]) =>
+      api.selectCachedRecommendations(
+        {
+          ...(await api.getCourseRecommendationIndexDirect(
+            "source",
+            favorites,
+          )),
+          scope: "favorites",
+        },
+        selected,
+      );
     assert.equal(
-      (await api.searchCourseRecommendationsDirect("source", main, ["third"]))
-        .status,
+      (await search(main, ["third"])).status,
       "candidates_unavailable",
     );
-    assert.equal(
-      (await api.searchCourseRecommendationsDirect("source", main, ["source"]))
-        .status,
-      "no_other_favorites",
-    );
-    const rec = await api.recommendCoursesDirect("source", main, [
+    assert.equal((await search(main, ["source"])).status, "no_other_favorites");
+    const { recommendations: rec } = await search(main, [
       "candidate",
       "source",
       "linked-child",
@@ -451,16 +459,8 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
     assert.equal(rec.length, 1);
     assert.equal(rec[0].score, 100);
     assert.equal(rec[0].selected.routeId, "candidate-group:route:2");
-    assert.equal(
-      (
-        await api.searchCourseRecommendationsDirect("source", main, [
-          "candidate",
-        ])
-      ).status,
-      "ready",
-    );
-    const secondary = await api.recommendCoursesDirect(
-      "source",
+    assert.equal((await search(main, ["candidate"])).status, "ready");
+    const { recommendations: secondary } = await search(
       { ...main, routeId: "source-group:route:10" },
       ["candidate"],
     );
@@ -474,11 +474,7 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
       f.properties.courseGrouping.id = "current-source-group";
     sourceHash = await write("source", JSON.stringify(migrated), sourceHash);
     assert.equal(
-      (
-        await api.searchCourseRecommendationsDirect("source", main, [
-          "candidate",
-        ])
-      ).status,
+      (await search(main, ["candidate"])).status,
       "source_unavailable",
     );
     const currentMain = {
@@ -486,11 +482,7 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
       id: "current-source-group",
       routeId: "current-source-group:route:2",
     };
-    const current = await api.searchCourseRecommendationsDirect(
-      "source",
-      currentMain,
-      ["candidate"],
-    );
+    const current = await search(currentMain, ["candidate"]);
     assert.equal(current.status, "ready");
     assert.equal(current.recommendations[0].score, 100);
     assert.ok(current.recommendations[0].maxSlope > 0);
@@ -530,6 +522,36 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
     const withoutFavorites = await otherAccountResponse.json();
     assert.equal(withoutFavorites.status, "ready");
     assert.equal(withoutFavorites.scope, "all");
+    await db.skiResort.update({
+      where: { id: "source" },
+      data: { isActive: false },
+    });
+    assert.equal(
+      (await api.getCourseRecommendationIndexDirect("source", [], "all"))
+        .status,
+      "source_unavailable",
+    );
+    await db.skiResort.update({
+      where: { id: "source" },
+      data: { isActive: true },
+    });
+    await db.skiResort.update({
+      where: { id: "candidate" },
+      data: { mergedIntoId: "linked-parent" },
+    });
+    assert.equal(
+      (await search(currentMain, ["candidate"])).status,
+      "no_other_favorites",
+    );
+    assert.equal(
+      (await api.getCourseRecommendationIndexDirect("source", [], "all"))
+        .status,
+      "candidates_unavailable",
+    );
+    await db.skiResort.update({
+      where: { id: "candidate" },
+      data: { mergedIntoId: null },
+    });
     const invalidResponse = await run(guest, () =>
       api.recommendationIndexRoute(
         new Request("http://localhost/rusutsu/api/course-recommendations", {
@@ -540,17 +562,20 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
       ),
     );
     assert.equal(invalidResponse.status, 400);
+    assert.equal(
+      invalidResponse.headers.get("Content-Type"),
+      "application/problem+json",
+    );
+    const invalidProblem = await invalidResponse.json();
+    assert.equal(invalidProblem.code, "INVALID_QUERY");
+    assert.equal(invalidProblem.error, "Invalid request");
     const opposite = JSON.parse(content("candidate"));
     for (const f of opposite.features) f.properties.piste = "×";
     const candidateDocument = await db.dataDocument.findUniqueOrThrow({
       where: { key: "resorts-temporary/slope_10m/candidate.geojson" },
     });
     await write("candidate", JSON.stringify(opposite), candidateDocument.hash);
-    const reference = await api.searchCourseRecommendationsDirect(
-      "source",
-      currentMain,
-      ["candidate"],
-    );
+    const reference = await search(currentMain, ["candidate"]);
     assert.equal(reference.recommendations.length, 1);
     assert.equal(reference.recommendations[0].groomingDifferent, true);
     // Rows from an older calculation are never compared with current ones.
@@ -559,11 +584,7 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
       data: { calculationVersion: 2 },
     });
     assert.equal(
-      (
-        await api.searchCourseRecommendationsDirect("source", currentMain, [
-          "candidate",
-        ])
-      ).status,
+      (await search(currentMain, ["candidate"])).status,
       "source_unavailable",
     );
     sourceHash = await write("source", JSON.stringify(migrated), sourceHash);
@@ -613,16 +634,9 @@ test("favorites and recommendation projection use real PostgreSQL with isolated 
       }),
       0,
     );
-    assert.deepEqual(
-      await api.recommendCoursesDirect("source", main, ["candidate"]),
-      [],
-    );
+    assert.deepEqual((await search(main, ["candidate"])).recommendations, []);
     assert.equal(
-      (
-        await api.searchCourseRecommendationsDirect("source", currentMain, [
-          "candidate",
-        ])
-      ).status,
+      (await search(currentMain, ["candidate"])).status,
       "source_unavailable",
     );
   } finally {

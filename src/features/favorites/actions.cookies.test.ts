@@ -27,6 +27,16 @@ const apiPromise = (async () => {
       {
         name: "cookie-request-runtime",
         setup(builder) {
+          builder.onResolve({ filter: /^server-only$/ }, () => ({
+            path: "server-only",
+            namespace: "server-boundary",
+          }));
+          builder.onLoad(
+            { filter: /.*/, namespace: "server-boundary" },
+            () => ({
+              contents: "export {};",
+            }),
+          );
           builder.onResolve(
             {
               filter:
