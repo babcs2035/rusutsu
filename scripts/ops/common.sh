@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# VPS prerequisites: Bash, flock, and Docker/Compose already used by deploys.
+# VPS prerequisites: Bash and Docker/Compose already used by deploys.
 set -euo pipefail
 umask 077
 OPS_IMAGE_INSPECT_FORMAT='{"Id":{{json .Id}},"RepoTags":{{json .RepoTags}},"RepoDigests":{{json .RepoDigests}},"Config":{"Labels":{"com.rusutsu.image-cleanup":{{json (index .Config.Labels "com.rusutsu.image-cleanup")}}}}}'
@@ -42,10 +42,6 @@ initialize_operations() {
   [[ "$DEPLOY_TARGET" == /* && "$DEPLOY_TARGET" != / ]] || ops_die 'DEPLOY_TARGET must be an absolute project directory.'
   [[ -d "$DEPLOY_TARGET" && ! -L "$DEPLOY_TARGET" ]] || ops_die 'DEPLOY_TARGET must be an existing non-symlink directory.'
   DEPLOY_TARGET="$(cd -- "$DEPLOY_TARGET" && pwd -P)"
-  BACKUP_DIR="$DEPLOY_TARGET/backups"
-  [[ ! -L "$BACKUP_DIR" ]] || ops_die 'Backup directory must not be a symlink.'
-  mkdir -p "$BACKUP_DIR"
-  chmod 700 "$BACKUP_DIR"
 }
 
 # Helper code uses the app image's Node runtime: no Python, age, rclone, sudo,
@@ -54,36 +50,7 @@ ops_node() {
   docker run --rm -i --network none --user "$(id -u):$(id -g)" \
     --mount "type=bind,source=$OPS_SCRIPTS_DIR,target=/ops,readonly" \
     --mount "type=bind,source=$OPS_STATE_DIR,target=/operations" \
-    --mount "type=bind,source=$BACKUP_DIR,target=/backup" \
     --workdir /ops --env RUSUTSU_SETTINGS_B64 --entrypoint node "$OPS_IMAGE" "$@"
-}
-
-lock_operations() {
-  # The kernel releases this advisory lock when the owning shell exits, so
-  # slow operations do not lose exclusivity and interrupted sessions recover.
-  command -v flock >/dev/null 2>&1 \
-    || ops_die 'The flock command is required for production operation locking.'
-  local lock_file="$OPS_STATE_DIR/operation.lock"
-  [[ ! -L "$lock_file" && ( ! -e "$lock_file" || -f "$lock_file" ) ]] \
-    || ops_die 'Production operation lock path is not a regular file.'
-  exec {OPS_LOCK_FD}>>"$lock_file" \
-    || ops_die 'Production operation lock file could not be opened.'
-  flock -n "$OPS_LOCK_FD" \
-    || ops_die 'Another production operation is running; retry after it finishes.'
-}
-
-release_operations() {
-  if [[ -n "${OPS_LOCK_FD:-}" ]]; then
-    exec {OPS_LOCK_FD}>&-
-    OPS_LOCK_FD=''
-  fi
-}
-
-load_runtime_environment() {
-  [[ -f "$OPS_STATE_DIR/runtime.env.sh" && ! -L "$OPS_STATE_DIR/runtime.env.sh" ]] \
-    || ops_die 'Run the new CI/CD deployment once before the backup workflow.'
-  source "$OPS_STATE_DIR/runtime.env.sh"
-  [[ "$COMPOSE_PROJECT_NAME" == "$OPS_PROJECT" ]] || ops_die 'Saved configuration belongs to a different Compose project.'
 }
 
 compose() {
@@ -91,4 +58,12 @@ compose() {
   # Ignore the old .env file while keeping it untouched for reference.
   docker compose --env-file /dev/null -p "$COMPOSE_PROJECT_NAME" \
     -f "${RUSUTSU_COMPOSE_FILE:-docker-compose.production.yml}" "$@"
+}
+
+load_runtime_environment() {
+  [[ -f "$OPS_STATE_DIR/runtime.env.sh" && ! -L "$OPS_STATE_DIR/runtime.env.sh" ]] \
+    || ops_die 'Complete one CI/CD deployment before rebuilding the recommendation projection.'
+  source "$OPS_STATE_DIR/runtime.env.sh"
+  [[ "$COMPOSE_PROJECT_NAME" == "$OPS_PROJECT" ]] \
+    || ops_die 'Saved configuration belongs to a different Compose project.'
 }

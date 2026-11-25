@@ -292,6 +292,6 @@ Cookie，Authorization，API key，フォーム値等は DOM 保存前に除去�
 
 ## 配備とバックアップ
 
-GitHub の設定・配備・保持と復元の操作は [運用手順](d0005_backend-migration-runbook.md) を参照する．
+GitHub の設定・配備と VPS からの DB エクスポートは [運用手順](d0005_backend-migration-runbook.md) を参照する．
 本番アプリは DB に直接接続する．独立 scheduler は内部 API の URL とトークンで通信する．
 ローカルのアプリを正本 API へ接続する場合も同じ設定名を使い，非 loopback の接続には HTTPS を使う．

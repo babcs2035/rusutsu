@@ -23,7 +23,7 @@ mise run dev
 | 作業 | 参照先 |
 | --- | --- |
 | サーバーと正本の構成を調べる | [データ管理と内部 API](docs/d0001_backend-data-architecture.md)，[コース・リフトの正本](docs/d0002_canonical-map-storage.md) |
-| 配備やバックアップの設定・復元をする | [運用手順](docs/d0005_backend-migration-runbook.md)，[配備とバックアップの検証](docs/d0006_backend-deployment-verification.md) |
+| 配備する，または VPS から DB をエクスポートする | [運用手順](docs/d0005_backend-migration-runbook.md)，[配備とエクスポートの検証](docs/d0006_backend-deployment-verification.md) |
 | データを収集し，公開する | [営業状況の採用条件](docs/d0012_crawler-operation-coverage.md)，[更新日時](docs/d0013_crawler-published-times.md)，[公開手順](docs/d0008_content-publishing-guide.md) |
 | 編集者の権限や投稿を扱う | [編集と承認](docs/d0007_editor-approval-workflow.md)，[現地レポートと情報修正](docs/d0009_user-contributions.md) |
 | 画面や地図を変更する | [UI 指針](docs/d0010_ui-guidelines.md)，[画面の復元とオフライン地図](docs/d0011_mobile-map-recovery.md)，[天気リンク](docs/d0014_weather-links.md) |

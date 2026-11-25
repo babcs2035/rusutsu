@@ -13,10 +13,6 @@ on:
         description: "Run the one-time canonical documents and shortName imports"
         type: boolean
         default: false
-      force_database_backup:
-        description: "Require a backup for an explicit bulk database operation"
-        type: boolean
-        default: false
 
 env:
   REGISTRY: ghcr.io
@@ -84,7 +80,7 @@ jobs:
       - name: Validate deployment scripts
         run: |
           for script in scripts/ops/*.sh; do bash -n "$script" || exit; done
-          python3 -m py_compile scripts/ops/build-db-manifest.py
+          python3 -m py_compile scripts/ops/verify-deployment-migration.py
           docker compose config --quiet
           git diff --check
 
@@ -166,11 +162,11 @@ jobs:
             --cache-to=type=gha,mode=max \
             .
 
-      - name: Verify backup and restore with the release image
+      - name: Verify release migrations against disposable databases
         run: |
           docker pull postgres:16-alpine@sha256:1d5b02d3a9941fbd52437db4107f8c52d6297dac553ca1e5c299ebb3756b4857
           docker tag postgres:16-alpine@sha256:1d5b02d3a9941fbd52437db4107f8c52d6297dac553ca1e5c299ebb3756b4857 postgres:16-alpine
-          mise exec uv@0.7.10 -- uv run --no-project scripts/ops/verify-local-backup.py --image "${{ env.REGISTRY }}/babcs2035/rusutsu:${{ github.sha }}"
+          mise exec uv@0.7.10 -- uv run --no-project scripts/ops/verify-deployment-migration.py --image "${{ env.REGISTRY }}/babcs2035/rusutsu:${{ github.sha }}"
 
       - name: Push the verified release image
         run: |
@@ -183,13 +179,9 @@ jobs:
     needs: build-and-push
     outputs:
       image-cleanup-outcome: ${{ steps.image-cleanup.outcome }}
-    concurrency:
-      group: rusutsu-production-operations
-      cancel-in-progress: false
     env:
       DEPLOY_IMAGE_TAG: ${{ github.sha }}
       INITIALIZE_CANONICAL_DATA: ${{ inputs.initialize_data == true || vars.INITIALIZE_CANONICAL_DATA == 'true' }}
-      FORCE_DATABASE_BACKUP: ${{ inputs.force_database_backup == true }}
       ENABLE_CRAWL_LATEST_SCHEDULER: ${{ vars.ENABLE_CRAWL_LATEST_SCHEDULER != 'false' }}
       GHCR_DEPLOY_TOKEN: ${{ secrets.GHCR_DEPLOY_TOKEN }}
       GHCR_DEPLOY_USER: ${{ github.actor }}
@@ -229,9 +221,6 @@ jobs:
           CONTRIBUTION_TRUST_PROXY: ${{ vars.CONTRIBUTION_TRUST_PROXY }}
         run: mise exec -- node scripts/ops/production-settings.ts
 
-      - name: Fingerprint explicit database-changing paths
-        run: python3 scripts/ops/build-db-manifest.py > db-change-manifest.sha256
-
       - name: Deploy package via SCP
         uses: appleboy/scp-action@7e85c2e09aa21988492acd66466b5d68bda49e2b # master
         with:
@@ -240,7 +229,7 @@ jobs:
           key: ${{ secrets.DEPLOY_KEY }}
           port: ${{ secrets.DEPLOY_PORT }}
           target: ${{ secrets.DEPLOY_TARGET }}
-          source: "docker-compose.production.yml,db-change-manifest.sha256,scripts/ops"
+          source: "docker-compose.production.yml,scripts/ops"
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@c4f70287fc37c43b14b30b407224bbbc8e8c6327 # master
@@ -249,7 +238,7 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_KEY }}
           port: ${{ secrets.DEPLOY_PORT }}
-          envs: DEPLOY_IMAGE_TAG,INITIALIZE_CANONICAL_DATA,FORCE_DATABASE_BACKUP,ENABLE_CRAWL_LATEST_SCHEDULER,GHCR_DEPLOY_TOKEN,GHCR_DEPLOY_USER,DEPLOY_TARGET,RUSUTSU_SETTINGS_B64
+          envs: DEPLOY_IMAGE_TAG,INITIALIZE_CANONICAL_DATA,ENABLE_CRAWL_LATEST_SCHEDULER,GHCR_DEPLOY_TOKEN,GHCR_DEPLOY_USER,DEPLOY_TARGET,RUSUTSU_SETTINGS_B64
           command_timeout: 30m
           script: |
             set -eu
@@ -265,7 +254,7 @@ jobs:
               echo 'DEPLOY_TARGET directory is unavailable. Check the VPS deployment path in GitHub Secrets; use an absolute path or ~/directory.' >&2
               exit 1
             fi
-            if [ ! -f scripts/ops/deploy.sh ] || [ ! -f docker-compose.production.yml ] || [ ! -f db-change-manifest.sha256 ]; then
+            if [ ! -f scripts/ops/deploy.sh ] || [ ! -f docker-compose.production.yml ]; then
               echo 'Deployment package is missing from DEPLOY_TARGET. Check the SCP step and deployment path.' >&2
               exit 1
             fi

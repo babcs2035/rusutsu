@@ -6,12 +6,10 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
-  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
-import { finalize } from "./local-backup.ts";
 import { shellEnvironment } from "./prepare-environment.ts";
 import { existingContainers, settings } from "./test-fixtures.ts";
 
@@ -37,8 +35,6 @@ elif args[0]=='inspect':
     elif '.Image' in args[args.index('--format')+1]: print('sha256:'+'a'*64)
     elif 'Labels' in args[args.index('--format')+1]: print('test-project')
     else: print('test-image')
-elif args[0]=='run' and '--pull' in args:
-    print('disposable-restore-container')
 elif args[0]=='run' and '--workdir' in args:
     start=args.index('--entrypoint')+3
     script=args[start:]
@@ -58,18 +54,7 @@ elif args[0]=='run' and '--workdir' in args:
         rec={"current":{"repository":"ghcr.io/babcs2035/rusutsu","tag":sha,"sha":sha,"imageId":image_id,"digest":digest},"previous":prev}
         (state/'deployed-image.json').write_text(json.dumps(rec)+'\\n')
         sys.exit(0)
-    env=dict(os.environ,OPS_BACKUP_TEST_ROOT=str(root/'project'/'backups'),OPS_BACKUP_LEGACY_TEST_ROOT=str(state/'backups'))
-    sys.exit(subprocess.run([os.environ['OPS_TEST_NODE']]+script,env=env).returncode)
-elif args[0]=='exec':
-    if 'pg_database_size' in ' '.join(args):
-        print('1000')
-    elif 'pg_dump' in ' '.join(args):
-        if mode=='dump': sys.exit(1)
-        if mode!='empty': sys.stdout.buffer.write(b'PGDMP-private-data')
-    elif 'pg_restore' in args:
-        sys.stdin.buffer.read()
-        if mode=='archive' or (mode=='restore' and '--exit-on-error' in args): sys.exit(1)
-        print('; PostgreSQL archive contents')
+    sys.exit(subprocess.run([os.environ['OPS_TEST_NODE']]+script).returncode)
 elif args[0]=='compose':
     if '--format' in args:
         app={k:os.environ.get(k,'') for k in ['AUTH_URL','API_BEARER_TOKEN']}
@@ -79,10 +64,6 @@ elif args[0]=='compose':
     elif 'migrate' in args and mode=='migration': sys.exit(1)
     elif any('migrateCanonicalMaps' in a for a in args) and mode=='canonical-maps': sys.exit(1)
     elif any('check-readiness' in a for a in args) and mode=='readiness': sys.exit(1)
-`;
-
-const diskSpaceStub = `#!/usr/bin/env sh
-if [ "\${OPS_TEST_FAILURE:-}" = space ]; then printf '1\\n'; else printf '999999999999\\n'; fi
 `;
 
 function fixture() {
@@ -97,16 +78,6 @@ function fixture() {
     JSON.stringify(existingContainers()),
   );
   writeFileSync(path.join(root, "bin", "docker"), toolStub, { mode: 0o700 });
-  writeFileSync(path.join(root, "bin", "df"), diskSpaceStub, { mode: 0o700 });
-  writeFileSync(
-    path.join(root, "bin", "flock"),
-    '#!/bin/sh\n[ "${OPS_TEST_FAILURE:-}" != lock ]\n',
-    { mode: 0o700 },
-  );
-  writeFileSync(
-    path.join(root, "project", "db-change-manifest.sha256"),
-    "test-manifest\n",
-  );
   writeFileSync(path.join(root, "project", ".env"), "ORIGINAL=untouched\n");
   writeFileSync(
     path.join(stateRoot, "runtime.env.sh"),
@@ -150,275 +121,9 @@ function fixture() {
   };
 }
 
-test("backup stays on the VPS, validates the archive and commits a private generation", () => {
+test("deployment migrates the DB and requires public readiness without a fingerprint", () => {
   const f = fixture();
   try {
-    const backupRoot = path.join(f.root, "project", "backups");
-    const corrupt = "rusutsu-db-20260901T000000Z-cccccccc";
-    mkdirSync(path.join(backupRoot, corrupt), { recursive: true, mode: 0o700 });
-    writeFileSync(path.join(backupRoot, corrupt, "database.dump"), "corrupt");
-    const unrelated = path.join(f.root, "unrelated-backup-target");
-    mkdirSync(unrelated);
-    writeFileSync(path.join(unrelated, "keep.txt"), "keep");
-    const linked = "rusutsu-db-20260902T000000Z-dddddddd";
-    symlinkSync(unrelated, path.join(backupRoot, linked));
-    mkdirSync(path.join(backupRoot, "unrelated-entry"));
-
-    const result = f.run("backup-database.sh");
-    assert.equal(result.status, 0, result.stderr);
-    const generations = readdirSync(backupRoot);
-    const completed = generations.find(
-      name => ![corrupt, linked, "unrelated-entry"].includes(name),
-    );
-    assert.ok(completed);
-    assert.deepEqual(readdirSync(path.join(backupRoot, completed)).sort(), [
-      "SHA256SUMS",
-      "archive.list",
-      "database.dump",
-      "metadata.json",
-    ]);
-    assert.ok(generations.includes(corrupt));
-    assert.ok(generations.includes(linked));
-    assert.ok(generations.includes("unrelated-entry"));
-    assert.equal(
-      readFileSync(path.join(unrelated, "keep.txt"), "utf8"),
-      "keep",
-    );
-    assert.ok(f.calls().indexOf("pg_dump") < f.calls().indexOf("pg_restore"));
-    assert.ok(
-      f.calls().indexOf("pg_database_size") < f.calls().indexOf("pg_dump"),
-    );
-    assert.doesNotMatch(f.calls(), /rclone|age --|scp|upload-artifact/);
-    assert.match(result.stdout, /Verified VPS-local database backup/);
-    const restore = f.run("restore-backup-test.sh");
-    assert.equal(restore.status, 0, restore.stderr);
-    assert.match(f.calls(), /to_regclass/);
-  } finally {
-    f.clean();
-  }
-});
-
-test("backup with restore verifies the generation it created even when another generation sorts first", async () => {
-  const f = fixture();
-  try {
-    const backupRoot = path.join(f.root, "project", "backups");
-    const incomplete = ".incomplete-aaaaaaaa";
-    mkdirSync(path.join(backupRoot, incomplete), {
-      recursive: true,
-      mode: 0o700,
-    });
-    writeFileSync(path.join(backupRoot, incomplete, "database.dump"), "PGDMP");
-    writeFileSync(path.join(backupRoot, incomplete, "archive.list"), "archive");
-    const newer = await finalize(
-      backupRoot,
-      incomplete,
-      "rusutsu-db-20990101T000000Z-aaaaaaaa",
-      "2099-01-01T00:00:00.000Z",
-    );
-
-    const result = f.run("backup-database.sh", {}, ["--verify-restore"]);
-    assert.equal(result.status, 0, result.stderr);
-    const generated = /^Verified VPS-local database backup: (\S+)$/mu.exec(
-      result.stdout,
-    )?.[1];
-    assert.ok(generated);
-    assert.notEqual(generated, newer);
-    assert.ok(result.stdout.includes(`on this VPS: ${generated}`));
-    assert.ok(
-      f.calls().includes(`local-backup.ts verify-generation ${generated}`),
-    );
-    assert.doesNotMatch(f.calls(), /verify-latest/u);
-  } finally {
-    f.clean();
-  }
-});
-
-test("insufficient free space stops before dumping and preserves backups", async () => {
-  const f = fixture();
-  try {
-    const backupRoot = path.join(f.root, "project", "backups");
-    const incomplete = ".incomplete-aaaaaaaa";
-    mkdirSync(backupRoot, { recursive: true, mode: 0o700 });
-    mkdirSync(path.join(backupRoot, incomplete), { mode: 0o700 });
-    writeFileSync(path.join(backupRoot, incomplete, "database.dump"), "PGDMP");
-    writeFileSync(path.join(backupRoot, incomplete, "archive.list"), "archive");
-    const prior = await finalize(
-      backupRoot,
-      incomplete,
-      "rusutsu-db-20260905T000000Z-aaaaaaaa",
-      "2026-09-05T00:00:00.000Z",
-    );
-    const result = f.run("backup-database.sh", { OPS_TEST_FAILURE: "space" });
-    assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /Insufficient free space/);
-    assert.ok(!f.calls().includes("pg_dump"));
-    assert.deepEqual(readdirSync(path.join(f.root, "project", "backups")), [
-      prior,
-    ]);
-  } finally {
-    f.clean();
-  }
-});
-
-test("insufficient space is checked before a legacy backup is copied or restored", async () => {
-  const f = fixture();
-  try {
-    const legacyRoot = path.join(f.stateRoot, "backups");
-    const legacyName = "rusutsu-db-20260905T000000Z-aaaaaaaa";
-    const incomplete = ".incomplete-aaaaaaaa";
-    mkdirSync(path.join(legacyRoot, incomplete), {
-      recursive: true,
-      mode: 0o700,
-    });
-    writeFileSync(path.join(legacyRoot, incomplete, "database.dump"), "PGDMP");
-    writeFileSync(path.join(legacyRoot, incomplete, "archive.list"), "archive");
-    await finalize(
-      legacyRoot,
-      incomplete,
-      legacyName,
-      "2026-09-05T00:00:00.000Z",
-    );
-
-    const result = f.run("backup-database.sh", { OPS_TEST_FAILURE: "space" });
-    assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /Insufficient free space/);
-    assert.doesNotMatch(
-      f.calls(),
-      /migrate-legacy|restore-backup-test|pg_dump/,
-    );
-    assert.ok(readdirSync(legacyRoot).includes(legacyName));
-    assert.deepEqual(readdirSync(path.join(f.root, "project", "backups")), []);
-  } finally {
-    f.clean();
-  }
-});
-
-test("corrupt backup quarantine is lock-protected and preserves the generation", () => {
-  const f = fixture();
-  try {
-    const backupRoot = path.join(f.root, "project", "backups");
-    const name = "rusutsu-db-20260905T000000Z-aaaaaaaa";
-    mkdirSync(path.join(backupRoot, name), { recursive: true, mode: 0o700 });
-    writeFileSync(path.join(backupRoot, name, "database.dump"), "preserve");
-
-    const result = f.run("backup-database.sh", {}, [
-      "--quarantine-invalid",
-      name,
-    ]);
-    assert.equal(result.status, 0, result.stderr);
-    assert.ok(readdirSync(f.stateRoot).includes("operation.lock"));
-    assert.ok(!readdirSync(backupRoot).includes(name));
-    assert.equal(
-      readFileSync(
-        path.join(backupRoot, ".quarantine", name, "database.dump"),
-        "utf8",
-      ),
-      "preserve",
-    );
-    assert.doesNotMatch(f.calls(), /pg_dump|restore-backup-test/);
-  } finally {
-    f.clean();
-  }
-});
-
-test("legacy backup preview copies nothing and failed restore preserves the source", async () => {
-  const f = fixture();
-  try {
-    const legacyRoot = path.join(f.stateRoot, "backups");
-    const incomplete = ".incomplete-bbbbbbbb";
-    mkdirSync(legacyRoot, { recursive: true, mode: 0o700 });
-    mkdirSync(path.join(legacyRoot, incomplete), { mode: 0o700 });
-    writeFileSync(
-      path.join(legacyRoot, incomplete, "database.dump"),
-      "PGDMP-legacy",
-    );
-    writeFileSync(
-      path.join(legacyRoot, incomplete, "archive.list"),
-      "archive legacy",
-    );
-    const generation = await finalize(
-      legacyRoot,
-      incomplete,
-      "rusutsu-db-20260906T000000Z-bbbbbbbb",
-      "2026-09-06T00:00:00.000Z",
-    );
-    mkdirSync(path.join(legacyRoot, ".incomplete-cccccccc"), {
-      mode: 0o700,
-    });
-    writeFileSync(
-      path.join(legacyRoot, ".incomplete-cccccccc", "database.dump"),
-      "PGDMP-next-legacy",
-    );
-    writeFileSync(
-      path.join(legacyRoot, ".incomplete-cccccccc", "archive.list"),
-      "archive next legacy",
-    );
-    const laterGeneration = await finalize(
-      legacyRoot,
-      ".incomplete-cccccccc",
-      "rusutsu-db-20260907T000000Z-cccccccc",
-      "2026-09-07T00:00:00.000Z",
-    );
-
-    const preview = f.run("backup-database.sh", {}, ["--dry-run"]);
-    assert.equal(preview.status, 0, preview.stderr);
-    assert.deepEqual(
-      preview.stdout.trim().split("\n").sort(),
-      [generation, laterGeneration].sort(),
-    );
-    assert.deepEqual(readdirSync(path.join(f.root, "project", "backups")), []);
-
-    const result = f.run("backup-database.sh", {
-      OPS_TEST_FAILURE: "restore",
-    });
-    assert.notEqual(result.status, 0);
-    assert.ok(!f.calls().includes("pg_dump"));
-    assert.match(f.calls(), /pg_restore --exit-on-error/);
-    assert.doesNotMatch(f.calls(), /confirm-legacy/);
-    assert.ok(readdirSync(legacyRoot).includes(generation));
-    assert.ok(readdirSync(legacyRoot).includes(laterGeneration));
-    assert.ok(
-      readdirSync(path.join(f.root, "project", "backups")).includes(generation),
-    );
-    assert.equal(
-      readdirSync(path.join(f.root, "project", "backups")).length,
-      1,
-    );
-  } finally {
-    f.clean();
-  }
-});
-
-for (const failure of ["dump", "empty", "archive", "connection", "lock"]) {
-  test(`failed ${failure} prevents migrations and leaves the running application intact`, () => {
-    const f = fixture();
-    try {
-      const result = f.run("deploy.sh", { OPS_TEST_FAILURE: failure });
-      assert.notEqual(result.status, 0);
-      assert.ok(!f.calls().includes("migrate deploy"));
-      assert.ok(!f.calls().includes(" stop "));
-      if (failure === "lock") assert.doesNotMatch(f.calls(), /docker pull/u);
-      assert.deepEqual(
-        readdirSync(path.join(f.root, "project", "backups")),
-        [],
-      );
-      assert.equal(
-        readFileSync(path.join(f.root, "project", ".env"), "utf8"),
-        "ORIGINAL=untouched\n",
-      );
-    } finally {
-      f.clean();
-    }
-  });
-}
-
-test("unchanged DB paths skip backup but still migrate and require public readiness", () => {
-  const f = fixture();
-  try {
-    writeFileSync(
-      path.join(f.stateRoot, "deployed-db-manifest.sha256"),
-      "test-manifest\n",
-    );
     const result = f.run("deploy.sh");
     assert.equal(result.status, 0, result.stderr);
     assert.ok(!f.calls().includes("pg_dump"));
@@ -464,23 +169,20 @@ test("an unverifiable rollback image stops deployment before app or DB changes",
       0,
     );
     assert.match(f.calls(), /deployment-image.ts verify-before-switch/);
-    assert.doesNotMatch(f.calls(), /pg_dump| stop |migrate deploy/);
+    assert.doesNotMatch(f.calls(), / stop |migrate deploy/);
     assert.deepEqual(JSON.parse(readFileSync(file, "utf8")), record);
   } finally {
     f.clean();
   }
 });
 
-test("initialization backs up first, then migrates/imports and records only after readiness", () => {
+test("initialization migrates/imports and records only after readiness", () => {
   const f = fixture();
   try {
     const result = f.run("deploy.sh", { INITIALIZE_CANONICAL_DATA: "true" });
     assert.equal(result.status, 0, result.stderr);
     const positions = [
       "check-existing-database.ts",
-      "pg_dump",
-      "pg_restore",
-      "local-backup.ts finalize",
       "prepare-artifact-directories.ts",
       "migrate deploy",
       "importCanonicalDataDocuments.ts --initialize",

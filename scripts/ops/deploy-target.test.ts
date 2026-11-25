@@ -15,7 +15,7 @@ import { test } from "node:test";
 
 for (const shell of ["bash", "zsh"]) {
   const available = spawnSync(shell, ["-c", "exit 0"]).status === 0;
-  for (const workflow of ["ci-cd", "database-backup"]) {
+  for (const workflow of ["ci-cd"]) {
     test(`${workflow}: deployment paths work in ${shell}`, {
       skip: !available && (shell !== "bash" || process.env.CI !== "true"),
     }, () => {
@@ -25,10 +25,7 @@ for (const shell of ["bash", "zsh"]) {
         mkdirSync(path.join(target, "scripts/ops"), { recursive: true });
         for (const file of [
           "docker-compose.production.yml",
-          "db-change-manifest.sha256",
           "scripts/ops/deploy.sh",
-          "scripts/ops/backup-database.sh",
-          "scripts/ops/restore-backup-test.sh",
         ])
           writeFileSync(path.join(target, file), "fixture\n");
 
@@ -55,20 +52,7 @@ for (const shell of ["bash", "zsh"]) {
         ]) {
           const result = run(value);
           assert.equal(result.status, 0, result.stderr);
-          if (workflow === "database-backup") {
-            const output = result.stdout.trim().split("\n");
-            assert.match(
-              output[0] ?? "",
-              /^Backup execution started at .* UTC \(.* JST\)$/u,
-            );
-            assert.equal(output[1], realpathSync(target));
-            assert.match(
-              output[2] ?? "",
-              /^Backup execution finished at .* UTC \(.* JST\); result=success$/u,
-            );
-          } else {
-            assert.equal(result.stdout.trim(), realpathSync(target));
-          }
+          assert.equal(result.stdout.trim(), realpathSync(target));
         }
 
         // Reproduce the failure in the previous workflow using the same directory.
@@ -80,24 +64,12 @@ for (const shell of ["bash", "zsh"]) {
           const result = run(value);
           assert.notEqual(result.status, 0);
           assert.match(result.stderr, /DEPLOY_TARGET/);
-          if (workflow === "database-backup") {
-            assert.match(
-              result.stdout,
-              /^Backup execution started at .* UTC \(.* JST\)\nBackup execution finished at .* UTC \(.* JST\); result=failed\n?$/u,
-            );
-          } else {
-            assert.equal(result.stdout, "");
-          }
+          assert.equal(result.stdout, "");
         }
         assert.equal(existsSync(path.join(root, "injected")), false);
         const incomplete = run(root);
         assert.notEqual(incomplete.status, 0);
         assert.match(incomplete.stderr, /missing/);
-        if (workflow === "database-backup")
-          assert.match(
-            incomplete.stdout,
-            /Backup execution finished at .* UTC \(.* JST\); result=failed/u,
-          );
       } finally {
         rmSync(root, { recursive: true, force: true });
       }

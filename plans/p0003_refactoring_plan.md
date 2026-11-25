@@ -9,7 +9,7 @@
 - リファクタリングの適用だけで既存の DB 行・値・ID・参照・NULL・文書 hash/version を変えない．端末の保存形式と共有済みの画面 URL も維持する．通常の業務操作による更新は継続し，過去 migration の書換え，ID の再発番，データの一括補正・削除は行わない．
 - Google の email・name の取得，アバター，Google 名・ニックネーム・匿名の選択を維持する．地図のインスタンス・表示範囲・選択，入力・下書き・写真，scroll を，通信方式や部品の移行で失わせない．
 - API の後方互換性は要件としない．全呼び出し元を同時に更新し，不要な endpoint と互換 adapter を削除する．内部 API の資格情報は `API_BEARER_TOKEN` 一つへ統一し，人の操作に必要な権限・所有者の検査は維持する．
-- バックアップは配備先の `backups/` へ毎日 03:00 JST に取得し，最新 7 世代を保持する．font は Google Fonts の CDN を使う．
+- バックアップは配備先の cron がシェルスクリプトを呼び，指定先へ PostgreSQL の dump を保存する．font は Google Fonts の CDN を使う．
 - 各変更はレビューできる小さな PR に分ける．共通規約と Skills の参照先は編集しない．
 
 ## 2. 実施順序
@@ -35,7 +35,7 @@
 - 全機能について，利用者の操作，期待結果，権限，失敗条件，担当する試験を対応付ける．公開・管理画面に加え，収集・公開・CLI・配備／復元・Service Worker を含める．未検証の機能を補い，同じ仕様を複数の層で繰り返す試験は統合する．
 - 純粋な業務条件は単体試験，所有者・永続化・transaction・競合は DB 統合試験，HTTP 固有の認証・入出力は Request/Response 試験，画面遷移・地図・入力保持・オフラインは代表的なブラウザ試験が担う．API と Action の両方で業務ロジック全体を再試験しない．
 - テスト用 DB は一つとし，すべての DB suite が `TEST_DATABASE_URL` を使う．community・corrections・editor workflow・canonical maps・crawl latest・favorites/recommendations 等の個別接続変数を廃止する．通常の開発 DB と本番 DB への接続を拒否する検査を共通化する．
-- DB 試験は直列実行し，migration，fixture の投入・後始末，中断後の初期化を統一する．試験項目ごとの DB を作らず，他の suite の残存データに依存させない．復元試験も使い捨ての試験環境で他の DB 試験と排他する．
+- DB 試験は直列実行し，migration，fixture の投入・後始末，中断後の初期化を統一する．試験項目ごとの DB を作らず，他の suite の残存データに依存させない．
 - setup・Prisma 生成・導入版 Next.js の型生成を再現可能にし，dev/build/QA の生成型を混在させない．CI では migration 後に DB suite を実行し，必須設定の欠落や未実行による skip を成功として扱わない．稼働中の dev の生成物は削除しない．
 - 運用試験の一時ディレクトリは安全ガードに適合させる．ブラウザ試験は単体試験と実行段階を分け，既存の test コマンドの引数で選択する．suite ごとにコマンドを追加しない．
 
@@ -188,22 +188,17 @@ font は `next/font/google` の自己配信から Google Fonts の CDN へ切り
 ### 配備成功後に Docker の不要イメージを整理する（R15）
 
 1. 切替前に current の image ID・digest・成功 SHA を照合し，直前の正常版を記録する．
-2. 配備の排他を取得してから SHA tag 付きイメージを取得する．配備と app/DB/公開画面の readiness 成功後，workflow の最後の SSH step で `docker image prune --force` を実行する．Docker daemon 上でタグがなく，コンテナからも参照されていないイメージを整理する．
+2. SHA tag 付きイメージで配備し，app/DB/公開画面の readiness 成功後，workflow の最後の SSH step で `docker image prune --force` を実行する．Docker daemon 上でタグがなく，コンテナからも参照されていないイメージを整理する．
 3. cleanup は `continue-on-error: true` と warning annotation・通知を組み合わせる．失敗は通知し，正常な配備を巻き戻さない．
 
 **完了条件:** 配備成功を条件に標準の dangling image 整理だけを実行する．現在版・切り戻し用・DB のタグ付きイメージと，稼働・停止コンテナが参照するイメージを保つ．
 
-### 配備先に毎日 03:00 JST，最新 7 世代を保存する（R16）
+### 配備先の cron から DB をエクスポートする（R16）
 
-- 日次・手動・配備前バックアップの保存先を `${DEPLOY_TARGET}/backups` へ統一する．Actions と運用 script が同じ正規化済み path を使い，HTTP 配信・Git 管理・image build・SCP の上書き／削除対象から外す．directory 0700/file 0600 を維持する．
-- 日次 workflow は `0 18 * * *`（UTC，03:00 JST）とする．Actions の開始遅延も確認できるよう実行時刻と結果を記録する．DB 変更 manifest 差分・初期化・強制指定等の配備前取得も維持する．
-- 用途別の枠・日数・byte 予算は設けず，検証済み完了世代を完了日時の降順に最新 7 世代だけ保持する．dump・metadata・checksum の検証と原子的な確定に成功した後，8 世代目以降を削除する．取得失敗では既存世代を消さない．
-- 取得・保持削除・復元・配備を排他する．symlink や無関係な path を追わず，所有する世代だけを削除する．通常の EXIT で `.incomplete-*` を片付け，異常停止の残骸と破損世代は実行中でないことを確認して整理する．
-- 手動バックアップで復元試験を選んだ場合は，同じ排他区間で新たに確定した世代を指定して復元する．
-- 旧既定先 `~/.local/state/rusutsu/<Compose project>/backups` の保存物は内容を変えずに移し，照合・復元確認後に旧コピーを除去する．新旧を合わせて最新 7 世代を選び，移行時は dry-run の候補を確認して適用する．
-- 一時 dump を含む空き容量を事前検査し，不足は通知して取得とバックアップ必須の配備を止める．正常な世代を先に削除しない．DB 内の写真を含む custom-format dump と，別 volume の artifact/共有画像の復元範囲を文書化し，volume は削除しない．
+- `scripts/ops/backup-database.sh` から既存の PostgreSQL コンテナの custom-format dump を，呼び出し元が指定した非公開の絶対パスへ出力する．実行時刻・保存先・保持期間は配備先で管理する．
+- 配備とバックアップは重ならない前提で運用する．DB 内の写真を含む dump と，別 volume の診断 DOM・共有画像キャッシュの範囲を文書化する．
 
-**完了条件:** 保存 path，cron，7→8 世代，日次／配備前を含む順序，取得失敗，容量不足，中断・破損・symlink，同時実行，旧保存先からの移行を検査する．保持世代から写真・認証・申請・クロール現在値を使い捨て環境へ復元する．
+**完了条件:** cron からスクリプトを単独で呼び出せる．出力は権限 0600 で作成し，エクスポート失敗時は完成ファイルを残さず，既存の dump を保つ．
 
 ## 9. 不要物を削除し，文書を現行仕様へ揃える（R20/R11）
 
@@ -227,7 +222,7 @@ font は `next/font/google` の自己配信から Google Fonts の CDN へ切り
 - 各 PR は要件適合性，既存機能・データへの影響，検証結果の三点で確認する．正常・空・欠測・境界・通信断・競合・二重実行・途中失敗の業務結果を比較し，API の JSON 形式の一致は要求しない．期待値を実装結果から作り直さない．
 - 変更対象の suite を先に実行し，共通処理の変更後は整理した全体試験を行う．料金の公式期待値と DB 統合試験を含め，UI は既存画面との比較，Service Worker とオフラインは production モードで確認する．整形・lint は読み取り専用で検査する．
 - 切替前に app/API/worker の対応版，停止・再開，退避対象，確認と復帰の手順を定める．旧 bundle・Service Worker・CLI の切替で未保存の下書き・写真・選択を強制 reload により失わせず，mutation の冪等キーを維持する．巻き戻しも対応版を一組で戻す．
-- DB の値・ID・hash/version，指定外の権限，業務結果，地図・入力保持に差があれば反映を止める．削除候補に最新 7 世代，current/rollback，別プロジェクト，volume が含まれる場合も停止する．本番操作は確認済みの対象へ限定する．
+- DB の値・ID・hash/version，指定外の権限，業務結果，地図・入力保持に差があれば反映を止める．配備後のイメージ整理は R15 に従う．本番操作は確認済みの対象へ限定する．
 
 共通の確認には mise の既存 task を使い，個別試験も test の引数で選択する．同じ処理を実装する package script を task から呼び，CI と手元で検査方法を揃える．
 

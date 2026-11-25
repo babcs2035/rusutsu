@@ -61,7 +61,7 @@ Next.js の起動処理の依存一覧には route の除外設定が適用さ�
 | Request/Response | 入力形式・容量・認証・公開項目・エラー・cache・HTTP 固有の条件                              |
 | DB 統合          | 本人と他人の操作，投稿・写真・訂正・承認，正本と派生値，競合・冪等性・途中失敗での rollback |
 | 収集 fixture     | 外部 HTML/API の抽出，空・欠測・古い情報，保存前の検証，施設別の例外                        |
-| 運用             | 保存・保持・復元，配備の順序と失敗時の停止，秘密の非出力，別プロジェクトの保護              |
+| 運用             | DB エクスポート，配備の順序と失敗時の停止，秘密の非出力，別プロジェクトの保護              |
 | ブラウザ         | 検索・詳細・比較・投稿の遷移，地図・入力・下書き・scroll の保持，通信断と復帰               |
 
 | 機能 | 担当する主な試験 |
@@ -72,7 +72,7 @@ Next.js の起動処理の依存一覧には route の除外設定が適用さ�
 | 投稿・下書き・写真・通報・通知・訂正 | `composerDraft.test.ts`，`draftStorage.test.ts`，`community.integration.test.ts`，`corrections.integration.test.ts`，`testPublicWorkflow.ts` |
 | 編集・承認・権限・正本の更新 | `edit-requests/policy.test.ts`，`workflow.integration.test.ts`，`canonical.integration.test.ts` |
 | 収集・営業情報・共通パス・雪マジ・診断 | private の `crawlReplacement.integration.test.ts`，`crawl_latest/`・`pass-programs/`・`crawlYukiMagi.test.ts`，`crawl-monitor/`・`crawl-latest/` の試験 |
-| HTTP・管理 API・データ公開・配備・復元 | `publicQueryHttp.test.ts`，`internalDataApiClient.test.ts`，`publishLiftTicket.test.ts`，`publishReview.test.ts`，`scripts/ops/` の試験 |
+| HTTP・管理 API・データ公開・配備・DB エクスポート | `publicQueryHttp.test.ts`，`internalDataApiClient.test.ts`，`publishLiftTicket.test.ts`，`publishReview.test.ts`，`scripts/ops/` の試験 |
 
 同じ仕様をすべての層で反復しない．試験を削除するときは，残る試験がその仕様を検出する根拠を確認する．料金の公式期待値は `LIFT_TICKET_DATA_ROOT=src/private/data/lift-ticket mise run test -- --unit src/features/lift-ticket/utils/uiContract.test.ts` でも確認できる．期待値を実装の出力から作り直さない．
 
