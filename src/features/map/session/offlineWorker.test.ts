@@ -15,6 +15,7 @@ function worker(
   let usedAt = Date.now();
   const handlers = new Map<string, (event: unknown) => void>();
   const stores = new Map<string, Map<string, Response>>();
+  const clients = new Set<string>();
   const key = (request: Request | string) =>
     typeof request === "string" ? request : request.url;
   const caches = {
@@ -38,7 +39,15 @@ function worker(
       location: { origin: "https://example.com" },
       addEventListener: (type: string, handler: (event: unknown) => void) =>
         handlers.set(type, handler),
-      clients: { claim: async () => {} },
+      clients: {
+        claim: async () => {},
+        matchAll: async () =>
+          [...clients].map(id => ({
+            id,
+            url: "https://example.com/rusutsu",
+            postMessage: () => {},
+          })),
+      },
     },
     caches,
     fetch: fetcher,
@@ -81,6 +90,7 @@ function worker(
     caches,
     dispatch,
     message,
+    clients,
     saveHome: () => message({ type: "SAVE_HOME" }),
   };
 }
@@ -392,7 +402,7 @@ test("比較などで表示しただけのタイルも圏外で再表示でき�
   assert.equal(await (await runtime.dispatch(request))?.text(), "tile");
 });
 
-test("新しい版の画面を保存したら旧ビルドの JS だけを消す", async () => {
+test("配備と切り戻しを挟んでも開いている画面の遅延 JS を返す", async () => {
   let version = "a";
   let online = true;
   const runtime = worker(async request => {
@@ -402,6 +412,9 @@ test("新しい版の画面を保存したら旧ビルドの JS だけを消す"
         `<html><script src="/rusutsu/_next/static/chunks/${version}.js"></script><meta name="rusutsu-map-worker" content="/rusutsu/maplibre/maplibre-gl-worker.mjs?v=${version}"></html>`,
         { headers: { "content-type": "text/html" } },
       );
+    const url = String(request.url ?? request);
+    if (version === "b" && url.endsWith("/lazy.js"))
+      return new Response("missing", { status: 404 });
     return new Response(`worker-${version}`);
   });
   const assets = await runtime.caches.open("rusutsu-map-v1-assets");
@@ -421,8 +434,15 @@ test("新しい版の画面を保存したら旧ビルドの JS だけを消す"
   version = "b";
   await runtime.saveHome();
   assert.ok(await assets.match(asset("b")));
-  assert.equal(await assets.match(asset("a")), undefined);
-  assert.equal(await assets.match(asset("lazy")), undefined);
+  const lazy = await runtime.dispatch({
+    url: asset("lazy"),
+    method: "GET",
+    mode: "cors",
+  });
+  assert.equal(await lazy?.text(), "worker-a");
+  version = "a";
+  await runtime.saveHome();
+  assert.ok(await assets.match(asset("b")));
   assert.ok(await assets.match(workerAsset("b")));
   online = false;
   const response = await runtime.dispatch({
@@ -431,4 +451,56 @@ test("新しい版の画面を保存したら旧ビルドの JS だけを消す"
     mode: "cors",
   });
   assert.equal(await response?.text(), "worker-b");
+});
+
+test("容量整理は開いている画面と起動 HTML の資産を残す", async () => {
+  const origin = "https://example.com";
+  const asset = (name: string): string =>
+    `${origin}/rusutsu/_next/static/chunks/${name}.js`;
+  const runtime = worker(async request => {
+    if (String(request.url ?? request) === `${origin}/rusutsu`)
+      return new Response(`<script src="${asset("new-start")}"></script>`, {
+        headers: { "content-type": "text/html" },
+      });
+    return new Response("available");
+  });
+  const assets = await runtime.caches.open("rusutsu-map-v1-assets");
+  const home = await runtime.caches.open("rusutsu-map-v1-home");
+  await home.put(
+    `${origin}/rusutsu`,
+    new Response(`<script src="${asset("old-start")}"></script>`),
+  );
+  for (const name of [
+    "old-start",
+    "active-lazy",
+    ...Array.from({ length: 598 }, (_, i) => `unused-${i}`),
+  ])
+    await assets.put(asset(name), new Response(name));
+  runtime.clients.add("client-a");
+
+  // 再起動直後や旧クライアントのように，完全な一覧が届く前は削除しない．
+  await runtime.message({ type: "WARM_MAP", assets: [asset("active-lazy")] });
+  await runtime.saveHome();
+  assert.equal(await assets.match(asset("new-start")), undefined);
+  assert.ok(await assets.match(asset("unused-0")));
+
+  await runtime.message({
+    type: "WARM_MAP",
+    assets: [asset("active-lazy")],
+    snapshot: true,
+  });
+  await runtime.saveHome();
+  assert.ok(await assets.match(asset("new-start")));
+  assert.ok(await assets.match(asset("old-start")));
+  assert.ok(await assets.match(asset("active-lazy")));
+  assert.equal(await assets.match(asset("unused-0")), undefined);
+  runtime.clients.delete("client-a");
+  await runtime.dispatch({
+    url: asset("extra"),
+    method: "GET",
+    mode: "cors",
+  });
+  assert.equal(await assets.match(asset("old-start")), undefined);
+  assert.ok(await assets.match(asset("new-start")));
+  assert.equal((await assets.keys()).length, 600);
 });

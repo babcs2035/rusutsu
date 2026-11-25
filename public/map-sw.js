@@ -9,12 +9,11 @@ const META = `${PREFIX}-meta`;
 const IMAGES = `${PREFIX}-images`;
 const ROOT = "/rusutsu/";
 const homeURL = new URL("/rusutsu", self.location.origin).href;
-const buildURL = new URL("/rusutsu/offline-build", self.location.origin).href;
+const MAX_ASSETS = 600;
 // 圏外で開き直すのに要るのは直近のスキー場だけ。直前の 1 件まで残す。
 const RETAINED_DETAILS = 2;
 // 電波が弱いゲレンデで待たせない。これを過ぎたら保存済みの画面を出す。
 const NAVIGATION_TIMEOUT = 3000;
-const isBuildAsset = url => url.pathname.startsWith("/rusutsu/_next/static/");
 const isAsset = url =>
   url.origin === self.location.origin &&
   (url.pathname.startsWith("/rusutsu/_next/static/") ||
@@ -34,8 +33,70 @@ const isTile = url =>
   /^\/xyz\/(pale|seamlessphoto)\/\d+\/\d+\/\d+\.(png|jpg)$/.test(url.pathname);
 let writes = Promise.resolve();
 const sizes = new Map();
+const assetsByClient = new Map();
+let pendingHomeAssets = [];
 const fetchPublic = request =>
   fetch(request, { credentials: "omit", signal: AbortSignal.timeout(12000) });
+
+/** 同じ画面からの分割通知と再通知を集約する． */
+function clientAssets(id) {
+  if (!assetsByClient.has(id))
+    assetsByClient.set(id, {
+      urls: new Set(),
+      hasSnapshot: false,
+      rewarmRequested: false,
+    });
+  return assetsByClient.get(id);
+}
+
+/** 保存中の HTML と開いている画面が使う資産を容量整理の対象から外す． */
+async function protectedAssets() {
+  const clients = (await self.clients.matchAll({ type: "window" })).filter(
+    client => isMapPath(new URL(client.url).pathname),
+  );
+  const liveIds = new Set(clients.map(client => client.id));
+  for (const id of assetsByClient.keys())
+    if (!liveIds.has(id)) assetsByClient.delete(id);
+  // Worker 再起動後も，画面の所有情報がそろうまでは既存資産を捨てない．
+  const unknown = clients.filter(
+    client => !assetsByClient.get(client.id)?.hasSnapshot,
+  );
+  if (unknown.length) {
+    for (const client of unknown) {
+      const owned = clientAssets(client.id);
+      if (owned.rewarmRequested) continue;
+      owned.rewarmRequested = true;
+      client.postMessage({ type: "REWARM" });
+    }
+    return null;
+  }
+  const home = await (await caches.open(HOME)).match(homeURL);
+  return new Set([
+    ...pendingHomeAssets.map(url => url.href),
+    ...(home ? assetPaths(await home.text()).map(url => url.href) : []),
+    ...clients.flatMap(client => [...assetsByClient.get(client.id).urls]),
+  ]);
+}
+
+/** 必要な空きが確保できる場合にだけ，未使用の資産を古い順に整理する． */
+async function makeAssetSpace(cache, entries, key, count, bytesNeeded) {
+  const protectedUrls = await protectedAssets();
+  if (!protectedUrls) return;
+  const remove = [];
+  for (const [url, bytes] of entries) {
+    if (count <= 0 && bytesNeeded <= 0) break;
+    if (url === key || protectedUrls.has(url)) continue;
+    remove.push(url);
+    count--;
+    bytesNeeded -= bytes;
+  }
+  if (count > 0 || bytesNeeded > 0) return;
+  for (const url of remove) {
+    await cache.delete(url);
+    entries.delete(url);
+  }
+}
+
 function saveBounded(name, request, response, limit, strict = false) {
   const task = writes
     .catch(() => {})
@@ -83,6 +144,12 @@ function saveBounded(name, request, response, limit, strict = false) {
         const oldest = entries.keys().next().value;
         await cache.delete(oldest);
         entries.delete(oldest);
+      }
+      if (name === ASSETS) {
+        const count = entries.size + Number(!entries.has(key)) - limit;
+        const bytesNeeded = used() + byteLength - budget;
+        if (count > 0 || bytesNeeded > 0)
+          await makeAssetSpace(cache, entries, key, count, bytesNeeded);
       }
       if (!entries.has(key) && entries.size >= limit)
         throw new Error("entry limit");
@@ -236,7 +303,7 @@ async function saveDetail(data, clientId) {
       (data.assets || []).filter(
         value => typeof value === "string" && isAsset(new URL(value, homeURL)),
       ),
-      value => cachedAsset(new Request(value), ASSETS, 600, true),
+      value => cachedAsset(new Request(value), ASSETS, MAX_ASSETS, true),
     );
     await pool(data.tiles.slice(0, 3200), value => {
       if (views.has(clientId) && views.get(clientId) !== data.id)
@@ -278,6 +345,8 @@ async function saveDetail(data, clientId) {
     );
   }
 }
+let homeWrites = Promise.resolve();
+/** 旧版の起動資産を維持したまま，起動に必要な資産がそろった HTML を保存する． */
 async function saveHome(response) {
   if (
     !response.ok ||
@@ -285,28 +354,31 @@ async function saveHome(response) {
     !response.headers.get("content-type")?.includes("text/html")
   )
     return;
-  const html = await response.clone().text();
-  const paths = assetPaths(html);
-  const cache = await caches.open(HOME);
-  // 旧版は旧ビルドを消さずに溜めたため、上限で新しい資産を保存できず
-  // 古い HTML が残り続けた。保存中の HTML と新しい HTML が使わない分を先に消す。
-  const saved = await (await cache.match(homeURL))?.text();
-  await evictUnusedBuilds(paths, saved ? assetPaths(saved) : []);
-  // 起動に要る資産を保存できた HTML だけ採用する。
-  await Promise.all(
-    paths.map(url => cachedAsset(new Request(url), ASSETS, 600, true)),
-  );
-  // 保存するのは展開済み HTML。通信時の圧縮・長さ・RSC 用 Vary を持ち越さない。
-  const headers = new Headers(response.headers);
-  for (const name of [
-    "content-encoding",
-    "content-length",
-    "transfer-encoding",
-    "vary",
-  ])
-    headers.delete(name);
-  await cache.put(homeURL, new Response(html, { status: 200, headers }));
-  await purgeOldBuild(paths);
+  homeWrites = homeWrites
+    .catch(() => {})
+    .then(async () => {
+      const html = await response.text();
+      pendingHomeAssets = assetPaths(html);
+      try {
+        // 失敗した場合も他の資産の書き込みが終わるまで保護を続ける．
+        await pool(pendingHomeAssets, url =>
+          cachedAsset(new Request(url), ASSETS, MAX_ASSETS, true),
+        );
+        const headers = new Headers(response.headers);
+        for (const name of [
+          "content-encoding",
+          "content-length",
+          "transfer-encoding",
+          "vary",
+        ])
+          headers.delete(name);
+        const cache = await caches.open(HOME);
+        await cache.put(homeURL, new Response(html, { status: 200, headers }));
+      } finally {
+        pendingHomeAssets = [];
+      }
+    });
+  await homeWrites;
 }
 const assetPaths = html =>
   [
@@ -316,49 +388,6 @@ const assetPaths = html =>
   ]
     .map(match => new URL(match[1].replaceAll("&amp;", "&"), homeURL))
     .filter(isAsset);
-const buildOf = paths =>
-  [...new Set(paths.filter(isBuildAsset).map(url => url.href))].sort();
-// 版が同じなら何もしない（遅延読み込みの chunk を残す）。
-async function evictUnusedBuilds(paths, savedPaths) {
-  const previous = await (
-    await (await caches.open(META)).match(buildURL)
-  )?.json();
-  if (JSON.stringify(previous) === JSON.stringify(buildOf(paths))) return;
-  await writes.catch(() => {});
-  const keep = new Set([...buildOf(paths), ...buildOf(savedPaths)]);
-  const assets = await caches.open(ASSETS);
-  for (const key of await assets.keys()) {
-    const url = new URL(typeof key === "string" ? key : key.url);
-    if (isBuildAsset(url) && !keep.has(url.href)) {
-      await assets.delete(key);
-      sizes.get(ASSETS)?.delete(url.href);
-    }
-  }
-}
-// 版が変わったら、新しい HTML が参照しない旧ビルドの JS/CSS を消す。
-// 遅延読み込みの chunk は、開いている画面から送り直してもらう。
-async function purgeOldBuild(paths) {
-  const build = [
-    ...new Set(paths.filter(isBuildAsset).map(url => url.href)),
-  ].sort();
-  const meta = await caches.open(META);
-  const previous = await (await meta.match(buildURL))?.json();
-  if (JSON.stringify(previous) === JSON.stringify(build)) return;
-  await writes.catch(() => {});
-  const keep = new Set(build);
-  const assets = await caches.open(ASSETS);
-  for (const key of await assets.keys()) {
-    const url = new URL(typeof key === "string" ? key : key.url);
-    if (isBuildAsset(url) && !keep.has(url.href)) {
-      await assets.delete(key);
-      sizes.get(ASSETS)?.delete(url.href);
-    }
-  }
-  await meta.put(buildURL, new Response(JSON.stringify(build)));
-  for (const client of (await self.clients.matchAll?.({ type: "window" })) ||
-    [])
-    client.postMessage({ type: "REWARM" });
-}
 // 旧版は保存済み HTML を通信より先に返すため、タブが残る端末では
 // デプロイ後も古い画面と Server Action ID のまま開けなくなる。待たずに差し替える。
 self.addEventListener("install", () => self.skipWaiting());
@@ -406,27 +435,37 @@ self.addEventListener("message", event => {
     );
   }
   if (event.data?.type === "WARM_MAP" && Array.isArray(event.data.assets)) {
+    const assets = event.data.assets
+      .slice(0, MAX_ASSETS)
+      .filter(value => typeof value === "string")
+      .map(value => new URL(value, homeURL))
+      .filter(isAsset);
+    const owned = clientAssets(event.source.id);
+    if (event.data.snapshot === true) owned.hasSnapshot = true;
+    for (const url of assets) rememberAsset(owned.urls, url.href);
     event.waitUntil(
-      pool(
-        event.data.assets
-          .slice(0, 600)
-          .filter(value => typeof value === "string"),
-        async value => {
-          const url = new URL(value, homeURL);
-          if (isAsset(url))
-            return cachedAsset(new Request(url), ASSETS, 600, false, true);
-          return undefined;
-        },
+      pool(assets, url =>
+        cachedAsset(new Request(url), ASSETS, MAX_ASSETS, false, true),
       ).catch(() => {}),
     );
   }
 });
+
+/** ブラウザから再通知された資産を，キャッシュの件数上限内で記録する． */
+function rememberAsset(owned, url) {
+  if (owned.has(url)) return;
+  if (owned.size === MAX_ASSETS) owned.delete(owned.values().next().value);
+  owned.add(url);
+}
+
 self.addEventListener("fetch", event => {
   const request = event.request;
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (isAsset(url)) {
-    event.respondWith(cachedAsset(request, ASSETS, 600));
+    const owned = assetsByClient.get(event.clientId);
+    if (owned) rememberAsset(owned.urls, url.href);
+    event.respondWith(cachedAsset(request, ASSETS, MAX_ASSETS));
     return;
   }
   if (isTile(url)) {
