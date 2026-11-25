@@ -8,6 +8,7 @@ import { readTestDatabaseUrl } from "./testDatabase";
 const root = "src/private/data/resorts-temporary/tmp/test-runner";
 const databaseName = `rusutsu_test_${process.pid}`;
 const containerName = `rusutsu-tests-${process.pid}`;
+const fullContainerIdPattern = /^[0-9a-f]{64}$/u;
 const databaseImage = "postgres:16-alpine";
 const unitTestTimeoutMs = 60_000;
 const testDatabaseLockKey = "rusutsu:test-runner";
@@ -74,8 +75,16 @@ async function clearTestFixtures(client: Client): Promise<void> {
   }
 }
 
-/** 通常の DATABASE_URL を流用せず，必要な場合だけ試験専用コンテナを作成する． */
-function createDatabase(): string {
+/** Docker が返した完全な ID を検証し，管理対象を限定する． */
+function requireFullContainerId(value: string): string {
+  const containerId = value.trim();
+  if (!fullContainerIdPattern.test(containerId))
+    throw new Error("Docker did not return a valid full container ID.");
+  return containerId;
+}
+
+/** 通常の DATABASE_URL を流用せず，試験専用コンテナを作成する． */
+function createDatabaseContainer(): string {
   const created = spawnSync(
     "docker",
     [
@@ -109,7 +118,12 @@ function createDatabase(): string {
     throw new Error(
       "Cannot create disposable test PostgreSQL. Start Docker or configure TEST_DATABASE_URL.",
     );
-  const port = spawnSync("docker", ["port", containerName, "5432/tcp"], {
+  return requireFullContainerId(created.stdout);
+}
+
+/** 作成済みの完全な ID から使い捨て DB の接続先を得る． */
+function databaseUrlForContainer(containerId: string): string {
+  const port = spawnSync("docker", ["port", containerId, "5432/tcp"], {
     encoding: "utf8",
   });
   const number = /^127\.0\.0\.1:(\d+)\s*$/u.exec(port.stdout)?.[1];
@@ -192,7 +206,7 @@ async function runSelectedTests(
     );
   if (mode === "--unit" || !integration.length) return;
   let databaseUrl = readTestDatabaseUrl();
-  let owned = false;
+  let ownedContainerId: string | undefined;
   let lockClient: Client | undefined;
   try {
     if (!databaseUrl) {
@@ -200,13 +214,13 @@ async function runSelectedTests(
         throw new Error(
           "CI requires TEST_DATABASE_URL; DB tests must not be skipped.",
         );
-      owned = true;
-      databaseUrl = createDatabase();
+      ownedContainerId = createDatabaseContainer();
+      databaseUrl = databaseUrlForContainer(ownedContainerId);
       await run(
         "docker",
         [
           "exec",
-          containerName,
+          ownedContainerId,
           "sh",
           "-c",
           `timeout 45 sh -c 'until pg_isready -h 127.0.0.1 -U rusutsu_test -d ${databaseName}; do sleep 1; done'`,
@@ -242,13 +256,15 @@ async function runSelectedTests(
     try {
       await lockClient?.end();
     } finally {
-      if (owned) {
-        const removed = spawnSync("docker", ["rm", "--force", containerName], {
-          stdio: "inherit",
-        });
+      if (ownedContainerId) {
+        const removed = spawnSync(
+          "docker",
+          ["rm", "--force", ownedContainerId],
+          { stdio: "inherit" },
+        );
         if (removed.status !== 0) {
           console.error(
-            `Could not remove owned test container ${containerName}`,
+            `Could not remove owned test container ${ownedContainerId}`,
           );
           process.exitCode = 1;
         }
