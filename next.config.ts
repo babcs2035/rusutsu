@@ -76,6 +76,7 @@ const nextConfig: NextConfig = {
   },
   allowedDevOrigins: ["10.100.160.132", "*.trycloudflare.com", "192.168.10.25"],
   output: "standalone",
+  adapterPath: require.resolve("./scripts/standaloneTraceAdapter.ts"),
   outputFileTracingIncludes: {
     "/api/share-image": [
       // Playwright resolves its browser metadata dynamically at runtime.

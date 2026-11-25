@@ -51,7 +51,7 @@ OFFLINE_TEST_URL=http://127.0.0.1:3001/rusutsu OFFLINE_TEST_FIXTURE_TILES=1 \
 試験後は隔離アプリを停止し，試験 DB を破棄する．通常の型検査は `.next/types`，隔離ビルドは `.next-qa/types` を使う．CI でも DB 結合試験の完了後に同じ fixture を投入し，隔離した本番ビルドでブラウザー試験を実行する．
 Linux のヘッドレス Chromium で地図を初期化できない場合は，`OFFLINE_TEST_HEADLESS=false xvfb-run -a mise run test -- --browser` で実行する．
 
-同じ checkout で本番ビルドとローカル試験を続けて行う場合は，片方が終わってからもう片方を実行する．Next.js の依存ファイル追跡が試験中の一時ファイルを拾うと，試験終了時の削除とビルド中のコピーが競合する．Docker のビルドコンテキストは試験用ファイルを除外する．
+Next.js の起動処理の依存一覧には route の除外設定が適用されないため，standalone のコピー直前に一時ファイル・診断 DOM・バックアップへの参照を除く．Docker のビルドコンテキストからも同じ作業データを除く．
 
 ## 検証の担当
 
@@ -75,5 +75,7 @@ Linux のヘッドレス Chromium で地図を初期化できない場合は，`
 | HTTP・管理 API・データ公開・配備・復元 | `publicQueryHttp.test.ts`，`internalDataApiClient.test.ts`，`publishLiftTicket.test.ts`，`publishReview.test.ts`，`scripts/ops/` の試験 |
 
 同じ仕様をすべての層で反復しない．試験を削除するときは，残る試験がその仕様を検出する根拠を確認する．料金の公式期待値は `LIFT_TICKET_DATA_ROOT=src/private/data/lift-ticket mise run test -- --unit src/features/lift-ticket/utils/uiContract.test.ts` でも確認できる．期待値を実装の出力から作り直さない．
+
+ブラウザー試験では比較料金と一覧料金の通信失敗をそれぞれ発生させ，同じ入力で再接続後に取得できることを確認する．天気リンクはスマホ 375 px と詳細パネル 346 px・500 px で横一列と Tab 移動を検査する．比較保存ダイアログは 320 px を使う．比較詳細の単体試験では，地図の有無で営業情報が一致すること，同じ revision の地図を後から求めても正本本文の取得が一度で済むことを検査する．
 
 料金を同じ券種・日付・区分・年齢で照会する公式資料が複数ある場合は，期待値の一致を確認して一度だけ計算する．営業期間と休業日の判定は料金区分より先に行うため，施設ごとの境界試験は代表の区分で行う．年齢や資格による料金分岐は，公式額の照合と `spec/audience.test.ts` の境界例が担う．
