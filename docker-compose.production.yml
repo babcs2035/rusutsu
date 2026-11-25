@@ -70,7 +70,7 @@ services:
         condition: service_healthy
 
   db:
-    image: postgres:16-alpine
+    image: postgres:16-alpine@sha256:1d5b02d3a9941fbd52437db4107f8c52d6297dac553ca1e5c299ebb3756b4857
     container_name: rusutsu-db
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-rusutsu}

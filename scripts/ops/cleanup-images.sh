@@ -42,8 +42,7 @@ load_runtime_environment
 snapshot="$(mktemp -d "$OPS_STATE_DIR/.cleanup-images-XXXXXX")"
 chmod 700 "$snapshot"
 cp -- "$OPS_STATE_DIR/deployed-image.json" "$snapshot/deployed-image.json"
-image_format='{"Id":{{json .Id}},"RepoTags":{{json .RepoTags}},"RepoDigests":{{json .RepoDigests}},"Config":{"Labels":{"com.rusutsu.image-cleanup":{{json (index .Config.Labels "com.rusutsu.image-cleanup")}}}}}'
-docker image ls -aq --no-trunc | sort -u | xargs -r docker image inspect --format "$image_format" > "$snapshot/images.jsonl"
+docker image ls -aq --no-trunc | sort -u | xargs -r docker image inspect --format "$OPS_IMAGE_INSPECT_FORMAT" > "$snapshot/images.jsonl"
 docker ps -aq --no-trunc | xargs -r docker inspect --format '{{json .Image}}' > "$snapshot/container-image-ids.jsonl"
 docker inspect --format '{{.Image}}' "$OPS_APP_CONTAINER" > "$snapshot/running-app-image-id"
 ops_node image-cleanup.ts plan "$DEPLOY_IMAGE_TAG" "/operations/$(basename "$snapshot")"
@@ -61,12 +60,29 @@ while IFS=$'\t' read -r tag image_id; do
   remove_tag_count=$((remove_tag_count + 1))
 done < "$snapshot/tag-removals.txt"
 
-# Delete only the exact image IDs selected before tag removal. A non-forced
-# removal also lets Docker reject an image that became referenced meanwhile.
+# Removing an image's last tag can delete its image ID immediately. Re-list
+# dangling images afterwards and consider only IDs approved from the original
+# app-tag snapshot; this keeps Docker's automatic deletion safe and repeatable.
+docker image ls -q --filter dangling=true --no-trunc | sort -u > "$snapshot/dangling-image-ids.txt"
 while IFS= read -r image_id; do
-  [[ "$image_id" =~ ^sha256:[a-f0-9]{64}$ ]] || ops_die 'Invalid image cleanup ID.'
-  image_json="$(docker image inspect --format "$image_format" "$image_id")"
-  ops_node image-cleanup.ts check-id "$image_id" "$image_json"
+  [[ "$image_id" =~ ^sha256:[a-f0-9]{64}$ ]] || ops_die 'Invalid dangling image ID.'
+  grep -Fxq -- "$image_id" "$snapshot/removable-image-ids.txt" || continue
+
+  # Recheck every container, including stopped containers, immediately before
+  # removal. Docker's non-forced removal remains the final race guard.
+  docker ps -aq --no-trunc | xargs -r docker inspect --format '{{json .Image}}' \
+    > "$snapshot/container-image-ids.jsonl"
+  if grep -Fxq -- "\"$image_id\"" "$snapshot/container-image-ids.jsonl"; then
+    continue
+  fi
+  if ! image_json="$(docker image inspect --format "$OPS_IMAGE_INSPECT_FORMAT" "$image_id" 2>/dev/null)"; then
+    current_dangling="$(docker image ls -q --filter dangling=true --no-trunc)"
+    if grep -Fxq -- "$image_id" <<< "$current_dangling"; then
+      ops_die 'A selected dangling image could not be inspected.'
+    fi
+    continue
+  fi
+  ops_node image-cleanup.ts check-id "$image_id" "$image_json" /operations
   docker image rm --no-prune "$image_id" >/dev/null
   remove_image_id_count=$((remove_image_id_count + 1))
-done < "$snapshot/removable-image-ids.txt"
+done < "$snapshot/dangling-image-ids.txt"

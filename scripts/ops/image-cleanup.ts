@@ -1,4 +1,4 @@
-import { readFile, rename, writeFile } from "node:fs/promises";
+import { lstat, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -7,6 +7,7 @@ const CLEANUP_LABEL = "com.rusutsu.image-cleanup";
 const IMAGE_ID_PATTERN = /^sha256:[a-f0-9]{64}$/u;
 const SHA_PATTERN = /^[a-f0-9]{40}$/u;
 const DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/u;
+const APP_DIGEST_PREFIX = `${APP_REPOSITORY}@`;
 
 type DeploymentImage = {
   repository: string;
@@ -137,18 +138,26 @@ export function selectImageCleanupPlan(
   }
 
   tagRemovals.sort((left, right) => left.tag.localeCompare(right.tag));
+  const previouslyDangling = images.flatMap(image => {
+    const digests = image.RepoDigests ?? [];
+    return image.Id &&
+      occurrences.get(image.Id) === 1 &&
+      !protectedImageIds.has(image.Id) &&
+      (image.RepoTags ?? []).every(
+        tag => tag == null || tag === "<none>:<none>",
+      ) &&
+      image.Config?.Labels?.[CLEANUP_LABEL] === "app" &&
+      digests.length > 0 &&
+      digests.every(isAppDigest)
+      ? [image.Id]
+      : [];
+  });
   return {
     tagRemovals,
-    removableImageIds: tagRemovals
-      .filter(({ imageId }) =>
-        images.some(
-          image =>
-            image.Id === imageId &&
-            image.Config?.Labels?.[CLEANUP_LABEL] === "app",
-        ),
-      )
-      .map(({ imageId }) => imageId)
-      .sort(),
+    removableImageIds: [
+      ...tagRemovals.map(({ imageId }) => imageId),
+      ...previouslyDangling,
+    ].sort(),
     warnings: [...new Set(warnings)],
   };
 }
@@ -157,6 +166,7 @@ export function selectImageCleanupPlan(
 export function checkImageRemoval(
   expectedImageId: string,
   image: InspectedImage,
+  protectedImageIds: string[] = [],
 ): void {
   if (
     !IMAGE_ID_PATTERN.test(expectedImageId) ||
@@ -164,10 +174,51 @@ export function checkImageRemoval(
     (image.RepoTags ?? []).some(
       tag => typeof tag === "string" && tag !== "<none>:<none>",
     ) ||
-    image.Config?.Labels?.[CLEANUP_LABEL] !== "app"
+    (image.RepoDigests ?? []).some(
+      digest => digest !== null && !isAppDigest(digest),
+    ) ||
+    image.Config?.Labels?.[CLEANUP_LABEL] !== "app" ||
+    protectedImageIds.includes(expectedImageId)
   ) {
     throw new Error("Image is no longer an approved dangling app image.");
   }
+}
+
+/** ラベルに加えて配備リポジトリでの digest を確認する． */
+function isAppDigest(value: string | null): boolean {
+  return (
+    value !== null &&
+    value.startsWith(APP_DIGEST_PREFIX) &&
+    DIGEST_PATTERN.test(value.slice(APP_DIGEST_PREFIX.length))
+  );
+}
+
+/** Verify the recorded rollback image against the app container before a switch. */
+export function verifyBeforeSwitch(
+  nextSha: string,
+  deployment: DeploymentRecord,
+  runningImageId: string,
+  image: InspectedImage,
+): boolean {
+  if (!SHA_PATTERN.test(nextSha))
+    throw new Error("Requested deployment SHA is invalid.");
+  validateDeploymentImage(deployment.current, "current");
+  if (deployment.previous)
+    validateDeploymentImage(deployment.previous, "previous");
+  if (image.Id !== deployment.current.imageId)
+    throw new Error("Recorded app image metadata could not be reverified.");
+  if (
+    !(image.RepoTags ?? []).includes(
+      `${APP_REPOSITORY}:${deployment.current.tag}`,
+    ) ||
+    !(image.RepoDigests ?? []).includes(
+      `${APP_REPOSITORY}@${deployment.current.digest}`,
+    ) ||
+    image.Config?.Labels?.[CLEANUP_LABEL] !== "app"
+  ) {
+    throw new Error("Successful app image metadata could not be reverified.");
+  }
+  return runningImageId !== deployment.current.imageId;
 }
 
 function validateDeploymentImage(image: DeploymentImage, name: string): void {
@@ -313,9 +364,65 @@ async function main(): Promise<void> {
   } else if (operation === "check-id") {
     const expectedImageId = args[1];
     const inspectedImage = args[2];
-    if (!expectedImageId || !inspectedImage)
+    const directory = args[3];
+    if (!expectedImageId || !inspectedImage || directory !== "/operations")
       throw new Error("Image removal identity is incomplete.");
-    checkImageRemoval(expectedImageId, JSON.parse(inspectedImage));
+    const deployment = await readJson<DeploymentRecord>(
+      path.join(directory, "deployed-image.json"),
+    );
+    const containerImageIds = await readJsonLines<string>(
+      path.join(directory, "container-image-ids.jsonl"),
+    );
+    checkImageRemoval(expectedImageId, JSON.parse(inspectedImage), [
+      deployment.current.imageId,
+      ...(deployment.previous ? [deployment.previous.imageId] : []),
+      ...containerImageIds,
+    ]);
+  } else if (operation === "recorded-image-id" && args[1] === "/operations") {
+    const record = await readJson<DeploymentRecord>(
+      path.join(args[1], "deployed-image.json"),
+    );
+    validateDeploymentImage(record.current, "current");
+    console.log(record.current.imageId);
+  } else if (operation === "verify-before-switch") {
+    const nextSha = args[1];
+    const directory = args[2];
+    const runningImageId = args[3];
+    const inspectedImage = args[4];
+    if (
+      !nextSha ||
+      directory !== "/operations" ||
+      !runningImageId ||
+      !inspectedImage
+    ) {
+      throw new Error("Pre-switch image identity is incomplete.");
+    }
+    const recordPath = path.join(directory, "deployed-image.json");
+    let recordStat: Awaited<ReturnType<typeof lstat>>;
+    try {
+      recordStat = await lstat(recordPath);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        console.log(
+          "No successful deployment record exists; pre-switch verification skipped.",
+        );
+        return;
+      }
+      throw error;
+    }
+    if (!recordStat.isFile() || recordStat.isSymbolicLink())
+      throw new Error("Successful deployment record is not a regular file.");
+    const deployment = await readJson<DeploymentRecord>(recordPath);
+    const runningDiffers = verifyBeforeSwitch(
+      nextSha,
+      deployment,
+      runningImageId,
+      JSON.parse(inspectedImage),
+    );
+    if (runningDiffers)
+      console.error(
+        "Warning: running app differs from the last successful deployment; the recorded image was verified and rollback remains available.",
+      );
   } else throw new Error("Cleanup helper operation is invalid.");
 }
 

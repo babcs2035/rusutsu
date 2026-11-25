@@ -19,7 +19,12 @@ lock_operations
 trap 'rm -f -- "$OPS_STATE_DIR/pending.env.sh" "$OPS_STATE_DIR/pending.env.sh.tmp"; release_operations' EXIT
 # Keep a verified rollback image record before any container is replaced.
 previous_record="$OPS_STATE_DIR/deployed-image.json"
-if [[ -f "$previous_record" && ! -L "$previous_record" ]]; then
+if [[ -e "$previous_record" || -L "$previous_record" ]]; then
+  [[ -f "$previous_record" && ! -L "$previous_record" ]] || ops_die 'Successful deployment record is not a regular file.'
+  recorded_id="$(ops_node image-cleanup.ts recorded-image-id /operations)"
+  recorded_image="$(docker image inspect --format "$OPS_IMAGE_INSPECT_FORMAT" "$recorded_id")"
+  running_id="$(docker inspect --format '{{.Image}}' "$OPS_APP_CONTAINER")"
+  ops_node image-cleanup.ts verify-before-switch "$DEPLOY_IMAGE_TAG" /operations "$running_id" "$recorded_image"
   cp -- "$previous_record" "$OPS_STATE_DIR/previous-image.json.tmp"
   mv -- "$OPS_STATE_DIR/previous-image.json.tmp" "$OPS_STATE_DIR/previous-image.json"
 else
@@ -59,9 +64,8 @@ fi
 # Validate and cut over existing map data before the app resumes. The migration
 # compares the captured hashes again under table locks and is idempotent.
 compose run --rm --no-deps app node --import tsx src/private/scripts/migrateCanonicalMaps.ts --deploy
-# Derived recommendation rows must exist before serving searches. Rebuild from
-# the canonical DB, including current entity/group IDs; never import fixtures.
-compose run --rm --no-deps app node --import tsx src/private/scripts/rebuildCourseRecommendations.ts --apply
+# Canonical migration and document writes update their own features transactionally.
+# Recovery rebuilds use the existing CLI only after an explicit backup.
 compose up -d --wait --wait-timeout 180
 compose exec -T app node scripts/ops/check-readiness.ts "$API_BASE_URL"
 # Record image identity only after the running container and public readiness

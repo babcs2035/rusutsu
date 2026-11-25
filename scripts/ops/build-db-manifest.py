@@ -5,6 +5,7 @@ import pathlib
 
 root = pathlib.Path(__file__).resolve().parents[2]
 paths = [root / "prisma/schema.prisma"]
+paths += [root / "docker-compose.production.yml"]
 paths += list((root / "prisma/migrations").rglob("*"))
 paths += list((root / "scripts/backfills").rglob("*"))
 paths += list((root / "scripts").glob("import*.ts"))

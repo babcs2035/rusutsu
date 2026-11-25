@@ -18,17 +18,17 @@ git diff --check
 
 ## Docker と PostgreSQL で復元を確認する
 
-Node.js と `pg` を含む検証対象のローカルイメージを指定する．VPS に Python を導入する必要はない．
+検証対象の Rusutsu リリースイメージをローカルでビルドし，そのタグを指定する．CI はリリースイメージをレジストリへ送る前に，同じ試験を実行する．
 
 ```sh
 uv run --no-project scripts/ops/verify-local-backup.py --image rusutsu:test
 ```
 
-この試験は専用の PostgreSQL コンテナで人工の施設，文書，ユーザー，認証アカウント，写真，申請，クロール現在値を作成する．元の行と復元後の値を照合し，旧保存先のコピーが実際に復元できてから削除されること，破損した世代を拒否することを確認する．試験は自分が作成したコンテナと一時ファイルを片付ける．
+この試験は専用の PostgreSQL コンテナへ現行の migration を適用し，施設，文書，認証アカウント，写真，申請，クロール現在値の試験データを作成する．通常配備の DB コマンド前後と復元後で，全テーブルの行数・内容を同じ snapshot 内で照合する．文書の hash・version，JSON のキー順，ID，参照，NULL，写真の byte を含む．旧保存先のコピーは復元に成功した後で除去され，破損した世代は拒否されることも確認する．
 
 ## 本番配備で確認する項目
 
 - GitHub の Secrets と Variables，VPS の SSH/Docker 権限，Cloudflare Tunnel の到達経路を確認する．
 - アプリの公開ポートを loopback に限定し，正式ドメインからの HTTPS を Tunnel で受け付ける．`CONTRIBUTION_TRUST_PROXY` は入口ですべての `x-real-ip` を上書きし，その入口を経ずにリクエストが到達しない場合に有効にする．開発時の `*.trycloudflare.com` は本番の Server Actions の許可範囲から外す．
-- readiness，Google OAuth，管理画面の権限，公開画面，地図と外部埋め込みを確認する．CSP の違反を観測し，必要な通信を確認してから GitHub Actions の Variable `RUSUTSU_CSP_ENFORCE` を `true` に設定し，再ビルド・配備する．公開応答の `Content-Security-Policy` と各機能の動作を確認する．
+- readiness，Google OAuth，管理画面の権限，公開画面，地図と外部埋め込みを確認する．CI の隔離ビルドでは CSP を強制してブラウザー試験を実行する．実環境の Report-Only で必要な通信を確認してから GitHub Actions の Variable `RUSUTSU_CSP_ENFORCE` を `true` に設定し，再ビルド・配備する．公開応答の `Content-Security-Policy` と各機能の動作を確認する．
 - 配備後のイメージ整理と 03:00 JST の日次バックアップの結果を確認する．手動の `test_restore` で，保持された世代の復元を確認する．

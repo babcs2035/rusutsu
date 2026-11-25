@@ -98,6 +98,7 @@ jobs:
           DISABLE_EDIT_REQUEST_JOBS: 'true'
           DISABLE_COMMUNITY_MODERATION: 'true'
           RUSUTSU_DIST_DIR: .next-qa
+          RUSUTSU_CSP_ENFORCE: 'true'
           OFFLINE_TEST_URL: http://127.0.0.1:3001/rusutsu
           OFFLINE_TEST_FIXTURE_TILES: '1'
           OFFLINE_TEST_HEADLESS: 'false'
@@ -153,17 +154,28 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker image
+      - name: Build release image
         run: |
           docker buildx build \
             --platform linux/arm64 \
             --build-arg "RUSUTSU_CSP_ENFORCE=${{ vars.RUSUTSU_CSP_ENFORCE == 'true' }}" \
-            --push \
+            --load \
             --tag "${{ env.REGISTRY }}/babcs2035/rusutsu:latest" \
             --tag "${{ env.REGISTRY }}/babcs2035/rusutsu:${{ github.sha }}" \
             --cache-from=type=gha \
             --cache-to=type=gha,mode=max \
             .
+
+      - name: Verify backup and restore with the release image
+        run: |
+          docker pull postgres:16-alpine@sha256:1d5b02d3a9941fbd52437db4107f8c52d6297dac553ca1e5c299ebb3756b4857
+          docker tag postgres:16-alpine@sha256:1d5b02d3a9941fbd52437db4107f8c52d6297dac553ca1e5c299ebb3756b4857 postgres:16-alpine
+          mise exec uv@0.7.10 -- uv run --no-project scripts/ops/verify-local-backup.py --image "${{ env.REGISTRY }}/babcs2035/rusutsu:${{ github.sha }}"
+
+      - name: Push the verified release image
+        run: |
+          docker push "${{ env.REGISTRY }}/babcs2035/rusutsu:${{ github.sha }}"
+          docker push "${{ env.REGISTRY }}/babcs2035/rusutsu:latest"
 
   deploy:
     name: Deploy Image to VPS

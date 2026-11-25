@@ -61,7 +61,7 @@ Secrets/Variablesの保存だけではVPSは変わらず、次のCI/CD実行で�
 3. GitHub設定を検証し、許可した項目だけJSON→Base64へ変換する。Base64値もログのマスク対象へ登録する。
 4. 既存のSCP経路でComposeと運用スクリプトを送る。設定値はSSHの環境変数経由で渡し、シェル本文へ直接埋め込まない。
 5. VPSで確定SHAのイメージを取得する。既存app/dbをinspectし、Compose project名と運用領域を確認する。
-6. Dockerコンテナ名を原子的に確保して操作を排他する。45分の期限で終了する補助コンテナを使い、正常時は自身のIDを指定して解放する。
+6. 運用領域の `operation.lock` を VPS の `flock` で確保する．最後に成功した app の SHA・ID・digest を Docker のイメージ情報と照合し，切り戻し用に記録する．
 7. 既存`rusutsu-db`と`rusutsu-app`から、DB volume・認証情報・ポート・ログイン設定を取得する。
 8. DB/appが同じprojectのdb/appであり、PostgreSQL 16のnamed volumeであること、DBとappの接続情報が一致することを確認する。
 9. GitHub設定を合成した`pending.env.sh`を0600で生成する。値を安全にシェル引用し、改行・不正キーを拒否する。
@@ -71,13 +71,12 @@ Secrets/Variablesの保存だけではVPSは変わらず、次のCI/CD実行で�
 13. app/scheduler専用のDOM volumeの権限を自動準備する。DB volumeはこの補助処理にマウントしない。
 14. appとschedulerを停止し、DBを健康確認して`prisma migrate deploy`を実行する。volumeは削除しない。
 15. 初回指定時だけ、文書→短縮名の順で取り込む。
-16. appと、有効化指定されたschedulerを起動する。
+16. 正本の地図が未移行の場合は，地図・営業集計・推薦特徴量を同じ transaction で移行する．app と，有効化指定された scheduler を起動する．
 17. 内部healthcheckと、本番HTTPSの`/rusutsu/api/ready`・`/rusutsu`の本文受信を確認する。
 18. 成功時だけ設定を`runtime.env.sh`へ確定し、DB変更manifestと成功SHAを保存する。
 
 GitHubのdeploy/backupは同じconcurrency groupを使う。
-スクリプトも同じDockerロックを使い、失敗時は自分が作成したロックコンテナだけを片付ける。
-SSH切断等で解放できない場合でも45分後に終了する。自動処理のタイムアウトは30分。
+配備・バックアップ・復元・画像整理のスクリプトは同じ `flock` を使う．ロックは作業プロセスがファイルを閉じるまで保持される．ロックファイルは同じ場所に残す．自動処理の SSH タイムアウトは 30 分である．
 
 最終成功ログ：
 
@@ -149,9 +148,9 @@ DBコピーにDOM volumeは含まれない。必要な記録を期限内に診�
 
 ## 6. VPS内コピーと復元試験
 
-DB変更対象は`build-db-manifest.py`に列挙したschema/migrations/import/backfill等。
+DB 変更対象は `build-db-manifest.py` に列挙した schema・migration・import・backfill・本番 Compose などである．
 前回成功manifestとの差分、初回指定、`force_database_backup=true`、成功記録のない初回配備でコピーを取る。
-通常UI変更やcrawler追加だけなら配備前コピーは不要。
+通常の UI 変更や crawler 追加だけで manifest が一致する場合は，配備前コピーを省く．PostgreSQL 16 のイメージは CI と同じ digest に固定する．
 
 `backup-database.sh`は既存db内の`pg_dump --format=custom`で取得し、空でないことと`pg_restore --list`を確認する。
 配備先の `${DEPLOY_TARGET}/backups/` へ `database.dump`，`archive.list`，`metadata.json`，`SHA256SUMS` を保存する．
@@ -176,6 +175,7 @@ DB dump は `share_images` volume を含まない．この volume は共有用�
 
 復元試験はチェックサムを確認し、ネットワークなし・PGDATAがtmpfsの一時PostgreSQLへ復元する。
 一時 DB でスキー場，認証，写真，申請，クロール現在値のテーブルが存在し，スキー場データが空でなく，外部キー制約が検証済みであることを確認し，試験コンテナを片付ける．
+リリース検証では，実スキーマに投入した試験データについて，通常配備の DB コマンド前後と復元後で全テーブルの行数・内容を照合する．[検証手順](d0006_backend-deployment-verification.md)を参照する．
 日次処理・復元試験とも新しいGitHub設定は不要。
 
 誤削除の復旧時は、完了記録を消して全投入し直さない。
@@ -202,6 +202,7 @@ API_BEARER_TOKEN="GitHubと同じキー"
 ## 8. 公開する変更と、失敗時の対応
 
 アプリ，内部 API，worker の通信契約を変える配備では，対応するアプリと private submodule のリビジョンを組にする．切り戻しでも同じ組を使う．
+切り戻し前に，成功記録のイメージ ID・digest と対象 SHA を照合し，その版の CI/CD を実行する．同じイメージから app と scheduler を起動する．DB の復元が必要な場合は，一時 DB での復元を先に確認し，別の承認済み操作として扱う．
 
 配備先への移動で止まった場合は `DEPLOY_TARGET` と SCP 工程を確認する．workflow を修正した後は，修正済みのリビジョンを指定して新しく実行する．
 
@@ -210,4 +211,24 @@ API_BEARER_TOKEN="GitHubと同じキー"
 失敗した配備では成功SHA/manifestと正式設定を更新せず、原因修正後の再実行へ引き継ぐ。
 新しい設定で起動後に応答確認だけ失敗した場合、稼働コンテナの設定が旧版とは限らない点も確認する。
 DB volumeを検出できないときや接続情報が一致しないときは、明示的に止まる。
+
+### 推薦特徴量を復旧する
+
+地図の保存と初回移行は，推薦特徴量を正本と同じ transaction で更新する．運用上の復旧が必要な場合は `rebuildCourseRecommendations.ts` の dry-run で対象を確認する．配備先で明示的に適用するときは，共通ロックを取得し，配備前と同じバックアップを確定してから実行する．
+
+```bash
+export DEPLOY_TARGET="$PWD"
+bash <<'SH'
+source scripts/ops/common.sh
+initialize_operations
+lock_operations
+trap release_operations EXIT
+load_runtime_environment
+compose run --rm --no-deps app node --import tsx \
+  src/private/scripts/rebuildCourseRecommendations.ts --resort=対象の施設ID
+bash scripts/ops/backup-database.sh --operation-lock-held
+compose run --rm --no-deps app node --import tsx \
+  src/private/scripts/rebuildCourseRecommendations.ts --resort=対象の施設ID --apply
+SH
+```
 `db:reset`、`docker compose down -v`等を回避策として実行しない。

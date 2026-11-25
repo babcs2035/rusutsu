@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# VPS prerequisites: the Bash shell and Docker/Compose already used by deploys.
+# VPS prerequisites: Bash, flock, and Docker/Compose already used by deploys.
 set -euo pipefail
 umask 077
+OPS_IMAGE_INSPECT_FORMAT='{"Id":{{json .Id}},"RepoTags":{{json .RepoTags}},"RepoDigests":{{json .RepoDigests}},"Config":{"Labels":{"com.rusutsu.image-cleanup":{{json (index .Config.Labels "com.rusutsu.image-cleanup")}}}}}'
 
 ops_die() { printf '%s\n' "$*" >&2; exit 1; }
 
@@ -58,18 +59,23 @@ ops_node() {
 }
 
 lock_operations() {
-  # Docker atomically claims this name. A lease outlasts the workflow's 30 min
-  # timeout and expires even if an SSH disconnect prevents the shell EXIT trap.
-  OPS_LOCK_ID="$(docker run --rm -d --network none --name "rusutsu-operation-$OPS_PROJECT" \
-    --label com.rusutsu.operation=lock --entrypoint node "$OPS_IMAGE" \
-    -e 'setTimeout(() => process.exit(0), 45 * 60 * 1000)')" \
-    || ops_die 'Another production operation is running; retry after it finishes (lease: at most 45 minutes).'
+  # The kernel releases this advisory lock when the owning shell exits, so
+  # slow operations do not lose exclusivity and interrupted sessions recover.
+  command -v flock >/dev/null 2>&1 \
+    || ops_die 'The flock command is required for production operation locking.'
+  local lock_file="$OPS_STATE_DIR/operation.lock"
+  [[ ! -L "$lock_file" && ( ! -e "$lock_file" || -f "$lock_file" ) ]] \
+    || ops_die 'Production operation lock path is not a regular file.'
+  exec {OPS_LOCK_FD}>>"$lock_file" \
+    || ops_die 'Production operation lock file could not be opened.'
+  flock -n "$OPS_LOCK_FD" \
+    || ops_die 'Another production operation is running; retry after it finishes.'
 }
 
 release_operations() {
-  if [[ -n "${OPS_LOCK_ID:-}" ]]; then
-    docker rm -f "$OPS_LOCK_ID" >/dev/null 2>&1 || true
-    OPS_LOCK_ID=''
+  if [[ -n "${OPS_LOCK_FD:-}" ]]; then
+    exec {OPS_LOCK_FD}>&-
+    OPS_LOCK_FD=''
   fi
 }
 

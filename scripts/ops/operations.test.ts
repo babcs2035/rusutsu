@@ -27,16 +27,16 @@ with (root/'calls').open('a') as f: f.write('docker '+' '.join(args)+' [profiles
 if args[0]=='image' and args[1]=='inspect':
     if '--format' in args:
         template=args[args.index('--format')+1]
-        if '.Id' in template: print('sha256:'+'a'*64)
+        if 'RepoTags' in template:
+            current=json.loads((pathlib.Path(os.environ['OPS_TEST_STATE'])/'deployed-image.json').read_text())['current']
+            print(json.dumps({'Id':current['imageId'],'RepoTags':['ghcr.io/babcs2035/rusutsu:'+current['sha']],'RepoDigests':['ghcr.io/babcs2035/rusutsu@'+current['digest']],'Config':{'Labels':{'com.rusutsu.image-cleanup':'app'}}}))
+        elif '.Id' in template: print('sha256:'+'a'*64)
         else: print('ghcr.io/babcs2035/rusutsu@sha256:'+'a'*64)
 elif args[0]=='inspect':
     if '--format' not in args: print((root/'containers.json').read_text())
     elif '.Image' in args[args.index('--format')+1]: print('sha256:'+'a'*64)
     elif 'Labels' in args[args.index('--format')+1]: print('test-project')
     else: print('test-image')
-elif args[0]=='run' and '--name' in args:
-    if mode=='lock': sys.exit(1)
-    print('owned-lock-container')
 elif args[0]=='run' and '--pull' in args:
     print('disposable-restore-container')
 elif args[0]=='run' and '--workdir' in args:
@@ -45,6 +45,11 @@ elif args[0]=='run' and '--workdir' in args:
     script[0]=str(pathlib.Path(os.environ['OPS_TEST_SCRIPTS'])/script[0])
     state=pathlib.Path(os.environ['OPS_TEST_STATE'])
     if script[0].endswith('prepare-environment.ts'): script.append(str(state))
+    if script[0].endswith('image-cleanup.ts') and script[1] in ('recorded-image-id','verify-before-switch'):
+        current=json.loads((state/'deployed-image.json').read_text())['current']
+        if script[1]=='recorded-image-id': print(current['imageId'])
+        elif mode=='invalid-rollback': sys.exit(1)
+        sys.exit(0)
     if script[0].endswith('image-cleanup.ts') and script[1]=='record':
         sha,image_id,digest=script[2],script[3],script[4]
         prev=None
@@ -73,7 +78,6 @@ elif args[0]=='compose':
     elif any('check-existing-database' in a for a in args) and mode=='connection': sys.exit(1)
     elif 'migrate' in args and mode=='migration': sys.exit(1)
     elif any('migrateCanonicalMaps' in a for a in args) and mode=='canonical-maps': sys.exit(1)
-    elif any('rebuildCourseRecommendations' in a for a in args) and mode=='recommendations': sys.exit(1)
     elif any('check-readiness' in a for a in args) and mode=='readiness': sys.exit(1)
 `;
 
@@ -94,6 +98,11 @@ function fixture() {
   );
   writeFileSync(path.join(root, "bin", "docker"), toolStub, { mode: 0o700 });
   writeFileSync(path.join(root, "bin", "df"), diskSpaceStub, { mode: 0o700 });
+  writeFileSync(
+    path.join(root, "bin", "flock"),
+    '#!/bin/sh\n[ "${OPS_TEST_FAILURE:-}" != lock ]\n',
+    { mode: 0o700 },
+  );
   writeFileSync(
     path.join(root, "project", "db-change-manifest.sha256"),
     "test-manifest\n",
@@ -262,7 +271,7 @@ test("corrupt backup quarantine is lock-protected and preserves the generation",
       name,
     ]);
     assert.equal(result.status, 0, result.stderr);
-    assert.match(f.calls(), /rusutsu-operation-test-project/);
+    assert.ok(readdirSync(f.stateRoot).includes("operation.lock"));
     assert.ok(!readdirSync(backupRoot).includes(name));
     assert.equal(
       readFileSync(
@@ -379,13 +388,10 @@ test("unchanged DB paths skip backup but still migrate and require public readin
     assert.ok(!f.calls().includes("pg_dump"));
     assert.ok(!f.calls().includes("importCanonicalDataDocuments"));
     assert.ok(f.calls().includes("migrate deploy"));
-    const rebuild = f
-      .calls()
-      .indexOf("rebuildCourseRecommendations.ts --apply");
     const canonical = f.calls().indexOf("migrateCanonicalMaps.ts --deploy");
     assert.ok(canonical > f.calls().indexOf("migrate deploy"));
-    assert.ok(rebuild > canonical);
-    assert.ok(rebuild < f.calls().indexOf("up -d --wait --wait-timeout"));
+    assert.ok(canonical < f.calls().indexOf("up -d --wait --wait-timeout"));
+    assert.doesNotMatch(f.calls(), /rebuildCourseRecommendations/);
     assert.ok(
       f.calls().includes("check-readiness.ts https://example.test/rusutsu"),
     );
@@ -397,6 +403,33 @@ test("unchanged DB paths skip backup but still migrate and require public readin
       result.stdout + result.stderr,
       /sentinel-db-password|sentinel-auth-secret/,
     );
+  } finally {
+    f.clean();
+  }
+});
+
+test("an unverifiable rollback image stops deployment before app or DB changes", () => {
+  const f = fixture();
+  try {
+    const record = {
+      current: {
+        repository: "ghcr.io/babcs2035/rusutsu",
+        tag: "b".repeat(40),
+        sha: "b".repeat(40),
+        imageId: `sha256:${"b".repeat(64)}`,
+        digest: `sha256:${"c".repeat(64)}`,
+      },
+      previous: null,
+    };
+    const file = path.join(f.stateRoot, "deployed-image.json");
+    writeFileSync(file, JSON.stringify(record));
+    assert.notEqual(
+      f.run("deploy.sh", { OPS_TEST_FAILURE: "invalid-rollback" }).status,
+      0,
+    );
+    assert.match(f.calls(), /image-cleanup.ts verify-before-switch/);
+    assert.doesNotMatch(f.calls(), /pg_dump| stop |migrate deploy/);
+    assert.deepEqual(JSON.parse(readFileSync(file, "utf8")), record);
   } finally {
     f.clean();
   }
@@ -417,7 +450,6 @@ test("initialization backs up first, then migrates/imports and records only afte
       "importCanonicalDataDocuments.ts --initialize",
       "importSkiResortShortNames.ts --initialize",
       "migrateCanonicalMaps.ts --deploy",
-      "rebuildCourseRecommendations.ts --apply",
       "up -d --wait --wait-timeout",
       "check-readiness.ts",
     ].map(s => f.calls().indexOf(s));
@@ -441,12 +473,7 @@ test("initialization backs up first, then migrates/imports and records only afte
   }
 });
 
-for (const failure of [
-  "readiness",
-  "migration",
-  "canonical-maps",
-  "recommendations",
-]) {
+for (const failure of ["readiness", "migration", "canonical-maps"]) {
   test(`failed ${failure} preserves the previous configuration and success record`, () => {
     const f = fixture();
     try {
@@ -464,13 +491,8 @@ for (const failure of [
         before,
       );
       assert.ok(!readdirSync(f.stateRoot).includes("pending.env.sh"));
-      assert.ok(f.calls().includes("rm -f owned-lock-container"));
-      if (failure === "recommendations" || failure === "canonical-maps")
-        assert.ok(!f.calls().includes("up -d --wait --wait-timeout"));
       if (failure === "canonical-maps")
-        assert.ok(
-          !f.calls().includes("rebuildCourseRecommendations.ts --apply"),
-        );
+        assert.ok(!f.calls().includes("up -d --wait --wait-timeout"));
     } finally {
       f.clean();
     }

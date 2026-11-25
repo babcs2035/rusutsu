@@ -1,10 +1,11 @@
 """Exercise the real VPS-local backup scripts using ONLY disposable local DBs.
 
-Usage: uv run --no-project scripts/ops/verify-local-backup.py --image LOCAL_NODE_IMAGE
-The image must already exist and contain Node. No image push/pull is performed.
+Usage: uv run --no-project scripts/ops/verify-local-backup.py --image LOCAL_RUSUTSU_IMAGE
+The release image must already exist. No image push/pull is performed.
 No existing DB, volume, API or external storage is accessed.
 """
 import argparse
+import fcntl
 import hashlib
 import json
 import os
@@ -47,6 +48,21 @@ def wait_for_postgres(container, user, database):
     raise RuntimeError('Disposable database failed to start.')
 
 
+def snapshot(container: str, user: str, database: str) -> str:
+    """Hash all tables under one snapshot without printing original values."""
+    query = """
+BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;
+SELECT format(
+  'SELECT %L, count(*), encode(sha256(convert_to(COALESCE(string_agg(row_to_json(t)::text, chr(10) ORDER BY row_to_json(t)::text COLLATE "C"), ''''), ''UTF8'')), ''hex'') FROM public.%I AS t',
+  tablename, tablename
+) FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename COLLATE "C"
+\\gexec
+COMMIT;
+"""
+    return docker('exec', '-i', container, 'psql', '-U', user, '-d', database,
+                  '-Atq', '-v', 'ON_ERROR_STOP=1', input=query).stdout
+
+
 try:
     docker('image', 'inspect', args.image)
     docker('image', 'inspect', 'postgres:16-alpine')
@@ -63,32 +79,38 @@ try:
     print('PASS: literal dollars and quotes reach the real Compose container unchanged')
     db = project + '-db'
     app = project + '-app'
+    database = 'rusutsu_test_90481'
     containers.append(docker('run', '-d', '--name', db, '--network', 'none', '--label', 'com.docker.compose.project=' + project,
         '--label', 'com.docker.compose.service=db', '--mount', 'type=tmpfs,destination=/var/lib/postgresql/data',
-        '-e', 'POSTGRES_USER=local_test', '-e', 'POSTGRES_PASSWORD=disposable_only', '-e', 'POSTGRES_DB=local_test', 'postgres:16-alpine').stdout.strip())
+        '-e', 'POSTGRES_USER=local_test', '-e', 'POSTGRES_PASSWORD=disposable_only', '-e', 'POSTGRES_DB=' + database, 'postgres:16-alpine').stdout.strip())
     containers.append(docker('run', '-d', '--name', app, '--network', 'none', '--label', 'com.docker.compose.project=' + project,
         '--label', 'com.docker.compose.service=app', '--entrypoint', 'node', args.image, '-e', 'setTimeout(() => {}, 600000)').stdout.strip())
-    wait_for_postgres(db, 'local_test', 'local_test')
-    sql = '''CREATE TABLE ski_resorts (id text PRIMARY KEY, "nameJa" text NOT NULL);
-INSERT INTO ski_resorts VALUES ('one','Sample One'), ('two','Sample Two');
-CREATE TABLE retained_document (id integer PRIMARY KEY, content jsonb NOT NULL);
-INSERT INTO retained_document VALUES (1, '{"text":"manual edit must survive"}');
-CREATE TABLE users (id text PRIMARY KEY, email text);
-INSERT INTO users VALUES ('u', 'anonymous@example.invalid');
-CREATE TABLE accounts (id text PRIMARY KEY, user_id text REFERENCES users(id));
-INSERT INTO accounts VALUES ('a', 'u');
-CREATE TABLE contribution_photos (id text PRIMARY KEY, data bytea);
-INSERT INTO contribution_photos VALUES ('p', decode('0100ff', 'hex'));
-CREATE TABLE edit_requests (id text PRIMARY KEY, document jsonb, version int);
-INSERT INTO edit_requests VALUES ('e', '{"before":"abc"}', 7);
-CREATE TABLE crawl_latest_currents (id text PRIMARY KEY, snapshot jsonb);
-INSERT INTO crawl_latest_currents VALUES ('c', '{"state":"COMPLETE"}');
+    wait_for_postgres(db, 'local_test', database)
+    database_url = 'postgresql://local_test:disposable_only@127.0.0.1:5432/' + database
+    release_command = ['run', '--rm', '--pull', 'never', '--network', 'container:' + db,
+                       '-e', 'DATABASE_URL=' + database_url, '--entrypoint', 'node', args.image]
+    migrate = ['node_modules/prisma/build/index.js', 'migrate', 'deploy']
+    docker(*release_command, *migrate)
+    sql = (repo / 'scripts' / 'testBrowserFixtures.sql').read_text() + '''
+INSERT INTO edit_requests (
+  id, "authorId", "authorName", kind, "resortId", version, "submittedPayload",
+  "submittedPlan", "candidatePayload", "candidatePlan", "updatedAt"
+) VALUES (
+  'restore-edit-request', 'browser-test-admin', '試験用の投稿者', 'resort', 'rusutsu-resort',
+  7, '{"name":null,"code":1}', '{}', '{"code":2,"name":null}', '{}', now()
+);
 '''
-    docker('exec', '-i', db, 'psql', '-U', 'local_test', '-d', 'local_test', '-v', 'ON_ERROR_STOP=1', input=sql)
+    docker('exec', '-i', db, 'psql', '-U', 'local_test', '-d', database, '-v', 'ON_ERROR_STOP=1', input=sql)
+    before = snapshot(db, 'local_test', database)
+    assert before
+    docker(*release_command, *migrate)
+    docker(*release_command, '--import', 'tsx', 'src/private/scripts/migrateCanonicalMaps.ts', '--deploy')
+    assert snapshot(db, 'local_test', database) == before
+    print('PASS: normal release DB commands preserve every existing row, including IDs, references and documents')
     preflight = ['run', '--rm', '--network', 'container:' + db,
         '--mount', 'type=bind,source=' + str(repo / 'scripts/ops/check-existing-database.ts') + ',target=/app/scripts/ops/check-existing-database.ts,readonly',
         '--entrypoint', 'node']
-    good = docker(*preflight, '-e', 'DATABASE_URL=postgresql://local_test:disposable_only@localhost:5432/local_test', args.image, 'scripts/ops/check-existing-database.ts')
+    good = docker(*preflight, '-e', 'DATABASE_URL=' + database_url, args.image, 'scripts/ops/check-existing-database.ts')
     assert 'reachable and nonempty' in good.stdout
     bad = docker(*preflight, '-e', 'DATABASE_URL=postgresql://local_test:disposable_only@localhost:5432/missing_database', args.image, 'scripts/ops/check-existing-database.ts', check=False)
     assert bad.returncode != 0 and 'No reset' in bad.stderr
@@ -122,12 +144,7 @@ INSERT INTO crawl_latest_currents VALUES ('c', '{"state":"COMPLETE"}');
     wait_for_postgres(restored, 'verify', 'verify')
     with (generations[0] / 'database.dump').open('rb') as dump:
         subprocess.run(['docker', 'exec', '-i', restored, 'pg_restore', '--exit-on-error', '--no-owner', '--no-privileges', '-U', 'verify', '-d', 'verify'], stdin=dump, check=True, capture_output=True)
-    for table in ['ski_resorts', 'retained_document', 'users', 'accounts',
-                  'contribution_photos', 'edit_requests', 'crawl_latest_currents']:
-        query = f'SELECT to_jsonb(row) FROM {table} AS row ORDER BY id'
-        before = docker('exec', db, 'psql', '-U', 'local_test', '-d', 'local_test', '-Atc', query)
-        after = docker('exec', restored, 'psql', '-U', 'verify', '-d', 'verify', '-Atc', query)
-        assert before.stdout == after.stdout, table
+    assert snapshot(restored, 'verify', 'verify') == before
     print('PASS: original values, IDs, references and photo bytes match the restored records')
     legacy_root = state / 'backups'
     legacy_root.mkdir(mode=0o700)
@@ -138,26 +155,19 @@ INSERT INTO crawl_latest_currents VALUES ('c', '{"state":"COMPLETE"}');
     assert not legacy_generation.exists()
     assert generations[0].is_dir()
     print('PASS: legacy generation is restored successfully before its original is removed')
-    lock = docker('run', '-d', '--name', 'rusutsu-operation-' + project, '--network', 'none', '--entrypoint', 'node', args.image,
-        '-e', 'setTimeout(() => {}, 600000)').stdout.strip()
-    containers.append(lock)
-    assert script('backup-database.sh', check=False).returncode != 0
+    with (state / 'operation.lock').open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        assert script('backup-database.sh', check=False).returncode != 0
     assert len(list((root / 'backups').iterdir())) == 2
-    docker('rm', '-f', lock)
-    containers.remove(lock)
     print('PASS: a concurrent operation is rejected before making another dump')
     for generation in (root / 'backups').iterdir():
         with (generation / 'database.dump').open('ab') as dump:
             dump.write(b'corrupt')
     assert script('restore-backup-test.sh', check=False).returncode != 0
-    assert docker('exec', db, 'psql', '-U', 'local_test', '-d', 'local_test', '-Atc', 'SELECT count(*) FROM ski_resorts;').stdout.strip() == '2'
+    assert snapshot(db, 'local_test', database) == before
     print('PASS: corrupt backup is rejected and the source test database remains unchanged')
 finally:
     for container in reversed(containers):
         docker('rm', '-f', container, check=False)
-    # Only remove a surviving lease bearing this unique test project name.
-    lock = docker('inspect', '--format', '{{.Id}}', 'rusutsu-operation-' + project, check=False)
-    if lock.returncode == 0:
-        docker('rm', '-f', lock.stdout.strip(), check=False)
     shutil.rmtree(root)
     print('Task-created test containers and files cleaned up; no existing volumes touched.')

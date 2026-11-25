@@ -4,6 +4,7 @@ import {
   checkImageRemoval,
   nextDeploymentRecord,
   selectImageCleanupPlan,
+  verifyBeforeSwitch,
 } from "./image-cleanup.ts";
 
 const sha = "a".repeat(40);
@@ -132,5 +133,36 @@ test("exact image removal requires the approved ID to remain dangling and labele
         RepoTags: [`${repository}:${"c".repeat(40)}`],
       }),
     /approved/,
+  );
+  assert.throws(
+    () => checkImageRemoval(imageId("c"), image, [imageId("c")]),
+    /approved/,
+  );
+});
+
+test("pre-switch verification accepts the recorded image and flags a different running image", () => {
+  const { deployment } = input();
+  const recordedImage = {
+    Id: imageId("a"),
+    RepoTags: [`${repository}:${sha}`],
+    RepoDigests: [`${repository}@${digest("a")}`],
+    Config: { Labels: label },
+  };
+
+  assert.equal(
+    verifyBeforeSwitch("f".repeat(40), deployment, imageId("a"), recordedImage),
+    false,
+  );
+  assert.equal(
+    verifyBeforeSwitch("f".repeat(40), deployment, imageId("f"), recordedImage),
+    true,
+  );
+  assert.throws(
+    () =>
+      verifyBeforeSwitch("f".repeat(40), deployment, imageId("a"), {
+        ...recordedImage,
+        RepoDigests: [],
+      }),
+    /metadata/,
   );
 });
