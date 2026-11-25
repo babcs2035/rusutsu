@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
+import { setImmediate } from "node:timers/promises";
 import { runInNewContext } from "node:vm";
 import { MAPLIBRE_WORKER_URL } from "../maplibre/mapWorkerUrl";
 
@@ -503,4 +504,75 @@ test("容量整理は開いている画面と起動 HTML の資産を残す", as
   assert.equal(await assets.match(asset("old-start")), undefined);
   assert.ok(await assets.match(asset("new-start")));
   assert.equal((await assets.keys()).length, 600);
+});
+
+test("容量整理が旧 HTML を読んでいる間に起動資産を失う HTML を保存しない", async t => {
+  const homeURL = "https://example.com/rusutsu";
+  const asset = (name: string): string =>
+    `${homeURL}/_next/static/chunks/${name}.js`;
+  const html = (name: string): Response =>
+    new Response(`<script src="${asset(name)}"></script>`, {
+      headers: { "content-type": "text/html" },
+    });
+  let candidateFetches = 0;
+  const runtime = worker(async request => {
+    const url = String(request.url ?? request);
+    if (url === homeURL) return html("candidate");
+    if (url === asset("candidate")) {
+      candidateFetches++;
+      return new Response("missing", { status: 404 });
+    }
+    return new Response("extra");
+  });
+  const home = await runtime.caches.open("rusutsu-map-v1-home");
+  const assets = await runtime.caches.open("rusutsu-map-v1-assets");
+  await home.put(homeURL, html("old"));
+  for (const name of [
+    "candidate",
+    "old",
+    ...Array.from({ length: 598 }, (_, i) => `unused-${i}`),
+  ])
+    await assets.put(asset(name), new Response(name));
+
+  const reading = Promise.withResolvers<void>();
+  const resume = Promise.withResolvers<void>();
+  const open = runtime.caches.open;
+  let pause = true;
+  t.mock.method(runtime.caches, "open", async (name: string) => {
+    const cache = await open(name);
+    if (name !== "rusutsu-map-v1-home" || !pause) return cache;
+    pause = false;
+    return {
+      ...cache,
+      async match(request: string | Request) {
+        const saved = await cache.match(request);
+        if (saved) {
+          const text = saved.text.bind(saved);
+          t.mock.method(saved, "text", async () => {
+            reading.resolve();
+            await resume.promise;
+            return text();
+          });
+        }
+        return saved;
+      },
+    };
+  });
+  const eviction = runtime.dispatch({
+    url: asset("extra"),
+    method: "GET",
+    mode: "cors",
+  });
+  await reading.promise;
+  const replacement = runtime.saveHome();
+  await setImmediate();
+  resume.resolve();
+  await Promise.all([eviction, replacement]);
+
+  assert.equal(
+    await (await home.match(homeURL))?.text(),
+    await html("old").text(),
+  );
+  assert.ok(await assets.match(asset("old")));
+  assert.equal(candidateFetches, 1);
 });

@@ -1,4 +1,5 @@
 /* 閲覧済みの公開地図専用。管理画面、認証、API、Server Action はキャッシュしない。 */
+/* RUSUTSU_MAP_SW_ROLLBACK_COMPATIBLE */
 const PREFIX = "rusutsu-map-v1";
 const HOME = `${PREFIX}-home`;
 const ASSETS = `${PREFIX}-assets`;
@@ -37,6 +38,13 @@ const assetsByClient = new Map();
 let pendingHomeAssets = [];
 const fetchPublic = request =>
   fetch(request, { credentials: "omit", signal: AbortSignal.timeout(12000) });
+
+/** 起動 HTML の参照先とキャッシュの削除を同じ順序で確定する． */
+function queueCacheWrite(write) {
+  const task = writes.catch(() => {}).then(write);
+  writes = task;
+  return task;
+}
 
 /** 同じ画面からの分割通知と再通知を集約する． */
 function clientAssets(id) {
@@ -92,81 +100,81 @@ async function makeAssetSpace(cache, entries, key, count, bytesNeeded) {
   }
   if (count > 0 || bytesNeeded > 0) return;
   for (const url of remove) {
+    // 容量の計算を待つ間にも開いている画面から利用通知が届く．
+    if ([...assetsByClient.values()].some(owner => owner.urls.has(url)))
+      continue;
     await cache.delete(url);
     entries.delete(url);
   }
 }
 
 function saveBounded(name, request, response, limit, strict = false) {
-  const task = writes
-    .catch(() => {})
-    .then(async () => {
-      const opaqueImage = name === IMAGES && response.type === "opaque";
-      if ((!response.ok || response.type === "opaque") && !opaqueImage)
-        throw new Error("unusable response");
-      const cache = await caches.open(name);
-      if (!sizes.has(name)) {
-        const entries = new Map();
-        for (const key of await cache.keys()) {
-          const saved = await cache.match(key);
-          entries.set(
-            typeof key === "string" ? key : key.url,
-            saved.type === "opaque"
-              ? 7 * 1024 * 1024
-              : Number(saved.headers.get("x-rusutsu-bytes")) ||
-                  (await saved.arrayBuffer()).byteLength,
-          );
-        }
-        sizes.set(name, entries);
+  const task = queueCacheWrite(async () => {
+    const opaqueImage = name === IMAGES && response.type === "opaque";
+    if ((!response.ok || response.type === "opaque") && !opaqueImage)
+      throw new Error("unusable response");
+    const cache = await caches.open(name);
+    if (!sizes.has(name)) {
+      const entries = new Map();
+      for (const key of await cache.keys()) {
+        const saved = await cache.match(key);
+        entries.set(
+          typeof key === "string" ? key : key.url,
+          saved.type === "opaque"
+            ? 7 * 1024 * 1024
+            : Number(saved.headers.get("x-rusutsu-bytes")) ||
+                (await saved.arrayBuffer()).byteLength,
+        );
       }
-      const entries = sizes.get(name);
-      const key = typeof request === "string" ? request : request.url;
-      const evict = name === VIEWED_TILES;
-      const bytes = opaqueImage ? null : await response.clone().arrayBuffer();
-      const byteLength = bytes ? bytes.byteLength : 7 * 1024 * 1024;
-      const budget =
-        name === TILES
-          ? 192 * 1024 * 1024
-          : name === VIEWED_TILES
-            ? 48 * 1024 * 1024
-            : 64 * 1024 * 1024;
-      const used = () => {
-        let total = -(entries.get(key) || 0);
-        for (const size of entries.values()) total += size;
-        return total;
-      };
-      // 表示しただけのタイルは古い順（保存順）に消して空きを作る。
-      while (
-        evict &&
-        entries.size &&
-        (entries.size >= limit || used() + byteLength > budget)
-      ) {
-        const oldest = entries.keys().next().value;
-        await cache.delete(oldest);
-        entries.delete(oldest);
-      }
-      if (name === ASSETS) {
-        const count = entries.size + Number(!entries.has(key)) - limit;
-        const bytesNeeded = used() + byteLength - budget;
-        if (count > 0 || bytesNeeded > 0)
-          await makeAssetSpace(cache, entries, key, count, bytesNeeded);
-      }
-      if (!entries.has(key) && entries.size >= limit)
-        throw new Error("entry limit");
-      if (used() + byteLength > budget) throw new Error("byte limit");
-      const headers = new Headers(response.headers);
-      for (const key of ["content-encoding", "content-length", "vary"])
-        headers.delete(key);
-      headers.set("x-rusutsu-bytes", String(byteLength));
-      await cache.put(
-        request,
-        opaqueImage
-          ? response
-          : new Response(bytes, { status: response.status, headers }),
-      );
-      entries.set(key, byteLength);
-    });
-  writes = task;
+      sizes.set(name, entries);
+    }
+    const entries = sizes.get(name);
+    const key = typeof request === "string" ? request : request.url;
+    const evict = name === VIEWED_TILES;
+    const bytes = opaqueImage ? null : await response.clone().arrayBuffer();
+    const byteLength = bytes ? bytes.byteLength : 7 * 1024 * 1024;
+    const budget =
+      name === TILES
+        ? 192 * 1024 * 1024
+        : name === VIEWED_TILES
+          ? 48 * 1024 * 1024
+          : 64 * 1024 * 1024;
+    const used = () => {
+      let total = -(entries.get(key) || 0);
+      for (const size of entries.values()) total += size;
+      return total;
+    };
+    // 表示しただけのタイルは古い順（保存順）に消して空きを作る。
+    while (
+      evict &&
+      entries.size &&
+      (entries.size >= limit || used() + byteLength > budget)
+    ) {
+      const oldest = entries.keys().next().value;
+      await cache.delete(oldest);
+      entries.delete(oldest);
+    }
+    if (name === ASSETS) {
+      const count = entries.size + Number(!entries.has(key)) - limit;
+      const bytesNeeded = used() + byteLength - budget;
+      if (count > 0 || bytesNeeded > 0)
+        await makeAssetSpace(cache, entries, key, count, bytesNeeded);
+    }
+    if (!entries.has(key) && entries.size >= limit)
+      throw new Error("entry limit");
+    if (used() + byteLength > budget) throw new Error("byte limit");
+    const headers = new Headers(response.headers);
+    for (const key of ["content-encoding", "content-length", "vary"])
+      headers.delete(key);
+    headers.set("x-rusutsu-bytes", String(byteLength));
+    await cache.put(
+      request,
+      opaqueImage
+        ? response
+        : new Response(bytes, { status: response.status, headers }),
+    );
+    entries.set(key, byteLength);
+  });
   return strict ? task : task.catch(() => {});
 }
 let backgroundCount = 0;
@@ -358,10 +366,13 @@ async function saveHome(response) {
     .catch(() => {})
     .then(async () => {
       const html = await response.text();
-      pendingHomeAssets = assetPaths(html);
+      const paths = assetPaths(html);
+      await queueCacheWrite(() => {
+        pendingHomeAssets = paths;
+      });
       try {
-        // 失敗した場合も他の資産の書き込みが終わるまで保護を続ける．
-        await pool(pendingHomeAssets, url =>
+        // 資産の通信・保存はキューの外から待ち，参照先は確定まで保護する．
+        await pool(paths, url =>
           cachedAsset(new Request(url), ASSETS, MAX_ASSETS, true),
         );
         const headers = new Headers(response.headers);
@@ -372,10 +383,17 @@ async function saveHome(response) {
           "vary",
         ])
           headers.delete(name);
-        const cache = await caches.open(HOME);
-        await cache.put(homeURL, new Response(html, { status: 200, headers }));
+        await queueCacheWrite(async () => {
+          const cache = await caches.open(HOME);
+          await cache.put(
+            homeURL,
+            new Response(html, { status: 200, headers }),
+          );
+        });
       } finally {
-        pendingHomeAssets = [];
+        await queueCacheWrite(() => {
+          pendingHomeAssets = [];
+        });
       }
     });
   await homeWrites;
