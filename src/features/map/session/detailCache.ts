@@ -69,6 +69,14 @@ export async function readDetailCache(
     return null;
   }
 }
+
+/** 公開側で取得対象から外れた施設をオフラインの詳細からも除く． */
+export async function removeDetailCache(id: string): Promise<boolean> {
+  return updateCache(store => {
+    store.delete(id);
+  });
+}
+
 /** 詳細を開いたときは viewedAt、比較で取得したときは compared を付けて保存する。 */
 export async function writeDetailCache(
   data: SkiResortDetail,

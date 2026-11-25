@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   readDetailCache,
+  removeDetailCache,
   writeDetailCache,
 } from "@/features/map/session/detailCache";
 import type { FinalizedResortMapData } from "@/lib/finalizedResortGeojsonShared";
@@ -178,6 +179,9 @@ export const useCompareResorts = (
               requests.signal,
             );
             if (disposed) return;
+            const returnedIds = new Set(details.map(detail => detail.id));
+            const removedIds = targetChunk.filter(id => !returnedIds.has(id));
+            for (const id of removedIds) entries.delete(id);
             for (const detail of details) {
               entries.set(detail.id, {
                 ...detail,
@@ -186,8 +190,8 @@ export const useCompareResorts = (
                   entries.get(detail.id)?.finalizedMapData ??
                   null,
               });
-              save(detail.id);
             }
+            await Promise.all(removedIds.map(removeDetailCache));
           } catch {
             if (disposed) return;
             failed = true;
@@ -212,7 +216,7 @@ export const useCompareResorts = (
             mapStash.set(id, finalizedMapData);
             const entry = entries.get(id);
             if (entry) entries.set(id, { ...entry, finalizedMapData });
-            save(id);
+            if (detailsReady) save(id);
           }
           publish();
         } catch {
@@ -240,6 +244,8 @@ export const useCompareResorts = (
       await loadDetails();
       if (disposed) return;
       detailsReady = true;
+      // 詳細が公開対象か確認してから地図と一緒に端末へ書き込む．
+      for (const id of targetIds) save(id);
       publish();
       await maps;
       if (disposed) return;

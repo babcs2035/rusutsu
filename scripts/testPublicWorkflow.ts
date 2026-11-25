@@ -23,6 +23,45 @@ const resortId = process.env.RUSUTSU_BROWSER_RESORT_ID ?? "rusutsu-resort";
 const artifactDirectory = path.join(artifactRoot, "public-workflow");
 await mkdir(artifactDirectory, { recursive: true });
 
+/** 比較の通信失敗では端末の保存分を使い，正常応答から消えた施設は保存分も除く． */
+async function assertCompareCacheRevalidation(page: Page): Promise<void> {
+  const comparisonUrl = `${baseUrl}/?c=0102`;
+  const retained = page.getByRole("heading", { name: /ルスツ/u });
+  const removed = page.getByRole("heading", { name: /ニセコ/u });
+  const detailPath = (url: URL): boolean =>
+    url.pathname === "/rusutsu/api/resorts/details";
+  const temporaryFailure = {
+    status: 503,
+    body: "temporary failure",
+  };
+
+  await page.route(detailPath, route => route.fulfill(temporaryFailure));
+  await page.goto(comparisonUrl);
+  await removed.waitFor();
+  await retained.waitFor();
+
+  await page.unroute(detailPath);
+  await page.route(detailPath, async route => {
+    const response = await route.fetch();
+    assert.equal(response.ok(), true);
+    const details: Array<{ id: string }> = await response.json();
+    assert.ok(details.some(detail => detail.id === "niseko-test"));
+    await route.fulfill({
+      response,
+      json: details.filter(detail => detail.id !== "niseko-test"),
+    });
+  });
+  await page.reload();
+  await retained.waitFor();
+  assert.equal(await removed.count(), 0);
+
+  await page.unroute(detailPath);
+  await page.route(detailPath, route => route.fulfill(temporaryFailure));
+  await page.reload();
+  await retained.waitFor();
+  assert.equal(await removed.count(), 0);
+}
+
 /** Prevent mutations unless the runner explicitly marks its database disposable. */
 function assertDisposableDatabase(): void {
   if (process.env.RUSUTSU_BROWSER_DISPOSABLE_DB !== "true")
@@ -217,6 +256,11 @@ try {
   await anonymousPage.getByRole("tab", { name: "料金", exact: true }).click();
   await anonymousPage.getByText(/4,310/u).first().waitFor();
   await anonymousContext.setOffline(false);
+
+  const comparisonPage = await anonymousContext.newPage();
+  comparisonPage.on("pageerror", error => pageErrors.push(error.message));
+  await assertCompareCacheRevalidation(comparisonPage);
+  await comparisonPage.close();
 
   const listPage = await anonymousContext.newPage();
   listPage.on("pageerror", error => pageErrors.push(error.message));
