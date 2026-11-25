@@ -48,11 +48,11 @@ export function getResortMapDataForCompare(
 
 /** 一覧・比較と同じ入口でサーバー計算した料金を取得する． */
 export function calculateLiftTicketAndRentalForList(
-  ...[resortIds, input]: Parameters<
-    typeof Queries.calculateLiftTicketAndRentalForList
-  >
+  resortIds: Parameters<typeof Queries.calculateLiftTicketAndRentalForList>[0],
+  input: Parameters<typeof Queries.calculateLiftTicketAndRentalForList>[1],
+  signal?: AbortSignal,
 ): ReturnType<typeof Queries.calculateLiftTicketAndRentalForList> {
-  return query("/api/resorts/prices", { resortIds, input });
+  return query("/api/resorts/prices", { resortIds, input }, signal);
 }
 
 /** 施設ごとのリンク一覧を必要になった時点で取得する． */

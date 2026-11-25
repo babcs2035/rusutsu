@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { encode } from "next-auth/jwt";
-import { chromium } from "playwright";
+import { chromium, type Page } from "playwright";
 
 const artifactRoot = process.env.RUSUTSU_TEST_ARTIFACT_DIR;
 if (!artifactRoot)
@@ -29,6 +29,55 @@ function assertDisposableDatabase(): void {
     throw new Error(
       "Set RUSUTSU_BROWSER_DISPOSABLE_DB=true before browser workflow mutations.",
     );
+}
+
+/** Verify the four weather links share one unclipped row and keyboard order. */
+async function assertWeatherLinksFit(page: Page): Promise<void> {
+  const row = page.locator(".weather-links").first();
+  const links = row.locator("a.weather-link");
+  await row.waitFor();
+  assert.equal(await links.count(), 4, "all four weather sites must be linked");
+  const layout = await row.evaluate(element => {
+    const bounds = element.getBoundingClientRect();
+    const items = [...element.querySelectorAll("a.weather-link")].map(item => {
+      const rect = item.getBoundingClientRect();
+      return { left: rect.left, right: rect.right, top: rect.top };
+    });
+    return {
+      left: bounds.left,
+      right: bounds.right,
+      clientWidth: element.clientWidth,
+      scrollWidth: element.scrollWidth,
+      items,
+    };
+  });
+  assert.ok(
+    layout.scrollWidth <= layout.clientWidth + 1,
+    "the weather link row must not scroll horizontally",
+  );
+  assert.ok(
+    layout.items.every(
+      item => item.left >= layout.left - 1 && item.right <= layout.right + 1,
+    ),
+    "all weather links must remain inside the row",
+  );
+  assert.ok(
+    layout.items.every(item => Math.abs(item.top - layout.items[0].top) < 1),
+    "one link per site must stay on one row",
+  );
+
+  const labels = ["Snow Forecast", "tenki.jp", "ウェザーニュース", "Windy"];
+  await links.first().focus();
+  for (const [index, label] of labels.entries()) {
+    if (index > 0) await page.keyboard.press("Tab");
+    assert.equal(
+      await links
+        .nth(index)
+        .evaluate(element => element === document.activeElement),
+      true,
+      `${label} must be reachable in keyboard order`,
+    );
+  }
 }
 
 const browser = await chromium.launch({
@@ -133,12 +182,34 @@ try {
     0,
   );
 
-  const result = anonymousPage.waitForResponse(
+  let ticketPlanRequestCount = 0;
+  let firstTicketPlanBody: string | null = null;
+  await anonymousPage.route(
+    url => url.pathname === "/rusutsu/api/resorts/ticket-plans",
+    async route => {
+      ticketPlanRequestCount++;
+      const body = route.request().postData();
+      if (ticketPlanRequestCount === 1) {
+        firstTicketPlanBody = body;
+        await route.fulfill({ status: 503, body: "temporary failure" });
+        return;
+      }
+      assert.equal(body, firstTicketPlanBody);
+      await route.continue();
+    },
+  );
+  await anonymousPage.getByRole("tab", { name: "料金", exact: true }).click();
+  await anonymousPage.getByText(/4,310/u).first().waitFor();
+  assert.equal(ticketPlanRequestCount, 1);
+  await anonymousContext.setOffline(true);
+  const retry = anonymousPage.waitForResponse(
     response =>
       response.url().endsWith("/api/resorts/ticket-plans") && response.ok(),
   );
-  await anonymousPage.getByRole("tab", { name: "料金", exact: true }).click();
-  const plans = await (await result).json();
+  await anonymousContext.setOffline(false);
+  const plans = await (await retry).json();
+  assert.equal(ticketPlanRequestCount, 2);
+  await anonymousPage.unrouteAll();
   assert.equal(plans[0]?.tiers[0]?.view.total, 4310);
   await anonymousPage.getByText(/4,310/u).first().waitFor();
   await firstTab.click();
@@ -146,6 +217,83 @@ try {
   await anonymousPage.getByRole("tab", { name: "料金", exact: true }).click();
   await anonymousPage.getByText(/4,310/u).first().waitFor();
   await anonymousContext.setOffline(false);
+
+  const listPage = await anonymousContext.newPage();
+  listPage.on("pageerror", error => pageErrors.push(error.message));
+  let listRequestCount = 0;
+  let firstListInput: string | null = null;
+  const listPricePath = "/rusutsu/api/resorts/prices";
+  await listPage.route(
+    url => url.pathname === listPricePath,
+    async route => {
+      listRequestCount++;
+      const input = route.request().postData();
+      if (listRequestCount === 1) {
+        firstListInput = input;
+        await route.fulfill({ status: 503, body: "temporary failure" });
+        return;
+      }
+      assert.equal(input, firstListInput);
+      await route.continue();
+    },
+  );
+  const failedListRequest = listPage.waitForResponse(
+    response =>
+      response.url().endsWith(listPricePath) && response.status() === 503,
+  );
+  await listPage.goto(baseUrl);
+  await (await failedListRequest).finished();
+  await anonymousContext.setOffline(true);
+  const listRetry = listPage.waitForResponse(
+    response => response.url().endsWith(listPricePath) && response.ok(),
+  );
+  await anonymousContext.setOffline(false);
+  const listPrices = await (await listRetry).json();
+  assert.equal(listRequestCount, 2);
+  assert.deepEqual(listPrices[resortId], {
+    kind: "price",
+    total: 4310,
+    rentalMissing: false,
+  });
+  await listPage.close();
+
+  const weatherPage = await anonymousContext.newPage();
+  weatherPage.on("pageerror", error => pageErrors.push(error.message));
+  const detailUrl = `${baseUrl}/?resort=${resortId}`;
+  await weatherPage.setViewportSize({ width: 375, height: 812 });
+  await weatherPage.goto(detailUrl);
+  await weatherPage.getByRole("tab", { name: "天気", exact: true }).click();
+  await assertWeatherLinksFit(weatherPage);
+  await weatherPage.screenshot({
+    path: path.join(artifactDirectory, "weather-links-375.png"),
+  });
+
+  await weatherPage.setViewportSize({ width: 1280, height: 900 });
+  for (const panelWidth of [346, 500]) {
+    await weatherPage.goto(detailUrl);
+    await weatherPage.addStyleTag({
+      content: `:root { --desktop-detail-panel-width: ${panelWidth}px; }`,
+    });
+    const detailPanel = weatherPage.locator(
+      '[data-ski-resort-detail-panel="true"] > div',
+    );
+    await detailPanel.waitFor();
+    assert.equal(
+      await detailPanel.evaluate(element =>
+        Math.round(element.getBoundingClientRect().width),
+      ),
+      panelWidth,
+    );
+    await weatherPage.getByRole("tab", { name: "天気", exact: true }).click();
+    await assertWeatherLinksFit(weatherPage);
+    await weatherPage.screenshot({
+      path: path.join(
+        artifactDirectory,
+        `weather-links-panel-${panelWidth}.png`,
+      ),
+    });
+  }
+  await weatherPage.close();
 
   const authSecret = process.env.RUSUTSU_BROWSER_AUTH_SECRET;
   const adminId = process.env.RUSUTSU_BROWSER_ADMIN_ID;

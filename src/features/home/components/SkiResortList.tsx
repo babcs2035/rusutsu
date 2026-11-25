@@ -79,27 +79,47 @@ const useListLiftTicketResults = (
   stateRef.current = state;
 
   useEffect(() => {
-    // 一覧が見えていない間は計算しない。サーバーアクションは1件ずつ順に
-    // 処理されるので、裏で計算すると詳細や投稿の読み込みを待たせる。
     if (requestKey === null || paused) return;
-    // 見えない間に止めていた一覧へ戻ったとき、同じ条件の結果があれば使い回す
-    if (stateRef.current?.key === requestKey) return;
     const { ids, input: requestInput } = JSON.parse(requestKey) as {
       ids: string[];
       input: LiftTicketSearchInput;
     };
-    let cancelled = false;
-    calculateLiftTicketAndRentalForList(ids, requestInput)
-      .then(results => {
-        if (!cancelled)
-          setState({ key: requestKey, value: { status: "done", results } });
-      })
-      .catch(() => {
-        if (!cancelled)
-          setState({ key: requestKey, value: { status: "error" } });
-      });
+    let pending: AbortController | undefined;
+    const load = (): void => {
+      const previous = stateRef.current;
+      // 表示を再開したときは取得済みの料金を再利用し，通信失敗だけ再試行する．
+      if (previous?.key === requestKey && previous.value.status === "done")
+        return;
+      pending?.abort();
+      const request = new AbortController();
+      pending = request;
+      void calculateLiftTicketAndRentalForList(
+        ids,
+        requestInput,
+        request.signal,
+      )
+        .then(results => {
+          if (request.signal.aborted) return;
+          const next = {
+            key: requestKey,
+            value: { status: "done", results },
+          } as const;
+          stateRef.current = next;
+          setState(next);
+        })
+        .catch(() => {
+          if (!request.signal.aborted)
+            setState({ key: requestKey, value: { status: "error" } });
+        })
+        .finally(() => {
+          if (pending === request) pending = undefined;
+        });
+    };
+    window.addEventListener("online", load);
+    load();
     return () => {
-      cancelled = true;
+      window.removeEventListener("online", load);
+      pending?.abort();
     };
   }, [requestKey, paused]);
 

@@ -61,8 +61,6 @@ test("canonical map data is reused only while its revision remains current", asy
       `,
     "@/features/lift/server/liftFiles":
       "export const SKI_RESORT_LINKS_DOCUMENT_KEY = 'links'; export const parseResortLinksMap = () => ({});",
-    "@/features/resort-detail/utils/operationStatus":
-      "export const createFinalizedOperationSummary = () => null; export const createResortOperationStatus = () => null;",
     "@/features/resort-detail/utils/trailMapLinks":
       "export const collectNewsLinks = () => []; export const collectTrailMapLinks = () => [];",
     "@/features/weather/weatherLinks":
@@ -74,7 +72,8 @@ test("canonical map data is reused only while its revision remains current", asy
     "@/lib/resortDisplayGroups":
       "export const readDisplayGroupsForResort = async () => [];",
     "@/lib/resortReadings": "export const getResortReadingInfo = () => ({});",
-    "@/lib/skiResortData": "export const readSkiResortById = async () => null;",
+    "@/lib/skiResortData":
+      "export const readSkiResortById = async id => ({ id });",
     "@/server/course-lift/summaryClient":
       "export const readOperatingSummaries = async () => ({});",
     "@/server/data-documents/client":
@@ -87,7 +86,7 @@ test("canonical map data is reused only while its revision remains current", asy
   await build({
     stdin: {
       contents: `
-        export { readResortMapDataByIds } from '@/server/ski-resorts/detail';
+        export { readResortMapDataByIds, readSkiResortDetails } from '@/server/ski-resorts/detail';
         export { reset, setRevision, setSnapshot, setEditCapture, counts } from 'detail-map-cache-state';
       `,
       resolveDir: process.cwd(),
@@ -173,6 +172,43 @@ test("canonical map data is reused only while its revision remains current", asy
       assert.deepEqual(api.counts, { revision: 2, snapshot: 2, direct: 0 });
       assert.equal(first.finalizedMapData.label, "second");
       assert.deepEqual(first, second);
+    },
+  );
+
+  await t.test(
+    "comparison detail keeps operation status and the map request avoids a second full read",
+    async () => {
+      api.reset();
+      const id = "comparison";
+      const data = {
+        courses: {
+          features: [],
+          sourceUrls: ["https://example.test/status"],
+          observedAt: "2026-01-01T02:00:00Z",
+        },
+        lifts: null,
+      };
+      api.setRevision(id, "v1");
+      api.setSnapshot(id, { canonicalEnabled: true, revision: "v1", data });
+
+      const [compact] = await api.readSkiResortDetails([id], {
+        withMap: false,
+      });
+      assert.equal(compact.finalizedMapData, null);
+      assert.deepEqual(
+        compact.operationStatus.courseSourceUrls,
+        data.courses.sourceUrls,
+      );
+      const [mapResult] = await api.readResortMapDataByIds([id]);
+      assert.deepEqual(api.counts, { revision: 1, snapshot: 1, direct: 0 });
+      assert.deepEqual(mapResult.finalizedMapData, data);
+
+      const [full] = await api.readSkiResortDetails([id], { withMap: true });
+      assert.deepEqual(compact.operationStatus, full.operationStatus);
+      assert.ok(
+        Buffer.byteLength(JSON.stringify(compact)) <
+          Buffer.byteLength(JSON.stringify(full)),
+      );
     },
   );
 
