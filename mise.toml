@@ -65,6 +65,8 @@ start = { description = "プロダクションサーバー起動", run = "pnpm s
   "pnpm tsx src/private/scripts/crawlAmedas.ts"
 ]}
 "crawl:diagnostics:pull" = { description = "本番APIから警告・失敗DOMをVS Code用に取得", run = "pnpm tsx scripts/pullCrawlerDiagnostics.ts" }
+"maintain:weekly" = { description = "全データの週次の見回り（クローラーの失敗・料金ページの変化・雪マジ・リンク切れ・マップ・ツアーとパスの掲載を点検。本番へは書かない。--only で種類を絞る）", run = "node .shared/skills/maintain-ski-data-weekly/scripts/weekly.mjs run" }
+"maintain:seasonal" = { description = "シーズン前の再調査の台帳（init / status / next / prepare / audit-survey / plan / mark）", run = "node .shared/skills/resurvey-ski-data-seasonal/scripts/seasonal.mjs" }
 
 # --- データ検証 ---
 "merge:resort-sheets" = { description = "resorts の Excel を before と既存の 10m/20m GeoJSON へ統合", run = "node --import tsx scripts/mergeResortSheetsIntoGeojson.ts" }

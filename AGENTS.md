@@ -42,6 +42,7 @@ Rusutsu は、日本全国のスキー場情報（基本情報・コース/リ�
 - 全クローラー一括: `mise run crawl:all`（上記4件 + snowDepths/snowFalls/latestReports/yukiMagi/amedas を順次実行）
 - ツアー会社サイトのリンク収集: `mise run crawl:tour-links [-- <siteId...>]`（結果は `src/private/data/tour-links/<siteId>.json`。本番アプリ内では毎週月曜4時に自動実行）
 - リンクの本番反映: `mise run resort-links:publish -- --official <resortId...>` / `-- --source <siteId...>`（既定は差分の確認だけ、`--check` で形式のみ、`--apply` で `resort_links` へ反映）
+- データの定期点検: `mise run maintain:weekly [-- --only crawlers,pages,yukimaji,links,maps,listings]`（シーズン中は週1回。クローラーの失敗・料金ページの変化・リンク切れなどを点検して1枚の報告にする。本番へは書かない。直し方はスキル `maintain-ski-data-weekly`）。シーズン前の全スキー場の再調査はスキル `resurvey-ski-data-seasonal`（台帳は `mise run maintain:seasonal -- status`）
 
 ## ディレクトリ構成
 - `src/app`: Next.js App Router のエントリ（`layout.tsx`, `page.tsx`, `admin/` 管理画面, `api/` API ルート。ページ本体は features 側に実装）
