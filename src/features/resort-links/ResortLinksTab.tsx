@@ -7,6 +7,7 @@ import type { Resort } from "@/features/resort-detail/types";
 import { cn } from "@/lib/utils";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
+import { useAppLink } from "@/shared/hooks/useAppLink";
 import linkSourcesJson from "./linkSources.json";
 import {
   mergedLinkName,
@@ -71,9 +72,11 @@ function LinkChip({
   className?: string;
   icon?: ReactNode;
 }) {
+  // Windy などはスマホならアプリで開く
+  const appLink = useAppLink(link.url);
   return (
     <ExternalLinkComponent
-      href={link.url}
+      {...appLink}
       title={title}
       className={cn(
         chipClassName,

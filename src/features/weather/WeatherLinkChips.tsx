@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
+import { useAppLink } from "@/shared/hooks/useAppLink";
 import type { WeatherLink } from "./useWeatherLinks";
 import "./WeatherLinkChips.css";
 
@@ -46,20 +47,7 @@ export const WeatherLinkChips = ({
         )}
       >
         {availableLinks.map(link => (
-          <ExternalLinkComponent
-            key={`${link.kind}-${link.id}`}
-            href={link.url}
-            className={cn(
-              "weather-link",
-              "flex items-center justify-center rounded-md text-xs font-extrabold text-center",
-              "transition-colors duration-150",
-              link.bg,
-              link.hoverBg,
-              link.color,
-            )}
-          >
-            <span className="whitespace-nowrap">{link.label}</span>
-          </ExternalLinkComponent>
+          <WeatherLinkChip key={`${link.kind}-${link.id}`} link={link} />
         ))}
         {missingLinkSlots.map(slot => (
           <span
@@ -72,5 +60,25 @@ export const WeatherLinkChips = ({
         ))}
       </div>
     </div>
+  );
+};
+
+/** 天気サイト1件のボタン。Windy はスマホならアプリで開く */
+const WeatherLinkChip = ({ link }: { link: WeatherLink & { url: string } }) => {
+  const appLink = useAppLink(link.url);
+  return (
+    <ExternalLinkComponent
+      {...appLink}
+      className={cn(
+        "weather-link",
+        "flex items-center justify-center rounded-md text-xs font-extrabold text-center",
+        "transition-colors duration-150",
+        link.bg,
+        link.hoverBg,
+        link.color,
+      )}
+    >
+      <span className="whitespace-nowrap">{link.label}</span>
+    </ExternalLinkComponent>
   );
 };
