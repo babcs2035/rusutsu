@@ -1,4 +1,5 @@
 import type { CrawlMonitorCurrent } from "@/server/crawl-latest/adminContract";
+import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import {
   CATEGORY_KINDS,
   CATEGORY_LABELS,
@@ -27,7 +28,7 @@ export function CurrentSnapshots({
             className="rounded-lg border border-gray-200 bg-white p-4"
           >
             <header className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <h3 className="font-medium text-gray-900">
+              <h3 className="font-semibold text-gray-900">
                 {CATEGORY_LABELS[kind]}
               </h3>
               {current ? (
@@ -57,14 +58,12 @@ export function CurrentSnapshots({
                   <ul className="mt-2 flex flex-col gap-1">
                     {current.sourceUrls.map(url => (
                       <li key={url} className="truncate text-xs">
-                        <a
+                        <ExternalLinkComponent
                           href={url}
-                          target="_blank"
-                          rel="noreferrer noopener"
-                          className="text-gray-600 underline-offset-2 hover:underline"
+                          className="min-w-0 max-w-full underline-offset-2 hover:underline"
                         >
-                          {url}
-                        </a>
+                          <span className="min-w-0 truncate">{url}</span>
+                        </ExternalLinkComponent>
                       </li>
                     ))}
                   </ul>

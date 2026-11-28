@@ -64,7 +64,7 @@ export const WeatherLinkChips = ({
           <span
             key={slot.kind}
             aria-hidden="true"
-            className="weather-link invisible flex items-center justify-center text-xs font-extrabold"
+            className="weather-link invisible flex items-center justify-center text-xs font-semibold"
           >
             <span className="whitespace-nowrap">{slot.label}</span>
           </span>

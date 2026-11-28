@@ -62,7 +62,7 @@ export const RentalPriceTable = ({ data }: { data: LiftTicketData }) => {
       {sections.map((section, index) => (
         <div key={section.key} className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <p className="text-gray-900 text-sm font-semibold font-[var(--font-heading)]">
+            <p className="text-gray-900 text-sm font-semibold font-heading">
               {section.title}
             </p>
             {/* メインのリンクは最初の表にだけ出す（同じリンクを表ごとに繰り返さない） */}

@@ -25,20 +25,20 @@ export function PanelHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="flex shrink-0 items-center justify-between gap-2 border-b border-gray-200 py-2 pr-2 pl-3 md:pr-3 md:pl-4">
-      <div className="flex min-w-0 items-center gap-1">
+    <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-3 py-2.5 md:px-4">
+      <div className="flex min-w-0 items-center gap-2">
         {onBack && (
           <Button
             type="button"
             aria-label={backLabel}
             variant="ghost"
-            className="-ml-1.5 size-7 min-w-7 rounded-full p-0 text-gray-600 hover:bg-gray-100 hover:text-gray-900 md:size-8 md:min-w-8"
+            className="-ml-1.5 size-7 min-w-7 rounded-full p-0 text-muted-foreground md:size-8 md:min-w-8"
             onClick={onBack}
           >
             <ChevronLeft size={20} strokeWidth={2.5} />
           </Button>
         )}
-        <h2 className="min-w-0 truncate text-base leading-snug font-bold text-gray-900 font-[var(--font-heading)] md:text-lg">
+        <h2 className="min-w-0 truncate text-base leading-snug font-bold text-gray-900 font-heading md:text-lg">
           {title}
         </h2>
       </div>

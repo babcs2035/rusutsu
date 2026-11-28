@@ -113,9 +113,7 @@ export function ResortSelectStep({
         />
       </div>
       <div className="flex min-h-0 min-w-0 flex-col gap-2 overflow-hidden max-md:overflow-y-auto max-md:[&>*]:shrink-0 border-t border-gray-200 bg-white p-3 max-md:h-[60%] md:w-[min(460px,60vw)] md:border-t-0 md:border-l lg:w-[460px] lg:min-w-[460px]">
-        <h2 className="text-lg font-bold font-[var(--font-heading)]">
-          スキー場を選ぶ
-        </h2>
+        <h2 className="text-lg font-bold font-heading">スキー場を選ぶ</h2>
         <p className="text-sm text-gray-600">
           地図や検索一覧からスキー場を選び、詳細設定を開いて基本情報や公開状態を編集します。
         </p>
@@ -155,7 +153,7 @@ export function ResortSelectStep({
           <Card className="shrink-0 rounded-md border-2 border-blue-600 bg-blue-50">
             <CardContent className="space-y-2 p-3">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="font-bold font-[var(--font-heading)]">
+                <p className="font-bold font-heading">
                   {selectedResort.nameJa}
                 </p>
                 <PublicationBadge isActive={selectedResort.isActive} />

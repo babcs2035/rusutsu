@@ -59,7 +59,9 @@ function CourseRanking({ courses }: { courses: TrackCourse[] }) {
               </div>
               <div className="shrink-0 text-right text-sm tabular-nums">
                 <p className="font-semibold">{course.passes} 回</p>
-                <p className="text-xs text-gray-500">{km(course.distance)}</p>
+                <p className="font-mono text-xs text-gray-500">
+                  {km(course.distance)}
+                </p>
               </div>
             </li>
           ))}
@@ -322,7 +324,7 @@ export function SkiTracksHistory() {
               ].map(([label, value]) => (
                 <div key={label}>
                   <dt className="text-xs text-gray-500">{label}</dt>
-                  <dd className="text-sm font-semibold tabular-nums">
+                  <dd className="font-mono text-sm font-semibold tabular-nums">
                     {value}
                   </dd>
                 </div>
@@ -382,7 +384,7 @@ export function SkiTracksHistory() {
                         {date(segment.start, true)}
                       </span>
                     </span>
-                    <span className="text-xs tabular-nums">
+                    <span className="font-mono text-xs tabular-nums">
                       {km(segment.distance)} · {Math.round(segment.vertical)} m↓
                     </span>
                   </div>
@@ -428,7 +430,7 @@ export function SkiTracksHistory() {
                     {track.analysis.declaredResort ?? track.analysis.name}
                   </p>
                 </div>
-                <span className="shrink-0 text-right text-xs tabular-nums">
+                <span className="shrink-0 text-right font-mono text-xs tabular-nums">
                   {track.analysis.runs}本<br />
                   {km(track.analysis.distance)}
                 </span>

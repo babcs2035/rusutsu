@@ -2,6 +2,14 @@
 
 import { Spinner } from "@/components/ui/spinner";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   LinkGroupBody,
   LinkGroups,
   LinkLoadFailedNote,
@@ -120,80 +128,76 @@ const LinksTable = ({
   const isAllLoading = entries.every(entry => entry.isLoading);
   return (
     // 縦も横もこの枠の中で送る。スキー場名の行とグループ名の列は固定する
-    <div className="h-full overflow-auto rounded-xl border border-gray-200 bg-white">
-      <table
-        className="w-full table-fixed border-separate border-spacing-0"
-        style={{
-          minWidth: `${GROUP_LABEL_WIDTH + entries.length * RESORT_COLUMN_MIN_WIDTH}rem`,
-          maxWidth: `${GROUP_LABEL_WIDTH + entries.length * RESORT_COLUMN_MAX_WIDTH}rem`,
-        }}
-      >
-        <colgroup>
-          <col style={{ width: `${GROUP_LABEL_WIDTH}rem` }} />
-          {entries.map(entry => (
-            <col key={entry.resort.id} />
+    <Table
+      containerClassName="h-full overflow-auto rounded-xl"
+      className="table-fixed"
+      style={{
+        minWidth: `${GROUP_LABEL_WIDTH + entries.length * RESORT_COLUMN_MIN_WIDTH}rem`,
+        maxWidth: `${GROUP_LABEL_WIDTH + entries.length * RESORT_COLUMN_MAX_WIDTH}rem`,
+      }}
+    >
+      <colgroup>
+        <col style={{ width: `${GROUP_LABEL_WIDTH}rem` }} />
+        {entries.map(entry => (
+          <col key={entry.resort.id} />
+        ))}
+      </colgroup>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="sticky top-0 left-0 z-30 bg-card px-0 py-0" />
+          {entries.map((entry, index) => (
+            <TableHead
+              key={entry.resort.id}
+              scope="col"
+              className={cn(
+                "sticky top-0 z-20 bg-card px-2 py-1.5 text-left align-middle font-normal text-foreground",
+                index === 0 && "border-l-0",
+              )}
+            >
+              <CompareResortNameCell
+                resort={entry.resort}
+                onSelectResort={onSelectResort}
+                layout="inline"
+                className="justify-between"
+              />
+              {/* 数件ずつ読むので、後から届く列は名前の下に読み込み中を出す */}
+              {entry.isLoading && !isAllLoading && (
+                <Spinner className="mt-1 size-4 text-gray-400" />
+              )}
+              {entry.failed && <LinkLoadFailedNote />}
+            </TableHead>
           ))}
-        </colgroup>
-        <thead>
-          <tr>
-            <td className="sticky top-0 left-0 z-30 border-r border-b border-gray-200 bg-white" />
-            {entries.map((entry, index) => (
-              <th
-                key={entry.resort.id}
-                scope="col"
-                className={cn(
-                  "sticky top-0 z-20 border-b border-gray-200 bg-white px-2 py-1.5 text-left align-middle font-normal",
-                  index > 0 && "border-l",
-                )}
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {isAllLoading ? (
+          <TableRow>
+            <TableCell colSpan={entries.length + 1}>
+              <LoadingSpinner className="h-48 bg-transparent" />
+            </TableCell>
+          </TableRow>
+        ) : (
+          rows.map(row => (
+            <TableRow key={row.id}>
+              <TableHead
+                scope="row"
+                // 横に送ったとき、下をくぐるリンクとの境目が分かるよう右に線を引く
+                className="sticky left-0 z-10 bg-muted px-2 py-2.5 text-left align-top font-semibold text-foreground"
               >
-                <CompareResortNameCell
-                  resort={entry.resort}
-                  onSelectResort={onSelectResort}
-                  layout="inline"
-                  className="justify-between"
-                />
-                {/* 数件ずつ読むので、後から届く列は名前の下に読み込み中を出す */}
-                {entry.isLoading && !isAllLoading && (
-                  <Spinner className="mt-1 size-4 text-gray-400" />
-                )}
-                {entry.failed && <LinkLoadFailedNote />}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {isAllLoading ? (
-            <tr>
-              <td colSpan={entries.length + 1}>
-                <LoadingSpinner className="h-48 bg-transparent" />
-              </td>
-            </tr>
-          ) : (
-            rows.map(row => (
-              <tr key={row.id}>
-                <th
-                  scope="row"
-                  // 横に送ったとき、下をくぐるリンクとの境目が分かるよう右に線を引く
-                  className="sticky left-0 z-10 border-r border-b border-gray-200 bg-slate-50 px-2 py-2.5 text-left align-top text-sm font-semibold text-slate-900"
+                {row.label}
+              </TableHead>
+              {row.cells.map((group, index) => (
+                <TableCell
+                  key={entries[index].resort.id}
+                  className={cn("p-2 align-top", index === 0 && "border-l-0")}
                 >
-                  {row.label}
-                </th>
-                {row.cells.map((group, index) => (
-                  <td
-                    key={entries[index].resort.id}
-                    className={cn(
-                      "border-b border-gray-200 p-2 align-top",
-                      index > 0 && "border-l",
-                    )}
-                  >
-                    {group && <LinkGroupBody group={group} />}
-                  </td>
-                ))}
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-    </div>
+                  {group && <LinkGroupBody group={group} />}
+                </TableCell>
+              ))}
+            </TableRow>
+          ))
+        )}
+      </TableBody>
+    </Table>
   );
 };

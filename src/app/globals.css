@@ -80,8 +80,9 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  --font-bricolage: var(--font-bricolage);
-  --font-manrope: var(--font-manrope);
+  --font-heading: var(--heading-font-family);
+  --font-body: var(--font-body);
+  --font-mono: "Barlow", sans-serif;
 
   --radius-sm: 0.25rem;
   --radius-md: 0.375rem;
@@ -93,9 +94,11 @@
 
 :root {
   --minimum-font-size: max(15px, 0.9375rem);
-  --font-sans: "Geist", Arial, Helvetica, sans-serif;
-  --font-bricolage: "Bricolage Grotesque", Arial, Helvetica, sans-serif;
-  --font-manrope: "Manrope", Arial, Helvetica, sans-serif;
+  /* フォントは Murecho（本文）・Zen Kaku Gothic New（見出し）・Barlow（数値）の
+     3 種の Google Fonts のみを使う。日本語の字形は Murecho・Zen Kaku Gothic New が持つ。 */
+  --font-sans: "Murecho", sans-serif;
+  --heading-font-family: "Zen Kaku Gothic New", sans-serif;
+  --font-body: "Murecho", sans-serif;
   --background: hsl(0 0% 100%);
   --foreground: hsl(222.2 84% 4.9%);
   --card: hsl(0 0% 100%);
@@ -233,15 +236,44 @@ html body :is(.leaflet-tooltip, .leaflet-popup-content, .leaflet-control-scale-l
 }
 
 html body [data-sonner-toaster] {
+  font-family: inherit;
   --normal-bg: var(--popover);
   --normal-border: var(--border);
   --normal-text: var(--popover-foreground);
+}
+
+html body :is(.maplibregl-map, .leaflet-bar a, .leaflet-container a.leaflet-popup-close-button) {
+  font-family: inherit;
 }
 
 small,
 sub,
 sup {
   font-size: max(var(--minimum-font-size), 0.75em);
+}
+
+/* 下線やボタンの形を呼び出し元に任せ，外部リンクの文字色とフォーカスを揃える．
+   :where で特定度を 0 にし，呼び出し元が意図した色 (塗りつぶしボタンの白文字など) が上書きできる． */
+:where(a[data-external-link]),
+html body :is(.leaflet-control-attribution, .maplibregl-ctrl-attrib) a[href^="http"] {
+  color: var(--primary);
+}
+
+a[data-external-link]:focus-visible,
+html body :is(.leaflet-control-attribution, .maplibregl-ctrl-attrib) a[href^="http"]:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* 地図ライブラリが生成する著作権リンクにも共通の ExternalLink アイコンを添える． */
+html body :is(.leaflet-control-attribution, .maplibregl-ctrl-attrib) a[href^="http"]::after {
+  content: "";
+  display: inline-block;
+  width: 0.8em;
+  height: 0.8em;
+  margin-inline-start: 0.25em;
+  background-color: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 3h6v6m0-6-9 9m6 1v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
 /* タイルの色調整。
@@ -422,7 +454,7 @@ html body .resort-name-label {
   cursor: pointer;
   /* 地図ライブラリの既定フォントを継がせない。幅を測る要素（body 直下）と
      同じフォントにしないと、英数字の幅がずれてラベルの右に隙間が出る */
-  font-family: Manrope, "Manrope Fallback", sans-serif;
+  font-family: var(--font-body);
   font-size: max(16px, 1rem);
   font-weight: 700;
   line-height: 1.2;
@@ -529,7 +561,7 @@ html body .course-profile-label {
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
   color: #111827;
   font-size: var(--minimum-font-size);
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1.1;
   padding: 5px 6px;
   text-align: center;
@@ -646,10 +678,8 @@ html body .finalized-line-overlay-svg {
 }
 
 html body .finalized-line-label-text {
-  font-family:
-    "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo,
-    sans-serif;
-  font-weight: 900;
+  font-family: "Murecho", sans-serif;
+  font-weight: 700;
   letter-spacing: 0;
   paint-order: stroke fill;
   pointer-events: none;
@@ -722,10 +752,8 @@ html body .finalized-line-label-hit {
    SVG の paint-order が使えないので、白い影を四方に重ねてハローを作る。
    線に沿わせた角度は Marker の rotation 側で当てている。 */
 html body .finalized-line-label {
-  font-family:
-    "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo,
-    sans-serif;
-  font-weight: 900;
+  font-family: "Murecho", sans-serif;
+  font-weight: 700;
   letter-spacing: 0;
   line-height: 1;
   white-space: nowrap;
@@ -976,36 +1004,6 @@ html body .resort-action-popup::after {
   }
 }
 
-/* === Table styling === */
-
-/* Consistent table header styling across all tabs */
-.table-header-cell {
-  padding: 0.75rem 1rem;
-  font-size: var(--minimum-font-size);
-  font-weight: 600;
-  color: hsl(215.4 16.3% 46.9%);
-  background: hsl(0 0% 98%);
-  text-align: left;
-  white-space: nowrap;
-}
-
-.table-body-row {
-  border-color: hsl(214.3 31.8% 91.4%);
-}
-
-.table-body-row:hover {
-  background: hsl(0 0% 98%);
-}
-
-/* Selected table row */
-.table-row-selected {
-  background: hsl(211 83% 53% / 0.08);
-}
-
-.table-row-selected:hover {
-  background: hsl(211 83% 53% / 0.12);
-}
-
 /* === Card elevation variants === */
 
 /* Subtle card - for content cards that sit on light backgrounds */
@@ -1073,21 +1071,18 @@ html body .resort-action-popup::after {
 
 /* === Ruby text styling for ski resort names === */
 
-.ruby-text rt {
-  font-size: var(--minimum-font-size);
-  font-weight: 600;
-  color: #6b7280;
-  /* ルビと親文字の距離。WebKit ではルビの位置は line-height や position/top
-     では動かせず、margin-bottom だけが効く。値は iOS 実機で決めたもので、
-     macOS の WebKit はメトリクスが違うぶんここより詰まって見える。 */
-  margin-bottom: -0.35em;
+.ruby-text {
+  ruby-position: over;
+  ruby-align: center;
 }
 
-/* 48em はサイドパネル表示に切り替わる幅と同じ． */
-@media (min-width: 48em) {
-  .ruby-text rt {
-    margin-bottom: 0.1em;
-  }
+.ruby-text rt {
+  font-size: max(0.75rem, 0.6em);
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  color: var(--muted-foreground);
+  margin-bottom: 0.08em;
 }
 
 /* コース比較で、選択中のコースの周りに薄く添えるほかの名前。

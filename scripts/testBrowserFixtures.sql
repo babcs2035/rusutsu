@@ -26,6 +26,10 @@ INSERT INTO ski_resorts (
 INSERT INTO canonical_data_migrations (key, "sourceHash", details)
 VALUES ('map-canonical-v2', repeat('0', 64), '{"test":true}');
 
+INSERT INTO ski_resort_ruby_segments ("skiResortId", position, text, ruby)
+VALUES ('rusutsu-resort', 0, 'ルスツ ', NULL),
+       ('rusutsu-resort', 1, '試験用', 'しけんよう');
+
 INSERT INTO lift_ticket_seasons ("skiResortId", "seasonId", status, data)
 VALUES ('rusutsu-resort', '2026-2027', 'complete', '{
   "schema_version": "1.0.0",

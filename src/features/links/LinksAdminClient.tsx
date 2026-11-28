@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { useSubmissionNavigation } from "@/features/edit-requests/navigation";
 import type { ResortLink } from "@/features/lift/types";
 import { cn } from "@/lib/utils";
+import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import { SortableLinkList } from "@/shared/components/resort-editor/SortableLinkList";
 import { saveResortLink } from "./actions";
 import {
@@ -75,16 +76,14 @@ function SearchWordRow({ searchWord }: { searchWord: string }) {
         検索ワード: <span className="font-medium">{searchWord}</span>
       </p>
       <div className="flex gap-2">
-        <a
+        <ExternalLinkComponent
           href={`https://www.google.com/search?q=${encodeURIComponent(searchWord)}`}
-          target="_blank"
-          rel="noopener noreferrer"
           title={`「${searchWord}」で検索`}
           className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-md border border-input bg-white px-2 text-sm font-medium hover:bg-gray-50"
         >
           <Search className="size-4" />
           検索
-        </a>
+        </ExternalLinkComponent>
         <Button
           type="button"
           variant="outline"
@@ -490,14 +489,12 @@ function LinkResortCard({
                     </Label>
                     {/* URLを入力・確認したその場ですぐ開けるよう、補足欄より前に置く */}
                     {isValidLinkUrl(category, value.url) && (
-                      <a
+                      <ExternalLinkComponent
                         href={value.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
                         className="flex min-h-11 items-center justify-center gap-1 rounded-md border border-input bg-white text-sm font-medium hover:bg-gray-50"
                       >
-                        リンクを開く ↗
-                      </a>
+                        リンクを開く
+                      </ExternalLinkComponent>
                     )}
                   </div>
                   <Label className="block min-w-0 text-sm font-medium">

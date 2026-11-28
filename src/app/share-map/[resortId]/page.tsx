@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { SHARE_MAP_SIZES, type ShareMapSize } from "@/features/share/mapCard";
 import { ShareMapRender } from "@/features/share/ShareMapRender";
 import { getShareResort } from "@/server/share/data";
+import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import { isResortIdSegment } from "@/shared/utils/resortPath";
 
 export const dynamic = "force-dynamic";
@@ -26,35 +27,23 @@ export default async function ShareMapPage({
       <ShareMapRender {...data} size={size as ShareMapSize} />
       <p>
         背景：
-        <a
-          href="https://maps.gsi.go.jp/development/ichiran.html#seamlessphoto"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
+        <ExternalLinkComponent href="https://maps.gsi.go.jp/development/ichiran.html#seamlessphoto">
           国土地理院
-        </a>
+        </ExternalLinkComponent>
         を加工し、Rusutsuがコース・リフト・斜度表示を追記。
       </p>
       <p>
         標高：
-        <a
-          href="https://maps.gsi.go.jp/development/elevation_s.html"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
+        <ExternalLinkComponent href="https://maps.gsi.go.jp/development/elevation_s.html">
           国土地理院
-        </a>
+        </ExternalLinkComponent>
         。斜度はRusutsuの計算値。
       </p>
       <p>
         OSM由来のコースデータ：
-        <a
-          href="https://www.openstreetmap.org/copyright"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
+        <ExternalLinkComponent href="https://www.openstreetmap.org/copyright">
           © OpenStreetMap contributors / ODbL
-        </a>
+        </ExternalLinkComponent>
       </p>
     </main>
   );

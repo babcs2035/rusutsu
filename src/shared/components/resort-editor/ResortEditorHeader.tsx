@@ -29,7 +29,7 @@ export function ResortEditorHeader({
         <h2
           className={cn(
             "truncate font-bold text-base",
-            resortName ? "font-[var(--font-heading)]" : "font-mono",
+            resortName ? "font-heading" : "font-mono",
           )}
         >
           {resortName || resortId}

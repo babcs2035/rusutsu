@@ -7,6 +7,14 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   EDIT_KIND_LABELS,
   type EditKind,
   type EditPlan,
@@ -400,32 +408,30 @@ function PlanTechnical({
                   差分表示は先頭300件です。内容全体は下の申請データで確認してください。
                 </p>
               )}
-              <div className="mt-3 overflow-x-auto">
-                <table className="w-full min-w-[38rem] text-left text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="p-2">項目</th>
-                      <th className="p-2">変更前</th>
-                      <th className="p-2">反映する内容</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {group.rows.slice(0, 300).map(row => (
-                      <tr key={row.path} className="border-b align-top">
-                        <td className="p-2">
-                          {changeLabel(row.path, group.after)}
-                        </td>
-                        <td className="max-w-80 whitespace-pre-wrap break-words p-2">
-                          {row.before}
-                        </td>
-                        <td className="max-w-80 whitespace-pre-wrap break-words p-2">
-                          {row.after}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <Table className="mt-3 min-w-[38rem] text-left">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>項目</TableHead>
+                    <TableHead>変更前</TableHead>
+                    <TableHead>反映する内容</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {group.rows.slice(0, 300).map(row => (
+                    <TableRow key={row.path} className="align-top">
+                      <TableCell>
+                        {changeLabel(row.path, group.after)}
+                      </TableCell>
+                      <TableCell className="max-w-80 whitespace-pre-wrap break-words">
+                        {row.before}
+                      </TableCell>
+                      <TableCell className="max-w-80 whitespace-pre-wrap break-words">
+                        {row.after}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </details>
           ))}
         </div>

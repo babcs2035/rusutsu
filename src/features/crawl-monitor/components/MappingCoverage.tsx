@@ -47,7 +47,7 @@ export function MappingCoverage({
             className="rounded-lg border border-gray-200 bg-white p-4"
           >
             <header className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <h3 className="font-medium text-gray-900">
+              <h3 className="font-semibold text-gray-900">
                 {CATEGORY_LABELS[gap.kind]}の対応表
               </h3>
               <StatusPill tone={hasGap ? "warn" : "ok"}>

@@ -111,7 +111,7 @@ export function LinksStep({
     <EditorStepContent>
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
         <div>
-          <h2 className="text-lg font-bold font-[var(--font-heading)]">
+          <h2 className="text-lg font-bold font-heading">
             スキー場全体のリンク
           </h2>
           <p className="break-words text-sm text-gray-600">

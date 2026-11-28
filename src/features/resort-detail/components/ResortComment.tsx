@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import {
   type CommentPart,
   collapseBlankLines,
@@ -51,15 +52,13 @@ export function ResortComment({
         const key = offset;
         offset += part.text.length;
         return part.href ? (
-          <a
+          <ExternalLinkComponent
             key={key}
             href={part.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline text-blue-700 underline underline-offset-2"
+            className="inline underline underline-offset-2"
           >
             {part.text}
-          </a>
+          </ExternalLinkComponent>
         ) : (
           <span key={key}>{part.text}</span>
         );

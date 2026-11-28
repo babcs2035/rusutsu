@@ -51,7 +51,7 @@ function Section({
 }) {
   return (
     <section className="space-y-2">
-      <h2 className="text-lg font-bold text-gray-900 font-[var(--font-heading)]">
+      <h2 className="text-lg font-bold text-gray-900 font-heading">
         {title}
         <span className="ml-2 text-sm font-normal text-gray-500">
           {count}件
@@ -89,7 +89,7 @@ export default async function ResortRelationsPage() {
   return (
     <main className="mx-auto max-w-4xl space-y-8 p-4 md:p-8">
       <div className="space-y-1">
-        <h1 className="text-2xl font-bold text-gray-900 font-[var(--font-heading)]">
+        <h1 className="text-2xl font-bold text-gray-900 font-heading">
           スキー場の関係一覧
         </h1>
         <p className="text-sm text-gray-600">

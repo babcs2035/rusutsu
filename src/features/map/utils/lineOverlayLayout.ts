@@ -122,7 +122,7 @@ const shiftAwayFromPoints = ({
 export const getLabelFontSize = (_zoom: number) => 16;
 
 export const getLabelFont = (fontSize: number) =>
-  `900 ${fontSize}px "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif`;
+  `700 ${fontSize}px "Murecho", sans-serif`;
 
 export const getLabelCollisionPadding = (zoom: number) => {
   if (zoom >= 16) return 3;

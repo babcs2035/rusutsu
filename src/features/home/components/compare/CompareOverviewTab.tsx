@@ -84,7 +84,7 @@ const MetricCell = ({
     </span>
     <span
       className={cn(
-        "shrink-0 text-xs leading-none font-bold tabular-nums",
+        "shrink-0 text-xs leading-none font-bold font-mono tabular-nums",
         children === undefined
           ? "font-normal text-muted-foreground"
           : highlight
@@ -133,7 +133,7 @@ const ResortCard = ({
     >
       {/* 1 行目: 名前（所在地）・詳細。 */}
       <div className="flex min-w-0 items-center gap-2">
-        <h3 className="min-w-0 text-sm leading-tight font-bold break-words text-gray-900 font-[var(--font-heading)]">
+        <h3 className="min-w-0 text-sm leading-tight font-bold break-words text-gray-900 font-heading">
           {getResortLabelName(resort.id, resort.nameJa, resort.shortName)}
           {location && (
             // 幅が足りないときは、所在地を途中で折らずに丸ごと次の行へ送る

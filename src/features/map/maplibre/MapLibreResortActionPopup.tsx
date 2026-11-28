@@ -74,7 +74,7 @@ export const MapLibreResortActionPopup = ({
 
   return createPortal(
     <div className="flex min-w-[190px] flex-col gap-2">
-      <p className="font-[var(--font-heading)] text-sm font-bold leading-snug text-gray-900">
+      <p className="font-heading text-sm font-bold leading-snug text-gray-900">
         {resort.nameJa}
       </p>
       {/* 車で行く先を選ぶ場面なので、スキー場にあるEV充電器も経路の隣に出す。無ければ何も出さない */}
@@ -97,7 +97,7 @@ export const MapLibreResortActionPopup = ({
           {directionsUrl && (
             <ExternalLinkComponent
               href={directionsUrl}
-              className="gap-1 text-xs font-semibold text-green-700 hover:underline"
+              className="gap-1 text-xs font-semibold hover:underline"
             >
               <Navigation size={13} strokeWidth={2.5} />
               経路を調べる
@@ -106,7 +106,7 @@ export const MapLibreResortActionPopup = ({
           {googleMapsUrl && (
             <ExternalLinkComponent
               href={googleMapsUrl}
-              className="gap-1 text-xs font-semibold text-blue-700 hover:underline"
+              className="gap-1 text-xs font-semibold hover:underline"
             >
               <MapPin size={13} strokeWidth={2.5} />
               Google マップ

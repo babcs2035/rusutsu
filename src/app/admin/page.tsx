@@ -26,7 +26,7 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="p-4 md:p-8 max-w-[1200px] mx-auto min-h-[calc(100vh-64px)]">
-      <h1 className="mb-6 text-2xl md:text-3xl font-bold text-gray-900 font-[var(--font-heading)]">
+      <h1 className="mb-6 text-2xl md:text-3xl font-bold text-gray-900 font-heading">
         管理ダッシュボード
       </h1>
 
@@ -40,7 +40,7 @@ export default async function AdminDashboardPage() {
         </p>
       )}
 
-      <h2 className="mt-8 mb-4 text-lg font-bold text-gray-900 font-[var(--font-heading)]">
+      <h2 className="mt-8 mb-4 text-lg font-bold text-gray-900 font-heading">
         編集ツール
       </h2>
       <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">

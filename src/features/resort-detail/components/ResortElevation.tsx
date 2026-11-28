@@ -33,11 +33,11 @@ export function ResortElevation({
   return (
     <p className="flex min-w-0 items-baseline gap-1 whitespace-nowrap text-xs text-slate-500">
       <span>標高</span>
-      <span className="text-sm font-semibold text-slate-800 tabular-nums">
+      <span className="font-mono text-sm font-semibold text-slate-800 tabular-nums">
         {meters(elevation.base)}〜{meters(elevation.top)}
       </span>
       <span className="ml-1.5">標高差</span>
-      <span className="text-sm font-semibold text-slate-800 tabular-nums">
+      <span className="font-mono text-sm font-semibold text-slate-800 tabular-nums">
         {meters(elevation.verticalDrop)}
       </span>
     </p>

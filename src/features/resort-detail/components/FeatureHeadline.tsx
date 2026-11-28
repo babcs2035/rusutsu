@@ -11,6 +11,7 @@ import {
   requestCorrection,
 } from "@/features/corrections/correctionEvents";
 import { cn } from "@/lib/utils";
+import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import type { GroomingLabel, StatusSymbol } from "../utils/detailMetrics";
 import { getYoutubeSearchUrl } from "../utils/featureLinks";
 import type { FeatureStatusSource } from "../utils/featureSources";
@@ -216,10 +217,8 @@ export const FeatureHeadline = ({
             </Button>
           )}
           {searchWord && (
-            <a
+            <ExternalLinkComponent
               href={getYoutubeSearchUrl(searchWord)}
-              target="_blank"
-              rel="noopener noreferrer"
               aria-label="YouTubeで動画を探す"
               className={cn(
                 buttonVariants({ variant: "outline", size: "sm" }),
@@ -229,7 +228,7 @@ export const FeatureHeadline = ({
             >
               <Play aria-hidden="true" fill="currentColor" />
               動画を探す
-            </a>
+            </ExternalLinkComponent>
           )}
         </div>
       )}
@@ -262,11 +261,11 @@ export const FeatureMetrics = ({
         <dt className="whitespace-nowrap text-xs leading-tight text-slate-500 @min-[420px]:text-xs">
           {item.title}
         </dt>
-        <dd className="whitespace-nowrap text-xs font-bold leading-5 tabular-nums tracking-tight text-slate-900 @min-[420px]:leading-6">
+        <dd className="font-mono whitespace-nowrap text-xs font-bold leading-5 tabular-nums tracking-tight text-slate-900 @min-[420px]:leading-6">
           {item.value}
         </dd>
         {item.detail && (
-          <dd className="whitespace-nowrap text-xs tabular-nums tracking-tighter text-slate-500 @min-[420px]:text-xs">
+          <dd className="font-mono whitespace-nowrap text-xs tabular-nums tracking-tighter text-slate-500 @min-[420px]:text-xs">
             {item.detail}
           </dd>
         )}

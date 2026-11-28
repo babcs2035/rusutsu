@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
 import type { EvChargerCandidate } from "@/server/ev-chargers/candidates";
+import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import {
   type EvCharger,
   formatEvChargerOutput,
@@ -417,15 +418,12 @@ function ResortEditor({
         <span className="text-sm text-gray-500">
           {resort.prefecture}・{resort.id}
         </span>
-        <a
+        <ExternalLinkComponent
           href={`https://www.google.com/maps/search/${encodeURIComponent(`${resort.name} EV充電`)}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="ml-auto inline-flex items-center gap-1 text-sm text-blue-700 underline"
+          className="ml-auto inline-flex items-center gap-1 text-sm underline"
         >
           Googleマップで探す
-          <ExternalLink className="size-3.5" aria-hidden="true" />
-        </a>
+        </ExternalLinkComponent>
       </div>
 
       <section className="space-y-3 rounded-xl border bg-white p-4">
@@ -662,15 +660,11 @@ function CandidateList({
                       / {candidate.company}
                     </span>
                   )}
-                  <a
+                  <ExternalLinkComponent
                     href={candidate.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
                     aria-label="元のページを開く"
-                    className="ml-1 inline-flex align-middle text-blue-700"
-                  >
-                    <ExternalLink className="size-3.5" />
-                  </a>
+                    className="ml-1 inline-flex align-middle"
+                  ></ExternalLinkComponent>
                 </p>
                 {candidate.notes && (
                   <p className="text-xs text-gray-500">{candidate.notes}</p>

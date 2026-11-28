@@ -85,10 +85,10 @@ export default function RootLayout({
         />
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@200..800&family=Geist:wght@100..900&family=Manrope:wght@200..800&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Barlow:wght@100..900&family=Murecho:wght@200..900&family=Zen+Kaku+Gothic+New:wght@300;400;500;700;900&display=swap"
         />
       </head>
-      <body className={cn("font-manrope", "bg-[var(--bg-light)]")}>
+      <body className={cn("font-body", "bg-[var(--bg-light)]")}>
         <TooltipProvider>{children}</TooltipProvider>
         <ExternalLinksInNewTab />
         <GoogleAnalytics gaId="G-YMEM5C2F4C" />

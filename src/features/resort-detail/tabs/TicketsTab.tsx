@@ -128,7 +128,7 @@ export const TicketsTab = ({
           categoryControl={categoryControl}
         />
         <section>
-          <h2 className="text-lg font-bold text-gray-900 font-[var(--font-heading)]">
+          <h2 className="text-lg font-bold text-gray-900 font-heading">
             公式リフト料金表
           </h2>
           <p className="mt-2 mb-4 text-gray-600 text-sm">
@@ -143,7 +143,7 @@ export const TicketsTab = ({
         </section>
         {(liftTicketData.rentals?.length ?? 0) > 0 && (
           <section>
-            <h2 className="text-lg font-bold text-gray-900 font-[var(--font-heading)]">
+            <h2 className="text-lg font-bold text-gray-900 font-heading">
               公式レンタル料金表
             </h2>
             <p className="mt-2 mb-4 text-gray-600 text-sm">
@@ -181,18 +181,21 @@ export const TicketsTab = ({
   return (
     <div className="flex flex-col gap-6">
       <section>
-        <h2 className="text-lg font-bold text-gray-900 font-[var(--font-heading)]">
+        <h2 className="text-lg font-bold text-gray-900 font-heading">
           リフト券
         </h2>
         <Card className="@container/ticket-summary mt-4 overflow-x-auto py-0">
           <CardContent className="p-0">
-            <Table className="[&_th]:px-2 @min-[420px]/ticket-summary:[&_th]:px-4">
+            <Table
+              containerClassName="rounded-none border-0 bg-transparent"
+              className="[&_th]:px-2 @min-[420px]/ticket-summary:[&_th]:px-4"
+            >
               <TableHeader>
-                <TableRow className="bg-gray-50">
-                  <TableHead className="table-header-cell">券種</TableHead>
-                  <TableHead className="table-header-cell">大人</TableHead>
-                  <TableHead className="table-header-cell">子供</TableHead>
-                  <TableHead className="table-header-cell">シニア</TableHead>
+                <TableRow>
+                  <TableHead>券種</TableHead>
+                  <TableHead>大人</TableHead>
+                  <TableHead>子供</TableHead>
+                  <TableHead>シニア</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

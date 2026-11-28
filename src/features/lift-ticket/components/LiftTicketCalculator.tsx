@@ -43,7 +43,7 @@ export const LiftTicketCalculator = ({
 
   return (
     <section className="rounded-2xl bg-gray-50 border border-gray-200 p-3 md:p-4">
-      <h2 className="text-base font-bold text-gray-900 font-[var(--font-heading)]">
+      <h2 className="text-base font-bold text-gray-900 font-heading">
         料金を計算する
       </h2>
       <p className="mt-1 text-xs leading-relaxed text-amber-700">

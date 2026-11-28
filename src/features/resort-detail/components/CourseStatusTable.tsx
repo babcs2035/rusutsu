@@ -1,18 +1,10 @@
 "use client";
 
-import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
-import { Info, X } from "lucide-react";
+import { Info } from "lucide-react";
 import { type ReactNode, useId } from "react";
-import {
-  Dialog,
-  DialogClose,
-  DialogOverlay,
-  DialogPortal,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import type { CourseStatusSummary } from "@/lib/courseStatusSummary";
 import { DetailButton } from "@/shared/components/DetailButton";
+import { Modal } from "@/shared/components/Modal";
 import { NotFetchedBadge, StatusMark } from "./CompactInfo";
 
 /** ○△×の意味と数え方の説明。表・チップのどちらからも同じ内容を開く。 */
@@ -30,63 +22,56 @@ export function StatusLegendDialog({
 }) {
   const isLift = kind === "lift";
   return (
-    <Dialog>
-      <DialogTrigger
-        aria-label={`${name}の記号と集計方法について`}
-        className={`flex shrink-0 items-center justify-center rounded-full text-slate-600 hover:bg-slate-200 focus-visible:outline-2 focus-visible:outline-blue-600 ${compact ? "size-5 md:size-6" : "size-7"} ${className ?? ""}`}
-      >
-        <Info
-          className={compact ? "size-3.5 md:size-4" : "size-4"}
-          aria-hidden="true"
-        />
-      </DialogTrigger>
-      <DialogPortal>
-        <DialogOverlay className="z-[900]" />
-        <DialogPrimitive.Popup className="fixed left-1/2 top-1/2 z-[901] max-h-[85dvh] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-slate-200 bg-white p-5 text-slate-700 shadow-xl outline-none">
-          <DialogTitle className="pr-7 text-base font-semibold text-slate-900">
-            {name} 営業状況
-          </DialogTitle>
-          <dl className="my-4 grid grid-cols-[2.5rem_1fr] items-center gap-x-3 gap-y-2 rounded-lg bg-slate-50 p-3 text-sm">
-            <dt className="flex items-center justify-center font-semibold text-emerald-700">
-              <StatusMark symbol="○" lift={isLift} />
-            </dt>
-            <dd>{isLift ? "運行中" : "全面滑走可"}</dd>
-            <dt className="flex items-center justify-center font-semibold text-amber-800">
-              <StatusMark symbol="△" lift={isLift} />
-            </dt>
-            <dd>{isLift ? "待機中・一時停止中" : "一部滑走可・雪不足"}</dd>
-            <dt className="flex items-center justify-center font-semibold text-slate-700">
-              <StatusMark symbol="×" lift={isLift} />
-            </dt>
-            <dd>{isLift ? "運休" : "クローズ"}</dd>
-            <dt className="text-center text-sm font-semibold text-slate-700">
-              不明
-            </dt>
-            <dd>状況不明（営業状況の情報なし）</dd>
-          </dl>
-          {isLift ? (
-            <p className="text-sm leading-relaxed">
-              地図のリフト数を基準に、運行・待機・運休・不明の件数を表示します。営業状況が取得できないリフトは「不明」に含めます。
-            </p>
-          ) : (
-            <p className="text-sm leading-relaxed">
-              地図のコースを基準に数えています。同じコースの複数の区間は1コースにまとめ、一部だけ滑走できる場合は△、営業状況が分からない区間がある場合は「不明」に含めます。
-            </p>
-          )}
-          <p className="mt-2 text-sm leading-relaxed">
-            スキー場一覧の件数は、営業情報と対応付けた
-            {isLift ? "リフト" : "コース"}
-            だけを対象にしています。
-          </p>
-          <DialogClose
-            aria-label="説明を閉じる"
-            className="absolute right-3 top-3 flex size-9 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-600"
-          >
-            <X className="size-4" />
-          </DialogClose>
-        </DialogPrimitive.Popup>
-      </DialogPortal>
-    </Dialog>
+    <Modal
+      trigger={
+        <button
+          type="button"
+          aria-label={`${name}の記号と集計方法について`}
+          className={`flex shrink-0 items-center justify-center rounded-full text-slate-600 hover:bg-slate-200 focus-visible:outline-2 focus-visible:outline-blue-600 ${compact ? "size-5 md:size-6" : "size-7"} ${className ?? ""}`}
+        >
+          <Info
+            className={compact ? "size-3.5 md:size-4" : "size-4"}
+            aria-hidden="true"
+          />
+        </button>
+      }
+      title={`${name} 営業状況`}
+      closeLabel="説明を閉じる"
+      className="max-w-sm p-5"
+    >
+      <dl className="my-4 grid grid-cols-[2.5rem_1fr] items-center gap-x-3 gap-y-2 rounded-lg bg-slate-50 p-3 text-sm">
+        <dt className="flex items-center justify-center font-semibold text-emerald-700">
+          <StatusMark symbol="○" lift={isLift} />
+        </dt>
+        <dd>{isLift ? "運行中" : "全面滑走可"}</dd>
+        <dt className="flex items-center justify-center font-semibold text-amber-800">
+          <StatusMark symbol="△" lift={isLift} />
+        </dt>
+        <dd>{isLift ? "待機中・一時停止中" : "一部滑走可・雪不足"}</dd>
+        <dt className="flex items-center justify-center font-semibold text-slate-700">
+          <StatusMark symbol="×" lift={isLift} />
+        </dt>
+        <dd>{isLift ? "運休" : "クローズ"}</dd>
+        <dt className="text-center text-sm font-semibold text-slate-700">
+          不明
+        </dt>
+        <dd>状況不明（営業状況の情報なし）</dd>
+      </dl>
+      {isLift ? (
+        <p className="text-sm leading-relaxed">
+          地図のリフト数を基準に、運行・待機・運休・不明の件数を表示します。営業状況が取得できないリフトは「不明」に含めます。
+        </p>
+      ) : (
+        <p className="text-sm leading-relaxed">
+          地図のコースを基準に数えています。同じコースの複数の区間は1コースにまとめ、一部だけ滑走できる場合は△、営業状況が分からない区間がある場合は「不明」に含めます。
+        </p>
+      )}
+      <p className="mt-2 text-sm leading-relaxed">
+        スキー場一覧の件数は、営業情報と対応付けた
+        {isLift ? "リフト" : "コース"}
+        だけを対象にしています。
+      </p>
+    </Modal>
   );
 }
 

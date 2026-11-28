@@ -19,7 +19,7 @@ export default function CrawlMonitorError({
 
   return (
     <div className="mx-auto max-w-[800px] p-4 md:p-8">
-      <h1 className="mb-3 font-[var(--font-heading)] text-2xl font-bold text-gray-900">
+      <h1 className="mb-3 font-heading text-2xl font-bold text-gray-900">
         クローラー監視を表示できませんでした
       </h1>
       <p className="mb-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">

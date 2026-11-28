@@ -1,4 +1,12 @@
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   normalizeStatus,
   type OperationItem,
   parseCommentValue,
@@ -27,40 +35,38 @@ function WeatherTable({ data }: { data: unknown }) {
   const points = parseWeatherPoints(data);
   if (points.length === 0) return EMPTY;
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[640px] border-collapse text-sm">
-        <thead className="bg-gray-50 text-left text-xs text-gray-600">
-          <tr>
-            <th className="px-2 py-1 font-medium">地点</th>
-            <th className="px-2 py-1 font-medium">天気</th>
-            <th className="px-2 py-1 font-medium">気温</th>
-            <th className="px-2 py-1 font-medium">積雪</th>
-            <th className="px-2 py-1 font-medium">降雪</th>
-            <th className="px-2 py-1 font-medium">雪質</th>
-            <th className="px-2 py-1 font-medium">風速</th>
-            <th className="px-2 py-1 font-medium">更新</th>
-          </tr>
-        </thead>
-        <tbody>
-          {points.map(point => (
-            <tr key={point.point} className="border-t border-gray-100">
-              <td className="px-2 py-1 font-medium text-gray-800">
-                {point.point}
-              </td>
-              <td className="px-2 py-1">{point.weather ?? "-"}</td>
-              <td className="px-2 py-1">{point.temperature ?? "-"}</td>
-              <td className="px-2 py-1">{point.snowDepth ?? "-"}</td>
-              <td className="px-2 py-1">{point.snowfall ?? "-"}</td>
-              <td className="px-2 py-1">{point.condition ?? "-"}</td>
-              <td className="px-2 py-1">{point.windSpeed ?? "-"}</td>
-              <td className="px-2 py-1 text-xs text-gray-500">
-                {point.update ?? "-"}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <Table className="min-w-[640px]">
+      <TableHeader>
+        <TableRow className="text-left">
+          <TableHead>地点</TableHead>
+          <TableHead>天気</TableHead>
+          <TableHead>気温</TableHead>
+          <TableHead>積雪</TableHead>
+          <TableHead>降雪</TableHead>
+          <TableHead>雪質</TableHead>
+          <TableHead>風速</TableHead>
+          <TableHead>更新</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {points.map(point => (
+          <TableRow key={point.point}>
+            <TableCell className="font-medium text-gray-800">
+              {point.point}
+            </TableCell>
+            <TableCell>{point.weather ?? "-"}</TableCell>
+            <TableCell>{point.temperature ?? "-"}</TableCell>
+            <TableCell>{point.snowDepth ?? "-"}</TableCell>
+            <TableCell>{point.snowfall ?? "-"}</TableCell>
+            <TableCell>{point.condition ?? "-"}</TableCell>
+            <TableCell>{point.windSpeed ?? "-"}</TableCell>
+            <TableCell className="text-gray-500">
+              {point.update ?? "-"}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }
 
@@ -87,39 +93,37 @@ function OperationTable({ items }: { items: readonly OperationItem[] }) {
           <StatusPill tone="muted">不明 {counts.unknown}</StatusPill>
         ) : null}
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[480px] border-collapse text-sm">
-          <thead className="bg-gray-50 text-left text-xs text-gray-600">
-            <tr>
-              <th className="px-2 py-1 font-medium">名称</th>
-              <th className="px-2 py-1 font-medium">状態</th>
-              <th className="px-2 py-1 font-medium">更新</th>
-              <th className="px-2 py-1 font-medium">備考</th>
-            </tr>
-          </thead>
-          <tbody>
-            {withKeys(items).map(({ item, key }) => {
-              const status = STATUS_TONE[normalizeStatus(item.status)];
-              return (
-                <tr key={key} className="border-t border-gray-100">
-                  <td className="px-2 py-1 text-gray-800">{item.name}</td>
-                  <td className="px-2 py-1">
-                    <StatusPill tone={status.tone}>
-                      {item.status ?? "-"} {status.label}
-                    </StatusPill>
-                  </td>
-                  <td className="px-2 py-1 text-xs text-gray-500">
-                    {item.update ?? "-"}
-                  </td>
-                  <td className="px-2 py-1 text-xs text-gray-600">
-                    {item.note ?? "-"}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      <Table className="min-w-[480px]">
+        <TableHeader>
+          <TableRow className="text-left">
+            <TableHead>名称</TableHead>
+            <TableHead>状態</TableHead>
+            <TableHead>更新</TableHead>
+            <TableHead>備考</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {withKeys(items).map(({ item, key }) => {
+            const status = STATUS_TONE[normalizeStatus(item.status)];
+            return (
+              <TableRow key={key}>
+                <TableCell className="text-gray-800">{item.name}</TableCell>
+                <TableCell>
+                  <StatusPill tone={status.tone}>
+                    {item.status ?? "-"} {status.label}
+                  </StatusPill>
+                </TableCell>
+                <TableCell className="text-gray-500">
+                  {item.update ?? "-"}
+                </TableCell>
+                <TableCell className="text-gray-600">
+                  {item.note ?? "-"}
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
     </div>
   );
 }

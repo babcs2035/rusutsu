@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import { dayReportsPath, shareTargets } from "./dayShare";
 
 /**
@@ -82,15 +83,13 @@ export function ShareDayButton({
           </DialogDescription>
           <div className="grid grid-cols-3 gap-2">
             {shareTargets(url, text).map(target => (
-              <a
+              <ExternalLinkComponent
                 key={target.id}
                 href={target.href}
-                target="_blank"
-                rel="noopener noreferrer"
                 className="flex h-9 items-center justify-center rounded-md border border-gray-300 bg-white text-sm font-semibold whitespace-nowrap text-gray-800 hover:bg-gray-50"
               >
                 {target.label}
-              </a>
+              </ExternalLinkComponent>
             ))}
           </div>
           <div className="flex items-center gap-2">

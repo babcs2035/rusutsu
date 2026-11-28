@@ -49,7 +49,7 @@ export function DisplayGroupList({
   return (
     <section className="space-y-2">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <h2 className="flex-1 text-lg font-bold text-gray-900 font-[var(--font-heading)]">
+        <h2 className="flex-1 text-lg font-bold text-gray-900 font-heading">
           同時表示の組
           <span className="ml-2 text-sm font-normal text-gray-500">
             {groups.length}件

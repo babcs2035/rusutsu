@@ -186,9 +186,7 @@ export function ConfirmStep({
     <EditorStepContent>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold font-[var(--font-heading)]">
-            変更内容の確認
-          </h2>
+          <h2 className="text-lg font-bold font-heading">変更内容の確認</h2>
           <p className="text-sm text-gray-600">
             {resort.nameJa ? `${resort.nameJa}（${resort.id}）` : resort.id} /
             全 {lifts.length} リフト

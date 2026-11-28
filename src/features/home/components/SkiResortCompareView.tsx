@@ -1,10 +1,9 @@
 "use client";
 
 import { Portal } from "@radix-ui/react-portal";
-import { List, X } from "lucide-react";
+import { List } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { EditCompareListButton } from "@/features/compare-lists/EditCompareListButton";
 import { SaveCompareListButton } from "@/features/compare-lists/SaveCompareListButton";
 import type { CompareSource } from "@/features/compare-lists/types";
@@ -17,19 +16,17 @@ import {
   MapCourseStatusControl,
   MapCourseStatusOptions,
 } from "@/features/map/components/MapCourseStatusControl";
+import { usePersistentMapSettings } from "@/features/map/hooks/usePersistentMapSettings";
 import type {
   CourseColorMode,
   JapanResortMapProps,
-  MapTileVariant,
 } from "@/features/map/types";
-import {
-  DEFAULT_MAP_DISPLAY_SETTINGS,
-  hasCourseOperatingData,
-} from "@/features/map/utils/mapDisplaySettings";
+import { hasCourseOperatingData } from "@/features/map/utils/mapDisplaySettings";
 import { useBreakpointValue } from "@/hooks/use-breakpoint-value";
 import { cn } from "@/lib/utils";
 import { AnimatedPanel } from "@/shared/components/AnimatedPanel";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
+import { PanelCloseButton } from "@/shared/components/PanelCloseButton";
 import { UnderlineTabs } from "@/shared/components/UnderlineTabs";
 import type { MapSkiResort } from "@/types/skiResorts";
 import { useHomeCompare } from "../compareContext";
@@ -122,11 +119,14 @@ export const SkiResortCompareView = ({
   // ゲレンデの表示設定。比較中のスキー場すべてに同じものを効かせる
   const [courseColorMode, setCourseColorMode] =
     useState<CourseColorMode>("slope");
-  const [mapDisplaySettings, setMapDisplaySettings] = useState(
-    DEFAULT_MAP_DISPLAY_SETTINGS,
-  );
+  // 表示設定・タイル種別はブラウザに保存する（画面遷移でリセットされない）
+  const {
+    mapDisplaySettings,
+    setMapDisplaySettings,
+    mapTileVariant,
+    setMapTileVariant,
+  } = usePersistentMapSettings();
   const [showOpenOnly, setShowOpenOnly] = useState(false);
-  const [mapTileVariant, setMapTileVariant] = useState<MapTileVariant>("photo");
   // PC で選んだコース・リフト。詳細は右端に 1 枚だけ出すので比較全体で 1 つ
   const [slopeSelection, setSlopeSelection] =
     useState<CompareSlopeSelection | null>(null);
@@ -405,14 +405,7 @@ export const SkiResortCompareView = ({
           {source.kind !== "selection" && (
             <div className="hidden shrink-0 md:block">{editButton()}</div>
           )}
-          <Button
-            variant="ghost"
-            onClick={onClose}
-            className="flex h-7 w-7 min-w-7 shrink-0 items-center justify-center rounded-full border border-gray-200 p-0 text-gray-600 hover:bg-gray-50 hover:text-gray-900 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10 md:h-8 md:w-8 md:min-w-8"
-            aria-label="比較画面を閉じる"
-          >
-            <X size={18} strokeWidth={2.5} />
-          </Button>
+          <PanelCloseButton label="比較画面を閉じる" onClose={onClose} />
         </div>
         {toolbar && (
           <div className="flex items-center gap-2 border-t border-gray-100 px-2 py-1.5 @[80rem]/compare-header:hidden md:px-3">

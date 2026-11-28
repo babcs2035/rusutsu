@@ -79,17 +79,19 @@ export function UserManagement({ users }: { users: AdminUser[] }) {
 
   return (
     <>
-      <Card className="overflow-hidden shadow-lg border-gray-200">
+      <Card className="overflow-hidden shadow-lg">
         <CardContent className="p-0">
-          <Table className="admin-user-table">
+          {/* Card の枠で囲むので，Table コンテナの枠は出さない */}
+          <Table
+            className="admin-user-table"
+            containerClassName="rounded-none border-0 bg-transparent"
+          >
             <TableHeader>
-              <TableRow className="bg-gray-50">
-                <TableHead className="table-header-cell">名前</TableHead>
-                <TableHead className="table-header-cell">
-                  メールアドレス
-                </TableHead>
-                <TableHead className="table-header-cell">ロール</TableHead>
-                <TableHead className="table-header-cell">操作</TableHead>
+              <TableRow>
+                <TableHead>名前</TableHead>
+                <TableHead>メールアドレス</TableHead>
+                <TableHead>ロール</TableHead>
+                <TableHead>操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

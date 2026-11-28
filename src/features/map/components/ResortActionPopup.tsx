@@ -28,7 +28,7 @@ export const ResortActionPopup = ({
     eventHandlers={{ remove: onClose }}
   >
     <div className="flex flex-col gap-2 min-w-[190px]">
-      <p className="text-gray-900 text-sm font-bold leading-snug font-[var(--font-heading)]">
+      <p className="text-gray-900 text-sm font-bold leading-snug font-heading">
         {resort.nameJa}
       </p>
       <div className="flex gap-2">

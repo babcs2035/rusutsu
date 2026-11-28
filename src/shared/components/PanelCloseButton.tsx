@@ -1,6 +1,12 @@
 import { X } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
+/**
+ * パネル・比較画面のヘッダーの閉じる (×) ボタン。
+ *
+ * モーダルの DialogCloseButton と同じ見た目（size-8 の丸型，X 16px）で
+ * 全画面の×を揃える。DialogCloseButton は Dialog の状態を閉じるため
+ * Dialog の中身専用で，ここでは onClick で閉じる。
+ */
 export function PanelCloseButton({
   onClose,
   label = "閉じる",
@@ -11,15 +17,14 @@ export function PanelCloseButton({
   disabled?: boolean;
 }) {
   return (
-    <Button
+    <button
       type="button"
       aria-label={label}
-      variant="outline"
-      className="size-7 min-h-7 rounded-full p-0 text-muted-foreground shadow-sm md:size-8 md:min-h-8"
       disabled={disabled}
       onClick={onClose}
+      className="flex size-8 shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-600 disabled:pointer-events-none"
     >
-      <X size={18} strokeWidth={2.5} />
-    </Button>
+      <X size={16} aria-hidden="true" />
+    </button>
   );
 }

@@ -226,7 +226,7 @@ const EvaluationEditor = ({
     <CardContent className="p-4 md:p-5">
       <div className="flex items-center justify-between gap-3">
         <h2
-          className={`text-lg font-bold font-[var(--font-heading)] ${
+          className={`text-lg font-bold font-heading ${
             tone === "green" ? "text-green-900" : "text-orange-900"
           }`}
         >
@@ -359,9 +359,7 @@ const CoursesEditor = ({
   <Card>
     <CardContent className="p-4 md:p-5">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-bold text-blue-900 font-[var(--font-heading)]">
-          コース
-        </h2>
+        <h2 className="text-lg font-bold text-blue-900 font-heading">コース</h2>
         <Button
           type="button"
           size="sm"
@@ -671,9 +669,7 @@ export function ReviewEditWorkspace({
       >
         <div className="p-3 md:p-5 sticky top-0 z-10 bg-admin-surface">
           <p className="text-blue-200 text-xs font-bold">RUSUTSU DATA TOOLS</p>
-          <h1 className="mt-1 text-xl font-bold font-[var(--font-heading)]">
-            レビュー編集
-          </h1>
+          <h1 className="mt-1 text-xl font-bold font-heading">レビュー編集</h1>
           <Input
             className="mt-4 text-sm bg-white text-gray-900 border-transparent"
             value={filter}
@@ -698,7 +694,7 @@ export function ReviewEditWorkspace({
               >
                 <div className="w-full">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-bold font-[var(--font-heading)]">
+                    <p className="text-sm font-bold font-heading">
                       {resort.name}
                     </p>
                     {resort.warningCount > 0 && (
@@ -730,7 +726,7 @@ export function ReviewEditWorkspace({
             <p className="break-all text-gray-500 text-xs font-bold">
               {selectedResortId ?? "スキー場未選択"}
             </p>
-            <h2 className="text-lg font-bold truncate font-[var(--font-heading)]">
+            <h2 className="text-lg font-bold truncate font-heading">
               {selectedResort?.name ?? "レビューデータがありません"}
             </h2>
           </div>
@@ -855,7 +851,7 @@ export function ReviewEditWorkspace({
                       )}
                     </div>
                     <div>
-                      <h2 className="text-lg font-bold font-[var(--font-heading)]">
+                      <h2 className="text-lg font-bold font-heading">
                         警告一覧
                       </h2>
                       <p className="mt-1 text-gray-600 text-sm">
@@ -897,7 +893,7 @@ export function ReviewEditWorkspace({
                               {WARNING_KIND_LABELS[warning.kind]}
                             </Badge>
                           </div>
-                          <p className="mt-3 text-gray-900 font-bold font-[var(--font-heading)]">
+                          <p className="mt-3 text-gray-900 font-bold font-heading">
                             {warning.label || "見出し未入力"}
                           </p>
                           <p className="mt-2 text-orange-900 text-sm leading-relaxed">
@@ -929,9 +925,7 @@ export function ReviewEditWorkspace({
               )}
               <Card>
                 <CardContent className="p-4 md:p-5">
-                  <h2 className="text-lg font-bold font-[var(--font-heading)]">
-                    調査情報
-                  </h2>
+                  <h2 className="text-lg font-bold font-heading">調査情報</h2>
                   <div className="mt-4 flex gap-4 flex-col md:flex-row">
                     <div className="w-full md:w-[220px]">
                       <Label>

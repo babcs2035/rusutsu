@@ -209,15 +209,15 @@ export const ResortMapSection = ({
     const saved = sessionEnabled
       ? readStorage(`${mapSessionKey(resortId)}:expanded`, mapSessionSchema)
       : null;
-    setLocalMapDisplaySettings({
-      ...(saved?.displaySettings ?? {
+    // monochrome は保存値・デフォルト（カラー）に従う。以前は常に白黒に上書きしていた。
+    setLocalMapDisplaySettings(
+      saved?.displaySettings ?? {
         ...DEFAULT_MAP_DISPLAY_SETTINGS,
         courseStatuses: saved?.showOpenOnly
           ? OPEN_COURSE_STATUSES
           : DEFAULT_MAP_DISPLAY_SETTINGS.courseStatuses,
-      }),
-      monochrome: true,
-    });
+      },
+    );
     setLocalShowOpenOnly(saved?.showOpenOnly ?? false);
     setLocalTileVariant("photo");
     setLocalColorMode(saved?.courseColorMode ?? "slope");

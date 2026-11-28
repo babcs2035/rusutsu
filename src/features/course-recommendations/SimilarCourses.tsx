@@ -9,6 +9,14 @@ import {
   useState,
 } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useFavorites } from "@/features/favorites/FavoritesProvider";
 import type { SelectedMapFeature } from "@/features/map/types";
 import { FeatureSectionTitle } from "@/features/resort-detail/components/FeatureHeadline";
@@ -214,9 +222,10 @@ export function SimilarCourses({
                 : "条件に合うコースがありません。"}
         </p>
       ) : (
-        <table
+        <Table
           aria-busy={!current}
-          className={`w-full table-fixed overflow-hidden rounded-lg border border-slate-200 text-left transition-opacity ${current ? "" : "opacity-50"}`}
+          containerClassName={`rounded-lg transition-opacity ${current ? "" : "opacity-50"}`}
+          className="table-fixed text-left"
         >
           <colgroup>
             <col className="w-[4.5rem]" />
@@ -224,23 +233,23 @@ export function SimilarCourses({
             <col />
             <col className="w-16" />
           </colgroup>
-          <thead className="bg-slate-50 text-xs text-slate-500">
-            <tr>
-              <th scope="col" className="px-2 py-1 font-medium">
+          <TableHeader className="bg-muted/50">
+            <TableRow>
+              <TableHead scope="col" className="px-2 py-1.5">
                 類似度
-              </th>
-              <th scope="col" className="px-2 py-1 font-medium">
+              </TableHead>
+              <TableHead scope="col" className="px-2 py-1.5">
                 スキー場
-              </th>
-              <th scope="col" className="px-2 py-1 font-medium">
+              </TableHead>
+              <TableHead scope="col" className="px-2 py-1.5">
                 コース
-              </th>
-              <th scope="col">
+              </TableHead>
+              <TableHead scope="col" className="px-2 py-1.5">
                 <span className="sr-only">比較</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {results.slice(0, 3).map(result => {
               const course = {
                 ...result,
@@ -249,8 +258,8 @@ export function SimilarCourses({
               };
               const rating = recommendationGrade(course.score);
               return (
-                <tr key={`${course.resortId}:${course.key}`}>
-                  <td className="px-2 py-1.5" title={rating.label}>
+                <TableRow key={`${course.resortId}:${course.key}`}>
+                  <TableCell className="px-2 py-1.5" title={rating.label}>
                     <span className="flex items-center gap-1">
                       <span
                         className={`inline-flex size-5 shrink-0 items-center justify-center rounded text-xs font-bold ${GRADE_CLASS[rating.grade]}`}
@@ -264,11 +273,11 @@ export function SimilarCourses({
                         </span>
                       </span>
                     </span>
-                  </td>
-                  <td className="truncate px-2 py-1.5 text-xs text-slate-600">
+                  </TableCell>
+                  <TableCell className="truncate px-2 py-1.5 text-gray-600">
                     {course.resortName}
-                  </td>
-                  <td className="px-2 py-1.5">
+                  </TableCell>
+                  <TableCell className="px-2 py-1.5">
                     <button
                       type="button"
                       disabled={!navigate}
@@ -280,8 +289,8 @@ export function SimilarCourses({
                     >
                       {course.name}
                     </button>
-                  </td>
-                  <td className="py-1 pr-1.5">
+                  </TableCell>
+                  <TableCell className="py-1 pr-1.5">
                     <DetailButton
                       compact
                       className="ml-auto"
@@ -296,12 +305,12 @@ export function SimilarCourses({
                       aria-label={`${course.resortName} ${course.name}との比較詳細`}
                       onClick={() => setComparison(course)}
                     />
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               );
             })}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       )}
       {comparison && (
         <CourseComparisonDialog

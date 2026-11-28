@@ -1,4 +1,4 @@
-import { Circle, ExternalLink, Triangle, X } from "lucide-react";
+import { Circle, Triangle, X } from "lucide-react";
 import { Fragment, type ReactNode } from "react";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import type { PublishedTime } from "@/shared/utils/publishedTime";
@@ -14,9 +14,6 @@ const COMPACT_SOURCE_TEXT =
   "text-xs leading-4 md:text-sm md:leading-5 md:@max-[28rem]/overview:text-xs md:@max-[28rem]/overview:leading-4 md:@max-[12rem]/status-summary:text-xs md:@max-[12rem]/status-summary:leading-4";
 const COMPACT_SOURCE_CHIP =
   "min-h-5 px-1.5 md:min-h-7 md:px-2 md:@max-[28rem]/overview:min-h-5 md:@max-[28rem]/overview:px-1.5 md:@max-[12rem]/status-summary:min-h-5 md:@max-[12rem]/status-summary:px-1.5";
-const COMPACT_SOURCE_ICON =
-  "size-3 md:size-3.5 md:@max-[28rem]/overview:size-3 md:@max-[12rem]/status-summary:size-3";
-
 export function SourceLine({
   label,
   time,
@@ -68,14 +65,11 @@ export function SourceLine({
                     ? `公式サイトの「${highlights.join("」「")}」の箇所を開く`
                     : url
                 }
-                className="inline-flex shrink-0 items-center gap-0.5 font-medium text-blue-700 underline underline-offset-2 hover:text-blue-800"
+                className="inline-flex shrink-0 items-center gap-0.5 font-medium underline underline-offset-2"
                 aria-label={`${label}の出典を開く${links.length > 1 ? `（${index + 1}）` : ""}`}
               >
                 出典{links.length > 1 ? index + 1 : ""}
                 {urlLabels?.[url] ? `(${urlLabels[url]})` : ""}
-                <ExternalLink
-                  className={compact ? COMPACT_SOURCE_ICON : "size-3.5"}
-                />
               </ExternalLinkComponent>
             );
             if (!highlights.length) return link;

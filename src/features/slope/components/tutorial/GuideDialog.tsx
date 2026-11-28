@@ -12,6 +12,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
 /** 説明の 1 行。label は行頭に太字で出す小見出し */
@@ -89,31 +97,30 @@ export function GuideDialog({
           {isShortcutPage ? (
             <div className="flex flex-col gap-2">
               <h3 className="font-bold text-sm">キーボード操作のまとめ</h3>
-              <table className="w-full border-collapse text-xs">
-                <thead>
-                  <tr className="border-b text-left text-gray-500">
-                    <th className="w-[38%] py-1 font-medium">キー</th>
-                    <th className="py-1 font-medium">はたらき</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead scope="col" className="w-[38%]">
+                      キー
+                    </TableHead>
+                    <TableHead scope="col">はたらき</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {shortcuts.map(shortcut => (
-                    <tr
-                      key={shortcut.keys}
-                      className="border-b last:border-b-0"
-                    >
-                      <td className="py-1.5 pr-2 align-top">
-                        <kbd className="rounded border border-gray-300 bg-gray-50 px-1.5 py-0.5 font-mono text-xs">
+                    <TableRow key={shortcut.keys}>
+                      <TableCell className="align-top">
+                        <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-xs">
                           {shortcut.keys}
                         </kbd>
-                      </td>
-                      <td className="py-1.5 align-top text-gray-700">
+                      </TableCell>
+                      <TableCell className="align-top">
                         {shortcut.description}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
               <p className="mt-1 text-xs text-gray-500">
                 この手引きは、画面右上の「使い方」からいつでも開けます。
               </p>

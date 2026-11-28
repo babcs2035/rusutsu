@@ -88,7 +88,7 @@ export default async function CrawlMonitorResortPage({
         <span className="mx-1">/</span>
         <span>{resort.nameJa}</span>
       </nav>
-      <h1 className="mb-1 font-[var(--font-heading)] text-2xl font-bold text-gray-900 md:text-3xl">
+      <h1 className="mb-1 font-heading text-2xl font-bold text-gray-900 md:text-3xl">
         {resort.nameJa}
       </h1>
       <p className="mb-6 text-sm text-gray-500">{resortId}</p>

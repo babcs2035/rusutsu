@@ -30,6 +30,8 @@ const ROW_CLASS = "border-b border-slate-200 py-0.5";
 const NUMBER_CELL_CLASS = `${ROW_CLASS} border-l px-1.5 text-right whitespace-nowrap`;
 const HEADER_CLASS = `${NUMBER_CELL_CLASS} text-xs leading-5 text-slate-500`;
 const VALUE_CLASS = `${NUMBER_CELL_CLASS} font-semibold text-slate-900 tabular-nums`;
+/** 距離（km）の数値だけ数値フォントにする。本数は件数なので本文フォントのまま */
+const DISTANCE_VALUE_CLASS = `${VALUE_CLASS} font-mono`;
 
 /**
  * 種別ごとのリフト距離を横棒で並べ、運行・待機・運休・不明で塗り分ける。
@@ -80,7 +82,7 @@ export function LiftStatusChart({
     meters == null ? "--" : formatKm(meters);
   const renderValues = (row: LiftStatusChartRow) => (
     <>
-      <span className={VALUE_CLASS}>
+      <span className={DISTANCE_VALUE_CLASS}>
         {unavailable || row.distance == null ? (
           <>
             {km(row.distance)}

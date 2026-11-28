@@ -1,6 +1,5 @@
 "use client";
 
-import { ExternalLink } from "lucide-react";
 import type { ReactNode, PointerEvent as ReactPointerEvent } from "react";
 import {
   memo,
@@ -24,6 +23,7 @@ import { distanceKm } from "@/features/map/utils/distance";
 import { cn } from "@/lib/utils";
 import { CompareResortButton } from "@/shared/components/CompareResortButton";
 import { CopyResortNameButton } from "@/shared/components/CopyResortNameButton";
+import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import type { MapSkiResort } from "@/types/skiResorts";
 import { useGoogleMapsLinks } from "../hooks/useGoogleMapsLinks";
 import {
@@ -94,7 +94,7 @@ const ListMetric = ({
   /** 値の見せ方を変えるとき（単位を小さくするなど）。無ければ value を出す */
   children?: ReactNode;
 }) => (
-  <span className="flex min-w-0 flex-col items-start gap-0.5">
+  <span className="flex min-w-0 flex-col items-start gap-1">
     <span
       className={cn(
         "leading-tight text-muted-foreground",
@@ -173,21 +173,18 @@ const DistanceLine = ({
         {distance < 10 ? distance.toFixed(1) : Math.round(distance)}km
       </span>
     </span>
-    <a
+    <ExternalLinkComponent
       href={mapsUrl}
-      target="_blank"
-      rel="noopener noreferrer"
       data-ski-resort-list-actions="true"
       onPointerDown={event => event.stopPropagation()}
       onClick={event => event.stopPropagation()}
       className={cn(
-        "inline-flex shrink-0 items-center gap-0.5 text-blue-700 underline underline-offset-2",
+        "inline-flex shrink-0 items-center gap-0.5 underline underline-offset-2",
         LIST_LABEL_TYPOGRAPHY,
       )}
     >
       Google マップ
-      <ExternalLink className="size-3" aria-hidden="true" />
-    </a>
+    </ExternalLinkComponent>
   </p>
 );
 
@@ -418,7 +415,7 @@ export const SkiResortList = ({
       {/* ヘッダーエリア */}
       {showHeader && (
         <div className="border-b border-gray-100 px-4 pt-2 md:pt-6">
-          <h2 className="text-lg font-bold text-gray-900 font-[var(--font-heading)]">
+          <h2 className="text-lg font-bold text-gray-900 font-heading">
             {resorts.length} 件見つかりました
           </h2>
           <p className="mt-1 text-xs text-gray-500">
@@ -614,7 +611,7 @@ const SkiResortListItem = memo(
           className="w-full cursor-pointer text-left transition-all duration-200 ease-in-out border-b border-gray-100 md:border md:rounded-xl md:border-gray-200 md:bg-white md:px-4 md:py-1 md:shadow-sm hover:md:border-blue-600 hover:md:shadow-md hover:md:-translate-y-0.5 focus-visible:outline-none focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10"
         >
           <div className="flex min-w-0 flex-col py-0.5 md:py-0">
-            <p className="min-w-0 break-words font-bold text-base leading-tight text-gray-900 font-[var(--font-heading)]">
+            <p className="min-w-0 break-words font-bold text-base leading-tight text-gray-900 font-heading">
               {resort.nameJa}
               <CopyResortNameButton
                 name={resort.nameJa}
@@ -655,7 +652,7 @@ const SkiResortListItem = memo(
             </div>
             <div
               className={cn(
-                "mt-2 grid min-w-0 gap-x-1 rounded-md bg-muted px-1.5 py-1",
+                "mt-2 grid min-w-0 gap-x-1 rounded-lg bg-muted px-2 py-2",
                 // 距離（12km/41km）は件数より長い。3等分の並びは保ったまま、
                 // 「期間外」などで短く済む料金の幅をコースへ回す
                 showCourseDistance

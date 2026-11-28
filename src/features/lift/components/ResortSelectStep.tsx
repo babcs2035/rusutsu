@@ -149,9 +149,7 @@ export function ResortSelectStep({
         />
       </div>
       <div className="flex max-md:h-[65%] max-md:w-full md:w-[min(460px,60vw)] min-w-0 flex-col gap-2 overflow-hidden max-md:overflow-y-auto max-md:[&>*]:shrink-0 border-l border-gray-200 bg-white p-3 lg:w-[460px] lg:min-w-[460px]">
-        <h2 className="text-lg font-bold font-[var(--font-heading)]">
-          スキー場を選ぶ
-        </h2>
+        <h2 className="text-lg font-bold font-heading">スキー場を選ぶ</h2>
         <p className="text-sm text-gray-600">
           lift_before
           のあるスキー場を選ぶと、リフトの所属・位置・詳細を編集できます。
@@ -187,7 +185,7 @@ export function ResortSelectStep({
             <CardContent className="p-3">
               {pendingResort.isKnownResort ? (
                 <>
-                  <p className="font-bold font-[var(--font-heading)]">
+                  <p className="font-bold font-heading">
                     {pendingResort.nameJa}
                   </p>
                   <p className="text-xs text-gray-600">

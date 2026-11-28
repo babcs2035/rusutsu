@@ -28,7 +28,7 @@ async function assertMinimumTextSize(page: Page): Promise<void> {
   const tooSmall = await page.locator("body").evaluate(body =>
     Array.from(body.querySelectorAll("*")).flatMap(element => {
       if (
-        element.closest("script, style, title, .sr-only, nextjs-portal") ||
+        element.closest("script, style, title, rt, .sr-only, nextjs-portal") ||
         !element.checkVisibility({
           visibilityProperty: true,
           opacityProperty: true,
@@ -44,6 +44,62 @@ async function assertMinimumTextSize(page: Page): Promise<void> {
     }),
   );
   assert.deepEqual(tooSmall, [], "visible text must be at least 15px");
+}
+
+/** 読み仮名は親文字と重ならず，小さい文字で上に添える． */
+async function assertRubyFits(page: Page): Promise<void> {
+  const ruby = page
+    .locator("h2 .ruby-text rt")
+    .filter({ visible: true })
+    .first();
+  await ruby.waitFor();
+  const layout = await ruby.evaluate(element => {
+    const parent = element.parentElement;
+    return {
+      size: Number.parseFloat(getComputedStyle(element).fontSize),
+      parentSize:
+        parent && Number.parseFloat(getComputedStyle(parent).fontSize),
+      weight: Number.parseInt(getComputedStyle(element).fontWeight, 10),
+    };
+  });
+  assert.ok(
+    layout.parentSize && layout.size >= 12 && layout.size < layout.parentSize,
+  );
+  assert.equal(layout.weight, 500);
+}
+
+/** 表の外枠とセルの区切りは個別に描画し，狭い枠でも表の内側で収める． */
+async function assertPriceTableBorders(page: Page): Promise<void> {
+  const table = page
+    .locator('[data-slot="table"]')
+    .filter({ hasText: "試験用1日券" })
+    .first();
+  await table.waitFor();
+  const layout = await table.evaluate(element => {
+    const container = element.closest<HTMLElement>(
+      '[data-slot="table-container"]',
+    );
+    const head = element.querySelector("thead th");
+    if (!container || !head)
+      throw new Error("Missing table container or heading");
+    const outer = getComputedStyle(container);
+    const cell = getComputedStyle(head);
+    return {
+      rounded: Number.parseFloat(outer.borderTopLeftRadius) > 0,
+      top: outer.borderTopWidth,
+      color: outer.borderTopColor,
+      rowBorder: cell.borderBottomWidth,
+      columnBorder: cell.borderRightWidth,
+      gridColor: cell.borderBottomColor,
+      scrollable: outer.overflowX === "auto",
+    };
+  });
+  assert.equal(layout.top, "1px");
+  assert.notEqual(layout.color, "rgb(0, 0, 0)");
+  assert.equal(layout.gridColor, layout.color);
+  assert.equal(layout.rowBorder, "1px");
+  assert.equal(layout.columnBorder, "1px");
+  assert.ok(layout.rounded && layout.scrollable);
 }
 
 /** 比較の通信失敗では端末の保存分を使い，正常応答から消えた施設は保存分も除く． */
@@ -110,6 +166,10 @@ async function assertWeatherLinksFit(page: Page): Promise<void> {
         fontSize: Number.parseFloat(getComputedStyle(item).fontSize),
         fitsText: item.scrollWidth <= item.clientWidth + 1,
         accessibleName: item.getAttribute("aria-label"),
+        icons: item.querySelectorAll(
+          "svg.lucide-external-link[aria-hidden=true]",
+        ).length,
+        color: getComputedStyle(item).color,
       };
     });
     return {
@@ -144,6 +204,17 @@ async function assertWeatherLinksFit(page: Page): Promise<void> {
     layout.items.map(item => item.accessibleName),
     labels,
     "compact weather labels must retain each site's full accessible name",
+  );
+  const primary = await row.evaluate(element => {
+    const probe = document.createElement("span");
+    probe.style.color = "var(--primary)";
+    element.append(probe);
+    const color = getComputedStyle(probe).color;
+    probe.remove();
+    return color;
+  });
+  assert.ok(
+    layout.items.every(item => item.icons === 1 && item.color === primary),
   );
   await links.first().focus();
   for (const [index, label] of labels.entries()) {
@@ -347,6 +418,9 @@ try {
   const detailUrl = `${baseUrl}/?resort=${resortId}`;
   await weatherPage.setViewportSize({ width: 320, height: 812 });
   await weatherPage.goto(detailUrl);
+  await assertRubyFits(weatherPage);
+  await weatherPage.getByRole("tab", { name: "料金", exact: true }).click();
+  await assertPriceTableBorders(weatherPage);
   await weatherPage.getByRole("tab", { name: "天気", exact: true }).click();
   await assertWeatherLinksFit(weatherPage);
   await assertMinimumTextSize(weatherPage);
@@ -381,6 +455,7 @@ try {
     await weatherPage.getByRole("tab", { name: "天気", exact: true }).click();
     await assertWeatherLinksFit(weatherPage);
     await assertMinimumTextSize(weatherPage);
+    await assertRubyFits(weatherPage);
     await weatherPage.screenshot({
       path: path.join(
         artifactDirectory,

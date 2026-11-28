@@ -2,6 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import type { CrawlMonitorRunDetail } from "@/server/crawl-latest/adminContract";
 import { withBasePath } from "@/shared/utils/basePath";
 import { CATEGORY_LABELS, formatJst, SEVERITY_LABELS } from "../utils/labels";
@@ -220,94 +228,92 @@ export function RunDiagnostics({
             この実行ではDOMを保存していません。
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
-            <table className="w-full min-w-[720px] border-collapse text-sm">
-              <thead className="bg-gray-50 text-left text-xs text-gray-600">
-                <tr>
-                  <th className="px-3 py-2 font-medium">ページ</th>
-                  <th className="px-3 py-2 font-medium">取得元</th>
-                  <th className="px-3 py-2 font-medium">保存した理由</th>
-                  <th className="px-3 py-2 font-medium">HTTP</th>
-                  <th className="px-3 py-2 font-medium">サイズ</th>
-                  <th className="px-3 py-2 font-medium">DOM</th>
-                </tr>
-              </thead>
-              <tbody>
-                {artifacts.map(artifact => {
-                  const reasons = artifact.issueExternalIds.flatMap(id => {
-                    const issue = issuesByExternalId.get(id);
-                    return issue ? [issue] : [];
-                  });
-                  return (
-                    <tr key={artifact.id} className="border-t border-gray-100">
-                      <td className="px-3 py-2 align-top">
-                        <p className="text-gray-800">{artifact.pageKey}</p>
-                        <p className="text-xs text-gray-500">
-                          {artifact.categoryKind
-                            ? CATEGORY_LABELS[artifact.categoryKind]
-                            : ""}
-                          {artifact.title ? ` ${artifact.title}` : ""}
-                        </p>
-                      </td>
-                      <td className="max-w-[280px] px-3 py-2 align-top">
-                        <p className="truncate text-xs text-gray-600">
-                          {artifact.finalUrl ?? artifact.requestedUrl ?? "-"}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {formatJst(artifact.capturedAt)}
-                        </p>
-                      </td>
-                      <td className="max-w-[280px] px-3 py-2 align-top text-xs text-gray-700">
-                        {reasons.length > 0
-                          ? [...new Set(reasons.map(issue => issue.code))].join(
-                              ", ",
-                            )
-                          : "-"}
-                      </td>
-                      <td className="px-3 py-2 align-top text-xs text-gray-700">
-                        {artifact.httpStatus ?? "-"}
-                      </td>
-                      <td className="px-3 py-2 align-top text-xs text-gray-700">
-                        {formatBytes(artifact.sizeBytes)}
-                      </td>
-                      <td className="px-3 py-2 align-top text-xs">
-                        {artifact.hasContent ? (
-                          <div className="flex gap-3">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setPreview({
-                                  artifact,
-                                  selector:
-                                    reasons.map(issueSelector).find(Boolean) ??
-                                    null,
-                                })
-                              }
-                              className="text-gray-800 underline underline-offset-2"
-                            >
-                              表示
-                            </button>
-                            <a
-                              href={withBasePath(
-                                `/admin/crawl/artifacts/${artifact.id}`,
-                              )}
-                              className="text-gray-800 underline underline-offset-2"
-                            >
-                              ダウンロード
-                            </a>
-                          </div>
-                        ) : (
-                          <span className="text-gray-500">
-                            {artifact.captureError ?? "保存期間切れ"}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <Table className="min-w-[720px]" containerClassName="rounded-lg">
+            <TableHeader>
+              <TableRow className="text-left">
+                <TableHead>ページ</TableHead>
+                <TableHead>取得元</TableHead>
+                <TableHead>保存した理由</TableHead>
+                <TableHead>HTTP</TableHead>
+                <TableHead>サイズ</TableHead>
+                <TableHead>DOM</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {artifacts.map(artifact => {
+                const reasons = artifact.issueExternalIds.flatMap(id => {
+                  const issue = issuesByExternalId.get(id);
+                  return issue ? [issue] : [];
+                });
+                return (
+                  <TableRow key={artifact.id}>
+                    <TableCell className="align-top">
+                      <p className="text-gray-800">{artifact.pageKey}</p>
+                      <p className="text-xs text-gray-500">
+                        {artifact.categoryKind
+                          ? CATEGORY_LABELS[artifact.categoryKind]
+                          : ""}
+                        {artifact.title ? ` ${artifact.title}` : ""}
+                      </p>
+                    </TableCell>
+                    <TableCell className="max-w-[280px] align-top">
+                      <p className="truncate text-xs text-gray-600">
+                        {artifact.finalUrl ?? artifact.requestedUrl ?? "-"}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {formatJst(artifact.capturedAt)}
+                      </p>
+                    </TableCell>
+                    <TableCell className="max-w-[280px] align-top text-gray-700">
+                      {reasons.length > 0
+                        ? [...new Set(reasons.map(issue => issue.code))].join(
+                            ", ",
+                          )
+                        : "-"}
+                    </TableCell>
+                    <TableCell className="align-top text-gray-700">
+                      {artifact.httpStatus ?? "-"}
+                    </TableCell>
+                    <TableCell className="align-top text-gray-700">
+                      {formatBytes(artifact.sizeBytes)}
+                    </TableCell>
+                    <TableCell className="align-top">
+                      {artifact.hasContent ? (
+                        <div className="flex gap-3">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPreview({
+                                artifact,
+                                selector:
+                                  reasons.map(issueSelector).find(Boolean) ??
+                                  null,
+                              })
+                            }
+                            className="text-gray-800 underline underline-offset-2"
+                          >
+                            表示
+                          </button>
+                          <a
+                            href={withBasePath(
+                              `/admin/crawl/artifacts/${artifact.id}`,
+                            )}
+                            className="text-gray-800 underline underline-offset-2"
+                          >
+                            ダウンロード
+                          </a>
+                        </div>
+                      ) : (
+                        <span className="text-gray-500">
+                          {artifact.captureError ?? "保存期間切れ"}
+                        </span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         )}
       </section>
     </>

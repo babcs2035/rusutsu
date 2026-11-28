@@ -1,6 +1,5 @@
 "use client";
 
-import { ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import type { TrailMapLinks } from "../utils/trailMapLinks";
@@ -62,8 +61,7 @@ export function TrailMapPanel({
         {links.mapUrls[0] && (
           <ExternalLinkComponent
             href={links.mapUrls[0].url}
-            className="text-blue-700 underline underline-offset-2"
-            icon={<ExternalLink className="size-3.5" />}
+            className="underline underline-offset-2"
           >
             {isPdf(links.mapUrls[0].url)
               ? "マップPDFを開く"
@@ -73,8 +71,7 @@ export function TrailMapPanel({
         {links.mapPageUrls[0] && (
           <ExternalLinkComponent
             href={links.mapPageUrls[0].url}
-            className="text-blue-700 underline underline-offset-2"
-            icon={<ExternalLink className="size-3.5" />}
+            className="underline underline-offset-2"
           >
             掲載元を見る
           </ExternalLinkComponent>

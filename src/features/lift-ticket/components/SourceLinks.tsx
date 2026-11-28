@@ -1,4 +1,3 @@
-import { ExternalLink } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
@@ -7,9 +6,8 @@ import type { PriceReference } from "../utils/priceTable";
 import { withSourceQuote } from "../utils/sourceQuote";
 
 /**
- * 料金の出典リンク。営業状況など他の画面と同じく、青い枠の「出典 ↗」で
+ * 料金の出典リンク。営業状況など他の画面と同じく、青い枠の「出典」で
  * 公式ページへ飛ばす。
- *
  */
 export const SourceLinks = ({
   numbers,
@@ -81,7 +79,7 @@ export const LinkChip = ({
       "max-w-full whitespace-nowrap rounded-md border font-medium",
       tone === "purchase"
         ? "border-blue-600 bg-blue-600 text-white hover:bg-blue-700"
-        : "border-blue-100 bg-blue-50 text-blue-700 underline underline-offset-2 hover:bg-blue-100 hover:text-blue-800",
+        : "border-blue-100 bg-blue-50 underline underline-offset-2 hover:bg-blue-100",
       compact
         ? "min-h-5 px-1.5 py-0 text-xs md:text-xs"
         : "min-h-6 px-2 py-0.5 text-xs md:text-sm",
@@ -90,9 +88,5 @@ export const LinkChip = ({
     {...props}
   >
     <span className="min-w-0 truncate">{children}</span>
-    <ExternalLink
-      className={cn("shrink-0", compact ? "size-3" : "size-3.5")}
-      aria-hidden="true"
-    />
   </ExternalLinkComponent>
 );

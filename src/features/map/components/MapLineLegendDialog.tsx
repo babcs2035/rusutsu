@@ -1,17 +1,9 @@
 "use client";
 
-import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
-import { Info, X } from "lucide-react";
+import { Info } from "lucide-react";
 import type React from "react";
-import {
-  Dialog,
-  DialogClose,
-  DialogOverlay,
-  DialogPortal,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { COURSE_DIFFICULTY_META } from "@/lib/finalizedResortGeojsonShared";
+import { Modal } from "@/shared/components/Modal";
 import {
   FINALIZED_CASING_EXTRA,
   FINALIZED_LINE_WIDTH_STOPS,
@@ -136,90 +128,82 @@ function LiftStationSample() {
 
 export function MapLineLegendDialog() {
   return (
-    <Dialog>
-      <DialogTrigger
-        aria-label="地図の凡例"
-        className="flex size-7 shrink-0 items-center justify-center rounded-full text-slate-600 hover:bg-slate-200 focus-visible:outline-2 focus-visible:outline-blue-600"
-      >
-        <Info className="size-4" aria-hidden="true" />
-      </DialogTrigger>
-      <DialogPortal>
-        <DialogOverlay className="z-[900]" />
-        <DialogPrimitive.Popup className="fixed left-1/2 top-1/2 z-[901] max-h-[85dvh] w-[min(20rem,calc(100%-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 text-slate-700 shadow-xl outline-none">
-          <DialogTitle className="sr-only">地図の凡例</DialogTitle>
-          <section>
-            <h3 className="text-sm font-semibold text-slate-900 md:text-base">
-              ナイター
-            </h3>
-            <div className="mt-2 grid grid-cols-2 gap-x-4 text-sm md:text-base">
-              <div>
-                <div className="flex items-center gap-2">
-                  <CourseLineSample night />
-                  <span className="whitespace-nowrap">コース</span>
-                </div>
-                <p className="mt-1 whitespace-nowrap text-xs text-slate-500 md:text-sm">
-                  難易度モードのみ
-                </p>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="mt-1 flex w-14 shrink-0">
-                  <LiftFlowSample
-                    base={LIFT_STATUS_LEGEND[0].base}
-                    flow={LIFT_STATUS_LEGEND[0].flow}
-                    night
-                    width={getSampleWidth("lift")}
-                  />
-                </span>
-                <span className="whitespace-nowrap">リフト</span>
-              </div>
+    <Modal
+      trigger={
+        <button
+          type="button"
+          aria-label="地図の凡例"
+          className="flex size-7 shrink-0 items-center justify-center rounded-full text-slate-600 hover:bg-slate-200 focus-visible:outline-2 focus-visible:outline-blue-600"
+        >
+          <Info className="size-4" aria-hidden="true" />
+        </button>
+      }
+      title="地図の凡例"
+      titleClassName="sr-only"
+      className="w-[min(20rem,calc(100%-2rem))]"
+    >
+      <section>
+        <h3 className="text-sm font-semibold text-slate-900 md:text-base">
+          ナイター
+        </h3>
+        <div className="mt-2 grid grid-cols-2 gap-x-4 text-sm md:text-base">
+          <div>
+            <div className="flex items-center gap-2">
+              <CourseLineSample night />
+              <span className="whitespace-nowrap">コース</span>
             </div>
-          </section>
-          <section className="mt-4">
-            <h3 className="text-sm font-semibold text-slate-900 md:text-base">
-              コース
-            </h3>
-            <div className="mt-2 grid grid-cols-[3.5rem_1fr] items-center gap-x-3 gap-y-2 text-sm md:text-base">
-              <CourseLineSample />
-              <span className="whitespace-nowrap">圧雪</span>
-              <CourseLineSample grooming="variable" />
-              <span className="whitespace-nowrap">日によって圧雪</span>
-              <CourseLineSample grooming="ungroomed" />
-              <span className="whitespace-nowrap">非圧雪</span>
+            <p className="mt-1 whitespace-nowrap text-xs text-slate-500 md:text-sm">
+              難易度モードのみ
+            </p>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="mt-1 flex w-14 shrink-0">
+              <LiftFlowSample
+                base={LIFT_STATUS_LEGEND[0].base}
+                flow={LIFT_STATUS_LEGEND[0].flow}
+                night
+                width={getSampleWidth("lift")}
+              />
+            </span>
+            <span className="whitespace-nowrap">リフト</span>
+          </div>
+        </div>
+      </section>
+      <section className="mt-4">
+        <h3 className="text-sm font-semibold text-slate-900 md:text-base">
+          コース
+        </h3>
+        <div className="mt-2 grid grid-cols-[3.5rem_1fr] items-center gap-x-3 gap-y-2 text-sm md:text-base">
+          <CourseLineSample />
+          <span className="whitespace-nowrap">圧雪</span>
+          <CourseLineSample grooming="variable" />
+          <span className="whitespace-nowrap">日によって圧雪</span>
+          <CourseLineSample grooming="ungroomed" />
+          <span className="whitespace-nowrap">非圧雪</span>
+        </div>
+      </section>
+      <section className="mt-4">
+        <h3 className="text-sm font-semibold text-slate-900 md:text-base">
+          リフト
+        </h3>
+        <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-sm md:text-base">
+          {LIFT_STATUS_LEGEND.map(item => (
+            <div key={item.label} className="flex min-w-0 items-center gap-2">
+              <span className="flex w-14 shrink-0">
+                <LiftFlowSample {...item} />
+              </span>
+              <span>{item.label}</span>
             </div>
-          </section>
-          <section className="mt-4">
-            <h3 className="text-sm font-semibold text-slate-900 md:text-base">
-              リフト
-            </h3>
-            <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-sm md:text-base">
-              {LIFT_STATUS_LEGEND.map(item => (
-                <div
-                  key={item.label}
-                  className="flex min-w-0 items-center gap-2"
-                >
-                  <span className="flex w-14 shrink-0">
-                    <LiftFlowSample {...item} />
-                  </span>
-                  <span>{item.label}</span>
-                </div>
-              ))}
-              <div className="flex min-w-0 items-center gap-2">
-                <span className="flex w-14 shrink-0">
-                  <LiftStationSample />
-                </span>
-                <span>中間駅</span>
-              </div>
-            </div>
-          </section>
-          <DialogClose
-            aria-label="閉じる"
-            className="absolute right-2 top-2 flex size-8 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-600"
-          >
-            <X className="size-4" aria-hidden="true" />
-          </DialogClose>
-        </DialogPrimitive.Popup>
-      </DialogPortal>
-    </Dialog>
+          ))}
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="flex w-14 shrink-0">
+              <LiftStationSample />
+            </span>
+            <span>中間駅</span>
+          </div>
+        </div>
+      </section>
+    </Modal>
   );
 }
 

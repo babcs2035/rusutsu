@@ -195,10 +195,7 @@ export const CompactSnowForecastEmbed = ({
                 出典行だけが非表示になる */}
           <p className="snow-forecast-desktop-source mt-6 w-full text-xs text-gray-500 font-medium text-center">
             この詳細は{" "}
-            <ExternalLinkComponent
-              href={detailUrl}
-              className="text-blue-600 underline hover:text-blue-700"
-            >
+            <ExternalLinkComponent href={detailUrl} className="underline">
               Snow Forecast
             </ExternalLinkComponent>
             から

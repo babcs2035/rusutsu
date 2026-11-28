@@ -100,8 +100,19 @@ body:has(.admin-request-workspace) {
     padding: 12px;
   }
 
+  /* カード化するとセルごとの縦線が不自然なので，行の下端線でカードを区切る */
   .admin-shell .admin-user-table td {
     padding: 6px;
+    border-right: 0;
+    border-bottom: 0;
+  }
+
+  .admin-shell .admin-user-table tbody tr {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .admin-shell .admin-user-table tbody tr:last-child {
+    border-bottom: 0;
   }
 
   .admin-shell .admin-user-table thead {

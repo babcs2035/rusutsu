@@ -3,6 +3,14 @@
 import { type ReactNode, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { ReportErrorButton } from "@/features/corrections/ReportErrorButton";
 import { cn } from "@/lib/utils";
 import type { LiftTicketData } from "../types";
@@ -28,14 +36,14 @@ const PriceValue = ({ entry }: { entry: PriceEntry | undefined }) => {
     <span className="inline-flex flex-col items-end leading-tight">
       <span
         className={cn(
-          "font-bold tabular-nums",
+          "font-bold font-mono tabular-nums",
           entry.purchaseTag ? "text-blue-700" : "text-gray-900",
         )}
       >
         {entry.amount === 0 ? "無料" : entry.amount.toLocaleString("ja-JP")}
       </span>
       {entry.counterAmount != null && (
-        <span className="text-gray-500 text-xs tabular-nums">
+        <span className="font-mono text-gray-500 text-xs tabular-nums">
           窓口{entry.counterAmount.toLocaleString("ja-JP")}
         </span>
       )}
@@ -70,7 +78,7 @@ const subRowsOf = (row: PriceRow): SubRow[] => {
 };
 
 const STICKY_CELL =
-  "sticky left-0 z-10 min-w-[5.5rem] max-w-[8rem] bg-white px-2 py-2 text-left align-middle @min-[28rem]/price-table:max-w-none @min-[28rem]/price-table:px-3";
+  "sticky left-0 z-10 min-w-[5.5rem] max-w-[8rem] bg-card px-2 py-2 text-left align-middle @min-[28rem]/price-table:max-w-none @min-[28rem]/price-table:px-3";
 const PRICE_CELL =
   "px-1.5 py-2 text-right align-middle whitespace-nowrap text-sm @min-[28rem]/price-table:px-3";
 
@@ -139,22 +147,22 @@ const TableRows = ({
   return (
     <>
       {hasSubRows && (
-        <tr className="border-t border-gray-200">
-          <th
+        <TableRow>
+          <TableHead
             scope="rowgroup"
             colSpan={audiences.length + 1}
-            className="sticky left-0 bg-white px-2.5 pt-2 pb-0.5 text-left font-normal @min-[28rem]/price-table:px-3"
+            className="sticky left-0 bg-card px-2.5 pt-2 pb-0.5 text-left font-normal @min-[28rem]/price-table:px-3"
           >
             <RowLabel row={row} />
-          </th>
-        </tr>
+          </TableHead>
+        </TableRow>
       )}
       {subRows.map((subRow, subIndex) => (
-        <tr
-          key={subRow.key}
-          className={cn(!hasSubRows && "border-t border-gray-200")}
-        >
-          <th scope="row" className={cn(STICKY_CELL, "font-normal")}>
+        <TableRow key={subRow.key}>
+          <TableHead
+            scope="row"
+            className={cn(STICKY_CELL, "font-normal text-foreground")}
+          >
             {hasSubRows ? (
               <span className="block pl-2 text-gray-700 text-xs leading-snug">
                 {subRow.label}
@@ -167,36 +175,36 @@ const TableRows = ({
             ) : (
               <RowLabel row={row} />
             )}
-          </th>
+          </TableHead>
           {row.spansAllAudiences ? (
-            <td
+            <TableCell
               colSpan={audiences.length}
               className={cn(PRICE_CELL, "text-center")}
             >
               {price(entryFor(audiences[0].id, subRow), audiences[0])}
-            </td>
+            </TableCell>
           ) : (
             audiences.map(audience => {
               if (spansSubRows(audience.id)) {
                 if (subIndex > 0) return null;
                 return (
-                  <td
+                  <TableCell
                     key={audience.id}
                     rowSpan={subRows.length}
                     className={PRICE_CELL}
                   >
                     {price(cellOf(audience.id)?.entries[0], audience)}
-                  </td>
+                  </TableCell>
                 );
               }
               return (
-                <td key={audience.id} className={PRICE_CELL}>
+                <TableCell key={audience.id} className={PRICE_CELL}>
                   {price(entryFor(audience.id, subRow), audience)}
-                </td>
+                </TableCell>
               );
             })
           )}
-        </tr>
+        </TableRow>
       ))}
     </>
   );
@@ -211,48 +219,42 @@ export const PriceGrid = ({
   firstColumnLabel?: string;
   reportData?: LiftTicketData;
 }) => (
-  <Card className="@container/price-table w-full overflow-hidden py-0">
-    <CardContent className="p-0">
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-gray-50">
-              <th
-                scope="col"
-                className="sticky left-0 z-10 bg-gray-50 px-2.5 py-2 text-left text-gray-600 text-xs font-semibold @min-[28rem]/price-table:px-3"
-              >
-                {firstColumnLabel}
-              </th>
-              {table.audiences.map(audience => (
-                <th
-                  key={audience.id}
-                  scope="col"
-                  className="px-1.5 py-2 text-right align-bottom text-gray-700 text-xs font-semibold whitespace-nowrap @min-[28rem]/price-table:px-3"
-                >
-                  {audience.label}
-                  {audience.ageLabel && (
-                    <span className="block text-gray-500 text-xs font-normal">
-                      {audience.ageLabel}
-                    </span>
-                  )}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {table.rows.map(row => (
-              <TableRows
-                key={row.key}
-                row={row}
-                audiences={table.audiences}
-                reportData={reportData}
-              />
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </CardContent>
-  </Card>
+  <Table containerClassName="@container/price-table" className="w-full">
+    <TableHeader>
+      <TableRow>
+        <TableHead
+          scope="col"
+          className="sticky left-0 z-10 bg-muted/70 px-2.5 py-2 text-left font-semibold text-muted-foreground @min-[28rem]/price-table:px-3"
+        >
+          {firstColumnLabel}
+        </TableHead>
+        {table.audiences.map(audience => (
+          <TableHead
+            key={audience.id}
+            scope="col"
+            className="px-1.5 py-2 text-right align-bottom text-foreground font-semibold whitespace-nowrap @min-[28rem]/price-table:px-3"
+          >
+            {audience.label}
+            {audience.ageLabel && (
+              <span className="block text-gray-500 text-xs font-normal">
+                {audience.ageLabel}
+              </span>
+            )}
+          </TableHead>
+        ))}
+      </TableRow>
+    </TableHeader>
+    <TableBody>
+      {table.rows.map(row => (
+        <TableRows
+          key={row.key}
+          row={row}
+          audiences={table.audiences}
+          reportData={reportData}
+        />
+      ))}
+    </TableBody>
+  </Table>
 );
 
 /**
@@ -377,7 +379,7 @@ export const LiftTicketPriceTable = ({
       {sections.map((section, index) => (
         <div key={section.key} className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <p className="text-gray-900 text-sm font-semibold font-[var(--font-heading)]">
+            <p className="text-gray-900 text-sm font-semibold font-heading">
               {section.title}
             </p>
             {/* メインのリンクは最初の表にだけ出す（同じリンクを表ごとに繰り返さない） */}

@@ -75,7 +75,7 @@ const ResortWeatherPanel = ({
       <div className="weather-panel-content flex w-full min-w-0 flex-col gap-1.5">
         <div className="weather-info flex-shrink-0">
           <div className="weather-info-name flex min-w-0 items-center gap-2">
-            <h3 className="min-w-0 text-sm text-gray-900 font-semibold leading-tight break-words font-[var(--font-heading)]">
+            <h3 className="min-w-0 text-sm text-gray-900 font-semibold leading-tight break-words font-heading">
               {getResortLabelName(resort.id, resort.nameJa, resort.shortName)}
             </h3>
             {onSelectResort && (

@@ -1,6 +1,5 @@
 "use client";
 
-import { ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -286,10 +285,8 @@ export const FilterToggle = ({
         href={link.href}
         aria-label={`${link.name}のサイトを開く`}
         title={`${link.name}のサイトを開く`}
-        className="h-7 w-6 shrink-0 justify-center rounded-r-md border border-l-0 border-gray-300 bg-white text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-800"
-      >
-        <ExternalLink className="h-3 w-3" aria-hidden />
-      </ExternalLinkComponent>
+        className="h-7 w-6 shrink-0 justify-center rounded-r-md border border-l-0 border-gray-300 bg-white transition-colors hover:bg-gray-50"
+      ></ExternalLinkComponent>
     </div>
   );
 };

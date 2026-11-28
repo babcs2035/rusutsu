@@ -23,11 +23,11 @@ const SOURCE_NAMES = new Map(
 );
 
 /**
- * 天気タブのリンクと同じ角の立った四角いチップ。数十個並ぶので天気タブの extrabold より1段軽い bold にする
- * （日本語は600でも700でも同じ太さなので、英字の Manrope を日本語の太さに合わせる意味もある）
+ * 天気タブのリンクと同じ角丸の四角いチップ。数十個並ぶので、
+ * 天気タブのリンクと同じ太さ (600) で揃える
  */
 const chipClassName =
-  "inline-flex max-w-full items-center gap-1 whitespace-nowrap rounded-md px-2.5 py-1.5 text-xs font-bold leading-4 transition-colors duration-150 hover:no-underline";
+  "inline-flex max-w-full items-center gap-1 whitespace-nowrap rounded-md px-2.5 py-1.5 text-xs font-semibold leading-4 transition-colors duration-150 hover:no-underline";
 
 /** 外部サイト（ツアー会社など）のリンクか。公式と、種類そのものがサイト名のもの（tenki.jp など）は違う */
 const isSiteLink = (link: ResortLinkItem) =>
@@ -82,8 +82,8 @@ function LinkChip({
         chipClassName,
         className,
         link.source === "official"
-          ? "bg-blue-50 text-blue-700 hover:bg-blue-100"
-          : "bg-slate-100 text-slate-800 hover:bg-slate-200",
+          ? "bg-blue-50 hover:bg-blue-100"
+          : "bg-slate-100 hover:bg-slate-200",
       )}
     >
       {icon}

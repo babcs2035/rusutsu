@@ -146,9 +146,7 @@ export function ResortSelectStep({ resorts, onStart }: ResortSelectStepProps) {
         />
       </div>
       <div className="flex max-md:h-[65%] max-md:w-full md:w-[min(460px,60vw)] min-w-0 flex-col gap-2 overflow-hidden max-md:overflow-y-auto max-md:[&>*]:shrink-0 border-l border-gray-200 bg-white p-3 lg:w-[460px] lg:min-w-[460px]">
-        <h2 className="font-bold font-[var(--font-heading)] text-base">
-          スキー場を選ぶ
-        </h2>
+        <h2 className="font-bold font-heading text-base">スキー場を選ぶ</h2>
         <p className="text-xs text-gray-600">
           一覧または地図からスキー場を選んでください。
         </p>
@@ -181,9 +179,7 @@ export function ResortSelectStep({ resorts, onStart }: ResortSelectStepProps) {
         {pendingResort && (
           <Card className="border-2 border-blue-600 rounded-md bg-blue-50">
             <CardContent className="p-3">
-              <p className="font-bold font-[var(--font-heading)]">
-                {pendingResort.nameJa}
-              </p>
+              <p className="font-bold font-heading">{pendingResort.nameJa}</p>
               <p className="text-xs text-gray-600">
                 {pendingResort.prefecture} / {pendingResort.id}
               </p>

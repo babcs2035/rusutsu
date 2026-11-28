@@ -1,17 +1,17 @@
 "use client";
 
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
-import { ChevronRight, ExternalLink, X, Zap } from "lucide-react";
+import { ChevronRight, Zap } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import {
   Dialog,
-  DialogClose,
   DialogOverlay,
   DialogPortal,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { DialogCloseButton } from "@/shared/components/DialogCloseButton";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import {
   EV_CHARGER_KIND_LABEL,
@@ -172,12 +172,7 @@ function FeatureDialog({
             <DialogTitle className="pr-8 text-base font-semibold text-slate-900">
               {title}
             </DialogTitle>
-            <DialogClose
-              aria-label="閉じる"
-              className="absolute right-3 top-3 flex size-7 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"
-            >
-              <X className="size-4" aria-hidden="true" />
-            </DialogClose>
+            <DialogCloseButton />
             <div className="mt-3">{children}</div>
           </DialogPrimitive.Popup>
         </div>
@@ -272,10 +267,9 @@ function YukiMagiBody({ data }: { data: ResortFeatureData }) {
       {url && (
         <ExternalLinkComponent
           href={url}
-          className="inline-flex items-center gap-1 rounded-full border border-pink-200 px-3 py-1 text-sm font-medium text-pink-700 hover:bg-pink-50"
+          className="inline-flex items-center gap-1 rounded-full border border-pink-200 px-3 py-1 text-sm font-medium hover:bg-pink-50"
         >
           マジ部で見る
-          <ExternalLink className="size-3.5" aria-hidden="true" />
         </ExternalLinkComponent>
       )}
     </div>
@@ -302,7 +296,9 @@ function EvChargerBody({ chargers }: { chargers: EvCharger[] }) {
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-bold tabular-nums text-slate-900">
-              {formatEvChargerOutput(charger, false)}
+              <span className="font-mono">
+                {formatEvChargerOutput(charger, false)}
+              </span>
               {charger.operator && (
                 <span className="ml-1.5 font-normal text-slate-700">
                   {charger.operator}
@@ -317,10 +313,8 @@ function EvChargerBody({ chargers }: { chargers: EvCharger[] }) {
             <ExternalLinkComponent
               href={charger.url}
               aria-label="充電器のページを開く"
-              className="flex size-7 shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"
-            >
-              <ExternalLink className="size-3.5" aria-hidden="true" />
-            </ExternalLinkComponent>
+              className="flex size-7 shrink-0 items-center justify-center rounded-full hover:bg-slate-100"
+            ></ExternalLinkComponent>
           )}
         </li>
       ))}

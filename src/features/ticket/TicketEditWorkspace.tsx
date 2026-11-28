@@ -322,9 +322,7 @@ export function TicketEditWorkspace({
       >
         <div className="p-3 md:p-5 sticky top-0 z-10 bg-admin-surface">
           <p className="text-blue-200 text-xs font-bold">RUSUTSU DATA TOOLS</p>
-          <h2 className="mt-4 text-2xl font-bold font-[var(--font-heading)]">
-            リフト券編集
-          </h2>
+          <h2 className="mt-4 text-2xl font-bold font-heading">リフト券編集</h2>
           <Input
             className="mt-4 h-9 w-full rounded-md border border-transparent bg-white px-3 text-sm text-gray-900 shadow-sm"
             size={30}
@@ -358,7 +356,7 @@ export function TicketEditWorkspace({
                 >
                   <div className="w-full">
                     <div className="flex items-center justify-between gap-2 md:gap-8">
-                      <p className="text-sm font-bold font-[var(--font-heading)]">
+                      <p className="text-sm font-bold font-heading">
                         {file.resortName}
                       </p>
                       {file.status !== null && (
@@ -417,7 +415,7 @@ export function TicketEditWorkspace({
                 ? "シーズン未選択"
                 : `${selected.resortId} / ${selected.seasonId}`}
             </p>
-            <h3 className="text-lg font-semibold line-clamp-1 font-[var(--font-heading)]">
+            <h3 className="text-lg font-semibold line-clamp-1 font-heading">
               {selectedFile
                 ? `${selectedFile.resortName} ${selectedFile.seasonLabelJa ?? selectedFile.seasonId}`
                 : "リフト券JSONを選択してください"}

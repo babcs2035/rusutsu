@@ -551,9 +551,7 @@ export function LiftEditWorkspace({
 
   const header = (
     <header className="admin-editor-header flex min-w-0 shrink-0 items-center gap-3 border-b border-gray-200 bg-white px-3 py-1.5">
-      <h2 className="shrink-0 font-bold font-[var(--font-heading)] text-sm">
-        リフト編集
-      </h2>
+      <h2 className="shrink-0 font-bold font-heading text-sm">リフト編集</h2>
       <div className="admin-editor-steps min-w-0 flex-1">
         <StepIndicator steps={STEPS} currentStepId={step} />
       </div>

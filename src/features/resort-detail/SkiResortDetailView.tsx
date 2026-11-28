@@ -65,6 +65,7 @@ import { cn } from "@/lib/utils";
 import { AnimatedPanel } from "@/shared/components/AnimatedPanel";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
 import { PanelHeader } from "@/shared/components/PanelHeader";
+import { PanelResizeHandle } from "@/shared/components/PanelResizeHandle";
 import type { MapSkiResort, NullableSkiResortDetail } from "@/types/skiResorts";
 import { DetailTabs } from "./components/DetailTabs";
 import { FinalizedFeatureDetail } from "./components/FinalizedFeatureDetail";
@@ -242,6 +243,32 @@ export const SkiResortDetailView = ({
     "地図",
   );
   const isSidePanel = useBreakpointValue({ base: false, md: true }) ?? false;
+  // 右メニュー（詳細パネル）の幅をドラッグで変えたとき、CSS 変数を更新し
+  // localStorage に保存する。リサイズハンドルはデスクトップのみ。
+  const handlePanelResize = useCallback((width: number) => {
+    const root = document.documentElement;
+    root.style.setProperty("--desktop-detail-panel-width", `${width}px`);
+    try {
+      window.localStorage.setItem("rusutsu.detailPanelWidth.v1", String(width));
+    } catch {
+      // 保存できない環境（private mode 等）ではデフォルト幅のまま使う
+    }
+  }, []);
+  // 初回マウント時に保存済み幅を復元する。未保存なら CSS 変数のデフォルト値を使う。
+  useEffect(() => {
+    let stored: string | null = null;
+    try {
+      stored = window.localStorage.getItem("rusutsu.detailPanelWidth.v1");
+    } catch {
+      stored = null;
+    }
+    if (stored !== null && /^\d+$/u.test(stored)) {
+      document.documentElement.style.setProperty(
+        "--desktop-detail-panel-width",
+        `${stored}px`,
+      );
+    }
+  }, []);
   // 選択を解除したときの戻り先を決めるために、どこから選んだかを覚えておく。
   // 一覧から選んだときは元の一覧と初期表示の地図へ、
   // 地図から選んだときは今の地図の見え方のまま戻す。
@@ -887,11 +914,11 @@ export const SkiResortDetailView = ({
   const detailPanelContent = isSidePanel ? (
     (renderFeatureDetail({ withOpenList: true }) ??
     postDetail ?? (
-      <div className="flex min-h-0 flex-1 flex-col">
-        <div className="shrink-0">{desktopDetailHeader}</div>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="min-w-0 shrink-0">{desktopDetailHeader}</div>
         <div
           data-session-scroll={`${stateKey}:desktop:${activeTab}`}
-          className="min-h-0 flex-1 overflow-y-auto"
+          className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto"
         >
           <DetailTabs
             tabs={tabs}
@@ -1141,6 +1168,14 @@ export const SkiResortDetailView = ({
               className="absolute inset-0 bg-transparent pointer-events-none"
               aria-hidden="true"
             />
+            {/* リサイズグリップはパネル左端に中央配置し、半分をマップ側にはみ出させる。
+                パネルの overflow-hidden 外（兄弟要素）に置くことでクリップされない。 */}
+            {!isDesktopMapExpanded && (
+              <PanelResizeHandle
+                onResize={handlePanelResize}
+                className="pointer-events-auto right-[var(--desktop-detail-panel-width)] translate-x-1/2"
+              />
+            )}
             <AnimatedPanel
               data-ski-resort-detail-panel="true"
               visible={isSidePanel}

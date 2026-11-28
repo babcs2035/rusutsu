@@ -381,7 +381,7 @@ export function ResortListEditButton({
                 </Button>
                 <Badge
                   variant="secondary"
-                  className="ml-auto h-[26px] bg-blue-50 px-2.5 text-xs leading-none font-black text-blue-900"
+                  className="ml-auto bg-secondary px-2.5 font-semibold text-secondary-foreground"
                 >
                   {candidates.length.toLocaleString()}件
                 </Badge>

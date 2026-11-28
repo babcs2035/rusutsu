@@ -6,6 +6,14 @@ import {
   NativeSelect,
   NativeSelectOption,
 } from "@/components/ui/native-select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { recommendationSelection } from "@/features/course-recommendations/algorithm";
 import { useScreenState } from "@/features/map/session/useScreenState";
 import type { SelectedMapFeature } from "@/features/map/types";
@@ -442,159 +450,162 @@ export const CoursesTab = ({
           </span>
           <span className="inline-flex items-center leading-none">— 不明</span>
         </div>
-        <div
-          className="isolate overflow-x-auto rounded-lg border"
-          role="region"
-          aria-label="コース一覧・横スクロール"
-          // biome-ignore lint/a11y/noNoninteractiveTabindex: Keyboard users need to scroll the additional course columns.
-          tabIndex={0}
+        <Table
+          containerClassName="isolate rounded-lg border-border"
+          containerProps={{
+            role: "region",
+            "aria-label": "コース一覧・横スクロール",
+            tabIndex: 0,
+          }}
+          className="w-max min-w-full"
         >
-          <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
-            <thead className="bg-slate-50 text-xs text-slate-600">
-              <tr>
-                {[
-                  "状況",
-                  "コース名",
-                  "圧雪",
-                  "距離",
-                  "平均",
-                  "最大",
-                  "標高差",
-                  ...optionalColumns,
-                ].map(label => (
-                  <th
-                    key={label}
-                    scope="col"
-                    aria-sort={ariaSort(sort, label)}
-                    className={`${label === "状況" ? "border-b border-slate-200 px-1 py-2" : tableCellPadding} sticky top-0 z-10 bg-slate-50 text-left whitespace-nowrap ${label === "状況" ? `left-0 z-30 ${statusColumnWidth}` : label === "コース名" ? `${nameColumnOffset} z-30 min-w-24 border-r` : ""}`}
-                  >
-                    {!isSortable(label) ? (
-                      label
-                    ) : (
-                      <SortableHeader
-                        label={label}
-                        sortKey={label}
-                        sort={sort}
-                        onSort={handleSort}
-                      />
-                    )}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {sortedRows.map(row => (
-                <tr
-                  key={row.id}
-                  className={`border-t ${selectedFinalizedFeature?.id === row.id ? "outline outline-2 -outline-offset-2 outline-blue-600" : ""}`}
+          <TableHeader>
+            <TableRow>
+              {[
+                "状況",
+                "コース名",
+                "圧雪",
+                "距離",
+                "平均",
+                "最大",
+                "標高差",
+                ...optionalColumns,
+              ].map(label => (
+                <TableHead
+                  key={label}
+                  scope="col"
+                  aria-sort={ariaSort(sort, label)}
+                  className={`${label === "状況" ? "px-1 py-2" : tableCellPadding} sticky top-0 z-10 bg-muted/70 text-left whitespace-nowrap ${label === "状況" ? `left-0 z-30 ${statusColumnWidth}` : label === "コース名" ? `${nameColumnOffset} z-30 min-w-24` : ""}`}
                 >
-                  <td
-                    className={`sticky left-0 z-20 ${statusColumnWidth} border-b border-slate-200 bg-white px-0.5 py-2 text-center`}
-                  >
-                    <span className="flex items-center justify-center">
-                      <SectionMarks sections={row.status} />
-                    </span>
-                  </td>
-                  <td
-                    className={`${tableCellPadding} sticky ${nameColumnOffset} z-20 min-w-24 border-r font-semibold text-black`}
-                    style={{ background: row.nameBackground }}
-                    title={row.difficulties
-                      .map(key => COURSE_DIFFICULTY_META[key].label)
-                      .join("・")}
-                  >
-                    {row.mapped ? (
-                      <button
-                        type="button"
-                        className="min-h-8 text-left underline-offset-2 hover:underline"
-                        aria-label={`${row.name}・${row.difficulties.map(key => COURSE_DIFFICULTY_META[key].label).join("・")}の詳細`}
-                        onClick={() =>
-                          onSelectedFinalizedFeatureChange(row.selection)
-                        }
-                      >
-                        {row.name}
-                      </button>
-                    ) : (
-                      row.name
-                    )}
-                  </td>
-                  <td
-                    className={`${tableCellPadding} text-center font-medium whitespace-nowrap`}
-                  >
-                    <SectionMarks sections={row.piste} field="piste" />
-                  </td>
-                  <td
-                    className={`${tableCellPadding} whitespace-nowrap tabular-nums`}
-                  >
-                    {row.distance == null ? "" : formatMeters(row.distance)}
-                  </td>
-                  <td className={`${tableCellPadding} tabular-nums`}>
-                    {row.avg == null ? "" : formatDegree(row.avg)}
-                  </td>
-                  <td className={`${tableCellPadding} tabular-nums`}>
-                    {row.max == null ? "" : formatDegree(row.max)}
-                  </td>
-                  <td className={`${tableCellPadding} tabular-nums`}>
-                    {row.elevationDiff == null
-                      ? ""
-                      : formatMeters(row.elevationDiff)}
-                    {row.elevationRange && (
-                      <div className="text-xs font-normal text-slate-500">
-                        {row.elevationRange}
-                      </div>
-                    )}
-                  </td>
-                  {optionalColumns.map(label => (
-                    <td
-                      key={label}
-                      className={`${tableCellPadding} max-w-64 whitespace-nowrap ${label === "早朝" || label === "ナイター" ? "text-center" : ""}`}
-                    >
-                      {label === "早朝" || label === "ナイター" ? (
-                        <SectionMarks
-                          sections={row[label === "早朝" ? "morning" : "night"]}
-                          field={label === "早朝" ? "morning" : "night"}
-                        />
-                      ) : (
-                        cellValues(row, label).map((entry, index) => (
-                          <span
-                            key={`${entry.label}-${entry.value}`}
-                            className="mr-2"
-                          >
-                            {entry.showLabel && (
-                              <span className="text-slate-500">
-                                {entry.label}:{" "}
-                              </span>
-                            )}
-                            {label === "動画" ? (
-                              <ExternalLinkComponent
-                                href={String(entry.value)}
-                                className="text-blue-700 underline"
-                              >
-                                {"動画 ↗"}
-                              </ExternalLinkComponent>
-                            ) : (
-                              <OptionalValue
-                                label={label}
-                                value={entry.value}
-                              />
-                            )}
-                            {index < cellValues(row, label).length - 1
-                              ? " · "
-                              : ""}
-                          </span>
-                        ))
-                      )}
-                    </td>
-                  ))}
-                </tr>
+                  {!isSortable(label) ? (
+                    label
+                  ) : (
+                    <SortableHeader
+                      label={label}
+                      sortKey={label}
+                      sort={sort}
+                      onSort={handleSort}
+                    />
+                  )}
+                </TableHead>
               ))}
-            </tbody>
-          </table>
-          {!displayed.length && (
-            <p className="p-4 text-center text-sm text-slate-700">
-              コースデータがありません
-            </p>
-          )}
-        </div>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sortedRows.map(row => (
+              <TableRow
+                key={row.id}
+                className={`border-t ${selectedFinalizedFeature?.id === row.id ? "outline outline-2 -outline-offset-2 outline-blue-600" : ""}`}
+              >
+                <TableCell
+                  className={`sticky left-0 z-20 ${statusColumnWidth} bg-card px-0.5 py-2 text-center`}
+                >
+                  <span className="flex items-center justify-center">
+                    <SectionMarks sections={row.status} />
+                  </span>
+                </TableCell>
+                <TableCell
+                  className={`${tableCellPadding} sticky ${nameColumnOffset} z-20 min-w-24 font-semibold text-foreground`}
+                  style={{ background: row.nameBackground }}
+                  title={row.difficulties
+                    .map(key => COURSE_DIFFICULTY_META[key].label)
+                    .join("・")}
+                >
+                  {row.mapped ? (
+                    <button
+                      type="button"
+                      className="min-h-8 text-left underline-offset-2 hover:underline"
+                      aria-label={`${row.name}・${row.difficulties.map(key => COURSE_DIFFICULTY_META[key].label).join("・")}の詳細`}
+                      onClick={() =>
+                        onSelectedFinalizedFeatureChange(row.selection)
+                      }
+                    >
+                      {row.name}
+                    </button>
+                  ) : (
+                    row.name
+                  )}
+                </TableCell>
+                <TableCell
+                  className={`${tableCellPadding} text-center font-medium whitespace-nowrap`}
+                >
+                  <SectionMarks sections={row.piste} field="piste" />
+                </TableCell>
+                <TableCell
+                  className={`${tableCellPadding} font-mono whitespace-nowrap tabular-nums`}
+                >
+                  {row.distance == null ? "" : formatMeters(row.distance)}
+                </TableCell>
+                <TableCell
+                  className={`${tableCellPadding} font-mono tabular-nums`}
+                >
+                  {row.avg == null ? "" : formatDegree(row.avg)}
+                </TableCell>
+                <TableCell
+                  className={`${tableCellPadding} font-mono tabular-nums`}
+                >
+                  {row.max == null ? "" : formatDegree(row.max)}
+                </TableCell>
+                <TableCell
+                  className={`${tableCellPadding} font-mono tabular-nums`}
+                >
+                  {row.elevationDiff == null
+                    ? ""
+                    : formatMeters(row.elevationDiff)}
+                  {row.elevationRange && (
+                    <div className="text-xs font-normal text-slate-500">
+                      {row.elevationRange}
+                    </div>
+                  )}
+                </TableCell>
+                {optionalColumns.map(label => (
+                  <TableCell
+                    key={label}
+                    className={`${tableCellPadding} max-w-64 whitespace-nowrap ${label === "早朝" || label === "ナイター" ? "text-center" : ""}`}
+                  >
+                    {label === "早朝" || label === "ナイター" ? (
+                      <SectionMarks
+                        sections={row[label === "早朝" ? "morning" : "night"]}
+                        field={label === "早朝" ? "morning" : "night"}
+                      />
+                    ) : (
+                      cellValues(row, label).map((entry, index) => (
+                        <span
+                          key={`${entry.label}-${entry.value}`}
+                          className="mr-2"
+                        >
+                          {entry.showLabel && (
+                            <span className="text-slate-500">
+                              {entry.label}:{" "}
+                            </span>
+                          )}
+                          {label === "動画" ? (
+                            <ExternalLinkComponent
+                              href={String(entry.value)}
+                              className="underline"
+                            >
+                              動画
+                            </ExternalLinkComponent>
+                          ) : (
+                            <OptionalValue label={label} value={entry.value} />
+                          )}
+                          {index < cellValues(row, label).length - 1
+                            ? " · "
+                            : ""}
+                        </span>
+                      ))
+                    )}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        {!displayed.length && (
+          <p className="p-4 text-center text-sm text-slate-700">
+            コースデータがありません
+          </p>
+        )}
       </section>
     </div>
   );

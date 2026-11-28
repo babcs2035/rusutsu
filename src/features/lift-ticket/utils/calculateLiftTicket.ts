@@ -215,6 +215,7 @@ export const isPurchasableOn = (
     deadline?.deadline_date,
   ]
     .filter((date): date is string => Boolean(date))
+    // biome-ignore lint/complexity/useMathMinMax: ISO 日付文字列の最小値。Math.min は数値強制されて NaN になるため文字列比較の reduce を使う
     .reduce((earliest, date) => (date < earliest ? date : earliest));
   return firstPurchaseDate <= lastPurchaseDate;
 };
@@ -1020,6 +1021,7 @@ export const lastPurchaseDateOf = (
     deadline?.deadline_date,
   ]
     .filter((date): date is string => Boolean(date))
+    // biome-ignore lint/complexity/useMathMinMax: ISO 日付文字列の最小値。Math.min は数値強制されて NaN になるため文字列比較の reduce を使う
     .reduce((earliest, date) => (date < earliest ? date : earliest));
   return last < visitDate ? last : null;
 };

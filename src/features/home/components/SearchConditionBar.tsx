@@ -4,6 +4,7 @@ import { ChevronDown } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   FilterAreaFields,
@@ -253,32 +254,36 @@ export const SearchConditionBar = ({
         {trailing && <div className="ml-auto shrink-0">{trailing}</div>}
       </div>
       {openKind && (
-        <div
+        <Card
+          size="sm"
           role="dialog"
           aria-label={TITLES[openKind]}
-          className="pointer-events-auto absolute inset-x-0 top-full z-10 mt-1.5 flex max-h-[calc(100dvh-env(safe-area-inset-top,0px)-8rem)] flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.28)]"
+          className="pointer-events-auto absolute inset-x-0 top-full z-10 mt-2 max-h-[calc(100dvh-env(safe-area-inset-top,0px)-8rem)] gap-0 bg-popover py-0 text-popover-foreground shadow-lg"
         >
-          <div className="flex h-11 shrink-0 items-center gap-1.5 border-b border-gray-100 pr-2 pl-3">
-            <h2 className="shrink-0 whitespace-nowrap text-base font-bold text-gray-900 font-[var(--font-heading)]">
+          <div className="flex min-h-12 shrink-0 items-center gap-1.5 border-b border-border px-2.5 py-1.5 md:px-3">
+            <h2 className="shrink-0 whitespace-nowrap text-base font-bold text-gray-900 font-heading">
               {TITLES[openKind]}
             </h2>
             <Badge
               variant="secondary"
-              className="shrink-0 bg-blue-50 px-1.5 text-xs font-bold tabular-nums text-blue-900"
+              className="shrink-0 px-1.5 font-semibold tabular-nums"
             >
               {resultCount.toLocaleString("ja-JP")}件
             </Badge>
             <Button
               type="button"
               variant="outline"
-              className="ml-auto h-7 shrink-0 border-gray-200 px-1.5 text-xs font-medium whitespace-nowrap text-gray-600 hover:bg-gray-50 hover:text-gray-700"
+              size="sm"
+              className="ml-auto px-1.5 text-muted-foreground"
+              aria-label="条件をクリア"
               onClick={() => onFilterChange(clearedFilters(filters, openKind))}
             >
-              条件をクリア
+              <span className="max-[359px]:hidden">条件をクリア</span>
+              <span className="min-[360px]:hidden">クリア</span>
             </Button>
             <PanelCloseButton onClose={close} />
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pt-2.5 pb-3">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 md:p-4">
             {openKind === "area" && (
               <FilterAreaFields
                 filters={filters}
@@ -288,7 +293,7 @@ export const SearchConditionBar = ({
               />
             )}
             {openKind === "price" && (
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-4">
                 <TicketPartyEditor
                   value={liftTicket}
                   onChange={next =>
@@ -330,7 +335,7 @@ export const SearchConditionBar = ({
               </div>
             )}
           </div>
-        </div>
+        </Card>
       )}
     </div>
   );

@@ -67,6 +67,7 @@ import { useDetailPanelRightOverlap } from "./hooks/useDetailPanelRightOverlap";
 import { useFinalizedMapFeatures } from "./hooks/useFinalizedMapFeatures";
 import { useJapanMapLabelLayout } from "./hooks/useJapanMapLabelLayout";
 import { useMapZoomInteractionSurface } from "./hooks/useMapZoomInteractionSurface";
+import { usePersistentMapSettings } from "./hooks/usePersistentMapSettings";
 import { useResortAliases } from "./hooks/useResortAliases";
 import type {
   CourseColorMode,
@@ -80,7 +81,6 @@ import { measureLabelHeight } from "./utils/labelMeasure";
 import { createNameLabelIcon } from "./utils/leafletIcons";
 import { createLeafletProjection } from "./utils/leafletProjection";
 import {
-  DEFAULT_MAP_DISPLAY_SETTINGS,
   hasCourseOperatingData,
   type MapDisplaySettings,
 } from "./utils/mapDisplaySettings";
@@ -310,26 +310,27 @@ export const JapanResortMap = memo(function JapanResortMap({
   const initialZoom = isMobileMapZoom
     ? MOBILE_INITIAL_ZOOM
     : DESKTOP_INITIAL_ZOOM;
-  const [uncontrolledMapTileVariant, setUncontrolledMapTileVariant] =
-    useState<MapTileVariant>("pale");
-  const mapTileVariant = controlledMapTileVariant ?? uncontrolledMapTileVariant;
+  // 表示設定・タイル種別はブラウザに保存する（画面遷移でリセットされない）
+  const {
+    mapDisplaySettings: persistedMapDisplaySettings,
+    setMapDisplaySettings: setPersistedMapDisplaySettings,
+    mapTileVariant: persistedMapTileVariant,
+    setMapTileVariant: setPersistedMapTileVariant,
+  } = usePersistentMapSettings();
+  const mapTileVariant = controlledMapTileVariant ?? persistedMapTileVariant;
   const setMapTileVariant = useCallback(
     (variant: MapTileVariant) => {
-      setUncontrolledMapTileVariant(variant);
+      setPersistedMapTileVariant(variant);
       onMapTileVariantChange?.(variant);
     },
-    [onMapTileVariantChange],
+    [onMapTileVariantChange, setPersistedMapTileVariant],
   );
   const [courseColorMode, setCourseColorMode] =
     useState<CourseColorMode>("difficulty");
-  const [localMapDisplaySettings, setLocalMapDisplaySettings] = useState({
-    ...DEFAULT_MAP_DISPLAY_SETTINGS,
-    monochrome: interactionMode === "detail",
-  });
   const mapDisplaySettings =
-    controlledMapDisplaySettings ?? localMapDisplaySettings;
+    controlledMapDisplaySettings ?? persistedMapDisplaySettings;
   const setMapDisplaySettings = (settings: MapDisplaySettings) => {
-    setLocalMapDisplaySettings(settings);
+    setPersistedMapDisplaySettings(settings);
     onMapDisplaySettingsChange?.(settings);
   };
   const [localShowOpenOnly, setLocalShowOpenOnly] = useState(false);

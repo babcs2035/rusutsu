@@ -1,6 +1,5 @@
 "use client";
 
-import { X } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { type CSSProperties, useEffect, useState } from "react";
@@ -8,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { DetailButton } from "@/shared/components/DetailButton";
 import { LoadingSpinner } from "@/shared/components/LoadingSpinner";
+import { PanelCloseButton } from "@/shared/components/PanelCloseButton";
 import {
   type ActionResult,
   ENTRY_KINDS,
@@ -122,7 +122,7 @@ export function CommunityMapPreview({
       style={style}
     >
       {/* 見出しと × はコース・リフトの詳細（FinalizedFeatureDetail）と揃える */}
-      <header className="flex shrink-0 min-w-0 items-center gap-1.5 border-b border-gray-200 py-2 pr-2 pl-3 md:pr-3 md:pl-4">
+      <header className="flex shrink-0 min-w-0 items-center gap-2 border-b border-border px-3 py-2.5 md:px-4">
         {selected && posts.length > 1 && (
           <Button
             type="button"
@@ -135,7 +135,7 @@ export function CommunityMapPreview({
             ‹
           </Button>
         )}
-        <h2 className="min-w-0 flex-1 truncate text-base leading-snug font-bold text-gray-900 font-[var(--font-heading)] md:text-lg">
+        <h2 className="min-w-0 flex-1 truncate text-base leading-snug font-bold text-gray-900 font-heading md:text-lg">
           {showingList ? "この場所の投稿" : "現地レポート"}
         </h2>
         {!showingList && effectiveSelected && (
@@ -149,15 +149,7 @@ export function CommunityMapPreview({
             }
           />
         )}
-        <Button
-          type="button"
-          variant="ghost"
-          className="size-7 min-w-7 shrink-0 rounded-full border border-gray-200 p-0 text-gray-600 hover:bg-gray-100 hover:text-gray-900 md:size-8 md:min-w-8"
-          aria-label="閉じる"
-          onClick={onClose}
-        >
-          <X size={16} strokeWidth={2.5} />
-        </Button>
+        <PanelCloseButton label="閉じる" onClose={onClose} />
       </header>
 
       {showingList ? (

@@ -152,9 +152,7 @@ export function ConfirmStep({
     <EditorStepContent>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold font-[var(--font-heading)]">
-            保存内容の確認
-          </h2>
+          <h2 className="text-lg font-bold font-heading">保存内容の確認</h2>
           <p className="text-sm text-gray-600">
             {resort.nameJa}（{resort.id}） / 全 {courses.length} コース
           </p>
@@ -177,7 +175,7 @@ export function ConfirmStep({
 
       <Card>
         <CardContent className="p-4">
-          <h3 className="text-sm font-semibold mb-1 font-[var(--font-heading)]">
+          <h3 className="text-sm font-semibold mb-1 font-heading">
             保存後のコース順（{courses.length} 件）
           </h3>
           <p className="text-xs text-gray-500 mb-3">
@@ -214,7 +212,7 @@ export function ConfirmStep({
       {movedCourses.length > 0 && (
         <Card>
           <CardContent className="p-4">
-            <h3 className="mb-2 text-sm font-semibold font-[var(--font-heading)]">
+            <h3 className="mb-2 text-sm font-semibold font-heading">
               所属スキー場の変更（{movedCourses.length}件）
             </h3>
             {movedCourses.map(course => (
@@ -233,7 +231,7 @@ export function ConfirmStep({
       {preservedFeatures.length > 0 && (
         <Card>
           <CardContent className="p-4">
-            <h3 className="text-sm font-semibold mb-1 font-[var(--font-heading)]">
+            <h3 className="text-sm font-semibold mb-1 font-heading">
               編集対象外の feature（{preservedFeatures.length} 件）
             </h3>
             <p className="text-xs text-gray-600">
@@ -247,7 +245,7 @@ export function ConfirmStep({
       {preservedDetails.length > 0 && (
         <Card>
           <CardContent className="p-4">
-            <h3 className="text-sm font-semibold mb-1 font-[var(--font-heading)]">
+            <h3 className="text-sm font-semibold mb-1 font-heading">
               コース線と未対応の slope_detail（{preservedDetails.length} 件）
             </h3>
             <p className="text-xs text-gray-600">

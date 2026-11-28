@@ -67,7 +67,7 @@ export const CompareResortNameCell = ({
   if (layout === "inline") {
     return (
       <div className={cn("flex min-w-0 items-center gap-2", className)}>
-        <p className="min-w-0 text-sm leading-tight font-bold break-words text-gray-900 font-[var(--font-heading)]">
+        <p className="min-w-0 text-sm leading-tight font-bold break-words text-gray-900 font-heading">
           {labelName}
         </p>
         {detailButton}
@@ -77,7 +77,7 @@ export const CompareResortNameCell = ({
 
   return (
     <div className={cn("min-w-0", className)}>
-      <p className="text-xs leading-[1.25] font-bold text-gray-900 font-[var(--font-heading)]">
+      <p className="text-xs leading-[1.25] font-bold text-gray-900 font-heading">
         {lines.map(line => (
           <span key={line} className="block">
             {line}

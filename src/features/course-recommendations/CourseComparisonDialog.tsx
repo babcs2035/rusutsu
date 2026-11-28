@@ -10,6 +10,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResortFinalizedMap } from "@/features/map/components/ResortFinalizedMap";
 import type {
@@ -213,47 +222,36 @@ function ComparisonTable({
   const leftItems = left.group ? getCourseGroupMetricItems(left.group) : [];
   const rightItems = right.group ? getCourseGroupMetricItems(right.group) : [];
   return (
-    <table
-      className={`hidden w-full table-fixed rounded-lg md:table bg-slate-50 text-sm tabular-nums md:text-sm ${className}`}
+    <Table
+      aria-label={`${left.courseName}と${right.courseName}の比較`}
+      className="table-fixed font-mono tabular-nums"
+      containerClassName={`hidden min-w-0 md:block ${className}`}
     >
-      <thead className="text-xs text-slate-500 md:hidden">
-        <tr>
-          <th className="w-[40%] max-w-0 truncate px-2 pt-1.5 text-right font-medium">
-            {left.courseName}
-          </th>
-          <th className="w-[20%]">
-            <span className="sr-only">項目</span>
-          </th>
-          <th className="w-[40%] max-w-0 truncate px-2 pt-1.5 text-left font-medium">
-            {right.courseName}
-          </th>
-        </tr>
-      </thead>
-      <tbody>
+      <TableBody>
         {leftItems.map((item, index) => (
-          <tr key={item.title}>
-            <td
-              className="whitespace-nowrap px-2 py-1 text-right font-bold text-slate-900 md:py-1.5"
+          <TableRow key={item.title}>
+            <TableCell
+              className="wrap-break-word px-2 py-1.5 text-right font-semibold"
               title={item.detail ?? undefined}
             >
               {item.value}
-            </td>
-            <th
+            </TableCell>
+            <TableHead
               scope="row"
-              className="whitespace-nowrap px-1 py-1 text-center text-xs font-normal text-slate-500 md:py-1.5"
+              className="wrap-break-word px-1.5 py-1.5 text-center font-medium"
             >
               {item.title}
-            </th>
-            <td
-              className="whitespace-nowrap px-2 py-1 text-left font-bold text-slate-900 md:py-1.5"
+            </TableHead>
+            <TableCell
+              className="wrap-break-word px-2 py-1.5 font-semibold"
               title={rightItems[index]?.detail ?? undefined}
             >
               {rightItems[index]?.value ?? "–"}
-            </td>
-          </tr>
+            </TableCell>
+          </TableRow>
         ))}
-      </tbody>
-    </table>
+      </TableBody>
+    </Table>
   );
 }
 
@@ -549,44 +547,48 @@ export function CourseComparisonDialog({
               )}
             </div>
             <TabsContent value="criteria" className="space-y-3">
-              <div className="overflow-hidden border-y border-slate-200">
-                <table className="w-full text-left text-xs tabular-nums sm:text-sm">
-                  <thead className="bg-slate-50 text-slate-500">
-                    <tr>
-                      <th className="p-2.5 font-medium">項目</th>
-                      <th className="p-2.5 text-right font-medium">類似度</th>
-                      <th className="p-2.5 text-right font-medium">配点</th>
-                      <th className="p-2.5 text-right font-medium">得点</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map(row => (
-                      <tr key={row.label} className="border-t border-slate-100">
-                        <th className="p-2.5 font-medium text-slate-700">
-                          {row.label}
-                        </th>
-                        <td className="p-2.5 text-right">
-                          {row.similarity.toFixed(1)}%
-                        </td>
-                        <td className="p-2.5 text-right">{row.weight * 100}</td>
-                        <td className="p-2.5 text-right font-semibold text-blue-700">
-                          {row.points.toFixed(1)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot className="border-t border-slate-300 text-slate-900">
-                    <tr>
-                      <th colSpan={3} className="p-2.5">
-                        合計
-                      </th>
-                      <td className="p-2.5 text-right font-bold">
-                        {candidate.score.toFixed(1)}点
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
+              <Table className="tabular-nums">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead scope="col">項目</TableHead>
+                    <TableHead scope="col" className="text-right">
+                      類似度
+                    </TableHead>
+                    <TableHead scope="col" className="text-right">
+                      配点
+                    </TableHead>
+                    <TableHead scope="col" className="text-right">
+                      得点
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.map(row => (
+                    <TableRow key={row.label}>
+                      <TableHead scope="row">{row.label}</TableHead>
+                      <TableCell className="text-right">
+                        {row.similarity.toFixed(1)}%
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {row.weight * 100}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold text-primary">
+                        {row.points.toFixed(1)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+                <TableFooter>
+                  <TableRow>
+                    <TableHead colSpan={3} scope="row">
+                      合計
+                    </TableHead>
+                    <TableCell className="text-right font-bold">
+                      {candidate.score.toFixed(1)}点
+                    </TableCell>
+                  </TableRow>
+                </TableFooter>
+              </Table>
               <p className="text-xs text-slate-600">
                 類似度 ×
                 配点の合計（100点満点）。A：80点以上、B：60点以上、C：60点未満。

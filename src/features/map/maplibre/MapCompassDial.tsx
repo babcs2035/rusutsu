@@ -10,7 +10,7 @@ const KEYBOARD_ROTATE_STEP_DEG = 15;
 /** これ以下の動きは「回した」ではなく「押した」とみなす（px） */
 const DRAG_THRESHOLD_PX = 3;
 
-const DIAL_SIZE = 72;
+const DIAL_SIZE = 56;
 const CENTER = DIAL_SIZE / 2;
 const RING_RADIUS = 27;
 const RING_WIDTH = 6.5;

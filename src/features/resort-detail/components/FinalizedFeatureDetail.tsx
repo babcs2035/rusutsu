@@ -1,6 +1,6 @@
 "use client";
 
-import { List, X } from "lucide-react";
+import { List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CommunityFeed } from "@/features/community/CommunityFeed";
 import type { ElevationProfileMapPoint } from "@/features/map/types";
@@ -8,6 +8,7 @@ import type {
   FinalizedLiftFeature,
   FinalizedResortMapData,
 } from "@/lib/finalizedResortGeojsonShared";
+import { PanelCloseButton } from "@/shared/components/PanelCloseButton";
 import type { FinalizedCourseGroup } from "../types";
 import { getCourseGroupTags } from "../utils/detailMetrics";
 import { FeatureTags } from "./FeatureHeadline";
@@ -64,10 +65,10 @@ export const FinalizedFeatureDetail = ({
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-white">
-      <div className="flex shrink-0 items-start justify-between gap-2 border-b border-gray-200 py-2 pr-2 pl-3 md:pr-3 md:pl-4">
+      <div className="flex shrink-0 items-start justify-between gap-2 border-b border-border px-3 py-2.5 md:px-4">
         {/* 長い名前は折り返し、チップは名前の文末にそのまま続ける */}
         <div className="min-w-0 pt-0.5 leading-7 [&>span]:mr-1">
-          <h2 className="mr-1.5 inline break-words align-middle text-base leading-snug font-bold text-gray-900 font-[var(--font-heading)]">
+          <h2 className="mr-1.5 inline break-words align-middle text-base leading-snug font-bold text-gray-900 font-heading">
             {title}
           </h2>
           {courseGroup ? (
@@ -93,15 +94,7 @@ export const FinalizedFeatureDetail = ({
               {isCourse ? "コース一覧" : "リフト一覧"}
             </Button>
           )}
-          <Button
-            type="button"
-            aria-label="選択を解除する"
-            variant="ghost"
-            className="size-7 min-w-7 rounded-full border border-gray-200 p-0 text-gray-600 hover:bg-gray-100 hover:text-gray-900 md:size-8 md:min-w-8"
-            onClick={onClose}
-          >
-            <X size={16} strokeWidth={2.5} />
-          </Button>
+          <PanelCloseButton label="選択を解除する" onClose={onClose} />
         </div>
       </div>
 

@@ -4,7 +4,7 @@ import { Home } from "lucide-react";
 import { useMap } from "react-leaflet";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { SegmentedControl } from "@/shared/components/SegmentedControl";
 import { GSI_TILE_LAYERS, INITIAL_CENTER } from "../constants";
 import type { MapTileVariant } from "../types";
 
@@ -45,7 +45,7 @@ export const MapControls = ({
               window.setTimeout(() => onUserMapZoomInteraction?.(), 0);
             }}
             aria-label="地図を拡大"
-            className="flex h-10 w-10 items-center justify-center rounded-none bg-white p-0 text-xl font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 min-w-0"
+            className="flex h-10 w-10 items-center justify-center rounded-none bg-white p-0 text-2xl font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 min-w-0"
           >
             +
           </Button>
@@ -55,7 +55,7 @@ export const MapControls = ({
               window.setTimeout(() => onUserMapZoomInteraction?.(), 0);
             }}
             aria-label="地図を縮小"
-            className="flex h-10 w-10 items-center justify-center rounded-none border-t border-gray-100 bg-white p-0 text-xl font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 min-w-0"
+            className="flex h-10 w-10 items-center justify-center rounded-none border-t border-gray-100 bg-white p-0 text-2xl font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 min-w-0"
           >
             -
           </Button>
@@ -79,31 +79,18 @@ export const MapControls = ({
           </Card>
         )}
         {showTileVariantControl && (
-          <Card className="gap-0 overflow-hidden p-1">
-            <CardContent className="flex gap-1 p-0">
-              {Object.entries(GSI_TILE_LAYERS).map(([variant, layer]) => {
-                const tileVariant = variant as MapTileVariant;
-                const isActive = mapTileVariant === tileVariant;
-
-                return (
-                  <Button
-                    key={variant}
-                    onClick={() => onMapTileVariantChange(tileVariant)}
-                    aria-label={`${layer.label}に切り替え`}
-                    aria-pressed={isActive}
-                    variant={isActive ? "default" : "ghost"}
-                    className={cn(
-                      "h-8 min-w-16 rounded-md px-3 text-xs font-semibold",
-                      !isActive &&
-                        "text-gray-700 hover:bg-gray-100 hover:text-gray-900",
-                    )}
-                  >
-                    {layer.label}
-                  </Button>
-                );
-              })}
-            </CardContent>
-          </Card>
+          // 詳細ビュー（FinalizedMapToolbar）・設定ダイアログと同じ
+          // SegmentedControl に統一し、選択中/未選択中の見た目を揃える
+          <SegmentedControl
+            options={Object.entries(GSI_TILE_LAYERS).map(([value, layer]) => ({
+              value: value as MapTileVariant,
+              label: layer.label,
+            }))}
+            value={mapTileVariant}
+            onChange={onMapTileVariantChange}
+            itemClassName="h-8 px-3 text-xs"
+            ariaLabel={option => `${option.label}に切り替え`}
+          />
         )}
       </div>
     </div>

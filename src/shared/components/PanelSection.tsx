@@ -2,6 +2,7 @@
 
 import { ChevronRight } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type PanelSectionProps = {
@@ -65,33 +66,36 @@ export function PanelSection({
   return (
     <section
       className={cn(
-        "shrink-0 overflow-hidden rounded-md border",
+        "shrink-0 overflow-hidden rounded-lg border",
         tone === "info"
-          ? "border-blue-200 bg-blue-50/50"
-          : "border-gray-200 bg-white",
+          ? "border-primary/20 bg-primary/5"
+          : "border-border bg-card",
         className,
       )}
     >
-      <button
+      <Button
         type="button"
-        className="flex w-full items-center gap-1.5 px-2 py-1.5 text-left hover:bg-black/[0.03]"
+        variant="ghost"
+        className="h-auto min-h-10 w-full justify-start gap-2 rounded-none px-3 py-2 text-left whitespace-normal"
         aria-expanded={isOpen}
         onClick={toggle}
       >
         <ChevronRight
           className={cn(
-            "size-3.5 shrink-0 text-gray-500 transition-transform",
+            "size-3.5 shrink-0 text-muted-foreground transition-transform",
             isOpen && "rotate-90",
           )}
         />
-        <span className="min-w-0 flex-1 truncate text-xs font-bold text-gray-700">
-          {title}
-        </span>
+        <span className="min-w-0 flex-1 text-sm font-semibold">{title}</span>
         {summary && (
-          <span className="shrink-0 text-xs text-gray-500">{summary}</span>
+          <span className="shrink-0 text-xs font-normal text-muted-foreground">
+            {summary}
+          </span>
         )}
-      </button>
-      {isOpen && <div className="border-t px-2 py-2">{children}</div>}
+      </Button>
+      {isOpen && (
+        <div className="border-t border-border px-3 py-3">{children}</div>
+      )}
     </section>
   );
 }

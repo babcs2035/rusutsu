@@ -1,29 +1,26 @@
-import type { AnchorHTMLAttributes, ReactNode } from "react";
+import { ExternalLink } from "lucide-react";
+import type { AnchorHTMLAttributes } from "react";
+import { cn } from "@/lib/utils";
 
 /**
  * 外部サイトへのリンク。`target="_blank" rel="noopener noreferrer"` を自動付与。
  *
- * `icon` を渡すとリンクテキストの後に外部リンクアイコンが表示される。
- * `iconPosition="start"` にすると前に表示。
+ * 外部リンクアイコンを共通表示し，CSS からリンク色を統一できる属性を付ける。
  */
 export const ExternalLinkComponent = ({
   children,
-  icon,
-  iconPosition = "end",
   className = "",
+  iconClassName = "size-3.5 shrink-0",
   ...props
-}: AnchorHTMLAttributes<HTMLAnchorElement> & {
-  icon?: ReactNode;
-  iconPosition?: "start" | "end";
-}) => (
+}: AnchorHTMLAttributes<HTMLAnchorElement> & { iconClassName?: string }) => (
   <a
     target="_blank"
     rel="noopener noreferrer"
-    className={`inline-flex items-center gap-1 ${className}`}
+    data-external-link="true"
+    className={cn("inline-flex items-center gap-1", className)}
     {...props}
   >
-    {iconPosition === "start" && icon}
     {children}
-    {iconPosition === "end" && icon}
+    <ExternalLink className={iconClassName} aria-hidden="true" />
   </a>
 );

@@ -200,7 +200,7 @@ export const ElevationProfile = ({
         >
           <span>
             斜度{" "}
-            <strong className="text-base text-gray-950 sm:text-lg">
+            <strong className="font-mono text-base text-gray-950 sm:text-lg">
               {activePoint.slope == null
                 ? "--"
                 : `${Math.round(activePoint.slope)}°`}
@@ -208,12 +208,15 @@ export const ElevationProfile = ({
           </span>
           <span>
             標高{" "}
-            <strong className="text-base text-gray-950 sm:text-lg">
+            <strong className="font-mono text-base text-gray-950 sm:text-lg">
               {Math.round(activePoint.elevation).toLocaleString()}m
             </strong>
           </span>
           <span>
-            水平距離 {Math.round(activePoint.distance).toLocaleString()}m
+            水平距離{" "}
+            <span className="font-mono">
+              {Math.round(activePoint.distance).toLocaleString()}m
+            </span>
           </span>
         </div>
         <div ref={chartRef}>
@@ -247,7 +250,7 @@ export const ElevationProfile = ({
                   y={toY(elevation) + 3.5}
                   fill="#6B7280"
                   fontSize={PROFILE_LABEL_SIZE}
-                  fontWeight={800}
+                  fontWeight={600}
                   textAnchor="end"
                 >
                   {elevation}m
@@ -271,7 +274,7 @@ export const ElevationProfile = ({
                   y={tickTop + 19}
                   fill="#6B7280"
                   fontSize={PROFILE_LABEL_SIZE}
-                  fontWeight={800}
+                  fontWeight={600}
                   textAnchor={
                     distance === 0
                       ? "start"
@@ -289,7 +292,7 @@ export const ElevationProfile = ({
               y={tickTop + 39}
               fill="#6B7280"
               fontSize={PROFILE_LABEL_SIZE}
-              fontWeight={800}
+              fontWeight={600}
               textAnchor="end"
             >
               水平距離

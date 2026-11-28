@@ -46,7 +46,7 @@ export default async function CrawlMonitorPage({
   return (
     <div className="mx-auto min-h-[calc(100vh-64px)] max-w-[1200px] p-4 md:p-8">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-[var(--font-heading)] text-2xl font-bold text-gray-900 md:text-3xl">
+        <h1 className="font-heading text-2xl font-bold text-gray-900 md:text-3xl">
           クローラー監視
         </h1>
         <Link

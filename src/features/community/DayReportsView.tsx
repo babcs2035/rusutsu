@@ -232,7 +232,7 @@ export function DayReportsView({
       <header className="min-w-0 border-b border-gray-200 py-2 pr-2 pl-3 md:col-start-2 md:row-start-1 md:border-l md:pr-3 md:pl-4">
         <div className="flex min-w-0 items-center gap-2">
           <div className="min-w-0 flex-1">
-            <h1 className="min-w-0 text-lg leading-snug font-bold text-gray-900 font-[var(--font-heading)]">
+            <h1 className="min-w-0 text-lg leading-snug font-bold text-gray-900 font-heading">
               <Link
                 href={`/${current.resort.id}`}
                 className="flex min-w-0 items-center hover:underline"

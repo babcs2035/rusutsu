@@ -57,6 +57,7 @@ import { cn } from "@/lib/utils";
 import { AnimatedPanel } from "@/shared/components/AnimatedPanel";
 import { CopyResortNameButton } from "@/shared/components/CopyResortNameButton";
 import { FormerResortNames } from "@/shared/components/FormerResortNames";
+import { PanelCloseButton } from "@/shared/components/PanelCloseButton";
 import { RubyText } from "@/shared/components/RubyText";
 import type {
   ResortFormerName,
@@ -967,9 +968,9 @@ const MobileContextHeader = ({
         ボタンを縦に積むとヘッダーが2段分の高さになり、地図が下に押し出される。
         「＋比較」は画面の右下に浮かせて出す。
       */}
-      <div className="flex items-center gap-1.5 px-3 pt-1 pb-1.5">
+      <div className="flex items-center gap-2 px-3 py-2">
         <div className="min-w-0 flex-1">
-          <h2 className="truncate-2 text-gray-900 text-base leading-tight font-bold font-[var(--font-heading)]">
+          <h2 className="truncate-2 font-heading text-base font-bold leading-snug text-foreground">
             <RubyText segments={detailNameRuby} fallback={detailTitle} />
             {/* 名前のすぐ後ろに置く。行ボックスを広げないよう行送りより小さくする */}
             <CopyResortNameButton
@@ -978,11 +979,11 @@ const MobileContextHeader = ({
             />
           </h2>
           {detailFormerNames.length > 0 && (
-            <p className="truncate text-xs leading-snug text-gray-500">
+            <p className="mt-0.5 truncate text-xs leading-snug text-muted-foreground">
               旧称: <FormerResortNames names={detailFormerNames} />
             </p>
           )}
-          <p className="flex items-center gap-1.5 text-gray-600 text-xs font-semibold leading-snug">
+          <p className="mt-0.5 flex items-center gap-1.5 text-xs font-medium leading-snug text-muted-foreground">
             {/* 県・市町村のどちらかが未取得のときに区切り文字だけが残らないようにする */}
             {detailLocation && (
               <span className="truncate">{detailLocation}</span>
@@ -995,19 +996,11 @@ const MobileContextHeader = ({
             />
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex shrink-0 items-center gap-2">
           {detailResortId && actions.favorite && (
             <FavoriteButton resortId={detailResortId} name={detailTitle} />
           )}
-          <Button
-            type="button"
-            aria-label="詳細を閉じる"
-            variant="ghost"
-            onClick={onCloseDetail}
-            className="flex h-8 w-8 min-w-8 shrink-0 items-center justify-center rounded-full border border-gray-200 p-0 text-gray-500 hover:bg-gray-50 hover:text-gray-900"
-          >
-            <X size={18} strokeWidth={2.5} />
-          </Button>
+          <PanelCloseButton label="詳細を閉じる" onClose={onCloseDetail} />
         </div>
       </div>
     </div>

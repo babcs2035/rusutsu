@@ -47,7 +47,7 @@ export default async function CrawlMonitorIssuesPage({
         <span className="mx-1">/</span>
         <span>警告・失敗</span>
       </nav>
-      <h1 className="mb-4 font-[var(--font-heading)] text-2xl font-bold text-gray-900 md:text-3xl">
+      <h1 className="mb-4 font-heading text-2xl font-bold text-gray-900 md:text-3xl">
         クロールの警告・失敗
       </h1>
       <p className="mb-4 text-sm text-gray-600">

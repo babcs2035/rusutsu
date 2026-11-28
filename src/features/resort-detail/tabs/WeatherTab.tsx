@@ -50,7 +50,7 @@ export const WeatherTab = ({ resort }: { resort: Resort }) => {
         {snowForecastLinks.map(link => (
           <div key={link.id} className="flex min-w-0 flex-col gap-1">
             {snowForecastLinks.length > 1 && (
-              <h3 className="text-sm text-gray-900 font-semibold font-[var(--font-heading)]">
+              <h3 className="text-sm text-gray-900 font-semibold font-heading">
                 {link.displayName}
               </h3>
             )}

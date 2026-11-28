@@ -11,6 +11,14 @@ type Metric = {
   titleParts?: string[];
 };
 
+/**
+ * 距離・角度の単位付き数値トークン（例: "1,234m"、"12°"、"(1234〜567m)"）か。
+ * 「20名」のような件数や「1998年」のような年は数値フォントの対象外なので除外する。
+ */
+const isMeasureToken = (value: string) =>
+  /^[\d,]+(\.\d+)?(m|km|°)$/u.test(value) ||
+  /^\([\d,]+〜[\d,]+m\)$/u.test(value);
+
 /** 基本情報と設備情報をひと続きの帯にし、スマホだけ追加行を折り畳む。 */
 export function LiftMetrics({
   items,
@@ -21,36 +29,43 @@ export function LiftMetrics({
 }) {
   const [expanded, setExpanded] = useState(false);
   const detailsId = useId();
-  const renderMetric = (item: Metric, supplementary = false) => (
-    <div
-      key={item.title}
-      className={
-        supplementary ? "row-span-2 grid min-w-0 grid-rows-subgrid" : "min-w-0"
-      }
-    >
-      <dt
-        className={`${supplementary ? "text-balance" : "whitespace-nowrap"} text-xs leading-tight text-slate-500 @min-[420px]:text-xs`}
+  const renderMetric = (item: Metric, supplementary = false) => {
+    const measure = isMeasureToken(item.value);
+    return (
+      <div
+        key={item.title}
+        className={
+          supplementary
+            ? "row-span-2 grid min-w-0 grid-rows-subgrid"
+            : "min-w-0"
+        }
       >
-        {item.titleParts
-          ? item.titleParts.map(part => (
-              <span key={part} className="inline-block max-w-full">
-                {part}
-              </span>
-            ))
-          : item.title}
-      </dt>
-      <dd
-        className={`font-bold tabular-nums tracking-tight text-slate-900 leading-5 @min-[420px]:leading-6 ${supplementary ? "break-words" : "whitespace-nowrap"} ${/^[○〇◯×✕✖]$/u.test(item.value) ? "text-lg @min-[420px]:text-xl" : "text-xs"}`}
-      >
-        {item.value}
-      </dd>
-      {item.detail && (
-        <dd className="whitespace-nowrap text-xs tabular-nums tracking-tighter text-slate-500 @min-[420px]:text-xs">
-          {item.detail}
+        <dt
+          className={`${supplementary ? "text-balance" : "whitespace-nowrap"} text-xs leading-tight text-slate-500 @min-[420px]:text-xs`}
+        >
+          {item.titleParts
+            ? item.titleParts.map(part => (
+                <span key={part} className="inline-block max-w-full">
+                  {part}
+                </span>
+              ))
+            : item.title}
+        </dt>
+        <dd
+          className={`font-bold tabular-nums tracking-tight text-slate-900 leading-5 @min-[420px]:leading-6 ${supplementary ? "break-words" : "whitespace-nowrap"} ${/^[○〇◯×✕✖]$/u.test(item.value) ? "text-lg @min-[420px]:text-xl" : "text-xs"} ${measure ? "font-mono" : ""}`}
+        >
+          {item.value}
         </dd>
-      )}
-    </div>
-  );
+        {item.detail && (
+          <dd
+            className={`whitespace-nowrap text-xs tabular-nums tracking-tighter text-slate-500 @min-[420px]:text-xs ${isMeasureToken(item.detail) ? "font-mono" : ""}`}
+          >
+            {item.detail}
+          </dd>
+        )}
+      </div>
+    );
+  };
 
   return (
     <section

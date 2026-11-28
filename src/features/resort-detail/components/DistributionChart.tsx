@@ -29,7 +29,7 @@ const PERCENT_WIDTH = "3rem";
 const ROW_CLASS = "border-b border-slate-200 py-0.5";
 const NUMBER_CELL_CLASS = `${ROW_CLASS} border-l px-1.5 text-right whitespace-nowrap`;
 const HEADER_CLASS = `${NUMBER_CELL_CLASS} text-xs leading-5 text-slate-500`;
-const VALUE_CLASS = `${NUMBER_CELL_CLASS} font-semibold text-slate-900 tabular-nums`;
+const VALUE_CLASS = `${NUMBER_CELL_CLASS} font-mono font-semibold text-slate-900 tabular-nums`;
 /** 「営業中/全体」の分母。分子と同じ大きさのまま、細く薄くして分子を読ませる */
 const DENOMINATOR_CLASS = "font-normal text-slate-500";
 

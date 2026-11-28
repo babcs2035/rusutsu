@@ -1,21 +1,21 @@
 "use client";
 
 import { useState } from "react";
+import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import type { FeatureMedia } from "../utils/featureMedia";
 import { FeatureSectionTitle } from "./FeatureHeadline";
 
 function FeatureImage({ url, name }: { url: string; name: string }) {
   const [failed, setFailed] = useState(false);
   return (
-    <a
+    <ExternalLinkComponent
       href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="block overflow-hidden rounded-md bg-slate-100"
+      className="relative !block overflow-hidden rounded-md bg-slate-100"
+      iconClassName="absolute right-1.5 top-1.5 size-3.5 rounded-sm bg-white/90 text-primary"
       aria-label={`${name}の写真を開く`}
     >
       {failed ? (
-        <p className="p-3 text-xs text-blue-700">写真を元のサイトで開く ↗</p>
+        <p className="p-3 text-xs">写真を元のサイトで開く</p>
       ) : (
         /* Official images have arbitrary hosts; display the source directly. */
         // biome-ignore lint/performance/noImgElement: External resort images are not configured for Next Image.
@@ -27,7 +27,7 @@ function FeatureImage({ url, name }: { url: string; name: string }) {
           onError={() => setFailed(true)}
         />
       )}
-    </a>
+    </ExternalLinkComponent>
   );
 }
 
@@ -69,14 +69,12 @@ export function FeatureMediaGallery({
               allowFullScreen
               className="aspect-video w-full border-0"
             />
-            <a
+            <ExternalLinkComponent
               href={youtubeWatchUrl(url)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block py-1 text-xs font-medium text-blue-700 hover:underline"
+              className="!block py-1 text-xs font-medium hover:underline"
             >
-              YouTubeで見る ↗
-            </a>
+              YouTubeで見る
+            </ExternalLinkComponent>
           </div>
         ))}
       </div>

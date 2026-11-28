@@ -1,3 +1,11 @@
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { conditionText, record } from "../utils/currentConditions";
 import { formatPublishedDate } from "../utils/operationDates";
 
@@ -52,78 +60,80 @@ export function ConditionTable({
     // isolate で独立したスタッキングコンテキストにして、観測地点列の sticky が
     // ページ全体をスクロールするタブバーなど、外側の sticky 要素と
     // z-index・描画順で干渉しないようにする（高速スクロール時に一瞬重なる不具合の対策）。
-    <div className="@container/conditions isolate overflow-x-auto rounded-lg border border-slate-200">
-      <table aria-label="コンディション" className="w-full text-sm">
-        <thead>
-          <tr className="bg-slate-100 text-left text-xs text-slate-700 md:@min-[28rem]/conditions:text-sm">
+    <Table
+      aria-label="コンディション"
+      containerClassName="@container/conditions isolate rounded-lg"
+      className="text-left"
+    >
+      <TableHeader className="bg-muted/60">
+        <TableRow>
+          {showLocation && (
+            <TableHead
+              scope="col"
+              className="sticky left-0 z-10 whitespace-nowrap bg-muted/60 px-2 py-1.5 font-medium shadow-[1px_0_0_0_var(--color-border)] will-change-transform md:@min-[28rem]/conditions:py-2"
+            >
+              地点
+            </TableHead>
+          )}
+          {columns.map(field => (
+            <TableHead
+              key={field.key}
+              scope="col"
+              className="whitespace-nowrap px-2 py-1.5 font-medium md:@min-[28rem]/conditions:py-2"
+            >
+              {field.label}
+            </TableHead>
+          ))}
+        </TableRow>
+      </TableHeader>
+      {points.map(point => (
+        <TableBody
+          key={point.name}
+          className="even:bg-muted/20 border-b border-border last:border-b-0"
+        >
+          <TableRow>
             {showLocation && (
-              <th
-                scope="col"
-                className="sticky left-0 z-10 whitespace-nowrap bg-slate-100 px-2 py-1 font-medium md:@min-[28rem]/conditions:py-1.5 shadow-[1px_0_0_0_#e2e8f0] will-change-transform"
+              <TableHead
+                scope="row"
+                className="sticky left-0 z-10 min-w-20 bg-card px-2 py-1.5 text-left font-medium shadow-[1px_0_0_0_var(--color-border)] will-change-transform md:@min-[28rem]/conditions:py-2"
               >
-                地点
-              </th>
+                <span className="block">{point.name}</span>
+              </TableHead>
             )}
-            {columns.map(field => (
-              <th
-                key={field.key}
-                scope="col"
-                className="whitespace-nowrap px-2 py-1 font-medium md:@min-[28rem]/conditions:py-1.5"
+            {columns.map(field => {
+              const text = observationText(point.values[field.key]);
+              // 数値の観測値（積雪・気温・風速など）だけ数値フォントにする。
+              // 天候・雪質のようなテキスト値は本文フォントのままにする。
+              const isNumeric =
+                text !== null && /^[+-]?\d+(?:\.\d+)?$/u.test(text);
+              const value =
+                text === null ? "—" : isNumeric ? `${text}${field.unit}` : text;
+              return (
+                <TableCell
+                  key={field.key}
+                  className={`min-w-12 px-2 py-1.5 tabular-nums text-foreground md:@min-[28rem]/conditions:min-w-16 md:@min-[28rem]/conditions:py-2 ${isNumeric ? "font-mono" : ""}`}
+                >
+                  {value}
+                </TableCell>
+              );
+            })}
+          </TableRow>
+          {point.updatedAt && (
+            <TableRow>
+              <TableCell
+                colSpan={columns.length + (showLocation ? 1 : 0)}
+                className="px-2 pb-1.5 md:@min-[28rem]/conditions:pb-2"
               >
-                {field.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        {points.map((point, index) => (
-          <tbody
-            key={point.name}
-            className={`border-t border-slate-200 ${index % 2 === 0 ? "bg-white" : "bg-slate-50"}`}
-          >
-            <tr className="bg-inherit">
-              {showLocation && (
-                <th
-                  scope="row"
-                  className="sticky left-0 z-10 min-w-20 bg-inherit px-2 py-1.5 text-left font-medium md:@min-[28rem]/conditions:py-2 shadow-[1px_0_0_0_#e2e8f0] will-change-transform"
-                >
-                  <span className="block">{point.name}</span>
-                </th>
-              )}
-              {columns.map(field => {
-                const text = observationText(point.values[field.key]);
-                const value =
-                  text === null
-                    ? "—"
-                    : /^[+-]?\d+(?:\.\d+)?$/u.test(text)
-                      ? `${text}${field.unit}`
-                      : text;
-                return (
-                  <td
-                    key={field.key}
-                    className="min-w-12 px-2 py-1.5 tabular-nums text-slate-800 md:@min-[28rem]/conditions:min-w-16 md:@min-[28rem]/conditions:py-2"
-                  >
-                    {value}
-                  </td>
-                );
-              })}
-            </tr>
-            {point.updatedAt && (
-              <tr>
-                <td
-                  colSpan={columns.length + (showLocation ? 1 : 0)}
-                  className="px-2 pb-1.5 md:@min-[28rem]/conditions:pb-2"
-                >
-                  {/* 日時は全列にまたがる行に置き、地点名の列幅で折り返さない。 */}
-                  <span className="sticky left-2 inline-block whitespace-nowrap rounded-md border border-blue-100 bg-blue-50 px-1.5 py-0.5 text-xs leading-4 tabular-nums text-blue-800 md:@min-[28rem]/conditions:px-2 md:@min-[28rem]/conditions:text-xs md:@min-[28rem]/conditions:leading-5">
-                    <span className="sr-only">{point.name}の更新日時: </span>
-                    {point.updatedAt}
-                  </span>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        ))}
-      </table>
-    </div>
+                {/* 日時は全列にまたがる行に置き、地点名の列幅で折り返さない。 */}
+                <span className="sticky left-2 inline-block whitespace-nowrap rounded-md border border-blue-100 bg-blue-50 px-1.5 py-0.5 text-xs leading-4 tabular-nums text-blue-800 md:@min-[28rem]/conditions:px-2 md:@min-[28rem]/conditions:text-xs md:@min-[28rem]/conditions:leading-5">
+                  <span className="sr-only">{point.name}の更新日時: </span>
+                  {point.updatedAt}
+                </span>
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      ))}
+    </Table>
   );
 }

@@ -3,7 +3,6 @@
 import { Dialog as SheetPrimitive } from "@base-ui/react/dialog";
 import { XIcon } from "lucide-react";
 import type * as React from "react";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 function Sheet({ ...props }: SheetPrimitive.Root.Props) {
@@ -59,18 +58,13 @@ function SheetContent({
       >
         {children}
         {showCloseButton && (
+          // 見た目は shared/components/DialogCloseButton と揃える（循環するためここで複製する）
           <SheetPrimitive.Close
             data-slot="sheet-close"
-            render={
-              <Button
-                variant="ghost"
-                className="absolute top-3 right-3"
-                size="icon-sm"
-              />
-            }
+            aria-label="閉じる"
+            className="absolute top-2 right-2 flex size-8 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-600"
           >
-            <XIcon />
-            <span className="sr-only">Close</span>
+            <XIcon size={16} aria-hidden="true" />
           </SheetPrimitive.Close>
         )}
       </SheetPrimitive.Popup>
@@ -102,7 +96,10 @@ function SheetTitle({ className, ...props }: SheetPrimitive.Title.Props) {
   return (
     <SheetPrimitive.Title
       data-slot="sheet-title"
-      className={cn("text-base font-medium text-foreground", className)}
+      className={cn(
+        "font-heading text-base font-semibold text-foreground",
+        className,
+      )}
       {...props}
     />
   );

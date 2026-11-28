@@ -1,4 +1,3 @@
-import { ExternalLink } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
@@ -218,10 +217,9 @@ export const PurchaseSummary = ({
             <ExternalLinkComponent
               key={url}
               href={url}
-              className="inline-flex items-center gap-0.5 font-semibold text-blue-700 underline underline-offset-2"
+              className="inline-flex items-center gap-0.5 font-semibold underline underline-offset-2"
             >
               WEBで購入
-              <ExternalLink className="size-3.5" aria-hidden="true" />
             </ExternalLinkComponent>
           ))}
           {salesStarts.map(warning => (

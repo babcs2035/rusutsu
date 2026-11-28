@@ -6,6 +6,14 @@ import {
   NativeSelect,
   NativeSelectOption,
 } from "@/components/ui/native-select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useScreenState } from "@/features/map/session/useScreenState";
 import type { SelectedMapFeature } from "@/features/map/types";
 import type { FinalizedResortMapData } from "@/lib/finalizedResortGeojsonShared";
@@ -211,6 +219,8 @@ export const LiftsTab = ({
     firstDir?: "asc" | "desc";
     wrap?: boolean;
     detail?: (properties: LiftProperties) => string | null;
+    /** 距離などの数値トークン。数値フォントで出す */
+    measure?: boolean;
   }> = [
     {
       title: "定員",
@@ -221,12 +231,14 @@ export const LiftsTab = ({
       title: "距離",
       value: p => optionalMeters(p.distance),
       sortValue: p => p.distance,
+      measure: true,
     },
     {
       title: "標高差",
       value: p => optionalMeters(p.vertical),
       sortValue: p => p.vertical,
       detail: p => formatElevationRange(p.elevationRange),
+      measure: true,
     },
     {
       title: "速度",
@@ -362,115 +374,112 @@ export const LiftsTab = ({
           </span>
           <span className="inline-flex items-center leading-none">— 不明</span>
         </div>
-        <div
-          className="isolate overflow-x-auto rounded-lg border"
-          role="region"
-          aria-label="リフト一覧・横スクロール"
-          // biome-ignore lint/a11y/noNoninteractiveTabindex: Keyboard users need to scroll the wide table.
-          tabIndex={0}
+        <Table
+          containerClassName="isolate rounded-lg border-border"
+          containerProps={{
+            role: "region",
+            "aria-label": "リフト一覧・横スクロール",
+            tabIndex: 0,
+          }}
+          className="w-max min-w-full"
         >
-          <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
-            <thead className="bg-slate-50 text-xs text-slate-600">
-              <tr>
-                {headers.map((label, index) => (
-                  <th
-                    key={label}
-                    scope="col"
-                    aria-sort={ariaSort(sort, label)}
-                    className={`${index === 0 ? "border-b border-slate-200 px-1 py-2" : tableCellPadding} sticky top-0 z-10 bg-slate-50 text-left whitespace-nowrap ${index === 0 ? "left-0 z-30 w-12 min-w-12 max-w-12" : index === 1 ? "left-12 z-30 min-w-24 max-w-32 border-r" : ""}`}
+          <TableHeader>
+            <TableRow>
+              {headers.map((label, index) => (
+                <TableHead
+                  key={label}
+                  scope="col"
+                  aria-sort={ariaSort(sort, label)}
+                  className={`${index === 0 ? "px-1 py-2" : tableCellPadding} sticky top-0 z-10 bg-muted/70 text-left whitespace-nowrap ${index === 0 ? "left-0 z-30 w-12 min-w-12 max-w-12" : index === 1 ? "left-12 z-30 min-w-24 max-w-32" : ""}`}
+                >
+                  {!isSortable(label) ? (
+                    label
+                  ) : (
+                    <SortableHeader
+                      label={label}
+                      sortKey={label}
+                      sort={sort}
+                      onSort={handleSort}
+                    />
+                  )}
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sortedRows.map(row => {
+              const p = row.properties;
+              return (
+                <TableRow
+                  key={row.id}
+                  className={`border-t ${selectedFinalizedFeature?.id === row.id ? "outline outline-2 -outline-offset-2 outline-blue-600" : ""}`}
+                >
+                  <TableCell className="sticky left-0 z-20 w-12 min-w-12 max-w-12 bg-card px-0.5 py-2 text-center">
+                    <span className="flex items-center justify-center">
+                      <StatusMark symbol={normalizeIconSymbol(p.status)} lift />
+                    </span>
+                  </TableCell>
+                  <TableHead
+                    scope="row"
+                    className={`${tableCellPadding} sticky left-12 z-20 min-w-24 max-w-32 bg-card text-left font-semibold break-words text-foreground`}
                   >
-                    {!isSortable(label) ? (
-                      label
+                    {row.mapped ? (
+                      <button
+                        type="button"
+                        className="min-h-8 text-left underline-offset-2 hover:underline"
+                        onClick={() =>
+                          onSelectedFinalizedFeatureChange({
+                            kind: "lift",
+                            id: row.id,
+                          })
+                        }
+                      >
+                        {row.name}
+                      </button>
                     ) : (
-                      <SortableHeader
-                        label={label}
-                        sortKey={label}
-                        sort={sort}
-                        onSort={handleSort}
-                      />
+                      row.name
                     )}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {sortedRows.map(row => {
-                const p = row.properties;
-                return (
-                  <tr
-                    key={row.id}
-                    className={`border-t ${selectedFinalizedFeature?.id === row.id ? "outline outline-2 -outline-offset-2 outline-blue-600" : ""}`}
+                  </TableHead>
+                  <TableCell
+                    className={`${tableCellPadding} whitespace-nowrap`}
                   >
-                    <td className="sticky left-0 z-20 w-12 min-w-12 max-w-12 border-b border-slate-200 bg-white px-0.5 py-2 text-center">
-                      <span className="flex items-center justify-center">
-                        <StatusMark
-                          symbol={normalizeIconSymbol(p.status)}
-                          lift
-                        />
-                      </span>
-                    </td>
-                    <th
-                      scope="row"
-                      className={`${tableCellPadding} sticky left-12 z-20 min-w-24 max-w-32 border-r bg-white text-left font-semibold break-words text-black`}
-                    >
-                      {row.mapped ? (
-                        <button
-                          type="button"
-                          className="min-h-8 text-left underline-offset-2 hover:underline"
-                          onClick={() =>
-                            onSelectedFinalizedFeatureChange({
-                              kind: "lift",
-                              id: row.id,
-                            })
-                          }
-                        >
-                          {row.name}
-                        </button>
-                      ) : (
-                        row.name
-                      )}
-                    </th>
-                    <td className={`${tableCellPadding} whitespace-nowrap`}>
-                      {p.type?.trim()}
-                    </td>
-                    {visibleColumns.map(column => {
-                      const value = column.value(p);
-                      const detail = column.detail?.(p);
-                      return (
-                        <td
-                          key={column.title}
-                          className={`${tableCellPadding} max-w-64 tabular-nums ${column.wrap ? "min-w-40 whitespace-pre-line break-words" : "whitespace-nowrap"}`}
-                        >
-                          {typeof value === "string" &&
-                          SYMBOL_ONLY.test(value) ? (
-                            <SymbolMark
-                              symbol={normalizeIconSymbol(value)}
-                              label={column.title}
-                            />
-                          ) : hasValue(value) ? (
-                            value
-                          ) : (
-                            ""
-                          )}
-                          {detail && (
-                            <div className="text-xs text-slate-500">
-                              {detail}
-                            </div>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {!displayed.length && (
-            <p className="p-4 text-center text-sm text-slate-700">
-              リフトデータがありません
-            </p>
-          )}
-        </div>
+                    {p.type?.trim()}
+                  </TableCell>
+                  {visibleColumns.map(column => {
+                    const value = column.value(p);
+                    const detail = column.detail?.(p);
+                    return (
+                      <TableCell
+                        key={column.title}
+                        className={`${tableCellPadding} max-w-64 tabular-nums ${column.measure ? "font-mono " : ""}${column.wrap ? "min-w-40 whitespace-pre-line break-words" : "whitespace-nowrap"}`}
+                      >
+                        {typeof value === "string" &&
+                        SYMBOL_ONLY.test(value) ? (
+                          <SymbolMark
+                            symbol={normalizeIconSymbol(value)}
+                            label={column.title}
+                          />
+                        ) : hasValue(value) ? (
+                          value
+                        ) : (
+                          ""
+                        )}
+                        {detail && (
+                          <div className="text-xs text-slate-500">{detail}</div>
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+        {!displayed.length && (
+          <p className="p-4 text-center text-sm text-slate-700">
+            リフトデータがありません
+          </p>
+        )}
       </section>
     </div>
   );

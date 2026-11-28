@@ -24,13 +24,14 @@ export const OPEN_COURSE_STATUSES = {
   closed: false,
   unknown: false,
 };
+// デフォルトは航空写真＋カラー（ユーザー指定）。
 export const DEFAULT_MAP_DISPLAY_SETTINGS: MapDisplaySettings = {
   showCourses: true,
   showLifts: true,
   showCourseNames: true,
   showLiftNames: true,
   showUngroomed: true,
-  monochrome: true,
+  monochrome: false,
   courseStatuses: ALL_COURSE_STATUSES,
 };
 export const COURSE_STATUS_OPTIONS = [

@@ -46,7 +46,7 @@ export default async function CrawlMonitorRunPage({
         <span className="mx-1">/</span>
         <span>{formatJst(detail.run.observedAt)}</span>
       </nav>
-      <h1 className="mb-6 font-[var(--font-heading)] text-2xl font-bold text-gray-900 md:text-3xl">
+      <h1 className="mb-6 font-heading text-2xl font-bold text-gray-900 md:text-3xl">
         {resortName} の取得結果
       </h1>
       <RunDetailView

@@ -659,7 +659,7 @@ const SlopeMapCardShell = ({
     <div className="@container shrink-0 px-3 py-2">
       <div className="flex min-w-0 items-center gap-2">
         {/* 名前は省略しない。どのスキー場の地図かが分からなくなるため */}
-        <p className="min-w-0 text-sm leading-tight font-bold break-words text-gray-900 font-[var(--font-heading)]">
+        <p className="min-w-0 text-sm leading-tight font-bold break-words text-gray-900 font-heading">
           {resort.nameJa}
         </p>
         {onSelectResort && (

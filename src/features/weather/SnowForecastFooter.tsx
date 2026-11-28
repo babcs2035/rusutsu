@@ -1,6 +1,5 @@
 "use client";
 
-import { ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
@@ -54,10 +53,9 @@ export const SnowForecastFooter = ({
 
       <ExternalLinkComponent
         href={detailUrl}
-        className="h-8 flex-shrink-0 gap-1 rounded-md border border-border bg-background px-2 text-xs font-bold text-primary hover:bg-accent"
+        className="h-8 flex-shrink-0 gap-1 rounded-md border border-border bg-background px-2 text-xs font-semibold hover:bg-accent"
       >
         Snow Forecastで詳細
-        <ExternalLink size={12} />
       </ExternalLinkComponent>
     </div>
   </div>

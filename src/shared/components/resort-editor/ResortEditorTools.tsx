@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { useEditingRole } from "@/app/admin/EditorAccess";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RESORT_LINK_LABELS } from "@/features/lift/constants";
 import type { ResortLink } from "@/features/lift/types";
 import { isValidLinkUrl } from "@/features/links/model";
+import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import { ElevationRefreshButton } from "./ElevationRefreshButton";
 import type { ResortEditorLinks } from "./useResortEditorLinks";
 
@@ -119,37 +120,27 @@ export function ResortEditorTools({
                     }
                   />
                   <div className="flex flex-wrap gap-2">
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      nativeButton={false}
-                      render={
-                        <a
-                          href={`https://www.google.com/search?q=${encodeURIComponent(`${resortName} ゲレンデマップ`)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        />
-                      }
+                    <ExternalLinkComponent
+                      href={`https://www.google.com/search?q=${encodeURIComponent(`${resortName} ゲレンデマップ`)}`}
+                      className={buttonVariants({
+                        size: "xs",
+                        variant: "outline",
+                      })}
                     >
                       ゲレンデマップを検索
-                    </Button>
+                    </ExternalLinkComponent>
                     {isValidLinkUrl(key, link.url) ? (
-                      <Button
-                        size="xs"
-                        variant="outline"
-                        nativeButton={false}
-                        render={
-                          <a
-                            href={link.url.trim()}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          />
-                        }
+                      <ExternalLinkComponent
+                        href={link.url.trim()}
+                        className={buttonVariants({
+                          size: "xs",
+                          variant: "outline",
+                        })}
                       >
                         {key === "mapUrls"
                           ? "マップを表示"
                           : "掲載ページを表示"}
-                      </Button>
+                      </ExternalLinkComponent>
                     ) : (
                       <Button size="xs" variant="outline" disabled>
                         {key === "mapUrls"
@@ -183,21 +174,20 @@ export function ResortEditorTools({
       {sourceUrls.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-2">
           {sourceUrls.map((url, index) => (
-            <Button
+            <ExternalLinkComponent
               key={url}
-              size="xs"
-              variant="outline"
-              nativeButton={false}
+              href={url}
               title={url}
-              render={
-                <a href={url} target="_blank" rel="noopener noreferrer" />
-              }
+              className={buttonVariants({
+                size: "xs",
+                variant: "outline",
+              })}
             >
               {kind === "slope"
                 ? "コースの最新情報を表示"
                 : "リフトの最新情報を表示"}
               {sourceUrls.length > 1 ? `（${index + 1}）` : ""}
-            </Button>
+            </ExternalLinkComponent>
           ))}
         </div>
       )}

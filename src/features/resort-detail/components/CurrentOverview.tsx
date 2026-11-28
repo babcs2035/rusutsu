@@ -1,4 +1,3 @@
-import { ExternalLink } from "lucide-react";
 import {
   createResortOperationStatus,
   type ResortOperationStatus,
@@ -179,13 +178,7 @@ export function CurrentOverview({
               key={link.url}
               href={link.url}
               title={link.url}
-              className="min-h-6 font-medium text-blue-700 underline underline-offset-2 md:min-h-8"
-              icon={
-                <ExternalLink
-                  aria-hidden="true"
-                  className="size-3 md:size-3.5"
-                />
-              }
+              className="min-h-6 font-medium underline underline-offset-2 md:min-h-8"
             >
               お知らせ一覧{newsLinks.length > 1 ? ` ${index + 1}` : ""}
             </ExternalLinkComponent>

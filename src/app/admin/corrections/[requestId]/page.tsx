@@ -10,6 +10,7 @@ import {
 import { getCorrection } from "@/server/corrections/repository";
 import { getDataDocument } from "@/server/data-documents/client";
 import { requireAdminPage } from "@/server/edit-requests/authPages";
+import { ExternalLinkComponent } from "@/shared/components/ExternalLink";
 import { featureIdentity } from "@/shared/course-lift/identity";
 
 type Props = { params: Promise<{ requestId: string }> };
@@ -131,14 +132,12 @@ export default async function CorrectionDetailPage({ params }: Props) {
           <ul className="mt-1 space-y-1 text-sm">
             {evidenceUrls.map(url => (
               <li key={url}>
-                <a
-                  className="break-all text-blue-700 underline"
+                <ExternalLinkComponent
+                  className="break-all underline"
                   href={url}
-                  target="_blank"
-                  rel="noreferrer noopener"
                 >
                   {url}
-                </a>
+                </ExternalLinkComponent>
               </li>
             ))}
           </ul>
