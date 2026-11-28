@@ -65,6 +65,13 @@ export function getNotifications(): ReturnType<
   return query({ operation: "notifications" });
 }
 
+/** 指定した公開プロフィールと投稿を取得する． */
+export function getPublicProfile(
+  ...[userId]: Parameters<typeof Queries.getPublicProfile>
+): ReturnType<typeof Queries.getPublicProfile> {
+  return query({ operation: "profile", userId });
+}
+
 /** 指定した公開プロフィールの滑走日レポートを取得する． */
 export function getDayReports(
   ...[authorId, observedOn]: Parameters<typeof Queries.getDayReports>

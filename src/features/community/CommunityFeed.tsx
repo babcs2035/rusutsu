@@ -35,6 +35,7 @@ import {
   todayInJapan,
 } from "./mapOverlay";
 import { PostReactions } from "./PostReactions";
+import { useProfileModal } from "./profileModalContext";
 import { ReportSections } from "./ReportSections";
 
 const PERIODS: Record<CommunityPeriod, string> = {
@@ -138,6 +139,7 @@ export function CommunityFeed({
   initialFeed?: Awaited<ReturnType<typeof getCommunityFeed>>;
 }) {
   const router = useRouter();
+  const openProfile = useProfileModal();
   const [posts, setPosts] = useState<PublicPost[]>(
     initialFeed?.ok ? initialFeed.data.posts : [],
   );
@@ -375,6 +377,7 @@ export function CommunityFeed({
               post={post}
               showResort={Boolean(resortIds?.length)}
               selected={highlightOnMap && post.id === selectedPostId}
+              onAuthorClick={openProfile}
               onSelect={
                 highlightOnMap
                   ? () =>
@@ -406,6 +409,7 @@ export function PostCard({
   showResort = true,
   selected = false,
   onSelect,
+  onAuthorClick,
 }: {
   post: PublicPost;
   /** スキー場の中の一覧ではスキー場名を出さない */
@@ -413,6 +417,8 @@ export function PostCard({
   selected?: boolean;
   /** 押すと地図に対象を出す。リンクや写真を押したときは呼ばない */
   onSelect?: () => void;
+  /** 著者名を押したときの処理。渡すとページ遷移せずこの関数を呼ぶ */
+  onAuthorClick?: (authorId: string) => void;
 }) {
   return (
     // biome-ignore lint/a11y/useKeyWithClickEvents: キーボードでは下の「地図に表示」ボタンで同じ操作ができる
@@ -442,12 +448,22 @@ export function PostCard({
         </div>
       )}
       <div className="flex items-baseline justify-between gap-2">
-        <Link
-          className="min-w-0 truncate text-sm font-bold text-gray-900 hover:underline md:text-base"
-          href={`/profile/${encodeURIComponent(post.author.id)}`}
-        >
-          {post.author.publicName}
-        </Link>
+        {onAuthorClick ? (
+          <button
+            type="button"
+            className="min-w-0 truncate text-sm font-bold text-gray-900 hover:underline md:text-base"
+            onClick={() => onAuthorClick(post.author.id)}
+          >
+            {post.author.publicName}
+          </button>
+        ) : (
+          <Link
+            className="min-w-0 truncate text-sm font-bold text-gray-900 hover:underline md:text-base"
+            href={`/profile/${encodeURIComponent(post.author.id)}`}
+          >
+            {post.author.publicName}
+          </Link>
+        )}
         <time className="shrink-0 text-xs text-gray-500 tabular-nums">
           <span className="mr-1 text-gray-400">滑走日時</span>
           {post.observedOn} {post.observedTime}

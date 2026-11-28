@@ -40,6 +40,7 @@ import {
 } from "./mapPostStore";
 import { PostReactions } from "./PostReactions";
 import { PostReportButton } from "./PostReportButton";
+import { useProfileModal } from "./profileModalContext";
 import { ReportSections } from "./ReportSections";
 import { ShareDayButton } from "./ShareDayButton";
 
@@ -107,6 +108,7 @@ export function DayReportsView({
   onClose?: () => void;
 }) {
   const router = useRouter();
+  const openProfile = useProfileModal();
   const close =
     onClose ??
     (() => {
@@ -248,12 +250,13 @@ export function DayReportsView({
               {/* 狭い幅で切れるのは末尾なので、日付と件数を先に書く */}
               {formatObservedOn(data.observedOn)} {data.posts.length}件
               <span className="mx-1 text-gray-300">|</span>
-              <Link
-                href={`/profile/${encodeURIComponent(author.id)}`}
+              <button
+                type="button"
+                onClick={() => openProfile(author.id)}
                 className="font-semibold text-gray-700 hover:underline"
               >
                 {author.publicName}
-              </Link>
+              </button>
               さんの現地レポート
             </p>
           </div>

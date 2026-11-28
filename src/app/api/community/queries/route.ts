@@ -19,6 +19,10 @@ const schema = z.discriminatedUnion("operation", [
     cursor: idSchema.optional(),
   }),
   z.strictObject({ operation: z.literal("detail"), postId: idSchema }),
+  z.strictObject({
+    operation: z.literal("profile"),
+    userId: idSchema,
+  }),
   z.strictObject({ operation: z.literal("notifications") }),
   z.strictObject({
     operation: z.literal("dayReports"),
@@ -55,6 +59,8 @@ export async function POST(request: Request): Promise<Response> {
           return queries.getMyPosts(command.cursor);
         case "detail":
           return queries.getPostDetail(command.postId);
+        case "profile":
+          return queries.getPublicProfile(command.userId);
         case "notifications":
           return queries.getNotifications();
         case "dayReports":

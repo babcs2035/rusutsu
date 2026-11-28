@@ -11,6 +11,7 @@ import type { PublicPost } from "@/features/community/contract";
 import { dayReportsPath } from "@/features/community/dayShare";
 import { PostReactions } from "@/features/community/PostReactions";
 import { PostReportButton } from "@/features/community/PostReportButton";
+import { useProfileModal } from "@/features/community/profileModalContext";
 import { ReportSections } from "@/features/community/ReportSections";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { DetailButton } from "@/shared/components/DetailButton";
@@ -24,6 +25,7 @@ export function PostDetailView({
   canEdit: boolean;
 }) {
   const router = useRouter();
+  const openProfile = useProfileModal();
   const [error, setError] = useState("");
   const [confirming, setConfirming] = useState(false);
   const remove = async (target: PublicPost) => {
@@ -48,9 +50,13 @@ export function PostDetailView({
           </time>
         </div>
         <p className="text-sm">
-          <Link className="underline" href={`/profile/${post.author.id}`}>
+          <button
+            type="button"
+            className="underline"
+            onClick={() => openProfile(post.author.id)}
+          >
             {post.author.publicName}
-          </Link>
+          </button>
         </p>
         <ReportSections entries={post.entries} bare />
         <PostReactions post={post} />
