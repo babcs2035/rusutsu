@@ -55,11 +55,12 @@ export function PanelResizeHandle({
       )}
     >
       {/* 常時表示のグリップ（縦3点）で「ここをドラッグすると幅が変わる」ことを示す。
+          地図の上でも分かるよう、ピルは不透明な gray-400 で縁取り、点は gray-50（純白避免）。
           hover/active で強調する。 */}
-      <div className="flex flex-col items-center justify-center gap-[3px] rounded-full bg-gray-300/80 px-[3px] py-2.5 shadow-sm transition-colors group-hover:bg-blue-500 group-active:bg-blue-600">
-        <span className="block h-[3px] w-[3px] rounded-full bg-white" />
-        <span className="block h-[3px] w-[3px] rounded-full bg-white" />
-        <span className="block h-[3px] w-[3px] rounded-full bg-white" />
+      <div className="flex flex-col items-center justify-center gap-1 rounded-full border border-gray-500/60 bg-gray-400 px-1 py-3 shadow-md transition-colors group-hover:bg-blue-500 group-hover:border-blue-500 group-active:bg-blue-600 group-active:border-blue-600">
+        <span className="block h-1 w-1 rounded-full bg-gray-50" />
+        <span className="block h-1 w-1 rounded-full bg-gray-50" />
+        <span className="block h-1 w-1 rounded-full bg-gray-50" />
       </div>
     </div>
   );
