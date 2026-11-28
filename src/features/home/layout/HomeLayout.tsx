@@ -760,30 +760,37 @@ export const HomeLayout = ({
             )}
         </div>
 
-        <DesktopSearchPanel
-          showAccount={!selectedResortId && !isCompareOpen}
-          filters={filters}
-          resorts={initialResorts}
-          filteredResorts={sortedResorts}
-          sortControls={sortControls}
-          selectedCompareIdSet={selectedCompareIdSet}
-          liftTicketResults={liftTicketResults}
-          priceLabel={priceLabel}
-          floatingActions={
-            <FloatingActions
-              className="absolute inset-x-0 bottom-0 z-10"
-              left={compareTray}
-            />
-          }
-          onFilterChange={onFilterChange}
-          onKeyboardInputBlur={onFilterKeyboardInputBlur}
-          onKeyboardInputFocus={onFilterKeyboardInputFocus}
-          onCompareFavorites={onCompareFavorites}
-          onSearch={onSearch}
-          onSelectResort={onSelectResort}
-          onToggleCompare={onToggleCompare}
-          onHoverResortChange={onSetHoveredResortId}
-        />
+        {/*
+          スキー場選択中は右側を詳細パネルが占有するため、リスト（検索パネル）は
+          非表示にして「複数の右メニューが同時に存在する」状態を防ぐ。
+          詳細を閉じるとリストが元に戻る（状態は保持される）。
+        */}
+        {!selectedResortId && (
+          <DesktopSearchPanel
+            showAccount={!isCompareOpen}
+            filters={filters}
+            resorts={initialResorts}
+            filteredResorts={sortedResorts}
+            sortControls={sortControls}
+            selectedCompareIdSet={selectedCompareIdSet}
+            liftTicketResults={liftTicketResults}
+            priceLabel={priceLabel}
+            floatingActions={
+              <FloatingActions
+                className="absolute inset-x-0 bottom-0 z-10"
+                left={compareTray}
+              />
+            }
+            onFilterChange={onFilterChange}
+            onKeyboardInputBlur={onFilterKeyboardInputBlur}
+            onKeyboardInputFocus={onFilterKeyboardInputFocus}
+            onCompareFavorites={onCompareFavorites}
+            onSearch={onSearch}
+            onSelectResort={onSelectResort}
+            onToggleCompare={onToggleCompare}
+            onHoverResortChange={onSetHoveredResortId}
+          />
+        )}
 
         <AnimatedPanel
           visible={Boolean(
