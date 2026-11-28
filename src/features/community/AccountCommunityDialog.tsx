@@ -89,8 +89,8 @@ export function AccountCommunityDialog({
         showCloseButton={false}
         overlayClassName="z-[999]"
         className={cn(
-          "z-[1000] flex h-dvh max-h-dvh max-w-full flex-col gap-0 overflow-hidden rounded-none border-0 bg-white p-0 text-sm font-sans sm:max-w-full md:h-[min(48rem,calc(100dvh-2rem))] md:max-w-2xl md:rounded-lg md:border md:border-gray-200",
-          day && "md:h-[calc(100dvh-2rem)] md:max-w-[calc(100%-2rem)]",
+          "z-[1000] flex h-[min(48rem,calc(100dvh-2rem))] max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] flex-col gap-0 overflow-hidden rounded-lg border border-gray-200 bg-white p-0 text-sm font-sans sm:max-w-2xl",
+          day && "h-[calc(100dvh-2rem)]",
         )}
       >
         <DialogTitle className="sr-only">
