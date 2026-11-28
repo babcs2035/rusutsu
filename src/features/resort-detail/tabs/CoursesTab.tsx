@@ -416,7 +416,7 @@ export const CoursesTab = ({
       />
       <section className="@container/course-list">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-sm font-bold">コース一覧</h2>
+          <h2 className="text-sm font-semibold font-heading">コース一覧</h2>
           <NativeSelect
             aria-label="コースを絞り込み"
             value={filter}

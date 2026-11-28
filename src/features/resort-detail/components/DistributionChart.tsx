@@ -122,7 +122,9 @@ export function DistributionChart({
   if (ownMax <= 0)
     return (
       <section className="space-y-1">
-        <h2 className="text-sm font-bold text-slate-900">{title}</h2>
+        <h2 className="text-sm font-semibold text-slate-900 font-heading">
+          {title}
+        </h2>
         <p className="text-sm text-slate-700">{emptyText}</p>
       </section>
     );

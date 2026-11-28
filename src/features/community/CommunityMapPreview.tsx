@@ -135,7 +135,7 @@ export function CommunityMapPreview({
             ‹
           </Button>
         )}
-        <h2 className="min-w-0 flex-1 truncate text-base leading-snug font-bold text-gray-900 font-heading md:text-lg">
+        <h2 className="min-w-0 flex-1 truncate text-base leading-snug font-semibold text-gray-900 font-heading md:text-lg">
           {showingList ? "この場所の投稿" : "現地レポート"}
         </h2>
         {!showingList && effectiveSelected && (

@@ -139,7 +139,9 @@ export function CompareDataTab({
           />
         ) : (
           <section className="space-y-1">
-            <h2 className="text-sm font-bold text-slate-900">{item.name}</h2>
+            <h2 className="text-sm font-semibold text-slate-900 font-heading">
+              {item.name}
+            </h2>
             <p className="text-sm text-slate-700">リフトデータなし</p>
           </section>
         ),
@@ -166,7 +168,7 @@ export function CompareDataTab({
         <section key={section.title} className="space-y-2">
           {/* 見出しの帯。項目名と、効く項目には「営業中のみ」を同じ行に置く */}
           <div className="flex min-h-9 flex-wrap items-center gap-x-3 gap-y-1 rounded-md border-l-4 border-l-blue-500 bg-blue-50 px-2.5 py-1">
-            <h2 className="text-base font-bold text-blue-900">
+            <h2 className="text-base font-semibold text-blue-900 font-heading">
               {section.title}
             </h2>
             {section.course && courseStatusControl}

@@ -450,7 +450,7 @@ export function ResortListEditButton({
                   className="absolute inset-0 flex flex-col gap-3 rounded-lg bg-popover p-4 animate-in fade-in-0 slide-in-from-bottom-4 duration-150"
                 >
                   <div className="flex shrink-0 items-center gap-2">
-                    <h2 className="text-base leading-snug font-bold text-gray-900 md:text-lg">
+                    <h2 className="text-base leading-snug font-semibold text-gray-900 md:text-lg">
                       検索条件
                     </h2>
                     <Button

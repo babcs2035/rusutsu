@@ -342,7 +342,7 @@ export const LiftsTab = ({
       <LiftStatusChart rows={chartRows} unavailable={!hasSource} />
       <section className="@container/lift-list">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-sm font-bold">リフト一覧</h2>
+          <h2 className="text-sm font-semibold font-heading">リフト一覧</h2>
           <NativeSelect
             aria-label="リフトを絞り込み"
             value={filter}

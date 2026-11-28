@@ -615,7 +615,7 @@ function CandidateList({
     );
   return (
     <section className="rounded-xl border bg-white">
-      <h3 className="border-b px-4 py-2 text-sm font-bold">
+      <h3 className="border-b px-4 py-2 text-sm font-semibold font-heading">
         近くの充電器の候補（{candidates.length}件・近い順）
         <span className="ml-2 font-normal text-gray-500">
           スキー場の登録地点からの直線距離。同じ施設が両方のサイトに載っていることがあります

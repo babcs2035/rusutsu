@@ -261,7 +261,7 @@ export const SearchConditionBar = ({
           className="pointer-events-auto absolute inset-x-0 top-full z-10 mt-2 max-h-[calc(100dvh-env(safe-area-inset-top,0px)-8rem)] gap-0 bg-popover py-0 text-popover-foreground shadow-lg"
         >
           <div className="flex min-h-12 shrink-0 items-center gap-1.5 border-b border-border px-2.5 py-1.5 md:px-3">
-            <h2 className="shrink-0 whitespace-nowrap text-base font-bold text-gray-900 font-heading">
+            <h2 className="shrink-0 whitespace-nowrap text-base font-semibold text-gray-900 font-heading">
               {TITLES[openKind]}
             </h2>
             <Badge

@@ -286,7 +286,9 @@ export const CollectionSection = ({
             {/* 狭い幅では絞り込み欄を次の行へ回し、見出しが縦に割れないようにする */}
             <div className="flex-1 min-w-60 md:min-w-[260px]">
               <div className="flex items-baseline gap-2 flex-wrap">
-                <h2 className="text-base font-bold font-heading">{title}</h2>
+                <h2 className="text-base font-semibold font-heading">
+                  {title}
+                </h2>
                 <span className="text-gray-500 text-xs font-mono">
                   {collectionKey}
                 </span>

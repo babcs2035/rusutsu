@@ -147,13 +147,13 @@ export const SelectedCourseDetail = ({
           >
             <TabsTrigger
               value="profile"
-              className="h-9 rounded-none border-0 border-b-2 border-transparent text-xs after:hidden data-active:border-blue-600 data-active:font-bold data-active:text-blue-600"
+              className="h-9 rounded-none border-0 border-b-2 border-transparent text-xs after:hidden data-active:border-blue-600 data-active:font-semibold data-active:text-blue-600"
             >
               断面図
             </TabsTrigger>
             <TabsTrigger
               value="similar"
-              className="h-9 rounded-none border-0 border-b-2 border-transparent text-xs after:hidden data-active:border-blue-600 data-active:font-bold data-active:text-blue-600"
+              className="h-9 rounded-none border-0 border-b-2 border-transparent text-xs after:hidden data-active:border-blue-600 data-active:font-semibold data-active:text-blue-600"
             >
               斜度の近いコース{count == null ? "" : `（${count}）`}
             </TabsTrigger>

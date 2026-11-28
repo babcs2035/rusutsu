@@ -38,7 +38,7 @@ export function PanelHeader({
             <ChevronLeft size={20} strokeWidth={2.5} />
           </Button>
         )}
-        <h2 className="min-w-0 truncate text-base leading-snug font-bold text-gray-900 font-heading md:text-lg">
+        <h2 className="min-w-0 truncate text-base leading-snug font-semibold text-gray-900 font-heading md:text-lg">
           {title}
         </h2>
       </div>
