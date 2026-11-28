@@ -29,6 +29,7 @@ import {
   highlightCommunityPost,
   requestCommunityComposer,
 } from "./composerEvents";
+import { useFeedModal } from "./feedModalContext";
 import {
   type CommunityPeriod,
   getPeriodStart,
@@ -140,6 +141,7 @@ export function CommunityFeed({
 }) {
   const router = useRouter();
   const openProfile = useProfileModal();
+  const openFeed = useFeedModal();
   const [posts, setPosts] = useState<PublicPost[]>(
     initialFeed?.ok ? initialFeed.data.posts : [],
   );
@@ -280,12 +282,13 @@ export function CommunityFeed({
                 コースの写真
               </Link>
             )}
-            <Link
+            <button
+              type="button"
               className="rounded-md border px-2 py-1.5 font-medium whitespace-nowrap"
-              href={`/community/${encodeURIComponent(resortId)}`}
+              onClick={() => openFeed(resortId)}
             >
               すべて見る
-            </Link>
+            </button>
             {postLink}
           </div>
         </div>

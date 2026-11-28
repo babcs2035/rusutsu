@@ -2,6 +2,7 @@ import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata, Viewport } from "next";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { DayReportsModalProvider } from "@/features/community/DayReportsModal";
+import { FeedModalProvider } from "@/features/community/FeedModal";
 import { PostDetailModalProvider } from "@/features/community/PostDetailModal";
 import { ProfileModalProvider } from "@/features/community/ProfileModal";
 import { MAPLIBRE_WORKER_URL } from "@/features/map/maplibre/mapWorkerUrl";
@@ -95,7 +96,9 @@ export default function RootLayout({
         <TooltipProvider>
           <ProfileModalProvider>
             <DayReportsModalProvider>
-              <PostDetailModalProvider>{children}</PostDetailModalProvider>
+              <PostDetailModalProvider>
+                <FeedModalProvider>{children}</FeedModalProvider>
+              </PostDetailModalProvider>
             </DayReportsModalProvider>
           </ProfileModalProvider>
         </TooltipProvider>
