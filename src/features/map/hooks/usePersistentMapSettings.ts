@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { MapTileVariant } from "../types";
+import type { CourseColorMode, MapTileVariant } from "../types";
 import {
   DEFAULT_MAP_DISPLAY_SETTINGS,
   type MapDisplaySettings,
@@ -12,9 +12,20 @@ import {
 
 const SETTINGS_KEY = "rusutsu.mapDisplaySettings.v1";
 const TILE_VARIANT_KEY = "rusutsu.mapTileVariant.v1";
+const COURSE_COLOR_MODE_KEY = "rusutsu.courseColorMode.v1";
 
 // デフォルトは航空写真（選択時・比較時・ホームで揃える）
 export const DEFAULT_TILE_VARIANT: MapTileVariant = "photo";
+// コースの色分けは斜度（詳細・比較で使う既定）
+const DEFAULT_COURSE_COLOR_MODE: CourseColorMode = "slope";
+
+function readStoredCourseColorMode(): CourseColorMode {
+  if (typeof window === "undefined") return DEFAULT_COURSE_COLOR_MODE;
+  const value = window.localStorage.getItem(COURSE_COLOR_MODE_KEY);
+  return value === "difficulty" || value === "slope"
+    ? value
+    : DEFAULT_COURSE_COLOR_MODE;
+}
 
 function readStoredSettings(): MapDisplaySettings {
   if (typeof window === "undefined") return DEFAULT_MAP_DISPLAY_SETTINGS;
@@ -60,9 +71,13 @@ export function usePersistentMapSettings() {
   const [mapTileVariant, setMapTileVariant] = useState<MapTileVariant>(
     readStoredTileVariant,
   );
+  const [courseColorMode, setCourseColorMode] = useState<CourseColorMode>(
+    readStoredCourseColorMode,
+  );
   // 初回マウント時の書き込みをスキップするフラグ（変更ごとに独立させる）
   const firstSettingsRun = useRef(true);
   const firstTileRun = useRef(true);
+  const firstColorModeRun = useRef(true);
 
   useEffect(() => {
     if (firstSettingsRun.current) {
@@ -80,10 +95,20 @@ export function usePersistentMapSettings() {
     writeSetting(TILE_VARIANT_KEY, mapTileVariant);
   }, [mapTileVariant]);
 
+  useEffect(() => {
+    if (firstColorModeRun.current) {
+      firstColorModeRun.current = false;
+      return;
+    }
+    writeSetting(COURSE_COLOR_MODE_KEY, courseColorMode);
+  }, [courseColorMode]);
+
   return {
     mapDisplaySettings,
     setMapDisplaySettings,
     mapTileVariant,
     setMapTileVariant,
+    courseColorMode,
+    setCourseColorMode,
   };
 }

@@ -17,10 +17,7 @@ import {
   MapCourseStatusOptions,
 } from "@/features/map/components/MapCourseStatusControl";
 import { usePersistentMapSettings } from "@/features/map/hooks/usePersistentMapSettings";
-import type {
-  CourseColorMode,
-  JapanResortMapProps,
-} from "@/features/map/types";
+import type { JapanResortMapProps } from "@/features/map/types";
 import { hasCourseOperatingData } from "@/features/map/utils/mapDisplaySettings";
 import { useBreakpointValue } from "@/hooks/use-breakpoint-value";
 import { cn } from "@/lib/utils";
@@ -116,15 +113,14 @@ export const SkiResortCompareView = ({
 
   const [isConditionsOpen, setConditionsOpen] = useState(false);
 
-  // ゲレンデの表示設定。比較中のスキー場すべてに同じものを効かせる
-  const [courseColorMode, setCourseColorMode] =
-    useState<CourseColorMode>("slope");
-  // 表示設定・タイル種別はブラウザに保存する（画面遷移でリセットされない）
+  // 表示設定・タイル種別・コースの色分けはブラウザに保存する（画面遷移でリセットされない）
   const {
     mapDisplaySettings,
     setMapDisplaySettings,
     mapTileVariant,
     setMapTileVariant,
+    courseColorMode,
+    setCourseColorMode,
   } = usePersistentMapSettings();
   const [showOpenOnly, setShowOpenOnly] = useState(false);
   // PC で選んだコース・リフト。詳細は右端に 1 枚だけ出すので比較全体で 1 つ

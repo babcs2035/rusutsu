@@ -19,6 +19,7 @@ import {
   createConnectedCourseElevationProfile,
   createLiftElevationProfile,
 } from "@/features/resort-detail/utils/detailMetrics";
+import { usePersistentMapSettings } from "./hooks/usePersistentMapSettings";
 import {
   DEFAULT_MAP_DISPLAY_SETTINGS,
   hasCourseOperatingData,
@@ -379,10 +380,11 @@ function MapLibreResortMapContent({
   // 読み込んでから写真の読み込みが始まり、切り替わるまで白い地図が見えてしまう。
   const [uncontrolledTileVariant, setUncontrolledTileVariant] =
     useState<MapTileVariant>(isDetailMap ? "photo" : "pale");
-  const [uncontrolledCourseColorMode, setUncontrolledCourseColorMode] =
-    useState<CourseColorMode>(
-      savedMap?.courseColorMode ?? (isDetailMap ? "slope" : "difficulty"),
-    );
+  // コースの色分けは localStorage に保存し、画面遷移・詳細/ホームの切替でリセットされない
+  const {
+    courseColorMode: persistedCourseColorMode,
+    setCourseColorMode: setPersistedCourseColorMode,
+  } = usePersistentMapSettings();
   const [uncontrolledShowOpenOnly, setUncontrolledShowOpenOnly] = useState(
     savedMap?.showOpenOnly ?? false,
   );
@@ -400,14 +402,13 @@ function MapLibreResortMapContent({
     },
     [onMapTileVariantChange],
   );
-  const courseColorMode =
-    controlledCourseColorMode ?? uncontrolledCourseColorMode;
+  const courseColorMode = controlledCourseColorMode ?? persistedCourseColorMode;
   const setCourseColorMode = useCallback(
     (mode: CourseColorMode) => {
-      setUncontrolledCourseColorMode(mode);
+      setPersistedCourseColorMode(mode);
       onCourseColorModeChange?.(mode);
     },
-    [onCourseColorModeChange],
+    [onCourseColorModeChange, setPersistedCourseColorMode],
   );
   const [localMapDisplaySettings, setLocalMapDisplaySettings] =
     useState<MapDisplaySettings>(() => ({
@@ -455,7 +456,8 @@ function MapLibreResortMapContent({
   );
   const initialZoom = isMobile ? MOBILE_INITIAL_ZOOM : DESKTOP_INITIAL_ZOOM;
 
-  // 詳細画面に入るときは写真＋斜度、選択画面に戻るときは地図を既定にする。
+  // 詳細画面に入るときは写真・単色、選択画面に戻るときは地図・カラーに戻す。
+  // コースの色分けはユーザーの選択なので localStorage に保存され、ここで戻さない。
   // ref の初期値を interactionMode 自体ではなく null にしておくことで、
   // 詳細画面としてマウントされるインスタンス（モバイルのプレビュー地図など）
   // でもマウント直後に既定値を適用できるようにする。
@@ -486,7 +488,6 @@ function MapLibreResortMapContent({
         }));
       }
       setMapTileVariant("photo");
-      setCourseColorMode("slope");
       return;
     }
     if (previousInteractionMode === "detail") {
@@ -498,7 +499,6 @@ function MapLibreResortMapContent({
         }));
       }
       setMapTileVariant("pale");
-      setCourseColorMode("difficulty");
     }
   }, [
     controlledMapDisplaySettings,
@@ -506,7 +506,6 @@ function MapLibreResortMapContent({
     savedMap,
     interactionMode,
     selectedResortId,
-    setCourseColorMode,
     setMapTileVariant,
   ]);
 
