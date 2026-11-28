@@ -608,9 +608,9 @@ const SkiResortListItem = memo(
             }
             handleSelect();
           }}
-          className="w-full cursor-pointer text-left transition-all duration-200 ease-in-out border-b border-gray-100 md:border md:rounded-xl md:border-gray-200 md:bg-white md:px-4 md:py-1 md:shadow-sm hover:md:border-blue-600 hover:md:shadow-md hover:md:-translate-y-0.5 focus-visible:outline-none focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10"
+          className="w-full cursor-pointer text-left transition-all duration-200 ease-in-out border-b border-gray-100 md:border md:rounded-xl md:border-gray-200 md:bg-white md:px-4 md:py-2.5 md:shadow-sm hover:md:border-blue-600 hover:md:shadow-md hover:md:-translate-y-0.5 focus-visible:outline-none focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10"
         >
-          <div className="flex min-w-0 flex-col py-0.5 md:py-0">
+          <div className="flex min-w-0 flex-col gap-y-0.5 py-1 md:py-1">
             <p className="min-w-0 break-words font-bold text-base leading-tight text-gray-900 font-heading">
               {resort.nameJa}
               <CopyResortNameButton
@@ -652,7 +652,7 @@ const SkiResortListItem = memo(
             </div>
             <div
               className={cn(
-                "mt-2 grid min-w-0 gap-x-1 rounded-lg bg-muted px-2 py-2",
+                "mt-1 grid min-w-0 gap-x-1 rounded-lg bg-muted px-2 py-2",
                 // 距離（12km/41km）は件数より長い。3等分の並びは保ったまま、
                 // 「期間外」などで短く済む料金の幅をコースへ回す
                 showCourseDistance
