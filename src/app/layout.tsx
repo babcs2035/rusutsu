@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { DayReportsModalProvider } from "@/features/community/DayReportsModal";
 import { FeedModalProvider } from "@/features/community/FeedModal";
+import { PhotosModalProvider } from "@/features/community/PhotosModal";
 import { PostDetailModalProvider } from "@/features/community/PostDetailModal";
 import { ProfileModalProvider } from "@/features/community/ProfileModal";
 import { MAPLIBRE_WORKER_URL } from "@/features/map/maplibre/mapWorkerUrl";
@@ -97,7 +98,9 @@ export default function RootLayout({
           <ProfileModalProvider>
             <DayReportsModalProvider>
               <PostDetailModalProvider>
-                <FeedModalProvider>{children}</FeedModalProvider>
+                <FeedModalProvider>
+                  <PhotosModalProvider>{children}</PhotosModalProvider>
+                </FeedModalProvider>
               </PostDetailModalProvider>
             </DayReportsModalProvider>
           </ProfileModalProvider>

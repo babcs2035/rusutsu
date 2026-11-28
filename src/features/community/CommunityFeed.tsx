@@ -36,6 +36,7 @@ import {
   todayInJapan,
 } from "./mapOverlay";
 import { PostReactions } from "./PostReactions";
+import { usePhotosModal } from "./photosModalContext";
 import { useProfileModal } from "./profileModalContext";
 import { ReportSections } from "./ReportSections";
 
@@ -142,6 +143,7 @@ export function CommunityFeed({
   const router = useRouter();
   const openProfile = useProfileModal();
   const openFeed = useFeedModal();
+  const openPhotos = usePhotosModal();
   const [posts, setPosts] = useState<PublicPost[]>(
     initialFeed?.ok ? initialFeed.data.posts : [],
   );
@@ -275,12 +277,13 @@ export function CommunityFeed({
           {!hideHeading && <h3 className="font-semibold">みんなの投稿</h3>}
           <div className="flex items-center gap-2 text-xs">
             {courseId && (
-              <Link
+              <button
+                type="button"
                 className="rounded-md border px-2 py-1.5 font-medium whitespace-nowrap"
-                href={`/community/${encodeURIComponent(resortId)}/photos?courseId=${encodeURIComponent(courseId)}`}
+                onClick={() => openPhotos({ resortId, courseId })}
               >
                 コースの写真
-              </Link>
+              </button>
             )}
             <button
               type="button"
