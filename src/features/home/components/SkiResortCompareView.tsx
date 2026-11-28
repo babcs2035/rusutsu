@@ -459,7 +459,7 @@ export const SkiResortCompareView = ({
   }
 
   // モバイルの比較表示は presentation="inline"（MobileResultsSheet）で描画されるため、
-  // この sheet 表示はデスクトップだけ。背景の地図は壊さず、その上に画面全体で重ねる
+  // この sheet 表示はデスクトップだけ。背景の地図はぼかして見せ、中央のカードで出す（全画面にしない）
   return (
     isSidePanel && (
       <Portal>
@@ -471,12 +471,14 @@ export const SkiResortCompareView = ({
           aria-hidden={hidden}
           inert={hidden}
         >
+          {/* 背景は暗くせず軽くブラー（モーダルの統一仕様） */}
+          <div className="absolute inset-0 bg-white/20 backdrop-blur-xs" />
           <AnimatedPanel
             data-ski-resort-compare-panel="true"
             visible={isSidePanel}
             animation="fade"
-            rootClassName="h-full"
-            contentClassName="flex h-full w-full flex-col overflow-hidden bg-white"
+            rootClassName="absolute inset-4"
+            contentClassName="flex h-full w-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
           >
             {comparePanelContent}
           </AnimatedPanel>
