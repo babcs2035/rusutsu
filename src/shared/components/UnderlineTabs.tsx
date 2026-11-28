@@ -14,6 +14,14 @@ type Props<TTab extends string> = {
   compact?: boolean;
   /** 少数のタブをパネル幅に収めるため，左右の余白を詰める． */
   fit?: boolean;
+  /**
+   * タブ行を最も近いスクロール容器の上部に固定する．
+   * sticky は TabsList ではなく Tabs ルート（スクロール容器の直接の子）に
+   * 付与する必要がある：sticky 要素は親要素の枠内しか動けず，TabsList の親
+   * （Tabs ルート）はタブ行と同じ高さしかないため，TabsList 側に付与すると
+   * 固定されずスクロールで流れ去ってしまう．
+   */
+  sticky?: boolean;
 };
 
 /**
@@ -27,6 +35,7 @@ export const UnderlineTabs = <TTab extends string>({
   fill = true,
   compact = false,
   fit = false,
+  sticky = false,
 }: Props<TTab>) => (
   <Tabs
     value={activeTab}
@@ -34,7 +43,11 @@ export const UnderlineTabs = <TTab extends string>({
       const nextTab = tabs.find(tab => tab === value);
       if (nextTab !== undefined) onTabChange(nextTab);
     }}
-    className="w-full min-w-0"
+    className={cn(
+      "w-full min-w-0",
+      // sticky の付与位置の理由は Props の sticky 項目のコメントを参照
+      sticky && "sticky top-0 z-20 will-change-transform",
+    )}
   >
     <TabsList
       variant="line"
