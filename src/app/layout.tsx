@@ -1,6 +1,8 @@
 import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata, Viewport } from "next";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { DayReportsModalProvider } from "@/features/community/DayReportsModal";
+import { PostDetailModalProvider } from "@/features/community/PostDetailModal";
 import { ProfileModalProvider } from "@/features/community/ProfileModal";
 import { MAPLIBRE_WORKER_URL } from "@/features/map/maplibre/mapWorkerUrl";
 import "./globals.css";
@@ -91,7 +93,11 @@ export default function RootLayout({
       </head>
       <body className={cn("font-body", "bg-[var(--bg-light)]")}>
         <TooltipProvider>
-          <ProfileModalProvider>{children}</ProfileModalProvider>
+          <ProfileModalProvider>
+            <DayReportsModalProvider>
+              <PostDetailModalProvider>{children}</PostDetailModalProvider>
+            </DayReportsModalProvider>
+          </ProfileModalProvider>
         </TooltipProvider>
         <ExternalLinksInNewTab />
         <GoogleAnalytics gaId="G-YMEM5C2F4C" />

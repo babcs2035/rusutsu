@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { type CSSProperties, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -16,6 +15,7 @@ import {
 } from "./contract";
 import { COMMUNITY_KIND_COLORS } from "./mapOverlay";
 import { PostReactions } from "./PostReactions";
+import { usePostDetailModal } from "./postDetailModalContext";
 import { ReportSections } from "./ReportSections";
 
 type PreviewDetail = { post: PublicPost };
@@ -34,7 +34,7 @@ export function CommunityMapPreview({
   className?: string;
   style?: CSSProperties;
 }) {
-  const router = useRouter();
+  const openPostDetail = usePostDetailModal();
   const [selected, setSelected] = useState<PublicMapEntry | null>(null);
   const [detail, setDetail] = useState<PreviewDetail | null>(null);
   const [loading, setLoading] = useState(false);
@@ -142,11 +142,7 @@ export function CommunityMapPreview({
           <DetailButton
             compact
             aria-label="投稿の詳細を開く"
-            onClick={() =>
-              router.push(
-                `/community/post/${encodeURIComponent(effectiveSelected.postId)}`,
-              )
-            }
+            onClick={() => openPostDetail(effectiveSelected.postId)}
           />
         )}
         <PanelCloseButton label="閉じる" onClose={onClose} />

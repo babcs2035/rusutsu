@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { deletePost } from "@/features/community/actions";
 import { communityComposerUrl } from "@/features/community/composerEvents";
 import type { PublicPost } from "@/features/community/contract";
-import { dayReportsPath } from "@/features/community/dayShare";
+import { useDayReportsModal } from "@/features/community/dayReportsModalContext";
 import { PostReactions } from "@/features/community/PostReactions";
 import { PostReportButton } from "@/features/community/PostReportButton";
 import { useProfileModal } from "@/features/community/profileModalContext";
@@ -20,28 +20,47 @@ import { DetailButton } from "@/shared/components/DetailButton";
 export function PostDetailView({
   post,
   canEdit,
+  onBack,
+  onDeleted,
 }: {
   post: PublicPost;
   canEdit: boolean;
+  /** 「← レポート一覧」の遷移先。未指定ならコミュニティ一覧へ router 遷移 */
+  onBack?: () => void;
+  /** 削除成功後の遷移先。未指定ならコミュニティ一覧へ router 遷移 */
+  onDeleted?: () => void;
 }) {
   const router = useRouter();
   const openProfile = useProfileModal();
+  const openDayReports = useDayReportsModal();
   const [error, setError] = useState("");
   const [confirming, setConfirming] = useState(false);
   const remove = async (target: PublicPost) => {
     const result = await deletePost(target.id, target.version);
-    if (result.ok)
-      router.replace(`/community/${encodeURIComponent(target.resortId)}`);
-    else setError(result.error);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    const afterDelete =
+      onDeleted ??
+      (() =>
+        router.replace(`/community/${encodeURIComponent(target.resortId)}`));
+    afterDelete();
   };
   return (
     <main className="mx-auto max-w-2xl space-y-4 p-4 pb-10">
-      <Link
-        href={`/community/${encodeURIComponent(post.resortId)}`}
-        className="text-sm underline"
-      >
-        ← レポート一覧
-      </Link>
+      {onBack ? (
+        <button type="button" className="text-sm underline" onClick={onBack}>
+          ← レポート一覧
+        </button>
+      ) : (
+        <Link
+          href={`/community/${encodeURIComponent(post.resortId)}`}
+          className="text-sm underline"
+        >
+          ← レポート一覧
+        </Link>
+      )}
       <article className="space-y-3 rounded-xl border bg-white p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h1 className="font-bold">{post.resortName}の現地レポート</h1>
@@ -66,9 +85,11 @@ export function PostDetailView({
             compact
             aria-label="この日のレポートを地図で見る"
             onClick={() =>
-              router.push(
-                dayReportsPath(post.author.id, post.observedOn, post.id),
-              )
+              openDayReports({
+                authorId: post.author.id,
+                observedOn: post.observedOn,
+                postId: post.id,
+              })
             }
           >
             地図で見る
