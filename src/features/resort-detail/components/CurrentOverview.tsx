@@ -177,7 +177,7 @@ export function CurrentOverview({
             <ExternalLinkComponent
               key={link.url}
               href={link.url}
-              title={link.url}
+              tooltip={link.url}
               className="min-h-6 font-medium underline underline-offset-2 md:min-h-8"
             >
               お知らせ一覧{newsLinks.length > 1 ? ` ${index + 1}` : ""}

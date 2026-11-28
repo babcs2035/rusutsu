@@ -43,7 +43,7 @@ const LineSource = ({
   line.purchaseUrl && (line.purchaseQuote || line.purchaseUrl !== tierUrl) ? (
     <LinkChip
       href={withSourceQuote(line.purchaseUrl, line.purchaseQuote ?? undefined)}
-      title={line.purchaseUrl}
+      tooltip={line.purchaseUrl}
       aria-label="出典（購入ページ）"
       compact
       className="ml-1.5 align-middle"
@@ -572,7 +572,7 @@ export const TicketPlanCard = ({ tiers }: { tiers: TicketPlanTier[] }) => {
                     <LinkChip
                       href={tier.link.url}
                       tone={tier.link.kind}
-                      title={tier.link.url}
+                      tooltip={tier.link.url}
                       className="shrink-0"
                     >
                       {tier.link.kind === "purchase" ? "購入" : "出典"}

@@ -78,7 +78,7 @@ function SearchWordRow({ searchWord }: { searchWord: string }) {
       <div className="flex gap-2">
         <ExternalLinkComponent
           href={`https://www.google.com/search?q=${encodeURIComponent(searchWord)}`}
-          title={`「${searchWord}」で検索`}
+          tooltip={`「${searchWord}」で検索`}
           className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-md border border-input bg-white px-2 text-sm font-medium hover:bg-gray-50"
         >
           <Search className="size-4" />

@@ -38,7 +38,7 @@ export const RentalSummary = ({
           pick.purchaseUrl,
           pick.purchaseQuote ?? undefined,
         )}
-        title={pick.purchaseUrl}
+        tooltip={pick.purchaseUrl}
         aria-label="出典（購入ページ）"
         compact
         className="ml-1.5 align-middle"
@@ -61,7 +61,12 @@ export const RentalSummary = ({
         <p className="flex min-w-0 items-center gap-2 text-sm font-bold text-gray-900">
           レンタル
           {link && (
-            <LinkChip href={link.url} tone={link.kind} title={link.url} compact>
+            <LinkChip
+              href={link.url}
+              tone={link.kind}
+              tooltip={link.url}
+              compact
+            >
               {link.kind === "purchase" ? "購入" : "出典"}
             </LinkChip>
           )}

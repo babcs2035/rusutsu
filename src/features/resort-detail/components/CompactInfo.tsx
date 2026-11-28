@@ -60,7 +60,7 @@ export function SourceLine({
               <ExternalLinkComponent
                 key={url}
                 href={withTextFragment(url, highlights)}
-                title={
+                tooltip={
                   highlights.length
                     ? `公式サイトの「${highlights.join("」「")}」の箇所を開く`
                     : url

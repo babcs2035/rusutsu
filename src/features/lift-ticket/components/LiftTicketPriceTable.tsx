@@ -287,12 +287,12 @@ export const TableLinks = ({
   priceUrl || purchaseUrl ? (
     <span className="inline-flex flex-wrap gap-1">
       {priceUrl && (
-        <LinkChip href={priceUrl} title={priceUrl}>
+        <LinkChip href={priceUrl} tooltip={priceUrl}>
           出典
         </LinkChip>
       )}
       {purchaseUrl && (
-        <LinkChip href={purchaseUrl} title={purchaseUrl} tone="purchase">
+        <LinkChip href={purchaseUrl} tooltip={purchaseUrl} tone="purchase">
           購入
         </LinkChip>
       )}

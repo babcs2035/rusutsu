@@ -177,7 +177,7 @@ export function ResortEditorTools({
             <ExternalLinkComponent
               key={url}
               href={url}
-              title={url}
+              tooltip={url}
               className={buttonVariants({
                 size: "xs",
                 variant: "outline",

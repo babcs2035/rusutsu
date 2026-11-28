@@ -284,7 +284,7 @@ export const FilterToggle = ({
       <ExternalLinkComponent
         href={link.href}
         aria-label={`${link.name}のサイトを開く`}
-        title={`${link.name}のサイトを開く`}
+        tooltip={`${link.name}のサイトを開く`}
         className="h-7 w-6 shrink-0 justify-center rounded-r-md border border-l-0 border-gray-300 bg-white transition-colors hover:bg-gray-50"
       ></ExternalLinkComponent>
     </div>

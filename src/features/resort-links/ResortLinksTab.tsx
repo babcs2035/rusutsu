@@ -62,13 +62,13 @@ const linkKey = (link: ResortLinkItem) =>
 function LinkChip({
   link,
   text,
-  title,
+  tooltip,
   className,
   icon,
 }: {
   link: ResortLinkItem;
   text: string;
-  title?: string;
+  tooltip?: ReactNode;
   className?: string;
   icon?: ReactNode;
 }) {
@@ -77,7 +77,7 @@ function LinkChip({
   return (
     <ExternalLinkComponent
       {...appLink}
-      title={title}
+      tooltip={tooltip}
       className={cn(
         chipClassName,
         className,
@@ -166,7 +166,7 @@ function TypeButtons({ type }: { type: LinkTypeView }) {
           key={linkKey(link)}
           link={link}
           text={mergedLinkName([type.type, ...link.mergedTypes])}
-          title={link.note ?? undefined}
+          tooltip={link.note ?? undefined}
           icon={<TypeIcon type={type.type} />}
         />
       );
@@ -185,7 +185,7 @@ function TypeButtons({ type }: { type: LinkTypeView }) {
         key={linkKey(link)}
         link={link}
         text={`${type.label}${suffix}`}
-        title={detail || undefined}
+        tooltip={detail || undefined}
         icon={<TypeIcon type={type.type} />}
       />
     );
@@ -201,7 +201,7 @@ function SiteButtons({ type }: { type: LinkTypeView }) {
         key={linkKey(link)}
         link={link}
         text={`${SOURCE_NAMES.get(link.source) ?? link.source}${link.label ? `（${link.label}）` : ""}`}
-        title={`${type.label}: ${SOURCE_NAMES.get(link.source) ?? link.source}`}
+        tooltip={`${type.label}: ${SOURCE_NAMES.get(link.source) ?? link.source}`}
       />
     ));
 }

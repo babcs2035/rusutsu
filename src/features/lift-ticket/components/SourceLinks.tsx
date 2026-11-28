@@ -41,7 +41,7 @@ export const SourceLinks = ({
         <LinkChip
           key={reference.number}
           href={withSourceQuote(reference.url, quotes?.[reference.number])}
-          title={reference.url}
+          tooltip={reference.url}
           aria-label={reference.title ? `出典: ${reference.title}` : "出典"}
           compact={compact}
         >
@@ -70,7 +70,8 @@ export const LinkChip = ({
   /** 小さい文字の行に添えるとき。周りの文字より大きく見せない */
   compact?: boolean;
   className?: string;
-  title?: string;
+  /** 表示先などの補足。shadcn Tooltip で出す（ネイティブ title は使わない） */
+  tooltip?: ReactNode;
   "aria-label"?: string;
 }) => (
   <ExternalLinkComponent
