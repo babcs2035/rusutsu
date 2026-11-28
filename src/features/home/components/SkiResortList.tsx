@@ -17,18 +17,19 @@ import type {
   OperatingCount,
   ResortOperatingCounts,
 } from "@/features/home/utils/operatingCounts";
-import { LiftTicketConditionsButton } from "@/features/lift-ticket/components/LiftTicketConditionsButton";
 import { LiftTicketConditionsDialog } from "@/features/lift-ticket/components/LiftTicketConditionsDialog";
 import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
 import { priceText } from "@/features/lift-ticket/utils/priceText";
-import type { ResortPriceSummary } from "@/features/lift-ticket/utils/resortPriceCalculation";
 import { distanceKm } from "@/features/map/utils/distance";
 import { cn } from "@/lib/utils";
 import { CompareResortButton } from "@/shared/components/CompareResortButton";
 import { CopyResortNameButton } from "@/shared/components/CopyResortNameButton";
-import { calculateLiftTicketAndRentalForList } from "@/shared/queries/resorts";
 import type { MapSkiResort } from "@/types/skiResorts";
 import { useGoogleMapsLinks } from "../hooks/useGoogleMapsLinks";
+import {
+  type ListLiftTicketResults,
+  useListLiftTicketResults,
+} from "../hooks/useListLiftTicketResults";
 import type { ResortSortControls } from "../hooks/useResortSort";
 import { groupResortsByRegion } from "../utils/groupResortsByRegion";
 import { sortResorts } from "../utils/sortResorts";
@@ -40,95 +41,6 @@ const HOVER_HIGHLIGHT_MEDIA_QUERY = "(min-width: 48em)";
 const canUseHoverHighlight = () =>
   typeof window !== "undefined" &&
   window.matchMedia(HOVER_HIGHLIGHT_MEDIA_QUERY).matches;
-
-type ListLiftTicketResults =
-  | { status: "idle" }
-  | { status: "loading" }
-  | { status: "error" }
-  | {
-      status: "done";
-      results: Record<string, ResortPriceSummary>;
-    };
-
-/**
- * 日付が入ったときだけ、一覧にある料金データ付きスキー場の料金をサーバーで
- * 計算して受け取る。料金データ本体はブラウザへ送らない。
- */
-const useListLiftTicketResults = (
-  resorts: MapSkiResort[],
-  input: LiftTicketSearchInput,
-  paused: boolean,
-): ListLiftTicketResults => {
-  const requestKey = useMemo(() => {
-    const ids = [
-      ...new Set(
-        resorts.flatMap(resort =>
-          resort.liftTicketResortId ? [resort.liftTicketResortId] : [],
-        ),
-      ),
-    ].sort();
-    return input.visitDate && ids.length > 0
-      ? JSON.stringify({ ids, input })
-      : null;
-  }, [resorts, input]);
-  const [state, setState] = useState<{
-    key: string;
-    value: ListLiftTicketResults;
-  } | null>(null);
-  const stateRef = useRef(state);
-  stateRef.current = state;
-
-  useEffect(() => {
-    if (requestKey === null || paused) return;
-    const { ids, input: requestInput } = JSON.parse(requestKey) as {
-      ids: string[];
-      input: LiftTicketSearchInput;
-    };
-    let pending: AbortController | undefined;
-    const load = (): void => {
-      const previous = stateRef.current;
-      // 表示を再開したときは取得済みの料金を再利用し，通信失敗だけ再試行する．
-      if (previous?.key === requestKey && previous.value.status === "done")
-        return;
-      pending?.abort();
-      const request = new AbortController();
-      pending = request;
-      void calculateLiftTicketAndRentalForList(
-        ids,
-        requestInput,
-        request.signal,
-      )
-        .then(results => {
-          if (request.signal.aborted) return;
-          const next = {
-            key: requestKey,
-            value: { status: "done", results },
-          } as const;
-          stateRef.current = next;
-          setState(next);
-        })
-        .catch(() => {
-          if (!request.signal.aborted)
-            setState({ key: requestKey, value: { status: "error" } });
-        })
-        .finally(() => {
-          if (pending === request) pending = undefined;
-        });
-    };
-    window.addEventListener("online", load);
-    load();
-    return () => {
-      window.removeEventListener("online", load);
-      pending?.abort();
-    };
-  }, [requestKey, paused]);
-
-  if (!input.visitDate) return { status: "idle" };
-  // 日程は入っているが料金データのあるスキー場が一覧に無いときは、
-  // 「日程を設定」ではなく各行を「不明」にする
-  if (requestKey === null) return { status: "done", results: {} };
-  return state?.key === requestKey ? state.value : { status: "loading" };
-};
 
 type Props = {
   resorts: MapSkiResort[];
@@ -145,8 +57,12 @@ type Props = {
   featureLines?: ResortFeatureLines;
   /** 一覧が見えていない間（詳細を開いている・幅が足りず隠れている）は料金を計算しない */
   liftTicketPaused?: boolean;
-  /** 件数を並び替えの右に出すか。比較チップの行があるときはそちらに出す */
+  /** 件数を並び替えの右に出すか */
   showResultCount?: boolean;
+  /** 親が計算した料金。渡すと一覧では計算しない（地図・予算と同じ結果を使う） */
+  liftTicketResults?: ListLiftTicketResults;
+  /** 料金欄の名前。条件が初期のままなら「大人1日料金」、変えたら「合計料金」 */
+  priceLabel?: string;
 };
 
 /**
@@ -376,6 +292,8 @@ export const SkiResortList = ({
   featureLines,
   liftTicketPaused = false,
   showResultCount = true,
+  liftTicketResults: providedLiftTicketResults,
+  priceLabel = "料金",
 }: Props) => {
   const listRef = useRef<HTMLUListElement>(null);
   const [isConditionsOpen, setConditionsOpen] = useState(false);
@@ -391,11 +309,12 @@ export const SkiResortList = ({
   const googleMapsLinks = useGoogleMapsLinks(
     sortControls.distanceFrom !== null,
   );
-  const liftTicketResults = useListLiftTicketResults(
+  const ownLiftTicketResults = useListLiftTicketResults(
     inputResorts,
     liftTicketInput,
-    liftTicketPaused,
+    liftTicketPaused || providedLiftTicketResults !== undefined,
   );
+  const liftTicketResults = providedLiftTicketResults ?? ownLiftTicketResults;
   // 料金が安い順は、一覧で計算した合計金額で並べる。金額が出ない（不明・
   // 一部不明・期間外）スキー場は末尾にまとめる
   const resorts = useMemo(() => {
@@ -473,6 +392,7 @@ export const SkiResortList = ({
       onToggleCompare={handleToggleCompare}
       onHoverResortChange={onHoverResortChange}
       liftTicketResults={liftTicketResults}
+      priceLabel={priceLabel}
       operatingCounts={operatingCounts}
       showYukiMagi={featureLines?.yukiMagi ?? false}
       showEvCharger={featureLines?.evCharger ?? false}
@@ -503,13 +423,12 @@ export const SkiResortList = ({
       )}
 
       <div className="@container/sort-row flex min-w-0 shrink-0 items-center gap-1.5 border-b border-gray-100 px-3 pb-2 md:px-4">
-        <LiftTicketConditionsButton
-          input={liftTicketInput}
-          onClick={() => setConditionsOpen(true)}
-          className="min-w-[7.5rem] flex-1"
-        />
         <ResortSortButton {...sortControls} />
-        {showResultCount && <ResultCount count={resorts.length} />}
+        {showResultCount && (
+          <span className="ml-auto">
+            <ResultCount count={resorts.length} />
+          </span>
+        )}
       </div>
       {(sortControls.locating || sortControls.locationError) && (
         <p
@@ -570,7 +489,7 @@ export const SkiResortList = ({
           data-ski-resort-list-scroll="true"
           data-session-scroll="results-list"
           className={cn(
-            "@container/resort-list flex-grow list-none overflow-y-auto pt-0 pb-[env(safe-area-inset-bottom,0px)] md:gap-3 md:py-4",
+            "@container/resort-list flex-grow list-none overflow-y-auto pt-0 pb-[calc(env(safe-area-inset-bottom,0px)+4.5rem)] md:gap-3 md:pt-4 md:pb-[4.5rem]",
             sortOrder === "prefecture"
               ? "scroll-pt-[4.25rem] px-3 md:pt-0"
               : "px-4",
@@ -606,6 +525,7 @@ const SkiResortListItem = memo(
     onToggleCompare,
     onHoverResortChange,
     liftTicketResults,
+    priceLabel,
     operatingCounts,
     showYukiMagi,
     showEvCharger,
@@ -619,6 +539,7 @@ const SkiResortListItem = memo(
     onToggleCompare: (id: string, selected: boolean) => void;
     onHoverResortChange?: (id: string | null) => void;
     liftTicketResults: ListLiftTicketResults;
+    priceLabel: string;
     operatingCounts: Record<string, ResortOperatingCounts> | null;
     showYukiMagi: boolean;
     showEvCharger: boolean;
@@ -729,12 +650,15 @@ const SkiResortListItem = memo(
             </div>
             <div
               className={cn(
-                "@container mt-2 grid min-w-0 items-baseline gap-1 overflow-hidden rounded-md bg-sky-50 px-1.5 py-1",
+                "@container mt-2 grid min-w-0 items-baseline gap-x-0.5 gap-y-1 overflow-hidden rounded-md bg-sky-50 px-1 py-1",
                 // 距離（12km/41km）は件数より長い。3等分の並びは保ったまま、
                 // 「期間外」などで短く済む料金の幅をコースへ回す
                 showCourseDistance
-                  ? "grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)_minmax(0,0.93fr)] gap-x-0.5"
-                  : "grid-cols-3",
+                  ? "grid-cols-[minmax(0,1.3fr)_minmax(0,0.75fr)_minmax(0,1.3fr)]"
+                  : // 料金欄は名前が「大人1日料金」「合計料金」と長いので、ほかの2列より広く取る
+                    // 幅は実測した必要量（コース84・リフト77・料金108px）の比。幅320pxのスマホと
+                    // 360pxのPCパネルで「不明/44」「大人1日料金 ¥9,300」が切れない
+                    "grid-cols-[minmax(0,84fr)_minmax(0,77fr)_minmax(0,108fr)]",
               )}
               data-dense={showCourseDistance || undefined}
               onPointerDown={event => event.stopPropagation()}
@@ -763,7 +687,7 @@ const SkiResortListItem = memo(
                 fallbackTotal={resort.numberOfLifts}
               />
               <ListMetric
-                label="料金"
+                label={priceLabel}
                 value={
                   liftTicketResults.status === "done"
                     ? priceText(priceSummary, { compact: true })

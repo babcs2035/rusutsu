@@ -139,6 +139,8 @@ export const getActiveFilterLabels = (
       }`,
     );
   }
+  if (hasNumericFilterValue(filters.maxPrice))
+    labels.push(`予算 ${filters.maxPrice.toLocaleString("ja-JP")}円まで`);
   const isOpenBasis = filters.scaleBasis === "open";
   if (hasNumericFilterValue(filters.minVertical))
     labels.push(

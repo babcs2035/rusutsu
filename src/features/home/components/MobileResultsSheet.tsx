@@ -4,6 +4,7 @@ import type { ComponentType, RefObject } from "react";
 import type { LiftTicketSearchInput } from "@/features/lift-ticket/types";
 import type { JapanResortMapProps } from "@/features/map/types";
 import type { MapSkiResort, SkiResortDetail } from "@/types/skiResorts";
+import type { ListLiftTicketResults } from "../hooks/useListLiftTicketResults";
 import type { ResortSortControls } from "../hooks/useResortSort";
 import { SkiResortCompareView } from "./SkiResortCompareView";
 import { type ResortFeatureLines, SkiResortList } from "./SkiResortList";
@@ -23,8 +24,8 @@ type Props = {
   selectedCompareIdSet: Set<string>;
   liftTicketInput: LiftTicketSearchInput;
   featureLines: ResortFeatureLines;
-  /** 件数を並び替えの右に出すか。比較チップの行があるときはそちらに出す */
-  showResultCount: boolean;
+  liftTicketResults: ListLiftTicketResults;
+  priceLabel: string;
   onCloseCompare: () => void;
   onLiftTicketInputChange: (input: LiftTicketSearchInput) => void;
   onHoverResortChange: (id: string | null) => void;
@@ -47,7 +48,8 @@ export const MobileResultsSheet = ({
   selectedCompareIdSet,
   liftTicketInput,
   featureLines,
-  showResultCount,
+  liftTicketResults,
+  priceLabel,
   onCloseCompare,
   onLiftTicketInputChange,
   onHoverResortChange,
@@ -90,7 +92,8 @@ export const MobileResultsSheet = ({
           showHeader={false}
           onLiftTicketInputChange={onLiftTicketInputChange}
           featureLines={featureLines}
-          showResultCount={showResultCount}
+          liftTicketResults={liftTicketResults}
+          priceLabel={priceLabel}
         />
       </div>
     )}

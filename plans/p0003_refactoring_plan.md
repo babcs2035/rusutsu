@@ -107,7 +107,7 @@ schema と repository の所有者を，認証・本人の状態，施設・共�
 | --- | --- |
 | 施設・統合・表示グループ | `resorts`，`resorts/:id`，`resorts/merges`，`resorts/unlinks`，`resort-groups` |
 | 施設のリンク・料金・レビューの保存／公開・雪マジ | `resort-links`，`lift-tickets`，`reviews`，`yukimaji` |
-| 共通パスの掲載・追加／削除・名寄せ状況 | `pass-programs`（名寄せ状況は `view` クエリ） |
+| 共通パスの掲載・追加／削除・名寄せ状況 | `PUT pass-programs`（`dryRun` で差分を確認） |
 | 地図・文書 | `maps/resorts`，`documents` |
 | 営業集計・収集前の比較値・推薦 | `operations/summaries`，`operations/baselines`，`course-recommendations` |
 | 収集実行・監視・現在値・対応履歴 | `crawl/runs`，`crawl/monitor`，`crawl/current` |

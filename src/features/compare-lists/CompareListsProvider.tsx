@@ -18,6 +18,7 @@ import { notifyIfStaleBuild } from "@/shared/utils/staleBuild";
 import {
   deleteCompareList,
   renameCompareList,
+  reorderCompareList,
   saveCompareList,
   updateCompareListResorts,
 } from "./actions";
@@ -45,6 +46,10 @@ type CompareListsContextValue = {
   removeResort: (
     id: string,
     resortId: string,
+  ) => Promise<CompareListSummary | null>;
+  reorder: (
+    id: string,
+    resortIds: string[],
   ) => Promise<CompareListSummary | null>;
 };
 
@@ -260,6 +265,30 @@ export function CompareListsProvider({
       }
     });
 
+  const reorder: CompareListsContextValue["reorder"] = (id, resortIds) =>
+    scope.enqueue(async () => {
+      if (!scope.userId || currentScope.current !== scope) return null;
+      try {
+        const result = await reorderCompareList({
+          expectedUserId: scope.userId,
+          id,
+          resortIds,
+        });
+        if (currentScope.current !== scope) return null;
+        if (!result.ok) {
+          toast.error(result.error);
+          return null;
+        }
+        accept(scope, result.lists);
+        return result.lists.find(list => list.id === id) ?? null;
+      } catch (error) {
+        if (currentScope.current !== scope || notifyIfStaleBuild(error))
+          return null;
+        toast.error("並び順を保存できませんでした。");
+        return null;
+      }
+    });
+
   const ready = status !== "loading" && state.scope === scope && state.ready;
   return (
     <CompareListsContext.Provider
@@ -274,6 +303,7 @@ export function CompareListsProvider({
         rename,
         addResorts: (id, resortIds) => updateResorts(id, resortIds, "add"),
         removeResort: (id, resortId) => updateResorts(id, [resortId], "remove"),
+        reorder,
       }}
     >
       {children}

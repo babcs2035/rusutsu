@@ -37,18 +37,29 @@ try {
     return JSON.parse(value) as OverviewMapState;
   });
   assert.equal(initial.viewport.zoom, 4);
-  // 初期位置は検索欄の高さ分だけ上方向にオフセットされるため，緯度は
-  // INITIAL_CENTER(39.28) より高くなる（コンテナ中心が保存される）．
-  assert.ok(Math.abs(initial.viewport.center.lat - 40.99) < 0.05);
-  await page
-    .getByRole("button", { name: "スキー場を検索", exact: true })
-    .click();
-  await page
-    .getByRole("textbox", { name: "スキー場を検索", exact: true })
-    .fill("ニセコ");
-  await page
-    .getByRole("button", { name: "検索条件を適用", exact: true })
-    .click();
+  // 初期中心が，検索欄と条件チップの下に見えている地図の中央へ来る．
+  const topControls = await page
+    .locator('[data-map-top-controls="true"]')
+    .boundingBox();
+  const canvas = page.locator("canvas.maplibregl-canvas").first();
+  const mapBounds = await canvas.boundingBox();
+  assert.ok(topControls && mapBounds);
+  const topOverlap = topControls.y + topControls.height - mapBounds.y;
+  assert.ok(topOverlap > 0);
+  const mercatorY = (latitude: number): number =>
+    Math.asinh(Math.tan((latitude * Math.PI) / 180));
+  const mapWorldPixels = 512 * 2 ** initial.viewport.zoom;
+  const offsetPixels =
+    ((mercatorY(initial.viewport.center.lat) - mercatorY(39.28)) *
+      mapWorldPixels) /
+    (2 * Math.PI);
+  assert.ok(Math.abs(offsetPixels - topOverlap / 2) < 2);
+  const search = page.getByRole("textbox", {
+    name: "スキー場を検索",
+    exact: true,
+  });
+  await search.fill("ニセコ");
+  await search.press("Enter");
   await page.waitForTimeout(2200);
   console.log(
     "buttons",
@@ -58,7 +69,6 @@ try {
         els.map(el => el.getAttribute("aria-label") || el.textContent),
       ),
   );
-  const canvas = page.locator("canvas.maplibregl-canvas").first();
   await canvas.focus();
   await page.keyboard.press("ArrowRight");
   await page.waitForTimeout(700);

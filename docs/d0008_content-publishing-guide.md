@@ -105,3 +105,13 @@ mise run reviews:publish -- --resort rusutsu-resort --apply
 
 `private/data` 全体は削除できない．名寄せ辞書・気象関連の辞書・過去の取得結果・初回移行用データなど，
 他にも使用中のファイルがある．今回の旧称・ふりがなの DB 化は，全ファイルの削除を可能にする変更ではない．
+
+## 共通パスの対象スキー場を更新する
+
+`API_BASE_URL` と `API_BEARER_TOKEN` を設定した端末で，共通パスの掲載内容を収集する．接続先で追加・削除・名寄せの差分を確認できる．
+
+```sh
+mise run crawl:pass-programs
+```
+
+サービスを指定して反映するには，`mise run crawl:pass-programs -- nsdKids --apply` のように実行する．掲載件数が現在の半分未満に減った場合は反映を止める．掲載元で減少を確認した場合は，`--apply` とともに `--allow-shrink` を付ける．

@@ -9,6 +9,7 @@ import { CompareResortButton } from "@/shared/components/CompareResortButton";
 import { CopyResortNameButton } from "@/shared/components/CopyResortNameButton";
 import { FormerResortNames } from "@/shared/components/FormerResortNames";
 import { RubyText } from "@/shared/components/RubyText";
+import { useDetailHeaderActions } from "../detailHeaderActions";
 import type { Resort } from "../types";
 import {
   ResortFeatureChips,
@@ -39,6 +40,7 @@ export const InfoSection = ({
   /** 都道府県・市町村の下に出す操作（「〇〇も同時に表示」） */
   children?: ReactNode;
 }) => {
+  const actions = useDetailHeaderActions();
   const compareBtnClassName = cn(
     "flex shrink-0 items-center justify-center rounded-lg gap-1 transition-colors",
     "h-7",
@@ -56,7 +58,9 @@ export const InfoSection = ({
           />
         </h2>
         <div className="flex shrink-0 items-center gap-1">
-          <FavoriteButton resortId={resort.id} name={resort.nameJa} />
+          {actions.favorite && (
+            <FavoriteButton resortId={resort.id} name={resort.nameJa} />
+          )}
           <Button
             type="button"
             variant="ghost"
@@ -84,15 +88,17 @@ export const InfoSection = ({
             data={resort.features ?? null}
           />
         </p>
-        <CompareResortButton
-          isSelected={isCompareSelected}
-          resortName={resort.nameJa}
-          className={cn(
-            compareBtnClassName,
-            "w-auto min-w-[5.75rem] px-2 text-xs",
-          )}
-          onClick={() => onToggleCompare(resort.id, !isCompareSelected)}
-        />
+        {actions.compare && !actions.floatingCompare && (
+          <CompareResortButton
+            isSelected={isCompareSelected}
+            resortName={resort.nameJa}
+            className={cn(
+              compareBtnClassName,
+              "w-auto min-w-[5.75rem] px-2 text-xs",
+            )}
+            onClick={() => onToggleCompare(resort.id, !isCompareSelected)}
+          />
+        )}
       </div>
       {children && <div className="mt-1.5">{children}</div>}
     </div>

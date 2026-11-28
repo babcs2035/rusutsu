@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "ClaudeInChromeDomain(localhost:3100)"
+      "ClaudeInChromeDomain(localhost:3100)",
+      "ClaudeInChromeDomain(woodypal.jp)",
+      "ClaudeInChromeDomain(www.dohokubus.com)",
+      "ClaudeInChromeDomain(www.jalan.net)",
+      "ClaudeInChromeDomain(ktak.dev)"
     ]
   }
 }

@@ -63,6 +63,22 @@ const chunk = <T>(items: T[], size: number): T[][] => {
  * visible は比較が画面に出ているか（詳細の裏に残している間は false）。
  * 出たときに古くなっていれば取り直す。
  */
+/**
+ * 取り終えた比較に、新しい比較のスキー場が全部そろっていれば、その順に並べ直して返す。
+ * 1件でも足りなければ null（取り直す）。
+ */
+const reuseSettled = (
+  state: { key: string; resorts: SkiResortDetail[]; settled: boolean },
+  fetched: { key: string; at: number } | null,
+  ids: string[],
+) => {
+  if (!state.settled || fetched?.key !== state.key) return null;
+  const byId = new Map(state.resorts.map(resort => [resort.id, resort]));
+  const loaded = new Set(state.key.split(","));
+  if (!ids.every(id => loaded.has(id))) return null;
+  return ids.flatMap(id => byId.get(id) ?? []);
+};
+
 export const useCompareResorts = (
   ids: string[],
   enabled: boolean,
@@ -137,6 +153,12 @@ export const useCompareResorts = (
     ];
   }, []);
 
+  // 並び替え・外しただけなら、取り終えた分を並べ直して使う（読み込み中に戻さない）
+  const reused =
+    enabled && idsKey && state.key !== idsKey
+      ? reuseSettled(state, fetchedRef.current, ids)
+      : null;
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: refreshToken は古くなった比較を取り直す合図
   useEffect(() => {
     if (!enabled || !idsKey) {
@@ -145,6 +167,10 @@ export const useCompareResorts = (
     }
     // 同じ比較を取り終えて間もないなら、手元の表示をそのまま使う
     if (isCompareDataFresh(fetchedRef.current, idsKey)) return;
+    if (reused && fetchedRef.current) {
+      fetchedRef.current = { key: idsKey, at: fetchedRef.current.at };
+      setState({ key: idsKey, resorts: reused, settled: true });
+    }
     const targetIds = idsKey.split(",");
     activeKeyRef.current = idsKey;
     const requests = new AbortController();
@@ -267,8 +293,11 @@ export const useCompareResorts = (
     };
   }, [enabled, idsKey, refreshToken]);
 
-  const resorts =
-    enabled && state.key === idsKey ? state.resorts : EMPTY_RESORTS;
+  const resorts = !enabled
+    ? EMPTY_RESORTS
+    : state.key === idsKey
+      ? state.resorts
+      : (reused ?? EMPTY_RESORTS);
   // 保存分もサーバーからの分もまだ 1 件もないとき
   const isLoading =
     enabled &&

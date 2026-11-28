@@ -184,6 +184,8 @@ export type JapanResortMapProps = {
   resorts: MapSkiResort[];
   filteredResortIdSet?: Set<string>;
   isFilterActive?: boolean;
+  /** スキー場名のラベルの後ろに添える文字（料金）。渡したスキー場だけに付く */
+  resortLabelSuffixById?: Map<string, string>;
   searchResultResortIds?: string[];
   searchViewportRequestKey?: number;
   searchViewportBottomPaddingRatio?: number;

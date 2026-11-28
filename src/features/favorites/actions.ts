@@ -5,6 +5,8 @@ import { cookies } from "next/headers";
 import { z } from "zod";
 import { auth, signIn, signOut } from "@/auth";
 import {
+  addFavoritesForUser,
+  reorderFavoritesForUser,
   syncFavoritesForUser,
   updateFavoriteForUser,
 } from "@/server/favorites/repository";
@@ -84,6 +86,36 @@ export async function syncFavorites(
   return { ...result, userId };
 }
 
+async function requireFavoriteUser(expectedUserId: string) {
+  const session = await auth();
+  if (!session?.user?.id || session.user.id !== expectedUserId)
+    throw new Error("ログイン状態が変わりました。");
+  return session.user.id;
+}
+
+/** 編集画面から、選んだスキー場をまとめてお気に入りの末尾へ足す */
+export async function addFavorites(
+  resortIds: string[],
+  expectedUserId: string,
+) {
+  const ids = [...new Set(favoriteIdsSchema.parse(resortIds))];
+  const userId = await requireFavoriteUser(expectedUserId);
+  return { ids: await addFavoritesForUser(userId, ids) };
+}
+
+/**
+ * 並び順を保存する。端末上の一覧が古くても、ほかの端末で足した・外した
+ * スキー場は消さない（渡されなかったものは今の順のまま後ろに付ける）。
+ */
+export async function reorderFavorites(
+  resortIds: string[],
+  expectedUserId: string,
+) {
+  const ids = [...new Set(favoriteIdsSchema.parse(resortIds))];
+  const userId = await requireFavoriteUser(expectedUserId);
+  return { ids: await reorderFavoritesForUser(userId, ids) };
+}
+
 export async function updateFavorite(
   id: string,
   added: boolean,
@@ -91,10 +123,7 @@ export async function updateFavorite(
 ) {
   z.string().min(1).max(200).parse(id);
   z.boolean().parse(added);
-  const session = await auth();
-  if (!session?.user?.id || session.user.id !== expectedUserId)
-    throw new Error("ログイン状態が変わりました。");
-  const userId = session.user.id;
+  const userId = await requireFavoriteUser(expectedUserId);
   await updateFavoriteForUser(userId, id, added);
   return { userId };
 }

@@ -17,6 +17,7 @@ export const DEFAULT_FILTERS: Filters = {
   minCourseDistance: null,
   scaleBasis: "total",
   liftTicket: DEFAULT_LIFT_TICKET_SEARCH_INPUT,
+  maxPrice: null,
 };
 
 export const REGION_PREFECTURES: Record<string, string[]> = {

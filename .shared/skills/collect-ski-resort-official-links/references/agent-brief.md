@@ -27,7 +27,9 @@
 
 出力: src/private/data/resort-links/{id}.json を下の形で書き、次で形式を検査して OK になるまで直す。
   node --import tsx scripts/publishResortLinks.ts --official {id} {id} --check
-チャットにはスキー場ごとの found / none / unchecked の件数と、迷った点だけ返す。
+ページは curl と Playwright で開く（Chrome拡張は使わない）。指摘の文面やメニューの名前だけで判断しない。
+チャットには、判断した項目ごとに「開いたURL → 判断 → 根拠（ページで見た見出しや一文）」を1行で返し、最後に迷った点を書く。
+親はその根拠を抜き取りで同じページと照合する。
 ```
 
 ## 収集ファイルの形

@@ -7,6 +7,7 @@ import {
   deleteCompareListForUser,
   readCompareListsForUser as readLists,
   renameCompareListForUser,
+  reorderCompareListForUser,
   updateCompareListResortsForUser,
 } from "@/server/compare-lists/repository";
 import { COMPARE_LIST_NAME_MAX } from "./types";
@@ -88,5 +89,24 @@ export async function renameCompareList(input: {
     return { ok: false as const, error: "リスト名を入力してください。" };
   if (!(await renameCompareListForUser(userId, id, parsed.data)))
     return { ok: false as const, error: "リストが見つかりません。" };
+  return { ok: true as const, id, lists: await readLists(userId) };
+}
+
+/** 並び順だけを保存する。項目の追加・解除はしない。 */
+export async function reorderCompareList(input: {
+  expectedUserId: string;
+  id: string;
+  resortIds: string[];
+}) {
+  const userId = await requireUser(input.expectedUserId);
+  const id = z.string().min(1).max(64).parse(input.id);
+  const requested = [...new Set(resortIdsSchema.parse(input.resortIds))];
+  try {
+    await reorderCompareListForUser(userId, id, requested);
+  } catch (error) {
+    if (error instanceof CompareListError)
+      return { ok: false as const, error: error.message };
+    throw error;
+  }
   return { ok: true as const, id, lists: await readLists(userId) };
 }

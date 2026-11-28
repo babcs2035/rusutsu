@@ -1,11 +1,10 @@
 "use client";
 
-import { Plus, Trash2 } from "lucide-react";
+import { ChevronDown, Minus, Plus, Trash2 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
@@ -19,7 +18,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { SegmentedControl } from "@/shared/components/SegmentedControl";
 import {
   type LiftTicketSearchInput,
   SELECTABLE_TICKET_PARTY_CATEGORIES,
@@ -106,14 +104,15 @@ const SectionHeader = ({
 }) => (
   <div className="flex items-center justify-between gap-2">
     {/* p にしない。フィルタ画面の AlertDescription が p に下余白を付ける */}
-    <span className="text-gray-900 text-sm font-semibold">{title}</span>
+    <span className="text-gray-900 text-sm font-bold">{title}</span>
+    {/* 追加は補助の操作なので、塗りの青ではなく枠だけの小さいボタンにする */}
     <Button
       type="button"
-      variant="default"
-      className="flex-shrink-0 h-8 gap-1 font-bold text-sm"
+      variant="outline"
+      className="h-7 flex-shrink-0 gap-0.5 border-blue-200 bg-white px-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 hover:text-blue-800"
       onClick={onAction}
     >
-      <Plus size={14} />
+      <Plus size={13} strokeWidth={2.5} />
       {actionLabel}
     </Button>
   </div>
@@ -144,87 +143,147 @@ const RemoveButton = ({
   </Button>
 );
 
-const RENTAL_TOGGLE_OPTIONS = [
-  { value: "none", label: "なし" },
-  { value: "rent", label: "あり" },
-] as const;
+/**
+ * 人数の −／＋。入力欄にすると、1人増やすだけでもキーボードが出る。
+ * 行が2つ以上あるときは、1人から減らすとその行を消す（消すための列を別に作らない）
+ */
+const CountStepper = ({
+  label,
+  count,
+  canRemove,
+  onChange,
+  onRemove,
+}: {
+  label: string;
+  count: number;
+  canRemove: boolean;
+  onChange: (count: number) => void;
+  onRemove: () => void;
+}) => {
+  const removes = count <= 1 && canRemove;
+  return (
+    <div className="flex h-9 items-center justify-between rounded-md border border-input bg-white">
+      <button
+        type="button"
+        aria-label={removes ? `${label}の行を削除` : `${label}の人数を減らす`}
+        className="flex h-full w-[1.375rem] shrink-0 items-center justify-center rounded-l-md @min-[19rem]/party:w-7 text-gray-700 hover:bg-gray-100 disabled:text-gray-300 disabled:hover:bg-transparent"
+        disabled={count <= 1 && !canRemove}
+        onClick={() => (removes ? onRemove() : onChange(count - 1))}
+      >
+        {removes ? <Trash2 size={14} /> : <Minus size={14} strokeWidth={2.5} />}
+      </button>
+      <output
+        aria-label={`${label}の人数`}
+        className="min-w-0 flex-1 text-center text-base font-semibold tabular-nums text-gray-900"
+      >
+        {count}
+      </output>
+      <button
+        type="button"
+        aria-label={`${label}の人数を増やす`}
+        className="flex h-full w-[1.375rem] shrink-0 items-center justify-center rounded-r-md @min-[19rem]/party:w-7 text-gray-700 hover:bg-gray-100 disabled:text-gray-300"
+        disabled={count >= 99}
+        onClick={() => onChange(count + 1)}
+      >
+        <Plus size={14} strokeWidth={2.5} />
+      </button>
+    </div>
+  );
+};
 
 /**
- * 借りる物を選ぶ小窓。種目（スキー／ボード）と、板・ブーツ・ストック・ウェア…を
- * 1つずつ選べる。**選択肢はそのスキー場の料金表にある物だけ**
- * （料金の無い物を選ばせて「未確定」にしない）
+ * レンタルの欄。押すと小窓が開き、借りない／種目（スキー・スノーボード）と、
+ * 板・ブーツ・ストック・ウェア…を1つずつ選べる。欄には「なし」「スキー3点」のように
+ * 選んだ内容を出す。行の下に別の段を足さないので、選んでも縦に伸びない。
+ * **選択肢はそのスキー場の料金表にある物だけ**（料金の無い物を選ばせて「未確定」にしない）
  */
-const RentalDetailPicker = ({
+const RentalPicker = ({
   rental,
   options,
   onChange,
 }: {
-  rental: TicketRentalRequest;
+  rental: TicketRentalRequest | null;
   options: TicketRentalOptions;
-  onChange: (rental: TicketRentalRequest) => void;
+  onChange: (rental: TicketRentalRequest | null) => void;
 }) => {
   const items = rentalItemsOf(rental);
-  const available = options.itemsBySport[rental.sport];
-  // 「スキー3点＋ウェア」のように短くまとめる（1つずつ並べると列幅に収まらない）
-  const summary =
-    items.length > 0 ? formatRentalRequest(rental) : "借りる物を選んでください";
+  const summary = formatRentalRequest(rental);
+  const available = rental ? options.itemsBySport[rental.sport] : [];
   return (
     <Popover>
-      {/* 「変更」だけを押す小さなボタンにすると指で押し損ねるので、要約の行全体を押せるようにする */}
       <PopoverTrigger
-        aria-label={`借りる物を選ぶ（${summary}）`}
-        className="col-span-full -mt-0.5 flex min-h-8 w-full items-center justify-between gap-2 rounded-md bg-blue-50 px-2 py-1 text-left hover:bg-blue-100"
+        aria-label={`レンタルを選ぶ（${summary}）`}
+        className={cn(
+          "flex h-9 w-full min-w-0 items-center justify-between gap-0.5 rounded-md border pr-0.5 pl-1.5 text-left text-[11px] font-semibold @min-[19rem]/party:pr-1 @min-[19rem]/party:pl-2 @min-[19rem]/party:text-xs",
+          rental
+            ? "border-blue-300 bg-blue-50 text-blue-900 hover:bg-blue-100"
+            : "border-input bg-white text-gray-700 hover:bg-gray-50",
+        )}
       >
-        <span className="min-w-0 truncate text-xs text-blue-900">
-          レンタル：{summary}
-        </span>
-        <span className="flex-shrink-0 rounded-md border border-blue-200 bg-white px-2 py-0.5 text-xs font-medium text-blue-700 whitespace-nowrap">
-          変更
-        </span>
+        <span className="min-w-0 truncate">{summary}</span>
+        {/* 狭い枠では「スキー3点」を切らないよう、矢印を省く */}
+        <ChevronDown
+          className="hidden size-3.5 shrink-0 opacity-70 @min-[19rem]/party:block"
+          aria-hidden
+        />
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-72 gap-2">
-        {options.sports.length > 1 && (
-          <div className="grid grid-cols-2 gap-1">
-            {options.sports.map(sport => {
-              const selected = rental.sport === sport;
-              return (
-                <Button
-                  key={sport}
-                  type="button"
-                  variant={selected ? "default" : "outline"}
-                  className="h-8 text-sm whitespace-nowrap"
-                  aria-pressed={selected}
-                  onClick={() =>
-                    onChange(defaultRentalRequestOf(options, sport, items))
+      <PopoverContent align="end" className="w-72 gap-2.5">
+        <div
+          className="grid gap-1"
+          style={{
+            gridTemplateColumns: `repeat(${options.sports.length + 1}, minmax(0, 1fr))`,
+          }}
+        >
+          <Button
+            type="button"
+            variant={rental ? "outline" : "default"}
+            className="h-8 px-1 text-sm whitespace-nowrap"
+            aria-pressed={!rental}
+            onClick={() => onChange(null)}
+          >
+            なし
+          </Button>
+          {options.sports.map(sport => {
+            const selected = rental?.sport === sport;
+            return (
+              <Button
+                key={sport}
+                type="button"
+                variant={selected ? "default" : "outline"}
+                className="h-8 px-1 text-sm whitespace-nowrap"
+                aria-pressed={selected}
+                onClick={() =>
+                  onChange(defaultRentalRequestOf(options, sport, items))
+                }
+              >
+                {TICKET_RENTAL_SPORT_LABELS[sport]}
+              </Button>
+            );
+          })}
+        </div>
+        {rental && (
+          <div className="flex flex-wrap gap-x-4 gap-y-2 px-0.5">
+            {available.map(item => (
+              <label
+                key={item}
+                className="flex items-center gap-1.5 text-sm text-gray-900 whitespace-nowrap"
+              >
+                <Checkbox
+                  checked={items.includes(item)}
+                  onCheckedChange={checked =>
+                    onChange({
+                      ...rental,
+                      items: checked
+                        ? [...items, item]
+                        : items.filter(current => current !== item),
+                    })
                   }
-                >
-                  {TICKET_RENTAL_SPORT_LABELS[sport]}
-                </Button>
-              );
-            })}
+                />
+                {TICKET_RENTAL_ITEM_LABELS[item]}
+              </label>
+            ))}
           </div>
         )}
-        <div className="flex flex-wrap gap-x-4 gap-y-2 px-0.5">
-          {available.map(item => (
-            <Label
-              key={item}
-              className="gap-1.5 text-sm text-gray-900 whitespace-nowrap"
-            >
-              <Checkbox
-                checked={items.includes(item)}
-                onCheckedChange={checked =>
-                  onChange({
-                    ...rental,
-                    items: checked
-                      ? [...items, item]
-                      : items.filter(current => current !== item),
-                  })
-                }
-              />
-              {TICKET_RENTAL_ITEM_LABELS[item]}
-            </Label>
-          ))}
-        </div>
       </PopoverContent>
     </Popover>
   );
@@ -342,17 +401,14 @@ export const TicketPartyEditor = ({
 
   const showRental = rentalOptions != null;
   const canRemoveGroup = value.party.length > 1;
-  // 年齢・人数は2桁と「任意」が収まる幅まで詰める。レンタルは「なし／あり」の切替が収まる幅
+  // 年齢は2桁と「任意」が収まる幅。人数は −／＋ と数字、レンタルは「スキー3点」が収まる幅。
+  // 枠が19rem未満（幅320pxのスマホ、346pxの詳細パネル）では各列を詰めて区分の幅を残す
   const partyGrid = showRental
-    ? canRemoveGroup
-      ? "grid-cols-[minmax(0,1fr)_2.75rem_2.75rem_5rem_2rem]"
-      : "grid-cols-[minmax(0,1fr)_2.75rem_2.75rem_5rem]"
-    : canRemoveGroup
-      ? "grid-cols-[minmax(0,1fr)_3rem_3rem_2rem]"
-      : "grid-cols-[minmax(0,1fr)_3rem_3rem]";
+    ? "grid-cols-[minmax(0,1fr)_2.5rem_4rem_4rem] @min-[19rem]/party:grid-cols-[minmax(0,1fr)_2.75rem_4.5rem_5.5rem]"
+    : "grid-cols-[minmax(0,1fr)_3rem_5.25rem]";
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="@container/party flex flex-col gap-3">
       <div className="flex flex-col gap-1.5">
         <SectionHeader
           title="利用日"
@@ -430,14 +486,14 @@ export const TicketPartyEditor = ({
 
       <div className="flex flex-col gap-1.5">
         <SectionHeader
-          title="利用者情報"
+          title="利用者"
           actionLabel="利用者を追加"
           onAction={addGroup}
         />
         {/* 見出しは1回だけ。行ごとに「区分・年齢・人数」を繰り返すと縦に長くなる */}
         <div
           className={cn(
-            "grid gap-1.5 -mb-0.5 text-gray-800 text-sm font-medium",
+            "grid gap-1.5 -mb-1 text-gray-500 text-xs font-medium",
             partyGrid,
           )}
         >
@@ -469,7 +525,10 @@ export const TicketPartyEditor = ({
                 >
                   <SelectTrigger
                     aria-label="区分"
-                    className={cn(FIELD_CLASS, "w-full px-2.5")}
+                    className={cn(
+                      FIELD_CLASS,
+                      "w-full gap-0.5 px-1.5 @min-[19rem]/party:px-2.5",
+                    )}
                   >
                     <SelectValue className="min-w-0 truncate" />
                   </SelectTrigger>
@@ -530,56 +589,23 @@ export const TicketPartyEditor = ({
                 }
                 onBlur={onInputBlur}
                 onFocus={onInputFocus}
-                className={cn(FIELD_CLASS, "px-1 text-center")}
+                className={cn(
+                  FIELD_CLASS,
+                  "px-0.5 text-center @min-[19rem]/party:px-1",
+                )}
               />
-              <Input
-                aria-label={`${TICKET_PARTY_CATEGORY_LABELS[group.category]}の人数`}
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={group.count === 0 ? "" : group.count}
-                onChange={event =>
-                  updateGroup(group.id, current => ({
-                    ...current,
-                    count: Math.min(
-                      99,
-                      Math.max(0, sanitizeNumber(event.target.value) ?? 0),
-                    ),
-                  }))
+              <CountStepper
+                label={TICKET_PARTY_CATEGORY_LABELS[group.category]}
+                count={Math.max(1, group.count)}
+                canRemove={canRemoveGroup}
+                onChange={count =>
+                  updateGroup(group.id, current => ({ ...current, count }))
                 }
-                onBlur={onInputBlur}
-                onFocus={onInputFocus}
-                className={cn(FIELD_CLASS, "px-1 text-center")}
+                onRemove={() => removeGroup(group.id)}
               />
               {rentalOptions && (
-                <SegmentedControl
-                  options={RENTAL_TOGGLE_OPTIONS}
-                  value={group.rental ? "rent" : "none"}
-                  onChange={choice =>
-                    updateGroup(group.id, current => ({
-                      ...current,
-                      rental:
-                        choice === "rent"
-                          ? (current.rental ??
-                            defaultRentalRequestOf(rentalOptions))
-                          : null,
-                    }))
-                  }
-                  ariaLabel={option => `レンタル${option.label}`}
-                  className="h-9 w-full"
-                  itemClassName="h-full flex-1 px-0 text-sm"
-                />
-              )}
-              {canRemoveGroup && (
-                <RemoveButton
-                  label="この利用者を削除"
-                  onClick={() => removeGroup(group.id)}
-                />
-              )}
-              {/* 借りる物は行の下に要約を出し、「変更」で選び直す（列に収まらないため） */}
-              {rentalOptions && group.rental && (
-                <RentalDetailPicker
-                  rental={group.rental}
+                <RentalPicker
+                  rental={group.rental ?? null}
                   options={rentalOptions}
                   onChange={rental =>
                     updateGroup(group.id, current => ({ ...current, rental }))

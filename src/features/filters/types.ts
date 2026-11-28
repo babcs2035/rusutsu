@@ -34,6 +34,8 @@ export type Filters = {
   minCourseDistance: NumericFilterValue;
   scaleBasis: ScaleBasis;
   liftTicket: LiftTicketSearchInput;
+  /** 料金の条件で計算した合計の上限（円）。料金が出ないスキー場は外す */
+  maxPrice: NumericFilterValue;
 };
 
 export type RegionOption = {

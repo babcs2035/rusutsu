@@ -48,7 +48,8 @@ export function ResortSortButton({
         <ChevronDown className="size-3 shrink-0" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        align="end"
+        // 並び替えのボタンは行の左端にあるので、メニューも左端を揃えて開く
+        align="start"
         className="w-64 max-w-[calc(100vw-2rem)] text-[13px] font-medium text-gray-700"
       >
         <DropdownMenuRadioGroup

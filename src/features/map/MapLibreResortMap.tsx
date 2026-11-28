@@ -162,6 +162,7 @@ function MapLibreResortMapContent({
   resorts,
   filteredResortIdSet,
   isFilterActive = false,
+  resortLabelSuffixById,
   searchResultResortIds = [],
   searchViewportRequestKey = 0,
   searchViewportBottomPaddingRatio = 0,
@@ -329,7 +330,20 @@ function MapLibreResortMapContent({
   const skipCompareRecenterRef = useRef(false);
   const isPreviewMap = mapPresentation === "preview";
   const isDetailMap = interactionMode === "detail";
-  const displayNameById = useResortAliases(resorts);
+  const resortAliasById = useResortAliases(resorts);
+  // 料金の条件を変えているあいだは、名前の後ろに料金を添える（例: ルスツ ¥9,300）。
+  // ラベルの幅の計算にも同じ文字を使う
+  const displayNameById = useMemo(() => {
+    if (!resortLabelSuffixById || resortLabelSuffixById.size === 0) {
+      return resortAliasById;
+    }
+    const names = new Map(resortAliasById);
+    for (const [id, suffix] of resortLabelSuffixById) {
+      const name = names.get(id);
+      if (name) names.set(id, `${name} ${suffix}`);
+    }
+    return names;
+  }, [resortAliasById, resortLabelSuffixById]);
 
   const [isMobile, setIsMobile] = useState(() =>
     typeof window === "undefined"
@@ -1271,6 +1285,7 @@ function MapLibreResortMapContent({
         resorts: renderedResorts,
         labelLayouts,
         displayNameById: resortDisplayNames,
+        labelSuffixById: resortLabelSuffixById,
         selectedResortIdSet,
         filteredResortIdSet,
         isFilterActive,
@@ -1299,6 +1314,7 @@ function MapLibreResortMapContent({
         openActionPopupResortId,
         renderedResorts,
         resortDisplayNames,
+        resortLabelSuffixById,
         selectedResortIdSet,
         shouldShowCompareActions,
       ],

@@ -3,11 +3,21 @@ import "server-only";
 import type { CompareListSummary } from "@/features/compare-lists/types";
 import {
   CompareListError,
+  reorderResorts,
   updateResorts,
 } from "@/features/compare-lists/updateResorts";
 import { prisma } from "@/lib/prisma";
 
 const MAX_LISTS = 50;
+
+/** 所有者を検査し，比較リストに含まれる施設の順序だけを更新する． */
+export async function reorderCompareListForUser(
+  userId: string,
+  id: string,
+  requested: string[],
+): Promise<void> {
+  await prisma.$transaction(tx => reorderResorts(tx, userId, id, requested));
+}
 
 /** 別の利用者のリストは削除対象に含めない． */
 export async function deleteCompareListForUser(
