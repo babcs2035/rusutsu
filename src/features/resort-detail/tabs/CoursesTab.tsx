@@ -82,8 +82,8 @@ const _statusKinds = {
   不明: "unknown",
 } as const;
 const pisteIcons = { "○": Circle, "△": Triangle, "×": X };
-const tableCellPadding =
-  "border-b border-slate-200 px-1 py-2 @min-[21rem]/course-list:px-2";
+// 詳細パネルが狭いときでも padding が落ちないよう、コンテナクエリを使わず一定にする
+const tableCellPadding = "border-b border-slate-200 px-2 py-2";
 const hasValue = (value: unknown) =>
   value != null && (typeof value !== "string" || value.trim().length > 0);
 const optionalFields = [["動画", "youtubeUrl"]] as const;

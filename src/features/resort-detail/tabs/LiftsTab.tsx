@@ -96,8 +96,8 @@ const liftKindSortValue = (type: string | null | undefined, name: string) => {
 const speedSortValue = (speed: string | null | undefined) =>
   speed?.includes("高速") ? 0 : speed?.includes("低速") ? 1 : null;
 
-const tableCellPadding =
-  "border-b border-slate-200 px-1 py-2 @min-[21rem]/lift-list:px-2";
+// 詳細パネルが狭いときでも padding が落ちないよう、コンテナクエリを使わず一定にする
+const tableCellPadding = "border-b border-slate-200 px-2 py-2";
 
 export const LiftsTab = ({
   resort,

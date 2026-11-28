@@ -26,8 +26,8 @@ export const LIFT_STATUS_SEGMENTS: Array<{
 const SEGMENTS = LIFT_STATUS_SEGMENTS;
 
 /** DistributionChart と同じ罫線・列の組み方にして、コースタブと見た目をそろえる */
-const ROW_CLASS = "border-b border-slate-200 py-0.5";
-const NUMBER_CELL_CLASS = `${ROW_CLASS} border-l px-1.5 text-right whitespace-nowrap`;
+const ROW_CLASS = "border-b border-slate-200 py-1";
+const NUMBER_CELL_CLASS = `${ROW_CLASS} border-l px-2 text-right whitespace-nowrap`;
 const HEADER_CLASS = `${NUMBER_CELL_CLASS} text-xs leading-5 text-slate-500`;
 const VALUE_CLASS = `${NUMBER_CELL_CLASS} font-semibold text-slate-900 tabular-nums`;
 /** 距離（km）の数値だけ数値フォントにする。本数は件数なので本文フォントのまま */
