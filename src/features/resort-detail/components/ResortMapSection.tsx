@@ -219,9 +219,35 @@ export const ResortMapSection = ({
       },
     );
     setLocalShowOpenOnly(saved?.showOpenOnly ?? false);
-    setLocalTileVariant("photo");
+    // タイル種別もセッション保存値を優先し、リロードでデフォルトに戻らないようにする
+    setLocalTileVariant(saved?.tileVariant ?? "photo");
     setLocalColorMode(saved?.courseColorMode ?? "slope");
   }, [resortId, sessionEnabled]);
+  // 表示設定・タイル種別・色分け・営業中のみをセッションに書き戻す。
+  // 読み込みは上段の effect が担当し、ここでは変更のたびに保存する。
+  // viewport は地図側が管理するため、既存値を保持して上書きしない。
+  const sessionKey = `${mapSessionKey(resortId)}:expanded`;
+  useEffect(() => {
+    // 比較ビューは制御プロップで共有設定を持つため、セッション書き込みはしない
+    if (!sessionEnabled || controlledShowOpenOnly !== undefined) return;
+    const existing = readStorage(sessionKey, mapSessionSchema);
+    writeStorage(sessionKey, {
+      version: 1,
+      viewport: existing?.viewport ?? null,
+      tileVariant: mapTileVariant,
+      courseColorMode,
+      showOpenOnly,
+      displaySettings: mapDisplaySettings,
+    });
+  }, [
+    sessionEnabled,
+    sessionKey,
+    controlledShowOpenOnly,
+    mapTileVariant,
+    courseColorMode,
+    showOpenOnly,
+    mapDisplaySettings,
+  ]);
   const expandedKey = `rusutsu:expanded:v1:${resortId}`;
   const [isExpanded, setExpanded] = useState(false);
   useEffect(() => {
