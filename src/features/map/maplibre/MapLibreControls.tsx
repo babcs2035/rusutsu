@@ -132,10 +132,12 @@ export const MapLibreControls = ({
       >
         <div
           className={cn(
-            "pointer-events-auto flex items-end",
+            // コンパスを +/- の最上部に縦並びで置く（回転可能時のみコンパス表示）
+            "pointer-events-auto flex flex-col items-center",
             compact ? "gap-1.5" : "gap-2",
           )}
         >
+          {canRotate && <div className="hidden md:block">{compassDial}</div>}
           {/* 拡大縮小はデスクトップのみ。スマホはピンチ操作で行う */}
           <Card className="hidden md:flex gap-0 overflow-hidden p-0">
             <CardContent className="p-0">
@@ -168,7 +170,6 @@ export const MapLibreControls = ({
               </Button>
             </CardContent>
           </Card>
-          {canRotate && <div className="hidden md:block">{compassDial}</div>}
         </div>
         <div
           className={cn(
