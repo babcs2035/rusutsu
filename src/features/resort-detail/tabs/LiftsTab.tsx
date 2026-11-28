@@ -375,7 +375,12 @@ export const LiftsTab = ({
           <span className="inline-flex items-center leading-none">— 不明</span>
         </div>
         <Table
-          containerClassName="isolate rounded-lg border-border"
+          // 縦にもスクロールする 2D 領域にする：sticky top-0 のヘッダーと
+          // sticky left-0 の先頭列が機能する。max-h は「戻るバーの下から
+          // 下端 padding（フローティングアクション分）を引いたビューポート下端」
+          // の空きより小さく取り、最下部スクロールでヘッダーが戻るバーの後ろに
+          // 隠れないようにする（offset はリゾートヘッダー＋タブ＋戻るバー分）。
+          containerClassName="isolate max-h-[calc(100dvh-240px-var(--floating-actions-space,0px))] overflow-y-auto rounded-lg border-border"
           containerProps={{
             role: "region",
             "aria-label": "リフト一覧・横スクロール",
