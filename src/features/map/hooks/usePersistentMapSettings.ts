@@ -13,11 +13,19 @@ import {
 const SETTINGS_KEY = "rusutsu.mapDisplaySettings.v1";
 const TILE_VARIANT_KEY = "rusutsu.mapTileVariant.v1";
 const COURSE_COLOR_MODE_KEY = "rusutsu.courseColorMode.v1";
+const SHOW_OPEN_ONLY_KEY = "rusutsu.mapShowOpenOnly.v1";
 
 // デフォルトは航空写真（選択時・比較時・ホームで揃える）
 export const DEFAULT_TILE_VARIANT: MapTileVariant = "photo";
 // コースの色分けは斜度（詳細・比較で使う既定）
 const DEFAULT_COURSE_COLOR_MODE: CourseColorMode = "slope";
+// 「営業中のみ」は既定で切っている
+const DEFAULT_SHOW_OPEN_ONLY = false;
+
+function readStoredShowOpenOnly(): boolean {
+  if (typeof window === "undefined") return DEFAULT_SHOW_OPEN_ONLY;
+  return window.localStorage.getItem(SHOW_OPEN_ONLY_KEY) === "true";
+}
 
 function readStoredCourseColorMode(): CourseColorMode {
   if (typeof window === "undefined") return DEFAULT_COURSE_COLOR_MODE;
@@ -74,10 +82,12 @@ export function usePersistentMapSettings() {
   const [courseColorMode, setCourseColorMode] = useState<CourseColorMode>(
     readStoredCourseColorMode,
   );
+  const [showOpenOnly, setShowOpenOnly] = useState(readStoredShowOpenOnly);
   // 初回マウント時の書き込みをスキップするフラグ（変更ごとに独立させる）
   const firstSettingsRun = useRef(true);
   const firstTileRun = useRef(true);
   const firstColorModeRun = useRef(true);
+  const firstShowOpenOnlyRun = useRef(true);
 
   useEffect(() => {
     if (firstSettingsRun.current) {
@@ -103,6 +113,14 @@ export function usePersistentMapSettings() {
     writeSetting(COURSE_COLOR_MODE_KEY, courseColorMode);
   }, [courseColorMode]);
 
+  useEffect(() => {
+    if (firstShowOpenOnlyRun.current) {
+      firstShowOpenOnlyRun.current = false;
+      return;
+    }
+    writeSetting(SHOW_OPEN_ONLY_KEY, String(showOpenOnly));
+  }, [showOpenOnly]);
+
   return {
     mapDisplaySettings,
     setMapDisplaySettings,
@@ -110,5 +128,7 @@ export function usePersistentMapSettings() {
     setMapTileVariant,
     courseColorMode,
     setCourseColorMode,
+    showOpenOnly,
+    setShowOpenOnly,
   };
 }

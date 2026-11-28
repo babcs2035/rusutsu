@@ -21,10 +21,8 @@ import {
 } from "@/features/resort-detail/utils/detailMetrics";
 import { usePersistentMapSettings } from "./hooks/usePersistentMapSettings";
 import {
-  DEFAULT_MAP_DISPLAY_SETTINGS,
   hasCourseOperatingData,
   type MapDisplaySettings,
-  OPEN_COURSE_STATUSES,
 } from "./utils/mapDisplaySettings";
 import "maplibre-gl/dist/maplibre-gl.css";
 import {
@@ -378,16 +376,21 @@ function MapLibreResortMapContent({
   // 詳細地図は最初のフレームから写真＋斜度で作る。
   // 既定（地図タイル）で作ってから切り替えると、白い淡色地図のタイルを
   // 読み込んでから写真の読み込みが始まり、切り替わるまで白い地図が見えてしまう。
-  const [uncontrolledTileVariant, setUncontrolledTileVariant] =
-    useState<MapTileVariant>(isDetailMap ? "photo" : "pale");
-  // コースの色分けは localStorage に保存し、画面遷移・詳細/ホームの切替でリセットされない
+  // 地図の表示設定（営業中のみ・表示項目・色分け・単色）はグローバルな
+  // localStorage（usePersistentMapSettings）に一元管理し、スキー場を切り替えても
+  // リロードしても同じ好みになる。viewport（地図の位置）だけリゾート別に
+  // セッションへ保存する。タイル種別は「詳細=写真・概観=淡色」の既定を維持するため
+  // 保存対象外（初回フレームの白地図回避）。
   const {
+    mapDisplaySettings: persistedMapDisplaySettings,
+    setMapDisplaySettings: setPersistedMapDisplaySettings,
     courseColorMode: persistedCourseColorMode,
     setCourseColorMode: setPersistedCourseColorMode,
+    showOpenOnly: persistedShowOpenOnly,
+    setShowOpenOnly: setPersistedShowOpenOnly,
   } = usePersistentMapSettings();
-  const [uncontrolledShowOpenOnly, setUncontrolledShowOpenOnly] = useState(
-    savedMap?.showOpenOnly ?? false,
-  );
+  const [uncontrolledTileVariant, setUncontrolledTileVariant] =
+    useState<MapTileVariant>(isDetailMap ? "photo" : "pale");
   const [uncontrolledSelected, setUncontrolledSelected] =
     useState<SelectedMapFeature | null>(null);
   const [openActionPopupResortId, setOpenActionPopupResortId] = useState<
@@ -410,29 +413,35 @@ function MapLibreResortMapContent({
     },
     [onCourseColorModeChange, setPersistedCourseColorMode],
   );
-  const [localMapDisplaySettings, setLocalMapDisplaySettings] =
-    useState<MapDisplaySettings>(() => ({
-      ...(savedMap?.displaySettings ?? {
-        ...DEFAULT_MAP_DISPLAY_SETTINGS,
-        courseStatuses: savedMap?.showOpenOnly
-          ? OPEN_COURSE_STATUSES
-          : DEFAULT_MAP_DISPLAY_SETTINGS.courseStatuses,
-      }),
-      monochrome: isDetailMap,
-    }));
-  const mapDisplaySettings =
-    controlledMapDisplaySettings ?? localMapDisplaySettings;
-  const setMapDisplaySettings = (settings: MapDisplaySettings) => {
-    setLocalMapDisplaySettings(settings);
-    onMapDisplaySettingsChange?.(settings);
+  // 詳細地図は単色を維持する（背景を抑制してコースを際立たせる）。
+  // それ以外はグローバルな保存値を使う。
+  const mapDisplaySettings = controlledMapDisplaySettings ?? {
+    ...persistedMapDisplaySettings,
+    monochrome: isDetailMap || persistedMapDisplaySettings.monochrome,
   };
-  const showOpenOnly = controlledShowOpenOnly ?? uncontrolledShowOpenOnly;
+  const setMapDisplaySettings = useCallback(
+    (settings: MapDisplaySettings) => {
+      // 詳細地図では monochrome が強制されるので、保存はユーザーの設定（前回値）を維持する
+      const monochrome = isDetailMap
+        ? persistedMapDisplaySettings.monochrome
+        : settings.monochrome;
+      setPersistedMapDisplaySettings({ ...settings, monochrome });
+      onMapDisplaySettingsChange?.(settings);
+    },
+    [
+      onMapDisplaySettingsChange,
+      setPersistedMapDisplaySettings,
+      persistedMapDisplaySettings,
+      isDetailMap,
+    ],
+  );
+  const showOpenOnly = controlledShowOpenOnly ?? persistedShowOpenOnly;
   const setShowOpenOnly = useCallback(
     (next: boolean) => {
-      setUncontrolledShowOpenOnly(next);
+      setPersistedShowOpenOnly(next);
       onShowOpenOnlyChange?.(next);
     },
-    [onShowOpenOnlyChange],
+    [onShowOpenOnlyChange, setPersistedShowOpenOnly],
   );
   // 呼び出し側が値を持っているときは、地図側の既定（詳細なら写真＋斜度）で
   // 上書きしない。複数の地図で 1 つの設定を共有しているときに、
@@ -456,8 +465,10 @@ function MapLibreResortMapContent({
   );
   const initialZoom = isMobile ? MOBILE_INITIAL_ZOOM : DESKTOP_INITIAL_ZOOM;
 
-  // 詳細画面に入るときは写真・単色、選択画面に戻るときは地図・カラーに戻す。
-  // コースの色分けはユーザーの選択なので localStorage に保存され、ここで戻さない。
+  // 詳細画面に入るときは写真タイル、選択画面に戻るときは淡色タイルに戻す。
+  // 単色は mapDisplaySettings の計算式（isDetailMap）で自動的に切替わる。
+  // コースの色分け・表示項目・営業中のみはユーザーの選択なので localStorage に
+  // 保存され、ここで戻さない。
   // ref の初期値を interactionMode 自体ではなく null にしておくことで、
   // 詳細画面としてマウントされるインスタンス（モバイルのプレビュー地図など）
   // でもマウント直後に既定値を適用できるようにする。
@@ -480,28 +491,17 @@ function MapLibreResortMapContent({
     // 初回は初期値を使う。背景は画面ごとの既定値、その他は保存設定を復元する。
     if (previousInteractionMode === null && savedMap) return;
 
+    // 単色は mapDisplaySettings の計算式（isDetailMap）で自動的に切替わるので、
+    // ここではタイル種別だけ画面ごとに既定値へ戻す。
     if (interactionMode === "detail") {
-      if (controlledMapDisplaySettings === undefined) {
-        setLocalMapDisplaySettings(previous => ({
-          ...previous,
-          monochrome: true,
-        }));
-      }
       setMapTileVariant("photo");
       return;
     }
     if (previousInteractionMode === "detail") {
-      // 詳細から戻っても地図は作り直さないので、詳細用の見え方を明示的に戻す
-      if (controlledMapDisplaySettings === undefined) {
-        setLocalMapDisplaySettings(previous => ({
-          ...previous,
-          monochrome: false,
-        }));
-      }
+      // 詳細から戻っても地図は作り直さないので、詳細用のタイルを明示的に戻す
       setMapTileVariant("pale");
     }
   }, [
-    controlledMapDisplaySettings,
     hasControlledStyleState,
     savedMap,
     interactionMode,
@@ -623,6 +623,8 @@ function MapLibreResortMapContent({
       return;
     const save = () => {
       const center = map.getCenter().wrap();
+      // 表示設定はグローバルな localStorage が担当するため、セッションには
+      // viewport（地図の位置）だけ保存する。
       writeStorage(storageKey, {
         version: 1,
         viewport: {
@@ -630,10 +632,6 @@ function MapLibreResortMapContent({
           zoom: map.getZoom(),
           bearing: map.getBearing(),
         },
-        tileVariant: mapTileVariant,
-        courseColorMode,
-        showOpenOnly,
-        displaySettings: mapDisplaySettings,
       });
     };
     save();
@@ -645,18 +643,7 @@ function MapLibreResortMapContent({
       document.removeEventListener("visibilitychange", save);
       window.removeEventListener("pagehide", save);
     };
-  }, [
-    map,
-    isReady,
-    sessionEnabled,
-    isPreviewMap,
-    interactionMode,
-    storageKey,
-    mapDisplaySettings,
-    mapTileVariant,
-    courseColorMode,
-    showOpenOnly,
-  ]);
+  }, [map, isReady, sessionEnabled, isPreviewMap, interactionMode, storageKey]);
 
   // 詳細パネルの集計と「営業中のみ」も、この地図と同じ状態を使う
   useEffect(() => {

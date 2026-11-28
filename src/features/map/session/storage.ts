@@ -145,12 +145,16 @@ export const homeSessionSchema = z.object({
   ]),
 });
 export type HomeSession = z.infer<typeof homeSessionSchema>;
+// 表示設定（tileVariant 等）はグローバルな localStorage（usePersistentMapSettings）
+// に一元管理するため、セッションには viewport しか保存しない。以前の保存に
+// 設定が残っていても読み捨て、グローバル値を優先する。
 export const mapSessionSchema = z.object({
   version: z.literal(1),
   viewport: viewportSchema.nullable(),
-  tileVariant: z.enum(["pale", "photo"]),
-  courseColorMode: z.enum(["difficulty", "slope"]),
-  showOpenOnly: z.boolean(),
+  // 以下は非推奨。以前の保存互換のため残すが、読み捨てする
+  tileVariant: z.enum(["pale", "photo"]).optional(),
+  courseColorMode: z.enum(["difficulty", "slope"]).optional(),
+  showOpenOnly: z.boolean().optional(),
   displaySettings: z
     .object({
       showCourses: z.boolean().default(true),

@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { ResortFinalizedMap } from "@/features/map/components/ResortFinalizedMap";
+import { usePersistentMapSettings } from "@/features/map/hooks/usePersistentMapSettings";
 import { useMapSession } from "@/features/map/session/MapSessionProvider";
 import {
   mapSessionKey,
@@ -21,11 +22,7 @@ import type {
   MapTileVariant,
   SelectedMapFeature,
 } from "@/features/map/types";
-import {
-  DEFAULT_MAP_DISPLAY_SETTINGS,
-  type MapDisplaySettings,
-  OPEN_COURSE_STATUSES,
-} from "@/features/map/utils/mapDisplaySettings";
+import type { MapDisplaySettings } from "@/features/map/utils/mapDisplaySettings";
 import type { FinalizedResortMapData } from "@/lib/finalizedResortGeojsonShared";
 import { cn } from "@/lib/utils";
 import type { MapSkiResort } from "@/types/skiResorts";
@@ -175,79 +172,54 @@ export const ResortMapSection = ({
     upwardVelocity: number;
   } | null>(null);
   const blockedPanelPointer = useRef<number | null>(null);
-  const [localMapDisplaySettings, setLocalMapDisplaySettings] = useState(
-    DEFAULT_MAP_DISPLAY_SETTINGS,
-  );
+  // 表示設定（コース表示・タイル・色分け・営業中のみ）はグローバルな
+  // localStorage（usePersistentMapSettings）で保持し、スキー場を切り替えても
+  // リロードしても同じ好みになる。viewport（地図の位置）だけリゾート別に
+  // セッションへ保存する（下段の effect が担当）。
+  const {
+    mapDisplaySettings: persistedMapDisplaySettings,
+    setMapDisplaySettings: setPersistedMapDisplaySettings,
+    mapTileVariant: persistedMapTileVariant,
+    setMapTileVariant: setPersistedMapTileVariant,
+    courseColorMode: persistedCourseColorMode,
+    setCourseColorMode: setPersistedCourseColorMode,
+    showOpenOnly: persistedShowOpenOnly,
+    setShowOpenOnly: setPersistedShowOpenOnly,
+  } = usePersistentMapSettings();
   const mapDisplaySettings =
-    controlledMapDisplaySettings ?? localMapDisplaySettings;
+    controlledMapDisplaySettings ?? persistedMapDisplaySettings;
   const setMapDisplaySettings = (settings: MapDisplaySettings) => {
-    setLocalMapDisplaySettings(settings);
+    setPersistedMapDisplaySettings(settings);
     onMapDisplaySettingsChange?.(settings);
   };
-  const [localShowOpenOnly, setLocalShowOpenOnly] = useState(false);
-  const showOpenOnly = controlledShowOpenOnly ?? localShowOpenOnly;
+  const showOpenOnly = controlledShowOpenOnly ?? persistedShowOpenOnly;
   const setShowOpenOnly = (value: boolean) => {
-    setLocalShowOpenOnly(value);
+    setPersistedShowOpenOnly(value);
     onShowOpenOnlyChange?.(value);
   };
-  const [localTileVariant, setLocalTileVariant] =
-    useState<MapTileVariant>("photo");
-  const mapTileVariant = controlledMapTileVariant ?? localTileVariant;
+  const mapTileVariant = controlledMapTileVariant ?? persistedMapTileVariant;
   const setMapTileVariant = (value: MapTileVariant) => {
-    setLocalTileVariant(value);
+    setPersistedMapTileVariant(value);
     onMapTileVariantChange?.(value);
   };
-  const [localColorMode, setLocalColorMode] =
-    useState<CourseColorMode>("slope");
-  const courseColorMode = controlledCourseColorMode ?? localColorMode;
+  const courseColorMode = controlledCourseColorMode ?? persistedCourseColorMode;
   const setCourseColorMode = (value: CourseColorMode) => {
-    setLocalColorMode(value);
+    setPersistedCourseColorMode(value);
     onCourseColorModeChange?.(value);
   };
   const sessionEnabled = useMapSession() !== null;
-  useEffect(() => {
-    const saved = sessionEnabled
-      ? readStorage(`${mapSessionKey(resortId)}:expanded`, mapSessionSchema)
-      : null;
-    // monochrome は保存値・デフォルト（カラー）に従う。以前は常に白黒に上書きしていた。
-    setLocalMapDisplaySettings(
-      saved?.displaySettings ?? {
-        ...DEFAULT_MAP_DISPLAY_SETTINGS,
-        courseStatuses: saved?.showOpenOnly
-          ? OPEN_COURSE_STATUSES
-          : DEFAULT_MAP_DISPLAY_SETTINGS.courseStatuses,
-      },
-    );
-    setLocalShowOpenOnly(saved?.showOpenOnly ?? false);
-    // タイル種別もセッション保存値を優先し、リロードでデフォルトに戻らないようにする
-    setLocalTileVariant(saved?.tileVariant ?? "photo");
-    setLocalColorMode(saved?.courseColorMode ?? "slope");
-  }, [resortId, sessionEnabled]);
-  // 表示設定・タイル種別・色分け・営業中のみをセッションに書き戻す。
-  // 読み込みは上段の effect が担当し、ここでは変更のたびに保存する。
-  // viewport は地図側が管理するため、既存値を保持して上書きしない。
+  // セッションには viewport（地図の位置）だけ保存する。表示設定はグローバルな
+  // localStorage（usePersistentMapSettings）が担当するため、ここでは読み書きしない。
+  // 比較ビューは制御プロップで共有設定を持つため、セッション書き込みはしない。
   const sessionKey = `${mapSessionKey(resortId)}:expanded`;
   useEffect(() => {
-    // 比較ビューは制御プロップで共有設定を持つため、セッション書き込みはしない
     if (!sessionEnabled || controlledShowOpenOnly !== undefined) return;
     const existing = readStorage(sessionKey, mapSessionSchema);
     writeStorage(sessionKey, {
       version: 1,
       viewport: existing?.viewport ?? null,
-      tileVariant: mapTileVariant,
-      courseColorMode,
-      showOpenOnly,
-      displaySettings: mapDisplaySettings,
     });
-  }, [
-    sessionEnabled,
-    sessionKey,
-    controlledShowOpenOnly,
-    mapTileVariant,
-    courseColorMode,
-    showOpenOnly,
-    mapDisplaySettings,
-  ]);
+  }, [sessionEnabled, sessionKey, controlledShowOpenOnly]);
   const expandedKey = `rusutsu:expanded:v1:${resortId}`;
   const [isExpanded, setExpanded] = useState(false);
   useEffect(() => {
