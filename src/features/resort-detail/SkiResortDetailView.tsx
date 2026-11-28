@@ -800,8 +800,8 @@ export const SkiResortDetailView = ({
         <h2 className="text-base font-semibold text-slate-900">
           ゲレンデマップ
         </h2>
-        <div className="h-[clamp(220px,38vh,440px)] overflow-hidden rounded-xl border border-slate-200">
-          <TrailMapPanel links={trailMapLinks} className="h-full" />
+        <div className="overflow-hidden rounded-xl border border-slate-200">
+          <TrailMapPanel links={trailMapLinks} className="max-h-[440px]" />
         </div>
       </section>
     ) : null;
@@ -978,8 +978,9 @@ export const SkiResortDetailView = ({
         activeTab === "ゲレンデ" &&
         hasTrailMap &&
         mapAreaView === "ゲレンデマップ" ? (
-          // 静止画なので、タブとは重ならない専用の帯を上に置く
-          <div className="flex h-[clamp(200px,41dvh,396px)] shrink-0 flex-col">
+          // 静止画なので、タブとは重ならない専用の帯を上に置く。
+          // 高さは画像に合わせる（max-h まで）と、画像が小さいとき余白にならない
+          <div className="flex max-h-[396px] shrink-0 flex-col">
             <div className="flex shrink-0 justify-start border-b border-slate-200 bg-white px-2 py-1.5">
               <MapAreaTabs
                 tabs={MAP_AREA_TABS}

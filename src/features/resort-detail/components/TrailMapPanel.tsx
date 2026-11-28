@@ -23,7 +23,7 @@ function TrailMapItem({ url }: { url: string }) {
       <iframe
         src={`${proxiedUrl(url)}#toolbar=0&navpanes=0&view=Fit`}
         title="ゲレンデマップ"
-        className="h-full w-full border-0 bg-white"
+        className="h-[400px] w-full border-0 bg-white"
       />
     );
   }
@@ -34,7 +34,7 @@ function TrailMapItem({ url }: { url: string }) {
       src={stage === "direct" ? url : proxiedUrl(url)}
       alt="ゲレンデマップ"
       onError={() => setStage(stage === "direct" ? "proxy" : "frame")}
-      className="mx-auto max-h-full w-auto max-w-full object-contain"
+      className="h-auto w-full"
     />
   );
 }
@@ -51,8 +51,8 @@ export function TrailMapPanel({
   className?: string;
 }) {
   return (
-    <div className={`flex h-full flex-col overflow-y-auto ${className ?? ""}`}>
-      <div className="min-h-0 flex-1 overflow-y-auto bg-slate-100">
+    <div className={`flex flex-col overflow-y-auto ${className ?? ""}`}>
+      <div className="bg-slate-100">
         {links.mapUrls.map(link => (
           <TrailMapItem key={link.url} url={link.url} />
         ))}
