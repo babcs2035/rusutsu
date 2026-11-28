@@ -19,7 +19,9 @@ const CONTROL_BUTTON_CLASS =
   "flex h-10 w-10 items-center justify-center rounded-none bg-white p-0 text-2xl font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 min-w-0";
 /** コース比較のような小さな地図では、地図を隠さないよう一回り小さくする */
 const COMPACT_ZOOM_BUTTON_CLASS = "h-7 w-7 text-lg";
-const COMPACT_DIAL_SIZE = 44;
+// +/- ボタン (h-10 w-10 = 40px) と同じ幅で揃える
+const COMPASS_SIZE = 40;
+const COMPACT_DIAL_SIZE = 28;
 
 /**
  * ズーム・回転・ホーム・地図種別のボタン。
@@ -82,7 +84,7 @@ export const MapLibreControls = ({
         <MapCompassDial
           map={map}
           bearing={bearing}
-          size={compact ? COMPACT_DIAL_SIZE : undefined}
+          size={compact ? COMPACT_DIAL_SIZE : COMPASS_SIZE}
         />
       </CardContent>
     </Card>

@@ -842,8 +842,8 @@ function MapLibreResortMapContent({
     mapTileVariant,
   ]);
 
-  // 回転はスキー場詳細画面の地図だけ
-  const canRotate = isDetailMap && !isPreviewMap;
+  // 回転はプレビュー地図以外（ホーム・詳細）で有効。コンパスも同じ条件で常時表示する
+  const canRotate = !isPreviewMap;
   useEffect(() => {
     if (!map || !isReady) return;
 
