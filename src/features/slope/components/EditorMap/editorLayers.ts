@@ -264,7 +264,7 @@ export const createEditorLayers = (): LayerSpecification[] => [
     filter: ["==", ["get", "grooming"], "ungroomed"],
     layout: { "line-cap": "butt", "line-join": "round" },
     paint: {
-      "line-color": "#FFFFFF",
+      "line-color": "#f8fafc",
       "line-width": CORRECTION_ACTIVE_COURSE_WIDTH,
       "line-opacity": 0.9,
       "line-dasharray": UNGROOMED_MASK_DASH,
@@ -277,7 +277,7 @@ export const createEditorLayers = (): LayerSpecification[] => [
     filter: ["==", ["get", "grooming"], "variable"],
     layout: { "line-cap": "butt", "line-join": "round" },
     paint: {
-      "line-color": "#FFFFFF",
+      "line-color": "#f8fafc",
       "line-width": CORRECTION_ACTIVE_COURSE_WIDTH,
       "line-opacity": 0.9,
       "line-dasharray": VARIABLE_MASK_DASH,
@@ -326,7 +326,7 @@ export const createEditorLayers = (): LayerSpecification[] => [
       "circle-color": COLOR.midpoint,
       "circle-opacity": 0.7,
       "circle-stroke-width": POINT_STROKE_WIDTH,
-      "circle-stroke-color": "#FFFFFF",
+      "circle-stroke-color": "#f8fafc",
       "circle-stroke-opacity": 0.7,
     },
   },
@@ -344,7 +344,7 @@ export const createEditorLayers = (): LayerSpecification[] => [
       "circle-color": COLOR.insertHint,
       "circle-opacity": 0.55,
       "circle-stroke-width": POINT_STROKE_WIDTH,
-      "circle-stroke-color": "#FFFFFF",
+      "circle-stroke-color": "#f8fafc",
     },
   },
   {
@@ -373,7 +373,7 @@ export const createEditorLayers = (): LayerSpecification[] => [
         "case",
         ["boolean", ["get", "selected"], false],
         "#FACC15",
-        "#FFFFFF",
+        "#f8fafc",
       ],
     },
   },
@@ -390,7 +390,7 @@ export const createEditorLayers = (): LayerSpecification[] => [
       "circle-radius": RADIUS.mergeAnchor,
       "circle-color": COLOR.mergeAnchor,
       "circle-stroke-width": 3,
-      "circle-stroke-color": "#FFFFFF",
+      "circle-stroke-color": "#f8fafc",
     },
   },
   {
@@ -401,7 +401,7 @@ export const createEditorLayers = (): LayerSpecification[] => [
       "circle-radius": RADIUS.midstation,
       "circle-color": COLOR.midstation,
       "circle-stroke-width": POINT_STROKE_WIDTH,
-      "circle-stroke-color": "#FFFFFF",
+      "circle-stroke-color": "#f8fafc",
     },
   },
   createPointHitLayer(

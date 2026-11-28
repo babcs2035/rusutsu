@@ -261,7 +261,7 @@ const MARKER_Z_INDEX = "5";
 /** 一覧と地図を行き来する画面で、選んだ投稿の印を青い枠で囲み、ほかの印より上に出す。 */
 function setMarkerHighlight(button: HTMLElement, highlighted: boolean) {
   button.style.boxShadow = highlighted
-    ? "0 0 0 2px #fff, 0 0 0 5px #2563eb"
+    ? "0 0 0 2px #f8fafc, 0 0 0 5px #2563eb"
     : "";
   button.style.zIndex = highlighted ? "6" : MARKER_Z_INDEX;
 }

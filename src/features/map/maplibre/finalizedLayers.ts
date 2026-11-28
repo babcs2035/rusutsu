@@ -682,7 +682,7 @@ export const createFinalizedLayers = (
     source: FINALIZED_SOURCE.courseOutlines,
     layout: { "line-cap": "round", "line-join": "round" },
     paint: {
-      "line-color": "#FFFFFF",
+      "line-color": "#f8fafc",
       "line-width": getCasingWidth(state, "course"),
       "line-opacity": getNightAwareCasingOpacity(state, "course"),
     },
@@ -693,7 +693,7 @@ export const createFinalizedLayers = (
     source: FINALIZED_SOURCE.lifts,
     layout: { "line-cap": "round", "line-join": "round" },
     paint: {
-      "line-color": "#FFFFFF",
+      "line-color": "#f8fafc",
       "line-width": getCasingWidth(state, "lift"),
       "line-opacity": getNightAwareCasingOpacity(state, "lift"),
     },
@@ -720,7 +720,7 @@ export const createFinalizedLayers = (
     filter: getUngroomedMaskFilter(state),
     layout: { "line-cap": "butt", "line-join": "round" },
     paint: {
-      "line-color": "#FFFFFF",
+      "line-color": "#f8fafc",
       "line-width": getLineWidth(state, "course"),
       "line-opacity": getLineOpacity(state, "course"),
       "line-dasharray": UNGROOMED_MASK_DASH,
@@ -733,7 +733,7 @@ export const createFinalizedLayers = (
     filter: getUngroomedMaskFilter(state, true),
     layout: { "line-cap": "butt", "line-join": "round" },
     paint: {
-      "line-color": "#FFFFFF",
+      "line-color": "#f8fafc",
       "line-width": getLineWidth(state, "course"),
       "line-opacity": getLineOpacity(state, "course"),
       "line-dasharray": VARIABLE_MASK_DASH,
@@ -758,7 +758,7 @@ export const createFinalizedLayers = (
     filter: getLiftSelectionFilter(state),
     layout: { "line-cap": "round", "line-join": "round" },
     paint: {
-      "line-color": "#FFFFFF",
+      "line-color": "#f8fafc",
       "line-width": scaleWidth(LIFT_WIDTH, 1, 4),
       "line-opacity": 1,
     },
@@ -820,7 +820,7 @@ export const createFinalizedLayers = (
     minzoom: LIFT_STATION_MIN_ZOOM,
     paint: {
       "circle-radius": LIFT_STATION_RADIUS,
-      "circle-color": "#FFFFFF",
+      "circle-color": "#f8fafc",
       "circle-stroke-color": getLiftStationStrokeColor(state),
       "circle-stroke-width": LIFT_STATION_STROKE,
       // 下の線が透けて見えないよう、白丸は常に不透明にする

@@ -68,9 +68,9 @@ type LiftStatusPalette = {
  */
 const LIFT_STATUS_PALETTE: Record<FinalizedFeatureStatus, LiftStatusPalette> = {
   open: { baseColor: "#1E40AF", flowColor: "#00E1FF" },
-  limited: { baseColor: "#DC2626", flowColor: "#FFFFFF" },
-  closed: { baseColor: "#8A99A8", flowColor: "#FFFFFF" },
-  unknown: { baseColor: "#6366F1", flowColor: "#FFFFFF" },
+  limited: { baseColor: "#DC2626", flowColor: "#f8fafc" },
+  closed: { baseColor: "#8A99A8", flowColor: "#f8fafc" },
+  unknown: { baseColor: "#6366F1", flowColor: "#f8fafc" },
 };
 
 const getLiftStatusPalette = (status: string | null | undefined) =>

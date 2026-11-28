@@ -122,7 +122,7 @@ test("営業中のコースは自分の色・ケーシングつき", () => {
   assert.equal(line.color, "#22C55E");
   assert.equal(line.opacity, 1);
   assert.equal(line.dashArray, undefined);
-  assert.equal(casing.color, "#FFFFFF");
+  assert.equal(casing.color, "#f8fafc");
   assert.ok((casing.weight ?? 0) > (line.weight ?? 0));
 });
 
@@ -216,7 +216,7 @@ test("営業中のリフトはフローが流れ、運休リフトは止まる",
     sourceId: "lift-2",
     statusKind: "closed",
     color: "#8A99A8",
-    flowColor: "#FFFFFF",
+    flowColor: "#f8fafc",
   });
 
   const openFlow = styleOf(openLift, "flow");

@@ -7,6 +7,6 @@ export const LIFT_PALETTE: Record<
 > = {
   open: { color: "#1E40AF", flowColor: "#00E1FF" },
   limited: { color: "#B91C1C", flowColor: "#FECACA" },
-  closed: { color: "#64748B", flowColor: "#FFFFFF" },
+  closed: { color: "#64748B", flowColor: "#f8fafc" },
   unknown: { color: "#7C3AED", flowColor: "#EDE9FE" },
 };

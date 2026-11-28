@@ -84,7 +84,7 @@ export const createResortPointLayers = (
       "circle-color": SELECTED_RING_COLOR[tileVariant],
       "circle-stroke-width": SELECTED_MARKER_RING_WIDTH,
       "circle-stroke-color":
-        tileVariant === "photo" ? "rgba(15,23,42,0.95)" : "#FFFFFF",
+        tileVariant === "photo" ? "rgba(15,23,42,0.95)" : "#f8fafc",
     },
   },
   {
@@ -96,7 +96,7 @@ export const createResortPointLayers = (
       "circle-color": ["get", "color"],
       "circle-opacity": ["get", "opacity"],
       "circle-stroke-width": 1.2,
-      "circle-stroke-color": "#FFFFFF",
+      "circle-stroke-color": "#f8fafc",
       "circle-stroke-opacity": ["get", "opacity"],
     },
   },
@@ -128,6 +128,6 @@ export const applyResortPointTileVariant = (
   map.setPaintProperty(
     RESORT_POINT_LAYER.selected,
     "circle-stroke-color",
-    tileVariant === "photo" ? "rgba(15,23,42,0.95)" : "#FFFFFF",
+    tileVariant === "photo" ? "rgba(15,23,42,0.95)" : "#f8fafc",
   );
 };

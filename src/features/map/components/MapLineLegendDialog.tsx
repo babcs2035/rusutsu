@@ -65,7 +65,7 @@ function CourseLineSample({
       <path
         d={`M6 ${lineY}H50`}
         fill="none"
-        stroke="#FFFFFF"
+        stroke="#f8fafc"
         strokeWidth={SAMPLE_CASING_WIDTH}
         strokeLinecap="round"
       />
@@ -80,7 +80,7 @@ function CourseLineSample({
         <path
           d={`M6 ${lineY}H50`}
           fill="none"
-          stroke="#FFFFFF"
+          stroke="#f8fafc"
           strokeWidth={SAMPLE_LINE_WIDTH}
           strokeDasharray={`0 ${maskDash[1] * SAMPLE_MASK_SCALE} ${maskDash[2] * SAMPLE_MASK_SCALE} 0`}
           strokeLinecap="butt"
@@ -103,7 +103,7 @@ function LiftStationSample() {
       <path
         d="M6 7H50"
         fill="none"
-        stroke="#FFFFFF"
+        stroke="#f8fafc"
         strokeWidth={lineWidth + FINALIZED_CASING_EXTRA.pale}
         strokeLinecap="round"
       />
@@ -118,7 +118,7 @@ function LiftStationSample() {
         cx="28"
         cy="7"
         r="5"
-        fill="#FFFFFF"
+        fill="#f8fafc"
         stroke={LIFT_PALETTE.open.color}
         strokeWidth="2.2"
       />
@@ -269,7 +269,7 @@ export const LiftFlowSample = ({
       <path
         d="M6 7H50"
         fill="none"
-        stroke="#FFFFFF"
+        stroke="#f8fafc"
         strokeWidth={getSampleWidth("lift") + FINALIZED_CASING_EXTRA.pale}
         strokeLinecap="round"
       />

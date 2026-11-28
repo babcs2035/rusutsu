@@ -59,7 +59,7 @@ function Cursor({
     <path
       d="M0 0 L0 13 L3.6 9.8 L6 15 L8.4 14 L6 9 L10.5 8.6 Z"
       fill="#1A202C"
-      stroke="#FFFFFF"
+      stroke="#f8fafc"
       strokeWidth="1"
     >
       <animateTransform
@@ -115,7 +115,7 @@ const line = (points: string, color: string, width = 4) => (
 );
 
 const dot = (cx: number, cy: number, color: string, r = 5) => (
-  <circle cx={cx} cy={cy} r={r} fill={color} stroke="#FFFFFF" strokeWidth="2" />
+  <circle cx={cx} cy={cy} r={r} fill={color} stroke="#f8fafc" strokeWidth="2" />
 );
 
 /** クリックしていって線を描く */
@@ -153,7 +153,7 @@ export function DrawIllustration() {
           cy={y}
           r={index === points.length - 1 ? 6 : 5}
           fill={index === points.length - 1 ? "#DD6B20" : COLOR.active}
-          stroke="#FFFFFF"
+          stroke="#f8fafc"
           strokeWidth="2"
           opacity="0"
         >
@@ -205,7 +205,7 @@ export function InsertPointIllustration() {
         r="5"
         fill={COLOR.active}
         fillOpacity="0.6"
-        stroke="#FFFFFF"
+        stroke="#f8fafc"
         strokeWidth="2"
       >
         <animate
@@ -256,7 +256,7 @@ export function MovePointIllustration() {
         cy="80"
         r="6"
         fill={COLOR.active}
-        stroke="#FFFFFF"
+        stroke="#f8fafc"
         strokeWidth="2"
       >
         <animate
@@ -369,7 +369,7 @@ export function ReorderIllustration() {
             width="180"
             height="20"
             rx="4"
-            fill="#FFFFFF"
+            fill="#f8fafc"
             stroke="#CBD5E0"
           />
           <rect
@@ -449,7 +449,7 @@ export function MappingIllustration() {
               width="104"
               height="22"
               rx="4"
-              fill="#FFFFFF"
+              fill="#f8fafc"
               stroke={pair.matched ? "#9AE6B4" : "#FBD38D"}
             />
             <text
@@ -473,7 +473,7 @@ export function MappingIllustration() {
               width="104"
               height="22"
               rx="4"
-              fill={pair.matched ? "#FFFFFF" : "none"}
+              fill={pair.matched ? "#f8fafc" : "none"}
               stroke={pair.matched ? "#9AE6B4" : "#FBD38D"}
               strokeDasharray={pair.matched ? undefined : "4 4"}
             />

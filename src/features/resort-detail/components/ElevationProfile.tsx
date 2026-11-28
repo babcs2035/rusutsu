@@ -394,7 +394,7 @@ export const ElevationProfile = ({
                   cy={toY(steepestPoint.elevation)}
                   r={4}
                   fill="#EF4444"
-                  stroke="#FFFFFF"
+                  stroke="#f8fafc"
                   strokeWidth={2}
                   vectorEffect="non-scaling-stroke"
                 />
@@ -419,7 +419,7 @@ export const ElevationProfile = ({
                     fill={halo ? "none" : "#B91C1C"}
                     fontSize={PROFILE_LABEL_SIZE}
                     fontWeight={700}
-                    stroke={halo ? "#FFFFFF" : "none"}
+                    stroke={halo ? "#f8fafc" : "none"}
                     strokeLinejoin="round"
                     strokeWidth={halo ? 3 : 0}
                   >

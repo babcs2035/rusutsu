@@ -20,7 +20,7 @@ import {
   type LineStyleContext,
 } from "../utils/lineStyle";
 
-const SELECTED_HALO_COLOR = "#FFFFFF";
+const SELECTED_HALO_COLOR = "#f8fafc";
 // 描画面の面積は (1 + 2p)^2 で効く。Retina では特に重いので小さく保つ
 const FINALIZED_RENDERER_PADDING = 0.4;
 // 連続ズームでは zoomend が細かく飛ぶ。線幅は 1/4 段ごとに更新すれば

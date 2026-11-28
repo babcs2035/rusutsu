@@ -208,7 +208,7 @@ export const MapCompassDial = ({
           cy={knob.y}
           r={KNOB_RADIUS}
           fill="#DC2626"
-          stroke="#FFFFFF"
+          stroke="#f8fafc"
           strokeWidth="2.6"
         />
       </svg>

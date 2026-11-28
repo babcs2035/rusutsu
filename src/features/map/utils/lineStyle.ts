@@ -158,7 +158,7 @@ export const getLineStyle = ({
 
     const dashLength = getLiftFlowDashLength(context.zoom);
     return {
-      color: properties.flowColor ?? "#FFFFFF",
+      color: properties.flowColor ?? "#f8fafc",
       opacity: 0.95,
       weight: getLiftFlowWidth(lineWidth),
       dashArray: `${dashLength} ${dashLength}`,
@@ -179,7 +179,7 @@ export const getLineStyle = ({
           : 0.56;
 
     return {
-      color: isSelectedLift ? SELECTED_LIFT_COLOR : "#FFFFFF",
+      color: isSelectedLift ? SELECTED_LIFT_COLOR : "#f8fafc",
       opacity: casingOpacity,
       weight:
         getMapCasingWidth(lineWidth, isPhotoTile) + (isSelectedLift ? 4 : 0),
