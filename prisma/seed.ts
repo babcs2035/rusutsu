@@ -5,6 +5,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 import dotenv from "dotenv";
 import { Pool } from "pg";
+import { seedCommunityPosts } from "./seedCommunity";
 
 dotenv.config({ quiet: true });
 
@@ -25,6 +26,9 @@ async function main() {
   // DB 接続確認のみ
   const count = await prisma.skiResort.count();
   console.log(`✅ Database connected. Current ski resorts: ${count}`);
+
+  // ローカル開発用のコミュニティ投稿を投入する
+  await seedCommunityPosts(prisma);
 }
 
 main()
