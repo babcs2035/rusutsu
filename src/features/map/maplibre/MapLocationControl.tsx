@@ -117,7 +117,7 @@ export function MapLocationControl({
             setCenterPending(true);
             location.request();
           }}
-          className={`flex h-11 w-11 items-center justify-center rounded-md border bg-white text-blue-600 shadow-sm disabled:opacity-60 ${location.unavailable ? "opacity-40" : ""}`}
+          className={`flex h-11 w-11 items-center justify-center rounded-xl bg-white text-blue-600 ring-1 ring-border disabled:opacity-60 ${location.unavailable ? "opacity-40" : ""}`}
         >
           {location.loading ? (
             <LoaderCircle size={20} className="animate-spin" />
@@ -129,7 +129,7 @@ export function MapLocationControl({
       {deniedNotice && (
         <p
           role="status"
-          className="rounded-md border bg-white px-3 py-2 text-sm shadow-sm"
+          className="rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-border"
         >
           位置情報が許可されていません
         </p>

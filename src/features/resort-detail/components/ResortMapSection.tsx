@@ -540,7 +540,7 @@ export const ResortMapSection = ({
             type="button"
             aria-label="地図を拡大"
             onClick={() => setIsExpanded(true)}
-            className="absolute top-2 right-2 z-30 h-9 w-9 min-w-9 rounded-md border border-gray-200 bg-white p-0 text-gray-700 shadow-sm hover:bg-gray-50 hover:text-gray-900 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10"
+            className="absolute top-2 right-2 z-30 h-9 w-9 min-w-9 rounded-md bg-white p-0 text-gray-700 ring-1 ring-border hover:bg-gray-50 hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-blue-600/10"
           >
             <Maximize2 size={16} strokeWidth={2.5} />
           </Button>
@@ -583,7 +583,7 @@ export const ResortMapSection = ({
                   type="button"
                   aria-label="地図を閉じる"
                   onClick={collapse}
-                  className="absolute z-[780] h-11 w-11 min-w-11 rounded-full border border-gray-200 bg-white/95 p-0 text-gray-700 shadow-md backdrop-blur-sm hover:bg-white hover:text-gray-900 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/10"
+                  className="absolute z-[780] h-11 w-11 min-w-11 rounded-full bg-white/95 p-0 text-gray-700 ring-1 ring-border backdrop-blur-sm hover:bg-white hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-blue-600/10"
                   style={{
                     top: "calc(env(safe-area-inset-top, 0px) + 0.75rem)",
                     // 右に詳細を重ねているときは、その下に隠れないよう左へ逃がす

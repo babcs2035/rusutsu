@@ -104,7 +104,7 @@ export function MapCourseStatusControl({
               onCheckedChange(!active);
             }}
             className={cn(
-              "pointer-events-auto flex h-9 shrink-0 items-center gap-1 rounded-md border border-slate-300 bg-white px-2 text-sm font-bold whitespace-nowrap text-slate-700 shadow-sm hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-blue-600 md:h-10 md:gap-1.5 md:px-3 md:text-base",
+              "pointer-events-auto flex h-9 shrink-0 items-center gap-1 rounded-md bg-white px-2 text-sm font-bold whitespace-nowrap text-slate-700 ring-1 ring-border hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-blue-600 md:h-10 md:gap-1.5 md:px-3 md:text-base",
               compact &&
                 "h-9 gap-1 px-1.5 text-sm font-semibold md:h-[34px] md:gap-1 md:px-1.5 md:text-sm",
               placement === "bottom" && "disabled:opacity-50",
@@ -133,7 +133,7 @@ export function MapCourseStatusControl({
           <span
             role="status"
             className={cn(
-              "inline-flex h-7 shrink-0 items-center whitespace-nowrap rounded-md border border-slate-200 bg-white/95 px-2 text-xs font-medium text-slate-600 md:h-8 md:text-sm",
+              "inline-flex h-7 shrink-0 items-center whitespace-nowrap rounded-md bg-white/95 px-2 text-xs font-medium text-slate-600 ring-1 ring-border md:h-8 md:text-sm",
               compact && "h-6 px-1.5 text-sm md:h-6 md:px-1.5 md:text-sm",
             )}
           >
@@ -145,7 +145,7 @@ export function MapCourseStatusControl({
           <div
             role="group"
             aria-label="表示するコースの営業状況"
-            className="pointer-events-auto flex w-max items-center gap-0.5 rounded-md border border-slate-200 bg-white/95 p-0.5 shadow-sm"
+            className="pointer-events-auto flex w-max items-center gap-0.5 rounded-md bg-white/95 p-0.5 ring-1 ring-border"
           >
             {COURSE_STATUS_OPTIONS.filter(
               option => option.value !== "closed",

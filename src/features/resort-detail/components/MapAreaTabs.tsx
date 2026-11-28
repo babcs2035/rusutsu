@@ -16,7 +16,7 @@ export function MapAreaTabs<TTab extends string>({
     <div
       role="tablist"
       aria-label="地図の表示切り替え"
-      className="inline-flex gap-0.5 rounded-full border border-slate-200 bg-white/90 p-0.5 shadow-sm backdrop-blur-sm"
+      className="inline-flex gap-0.5 rounded-full bg-white/90 p-0.5 ring-1 ring-border backdrop-blur-sm"
     >
       {tabs.map(tab => {
         const isActive = tab === activeTab;

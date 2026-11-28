@@ -54,7 +54,7 @@ function TooltipContent({
             // base-ui Tooltip Popup は data-open/data-closed 属性のみを付与し data-state を
             // 付与しないため，data-[state=delayed-open]: は常に非一致の死クラス（data-open:
             // と冗長）だったため除去
-            "z-50 inline-flex w-fit max-w-[min(20rem,calc(100vw-2rem))] origin-(--transform-origin) items-center gap-2 rounded-lg bg-foreground px-3 py-2 text-xs leading-snug text-background has-data-[slot=kbd]:pr-1.5 data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 **:data-[slot=kbd]:relative **:data-[slot=kbd]:isolate **:data-[slot=kbd]:z-50 **:data-[slot=kbd]:rounded-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+            "z-50 inline-flex w-fit max-w-[min(20rem,calc(100vw-2rem))] origin-(--transform-origin) items-center gap-2 rounded-lg bg-foreground px-3 py-2.5 text-xs leading-snug text-background has-data-[slot=kbd]:pr-1.5 data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 **:data-[slot=kbd]:relative **:data-[slot=kbd]:isolate **:data-[slot=kbd]:z-50 **:data-[slot=kbd]:rounded-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
             className,
           )}
           {...props}

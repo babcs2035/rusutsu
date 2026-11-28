@@ -71,7 +71,7 @@ export function CommunityMapControls({
   return (
     <div className="flex shrink-0 items-center gap-1">
       <Label
-        className={`h-9 gap-1 rounded-md border border-slate-300 bg-white px-1 text-sm font-semibold whitespace-nowrap text-slate-700 shadow-sm min-[375px]:px-1.5 md:h-8 md:px-1.5 md:text-xs ${available ? "cursor-pointer" : "cursor-default opacity-50"}`}
+        className={`h-9 gap-1 rounded-md bg-white px-1 text-sm font-semibold whitespace-nowrap text-slate-700 ring-1 ring-border min-[375px]:px-1.5 md:h-8 md:px-1.5 md:text-xs ${available ? "cursor-pointer" : "cursor-default opacity-50"}`}
       >
         <input
           type="checkbox"

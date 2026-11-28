@@ -20,7 +20,7 @@ export const LiftTicketConditionsButton = ({
       type="button"
       variant="ghost"
       className={cn(
-        "flex h-8 min-w-0 shrink items-center justify-start gap-1 rounded-full border-0 bg-gray-950 pr-2 pl-3 text-left text-xs font-medium text-white shadow-md hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500",
+        "flex h-8 min-w-0 shrink items-center justify-start gap-1 rounded-full border-0 bg-gray-950 pr-2 pl-3 text-left text-xs font-medium text-white shadow-sm hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500",
         className,
       )}
       onClick={onClick}

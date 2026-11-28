@@ -107,7 +107,7 @@ export const FeatureTags = ({
 
 // 地図の「＋投稿」「営業中のみ」と同じ文字・枠
 const ACTION_CLASS =
-  "h-8 gap-1 rounded-md border border-slate-300 bg-white px-1.5 text-sm font-semibold whitespace-nowrap text-slate-700 shadow-sm hover:bg-slate-50 md:text-xs";
+  "h-8 gap-1 rounded-md bg-white px-1.5 text-sm font-semibold whitespace-nowrap text-slate-700 ring-1 ring-border hover:bg-slate-50 md:text-xs";
 // 投稿は青で塗り、動画は白地に YouTube の赤文字で示す
 const POST_CLASS =
   "border-blue-600 bg-blue-600 text-white hover:bg-blue-700 hover:text-white";

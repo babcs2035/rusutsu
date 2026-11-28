@@ -18,7 +18,7 @@ export function FavoriteCompareButton({
       <Button
         type="button"
         variant="default"
-        className="h-8 gap-0.5 rounded-md bg-pink-700 px-1 text-xs font-semibold text-white shadow-md hover:bg-pink-800 @min-[21rem]/comparison-actions:gap-1 @min-[21rem]/comparison-actions:px-1.5 @min-[24rem]/comparison-actions:px-2.5"
+        className="h-8 gap-0.5 rounded-md bg-pink-700 px-1 text-xs font-semibold text-white shadow-sm hover:bg-pink-800 @min-[21rem]/comparison-actions:gap-1 @min-[21rem]/comparison-actions:px-1.5 @min-[24rem]/comparison-actions:px-2.5"
         onClick={onCompare}
         disabled={isLoading}
         aria-busy={isLoading}

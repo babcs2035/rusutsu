@@ -184,7 +184,7 @@ function ToggleList({
               key={option.key}
               aria-busy={shown && loading}
               className={cn(
-                "pointer-events-auto flex w-max max-w-full shrink-0 items-center rounded-md border border-slate-300 bg-white whitespace-nowrap text-slate-700 shadow-sm",
+                "pointer-events-auto flex w-max max-w-full shrink-0 items-center rounded-md bg-white whitespace-nowrap text-slate-700 ring-1 ring-border",
                 SIZE_CLASS[size],
                 className,
               )}

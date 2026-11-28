@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { useHomeCompare } from "../compareContext";
 
 const SAVED_BUTTON_CLASS =
-  "h-8 shrink-0 gap-1 rounded-md px-2 text-xs font-semibold whitespace-nowrap shadow-md";
+  "h-8 shrink-0 gap-1 rounded-md px-2 text-xs font-semibold whitespace-nowrap shadow-sm";
 const FAVORITE_CLASS =
   "border-pink-700 bg-pink-700 text-white hover:bg-pink-800 hover:text-white";
 
