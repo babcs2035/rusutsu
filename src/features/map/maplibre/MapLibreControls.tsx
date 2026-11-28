@@ -11,9 +11,9 @@ import type { MapTileVariant } from "../types";
 import { MapCompassDial } from "./MapCompassDial";
 import { getMapTopControlsOverlapHeight, getPanelOffset } from "./viewport";
 
-// 現在地ボタン（MapLocationControl）と同じ大きさ・形
+// 現在地ボタン（MapLocationControl）と同じ大きさ・形。枠は Card と同じ ring で揃える
 const MOBILE_SIDE_BUTTON_CLASS =
-  "pointer-events-auto flex h-11 w-11 items-center justify-center rounded-md border bg-white text-gray-700 shadow-sm";
+  "pointer-events-auto flex h-11 w-11 items-center justify-center rounded-xl bg-white text-gray-700 ring-1 ring-border";
 
 const CONTROL_BUTTON_CLASS =
   "flex h-10 w-10 items-center justify-center rounded-none bg-white p-0 text-2xl font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 min-w-0";
