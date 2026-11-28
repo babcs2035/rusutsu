@@ -16,7 +16,7 @@ import {
   RESORT_SORT_OPTIONS,
 } from "../utils/sortResorts";
 
-const ITEM_CLASS = "min-h-9 whitespace-nowrap pl-2 text-[13px] font-medium";
+const ITEM_CLASS = "min-h-9 whitespace-nowrap pl-2 text-xs font-medium";
 
 export function ResortSortButton({
   order,
@@ -34,7 +34,7 @@ export function ResortSortButton({
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={`並び替え：${order === "prefecture" ? `${selected?.label}（${inner?.description}）` : selected?.label}`}
-        className="flex h-8 min-w-0 shrink items-center justify-center gap-1 whitespace-nowrap rounded-full border border-gray-200 bg-white px-2 text-[13px] font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30"
+        className="flex h-8 min-w-0 shrink items-center justify-center gap-1 whitespace-nowrap rounded-full border border-gray-200 bg-white px-2 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30"
       >
         <Icon
           className={`size-3.5 shrink-0 ${locating ? "animate-spin" : ""}`}
@@ -50,7 +50,7 @@ export function ResortSortButton({
       <DropdownMenuContent
         // 並び替えのボタンは行の左端にあるので、メニューも左端を揃えて開く
         align="start"
-        className="w-64 max-w-[calc(100vw-2rem)] text-[13px] font-medium text-gray-700"
+        className="w-64 max-w-[calc(100vw-2rem)] text-xs font-medium text-gray-700"
       >
         <DropdownMenuRadioGroup
           value={order}
@@ -92,7 +92,7 @@ export function ResortSortButton({
                           onOrderChange("prefecture");
                         }}
                         className={cn(
-                          "h-full rounded-full px-2 py-0 text-[13px] font-medium whitespace-nowrap",
+                          "h-full rounded-full px-2 py-0 text-xs font-medium whitespace-nowrap",
                           active
                             ? "bg-gray-900 text-white focus:bg-gray-800 focus:text-white focus:**:text-white"
                             : "text-gray-700",

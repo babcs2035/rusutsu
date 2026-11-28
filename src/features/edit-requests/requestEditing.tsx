@@ -86,7 +86,7 @@ export function RequestChangeBadge({ id }: { id: string }) {
   if (!change) return null;
   return (
     <span
-      className={`shrink-0 rounded px-1 py-px text-[10px] font-semibold ${change.status === "added" ? "bg-emerald-100 text-emerald-900" : "bg-amber-100 text-amber-900"}`}
+      className={`shrink-0 rounded px-1 py-px text-xs font-semibold ${change.status === "added" ? "bg-emerald-100 text-emerald-900" : "bg-amber-100 text-amber-900"}`}
     >
       {change.status === "added" ? "追加" : "変更"}
     </span>
@@ -104,7 +104,7 @@ export function RequestFieldChange({
   const change = useContext(RequestChangesContext)?.items.get(id);
   if (!change || !(field in change.before)) return null;
   return (
-    <p className="my-0.5 rounded bg-amber-50 px-1.5 py-0.5 text-[11px] text-amber-900 ring-1 ring-amber-200">
+    <p className="my-0.5 rounded bg-amber-50 px-1.5 py-0.5 text-xs text-amber-900 ring-1 ring-amber-200">
       変更あり · 公開中: {change.before[field] || "未設定"}
     </p>
   );

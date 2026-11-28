@@ -71,7 +71,7 @@ const highlightScript = (selector: string | null) => `
   let nodes = [];
   try { nodes = [...document.querySelectorAll(selector)]; } catch {}
   const banner = document.createElement("div");
-  banner.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:2147483647;padding:4px 8px;font:12px/1.4 sans-serif;color:#fff;background:" + (nodes.length ? "#b91c1c" : "#525252");
+  banner.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:2147483647;padding:4px 8px;font:16px/1.4 sans-serif;color:#fff;background:" + (nodes.length ? "#b91c1c" : "#525252");
   banner.textContent = nodes.length
     ? "警告の箇所: " + selector + "（" + nodes.length + "件）"
     : "警告の箇所が見つかりません: " + selector;

@@ -83,7 +83,7 @@ export const LinkChip = ({
         ? "border-blue-600 bg-blue-600 text-white hover:bg-blue-700"
         : "border-blue-100 bg-blue-50 text-blue-700 underline underline-offset-2 hover:bg-blue-100 hover:text-blue-800",
       compact
-        ? "min-h-5 px-1.5 py-0 text-[0.6875rem] md:text-xs"
+        ? "min-h-5 px-1.5 py-0 text-xs md:text-xs"
         : "min-h-6 px-2 py-0.5 text-xs md:text-sm",
       className,
     )}

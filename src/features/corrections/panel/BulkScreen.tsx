@@ -176,7 +176,7 @@ export function BulkScreen({
                         {feature.name}
                       </button>
                       {(edited || segmented) && (
-                        <p className="text-[11px] leading-tight text-gray-500">
+                        <p className="text-xs leading-tight text-gray-500">
                           {edited ? "現在の登録: " : ""}
                           {segmented ? (
                             "区間別"

@@ -213,7 +213,7 @@ export function LineEditStep({
         </Button>
         <Button
           size="sm"
-          variant={isMerging ? "green" : "outline"}
+          variant={isMerging ? "default" : "outline"}
           disabled={!isMerging && courses.length < 2}
           title={
             courses.length < 2
@@ -274,7 +274,7 @@ export function LineEditStep({
         }}
       />
       {importMessage && (
-        <p className="shrink-0 text-[11px] text-gray-600">{importMessage}</p>
+        <p className="shrink-0 text-xs text-gray-600">{importMessage}</p>
       )}
 
       {mergeDraft && (
@@ -296,7 +296,7 @@ export function LineEditStep({
         storageKey="rusutsu-slope-help-open"
         defaultOpen={false}
       >
-        <ul className="flex flex-col gap-1 text-[11px] leading-relaxed text-gray-700">
+        <ul className="flex flex-col gap-1 text-xs leading-relaxed text-gray-700">
           <li>
             <span className="font-bold">コースを選ぶ:</span>{" "}
             地図の線か左の一覧をクリック。線は少し離れていても反応します。

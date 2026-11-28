@@ -6,6 +6,8 @@ import useMediaQuery from "@/hooks/use-media-query";
 import type { ElevationProfilePoint } from "../types";
 import type { ProfileBand } from "../utils/detailMetrics";
 
+const PROFILE_LABEL_SIZE = 16;
+
 /** 断面図の線の色。開いている区間と閉じている区間を塗り分ける */
 const STATUS_LINE_COLOR = {
   "○": "#2563EB",
@@ -79,8 +81,8 @@ export const ElevationProfile = ({
 
   // 縦横とも同じ px/m。高さの上限に達したときは横幅も縮める。
   // 軸の文字とつまみは実寸のままにし、短い・平坦なコースでも潰さない。
-  const axisLeftPadding = 50;
-  const chartTop = 16;
+  const axisLeftPadding = 64;
+  const chartTop = 20;
   const maxDistance = Math.max(...points.map(point => point.distance));
   const minElevation = Math.min(...points.map(point => point.elevation));
   const maxElevation = Math.max(...points.map(point => point.elevation));
@@ -106,11 +108,11 @@ export const ElevationProfile = ({
   const chartHeight = elevationDifference * scale + bottomPadding;
   const chartBottom = chartTop + chartHeight;
   const bandTop = chartBottom + 3;
-  const bandRowHeight = 15;
+  const bandRowHeight = 22;
   const bandsHeight =
     bands.length * (bandRowHeight + 2) + (bands.length ? 3 : 0);
   const tickTop = chartBottom + bandsHeight;
-  const height = tickTop + 32;
+  const height = tickTop + 42;
   const bottomAxisElevation = minElevation - bottomPadding / scale;
   const elevationRange = maxElevation - bottomAxisElevation;
   const elevationStep = getDistanceGridInterval(
@@ -244,7 +246,7 @@ export const ElevationProfile = ({
                   x={chartLeft - 6}
                   y={toY(elevation) + 3.5}
                   fill="#6B7280"
-                  fontSize={12}
+                  fontSize={PROFILE_LABEL_SIZE}
                   fontWeight={800}
                   textAnchor="end"
                 >
@@ -266,9 +268,9 @@ export const ElevationProfile = ({
                 />
                 <text
                   x={toX(distance)}
-                  y={tickTop + 15}
+                  y={tickTop + 19}
                   fill="#6B7280"
-                  fontSize={12}
+                  fontSize={PROFILE_LABEL_SIZE}
                   fontWeight={800}
                   textAnchor={
                     distance === 0
@@ -284,9 +286,9 @@ export const ElevationProfile = ({
             ))}
             <text
               x={chartRight}
-              y={tickTop + 29}
+              y={tickTop + 39}
               fill="#6B7280"
-              fontSize={12}
+              fontSize={PROFILE_LABEL_SIZE}
               fontWeight={800}
               textAnchor="end"
             >
@@ -310,18 +312,20 @@ export const ElevationProfile = ({
                           fillOpacity={0.3}
                         />
                         {/* 帯に収まらない名前は省き、色だけで区間を示す */}
-                        {run.label && run.label.length * 10 + 6 <= runWidth && (
-                          <text
-                            x={x + runWidth / 2}
-                            y={y + 11}
-                            fill="#1E293B"
-                            fontSize={10}
-                            fontWeight={700}
-                            textAnchor="middle"
-                          >
-                            {run.label}
-                          </text>
-                        )}
+                        {run.label &&
+                          run.label.length * PROFILE_LABEL_SIZE + 6 <=
+                            runWidth && (
+                            <text
+                              x={x + runWidth / 2}
+                              y={y + 17}
+                              fill="#1E293B"
+                              fontSize={PROFILE_LABEL_SIZE}
+                              fontWeight={700}
+                              textAnchor="middle"
+                            >
+                              {run.label}
+                            </text>
+                          )}
                       </g>
                     );
                   })}
@@ -410,7 +414,7 @@ export const ElevationProfile = ({
                     }
                     textAnchor="end"
                     fill={halo ? "none" : "#B91C1C"}
-                    fontSize={12}
+                    fontSize={PROFILE_LABEL_SIZE}
                     fontWeight={700}
                     stroke={halo ? "#FFFFFF" : "none"}
                     strokeLinejoin="round"

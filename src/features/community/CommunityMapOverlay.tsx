@@ -71,7 +71,7 @@ export function CommunityMapControls({
   return (
     <div className="flex shrink-0 items-center gap-1">
       <Label
-        className={`h-9 gap-1 rounded-md border border-slate-300 bg-white px-1 text-sm font-semibold whitespace-nowrap text-slate-700 shadow-sm min-[375px]:px-1.5 md:h-8 md:px-1.5 md:text-[13px] ${available ? "cursor-pointer" : "cursor-default opacity-50"}`}
+        className={`h-9 gap-1 rounded-md border border-slate-300 bg-white px-1 text-sm font-semibold whitespace-nowrap text-slate-700 shadow-sm min-[375px]:px-1.5 md:h-8 md:px-1.5 md:text-xs ${available ? "cursor-pointer" : "cursor-default opacity-50"}`}
       >
         <input
           type="checkbox"
@@ -98,7 +98,7 @@ export function CommunityMapControls({
       <Button
         type="button"
         variant="outline"
-        className="h-9 rounded-md border border-slate-300 bg-white px-1 text-sm font-semibold whitespace-nowrap text-slate-700 shadow-sm hover:bg-slate-50 min-[375px]:px-1.5 md:h-8 md:px-1.5 md:text-[13px]"
+        className="h-9 rounded-md border border-slate-300 bg-white px-1 text-sm font-semibold whitespace-nowrap text-slate-700 shadow-sm hover:bg-slate-50 min-[375px]:px-1.5 md:h-8 md:px-1.5 md:text-xs"
         onClick={() => {
           const request = { resortId };
           if (!requestCommunityComposer(request))
@@ -270,7 +270,7 @@ function setMarkerHighlight(button: HTMLElement, highlighted: boolean) {
 export function communityDotElement(color: string, count = 1) {
   const element = document.createElement("span");
   element.className =
-    "flex items-center justify-center rounded-full text-[11px] leading-none font-bold text-white shadow-md";
+    "flex items-center justify-center rounded-full text-xs leading-none font-bold text-white shadow-md";
   const size = count > 1 ? "24px" : "18px";
   element.style.width = size;
   element.style.height = size;
@@ -322,7 +322,7 @@ function setMarkerContent(
   if (count > 1 || entry.photoCount > 1) {
     const badge = document.createElement("span");
     badge.className =
-      "absolute -top-2 -right-2 min-w-5 rounded-full border border-white px-1 text-center text-[11px] leading-[18px] font-bold text-white";
+      "absolute -top-2 -right-2 min-w-5 rounded-full border border-white px-1 text-center text-xs leading-[18px] font-bold text-white";
     badge.textContent = count > 1 ? String(count) : `＋${entry.photoCount - 1}`;
     badge.style.backgroundColor = count > 1 ? color : "rgba(0,0,0,0.65)";
     button.append(badge);

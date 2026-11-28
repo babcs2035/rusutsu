@@ -119,7 +119,7 @@ const shiftAwayFromPoints = ({
   return options[0] ?? null;
 };
 
-export const getLabelFontSize = (zoom: number) => (zoom >= 16 ? 12 : 11);
+export const getLabelFontSize = (_zoom: number) => 16;
 
 export const getLabelFont = (fontSize: number) =>
   `900 ${fontSize}px "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif`;

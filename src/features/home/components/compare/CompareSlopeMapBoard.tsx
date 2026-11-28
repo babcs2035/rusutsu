@@ -205,7 +205,7 @@ export const OperationCount = ({
         </span>
       ))}
       <span className="inline-flex items-center gap-0.5">
-        <CenteredStatusText className="text-[11px] font-semibold text-slate-700">
+        <CenteredStatusText className="text-xs font-semibold text-slate-700">
           不明
         </CenteredStatusText>
         <CenteredStatusText>{summary.unknown}</CenteredStatusText>

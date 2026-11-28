@@ -59,7 +59,7 @@ export function ElevationRefreshButton({
           ? "開始中…"
           : `全${label}の標高取得${kind === "slope" ? (sourceKind === "osm" ? "（OSM）" : "（確認済み）") : ""}`}
       </Button>
-      <p className="text-[11px] text-gray-600">
+      <p className="text-xs text-gray-600">
         {kind === "slope"
           ? sourceKind === "osm"
             ? "OSMデータ"

@@ -378,7 +378,7 @@ export default function RequestMap({
           : "overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
       }
     >
-      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-b border-slate-200 px-4 py-2 text-[11px] font-medium text-slate-700">
+      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-b border-slate-200 px-4 py-2 text-xs font-medium text-slate-700">
         <span>国土地理院の航空写真</span>
         {courses.length > 0 ? (
           <span className="flex items-center gap-1">

@@ -83,7 +83,7 @@ export function SourceLine({
             return (
               <span key={url} className="flex min-w-0 items-baseline gap-1">
                 {link}
-                <span className="min-w-0 break-words text-[10px] text-slate-600 md:text-xs">
+                <span className="min-w-0 break-words text-xs text-slate-600 md:text-xs">
                   表記：{[...new Set(highlights)].join("・")}
                 </span>
               </span>
@@ -118,7 +118,7 @@ export function NotFetchedBadge({ title }: { title?: string }) {
   return (
     <span
       title={title ?? "この情報はまだ取得できていません"}
-      className="inline-flex shrink-0 items-center rounded border border-slate-200 bg-slate-100 px-1.5 py-0.5 text-[11px] leading-none font-medium text-slate-500"
+      className="inline-flex shrink-0 items-center rounded border border-slate-200 bg-slate-100 px-1.5 py-0.5 text-xs leading-none font-medium text-slate-500"
     >
       未取得
     </span>

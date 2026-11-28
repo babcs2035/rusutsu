@@ -145,7 +145,7 @@ function CourseHeader({
       <span className="shrink-0 text-xs font-semibold text-slate-500">
         {course.resortName}
       </span>
-      <h3 className="min-w-0 break-words text-[13px] font-bold text-slate-900 md:text-sm">
+      <h3 className="min-w-0 break-words text-xs font-bold text-slate-900 md:text-sm">
         {course.group?.displayName ?? course.courseName}
       </h3>
       {course.group && <FeatureTags {...getCourseGroupTags(course.group)} />}

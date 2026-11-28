@@ -897,7 +897,7 @@ const MobileSearchHeader = ({
     <div className="relative h-12 min-w-0 overflow-hidden rounded-full border border-gray-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.12)]">
       <Search
         size={18}
-        className="pointer-events-none absolute top-1/2 left-[14px] -translate-y-1/2 text-gray-500"
+        className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-muted-foreground"
       />
       <Input
         aria-label="スキー場を検索"
@@ -905,12 +905,12 @@ const MobileSearchHeader = ({
         name="keyword"
         enterKeyHint="search"
         autoComplete="off"
-        placeholder="スキー場を検索"
+        placeholder="名前で検索"
         value={keyword}
         // 16px 未満だと iOS が入力時に画面を拡大する
         className={cn(
-          "h-12 w-full rounded-full border-0 bg-transparent pl-10 text-base font-medium text-gray-800 shadow-none focus-visible:ring-0",
-          keyword ? "pr-11" : "pr-3",
+          "h-12 w-full rounded-full border-0 bg-transparent pl-8 text-base font-medium text-foreground shadow-none focus-visible:ring-0",
+          keyword ? "pr-11" : "pr-2",
         )}
         onChange={event => onKeywordChange(event.target.value)}
       />
@@ -978,7 +978,7 @@ const MobileContextHeader = ({
             />
           </h2>
           {detailFormerNames.length > 0 && (
-            <p className="truncate text-[11px] leading-snug text-gray-500">
+            <p className="truncate text-xs leading-snug text-gray-500">
               旧称: <FormerResortNames names={detailFormerNames} />
             </p>
           )}

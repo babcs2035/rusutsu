@@ -22,7 +22,7 @@ export const CompareResortDetailButton = ({
     variant="outline"
     onClick={() => onSelectResort(resortId)}
     className={cn(
-      "h-6 shrink-0 gap-0 px-1.5 text-[11px] font-semibold text-blue-700",
+      "h-6 shrink-0 gap-0 px-1.5 text-xs font-semibold text-blue-700",
       className,
     )}
   >
@@ -77,7 +77,7 @@ export const CompareResortNameCell = ({
 
   return (
     <div className={cn("min-w-0", className)}>
-      <p className="text-[13px] leading-[1.25] font-bold text-gray-900 font-[var(--font-heading)]">
+      <p className="text-xs leading-[1.25] font-bold text-gray-900 font-[var(--font-heading)]">
         {lines.map(line => (
           <span key={line} className="block">
             {line}

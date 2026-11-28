@@ -79,14 +79,14 @@ const MetricCell = ({
   children?: ReactNode;
 }) => (
   <div className="flex h-8 min-w-0 items-center gap-1 overflow-hidden bg-white px-1.5 whitespace-nowrap">
-    <span className="shrink-0 text-[11px] font-semibold text-gray-500">
+    <span className="shrink-0 text-xs font-semibold text-gray-500">
       {label}
     </span>
     <span
       className={cn(
-        "shrink-0 text-[15px] leading-none font-bold tabular-nums",
+        "shrink-0 text-xs leading-none font-bold tabular-nums",
         children === undefined
-          ? "font-normal text-gray-400"
+          ? "font-normal text-muted-foreground"
           : highlight
             ? "text-blue-700"
             : "text-gray-900",
@@ -97,7 +97,7 @@ const MetricCell = ({
     {note && (
       <span
         data-metric-note
-        className="min-w-0 truncate text-[11px] tracking-tight tabular-nums text-gray-500"
+        className="min-w-0 truncate text-xs tracking-tight tabular-nums text-gray-500"
       >
         {note}
       </span>

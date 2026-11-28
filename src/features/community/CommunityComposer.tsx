@@ -1408,7 +1408,7 @@ export function CommunityComposer({
         <Button
           type="button"
           variant="outline"
-          className="h-16 w-16 flex-col gap-0 px-0 text-[11px] text-gray-600"
+          className="h-16 w-16 flex-col gap-0 px-0 text-xs text-gray-600"
           disabled={processingPhotos}
           onClick={() => document.getElementById("community-photo")?.click()}
         >
@@ -1418,7 +1418,7 @@ export function CommunityComposer({
             <Images className="size-5" />
           )}
           {photoCount > 0 ? "写真を変更" : "写真を選択"}
-          <span className="text-[10px] leading-3 text-gray-400">任意</span>
+          <span className="text-xs leading-3 text-gray-400">任意</span>
         </Button>
         <input
           id="community-photo"
@@ -1539,7 +1539,7 @@ export function CommunityComposer({
                   : undefined
               }
               className={cn(
-                "min-w-0 flex-1 text-[11px] leading-3 tabular-nums break-words md:text-xs md:leading-3",
+                "min-w-0 flex-1 text-xs leading-3 tabular-nums break-words md:text-xs md:leading-3",
                 hasLocation ? "text-gray-500" : "text-gray-400",
               )}
             >
@@ -1601,7 +1601,7 @@ export function CommunityComposer({
               {missing.場所}
             </p>
           )}
-        <p className="mt-1 text-[11px] text-gray-500">
+        <p className="mt-1 text-xs text-gray-500">
           地図を長押しして場所を追加・変更
         </p>
       </Field>

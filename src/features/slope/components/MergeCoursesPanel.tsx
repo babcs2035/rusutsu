@@ -59,7 +59,7 @@ function AnchorRow({
       )}
     >
       <div className="flex items-center gap-2">
-        <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-green-700 text-[11px] font-bold text-white">
+        <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-green-700 text-xs font-bold text-white">
           {slot === "first" ? 1 : 2}
         </span>
         <p className="min-w-0 flex-1 truncate text-xs font-semibold">
@@ -130,7 +130,7 @@ export function MergeCoursesPanel({
         </Button>
       </div>
 
-      <p className="mb-1.5 text-[11px] leading-relaxed text-gray-700">
+      <p className="mb-1.5 text-xs leading-relaxed text-gray-700">
         {draft.first === null
           ? "地図で 1 本目のコースの、つなぎたい位置をクリックしてください。端のあたりを押すと、その端に吸い付きます。"
           : draft.second === null
@@ -160,7 +160,7 @@ export function MergeCoursesPanel({
       {draft.first && draft.second && (
         <div className="mt-2 flex flex-col gap-2">
           <div>
-            <Label className="text-[11px]">結合後のコース名</Label>
+            <Label className="text-xs">結合後のコース名</Label>
             <Input
               className="h-7 w-full rounded-md border border-input bg-white px-2.5 text-xs shadow-sm"
               value={draft.name}
@@ -169,7 +169,7 @@ export function MergeCoursesPanel({
             />
           </div>
           <div>
-            <Label className="text-[11px]">
+            <Label className="text-xs">
               難易度・斜度などの詳細を引き継ぐ側
             </Label>
             <div className="mt-0.5 flex gap-1">
@@ -211,7 +211,6 @@ export function MergeCoursesPanel({
             </Button>
             <Button
               size="sm"
-              variant="green"
               className="flex-1"
               disabled={!canMerge}
               onClick={onConfirm}
@@ -221,7 +220,7 @@ export function MergeCoursesPanel({
             </Button>
           </div>
           {!canMerge && (
-            <p className="text-[11px] text-red-700">
+            <p className="text-xs text-red-700">
               残す側の組み合わせでは線がつながりません。どちらかの残す側を
               切り替えてください。
             </p>

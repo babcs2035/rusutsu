@@ -163,7 +163,7 @@ export function SimilarCourses({
       options={SCOPE_OPTIONS}
       value={searchScope}
       onChange={cache.setSearchScope}
-      itemClassName="h-6 px-2 text-[11px]"
+      itemClassName="h-6 px-2 text-xs"
       ariaLabel={option => `${option.label}のスキー場から探す`}
     />
   ) : null;
@@ -224,7 +224,7 @@ export function SimilarCourses({
             <col />
             <col className="w-16" />
           </colgroup>
-          <thead className="bg-slate-50 text-[11px] text-slate-500">
+          <thead className="bg-slate-50 text-xs text-slate-500">
             <tr>
               <th scope="col" className="px-2 py-1 font-medium">
                 類似度
@@ -253,13 +253,13 @@ export function SimilarCourses({
                   <td className="px-2 py-1.5" title={rating.label}>
                     <span className="flex items-center gap-1">
                       <span
-                        className={`inline-flex size-5 shrink-0 items-center justify-center rounded text-[11px] font-bold ${GRADE_CLASS[rating.grade]}`}
+                        className={`inline-flex size-5 shrink-0 items-center justify-center rounded text-xs font-bold ${GRADE_CLASS[rating.grade]}`}
                       >
                         {rating.grade}
                       </span>
                       <span className="text-sm font-bold tabular-nums text-slate-900">
                         {Math.round(course.score)}
-                        <span className="text-[10px] font-normal text-slate-500">
+                        <span className="text-xs font-normal text-slate-500">
                           点
                         </span>
                       </span>

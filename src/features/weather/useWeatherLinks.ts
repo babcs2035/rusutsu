@@ -13,12 +13,6 @@ export type WeatherLink = {
   id: string;
   label: string;
   url: string | null;
-  /** タイル背景の Tailwind クラス */
-  bg: string;
-  /** タイル背景のホバー時 Tailwind クラス */
-  hoverBg: string;
-  /** タイル文字の Tailwind クラス */
-  color: string;
 };
 export type SnowForecastLink = {
   id: string;
@@ -56,9 +50,6 @@ export function useWeatherLinks(
             ? "Snow Forecast"
             : `Snow Forecast ${link.displayName}`,
         url: link.url,
-        bg: "bg-red-50",
-        hoverBg: "hover:bg-red-100",
-        color: "text-red-700",
       })),
       ...tenkiJpLinks.map(link => ({
         kind: "tenkiJp" as const,
@@ -68,10 +59,6 @@ export function useWeatherLinks(
             ? "tenki.jp"
             : `tenki.jp ${link.displayName}`,
         url: link.url,
-        // brand.* は旧 Chakra テーマで blue パレットのエイリアスだった
-        bg: "bg-blue-50",
-        hoverBg: "hover:bg-blue-100",
-        color: "text-blue-700",
       })),
       ...weathernewsLinks.map(link => ({
         kind: "weathernews" as const,
@@ -81,9 +68,6 @@ export function useWeatherLinks(
             ? "ウェザーニュース"
             : `ウェザーニュース ${link.displayName}`,
         url: link.url,
-        bg: "bg-blue-50",
-        hoverBg: "hover:bg-blue-100",
-        color: "text-blue-800",
       })),
       {
         kind: "windy" as const,
@@ -92,9 +76,6 @@ export function useWeatherLinks(
         url: hasCoords
           ? `https://www.windy.com/${resort.latitude}/${resort.longitude}?${resort.latitude},${resort.longitude},14,i:pressure,p:cities`
           : null,
-        bg: "bg-orange-50",
-        hoverBg: "hover:bg-orange-100",
-        color: "text-orange-700",
       },
     ];
 

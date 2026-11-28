@@ -175,7 +175,7 @@ export function CourseStatusTable({
           <div key={column.label} className="flex items-center gap-0.5">
             {column.label === "不明" ? (
               <span
-                className={`inline-flex h-3.5 items-center whitespace-nowrap text-[11px] leading-none font-semibold @min-[12rem]/status-summary:h-4 @min-[12rem]/status-summary:text-xs ${column.tone}`}
+                className={`inline-flex h-3.5 items-center whitespace-nowrap text-xs leading-none font-semibold @min-[12rem]/status-summary:h-4 @min-[12rem]/status-summary:text-xs ${column.tone}`}
               >
                 不明
               </span>

@@ -27,7 +27,7 @@ export const StatCard = ({
     }`}
   >
     <CardContent className="p-3 md:p-4">
-      <p className="truncate text-gray-500 text-[0.6875rem] font-medium md:text-xs whitespace-nowrap">
+      <p className="truncate text-gray-500 text-xs font-medium md:text-xs whitespace-nowrap">
         {title}
       </p>
       <p

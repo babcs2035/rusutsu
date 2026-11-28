@@ -1,15 +1,12 @@
 "use client";
 import { Heart, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { useFavorites } from "./FavoritesProvider";
 export function FavoriteCompareButton({
   onCompare,
-  variant = "default",
   presentation = "panel",
 }: {
   onCompare: () => void;
-  variant?: "default" | "orange";
   presentation?: "panel" | "chip";
 }) {
   const favorites = useFavorites();
@@ -21,7 +18,7 @@ export function FavoriteCompareButton({
       <Button
         type="button"
         variant="default"
-        className="h-8 gap-0.5 rounded-md bg-pink-500 px-1 text-xs font-semibold text-white shadow-md hover:bg-pink-600 focus-visible:ring-pink-500/20 @min-[21rem]/comparison-actions:gap-1 @min-[21rem]/comparison-actions:px-1.5 @min-[24rem]/comparison-actions:px-2.5 @min-[24rem]/comparison-actions:text-[13px]"
+        className="h-8 gap-0.5 rounded-md bg-pink-700 px-1 text-xs font-semibold text-white shadow-md hover:bg-pink-800 @min-[21rem]/comparison-actions:gap-1 @min-[21rem]/comparison-actions:px-1.5 @min-[24rem]/comparison-actions:px-2.5"
         onClick={onCompare}
         disabled={isLoading}
         aria-busy={isLoading}
@@ -39,11 +36,7 @@ export function FavoriteCompareButton({
     <div className="shrink-0 px-4 py-2 border-b border-gray-100">
       <Button
         type="button"
-        variant={variant}
-        className={cn(
-          "w-full min-w-0 h-10 rounded-lg whitespace-nowrap bg-pink-500 text-sm text-white hover:bg-pink-600 focus-visible:ring-pink-500/20",
-          variant === "orange" ? "font-medium" : "font-semibold shadow-sm",
-        )}
+        className="h-10 w-full min-w-0 rounded-lg bg-pink-700 text-sm font-semibold text-white shadow-sm hover:bg-pink-800"
         onClick={onCompare}
         disabled={isLoading}
         aria-busy={isLoading}

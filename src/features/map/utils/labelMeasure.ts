@@ -52,7 +52,7 @@ const getMeasureContext = () => {
  */
 export const measureCanvasTextWidth = (text: string, font: string): number => {
   const context = getMeasureContext();
-  if (!context) return text.length * 12;
+  if (!context) return text.length * 16;
 
   context.font = font;
   return Math.ceil(context.measureText(text).width);
@@ -98,7 +98,7 @@ const getLabelMeasureElement = () => {
 
 export const measureTextWidth = (text: string): number => {
   const probe = getLabelMeasureElement();
-  if (!probe) return text.length * 8;
+  if (!probe) return text.length * 16;
   probe.textContent = text;
   return Math.ceil(probe.getBoundingClientRect().width);
 };

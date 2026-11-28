@@ -95,7 +95,7 @@ export function MappingPairList<T extends MappingPairItem>({
 
   return (
     <div className="flex flex-col gap-1">
-      <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_18px_minmax(0,0.8fr)] items-center gap-1 px-1 text-[10px] font-semibold text-gray-500">
+      <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_18px_minmax(0,0.8fr)] items-center gap-1 px-1 text-xs font-semibold text-gray-500">
         <span>{leftHeading}</span>
         <span />
         <span>
@@ -129,10 +129,10 @@ export function MappingPairList<T extends MappingPairItem>({
               </NativeSelectOption>
             ))}
           </NativeSelect>
-          <p className="text-[11px] text-slate-600">
+          <p className="text-xs text-slate-600">
             名前の一覧が同じ取得結果は1つにまとめています。パターンを切り替えて名前を追加できます。登録済みの名前は残ります。
           </p>
-          <p className="text-[11px] text-slate-600">
+          <p className="text-xs text-slate-600">
             名称対応用の資料です。営業状況が保留された取得結果も含みます。
           </p>
         </div>
@@ -240,7 +240,7 @@ export function MappingPairList<T extends MappingPairItem>({
                     </SelectContent>
                   </Select>
                 ) : (
-                  <span className="truncate text-[11px] text-gray-400">—</span>
+                  <span className="truncate text-xs text-gray-400">—</span>
                 )}
               </div>
 
@@ -248,7 +248,7 @@ export function MappingPairList<T extends MappingPairItem>({
                 {registeredNames.map(name => (
                   <span
                     key={name}
-                    className="inline-flex items-center gap-1 rounded bg-green-50 px-1.5 py-0.5 text-[11px] text-green-900"
+                    className="inline-flex items-center gap-1 rounded bg-green-50 px-1.5 py-0.5 text-xs text-green-900"
                   >
                     {name}
                     <button
@@ -287,7 +287,7 @@ export function MappingPairList<T extends MappingPairItem>({
 
       {hasCrawler && mapping.unmappedCrawledNames.length > 0 && (
         <div className="shrink-0 rounded-md border border-orange-200 bg-orange-50/60 p-1.5">
-          <p className="mb-1 text-[11px] font-bold text-orange-900">
+          <p className="mb-1 text-xs font-bold text-orange-900">
             未対応のクロール結果（{mapping.unmappedCrawledNames.length} 件）
           </p>
           <div className="flex flex-wrap gap-1">
@@ -314,7 +314,7 @@ export function MappingPairList<T extends MappingPairItem>({
               </Button>
             ))}
           </div>
-          <p className="mt-1 text-[10px] text-orange-900">
+          <p className="mt-1 text-xs text-orange-900">
             左で選んでから、対応させたい名前を押してください。
           </p>
         </div>
@@ -322,17 +322,17 @@ export function MappingPairList<T extends MappingPairItem>({
 
       {hasCrawler && (
         <div className="flex shrink-0 flex-wrap items-center gap-1.5">
-          <Badge variant="secondary" className="text-[10px]">
+          <Badge variant="secondary" className="text-xs">
             対応 {crawledItems.length - mapping.unmappedCrawledNames.length} /
             取得 {crawledItems.length}
           </Badge>
           {mapping.saveMessage && (
-            <span className="truncate text-[11px] text-green-800">
+            <span className="truncate text-xs text-green-800">
               {mapping.saveMessage}
             </span>
           )}
           {mapping.error && (
-            <span className="min-w-0 flex-1 truncate text-[11px] text-red-700">
+            <span className="min-w-0 flex-1 truncate text-xs text-red-700">
               {mapping.error}
             </span>
           )}

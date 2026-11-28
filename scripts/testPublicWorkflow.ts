@@ -23,6 +23,29 @@ const resortId = process.env.RUSUTSU_BROWSER_RESORT_ID ?? "rusutsu-resort";
 const artifactDirectory = path.join(artifactRoot, "public-workflow");
 await mkdir(artifactDirectory, { recursive: true });
 
+/** 表示中の自前の文字を調べる．iframe 内の外部サイトは対象外とする． */
+async function assertMinimumTextSize(page: Page): Promise<void> {
+  const tooSmall = await page.locator("body").evaluate(body =>
+    Array.from(body.querySelectorAll("*")).flatMap(element => {
+      if (
+        element.closest("script, style, title, .sr-only, nextjs-portal") ||
+        !element.checkVisibility({
+          visibilityProperty: true,
+          opacityProperty: true,
+        }) ||
+        !Array.from(element.childNodes).some(
+          node => node.nodeType === Node.TEXT_NODE && node.textContent?.trim(),
+        )
+      ) {
+        return [];
+      }
+      const size = Number.parseFloat(getComputedStyle(element).fontSize);
+      return size < 15 ? [{ size, text: element.textContent?.trim() }] : [];
+    }),
+  );
+  assert.deepEqual(tooSmall, [], "visible text must be at least 15px");
+}
+
 /** 比較の通信失敗では端末の保存分を使い，正常応答から消えた施設は保存分も除く． */
 async function assertCompareCacheRevalidation(page: Page): Promise<void> {
   const comparisonUrl = `${baseUrl}/?c=0102`;
@@ -80,7 +103,14 @@ async function assertWeatherLinksFit(page: Page): Promise<void> {
     const bounds = element.getBoundingClientRect();
     const items = [...element.querySelectorAll("a.weather-link")].map(item => {
       const rect = item.getBoundingClientRect();
-      return { left: rect.left, right: rect.right, top: rect.top };
+      return {
+        left: rect.left,
+        right: rect.right,
+        top: rect.top,
+        fontSize: Number.parseFloat(getComputedStyle(item).fontSize),
+        fitsText: item.scrollWidth <= item.clientWidth + 1,
+        accessibleName: item.getAttribute("aria-label"),
+      };
     });
     return {
       left: bounds.left,
@@ -106,6 +136,15 @@ async function assertWeatherLinksFit(page: Page): Promise<void> {
   );
 
   const labels = ["Snow Forecast", "tenki.jp", "ウェザーニュース", "Windy"];
+  assert.ok(
+    layout.items.every(item => item.fontSize >= 15 && item.fitsText),
+    "weather link text must fit at 15px or larger",
+  );
+  assert.deepEqual(
+    layout.items.map(item => item.accessibleName),
+    labels,
+    "compact weather labels must retain each site's full accessible name",
+  );
   await links.first().focus();
   for (const [index, label] of labels.entries()) {
     if (index > 0) await page.keyboard.press("Tab");
@@ -207,6 +246,7 @@ try {
     name: "比較リストに保存",
   });
   await saveDialog.getByRole("button", { name: "ログインして保存" }).waitFor();
+  await assertMinimumTextSize(anonymousPage);
   const bounds = await saveDialog.boundingBox();
   assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 320);
   await anonymousPage.screenshot({
@@ -287,6 +327,7 @@ try {
   );
   await listPage.goto(baseUrl);
   await (await failedListRequest).finished();
+  await assertMinimumTextSize(listPage);
   await anonymousContext.setOffline(true);
   const listRetry = listPage.waitForResponse(
     response => response.url().endsWith(listPricePath) && response.ok(),
@@ -304,6 +345,15 @@ try {
   const weatherPage = await anonymousContext.newPage();
   weatherPage.on("pageerror", error => pageErrors.push(error.message));
   const detailUrl = `${baseUrl}/?resort=${resortId}`;
+  await weatherPage.setViewportSize({ width: 320, height: 812 });
+  await weatherPage.goto(detailUrl);
+  await weatherPage.getByRole("tab", { name: "天気", exact: true }).click();
+  await assertWeatherLinksFit(weatherPage);
+  await assertMinimumTextSize(weatherPage);
+  await weatherPage.screenshot({
+    path: path.join(artifactDirectory, "weather-links-320.png"),
+  });
+
   await weatherPage.setViewportSize({ width: 375, height: 812 });
   await weatherPage.goto(detailUrl);
   await weatherPage.getByRole("tab", { name: "天気", exact: true }).click();
@@ -330,6 +380,7 @@ try {
     );
     await weatherPage.getByRole("tab", { name: "天気", exact: true }).click();
     await assertWeatherLinksFit(weatherPage);
+    await assertMinimumTextSize(weatherPage);
     await weatherPage.screenshot({
       path: path.join(
         artifactDirectory,

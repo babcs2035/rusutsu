@@ -24,7 +24,7 @@ export const SnowForecastFooter = ({
   // 幅320pxの端末でも1行に収まるよう、行自身の幅が狭いときだけ余白を詰める
   <div
     className={cn(
-      "@container/sf-footer flex bg-gray-50 border-t border-gray-200",
+      "@container/sf-footer flex border-t border-border bg-muted",
       className,
     )}
   >
@@ -43,8 +43,8 @@ export const SnowForecastFooter = ({
               "min-w-max h-8 min-h-0 px-2.5 @max-[19rem]/sf-footer:px-1.5 rounded-md text-xs font-semibold transition-colors",
               // 選択中は押し直しても・ホバーしても同じ見た目を保つ
               elevation === option.value
-                ? "bg-white text-blue-600 border border-gray-200 shadow-sm hover:bg-white hover:text-blue-600"
-                : "bg-transparent text-gray-500 border-transparent shadow-none hover:bg-white hover:text-gray-700",
+                ? "border border-border bg-background text-primary shadow-sm hover:bg-background hover:text-primary"
+                : "border-transparent bg-transparent text-muted-foreground shadow-none hover:bg-background hover:text-foreground",
             )}
           >
             {option.label}
@@ -54,7 +54,7 @@ export const SnowForecastFooter = ({
 
       <ExternalLinkComponent
         href={detailUrl}
-        className="h-8 flex-shrink-0 gap-1 rounded-md border border-blue-200 bg-white px-2 text-xs font-bold text-blue-700 hover:bg-blue-50"
+        className="h-8 flex-shrink-0 gap-1 rounded-md border border-border bg-background px-2 text-xs font-bold text-primary hover:bg-accent"
       >
         Snow Forecastで詳細
         <ExternalLink size={12} />

@@ -46,7 +46,7 @@ const fitsMiddleLabel = (
   middleLabel: string,
   endLabel: string,
 ) => {
-  const font = `600 10px ${getComputedStyle(document.body).fontFamily}`;
+  const font = `600 16px ${getComputedStyle(document.body).fontFamily}`;
   const middleWidth = measureCanvasTextWidth(middleLabel, font);
   const endWidth = measureCanvasTextWidth(endLabel, font);
   return (
@@ -55,7 +55,7 @@ const fitsMiddleLabel = (
 };
 
 const TICK_LABEL_CLASS =
-  "absolute bottom-0 whitespace-nowrap font-semibold text-[10px] text-white leading-3 [text-shadow:0_0_2px_rgb(0_0_0/0.9),0_0_1px_rgb(0_0_0/0.9)]";
+  "absolute bottom-0 whitespace-nowrap font-semibold text-base text-white leading-5 [text-shadow:0_0_2px_rgb(0_0_0/0.9),0_0_1px_rgb(0_0_0/0.9)]";
 
 /** 地図の縮尺。Apple マップのように 0・中間・端の距離を書いた 2 色のバーで出す。 */
 export function MapScaleSlot({ map }: { map: MapLibreMap | null }) {
@@ -91,7 +91,7 @@ export function MapScaleSlot({ map }: { map: MapLibreMap | null }) {
         role="img"
         aria-label={`縮尺 ${endLabel}`}
       >
-        <div className="relative h-3">
+        <div className="relative h-4">
           <span className={`${TICK_LABEL_CLASS} left-0`}>0</span>
           {fitsMiddleLabel(scale.widthPx, middleLabel, endLabel) && (
             <span className={`${TICK_LABEL_CLASS} left-1/2 -translate-x-1/2`}>

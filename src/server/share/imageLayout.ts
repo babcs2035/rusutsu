@@ -23,6 +23,6 @@ export function shareImageOverlay(osm: boolean) {
   const width = label.length * 13 + 16;
   return Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${SHARE_IMAGE_WIDTH}" height="${SHARE_IMAGE_HEIGHT}">
     <rect x="${SHARE_IMAGE_WIDTH - width}" y="${SHARE_IMAGE_HEIGHT - 24}" width="${width}" height="24" fill="#ffffff" fill-opacity="0.75"/>
-    <text x="${SHARE_IMAGE_WIDTH - 8}" y="${SHARE_IMAGE_HEIGHT - 7}" text-anchor="end" font-family="sans-serif" font-size="14" fill="#132d48">${label}</text>
+    <text x="${SHARE_IMAGE_WIDTH - 8}" y="${SHARE_IMAGE_HEIGHT - 7}" text-anchor="end" font-family="sans-serif" font-size="16" fill="#132d48">${label}</text>
   </svg>`);
 }

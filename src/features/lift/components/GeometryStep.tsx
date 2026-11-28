@@ -235,7 +235,7 @@ export function GeometryStep({
         storageKey="rusutsu-lift-help-open"
         defaultOpen={false}
       >
-        <ul className="flex flex-col gap-1 text-[11px] leading-relaxed text-gray-700">
+        <ul className="flex flex-col gap-1 text-xs leading-relaxed text-gray-700">
           <li>
             <span className="font-bold">リフトを選ぶ:</span>{" "}
             地図の線か左の一覧をクリック。線は少し離れていても反応します。

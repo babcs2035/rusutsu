@@ -99,23 +99,26 @@ const ConditionChip = ({
     aria-haspopup="dialog"
     title={label}
     className={cn(
-      "flex h-8 min-w-0 items-center gap-0.5 rounded-full border pr-1.5 pl-3 text-[13px] font-semibold whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/40",
+      "flex h-8 min-w-0 items-center gap-0.5 rounded-full border pr-1.5 pl-3 text-xs font-semibold whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/40",
       // 地図の上でも白い一覧の上でも埋もれないよう、濃い色で塗る。
       // 条件を選んだチップだけ青にして、選んでいないチップと見分ける
       active
-        ? "border-blue-600 bg-blue-600 text-white hover:bg-blue-700"
+        ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
         : light
           ? // 暗い航空写真の上では白にして浮き立たせる
             "border-white bg-white text-gray-950 hover:bg-gray-100"
           : "border-gray-950 bg-gray-950 text-white hover:bg-gray-800",
       floating && "shadow-[0_2px_8px_rgba(15,23,42,0.45)]",
-      open && "ring-2 ring-blue-300 ring-offset-1",
+      open && "ring-2 ring-ring/50 ring-offset-1",
       className,
     )}
     onClick={onClick}
   >
     <span className="min-w-0 truncate">{label}</span>
-    <ChevronDown className="size-3.5 shrink-0 opacity-80" aria-hidden />
+    <ChevronDown
+      className="size-3.5 shrink-0 opacity-80 max-[359px]:hidden"
+      aria-hidden
+    />
   </button>
 );
 

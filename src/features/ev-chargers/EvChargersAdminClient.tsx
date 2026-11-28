@@ -648,7 +648,7 @@ function CandidateList({
                 <p className="text-sm">
                   <span
                     className={cn(
-                      "mr-1.5 rounded px-1.5 py-0.5 text-[0.6875rem] font-semibold",
+                      "mr-1.5 rounded px-1.5 py-0.5 text-xs font-semibold",
                       candidate.source === "GoGoEV"
                         ? "bg-orange-100 text-orange-800"
                         : "bg-sky-100 text-sky-800",

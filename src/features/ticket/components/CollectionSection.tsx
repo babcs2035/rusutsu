@@ -391,7 +391,7 @@ export const CollectionSection = ({
                         <span className="text-sm font-bold">
                           {titleOf(item, index)}
                         </span>
-                        <span className="text-gray-500 text-[0.6875rem] font-mono">
+                        <span className="text-gray-500 text-xs font-mono">
                           {missingId ? "IDが未入力" : id}
                         </span>
                       </div>
@@ -399,7 +399,7 @@ export const CollectionSection = ({
                         {badgesOf(collectionKey, item, idIndex).map(badge => (
                           <span
                             key={badge}
-                            className="px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-700 text-[0.6875rem] font-bold"
+                            className="px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs font-bold"
                           >
                             {badge}
                           </span>

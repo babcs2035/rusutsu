@@ -29,7 +29,7 @@ export function LiftMetrics({
       }
     >
       <dt
-        className={`${supplementary ? "text-balance" : "whitespace-nowrap"} text-[10px] leading-tight text-slate-500 @min-[420px]:text-xs`}
+        className={`${supplementary ? "text-balance" : "whitespace-nowrap"} text-xs leading-tight text-slate-500 @min-[420px]:text-xs`}
       >
         {item.titleParts
           ? item.titleParts.map(part => (
@@ -40,12 +40,12 @@ export function LiftMetrics({
           : item.title}
       </dt>
       <dd
-        className={`font-bold tabular-nums tracking-tight text-slate-900 leading-5 @min-[420px]:leading-6 ${supplementary ? "break-words" : "whitespace-nowrap"} ${/^[○〇◯×✕✖]$/u.test(item.value) ? "text-lg @min-[420px]:text-xl" : "text-[clamp(10px,3.8cqw,16px)]"}`}
+        className={`font-bold tabular-nums tracking-tight text-slate-900 leading-5 @min-[420px]:leading-6 ${supplementary ? "break-words" : "whitespace-nowrap"} ${/^[○〇◯×✕✖]$/u.test(item.value) ? "text-lg @min-[420px]:text-xl" : "text-xs"}`}
       >
         {item.value}
       </dd>
       {item.detail && (
-        <dd className="whitespace-nowrap text-[10px] tabular-nums tracking-tighter text-slate-500 @min-[420px]:text-xs">
+        <dd className="whitespace-nowrap text-xs tabular-nums tracking-tighter text-slate-500 @min-[420px]:text-xs">
           {item.detail}
         </dd>
       )}

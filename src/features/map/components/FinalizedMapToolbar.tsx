@@ -54,10 +54,10 @@ const MODE_OPTIONS = [
 ] as const satisfies readonly { value: CourseColorMode; label: string }[];
 
 /** 1 行版（タブ行の右）のボタン。タブの文字と同じくらいの高さ・大きさにする */
-const ROW_ITEM_CLASS = "h-7 px-2.5 text-[13px] font-semibold";
+const ROW_ITEM_CLASS = "h-7 px-2.5 text-sm font-semibold";
 
 const SEGMENT_ITEM_CLASS =
-  "h-6 flex-1 px-1.5 text-[11px] md:h-8 md:px-0 md:text-sm @[25rem]:px-2 @[25rem]:text-xs md:@[25rem]:px-2 md:@[25rem]:text-sm";
+  "h-6 flex-1 px-1.5 text-sm md:h-8 md:px-0 md:text-sm @[25rem]:px-2 @[25rem]:text-sm md:@[25rem]:px-2 md:@[25rem]:text-sm";
 
 /**
  * コースマップ用のツールバー。
@@ -177,7 +177,7 @@ export const FinalizedMapToolbar = ({
     );
 
   const difficultyLegend = (
-    <div className="grid w-full grid-cols-5 gap-0.5 text-[8px] leading-none text-gray-600 @[25rem]:text-[9px]">
+    <div className="grid w-full grid-cols-5 gap-0.5 text-sm leading-none text-gray-600">
       {DIFFICULTY_KEYS.map(key => (
         <LegendItem
           key={key}
@@ -258,7 +258,7 @@ export const FinalizedMapToolbar = ({
           onStatusChange={changeStatus}
           courseColorMode={mode}
           onCourseColorModeChange={onModeChange}
-          triggerClassName="h-7 px-2 text-[13px] md:h-7 md:text-[13px] [&_svg]:size-4"
+          triggerClassName="h-7 px-2 text-sm md:h-7 md:text-sm [&_svg]:size-4"
         />
       </div>
     );
@@ -282,7 +282,7 @@ export const FinalizedMapToolbar = ({
               hasCourses && "border-l border-gray-200 pl-2",
             )}
           >
-            <div className="grid grid-cols-2 items-center gap-x-3 gap-y-1.5 text-[11px] leading-none font-medium text-gray-700 @[25rem]:text-xs">
+            <div className="grid grid-cols-2 items-center gap-x-3 gap-y-1.5 text-sm leading-none font-medium text-gray-700">
               {LIFT_STATUS_LEGEND.map(item => (
                 <div key={item.label} className="flex items-center gap-1">
                   <span className="flex w-7 @[25rem]:w-8">

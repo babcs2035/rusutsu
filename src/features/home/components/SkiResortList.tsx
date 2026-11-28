@@ -79,11 +79,8 @@ const hasListCoordinate = (resort: MapSkiResort) =>
 
 export type ResortFeatureLines = { yukiMagi: boolean; evCharger: boolean };
 
-// 距離の並び（data-dense）は値が長いので、300px未満の行だけ文字を一段小さくする
-const LIST_LABEL_TYPOGRAPHY =
-  "text-[11px] font-bold @min-[400px]:text-xs @max-[299px]:in-data-dense:text-[10px]";
-const LIST_VALUE_TYPOGRAPHY =
-  "text-[13px] font-bold leading-tight tabular-nums @min-[300px]:text-sm @max-[299px]:in-data-dense:text-xs";
+const LIST_LABEL_TYPOGRAPHY = "text-xs font-semibold";
+const LIST_VALUE_TYPOGRAPHY = "text-xs font-bold leading-tight tabular-nums";
 
 const ListMetric = ({
   label,
@@ -97,13 +94,21 @@ const ListMetric = ({
   /** 値の見せ方を変えるとき（単位を小さくするなど）。無ければ value を出す */
   children?: ReactNode;
 }) => (
-  <span className="flex min-w-0 items-baseline gap-1 overflow-hidden whitespace-nowrap">
-    <span className={cn("shrink-0 text-gray-800", LIST_LABEL_TYPOGRAPHY)}>
+  <span className="flex min-w-0 flex-col items-start gap-0.5">
+    <span
+      className={cn(
+        "leading-tight text-muted-foreground",
+        LIST_LABEL_TYPOGRAPHY,
+      )}
+    >
       {label}
     </span>
     <span
       title={description ?? value}
-      className={cn("truncate text-blue-700", LIST_VALUE_TYPOGRAPHY)}
+      className={cn(
+        "max-w-full wrap-break-word text-primary",
+        LIST_VALUE_TYPOGRAPHY,
+      )}
     >
       {children ??
         (value.startsWith("不明") ? (
@@ -162,7 +167,7 @@ const DistanceLine = ({
   mapsUrl: string;
 }) => (
   <p className="mt-1 flex min-w-0 items-center gap-1 whitespace-nowrap rounded-md bg-gray-100 px-1.5 py-1 text-xs leading-4">
-    <span className="min-w-0 flex-1 truncate text-xs font-medium tabular-nums text-gray-600 @min-[300px]:text-[13px]">
+    <span className="min-w-0 flex-1 truncate text-xs font-medium tabular-nums text-gray-600 @min-[300px]:text-xs">
       現在地から{" "}
       <span className="font-bold text-gray-900">
         {distance < 10 ? distance.toFixed(1) : Math.round(distance)}km
@@ -196,7 +201,7 @@ const KmValue = ({ meters }: { meters: number | null }) =>
   ) : (
     <>
       {formatKm(meters)}
-      <span className="ml-px text-[10px] font-semibold">km</span>
+      <span className="ml-px text-xs font-semibold">km</span>
     </>
   );
 
@@ -618,7 +623,7 @@ const SkiResortListItem = memo(
               />
             </p>
             {resort.formerNames.length > 0 && (
-              <p className="min-w-0 break-words text-[0.6875rem] font-medium leading-tight text-gray-400">
+              <p className="min-w-0 break-words text-xs font-medium leading-tight text-muted-foreground">
                 旧称: {resort.formerNames.map(name => name.name).join("、")}
               </p>
             )}
@@ -650,17 +655,13 @@ const SkiResortListItem = memo(
             </div>
             <div
               className={cn(
-                "@container mt-2 grid min-w-0 items-baseline gap-x-0.5 gap-y-1 overflow-hidden rounded-md bg-sky-50 px-1 py-1",
+                "mt-2 grid min-w-0 gap-x-1 rounded-md bg-muted px-1.5 py-1",
                 // 距離（12km/41km）は件数より長い。3等分の並びは保ったまま、
                 // 「期間外」などで短く済む料金の幅をコースへ回す
                 showCourseDistance
                   ? "grid-cols-[minmax(0,1.3fr)_minmax(0,0.75fr)_minmax(0,1.3fr)]"
-                  : // 料金欄は名前が「大人1日料金」「合計料金」と長いので、ほかの2列より広く取る
-                    // 幅は実測した必要量（コース84・リフト77・料金108px）の比。幅320pxのスマホと
-                    // 360pxのPCパネルで「不明/44」「大人1日料金 ¥9,300」が切れない
-                    "grid-cols-[minmax(0,84fr)_minmax(0,77fr)_minmax(0,108fr)]",
+                  : "grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.3fr)]",
               )}
-              data-dense={showCourseDistance || undefined}
               onPointerDown={event => event.stopPropagation()}
               role="group"
               aria-label="営業コース、運行リフト、料金"

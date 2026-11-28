@@ -151,9 +151,7 @@ function FeatureDialog({
         aria-label={`${label}の詳細`}
         className={cn(
           "inline-flex shrink-0 items-center gap-0.5 rounded-full border font-semibold whitespace-nowrap outline-none transition-colors disabled:pointer-events-none",
-          size === "sm"
-            ? "h-5 pl-1.5 pr-0.5 text-[0.625rem]"
-            : "h-5 pl-2 pr-1 text-[0.6875rem]",
+          size === "sm" ? "h-5 pl-1.5 pr-0.5 text-xs" : "h-5 pl-2 pr-1 text-xs",
           CHIP_TONE[tone],
         )}
       >
@@ -294,7 +292,7 @@ function EvChargerBody({ chargers }: { chargers: EvCharger[] }) {
         >
           <span
             className={cn(
-              "mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[0.6875rem] font-semibold",
+              "mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-xs font-semibold",
               charger.kind === "quick"
                 ? "bg-emerald-600 text-white"
                 : "bg-emerald-50 text-emerald-700",

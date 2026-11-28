@@ -231,7 +231,7 @@ export function OrderOrganizerDialog({
               <p className="text-xs font-bold text-gray-700">
                 {labels.crawled}
               </p>
-              <p className="text-[11px] text-gray-500">
+              <p className="text-xs text-gray-500">
                 公式サイトでの掲載順です。この順に合わせると比べやすくなります。
               </p>
             </header>
@@ -257,7 +257,7 @@ export function OrderOrganizerDialog({
                         targets.length === 0 && "border-dashed opacity-70",
                       )}
                     >
-                      <span className="w-6 shrink-0 pt-0.5 text-right text-[11px] text-gray-400">
+                      <span className="w-6 shrink-0 pt-0.5 text-right text-xs text-gray-400">
                         {index + 1}
                       </span>
                       <div className="min-w-0 flex-1">
@@ -266,7 +266,7 @@ export function OrderOrganizerDialog({
                         </p>
                         <p
                           className={cn(
-                            "truncate text-[11px]",
+                            "truncate text-xs",
                             targets.length > 0
                               ? "text-green-800"
                               : "text-orange-900",
@@ -280,7 +280,7 @@ export function OrderOrganizerDialog({
                       {crawled.status && (
                         <Badge
                           variant="secondary"
-                          className="h-4 shrink-0 px-1 text-[10px]"
+                          className="h-4 shrink-0 px-1 text-xs"
                         >
                           {crawled.status}
                         </Badge>
@@ -297,7 +297,7 @@ export function OrderOrganizerDialog({
               <p className="text-xs font-bold text-gray-700">
                 現在の{labels.item}の順番（ドラッグで並び替え）
               </p>
-              <p className="text-[11px] text-gray-500">
+              <p className="text-xs text-gray-500">
                 行の左端の⣿をつまんで動かします。キーボードでは⣿を選んで ↑↓
                 でも動かせます。
               </p>
@@ -336,7 +336,7 @@ export function OrderOrganizerDialog({
                       >
                         <GripVertical className="size-4" />
                       </button>
-                      <span className="w-6 shrink-0 text-right text-[11px] text-gray-400">
+                      <span className="w-6 shrink-0 text-right text-xs text-gray-400">
                         {index + 1}
                       </span>
                       <button
@@ -347,7 +347,7 @@ export function OrderOrganizerDialog({
                         <p className="truncate text-xs font-semibold">
                           {item.name || "（名前未入力）"}
                         </p>
-                        <p className="truncate text-[11px] text-gray-500">
+                        <p className="truncate text-xs text-gray-500">
                           {crawledName
                             ? `クロール名: ${crawledName}`
                             : "クロール対応なし"}

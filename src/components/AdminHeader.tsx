@@ -22,7 +22,7 @@ export async function AdminHeader() {
       : 0;
 
   return (
-    <header className="flex h-16 items-center justify-between gap-2 md:gap-4 border-b border-white/10 bg-[var(--admin-dark)] px-4 md:px-8 shadow-md">
+    <header className="flex h-16 items-center justify-between gap-2 md:gap-4 border-b border-white/10 bg-admin-surface px-4 md:px-8 shadow-md">
       <Link
         href="/admin"
         className="flex min-w-0 items-center gap-2 transition-opacity hover:opacity-80"

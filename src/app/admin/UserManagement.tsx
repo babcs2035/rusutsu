@@ -108,7 +108,7 @@ export function UserManagement({ users }: { users: AdminUser[] }) {
                           />
                         )}
                         {user.name && (
-                          <AvatarFallback className="text-[0.6875rem]">
+                          <AvatarFallback className="text-xs">
                             {user.name.charAt(0).toUpperCase()}
                           </AvatarFallback>
                         )}

@@ -35,7 +35,7 @@ export function SlopeColorScale() {
 
   return (
     <div
-      className="relative h-8 w-full min-w-[90px] rounded-sm focus-within:outline-2 focus-within:outline-blue-600/50"
+      className="@container/slope-scale relative h-10 w-full min-w-[90px] rounded-sm focus-within:outline-2 focus-within:outline-blue-600/50"
       data-slope-color-scale="true"
     >
       <div
@@ -43,7 +43,7 @@ export function SlopeColorScale() {
         style={{ background }}
       />
       <div
-        className="absolute inset-x-0 top-3.5 h-3 text-[9px] leading-none text-gray-600 @[25rem]:text-[10px]"
+        className="absolute inset-x-0 top-3 h-5 text-sm leading-5 text-gray-600"
         aria-hidden="true"
       >
         {SLOPE_TICKS.map((tick, index) => (
@@ -55,7 +55,10 @@ export function SlopeColorScale() {
                 ? "translate-x-0"
                 : index === SLOPE_TICKS.length - 1
                   ? "-translate-x-full"
-                  : "-translate-x-1/2",
+                  : cn(
+                      "hidden -translate-x-1/2 @min-[220px]/slope-scale:block",
+                      tick === 20 && "@min-[128px]/slope-scale:block",
+                    ),
             )}
             style={{ left: `${toRatio(tick)}%` }}
           >
@@ -73,7 +76,7 @@ export function SlopeColorScale() {
             style={{ left: `${position}%` }}
           />
           <span
-            className="absolute top-3 flex h-4 items-center gap-1 rounded border border-slate-300 bg-white px-1 text-[11px] leading-none font-bold text-slate-900 shadow-sm"
+            className="absolute top-3 flex h-6 items-center gap-1 rounded border border-slate-300 bg-white px-1 text-sm font-bold text-slate-900 shadow-sm"
             style={{
               left: `clamp(24px, ${position}%, calc(100% - 24px))`,
               transform: "translateX(-50%)",

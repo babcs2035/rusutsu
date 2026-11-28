@@ -28,7 +28,7 @@ const SEGMENTS = LIFT_STATUS_SEGMENTS;
 /** DistributionChart と同じ罫線・列の組み方にして、コースタブと見た目をそろえる */
 const ROW_CLASS = "border-b border-slate-200 py-0.5";
 const NUMBER_CELL_CLASS = `${ROW_CLASS} border-l px-1.5 text-right whitespace-nowrap`;
-const HEADER_CLASS = `${NUMBER_CELL_CLASS} text-[11px] leading-5 text-slate-500`;
+const HEADER_CLASS = `${NUMBER_CELL_CLASS} text-xs leading-5 text-slate-500`;
 const VALUE_CLASS = `${NUMBER_CELL_CLASS} font-semibold text-slate-900 tabular-nums`;
 
 /**
@@ -84,7 +84,7 @@ export function LiftStatusChart({
         {unavailable || row.distance == null ? (
           <>
             {km(row.distance)}
-            <span className="text-[0.8em] font-normal">km</span>
+            <span className="text-xs font-normal">km</span>
           </>
         ) : (
           <Fraction

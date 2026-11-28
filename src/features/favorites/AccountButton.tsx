@@ -4,15 +4,17 @@ import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useFavorites } from "./FavoritesProvider";
-export function AccountButton() {
+export function AccountButton({ compact = false }: { compact?: boolean }) {
   const favorites = useFavorites();
   if (!favorites) return null;
-  return <ConnectedAccountButton favorites={favorites} />;
+  return <ConnectedAccountButton favorites={favorites} compact={compact} />;
 }
 function ConnectedAccountButton({
   favorites,
+  compact,
 }: {
   favorites: NonNullable<ReturnType<typeof useFavorites>>;
+  compact: boolean;
 }) {
   const { data: session, status } = useSession();
   return (
@@ -23,7 +25,8 @@ function ConnectedAccountButton({
         "h-10 shrink-0 rounded-full text-xs font-semibold md:text-sm",
         session?.user
           ? "w-10 border-0 p-0 hover:bg-transparent"
-          : "bg-blue-600 px-3 text-white shadow-sm hover:bg-blue-700",
+          : "px-3 shadow-sm",
+        compact && !session?.user && "max-[420px]:size-10 max-[420px]:p-0",
       )}
       disabled={status === "loading"}
       aria-label={session?.user ? "アカウント情報" : "ログイン"}
@@ -45,7 +48,12 @@ function ConnectedAccountButton({
           <UserRound size={20} />
         )
       ) : (
-        "ログイン"
+        <>
+          {compact && <UserRound className="size-5 min-[421px]:hidden" />}
+          <span className={compact ? "max-[420px]:hidden" : undefined}>
+            ログイン
+          </span>
+        </>
       )}
     </Button>
   );

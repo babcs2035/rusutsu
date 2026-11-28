@@ -103,7 +103,7 @@ export function GuideDialog({
                       className="border-b last:border-b-0"
                     >
                       <td className="py-1.5 pr-2 align-top">
-                        <kbd className="rounded border border-gray-300 bg-gray-50 px-1.5 py-0.5 font-mono text-[11px]">
+                        <kbd className="rounded border border-gray-300 bg-gray-50 px-1.5 py-0.5 font-mono text-xs">
                           {shortcut.keys}
                         </kbd>
                       </td>
@@ -148,7 +148,7 @@ export function GuideDialog({
                   ))}
                 </ul>
                 {page.note && (
-                  <p className="rounded-md bg-gray-50 px-2 py-1.5 text-[11px] leading-relaxed text-gray-600">
+                  <p className="rounded-md bg-gray-50 px-2 py-1.5 text-xs leading-relaxed text-gray-600">
                     {page.note}
                   </p>
                 )}

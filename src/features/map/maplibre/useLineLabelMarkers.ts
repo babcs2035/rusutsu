@@ -277,12 +277,7 @@ export const useLineLabelMarkers = ({
 
       for (const placement of placements) {
         const lngLat = map.unproject([placement.x, placement.y]);
-        const element = createLabelElement(
-          isContext
-            ? { ...placement, fontSize: Math.round(placement.fontSize * 0.85) }
-            : placement,
-          onSelectFeature,
-        );
+        const element = createLabelElement(placement, onSelectFeature);
         if (isContext) element.classList.add("is-context");
         const marker = new Marker({
           element,

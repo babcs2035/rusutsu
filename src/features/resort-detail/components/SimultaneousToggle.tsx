@@ -129,7 +129,7 @@ export function useDisplayedResortMapData(resort: MapResort | null) {
 const SIZE_CLASS = {
   // PCの地図の「営業中のみ」（inline）と同じ大きさ
   inline:
-    "h-9 gap-1 px-1 text-sm font-semibold min-[375px]:px-1.5 md:h-8 md:gap-1 md:px-1.5 md:text-[13px]",
+    "h-9 gap-1 px-1 text-sm font-semibold min-[375px]:px-1.5 md:h-8 md:gap-1 md:px-1.5 md:text-xs",
   // 詳細の見出し（都道府県・市町村の下）
   header: "h-7 gap-1 px-1.5 text-sm font-semibold md:h-8",
 } as const;

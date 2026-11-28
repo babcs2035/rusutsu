@@ -41,6 +41,12 @@
 }
 
 @theme inline {
+  --text-xs: var(--minimum-font-size);
+  --text-xs--line-height: 1.25;
+  --text-sm: var(--minimum-font-size);
+  --text-sm--line-height: 1.25;
+  --text-base: max(16px, 1rem);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -82,11 +88,11 @@
   --radius-lg: 0.5rem;
   --radius-xl: 0.75rem;
 
-  --color-sidebar-dark: var(--sidebar-dark);
-  --color-admin-dark: var(--admin-dark);
+  --color-admin-surface: var(--admin-surface);
 }
 
 :root {
+  --minimum-font-size: max(15px, 0.9375rem);
   --font-sans: "Geist", Arial, Helvetica, sans-serif;
   --font-bricolage: "Bricolage Grotesque", Arial, Helvetica, sans-serif;
   --font-manrope: "Manrope", Arial, Helvetica, sans-serif;
@@ -96,7 +102,7 @@
   --card-foreground: hsl(222.2 84% 4.9%);
   --popover: hsl(0 0% 100%);
   --popover-foreground: hsl(222.2 84% 4.9%);
-  --primary: hsl(211 83% 53%);
+  --primary: #1d4ed8;
   --primary-foreground: hsl(210 40% 98%);
   --secondary: hsl(210 40% 96.1%);
   --secondary-foreground: hsl(222.2 47.4% 11.2%);
@@ -108,7 +114,7 @@
   --destructive-foreground: hsl(210 40% 98%);
   --border: hsl(214.3 31.8% 91.4%);
   --input: hsl(214.3 31.8% 91.4%);
-  --ring: hsl(211 83% 53%);
+  --ring: var(--primary);
   --chart-1: hsl(211 83% 53%);
   --chart-2: hsl(173 58% 39%);
   --chart-3: hsl(197 37% 24%);
@@ -127,9 +133,7 @@
   --brand-main: #3b82f6;
   --brand-dim: #93c5fd;
 
-  /* Dark sidebar backgrounds */
-  --sidebar-dark: #102a43;
-  --admin-dark: #003366;
+  --admin-surface: #172554;
 
   /* Custom background tokens */
   --bg-light: #f4f6f8;
@@ -201,6 +205,7 @@ html {
 }
 
 body {
+  font-size: max(16px, 1rem);
   padding: 0;
   margin: 0;
   min-height: 100%;
@@ -215,6 +220,28 @@ body {
 html body .leaflet-container {
   background: #e5e7eb;
   font-family: inherit;
+  font-size: var(--minimum-font-size);
+}
+
+/* 地図と通知のライブラリは独自に小さい文字サイズを指定する． */
+html body :is(.leaflet-tooltip, .leaflet-popup-content, .leaflet-control-scale-line,
+  .leaflet-control-attribution, .marker-cluster, .maplibregl-map,
+  .maplibregl-popup-content, .maplibregl-ctrl-scale, .maplibregl-ctrl-attrib,
+  [data-sonner-toast], [data-sonner-toast] [data-description],
+  [data-sonner-toast] [data-button], [data-sonner-toast] [data-cancel]) {
+  font-size: var(--minimum-font-size);
+}
+
+html body [data-sonner-toaster] {
+  --normal-bg: var(--popover);
+  --normal-border: var(--border);
+  --normal-text: var(--popover-foreground);
+}
+
+small,
+sub,
+sup {
+  font-size: max(var(--minimum-font-size), 0.75em);
 }
 
 /* タイルの色調整。
@@ -281,7 +308,7 @@ html body .editor-map-tooltip .maplibregl-popup-content {
   border-radius: 4px;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.24);
   color: #111827;
-  font-size: 12px;
+  font-size: var(--minimum-font-size);
   line-height: 1.2;
   padding: 3px 7px;
   white-space: nowrap;
@@ -300,7 +327,7 @@ html body .editor-map-label {
   color: #1f2937;
   cursor: default;
   display: block;
-  font-size: 11px;
+  font-size: var(--minimum-font-size);
   font-weight: 600;
   line-height: 1.3;
   max-width: 168px;
@@ -396,7 +423,7 @@ html body .resort-name-label {
   /* 地図ライブラリの既定フォントを継がせない。幅を測る要素（body 直下）と
      同じフォントにしないと、英数字の幅がずれてラベルの右に隙間が出る */
   font-family: Manrope, "Manrope Fallback", sans-serif;
-  font-size: 12px;
+  font-size: max(16px, 1rem);
   font-weight: 700;
   line-height: 1.2;
   padding: 4px 8px;
@@ -501,7 +528,7 @@ html body .course-profile-label {
   background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
   color: #111827;
-  font-size: 12px;
+  font-size: var(--minimum-font-size);
   font-weight: 900;
   line-height: 1.1;
   padding: 5px 6px;
@@ -954,7 +981,7 @@ html body .resort-action-popup::after {
 /* Consistent table header styling across all tabs */
 .table-header-cell {
   padding: 0.75rem 1rem;
-  font-size: 0.75rem;
+  font-size: var(--minimum-font-size);
   font-weight: 600;
   color: hsl(215.4 16.3% 46.9%);
   background: hsl(0 0% 98%);
@@ -1013,13 +1040,13 @@ html body .resort-action-popup::after {
 /* === Section heading consistency === */
 
 .section-heading {
-  font-size: 1.125rem;
+  font-size: max(var(--minimum-font-size), 1.125rem);
   font-weight: 600;
   color: hsl(222.2 84% 4.9%);
 }
 
 .section-heading-sm {
-  font-size: 1rem;
+  font-size: var(--minimum-font-size);
   font-weight: 600;
   color: hsl(222.2 84% 4.9%);
 }
@@ -1047,20 +1074,18 @@ html body .resort-action-popup::after {
 /* === Ruby text styling for ski resort names === */
 
 .ruby-text rt {
-  font-size: 0.45em;
+  font-size: var(--minimum-font-size);
   font-weight: 600;
   color: #6b7280;
   /* ルビと親文字の距離。WebKit ではルビの位置は line-height や position/top
      では動かせず、margin-bottom だけが効く。値は iOS 実機で決めたもので、
      macOS の WebKit はメトリクスが違うぶんここより詰まって見える。 */
-  margin-bottom: -0.8em;
+  margin-bottom: -0.35em;
 }
 
-/* PC は画面が広く見出しも大きいので、ルビを少し大きく、少し離す。
-   48em はサイドパネル表示に切り替わる幅（SIDE_PANEL_MEDIA_QUERY）と同じ。 */
+/* 48em はサイドパネル表示に切り替わる幅と同じ． */
 @media (min-width: 48em) {
   .ruby-text rt {
-    font-size: 0.45em;
     margin-bottom: 0.1em;
   }
 }

@@ -106,7 +106,7 @@ export const FeatureTags = ({
 
 // 地図の「＋投稿」「営業中のみ」と同じ文字・枠
 const ACTION_CLASS =
-  "h-8 gap-1 rounded-md border border-slate-300 bg-white px-1.5 text-sm font-semibold whitespace-nowrap text-slate-700 shadow-sm hover:bg-slate-50 md:text-[13px]";
+  "h-8 gap-1 rounded-md border border-slate-300 bg-white px-1.5 text-sm font-semibold whitespace-nowrap text-slate-700 shadow-sm hover:bg-slate-50 md:text-xs";
 // 投稿は青で塗り、動画は白地に YouTube の赤文字で示す
 const POST_CLASS =
   "border-blue-600 bg-blue-600 text-white hover:bg-blue-700 hover:text-white";
@@ -259,14 +259,14 @@ export const FeatureMetrics = ({
         className="min-w-0"
         title={item.detail ?? undefined}
       >
-        <dt className="whitespace-nowrap text-[10px] leading-tight text-slate-500 @min-[420px]:text-xs">
+        <dt className="whitespace-nowrap text-xs leading-tight text-slate-500 @min-[420px]:text-xs">
           {item.title}
         </dt>
-        <dd className="whitespace-nowrap text-[clamp(10px,3.8cqw,16px)] font-bold leading-5 tabular-nums tracking-tight text-slate-900 @min-[420px]:leading-6">
+        <dd className="whitespace-nowrap text-xs font-bold leading-5 tabular-nums tracking-tight text-slate-900 @min-[420px]:leading-6">
           {item.value}
         </dd>
         {item.detail && (
-          <dd className="whitespace-nowrap text-[10px] tabular-nums tracking-tighter text-slate-500 @min-[420px]:text-xs">
+          <dd className="whitespace-nowrap text-xs tabular-nums tracking-tighter text-slate-500 @min-[420px]:text-xs">
             {item.detail}
           </dd>
         )}
@@ -311,7 +311,7 @@ const ExpandableNote = ({
   const badge = (
     <span
       className={cn(
-        "mr-1.5 inline-flex shrink-0 items-center rounded border px-1 align-[1px] text-[11px] font-semibold leading-4 whitespace-nowrap md:text-xs",
+        "mr-1.5 inline-flex shrink-0 items-center rounded border px-1 align-[1px] text-xs font-semibold leading-4 whitespace-nowrap md:text-xs",
         labelClassName,
       )}
     >
@@ -412,7 +412,7 @@ export const FeatureSectionTitle = ({
   >
     <h3 className="text-xs font-semibold text-slate-500">{children}</h3>
     {typeof aside === "string" ? (
-      <span className="text-[11px] text-slate-400">{aside}</span>
+      <span className="text-xs text-muted-foreground">{aside}</span>
     ) : (
       aside
     )}

@@ -87,12 +87,12 @@ export function EvidenceFields({
             <Button
               type="button"
               variant="outline"
-              className="h-16 w-16 flex-col gap-0 px-0 text-[11px] text-gray-600"
+              className="h-16 w-16 flex-col gap-0 px-0 text-xs text-gray-600"
               onClick={() => document.getElementById(inputId)?.click()}
             >
               <Images className="size-5" />
               写真を選択
-              <span className="text-[10px] leading-3 text-gray-400">
+              <span className="text-xs leading-3 text-gray-400">
                 {MAX_EVIDENCE_PHOTOS}枚まで
               </span>
             </Button>
@@ -114,7 +114,7 @@ export function EvidenceFields({
               <img
                 src={photo.url}
                 alt={photo.file.name}
-                className="size-16 rounded-lg border border-gray-200 bg-gray-100 object-cover text-[10px] break-all text-gray-500"
+                className="size-16 rounded-lg border border-gray-200 bg-gray-100 object-cover text-xs break-all text-gray-500"
               />
               <Button
                 type="button"

@@ -84,7 +84,7 @@ export function StepIndicator({
             >
               <span
                 className={cn(
-                  "flex size-4 shrink-0 items-center justify-center rounded-full text-[10px]",
+                  "flex size-4 shrink-0 items-center justify-center rounded-full text-xs",
                   isCurrent
                     ? "bg-white/25"
                     : isDone

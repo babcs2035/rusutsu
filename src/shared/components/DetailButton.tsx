@@ -14,7 +14,7 @@ export function DetailButton({
   return (
     <button
       type="button"
-      className={`flex shrink-0 items-center gap-0.5 whitespace-nowrap rounded-full border border-blue-200 bg-blue-50 font-semibold text-blue-700 hover:border-blue-300 hover:bg-blue-100 active:bg-blue-200 focus-visible:outline-2 focus-visible:outline-blue-600 ${compact ? "min-h-6 py-0.5 pr-0.5 pl-1.5 text-xs" : "min-h-7 py-1 pr-2 pl-3 text-sm"} ${className}`}
+      className={`flex shrink-0 items-center gap-0.5 whitespace-nowrap rounded-full border border-border bg-background font-semibold text-primary hover:bg-muted active:bg-accent focus-visible:outline-2 focus-visible:outline-ring ${compact ? "min-h-6 py-0.5 pr-0.5 pl-1.5 text-xs" : "min-h-7 py-1 pr-2 pl-3 text-sm"} ${className}`}
       {...props}
     >
       {children}

@@ -72,7 +72,7 @@ export function ResortEditorTools({
           {busy ? "保存中…" : "URLを保存"}
         </Button>
       </div>
-      <p className="mb-2 text-[11px] text-gray-600">
+      <p className="mb-2 text-xs text-gray-600">
         {isEditor
           ? "URLの変更は最後の「すべて申請」に含まれます。"
           : "最後の「すべて保存」にも含まれます。"}

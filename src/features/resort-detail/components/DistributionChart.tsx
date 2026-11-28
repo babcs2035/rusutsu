@@ -28,14 +28,14 @@ const PERCENT_WIDTH = "3rem";
 /** 行は横線、数値の列は縦線で区切り、数字の並びを表として読めるようにする */
 const ROW_CLASS = "border-b border-slate-200 py-0.5";
 const NUMBER_CELL_CLASS = `${ROW_CLASS} border-l px-1.5 text-right whitespace-nowrap`;
-const HEADER_CLASS = `${NUMBER_CELL_CLASS} text-[11px] leading-5 text-slate-500`;
+const HEADER_CLASS = `${NUMBER_CELL_CLASS} text-xs leading-5 text-slate-500`;
 const VALUE_CLASS = `${NUMBER_CELL_CLASS} font-semibold text-slate-900 tabular-nums`;
 /** 「営業中/全体」の分母。分子と同じ大きさのまま、細く薄くして分子を読ませる */
 const DENOMINATOR_CLASS = "font-normal text-slate-500";
 
 /** 単位は数字より一回り小さく細くして、数字を先に読ませる */
 function Unit({ children }: { children: string }) {
-  return <span className="text-[0.8em] font-normal">{children}</span>;
+  return <span className="text-xs font-normal">{children}</span>;
 }
 
 export function Fraction({

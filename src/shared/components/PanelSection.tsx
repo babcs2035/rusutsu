@@ -88,7 +88,7 @@ export function PanelSection({
           {title}
         </span>
         {summary && (
-          <span className="shrink-0 text-[11px] text-gray-500">{summary}</span>
+          <span className="shrink-0 text-xs text-gray-500">{summary}</span>
         )}
       </button>
       {isOpen && <div className="border-t px-2 py-2">{children}</div>}

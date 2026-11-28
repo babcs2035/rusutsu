@@ -10,9 +10,7 @@ import { SITE_TITLE } from "@/shared/utils/resortPath";
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-  themeColor: "#003366",
+  themeColor: "#172554",
 };
 
 export const metadata: Metadata = {

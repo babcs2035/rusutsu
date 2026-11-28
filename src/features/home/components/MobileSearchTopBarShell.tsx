@@ -48,7 +48,7 @@ export const MobileSearchTopBarShell = ({
         <div className={gridClasses}>
           <div className="min-w-0">{children}</div>
           {action}
-          {showAccount && <AccountButton />}
+          {showAccount && <AccountButton compact />}
         </div>
       </form>
     );
@@ -59,7 +59,7 @@ export const MobileSearchTopBarShell = ({
       <div className={gridClasses}>
         <div className="min-w-0">{children}</div>
         {action}
-        {showAccount && <AccountButton />}
+        {showAccount && <AccountButton compact />}
       </div>
     </div>
   );

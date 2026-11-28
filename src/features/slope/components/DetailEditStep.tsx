@@ -251,11 +251,11 @@ export function DetailEditStep({
       </div>
 
       <div className="flex shrink-0 items-center justify-between gap-2">
-        <p className="text-[11px] font-bold text-gray-600">
+        <p className="text-xs font-bold text-gray-600">
           コース一覧（{courses.length} 本）
         </p>
         {courses.length > 1 && (
-          <p className="truncate text-[11px] text-gray-500">
+          <p className="truncate text-xs text-gray-500">
             ⣿をドラッグで並び替え
           </p>
         )}
@@ -292,7 +292,7 @@ export function DetailEditStep({
             >
               <GripVertical className="size-4" />
             </button>
-            <span className="w-6 shrink-0 text-right text-[11px] text-gray-400">
+            <span className="w-6 shrink-0 text-right text-xs text-gray-400">
               {index + 1}
             </span>
             <button
@@ -304,9 +304,9 @@ export function DetailEditStep({
             </button>
             <RequestChangeBadge id={course.id} />
             {course.splitGroupId && (
-              <span className="shrink-0 text-[11px] text-purple-900">分割</span>
+              <span className="shrink-0 text-xs text-purple-900">分割</span>
             )}
-            <span className="shrink-0 text-[11px] text-gray-500">
+            <span className="shrink-0 text-xs text-gray-500">
               {course.detail.level || "難易度未設定"}
             </span>
           </div>
@@ -322,14 +322,14 @@ export function DetailEditStep({
         defaultOpen={false}
         summary={`${courses.length} 本`}
       >
-        <p className="mb-1.5 text-[11px] leading-relaxed text-gray-700">
+        <p className="mb-1.5 text-xs leading-relaxed text-gray-700">
           同じ値になることが多い項目を、全コースへ一度に入れます。入れたあとで 1
           本ずつ直せば、その変更がそのまま残ります。
         </p>
         <div className="flex flex-col gap-1.5">
           {BULK_FIELDS.map(field => (
             <div key={field.key} className="flex items-center gap-1">
-              <span className="w-16 shrink-0 text-[11px] font-bold text-gray-600">
+              <span className="w-16 shrink-0 text-xs font-bold text-gray-600">
                 {field.label}
               </span>
               <div className="flex min-w-0 flex-1 flex-wrap gap-1">
@@ -349,7 +349,7 @@ export function DetailEditStep({
             </div>
           ))}
         </div>
-        <Label className="mt-2 cursor-pointer gap-1.5 text-[11px] text-gray-600">
+        <Label className="mt-2 cursor-pointer gap-1.5 text-xs text-gray-600">
           <Checkbox
             checked={bulkOnlyEmpty}
             onCheckedChange={checked => setBulkOnlyEmpty(checked === true)}
@@ -357,7 +357,7 @@ export function DetailEditStep({
           未入力のコースだけに入れる（入力済みは変えない）
         </Label>
         {bulkMessage && (
-          <p className="mt-1 text-[11px] text-green-800">{bulkMessage}</p>
+          <p className="mt-1 text-xs text-green-800">{bulkMessage}</p>
         )}
       </PanelSection>
 
@@ -684,13 +684,13 @@ export function DetailEditStep({
                     setShowProceedWarning(false);
                   }}
                 >
-                  <span className="w-6 shrink-0 text-right text-[11px] text-gray-400">
+                  <span className="w-6 shrink-0 text-right text-xs text-gray-400">
                     {index + 1}
                   </span>
                   <span className="min-w-0 flex-1 truncate text-xs font-semibold">
                     {courseEditorLabel(course)}
                   </span>
-                  <span className="shrink-0 text-[11px] text-orange-900">
+                  <span className="shrink-0 text-xs text-orange-900">
                     {emptyFields
                       .map(key => REQUIRED_COURSE_FIELD_LABELS[key])
                       .join("、")}

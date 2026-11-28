@@ -24,7 +24,7 @@ export function AdminWorkspaceSidebar({
   return (
     <aside
       className={cn(
-        "flex min-h-0 shrink-0 flex-col bg-[var(--sidebar-dark)] text-white max-md:w-full",
+        "flex min-h-0 shrink-0 flex-col bg-admin-surface text-white max-md:w-full",
         className,
       )}
     >

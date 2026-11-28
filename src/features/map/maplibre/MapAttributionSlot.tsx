@@ -26,7 +26,7 @@ export function MapAttributionSlot({ map }: { map: MapLibreMap | null }) {
     <div
       ref={slotRef}
       data-map-attribution="true"
-      className="ml-auto shrink-0 [&_.maplibregl-ctrl-attrib]:!m-0 [&_.maplibregl-ctrl-attrib]:!float-none [&_.maplibregl-ctrl-attrib]:!min-h-5 [&_.maplibregl-ctrl-attrib]:!py-0 [&_.maplibregl-ctrl-attrib]:!px-1 [&_.maplibregl-ctrl-attrib]:!text-[10px] [&_.maplibregl-ctrl-attrib]:!leading-5"
+      className="ml-auto shrink-0 [&_.maplibregl-ctrl-attrib]:!m-0 [&_.maplibregl-ctrl-attrib]:!float-none [&_.maplibregl-ctrl-attrib]:!min-h-6 [&_.maplibregl-ctrl-attrib]:!py-0 [&_.maplibregl-ctrl-attrib]:!px-1 [&_.maplibregl-ctrl-attrib]:!text-sm [&_.maplibregl-ctrl-attrib]:!leading-6"
     />
   );
 }

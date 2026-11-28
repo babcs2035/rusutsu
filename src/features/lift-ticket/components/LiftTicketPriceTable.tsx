@@ -35,7 +35,7 @@ const PriceValue = ({ entry }: { entry: PriceEntry | undefined }) => {
         {entry.amount === 0 ? "無料" : entry.amount.toLocaleString("ja-JP")}
       </span>
       {entry.counterAmount != null && (
-        <span className="text-gray-500 text-[0.625rem] tabular-nums">
+        <span className="text-gray-500 text-xs tabular-nums">
           窓口{entry.counterAmount.toLocaleString("ja-JP")}
         </span>
       )}
@@ -82,10 +82,7 @@ const RowLabel = ({ row }: { row: PriceRow }) => (
     {[row.subLabel, ...row.conditions, ...row.notes]
       .filter(Boolean)
       .map(text => (
-        <span
-          key={text}
-          className="block text-gray-500 text-[0.6875rem] leading-snug"
-        >
+        <span key={text} className="block text-gray-500 text-xs leading-snug">
           {text}
         </span>
       ))}
@@ -162,7 +159,7 @@ const TableRows = ({
               <span className="block pl-2 text-gray-700 text-xs leading-snug">
                 {subRow.label}
                 {subRow.period && (
-                  <span className="block text-gray-500 text-[0.625rem]">
+                  <span className="block text-gray-500 text-xs">
                     {subRow.period}
                   </span>
                 )}
@@ -234,7 +231,7 @@ export const PriceGrid = ({
                 >
                   {audience.label}
                   {audience.ageLabel && (
-                    <span className="block text-gray-500 text-[0.625rem] font-normal">
+                    <span className="block text-gray-500 text-xs font-normal">
                       {audience.ageLabel}
                     </span>
                   )}

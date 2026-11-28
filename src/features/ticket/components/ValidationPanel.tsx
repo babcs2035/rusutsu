@@ -54,11 +54,11 @@ const IssueList = ({
               <div className="flex flex-wrap items-baseline gap-2">
                 <Badge
                   variant={isError ? "destructive" : "secondary"}
-                  className="text-[0.6875rem] font-bold"
+                  className="text-xs font-bold"
                 >
                   {CHECK_LABELS[issue.check] ?? issue.check}
                 </Badge>
-                <span className="text-[0.6875rem] font-mono text-gray-600">
+                <span className="text-xs font-mono text-gray-600">
                   {issue.path}
                 </span>
               </div>
@@ -165,9 +165,7 @@ export const ValidationPanel = ({
           )}
           <IssueList issues={report.issues} level="error" />
           <IssueList issues={report.issues} level="warning" />
-          <p className="text-[0.6875rem] text-gray-400">
-            検証時刻: {report.checkedAt}
-          </p>
+          <p className="text-xs text-gray-400">検証時刻: {report.checkedAt}</p>
         </>
       )}
     </div>

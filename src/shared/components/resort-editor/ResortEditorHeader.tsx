@@ -34,7 +34,7 @@ export function ResortEditorHeader({
         >
           {resortName || resortId}
         </h2>
-        <p className="truncate text-[11px] text-gray-500">
+        <p className="truncate text-xs text-gray-500">
           {savedAt
             ? `自動保存: ${formatDateTime(savedAt)}`
             : "まだ自動保存されていません"}

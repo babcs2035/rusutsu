@@ -669,7 +669,7 @@ export function ReviewEditWorkspace({
         selectionKey={selectedResortId}
         className="md:w-[min(230px,40vw)] lg:w-[280px] border-r border-white/20"
       >
-        <div className="p-3 md:p-5 sticky top-0 z-10 bg-[var(--sidebar-dark)]">
+        <div className="p-3 md:p-5 sticky top-0 z-10 bg-admin-surface">
           <p className="text-blue-200 text-xs font-bold">RUSUTSU DATA TOOLS</p>
           <h1 className="mt-1 text-xl font-bold font-[var(--font-heading)]">
             レビュー編集
@@ -710,7 +710,7 @@ export function ReviewEditWorkspace({
                   </div>
                   <p
                     className={cn(
-                      "mt-1 text-[0.6875rem]",
+                      "mt-1 text-xs",
                       selected ? "text-blue-200" : "text-gray-400",
                     )}
                   >
@@ -762,7 +762,7 @@ export function ReviewEditWorkspace({
                 {warnings.length > 0 && (
                   <span
                     className={cn(
-                      "ml-1 px-1.5 rounded-full text-[0.6875rem]",
+                      "ml-1 px-1.5 rounded-full text-xs",
                       mode === "warnings"
                         ? "bg-white/30 text-white"
                         : "bg-orange-200 text-orange-900",
@@ -820,7 +820,7 @@ export function ReviewEditWorkspace({
                 {warningCountByCategory[categoryId] > 0 && (
                   <Badge
                     variant="secondary"
-                    className="ml-1 rounded-full bg-orange-100 text-orange-900 text-[0.6875rem] font-bold"
+                    className="ml-1 rounded-full bg-orange-100 text-orange-900 text-xs font-bold"
                   >
                     {warningCountByCategory[categoryId]}
                   </Badge>

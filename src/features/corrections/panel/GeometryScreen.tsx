@@ -262,7 +262,7 @@ export function GeometryScreen({
                       {change && (
                         <span
                           className={cn(
-                            "shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap",
+                            "shrink-0 rounded-full px-1.5 py-0.5 text-xs font-semibold whitespace-nowrap",
                             change === "delete"
                               ? "bg-red-100 text-red-800"
                               : "bg-amber-100 text-amber-800",

@@ -11,7 +11,7 @@ import { useHomeCompare } from "../compareContext";
 const SAVED_BUTTON_CLASS =
   "h-8 shrink-0 gap-1 rounded-md px-2 text-xs font-semibold whitespace-nowrap shadow-md";
 const FAVORITE_CLASS =
-  "bg-pink-500 text-white hover:bg-pink-600 hover:text-white focus-visible:ring-pink-500/20 border-pink-500";
+  "border-pink-700 bg-pink-700 text-white hover:bg-pink-800 hover:text-white";
 
 /**
  * 検索欄の右に置く「♥ お気に入り」。保存した比較リストが無ければ押すとそのまま
@@ -37,7 +37,7 @@ export function SavedCompareButton({
   const favoriteLabel = (
     <>
       <Heart className="size-3.5" />
-      お気に入り
+      <span className="max-[359px]:sr-only">お気に入り</span>
     </>
   );
   if (!hasLists) {
@@ -68,7 +68,7 @@ export function SavedCompareButton({
         SAVED_BUTTON_CLASS,
         hasFavorites
           ? FAVORITE_CLASS
-          : "gap-0 border-blue-600 bg-white pr-1 text-blue-700 hover:bg-blue-50 hover:text-blue-800",
+          : "gap-0 border-border bg-background pr-1 text-primary hover:bg-muted hover:text-primary",
         className,
       )}
     />

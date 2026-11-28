@@ -10,8 +10,8 @@ export const chipClass = (selected: boolean) =>
   cn(
     "h-7 min-w-0 rounded-md border px-2 text-xs font-medium whitespace-nowrap",
     selected
-      ? "border-blue-600 bg-blue-600 text-white hover:bg-blue-600 hover:text-white hover:brightness-95"
-      : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-900",
+      ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
+      : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
   );
 
 /** 投稿・修正の入力欄。左に項目名、右に入力を置く */
@@ -40,8 +40,10 @@ export function Field({
         {note !== null && (
           <span
             className={cn(
-              "text-[10px] leading-3 font-normal",
-              note === undefined && required ? "text-red-600" : "text-gray-400",
+              "text-xs leading-tight font-normal",
+              note === undefined && required
+                ? "text-destructive"
+                : "text-muted-foreground",
             )}
           >
             {note ?? (required ? "必須" : "任意")}
@@ -51,7 +53,7 @@ export function Field({
       <div className="min-w-0 flex-1">
         {children}
         {error && (
-          <p data-field-error className="mt-1 text-xs text-red-600">
+          <p data-field-error className="mt-1 text-xs text-destructive">
             {error}
           </p>
         )}

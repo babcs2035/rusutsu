@@ -462,7 +462,7 @@ function Workspace({
       type="button"
       variant="outline"
       // いちばん長い「ナイター営業情報の修正」が、狭いパネルの2列でも1行に収まる大きさ
-      className="h-12 min-w-0 px-1 text-[clamp(12px,3.9cqw,14px)] font-semibold text-gray-800"
+      className="h-12 min-w-0 px-1 text-xs font-semibold text-gray-800"
       onClick={onClick}
     >
       {label}

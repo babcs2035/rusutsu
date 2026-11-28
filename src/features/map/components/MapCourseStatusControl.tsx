@@ -104,12 +104,12 @@ export function MapCourseStatusControl({
               onCheckedChange(!active);
             }}
             className={cn(
-              "pointer-events-auto flex h-9 shrink-0 items-center gap-1 rounded-md border border-slate-300 bg-white px-2 text-[13px] font-bold whitespace-nowrap text-slate-700 shadow-sm hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-blue-600 md:h-10 md:gap-1.5 md:px-3 md:text-base",
+              "pointer-events-auto flex h-9 shrink-0 items-center gap-1 rounded-md border border-slate-300 bg-white px-2 text-sm font-bold whitespace-nowrap text-slate-700 shadow-sm hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-blue-600 md:h-10 md:gap-1.5 md:px-3 md:text-base",
               compact &&
-                "h-9 gap-1 px-1.5 text-sm font-semibold md:h-[34px] md:gap-1 md:px-1.5 md:text-[13px]",
+                "h-9 gap-1 px-1.5 text-sm font-semibold md:h-[34px] md:gap-1 md:px-1.5 md:text-sm",
               placement === "bottom" && "disabled:opacity-50",
               inline &&
-                "h-9 gap-1 px-1 text-sm font-semibold min-[375px]:px-1.5 md:h-8 md:gap-1 md:px-1.5 md:text-[13px] disabled:opacity-50",
+                "h-9 gap-1 px-1 text-sm font-semibold min-[375px]:px-1.5 md:h-8 md:gap-1 md:px-1.5 md:text-sm disabled:opacity-50",
               bare &&
                 "h-7 border-transparent bg-transparent px-0 shadow-none hover:bg-transparent min-[375px]:px-0 md:h-7 md:px-0",
             )}
@@ -134,7 +134,7 @@ export function MapCourseStatusControl({
             role="status"
             className={cn(
               "inline-flex h-7 shrink-0 items-center whitespace-nowrap rounded-md border border-slate-200 bg-white/95 px-2 text-xs font-medium text-slate-600 md:h-8 md:text-sm",
-              compact && "h-6 px-1.5 text-[11px] md:h-6 md:px-1.5 md:text-xs",
+              compact && "h-6 px-1.5 text-sm md:h-6 md:px-1.5 md:text-sm",
             )}
           >
             コース状況不明
@@ -152,7 +152,7 @@ export function MapCourseStatusControl({
             ).map(option => (
               <Label
                 key={option.value}
-                className="h-6 cursor-pointer gap-1 rounded px-1 text-[11px] font-semibold text-slate-800 hover:bg-slate-100 md:text-xs"
+                className="h-6 cursor-pointer gap-1 rounded px-1 text-sm font-semibold text-slate-800 hover:bg-slate-100 md:text-sm"
               >
                 <Checkbox
                   aria-labelledby={`${descriptionId}-${option.value}`}
@@ -192,7 +192,7 @@ export function MapCourseStatusControl({
           <span
             id={descriptionId}
             className={cn(
-              "rounded bg-white/95 px-1.5 py-0.5 text-[10px] text-slate-600",
+              "rounded bg-white/95 px-1.5 py-0.5 text-sm text-slate-600",
               !(shared && active) && "sr-only",
             )}
           >

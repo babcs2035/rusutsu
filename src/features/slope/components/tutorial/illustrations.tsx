@@ -10,33 +10,38 @@ const COLOR = {
   ghost: "#A0AEC0",
 };
 
+const DIAGRAM_LABEL_SIZE = 16;
+const CAPTION_LINE_LENGTH = 17;
+
 /** 図の枠。地図に見えるよう薄い格子を敷く */
 function Frame({ children }: { children: ReactNode }) {
   return (
-    <svg
-      viewBox="0 0 300 150"
-      role="img"
-      className="h-[150px] w-full rounded-md border bg-[#F7FAFC]"
-    >
-      <title>操作の図解</title>
-      <defs>
-        <pattern
-          id="tutorial-grid"
-          width="20"
-          height="20"
-          patternUnits="userSpaceOnUse"
-        >
-          <path
-            d="M20 0 L0 0 0 20"
-            fill="none"
-            stroke="#E2E8F0"
-            strokeWidth="1"
-          />
-        </pattern>
-      </defs>
-      <rect width="300" height="150" fill="url(#tutorial-grid)" />
-      {children}
-    </svg>
+    <div className="overflow-x-auto rounded-md border bg-[#F7FAFC]">
+      <svg
+        viewBox="0 0 300 174"
+        role="img"
+        className="h-[174px] w-full min-w-[300px]"
+      >
+        <title>操作の図解</title>
+        <defs>
+          <pattern
+            id="tutorial-grid"
+            width="20"
+            height="20"
+            patternUnits="userSpaceOnUse"
+          >
+            <path
+              d="M20 0 L0 0 0 20"
+              fill="none"
+              stroke="#E2E8F0"
+              strokeWidth="1"
+            />
+          </pattern>
+        </defs>
+        <rect width="300" height="174" fill="url(#tutorial-grid)" />
+        {children}
+      </svg>
+    </div>
   );
 }
 
@@ -69,11 +74,34 @@ function Cursor({
   );
 }
 
-const Caption = ({ children }: { children: string }) => (
-  <text x="150" y="142" fontSize="11" fill="#4A5568" textAnchor="middle">
-    {children}
-  </text>
-);
+/** 図中の説明を 16px で表示し，長い文を図の幅に収める． */
+function Caption({ children }: { children: string }) {
+  const caption = children.trim();
+  const lines = Array.from(
+    { length: Math.ceil(caption.length / CAPTION_LINE_LENGTH) },
+    (_, index) =>
+      caption.slice(
+        index * CAPTION_LINE_LENGTH,
+        (index + 1) * CAPTION_LINE_LENGTH,
+      ),
+  );
+  return (
+    <text
+      x="150"
+      y="146"
+      fontSize={DIAGRAM_LABEL_SIZE}
+      fill="#4A5568"
+      textAnchor="middle"
+      aria-label={caption}
+    >
+      {lines.map((line, index) => (
+        <tspan key={line} x="150" dy={index === 0 ? 0 : 20}>
+          {line}
+        </tspan>
+      ))}
+    </text>
+  );
+}
 
 const line = (points: string, color: string, width = 4) => (
   <polyline
@@ -266,10 +294,10 @@ export function SplitIllustration() {
         />
       </circle>
       {dot(150, 75, COLOR.split, 7)}
-      <text x="90" y="120" fontSize="11" fill={COLOR.split} textAnchor="middle">
+      <text x="90" y="120" fontSize="16" fill={COLOR.split} textAnchor="middle">
         _#下部
       </text>
-      <text x="225" y="34" fontSize="11" fill={COLOR.split} textAnchor="middle">
+      <text x="225" y="34" fontSize="16" fill={COLOR.split} textAnchor="middle">
         _#上部
       </text>
       <Caption>紫の点をクリックすると、そこで 2 本に分かれます</Caption>
@@ -316,10 +344,10 @@ export function MergeIllustration() {
       </polyline>
       {dot(150, 60, COLOR.merge, 6)}
       {dot(150, 105, COLOR.merge, 6)}
-      <text x="162" y="58" fontSize="12" fill={COLOR.merge}>
+      <text x="162" y="58" fontSize="16" fill={COLOR.merge}>
         1
       </text>
-      <text x="162" y="110" fontSize="12" fill={COLOR.merge}>
+      <text x="162" y="110" fontSize="16" fill={COLOR.merge}>
         2
       </text>
       <Caption>
@@ -405,10 +433,10 @@ export function MappingIllustration() {
   ];
   return (
     <Frame>
-      <text x="70" y="20" fontSize="10" fill="#718096" textAnchor="middle">
+      <text x="70" y="20" fontSize="16" fill="#718096" textAnchor="middle">
         クロール結果
       </text>
-      <text x="230" y="20" fontSize="10" fill="#718096" textAnchor="middle">
+      <text x="230" y="20" fontSize="16" fill="#718096" textAnchor="middle">
         コース線
       </text>
       {pairs.map((pair, index) => {
@@ -427,7 +455,7 @@ export function MappingIllustration() {
             <text
               x="70"
               y={y + 15}
-              fontSize="10"
+              fontSize="16"
               fill="#2D3748"
               textAnchor="middle"
             >
@@ -452,7 +480,7 @@ export function MappingIllustration() {
             <text
               x="230"
               y={y + 15}
-              fontSize="10"
+              fontSize="16"
               fill={pair.matched ? "#2D3748" : "#DD6B20"}
               textAnchor="middle"
             >
@@ -488,7 +516,7 @@ export function MidstationIllustration() {
         />
       </circle>
       {dot(150, 80, "#2F855A", 8)}
-      <text x="150" y="62" fontSize="11" fill="#2F855A" textAnchor="middle">
+      <text x="150" y="62" fontSize="16" fill="#2F855A" textAnchor="middle">
         中間駅
       </text>
       <Caption>

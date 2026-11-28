@@ -134,7 +134,7 @@ export function RequestFeatureReview({
                 {selected.name}
               </h2>
               <span
-                className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${selected.status === "unchanged" ? "bg-slate-100 text-slate-600" : selected.status === "removed" ? "bg-rose-100 text-rose-800" : "bg-amber-100 text-amber-900"}`}
+                className={`rounded-full px-2 py-0.5 text-xs font-medium ${selected.status === "unchanged" ? "bg-slate-100 text-slate-600" : selected.status === "removed" ? "bg-rose-100 text-rose-800" : "bg-amber-100 text-amber-900"}`}
               >
                 {editor ? "編集中" : statusLabel[selected.status]}
               </span>
@@ -157,7 +157,7 @@ export function RequestFeatureReview({
                       key={field.key}
                       className={`min-w-0 rounded-lg border px-3 py-2 ${["name", "note", "searchWord", "link"].includes(field.key) ? "col-span-2" : ""} ${field.changed ? "border-amber-300 bg-amber-50" : "border-slate-100 bg-slate-50"}`}
                     >
-                      <dt className="text-[11px] font-medium text-slate-600">
+                      <dt className="text-xs font-medium text-slate-600">
                         {field.label}
                         {field.changed && (
                           <span className="ml-1.5 text-amber-700">変更</span>

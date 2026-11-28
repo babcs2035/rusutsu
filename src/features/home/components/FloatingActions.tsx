@@ -105,7 +105,7 @@ export const CompareAddButton = ({
     className={cn(
       FLOATING_BUTTON_CLASS,
       // 押す前がいちばん目立つ青の塗り。押した後は白抜きにして、左下の「N件を比較」を主役にする
-      "rounded-full border-2 border-blue-600 px-5 text-[15px]",
+      "rounded-full border-2 border-blue-600 px-5 text-xs",
       isSelected
         ? "bg-white text-blue-700 hover:bg-blue-50"
         : "bg-blue-600 text-white hover:bg-blue-700",

@@ -89,7 +89,7 @@ export function CourseMappingList({
             type="button"
             aria-label={`${index + 1}番目のコースを選ぶ`}
             className={cn(
-              "w-5 shrink-0 rounded text-right text-[11px] text-gray-500 hover:text-gray-900",
+              "w-5 shrink-0 rounded text-right text-xs text-gray-500 hover:text-gray-900",
               isActive && "font-bold text-blue-700",
             )}
             onClick={() => onSelectCourse(course.id)}
@@ -109,19 +109,17 @@ export function CourseMappingList({
       renderBelow={(course, index, isActive) => (
         <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 pl-6">
           <RequestChangeBadge id={course.id} />
-          <span className="text-[11px] text-gray-500">
+          <span className="text-xs text-gray-500">
             {course.coordinates.length} 点
           </span>
           {course.coordinates.length < 2 && (
-            <span className="text-[11px] font-bold text-red-700">
-              2 点以上必要
-            </span>
+            <span className="text-xs font-bold text-red-700">2 点以上必要</span>
           )}
           {course.unnamed && (
-            <span className="text-[11px] text-orange-900">無名</span>
+            <span className="text-xs text-orange-900">無名</span>
           )}
           {course.splitGroupId && (
-            <span className="text-[11px] text-purple-900">分割中</span>
+            <span className="text-xs text-purple-900">分割中</span>
           )}
           <TooltipProvider delay={0}>
             <Tooltip>
@@ -147,7 +145,7 @@ export function CourseMappingList({
             <>
               <Button
                 size="xs"
-                variant={isDrawing ? "orange" : "outline"}
+                variant={isDrawing ? "default" : "outline"}
                 onClick={() => onDrawingChange(!isDrawing)}
               >
                 {isDrawing ? "描画終了" : "点を追加"}

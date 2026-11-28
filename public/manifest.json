@@ -5,7 +5,7 @@
   "start_url": "/rusutsu/",
   "display": "standalone",
   "background_color": "#f9fafb",
-  "theme_color": "#003366",
+  "theme_color": "#172554",
   "icons": [
     {
       "src": "/rusutsu/favicon.png",

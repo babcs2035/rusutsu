@@ -320,7 +320,7 @@ export function TicketEditWorkspace({
         }
         className="md:w-[min(250px,40vw)] lg:w-[300px] border-r border-white/20"
       >
-        <div className="p-3 md:p-5 sticky top-0 z-10 bg-[var(--sidebar-dark)]">
+        <div className="p-3 md:p-5 sticky top-0 z-10 bg-admin-surface">
           <p className="text-blue-200 text-xs font-bold">RUSUTSU DATA TOOLS</p>
           <h2 className="mt-4 text-2xl font-bold font-[var(--font-heading)]">
             リフト券編集
@@ -364,7 +364,7 @@ export function TicketEditWorkspace({
                       {file.status !== null && (
                         <span
                           className={cn(
-                            "px-1.5 rounded-full bg-white/20 text-white font-bold text-[0.6875rem]",
+                            "px-1.5 rounded-full bg-white/20 text-white font-bold text-xs",
                           )}
                         >
                           {STATUS_LABELS[file.status] ?? file.status}
@@ -375,7 +375,7 @@ export function TicketEditWorkspace({
                       <span
                         className={cn(
                           isSelected ? "text-blue-100" : "text-gray-400",
-                          "text-[0.6875rem]",
+                          "text-xs",
                         )}
                       >
                         {file.seasonId}
@@ -383,7 +383,7 @@ export function TicketEditWorkspace({
                       <span
                         className={cn(
                           isSelected ? "text-blue-100" : "text-gray-500",
-                          "text-[0.6875rem]",
+                          "text-xs",
                         )}
                       >
                         料金{file.offerCount}件
@@ -392,7 +392,7 @@ export function TicketEditWorkspace({
                         <div
                           className={cn(
                             "flex items-center gap-2 text-orange-200",
-                            "text-[0.6875rem]",
+                            "text-xs",
                           )}
                         >
                           <AlertTriangle size={11} />
@@ -426,7 +426,7 @@ export function TicketEditWorkspace({
           {/* 幅不足時はボタンを折り返す（320px では 1 行に収まらない） */}
           <div className="flex flex-wrap items-center gap-3 lg:gap-12">
             {draft.savedAt !== null && (
-              <p className="text-gray-500 text-[0.6875rem]">下書き保存済み</p>
+              <p className="text-gray-500 text-xs">下書き保存済み</p>
             )}
             {dirty && (
               <p className="text-orange-900 text-xs font-bold">未保存</p>
@@ -484,9 +484,7 @@ export function TicketEditWorkspace({
                 >
                   {item.title}
                   {count !== null && (
-                    <span className="ml-4 text-[0.6875rem] opacity-80">
-                      {count}
-                    </span>
+                    <span className="ml-4 text-xs opacity-80">{count}</span>
                   )}
                 </Button>
               );
@@ -501,10 +499,7 @@ export function TicketEditWorkspace({
               <ShieldCheck size={15} />
               検証
               {localIssues.length > 0 && (
-                <Badge
-                  variant="destructive"
-                  className="px-1.5 text-[0.6875rem]"
-                >
+                <Badge variant="destructive" className="px-1.5 text-xs">
                   {localIssues.length}
                 </Badge>
               )}
@@ -541,7 +536,7 @@ export function TicketEditWorkspace({
                   <p className="mb-8 text-gray-600 text-xs">
                     保存時に書き出される内容です（読み取り専用）。キー順序は保存済みの内容のまま保たれます。
                   </p>
-                  <pre className="p-4 rounded-xl bg-slate-900 text-gray-100 text-[0.6875rem] leading-relaxed overflow-x-auto">
+                  <pre className="p-4 rounded-xl bg-slate-900 text-gray-100 text-xs leading-relaxed overflow-x-auto">
                     {JSON.stringify(data, null, 2)}
                   </pre>
                 </div>

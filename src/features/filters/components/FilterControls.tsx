@@ -63,7 +63,7 @@ export const PrefectureFilter = ({
               <span className="text-xs font-bold leading-none">{region}</span>
               <span
                 className={cn(
-                  "text-[11px] font-semibold leading-none",
+                  "text-xs font-semibold leading-none",
                   isRegionSelected ? "text-white" : "text-blue-700",
                 )}
               >

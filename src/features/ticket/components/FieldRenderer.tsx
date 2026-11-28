@@ -77,17 +77,11 @@ const FieldShell = ({
       >
         {labelOf(fieldKey)}
       </span>
-      <span className="text-[0.6875rem] font-mono text-gray-400">
-        {fieldKey}
-      </span>
-      {required && (
-        <span className="text-[0.6875rem] font-bold text-red-700">必須</span>
-      )}
+      <span className="text-xs font-mono text-gray-400">{fieldKey}</span>
+      {required && <span className="text-xs font-bold text-red-700">必須</span>}
     </div>
     {children}
-    {error && (
-      <p className="mt-1 text-[0.6875rem] font-bold text-red-700">{error}</p>
-    )}
+    {error && <p className="mt-1 text-xs font-bold text-red-700">{error}</p>}
   </div>
 );
 
@@ -235,7 +229,7 @@ const StringField = ({
           </SelectContent>
         </Select>
         {labels[current]?.definitionJa && (
-          <p className="mt-1 text-[0.6875rem] leading-relaxed text-gray-500">
+          <p className="mt-1 text-xs leading-relaxed text-gray-500">
             {labels[current]?.definitionJa}
           </p>
         )}
@@ -583,17 +577,11 @@ const ObjectListField = ({
           <span className="text-xs text-gray-700 font-medium">
             {labelOf(fieldKey)}
           </span>
-          <span className="text-[0.6875rem] font-mono text-gray-400">
-            {fieldKey}
-          </span>
+          <span className="text-xs font-mono text-gray-400">{fieldKey}</span>
           {required && (
-            <span className="text-[0.6875rem] font-bold text-red-700">
-              必須
-            </span>
+            <span className="text-xs font-bold text-red-700">必須</span>
           )}
-          <span className="text-[0.6875rem] text-gray-500">
-            {values.length}件
-          </span>
+          <span className="text-xs text-gray-500">{values.length}件</span>
         </div>
         <Button
           type="button"
@@ -606,12 +594,12 @@ const ObjectListField = ({
         </Button>
       </div>
       {description && (
-        <p className="mb-2 text-[0.6875rem] leading-relaxed text-gray-500">
+        <p className="mb-2 text-xs leading-relaxed text-gray-500">
           {description}
         </p>
       )}
       {spec.minItems > 0 && values.length < spec.minItems && (
-        <p className="mb-2 text-[0.6875rem] font-bold text-red-700">
+        <p className="mb-2 text-xs font-bold text-red-700">
           {spec.minItems}件以上必要です。
         </p>
       )}
@@ -802,13 +790,9 @@ const NestedObjectField = ({
             <span className="text-xs text-gray-700 font-medium">
               {labelOf(fieldKey)}
             </span>
-            <span className="text-[0.6875rem] font-mono text-gray-400">
-              {fieldKey}
-            </span>
+            <span className="text-xs font-mono text-gray-400">{fieldKey}</span>
             {required && (
-              <span className="text-[0.6875rem] font-bold text-red-700">
-                必須
-              </span>
+              <span className="text-xs font-bold text-red-700">必須</span>
             )}
           </Button>
           {(spec.nullable || !required) &&
@@ -843,7 +827,7 @@ const NestedObjectField = ({
         {open && (
           <div className="px-3 md:px-4 pb-4">
             {description && (
-              <p className="mt-2 text-[0.6875rem] leading-relaxed text-gray-500">
+              <p className="mt-2 text-xs leading-relaxed text-gray-500">
                 {description}
               </p>
             )}

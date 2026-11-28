@@ -52,12 +52,12 @@ export function RequestWorkspaceLayout({
               {title}
             </h1>
             <span
-              className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ${statusClass}`}
+              className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ${statusClass}`}
             >
               {status}
             </span>
           </div>
-          <p className="mt-0.5 truncate text-[11px] text-slate-500">
+          <p className="mt-0.5 truncate text-xs text-slate-500">
             {authorName}さんの申請 ·{" "}
             {new Date(createdAt).toLocaleString("ja-JP", {
               timeZone: "Asia/Tokyo",

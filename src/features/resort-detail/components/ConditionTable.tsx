@@ -114,7 +114,7 @@ export function ConditionTable({
                   className="px-2 pb-1.5 md:@min-[28rem]/conditions:pb-2"
                 >
                   {/* 日時は全列にまたがる行に置き、地点名の列幅で折り返さない。 */}
-                  <span className="sticky left-2 inline-block whitespace-nowrap rounded-md border border-blue-100 bg-blue-50 px-1.5 py-0.5 text-[11px] leading-4 tabular-nums text-blue-800 md:@min-[28rem]/conditions:px-2 md:@min-[28rem]/conditions:text-xs md:@min-[28rem]/conditions:leading-5">
+                  <span className="sticky left-2 inline-block whitespace-nowrap rounded-md border border-blue-100 bg-blue-50 px-1.5 py-0.5 text-xs leading-4 tabular-nums text-blue-800 md:@min-[28rem]/conditions:px-2 md:@min-[28rem]/conditions:text-xs md:@min-[28rem]/conditions:leading-5">
                     <span className="sr-only">{point.name}の更新日時: </span>
                     {point.updatedAt}
                   </span>

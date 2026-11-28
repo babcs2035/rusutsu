@@ -173,7 +173,7 @@ export function ResortSelectStep({
               {filter.label}
             </Button>
           ))}
-          <span className="text-[11px] text-gray-500">
+          <span className="text-xs text-gray-500">
             {filteredResorts.length} 件
           </span>
         </div>

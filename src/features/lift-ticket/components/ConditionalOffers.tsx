@@ -65,12 +65,12 @@ export const ConditionalOffers = ({
   const showGroup = new Set(offers.map(offer => offer.groupId)).size > 1;
   return (
     <div
-      className={`rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 ${className ?? ""}`}
+      className={`rounded-lg border border-border bg-muted px-3 py-2 ${className ?? ""}`}
     >
-      <span className="inline-block whitespace-nowrap rounded-full bg-purple-700 px-2 py-0.5 text-[0.6875rem] font-bold leading-none text-white md:text-xs">
+      <span className="inline-block whitespace-nowrap rounded-full bg-secondary px-2 py-0.5 text-xs font-bold leading-none text-secondary-foreground">
         条件付き割引
       </span>
-      <ul className="mt-1.5 flex flex-col divide-y divide-purple-100">
+      <ul className="mt-1.5 flex flex-col divide-y divide-border">
         {groupByLabel(offers).map(group => {
           const first = group[0];
           const days = "days" in first ? first.days : null;
@@ -90,14 +90,14 @@ export const ConditionalOffers = ({
           if (showGroup && !days) {
             return (
               <li key={first.id} className="py-1.5 first:pt-0 last:pb-0">
-                <p className="text-[0.8125rem] font-bold text-purple-950 md:text-sm">
+                <p className="text-xs font-bold text-foreground md:text-sm">
                   {first.label}
                   {sources}
                 </p>
                 {group.map(offer => (
                   <p
                     key={offer.id}
-                    className="flex items-baseline justify-between gap-2 pl-2 text-[0.8125rem] text-purple-950 md:text-sm"
+                    className="flex items-baseline justify-between gap-2 pl-2 text-xs text-foreground md:text-sm"
                   >
                     <span className="min-w-0">
                       {offer.groupLabel} {offer.count}名{daySuffix}
@@ -113,23 +113,23 @@ export const ConditionalOffers = ({
           return (
             <li key={first.id} className="py-1.5 first:pt-0 last:pb-0">
               <div className="flex items-baseline justify-between gap-2">
-                <p className="min-w-0 text-[0.8125rem] font-bold text-purple-950 md:text-sm">
+                <p className="min-w-0 text-xs font-bold text-foreground md:text-sm">
                   {first.label}
                   {!days && daySuffix && (
-                    <span className="ml-1 whitespace-nowrap text-[0.6875rem] font-normal md:text-xs">
+                    <span className="ml-1 whitespace-nowrap text-xs font-normal md:text-xs">
                       {daySuffix.trim()}
                     </span>
                   )}
                   {sources}
                 </p>
-                <p className="flex-shrink-0 text-[0.8125rem] font-bold text-purple-950 font-mono md:text-sm">
+                <p className="flex-shrink-0 text-xs font-bold text-foreground font-mono md:text-sm">
                   {yen(days ? first.subtotal : first.subtotal * dayCount)}
                 </p>
               </div>
               {days?.map(day => (
                 <p
                   key={day.date}
-                  className="flex justify-between gap-2 text-[0.6875rem] text-purple-900 md:text-xs"
+                  className="flex justify-between gap-2 text-xs text-muted-foreground"
                 >
                   <span className="min-w-0">
                     {shortDateOf(day.date)} {day.label}

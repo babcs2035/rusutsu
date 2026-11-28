@@ -342,7 +342,7 @@ export function DetailStep({
           </div>
         ))}
       </ScrollArea>
-      <p className="text-[0.6875rem] text-gray-500 -mt-2">
+      <p className="text-xs text-gray-500 -mt-2">
         リフトをドラッグして並び替えられます。変更した順番が、保存後の GeoJSON
         のリフト順になります。
       </p>
@@ -352,14 +352,14 @@ export function DetailStep({
         defaultOpen={false}
         summary={`${lifts.length} 本`}
       >
-        <p className="mb-1.5 text-[11px] leading-relaxed text-gray-700">
+        <p className="mb-1.5 text-xs leading-relaxed text-gray-700">
           全リフトへ同じ値を一度に入れます。設定したあとで、1
           本ずつ変更できます。
         </p>
         <div className="flex flex-col gap-1.5">
           {(["morning", "night"] as const).map(key => (
             <div key={key} className="flex items-center gap-1">
-              <span className="w-20 shrink-0 text-[11px] font-bold text-gray-600">
+              <span className="w-20 shrink-0 text-xs font-bold text-gray-600">
                 {DETAIL_LABELS[key]}
               </span>
               <div className="flex min-w-0 flex-1 flex-wrap gap-1">
@@ -380,7 +380,7 @@ export function DetailStep({
             </div>
           ))}
         </div>
-        <Label className="mt-2 cursor-pointer gap-1.5 text-[11px] text-gray-600">
+        <Label className="mt-2 cursor-pointer gap-1.5 text-xs text-gray-600">
           <Checkbox
             checked={bulkOnlyEmpty}
             onCheckedChange={checked => setBulkOnlyEmpty(checked === true)}
@@ -388,7 +388,7 @@ export function DetailStep({
           未入力のリフトだけに入れる（入力済みは変えない）
         </Label>
         {bulkMessage && (
-          <p role="status" className="mt-1 text-[11px] text-green-800">
+          <p role="status" className="mt-1 text-xs text-green-800">
             {bulkMessage}
           </p>
         )}
@@ -505,7 +505,6 @@ export function DetailStep({
                     </Select>
                     <Button
                       size="xs"
-                      variant="green"
                       disabled={manualEntryIndex === ""}
                       onClick={handleManualMerge}
                     >
@@ -840,7 +839,7 @@ export function DetailStep({
             >
               入力を修正する
             </Button>
-            <Button size="sm" variant="orange" onClick={onProceed}>
+            <Button size="sm" onClick={onProceed}>
               未入力のまま進む
             </Button>
           </div>

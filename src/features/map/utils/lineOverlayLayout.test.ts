@@ -238,10 +238,10 @@ test("真下向きは残し、真上向きだけ下向きへ折り返す", () =>
   assert.equal(Math.round(up[0]?.placement.angle ?? 0), 90);
 });
 
-test("getLabelFontSize は 2 段だけ変える", () => {
-  assert.equal(getLabelFontSize(14), 11);
-  assert.equal(getLabelFontSize(15.5), 11);
-  assert.equal(getLabelFontSize(16), 12);
+test("getLabelFontSize はズームに関係なく 16px を返す", () => {
+  assert.equal(getLabelFontSize(14), 16);
+  assert.equal(getLabelFontSize(15.5), 16);
+  assert.equal(getLabelFontSize(16), 16);
 });
 
 const createSource = (
@@ -348,7 +348,7 @@ test("placeLabelCandidates はスコアの高い方を残す", () => {
 });
 
 test("collectLabelCandidates は線の半分を超える名前を出さない", () => {
-  // measureWidth は 1 文字 = fontSize px。6 文字 × 12px + 2 = 74px
+  // measureWidth は 1 文字 = fontSize px。6 文字 × 16px + 2 = 98px
   const collect = (length: number) =>
     collectLabelCandidates({
       sources: [
@@ -362,8 +362,8 @@ test("collectLabelCandidates は線の半分を超える名前を出さない", 
       measureWidth,
     });
 
-  assert.equal(collect(140).length, 0);
-  assert.equal(collect(160).length, 1);
+  assert.equal(collect(195).length, 0);
+  assert.equal(collect(196).length, 1);
 });
 
 test("collectLabelCandidates は曲がった区間に名前を出さない", () => {

@@ -123,7 +123,8 @@ const SectionHeader = ({
  * 文字の大きさ・太さは Input / Select の既定（本文と同じ）に合わせる。
  * スマホの入力欄を16px未満にすると iOS がフォーカス時に拡大するので、Input の既定のままにする
  */
-const FIELD_CLASS = "h-9 bg-white text-gray-900 placeholder:text-gray-400";
+const FIELD_CLASS =
+  "h-9 bg-background text-foreground placeholder:text-muted-foreground";
 
 const RemoveButton = ({
   label,
@@ -214,7 +215,7 @@ const RentalPicker = ({
       <PopoverTrigger
         aria-label={`レンタルを選ぶ（${summary}）`}
         className={cn(
-          "flex h-9 w-full min-w-0 items-center justify-between gap-0.5 rounded-md border pr-0.5 pl-1.5 text-left text-[11px] font-semibold @min-[19rem]/party:pr-1 @min-[19rem]/party:pl-2 @min-[19rem]/party:text-xs",
+          "flex h-9 w-full min-w-0 items-center justify-between gap-0.5 rounded-md border pr-0.5 pl-1.5 text-left text-xs font-semibold @min-[19rem]/party:pr-1 @min-[19rem]/party:pl-2 @min-[19rem]/party:text-xs",
           rental
             ? "border-blue-300 bg-blue-50 text-blue-900 hover:bg-blue-100"
             : "border-input bg-white text-gray-700 hover:bg-gray-50",

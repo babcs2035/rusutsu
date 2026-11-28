@@ -72,7 +72,7 @@ export function ResortStatusBadge({
     <Badge
       variant="secondary"
       title={style.title}
-      className={cn("shrink-0 text-[10px]", style.className, className)}
+      className={cn("shrink-0 text-xs", style.className, className)}
     >
       {style.label}
     </Badge>
@@ -86,9 +86,7 @@ export function ResortStatusLegend({ kinds }: { kinds: ResortStatusKind[] }) {
       {kinds.map(kind => (
         <span key={kind} className="flex items-center gap-1">
           <ResortStatusBadge kind={kind} />
-          <span className="text-[10px] text-gray-500">
-            {STYLES[kind].title}
-          </span>
+          <span className="text-xs text-gray-500">{STYLES[kind].title}</span>
         </span>
       ))}
     </div>

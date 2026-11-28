@@ -184,9 +184,9 @@ export const TicketsTab = ({
         <h2 className="text-lg font-bold text-gray-900 font-[var(--font-heading)]">
           リフト券
         </h2>
-        <Card className="mt-4 overflow-x-auto py-0">
+        <Card className="@container/ticket-summary mt-4 overflow-x-auto py-0">
           <CardContent className="p-0">
-            <Table>
+            <Table className="[&_th]:px-2 @min-[420px]/ticket-summary:[&_th]:px-4">
               <TableHeader>
                 <TableRow className="bg-gray-50">
                   <TableHead className="table-header-cell">券種</TableHead>
@@ -211,16 +211,16 @@ export const TicketsTab = ({
                     key={t.id}
                     className="border-gray-200 hover:bg-gray-50 hover:text-gray-900"
                   >
-                    <TableCell className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">
+                    <TableCell className="px-2 py-3 font-semibold text-gray-700 @min-[420px]/ticket-summary:px-4">
                       {t.name}
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-gray-700 font-mono font-semibold whitespace-nowrap">
+                    <TableCell className="px-2 py-3 text-gray-700 font-mono font-semibold whitespace-nowrap @min-[420px]/ticket-summary:px-4">
                       {t.priceAdult ? `¥${t.priceAdult.toLocaleString()}` : "-"}
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-gray-700 font-mono font-semibold whitespace-nowrap">
+                    <TableCell className="px-2 py-3 text-gray-700 font-mono font-semibold whitespace-nowrap @min-[420px]/ticket-summary:px-4">
                       {t.priceChild ? `¥${t.priceChild.toLocaleString()}` : "-"}
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-gray-700 font-mono font-semibold whitespace-nowrap">
+                    <TableCell className="px-2 py-3 text-gray-700 font-mono font-semibold whitespace-nowrap @min-[420px]/ticket-summary:px-4">
                       {t.priceSenior
                         ? `¥${t.priceSenior.toLocaleString()}`
                         : "-"}

@@ -255,7 +255,7 @@ export function DetailsScreen({
                     {feature.name}
                   </span>
                   {count > 0 && (
-                    <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap text-amber-800">
+                    <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-xs font-semibold whitespace-nowrap text-amber-800">
                       修正 {count}
                     </span>
                   )}

@@ -82,7 +82,7 @@ export function LiftMappingList({
             type="button"
             aria-label={`${index + 1}番目のリフトを選ぶ`}
             className={cn(
-              "w-5 shrink-0 rounded text-right text-[11px] text-gray-500 hover:text-gray-900",
+              "w-5 shrink-0 rounded text-right text-xs text-gray-500 hover:text-gray-900",
               isActive && "font-bold text-blue-700",
             )}
             onClick={() => onSelectLift(lift.id)}
@@ -104,16 +104,16 @@ export function LiftMappingList({
         return (
           <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 pl-6">
             <RequestChangeBadge id={lift.id} />
-            <span className="text-[11px] text-gray-500">
+            <span className="text-xs text-gray-500">
               {lift.coordinates.length} 点
             </span>
             {lift.midstation && (
-              <span className="text-[11px] text-green-900">中間駅</span>
+              <span className="text-xs text-green-900">中間駅</span>
             )}
             {change && (
               <Badge
                 variant="secondary"
-                className="max-w-[45%] truncate bg-orange-100 text-[10px] text-orange-900"
+                className="max-w-[45%] truncate bg-orange-100 text-xs text-orange-900"
                 title={change}
               >
                 {change}
@@ -124,7 +124,7 @@ export function LiftMappingList({
                 {lift.isNew && (
                   <Button
                     size="xs"
-                    variant={isDrawing ? "orange" : "outline"}
+                    variant={isDrawing ? "default" : "outline"}
                     onClick={() => {
                       onMidstationModeChange(false);
                       onDrawingChange(!isDrawing);
@@ -135,7 +135,7 @@ export function LiftMappingList({
                 )}
                 <Button
                   size="xs"
-                  variant={isMidstationMode ? "green" : "outline"}
+                  variant={isMidstationMode ? "default" : "outline"}
                   onClick={() => {
                     onDrawingChange(false);
                     onMidstationModeChange(!isMidstationMode);
