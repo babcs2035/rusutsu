@@ -113,7 +113,8 @@ export const SkiResortCompareView = ({
 
   const [isConditionsOpen, setConditionsOpen] = useState(false);
 
-  // 表示設定・タイル種別・コースの色分けはブラウザに保存する（画面遷移でリセットされない）
+  // 表示設定・タイル種別・コースの色分け・営業中のみはブラウザに保存する
+  // （画面遷移でリセットされない。詳細画面の地図と共有する）
   const {
     mapDisplaySettings,
     setMapDisplaySettings,
@@ -121,8 +122,9 @@ export const SkiResortCompareView = ({
     setMapTileVariant,
     courseColorMode,
     setCourseColorMode,
+    showOpenOnly,
+    setShowOpenOnly,
   } = usePersistentMapSettings();
-  const [showOpenOnly, setShowOpenOnly] = useState(false);
   // PC で選んだコース・リフト。詳細は右端に 1 枚だけ出すので比較全体で 1 つ
   const [slopeSelection, setSlopeSelection] =
     useState<CompareSlopeSelection | null>(null);

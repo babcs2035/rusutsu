@@ -373,37 +373,33 @@ function MapLibreResortMapContent({
   );
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [isInteracting, setIsInteracting] = useState(false);
-  // 詳細地図は最初のフレームから写真＋斜度で作る。
-  // 既定（地図タイル）で作ってから切り替えると、白い淡色地図のタイルを
-  // 読み込んでから写真の読み込みが始まり、切り替わるまで白い地図が見えてしまう。
-  // 地図の表示設定（営業中のみ・表示項目・色分け・単色）はグローバルな
-  // localStorage（usePersistentMapSettings）に一元管理し、スキー場を切り替えても
-  // リロードしても同じ好みになる。viewport（地図の位置）だけリゾート別に
-  // セッションへ保存する。タイル種別は「詳細=写真・概観=淡色」の既定を維持するため
-  // 保存対象外（初回フレームの白地図回避）。
+  // 地図の表示設定（タイル種別・営業中のみ・表示項目・色分け・単色）はすべて
+  // グローバルな localStorage（usePersistentMapSettings）に一元管理し、スキー場を
+  // 切り替えてもリロードしても同じ好みになる。viewport（地図の位置）だけリゾート
+  // 別にセッションへ保存する。
   const {
     mapDisplaySettings: persistedMapDisplaySettings,
     setMapDisplaySettings: setPersistedMapDisplaySettings,
+    mapTileVariant: persistedMapTileVariant,
+    setMapTileVariant: setPersistedMapTileVariant,
     courseColorMode: persistedCourseColorMode,
     setCourseColorMode: setPersistedCourseColorMode,
     showOpenOnly: persistedShowOpenOnly,
     setShowOpenOnly: setPersistedShowOpenOnly,
   } = usePersistentMapSettings();
-  const [uncontrolledTileVariant, setUncontrolledTileVariant] =
-    useState<MapTileVariant>(isDetailMap ? "photo" : "pale");
   const [uncontrolledSelected, setUncontrolledSelected] =
     useState<SelectedMapFeature | null>(null);
   const [openActionPopupResortId, setOpenActionPopupResortId] = useState<
     string | null
   >(null);
 
-  const mapTileVariant = controlledMapTileVariant ?? uncontrolledTileVariant;
+  const mapTileVariant = controlledMapTileVariant ?? persistedMapTileVariant;
   const setMapTileVariant = useCallback(
     (variant: MapTileVariant) => {
-      setUncontrolledTileVariant(variant);
+      setPersistedMapTileVariant(variant);
       onMapTileVariantChange?.(variant);
     },
-    [onMapTileVariantChange],
+    [onMapTileVariantChange, setPersistedMapTileVariant],
   );
   const courseColorMode = controlledCourseColorMode ?? persistedCourseColorMode;
   const setCourseColorMode = useCallback(
@@ -464,50 +460,6 @@ function MapLibreResortMapContent({
     [onSelectedFinalizedFeatureChange],
   );
   const initialZoom = isMobile ? MOBILE_INITIAL_ZOOM : DESKTOP_INITIAL_ZOOM;
-
-  // 詳細画面に入るときは写真タイル、選択画面に戻るときは淡色タイルに戻す。
-  // 単色は mapDisplaySettings の計算式（isDetailMap）で自動的に切替わる。
-  // コースの色分け・表示項目・営業中のみはユーザーの選択なので localStorage に
-  // 保存され、ここで戻さない。
-  // ref の初期値を interactionMode 自体ではなく null にしておくことで、
-  // 詳細画面としてマウントされるインスタンス（モバイルのプレビュー地図など）
-  // でもマウント直後に既定値を適用できるようにする。
-  const previousInteractionModeRef = useRef<
-    "default" | "detail" | "compare" | null
-  >(null);
-  const previousStyleResortIdRef = useRef(selectedResortId);
-  // 色味と同じ理由で描画前に確定させる（useEffect だと 1 フレーム遅れる）
-  useLayoutEffect(() => {
-    const previousInteractionMode = previousInteractionModeRef.current;
-    const previousResortId = previousStyleResortIdRef.current;
-    previousInteractionModeRef.current = interactionMode;
-    previousStyleResortIdRef.current = selectedResortId;
-    if (
-      previousInteractionMode === interactionMode &&
-      previousResortId === selectedResortId
-    )
-      return;
-    if (hasControlledStyleState) return;
-    // 初回は初期値を使う。背景は画面ごとの既定値、その他は保存設定を復元する。
-    if (previousInteractionMode === null && savedMap) return;
-
-    // 単色は mapDisplaySettings の計算式（isDetailMap）で自動的に切替わるので、
-    // ここではタイル種別だけ画面ごとに既定値へ戻す。
-    if (interactionMode === "detail") {
-      setMapTileVariant("photo");
-      return;
-    }
-    if (previousInteractionMode === "detail") {
-      // 詳細から戻っても地図は作り直さないので、詳細用のタイルを明示的に戻す
-      setMapTileVariant("pale");
-    }
-  }, [
-    hasControlledStyleState,
-    savedMap,
-    interactionMode,
-    selectedResortId,
-    setMapTileVariant,
-  ]);
 
   useEffect(() => {
     const queries = [
